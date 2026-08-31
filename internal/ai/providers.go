@@ -363,6 +363,22 @@ func detectOllama() string {
 	return ""
 }
 
+// DetectLocalModel asks an OpenAI-compatible server what it can run, and picks
+// one.
+//
+// For setup, which knows the endpoint and has to store a model with it: the
+// model is required now — there is no default worth inventing for a server whose
+// ids are whatever that machine has pulled — and asking somebody to type
+// "llama3.2" at the moment they have just said "use Ollama" is asking them for
+// something the server already knows.
+//
+// baseURL in the configured form, with the version segment on it, because that
+// is what /models hangs off. Empty when the server cannot be reached or has
+// nothing, and the caller stores nothing rather than a guess.
+func DetectLocalModel(baseURL, apiKey string) string {
+	return detectLocalModel(baseURL, apiKey)
+}
+
 // detectLocalModel finds the best available model from a local server.
 func detectLocalModel(baseURL, apiKey string) string {
 	client := &http.Client{Timeout: 5 * time.Second}

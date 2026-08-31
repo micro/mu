@@ -45,6 +45,7 @@ export ANTHROPIC_API_KEY="your-key"   # Claude, from console.anthropic.com
 # export GEMINI_API_KEY="your-key"     # Google Gemini
 # export OPENROUTER_API_KEY="your-key" # OpenRouter (one key, many models)
 # export OPENAI_BASE_URL="http://localhost:11434/v1"  # Ollama or any compatible endpoint
+# export OPENAI_MODEL="llama3.2"                      # which model that endpoint serves
 
 # Video
 export YOUTUBE_API_KEY="your-key"  # Google Cloud Console
@@ -814,7 +815,7 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `OPENROUTER_MODEL` | Override the OpenRouter slug (default `openai/gpt-4o-mini`) |
 | `IMAGE_MODEL` | Override the image model |
 | `OPENAI_BASE_URL` · `OPENAI_API_KEY` | Any OpenAI-compatible endpoint — Ollama, vLLM, llama.cpp |
-| `OPENAI_MODEL` | Which model to ask for on that endpoint (default `gpt-4o-mini`). A local server usually names its own — `llama3.2`, `qwen2.5` — and the default will 404 there |
+| `OPENAI_MODEL` | Which model that endpoint serves — `llama3.2`, `qwen2.5`, whatever the machine has pulled. Required with `OPENAI_BASE_URL`: there is no default worth guessing, and the instance says it is not configured rather than asking a server for a model id somebody made up. `mu setup` fills it in by asking the endpoint |
 | `MU_LOG_FILE` | Where the log is written (default `~/.mu/logs/mu.log`). Startup printed 313 lines, a hundred of them the framework announcing its own in-memory transport, and the line that mattered — "no model configured" — was third from the top and gone before the scroll stopped. The log goes to a file so the screen can say the address, what is still unconfigured, and where the rest went. Everything still reaches `/admin/logs` either way |
 | `MU_LOG_STDOUT` | `true` puts the whole log back on stdout. For Docker and systemd, which capture stdout and expect the log to be there — `docker logs` and `journalctl -u mu` are how an operator reads it, and a file inside a container is not. A choice about where this instance runs rather than about what it should say, which is why it is set rather than guessed |
 

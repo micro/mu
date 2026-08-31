@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/settings"
@@ -141,6 +142,22 @@ func ApplyProvider(provider, key, baseURL string) error {
 		}
 		settings.Set("OPENAI_BASE_URL", baseURL)
 		settings.Set("OPENAI_API_KEY", "ollama")
+		// And which model, asked of the server rather than guessed.
+		//
+		// This wrote an endpoint and a key and no model, which was survivable
+		// while the model defaulted to gpt-4o-mini — and that default was a
+		// model no Ollama has, so the reward for finishing setup was a 404
+		// naming something the operator never typed. The default is gone, so
+		// without this the reward is an instance that says it is not
+		// configured, which is truthful and just as useless.
+		//
+		// The server knows. Somebody who has just said "use Ollama" should not
+		// then be asked to type an id that /models would have answered.
+		// Nothing stored when it cannot be reached: an instance that says it
+		// needs a model beats one that names a model that is not there.
+		if m := ai.DetectLocalModel(baseURL, "ollama"); m != "" {
+			settings.Set("OPENAI_MODEL", m)
+		}
 	case "", "later", "none":
 		// Nothing to write. Everything that does not need a model still works,
 		// and /admin/config is where one is added when there is one.

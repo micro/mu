@@ -77,3 +77,67 @@ func TestTheSetupAdminHasAPasswordItsOwnerChose(t *testing.T) {
 			"so /account offers to set one and tells them they signed in with Google")
 	}
 }
+
+// Choosing Ollama finishes with a model, asked of the server.
+//
+// It wrote an endpoint and a key and no model. That was survivable while the
+// model defaulted to gpt-4o-mini — and the default was a model no Ollama has, so
+// finishing setup earned a 404 naming something the operator never typed. The
+// default is gone, so without this the reward is an instance that says it is not
+// configured: truthful, and just as useless.
+//
+// The server knows what it has. Somebody who has just said "use Ollama" should
+// not then be asked for an id that /models would have answered.
+func TestChoosingOllamaStoresTheModelTheServerHas(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	for _, k := range []string{"OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL"} {
+		prev := settings.Get(k)
+		settings.Set(k, "")
+		t.Cleanup(func() { settings.Set(k, prev) })
+		t.Setenv(k, "")
+	}
+
+	// A server that answers /models the way an OpenAI-compatible one does.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/models") {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[{"id":"llama3.2:latest"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	if err := ApplyProvider("ollama", "", srv.URL+"/v1"); err != nil {
+		t.Fatalf("ApplyProvider: %v", err)
+	}
+	if got := settings.Get("OPENAI_BASE_URL"); got != srv.URL+"/v1" {
+		t.Errorf("OPENAI_BASE_URL = %q", got)
+	}
+	if got := settings.Get("OPENAI_MODEL"); got != "llama3.2:latest" {
+		t.Errorf("OPENAI_MODEL = %q, want the model the server named — setup that "+
+			"stores an endpoint and no model leaves the instance unconfigured", got)
+	}
+}
+
+// And a server that cannot be reached leaves the model unset.
+//
+// Storing a guess would put a model id on the instance that is not there, and
+// the failure moves from setup — where somebody is watching — to the first
+// question somebody asks.
+func TestOllamaWithNoServerStoresNoModel(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	for _, k := range []string{"OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL"} {
+		prev := settings.Get(k)
+		settings.Set(k, "")
+		t.Cleanup(func() { settings.Set(k, prev) })
+		t.Setenv(k, "")
+	}
+
+	// Nothing listening: a port this test owns and never binds.
+	if err := ApplyProvider("ollama", "", "http://127.0.0.1:1/v1"); err != nil {
+		t.Fatalf("ApplyProvider: %v", err)
+	}
+	if got := settings.Get("OPENAI_MODEL"); got != "" {
+		t.Errorf("OPENAI_MODEL = %q with no server there, want nothing stored", got)
+	}
+}
