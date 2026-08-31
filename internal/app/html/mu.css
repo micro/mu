@@ -5871,6 +5871,12 @@ button.pill:hover {
   flex-wrap: wrap;
 }
 .ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
+/* What is being written, above the compose form. See inbox.newKinds.
+   The same pill row the mailbox and kind filters use, because picking what
+   this is and picking what to look at are the same gesture — and a page that
+   invented a second control for the second one would be teaching the reader
+   two things where there is one. */
+.ib-new-kinds { margin: 0 0 18px }
 .ib-empty { font-size: 14px; color: var(--text-muted, #888); line-height: var(--line-height, 1.6) }
 
 /* How to use the inbox: four lines, read once. Muted and small, because it
@@ -6622,7 +6628,14 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 18px calc(18px + var(--tabbar));
+  /* The safe-area inset, not --tabbar.
+     --tabbar is what a page reserves so the fixed tab bar does not sit on top
+     of its last row. This panel is z-index 200 and the tab bar is 100, so the
+     panel covers it — and reserving its height anyway left 52px of nothing
+     under the box on every phone, which is what "a massive gap beneath the
+     input" is. The inset stays: that is the home indicator, which is hardware
+     and is over everything. */
+  padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
   background: var(--card-background, #fff);
   border-left: 1px solid var(--border-color, #e0e0e0);
   box-shadow: -10px 0 30px rgba(0, 0, 0, .06);
