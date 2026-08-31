@@ -15,7 +15,7 @@ What's included
 
 - **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI or the Web
 - **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it on the web, mail or xmpp
-- **Inbox** - A single place to keep track of threads across mail, chat, etc. Use it on the web or via IMAP in an email client.
+- **Inbox** - A single place to keep track of threads across channels. Use it on the web or via IMAP in an email client.
 
 ## Services
 
