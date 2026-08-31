@@ -936,9 +936,17 @@ body.page-home #page-title ~ #customize-link {
     align-items: start;
   }
 
-  /* The date and the weather are a status line for the whole page, not for
-     either column, so they run across the top of both. */
-  #home-date {
+  /* The date and the box are a header for the whole page, not for either
+     column, so they run across the top of both.
+
+     The box spent one commit in the rail, on the argument that what you can
+     ask is yours in the same sense the brief and the inbox are. It is, and it
+     still looked wrong: everything else in the rail is a list and a control is
+     not, so a text field indented to a third of the page with cards starting
+     beside it read as a widget in a sidebar rather than as the thing the page
+     is for. */
+  #home-date,
+  #home-agent {
     grid-column: 1 / -1;
   }
 
@@ -951,13 +959,14 @@ body.page-home #page-title ~ #customize-link {
     min-width: 0;
   }
 
-  /* Both columns start on the same line. .home-section carries 30px of top
-     margin so consecutive blocks in a stack are separated; the first block in
-     a column has nothing above it to be separated from, and the margin would
-     drop Services 30px below the input it now sits beside. */
-  .home-main > .home-section:first-child {
-    margin-top: 0;
-  }
+  /* Nothing resets the first heading's top margin, and that is deliberate.
+     Both columns now begin with a .home-section — Brief on the left, Services
+     on the right — so the 30px they each carry is what puts them on the same
+     line, and it is also the air under the box above them.
+
+     This was margin-top:0 on the main column's first heading for one commit,
+     from when the rail began with the input rather than a heading. With the
+     box moved across the top it made Services sit 30px above Brief. */
 
   /* One column of cards at this width, because there is not room for two
      beside a rail. The two-column rule is below, at the width where two
@@ -972,9 +981,10 @@ body.page-home #page-title ~ #customize-link {
 
 /* Wide enough for the rail and two columns of cards — the three-column shape.
    Derived rather than round: 1400px less the 240px sidebar, the 40px gutter,
-   the 320px rail and the two 28px gaps leaves 772px, which is two cards of 376.
-   At 1300 the same rule gives two of 306, narrower than a card is on a phone,
-   so one wide column is the better answer below this.
+   the 320px rail and the 28px gap leaves 772px for the cards, which is a 320px
+   right column, a 20px gap and 432px of news. At 1300 the same sum leaves 332
+   for the news, narrower than a card is on a phone, so one wide column is the
+   better answer below this.
 
    1400 rather than a rounder 1500 because 1440x900 is the laptop this is most
    often read on, and it clears the sum with 40px to spare. */
@@ -982,14 +992,26 @@ body.page-home #page-title ~ #customize-link {
   .home-main #home {
     flex-direction: row;
   }
-  /* Equal columns, not the 1fr + 370px the full-width layout uses. That pair
-     is proportioned for 1120px; inside the main column the fixed 370 would be
-     half the region at the narrow end and a third of it at the wide end, so
-     the same two cards would change relative size as the window moved. */
-  .home-main .home-left,
-  .home-main .home-right {
-    flex: 1 1 0;
+  /* Not equal. cards.json is not a pair of interchangeable halves: the left
+     column is blog, prayer and news — headlines, standfirsts and body text,
+     all of which read better long — and the right is markets, images and
+     social, which are a price table, one square photograph and a short post.
+     The first wants the width and the second is done at 320.
+
+     This was flex:1 1 0 on both for one commit, and equal columns gave the
+     wide half of the page to the half that had nothing to do with it: news
+     headlines wrapping to three lines beside a price table with air around
+     every figure. Same relationship as the full-width layout's 1fr + 370px,
+     re-proportioned for a region that is smaller because the rail is beside
+     it. */
+  .home-main .home-left {
+    flex: 1 1 auto;
     width: auto;
+    min-width: 0;
+  }
+  .home-main .home-right {
+    flex: 0 0 320px;
+    width: 320px;
     min-width: 0;
   }
   /* The 350px floor is what keeps a card readable when it is the page. Here

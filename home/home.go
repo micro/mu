@@ -388,28 +388,29 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
-	// Yours on the left, the world's on the right.
+	// Yours on the left, the world's on the right, under a header that spans.
 	//
 	// Two wrappers and nothing else — the blocks inside are in the order they
 	// were, and on a phone and a tablet these are plain divs that stack, so this
-	// is the same page it was. Above 1100px they become the two tracks of a
+	// is the same page it was. Above 1024px they become the two tracks of a
 	// grid, which is the whole change: see #home-cards in mu.css.
 	//
 	// The reason is that Home was one column at every width. On a wide screen
-	// the input, the brief, three inbox rows and a short agent roster each ran
-	// the full 1120px — a line of text and a metre of nothing beside it — and
-	// the services, which are the part that is actually moving, started below
-	// the fold. Closing the sidebar made every one of those lines longer and
-	// moved the cards no further up.
+	// the brief, three inbox rows and a short agent roster each ran the full
+	// 1120px — a line of text and a metre of nothing beside it — and the
+	// services, which are the part that is actually moving, started below the
+	// fold. Closing the sidebar made every one of those lines longer and moved
+	// the cards no further up.
 	//
 	// What separates the two sides is whose they are. Everything in the rail is
-	// about this account and is short by nature: what you can ask, how things
-	// are, what arrived, who is working. Everything in the main column is the
-	// instance reading the world, and is a grid of cards that wants width. They
-	// have different shapes, so giving them the same width was always going to
-	// waste one of them.
-	b.WriteString(`<div class="home-rail">`)
-
+	// about this account and is short by nature: how things are, what arrived,
+	// who is working. Everything in the main column is the instance reading the
+	// world, and is a grid of cards that wants width. They have different
+	// shapes, so giving them the same width was always going to waste one.
+	//
+	// The date and the input are in neither. Both are about the whole page — one
+	// says what day it is and how warm, the other is where you type — so they
+	// run across the top of both columns. See #home-agent in mu.css.
 	// The box asks, the same as the signed-out page does.
 	//
 	// It searched, and the reason search won was that it is the half that works
@@ -422,6 +423,16 @@ function fetchW(la,lo){
 	// Still one control doing one thing on both pages, which was the property
 	// worth keeping from the previous answer. Where there is no model it
 	// renders the search box and says why — a degrade, not a second product.
+	//
+	// Across the top, above both columns, and not the first thing in the rail.
+	// It spent one commit in there, on the argument that the input is yours in
+	// the same sense the brief and the inbox are. It is, and it still looked
+	// wrong: everything else in the rail is a list, and a control is not — a
+	// text field indented to a third of the page with a grid of cards starting
+	// beside it reads as a widget in a sidebar rather than as the thing the
+	// page is for. It is also the one element here that is a place to put
+	// something rather than something to read, which is the other reason it
+	// wants the full measure.
 	{
 		b.WriteString(`<div id="home-agent">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{
@@ -454,6 +465,8 @@ function fetchW(la,lo){
 		// when you are not here, which is exactly the moment this line is not on
 		// the screen.
 		b.WriteString(`</div>`)
+
+		b.WriteString(`<div class="home-rail">`)
 
 		// How things are, before you look anywhere.
 		//
@@ -537,16 +550,20 @@ function fetchW(la,lo){
 	// route and the tool prefix, so using it here costs nothing and says where
 	// to go next. Naming the parts after the parts is the rule everywhere else
 	// in this repo; the cards were the exception.
+	// No "Go to services" under the grid.
+	//
+	// It was there on the argument that the cards are a handful of services
+	// answering rather than the catalogue, so the block should say where the
+	// rest are — the same reasoning that puts a link at the end of the inbox
+	// and agent blocks. The difference is where it lands. Those two are one
+	// card each and the link sits inside it; this is a grid of up to seven, so
+	// the link could only go under the whole grid, which on a wide screen is a
+	// long way below the last card in the shorter column and reads as a stray
+	// line rather than as that block's way out. The cards each carry their own
+	// More, the heading says what they are, and Services is in the nav and in
+	// the phone tab bar.
 	b.WriteString(sectionRule("Services"))
-	if cards := CardsHTML(r, viewerAcc); cards != "" {
-		b.WriteString(cards)
-		// And the way to the rest of them. The cards are a handful of services
-		// answering, not the catalogue — the same relationship the three inbox
-		// rows and the five agents above have to their pages, so it ends the
-		// same way. Only when there are cards: a link out from under a heading
-		// with nothing beneath it reads as the block having failed to render.
-		b.WriteString(app.Link("Go to services", "/services"))
-	}
+	b.WriteString(CardsHTML(r, viewerAcc))
 
 	b.WriteString(`</div>`) // close .home-main
 	b.WriteString(`</div>`) // close #home-cards

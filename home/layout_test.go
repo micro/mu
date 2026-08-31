@@ -70,15 +70,14 @@ func TestHomeSplitsWhatIsYoursFromWhatIsTheWorlds(t *testing.T) {
 			"at every width again")
 	}
 
-	// Yours, on the left. The input first because it is the one control on the
-	// page, then how things are, then what arrived, then who is working — the
-	// order somebody reads them in.
+	// Yours, on the left: how things are, then what arrived, then who is
+	// working — the order somebody reads them in.
 	//
 	// The headings are matched as sectionRule writes them rather than as bare
-	// words. Three of these four are also names in the nav and in the phone tab
-	// bar, and the tab bar is rendered after the columns — so ">Inbox<" alone
-	// finds the tab and reports the inbox block on the wrong side of the page.
-	for _, want := range []string{`id="home-agent"`, sectionRule("Brief"), sectionRule("Inbox"), sectionRule("Agents")} {
+	// words. All three are also names in the nav and in the phone tab bar, and
+	// the tab bar is rendered after the columns — so ">Inbox<" alone finds the
+	// tab and reports the inbox block on the wrong side of the page.
+	for _, want := range []string{sectionRule("Brief"), sectionRule("Inbox"), sectionRule("Agents")} {
 		if !strings.Contains(rail, want) {
 			t.Errorf("%s is not in the rail, so it takes the width the cards need", want)
 		}
@@ -98,11 +97,19 @@ func TestHomeSplitsWhatIsYoursFromWhatIsTheWorlds(t *testing.T) {
 			"for a grid of cards")
 	}
 
-	// The date is neither. It is a status line for the page — the day, and the
-	// temperature where you are — so it spans both columns rather than being
-	// the first thing in one of them.
-	if strings.Contains(rail, `id="home-date"`) || strings.Contains(main, `id="home-date"`) {
-		t.Error("the date is inside a column; it spans the top of both")
+	// The date and the box are in neither column. Both are about the whole page
+	// — one says what day it is and how warm, the other is where you type — so
+	// they run across the top of both.
+	//
+	// The box is here rather than in the list above because it spent a commit
+	// in the rail and had to come out. Everything in the rail is a list and a
+	// control is not: a text field indented to a third of the page, with a grid
+	// of cards starting beside it, reads as a widget in a sidebar rather than
+	// as the thing the page is for.
+	for _, id := range []string{`id="home-date"`, `id="home-agent"`} {
+		if strings.Contains(rail, id) || strings.Contains(main, id) {
+			t.Errorf("%s is inside a column; it spans the top of both", id)
+		}
 	}
 }
 
