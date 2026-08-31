@@ -750,6 +750,13 @@ reference below).
 
 In Docker, `HOME` is `/data`, so this tree is `/data/.mu` on the mounted volume.
 
+One exception, and it is deliberate: under `go test` the tree is a throwaway
+directory in the system temp, not `~/.mu`. Ten packages read the store from
+`func init()`, which runs before any test can point `HOME` somewhere safe, so
+`go test ./...` used to read and write the instance you actually use. A test
+that sets `HOME` itself still gets exactly what it asked for. See
+`internal/dir`.
+
 ## Updating
 
 ```bash

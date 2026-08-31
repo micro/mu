@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/dir"
 	"mu/internal/settings"
 
 	"github.com/emersion/go-msgauth/dkim"
@@ -45,12 +46,7 @@ func LoadDKIMConfig(domain, selector string) error {
 	if envKey := settings.Get("DKIM_PRIVATE_KEY"); envKey != "" {
 		keyData = []byte(envKey)
 	} else {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("cannot determine home directory: %v", err)
-		}
-
-		keyPath := filepath.Join(homeDir, ".mu", "keys", "dkim.key")
+		keyPath := filepath.Join(dir.Root(), "keys", "dkim.key")
 
 		// Check if private key exists
 		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
@@ -58,10 +54,11 @@ func LoadDKIMConfig(domain, selector string) error {
 		}
 
 		// Read private key file
-		keyData, err = os.ReadFile(keyPath)
+		b, err := os.ReadFile(keyPath)
 		if err != nil {
 			return fmt.Errorf("failed to read DKIM key: %v", err)
 		}
+		keyData = b
 	}
 
 	// Parse PEM block

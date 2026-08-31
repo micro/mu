@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mu/internal/dir"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,12 +73,7 @@ func OpenLog() {
 
 	path := strings.TrimSpace(os.Getenv("MU_LOG_FILE"))
 	if path == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			logToStdio = true
-			return
-		}
-		path = filepath.Join(home, ".mu", "logs", "mu.log")
+		path = filepath.Join(dir.Root(), "logs", "mu.log")
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		fmt.Fprintf(os.Stderr, "could not make a log directory at %s (%v); logging to the screen\n",

@@ -16,6 +16,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/dir"
 )
 
 // schemaVersion is the current places database schema version.
@@ -78,8 +79,7 @@ func encodeGeohash(lat, lon float64, precision int) string {
 func initPlacesDB() error {
 	var initErr error
 	placesDBOne.Do(func() {
-		dir := os.ExpandEnv("$HOME/.mu")
-		dbPath := filepath.Join(dir, "data", "places.db")
+		dbPath := filepath.Join(dir.Data(), "places.db")
 		os.MkdirAll(filepath.Dir(dbPath), 0700)
 
 		var err error

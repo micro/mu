@@ -15,6 +15,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/dir"
 	"mu/internal/settings"
 )
 
@@ -425,11 +426,11 @@ func DiskUsage() (used, total uint64, percent float64) { return getDiskUsage() }
 
 // getDiskUsage returns disk usage for the data directory
 func getDiskUsage() (used, total uint64, percent float64) {
-	dir := os.ExpandEnv("$HOME/.mu/data")
+	dataDir := dir.Data()
 
 	// Try to get disk stats using syscall
 	var stat syscall.Statfs_t
-	if err := syscall.Statfs(dir, &stat); err != nil {
+	if err := syscall.Statfs(dataDir, &stat); err != nil {
 		return 0, 0, 0
 	}
 

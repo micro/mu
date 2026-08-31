@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/internal/dir"
 	"mu/internal/event"
 
 	_ "modernc.org/sqlite"
@@ -27,8 +28,7 @@ var (
 func initDB() error {
 	var initErr error
 	dbOnce.Do(func() {
-		dir := os.ExpandEnv("$HOME/.mu")
-		dbPath = filepath.Join(dir, "data", "index.db")
+		dbPath = filepath.Join(dir.Data(), "index.db")
 		os.MkdirAll(filepath.Dir(dbPath), 0700)
 
 		var err error

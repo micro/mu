@@ -38,6 +38,7 @@ package backup
 import (
 	"fmt"
 	"io"
+	"mu/internal/dir"
 	"os"
 	"path/filepath"
 	"sort"
@@ -89,7 +90,7 @@ var (
 // Home is the directory being protected. A variable so a test can point it
 // somewhere harmless.
 var Home = func() string {
-	return os.ExpandEnv("$HOME/.mu")
+	return dir.Root()
 }
 
 // Dir is where snapshots go.

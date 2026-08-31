@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/dir"
 	"mu/internal/gtfs"
 	"mu/internal/settings"
 )
@@ -38,11 +39,11 @@ var (
 // feedStore opens the on-disk feeds, once.
 func feedStore() *gtfs.Store {
 	storeOnce.Do(func() {
-		dir := filepath.Join(os.ExpandEnv("$HOME/.mu"), "data", "gtfs")
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		feeds := filepath.Join(dir.Data(), "gtfs")
+		if err := os.MkdirAll(feeds, 0o755); err != nil {
 			app.Log("transit", "could not open the timetable directory: %v", err)
 		}
-		store = gtfs.NewStore(dir)
+		store = gtfs.NewStore(feeds)
 		if loaded := store.Loaded(); len(loaded) > 0 {
 			app.Log("transit", "timetables loaded: %s", strings.Join(loaded, ", "))
 		}

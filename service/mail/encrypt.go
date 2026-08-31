@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"mu/internal/app"
+	"mu/internal/dir"
 )
 
 const encPrefix = "enc:" // prefix to identify encrypted fields
@@ -39,7 +40,7 @@ func initEncryption() {
 		}
 
 		// Try key file
-		keyDir := os.ExpandEnv("$HOME/.mu/keys")
+		keyDir := filepath.Join(dir.Root(), "keys")
 		keyFile := filepath.Join(keyDir, "encryption.key")
 
 		if data, err := os.ReadFile(keyFile); err == nil {

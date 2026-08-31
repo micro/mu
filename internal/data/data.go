@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/internal/dir"
 	"mu/internal/event"
 )
 
@@ -56,7 +57,7 @@ func WithKeywordOnly() SearchOption {
 // (app slugs, collection names) cannot cause reads or writes outside the store,
 // even if a caller forgets to validate its inputs.
 func dataPath(key string) (string, error) {
-	base := filepath.Join(os.ExpandEnv("$HOME/.mu"), "data")
+	base := dir.Data()
 	file := filepath.Join(base, key)
 	rel, err := filepath.Rel(base, file)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {

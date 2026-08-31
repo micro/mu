@@ -15,7 +15,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"mu/internal/dir"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -175,11 +177,11 @@ func advertiseAddress() string {
 // survives a restart with no external infrastructure. Falls back to an
 // in-memory store if the directory can't be created.
 func newDurableStore() store.Store {
-	dir := os.ExpandEnv("$HOME/.mu/store")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	storeDir := filepath.Join(dir.Root(), "store")
+	if err := os.MkdirAll(storeDir, 0o755); err != nil {
 		return store.NewMemoryStore()
 	}
-	return store.NewFileStore(store.DirOption(dir))
+	return store.NewFileStore(store.DirOption(storeDir))
 }
 
 func ensure() {

@@ -15,6 +15,7 @@ package data
 // store that has quietly become the largest thing here is worth seeing.
 
 import (
+	"mu/internal/dir"
 	"os"
 	"path/filepath"
 	"sort"
@@ -33,7 +34,7 @@ type Store struct {
 // A subdirectory is one row with its contents summed, because the interesting
 // fact about news/metadata is its total, not its ten thousand members.
 func Stores() []Store {
-	base := filepath.Join(os.ExpandEnv("$HOME/.mu"), "data")
+	base := dir.Data()
 
 	entries, err := os.ReadDir(base)
 	if err != nil {

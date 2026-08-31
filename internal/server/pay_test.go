@@ -25,8 +25,30 @@ import (
 func broke(t *testing.T, id string, balance int) string {
 	t.Helper()
 
+	// Somebody else owns this instance.
+	//
+	// The first account created on an empty instance is bootstrapped as admin
+	// so the operator can reach /admin — and an admin does not pay, which is
+	// the whole of what these tests are about. So the caller under test must
+	// not be the first account, and until internal/dir it never was: the
+	// package read the developer's real ~/.mu at init, found ninety-one
+	// accounts in it, and this passed for a reason that was not in this file.
+	// On a clean machine it let a broke agent through a metered call and said
+	// nothing.
+	if auth.Operator() == "" {
+		if err := auth.Create(&auth.Account{
+			ID: "payowner", Name: "payowner", Created: time.Now().Add(-time.Hour),
+		}); err != nil {
+			t.Fatalf("could not create the instance's owner: %v", err)
+		}
+	}
+
 	if err := auth.Create(&auth.Account{ID: id, Name: id, Created: time.Now()}); err != nil {
 		t.Fatalf("could not create %s: %v", id, err)
+	}
+	if acc, err := auth.GetAccount(id); err == nil && acc.Admin {
+		t.Fatalf("@%s was bootstrapped as the instance's admin, and an admin does "+
+			"not pay — this test would pass whatever the gate did", id)
 	}
 	_, secret, err := auth.CreateToken(id, "agent: test", nil, time.Time{})
 	if err != nil {
