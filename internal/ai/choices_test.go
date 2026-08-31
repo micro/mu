@@ -91,8 +91,12 @@ func TestLabels(t *testing.T) {
 	clearProviders(t)
 	t.Setenv("ATLAS_API_KEY", "atlas-test")
 
+	// The default names its model when the instance can run it, and says only
+	// "Instance default" when it cannot. Atlas alone is the second case:
+	// DefaultModel ends at a Claude id regardless of keys and modelFor swaps
+	// it at the call, so naming it here would name a model that never runs.
 	if got := LabelFor(""); got != "Instance default" {
-		t.Errorf("the empty model reads as %q", got)
+		t.Errorf("with an unreachable default the empty model reads as %q", got)
 	}
 	if got := LabelFor(ModelDeepSeekFlash); got == ModelDeepSeekFlash {
 		t.Errorf("a known model shows its id rather than a name: %q", got)
@@ -100,6 +104,60 @@ func TestLabels(t *testing.T) {
 	// An operator who set AGENT_MODEL by hand sees what they set, not nothing.
 	if got := LabelFor("some-model-they-configured"); got != "some-model-they-configured" {
 		t.Errorf("an unknown model reads as %q instead of itself", got)
+	}
+}
+
+// Anthropic's ladder is offered by name, top to bottom.
+//
+// It was two entries, "Claude — best" and "Claude — fast", and best was
+// whatever DefaultModel returned. That had Opus unreachable — an instance with
+// an Anthropic key could not select it, because it was never in the list — and
+// it mislabelled: DefaultModel answers for the *preferred* provider, so on an
+// instance preferring Atlas the entry marked Claude carried a DeepSeek id.
+func TestClaudeIsOfferedByName(t *testing.T) {
+	clearProviders(t)
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
+
+	want := map[string]bool{ModelClaudeOpus: false, ModelClaudeSonnet: false, ModelClaudeHaiku: false}
+	for _, c := range Choices() {
+		if _, ok := want[c.ID]; ok {
+			want[c.ID] = true
+		}
+		if strings.Contains(c.Label, "—") {
+			t.Errorf("%s reads as %q, which names a rank rather than a model", c.ID, c.Label)
+		}
+	}
+	for id, seen := range want {
+		if !seen {
+			t.Errorf("%s cannot be chosen on an instance with an Anthropic key", id)
+		}
+	}
+
+	// And the default says which of them it is. "Instance default" alone is a
+	// menu entry that does not say what it selects, on the one screen whose
+	// whole point is knowing which model is running.
+	if got := LabelFor(""); !strings.Contains(got, "Sonnet") {
+		t.Errorf("the default reads as %q and never names its model", got)
+	}
+}
+
+// A preferred provider takes the default with it, and the label follows.
+//
+// The bug this pins is the old menu's: Claude's entry was DefaultModel(), so
+// preferring another provider put that provider's id under Anthropic's name.
+func TestThePreferredProvidersModelIsNotLabelledClaude(t *testing.T) {
+	clearProviders(t)
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
+	t.Setenv("ATLAS_API_KEY", "atlas-test")
+	t.Setenv("AI_PROVIDER", "atlascloud")
+
+	for _, c := range Choices() {
+		if c.Provider == ProviderAnthropic && !strings.Contains(strings.ToLower(c.ID), "claude") {
+			t.Errorf("%s is offered as Anthropic's and is not one", c.ID)
+		}
+	}
+	if got := LabelFor(""); strings.Contains(got, "Claude") {
+		t.Errorf("Atlas is preferred and the default reads as %q", got)
 	}
 }
 

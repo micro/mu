@@ -383,8 +383,18 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-chat-transcript #mu-chat-suggest{margin:0 0 12px;flex:none}
 .mu-chat-transcript #mu-chat-suggest:empty,
 .mu-chat-transcript #mu-chat-conv:empty{margin:0}
+/* The transcript takes the viewport less the chrome around it, and the tab bar
+   at the bottom of a phone is part of that chrome. Without the subtraction the
+   column is exactly the bar's height too tall and the input beneath it lands
+   underneath the bar — which is what happened the day the bar was added, on
+   every conversation long enough to fill the column.
+
+   var(--tabbar, 0px) rather than a second number: mu.css sets it to 0 where
+   the rail is on screen and to the bar's own height where it is not. The
+   fallback is for the pages this component renders on that have no mu.css —
+   they have no tab bar either, so 0 is right there too. */
 .mu-chat-transcript #mu-chat-conv{
-  flex:1 1 auto;min-height:0;max-height:calc(100dvh - 260px);
+  flex:1 1 auto;min-height:0;max-height:calc(100dvh - 260px - var(--tabbar, 0px));
   overflow-y:auto;overscroll-behavior:contain;
   margin:0 0 12px;padding-right:4px
 }

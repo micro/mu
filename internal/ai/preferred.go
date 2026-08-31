@@ -139,4 +139,4 @@ func PreferredModel(provider string, background bool) string {
 
 // backgroundAnthropic is the cheap end of Anthropic's ladder: summaries, tags,
 // moderation and topics, which are high volume and barely care.
-const backgroundAnthropic = "claude-haiku-4-5-20251001"
+const backgroundAnthropic = ModelClaudeHaiku

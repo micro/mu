@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"sort"
 	"strings"
 
 	"mu/agent/micro"
@@ -421,7 +422,16 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		if a := For(acc.ID, editID); a != nil {
 			cur = a.Model
 		}
-		opts.WriteString(`<option value="">Instance default</option>`)
+		// Alphabetical, because a menu is scanned rather than read. The order
+		// ai.Choices returns is best-of-each-provider-first, which is a
+		// judgement about quality and tells somebody looking for Sonnet
+		// nothing about where to find it.
+		sort.Slice(choices, func(i, j int) bool { return choices[i].Label < choices[j].Label })
+
+		// The default, named. It said "Instance default", which is a menu entry
+		// that does not say what it selects — on the one screen whose whole
+		// point is knowing which model is running.
+		opts.WriteString(`<option value="">` + html.EscapeString(ai.DefaultLabel()) + `</option>`)
 		for _, c := range choices {
 			sel := ""
 			if strings.EqualFold(c.ID, cur) {

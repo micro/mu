@@ -52,12 +52,22 @@ func Choices() []Choice {
 		out = append(out, Choice{ID: id, Label: label, Provider: provider})
 	}
 
-	// Anthropic. DefaultModel answers for whichever provider is preferred, so
-	// it is only Anthropic's answer when Anthropic has a key — asked here
-	// rather than trusted.
+	// Anthropic, by name.
+	//
+	// This offered DefaultModel() as "Claude — best" and the cheap end as
+	// "Claude — fast", which was two problems. An instance with an Anthropic
+	// key had no way to choose Opus, because Opus was never in the list. And
+	// DefaultModel answers for whichever provider is *preferred* — so on an
+	// instance that preferred Atlas, the entry labelled Claude carried a
+	// DeepSeek id.
+	//
+	// Named models, like every other provider here. The default is still
+	// whatever DefaultModel resolves to and is offered as its own entry below;
+	// this is the menu of what can be chosen instead.
 	if settings.Get("ANTHROPIC_API_KEY") != "" {
-		add(DefaultModel(), "Claude — best", ProviderAnthropic)
-		add(backgroundAnthropic, "Claude — fast", ProviderAnthropic)
+		add(ModelClaudeOpus, "Claude Opus 5", ProviderAnthropic)
+		add(ModelClaudeSonnet, "Claude Sonnet 5", ProviderAnthropic)
+		add(ModelClaudeHaiku, "Claude Haiku 4.5", ProviderAnthropic)
 	}
 
 	if getAtlasAPIKey() != "" {
@@ -107,10 +117,14 @@ func Offered(id string) bool {
 // LabelFor is what to call a model on screen, or the id itself when it is not
 // one of ours — an operator who set AGENT_MODEL by hand should see what they
 // set rather than nothing.
+//
+// The empty string names the instance's default *and says which model that
+// is*. "Instance default" alone is a menu entry that does not say what it
+// selects, on the one screen where the whole point is knowing what is running.
 func LabelFor(id string) string {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return "Instance default"
+		return DefaultLabel()
 	}
 	for _, c := range Choices() {
 		if strings.EqualFold(c.ID, id) {
@@ -118,6 +132,29 @@ func LabelFor(id string) string {
 		}
 	}
 	return id
+}
+
+// DefaultLabel names the instance's default in a menu: what it is, and which
+// model that turns out to be.
+//
+// Resolved rather than assumed. DefaultModel reads ANTHROPIC_MODEL, then the
+// preferred provider, then falls back — so the answer depends on how the
+// instance is configured and is exactly the thing somebody choosing a model
+// wants to see before deciding they need something else.
+//
+// Only when this instance actually offers it. DefaultModel ends at a Claude id
+// whether or not there is an Anthropic key, and modelFor swaps it at the call
+// for whatever the instance can really reach — so on an Atlas-only install the
+// name here would be a model that never runs. Unofferable, and it goes back to
+// the words it had, which promise nothing and are therefore not wrong.
+func DefaultLabel() string {
+	m := strings.TrimSpace(DefaultModel())
+	for _, c := range Choices() {
+		if strings.EqualFold(c.ID, m) {
+			return "Default — " + c.Label
+		}
+	}
+	return "Instance default"
 }
 
 // ByProvider groups the choices for a menu with headings, providers in a

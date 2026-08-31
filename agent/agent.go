@@ -974,8 +974,12 @@ const chatLayoutCSS = `<style>
   .chat-open-list::after{content:" ▾";color:#999}
   /* The sheet. Off-screen rather than display:none, so opening it animates and
      so the panels inside keep their state. */
+  /* The sheet ends above the tab bar. It is fixed to bottom:0 with a lower
+     z-index than the bar, so without this the last conversation in the list is
+     drawn underneath it and cannot be tapped. --tabbar already carries the
+     safe-area inset, so it replaces it rather than adding to it. */
   .chat-side{position:fixed;left:0;right:0;bottom:0;max-height:72vh;overflow-y:auto;
-    width:auto;padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+    width:auto;padding:12px 14px calc(14px + var(--tabbar, env(safe-area-inset-bottom)));
     background:var(--card-background,#fff);border-top:1px solid var(--border-color,#e5e5e5);
     border-radius:14px 14px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);
     z-index:60;transform:translateY(101%);transition:transform .18s ease;visibility:hidden}

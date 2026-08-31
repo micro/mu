@@ -107,6 +107,23 @@ const (
 	// is how an operator pins one on purpose.
 	ModelGeminiPro   = "gemini-pro-latest"
 	ModelGeminiFlash = "gemini-flash-latest"
+
+	// Anthropic, by name.
+	//
+	// Every other provider here had named constants and Anthropic did not, so
+	// the menu could only offer "whatever DefaultModel returns" and "the cheap
+	// one" — which is how an instance with an Anthropic key offered no way to
+	// pick Opus. These are the three worth choosing between, and they are
+	// pinned rather than aliased because Anthropic publishes no -latest alias
+	// to point at instead.
+	//
+	// A pinned id is a decision with a shelf life, which is the argument the
+	// Gemini block above makes for aliases. It applies here too: ANTHROPIC_MODEL
+	// is how an operator moves the default on, and these three are what the
+	// menu offers until somebody edits them.
+	ModelClaudeOpus   = "claude-opus-5"
+	ModelClaudeSonnet = "claude-sonnet-5"
+	ModelClaudeHaiku  = "claude-haiku-4-5-20251001"
 )
 
 // DefaultModel is the model used for interactive queries (chat, agent).
@@ -133,7 +150,7 @@ func DefaultModel() string {
 	// assumed it was getting the current model. A default model is a decision
 	// with a shelf life; ANTHROPIC_MODEL is how an operator overrides it and
 	// AGENT_MODEL is how they change only the agent's.
-	return "claude-sonnet-5"
+	return ModelClaudeSonnet
 }
 
 // AtlasModel is the model to send Atlas Cloud when the caller did not name one
@@ -166,7 +183,7 @@ func BackgroundModel() string {
 	if getOpenRouterAPIKey() != "" {
 		return OpenRouterModel()
 	}
-	return "claude-haiku-4-5-20251001"
+	return ModelClaudeHaiku
 }
 
 // AtlasHosted reports whether a model id is one Atlas Cloud serves.
