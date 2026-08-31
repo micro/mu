@@ -40,7 +40,7 @@ var Template = `
 <div id="messages"></div>
 <form id="chat-form" onsubmit="return false;">
 <input id="topic" name="topic" type="hidden">
-<input id="prompt" name="prompt" type="text" placeholder="Say something" autocomplete=off>
+<textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
 <button>Send</button>
 </form>`
 

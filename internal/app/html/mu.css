@@ -1655,11 +1655,18 @@ body:has(#messages) #chat-back-link {
   flex-wrap: wrap;
 }
 
+/* The message box. A <textarea> rather than an <input>, so Chrome's autofill
+   does not offer a saved password, card or address on a chat message — see the
+   note on the chat template in service/chat. One row, no drag handle, and the
+   page font: it is a box you type a sentence into, not a document. */
 #prompt {
   flex: 1;
   padding: 10px;
   margin: 0;
   box-sizing: border-box;
+  resize: none;
+  font: inherit;
+  line-height: var(--line-height, 1.6);
 }
 
 #chat-users {
@@ -6692,7 +6699,10 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   gap: 8px;
   flex: none;
 }
-#people-panel #prompt { flex: 1; min-width: 0 }
+/* The box is a <textarea> so Chrome's autofill leaves it alone — see the note
+   on the chat template. One row, and no drag handle: it is a message box that
+   happens to accept a newline on shift+enter, not a document. */
+#people-panel #prompt { flex: 1; min-width: 0; resize: none; font: inherit }
 
 /* Opens it, and is a button because it does not go anywhere. .link styles it
    like the other ways out of a block; this strips what a button brings.

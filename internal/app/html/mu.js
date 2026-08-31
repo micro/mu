@@ -1059,7 +1059,11 @@ function updateUserList(users) {
 }
 
 function sendRoomMessage(form) {
-  const input = form.querySelector('input[name="prompt"]');
+  // Any element with that name, not an <input>. The box is a <textarea> — see
+  // the note on the chat template — and this selector silently found nothing
+  // the moment it stopped being an input, which is a Send button that does
+  // nothing rather than an error anybody would see.
+  const input = form.querySelector('[name="prompt"]');
   if (!input) return;
   
   const content = input.value.trim();
@@ -1137,7 +1141,7 @@ function initRoomChat() {
       };
       
       // Update placeholder
-      const input = chatForm.querySelector('input[name="prompt"]');
+      const input = chatForm.querySelector('[name="prompt"]');
       if (input) {
         input.placeholder = 'Type your message...';
       }
