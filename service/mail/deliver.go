@@ -52,6 +52,19 @@ type Outgoing struct {
 	SenderIP   string
 }
 
+// One limit on an Outgoing, checked here where every door meets, so size is a
+// fact about a message rather than about how it arrived.
+//
+// The reason is the store, not the wire: a body is re-marshalled and re-written
+// on every later delivery to anybody, so one oversized message makes every
+// account that holds it slower forever. Ten megabytes is the same number the
+// SMTP and submission servers accept, which keeps one figure in an operator's
+// head — but it is not the same measurement. Those cap the encoded message,
+// headers and base64 included; this caps the text before any of that, and
+// base64 adds about a third. So a body at this limit is larger than this limit
+// once it leaves, and the number to lower is this one if that ever matters.
+const maxOutgoingBytes = 10 << 20
+
 // Deliver sends one message to wherever its recipient is: off this instance
 // over SMTP, or into an inbox here.
 //
@@ -64,6 +77,9 @@ func Deliver(m Outgoing) (string, error) {
 	to := strings.TrimSpace(m.To)
 	if to == "" {
 		return "", errors.New("no recipient")
+	}
+	if n := len(m.Body) + len(m.HTML); n > maxOutgoingBytes {
+		return "", fmt.Errorf("message is %d bytes; the limit is %d", n, maxOutgoingBytes)
 	}
 	if IsExternalEmail(to) {
 		return ReplyOut(m.FromID, m.Display, to, m.Subject, m.Body, m.HTML, m.InReplyTo, m.References)

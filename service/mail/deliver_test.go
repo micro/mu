@@ -1,6 +1,7 @@
 package mail
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -261,6 +262,27 @@ func TestDeliverSaysWhoItCouldNotFind(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "nobody") {
 		t.Errorf("error %q does not name the address that failed", err)
+	}
+}
+
+// A message bigger than the limit is refused with the size and the limit,
+// wherever it came from. A truncated send is worse than a refused one.
+// See issue 1465.
+func TestDeliverRefusesAnOversizedMessage(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "example.test")
+	sender := account(t, "sender")
+
+	// One byte over. The check is `>`, so a message exactly at the limit is
+	// allowed — and building one exactly at the limit and asserting it is
+	// refused was what this test did.
+	big := strings.Repeat("x", maxOutgoingBytes+1)
+	_, err := Deliver(Outgoing{FromID: sender, Display: "A", To: "someone@example.test",
+		Subject: "hi", Body: big})
+	if err == nil {
+		t.Fatal("delivered a message over the limit")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("%d", maxOutgoingBytes)) {
+		t.Errorf("error %q does not say the size or the limit", err)
 	}
 }
 
