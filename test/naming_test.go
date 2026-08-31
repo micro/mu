@@ -176,6 +176,7 @@ func TestAPredicateIsNotAnInstruction(t *testing.T) {
 	verbs := []string{
 		"Skip", "Verify", "Detect", "Moderate", "Generate", "Fetch", "Delete",
 		"Create", "Send", "Write", "Start", "Stop", "Parse", "Render",
+		"Subscribe", "Publish", "Register", "Open", "Close", "Mark", "Join",
 	}
 
 	boolFunc := regexp.MustCompile(`(?m)^func ([A-Z]\w*)\s*\([^)]*\)\s+bool\s*\{`)
