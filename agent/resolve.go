@@ -34,7 +34,10 @@ func AskAs(accountID, ref string) (QueryOpts, error) {
 		return QueryOpts{}, fmt.Errorf("no agent called %q — agent_list names yours", ref)
 	}
 	m := a.AsMicro()
-	return QueryOpts{System: m.SystemPrompt, Tools: m.Tools}, nil
+	// Model too. It was dropped here, so an agent could be given one and then
+	// answer on the instance default anyway — the field set, the run ignoring
+	// it, and nothing on screen to say which had happened.
+	return QueryOpts{System: m.SystemPrompt, Tools: m.Tools, Model: m.Model}, nil
 }
 
 // findAgent resolves by id first, then by name, case-insensitively. By name

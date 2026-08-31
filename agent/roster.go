@@ -33,6 +33,7 @@ import (
 	"strconv"
 
 	"mu/agent/micro"
+	"mu/internal/ai"
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/internal/userdb"
@@ -79,6 +80,19 @@ type Agent struct {
 	// Prompt is the standing instruction: what this agent is for. It is the
 	// system prompt when you talk to it.
 	Prompt string `json:"prompt,omitempty"`
+	// Model is which model this agent answers with. Empty is the instance's
+	// default, and is what every agent made before this field existed has.
+	//
+	// The plumbing was already whole: QueryOpts.Model reaches nativeLLMFor,
+	// which picks the provider that serves the named id. Only the built-in
+	// agents ever set it, so "use the cheap one for this job" was a choice
+	// Micro and Code had and nobody's own agent did.
+	//
+	// Validated against ai.Choices when it is set rather than when it is used.
+	// A model no provider here serves fails at the model call, minutes later,
+	// on a run somebody is waiting for — and the person who could fix it is
+	// the one who typed it, at the moment they typed it.
+	Model string `json:"model,omitempty"`
 	// Description is the one-line the router reads when deciding which agent
 	// should answer.
 	Description string `json:"description,omitempty"`
@@ -313,8 +327,8 @@ func validServices(in []string) []string {
 func fields(a *Agent) map[string]any {
 	return map[string]any{
 		"name": a.Name, "kind": a.Kind, "prompt": a.Prompt,
-		"description": a.Description,
-		"token_id":    a.TokenID, "services": strings.Join(a.Services, ","),
+		"description": a.Description, "model": a.Model,
+		"token_id": a.TokenID, "services": strings.Join(a.Services, ","),
 		"tag":     a.Tag,
 		"former":  strings.Join(a.Former, ","),
 		"created": a.Created.Format(time.RFC3339),
@@ -463,7 +477,7 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	a := &Agent{
 		ID: rec.ID, Owner: owner, Name: str("name"), Kind: str("kind"),
 		Prompt: str("prompt"), Description: str("description"), TokenID: str("token_id"),
-		Tag: str("tag"),
+		Tag: str("tag"), Model: str("model"),
 	}
 	// Records written before the distinction went carry kind:"external". They
 	// are ordinary agents: normalised on read, so nothing downstream has to know
@@ -588,6 +602,32 @@ func UpdateAgent(owner, id, name, prompt, description string, services []string)
 	return a, nil
 }
 
+// SetModel chooses which model an agent answers with. Empty clears it, and an
+// agent with no model answers on the instance's default.
+//
+// Its own function rather than a seventh string on UpdateAgent. That signature
+// already carries owner, id, name, prompt and description in a row, and the
+// bug an eighth invites — two of them swapped at a call site, compiling
+// perfectly — costs more than a second write. Rename is separate for the same
+// reason.
+//
+// Refused here rather than at the model call. A model no provider on this
+// instance serves fails minutes later, on a run somebody is waiting for, and
+// the person who could fix it is the one who chose it — at the moment they
+// chose it. See ai.Offered.
+func SetModel(owner, id, model string) error {
+	a := For(owner, id)
+	if a == nil {
+		return fmt.Errorf("no such agent")
+	}
+	model = strings.TrimSpace(model)
+	if !ai.Offered(model) {
+		return fmt.Errorf("this instance cannot run %q — it has no key for a provider that serves it", model)
+	}
+	a.Model = model
+	return a.save()
+}
+
 // IssueToken gives an agent a credential, replacing any it had.
 //
 // Separate from creation because an agent you only talked to may later need to
@@ -670,6 +710,7 @@ func (a *Agent) AsMicro() *micro.Agent {
 	return &micro.Agent{
 		ID: a.ID, Name: a.Name, Description: desc,
 		SystemPrompt: a.Prompt, Tools: a.Services, OwnerAccountID: a.Owner,
+		Model: a.Model,
 	}
 }
 

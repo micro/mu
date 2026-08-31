@@ -28,7 +28,11 @@ type Agent struct {
 	Description  string   // One line: what it is for
 	SystemPrompt string   // Personality and instructions
 	Tools        []string // Allowed MCP tool names; nil means every one
-	MemoryScope  string   // Memory namespace prefix
+	// Model is which model this agent answers with; empty is the instance's
+	// choice. What an agent does decides what it needs — a lookup is one round,
+	// a build is many — so this is per agent rather than per instance.
+	Model       string
+	MemoryScope string // Memory namespace prefix
 	// Examples are things worth asking this agent, in its own words.
 	//
 	// Every chat box on the site read "Try: give me a morning brief",

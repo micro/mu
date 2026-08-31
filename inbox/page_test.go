@@ -1,7 +1,9 @@
 package inbox
 
 import (
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -105,5 +107,22 @@ func listBody(t *testing.T, path, accountID, box string) string {
 	t.Helper()
 	w := httptest.NewRecorder()
 	list(w, httptest.NewRequest("GET", path, nil), accountID, box)
+	return w.Body.String()
+}
+
+// searchBody is a search the way the page does one: in the body of a POST.
+//
+// It was listBody with the term in the path, which is how the search worked
+// before it stopped putting what somebody typed into the URL. A test that goes
+// on asking with ?q= would pass against a handler that reads the query, which is
+// exactly the handler we are trying not to have. See AGENTS.md, "What may travel
+// in a URL".
+func searchBody(t *testing.T, term, accountID, box string) string {
+	t.Helper()
+	form := url.Values{"q": {term}}
+	r := httptest.NewRequest(http.MethodPost, "/inbox", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	list(w, r, accountID, box)
 	return w.Body.String()
 }

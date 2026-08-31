@@ -33,6 +33,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/gorilla/websocket"
 
@@ -84,6 +85,12 @@ const (
 	// maxTags is a spam signal. A post carrying six hashtags is addressed to a
 	// search index rather than to a person.
 	maxTags = 5
+
+	// latinShare is how much of a post's lettering must be in the Latin script
+	// for it to pass as English. Not 1: an English post can quote a name or a
+	// word in another script and still be English. Low enough that a sentence
+	// of Japanese with an English hashtag on the end does not pass.
+	latinShare = 0.85
 )
 
 // Enabled reports whether this instance watches the network.
@@ -255,6 +262,13 @@ func consider(ev event) *candidate {
 	// English only. Not a judgement about other languages — this instance
 	// cannot read them, so surfacing one would be posting something nobody
 	// here has understood.
+	//
+	// Two checks, because the tag is self-declared. A Japanese post tagged
+	// "en" reached micro.mu's feed past both of the filters that read the tag
+	// and nothing else: worthParsing scans the bytes for "en inside langs, and
+	// this asked the parsed field the same question. Whoever posted it was not
+	// lying, they were using a client that defaults to en — which is why
+	// trusting the tag alone was never going to hold.
 	if !hasLang(r.Langs, "en") {
 		return nil
 	}
@@ -267,6 +281,10 @@ func consider(ev event) *candidate {
 	// Everything that reads the post for meaning reads it without its links.
 	prose := stripLinks(text)
 	if len(prose) < minText {
+		return nil
+	}
+	// And the text has to look like what the tag claims. See latinScript.
+	if !latinScript(prose) {
 		return nil
 	}
 
@@ -370,6 +388,45 @@ func hasLang(langs []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// latinScript reports whether the prose is written in the alphabet English is
+// written in.
+//
+// The second half of the language check, and the one that does not take the
+// author's word for it. It answers a narrow question — which script — and that
+// is deliberate: script is a fact about the bytes, decidable here in
+// microseconds against three million posts a day, where the language is not.
+//
+// So it catches a post in Japanese, Chinese, Korean, Arabic, Hebrew, Russian,
+// Greek, Thai or Hindi tagged as English, and it does not catch one in
+// Portuguese or Spanish tagged the same way. That gap is real and left open:
+// closing it means identifying a language rather than a script, which is a
+// model call per post on a firehose sample, and this runs before the shortlist
+// the model actually reads.
+//
+// A share rather than a count, because an English post may quote a name, a
+// place or a word in another script and still be an English post. Only letters
+// are counted: emoji, punctuation and digits belong to no script and say
+// nothing about which language this is.
+func latinScript(prose string) bool {
+	var letters, latin int
+	for _, r := range prose {
+		if !unicode.IsLetter(r) {
+			continue
+		}
+		letters++
+		if unicode.Is(unicode.Latin, r) {
+			latin++
+		}
+	}
+	// Nothing to judge. A post of only emoji and links is refused elsewhere for
+	// having no prose; refusing it here as well would be this function
+	// answering a question it was not asked.
+	if letters == 0 {
+		return true
+	}
+	return float64(latin)/float64(letters) >= latinShare
 }
 
 // contents pulls the first external link, whether there is media, and how many

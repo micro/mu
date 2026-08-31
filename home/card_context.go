@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"mu/internal/auth"
+	"mu/internal/service"
 )
 
 // contextCap is the most card text passed in one turn. Generous enough for a
@@ -47,9 +48,15 @@ func CardContext(acc *auth.Account) string {
 		order = append(order, c.ID)
 	}
 
+	// For this reader, which is the point: a personal card is not in the
+	// shared cache, so asking for it impersonally used to hand the model the
+	// signed-out branch — a script that asks the browser where it is, rendered
+	// as text, in a prompt.
+	who := service.For(acc.ID)
+
 	var b strings.Builder
 	for _, id := range order {
-		body := textOf(cardHTML(id))
+		body := textOf(cardHTML(id, who))
 		if body == "" {
 			continue
 		}
@@ -72,10 +79,10 @@ func CardContext(acc *auth.Account) string {
 // cardHTML is the rendered content of one card, or "" if it has none. Named
 // for what it returns rather than for the card, because cardBody is the body as
 // the page shows it — with the way through to the service on the end of it.
-func cardHTML(id string) string {
+func cardHTML(id string, who service.Viewer) string {
 	for _, c := range Cards {
 		if c.ID == id {
-			return c.CachedHTML
+			return cardRender(c, who)
 		}
 	}
 	return ""

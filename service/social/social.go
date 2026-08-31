@@ -598,7 +598,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 
 func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string {
 	var sb strings.Builder
-	sb.WriteString(`<div class="col-narrow">`)
+	sb.WriteString(`<div class="col-feed">`)
 
 	// Back link
 	sb.WriteString(`<div class="mb-4"><a href="/social" class="text-muted no-underline">&larr; Back to threads</a></div>`)
@@ -912,7 +912,7 @@ func generateCardHTML(allMessages []*Message) string {
 
 func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *http.Request) string {
 	var sb strings.Builder
-	sb.WriteString(`<div class="col-narrow">`)
+	sb.WriteString(`<div class="col-feed">`)
 
 	// Compose box (shown to logged-in users)
 	_, acc := auth.TrySession(r)

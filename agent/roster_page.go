@@ -53,13 +53,21 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			// were reading, with the secret somewhere on it. The form says
 			// where it came from and this honours it.
 			back := localPath(r.FormValue("back"))
-			secret, err := IssueToken(owner, r.FormValue("id"))
+			id := r.FormValue("id")
+			secret, err := IssueToken(owner, id)
 			if err != nil {
 				http.Redirect(w, r, back+query(back, "error="+urlSafe(err.Error())), http.StatusSeeOther)
 				return
 			}
-			http.Redirect(w, r, back+query(back,
-				"created="+r.FormValue("id")+"&secret="+urlSafe(secret)), http.StatusSeeOther)
+			// The secret goes across the redirect in memory, not in the URL.
+			//
+			// It was `&secret=…`: a bearer token in the browser's history and in
+			// the access log of whatever terminates TLS in front of us, which on
+			// a self-hosted install is an nginx or Caddy logging the full URI by
+			// default. The URL now says which agent was just given a token, which
+			// is a name, and the page collects the token itself. See secret.go.
+			stashSecret(owner, id, secret)
+			http.Redirect(w, r, back+query(back, "created="+urlSafe(id)), http.StatusSeeOther)
 			return
 		}
 		http.Redirect(w, r, "/agents", http.StatusSeeOther)
@@ -74,28 +82,17 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
 	b.WriteString(app.Column())
-	// The model, in one sentence: you make one, it gets an address, you talk
-	// to it — and a token lets something else use its tools.
+	// The way to make one, first.
 	//
-	// The page has been led by three other sentences. One listed what an agent
-	// *has* before saying what you can do with it. One promised an inbox. This
-	// one is what somebody has to understand to use the page, and it is in the
-	// order they will do it.
-	b.WriteString(`<p class="lens-lead">Make an agent: give it a name, an instruction and ` +
-		`the services it may use. It gets its own address, you can chat with it here, and a ` +
-		`token lets Claude, Cursor or your own code use the tools you gave it.</p>`)
-	// The catalogue, from the page that scopes it.
+	// Three sentences of explanation stood here — what an agent is, what it
+	// gets, what a token is for — and they were read once, by somebody who then
+	// read them again every subsequent visit on the way to the button at the
+	// bottom of the list. A page whose whole job is "here are yours, make
+	// another" does not need a paragraph to say so.
 	//
-	// /tools left the sidebar, because a tool is a property of something rather
-	// than a destination: an agent's tools are what it may reach for, and this
-	// is the page where that is decided. So the way in is from here, next to
-	// the sentence that says an agent is given services.
-	//
-	// On its own line rather than trailing the paragraph. Buried at the end of
-	// three sentences it read as a footnote to the last clause; it is the one
-	// place the catalogue is reachable from now, which is a link somebody
-	// should be able to find without reading to the end.
-	b.WriteString(`<p class="lens-go">` + app.TextLink("See the tools", "/tools") + `</p>`)
+	// The button is the standard one, in the standard place: the top, where
+	// every other page in this product puts its primary action.
+	b.WriteString(`<div class="page-action">` + newAgentAction(owner) + `</div>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit
@@ -112,7 +109,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="text-sm text-secondary">Agent removed and its token revoked.</p>`)
 	}
 	created := r.URL.Query().Get("created")
-	if secret := r.URL.Query().Get("secret"); secret != "" {
+	if secret := takeSecret(owner, created); secret != "" {
 		b.WriteString(secretPanel(secret, For(owner, created), app.BaseURL(r)))
 	} else if created != "" {
 		// An agent that runs here has no secret to show, so say what happened
@@ -156,7 +153,13 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// The default carries the same sign of life as the rest. It is the one most
 	// accounts have actually used, so a roster where every row but that one says
 	// when it last spoke is a roster missing the row that would say the most.
-	b.WriteString(platformSeenRow(DefaultPlatformAgent, owner))
+	// Every agent this instance ships, not only the default. That was a single
+	// hardcoded row back when there was a single one to draw; a second built-in
+	// registered itself, answered at its own address, and appeared nowhere a
+	// person could find it.
+	for _, id := range PlatformNames() {
+		b.WriteString(platformSeenRow(id, owner))
+	}
 	for _, a := range roster {
 		b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
 	}
@@ -171,15 +174,14 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// At the cap it is not a button to the builder, because the builder is a
 	// form you cannot submit. It becomes the thing that would actually change
 	// the answer.
-	if full, have, max := AtAgentLimit(owner); full {
-		b.WriteString(app.ActionLink("/wallet/topup", "Top up to lift the limit"))
-		b.WriteString(fmt.Sprintf(
-			`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and you have %d. `+
-				`Verify your address or put credit on <a href="/account">your account</a>, or delete one first.</p>`,
-			max, plural(max), have))
-	} else {
-		b.WriteString(app.ActionLink("/agent/new", "+ New agent"))
-	}
+	// The catalogue, under the list rather than over it.
+	//
+	// /tools left the sidebar, because a tool is a property of something rather
+	// than a destination: an agent's tools are what it may reach for, and this
+	// is the page where that is decided. So the way in is from here — but below
+	// what the page is about, because somebody arrives to see their agents and
+	// not to browse tools, and the link was above both the list and the button.
+	b.WriteString(`<p class="lens-go">` + app.TextLink("See the tools", "/tools") + `</p>`)
 
 	// The instance's own agents are not listed here.
 	//
@@ -202,6 +204,22 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 	b.WriteString(agentsCSS)
 	app.Respond(w, r, app.Response{Title: "Agents", Description: "The agents that act for you, and what each one may reach", HTML: b.String()})
+}
+
+// newAgentAction is the way to make another one, or the reason there is not.
+//
+// At the cap it is not a button to the builder, because the builder is a form
+// you cannot submit. It becomes the thing that would actually change the
+// answer.
+func newAgentAction(owner string) string {
+	full, have, max := AtAgentLimit(owner)
+	if !full {
+		return app.ActionLink("/agent/new", "+ New agent")
+	}
+	return app.ActionLink("/wallet/topup", "Top up to lift the limit") +
+		fmt.Sprintf(`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and `+
+			`you have %d. Verify your address or put credit on <a href="/account">your account</a>, `+
+			`or delete one first.</p>`, max, plural(max), have)
 }
 
 func urlSafe(s string) string { return strings.ReplaceAll(html.EscapeString(s), " ", "%20") }

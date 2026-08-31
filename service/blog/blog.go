@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	stdhtml "html"
 	"net/http"
 	"net/url"
 	"os"
@@ -215,17 +216,7 @@ func Load() {
 				updateCache()
 
 				// Re-index with the new tag
-				data.Index(
-					post.ID,
-					"post",
-					post.Title,
-					post.Content,
-					map[string]interface{}{
-						"url":    "/blog/post?id=" + post.ID,
-						"author": post.Author,
-						"tags":   post.Tags,
-					},
-				)
+				indexPost(*post)
 
 				app.Log("blog", "Auto-tagged post %s with: %s", postID, tag)
 			}
@@ -262,12 +253,16 @@ func Load() {
 		}
 	}
 
-	// Publish the built-in announcement post if it isn't already there. Not
-	// when the file is unreadable: seeding saves, and saving is what would
-	// destroy the posts we just failed to read.
-	if !postsUnreadable {
-		ensureSeedPosts()
-	}
+	// No seeded posts.
+	//
+	// A built-in announcement was published into every instance on every boot,
+	// idempotent by fixed id — so a person who installed this found an article
+	// about Mu, signed "Mu", already on their blog. It is our writing, and it
+	// arrived in their store as though they had written it.
+	//
+	// Documentation is the right home for what it said, and /docs already has
+	// it. An instance's blog starts empty, which is what a blog nobody has
+	// written on looks like.
 
 	// Sort posts by most recent activity (updated or created) newest first
 	sort.Slice(posts, func(i, j int) bool {
@@ -311,17 +306,7 @@ func Load() {
 	go func() {
 		for _, post := range posts {
 			app.Log("blog", "Indexing existing post: %s", post.Title)
-			data.Index(
-				post.ID,
-				"post",
-				post.Title,
-				post.Content,
-				map[string]interface{}{
-					"url":    "/blog/post?id=" + post.ID,
-					"author": post.Author,
-					"tags":   post.Tags,
-				},
-			)
+			indexPost(*post)
 		}
 	}()
 
@@ -786,10 +771,23 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 
 	var content string
 	if showWriteForm {
+		// Where to go when it is written. The profile sends people here with
+		// ?return=/@them, so a post started from a profile ends back on it
+		// rather than on the blog index. Through returnTo, because the query
+		// string is the caller's and a redirect that will follow it anywhere
+		// is an open redirect.
+		backTo := ""
+		if asked := r.URL.Query().Get("return"); asked != "" {
+			// Escaped as well as validated. returnTo guarantees a path on
+			// this instance, which still leaves a quote free to close the
+			// attribute early — /x">< is a path.
+			backTo = `<input type="hidden" name="return" value="` +
+				stdhtml.EscapeString(returnTo(asked)) + `">`
+		}
 		// Show only the posting form
 		content = `<div id="blog">
 			<div class="mb-6">
-				<form id="blog-form" class="blog-form" method="POST" action="/blog">
+				<form id="blog-form" class="blog-form" method="POST" action="/blog">` + backTo + `
 					<input type="text" id="post-title" name="title" placeholder="Title (optional)">
 					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of God" required></textarea>
 					<input type="text" id="post-tags" name="tags" placeholder="Tags (optional, comma-separated)">
@@ -809,12 +807,18 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 				</form>
 			</div>
 			<script>
-				const form = document.getElementById('blog-form');
-				const titleInput = document.getElementById('post-title');
-				const textarea = document.getElementById('post-content');
-				const tagsInput = document.getElementById('post-tags');
-				const visibilitySelect = document.getElementById('post-visibility');
-				const charCount = document.getElementById('char-count');
+				// var, not const: soft navigation re-runs this script in the same
+				// document, and a repeated top-level const throws "Identifier
+				// 'form' has already been declared" — which kills the whole block
+				// before a line of it runs, so the draft restore and the character
+				// count silently stop working when you arrive by clicking rather
+				// than by reloading. See test/rerun_test.go.
+				var form = document.getElementById('blog-form');
+				var titleInput = document.getElementById('post-title');
+				var textarea = document.getElementById('post-content');
+				var tagsInput = document.getElementById('post-tags');
+				var visibilitySelect = document.getElementById('post-visibility');
+				var charCount = document.getElementById('char-count');
 				
 				// Restore form values from localStorage
 				function restoreFormValues() {
@@ -961,20 +965,10 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 	updateCache()
 
 	// Index the post for search/RAG
-	go func(id, title, content, author, tags string) {
-		app.Log("blog", "Indexing post: %s", title)
-		data.Index(
-			id,
-			"post",
-			title,
-			content,
-			map[string]interface{}{
-				"url":    "/blog/post?id=" + id,
-				"author": author,
-				"tags":   tags,
-			},
-		)
-	}(post.ID, post.Title, post.Content, post.Author, post.Tags)
+	go func(p Post) {
+		app.Log("blog", "Indexing post: %s", p.Title)
+		indexPost(p)
+	}(*post)
 
 	// Auto-tag if no tags provided
 	if tags == "" {
@@ -1091,6 +1085,29 @@ func DeletePost(id string) error {
 	return nil
 }
 
+// indexPost writes one post into the archive.
+//
+// # When it was written, not when it was indexed
+//
+// The metadata below was built by hand in four places and none of them carried
+// posted_at, so data.PostedAt fell through to IndexedAt — a fact about the
+// index, not about the post. Every post is re-indexed at boot, so the whole
+// blog read "1 minute ago" on every restart: a question asked eight months ago
+// sat in the archive stamped with this morning. Sorting by time put the oldest
+// post first if it happened to be indexed last.
+//
+// One function, so the next field that has to be there is added once. Take a
+// copy before handing it to a goroutine: posts are mutated under the mutex and
+// the index write is not holding it.
+func indexPost(p Post) {
+	data.Index(p.ID, "post", p.Title, p.Content, map[string]interface{}{
+		"url":       "/blog/post?id=" + p.ID,
+		"author":    p.Author,
+		"tags":      p.Tags,
+		"posted_at": p.CreatedAt,
+	})
+}
+
 // UpdatePost updates an existing post
 func UpdatePost(id, title, content, tags string, private bool) error {
 	mutex.Lock()
@@ -1110,20 +1127,10 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 	updateCacheUnlocked()
 
 	// Re-index the updated post
-	go func(id, title, content, author, tags string) {
-		app.Log("blog", "Re-indexing updated post: %s", title)
-		data.Index(
-			id,
-			"post",
-			title,
-			content,
-			map[string]interface{}{
-				"url":    "/blog/post?id=" + id,
-				"author": author,
-				"tags":   tags,
-			},
-		)
-	}(post.ID, post.Title, post.Content, post.Author, post.Tags)
+	go func(p Post) {
+		app.Log("blog", "Re-indexing updated post: %s", p.Title)
+		indexPost(p)
+	}(*post)
 
 	return nil
 }

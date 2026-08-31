@@ -1,29 +1,25 @@
 # mu
 
-A network for humans, agents and services
+A home for agents, tools and services
 
 ## Overview
 
-Use agents from anywhere. Give them access to a real inbox, tools and services. Chat with them on the web, via mail or xmpp. 
-They have access to 100+ tools: news, search, weather, markets, video, places, files, contacts, events, docs, etc. 
+We're building services that operate as the building blocks for agents. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive become tools for agents to use. 
 
-## Protocols
+Using agents has also been a very synchronous experience. Communication here is async with everything going to one inbox, 
+whether it's email, chat or sms, etc. Use it from the web, your phone, the command line, email, anywhere.
 
-The way we're thinking about it right now. Protocols are the ideal standard.
+## Features
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, x402 for payments.**
+What's included
 
-- **SMTP** — the server is an MTA. `you@your.domain` is a real address, and mail to it reaches your agent. Write to `you+research@` and that agent answers in the thread.
-- **IMAP** — the same mailbox opens in Thunderbird, Mail.app or your phone. Your username, and an access token from `/token` as the password.
-- **HTTP** — the web app, and every tool as a plain POST for anything that is not an agent.
-- **MCP** — `/mcp`, for Claude, Cursor, and anything else that speaks it. See below.
-- **SSH** — a shell in a sandboxed machine with a `/work` directory that keeps what you leave in it. Needs Docker on the instance; without it the port answers and every session ends there.
-- **XMPP** — the same address is also a JID. Conversations, Dino, Gajim and Monal connect to it, and it federates to other servers.
-- **x402** — a priced call with no account gets a `402` naming the price, payable in USDC on Base. The payment is the identity, so an agent never signs up.
+- **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI or the Web
+- **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it on the web, mail or xmpp
+- **Inbox** - A single place to keep track of threads across channels. Use it on the web or via IMAP in an email client.
 
-## Tools
+## Services
 
-The tools, reachable over MCP, as a `mu` command, or from the app
+The services available via the web, API or as tools, reachable via MCP, and command line 
 
 | Service | Tools |
 |---|---|
@@ -50,7 +46,7 @@ The tools, reachable over MCP, as a `mu` command, or from the app
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Recall** | `recall_search` · `recall_conversation` · `recall_list` — everything you have ever said to an agent and been told, on any client: search it, and read a conversation back |
 | **Routes** | `routes_eta` · `routes_directions` · `routes_nearest` — travel time with traffic, turn-by-turn, and which of several places is quickest to reach |
-| **Shell** | `shell_run` · `shell_write` · `shell_read` · `shell_list` — a machine of your own: a container with a shell, and a `/work` directory that keeps what you put in it between calls. Build things, run tests, clone a repo, move files about. Running a command costs, because it is CPU and memory here; keeping and reading files is free. Needs Docker on the instance |
+| **Shell** | `shell_run` · `shell_write` — a machine of your own: a Debian container with bash, and a `/work` directory that keeps what you put in it between calls, along with the directory you were last in. Read, list, search and edit with the commands you already know; `shell_write` is only for putting a new file down, which is the one thing a heredoc mangles. Build things, run tests, clone a repo, move files about. Running a command costs, because it is CPU and memory here. Needs Docker on the instance |
 | **SMS** | `sms_send` · `sms_history` · `sms_number` · `sms_verify` — text somebody and read what they text back, from a real number. Priced per segment, capped per day, and STOP is honoured |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` — what has been happening here |
@@ -63,9 +59,54 @@ The tools, reachable over MCP, as a `mu` command, or from the app
 | **Weather** | `weather_forecast` · `weather_air` · `weather_marine` · `weather_history` — conditions and the days ahead; air quality, pollutants, UV and pollen; wave height, period and direction at a coastal point; and what the weather actually was between two dates. Everything but the forecast is keyless |
 | **Web** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 
-[Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
+[Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a service.
 
-## Use the Tools
+## Agents
+
+An agent is a name, a prompt, and which of the services above it may reach. No
+code and no deployment — the services are the same ones in the table, so
+defining an agent is choosing a subset and saying what it is for.
+
+Two come built in:
+
+- **Micro** — general. Every service, for the questions that cross several of
+  them: what happened today, what is moving, what is in my mail.
+- **Code** — specific. A machine of its own and somewhere to put what it makes:
+  `shell` and `apps` only. Describe an app and it writes it, runs it and hosts
+  it.
+
+Make your own at `/agents`: a name, a standing instruction, and the services it
+is allowed. Leaving the services empty gives it everything you can reach, which
+is a choice rather than the default.
+
+Then talk to it wherever you already are:
+
+```bash
+mu ask "what is in my inbox?"                    # the default agent
+mu ask --agent research "anything new this week?"
+```
+
+On the web it is `/agent/<name>`. By mail, write to `you+name@` and that agent
+answers in the thread. Each keeps its own notes, so what it learns about your
+projects does not end up in the pool another agent answers from.
+
+Agents run on the instance, using its model, so nothing needs a key of your
+own. `mu agent` is the other direction — see [CLI](#cli).
+
+## Inbox
+
+One place for what arrived, whichever channel carried it — mail, chat, sms, and
+the conversations you have had with your agents. It is a view over the record
+every client writes to, so a question you asked from the terminal this morning
+sits next to an email that came in overnight, in the same list.
+
+It is not a second mailbox. `service/mail` is the mail server; `/inbox` is
+where things turn up. Reply to a thread and the agent answers in it.
+
+Connect a normal mail client over IMAP and read the same threads from your
+phone.
+
+## Tools
 
 If you want to use the tools with an existing agent.
 
@@ -121,7 +162,7 @@ Quite a few things need API keys, but here's some must haves.
 
 | For | Set | Notes |
 |---|---|---|
-| AI models | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
+| AI models | `ANTHROPIC_API_KEY`, `ATLASCLOUD_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
 | Web search | `BRAVE_API_KEY` | Brave has a free tier |
 | Video | `YOUTUBE_API_KEY` | free quota |
 
@@ -207,6 +248,46 @@ mu ask --agent research "anything new this week?"
 agent *here*, on your machine, with your own model key, renting tools from an
 instance over x402 and paying per call. Same word in English, opposite ways
 round.
+
+## API
+
+Every tool is also an HTTP endpoint, at `/api/v1/<service>/<method>`. The same
+catalogue the CLI and the agent read, so a tool added to the server is an
+endpoint without anybody writing a route.
+
+```bash
+curl https://micro.mu/api/v1/                      # the catalogue
+curl "https://micro.mu/api/v1/news/list?limit=5"   # arguments in the query
+curl -X POST https://micro.mu/api/v1/news/list \
+  -H 'Content-Type: application/json' -d '{"limit":5}'
+```
+
+GET and POST mean the same thing and both work, because a REST API where reads
+are GETs is what every client library expects. What is not offered is a GET
+that changes something: a method the catalogue marks as writing needs a POST,
+so a link, a prefetch or a crawler cannot fire one.
+
+Authenticate with a token from `/token` as `Authorization: Bearer`, or with an
+OAuth client. A priced endpoint answers 402 without one, which an x402 client
+pays per call with no account at all.
+
+MCP clients connect at `/mcp` — same tools, same auth, same prices. The
+reference is at `/api`, and each service has its own page at `/services/<name>`.
+
+## Web
+
+The same instance is a web app, and every page on it is a service answering.
+
+- `/home` — what arrived, who is working on it, and what this instance knows
+  right now, with a box at the top to ask.
+- `/inbox` — the threads, whichever channel carried them.
+- `/agents` — your roster, and where you make a new one.
+- `/services` — the catalogue, and a page for each: `/news`, `/weather`,
+  `/markets`, and the rest.
+
+The service pages are not a separate product built over the API. They make the
+same calls an agent makes and render the result, which is why anything you can
+ask for you can also go and look at.
 
 ## Configuration
 

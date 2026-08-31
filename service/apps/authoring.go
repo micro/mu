@@ -152,8 +152,65 @@ func (Server) Edit(ctx context.Context, req *EditRequest, rsp *EditResponse) err
 	if err != nil {
 		return err
 	}
-	rsp.Result = fmt.Sprintf("Updated %s.", a.Name)
+	rsp.Result = fmt.Sprintf("Updated %s — %s.", a.Name, edited(req))
 	return nil
+}
+
+// edited names what this call changed.
+//
+// The result was "Updated <name>." however many times it was called and
+// whatever it did. A run that edited an app ten times — which is what building
+// one looks like — left a transcript of ten identical lines, and a person who
+// reloaded the page mid-build read:
+//
+//	Updated Live Sports.
+//	Updated Live Sports.
+//	… eight more
+//
+// which says the tool ran and nothing about what happened. It is the same
+// failure the brief had with counts: a true sentence carrying no information,
+// repeated.
+//
+// Every field on the request is optional and the ones left out keep their
+// value, so what changed is exactly what was sent. The HTML carries its size
+// because that is the one field where "it changed" and "it changed by much" are
+// different facts, and it is the field a build spends its time on.
+//
+// The model reads this too. A tool that answers the same way whatever it did
+// gives a run no way to tell a no-op from a rewrite.
+func edited(req *EditRequest) string {
+	var what []string
+	if strings.TrimSpace(req.HTML) != "" {
+		what = append(what, fmt.Sprintf("%s of HTML", size(len(req.HTML))))
+	}
+	for _, f := range []struct{ name, val string }{
+		{"name", req.Name},
+		{"description", req.Description},
+		{"tags", req.Tags},
+		{"icon", req.Icon},
+	} {
+		if strings.TrimSpace(f.val) != "" {
+			what = append(what, f.name)
+		}
+	}
+	if req.Price > 0 {
+		what = append(what, fmt.Sprintf("%d credits/use", req.Price))
+	}
+	if len(what) == 0 {
+		// Every field empty is a call that changed nothing, and saying so is
+		// worth more than "Updated": it is the shape of a loop about to run
+		// again for the same reason.
+		return "nothing changed"
+	}
+	return strings.Join(what, ", ")
+}
+
+// size is a byte count somebody can read.
+func size(n int) string {
+	if n < 1024 {
+		return fmt.Sprintf("%d bytes", n)
+	}
+	return fmt.Sprintf("%.1f KB", float64(n)/1024)
 }
 
 // ── Fork ────────────────────────────────────────────────────────

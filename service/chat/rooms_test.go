@@ -16,39 +16,134 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Without a room id there is nobody to talk to, so the page answers the only
-// question left: what is being discussed.
-func TestChatWithoutARoomListsWhatIsBeingDiscussed(t *testing.T) {
-	prompts = map[string]string{"Dev": "what is happening in dev", "World": "what is happening in the world"}
+// Without a room id, /chat is All: the rooms there are.
+//
+// It redirected to the lobby for a while, because a chat needs somewhere to put
+// you and a directory of conversations is none of them. It has somewhere now
+// and it is not this page — the lobby is the panel over Home, next to the names
+// of the people in it — so this page is free to answer the question somebody
+// actually brings to it, which is what else there is.
+//
+// The redirect is the part that must not come back: clicking Chat loaded a page
+// whose only job was to send the browser somewhere else, which is the flicker.
+func TestChatListsTheRooms(t *testing.T) {
 	topics = []string{"Dev", "World"}
 
 	rr := httptest.NewRecorder()
 	Handler(rr, httptest.NewRequest("GET", "/chat", nil))
 
 	if rr.Code != http.StatusOK {
-		t.Fatalf("GET /chat = %d, want 200", rr.Code)
+		t.Fatalf("GET /chat = %d, want the list", rr.Code)
 	}
 	body := rr.Body.String()
-	for _, want := range []string{"Dev", "World", "Join discussion"} {
+	for _, want := range []string{`href="/chat?id=chat_Dev"`, `href="/chat?id=chat_World"`} {
 		if !strings.Contains(body, want) {
-			t.Errorf("rooms list is missing %q", want)
+			t.Errorf("the list does not reach %s", want)
+		}
+	}
+}
+
+// And the lobby is not one of them.
+//
+// It is on Home. Listing it here as well would make the page a way to leave what
+// you are reading to reach a room you could already see, and would put the one
+// room with no subject at the top of a list organised by subject.
+func TestTheLobbyIsNotOnTheList(t *testing.T) {
+	topics = []string{lobbyTopic, "Dev"}
+	defer func() { topics = []string{"Dev", "World"} }()
+
+	rr := httptest.NewRecorder()
+	Handler(rr, httptest.NewRequest("GET", "/chat", nil))
+
+	if body := rr.Body.String(); strings.Contains(body, `href="/chat?id=`+lobbyID+`"`) {
+		t.Errorf("the lobby is on /chat — it lives in the panel on Home:\n%s", body)
+	}
+}
+
+// And from any room there is a way to the others.
+//
+// A chat with no way to switch channel is one room somebody found by a link.
+// The row is the same .head strip news and video use for their topics, because
+// switching channel and switching topic are the same gesture.
+func TestTheChannelRowReachesTheOtherRooms(t *testing.T) {
+	topics = []string{"Dev", "World"}
+
+	rr := httptest.NewRecorder()
+	Handler(rr, httptest.NewRequest("GET", "/chat?id="+lobbyID, nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET the lobby = %d", rr.Code)
+	}
+	body := rr.Body.String()
+
+	for _, want := range []string{`href="/chat?id=chat_Dev"`, `href="/chat?id=chat_World"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the channel row does not reach %s", want)
+		}
+	}
+	// All is the way back to the list, and is /chat itself rather than a room.
+	if !strings.Contains(body, `<a class="head" href="/chat">All</a>`) {
+		t.Errorf("the channel row has no way back to the list:\n%s", body)
+	}
+
+	// The room you are in is marked and is not a link to itself.
+	rr = httptest.NewRecorder()
+	Handler(rr, httptest.NewRequest("GET", "/chat?id=chat_Dev", nil))
+	body = rr.Body.String()
+	if !strings.Contains(body, `<span class="head head-on">Dev</span>`) {
+		t.Errorf("the current channel is not marked:\n%s", body)
+	}
+	if strings.Contains(body, `href="/chat?id=chat_Dev"`) {
+		t.Error("the room links to itself")
+	}
+}
+
+// The lobby is the one room with no subject, so nothing draws an About block
+// over the messages.
+func TestTheLobbyIsAboutNothing(t *testing.T) {
+	rr := httptest.NewRecorder()
+	Handler(rr, httptest.NewRequest("GET", "/chat?id="+lobbyID, nil))
+
+	if body := rr.Body.String(); strings.Contains(body, "room-about") {
+		t.Errorf("the lobby drew an About block:\n%s", body)
+	}
+}
+
+// A program with no room id still gets the catalogue, because "what rooms are
+// there" is a real question for something that cannot click.
+func TestAJSONCallerStillGetsTheList(t *testing.T) {
+	topics = []string{"Dev", "World"}
+
+	r := httptest.NewRequest("GET", "/chat", nil)
+	r.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	Handler(rr, r)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /chat as JSON = %d, want 200", rr.Code)
+	}
+	for _, want := range []string{"Dev", "World"} {
+		if !strings.Contains(rr.Body.String(), want) {
+			t.Errorf("the catalogue is missing %q", want)
 		}
 	}
 }
 
 // The question box is what made chat and the agent the same thing. A page that
 // still shipped one would be shipping two assistants again.
-func TestTheRoomsListHasNoQuestionBox(t *testing.T) {
-	prompts = map[string]string{"Dev": "what is happening in dev"}
+//
+// chat-form is not in this list any more and must not go back: it is the room's
+// own box, which sends a websocket frame to the people present. It was banned
+// while this page was a catalogue and a catalogue has no box.
+func TestNoRoomCarriesTheOldQuestionBox(t *testing.T) {
 	topics = []string{"Dev"}
 
 	rr := httptest.NewRecorder()
-	Handler(rr, httptest.NewRequest("GET", "/chat", nil))
+	Handler(rr, httptest.NewRequest("GET", "/chat?id="+lobbyID, nil))
 
 	body := rr.Body.String()
-	for _, gone := range []string{"chat-form", "topic-selector", "askLLM"} {
+	for _, gone := range []string{"topic-selector", "askLLM"} {
 		if strings.Contains(body, gone) {
-			t.Errorf("rooms list still carries %q, which belonged to the question box", gone)
+			t.Errorf("a room still carries %q, which belonged to the question box", gone)
 		}
 	}
 }

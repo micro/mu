@@ -1,10 +1,10 @@
 package app
 
 // Landing is a minimal, sidebar-less page shell — the clean full-page layout
-// used for the logged-out consumer landing and the developer portal. It is
+// used for the signed-out index and the developer portal. It is
 // deliberately not the app shell (no nav rail): both are marketing/entry pages,
 // not in-app views.
-type Landing struct {
+type Index struct {
 	Title       string // <title> / meta
 	Description string
 	Brand       string // big wordmark (e.g. "Mu", or a portal's host-derived name)
@@ -18,8 +18,8 @@ type Landing struct {
 	Image       string // og:image + favicon URL; empty keeps the Mu defaults
 }
 
-// RenderLanding renders a full, self-contained landing page.
-func RenderLanding(l Landing) string {
+// RenderIndex renders a full, self-contained page outside the app shell.
+func RenderIndex(l Index) string {
 	top := ""
 	if l.TopRight != "" {
 		top = `<div class="login-link">` + l.TopRight + `</div>`
@@ -71,12 +71,22 @@ func RenderLanding(l Landing) string {
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:100vh;display:flex;flex-direction:column}
-.landing{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14vh 20px 40px;position:relative;width:100%}
+.index-page{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14vh 20px 40px;position:relative;width:100%}
 .brand{font-size:2.5rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
 .tagline{color:#111;font-size:18px;font-weight:700;margin-bottom:6px}
 .subtag{color:#666;font-size:15px;margin-bottom:32px;max-width:520px;text-align:center;line-height:1.5}
-.login-link{position:absolute;top:20px;right:20px}
-.login-link a{color:#555;text-decoration:none;font-size:14px;font-weight:600}
+/* The corner. It held one link and now holds two controls, so it is a row —
+   and buttons and links take different defaults, which is 3px of misalignment
+   side by side unless both are told the same. */
+.login-link{position:absolute;top:20px;right:20px;display:flex;align-items:center;gap:14px}
+.login-link a,.login-link button{color:#555;text-decoration:none;font-size:14px;font-weight:600;
+  background:none;border:0;padding:0;font-family:inherit;line-height:20px;cursor:pointer}
+.login-link a:hover,.login-link button:hover{color:#111}
+/* An author rule beats the browser's own [hidden]{display:none} whatever its
+   specificity, and the rule above sets a display on buttons via the flex row.
+   Without this the install control is on the page in every browser that cannot
+   install anything. */
+.login-link [hidden]{display:none}
 .also{text-align:center;margin:32px 0;font-size:14px;color:#888}
 .footer{padding:20px;text-align:center;font-size:13px;color:#999}
 /* No extra margin: FooterLinks already spaces the links with separators,
@@ -87,7 +97,7 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 /* 14vh of air above the wordmark is right on a tall window and is a fifth of a
    short one — a 1280x600 laptop spent 84px on padding and then scrolled by 23.
    Height is the axis that decides here, so the query is on height. */
-@media (max-height:720px){.landing{padding-top:6vh}}
+@media (max-height:720px){.index-page{padding-top:6vh}}
 /* The hero cards on these pages are capped at ~240px so three sit in a row on
    desktop. Below that the cap left them stranded mid-screen, so let them fill
    the column like every card elsewhere in the app. */
@@ -104,7 +114,7 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 </style>
 </head>
 <body>
-<div class="landing">
+<div class="index-page">
   ` + top + `
   <div class="brand">` + l.Brand + `</div>
   ` + tag + sub + l.Body + below + `

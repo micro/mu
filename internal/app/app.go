@@ -274,7 +274,21 @@ func FooterLinks() string {
 	// with its own row of Tools · API · Pricing — two of the three repeated from
 	// this line, a few centimetres above it. A footer is where a site keeps its
 	// destinations; a second copy of most of one is furniture.
-	return `<a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	// Archive, not Agent.
+	//
+	// Agent was here for an afternoon, on the argument that the archive is a
+	// tool rather than a destination and the agent is what this is for. The
+	// second half of that is right and it belongs to the box on the front page,
+	// which is where it now is. It does not belong here, for a plain reason:
+	// /agent redirects to /login for anybody without a session, and this footer
+	// is rendered on exactly one kind of page — the signed-out one. A signed-in
+	// account gets the sidebar instead, where Agents already is.
+	//
+	// So the link was redundant for everybody who could use it and a bounce for
+	// everybody who saw it. A footer is where a site keeps its destinations, and
+	// a destination that asks you to sign in first is not one.
+	return `<a href="/archive">Archive</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · ` +
+		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {
@@ -335,11 +349,12 @@ var Template = `
            fourth item. Hidden children take no space, so mail appearing and
            disappearing still costs nothing. -->
       <div id="head-right">
-        <!-- The envelope is the inbox, not the mail store. It appears when
-             something is waiting and the thing waiting is a conversation, which
-             lives at /inbox; /mail is the envelopes SMTP delivered and is not
-             what a badge in the header is counting. -->
-        <a id="head-inbox" href="/inbox" aria-label="Inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg></a>
+        <!-- An envelope stood here, on the argument that the rail is behind a
+             hamburger on a phone so Inbox needs a shortcut. The argument was
+             right and the patch was not: it was display:none in the stylesheet
+             with nothing anywhere turning it on, so the shortcut was invisible
+             for as long as it existed. Inbox is a tab along the bottom now,
+             beside the other three. See navTabs. -->
         %s
       </div>
     </div>
@@ -398,6 +413,7 @@ var Template = `
       </div>
       %s
     </div>
+    %s
   <script>
       // Navigating without repainting the page.
       //
@@ -644,10 +660,25 @@ var Template = `
       })();
 
       if (navigator.serviceWorker) {
-        navigator.serviceWorker.register (
+        // updateViaCache:'none' — the browser must fetch the worker from the
+        // network on every update check, not from its HTTP cache.
+        //
+        // The default is 'imports', which consults the cache for the top-level
+        // script too, and /mu.js was served max-age=86400. So for a day after
+        // any visit an update check got the cached bytes back, found them
+        // identical, and kept the installed worker. On a phone that visits most
+        // days, that is never updating. Both halves are needed: the header, so
+        // there is nothing stale to find, and this, so the fetch does not go
+        // looking in the first place.
+        navigator.serviceWorker.register(
           '/mu.js',
-          {scope: '/'}
-        );
+          {scope: '/', updateViaCache: 'none'}
+        ).then(function (reg) {
+          // And ask, on every load. Registration alone only checks on
+          // navigation, and a page opened from the home screen of an installed
+          // app may not count as one.
+          if (reg && reg.update) reg.update();
+        }).catch(function () {});
       }
       
       // One button, two meanings. On a phone the sidebar is an overlay that
@@ -672,21 +703,28 @@ var Template = `
       //
       // Re-run on soft navigation, because that swaps #content and leaves the
       // sidebar exactly as the last full page load drew it.
+      // Once per group of links, not once per page. The rail and the phone's
+      // tab bar are two lists of the same destinations shown at different
+      // widths, and a single winner across both lit whichever appeared first
+      // in the document — so the tab bar was never marked.
       function markNav() {
         var here = location.pathname.replace(/\/+$/, '') || '/';
-        var links = document.querySelectorAll('#nav a, .nav-bottom a');
-        var best = null, bestLen = -1;
-        for (var i = 0; i < links.length; i++) {
-          links[i].classList.remove('active');
-          var path;
-          try { path = new URL(links[i].href, location.href).pathname.replace(/\/+$/, '') || '/'; }
-          catch (e) { continue; }
-          // Longest match wins, so /news/tech lights News rather than Home —
-          // and "/" only matches "/", or it would claim every page.
-          var hit = path === here || (path !== '/' && here.indexOf(path + '/') === 0);
-          if (hit && path.length > bestLen) { best = links[i]; bestLen = path.length; }
+        var groups = ['#nav a, .nav-bottom a', '#tabs a'];
+        for (var g = 0; g < groups.length; g++) {
+          var links = document.querySelectorAll(groups[g]);
+          var best = null, bestLen = -1;
+          for (var i = 0; i < links.length; i++) {
+            links[i].classList.remove('active');
+            var path;
+            try { path = new URL(links[i].href, location.href).pathname.replace(/\/+$/, '') || '/'; }
+            catch (e) { continue; }
+            // Longest match wins, so /news/tech lights News rather than Home —
+            // and "/" only matches "/", or it would claim every page.
+            var hit = path === here || (path !== '/' && here.indexOf(path + '/') === 0);
+            if (hit && path.length > bestLen) { best = links[i]; bestLen = path.length; }
+          }
+          if (best) best.classList.add('active');
         }
-        if (best) best.classList.add('active');
       }
       document.addEventListener('mu:navigated', markNav);
       markNav();
@@ -949,9 +987,14 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 	if banner := CreditsBanner(r); banner != "" {
 		html = banner + html
 	}
-	if banner := ConnectBanner(r); banner != "" {
-		html = banner + html
-	}
+	// No connect banner.
+	//
+	// It ran on every page of every instance: "Connect your agent. This is the
+	// app; the tools are the other half. All N of them, on one server." That is
+	// a pitch — "on one server" is an argument aimed at somebody choosing
+	// between products — and it was above the fold on the archive, the inbox
+	// and the home screen of people who had already chosen. /tools is in the
+	// rail, which is where a destination belongs.
 	_, acc := auth.TrySession(r)
 	// The path, so the rail can show which mailbox or agent you are in. Only
 	// this render has a request to read it from.
@@ -1077,11 +1120,66 @@ func navMain(acc *auth.Account) string {
 	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
 	b += item("nav-services", "/services", "/services.svg", "Services")
 	if acc != nil {
+		// Tokens are how you authenticate an agent, so they are yours on every
+		// instance.
 		b += item("nav-token", "/token", "/token.svg", "Tokens")
-		b += item("nav-wallet", "/wallet", "/wallet.png", "Wallet")
+		// A wallet is only a wallet where money can go into it. An instance
+		// somebody runs themselves has no top-up — they are paying the model
+		// vendor directly — so this was a permanent rail entry leading to a
+		// balance that could never change, on the machine where the whole point
+		// is that there is no meter between you and your own server. Hidden the
+		// way Admin is: the page still answers, the rail just does not offer
+		// what this instance cannot do.
+		if TopUpConfigured != nil && TopUpConfigured() {
+			b += item("nav-wallet", "/wallet", "/wallet.png", "Wallet")
+		}
 	}
 	return b
 }
+
+// navTabs is the four hubs along the bottom of a phone.
+//
+// The rail is behind a hamburger at phone width, which puts every destination
+// two taps away and none of them in reach of a thumb. The workaround was an
+// envelope in the top bar — one of the seven, promoted because it was the one
+// people missed most, at the far corner from where a hand holds a phone. This
+// is the general answer to what that patch was a special case of.
+//
+// Four, and they are the four navMain shows a signed-out visitor: Home, Inbox,
+// Agents, Services. A tab bar holds four or five before the labels stop being
+// readable, and these are the four this product is — where you land, what
+// arrived, who works for you, what they can reach. The rest of the rail stays
+// behind the hamburger, which is the right place for Tokens, Wallet and Admin:
+// things somebody touches monthly, and the reason not to spend a tab on them.
+//
+// Signed in only. Signed out, the shell is a landing page whose job is one
+// button, and a fixed bar across the bottom of it competes with that button
+// while offering the same four links its footer already carries.
+func navTabs(acc *auth.Account) string {
+	if acc == nil {
+		return ""
+	}
+	tab := func(href, icon, label string) string {
+		return `<a href="` + href + `"><img src="` + icon + `?` + Version +
+			`" alt=""><span>` + label + `</span></a>`
+	}
+	return `<nav id="tabs" aria-label="Main">` +
+		tab("/home", "/home.png", "Home") +
+		tab("/inbox", "/mail.png", "Inbox") +
+		tab("/agents", "/agent.svg", "Agents") +
+		tab("/services", "/services.svg", "Services") +
+		`</nav>`
+}
+
+// TopUpConfigured reports whether this instance can take a payment, filled in
+// by the server.
+//
+// A hook for the same reason as AgentReady: the answer lives in the package
+// that holds the payment keys, and that package imports this one. Nil means no
+// — the opposite default to AgentReady, and deliberately: an unwired hook
+// there would hide a working box, and here it would offer a wallet nobody can
+// put anything in.
+var TopUpConfigured func() bool
 
 func navAdmin(acc *auth.Account) string {
 	if acc == nil || !acc.Admin {
@@ -1189,10 +1287,12 @@ func navBottom(acc *auth.Account) string {
 	//
 	// "Signed in as" answers a question a shared or long-lived browser makes
 	// real — which account is this — and it has to be beside Log out, because
-	// that is the moment somebody checks. Not a link: Profile is, directly
-	// under it.
+	// that is the moment somebody checks.
+	//
+	// Profile was under it and is gone with the page. /@you is not a page about
+	// you any more, it is the conversation with somebody — and your own resolves
+	// to your inbox, which is already the first thing in the nav.
 	return `<div class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span></div>
-          <a id="nav-profile" href="/@` + username + `"><img src="/at.svg?` + Version + `"><span class="label">Profile</span></a>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
@@ -1245,12 +1345,36 @@ func Serve() http.Handler {
 
 	// Wrap with cache headers for static assets
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set cache headers for static assets
-		if strings.HasSuffix(r.URL.Path, ".css") ||
-			strings.HasSuffix(r.URL.Path, ".js") ||
-			strings.HasSuffix(r.URL.Path, ".png") ||
-			strings.HasSuffix(r.URL.Path, ".ico") ||
-			strings.HasSuffix(r.URL.Path, ".webmanifest") {
+		// The service worker is the one file that must never be cached.
+		//
+		// It was, for a day at a time, by the rule below — and a service worker
+		// is not loaded like a script, it is *installed*. The browser replaces
+		// it only when it fetches the file and finds different bytes, and under
+		// the default updateViaCache it makes that fetch through the HTTP cache.
+		// So max-age=86400 meant: for twenty-four hours after any visit, every
+		// update check on that device got the cached copy back, found it
+		// identical, and concluded there was nothing new. registration.update()
+		// goes through the same cache, so the button offering to fix it could
+		// not either.
+		//
+		// The effect is that a phone can run a months-old worker while the
+		// server has shipped a dozen versions — which is what happened here.
+		// The worker handling pushes predated the code that reports a
+		// notification arrived, so every send read "sent, the device has not
+		// said it arrived", which is also what a device that never woke looks
+		// like. Days went into the sending half, which was correct throughout.
+		//
+		// no-cache is not "do not store": it is "revalidate every time", so the
+		// file still costs a 304 rather than a download when it has not changed.
+		// A service worker is exactly what that is for.
+		switch {
+		case r.URL.Path == "/mu.js" || strings.HasSuffix(r.URL.Path, "/mu.js"):
+			w.Header().Set("Cache-Control", "no-cache")
+		case strings.HasSuffix(r.URL.Path, ".css"),
+			strings.HasSuffix(r.URL.Path, ".js"),
+			strings.HasSuffix(r.URL.Path, ".png"),
+			strings.HasSuffix(r.URL.Path, ".ico"),
+			strings.HasSuffix(r.URL.Path, ".webmanifest"):
 			w.Header().Set("Cache-Control", "public, max-age=86400") // 1 day
 		}
 		if compressed(w, r, htmlContent) {
@@ -1487,5 +1611,5 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		navMain(acc),
 		navPinned(acc),
 		navBottom(acc),
-		title, body, footerFor(acc))
+		title, body, footerFor(acc), navTabs(acc))
 }

@@ -521,10 +521,23 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 
 	formValue := parseRequestParams(r)
 
+	// One form serves both verbs, so this reads the names it posts as well as
+	// its own. address/lat/lon are what the tool and the old form send; near
+	// and near_lat/near_lon are what the shared form sends, because to a person
+	// filling it in the field is "near" whichever button they then press.
 	var lat, lon float64
 	address := strings.TrimSpace(formValue("address"))
+	if address == "" {
+		address = strings.TrimSpace(formValue("near"))
+	}
 	latStr := formValue("lat")
+	if latStr == "" {
+		latStr = formValue("near_lat")
+	}
 	lonStr := formValue("lon")
+	if lonStr == "" {
+		lonStr = formValue("near_lon")
+	}
 
 	if latStr != "" && lonStr != "" {
 		var parseErr error
@@ -625,64 +638,16 @@ func renderPlacesPage(r *http.Request) string {
 
 	return fmt.Sprintf(`<div class="places-page">
 %s
-<div class="places-forms">
 <div class="card">
-  <h4>Search</h4>
-  <p class="text-muted places-form-desc">Find by name or category (e.g. cafe, pharmacy).</p>
+  <h4>Places</h4>
+  <p class="text-muted places-form-desc">Find somewhere by name or category — cafe, pharmacy — or leave it empty and see what is nearby.</p>
   %s
 </div>
-<div class="card">
-  <h4>&#128205; Nearby</h4>
-  <p class="text-muted places-form-desc">List places near a location.</p>
-  %s
-</div>
-</div>
 %s
 %s
 %s
 %s
-</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), renderNearbyFormHTML("", "", "", ""), savedHTML, mapHTML, cityCardsHTML, renderPlacesPageJS())
-}
-
-// renderNearbyFormHTML returns a form for listing places near a location.
-// It is used on the main places page and on the nearby results page.
-func renderNearbyFormHTML(address, lat, lon, radius string) string {
-	if radius == "" {
-		radius = "1000"
-	}
-	radiusOptions := ""
-	for _, opt := range []struct {
-		val, label string
-	}{
-		{"500", "Nearby (~500m)"},
-		{"1000", "Walking distance (~1km)"},
-		{"2000", "Local area (~2km)"},
-		{"5000", "City area (~5km)"},
-		{"10000", "Wider city (~10km)"},
-		{"25000", "Regional (~25km)"},
-		{"50000", "Province (~50km)"},
-	} {
-		sel := ""
-		if opt.val == radius {
-			sel = " selected"
-		}
-		radiusOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, opt.val, sel, opt.label)
-	}
-	return fmt.Sprintf(`<form id="nearby-form" action="/places/nearby" method="POST">
-    <input type="hidden" name="lat" id="nearby-lat" value="%s">
-    <input type="hidden" name="lon" id="nearby-lon" value="%s">
-    <div class="places-location-row">
-      <input type="text" name="address" id="nearby-address" placeholder="Address or postcode" value="%s">
-      <a href="#" onclick="useNearbyLocation(this);return false;" class="btn-link">&#128205; Use my location</a>
-    </div>
-    <div class="places-options-row">
-      <select name="radius" id="nearby-radius">%s</select>
-    </div>
-    <div class="places-actions-row">
-      <button type="submit">Find Nearby <span class="cost-badge">2p</span></button>
-    </div>
-  </form>`,
-		escapeHTML(lat), escapeHTML(lon), escapeHTML(address), radiusOptions)
+</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), savedHTML, mapHTML, cityCardsHTML, renderPlacesPageJS())
 }
 
 // renderIndexMap returns an embedded Leaflet.js map for the main places page.
@@ -705,15 +670,26 @@ var placesIndexMarker = null;
       placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup('Your location').openPopup();
     }
   }
+  // Draw first, then move.
+  //
+  // This waited for geolocation before drawing anything, with an eight second
+  // timeout — so somebody who has not answered the permission prompt gets a
+  // 280px white box between the form and the cities for eight seconds, on
+  // every load. That is the gap; the map was never missing, it had not been
+  // told to exist yet.
+  //
+  // The world view costs nothing and is what the answer degrades to anyway
+  // when permission is refused, so it is what the page starts with.
   function tryGeolocation() {
-    if (!navigator.geolocation) { initIndexMap(); return; }
+    initIndexMap();
+    if (!navigator.geolocation) { return; }
     navigator.geolocation.getCurrentPosition(function(pos) {
       var lat = pos.coords.latitude, lon = pos.coords.longitude;
-      initIndexMap(lat, lon, 15);
-      document.getElementById('nearby-lat').value = lat;
-      document.getElementById('nearby-lon').value = lon;
-      document.getElementById('nearby-address').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
-    }, function() { initIndexMap(); }, {timeout: 8000, maximumAge: 300000 /* 5 minutes */});
+      placesIndexMap.setView([lat, lon], 15);
+      if (placesIndexMarker) { placesIndexMap.removeLayer(placesIndexMarker); }
+      placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup('Your location').openPopup();
+      fillLocation(lat, lon, lat.toFixed(4) + ', ' + lon.toFixed(4));
+    }, function() {}, {timeout: 8000, maximumAge: 300000 /* 5 minutes */});
   }
   function loadLeafletThenInit() {
     var lnk=document.createElement('link');
@@ -735,11 +711,8 @@ function selectCity(lat, lon, name, country) {
     if (placesIndexMarker) { placesIndexMap.removeLayer(placesIndexMarker); }
     placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup(name).openPopup();
   }
-  document.getElementById('nearby-lat').value = lat;
-  document.getElementById('nearby-lon').value = lon;
-  document.getElementById('nearby-address').value = name + ', ' + country;
-  var form = document.getElementById('nearby-form');
-  if (form) { form.submit(); }
+  fillLocation(lat, lon, name + ', ' + country);
+  askNearby();
 }
 </script>`
 }
@@ -792,22 +765,23 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
 		sortDistSel, sortNameSel = "", " selected"
 	}
 	return fmt.Sprintf(`<form id="places-form" action="/places/search" method="POST">
-    <input type="text" name="q" id="places-q" placeholder="What are you looking for?" value="%s">
+    <input type="text" name="q" id="places-q" placeholder="What are you looking for? (leave empty for whatever is nearby)" value="%s">
     <div class="places-location-row">
-      <input type="text" name="near" id="places-near" placeholder="Location (optional)" value="%s" oninput="updateNearbyLink()">
+      <input type="text" name="near" id="places-near" placeholder="Location (optional)" value="%s">
       <input type="hidden" name="near_lat" id="places-near-lat" value="%s">
       <input type="hidden" name="near_lon" id="places-near-lon" value="%s">
       <a href="#" onclick="usePlacesLocation(this);return false;" class="btn-link">&#128205; Use my location</a>
     </div>
     <div class="places-options-row">
-      <select name="radius" id="places-radius" onchange="updateNearbyLink()">%s</select>
+      <select name="radius" id="places-radius">%s</select>
       <select name="sort" id="places-sort">
         <option value="distance"%s>Sort by distance</option>
         <option value="name"%s>Sort by name</option>
       </select>
     </div>
     <div class="places-actions-row">
-      <button type="submit">Search <span class="cost-badge">5p</span></button>
+      <button type="submit">Search</button>
+      <button type="submit" formaction="/places/nearby" class="btn-secondary">What is nearby</button>
     </div>
   </form>`,
 		escapeHTML(q), escapeHTML(near), escapeHTML(nearLat), escapeHTML(nearLon),
@@ -914,7 +888,7 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 
 	sb.WriteString(`<div class="places-page">`)
 	sb.WriteString(`<p><a href="/places">&larr; Back to Places</a></p>`)
-	sb.WriteString(renderNearbyFormHTML(label, latStr, lonStr, radiusStr))
+	sb.WriteString(renderSearchFormHTML("", label, latStr, lonStr, radiusStr, ""))
 	sb.WriteString(renderPlacesPageJS())
 
 	sb.WriteString(`<h2>Nearby</h2>`)
@@ -1015,20 +989,22 @@ function usePlacesLocation(btn) {
     showToast('Could not get your location: ' + err.message, 'error');
   }, {timeout: 10000, maximumAge: 60000});
 }
-function useNearbyLocation(btn) {
-  if (!navigator.geolocation) { showToast('Geolocation is not supported by your browser', 'error'); return; }
-  if (btn) { btn.textContent = '⏳ Getting location...'; btn.style.pointerEvents = 'none'; }
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    var lat = pos.coords.latitude, lon = pos.coords.longitude;
-    document.getElementById('nearby-lat').value = lat;
-    document.getElementById('nearby-lon').value = lon;
-    document.getElementById('nearby-address').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
-    var form = document.getElementById('nearby-form');
-    if (form) { form.submit(); }
-  }, function(err) {
-    if (btn) { btn.innerHTML = '&#128205; Use my location'; btn.style.pointerEvents = ''; }
-    showToast('Could not get your location: ' + err.message, 'error');
-  }, {timeout: 10000, maximumAge: 60000});
+// One form, so anything that knows a location writes into its fields and
+// anything that wants the nearby verb posts that form to the nearby action —
+// the same thing the second button does.
+function fillLocation(lat, lon, label) {
+  var f = ['places-near-lat', 'places-near-lon', 'places-near'];
+  var v = [lat, lon, label];
+  for (var i = 0; i < f.length; i++) {
+    var el = document.getElementById(f[i]);
+    if (el) { el.value = v[i]; }
+  }
+}
+function askNearby() {
+  var form = document.getElementById('places-form');
+  if (!form) { return; }
+  form.action = '/places/nearby';
+  form.submit();
 }
 function runSavedSearch(type, q, near, nearLat, nearLon, radius, sortBy) {
   if (type === 'nearby') {

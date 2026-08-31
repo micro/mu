@@ -168,10 +168,25 @@ func hostFacts() {
 		"info", "--format", "{{.ServerVersion}}|{{.MemTotal}}|{{.NCPU}}")
 
 	if _, mem, cpus, ok := readFacts(out); ok {
-		hostMemory, hostCPUs, available = mem, cpus, true
+		// And the old reason goes. Without this the retry above only half
+		// works: an instance that started before Docker was up starts saying
+		// yes to Available while Reason still reads "no docker on this
+		// server's PATH", so a page can report a runtime that is working and
+		// explain why there isn't one, in the same breath.
+		hostMemory, hostCPUs, available, unreachable = mem, cpus, true, ""
 		return
 	}
 	unreachable = whyNot(out, err)
+}
+
+// missingShell reports whether an exec failed because the shell is not there.
+//
+// Matched on the runtime's words because that is all there is: docker exec
+// returns 126 for several unrelated things, and the distinction being made here
+// is narrow enough that a wrong guess would silently rerun a command that had
+// really failed.
+func missingShell(out string) bool {
+	return strings.Contains(out, "executable file not found")
 }
 
 // readFacts pulls the daemon's answer out of a probe's output.
@@ -379,6 +394,15 @@ type Run struct {
 	// and asking for one merges stderr into stdout at the pty rather than in
 	// the code that knows why.
 	TTY bool
+	// Shell is which shell runs Command. Empty is "sh", which is what a
+	// container is guaranteed to have.
+	//
+	// It matters because sh is not one thing. On Debian it is dash, so an image
+	// with bash installed still runs bash-flavoured commands under something
+	// that is not bash — and the caller who chose that image did so precisely
+	// to get bash. Naming it here keeps that a caller's decision rather than a
+	// property of whichever base image somebody happens to be on.
+	Shell string
 	// Env is set on this exec and on nothing else.
 	//
 	// The distinction is the whole point and is a security property rather
@@ -516,7 +540,20 @@ func Exec(ctx context.Context, r Run) (Result, error) {
 	if r.Dir == "" {
 		r.Dir = "/work"
 	}
-	out, err := run(ctx, r.Wait, append(r.argv(), "sh", "-c", r.Command)...)
+	sh := r.Shell
+	if sh == "" {
+		sh = "sh"
+	}
+	out, err := run(ctx, r.Wait, append(r.argv(), sh, "-c", r.Command)...)
+	// A shell the image does not have is not a failed command, it is a failed
+	// choice — and the caller cannot know what is in an image an operator set.
+	// sh is the one thing every container has, so the ask degrades to it rather
+	// than handing back a runtime error about a binary the caller never
+	// mentioned. Only for the missing-binary case: a command that genuinely
+	// failed must still fail.
+	if sh != "sh" && missingShell(out) {
+		out, err = run(ctx, r.Wait, append(r.argv(), "sh", "-c", r.Command)...)
+	}
 	if err == nil {
 		return Result{Out: out}, nil
 	}

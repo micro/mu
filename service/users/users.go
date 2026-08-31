@@ -47,7 +47,6 @@ import (
 	"time"
 
 	"mu/internal/auth"
-	"mu/internal/user"
 )
 
 // User is somebody here. An Account and a Profile, which are the two halves
@@ -95,7 +94,6 @@ type Account struct {
 // Profile is the public half of internal/user: presence and what they are up to.
 type Profile struct {
 	Online bool   `json:"online" description:"Seen in the last three minutes"`
-	Status string `json:"status,omitempty" description:"What they said they are doing"`
 	Page   string `json:"page" description:"The path to their page here"`
 }
 
@@ -186,7 +184,6 @@ func Count() int { return len(List()) }
 // to name every field it publishes fails the other way, by omitting something
 // harmless.
 func publicOf(acc *auth.Account, online map[string]bool) User {
-	status, _ := user.Status(acc.ID)
 	return User{
 		ID:      acc.ID,
 		Address: addressOf(acc.ID),
@@ -197,7 +194,6 @@ func publicOf(acc *auth.Account, online map[string]bool) User {
 		},
 		Profile: Profile{
 			Online: online[acc.ID],
-			Status: status,
 			Page:   "/@" + acc.ID,
 		},
 	}

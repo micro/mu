@@ -5,6 +5,8 @@ package inbox
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -76,17 +78,33 @@ func TestTheAdvertisedPortIsTheOneToConnectTo(t *testing.T) {
 	}
 }
 
-// The way into a mail client is on the inbox.
+// The way into a mail client exists somewhere.
 //
-// This used to assert the shape of a four-line "how to use this page" list
-// above the filters. The list is gone — it was rendered to every reader on
-// every visit to teach a thing that is learned once — and the property that
-// mattered is not the list, it is that /inbox/imap can be reached at all. It
-// was the only link to that page in the product.
+// This has been asserted about three different places, and the place is not the
+// point: it is that /inbox/imap can be reached at all. It is a served page, and
+// a served page with nothing linking to it is a page nobody can find.
+//
+// It was a four-line "how to use this page" list above the filters; then a text
+// link beside New at the top of the inbox; and it is a card on /account now,
+// with the password and the passkeys and the phone — the things you set up once
+// and forget. Each move was for the same reason, which is that the inbox is
+// opened every day and this is used once in the life of an account.
+//
+// So the test looks where it lives rather than where it used to. inbox may not
+// import account, so this greps the source: the alternative is asserting
+// nothing, and the failure being guarded against is a link deleted with no
+// replacement, which a grep catches exactly.
 func TestTheMailClientPageIsReachable(t *testing.T) {
-	got := addressBar("someone", "")
-	if !strings.Contains(got, `href="/inbox/imap"`) {
-		t.Error("nothing on the inbox links to the mail-client settings, so the " +
-			"page is served and unreachable")
+	if strings.Contains(addressBar("someone", ""), `href="/inbox/imap"`) {
+		return // still on the inbox, which also satisfies the property
+	}
+	b, err := os.ReadFile(filepath.Join("..", "account", "pages.go"))
+	if err != nil {
+		t.Fatalf("cannot read the account page: %v", err)
+	}
+	if !strings.Contains(string(b), `"/inbox/imap"`) {
+		t.Error("nothing on the inbox links to the mail-client settings and " +
+			"nothing on /account does either, so the page is served and " +
+			"unreachable")
 	}
 }

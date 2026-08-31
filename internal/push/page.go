@@ -31,6 +31,44 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
+	// A device saying it woke up holding one.
+	//
+	// The record ended at "the push service accepted it", which is three
+	// quarters of an answer. A notification FCM takes and the handset never
+	// shows is indistinguishable, from here, from one that was never sent —
+	// the server cannot see a service worker. So the service worker says so,
+	// including when it woke up and could not render anything, which is the
+	// case that used to return silently and leave nothing anywhere.
+	//
+	// No CSRF: this is posted by a service worker that may be running with no
+	// page open, it carries a session, and the worst a forged one can do is
+	// mark a notification the account already received as received.
+	//
+	// # Which has to be checked before the CSRF check, not after it
+	//
+	// It was after. The paragraph above described an exemption the code never
+	// reached, because StrictCSRF ran first and answered 403 to every receipt a
+	// service worker ever posted — a worker has no page and so no token to
+	// send. The comment was right, the order was wrong, and the effect was that
+	// the one instrument built to answer "did it reach the handset" recorded
+	// nothing, for every notification, on every device. Hours were then spent
+	// looking at the sending half, which was working.
+	//
+	// Nothing about it is visible either: the worker's receipt() ends in
+	// .catch(function(){}) — deliberately, since a receipt must never break a
+	// notification — so the 403 was swallowed on the device too.
+	if strings.HasSuffix(r.URL.Path, "/received") {
+		var said struct {
+			Tag   string `json:"tag"`
+			Shown bool   `json:"shown"`
+			Why   string `json:"why"`
+		}
+		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&said)
+		Received(acc.ID, said.Tag, said.Shown, said.Why)
+		app.RespondJSON(w, map[string]any{"ok": true})
+		return
+	}
+
 	if !auth.StrictCSRF(r) {
 		app.Forbidden(w, r, "that request did not carry a valid token")
 		return
@@ -43,22 +81,53 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	// reminder firing — are all somebody else doing something. That leaves no
 	// way to tell a working subscription from a broken one except waiting, and
 	// waiting for a negative is not a test. This is the button.
-	//
+
 	// SendNow rather than Send, or it is not a test at all: Send hands each
 	// device to a goroutine and returns, so answering ok after calling it said
 	// "ok" whether the push service took the notification, timed out, or refused
 	// it outright. SendNow blocks and reports what happened.
+	//
+	// # And it has to be this device
+	//
+	// It sent to the account and reported the first device that accepted, while
+	// the page said "It should appear on this device." Those are different
+	// claims. An account can hold several subscriptions — an old browser, a
+	// laptop, the same phone before it re-subscribed — and the one that answers
+	// first is not a fact about who is looking at the screen. So the button
+	// could report success having proved that some other handset works, and
+	// send somebody hunting for the fault on a device nothing was sent to.
+	//
+	// The page holds exactly one subscription: the browser's own. It sends that
+	// endpoint, and the notification goes there or nowhere. Then "this device"
+	// is a claim the server actually checked.
 	if strings.HasSuffix(r.URL.Path, "/test") {
-		if err := SendNow(acc.ID, Notification{
+		var ask struct {
+			Endpoint string `json:"endpoint"`
+		}
+		// A page cached before this change sends no body, and an empty
+		// endpoint still means every device — with an answer that says so
+		// rather than one that says "this device".
+		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&ask)
+
+		note := Notification{
 			Title: "Test notification",
 			Body:  "This is what mail and reminders will look like.",
 			URL:   "/account",
 			Tag:   "mu-test",
-		}); err != nil {
+		}
+		if to := strings.TrimSpace(ask.Endpoint); to != "" {
+			if err := SendToDevice(acc.ID, to, note); err != nil {
+				app.RespondJSON(w, map[string]any{"ok": false, "error": err.Error()})
+				return
+			}
+			app.RespondJSON(w, map[string]any{"ok": true, "here": true, "where": Where(to)})
+			return
+		}
+		if err := SendNow(acc.ID, note); err != nil {
 			app.RespondJSON(w, map[string]any{"ok": false, "error": err.Error()})
 			return
 		}
-		app.RespondJSON(w, map[string]any{"ok": true})
+		app.RespondJSON(w, map[string]any{"ok": true, "here": false, "devices": len(Devices(acc.ID))})
 		return
 	}
 
@@ -162,6 +231,7 @@ func Card(r *http.Request, accountID string) string {
 		// this on a month ago is really asking. "On for one device" is a fact
 		// about a row in a file and stays true while every send is refused.
 		lastLine(accountID) +
+		recentLines(accountID) +
 		`<button class="btn" id="push-go" type="button">Turn on for this device</button>` +
 		`<button class="btn btn-quiet push-test d-none" id="push-test" type="button">Send a test</button>` +
 		// And the way out. /push/unsubscribe existed from the beginning with
@@ -170,9 +240,97 @@ func Card(r *http.Request, accountID string) string {
 		// browser settings — which is a different thing, does not tell this
 		// instance, and leaves the device on the list being sent to forever.
 		`<button class="btn btn-quiet push-off d-none" id="push-off" type="button">Turn off</button>` +
+		// Which copy of the app this device is running, and the way to fix it.
+		//
+		// A service worker is installed, not loaded: the copy that handles a push
+		// is whatever the browser installed last, which on a phone that has had
+		// the app on the home screen for months can be very old. An old one
+		// cannot post a receipt, so the record says "sent, nothing back" — which
+		// is what it says when the worker never woke at all. Same line, two
+		// completely different faults, and no way to tell them apart from here.
+		//
+		// So the page asks the worker its version. Update forces the browser to
+		// re-fetch and take the new one.
+		`<p class="push-note push-worker" id="push-worker" hidden></p>` +
+		`<button class="btn btn-quiet d-none" id="push-update" type="button">Update this device</button>` +
 		`<input type="hidden" id="push-key" value="` + html.EscapeString(key) + `">` +
 		`<input type="hidden" id="push-csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`</div>` + cardCSS + cardJS
+}
+
+// recentLines is the record, on the screen.
+//
+// # An instrument nobody can read is not an instrument
+//
+// History has been written on every send and on every receipt for as long as
+// both have existed, it is exported, it has tests — and nothing in the product
+// ever called it. The file filled up and no page showed a line of it. So the
+// only way to answer "did that notification reach the handset" was to ask the
+// person holding the handset, which is exactly the question the receipts were
+// built to stop having to ask, and the reason "notifications don't work" has
+// been going round in circles: two people guessing at a fact the server had
+// already written down.
+//
+// Four states, and telling them apart is the whole point. Which one it stops at
+// says which half of the system to look in:
+//
+//   - refused — the push service would not take it. Ours: keys, signature,
+//     an endpoint that has expired.
+//   - sent, nothing back — the push service took it and the device never woke.
+//     Theirs, or the handset's: battery saver, a killed service worker, a
+//     browser that dropped the subscription without saying so.
+//   - woke, could not show — the device ran the worker and failed to render.
+//     Ours again, and the payload is the suspect.
+//   - arrived — it worked, and if nothing appeared on the screen the problem is
+//     the operating system's notification settings and nothing here.
+//
+// Five rows. This is a receipt, not a log: the question is what happened
+// recently, and a page of history answers it no better while making the card
+// something you scroll past.
+func recentLines(accountID string) string {
+	sent := History(accountID, 5)
+	if len(sent) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="push-log"><div class="push-log-head">Recent</div>`)
+	for i := len(sent) - 1; i >= 0; i-- {
+		s := sent[i]
+		what := strings.TrimSpace(s.Title)
+		if what == "" {
+			what = "A notification"
+		}
+		state, cls := "", ""
+		switch {
+		case !s.OK:
+			state, cls = "refused"+because(s.Error), " push-bad"
+		case s.Got.IsZero():
+			state, cls = "sent — the device has not said it arrived", " push-bad"
+		case !s.Shown:
+			state, cls = "woke the device, which could not show it"+because(s.Why), " push-bad"
+		default:
+			state = "arrived"
+		}
+		from := ""
+		if s.From != "" {
+			from = ` <span class="push-from">` + html.EscapeString(s.From) + `</span>`
+		}
+		b.WriteString(`<div class="push-log-row"><span class="push-log-what">` +
+			html.EscapeString(what) + `</span>` + from +
+			`<span class="push-log-state` + cls + `">` + html.EscapeString(state) + `</span>` +
+			`<span class="push-log-when">` + html.EscapeString(ago(s.At)) + `</span></div>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// because appends a reason when there is one, and nothing when there is not —
+// rather than "refused ()" or a colon with nothing after it.
+func because(why string) string {
+	if strings.TrimSpace(why) == "" {
+		return ""
+	}
+	return ": " + why
 }
 
 // lastLine says what became of the last notification sent to this account.
@@ -245,6 +403,15 @@ const cardCSS = `<style>
 .push-state{font-size:12px;color:#888}
 .push-note{font-size:13px;color:#888;line-height:1.55;margin:6px 0 10px}
 .push-bad{color:var(--danger,#c33)}
+.push-log{margin:10px 0 12px;border-top:1px solid var(--card-border,#eee);padding-top:8px}
+.push-log-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text-muted,#999);margin:0 0 6px}
+.push-log-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12px;
+  color:var(--text-secondary,#555);padding:3px 0}
+.push-log-what{color:var(--text-primary,#111)}
+.push-from{color:var(--text-muted,#999)}
+.push-log-state{margin-left:auto}
+.push-log-when{color:var(--text-muted,#999);white-space:nowrap}
 .push-card .btn{margin-right:6px}
 </style>`
 
@@ -295,11 +462,59 @@ const cardJS = `<script>
     return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
+  // What to call this device, in words somebody recognises.
+  //
+  // It was navigator.platform, which reports "Linux armv81" for an Android
+  // phone and "Linux x86_64" for a laptop — the two devices somebody actually
+  // owns, named after an instruction set. A list you cannot read is a list you
+  // cannot act on: the whole point of naming devices is deciding which one to
+  // turn off.
+  //
+  // Browser and kind, because that is what tells two rows apart. userAgentData
+  // where it exists (Chromium) and the user-agent string where it does not,
+  // which is Firefox and Safari — and platform last, so a device this cannot
+  // read is still named something rather than nothing.
+  function deviceLabel(){
+    var d = navigator.userAgentData, os = '', browser = '';
+    var ua = navigator.userAgent || '';
+
+    if (/iPhone/i.test(ua)) os = 'iPhone';
+    else if (/iPad/i.test(ua)) os = 'iPad';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/Macintosh|Mac OS X/i.test(ua)) os = 'Mac';
+    else if (/Windows/i.test(ua)) os = 'Windows';
+    else if (/CrOS/i.test(ua)) os = 'ChromeOS';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+
+    // Order matters: Edge and Opera both say "Chrome", and Chrome says
+    // "Safari". Most specific first.
+    if (/Edg\//.test(ua)) browser = 'Edge';
+    else if (/OPR\/|Opera/.test(ua)) browser = 'Opera';
+    else if (/Firefox\//.test(ua)) browser = 'Firefox';
+    else if (/SamsungBrowser/.test(ua)) browser = 'Samsung Internet';
+    else if (/Chrome\//.test(ua)) browser = 'Chrome';
+    else if (/Safari\//.test(ua)) browser = 'Safari';
+
+    // An installed app is worth saying: it is a different thing from the same
+    // browser with a tab open, and it is the one that receives when nothing is.
+    var installed = false;
+    try {
+      installed = window.matchMedia('(display-mode: standalone)').matches ||
+        navigator.standalone === true;
+    } catch (e) {}
+
+    if (!os && d && d.platform) os = d.platform;
+    if (!os && !browser) return navigator.platform || '';
+
+    var name = browser && os ? browser + ' on ' + os : (browser || os);
+    return installed ? name + ' (installed)' : name;
+  }
+
   // Hand one subscription to the server. Idempotent: it is matched on the
   // endpoint, so sending the same one twice updates it rather than doubling it.
   function tell(sub){
     var raw = sub.toJSON();
-    return fetch('/push/subscribe', {
+    return fetch('/notify/subscribe', {
       method: 'POST',
       credentials: 'same-origin',
       headers: {
@@ -309,10 +524,69 @@ const cardJS = `<script>
       body: JSON.stringify({
         endpoint: sub.endpoint,
         keys: {p256dh: raw.keys.p256dh, auth: raw.keys.auth},
-        label: navigator.platform || ''
+        label: deviceLabel()
       })
     }).then(function(res){ return res.json(); });
   }
+
+  // Which copy of the app is actually installed on this device.
+  //
+  // The record said "sent — the device has not said it arrived" five times
+  // running, and that line has two completely different causes: the worker
+  // never woke, or the worker woke and is too old to contain the code that
+  // reports back. Same symptom, opposite fixes.
+  //
+  // So ask it. A worker built after this was written answers with its version;
+  // an older one has no message handler and never replies, and the silence is
+  // the diagnosis. Two seconds, because a sleeping worker has to be started
+  // before it can answer and that is not instant on a phone.
+  var workerLine = document.getElementById('push-worker');
+  var update = document.getElementById('push-update');
+  function saidWorker(text, stale){
+    if (!workerLine) return;
+    workerLine.textContent = text;
+    workerLine.hidden = false;
+    if (stale && update) update.classList.remove('d-none');
+  }
+  function askWorker(){
+    if (!workerLine) return;
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      var sw = reg && (reg.active || reg.waiting);
+      if (!sw) { saidWorker('This device has no copy of the app installed yet. Reload the page.', true); return; }
+      var chan = new MessageChannel();
+      var answered = false;
+      chan.port1.onmessage = function(e){
+        answered = true;
+        var v = (e.data && e.data.version) || '?';
+        saidWorker('This device runs ' + v + '.', false);
+      };
+      try { sw.postMessage({mu: 'version'}, [chan.port2]); } catch (err) {}
+      setTimeout(function(){
+        if (answered) return;
+        saidWorker('This device is running an old copy of the app, which cannot ' +
+          'report whether a notification arrived. Update it.', true);
+      }, 2000);
+    }).catch(function(){});
+  }
+  askWorker();
+
+  // Force the browser to fetch the worker again and take the new one. mu.js
+  // calls skipWaiting on install, so a fresh copy activates without waiting for
+  // every tab to close — the reload is so this page is controlled by it.
+  if (update) update.addEventListener('click', function(){
+    update.disabled = true;
+    update.textContent = 'Updating…';
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if (!reg) return;
+      return reg.update();
+    }).then(function(){
+      location.reload();
+    }).catch(function(){
+      update.disabled = false;
+      update.textContent = 'Update this device';
+      say('Could not update this device.');
+    });
+  });
 
   var test = document.getElementById('push-test');
   var off = document.getElementById('push-off');
@@ -350,7 +624,7 @@ const cardJS = `<script>
       // re-registers itself.
       var done = sub ? sub.unsubscribe() : Promise.resolve();
       return done.then(function(){
-        return fetch('/push/unsubscribe', {
+        return fetch('/notify/unsubscribe', {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
@@ -376,10 +650,21 @@ const cardJS = `<script>
   if (test) test.addEventListener('click', function(){
     test.disabled = true;
     test.textContent = 'Sending…';
-    fetch('/push/test', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {'X-CSRF-Token': document.getElementById('push-csrf').value}
+    // This browser's own subscription, so the server sends there and nowhere
+    // else. Without it the test proved that *a* device works, which is not
+    // what the answer said and not what anybody wanted to know.
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).catch(function(){ return null; }).then(function(sub){
+      return fetch('/notify/test', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.getElementById('push-csrf').value
+        },
+        body: JSON.stringify({endpoint: sub ? sub.endpoint : ''})
+      });
     }).then(function(res){ return res.json(); }).then(function(data){
       test.disabled = false;
       test.textContent = 'Send a test';
@@ -387,8 +672,20 @@ const cardJS = `<script>
       // from the button being dead, which is what it looked like — and if the
       // notification itself does not arrive, "the push service took it" is the
       // fact that tells you the problem is on the device and not here.
-      if (data && data.ok) say('Sent. It should appear on this device.');
-      else say((data && data.error) || 'That did not work.');
+      //
+      // Named, because which push service took it is most of the diagnosis:
+      // web.push.apple.com is a phone, fcm.googleapis.com is usually not.
+      if (!data || !data.ok) { say((data && data.error) || 'That did not work.'); return; }
+      if (data.here) {
+        say('Sent to this device' + (data.where ? ' via ' + data.where : '') +
+            '. If nothing appears, the push service took it and the device did not show it.');
+      } else {
+        // No endpoint to send: this page could not name its own subscription,
+        // so it went to everything registered. Say that rather than claim a
+        // device the server never checked.
+        say('Sent to all ' + (data.devices || 0) + ' registered device(s) — this browser ' +
+            'could not name its own, so turn notifications off and on again here.');
+      }
     }).catch(function(){
       test.disabled = false;
       test.textContent = 'Send a test';

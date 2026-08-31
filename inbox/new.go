@@ -423,20 +423,6 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		HTML: b.String()})
 }
 
-// newLink is the way in, on the inbox itself.
-//
-// Drawn only where mail can actually leave: an instance with no mail domain
-// configured has nowhere to send from, and a New button that always ends in
-// "there is no mail domain here" is worse than no button. MaySendOut is the
-// other half and is deliberately not checked — it depends on the recipient, and
-// refusing before somebody has typed one would be guessing.
-func newLink() string {
-	if !mail.Reachable() {
-		return ""
-	}
-	return `<a class="pill ib-new-link" href="/inbox/new">New</a>`
-}
-
 // sendText answers an SMS conversation with a text.
 //
 // Through sms.Send, which is where every rule about what a text costs lives —

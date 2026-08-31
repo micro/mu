@@ -55,19 +55,32 @@ func TestHandlePatternMatchIgnoresUnsupportedPrompts(t *testing.T) {
 	}
 }
 
-func TestGuestChatAuthNoticeExplainsLoginAndAgentFallback(t *testing.T) {
+// The way out of this notice has to be a way in.
+//
+// The previous version of this test asserted the notice contained "/agent" and
+// "Try Mu without an account", both of which it did, and the link bounced every
+// reader who took it to /login — /agent checks auth in its handler. The test
+// pinned the copy and was silent about the one thing the copy promised.
+//
+// So: name the sign-in doors, and require the no-account door to be the front
+// page, which answers a stranger. TestNoSignedOutCTASendsAStrangerToLogin in
+// test/ holds the general rule against the route table.
+func TestGuestChatAuthNoticeOffersADoorAStrangerCanOpen(t *testing.T) {
 	html := guestChatAuthNotice()
 
 	for _, want := range []string{
 		"Sign in to use saved chat.",
-		"/agent",
-		"Try Mu without an account",
+		`href="/"`,
 		"/login?redirect=/chat",
 		"/signup?redirect=/chat",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("guest chat auth notice missing %q in %s", want, html)
 		}
+	}
+	if strings.Contains(html, `href="/agent"`) {
+		t.Error("the notice sends a signed-out reader to /agent, which refuses " +
+			"without a session — the offer of a way in is a redirect to /login")
 	}
 }
 

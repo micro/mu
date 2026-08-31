@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/agent/micro"
@@ -109,6 +110,20 @@ type QueryOpts struct {
 	// tokens on every turn and most questions have nothing to do with it.
 	Extra string
 	Tools []string // optional tool allow-list (user-defined agent); empty = all
+	// Model is which model to answer with, when this caller has a preference.
+	//
+	// Per-agent rather than per-instance because the jobs differ in what they
+	// need: a lookup is one round and any competent model does it, while a long
+	// run of tool calls rewards the model that holds together over ten of them.
+	// One global setting makes that a single decision for both, which means
+	// paying frontier prices for a weather question or scrimping on the one
+	// that builds things.
+	//
+	// Empty means the instance's own choice — see nativeLLMFor. A model whose
+	// provider has no key here is ignored with a line in the log, the same as a
+	// mistyped AGENT_MODEL, because an agent that answers beats one that fails
+	// closed over configuration.
+	Model string
 	// Stream reports the answer as it is produced, for a client that shows it
 	// arriving. Zero value means nobody is listening, which is every client
 	// but the web today — and the reason streaming was unreachable to them is
@@ -333,11 +348,28 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			} else {
 				cfg.ContextID = id
 				cfg.InitialConvHTML = renderThreadTurns(accountID, id)
+				// A run still in flight when this page loaded. See
+				// agent.Pending: the component shows that it is working and
+				// polls until the answer lands, rather than leaving the
+				// question sitting there with nothing under it.
+				cfg.Pending = Pending(accountID, id)
 			}
 		}
 	}
 
 	// Prefill prompt from ?q / ?prompt (e.g. home card deep-links).
+	//
+	// The one query that stays a query, and the reason is that here the URL *is*
+	// the message: a link that asks a question has nowhere else to carry it, and
+	// somebody constructed and shared this one deliberately. It is not a search
+	// box — the box on this page posts. See AGENTS.md, "What may travel in a URL".
+	//
+	// It is taken out of the address bar once it has been used — see the
+	// replaceState below, and the same on Home — so it does not sit in the
+	// history of whoever followed the link. That closes one of the four places a
+	// URL comes to rest. The instance's own access log is another and records the
+	// path only. The reverse proxy's log is the one that stays open, and it is
+	// the price of a link that asks a question at all.
 	prefill := r.URL.Query().Get("prompt")
 	if prefill == "" {
 		prefill = r.URL.Query().Get("q")
@@ -376,6 +408,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		if last := latestThreadFor(accountID, selAgent, named); last != "" {
 			cfg.ContextID = last
 			cfg.InitialConvHTML = renderThreadTurns(accountID, last)
+			cfg.Pending = Pending(accountID, last)
 			activeRoot = last
 		}
 	}
@@ -439,7 +472,11 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// records behind them, and the strip changed shape as you moved between
 	// agents. This is the page; Connect is the link in the bar above, which was
 	// already there and says what it does.
+	// This page is for talking to it, so the box asks rather than searches.
+	// See app.ChatConfig.Ask — search is the default everywhere else, because
+	// search works with no model and a page about an agent obviously does not.
 	cfg.Transcript = true
+	cfg.Ask = true
 	main := app.ChatComponent(cfg)
 	if elsewhere != "" {
 		main = elsewhere
@@ -511,12 +548,7 @@ func openThread(accountID, id string) string {
 func renderThreadTurns(accountID, threadID string) string {
 	var b strings.Builder
 	for _, m := range thread.Messages(accountID, threadID, inbox.MessagesShown) {
-		if m.Role == thread.RoleAgent {
-			b.WriteString(`<div class="mu-agent"><div class="card" id="agent-response">` +
-				app.RenderString(m.Text) + `</div></div>`)
-			continue
-		}
-		b.WriteString(`<div class="mu-user">` + htmlEsc(m.Text) + `</div>`)
+		b.WriteString(renderTurn(m))
 	}
 	return b.String()
 }
@@ -551,49 +583,6 @@ const railShown = 40
 // /inbox, where you deal with what came in. What is here is the chat: the
 // conversations you opened on this instance's own screens, were present for,
 // and watched the answer to.
-// handledThreads is what this agent dealt with that arrived, rather than what
-// you opened here.
-//
-// The other half of the same split, and its absence was a lie on the front
-// page. Home shows each agent's last activity, counting every conversation it
-// answered on — so a WhatsApp message answered five minutes ago appeared under
-// the agent's name, and clicking through landed on a rail that deliberately
-// excludes arrivals. The row advertised something the destination would not
-// show.
-//
-// Two ways to fix that and only one of them keeps both pages honest. Filtering
-// the preview to match the rail would leave an agent that only ever answers
-// mail and texts reporting that it has done nothing, which is worse than the
-// mismatch. So the rail says what it handled and links into the inbox, where
-// dealing with it happens — an agent-scoped view of arrivals rather than a
-// second copy of /inbox.
-func handledThreads(accountID, agentID string, named bool) []thread.Thread {
-	var out []thread.Thread
-	for _, t := range thread.List(accountID, 0) {
-		if !thread.Arrived(t) || thread.IsHeld(t) {
-			continue
-		}
-		if named && t.Agent != agentID {
-			continue
-		}
-		// Answered, not merely addressed. A conversation an agent stayed quiet
-		// on is not something it handled — see latestByAgent, which learned the
-		// same thing when Micro's row reported a DMARC report nothing had read.
-		if !answered(accountID, t) {
-			continue
-		}
-		out = append(out, t)
-		if len(out) >= handledShown {
-			break
-		}
-	}
-	return out
-}
-
-// handledShown bounds it. This is a sign of life and a way through to the
-// inbox, not a second mailbox.
-const handledShown = 5
-
 func chatThreads(accountID, agentID string, named bool) []thread.Thread {
 	var out []thread.Thread
 	for _, t := range thread.List(accountID, 0) {
@@ -671,7 +660,19 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
 		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
-		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
+		`<div class="chat-sess-scroll">` +
+		// Chats, which is what the store has always called them in every way
+		// but this one. The record is threads.json, the package is
+		// internal/thread, the types are thread.Thread and thread.Message —
+		// "Conversations" appeared in exactly one place, this heading, and was
+		// a word the UI invented for something the code names twice over.
+		//
+		// Not "Sessions": auth.Session is a login, and reusing it here would
+		// make the one word in this product that means "you are signed in"
+		// also mean "a chat you had". Chat is what these are, it is what the
+		// button under them starts, and thread.WebClient is the client that
+		// makes them.
+		`<div class="chat-sess-head">Chats</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
 		// "No conversations yet" is a true sentence that leaves somebody looking
@@ -725,31 +726,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 	}
 	b.WriteString(`</div>`)
 
-	// And what it handled that arrived, which is not a conversation you can
-	// continue here — it belongs to the inbox, and these link there. Without
-	// this, an agent whose whole job is answering mail and texts reads as an
-	// agent that has never done anything, and Home says otherwise on the same
-	// screen.
-	if handled := handledThreads(accountID, agentID, named); len(handled) > 0 {
-		b.WriteString(`<div class="chat-sess-head">Handled</div><div class="chat-sess-list">`)
-		for _, t := range handled {
-			title := strings.TrimSpace(t.Subject)
-			if title == "" {
-				title = strings.TrimSpace(t.Key)
-			}
-			if title == "" {
-				title = "Untitled"
-			}
-			if len(title) > 60 {
-				title = title[:60] + "…"
-			}
-			b.WriteString(`<a class="chat-sess" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
-				htmlEsc(title) + ` ` + app.Pill(app.ClientName(t.Client)) + `</a>`)
-		}
-		b.WriteString(`</div>`)
-	}
-
-	b.WriteString(sessionDeleteJS(base) + `</aside>`)
+	b.WriteString(`</div>` + sessionDeleteJS(base) + `</aside>`)
 	return b.String()
 }
 
@@ -870,6 +847,36 @@ const chatPageJS = `<script>
       return m?decodeURIComponent(m[1]):'';
     };
   }
+  // How much page is above the conversation, measured rather than guessed.
+  //
+  // .chat-layout is one screen tall: height:calc(100vh - var(--chat-chrome)).
+  // Nothing has ever set --chat-chrome. It was referenced once, in its own
+  // fallback, so every instance has used 120px — and the chrome above this
+  // layout is 192px, so the column has always been 72px taller than the window.
+  //
+  // That was invisible while the rail held one scrolling list: the overflow was
+  // empty space below a scroll region, clipped by .chat-side's overflow:hidden
+  // and noticed by nobody. Then the rail grew a second section pinned under the
+  // first, and the 72px that falls off the bottom of the screen became the
+  // thing somebody is trying to read. Reported as a section overlapping the
+  // bottom of the conversations.
+  //
+  // Measured on every load and resize, because the number is a fact about the
+  // rendered page — the nav wraps at some widths, a banner appears — and any
+  // constant here is wrong again the next time something above it changes.
+  function muChatChrome(){
+    var el=document.querySelector('.chat-layout');
+    if(!el)return;
+    // Its distance from the top of the document, not of the viewport: the page
+    // may be scrolled when this runs.
+    var top=el.getBoundingClientRect().top+(window.scrollY||0);
+    document.documentElement.style.setProperty('--chat-chrome',Math.max(0,Math.round(top))+'px');
+  }
+  muChatChrome();
+  window.addEventListener('resize',muChatChrome);
+  // Fonts land after first paint and move everything above the layout down.
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(muChatChrome);
+
   // A scrim left behind by the page before this one. Soft navigation keeps
   // body's children, so without this the grey survives a reload of the layout.
   document.querySelectorAll('.chat-scrim').forEach(function(s){s.remove();});
@@ -908,7 +915,19 @@ const chatLayoutCSS = `<style>
      the fold were unreachable, which is worse than a long page. */
   .chat-side .chat-rail{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
   .chat-main{min-height:0;display:flex;flex-direction:column;overflow-y:auto}
-  .chat-sess-list{min-height:0;overflow-y:auto}
+  /* The rail scrolls once, below the New button — not once per list.
+   *
+   * This was .chat-sess-list{overflow-y:auto}, written when the rail held
+   * exactly one list. It now holds two, Conversations and what the agent
+   * answered in the inbox, and two auto-height scrollers sharing a fixed-height
+   * column both size to their own content: together they overrun the rail, and
+   * the second is drawn over the bottom of the first. Reported as a section
+   * overlapping the conversations.
+   *
+   * A scroll region is a property of the column, not of each list in it. One
+   * wrapper carries it, the New button stays put above, and a third section
+   * added later cannot bring the overlap back. */
+  .chat-sess-scroll{flex:1 1 auto;min-height:0;overflow-y:auto}
 }
 .chat-side .chat-rail{width:auto}
 .chat-rail{width:250px;flex-shrink:0}
@@ -920,7 +939,14 @@ const chatLayoutCSS = `<style>
    other conversations. It held a chip naming this agent and a Connect link
    too; both were a second copy of what /agents does, so both are gone and the
    rules for them with them. Same shape as .conn-back on /agent/connect. */
-.agent-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
+/* The bar holds one control and that control is phone-only, so on a desktop
+   this is an empty flex row 14px tall with 14px of margin under it — 38px of
+   nothing above the input, which put the box lower than the + New button
+   beside it and made the two columns start at different heights. Measured:
+   the button at y=110, the input at y=148.
+   Hidden here and shown in the phone query below, rather than left to lay
+   out around a child that is not there. */
+.agent-bar{display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
 .chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);padding:0 10px 6px}
 /* Tokens, not hex.
@@ -962,6 +988,7 @@ const chatLayoutCSS = `<style>
    children size to their content rather than the screen and a wide answer pushes
    the input off the side. Hence the stretch. */
 @media(max-width:760px){
+  .agent-bar{display:flex}
   .chat-layout{flex-direction:column;gap:12px;align-items:stretch}
   .chat-main{width:100%;min-width:0;max-width:100%}
   .chat-open-list{display:inline-block;border:1px solid var(--border-color,#e5e5e5);
@@ -971,8 +998,12 @@ const chatLayoutCSS = `<style>
   .chat-open-list::after{content:" ▾";color:#999}
   /* The sheet. Off-screen rather than display:none, so opening it animates and
      so the panels inside keep their state. */
+  /* The sheet ends above the tab bar. It is fixed to bottom:0 with a lower
+     z-index than the bar, so without this the last conversation in the list is
+     drawn underneath it and cannot be tapped. --tabbar already carries the
+     safe-area inset, so it replaces it rather than adding to it. */
   .chat-side{position:fixed;left:0;right:0;bottom:0;max-height:72vh;overflow-y:auto;
-    width:auto;padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+    width:auto;padding:12px 14px calc(14px + var(--tabbar, env(safe-area-inset-bottom)));
     background:var(--card-background,#fff);border-top:1px solid var(--border-color,#e5e5e5);
     border-radius:14px 14px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);
     z-index:60;transform:translateY(101%);transition:transform .18s ease;visibility:hidden}
@@ -985,7 +1016,10 @@ const chatLayoutCSS = `<style>
   /* A vertical list, which is what a list of conversations is. As a horizontal
      scroller everything past the third was off the side of the screen with
      nothing saying so. */
-  .chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap;max-height:52vh;overflow-y:auto}
+  .chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap}
+  /* Same reason as the desktop rule: the cap belongs to the sheet, not to each
+     list in it, or two lists get 52vh each and the sheet is 104vh tall. */
+  .chat-sess-scroll{max-height:52vh;overflow-y:auto}
   .chat-sess-row{flex-shrink:0;max-width:none}
   .chat-sess{font-size:14px;padding:10px}
   .agents-list>div{padding:10px 8px;font-size:14px}
@@ -1108,6 +1142,13 @@ func handleDeleteFlow(w http.ResponseWriter, r *http.Request, id string) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// sseHeartbeat is how often a quiet stream says something.
+//
+// Short enough to beat the shortest idle timeout in the usual path — thirty
+// seconds is common in proxies and some browsers — and long enough that it is
+// invisible.
+const sseHeartbeat = 10 * time.Second
+
 // sse writes a single Server-Sent Events data line and flushes.
 func sse(w http.ResponseWriter, event map[string]any) {
 	data, _ := json.Marshal(event)
@@ -1126,35 +1167,98 @@ func sse(w http.ResponseWriter, event map[string]any) {
 // second pipeline, so there is nothing to report: a failure is reported to the
 // person who asked, on the stream they are already reading.
 func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, threadID string) {
+	// One writer, and something on the wire while nothing is happening.
+	//
+	// The hooks below are called from whatever goroutine is running the tool,
+	// so every write to w needs the lock — that was a race before there was a
+	// heartbeat to race with.
+	//
+	// The heartbeat is why this exists. Between one tool finishing and the next
+	// starting the model is thinking, which can be a minute, and in that minute
+	// nothing was written at all. An idle connection is what proxies and
+	// browsers close, so a long build ended as "network error" on a run that
+	// was working perfectly — the answer arrived at a socket nobody was holding
+	// any more. A comment line is not an event, so the client ignores it and
+	// the connection stays up.
+	var wmu sync.Mutex
+	send := func(ev map[string]any) {
+		wmu.Lock()
+		defer wmu.Unlock()
+		sse(w, ev)
+	}
+	beating := make(chan struct{})
+	defer close(beating)
+	go func() {
+		t := time.NewTicker(sseHeartbeat)
+		defer t.Stop()
+		for {
+			select {
+			case <-beating:
+				return
+			case <-t.C:
+				wmu.Lock()
+				fmt.Fprint(w, ": still here\n\n")
+				if f, ok := w.(http.Flusher); ok {
+					f.Flush()
+				}
+				wmu.Unlock()
+			}
+		}
+	}()
+
 	streaming := false
 	emitted := false
 	var captured strings.Builder
 	var nativeTools []string
 	// The tool names behind those labels, for the run record.
 	var nativeToolNames []string
+	// Pairing a start with its end, by the provider's call id.
+	//
+	// It was keyed on the label, which is the same string for every command in
+	// a build — so after the first one the screen went quiet and stayed on the
+	// between-tools label for the rest of the run. Guarded by the same mutex as
+	// the writes: these hooks are called from whichever goroutine is running
+	// the tool.
 	startedTools := map[string]bool{}
 	endedTools := map[string]bool{}
+	// A call with no id still has to pair with itself, so it gets one.
+	var unnamed int
+	keyOf := func(run ToolRun) string {
+		if run.ID != "" {
+			return run.ID
+		}
+		unnamed++
+		return fmt.Sprintf("%s#%d", run.Name, unnamed)
+	}
 
 	// The hooks travel in opts now, so this handler translates events to SSE
 	// frames and owns nothing else about the run.
 	sopts := opts
 	sopts.Stream = StreamHooks{
-		ToolStart: func(label, name string) {
-			if startedTools[label] {
+		ToolStart: func(run ToolRun) {
+			wmu.Lock()
+			key := keyOf(run)
+			if startedTools[key] {
+				wmu.Unlock()
 				return
 			}
-			startedTools[label] = true
+			startedTools[key] = true
 			emitted = true
-			nativeTools = append(nativeTools, label)
-			nativeToolNames = append(nativeToolNames, NativeToolName(name))
-			sse(w, map[string]any{"type": "tool_start", "name": label, "message": label})
+			nativeTools = append(nativeTools, run.Label)
+			nativeToolNames = append(nativeToolNames, NativeToolName(run.Name))
+			wmu.Unlock()
+			send(map[string]any{"type": "tool_start", "name": run.Label, "message": run.Label})
 		},
-		ToolEnd: func(label, name string) {
-			if endedTools[label] {
+		ToolEnd: func(run ToolRun) {
+			wmu.Lock()
+			key := keyOf(run)
+			if endedTools[key] {
+				wmu.Unlock()
 				return
 			}
-			endedTools[label] = true
-			sse(w, map[string]any{"type": "tool_done", "name": label, "message": label + " — done"})
+			endedTools[key] = true
+			wmu.Unlock()
+			send(map[string]any{"type": "tool_done", "name": run.Label, "message": run.Label + " — done"})
 		},
 		Token: func(tok string) {
 			if shouldHoldNativeNewsStreamTokens(prompt, nativeTools) {
@@ -1164,10 +1268,10 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			if !streaming {
 				streaming = true
 				emitted = true
-				sse(w, map[string]any{"type": "stream_start"})
+				send(map[string]any{"type": "stream_start"})
 			}
 			captured.WriteString(tok)
-			sse(w, map[string]any{"type": "stream_token", "token": tok})
+			send(map[string]any{"type": "stream_token", "token": tok})
 		},
 	}
 	answer, err := runNative(accountID, prompt, sopts)
@@ -1181,8 +1285,8 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			app.Log("agent", "stream failed before output: %v", err)
 		}
 		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
-		sse(w, map[string]any{"type": "error", "message": agentErrorMessage(err)})
-		sse(w, map[string]any{"type": "done"})
+		send(map[string]any{"type": "error", "message": agentErrorMessage(err)})
+		send(map[string]any{"type": "done"})
 		return
 	}
 
@@ -1194,29 +1298,39 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	if !streaming && shouldReplayFinalNativeAnswer(prompt, nativeTools, captured.Len()) {
 		streaming = true
 		emitted = true
-		sse(w, map[string]any{"type": "stream_start"})
-		sse(w, map[string]any{"type": "stream_token", "token": answer})
+		send(map[string]any{"type": "stream_start"})
+		send(map[string]any{"type": "stream_token", "token": answer})
 	}
 	// What was said, in the record. The workflow record below is how it was
 	// produced; this is the answer itself, and it is what the next message in
 	// this conversation will be given as history.
-	Answered(accountID, threadID, answer, flow.ID)
-
+	// No account, no record.
+	//
+	// A guest asking from the front page has no account, and everything below
+	// this line is keyed on one — the conversation, the workflow record, the
+	// steps. Writing them anyway produces rows owned by nobody: nothing lists
+	// them, nothing can delete them, and the account they name is the empty
+	// string. The guard is on the account rather than on a flag passed down,
+	// because that is the actual invariant and it holds for every caller of
+	// this function.
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
-	updateFlow(flow.ID, func(f *Flow) {
-		f.Answer = answer
-		f.HTML = html
-		f.Status = "done"
-		// What it ran. The stream emitted tool_start and tool_done to the
-		// browser and then dropped both on the floor, so a finished run recorded
-		// an answer and no account of how it got there.
-		for _, name := range nativeToolNames {
-			f.Steps = append(f.Steps, FlowStep{Tool: name})
-		}
-	})
-	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
-	sse(w, map[string]any{"type": "done"})
+	if accountID != "" {
+		Answered(accountID, threadID, answer, flow.ID)
+		updateFlow(flow.ID, func(f *Flow) {
+			f.Answer = answer
+			f.HTML = html
+			f.Status = "done"
+			// What it ran. The stream emitted tool_start and tool_done to the
+			// browser and then dropped both on the floor, so a finished run
+			// recorded an answer and no account of how it got there.
+			for _, name := range nativeToolNames {
+				f.Steps = append(f.Steps, FlowStep{Tool: name})
+			}
+		})
+	}
+	send(map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
+	send(map[string]any{"type": "done"})
 }
 
 // agentErrorMessage is what a failed run says to the person who asked.
@@ -1256,19 +1370,51 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// An account, or nothing. See RunHandler in run.go for why the signed-out
-	// demonstration went.
+	// An account, or a guest. See below for what a guest is allowed.
 	_, acc := auth.TrySession(r)
 	if acc == nil {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error":"Sign in to ask the agent."}`)) //nolint:errcheck
-		return
+		// A stranger can ask, which is the whole point of a front page.
+		//
+		// This was a flat 401 reading "Sign in to ask the agent", and the front
+		// page's only control is this box — so every question a visitor typed
+		// was answered with a sign-up form. ChatGPT answers without an account.
+		// Claude answers without an account. Google has always answered without
+		// an account. A personal server that refuses to say anything until you
+		// register is asking for more than the products it is defined against.
+		//
+		// What a guest gets is bounded and it is public:
+		//
+		//   - Rate limited per IP, by the limiter that already existed for
+		//     exactly this and was wired to nothing on this path. Localhost is
+		//     never limited, so a self-hosted instance is unrestricted for the
+		//     person running it.
+		//   - Public tools only. QueryOpts.Public is set below, which drops
+		//     every account-scoped service — mail, wallet, files, the inbox —
+		//     through service.AccountScoped, the same policy the app SDK reads.
+		//   - Nothing written down. No flow, no thread, no memory: there is no
+		//     account to own any of it, and a record belonging to nobody is a
+		//     record nobody can delete.
+		//
+		// An operator who does not want to pay for strangers sets
+		// GUEST_MAX_PER_IP=0 and gets the old behaviour, stated below.
+		if !app.GuestCallAllowed(app.ClientIP(r)) {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":"This instance is not answering strangers right now."}`)) //nolint:errcheck
+			return
+		}
 	}
 
 	// Charge up-front: the agent is our most expensive op, so it is metered
 	// like web_fetch and chat.
-	accountID := acc.ID
+	//
+	// Empty for a guest, and every use of it below is guarded — the record is
+	// keyed on an account and a guest has none.
+	accountID := ""
+	guest := acc == nil
+	if acc != nil {
+		accountID = acc.ID
+	}
 
 	// The conversation this message continues, in the system of record.
 	//
@@ -1278,7 +1424,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// rail links through, so an open tab keeps working.
 	//
 	threadID := ""
-	if req.ContextID != "" {
+	if !guest && req.ContextID != "" {
 		threadID = openThread(accountID, req.ContextID)
 	}
 
@@ -1320,7 +1466,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// The web drives its own run because it streams, so it cannot hand the whole
 	// turn to Ask and wait — but it must not write its own version of the record
 	// either, which is why it goes through the same three calls Ask uses.
-	{
+	if !guest {
 		if err := saveFlow(flow); err != nil {
 			app.Log("agent", "Failed to create flow: %v", err)
 		}
@@ -1351,11 +1497,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// conversation came to be one thing.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID, "thread": threadID})
 
-	nopts := QueryOpts{}
-	if req.Cards && CardContextFunc != nil {
+	nopts := QueryOpts{Public: guest}
+	if !guest && req.Cards && CardContextFunc != nil {
 		nopts.Extra = CardContextFunc(accountID)
 	}
-	if ua := resolveAgent(accountID, req.Agent); ua != nil {
+	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
 		nopts.System = ua.SystemPrompt
 		nopts.Tools = ua.Tools
 	}

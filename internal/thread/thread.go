@@ -49,6 +49,7 @@ package thread
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -199,27 +200,82 @@ var (
 	held     = map[string]int{}                // account → messages, for trim
 )
 
-func init() {
+// The record follows $HOME, and is read the first time somebody asks for it.
+//
+// This was read in init(), which sounds harmless and was not. init runs before
+// anything can set HOME, so the record a process worked on was whichever one
+// existed at the instant the binary started, for the whole of its life. A test
+// that points HOME at a fresh directory — every test in this repo that touches
+// a conversation does — got the real store regardless: it read the machine's
+// actual conversations, added its fixtures to them, and the flusher wrote the
+// result back to disk a second later.
+//
+// The live store on the machine this was found on held 38 threads. One was a
+// person's. The other 37 were fixtures called bridge_reader, held_reader,
+// mailbox_unread and so on, deposited by `go test` over weeks.
+//
+// It also produced a bug that read as a product bug: the IMAP bridge returning
+// every message twice. It was not the bridge. The bridge test had run before,
+// left its two messages in the real store under the account name it uses, and
+// on the next run found its own leavings sitting beside the two it had just
+// written. Nothing in the failure pointed at HOME, and nothing could: the test
+// sets HOME correctly, and the code reads it correctly — a hundred milliseconds
+// too early.
+//
+// So: load on first use, from the HOME in effect then, and load again if HOME
+// changes under us. Flush writes back only to the home it read from, so a flush
+// that falls due after a test has restored HOME cannot spill fixtures into the
+// real one.
+var (
+	loaded     bool   // the record has been read
+	loadedFrom string // the $HOME it was read from
+	flushOnce  sync.Once
+)
+
+func ensure() {
+	home := os.Getenv("HOME")
+
+	mu.RLock()
+	ours := loaded && loadedFrom == home
+	mu.RUnlock()
+	if ours {
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if loaded && loadedFrom == home {
+		return
+	}
+
+	// A different home is a different record. Anything unflushed belonged to
+	// the old one and goes with it.
+	threads = map[string]*Thread{}
+	messages = map[string][]*Message{}
+	owned = map[string]map[string]*Thread{}
+	held = map[string]int{}
+	dirty.Store(false)
+	loaded, loadedFrom = true, home
+
 	var stored struct {
 		Threads  []*Thread  `json:"threads"`
 		Messages []*Message `json:"messages"`
 	}
-	if err := data.LoadJSON("threads.json", &stored); err != nil {
-		go flusher()
-		return
+	if err := data.LoadJSON("threads.json", &stored); err == nil {
+		for _, t := range stored.Threads {
+			threads[t.ID] = t
+			ownUnlocked(t)
+		}
+		for _, m := range stored.Messages {
+			messages[m.Thread] = append(messages[m.Thread], m)
+			held[m.Account]++
+		}
+		for id := range messages {
+			sortByTime(messages[id])
+		}
 	}
-	for _, t := range stored.Threads {
-		threads[t.ID] = t
-		ownUnlocked(t)
-	}
-	for _, m := range stored.Messages {
-		messages[m.Thread] = append(messages[m.Thread], m)
-		held[m.Account]++
-	}
-	for id := range messages {
-		sortByTime(messages[id])
-	}
-	go flusher()
+
+	flushOnce.Do(func() { go flusher() })
 }
 
 // ownUnlocked files a thread under its account. Caller holds mu.
@@ -252,6 +308,7 @@ func dropUnlocked(t *Thread) {
 // somebody else's service chose — a phone number is not a secret, and two
 // accounts may well be handed the same channel id.
 func Open(account, client, key string) *Thread {
+	ensure()
 	if account == "" || client == "" || key == "" {
 		return nil
 	}
@@ -272,6 +329,7 @@ func Open(account, client, key string) *Thread {
 
 // Find returns an existing conversation, or nil.
 func Find(account, client, key string) *Thread {
+	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
 	return findUnlocked(account, client, key)
@@ -288,6 +346,7 @@ func findUnlocked(account, client, key string) *Thread {
 
 // Get returns a conversation by id, scoped to its owner.
 func Get(account, id string) *Thread {
+	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
 	if t := threads[id]; t != nil && t.Account == account {
@@ -303,6 +362,7 @@ func Get(account, id string) *Thread {
 // string somebody else's mail server wrote — unscoped, quoting one would attach
 // a stranger to somebody else's conversation and hand over its history.
 func ByRef(account string, refs ...string) *Thread {
+	ensure()
 	want := map[string]bool{}
 	for _, r := range refs {
 		for _, id := range Refs(r) {
@@ -372,6 +432,7 @@ func Refs(s string) []string {
 // gone first. Only Ref carries this — a message with none is only ever recorded
 // by whoever saw it.
 func Add(m Message) string {
+	ensure()
 	if m.Thread == "" || m.Account == "" || strings.TrimSpace(m.Text) == "" {
 		return ""
 	}
@@ -438,6 +499,7 @@ func Add(m Message) string {
 // colleague who has been added and has not said anything yet is still supposed
 // to see it.
 func Join(account, id string, p Party) {
+	ensure()
 	mu.Lock()
 	defer mu.Unlock()
 	t := threads[id]
@@ -478,6 +540,7 @@ func joinUnlocked(t *Thread, p Party) bool {
 
 // Parties is who is on a conversation, scoped to its owner.
 func Parties(account, id string) []Party {
+	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
 	t := threads[id]
@@ -490,6 +553,7 @@ func Parties(account, id string) []Party {
 // Messages returns a conversation's messages, oldest first. limit 0 is all of
 // them; a positive limit returns the most recent that many, still in order.
 func Messages(account, threadID string, limit int) []Message {
+	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -510,6 +574,7 @@ func Messages(account, threadID string, limit int) []Message {
 
 // List returns an account's conversations, most recently active first.
 func List(account string, limit int) []Thread {
+	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -591,6 +656,15 @@ func flusher() {
 // Exported for the two callers that cannot wait for the tick: a test that wants
 // to know the file is on disk, and anything shutting down.
 func Flush() {
+	// Only back to the home it was read from. A tick that falls due after a
+	// test has restored HOME would otherwise write that test's fixtures into
+	// the real store, which is how 37 of them got there.
+	mu.RLock()
+	ours := loaded && loadedFrom == os.Getenv("HOME")
+	mu.RUnlock()
+	if !ours {
+		return
+	}
 	if !dirty.Swap(false) {
 		return
 	}
@@ -672,6 +746,7 @@ func newID() string {
 // a week of writing to agent@ is a conversation with news from that point on.
 // The last agent to answer is the one the conversation is with.
 func SetAgent(account, id, agentID string) {
+	ensure()
 	mu.Lock()
 	defer mu.Unlock()
 	t := threads[id]
@@ -694,6 +769,7 @@ func SetAgent(account, id, agentID string) {
 // First one wins, like the derived subject it replaces: a thread is named by
 // how it started, and "Re: Re: Lunch" arriving on message nine is not a rename.
 func Name(account, id, subject string) {
+	ensure()
 	subject = strings.TrimSpace(subject)
 	if subject == "" {
 		return
@@ -719,14 +795,40 @@ func Name(account, id, subject string) {
 // and "there was nothing there" and "it is gone now" are the same outcome to
 // them.
 func Delete(account, id string) {
+	ensure()
 	mu.Lock()
-	defer mu.Unlock()
 	t := threads[id]
 	if t == nil || t.Account != account {
+		mu.Unlock()
 		return
 	}
+	gone := *t
 	dropUnlocked(t)
 	save()
+	mu.Unlock()
+
+	forget(gone)
+}
+
+// Deleted is told when a conversation is removed, so whatever else was written
+// down about it goes too.
+//
+// A hook because this store is underneath the product and the things holding
+// the other half of a conversation are not: agent/ keeps a workflow record per
+// run, and a run belongs to the conversation it was part of.
+//
+// Not an optional tidy-up. Deleting a conversation and leaving its runs behind
+// is not "the two records have different lifetimes", it is orphaned data that a
+// start-up migration then reads and uses to put the conversation back. See
+// agent.ForgetConversation.
+var Deleted func(t Thread)
+
+// forget runs the hook outside the lock, because what it calls will want to
+// read this store.
+func forget(t Thread) {
+	if Deleted != nil {
+		Deleted(t)
+	}
 }
 
 // Forget removes an account's whole record: every conversation, everything said
@@ -738,17 +840,27 @@ func Delete(account, id string) {
 // conversation you had ever had on disk, which is the worst possible thing to
 // forget to delete.
 func Forget(account string) {
+	ensure()
 	if account == "" {
 		return
 	}
 	mu.Lock()
-	defer mu.Unlock()
+	gone := make([]Thread, 0, len(owned[account]))
 	for _, t := range owned[account] {
+		gone = append(gone, *t)
 		dropUnlocked(t)
 	}
 	delete(owned, account)
 	delete(held, account)
 	save()
+	mu.Unlock()
+
+	// Everything written down about every one of them, for the same reason
+	// this function exists: deleting an account that leaves the runs behind
+	// has not deleted the transcript, it has moved it.
+	for _, t := range gone {
+		forget(t)
+	}
 }
 
 // SetRef records the client's identifier for a message after the fact.
@@ -758,6 +870,7 @@ func Forget(account string) {
 // has to be in the record. Without this the answer to an answer would not find
 // the conversation it belongs to.
 func SetRef(account, messageID, ref string) {
+	ensure()
 	if ref = strings.TrimSpace(ref); ref == "" {
 		return
 	}
@@ -819,6 +932,7 @@ const WhatsAppClient = "whatsapp"
 // record behind, which is the only thing that made an unclaimed account worth
 // having.
 func Rename(oldID, newID string) {
+	ensure()
 	if oldID == "" || newID == "" || oldID == newID {
 		return
 	}

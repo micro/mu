@@ -24,7 +24,13 @@ import (
 )
 
 // resultsShown bounds one page of results.
-const resultsShown = 50
+//
+// Ten, not fifty. Nobody reads to the fiftieth hit of a search they can refine
+// by typing another word, and every row carries its content — so the other
+// forty were an article body each, read off disk, scored, rendered, and
+// scrolled past. A search that answers in the first few is a search that
+// worked; one that does not is a query to change, not a longer list.
+const resultsShown = 10
 
 // Handler serves /archive. No session required: everything it can show is
 // public by construction — an entry with an owner is never returned.
@@ -44,7 +50,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		entries = data.ByType(kind, resultsShown)
 	}
 
+	// The chips count what is on the page, not what is in the archive.
+	//
+	// They were always data.Kinds — the whole-archive breakdown — so a search
+	// for "bitcoin" put "market 658" beside a list of bitcoin results and
+	// invited the obvious reading. The number was true about the archive and
+	// false about everything else on the screen.
+	//
+	// With no query there is nothing filtered and the archive-wide counts are
+	// the right ones, which is also the cached path.
 	kinds := data.Kinds()
+	if query != "" {
+		kinds = data.KindsMatching(query)
+	}
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]any{
@@ -54,10 +72,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ar">`)
-	b.WriteString(`<p class="lens-lead">Everything this instance has collected — the news it reads, ` +
-		`the video it watches, the markets it follows, what it has written. One search across ` +
-		`all of it. What you have said to an agent is somewhere else, in ` +
-		app.TextLink("Recall", "/recall") + `.</p>`)
+	b.WriteString(`<p class="lens-lead">Everything this server has collected and kept — headlines, ` +
+		`video, market moves, what it has written. It archives as it goes, so this is what it ` +
+		`knew as well as what it knows. One search across all of it. What you have said to an ` +
+		`agent is somewhere else that it can ` + app.TextLink("Recall", "/recall") + `.</p>`)
 
 	b.WriteString(`<form method="GET" action="/archive" class="ar-form">`)
 	if kind != "" {
@@ -113,7 +131,10 @@ func row(e *data.IndexEntry) string {
 
 	return `<div class="ar-row">` +
 		`<div class="ar-meta">` + app.Pill(e.Type) +
-		html.EscapeString(app.TimeAgo(e.IndexedAt)) + `</div>` + head +
+		// When it happened, not when this instance indexed it. See
+		// data.PostedAt — IndexedAt is a fact about the index, and on a fresh
+		// install it stamps every row with the moment the instance booted.
+		html.EscapeString(app.TimeAgo(data.PostedAt(e))) + `</div>` + head +
 		`<div class="ar-body">` + html.EscapeString(trim(e.Content, 260)) + `</div></div>`
 }
 

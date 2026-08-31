@@ -64,9 +64,10 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	// are standing on, and nothing on either page said so.
 	var b strings.Builder
 	if services {
-		b.WriteString(`<p class="lens-lead">What is behind the tools. Every capability this ` +
-			`instance runs, with a page you can open and use yourself — this is what an agent is ` +
-			`reaching for when you write to it. Pin the ones you want in the sidebar.</p>`)
+		// No lead sentence. It said what a service is, which is a thing read
+		// once by somebody new and read past on every visit after that — and
+		// this is a catalogue somebody comes to in order to reach one of the
+		// things in it. The grid says what it is by being a grid of them.
 		b.WriteString(serviceGrid(r))
 	} else {
 		b.WriteString(`<p class="lens-lead">What an agent can call. Your agents here reach all ` +

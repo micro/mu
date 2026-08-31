@@ -202,7 +202,7 @@ func checkAI() healthCheck {
 			Name:   "AI model",
 			Status: "error",
 			Detail: "No AI provider configured",
-			Fix:    "Set ANTHROPIC_API_KEY, ATLAS_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL in /admin/config, or install Ollama",
+			Fix:    "Set ANTHROPIC_API_KEY, ATLASCLOUD_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL in /admin/config, or install Ollama",
 		}
 	}
 
@@ -255,7 +255,7 @@ func providerLabel() string {
 	switch {
 	case settings.Get("ANTHROPIC_API_KEY") != "":
 		return "Anthropic"
-	case settings.Get("ATLAS_API_KEY") != "" || settings.Get("OPENAI_API_KEY") != "":
+	case settings.Get("ATLASCLOUD_API_KEY") != "" || settings.Get("ATLAS_API_KEY") != "" || settings.Get("OPENAI_API_KEY") != "":
 		return "Atlas Cloud"
 	case settings.Get("OPENROUTER_API_KEY") != "":
 		return "OpenRouter"

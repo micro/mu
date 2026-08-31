@@ -34,6 +34,7 @@ import (
 // ProviderAnthropic is in ai.go, which had it first.
 const (
 	ProviderAtlasCloud = "atlascloud"
+	ProviderGemini     = "gemini"
 	ProviderOpenRouter = "openrouter"
 	ProviderLocal      = "openai"
 )
@@ -58,6 +59,10 @@ func PreferredProvider() (provider, key, baseURL string, ok bool) {
 	case ProviderAtlasCloud:
 		if k := getAtlasAPIKey(); k != "" {
 			return ProviderAtlasCloud, k, "", true
+		}
+	case ProviderGemini:
+		if k := getGeminiAPIKey(); k != "" {
+			return ProviderGemini, k, "", true
 		}
 	case ProviderOpenRouter:
 		if k := getOpenRouterAPIKey(); k != "" {
@@ -93,6 +98,8 @@ func normaliseProvider(s string) string {
 		return ProviderAnthropic
 	case "atlascloud", "atlas", "atlas_cloud", "atlas-cloud":
 		return ProviderAtlasCloud
+	case "gemini", "google":
+		return ProviderGemini
 	case "openrouter", "open_router", "open-router":
 		return ProviderOpenRouter
 	case "openai", "local", "ollama":
@@ -119,6 +126,11 @@ func PreferredModel(provider string, background bool) string {
 			return ModelDeepSeekFlash
 		}
 		return AtlasModel()
+	case ProviderGemini:
+		if background {
+			return ModelGeminiFlash
+		}
+		return GeminiModel()
 	case ProviderOpenRouter:
 		return OpenRouterModel()
 	}
@@ -127,4 +139,4 @@ func PreferredModel(provider string, background bool) string {
 
 // backgroundAnthropic is the cheap end of Anthropic's ladder: summaries, tags,
 // moderation and topics, which are high volume and barely care.
-const backgroundAnthropic = "claude-haiku-4-5-20251001"
+const backgroundAnthropic = ModelClaudeHaiku

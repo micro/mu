@@ -1,11 +1,15 @@
 package home
 
-// How things are, in a sentence.
+// How things are, in a sentence, and who else is here.
 //
-// The thing that must hold is that it says nothing when there is nothing to
-// say. It sits on the screen somebody sees most often, so a line reading
-// "Nothing new" costs a glance every visit and gives nothing back — and a
-// section that is always there stops being read.
+// What must hold is that the clauses say nothing when there is nothing to say.
+// This is on the screen somebody sees most often, so a line reading "Nothing
+// new" costs a glance every visit and gives nothing back.
+//
+// Who is here is no longer one of the clauses. It was, for a while, and it is
+// its own block under the box now — see here_test.go. What is left here is the
+// four clauses about your own day, and the rule that they say nothing when
+// there is nothing to say.
 
 import (
 	"strings"
@@ -17,14 +21,23 @@ import (
 	"mu/service/tasks"
 )
 
+// A quiet account gets nothing, and that includes being alone.
+//
+// "Nothing new" costs a glance and gives nothing back, on the screen somebody
+// sees most often. For one commit this drew a section saying "Just you here"
+// over a link to the chat, on the argument that who is present is true on the
+// quietest day. True, and the two most useless sentences on the page: it told
+// somebody they were alone and then invited them to go and talk about it. Who
+// is here is a strip of names under the box now, which states the same fact
+// without the sentence.
 func TestAQuietAccountGetsNoBrief(t *testing.T) {
 	const who = "brief-quiet"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 
-	if got := brief(who); got != "" {
-		t.Errorf("an account with nothing happening got %q", got)
+	if got := briefHTML(who); got != "" {
+		t.Errorf("an account with nothing happening, alone, got %q", got)
 	}
-	if got := brief(""); got != "" {
+	if got := briefHTML(""); got != "" {
 		t.Errorf("a signed-out reader got %q", got)
 	}
 }
@@ -44,7 +57,7 @@ func TestTheBriefSaysWhatArrivedAndWhoFrom(t *testing.T) {
 	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RolePerson,
 		Text: "Are you free Tuesday?", From: "henrik@example.com"})
 
-	got := brief(who)
+	got := briefHTML(who)
 	if !strings.Contains(got, "1 conversation") {
 		t.Errorf("the brief does not count what arrived:\n%s", got)
 	}
@@ -57,7 +70,7 @@ func TestTheBriefSaysWhatArrivedAndWhoFrom(t *testing.T) {
 
 	// Read, and it stops being news.
 	thread.MarkSeen(who, th.ID)
-	if got := brief(who); strings.Contains(got, "waiting") {
+	if got := briefHTML(who); strings.Contains(got, "waiting") {
 		t.Errorf("a conversation that has been read is still reported:\n%s", got)
 	}
 }
@@ -80,7 +93,7 @@ func TestTheBriefSeparatesWorkInHandFromWorkOwed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := brief(who)
+	got := briefHTML(who)
 	if !strings.Contains(got, "The agent is on") || !strings.Contains(got, "1 thing") {
 		t.Errorf("work in hand is not reported:\n%s", got)
 	}
@@ -92,20 +105,30 @@ func TestTheBriefSeparatesWorkInHandFromWorkOwed(t *testing.T) {
 	}
 }
 
-// It is a sentence, not a section: no rule and no heading, which is what
-// separates it from the two labelled blocks either side.
-func TestTheBriefIsNotASection(t *testing.T) {
+// Labelled like the blocks under it, and labelled by the same thing that
+// decides whether there is anything to label.
+//
+// It stood unlabelled while it was four counts this instance already held, on
+// the argument that a heading over one line is furniture. It is a written
+// sentence now, sitting immediately under a box you type into, and an
+// unlabelled line there reads as output from the box rather than as a block of
+// its own.
+func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
 	const who = "brief-shape"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 	if _, err := tasks.Create(who, "Something", "", tasks.Me, time.Time{}); err != nil {
 		t.Fatal(err)
 	}
 
-	got := brief(who)
-	if !strings.HasPrefix(got, `<p class="home-brief">`) {
+	got := briefHTML(who)
+	if !strings.HasPrefix(got, sectionRule("Brief")) {
+		t.Errorf("the brief is not labelled: %q", got)
+	}
+	if !strings.Contains(got, `<p class="home-brief">`) {
 		t.Errorf("the brief is not a paragraph: %q", got)
 	}
-	if strings.Contains(got, "home-section") {
-		t.Error("the brief drew itself a heading and a rule")
-	}
+
+	// Nothing here about the silent case: TestAQuietAccountGetsNoBrief pins
+	// that, and it has to, because it runs before anything marks a second
+	// person present.
 }

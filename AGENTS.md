@@ -1,50 +1,95 @@
 # Mu
 
-**A network for humans, agents and services.** People and agents hold accounts
-in one address space, reachable over protocols anybody already has a client for
-— SMTP, IMAP, XMPP, SSH, HTTP, x402 — with the everyday internet behind them as
-services either can call.
+**A personal server: one Go binary you can self-host that carries a web app, an
+HTTP API, a CLI, an MCP server and an installable PWA over the same 35 services
+and 119 tools.** `go build ./...` produces it; nothing else has to be running.
 
-That line is a promise rather than a category, which means it can be false, and
-today one word in it is ahead of the code. "Humans and agents" is true now: an
-agent account is a user here like any other, holds an address, and can be
-written to. "Services" is true now: the registry is what both reach through.
-"Network" is now true of the code and not yet proved on the wire: S2S with
-dialback is built in both directions — see service/chat/xmpp_s2s.go — and has
-never completed a handshake with somebody else's server. Mail federated all
-along, because SMTP is SMTP and service/mail looks up MX records like anything
-else; chat was the protocol that did not. The claim stands when a message from
-here lands on a Prosody account and one comes back.
+It is not a framework or a set of libraries. It is a thing that runs, that you
+sign into, and that other programs can call.
 
-The previous line was "Work with Agents. Make one, give it an address, hand it
-a job." It was retired rather than disproved — handing work over still works,
-`service/tasks` holds it and `agent/work` runs it — but it described one
-account's relationship with its own agent, and the thing being built is the
-address space they share with everybody else.
+## What is in the binary
 
-**An address is the smallest interface there is** — no SDK, no OAuth, no
-protocol to adopt, nothing on the other side — so a person, another agent, a
-form or a cron job can all write to one. Every provider ships an MCP server;
-none of them ship an agent that is permanently reachable and remembers. That is
-what makes an agent something you have rather than something you visit.
+The same catalogue behind every door, which is the point — a door is a
+translation layer and nothing more.
 
-The inbox is not email. It is `internal/thread` — every conversation this
-account has had, on whichever client it arrived, in one record read at
-`/inbox`. A new channel joins that record rather than starting a second.
+| Door | Where | For |
+|---|---|---|
+| Web app | `/` | a person, signed in |
+| PWA | `manifest.webmanifest`, `mu.js` | the same app, installed on a phone |
+| API | `/api/v1/<service>/<method>` | a program somebody wrote |
+| MCP | `/mcp` | somebody else's agent, holding a token |
+| CLI | `mu <service> <method>`, `mu ask` | a terminal, a script, a cron job |
+
+And it speaks protocols people already have clients for, served here rather than
+proxied: SMTP and submission (`service/mail/smtp.go`, `submission.go`), IMAP
+(`service/mail/imap.go`), XMPP (`service/chat/xmpp.go`), SSH
+(`service/shell/ssh.go`), HTTP. An address is the smallest interface there is —
+no SDK, no OAuth, nothing to adopt — so a person, another agent, a form or a
+cron job can all reach the same account.
+
+## The three things the app is
+
+**Services** are the building blocks: 35 of them, one directory each, each with
+a page, an API surface and a set of tools derived from the same Spec. Some run a
+protocol here — mail, chat, files, shell. Others hold an account with an upstream
+provider so the caller does not have to: news, markets, video, weather, places,
+maps, web search. Both are legitimate and the test is the same — whether the
+caller is spared a signup, not whether we wrote the backend.
+
+**Agents** are defined one way: a name, a prompt, and a scoped set of those
+tools. Talk to one interactively on the web, by mail, over XMPP or from the CLI;
+or take a token and point your own client at `/mcp`, where it holds the same
+catalogue. `agent/` also ships built-in ones that run without anybody present —
+the digest, the brief, moderation, work.
+
+**The inbox** is one record of everything said, on whichever channel it arrived:
+mail, chat, SMS, WhatsApp, the web. It is `internal/thread`, not an email
+folder, and a new channel joins that record rather than starting a second one.
+
+**Home** is one view over all three, not a fourth thing.
+
+## Where this goes
+
+Direction, not description — none of this paragraph is a claim about today.
+
+The services become the building blocks for infrastructure, tools and external
+services. MCP is how agents reach them. The agents are what turn reach into
+intelligence: summarising, contextualising and acting on what is there, rather
+than fetching it again each time somebody asks. The app becomes the focal
+point — the inbox as the place work happens, Home as one view onto it.
 
 **Removing the barrier is the product.** An agent wanting news, mail, search,
 weather, markets, places and somewhere to keep records otherwise needs six
 providers: six signups, six cards, six tokens to rotate. Mu is one balance and
-one protocol. Sometimes that means running the thing ourselves, sometimes
-paying a provider so the caller need not hold that relationship — both are
-legitimate, and the test is whether the caller is spared an account, not whether
-we wrote the backend. An earlier line said *real tools, not wrappers*, which
-made "did we build it" the measure and capped breadth at what one team can
-operate. Breadth behind one account is the value.
+one protocol. An earlier line said *real tools, not wrappers*, which made "did
+we build it" the measure and capped breadth at what one team can operate.
+Breadth behind one account is the value.
 
 **Keep the signed-in app intact.** It is not legacy, it is the proof the tools
 work: every capability had to render a page, which is why the services are
 coherent enough for tools to be derived from them.
+
+## What is true today, and what is not
+
+The line above this file used to open with was "a network for humans, agents and
+services", and one word in it is still ahead of the code. Kept here because a
+promise that can be false is worth more than a category that cannot.
+
+*Humans and agents* is true: an agent account is a user here like any other,
+holds an address, and can be written to. *Services* is true: the registry is
+what both reach through. *Network* is true of the code and not yet proved on the
+wire — S2S with dialback is built in both directions (`service/chat/xmpp_s2s.go`)
+and has never completed a handshake with somebody else's server. Mail federated
+all along, because SMTP is SMTP and `service/mail` looks up MX records like
+anything else; chat was the protocol that did not. The claim stands when a
+message from here lands on a Prosody account and one comes back.
+
+The fourth rung of the access model below is built and has no surface.
+`service/tasks`, `agent/work` and `event.WorkForAgent` run work nobody is
+present for, and nothing renders it. Outbound is the same gap from the other
+side — mail leaving, an x402 payment to another server — and `X402_SERVERS` is
+read by a client no tool exposes. Inbound has three good rungs; outbound has
+none.
 
 ## The access model
 
@@ -71,11 +116,50 @@ MCP is a real rung rather than the API in a different envelope: the same
 services underneath, plus self-description, because a model has to *choose* and
 choosing needs a menu.
 
-The fourth rung is built and has no surface. `service/tasks`, `agent/work` and
-`event.WorkForAgent` run work nobody is present for, and nothing renders it.
-Outbound is the same gap seen from the other side — mail leaving, an x402
-payment to another server — and `X402_SERVERS` is read by a client no tool
-exposes. Inbound has three good rungs; outbound has none.
+## What may travel in a URL
+
+**A URL may carry what a thing is called. Never what a person said.**
+
+| Where | What belongs there | Examples |
+|---|---|---|
+| **path** | public nouns | `/chat/finance`, `/@asim`, `/news/…` |
+| **query** | view state from a vocabulary we already published | `?page=2`, `?tab=sent`, `?view=grid`, `?id=` |
+| **body** | anything typed, and every credential | search terms, agent prompts, tokens |
+
+The query string is *inside* TLS — a middlebox sees the SNI hostname and nothing
+else — so this is not about the wire. It is about the four places a URL comes to
+rest, two of which we have closed and two of which we cannot:
+
+- our own access log records `r.URL.Path`, not `RequestURI` (`internal/server/serve.go`), so a query never reaches it;
+- every page carries `<meta name="referrer" content="no-referrer">`, so nothing leaves in a `Referer`;
+- browser history syncs to an account, and pasted links go wherever links go;
+- **whatever terminates TLS in front of us logs the full URI.** Caddy and nginx
+  both do by default. This is a self-hosted product, so the normal install has
+  a reverse proxy in front of it, and every inbox search would land in plaintext
+  in `/var/log` on a box whose whole premise is that the data is the owner's. We
+  cannot fix that from in here. We can decline to put the words there.
+
+So a search over anything private is `POST /<thing>/search`, not `GET ?q=`. A
+search over something public — news, images, the docs — may stay a GET, because
+the query discloses nothing the reader did not bring, and a searchable public
+page that cannot be linked to is worse.
+
+### A name in the path is not a hole; an id that talks is
+
+Guessable URLs are a feature: `/chat/finance` is how somebody tells somebody
+else where to go. The mistake is never that the name is in the URL — it is
+letting the URL *be* the authorisation. `service/chat/private.go` is the shape:
+the id is public, and `Member` decides.
+
+The separate problem is an id that is itself a disclosure. `dm_asim_henrik`
+names two people and says they talk, and no amount of POST helps, because that
+id is in the page, in an `href`, and in whatever gets pasted into a bug report.
+An id may be derived (cheap, no lookup, both sides compute the same one) or it
+may be opaque (says nothing, needs a stored mapping). It cannot be both, and for
+anything private, opaque is the one that holds.
+
+`TestNothingPrivateTravelsInAURL` holds this line. Its allowlist is the record
+of every surface we decided is public enough to keep a GET.
 
 ## Development
 

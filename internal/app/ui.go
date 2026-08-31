@@ -20,12 +20,40 @@ import (
 // Everything here escapes its own input and carries exactly one class, defined
 // in internal/app/html/mu.css. See primitives.go for the smallest shapes.
 
-// SearchBar renders a search input with search button
-func SearchBar(action, placeholder, query string) string {
+// CSRFField is the hidden input that lets a form POST.
+//
+// Empty for a signed-out reader, who has no session to derive a token from and
+// is not checked — see auth.ValidCSRF. Written once here because a search form
+// that posts needs it and there are a dozen of those; each one spelling out the
+// field name is a dozen places to get `_csrf` wrong, and getting it wrong fails
+// open today and closed the day the grace period ends.
+func CSRFField(token string) string {
+	if token == "" {
+		return ""
+	}
+	return `<input type="hidden" name="_csrf" value="` + html.EscapeString(token) + `">`
+}
+
+// SearchBar renders a search input with search button.
+//
+// POST, because what somebody types into it is theirs. A GET puts the words in
+// the URL, and a URL comes to rest in the browser's history and in the access
+// log of whatever terminates TLS in front of us — which for a self-hosted
+// instance is an nginx or a Caddy logging the full URI by default. See AGENTS.md,
+// "What may travel in a URL".
+//
+// The cost is that a result page cannot be linked to, and for a search over
+// somebody's own mail that is the feature rather than the price: the back button
+// goes to the unsearched page, which is where somebody who has finished looking
+// wants to be. A search over public content is a different question and keeps
+// its GET — see the allowlist in TestNothingPrivateTravelsInAURL.
+func SearchBar(action, placeholder, query, csrf string) string {
 	var b strings.Builder
 	b.WriteString(`<form class="search-bar" action="`)
 	b.WriteString(action)
-	b.WriteString(`" method="GET"><input type="text" name="q" placeholder="`)
+	b.WriteString(`" method="POST">`)
+	b.WriteString(CSRFField(csrf))
+	b.WriteString(`<input type="text" name="q" placeholder="`)
 	b.WriteString(placeholder)
 	b.WriteString(`" value="`)
 	b.WriteString(html.EscapeString(query))
@@ -59,6 +87,7 @@ type PageOpts struct {
 	Label   string // Action button label (default: "+ New")
 	Search  string // Search endpoint (shows search bar if set)
 	Query   string // Current search query
+	CSRF    string // Token for the search form, which posts — see SearchBar
 	Filters string // Filter HTML (tags, toggles) - rendered as-is
 	Content string // Main content (grid, list, cards)
 	Empty   string // Empty state message (shown if Content is empty)
@@ -71,7 +100,7 @@ func Page(opts PageOpts) string {
 
 	// Search bar (at top)
 	if opts.Search != "" {
-		b.WriteString(SearchBar(opts.Search, "Search...", opts.Query))
+		b.WriteString(SearchBar(opts.Search, "Search...", opts.Query, opts.CSRF))
 	}
 
 	// Action button (below search)

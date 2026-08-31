@@ -16,6 +16,7 @@ import (
 
 	"mu/admin"
 	"mu/agent"
+	"mu/agent/brief"
 	"mu/agent/digest"
 	"mu/agent/micro"
 	help "mu/docs"
@@ -123,17 +124,17 @@ func authRequired() map[string]bool {
 		"/agent/session/":    true,  // Deleting one of your conversations
 		"/recall":            true,  // Your own past — sign-in required
 		"/agent/connect":     true,  // How to reach one agent
+		"/agent/pending":     true,  // Has an in-flight run answered yet — your own conversations
 		"/tasks":             true,  // Your task list — sign-in required
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
 		"/places":            false, // Public map, auth for search
-		"/weather":           false, // Public — the forecast as JSON
+		"/weather":           false, // Public — the forecast, as a page or as JSON
 		"/flights":           false, // Public — aircraft broadcast their positions in clear
 		"/mail":              true,  // Require auth for inbox
 		"/logout":            true,
 		"/account":           true,
 		"/report":            true,  // Telling an operator about somebody else's item
-		"/profile/status":    true,  // Setting what you are doing, on your own profile
 		"/verify":            false, // Public — token in URL is the credential
 		"/token":             true,  // PAT token management
 		"/passkey":           false, // Passkey login/register (auth checked in handler)
@@ -159,8 +160,10 @@ func authRequired() map[string]bool {
 		"/wallet/":           true, // Money: top-up, transfer, Stripe, the price list
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
+		"/code":      true,  // Writing an app: yours, and it spends credits
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
 		"/web":       false, // Public - the open web: search it, read a page from it
+		"/search":    false, // Public - an old name for /web, redirected
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
@@ -176,7 +179,8 @@ func authRequired() map[string]bool {
 		"/api/v1/": false,
 		"/agent":   false, // Redirects to the named page; auth checked in handler
 		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
-		"/push/":   true,  // Subscribing this device to notifications
+		"/push/":   true,  // Subscribing this device to notifications (old name)
+		"/notify/": true,  // The same, under the name the feature actually has
 		"/inbox":   true,  // The mailbox — yours, so it needs a session
 		"/inbox/":  true,  // One alias's mail
 		"/setup":   false, // First-run setup (open only until an admin exists)
@@ -318,6 +322,25 @@ func registerRoutes() {
 	http.HandleFunc("/browser/shot/", browser.ShotHandler)
 
 	http.HandleFunc("/web", web.Handler)
+	// /search is the obvious URL and it answered 404.
+	//
+	// The apps SDK's mu.search() called it, so every app that searched got
+	// nothing, and it is the address a person types on a product whose front
+	// door is a search box. The SDK now names /web, but an address that has been
+	// handed out does not stop being used because the thing handing it out was
+	// corrected — and a 404 on /search is a worse answer than a redirect on any
+	// instance, forever.
+	//
+	// To /web rather than /archive: this is what the name meant everywhere it
+	// was used, which was searching the open web. 308 keeps the method and the
+	// query, and tells anything caching that the answer will not change.
+	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		to := "/web"
+		if q := r.URL.RawQuery; q != "" {
+			to += "?" + q
+		}
+		http.Redirect(w, r, to, http.StatusPermanentRedirect)
+	})
 	http.HandleFunc("/web/preview", web.PreviewHandler)
 
 	// serve web fetch page (fetch and clean a URL)
@@ -397,6 +420,8 @@ func registerRoutes() {
 	http.HandleFunc("/agent/agents", agent.AgentsHandler)
 	http.HandleFunc("/agent/new", agent.NewAgentHandler)
 	http.HandleFunc("/agent/run", agent.RunHandler)
+	// Has the answer landed yet — see agent/pending.go.
+	http.HandleFunc("/agent/pending", agent.PendingHandler)
 	http.HandleFunc("/agent/exec", agent.ExecResultHandler)
 
 	// serve mail inbox
@@ -499,6 +524,10 @@ func registerRoutes() {
 	http.HandleFunc("/apps", apps.Handler)
 	http.HandleFunc("/apps/", apps.Handler)
 
+	// Writing one. A door onto the apps service rather than a service of its
+	// own: the output is an app, the store is apps, and a service named for an
+	// action would have to import that one to do anything at all.
+
 	// serve work (task bounties)
 
 	// content controls (flag, save, dismiss, block, share)
@@ -511,7 +540,6 @@ func registerRoutes() {
 	http.HandleFunc("/invite", account.InviteHandler)
 	http.HandleFunc("/report", app.ReportHandler)
 	// What you are doing, set on your own profile. See internal/user/status.go.
-	http.HandleFunc("/profile/status", user.StatusHandler)
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)
@@ -582,6 +610,7 @@ func registerRoutes() {
 	// internal status (injected into admin server page)
 	app.DKIMStatusFunc = mail.DKIMStatus
 	app.DigestStatusFunc = digest.Status
+	app.BriefStatusFunc = brief.Status
 
 	// public status page - service health checks
 	app.HealthCheckFunc = runHealthChecks
@@ -678,11 +707,24 @@ func registerRoutes() {
 	// Where you are, which every specialist needs and nothing server-side
 	// held — see account/place.go.
 	http.HandleFunc("/account/place", account.PlaceHandler)
-	// Telling a device something happened while the page is closed. Two
-	// endpoints, one handler — see internal/push.
-	http.HandleFunc("/push/subscribe", push.SubscribeHandler)
-	http.HandleFunc("/push/unsubscribe", push.SubscribeHandler)
-	http.HandleFunc("/push/test", push.SubscribeHandler)
+	// Telling a device something happened while the page is closed.
+	//
+	// Under /notify, which is what this feature is called. It was /push — so the
+	// product had /notify, a service with tools and a page, and /push, four
+	// endpoints doing the same feature under a second name, and nothing said
+	// which was which. One noun. internal/push stays what it is, the mechanism
+	// underneath, the way internal/x402 sits under the wallet.
+	//
+	// The old paths still answer. A service worker installed months ago has
+	// "/push/received" compiled into it and will go on posting there until the
+	// browser takes a new copy, and a receipt that 404s is the same silence this
+	// whole feature has been drowning in.
+	for _, p := range []string{"/notify/", "/push/"} {
+		http.HandleFunc(p+"subscribe", push.SubscribeHandler)
+		http.HandleFunc(p+"unsubscribe", push.SubscribeHandler)
+		http.HandleFunc(p+"test", push.SubscribeHandler)
+		http.HandleFunc(p+"received", push.SubscribeHandler)
+	}
 	// Two pages that were tabs and are not any more: one listed the same
 	// conversations the rail lists, the other listed the workflow records behind
 	// them. Both are on /agent now — the conversation, and the tools each answer

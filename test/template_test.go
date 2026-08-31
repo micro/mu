@@ -32,7 +32,7 @@ func TestTheShellFillsEverySlot(t *testing.T) {
 		"signed out": app.RenderHTML("PAGE-TITLE", "a description", "<p>THE-BODY</p>", nil),
 		"signed in": app.RenderHTML("PAGE-TITLE", "a description", "<p>THE-BODY</p>",
 			&auth.Account{ID: "someone", Name: "Someone"}),
-		"landing": app.RenderLanding(app.Landing{
+		"index": app.RenderIndex(app.Index{
 			Title: "PAGE-TITLE", Description: "a description",
 			Brand: "Mu", Body: "<p>THE-BODY</p>",
 		}),
@@ -74,26 +74,44 @@ func TestThePageTitleIsNotInTheSidebar(t *testing.T) {
 	}
 }
 
-// The envelope in the header opens the inbox.
+// The four hubs are in reach of a thumb.
 //
-// It pointed at /mail for as long as it existed, and /mail is the other thing —
-// the envelopes SMTP delivered, not the conversations. On a phone the sidebar is
-// behind a hamburger, so this badge is the only sign anything arrived, and it
-// took the reader to the wrong page.
-func TestTheHeaderEnvelopeOpensTheInbox(t *testing.T) {
+// This tested an envelope in the header instead, which pointed at /mail for as
+// long as it existed and was corrected to /inbox — and the whole time it was
+// display:none in the stylesheet with nothing anywhere turning it on. The test
+// checked the href and never whether anybody could see it, so it went on
+// passing over an invisible element for as long as that element existed.
+//
+// So it checks the destinations and the count now. On a phone the rail is
+// behind a hamburger and this bar is how anything is reached; four is what a
+// tab bar holds before the labels stop being readable, and it is the reason
+// Tokens and Wallet are not in it.
+func TestThePhoneCarriesTheFourHubs(t *testing.T) {
 	out := app.RenderHTML("A page", "a description", "<p>body</p>",
 		&auth.Account{ID: "someone", Name: "Someone"})
 
-	head := section(out, `<div id="head-right"`, `</div>
-    </div>`)
-	if head == "" {
-		t.Fatal("no header cluster in the rendered shell")
+	tabs := section(out, `<nav id="tabs"`, `</nav>`)
+	if tabs == "" {
+		t.Fatal("no tab bar in the rendered shell")
 	}
-	if !strings.Contains(head, `href="/inbox"`) {
-		t.Errorf("the header envelope does not open the inbox:\n%s", head)
+	for _, href := range []string{"/home", "/inbox", "/agents", "/services"} {
+		if !strings.Contains(tabs, `href="`+href+`"`) {
+			t.Errorf("the tab bar does not reach %s:\n%s", href, tabs)
+		}
 	}
-	if strings.Contains(head, `href="/mail"`) {
-		t.Errorf("the header envelope opens the mail store:\n%s", head)
+	if n := strings.Count(tabs, "<a "); n != 4 {
+		t.Errorf("the tab bar holds %d tabs, want 4 — five stops being readable "+
+			"and the rail is still there for the rest:\n%s", n, tabs)
+	}
+	// Not the mail store. That was the bug in the thing this replaced.
+	if strings.Contains(tabs, `href="/mail"`) {
+		t.Errorf("a tab opens the mail store rather than the inbox:\n%s", tabs)
+	}
+
+	// Signed out the shell is a landing page whose job is one button, and a
+	// fixed bar across the bottom of it competes with that button.
+	if out := app.RenderHTML("A page", "a description", "<p>body</p>", nil); strings.Contains(out, `id="tabs"`) {
+		t.Error("a signed-out visitor gets the tab bar")
 	}
 }
 

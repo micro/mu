@@ -2664,16 +2664,21 @@ func RefreshHNMetadata(uri string) (*Metadata, error) {
 		if len(comments) > 0 {
 			fullContent += " " + comments
 		}
-		data.Index(
-			fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16],
-			"news",
-			md.Title,
-			fullContent,
-			map[string]interface{}{
-				"url":      uri,
-				"category": "Dev",
-			},
-		)
+		// Keep what the entry already knew. data.Index replaces the row
+		// wholesale, so building a fresh map here dropped posted_at — and an
+		// article re-indexed for fresher comments then fell back to the index
+		// time and re-dated itself to now, every refresh, forever. The same
+		// site above already reads the existing entry for exactly this reason.
+		id := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
+		metadata := map[string]interface{}{}
+		if existing := data.ByID(id); existing != nil {
+			for k, v := range existing.Metadata {
+				metadata[k] = v
+			}
+		}
+		metadata["url"] = uri
+		metadata["category"] = "Dev"
+		data.Index(id, "news", md.Title, fullContent, metadata)
 		app.Log("news", "Reindexed HN article with fresh comments for RAG: %s", uri)
 	}
 

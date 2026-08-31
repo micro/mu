@@ -95,7 +95,19 @@ func ConversationView(accountID string, t *thread.Thread) string {
 // inbox page drew the dialog, so opening a mail thread from /agent got a
 // button that did nothing. Same shape as the agent page calling a function
 // defined in a panel it had stopped rendering.
+// There was a second entry point, conversationPaneTo, that let the caller state
+// the reply target instead of having it worked out. /@somebody used it, because
+// working it out from the messages got the one case that matters wrong — a
+// conversation you started, where nobody but you has spoken yet, rendered no
+// Reply at all and a note saying to answer it "the way it arrived", on the page
+// it had arrived on.
+//
+// replyTo learned that case: it falls back to the thread's parties, which
+// inbox/new.go records when a conversation is started. So the override had
+// nothing left to override, and it went with the profile page's copy of this
+// call — one reader for a conversation, not two.
 func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool, assign string) string {
+	to := ""
 	subject := t.Subject
 	if subject == "" {
 		subject = "Untitled"
@@ -126,7 +138,7 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	// It could not reply at all once, and said so, which described an inbox you
 	// cannot answer from. Assign is offered wherever the caller has a dialog for
 	// it to open.
-	to := replyTo(accountID, t, msgs)
+	to = replyTo(accountID, t, msgs)
 	b.WriteString(actionBar(t, to, assign != ""))
 	if to == "" {
 		b.WriteString(`<p class="ib-note">This happened on ` +
@@ -170,6 +182,34 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 		}
 		if from := strings.TrimSpace(m.From); from != "" && from != accountID {
 			return from
+		}
+	}
+
+	// Nobody else has spoken, which is not the same as nobody else being there.
+	//
+	// A conversation you started and that has not been answered yet has exactly
+	// one author — you — so the loop above finds nothing and rendered no Reply
+	// at all: the thread you had just written was the one thread you could not
+	// write to again. Reported that way, and the giveaway was that /@somebody
+	// could reply to the same conversation, because that page states the target
+	// instead of working it out.
+	//
+	// The thread knows. inbox/new.go joins the recipient as a party when a
+	// conversation is started, and a message you sent records who it went to.
+	// Neither is ordered, which is why the loop is still first — three people on
+	// a thread are answered to whoever spoke last — but for the one-sided case
+	// order is not a question that arises.
+	for _, p := range t.Parties {
+		if p.Kind == thread.RoleAgent {
+			continue
+		}
+		if k := strings.TrimSpace(p.Key); k != "" && !strings.EqualFold(k, accountID) {
+			return k
+		}
+	}
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if to := strings.TrimSpace(msgs[i].To); to != "" && !strings.EqualFold(to, accountID) {
+			return to
 		}
 	}
 	return ""
@@ -224,12 +264,61 @@ func actionBar(t *thread.Thread, to string, canAssign bool) string {
 		b.WriteString(`<button type="button" class="ib-assign-open" ` +
 			`onclick="muAssignOpen()">Assign to agent</button>`)
 	}
-	if to != "" {
+	// Where the reply goes, and only when that is not obvious.
+	//
+	// Somebody on this instance has one address and you are looking at their
+	// page: "Reply goes to micro@micro.mu" under a conversation with @micro
+	// tells a reader the domain of the server they are signed into. It is the
+	// address bar of the page they are on, written out as a caption.
+	//
+	// It earns its place for anybody else. A correspondent outside this
+	// instance can be on several addresses — mail from one, a phone number for
+	// texts, a WhatsApp number — and replyAddressFor picks by the channel the
+	// conversation is on, so which one it chose is a real fact that a reader
+	// cannot otherwise see and may want to correct.
+	if to != "" && !onThisInstance(to) {
 		b.WriteString(`<span class="ib-reply-who">Reply goes to ` +
 			html.EscapeString(to) + `</span>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// onThisInstance reports whether an address is an account here.
+//
+// Both halves, and both are needed. mail.LocalRecipient only splits the local
+// part off — it answers "what account would this be" and returns "henrik" for
+// henrik@gmail.com, so on its own it would call every external correspondent
+// local and hide the line in exactly the case it exists for. So the domain has
+// to match this instance's, and the account has to exist: a stranger writing
+// from ghost@micro.mu is on this domain and is nobody here.
+//
+// A bare @handle counts. That is how this product writes an account and it is
+// what /@name links carry, so it is a local address with the domain left off.
+func onThisInstance(addr string) bool {
+	addr = strings.ToLower(strings.TrimSpace(addr))
+	if addr == "" {
+		return false
+	}
+	if strings.HasPrefix(addr, "@") {
+		_, err := auth.GetAccount(strings.TrimPrefix(addr, "@"))
+		return err == nil
+	}
+	at := strings.Index(addr, "@")
+	if at < 0 {
+		return false
+	}
+	domain := strings.ToLower(strings.TrimSpace(mail.ConfiguredDomain()))
+	if domain == "" || addr[at+1:] != domain {
+		return false
+	}
+	// The +tag form is one account's address too — asim+claude@ is asim.
+	who := mail.LocalRecipient(addr)
+	if who == "" {
+		return false
+	}
+	_, err := auth.GetAccount(who)
+	return err == nil
 }
 
 // partyLine says who is on a conversation.

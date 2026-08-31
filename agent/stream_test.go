@@ -23,8 +23,8 @@ func TestNobodyListeningIsNotAStream(t *testing.T) {
 	}
 	for _, h := range []StreamHooks{
 		{Token: func(string) {}},
-		{ToolStart: func(string, string) {}},
-		{ToolEnd: func(string, string) {}},
+		{ToolStart: func(ToolRun) {}},
+		{ToolEnd: func(ToolRun) {}},
 	} {
 		if !h.wants() {
 			t.Error("a caller with hooks is not treated as listening")

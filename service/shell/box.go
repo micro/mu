@@ -169,8 +169,13 @@ func exec(ctx context.Context, accountID, command, dir string, wait time.Duratio
 		return container.Result{}, err
 	}
 	return container.Exec(ctx, container.Run{
-		Name:    machineFor(accountID),
-		Command: command,
+		Name: machineFor(accountID),
+		// bash, because that is what the caller writes. An image chosen for
+		// having bash that then runs everything under dash gets the worst of
+		// both: the model's ordinary shell fails, and the reason is invisible.
+		// Falls back on its own if the image has no bash — see container.Exec.
+		Shell:   "bash",
+		Command: resuming(command, dir != "", home(accountID)),
 		Dir:     where,
 		User:    runAs(accountID),
 		Wait:    allowed(wait),
@@ -256,11 +261,36 @@ const defaultWait = 120 * time.Second
 // and git on it says so — SHELL_IMAGE — and an operator who has not thought
 // about it does not silently get a gigabyte pulled onto their disk the first
 // time an agent tries something.
+// image is what a machine runs, and the default matters more than it looks.
+//
+// It was alpine, which is eight megabytes and the wrong eight megabytes. Its
+// /bin/sh is busybox and it has no bash, so a model that has been trained on
+// bash and GNU coreutils writes what it knows and gets something subtly
+// different: no [[ ]], no arrays, sed and grep with their own ideas about
+// flags. The failures do not announce themselves as environment failures. They
+// look like the model being bad at the shell, which is the wrong thing to go
+// and fix — and this instance spent a while fixing it.
+//
+// Debian is what behaves the way the training does. That trade is not close for
+// a box whose entire purpose is that a model already knows how to use it.
+//
+// The scm variant rather than plain slim, because curl and git are not extras
+// here. The README promises "clone a repo" and slim cannot: git was documented
+// and absent. And an agent asked to build something against an API reaches for
+// curl first, every time — one asked for a live sports app spent its whole step
+// budget probing endpoints and reported, accurately, that the machine had
+// neither curl nor python and it had made do with wget.
+//
+// It costs about a hundred and fifty megabytes more, pulled once per host. A
+// promise the box cannot keep costs more than that.
+//
+// Still no python. An operator who wants it sets SHELL_IMAGE to one of the
+// python images, which are the same Debian underneath.
 func image() string {
 	if set := setting("SHELL_IMAGE"); set != "" {
 		return set
 	}
-	return "alpine:3.20"
+	return "buildpack-deps:bookworm-scm"
 }
 
 // limits are what one machine may have. Every one is an operator's decision,
@@ -406,4 +436,55 @@ func trimTo(s string, n int) string {
 // paths an agent chose, which is the whole reason it is here.
 func quoted(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// sessionFile is where a machine remembers which directory it was left in.
+//
+// Under the caller's own home so it lives on their volume and survives the
+// container being replaced, hidden so it is not the first thing they see in a
+// listing of their own files.
+const sessionFile = ".mu/cwd"
+
+// resuming wraps a command so that cd survives to the next one.
+//
+// Every call is its own docker exec — a fresh shell, in a directory this
+// service chose. The filesystem persisted and the session did not, so a caller
+// who ran `cd project` and then `ls` was listing the place they started from,
+// silently. Nobody who has used a terminal expects that, and the failure is
+// quiet: the second command works, on the wrong directory.
+//
+// The state is one line, and only the directory. Restoring an exported
+// environment sounds like the same idea and is not: a PATH captured from a
+// half-finished command and replayed into the next one breaks everything
+// afterwards, in a way that looks like the machine being broken. A directory
+// cannot do that, and it is the part anybody actually notices.
+//
+// An explicit dir on the call still wins — the caller has said where they want
+// to be, and that is not the session's business to override.
+func resuming(command string, explicit bool, base string) string {
+	// Restored only if it is still inside the caller's own directory. A command
+	// is free to cd anywhere it can reach, and pwd records where it finished,
+	// so without this a session could resume outside /work — which is not a way
+	// in to anything the caller could not already reach, but it is a surprising
+	// place for the next command to start, and surprising is how mistakes get
+	// made with rm.
+	restore := `__mu_d="$(cat ` + quoted(base+"/"+sessionFile) + ` 2>/dev/null)"
+case "$__mu_d" in ` + quoted(base) + `|` + quoted(base) + `/*) ;; *) __mu_d=` + quoted(base) + ` ;; esac
+cd "$__mu_d" 2>/dev/null || cd ` + quoted(base)
+	if explicit {
+		// Named a directory, so it runs there and the session is left alone —
+		// it neither starts from the remembered place nor overwrites it.
+		//
+		// Recording it would make every one-off "run this over there" move the
+		// caller, which is the opposite of what naming a directory means, and
+		// it silently relocated a session the first time it was tried: a probe
+		// reading one file in /work moved somebody out of the directory they
+		// were working in.
+		return `` + command
+	}
+	return restore + `
+` + command + `
+__mu=$?
+mkdir -p ` + quoted(base+"/.mu") + ` 2>/dev/null && pwd > ` + quoted(base+"/"+sessionFile) + ` 2>/dev/null
+exit $__mu`
 }

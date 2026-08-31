@@ -55,11 +55,8 @@ import (
 	"sync"
 	"time"
 
-	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/data"
-	"mu/internal/event"
 	"mu/internal/origin"
 	"mu/internal/push"
 	"mu/internal/settings"
@@ -69,29 +66,20 @@ import (
 
 // Watch starts the watcher. Called at boot.
 func Watch() {
-	go func() {
-		sub := event.Subscribe(event.AccountCreated)
-		for e := range sub.Chan {
-			id, _ := e.Data["account"].(string)
-			name, _ := e.Data["name"].(string)
-			if id == "" {
-				continue
-			}
-			who := strings.TrimSpace(name)
-			if who == "" || strings.EqualFold(who, id) {
-				who = id
-			} else {
-				who = fmt.Sprintf("%s (%s)", name, id)
-			}
-			raise(alert{
-				Key:  "signup:" + id,
-				What: "New account: " + who,
-				Why: "Somebody signed up. They have not necessarily done anything yet — " +
-					"you get a second notice the first time they call a tool.",
-				Where: "/admin/users",
-			})
-		}
-	}()
+	// No signup alert.
+	//
+	// This raised one on every AccountCreated, which is a growth metric: it is
+	// interesting to somebody running a service other people are joining and to
+	// nobody else. On the instance almost everybody actually has — their own,
+	// with one account on it — the first thing that ever happened was being
+	// told that they had signed up, about themselves, in the voice of an
+	// operator watching a funnel.
+	//
+	// Which is the general rule this is the first instance of: micro.mu is an
+	// instance, not a special build, so anything only true when we are the host
+	// does not belong compiled into everybody's binary. What is left below is
+	// the operational half — rates and a disk filling — which is true for
+	// whoever is running it.
 
 	go func() {
 		// Once shortly after boot, so an instance that has been down through
@@ -131,7 +119,6 @@ type alert struct {
 func sweep() {
 	instanceRate()
 	accountRates()
-	newCallers()
 	diskFilling()
 	somethingWrong()
 }
@@ -227,127 +214,6 @@ func accountRates() {
 	}
 }
 
-// newCallers is an account calling tools for the first time.
-//
-// Signing up and using it are different events and the second is the one that
-// means something. Somebody who signed up three weeks ago and has just made
-// their first call is the most interesting line an operator can read, and
-// nothing on any page would ever have shown it.
-//
-// The set is on disk rather than in memory, or a restart re-announces everybody
-// who has ever called anything.
-//
-// And it is seeded silently the first time. Without that, switching this on for
-// an instance that already has twenty active accounts announces all twenty at
-// once — twenty messages saying "started using the API" about people who
-// started months ago, which is the exact noise that teaches somebody to ignore
-// the channel. The first sweep records who has called and says nothing; every
-// caller after that is genuinely new to us.
-func newCallers() {
-	known, seeded := calledBefore()
-	changed := false
-	if !seeded {
-		for _, acc := range auth.AllAccounts() {
-			if usage.TotalForOver(acc.ID, usage.Day, callerWindowDays) > 0 {
-				known[acc.ID] = true
-			}
-		}
-		data.SaveJSON(callersFile, known) //nolint:errcheck
-		return
-	}
-	for _, acc := range auth.AllAccounts() {
-		if known[acc.ID] {
-			continue
-		}
-		// A generous window, because "first" here means the first time this
-		// instance noticed rather than the first in history — and an instance
-		// that was down for a day should not decide everybody is new.
-		if usage.TotalForOver(acc.ID, usage.Day, callerWindowDays) == 0 {
-			continue
-		}
-		known[acc.ID] = true
-		changed = true
-		raise(alert{
-			Key:  "firstcall:" + acc.ID,
-			What: acc.ID + " started using the API",
-			Why: "Their first tool call. Signing up and using it are different things, " +
-				"and this is the second one." + whatTheyDid(acc.ID),
-			Where: "/admin/traffic",
-		})
-	}
-	if changed {
-		data.SaveJSON(callersFile, known) //nolint:errcheck
-	}
-}
-
-// whatTheyDid is as much as can honestly be said about a first call.
-//
-// "Somebody started using the API" and nothing else leaves the operator to go
-// and look, and going to look does not answer it either: internal/usage keeps
-// counts per account and counts per tool and deliberately not the cross of the
-// two — see SeriesFor, which says so and says why. So the counters cannot name
-// the tool, and pretending otherwise here would mean inventing the key that
-// package refuses to keep.
-//
-// What can be said is what they were charged for, because the ledger itemises
-// every paid operation by name, and whether they have minted a token, because
-// that is the step between signing up and calling anything. A free call — the
-// weather, a listing, anything this instance stores itself — leaves no ledger
-// row, and saying so is more useful than silence: it means they did something
-// that cost us nothing, which is a different fact from doing nothing.
-func whatTheyDid(accountID string) string {
-	var out strings.Builder
-
-	// What it cost, by operation, most recent first and deduplicated — five
-	// calls to the same tool is one line, not five.
-	seen := map[string]bool{}
-	var ops []string
-	for _, tx := range account.Transactions(accountID, 20) {
-		if tx == nil || tx.Amount >= 0 || tx.Operation == "" || seen[tx.Operation] {
-			continue
-		}
-		seen[tx.Operation] = true
-		ops = append(ops, tx.Operation)
-		if len(ops) == 5 {
-			break
-		}
-	}
-	if len(ops) > 0 {
-		out.WriteString(" They have been charged for: " + strings.Join(ops, ", ") + ".")
-	} else {
-		out.WriteString(" Nothing they did was charged for, so it was a free " +
-			"operation — a listing, the weather, something this instance stores " +
-			"itself. The counters cannot say which: usage is kept per account " +
-			"and per tool, never both at once.")
-	}
-
-	// And whether they went through the front door or the API door.
-	switch n := len(auth.ListTokens(accountID)); {
-	case n == 0:
-		out.WriteString(" No token minted, so this was the web or a signed-in session.")
-	case n == 1:
-		out.WriteString(" They have minted a token.")
-	default:
-		out.WriteString(fmt.Sprintf(" They have minted %d tokens.", n))
-	}
-
-	return out.String()
-}
-
-const (
-	callersFile      = "alerted_callers.json"
-	callerWindowDays = 30
-)
-
-// calledBefore is who we have already announced, and whether we have ever
-// looked. The second half is the difference between "nobody has called" and
-// "this instance has never run this check", which are the same empty map.
-func calledBefore() (known map[string]bool, seeded bool) {
-	known = map[string]bool{}
-	err := data.LoadJSON(callersFile, &known)
-	return known, err == nil
-}
-
 // diskFilling is the one that actually takes an instance down.
 //
 // Everything else here is information. A full disk is an outage: mail stops
@@ -403,7 +269,15 @@ func raise(a alert) {
 	// version that reaches internal/thread still carries the address: strip the
 	// tags off "<a href=X>X</a>" and X survives, off "<a href=X>look</a>" and
 	// it does not.
-	body := "<p>" + html.EscapeString(a.Why) + "</p>"
+	// The headline goes in the body too.
+	//
+	// It was the subject and nothing else, so an alert read in a thread — where
+	// the subject is a line of chrome above the messages rather than part of
+	// them — was a paragraph of explanation about an account it never named.
+	// Reported as: it would not even tell me who. A message has to stand on its
+	// own, because the place it is read is not the place it was written.
+	body := "<p><strong>" + html.EscapeString(a.What) + "</strong></p>" +
+		"<p>" + html.EscapeString(a.Why) + "</p>"
 	if a.Where != "" {
 		link := strings.TrimSuffix(origin.Self(), "/") + a.Where
 		body += `<p><a href="` + html.EscapeString(link) + `">` +

@@ -239,6 +239,16 @@ func Load() {
 		} else {
 			mutex.Lock()
 			for _, a := range loaded {
+				// A record with no slug has no address: every link built from
+				// it comes out as /apps/ or /code?app=, which look live and go
+				// nowhere, and each one loaded overwrites the last under the
+				// empty key. Old records predate the field, so this is repair
+				// rather than validation — give it one and it is a normal app
+				// again, reachable and fixable.
+				if a.Slug == "" {
+					a.Slug = repairSlug(a)
+					app.Log("apps", "app %q had no address; it is now /apps/%s", a.Name, a.Slug)
+				}
 				apps[a.Slug] = a
 			}
 			mutex.Unlock()
@@ -396,21 +406,47 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// sortForDirectory orders the apps directory: ours first, in the order we
-// chose, then everybody else's by installs and then by recency.
+// sortForDirectory orders the apps directory with nobody's apps first, which
+// is the ordering for a caller that has no reader — see sortForReader for the
+// page, which does.
 //
 // One comparator because there were two, character for character, in
 // handleList and Public — and a list that is ordered twice is a list that will
 // eventually be ordered two ways.
+func sortForDirectory(list []*App) { sortForReader(list, "") }
+
+// sortForReader orders the directory for the person looking at it: yours
+// first, then everybody else's by installs and recency, then the ones that
+// ship with the instance.
 //
-// Official leads because the question a first-time reader is asking is what
-// this thing can do, and a calculator somebody uploaded is not the answer.
-// Order within that is explicit: see service/apps/seeds.
-func sortForDirectory(list []*App) {
+// Official used to lead, on the argument that a first-time reader is asking
+// what this thing can do and a calculator somebody uploaded is not the answer.
+// That is right for a first-time reader and wrong every time after: the apps
+// you wrote were filed under "From the community", below a fixed list you have
+// already read, on your own server. The first visit is one visit; the page is
+// for the person who lives here.
+//
+// Empty viewer keeps the old order exactly. The API listing has no reader to
+// be relative to, and an ordering that varied by who asked would make a cached
+// response wrong for the next caller.
+func sortForReader(list []*App, viewerID string) {
+	mine := func(a *App) bool { return viewerID != "" && a.AuthorID == viewerID }
+
 	sort.Slice(list, func(i, j int) bool {
 		a, b := list[i], list[j]
+		if am, bm := mine(a), mine(b); am != bm {
+			return am
+		}
 		if a.Official != b.Official {
-			return a.Official
+			// A stranger gets the catalogue and the person who lives here gets
+			// their own things: officials lead when there is no reader to be
+			// relative to, and come last when there is. Both readings of "what
+			// goes at the top" are correct, for different readers, and the
+			// viewer is the only thing that can tell them apart.
+			if viewerID == "" {
+				return a.Official
+			}
+			return !a.Official
 		}
 		if a.Official {
 			if a.Order != b.Order {
@@ -473,6 +509,11 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		isAdmin = acc.Admin
 	}
 
+	// Re-ordered for whoever is reading it. The sort above ran before there
+	// was a session to read and still serves the JSON branch, which returns
+	// the same bytes to everybody and must not vary by caller.
+	sortForReader(list, userID)
+
 	// HTML
 	var sb strings.Builder
 	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. Build apps, set your price, keep every penny of every sale.</p>`)
@@ -489,7 +530,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "+ New app") + `</p>`)
+	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/code", "+ New app") + `</p>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
@@ -569,20 +610,34 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	if len(list) == 0 {
 		sb.WriteString(`<p>No apps yet. <a href="/apps/new">Create the first one</a>.</p>`)
 	} else {
-		// Two sections, because the list is already sorted ours-first and a
-		// reader otherwise cannot tell which is which. Emitted from the run
-		// rather than by partitioning the slice, so a filter that leaves no
-		// official apps leaves no heading either.
-		var saidOurs, saidTheirs bool
+		// Three sections now, in the order sortForReader put them: yours, then
+		// everybody else's, then the ones that ship with the instance.
+		//
+		// Yours is the new one and is the whole point. They were filed under
+		// "From the community" — your own apps, on your own server, described
+		// as somebody else's and listed below a fixed set you have already
+		// read.
+		//
+		// And the built-ins are Templates. "Built in" says where they came
+		// from, which is a fact about us; what they are for is being copied
+		// and changed, which is a fact about what you can do with them, and
+		// that is what a heading on a directory should say.
+		//
+		// Emitted from the run rather than by partitioning the slice, so a
+		// filter that leaves a section empty leaves out its heading too.
+		var saidMine, saidTheirs, saidOurs bool
 		for _, a := range list {
-			if a.Official && !saidOurs {
+			switch {
+			case userID != "" && a.AuthorID == userID && !saidMine:
+				saidMine = true
+				sb.WriteString(`<h2 class="app-section">Yours</h2>`)
+			case a.Official && !saidOurs:
 				saidOurs = true
-				sb.WriteString(`<h2 class="app-section">Built in</h2>`)
-			}
-			if !a.Official && !saidTheirs {
+				sb.WriteString(`<h2 class="app-section">Templates</h2>`)
+			case !a.Official && (userID == "" || a.AuthorID != userID) && !saidTheirs:
 				saidTheirs = true
 				heading := "From the community"
-				if !saidOurs {
+				if !saidMine && !saidOurs {
 					heading = "Apps"
 				}
 				sb.WriteString(`<h2 class="app-section">` + heading + `</h2>`)
@@ -664,15 +719,18 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	// AI describe box — the primary path. Describe an app in plain language
-	// and the constrained micro-app generator builds a working tool.
-	sb.WriteString(`<p class="card-desc">Describe an app and we'll build it — a tracker, checklist, or counter that just works.</p>`)
-	sb.WriteString(`<form method="POST" action="/apps/generate" class="col-narrow mb-2">`)
-	sb.WriteString(`<div class="d-flex gap-2">`)
-	sb.WriteString(`<input type="text" name="description" required maxlength="200" class="form-input grow" placeholder="an expense tracker, a packing checklist, a water counter…">`)
-	sb.WriteString(`<button type="submit" class="btn">Build it</button>`)
-	sb.WriteString(`</div>`)
-	sb.WriteString(`</form>`)
+	// Describing an app happens at /code, and only there.
+	//
+	// This was a box that asked once and kept whatever came back. /code asks,
+	// runs the scanner and the tests over the result, and asks again with what
+	// they said — then lets you keep going: "now make it dark" changes the app
+	// you have rather than starting a second one.
+	//
+	// Two boxes that both claim to build an app from a sentence is the thing
+	// to avoid here, and the one to delete is the one that cannot iterate. What
+	// stays on this page is the other job entirely: pasting HTML you wrote.
+	sb.WriteString(`<p class="card-desc">Describe what you want and it gets written, checked and run — then you say what to change.</p>`)
+	sb.WriteString(`<p class="col-narrow mb-2">` + app.ActionLink("/code", "Describe an app") + `</p>`)
 	sb.WriteString(`<details class="col-narrow mt-5"><summary class="clickable text-secondary text-base">Write the HTML yourself</summary>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" class="mt-4">`)
 	sb.WriteString(`<div class="mb-3"><label>Name</label><br>`)
@@ -1074,12 +1132,16 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" class="d-inline"><input type="hidden" name="version" value="%d"><button type="submit" class="link-button text-sm" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
 					htmlpkg.EscapeString(a.Slug), v.Number, v.Number)
 			}
-			sb.WriteString(fmt.Sprintf(`<div class="tile mb-2">
+			// An id per version, so a link to a particular one lands on it. The
+			// transcript on /code links every turn here, and without these every
+			// link went to the same place — the top of the list.
+			sb.WriteString(fmt.Sprintf(`<div class="tile mb-2" id="v%d">
 <div class="d-flex between items-center">
 <div><strong>v%d</strong>%s — %s</div>
 <span class="text-sm text-muted">%s%s</span>
 </div>
 </div>`,
+				v.Number,
 				v.Number,
 				currentBadge,
 				htmlpkg.EscapeString(summary),
@@ -2047,4 +2109,19 @@ func DeleteAppsByAuthor(authorID string) {
 	}
 	mutex.Unlock()
 	save()
+}
+
+// repairSlug is the address an app gets when it loaded without one.
+//
+// Its own function so the rule can be tested without a file on disk, and so
+// there is one answer rather than one per caller that notices the problem.
+func repairSlug(a *App) string {
+	s := slugify(a.Name)
+	if s == "" {
+		return "app-" + a.ID
+	}
+	if len(s) < 3 {
+		return "app-" + s
+	}
+	return s
 }

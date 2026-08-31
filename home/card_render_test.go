@@ -6,6 +6,7 @@ package home
 // that vanished a minute after the page loaded.
 
 import (
+	"mu/internal/service"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ import (
 func TestACardKeepsItsWayThroughOnRefresh(t *testing.T) {
 	c := Card{ID: "news", Title: "News", Link: "/news", CachedHTML: "<p>A headline</p>"}
 
-	body := cardBody(c)
+	body := cardBody(c, service.Anyone())
 	if !strings.Contains(body, "<p>A headline</p>") {
 		t.Fatalf("the card lost its contents:\n%s", body)
 	}
@@ -32,10 +33,10 @@ func TestACardKeepsItsWayThroughOnRefresh(t *testing.T) {
 // A card with nothing to show is not a card. Both renders have to agree about
 // that too, or the page skips one the refresh puts back as an empty box.
 func TestAnEmptyCardIsNotDrawn(t *testing.T) {
-	if got := cardBody(Card{ID: "news", Title: "News", Link: "/news"}); got != "" {
+	if got := cardBody(Card{ID: "news", Title: "News", Link: "/news"}, service.Anyone()); got != "" {
 		t.Errorf("an empty card rendered %q", got)
 	}
-	if got := cardBody(Card{ID: "news", CachedHTML: "   \n "}); got != "" {
+	if got := cardBody(Card{ID: "news", CachedHTML: "   \n "}, service.Anyone()); got != "" {
 		t.Errorf("a card of whitespace rendered %q", got)
 	}
 }

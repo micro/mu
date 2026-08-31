@@ -21,7 +21,7 @@ func TestTheInboxCanBeSearched(t *testing.T) {
 	said(t, who, thread.SMSClient, "+447700900123", "", "running ten minutes late")
 
 	// A hit, on mail.
-	body := listBody(t, "/inbox?q=invoice", who, "")
+	body := searchBody(t, "invoice", who, "")
 	if !strings.Contains(body, "Invoice 4021") {
 		t.Error("searching for a word in a mail conversation did not find it")
 	}
@@ -31,7 +31,7 @@ func TestTheInboxCanBeSearched(t *testing.T) {
 
 	// And on a text, from the same box, which is the point of it being one
 	// inbox: the record does not care which protocol carried the sentence.
-	body = listBody(t, "/inbox?q=ten+minutes", who, "")
+	body = searchBody(t, "ten minutes", who, "")
 	if !strings.Contains(body, "running ten minutes late") {
 		t.Error("a text was not searchable from the inbox — the search is not " +
 			"over the record, it is over the mail")
@@ -44,7 +44,7 @@ func TestTheInboxCanBeSearched(t *testing.T) {
 	}
 
 	// Nothing found says so, rather than falling back to the whole mailbox.
-	body = listBody(t, "/inbox?q=zzzznothing", who, "")
+	body = searchBody(t, "zzzznothing", who, "")
 	if strings.Contains(body, "Invoice 4021") {
 		t.Error("a search that matched nothing showed the inbox instead, which " +
 			"reads as though everything matched")
@@ -56,17 +56,17 @@ func TestTheInboxCanBeSearched(t *testing.T) {
 
 // The box is not lost when you search inside it.
 func TestSearchingInsideAMailboxStaysInIt(t *testing.T) {
-	if got := searchBox("research", "invoice"); !strings.Contains(got, `action="/inbox/research"`) {
+	if got := searchBox("research", "invoice", ""); !strings.Contains(got, `action="/inbox/research"`) {
 		t.Errorf("the search form leaves the mailbox: %s", got)
 	}
-	if got := searchBox("", ""); !strings.Contains(got, `action="/inbox"`) {
+	if got := searchBox("", "", ""); !strings.Contains(got, `action="/inbox"`) {
 		t.Errorf("the search form has no action: %s", got)
 	}
 	// And there is nothing to clear until something has been searched for.
-	if strings.Contains(searchBox("", ""), "Clear") {
+	if strings.Contains(searchBox("", "", ""), "Clear") {
 		t.Error("an empty search box offers to clear itself")
 	}
-	if !strings.Contains(searchBox("", "invoice"), "Clear") {
+	if !strings.Contains(searchBox("", "invoice", ""), "Clear") {
 		t.Error("a search offers no way back to the mailbox")
 	}
 }
@@ -100,7 +100,7 @@ func TestASearchFindsWhatIsInTheSubjectAndTheSender(t *testing.T) {
 	said(t, who, mailClient, "other", "", "lunch on Thursday?")
 
 	// By the sender, which is the only place the word "dmarc" appears at all.
-	body := listBody(t, "/inbox?q=dmarc", who, "")
+	body := searchBody(t, "dmarc", who, "")
 	if !strings.Contains(body, "Report Domain") {
 		t.Error("searching for dmarc did not find the DMARC report — the search " +
 			"reads message text only, and a report has none")
@@ -110,12 +110,12 @@ func TestASearchFindsWhatIsInTheSubjectAndTheSender(t *testing.T) {
 	}
 
 	// By the subject.
-	if body := listBody(t, "/inbox?q=report+domain", who, ""); !strings.Contains(body, "Report Domain") {
+	if body := searchBody(t, "report domain", who, ""); !strings.Contains(body, "Report Domain") {
 		t.Error("searching for words in the subject did not find the conversation")
 	}
 
 	// By the name behind the address.
-	if body := listBody(t, "/inbox?q=google", who, ""); !strings.Contains(body, "Report Domain") {
+	if body := searchBody(t, "google", who, ""); !strings.Contains(body, "Report Domain") {
 		t.Error("searching for who it is from did not find the conversation")
 	}
 }

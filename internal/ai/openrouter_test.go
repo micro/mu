@@ -8,10 +8,24 @@ import (
 	"mu/internal/settings"
 )
 
+// providerSettingKeys is every name a provider answers to, in one place.
+//
+// There were three lists of this in this package and they disagreed. Each grew
+// when somebody remembered it: getAtlasAPIKey learned ATLASCLOUD_API_KEY, then
+// Gemini arrived, and a helper still clearing the old set kept passing on a
+// machine with no keys and failed on one with them — always on an assertion
+// about something else, which is what makes it slow to place.
+//
+// Anything Configured or PreferredProvider reads belongs here the same day.
 var providerSettingKeys = []string{
+	"AI_PROVIDER",
 	"ANTHROPIC_API_KEY",
 	"ANTHROPIC_MODEL",
+	"ATLASCLOUD_API_KEY",
 	"ATLAS_API_KEY",
+	"ATLAS_MODEL",
+	"GEMINI_API_KEY",
+	"GEMINI_MODEL",
 	"OPENAI_API_KEY",
 	"OPENAI_BASE_URL",
 	"OPENROUTER_API_KEY",

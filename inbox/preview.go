@@ -103,12 +103,20 @@ func Preview(accountID string) string {
 			`</span><span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
 			`<span class="peek-line">` + line + where + `</span></a>`)
 	}
-	// Under the card, not in it. The card is the conversations; the way on is
-	// not one of them, and inside the border it read as a last row you could
-	// not tell from the three above it. Same place the services grid puts its
-	// own — see home.CardsHTML.
+	// In the card, not under it.
+	//
+	// It was under, on the argument that the card is the conversations and the
+	// way on is not one of them. That reasoning holds for what the link *is*
+	// and was wrong about what it looks like: a bare anchor floating below a
+	// bordered box belongs to nothing, and Home now has a rail of these boxes
+	// beside a grid of service cards which put their own More link inside the
+	// border. Two shapes for the same affordance on one screen.
+	//
+	// The row it might be confused with is the objection that put it outside,
+	// and the answer is that it does not look like one — .card-link is a bold
+	// link with an arrow after it, and the rows above are two lines of text.
+	b.WriteString(app.Link("Go to inbox", "/inbox"))
 	b.WriteString(`</div>`)
-	b.WriteString(`<a class="peek-more" href="/inbox">Go to inbox &rarr;</a>`)
 	return b.String()
 }
 

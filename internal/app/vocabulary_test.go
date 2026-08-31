@@ -24,10 +24,10 @@ func TestNoImplementationVocabularyInProductSurface(t *testing.T) {
 	// Files whose strings reach a user: page copy, agent system prompts,
 	// generated content, and the public status page.
 	surface := []string{
-		"../../home/landing.go",
+		"../../home/index.go",
 		"../../home/pricing.go",
 		"../../home/home.go",
-		"../../internal/app/landing.go",
+		"../../internal/app/index.go",
 		"../../internal/app/status.go",
 		"../../agent/agent.go",
 		"../../agent/run.go",

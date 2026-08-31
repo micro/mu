@@ -41,8 +41,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	owner := sess.Account
 
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
-	only := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("client")))
+	// From the body, never the URL.
+	//
+	// This searches the transcript of everything the account has ever said to an
+	// agent, which is about as private as anything on the instance gets. A GET
+	// wrote the phrase into the URL, and a URL comes to rest in the browser's
+	// history and in the access log of whatever terminates TLS in front of us —
+	// an nginx or a Caddy on a self-hosted install, both logging the full URI by
+	// default. PostFormValue rather than FormValue, which would go on reading the
+	// query. See AGENTS.md, "What may travel in a URL".
+	query := strings.TrimSpace(r.PostFormValue("q"))
+	only := strings.ToLower(strings.TrimSpace(r.PostFormValue("client")))
 
 	var hits []thread.Hit
 	if query != "" {
@@ -60,7 +69,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`told, whether you said it in the browser, by email, or from the command line. ` +
 		`To read a conversation and carry it on, go to ` + app.TextLink("your inbox", "/inbox") + `.</p>`)
 
-	b.WriteString(`<form method="GET" action="/recall" class="rc-form">` +
+	csrf := auth.CSRFToken(r)
+	b.WriteString(`<form method="POST" action="/recall" class="rc-form">` +
+		app.CSRFField(csrf) +
 		`<input class="rc-input" type="search" name="q" placeholder="A word or phrase somebody said" ` +
 		`value="` + html.EscapeString(query) + `" autofocus>` +
 		`<button class="rc-go" type="submit">Search</button></form>`)
@@ -68,7 +79,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// The clients this account has actually used, so an instance that has only ever seen
 	// mail does not offer to narrow to anything else.
 	if query != "" {
-		b.WriteString(clientChips(owner, query, only))
+		b.WriteString(clientChips(owner, query, only, csrf))
 	}
 
 	switch {
@@ -116,7 +127,7 @@ func hitRow(h thread.Hit, query string) string {
 }
 
 // clientChips narrows a search to where it was said.
-func clientChips(owner, query, active string) string {
+func clientChips(owner, query, active, csrf string) string {
 	seen := map[string]bool{}
 	var present []string
 	for _, t := range thread.List(owner, 0) {
@@ -131,17 +142,23 @@ func clientChips(owner, query, active string) string {
 	}
 	sortStrings(present)
 
+	// A chip is a button in its own small form, not a link.
+	//
+	// It was a link carrying ?q=<the phrase>&client=…, which put the search term
+	// back in the URL by the side door — the box could post all it liked and one
+	// click on "Mail" would write the phrase into the history and the proxy log
+	// anyway. A form re-asks the same question with one field changed, which is
+	// what the chip means, and carries the term in the body like the box does.
 	chip := func(label, client string) string {
 		cls := "rc-chip"
 		if client == active {
 			cls += " on"
 		}
-		q := url.Values{"q": {query}}
-		if client != "" {
-			q.Set("client", client)
-		}
-		return `<a class="` + cls + `" href="/recall?` + q.Encode() + `">` +
-			html.EscapeString(label) + `</a>`
+		return `<form class="rc-chip-form" method="POST" action="/recall">` +
+			app.CSRFField(csrf) +
+			`<input type="hidden" name="q" value="` + html.EscapeString(query) + `">` +
+			`<input type="hidden" name="client" value="` + html.EscapeString(client) + `">` +
+			`<button class="` + cls + `" type="submit">` + html.EscapeString(label) + `</button></form>`
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="rc-chips">` + chip("Everywhere", ""))

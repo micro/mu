@@ -20,14 +20,12 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	"mu/internal/quota"
 )
 
-// job is one of the four, as the page needs it: what it is called, what it
-// costs, and the second field it takes beyond the text itself.
+// job is one of the four, as the page needs it: what it is called and the
+// second field it takes beyond the text itself.
 type job struct {
 	Name  string
-	Op    string
 	Label string
 	Hint  string // placeholder for the second field
 	Field string // name of the second field, "" for summarise
@@ -35,15 +33,18 @@ type job struct {
 }
 
 var jobs = []job{
-	{"summarise", quota.OpTextSummarise, "Summarise", "bullets (optional)", "style",
+	{"summarise", "Summarise", "bullets (optional)", "style",
 		"Shortens text to its substance. Leave the box empty for prose."},
-	{"extract", quota.OpTextExtract, "Extract", `{"name":"string","total":"number"}`, "schema",
+	{"extract", "Extract", `{"name":"string","total":"number"}`, "schema",
 		"Returns JSON only, with null for anything the text does not say."},
-	{"classify", quota.OpTextClassify, "Classify", "billing, technical, sales", "labels",
+	{"classify", "Classify", "billing, technical, sales", "labels",
 		"Picks one of your labels, or 'none' if none fit."},
-	{"translate", quota.OpTextTranslate, "Translate", "French", "to",
+	{"translate", "Translate", "French", "to",
 		"Keeps line breaks, lists and markdown as they are."},
 }
+
+// lede is what the page is, for the tab title and the service listing.
+const lede = "Summarise, extract, classify and translate"
 
 // Handler serves /text.
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -51,8 +52,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		run(w, r)
 		return
 	}
-	app.Respond(w, r, app.Response{Title: "Text", Description:            //nolint:errcheck
-	"Summarise, extract, classify and translate — priced per call", HTML: page("")})
+	//nolint:errcheck
+	app.Respond(w, r, app.Response{Title: "Text", Description: lede, HTML: page("")})
 }
 
 // run does the work and renders the page with the answer in place.
@@ -69,8 +70,8 @@ func run(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		out = err.Error()
 	}
-	app.Respond(w, r, app.Response{Title: "Text", Description:            //nolint:errcheck
-	"Summarise, extract, classify and translate — priced per call", HTML: page(result(which, body, second, out))})
+	//nolint:errcheck
+	app.Respond(w, r, app.Response{Title: "Text", Description: lede, HTML: page(result(which, body, second, out))})
 }
 
 // do dispatches to the service, so the page and an agent go through exactly the
@@ -131,8 +132,8 @@ func page(answer string) string {
 	var b strings.Builder
 	b.WriteString(app.Column())
 	b.WriteString(`<div class="card"><h2>Text</h2>`)
-	b.WriteString(`<p class="tlede">Four things done to a piece of text, each a fixed price ` +
-		`per call. An agent can call these over MCP with no account — see <a href="/tools">Tools</a>.</p></div>`)
+	b.WriteString(`<p class="tlede">Four things done to a piece of text. ` +
+		`An agent can call these over MCP with no account — see <a href="/tools">Tools</a>.</p></div>`)
 
 	b.WriteString(answer)
 
@@ -143,12 +144,10 @@ func page(answer string) string {
 		if i == 0 {
 			checked = " checked"
 		}
-		cost := quota.OperationCost(j.Op)
 		b.WriteString(`<label class="tjob"><input type="radio" name="job" value="` +
 			j.Name + `"` + checked + ` data-hint="` + html.EscapeString(j.Hint) +
 			`" data-note="` + html.EscapeString(j.Note) + `"> ` +
-			html.EscapeString(j.Label) +
-			` <span class="tcost">` + strconv.Itoa(cost) + `p</span></label>`)
+			html.EscapeString(j.Label) + `</label>`)
 	}
 	b.WriteString(`</div>`)
 
@@ -170,7 +169,6 @@ const pageStyle = `<style>
 .tjob{display:flex;align-items:center;gap:6px;border:1px solid var(--border-color,#e3e3e3);
   border-radius:var(--border-radius,8px);padding:8px 12px;cursor:pointer;font-size:15px}
 .tjob:has(input:checked){border-color:#111;font-weight:600}
-.tcost{color:#888;font-size:13px;font-weight:400}
 .tnote{color:#666;font-size:14px;margin:0 0 10px}
 .tform textarea,.tform input[type=text]{width:100%;margin-bottom:10px;font-family:inherit}
 .tform button{width:100%}

@@ -104,7 +104,7 @@ func (Server) Run(ctx context.Context, req *RunRequest, rsp *RunResponse) error 
 // ── Write ───────────────────────────────────────────────────────
 
 type WriteRequest struct {
-	Path    string `json:"path" required:"true" description:"Where to put it, under /work. Missing directories are created"`
+	Path    string `json:"path" required:"true" description:"Where to put it, relative to /work — not to the directory your last command left you in. Missing directories are created"`
 	Content string `json:"content" required:"true" description:"The whole file. This replaces what was there"`
 }
 
@@ -119,6 +119,18 @@ type WriteResponse struct {
 // and a heredoc containing Go source with backticks and quotes in it is the
 // thing models get wrong. The content arrives as a JSON string and reaches the
 // file without going through a shell at all.
+//
+// # Its path is relative to /work, not to where you are
+//
+// Run happens in the directory the last command left; this does not. The two
+// disagree on purpose. A shell command belongs where the session is, because
+// that is what a shell is. A file's destination is an argument, and an argument
+// whose meaning depends on invisible state is one nobody can check by reading
+// the call — the same write, twice, landing in different places.
+//
+// It is a real trap either way round, so it is said in the tool's own
+// description as well as here. A caller who wants the session's directory can
+// have it: the path is theirs to build.
 // @example {"path": "hello.go", "content": "package main\n"}
 func (Server) Write(ctx context.Context, req *WriteRequest, rsp *WriteResponse) error {
 	who, err := caller(ctx)
@@ -139,84 +151,6 @@ func (Server) Write(ctx context.Context, req *WriteRequest, rsp *WriteResponse) 
 		return err
 	}
 	rsp.Path, rsp.Bytes = path, len(req.Content)
-	return nil
-}
-
-// ── Read ────────────────────────────────────────────────────────
-
-type ReadRequest struct {
-	Path string `json:"path" required:"true" description:"The file to read, under /work"`
-}
-
-type ReadResponse struct {
-	Path    string `json:"path" description:"What was read"`
-	Content string `json:"content" description:"The file"`
-}
-
-// Read reads a file from the caller's machine.
-// @example {"path": "hello.go"}
-func (Server) Read(ctx context.Context, req *ReadRequest, rsp *ReadResponse) error {
-	who, err := caller(ctx)
-	if err != nil {
-		return err
-	}
-	path, err := under(who, req.Path)
-	if err != nil {
-		return err
-	}
-	if err := ready(ctx, who); err != nil {
-		return err
-	}
-	b, err := container.ReadFile(ctx, fileRun(who), path)
-	if err != nil {
-		return err
-	}
-	if len(b) > maxFile {
-		b = append(b[:maxFile], []byte("\n\n[…truncated]")...)
-	}
-	rsp.Path, rsp.Content = path, string(b)
-	return nil
-}
-
-// ── List ────────────────────────────────────────────────────────
-
-type ListRequest struct {
-	Dir string `json:"dir" description:"The directory to list, under /work. Defaults to /work"`
-}
-
-type ListResponse struct {
-	Dir     string `json:"dir" description:"What was listed"`
-	Entries string `json:"entries" description:"One line per entry, as ls -la writes it"`
-}
-
-// List is what is on the caller's machine, in a directory.
-// @example {"dir": "."}
-func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) error {
-	who, err := caller(ctx)
-	if err != nil {
-		return err
-	}
-	dir, err := under(who, req.Dir)
-	if err != nil {
-		return err
-	}
-	if err := ready(ctx, who); err != nil {
-		return err
-	}
-	// Not charged and not through Run, so it does not go through the meter: a
-	// listing costs this instance nothing and a caller finding its way around
-	// should not be billed for looking.
-	res, err := container.Exec(ctx, container.Run{
-		Name:    machineFor(who),
-		Command: "ls -la -- " + quoted(dir),
-		Dir:     home(who),
-		User:    runAs(who),
-		Wait:    quickWait,
-	})
-	if err != nil {
-		return err
-	}
-	rsp.Dir, rsp.Entries = dir, res.Out
 	return nil
 }
 
@@ -276,15 +210,12 @@ var Spec = service.Spec{
 		},
 		"Write": {
 			Writes: true,
-			Doc: "Put a file on your machine, creating any missing directories. Use " +
-				"this rather than shell redirection for anything with quotes or " +
-				"backticks in it, which is most source code",
-		},
-		"Read": {
-			Doc: "Read a file from your machine",
-		},
-		"List": {
-			Doc: "List a directory on your machine",
+			Doc: "Put a file on your machine, creating any missing directories. The " +
+				"only file operation that is not a shell command, because it is the " +
+				"one a shell is bad at: source is full of quotes and backticks and a " +
+				"heredoc will mangle it. The content arrives as a string and reaches " +
+				"the file without a shell seeing it. To read, list, search or change " +
+				"a file, use the shell — cat, ls, grep and sed are right there",
 		},
 	},
 }

@@ -584,6 +584,20 @@ func RequireSession(r *http.Request) (*Session, *Account, error) {
 		return nil, nil, errors.New("account not found")
 	}
 
+	// Using the instance is being on it.
+	//
+	// UpdatePresence had exactly one caller: a JSON endpoint the browser polls
+	// for an online count. So somebody could read every page on this server for
+	// an hour and never be present, because presence was a property of one poll
+	// rather than of using the place — and Home's Here strip, which is supposed
+	// to say who is about, could not see the person reading it.
+	//
+	// Here because this is the one function that answers "which account is this
+	// request", and every page, API call and tool call goes through it or
+	// through TrySession, which is this. A map write behind its own mutex, on a
+	// request that has already done a session lookup.
+	UpdatePresence(acc.ID)
+
 	return sess, acc, nil
 }
 

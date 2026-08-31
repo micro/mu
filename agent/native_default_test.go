@@ -10,9 +10,7 @@ import (
 
 func TestNativeLLM_OpenRouter(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	for _, k := range []string{"ATLAS_API_KEY", "OPENROUTER_API_KEY", "OPENROUTER_MODEL", "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL"} {
-		t.Setenv(k, "")
-	}
+	noProviders(t)
 	prevAtlas := settings.Get("ATLAS_API_KEY")
 	prevOR := settings.Get("OPENROUTER_API_KEY")
 	prevModel := settings.Get("OPENROUTER_MODEL")

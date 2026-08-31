@@ -15,7 +15,7 @@ import (
 // "top-down", which is a reasonable thing to want and is not what a
 // conversation is.
 func TestATranscriptPutsTheInputUnderTheTurns(t *testing.T) {
-	chat := ChatComponent(ChatConfig{Transcript: true, StorageNS: "probe"})
+	chat := ChatComponent(ChatConfig{Ask: true, Transcript: true, StorageNS: "probe"})
 
 	if !strings.Contains(chat, `class="mu-chat-transcript"`) {
 		t.Fatal("a transcript is not marked as one")
@@ -52,7 +52,7 @@ func TestATranscriptPutsTheInputUnderTheTurns(t *testing.T) {
 	// The class on the shell, not anywhere — the stylesheet carries the
 	// transcript rules either way, so looking for the string is not the
 	// question.
-	box := ChatComponent(ChatConfig{StorageNS: "probe"})
+	box := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe"})
 	if strings.Contains(box, `<div id="mu-chat" class="mu-chat-transcript">`) {
 		t.Error("a plain box was marked as a transcript")
 	}
@@ -64,7 +64,7 @@ func TestATranscriptPutsTheInputUnderTheTurns(t *testing.T) {
 // Following the answer down, but not when somebody has scrolled up to read
 // something. Chasing the bottom then is the thing every chat gets wrong once.
 func TestItFollowsTheAnswerButDoesNotChaseIt(t *testing.T) {
-	chat := ChatComponent(ChatConfig{Transcript: true, StorageNS: "probe"})
+	chat := ChatComponent(ChatConfig{Ask: true, Transcript: true, StorageNS: "probe"})
 	if !strings.Contains(chat, "function nearBottom()") {
 		t.Error("nothing checks whether the reader is at the bottom")
 	}

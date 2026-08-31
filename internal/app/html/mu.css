@@ -10,7 +10,12 @@
    - No heavy buttons or CTAs
    - Consistent spacing using design tokens
    ======================================== */
+/* How much room the phone's tab bar takes, and nothing on a screen wide
+   enough to show the rail. Every layout that has to end above the bar reads
+   this rather than repeating the number — a fixed bar is a thing four separate
+   rules have to agree about, and they did not. See navTabs. */
 :root {
+  --tabbar: 0px;
   /* This product is light. Say so, rather than letting a browser guess.
    *
    * Reported as "topup amounts have black text on black background", followed
@@ -53,6 +58,11 @@
   --accent-color: #000;
   --accent-blue: #007bff;
   --accent-blue-hover: #0056b3;
+  /* Somebody is here, now. The one colour in this file that stands for a live
+     state rather than for emphasis, which is why it is not --accent-color: a
+     lit dot beside a name has to read as a light and black reads as ink. See
+     .here-dot. */
+  --online: #2ea44f;
   
   /* Button colors */
   --btn-primary: #000;
@@ -137,6 +147,24 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
 }
 
 /* A visited link is the same colour as an unvisited one — but this rule must
@@ -686,21 +714,6 @@ td {
   gap: 14px;
 }
 
-/* The header's inbox link. Hidden on desktop, where the sidebar carries Inbox;
-   on a phone the sidebar is behind a hamburger, so this is the way to reach it.
-   It carried a count once, from a different source than the one on Home, and
-   the two disagreed with each other and with the list. */
-#head-inbox {
-  display: none;
-  position: relative;
-  text-decoration: none;
-  color: #555;
-  line-height: 0;
-}
-#head-inbox svg {
-  vertical-align: middle;
-}
-
 /* Credit balance in the top bar, beside Tools. The only place it appears: it
    was in the sidebar too for a moment, and the same number twice on one screen
    reads as a mistake. The top bar is fixed, always visible, and the same on
@@ -784,6 +797,24 @@ td {
   text-decoration: underline;
 }
 
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
+}
+
 /* Scroll offset for anchor links to account for fixed header */
 .anchor {
   scroll-margin-top: 60px;
@@ -820,12 +851,20 @@ body.page-home #page-title ~ #customize-link {
 /* Says what the block underneath is. The cards read as a dashboard somebody
    arranged; they are the tools answering live, and two words are the whole
    difference between those two readings. Quiet, because a label that competes
-   with what it labels is worse than none. */
+   with what it labels is worse than none.
+
+   15px above, halved from 30. That number was set when Home was a single
+   column and these headings were the only thing separating a stack of
+   unrelated blocks, so it had to be a real break. It is doing less work now:
+   the columns already separate the rail from the cards, the cards have borders
+   of their own, and the first heading in each column carries this margin as
+   the gap under the box — which at 30px was a band of empty page between the
+   thing you type into and everything it is about. */
 .home-section {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 30px 0 12px;
+  margin: 15px 0 12px;
   color: var(--text-muted, #888);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -845,6 +884,8 @@ body.page-home #page-title ~ #customize-link {
 }
 
 .home-section small { font-size: 11px; white-space: nowrap }
+
+}
 
 /* What is waiting, said once, in the section it is about. It was a suggestion
    chip under the chat box that spent a model call to read your own mail. */
@@ -871,6 +912,139 @@ body.page-home #page-title ~ #customize-link {
   display: flex;
   gap: 20px;
   height: 100%;
+}
+
+/* ── Home: yours on the left, the world's on the right ──────────────────────
+   Below 1024px .home-rail and .home-main are ordinary divs and Home is the
+   single stack it has always been on a phone and in tablet portrait.
+   Everything here is what happens when there is room for more than one column.
+
+   The problem being solved is width, not content. Home ran one column at every
+   size: the input, the brief, three inbox rows and a short roster each took the
+   full 1120px — a line of text and a metre of nothing beside it — and the
+   service cards, the part that is actually moving, began below the fold.
+   Collapsing the sidebar lengthened every one of those lines and moved the
+   cards no further up, which is the tell that the layout, not the width, was
+   the problem.
+
+   Two tracks, split by whose the content is. The rail is this account and is
+   short by nature. The main column is the instance reading the world and is a
+   card grid that wants width. Same page, in the order it was written. */
+/* 1024px, because that is an iPad in landscape and a small laptop, and because
+   it is where the sum works: less the 240px sidebar and the 40px gutter it
+   leaves 744px, which is a 320px rail and a 400px column of cards. Below it the
+   rail would be half the page. */
+@media only screen and (min-width: 1024px) {
+  /* Home earns a wider page than the reading pages do. 1400px is a measure for
+     a column of prose; this is a dashboard, and at 1400 a 2560px monitor spends
+     a third of itself on margins while the cards queue up two abreast. */
+  body.page-home #content {
+    max-width: 1700px;
+  }
+
+  #home-cards {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    column-gap: 28px;
+    align-items: start;
+  }
+
+  /* The date and the box are a header for the whole page, not for either
+     column, so they run across the top of both.
+
+     The box spent one commit in the rail, on the argument that what you can
+     ask is yours in the same sense the brief and the inbox are. It is, and it
+     still looked wrong: everything else in the rail is a list and a control is
+     not, so a text field indented to a third of the page with cards starting
+     beside it read as a widget in a sidebar rather than as the thing the page
+     is for. */
+  #home-date,
+  #home-agent,
+  .here-block {
+    grid-column: 1 / -1;
+  }
+
+  /* minmax(0,1fr) above and min-width:0 here for the same reason: a grid track
+     and a flex item both size to their content by default, so one wide card —
+     a long headline, a table that does not wrap — would push the track past
+     its share and squeeze the other column rather than scrolling itself. */
+  .home-rail,
+  .home-main {
+    min-width: 0;
+  }
+
+  /* Nothing resets the first heading's top margin, and that is deliberate.
+     Both columns now begin with a .home-section — Brief on the left, Services
+     on the right — so the 30px they each carry is what puts them on the same
+     line, and it is also the air under the box above them.
+
+     This was margin-top:0 on the main column's first heading for one commit,
+     from when the rail began with the input rather than a heading. With the
+     box moved across the top it made Services sit 30px above Brief. */
+
+  /* One column of cards at this width, because there is not room for two
+     beside a rail. The two-column rule is below, at the width where two
+     actually fit. */
+  .home-main #home {
+    flex-direction: column;
+  }
+  .home-main .home-right {
+    width: 100%;
+  }
+}
+
+/* Wide enough for the rail and two columns of cards — the three-column shape.
+   Derived rather than round: 1400px less the 240px sidebar, the 40px gutter,
+   the 320px rail and the 28px gap leaves 772px for the cards, which is a 320px
+   right column, a 20px gap and 432px of news. At 1300 the same sum leaves 332
+   for the news, narrower than a card is on a phone, so one wide column is the
+   better answer below this.
+
+   1400 rather than a rounder 1500 because 1440x900 is the laptop this is most
+   often read on, and it clears the sum with 40px to spare. */
+@media only screen and (min-width: 1400px) {
+  .home-main #home {
+    flex-direction: row;
+  }
+  /* Not equal. cards.json is not a pair of interchangeable halves: the left
+     column is blog, prayer and news — headlines, standfirsts and body text,
+     all of which read better long — and the right is markets, images and
+     social, which are a price table, one square photograph and a short post.
+     The first wants the width and the second is done at 320.
+
+     This was flex:1 1 0 on both for one commit, and equal columns gave the
+     wide half of the page to the half that had nothing to do with it: news
+     headlines wrapping to three lines beside a price table with air around
+     every figure. Same relationship as the full-width layout's 1fr + 370px,
+     re-proportioned for a region that is smaller because the rail is beside
+     it. */
+  .home-main .home-left {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+  .home-main .home-right {
+    flex: 0 0 320px;
+    width: 320px;
+    min-width: 0;
+  }
+  /* The 350px floor is what keeps a card readable when it is the page. Here
+     the grid above already guarantees the room, and the floor would instead
+     force a horizontal scrollbar at the bottom of the range. */
+  .home-main .home-left .card,
+  .home-main .home-right .card {
+    min-width: 0;
+  }
+}
+
+/* Past here the cards have room to spare, so the rail takes some of it. It is
+   the column holding a thing you type into and a list of who sent you what,
+   both of which read better at 360 than at 320 — but only once giving it the
+   40px is not taken off a card. */
+@media only screen and (min-width: 1600px) {
+  #home-cards {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
 }
 
 .card-tooltip {
@@ -934,13 +1108,11 @@ body.page-home #page-title ~ #customize-link {
   flex-shrink: 0;
 }
 
-#home:after {
-  content: ".";
-  display: block;
-  height: 0;
-  clear: both;
-  visibility: hidden;
-}
+/* A clearfix stood here — content:"." with clear:both, from when #home was a
+   float layout. It has done nothing since #home became a flex container: a
+   flex parent does not contain floated children because its children are not
+   floated. Removed rather than left, because the next person to change this to
+   a grid gets a phantom item in the first cell. */
 
 #home h1 {
   margin-top: 0;
@@ -1035,6 +1207,95 @@ body.page-home #page-title ~ #customize-link {
    fixed 50px header instead of hiding behind it. */
 #home-agent #mu-chat { max-width: none; }
 #home-agent #mu-chat-form { top: 58px; }
+/* The four hubs along the bottom of a phone. See navTabs in internal/app.
+
+   The rail is behind a hamburger at this width, which puts every destination
+   two taps away and none in reach of a thumb. There was a patch for that — an
+   envelope in the top bar, promoted because Inbox was the one people missed —
+   and it had been display:none with nothing anywhere turning it on, so the
+   workaround was invisible and the problem was whole. This is the general
+   answer; the patch is deleted.
+
+   Whether four fixed hubs along the bottom is right for this product is not
+   settled. It duplicates four of the seven rail entries, which is the usual
+   objection and the usual answer is that the four are worth the duplication.
+   It is here to be lived with rather than to be argued about.
+
+   Hidden above 900px, where the rail is on the screen and a second copy of the
+   same four links along the bottom would be the same navigation twice. */
+#tabs {
+  display: none;
+}
+
+@media only screen and (max-width: 900px) {
+  /* 52px is what the rules below add up to: 22px of icon, 3px of gap, a 10px
+     label and 15px of padding. Written once here so a page that has to end
+     above the bar does not have to know how the bar is built. */
+  :root {
+    --tabbar: calc(52px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    background: var(--card-background, #fff);
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    /* Below the bar on a phone with a home indicator is the gesture area, and
+       a tap target that ends there is a tap target that swipes the app away. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  #tabs a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 0 7px;
+    text-decoration: none;
+    color: var(--text-muted, #888);
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    /* 44px is the smallest thing a finger hits reliably. */
+    min-height: 44px;
+  }
+
+  #tabs img {
+    height: 22px;
+    width: 22px;
+    /* The rail's icons are read beside a word at rest; these are read at a
+       glance and half of them are flat PNGs, so the state is carried by the
+       label's colour and by the icon's opacity rather than by a tint that
+       would only work on the SVGs. */
+    opacity: 0.55;
+  }
+
+  #tabs a.active {
+    color: var(--text-primary, #1a1a1a);
+    font-weight: var(--font-weight-semibold, 600);
+  }
+
+  #tabs a.active img {
+    opacity: 1;
+  }
+
+  /* Room for it is further down, in the rule that owns #content's padding at
+     this width — a shorthand, which resets whatever a longhand up here says.
+     Search for "The bottom is the tab bar's".
+
+     Unconditional rather than scoped to pages that have a bar. body:has(#tabs)
+     would say it exactly, and :has() is used elsewhere in this file — but the
+     other uses degrade to a slightly worse layout where it is unsupported and
+     this one would degrade to the bar sitting on top of the content, which is
+     the failure being prevented. A signed-out phone gets that much space above
+     its footer and nothing else changes. */
+}
+
 /* ========================================
    CARDS & BLOCKS
    ======================================== */
@@ -1098,11 +1359,15 @@ body.page-home #page-title ~ #customize-link {
 body:has(#messages) #content {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 70px);
+  height: calc(100vh - 70px - var(--tabbar));
   padding-bottom: 20px;
   overflow: hidden;
 }
 
+/* The tab bar stood in this list once. It is navigation, and navigation that
+   is present on every screen except one is a thing a reader has to learn the
+   exceptions to — so the conversation makes room for it instead, by being
+   shorter. See the height below. */
 body:has(#messages) #footer,
 body:has(#messages) #chat-back-link {
   display: none;
@@ -1211,6 +1476,48 @@ body:has(#messages) #chat-back-link {
   color: #888;
   font-size: 13px;
 }
+
+/* One room, one line: the name, and what state it is in. See chat.roomRow.
+
+   It was .summary-item — name, then the state on its own line under it, with a
+   margin between — and eight rooms filled a screen and a half to deliver eight
+   words. The state is pushed right the way the inbox pushes a date there, so
+   the names line up as a column and the row reads as one fact about one room.
+
+   Both children name their own colour. The whole row is an <a>, and the global
+   `a:visited { color: #000 }` is 0-1-1, which beats a bare class — so a room
+   somebody had been in went black while the rest stayed grey. A two-class
+   selector outranks it and says the same thing in both states. */
+.rooms .room-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--divider, #f0f0f0);
+  text-decoration: none;
+}
+.rooms .room-row:last-child { border-bottom: none }
+.rooms .room-row:hover .room-name { text-decoration: underline }
+
+.rooms .room-name {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--text-primary, #111);
+}
+
+/* The state is the part that gives when the row is narrow: a room's name is
+   the thing being chosen between, and "last message 4 minutes ago" is not worth
+   a second line on a phone. */
+.rooms .room-state {
+  margin-left: auto;
+  min-width: 0;
+  color: var(--text-muted, #888);
+  font-size: 13px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #messages p {
   margin-top: 8px;
   margin-bottom: 12px;
@@ -1295,43 +1602,16 @@ body:has(#messages) #chat-back-link {
   60%, 100% { content: '...'; }
 }
 
-.context-message {
-  font-size: small;
-  color: #999;
-  font-style: italic;
-  text-align: center;
-  padding: 8px 0;
-  margin: 10px 0;
-  border-top: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.summary-toggle {
-  color: var(--text-secondary);
-  font-size: 12px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.summary-toggle:hover {
-  text-decoration: underline;
-}
-
-.summary-content {
-  margin-top: 8px;
-  font-style: normal;
-  line-height: 1.4;
-}
+/* .context-message, .summary-toggle and .summary-content were the styling for
+   a block JavaScript inserted at the top of a chat room: the room's name, its
+   summary again, and a link to hide it. The server renders all of that above
+   #messages — see .room-about — so nothing produces these any more. */
 .summary-meta {
   display: block;
   margin-top: 4px;
   color: #777;
   font-size: 12px;
   font-weight: 400;
-}
-#summary-toggle-icon {
-  color: #666;
-  font-size: 12px;
 }
 .summary-item {
   padding: 12px 0;
@@ -1456,6 +1736,21 @@ body:has(#messages) #chat-back-link {
   text-decoration: none;
   margin-right: 8px;
   transition: color var(--transition-fast);
+}
+
+/* The one you are in. Not a link, because there is nowhere for it to go, and
+   marked by weight and colour rather than by a box — this row is a line of
+   words and a filled tab in it would be the only chip on the page. */
+.head-on {
+  display: inline-block;
+  color: var(--text-primary, #1a1a1a) !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 8px;
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 1px;
 }
 
 .head:hover {
@@ -1586,6 +1881,24 @@ body:has(#messages) #chat-back-link {
 
 .post-item .info a:hover {
   text-decoration: underline;
+}
+
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
 }
 
 .keep-reading {
@@ -1822,6 +2135,24 @@ body:has(#messages) #chat-back-link {
 
 .news .summary a:hover {
   text-decoration: underline;
+}
+
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
 }
 
 /* News Article View */
@@ -2419,9 +2750,18 @@ a.highlight {
     margin-top: 0;
   }
   
+  /* The bottom is the tab bar's. A fixed bar covers whatever the page ends
+     with — the last card, the footer, the send button — and that is the thing
+     somebody scrolled all the way down to reach.
+
+     Here rather than beside the bar's own rules, which is where it was and
+     where it did nothing: this is a padding shorthand, later in the file, so
+     it reset the bottom back to 15px and the last thirty-seven pixels of every
+     page sat under the bar. One rule owns this padding; the clearance belongs
+     in it, and reads the one number rather than repeating it. */
   #content {
     margin-left: 0;
-    padding: 15px;
+    padding: 15px 15px calc(15px + var(--tabbar));
     max-width: 100%;
   }
   
@@ -2558,13 +2898,36 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* One column, in the order the server sent: the stream newest first, then
-     what is fixed. There was a hand-written order per card id here — a list
-     that had to be kept in step with cards.json, and was not: a card with no
-     rule defaulted to order:0 and jumped to the top, which is what happened
-     when Images was added and again each time the reminder card was renamed.
-     display:contents flattens both columns into this grid in DOM order, and
-     DOM order is now a decision rather than a file. */
+  /* One column, read the way the two are read when both are on the screen:
+     across, not down.
+
+     display:contents flattens the columns in markup order, which is the whole
+     left column and then the whole right one — so Markets, second thing on the
+     page at any width where both fit, fell below News and three cards of feed
+     on a phone. Nobody chose that; it is what concatenation does.
+
+     There was a hand-written order per card id here once, and it rotted: a
+     list that had to be kept in step with cards.json and was not, so a card
+     with no rule defaulted to order:0 and jumped to the top — which is what
+     happened when Images was added and again each time the reminder card was
+     renamed. This is keyed on position rather than on identity, so a card
+     added, removed or renamed changes nothing and there is no list to keep. */
+  .home-left  .card:nth-of-type(1) { order: 1 }
+  .home-right .card:nth-of-type(1) { order: 2 }
+  .home-left  .card:nth-of-type(2) { order: 3 }
+  .home-right .card:nth-of-type(2) { order: 4 }
+  .home-left  .card:nth-of-type(3) { order: 5 }
+  .home-right .card:nth-of-type(3) { order: 6 }
+  .home-left  .card:nth-of-type(4) { order: 7 }
+  .home-right .card:nth-of-type(4) { order: 8 }
+  .home-left  .card:nth-of-type(5) { order: 9 }
+  .home-right .card:nth-of-type(5) { order: 10 }
+  .home-left  .card:nth-of-type(6) { order: 11 }
+  .home-right .card:nth-of-type(6) { order: 12 }
+  .home-left  .card:nth-of-type(7) { order: 13 }
+  .home-right .card:nth-of-type(7) { order: 14 }
+  .home-left  .card:nth-of-type(8) { order: 15 }
+  .home-right .card:nth-of-type(8) { order: 16 }
 
   .cover {
     display: block;
@@ -3392,6 +3755,11 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
    across 720px. */
 .col-narrow { max-width: 600px; }
 
+/* A feed is read, not filled in, so it gets more room than a form does.
+   Its own width rather than a wider .col-narrow, which apps and agents also
+   use — they are forms and lists and want the narrower measure. */
+.col-feed { max-width: 800px; }
+
 /* A textarea for prose you type: full width, growable, in the page's own face
    rather than the browser's monospace default. */
 .form-area {
@@ -4097,40 +4465,20 @@ a.card-hover:hover {
   border-bottom-color: var(--text-primary, #333);
 }
 
-/* Note editor */
+/* Note editor
+   
+   The width, and nothing else. The rules that were here — the title input, the
+   textarea, their placeholders, an #autosave-status and a .delete-link — were a
+   second copy of styling service/notes/page.go already carries, from a version
+   of that page with an autosave indicator and link-shaped actions. Neither
+   exists any more, and the two that still matched won on specificity:
+   ".note-editor textarea" (0,1,1) beat the page's ".note-body-in" (0,1,0), so
+   the body took this file's borderless look while the title kept the page's
+   inset one, and the two lines of a note started 13px apart.
+   
+   The page owns how the page looks. */
 .note-editor {
   max-width: 600px;
-}
-.note-editor input[type="text"] {
-  width: 100%;
-  padding: 8px 0;
-  border: none;
-  border-bottom: 1px solid #eee;
-  font-size: 18px;
-  font-weight: 500;
-  margin-bottom: 8px;
-  outline: none;
-}
-.note-editor input[type="text"]:focus {
-  border-bottom-color: var(--accent-color, #000);
-}
-.note-editor input[type="text"]::placeholder {
-  color: #aaa;
-  font-weight: normal;
-}
-.note-editor textarea {
-  width: 100%;
-  min-height: 200px;
-  padding: 8px 0;
-  border: none;
-  font-size: 15px;
-  font-family: inherit;
-  line-height: 1.6;
-  resize: none;
-  outline: none;
-}
-.note-editor textarea::placeholder {
-  color: #aaa;
 }
 .note-actions {
   display: flex;
@@ -4139,18 +4487,6 @@ a.card-hover:hover {
   padding-top: 16px;
   border-top: 1px solid #eee;
   margin-top: 16px;
-}
-.note-actions a {
-  color: #666;
-  text-decoration: none;
-  font-size: 14px;
-}
-.note-actions .delete-link {
-  color: #c00;
-}
-#autosave-status {
-  font-size: 13px;
-  margin-left: auto;
 }
 .error {
   color: #c00;
@@ -5023,17 +5359,7 @@ a.card-hover:hover {
   flex: 1;
 }
 
-.places-forms {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
 @media (max-width: 768px) {
-  .places-forms {
-    grid-template-columns: 1fr;
-  }
   .places-location-row {
     flex-direction: column;
     align-items: stretch;
@@ -5048,16 +5374,6 @@ a.card-hover:hover {
   .places-options-row select {
     min-width: unset;
   }
-}
-
-.places-forms .card {
-  margin: 0;
-}
-
-.places-forms input,
-.places-forms select {
-  width: 100%;
-  margin-bottom: 8px;
 }
 
 .places-results {
@@ -5091,17 +5407,6 @@ a.card-hover:hover {
 .place-address {
   font-size: 0.85em;
   margin: 4px 0 0;
-}
-
-.cost-badge {
-  display: inline-block;
-  background: var(--text-secondary);
-  color: #fff;
-  font-size: 0.7em;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 4px;
-  vertical-align: middle;
 }
 
 /* Places city grid */
@@ -5270,7 +5575,7 @@ body.display-mode #nav-overlay,
 body.display-mode #footer,
 body.display-mode #menu-toggle,
 body.display-mode #page-title,
-body.display-mode #head-inbox {
+body.display-mode #tabs {
   display: none !important;
 }
 
@@ -5555,7 +5860,16 @@ button.pill:hover {
    with actions rather than a row of equal things. .ib-new-link had the
    margin-left:auto itself, which put a gap between the two controls the moment
    there was more than one. */
-.ib-addr-acts { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none }
+/* The inbox's two: New on the left as the action, the mail client out on the
+   right as a way through. They were adjacent inline-blocks and touched, which
+   read as one control split in half. */
+.ib-acts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 .ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
 .ib-empty { font-size: 14px; color: var(--text-muted, #888); line-height: var(--line-height, 1.6) }
 
@@ -5614,7 +5928,7 @@ button.pill:hover {
    reaches past the text without moving anything. */
 .ib-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 8px;
   padding: 0 10px;
   margin: 0 -10px;
@@ -5690,7 +6004,6 @@ button.pill:hover {
 .row-del:hover { color: var(--btn-danger, #c00) }
 @media (hover: none) { .row-del { opacity: 1 } }
 
-
 /* Unread is what makes this a mailbox rather than a log: a rule down the left
    and a heavier subject, so the eye finds the two that need answering without
    reading the twenty that do not. */
@@ -5698,61 +6011,114 @@ button.pill:hover {
 /* No pointer to hover with, so the cross is simply there. */
 @media (hover: none) { .ib-del-go { opacity: 1 } }
 
-/* On a phone a row is two lines and the cross belongs beside the first of
-   them. .ib-item aligns on the baseline, which is right when the row is one
-   line and drifts down the card when it is two — so on a narrow screen the
-   cross is pinned to the top and nudged to sit on the name's line. */
-@media (max-width: 640px) {
-  .ib-item { align-items: flex-start }
-  .ib-del { padding-top: 12px }
-}
-.ib-row.unseen .ib-who,
+/* The cross sits on the first line of the row at every width, which is what
+   flex-start on .ib-item gives it — the baseline alignment it used to have was
+   right for a one-line row and drifted down the card once the row had three.
+   The nudge keeps it on the sender's line rather than above it. */
+.ib-del { padding-top: 12px }
+/* Unread marks the two lines that say what the message is. Not the snippet:
+   it is the body, and a bold body is a row shouting. */
+.ib-row.unseen .ib-meta,
 .ib-row.unseen .ib-subject { font-weight: var(--font-weight-bold, 700) }
 .ib-row.unseen .ib-snip { color: var(--text-secondary, #555) }
 
-.ib-who {
-  flex: 0 0 130px;
-  font-size: 13px;
+/* A row is three lines: who it is from and when, what it is about, and the
+   first of what it says.
+
+   It was one line — sender in a 130px column, then a 150px column of pills,
+   then the subject, then the preview, then the time — and every one of those
+   was competing for the same width. Each rearrangement fixed one and broke
+   another: pills beside the subject pushed it off the row, pills in a column
+   left a ragged gap on every row with only one, and on a phone there was never
+   room for any of it. Nothing competes when nothing shares a line. */
+.ib-row {
+  display: flex;
+  flex-direction: column;
+  /* Stretch, and stated rather than left to the default. The rule above sets
+     align-items:baseline for the horizontal layout this replaced, and it is
+     not a property this block overrides — so the three lines shrank to their
+     own content instead of filling the row, and nothing inside them could be
+     pushed to the right-hand end of a width they did not have. */
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Who, where from, and when. Small and muted, because it is how you decide
+   whether to read the two lines under it rather than something to read. */
+/* Who wrote, and everything qualifying it, on one line at opposite ends.
+
+   All four ran together on the left for a commit, which put the date — the one
+   thing on this row somebody scans a column of — at the end of a sentence whose
+   length depends on the sender's name, so it landed somewhere different on
+   every row. A date column is read down and cannot be when it moves.
+
+   No wrap. The whole row is three fixed lines and a fourth appearing when a
+   name is long would make the list uneven; the sender truncates instead, and
+   the tags are short by construction. */
+.ib-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0 10px;
+  font-size: 12px;
   font-weight: var(--font-weight-medium, 500);
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-secondary, #555);
+  min-width: 0;
+}
+
+/* Who. Takes the slack and truncates, because it is the one part of this line
+   whose length is somebody else's to decide. */
+.ib-who {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ib-mid { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden }
+/* The channel, the box and how long ago, at the end where the eye finishes.
+   margin-left:auto rather than justify-content on the parent, so it holds when
+   the sender is missing and .ib-who renders empty. */
+.ib-tags {
+  display: flex;
+  align-items: baseline;
+  gap: 0 6px;
+  margin-left: auto;
+  flex: none;
+  color: var(--text-muted, #888);
+  font-weight: var(--font-weight-normal, 400);
+  white-space: nowrap;
+}
 
-/* The labels and the subject, together. One box so a phone can stack the
-   preview under them without breaking them apart — see the media query. */
-.ib-line { display: flex; align-items: baseline; gap: 8px; flex: none; max-width: 60%; min-width: 0; overflow: hidden }
-
-/* The labels get a column, so every subject on the page starts at the same
-   place. They were inline: one pill or two, "Here" or "WhatsApp" wide, so the
-   subject began somewhere different on every row and there was no edge for the
-   eye to run down. A fixed basis costs a little empty space on the rows with
-   one label and buys alignment on all of them, which is the trade every mail
-   client makes. */
-.ib-tags { flex: 0 0 150px; display: flex; gap: 6px; overflow: hidden }
+.ib-dot { color: var(--text-faint, #ccc); font-weight: var(--font-weight-normal, 400) }
 
 /* An explicit weight, because the row is a link and `a` is bold app-wide.
    Anything inside a link that does not declare a weight inherits that, so the
    subject was bold on every row and .ib-row.unseen had nothing left to say —
    read or unread, the page looked the same, which is the one distinction a
-   mailbox exists to draw. .ib-who declares 500 and escaped it; this did not.
-   TestAStatefulWeightHasABaseWeight now holds it for every such pair. */
+   mailbox exists to draw. TestAStatefulWeightHasABaseWeight holds it for every
+   such pair. */
 .ib-subject {
   font-size: 14px;
   font-weight: var(--font-weight-normal, 400);
   color: var(--text-primary, #1a1a1a);
-  white-space: nowrap;
-  flex: none;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-.ib-snip { font-size: 13px; color: var(--text-muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.ib-when { flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
+/* The body. Never bold, read or unread — see the rule at the top of this
+   block. */
+.ib-snip {
+  font-size: 13px;
+  font-weight: var(--font-weight-normal, 400);
+  color: var(--text-muted, #888);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 
 /* A conversation, read. */
 .ib-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px }
@@ -5969,6 +6335,11 @@ button.pill:hover {
 /* Your agents and your inbox are the two "what is yours" blocks on Home, so
    they are the same object: same border, same background, same inset. Drawing
    the second one differently would say they are different kinds of thing. */
+/* The three blocks in Home's rail, which are one shape and are listed here
+   together so they cannot drift apart again. The brief was a bare paragraph
+   under its heading while the two below it were bordered, which read as a
+   caption that had escaped its card. */
+.brief-peek,
 .inbox-peek,
 .agent-peek {
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
@@ -5976,6 +6347,14 @@ button.pill:hover {
   background: var(--card-background, #fff);
   padding: 4px var(--item-padding, 16px) 12px;
   margin: 0;
+}
+
+/* The brief's own padding is even, unlike the two below it. Theirs is 4px at
+   the top because their first child is a row carrying 11px of its own; this
+   holds a paragraph, and 4px above a sentence with 12px under it sits it
+   against the top edge. */
+.brief-peek {
+  padding-top: 12px;
 }
 
 /* One agent: its name, what it last dealt with, and when. Three columns rather
@@ -6017,6 +6396,7 @@ button.pill:hover {
 }
 
 .agent-peek-name { font-weight: 500; flex: none }
+
 .agent-peek-last {
   flex: 1;
   min-width: 0;
@@ -6075,32 +6455,18 @@ button.pill:hover {
    Under the card rather than inside it — within the border it read as one more
    row, indistinguishable from the three conversations above it, and the three
    blocks on Home now end the same way and align on the same left edge. */
-.peek-more { display: inline-block; margin-top: 12px; font-size: 13px; color: var(--text-secondary, #555); text-decoration: none }
-.peek-more:hover { color: var(--text-primary, #1a1a1a) }
 
-/* On a phone a row is two lines, not one squeezed into 390px: the name and the
-   time on top, the subject and the preview under it — which is what every mail
-   client on a phone does, and for the same reason. The preview used to be
-   hidden entirely here, so a mobile inbox was a list of subjects with no way to
-   tell what any of them said. */
+/* A row is three lines at every width now, so a phone needs almost nothing
+   said to it — which is the point of the change. What was here was a grid
+   re-laying five competing pieces into two lines, and it went with them.
+
+   Only the wrapping differs: with more width a clipped line is fine, and on a
+   phone the subject and the preview are worth two lines each rather than one
+   truncated one. */
 @media (max-width: 640px) {
-  .ib-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 12px 0 }
-  .ib-who { flex: none; grid-column: 1; font-size: 13px }
-  .ib-when { grid-column: 2; grid-row: 1; font-size: 11px }
-  .ib-mid { grid-column: 1 / -1; flex-direction: column; align-items: flex-start; gap: 2px }
-  /* The labels stay beside the subject; only the preview drops below. There
-     was an order:3 here pushing the pills past the preview, which put a
-     label — the thing you read to decide whether to read the row — at the
-     bottom of the row it labels. */
-  .ib-line { max-width: 100%; flex-wrap: wrap; row-gap: 2px }
-  /* No column on a phone: 150px of the 320px available is most of the row, and
-     the subject wraps to its own line here anyway, so there is nothing left to
-     line up. */
-  .ib-tags { flex: 0 0 auto }
-  .ib-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical }
+  .ib-row { padding: 12px 0 }
+  .ib-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical }
   .ib-snip { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45 }
-  .ib-addr { gap: 6px }
-  .ib-addr-note { font-size: 11px }
 }
 
 /* Writing one yourself, at /inbox/new. See inbox/new.go. */
@@ -6213,14 +6579,261 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 /* How things are, between the box and the inbox. See home/brief.go.
 
-   A sentence, not a section: no rule, no small-caps label, and no border. The
-   two blocks either side of it are labelled because they are lists; this is one
-   line, and a heading over one line is furniture. */
+   Labelled Brief, under a rule like the blocks below it. It stood unlabelled
+   on the argument that a heading over one line is furniture — true while the
+   line was counts this instance already held, and not once it became a written
+   sentence sitting directly under a box you type into, where an unlabelled
+   line reads as the box's output.
+
+   The gap above is the section rule's, not this paragraph's: .home-section
+   already carries 30px above and 12px below, and a top margin here collapsed
+   against it to a wider gap than Inbox or Agents leave under their own
+   headings. One block, spaced like the three under it.
+
+   Nothing below it. The 24px this carried was the gap to the next section,
+   from when the brief was a bare paragraph; the card it is in now owns that,
+   and the margin inside the border was a band of empty white under the last
+   line. */
 .home-brief {
-  margin: var(--spacing-md, 16px) 0 var(--spacing-lg, 24px);
+  margin: 0;
   font-size: 15px;
   line-height: var(--line-height, 1.6);
   color: var(--text-secondary, #555);
+}
+
+/* The chat, slid in from the right. See people/panel.go.
+
+   Mirrors #nav-container deliberately — same fixed position under the header,
+   same full height, same transform — so the product has one motion rather than
+   two that nearly match. Off-screen by transform rather than display:none, so
+   it animates and so the room inside keeps its socket and its scroll position
+   when it is closed and opened again.
+
+   [hidden] is what the script toggles, and it needs the !important: the
+   attribute's own display:none loses to this rule's display:flex, and a panel
+   that is only off-screen is still in the tab order. */
+#people-panel {
+  position: fixed;
+  right: 0;
+  top: 50px;
+  width: 380px;
+  max-width: 100%;
+  height: calc(100vh - 50px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px calc(18px + var(--tabbar));
+  background: var(--card-background, #fff);
+  border-left: 1px solid var(--border-color, #e0e0e0);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, .06);
+  z-index: 200;
+  transform: translateX(0);
+  transition: transform .18s ease;
+}
+#people-panel[hidden] {
+  display: flex !important;
+  transform: translateX(101%);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* On a phone it covers the page. A 380px panel beside nothing is a page with a
+   margin. */
+@media only screen and (max-width: 560px) {
+  #people-panel { width: 100% }
+}
+
+.people-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--divider, #f0f0f0);
+}
+.people-panel-title {
+  font-weight: var(--font-weight-semibold, 600);
+}
+/* The way out, top right, and big enough to hit. Escape closes it too — see
+   panelScript — because a thing that covers the page with no keyboard way out
+   is a trap for anybody not using a mouse. */
+.people-panel-x {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  color: var(--text-muted, #888);
+}
+.people-panel-x:hover { color: var(--text-primary, #1a1a1a) }
+
+/* The room fills what is left, and the box sits under it. */
+#people-panel #messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+#people-panel #chat-form {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+#people-panel #prompt { flex: 1; min-width: 0 }
+
+/* Opens it, and is a button because it does not go anywhere. .link styles it
+   like the other ways out of a block; this strips what a button brings.
+
+   Background and colour together, both at rest and on hover — see the note by
+   the base button rule. It shipped once with the fill removed and the colour
+   left alone, which is `color: #fff` from `button`, so "Open chat" was white
+   text on the page's white background until you pointed at it, and a dark pill
+   the moment you did. */
+.people-open {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--text-primary, #111);
+  cursor: pointer;
+  text-align: left;
+}
+.people-open:hover {
+  background: none;
+  border-color: transparent;
+  color: var(--accent-color, #000);
+  text-decoration: underline;
+}
+
+/* Who is on this instance, under the box. See home/here.go.
+
+   A row of names rather than a list, because it is one fact per person — are
+   they here — and a stack of twelve lines saying that would be the biggest
+   block on the page for the least in it. It wraps rather than scrolls: a row
+   that runs off the side hides exactly the people the cap already deprioritised,
+   and does it invisibly. */
+.here-strip {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 4px;
+}
+
+/* One person.
+   
+   Every declaration here is inside .here-strip, and that is not tidiness. The
+   global `a:visited { color: #000 }` is 0-1-1 and beats a bare class, so a
+   plain .here-who rule left every name somebody had clicked black while the
+   rest stayed grey — reported as "two names have black bold font, the rest
+   greyed out, my own name normal", which was three different states for two
+   states of the world. .here-strip .here-who is 0-2-0 and wins.
+
+   Weight and colour are both stated on both states for the same reason: a
+   property set on one and inherited on the other is a difference that depends
+   on what the surrounding page happens to do, which is how the lit name ended
+   up looking lighter than the unlit ones.
+
+   Subtle, because this is a strip under the box and not the subject of the
+   page. The only thing in it that carries any weight is the dot. */
+.here-strip .here-who {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: var(--font-weight-normal, 400);
+  color: var(--text-muted, #888);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.here-strip .here-who:visited {
+  color: var(--text-muted, #888);
+}
+.here-strip .here-who:hover {
+  color: var(--text-secondary, #555);
+  text-decoration: underline;
+}
+
+/* Present. One step darker and no heavier — the dot is what says it, and a
+   bold name beside a lit dot says it twice. */
+.here-strip .here-on,
+.here-strip .here-on:visited {
+  color: var(--text-secondary, #555);
+}
+
+/* The dot. Hollow for somebody who is not here — an outline reads as a place
+   where a light would be, which is the state it stands for; a filled grey dot
+   reads as a bullet. Nothing is drawn unlit in the strip today, since only the
+   present are listed, but the profile page reuses this class. */
+.here-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--text-faint, #bbb);
+  flex: none;
+  align-self: center;
+}
+.here-on .here-dot,
+.ib-person-live .here-dot {
+  border-color: var(--online, #2ea44f);
+  background: var(--online, #2ea44f);
+}
+
+/* The way to them, under the names. It was in the row, on the argument that a
+   link appearing on its own line would move everything under it as people come
+   and go — which is true and is the smaller cost: in the row it moved the row
+   itself, and it read as one more name in a list of people when it is a door. */
+.here-block .link {
+  display: inline-block;
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+/* A profile: the handle, then since when, then whether they are about — one
+   line each. See inbox.personFacts.
+
+   They shared a row and should not: the join date is fixed for the life of the
+   account and presence flips while somebody is looking at the page, so on one
+   line the second read as a qualifier on the first and shifted it sideways
+   every time it appeared. */
+.ib-person-fact {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+.ib-person-fact:last-of-type { margin-bottom: 18px }
+.ib-person-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary, #555);
+}
+
+/* An action with an icon in it. The envelope and the bubble separate now from
+   later faster than the words do, and the words say which is which for anybody
+   who does not read icons. */
+.ib-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+/* Two of them side by side. Chat leads and is the solid button because it is
+   the one that depends on the other person being here, which is the fact the
+   line above it just stated; mail is quiet because it works either way. */
+.ib-act + .ib-act {
+  margin-left: 8px;
+}
+.ib-act-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+/* Says what the row of mailboxes is. It was a row of names with nothing over
+   it, and a name on a chip does not say whether it filters, navigates or
+   addresses. */
+.ib-boxes-head {
+  margin: 22px 0 8px;
 }
 
 /* The counts are the part somebody scans for, so they carry the weight the
@@ -6384,33 +6997,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 /* The way to say something, and the address it goes to beside it — the address
    is the interface, so it is shown rather than hidden behind the button. */
 .pf-write { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 0 }
-
-/* Writing a post where your posts are listed. Same shape as the status box
-   above it — one column, the controls on a line underneath — so the two read
-   as one strip of things you set rather than two borrowed forms. */
-.pf-post-form { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 0 }
-/* What the box is for, above it. The fields say what goes in each one; this
-   says why you would start. */
-.pf-post-lede { font-size: 15px; color: var(--text-primary, #1a1a1a); margin: 0 }
-.pf-post-title, .pf-post-body {
-  font: inherit;
-  font-size: 15px;
-  padding: 7px 10px;
-  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
-  border-radius: var(--border-radius, 6px);
-  background: var(--card-background, #fff);
-  color: var(--text-primary, #1a1a1a);
-  width: 100%;
-  box-sizing: border-box;
-}
-.pf-post-body { resize: vertical; min-height: 72px; line-height: var(--line-height, 1.6) }
-.pf-post-title:focus, .pf-post-body:focus { outline: none; border-color: #bbb }
-.pf-post-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap }
-.pf-post-hint { font-size: 12px; color: var(--text-muted, #888) }
-/* The way out to tags and visibility, at the weight of the note it sits in.
-   Left alone it inherited the site's link colour and bold, which made the
-   escape hatch louder than the form it is an aside to. */
-.pf-post-hint a { color: inherit; font-weight: inherit; text-decoration: underline }
 
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }
@@ -6837,7 +7423,7 @@ select.field { max-width: 220px }
 .ib-addr-sep { margin: 0 8px; opacity: .5 }
 
 /* A sender you can read, with the whole address on hover. */
-.ib-who[title] { cursor: help }
+.ib-row[title] { cursor: help }
 
 /* The two addresses at the top of the inbox: yours, and the agent's. It showed
    one and composed as the other. See inbox/page.go. */
@@ -6988,7 +7574,6 @@ a.pill {
 }
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-
 /* The free list on /pricing. Things you scan, not paragraphs you read. */
 .price-free {
   margin: 0;
@@ -7023,6 +7608,10 @@ a.btn-secondary:hover, .btn-secondary:hover {
 /* What a room is about, above what has been said in it.
    Quiet: it is context for the messages, read once on the way in, and it must
    not compete with them. */
+/* What a chat room is about: the summary, foldable, and a link to the thing it
+   came from. A <details> rather than a script, so the open and closed states
+   are the element's own and there is no display property for .d-none to win an
+   argument with. */
 .room-about {
   margin: 0 0 14px;
   padding: 0 0 12px;
@@ -7030,6 +7619,33 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-size: 14px;
   line-height: 1.55;
   color: var(--text-muted, #666);
+}
+
+.room-about > summary {
+  cursor: pointer;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #888);
+  list-style: none;
+  user-select: none;
+}
+
+/* The default marker is a bullet in one browser and a triangle in another, so
+   it is replaced with one that says which way this goes. */
+.room-about > summary::-webkit-details-marker { display: none; }
+.room-about > summary::after { content: ' \002B'; }
+.room-about[open] > summary::after { content: ' \2212'; }
+.room-about > summary:hover { color: var(--text-color, #333); }
+
+.room-about > p {
+  margin: 8px 0 0;
+}
+
+.room-about .room-source {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
 }
 
 /* The crypto card: address, QR, and turning what it holds into credits.
@@ -7104,3 +7720,71 @@ a.btn-secondary:hover, .btn-secondary:hover {
   color: var(--text-muted, #888);
   max-width: 34em;
 }
+
+/* /@somebody: the conversation with them. See inbox/person.go. */
+/* The two ways to reach somebody, under their handle.
+   Left, not right. It was flex-end from when it sat above a conversation and
+   read as that pane's toolbar; the page is a profile now and these are its
+   primary actions, so they belong where every other page puts one — and the
+   empty state has always drawn the same pair on the left, so the buttons moved
+   sideways depending on whether you had ever written to the person. */
+.ib-person-head { display: flex; gap: 8px; margin: 0 0 var(--spacing-md, 16px) }
+/* What the page is, under the name the shell prints. Reported as a page
+   somebody landed on from a username and could not identify. */
+.ib-person-sub { margin: 0 0 var(--spacing-md, 16px); color: var(--text-secondary, #555); font-size: 14px }
+/* Somebody you have not spoken to yet is still their page — see person.go. */
+.ib-person-empty { padding: var(--spacing-lg, 24px) 0; }
+.ib-person-empty p { margin: 0 0 var(--spacing-md, 16px); color: var(--text-muted, #888) }
+.ib-person-also { margin: var(--spacing-lg, 24px) 0 0; padding-top: var(--spacing-md, 16px);
+  border-top: var(--border-width, 1px) solid var(--card-border, #e8e8e8) }
+.ib-person-also h3 { font-size: 15px; margin: 0 0 10px }
+.ib-person-list { list-style: none; margin: 0; padding: 0 }
+.ib-person-list li { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 7px 0;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
+.ib-person-list li:last-child { border-bottom: 0 }
+/* Channel and date travel together, on the right.
+   They were two siblings of the subject with margin-left:auto on the date, so
+   the channel pill sat against the subject and the date flew to the far edge —
+   two related facts about one conversation, at opposite ends of the row. One
+   wrapper, pushed as a unit, the way the inbox rows do it. */
+.ib-person-tags { margin-left: auto; display: flex; align-items: baseline; gap: 8px }
+.ib-person-when { font-size: 12px; color: var(--text-muted, #888); white-space: nowrap }
+.ib-person-list code { font-size: 13px }
+@media only screen and (max-width: 600px) { .ib-person-tags { margin-left: 0 } }
+
+/* /code — describing an app, watching it run, saying the next thing.
+   The app itself is the largest thing on the page, because the question every
+   turn answers is "is that what I meant" and that is answered by looking at it,
+   not by reading a description of it. */
+.code-run {
+  border: var(--border-width, 1px) solid var(--border-color, #e5e5e5);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-color, #fff);
+}
+.code-run iframe {
+  display: block;
+  width: 100%;
+  height: 60vh;
+  min-height: 320px;
+  border: 0;
+}
+.code-links { margin: 10px 0 0; font-size: 13px }
+
+/* What has been said, oldest first, so it reads down to the box. Numbered by
+   the element rather than by hand: these are the app's versions, and the
+   numbering is the version numbering. */
+.code-turns {
+  margin: 18px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted, #666);
+}
+.code-turns li { padding: 2px 0 }
+.code-said { color: var(--text-color, #222) }
+
+.code-box { display: flex; gap: 8px; margin-top: 16px }
+.code-box input[type="text"] { flex: 1 1 auto; min-width: 0 }
+.code-box input:disabled, .code-box button:disabled { opacity: 0.55 }
+.code-status { margin: 8px 0 0 }

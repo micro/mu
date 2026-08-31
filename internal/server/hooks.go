@@ -21,6 +21,7 @@ import (
 	"mu/admin"
 	"mu/agent"
 	agentblog "mu/agent/blog"
+	"mu/agent/brief"
 	chatagent "mu/agent/chat"
 	"mu/agent/digest"
 	"mu/agent/gate"
@@ -48,7 +49,6 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/thread"
-	"mu/internal/user"
 	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
@@ -356,9 +356,6 @@ func wireHooks() {
 	// reason. Their address without a tag, which is the person: service/mail
 	// will not wake an agent on untagged mail, so writing to somebody here is
 	// writing to them.
-	user.AddressFor = func(accountID string) string {
-		return mail.EmailForUser(accountID, mail.ConfiguredDomain())
-	}
 	// The roster, so the inbox can offer a box per agent rather than only the
 	// ones that already have mail — and so a box is the agent's address tag
 	// rather than a second slug derived from its name. See inbox.Agents.
@@ -457,7 +454,19 @@ func wireHooks() {
 	// Three hooks stood here handing the digest a way to publish. They were the
 	// cost of a service that could not import the blog; the digest is an agent
 	// now and imports it.
+	// Deleting a conversation deletes the runs that made it up.
+	//
+	// They were left behind, and adoptAll read them at the next start-up and
+	// put the conversation back — so Delete looked like it worked until a
+	// restart. See agent.ForgetConversation.
+	thread.Deleted = agent.ForgetConversation
+
 	digest.Load()
+
+	// The line at the top of Home. Same shape as the digest and a tenth of the
+	// output: one cheap call an hour, so the front page can say what happened
+	// without every page load paying for a model.
+	brief.Load()
 
 	// load search
 	web.Load()
@@ -488,36 +497,25 @@ func wireHooks() {
 		}()
 	}
 
-	// Wire user → blog callback (avoids direct import between building blocks)
-	user.GetUserPosts = func(authorID, authorName string) []user.UserPost {
-		posts := blog.PostsByAuthorID(authorID, authorName)
-		result := make([]user.UserPost, len(posts))
-		for i, p := range posts {
-			result[i] = user.UserPost{
-				ID:        p.ID,
-				Title:     p.Title,
-				Content:   p.Content,
-				CreatedAt: p.CreatedAt,
-				Private:   p.Private,
-			}
-		}
-		return result
-	}
-	user.LinkifyContent = blog.Linkify
+	// A model is optional now, so the ask box has to know whether there is one.
+	// internal/ai imports internal/app, so the answer comes back through a hook
+	// rather than an import that cannot exist. See app.AgentReady.
+	// ai.Configured, not ai.PreferredProvider.
+	//
+	// PreferredProvider answers a narrower question than it reads as: whether
+	// AI_PROVIDER names a provider that has a credential. That setting is an
+	// override an operator may set and usually has not — setup writes the keys
+	// and never writes it — so it is false on every instance configured through
+	// the wizard, whichever provider was picked. Wiring it here told a
+	// correctly configured instance it had no model and replaced its ask box
+	// with a search box.
+	//
+	// Configured is the question actually being asked: is there any credential
+	// or endpoint this instance could reach a model through.
+	app.AgentReady = ai.Configured
 
-	user.GetUserApps = func(authorID string) []user.UserApp {
-		appList := apps.ByAuthor(authorID)
-		result := make([]user.UserApp, len(appList))
-		for i, a := range appList {
-			result[i] = user.UserApp{
-				Slug:        a.Slug,
-				Name:        a.Name,
-				Description: a.Description,
-				Icon:        a.Icon,
-			}
-		}
-		return result
-	}
+	// And whether a wallet is a wallet here. Same shape, same reason.
+	app.TopUpConfigured = account.TopUpConfigured
 
 	// Wire admin → blog callbacks (avoids blog importing admin)
 	admin.GetNewAccountBlog = blog.PostsByNewAccounts

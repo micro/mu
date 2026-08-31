@@ -25,9 +25,17 @@ import (
 // Handler serves /contacts.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		action := strings.Trim(strings.TrimPrefix(r.URL.Path, "/contacts"), "/")
-		handleAction(w, r, action)
-		return
+		// Searching posts too, because the name somebody looks up is one of the
+		// people they know and does not belong in a URL. Told apart from add and
+		// remove by which field arrived rather than by a second path — on whether
+		// it arrived, not on its value, so pressing Search on an empty box is a
+		// search that matched everyone and not an add with no name.
+		_ = r.ParseForm()
+		if _, searching := r.PostForm["q"]; !searching {
+			action := strings.Trim(strings.TrimPrefix(r.URL.Path, "/contacts"), "/")
+			handleAction(w, r, action)
+			return
+		}
 	}
 	if app.WantsJSON(r) {
 		handleJSON(w, r)
@@ -44,7 +52,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 		app.Unauthorized(w, r)
 		return
 	}
-	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
+	if q := strings.TrimSpace(r.PostFormValue("q")); q != "" {
 		app.RespondJSON(w, map[string]any{"query": q, "contacts": Find(sess.Account, q)})
 		return
 	}
@@ -94,7 +102,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	auth.SetCSRFCookie(w, r)
 	csrf := auth.CSRFToken(r)
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	query := strings.TrimSpace(r.PostFormValue("q"))
 
 	people := List(sess.Account)
 	if query != "" {
@@ -110,10 +118,14 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
 	}
 
-	fmt.Fprintf(&b, `<form method="GET" action="/contacts" class="contact-search">
+	// POST: an address book is a list of the people somebody knows, and the name
+	// they looked up is not a thing to write into a URL. See AGENTS.md, "What may
+	// travel in a URL".
+	fmt.Fprintf(&b, `<form method="POST" action="/contacts" class="contact-search">
+  <input type="hidden" name="_csrf" value="%s">
   <input type="search" name="q" value="%s" placeholder="Search by name or address">
   <button type="submit">Search</button>
-</form>`, html.EscapeString(query))
+</form>`, html.EscapeString(auth.CSRFToken(r)), html.EscapeString(query))
 
 	// Add. Only the name is required — a contact with just a name is still
 	// worth having, and the rest can be filled in later by saying so.

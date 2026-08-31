@@ -76,7 +76,7 @@ func TestReadmeToolTableUsesServiceNames(t *testing.T) {
 	registerAll(t)
 
 	seen := map[string]bool{}
-	for _, cells := range tableRows(t, at("README.md"), "## Tools") {
+	for _, cells := range tableRows(t, at("README.md"), "## Services") {
 		if len(cells) < 2 {
 			t.Errorf("malformed row: %v", cells)
 			continue
@@ -154,7 +154,7 @@ func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
 	}
 
 	var gone []string
-	for _, cells := range tableRows(t, at("README.md"), "## Tools") {
+	for _, cells := range tableRows(t, at("README.md"), "## Services") {
 		if len(cells) < 2 {
 			continue
 		}
@@ -184,7 +184,7 @@ func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
 // underscore, so it is a remainder rather than a name to sort.
 func TestReadmeToolTableIsAlphabetical(t *testing.T) {
 	var labels []string
-	for _, cells := range tableRows(t, at("README.md"), "## Tools") {
+	for _, cells := range tableRows(t, at("README.md"), "## Services") {
 		if len(cells) < 2 {
 			continue
 		}

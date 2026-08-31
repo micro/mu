@@ -102,7 +102,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// An instruction about the conversation being read. POST here rather than at
 	// a path of its own, because /inbox/<box> is a mailbox name and /inbox/act
 	// would be one an account could have.
+	//
+	// Searching posts here too, for the same reason and one more: what somebody
+	// looks for in their own mail does not go in a URL, so the box posts. The two
+	// are told apart by which field arrived — a search carries q, an instruction
+	// carries ask or an action — rather than by a second route, because a second
+	// route under /inbox is a mailbox name somebody could claim.
 	if r.Method == http.MethodPost {
+		// Parsed here so PostForm is populated: the two are told apart by whether
+		// the field was sent at all, not by whether it has a value, because
+		// pressing Search on an empty box is a search that found everything and
+		// not an instruction with nothing in it.
+		_ = r.ParseForm()
+		if _, searching := r.PostForm["q"]; searching {
+			list(w, r, acc.ID, boxOf(r))
+			return
+		}
 		action(w, r, acc.ID)
 		return
 	}
@@ -179,8 +194,12 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	// there the whole time, exported and complete — but you had to know the
 	// page existed and that it was the same store, which is two facts nothing
 	// on this screen tells you. A mailbox you cannot search is a log.
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	b.WriteString(searchBox(box, q))
+	// From the body, never the URL — see searchBox. PostFormValue rather than
+	// FormValue: FormValue reads the query too, so the form could post while a
+	// hand-made ?q= went on working, which is the leak still open and nothing
+	// looking at it.
+	q := strings.TrimSpace(r.PostFormValue("q"))
+	b.WriteString(searchBox(box, q, auth.CSRFToken(r)))
 	if q != "" {
 		found(&b, r, accountID, box, q)
 		b.WriteString(`</div>`)
@@ -212,9 +231,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 			// pointing at a line that has gone.
 			b.WriteString(`<p class="ib-empty">Nothing has arrived yet. Write to your ` +
 				`address from anywhere — your own mail, your phone — and it turns up here. ` +
-				`The agent reads what arrives and answers in the thread. ` +
-				app.TextLink("Connect a mail client", "/inbox/imap") + ` to see the ` +
-				`addresses and the settings.</p>` +
+				`The agent reads what arrives and answers in the thread.</p>` +
 				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
 				`the agent, on ` + app.TextLink("Agents", "/agents") + `. Or ` +
 				app.TextLink("write one yourself", "/inbox/new") + `.</p>`)
@@ -277,29 +294,41 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 		snippet = trimTo(text, 110)
 	}
 
-	// The labels, before the subject rather than after it.
+	// Who, where from, and when — on their own line above the subject.
 	//
-	// They were between the subject and the snippet, which is the one place
-	// they cannot be read: mid-sentence, in the middle of the row. A label is
-	// how you decide whether to read the line at all, so it comes first.
+	// These have been three arrangements and each broke for the same reason:
+	// they were competing with the subject for one line. Beside it they pushed
+	// the subject off; in a fixed column they left a ragged gap on every row
+	// that had one label instead of two; as pills they were two boxes of
+	// chrome in the middle of a sentence. On a phone there was never room for
+	// any of it.
 	//
-	// Which channel carried it — every row here arrived from somewhere that is
-	// not this page, so it answers "where do I reply" — and which agent it is
-	// with, where it is with one. "Agent" as a bare word was the other half of
-	// the confusion: it named a role rather than saying which of them, and
-	// there are eleven.
-	// In a column of their own, so every subject on the page starts at the same
-	// place. They were inline before the subject, and a label is one pill or two
-	// and "Here" or "WhatsApp" wide — so the subject began somewhere different
-	// on every row and the eye had nothing to run down.
+	// A row is three lines now, which is what a mail client on a phone has
+	// always been: who it is from and when, then what it is about, then the
+	// first of what it says. Nothing competes, because nothing shares a line.
 	//
-	// Trimmed, because the column only holds so much and a name clipped
-	// mid-pill looks like a rendering fault rather than a long name.
-	labels := app.Pill(app.ClientName(t.Client))
-	if name := agentLabel(accountID, t.Agent); name != "" {
-		labels += app.Pill(trimTo(name, labelChars))
+	// Plain text separated by middots rather than pills. A pill is for a thing
+	// you can act on; the channel a message arrived by is a fact about it, and
+	// two facts in boxes read as two buttons.
+	// Who on the left, everything qualifying it on the right.
+	//
+	// All four ran together on the left for a commit, which put the date — the
+	// one thing on this row somebody scans a column of — at the end of a
+	// sentence whose length depends on how long the sender's name is, so it
+	// landed in a different place on every row. A date column is read down; it
+	// cannot be read down when it moves.
+	//
+	// The split is by kind. Who wrote is what the row is about; the channel, the
+	// agent whose box it is and how long ago are all facts *about* that, and
+	// they belong together at the end where the eye finishes.
+	var tags []string
+	if c := app.ClientName(t.Client); c != "" {
+		tags = append(tags, html.EscapeString(c))
 	}
-	labels = `<span class="ib-tags">` + labels + `</span>`
+	if name := agentLabel(accountID, t.Agent); name != "" {
+		tags = append(tags, html.EscapeString(trimTo(name, labelChars)))
+	}
+	tags = append(tags, html.EscapeString(app.TimeAgo(t.Updated)))
 
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every
@@ -320,20 +349,11 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	// nesting a submit inside a navigation target means a click has two
 	// meanings. So the row is a flex pair — the link, which fills it, and this.
 	return `<div class="ib-item">` +
-		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
-		`<span class="ib-who"` + titleAttr(full) + `>` + html.EscapeString(who) + `</span>` +
-		// The labels and the subject are one line, and the preview is the next.
-		//
-		// They were three siblings of .ib-mid, which is a flex row on a wide
-		// screen and a column on a phone — so on a phone each got a line of its
-		// own and the labels were pushed under the preview by an order:3 that
-		// existed to stop them being first. A label is how you decide whether to
-		// read the line, so it belongs beside what it labels on every width.
-		`<span class="ib-mid"><span class="ib-line">` + labels +
-		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 70)) +
-		`</span></span>` +
-		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></span>` +
-		`<span class="ib-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></a>` +
+		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `"` + titleAttr(full) + `>` +
+		`<span class="ib-meta"><span class="ib-who">` + html.EscapeString(who) + `</span>` +
+		`<span class="ib-tags">` + strings.Join(tags, `<span class="ib-dot">·</span>`) + `</span></span>` +
+		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 90)) + `</span>` +
+		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></a>` +
 		rowDelete(r, t.ID) + `</div>`
 }
 
@@ -503,7 +523,15 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 		return app.PillLink(label, boxPath(box), strings.EqualFold(box, current))
 	}
 
+	// Say what the row is.
+	//
+	// It was a row of names with nothing above it, and a name on a chip does
+	// not say whether it filters, navigates or addresses. These are the account's
+	// mailboxes — one per agent, each with its own address — so the word is
+	// Mailboxes, which is what the rail already calls them (see Mailboxes) and
+	// what a person coming from any mail client already knows.
 	var b strings.Builder
+	b.WriteString(`<p class="home-section ib-boxes-head"><small>Mailboxes</small></p>`)
 	b.WriteString(`<div class="ib-boxes">` + chip("All", ""))
 	for _, a := range agents {
 		if a.Tag == "" {
@@ -548,20 +576,37 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 func addressBar(accountID, box string) string {
 	var b strings.Builder
 
-	// A sentence and the two controls, not an identity strip.
+	// The two controls, and nothing else.
 	//
 	// This printed "You asim@micro.mu / Agent agent@micro.mu / IMAP" above every
-	// list. Three facts, and none of them is what somebody opening their inbox
-	// came to find out — they know who they are, and an address belongs on a
-	// page about addresses. What the top of a mailbox is for is saying what the
-	// list is and offering the one or two things you do from here.
+	// list once. Three facts, none of them what somebody opening their inbox
+	// came to find out, and they were cut back to one sentence — "Everything
+	// sent to you, on every channel" — which has the same problem in fewer
+	// words: it is the page's own title said again, read once and then read
+	// every visit afterwards on the way past.
 	//
 	// The addresses have not gone. The agent's is filled in for you on New,
 	// which is where you would use it rather than copy it, and both are on
 	// /inbox/imap with everything else a client asks for.
-	b.WriteString(`<div class="ib-addr"><span class="ib-lede">` +
-		lede(box) + `</span><span class="ib-addr-acts">` +
-		connectLink() + newLink() + `</span></div>`)
+	//
+	// Buttons rather than pills, on the left rather than out to the right. They
+	// are the page's actions and every other page in this product puts those at
+	// the top left in that shape; two pills floated right were this page's own
+	// arrangement and nowhere else's.
+	acts := ""
+	if mail.Reachable() {
+		acts = app.ActionLink("/inbox/new", "New")
+	}
+	// No Connect a mail client here.
+	//
+	// It sat beside New as a text link, on the reasoning that writing a message
+	// is what somebody does from here and setting up a mail client is something
+	// they do once, if ever. That reasoning is the argument for taking it off
+	// the page rather than for shrinking it: a control used once in the life of
+	// an account does not belong on the screen its owner opens every day, where
+	// it is read past several thousand times to be used never again. /inbox/imap
+	// still exists and /account is where a thing you set up once belongs.
+	b.WriteString(`<div class="page-action ib-acts">` + acts + `</div>`)
 	return b.String()
 }
 
@@ -575,25 +620,6 @@ func boxAddress(accountID, box string) string {
 		return ""
 	}
 	return mail.EmailForUser(mail.Handle(accountID, box), mail.ConfiguredDomain())
-}
-
-// lede says what this list is, in the one sentence a mailbox needs.
-func lede(box string) string {
-	if box != "" {
-		return "Everything sent to " + html.EscapeString(box)
-	}
-	return "Everything sent to you, on every channel"
-}
-
-// connectLink is the way into a mail client, beside New because that is the
-// other thing you do from the top of a mailbox.
-//
-// It says Connect rather than IMAP. IMAP is the protocol and was the right word
-// while this served mail alone and somebody was hunting for the setting; the
-// page behind it now describes the whole inbox in a mail client, and Connect is
-// what the reader is trying to do.
-func connectLink() string {
-	return `<a class="pill ib-connect-link" href="/inbox/imap">Connect</a>`
 }
 
 // No howTo, and the reasoning that put it here is the reasoning against it.
