@@ -123,7 +123,7 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// Where there are conversations it earns its place, because there it means
 	// "a different one from these".
-	head := `<div class="ib-person-head">` + sendMailTo(handle) + `</div>`
+	head := `<div class="ib-person-head">` + reachTo(handle) + `</div>`
 
 	// Nobody you have spoken to yet is still a page.
 	//
@@ -153,7 +153,7 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(convs) == 0 {
 		b.WriteString(`<div class="ib-person-empty">` +
-			`<p>Nothing between you yet.</p>` + sendMailTo(handle) + `</div></div>`)
+			`<p>Nothing between you yet.</p>` + reachTo(handle) + `</div></div>`)
 		app.Respond(w, r, app.Response{
 			Title:       title,
 			Description: "Your conversation with " + title,
@@ -198,19 +198,31 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 // which is the point of having both: the icon separates the two at a glance and
 // the word says which is which for anybody who does not read icons.
 //
-// # No Chat button yet
-//
-// It belongs here and there is nowhere for it to go. service/chat has topic
-// rooms and no concept of a room that is these two people — see task #96 — so
-// the only thing this could link to today is a room id assembled from two
-// account names, which anybody could guess and open. A private conversation
-// with a URL-guessable address is not a private conversation, and a button that
-// lies about that is worse than a button that is not there yet.
-func sendMailTo(handle string) string {
+// Chat is beside it now and was not, for a reason worth keeping: service/chat
+// had topic rooms and no concept of a room that is these two people, so the
+// only thing this could have linked to was an id assembled from two account
+// names that anybody could guess and open. A private conversation with a
+// guessable address is not private, and a button that lies about that is worse
+// than one that is not there. chat.Open and the membership check are what make
+// it honest — see service/chat/private.go.
+func reachTo(handle string) string {
 	to := html.EscapeString(url.QueryEscape(handle))
-	return `<a class="btn ib-act" href="/inbox/new?to=` + to + `">` +
+	who := html.EscapeString(url.QueryEscape(strings.TrimPrefix(handle, "@")))
+	return `<a class="btn ib-act" href="/chat?with=` + who + `">` +
+		iconChat + `Chat</a>` +
+		`<a class="btn btn-quiet ib-act" href="/inbox/new?to=` + to + `">` +
 		iconMail + `Send mail</a>`
 }
+
+// iconChat is a speech bubble.
+//
+// The pair earns its keep: the shapes separate now from later faster than the
+// words do, and the words say which is which for anybody who does not read
+// icons. Chat leads and is the solid button because it is the one that depends
+// on them being here, which is the fact the page above it just stated.
+const iconChat = `<svg class="ib-act-icon" viewBox="0 0 16 16" aria-hidden="true">` +
+	`<path d="M14 9.5a1.5 1.5 0 0 1-1.5 1.5H6l-3 2.5V11H3.5A1.5 1.5 0 0 1 2 9.5v-6A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5z" ` +
+	`fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>`
 
 // iconMail is an envelope, drawn rather than fetched.
 //

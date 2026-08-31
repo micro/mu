@@ -6663,13 +6663,19 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   color: var(--text-secondary, #555);
 }
 
-/* An action with an icon in it. The envelope and the bubble separate mail from
-   chat faster than the words do, and the words say which is which for anybody
+/* An action with an icon in it. The envelope and the bubble separate now from
+   later faster than the words do, and the words say which is which for anybody
    who does not read icons. */
 .ib-act {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+/* Two of them side by side. Chat leads and is the solid button because it is
+   the one that depends on the other person being here, which is the fact the
+   line above it just stated; mail is quiet because it works either way. */
+.ib-act + .ib-act {
+  margin-left: 8px;
 }
 .ib-act-icon {
   width: 15px;

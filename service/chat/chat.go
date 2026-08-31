@@ -477,6 +477,11 @@ func getOrCreateRoom(id string) *Room {
 
 	// Fetch item details based on type (OUTSIDE roomsMutex to avoid deadlocks)
 	switch itemType {
+	case "dm":
+		// A conversation between people has no item behind it to look up. Its
+		// subject is who is in it, which membership already knows — see
+		// private.go, which is also what decided this room may exist at all.
+		room.Title = pairTitle(id)
 	case "post":
 		// For posts, lookup by exact ID from index (posts are now indexed)
 		app.Log("chat", "Attempting to get post %s from index", itemID)
@@ -813,10 +818,17 @@ func (room *Room) run() {
 
 		case client := <-room.Register:
 			room.mutex.Lock()
+			// Already here on another tab, so nobody arrived. Without this a
+			// second window announces you to a room you are standing in, and
+			// closing it announces that you left while you are still talking.
+			already := room.has(client.UserID)
 			room.Clients[client.Conn] = client
 			room.LastActivity = time.Now()
 			room.mutex.Unlock()
 
+			if !already {
+				room.arrival(client.UserID, "joined")
+			}
 			// Broadcast updated user list
 			room.broadcastUserList()
 
@@ -826,8 +838,13 @@ func (room *Room) run() {
 				delete(room.Clients, client.Conn)
 				client.Conn.Close()
 			}
+			gone := !room.has(client.UserID)
 			room.LastActivity = time.Now()
 			room.mutex.Unlock()
+
+			if gone {
+				room.arrival(client.UserID, "left")
+			}
 
 			// Broadcast updated user list
 			room.broadcastUserList()
@@ -1379,6 +1396,36 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.NotFound(w, r, "no room here by that name")
 			return
 		}
+	}
+
+	// /chat?with=henrik — the conversation between you and one person.
+	//
+	// A door rather than an id, because the id is derived: PairRoom sorts the
+	// two names so both of you reach the same room, and nobody should have to
+	// know that to link to it. This is the one place a private room comes into
+	// being from a request, and it can, because the request names the person
+	// asking as one of its two members.
+	if with := strings.TrimSpace(r.URL.Query().Get("with")); with != "" {
+		_, acc, err := auth.RequireSession(r)
+		if err != nil {
+			app.RedirectToLogin(w, r)
+			return
+		}
+		them, err := auth.GetAccount(strings.ToLower(strings.TrimPrefix(with, "@")))
+		if err != nil {
+			app.NotFound(w, r, "nobody here is called @"+with)
+			return
+		}
+		id := PairRoom(acc.ID, them.ID)
+		if id == "" {
+			// Yourself. There is no conversation between one person, and the
+			// inbox is where your own record already is.
+			http.Redirect(w, r, "/inbox", http.StatusSeeOther)
+			return
+		}
+		Open(id, acc.ID, them.ID)
+		http.Redirect(w, r, "/chat?id="+url.QueryEscape(id), http.StatusSeeOther)
+		return
 	}
 
 	// Check if this is a WebSocket upgrade request

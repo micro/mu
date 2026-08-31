@@ -33,6 +33,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"mu/internal/data"
 )
@@ -160,4 +161,68 @@ func PairRoom(a, b string) string {
 		a, b = b, a
 	}
 	return privatePrefix + a + "_" + b
+}
+
+// pairTitle names a room after the person you are not.
+//
+// A conversation between people has no item behind it to look up, so its
+// subject is who is in it. Rendered for whoever is reading it would be better —
+// "@henrik" to asim and "@asim" to henrik — and Room.Title is one string shared
+// by everybody in the room, so it names both. The alternative is a title
+// computed per reader, which is a bigger change than a room heading is worth.
+func pairTitle(roomID string) string {
+	who := Members(roomID)
+	if len(who) == 0 {
+		// Nobody has opened it. It should not be renderable at all — Handler
+		// refuses a private room to a non-member — so this is the belt on that
+		// brace rather than a state anybody reaches.
+		return "Private"
+	}
+	for i, m := range who {
+		who[i] = "@" + m
+	}
+	return strings.Join(who, " and ")
+}
+
+// has reports whether an account has any connection to this room.
+//
+// Caller holds room.mutex. Used to tell a person arriving from a person opening
+// a second tab: without it a new window announces you to a room you are already
+// standing in, and closing one announces that you left while you are still
+// talking.
+func (room *Room) has(account string) bool {
+	for _, c := range room.Clients {
+		if c != nil && c.UserID == account {
+			return true
+		}
+	}
+	return false
+}
+
+// arrival says that somebody came or went.
+//
+// A message in the room rather than a separate event type, because that is what
+// it is: a line in the transcript, in order, that everybody present sees and
+// somebody arriving later reads in context. A second channel for it would mean
+// the client rendering two kinds of thing into one column and getting the order
+// right by hand.
+//
+// Not in the lobby or a topic room. Those are public and busy by design, and a
+// line every time anybody looks in is the thing that makes a public room
+// unreadable — IRC solved this by letting people turn joins off, which is an
+// admission that they are noise. In a room with two people in it, somebody
+// arriving is the most useful thing that can be said.
+func (room *Room) arrival(account, what string) {
+	if account == "" || account == agentName || !Private(room.ID) {
+		return
+	}
+	select {
+	case room.Broadcast <- RoomMessage{
+		UserID:    agentName,
+		Content:   "@" + account + " " + what,
+		Timestamp: time.Now(),
+		IsLLM:     true,
+	}:
+	default:
+	}
 }
