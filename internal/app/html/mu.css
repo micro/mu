@@ -901,6 +901,116 @@ body.page-home #page-title ~ #customize-link {
   height: 100%;
 }
 
+/* ── Home: yours on the left, the world's on the right ──────────────────────
+   Below 1024px .home-rail and .home-main are ordinary divs and Home is the
+   single stack it has always been on a phone and in tablet portrait.
+   Everything here is what happens when there is room for more than one column.
+
+   The problem being solved is width, not content. Home ran one column at every
+   size: the input, the brief, three inbox rows and a short roster each took the
+   full 1120px — a line of text and a metre of nothing beside it — and the
+   service cards, the part that is actually moving, began below the fold.
+   Collapsing the sidebar lengthened every one of those lines and moved the
+   cards no further up, which is the tell that the layout, not the width, was
+   the problem.
+
+   Two tracks, split by whose the content is. The rail is this account and is
+   short by nature. The main column is the instance reading the world and is a
+   card grid that wants width. Same page, in the order it was written. */
+/* 1024px, because that is an iPad in landscape and a small laptop, and because
+   it is where the sum works: less the 240px sidebar and the 40px gutter it
+   leaves 744px, which is a 320px rail and a 400px column of cards. Below it the
+   rail would be half the page. */
+@media only screen and (min-width: 1024px) {
+  /* Home earns a wider page than the reading pages do. 1400px is a measure for
+     a column of prose; this is a dashboard, and at 1400 a 2560px monitor spends
+     a third of itself on margins while the cards queue up two abreast. */
+  body.page-home #content {
+    max-width: 1700px;
+  }
+
+  #home-cards {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    column-gap: 28px;
+    align-items: start;
+  }
+
+  /* The date and the weather are a status line for the whole page, not for
+     either column, so they run across the top of both. */
+  #home-date {
+    grid-column: 1 / -1;
+  }
+
+  /* minmax(0,1fr) above and min-width:0 here for the same reason: a grid track
+     and a flex item both size to their content by default, so one wide card —
+     a long headline, a table that does not wrap — would push the track past
+     its share and squeeze the other column rather than scrolling itself. */
+  .home-rail,
+  .home-main {
+    min-width: 0;
+  }
+
+  /* Both columns start on the same line. .home-section carries 30px of top
+     margin so consecutive blocks in a stack are separated; the first block in
+     a column has nothing above it to be separated from, and the margin would
+     drop Services 30px below the input it now sits beside. */
+  .home-main > .home-section:first-child {
+    margin-top: 0;
+  }
+
+  /* One column of cards at this width, because there is not room for two
+     beside a rail. The two-column rule is below, at the width where two
+     actually fit. */
+  .home-main #home {
+    flex-direction: column;
+  }
+  .home-main .home-right {
+    width: 100%;
+  }
+}
+
+/* Wide enough for the rail and two columns of cards — the three-column shape.
+   Derived rather than round: 1400px less the 240px sidebar, the 40px gutter,
+   the 320px rail and the two 28px gaps leaves 772px, which is two cards of 376.
+   At 1300 the same rule gives two of 306, narrower than a card is on a phone,
+   so one wide column is the better answer below this.
+
+   1400 rather than a rounder 1500 because 1440x900 is the laptop this is most
+   often read on, and it clears the sum with 40px to spare. */
+@media only screen and (min-width: 1400px) {
+  .home-main #home {
+    flex-direction: row;
+  }
+  /* Equal columns, not the 1fr + 370px the full-width layout uses. That pair
+     is proportioned for 1120px; inside the main column the fixed 370 would be
+     half the region at the narrow end and a third of it at the wide end, so
+     the same two cards would change relative size as the window moved. */
+  .home-main .home-left,
+  .home-main .home-right {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+  /* The 350px floor is what keeps a card readable when it is the page. Here
+     the grid above already guarantees the room, and the floor would instead
+     force a horizontal scrollbar at the bottom of the range. */
+  .home-main .home-left .card,
+  .home-main .home-right .card {
+    min-width: 0;
+  }
+}
+
+/* Past here the cards have room to spare, so the rail takes some of it. It is
+   the column holding a thing you type into and a list of who sent you what,
+   both of which read better at 360 than at 320 — but only once giving it the
+   40px is not taken off a card. */
+@media only screen and (min-width: 1600px) {
+  #home-cards {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
+}
+
 .card-tooltip {
   display: inline-block;
   position: relative;

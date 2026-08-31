@@ -388,6 +388,28 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
+	// Yours on the left, the world's on the right.
+	//
+	// Two wrappers and nothing else — the blocks inside are in the order they
+	// were, and on a phone and a tablet these are plain divs that stack, so this
+	// is the same page it was. Above 1100px they become the two tracks of a
+	// grid, which is the whole change: see #home-cards in mu.css.
+	//
+	// The reason is that Home was one column at every width. On a wide screen
+	// the input, the brief, three inbox rows and a short agent roster each ran
+	// the full 1120px — a line of text and a metre of nothing beside it — and
+	// the services, which are the part that is actually moving, started below
+	// the fold. Closing the sidebar made every one of those lines longer and
+	// moved the cards no further up.
+	//
+	// What separates the two sides is whose they are. Everything in the rail is
+	// about this account and is short by nature: what you can ask, how things
+	// are, what arrived, who is working. Everything in the main column is the
+	// instance reading the world, and is a grid of cards that wants width. They
+	// have different shapes, so giving them the same width was always going to
+	// waste one of them.
+	b.WriteString(`<div class="home-rail">`)
+
 	// The box asks, the same as the signed-out page does.
 	//
 	// It searched, and the reason search won was that it is the half that works
@@ -475,6 +497,8 @@ function fetchW(la,lo){
 		}
 	}
 
+	b.WriteString(`</div><div class="home-main">`) // rail ends, the world begins
+
 	// No counts strip. Four tiles reading Agents 0, Unread 0, Apps 0, Credits
 	// 100 is a dashboard of numbers rather than a thing you can act on, and
 	// every one of them duplicates a sidebar row that is already one click
@@ -524,6 +548,7 @@ function fetchW(la,lo){
 		b.WriteString(app.Link("Go to services", "/services"))
 	}
 
+	b.WriteString(`</div>`) // close .home-main
 	b.WriteString(`</div>`) // close #home-cards
 
 	// Auto-refresh: poll every 2 minutes, update card content in-place
