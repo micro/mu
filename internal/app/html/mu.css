@@ -6532,50 +6532,67 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px 18px;
+  gap: 6px 16px;
   margin: 0 0 4px;
 }
 
-/* One person. Muted by default and dark when they are here, which is the same
-   move the inbox makes for an unread row — the page has one way of saying
-   "this one, now" and it is weight and colour rather than a badge. */
-.here-who {
+/* One person.
+   
+   Every declaration here is inside .here-strip, and that is not tidiness. The
+   global `a:visited { color: #000 }` is 0-1-1 and beats a bare class, so a
+   plain .here-who rule left every name somebody had clicked black while the
+   rest stayed grey — reported as "two names have black bold font, the rest
+   greyed out, my own name normal", which was three different states for two
+   states of the world. .here-strip .here-who is 0-2-0 and wins.
+
+   Weight and colour are both stated on both states for the same reason: a
+   property set on one and inherited on the other is a difference that depends
+   on what the surrounding page happens to do, which is how the lit name ended
+   up looking lighter than the unlit ones.
+
+   Subtle, because this is a strip under the box and not the subject of the
+   page. The only thing in it that carries any weight is the dot. */
+.here-strip .here-who {
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: var(--font-weight-normal, 400);
   color: var(--text-muted, #888);
   text-decoration: none;
   white-space: nowrap;
 }
-.here-who:hover { text-decoration: underline }
+.here-strip .here-who:visited {
+  color: var(--text-muted, #888);
+}
+.here-strip .here-who:hover {
+  color: var(--text-secondary, #555);
+  text-decoration: underline;
+}
 
-.here-on {
-  color: var(--text-primary, #1a1a1a);
-  font-weight: var(--font-weight-medium, 500);
+/* Present. One step darker and no heavier — the dot is what says it, and a
+   bold name beside a lit dot says it twice. */
+.here-strip .here-on,
+.here-strip .here-on:visited {
+  color: var(--text-secondary, #555);
 }
 
 /* The dot. Hollow for somebody who is not here — an outline reads as a place
    where a light would be, which is the state it stands for; a filled grey dot
-   reads as a bullet. */
+   reads as a bullet. Nothing is drawn unlit in the strip today, since only the
+   present are listed, but the profile page reuses this class. */
 .here-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  border: 1px solid var(--text-muted, #bbb);
+  border: 1px solid var(--text-faint, #bbb);
   flex: none;
   align-self: center;
 }
-.here-on .here-dot {
+.here-on .here-dot,
+.ib-person-live .here-dot {
   border-color: var(--online, #2ea44f);
   background: var(--online, #2ea44f);
-}
-
-/* When they were last here. Smaller than the name it follows: the name is what
-   somebody scans for and this is the qualifier, so it reads last. */
-.here-when {
-  font-size: 12px;
-  color: var(--text-muted, #aaa);
 }
 
 /* The way to them. It is in the row rather than under it, because it is only
@@ -6584,7 +6601,26 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .here-strip .link {
   display: inline-block;
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
+}
+
+/* A profile: the handle, then since when and whether they are about. See
+   inbox.personFacts. Sized under the handle above it, because these are the
+   qualifiers and the name is the subject. */
+.ib-person-facts {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 4px 0 18px;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+.ib-person-live {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--text-secondary, #555);
 }
 
 /* The counts are the part somebody scans for, so they carry the weight the

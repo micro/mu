@@ -18,7 +18,6 @@ package home
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"mu/internal/auth"
 )
@@ -60,21 +59,13 @@ func TestHereDrawsWhenYouAreAlone(t *testing.T) {
 }
 
 // Somebody else here: named, lit, and a way to them.
-//
-// And the ones who are not are still listed. Online-only drew nothing almost
-// all the time — the usual number of other people on a personal instance at any
-// given second is zero — and a strip that is empty on the day you look at it
-// teaches you it is broken.
-func TestHereListsEveryoneAndLightsThePresent(t *testing.T) {
-	people := []person{
+func TestHereNamesTheOthersPresent(t *testing.T) {
+	got := hereStrip([]person{
 		{id: "mine", online: true},
 		{id: "them", online: true},
-		{id: "away", seen: time.Now().Add(-48 * time.Hour), known: true},
-		{id: "never"},
-	}
-	got := hereStrip(people, "mine")
+	}, "mine")
 
-	for _, id := range []string{"mine", "them", "away", "never"} {
+	for _, id := range []string{"mine", "them"} {
 		if !strings.Contains(got, `href="/@`+id+`"`) {
 			t.Errorf("@%s is not in the strip:\n%s", id, got)
 		}
@@ -82,77 +73,52 @@ func TestHereListsEveryoneAndLightsThePresent(t *testing.T) {
 	if !strings.Contains(got, `href="/chat"`) {
 		t.Errorf("somebody else is here and there is no way to them:\n%s", got)
 	}
-
-	// Lit is a property of being present, not of being listed. Without that
-	// the strip says everybody is always here, which is worse than saying
-	// nothing: it is the one fact it exists to carry, wrong.
-	if n := strings.Count(got, "here-on"); n != 2 {
-		t.Errorf("%d names are lit, want 2:\n%s", n, got)
-	}
-
-	// How long ago, for the ones who are not here. Not for the ones who are —
-	// the lit dot says it, and "1 min ago" beside a live dot is the same fact
-	// twice. Not for an account presence has never seen either: after a restart
-	// that is everybody, and a strip of names each carrying the same wrong time
-	// is worse than a strip of names.
-	if !strings.Contains(got, "here-when") {
-		t.Errorf("nobody carries when they were last here:\n%s", got)
-	}
-	if n := strings.Count(got, "here-when"); n != 1 {
-		t.Errorf("%d names carry a time, want 1 — only @away has one that is "+
-			"both known and in the past:\n%s", n, got)
-	}
 }
 
-// A stale last-seen is dropped rather than printed.
+// The live roster holds only people who are here, and only people.
 //
-// A year against a name is not "when they were here", it is a fact about an
-// abandoned account. The name still draws — they are on the instance and that
-// is the point — without a number that makes the strip look like a graveyard.
-func TestHereDropsAStaleLastSeen(t *testing.T) {
-	got := hereStrip([]person{
-		{id: "ancient", seen: time.Now().Add(-2 * 365 * 24 * time.Hour), known: true},
-	}, "viewer")
-
-	if !strings.Contains(got, `href="/@ancient"`) {
-		t.Errorf("a long-absent account is dropped from the strip entirely:\n%s", got)
-	}
-	if strings.Contains(got, "here-when") {
-		t.Errorf("a two-year-old last-seen is printed against a name:\n%s", got)
-	}
-}
-
-// The live sort: whoever is present leads.
+// The one test that goes through roster rather than hereStrip. It reads the
+// real package maps, so it asserts properties of whatever it finds rather than
+// naming anybody: this binary's account store holds every account every other
+// test in the package created.
 //
-// The one test here that goes through roster, and all it checks is the
-// ordering rule — a strip that sorted by name would bury the people who are
-// actually here behind whoever happens to sort first. It reads the real maps,
-// so it asserts a relationship between entries rather than naming any: this
-// binary's account store holds whatever every other test in the package made.
-//
-// Last in this file, and it has to stay last. auth.UpdatePresence writes into
-// a package map with a three minute window and nothing takes a name back out,
-// so once this has run, every render after it in this binary says so.
-func TestZZTheOnesPresentComeFirst(t *testing.T) {
+// Last in this file, and it has to stay last. auth.UpdatePresence writes into a
+// package map with a three minute window and nothing takes a name back out, so
+// once this has run, every render after it in this binary says so.
+func TestZZTheRosterIsWhoIsHere(t *testing.T) {
 	const who = "hereroster"
 	auth.Create(&auth.Account{ID: who, Name: who}) //nolint:errcheck
 	auth.UpdatePresence(who)
 
+	live := map[string]bool{}
+	for _, id := range auth.OnlineUsers() {
+		live[id] = true
+	}
+
 	people := roster()
-	if len(people) < 2 {
-		t.Skip("one account on this instance, so there is no order to check")
+	if len(people) == 0 {
+		t.Fatal("somebody was just marked present and the roster is empty")
 	}
-	seenOffline := false
+	found := false
 	for _, p := range people {
-		if !p.online {
-			seenOffline = true
-			continue
+		if p.id == who {
+			found = true
 		}
-		if seenOffline {
-			t.Fatalf("@%s is here and is listed after somebody who is not", p.id)
+		if !p.online {
+			t.Errorf("@%s is on the roster and is not marked present — the "+
+				"strip lists who is here, so every entry is lit", p.id)
+		}
+		if !live[p.id] {
+			t.Errorf("@%s is on the roster and is not online; it listed every "+
+				"account once, which on a real instance is a wall of strangers "+
+				"under a heading saying HERE", p.id)
+		}
+		if auth.IsAgent(p.id) {
+			t.Errorf("@%s is a program, not a person — it is the instance "+
+				"itself, permanently present, and it is on the strip", p.id)
 		}
 	}
-	if !people[0].online {
-		t.Error("nobody leads the strip, yet somebody was just marked present")
+	if !found {
+		t.Errorf("@%s was marked present and is not on the roster", who)
 	}
 }

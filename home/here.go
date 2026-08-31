@@ -16,15 +16,20 @@ package home
 // already that, and a feed here would restate them in a smaller font. What is
 // missing is not events. It is people.
 //
-// # Everyone, not only the online ones
+// # Only the ones who are here
 //
-// Online-only was the first version of this and it drew nothing almost all the
-// time, because the usual number of other people on a personal instance at any
-// given second is zero. A strip that is empty on the day you look at it teaches
-// you it is broken. So: everyone with an account, the online ones first and
-// lit, the rest with when they were last here — which is the difference between
-// "nobody is about" and "this is a server with four people on it, two of whom
-// were here today".
+// It listed everybody with an account for one commit, online first and lit, the
+// rest with when they were last seen — on the argument that a strip which is
+// empty on the day you look at it teaches you it is broken. That reasoning came
+// from a one-person instance. On micro.mu it produced twelve strangers under a
+// heading saying HERE, none of them here, alphabetical because presence had
+// never heard of any of them, and the reader is the only name on it that means
+// anything.
+//
+// So: who is actually here. It is never empty — you are on it, because you are
+// reading it — and every name on it is a name the dot is true about. Who else
+// has an account is a different question and /users is the page that answers
+// it.
 //
 // # And it draws when you are alone
 //
@@ -41,7 +46,6 @@ import (
 	"html"
 	"net/url"
 	"sort"
-	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -50,25 +54,20 @@ import (
 // hereShown caps the strip.
 //
 // It is one line at the width Home gives it and stops being scannable long
-// before it stops fitting. Every online person is inside this bound in any
-// instance a person runs; the cap only ever bites on the offline tail, which is
-// sorted so the useful end of it survives.
+// before it stops fitting. A number this size is only ever reached by an
+// instance with a real crowd on it, and there the cap is the difference
+// between a line and a paragraph.
 const hereShown = 12
 
-// hereStale is how long ago counts as worth printing.
-//
-// A year-old last-seen against a name is not "when they were here", it is a
-// fact about an account that has been abandoned. Past this the name still
-// draws — they are on the instance and that is the point — without a number
-// that makes the strip look like a graveyard.
-const hereStale = 90 * 24 * time.Hour
-
 // person is one name in the strip.
+//
+// online is on the struct rather than implied by being in the list, because
+// the list is built from two sources — who has an account and who is present —
+// and collapsing that into "everybody here is here" is how a name ends up lit
+// for a reason nobody can point at.
 type person struct {
 	id     string
 	online bool
-	seen   time.Time
-	known  bool
 }
 
 // hereHTML is the strip: who is here, who else there is, and the way to them.
@@ -121,11 +120,7 @@ func hereStrip(people []person, viewerID string) string {
 			cls += " here-on"
 		}
 		out += `<a class="` + cls + `" href="/@` + url.PathEscape(p.id) + `">` +
-			`<span class="here-dot"></span>@` + html.EscapeString(p.id)
-		if when := hereWhen(p); when != "" {
-			out += `<span class="here-when">` + html.EscapeString(when) + `</span>`
-		}
-		out += `</a>`
+			`<span class="here-dot"></span>@` + html.EscapeString(p.id) + `</a>`
 	}
 	if others > 0 {
 		out += app.Link("Chat", "/chat")
@@ -133,78 +128,47 @@ func hereStrip(people []person, viewerID string) string {
 	return out + `</div></div>`
 }
 
-// hereWhen is how long ago somebody was last here, or nothing.
+// roster is who is on this instance right now.
 //
-// Nothing for the online — the lit dot says it, and "1 min ago" beside a live
-// dot is the same fact twice. Nothing for an account presence has never seen
-// either: after a restart that is everybody, and a strip of names each labelled
-// with the same wrong time is worse than a strip of names.
-func hereWhen(p person) string {
-	if p.online || !p.known || p.seen.IsZero() {
-		return ""
-	}
-	if time.Since(p.seen) > hereStale {
-		return ""
-	}
-	return app.TimeAgo(p.seen)
-}
-
-// roster is everybody on the instance, in the order the strip reads them.
+// Present only. It returned every account for one commit, sorted online-first
+// with a last-seen against the rest, and on an instance with a real signup list
+// that is twelve strangers under a heading saying HERE — none of them here, in
+// alphabetical order because presence had never heard of any of them. Who else
+// has an account is a real question and /users is the page for it.
 //
-// Online first and alphabetical among themselves, so the lit end of the strip
-// does not reshuffle while somebody is looking at it. Then everybody else by
-// how recently they were here, which is the order that puts the people this
-// instance actually has at the front of the tail. Accounts presence has never
-// heard of go last, alphabetically — after a restart that is all of them, and
-// the strip has to have some order on the day it knows nothing.
+// Alphabetical, so the strip does not reshuffle under somebody reading it. The
+// alternative was the reader first, which puts the least informative name in
+// the most valuable position.
 func roster() []person {
-	live := map[string]bool{}
-	for _, id := range auth.OnlineUsers() {
-		live[id] = true
-	}
-
 	var people []person
-	for _, acc := range auth.AllAccounts() {
-		if acc == nil || acc.ID == "" {
+	for _, id := range auth.OnlineUsers() {
+		acc, err := auth.GetAccount(id)
+		if err != nil || acc == nil {
+			// Presence knows a name the account store does not. A deleted
+			// account keeps its entry in the presence map until the window
+			// closes, and a name with no account behind it is a dead link.
 			continue
 		}
 		// People, not programs.
 		//
-		// The instance's own agent holds a real account — EnsureMicro creates
-		// it on every install as soon as there is a human admin — so it turned
-		// up in the strip as @micro, listed among the people who use this
-		// server. It is the server.
+		// The instance's own agent holds a real account — EnsureMicro creates it
+		// on every install as soon as there is a human admin — so it turned up
+		// in the strip as @micro, listed among the people who use this server.
+		// It is the server, and it is always present in the sense presence
+		// means, so it would be a permanently lit name that is nobody.
 		//
 		// Filtered on acc.Agent rather than on the id, because the id is one
-		// instance of the rule and the flag is the rule: "a person and a
-		// program are not the same caller" is what auth.Account.Agent was added
-		// to say, and anything else that gets an account for the same reason is
-		// out of this strip without a second edit here.
+		// instance of the rule and the flag is the rule: "a person and a program
+		// are not the same caller" is what auth.Account.Agent was added to say,
+		// and anything else that gets an account for the same reason is out of
+		// this strip without a second edit here.
 		if acc.Agent {
 			continue
 		}
-		seen, known := auth.LastSeen(acc.ID)
-		people = append(people, person{
-			id: acc.ID, online: live[acc.ID], seen: seen, known: known,
-		})
+		people = append(people, person{id: acc.ID, online: true})
 	}
 
-	sort.Slice(people, func(i, j int) bool {
-		a, b := people[i], people[j]
-		if a.online != b.online {
-			return a.online
-		}
-		if a.online {
-			return a.id < b.id
-		}
-		if ak, bk := a.known && !a.seen.IsZero(), b.known && !b.seen.IsZero(); ak != bk {
-			return ak
-		} else if ak {
-			return a.seen.After(b.seen)
-		}
-		return a.id < b.id
-	})
-
+	sort.Slice(people, func(i, j int) bool { return people[i].id < people[j].id })
 	if len(people) > hereShown {
 		people = people[:hereShown]
 	}

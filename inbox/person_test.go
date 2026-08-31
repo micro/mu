@@ -35,7 +35,16 @@ func person(t *testing.T, viewer, other string) *http.Cookie {
 	return &http.Cookie{Name: "session", Value: sess.Token}
 }
 
-func TestThePersonPageSaysWhoseConversationItIs(t *testing.T) {
+// The page says whose it is, with the handle under the name.
+//
+// It said "Your conversation with @x", which described the page rather than
+// the person. That was right when the page was one exchange and wrong now that
+// it is a profile: on your own page it would have had to say you were in
+// correspondence with yourself, and on somebody else's it labelled the whole
+// thing with the relationship before saying anything about them. The handle is
+// what belongs under a display name, because the display name is the
+// changeable one and the handle is the address.
+func TestThePersonPageSaysWhoseItIs(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	c := person(t, "reader", "micro")
 
@@ -48,8 +57,44 @@ func TestThePersonPageSaysWhoseConversationItIs(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("the page did not render: %d %s", w.Code, w.Header().Get("Location"))
 	}
-	if !strings.Contains(body, "Your conversation with @micro") {
-		t.Errorf("the page never says what it is:\n%s", body)
+	if !strings.Contains(body, `ib-person-sub">@micro`) {
+		t.Errorf("the page never says whose it is:\n%s", body)
+	}
+	// And since when, which is what turns a handle into somebody with a
+	// history here.
+	if !strings.Contains(body, "Joined ") {
+		t.Errorf("the profile does not say since when:\n%s", body)
+	}
+}
+
+// Your own page is a page, not a redirect to your inbox.
+//
+// It redirected, on the argument that mail to your own address is just mail so
+// this would be everything you have ever been sent. True while the page was a
+// correspondence; it is a profile now, so /@you is the one identity on this
+// instance you could not look at. Clicking your own name in /users and landing
+// in your inbox is the report that found it.
+func TestYourOwnPageIsAPage(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	c := person(t, "selfreader", "selfreader")
+
+	r := httptest.NewRequest(http.MethodGet, "/@selfreader", nil)
+	r.AddCookie(c)
+	w := httptest.NewRecorder()
+	PersonHandler(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("your own page redirects to %q instead of rendering",
+			w.Header().Get("Location"))
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, `ib-person-sub">@selfreader`) {
+		t.Errorf("your own page does not name you:\n%s", body)
+	}
+	// No way to write to yourself, and no correspondence: your correspondence
+	// is the inbox and this is not a second one.
+	if strings.Contains(body, "Send a message") {
+		t.Error("your own page offers to send you a message")
 	}
 }
 
@@ -71,11 +116,19 @@ func TestSomebodyYouHaveNeverWrittenToStillHasAPage(t *testing.T) {
 			w.Header().Get("Location"))
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "Start a conversation") {
-		t.Errorf("no way to start one:\n%s", body)
+	// "Send a message", not "Start a conversation": the second describes a
+	// relationship beginning, which is a bigger thing than the button does and
+	// than somebody clicking it means.
+	if !strings.Contains(body, "Send a message") {
+		t.Errorf("no way to write to them:\n%s", body)
 	}
 	// And it is still their page: it says whose, and where the button goes.
-	if !strings.Contains(body, "Your conversation with @stranger") {
+	//
+	// The handle, not "Your conversation with @stranger". That line described
+	// the page rather than the person — right when the page was one exchange,
+	// and wrong now that it is a profile: it labelled the whole thing with the
+	// relationship before saying anything about them.
+	if !strings.Contains(body, `ib-person-sub">@stranger`) {
 		t.Error("the empty page does not say whose it is")
 	}
 	if !strings.Contains(body, "to=%40stranger") {

@@ -584,6 +584,20 @@ func RequireSession(r *http.Request) (*Session, *Account, error) {
 		return nil, nil, errors.New("account not found")
 	}
 
+	// Using the instance is being on it.
+	//
+	// UpdatePresence had exactly one caller: a JSON endpoint the browser polls
+	// for an online count. So somebody could read every page on this server for
+	// an hour and never be present, because presence was a property of one poll
+	// rather than of using the place — and Home's Here strip, which is supposed
+	// to say who is about, could not see the person reading it.
+	//
+	// Here because this is the one function that answers "which account is this
+	// request", and every page, API call and tool call goes through it or
+	// through TrySession, which is this. A map write behind its own mutex, on a
+	// request that has already done a session lookup.
+	UpdatePresence(acc.ID)
+
 	return sess, acc, nil
 }
 
@@ -661,26 +675,6 @@ func UpdatePresence(username string) {
 	presenceMutex.Lock()
 	defer presenceMutex.Unlock()
 	userPresence[username] = time.Now()
-}
-
-// LastSeen is when a username was last on this instance, and whether that is
-// known at all.
-//
-// The same map OnlineUsers reads, without the three minute window — so it
-// answers for somebody who was here yesterday as well as somebody who is here
-// now. Home's Here strip uses it to say how long ago, and OnlineUsers to say
-// whether the dot is lit.
-//
-// Not known is a real answer and is why this returns two values. userPresence
-// is in memory: it is empty after a restart and has no entry for an account
-// that has never made a request, and those two are the same state here.
-// Reporting the zero time as a timestamp would put "56 years ago" against
-// every name on the page the first time somebody loaded Home after a deploy.
-func LastSeen(username string) (time.Time, bool) {
-	presenceMutex.RLock()
-	defer presenceMutex.RUnlock()
-	at, ok := userPresence[username]
-	return at, ok
 }
 
 // OnlineUsers returns a list of currently online usernames

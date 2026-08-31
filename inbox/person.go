@@ -76,15 +76,20 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Yourself is the one address that cannot be a conversation. Mail to your
-	// own address is just mail — service/mail settles that — so this would be a
-	// page of everything you have ever been sent, which is the inbox.
-	if them.ID == acc.ID {
-		http.Redirect(w, r, "/inbox", http.StatusSeeOther)
-		return
-	}
+	// Your own page is a page.
+	//
+	// It redirected to /inbox, on the argument that mail to your own address is
+	// just mail so this would be a page of everything you have ever been sent.
+	// True while this was only a correspondence — and it is a profile now, so
+	// the thing at /@you is you, which is the one identity on this instance you
+	// cannot currently look at. Clicking your own name in /users and landing in
+	// your inbox is the report that found it.
+	you := them.ID == acc.ID
 
-	convs := thread.With(acc.ID, namesFor(them.ID)...)
+	var convs []thread.Thread
+	if !you {
+		convs = thread.With(acc.ID, namesFor(them.ID)...)
+	}
 
 	title := them.Name
 	if strings.TrimSpace(title) == "" {
@@ -92,21 +97,20 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	handle := "@" + them.ID
 
-	// What this page is, said once, under the name.
+	// A profile, in the order a profile reads: who, since when, and whether
+	// they are about.
 	//
-	// It said nothing. The argument was that the shell already prints the name
-	// and the conversation states the parties, so a heading would be a third
-	// copy of somebody's name — which was true and answered the wrong question.
-	// Reported by somebody on their own instance: they clicked a username on the
-	// blog, landed on an exchange, and did not know what the page was. A name at
-	// the top says who; nothing said what, and "an exchange with no label" reads
-	// as a page you have arrived at by accident.
-	//
-	// So it names the relationship rather than the person again. One line.
+	// This said "Your conversation with @x" under the name, which described the
+	// page rather than the person — right when the page was one exchange, and
+	// wrong now: on your own page it would have had to say you were in
+	// correspondence with yourself, and on somebody else's it labelled the
+	// whole page with the relationship before saying anything about them. The
+	// handle is what belongs under a display name, because the display name is
+	// the changeable one and the handle is the address.
 	var b strings.Builder
 	b.WriteString(`<div class="ib-person">`)
-	b.WriteString(`<p class="ib-person-sub">Your conversation with ` +
-		html.EscapeString(handle) + `</p>`)
+	b.WriteString(`<p class="ib-person-sub">` + html.EscapeString(handle) + `</p>`)
+	b.WriteString(personFacts(them))
 	// New message belongs on a page that already has one.
 	//
 	// On an empty page it was the fourth thing saying the same thing: the name,
@@ -130,11 +134,31 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	// the empty state of a thing is that thing, empty.
 	//
 	// So the page stands, says whose it is, and offers the one action.
-	if len(convs) == 0 {
+	if you {
+		// Your own page carries no way to write to yourself and no
+		// correspondence, because your correspondence is the inbox and this is
+		// not a second one. What is left is what a profile is: who you are on
+		// this instance, and the way to the settings that change it.
 		b.WriteString(`<div class="ib-person-empty">` +
-			`<p>Nothing here yet.</p>` +
+			app.Link("Account settings", "/account") + `</div></div>`)
+		app.Respond(w, r, app.Response{
+			Title:       title,
+			Description: handle + " on this instance",
+			HTML:        b.String(),
+		})
+		return
+	}
+
+	if len(convs) == 0 {
+		// "Send a message", not "Start a conversation". The second describes a
+		// relationship beginning, which is a bigger thing than the button does
+		// and a bigger thing than somebody clicking it means; the first says
+		// what happens next. It is also the wording everywhere else that
+		// composes — see /inbox/new, which this opens.
+		b.WriteString(`<div class="ib-person-empty">` +
+			`<p>Nothing between you yet.</p>` +
 			`<a class="btn" href="/inbox/new?to=` +
-			html.EscapeString(url.QueryEscape(handle)) + `">Start a conversation</a>` +
+			html.EscapeString(url.QueryEscape(handle)) + `">Send a message</a>` +
 			`</div></div>`)
 		app.Respond(w, r, app.Response{
 			Title:       title,
@@ -167,6 +191,42 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 		Description: "Your conversation with " + title,
 		HTML:        b.String(),
 	})
+}
+
+// personFacts is the two things a profile says about somebody that are true
+// whether or not you have ever spoken: since when, and whether they are about.
+//
+// Both are facts this instance already held and neither was on any page. The
+// join date is what turns a handle into a person with a history here — "@sara,
+// since March" is somebody who was here before you, and that is most of what
+// you want to know about a name you do not recognise. Presence is the other
+// half, and it is the half that decides whether writing to them is a message
+// or a conversation.
+//
+// Above the way to write to them on purpose. Knowing they are here changes what
+// you do next; finding out afterwards does not.
+//
+// Silent about presence rather than saying "Offline". Most people are, most of
+// the time, so the word would be on this page nearly always and would be the
+// loudest thing on it — the same argument that keeps Home's brief quiet on a
+// quiet day. Here is worth saying; not here is the default.
+func personFacts(them *auth.Account) string {
+	var parts []string
+	if !them.Created.IsZero() {
+		parts = append(parts, `<span class="ib-person-since">Joined `+
+			html.EscapeString(them.Created.Format("January 2006"))+`</span>`)
+	}
+	for _, id := range auth.OnlineUsers() {
+		if id == them.ID {
+			parts = append(parts, `<span class="ib-person-live">`+
+				`<span class="here-dot"></span>Here now</span>`)
+			break
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return `<p class="ib-person-facts">` + strings.Join(parts, "") + `</p>`
 }
 
 // replyAddressFor is where a reply to this person goes, on the channel this
