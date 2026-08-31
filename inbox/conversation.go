@@ -268,12 +268,61 @@ func actionBar(t *thread.Thread, to string, canAssign bool) string {
 		b.WriteString(`<button type="button" class="ib-assign-open" ` +
 			`onclick="muAssignOpen()">Assign to agent</button>`)
 	}
-	if to != "" {
+	// Where the reply goes, and only when that is not obvious.
+	//
+	// Somebody on this instance has one address and you are looking at their
+	// page: "Reply goes to micro@micro.mu" under a conversation with @micro
+	// tells a reader the domain of the server they are signed into. It is the
+	// address bar of the page they are on, written out as a caption.
+	//
+	// It earns its place for anybody else. A correspondent outside this
+	// instance can be on several addresses — mail from one, a phone number for
+	// texts, a WhatsApp number — and replyAddressFor picks by the channel the
+	// conversation is on, so which one it chose is a real fact that a reader
+	// cannot otherwise see and may want to correct.
+	if to != "" && !onThisInstance(to) {
 		b.WriteString(`<span class="ib-reply-who">Reply goes to ` +
 			html.EscapeString(to) + `</span>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// onThisInstance reports whether an address is an account here.
+//
+// Both halves, and both are needed. mail.LocalRecipient only splits the local
+// part off — it answers "what account would this be" and returns "henrik" for
+// henrik@gmail.com, so on its own it would call every external correspondent
+// local and hide the line in exactly the case it exists for. So the domain has
+// to match this instance's, and the account has to exist: a stranger writing
+// from ghost@micro.mu is on this domain and is nobody here.
+//
+// A bare @handle counts. That is how this product writes an account and it is
+// what /@name links carry, so it is a local address with the domain left off.
+func onThisInstance(addr string) bool {
+	addr = strings.ToLower(strings.TrimSpace(addr))
+	if addr == "" {
+		return false
+	}
+	if strings.HasPrefix(addr, "@") {
+		_, err := auth.GetAccount(strings.TrimPrefix(addr, "@"))
+		return err == nil
+	}
+	at := strings.Index(addr, "@")
+	if at < 0 {
+		return false
+	}
+	domain := strings.ToLower(strings.TrimSpace(mail.ConfiguredDomain()))
+	if domain == "" || addr[at+1:] != domain {
+		return false
+	}
+	// The +tag form is one account's address too — asim+claude@ is asim.
+	who := mail.LocalRecipient(addr)
+	if who == "" {
+		return false
+	}
+	_, err := auth.GetAccount(who)
+	return err == nil
 }
 
 // partyLine says who is on a conversation.
