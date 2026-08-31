@@ -57,17 +57,20 @@ import (
 // those ids already exist and two of each would leave mu.js binding to
 // whichever came first.
 //
-// # It is called Chat, not Lobby
+// # It is called Home, not Lobby
 //
-// "Lobby" is the room's id showing through. It is the one room with no subject,
+// "Lobby" was the room's id showing through. It is the one room with no subject,
 // which is a fact about how the chat service is arranged and not something a
-// person opening a panel needs to know — and the control that opens this says
-// "Open chat", so the heading saying something else made them read as two
-// different things.
+// person opening a panel needs to know.
+//
+// "Chat" was the next try and it says the medium, which the reader can see. This
+// room is the one attached to Home — it is where the people on this instance are,
+// which is what the strip above the button has just finished saying — so Home is
+// what it is, and the panel and the page it opens over agree.
 func PanelHTML() string {
 	return `<div id="people-panel" hidden aria-hidden="true">` +
 		`<div class="people-panel-head">` +
-		`<span class="people-panel-title">Chat</span>` +
+		`<span class="people-panel-title">Home</span>` +
 		`<button type="button" class="people-panel-x" onclick="muChatPanel(false)" ` +
 		`aria-label="Close chat">&times;</button></div>` +
 		`<div id="messages"></div>` +

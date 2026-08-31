@@ -627,7 +627,12 @@ func getOrCreateRoom(id string) *Room {
 			// The one room that is not about anything. No summary, so no
 			// About block draws over the messages — there is nothing to say
 			// about a room whose subject is whoever is in it.
-			room.Title = "Lobby"
+			//
+			// Home, because that is where it is: the panel over Home is this
+			// room, beside the strip naming the people in it. The id stays
+			// chat_lobby — it is on disk in every transcript already, and
+			// renaming a room to fix a label is a migration for a word.
+			room.Title = "Home"
 		} else {
 			mutex.RLock()
 			if summary, exists := summaries[itemID]; exists {
