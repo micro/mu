@@ -60,10 +60,13 @@ func TestThePersonPageSaysWhoseItIs(t *testing.T) {
 	if !strings.Contains(body, `ib-person-sub">@micro`) {
 		t.Errorf("the page never says whose it is:\n%s", body)
 	}
-	// And since when, which is what turns a handle into somebody with a
-	// history here.
-	if !strings.Contains(body, "Joined ") {
-		t.Errorf("the profile does not say since when:\n%s", body)
+	// And no join date. It was the first fact the page said about somebody and
+	// the least useful: when an account was made says nothing about the person,
+	// changes nothing you would do next, and on an instance a year old says the
+	// same thing about nearly everybody. It was there because a profile felt
+	// like it ought to have a fact under the name.
+	if strings.Contains(body, "Joined ") {
+		t.Errorf("the profile is back to leading with a join date:\n%s", body)
 	}
 }
 

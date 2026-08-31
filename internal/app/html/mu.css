@@ -5992,6 +5992,12 @@ button.pill:hover {
 .ib-row {
   display: flex;
   flex-direction: column;
+  /* Stretch, and stated rather than left to the default. The rule above sets
+     align-items:baseline for the horizontal layout this replaced, and it is
+     not a property this block overrides — so the three lines shrank to their
+     own content instead of filling the row, and nothing inside them could be
+     pushed to the right-hand end of a width they did not have. */
+  align-items: stretch;
   gap: 2px;
   min-width: 0;
   flex: 1;
@@ -5999,15 +6005,47 @@ button.pill:hover {
 
 /* Who, where from, and when. Small and muted, because it is how you decide
    whether to read the two lines under it rather than something to read. */
+/* Who wrote, and everything qualifying it, on one line at opposite ends.
+
+   All four ran together on the left for a commit, which put the date — the one
+   thing on this row somebody scans a column of — at the end of a sentence whose
+   length depends on the sender's name, so it landed somewhere different on
+   every row. A date column is read down and cannot be when it moves.
+
+   No wrap. The whole row is three fixed lines and a fourth appearing when a
+   name is long would make the list uneven; the sender truncates instead, and
+   the tags are short by construction. */
 .ib-meta {
   display: flex;
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0 6px;
+  gap: 0 10px;
   font-size: 12px;
   font-weight: var(--font-weight-medium, 500);
   color: var(--text-secondary, #555);
   min-width: 0;
+}
+
+/* Who. Takes the slack and truncates, because it is the one part of this line
+   whose length is somebody else's to decide. */
+.ib-who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The channel, the box and how long ago, at the end where the eye finishes.
+   margin-left:auto rather than justify-content on the parent, so it holds when
+   the sender is missing and .ib-who renders empty. */
+.ib-tags {
+  display: flex;
+  align-items: baseline;
+  gap: 0 6px;
+  margin-left: auto;
+  flex: none;
+  color: var(--text-muted, #888);
+  font-weight: var(--font-weight-normal, 400);
+  white-space: nowrap;
 }
 
 .ib-dot { color: var(--text-faint, #ccc); font-weight: var(--font-weight-normal, 400) }

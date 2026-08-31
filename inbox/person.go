@@ -97,8 +97,11 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	handle := "@" + them.ID
 
-	// A profile, in the order a profile reads: who, since when, and whether
-	// they are about.
+	// A profile: who, and whether they are about.
+	//
+	// It said "since when" too, and that came off — when an account was made
+	// says nothing about the person and changes nothing you would do next. What
+	// is left is presence, which is about right now.
 	//
 	// This said "Your conversation with @x" under the name, which described the
 	// page rather than the person — right when the page was one exchange, and
@@ -239,18 +242,18 @@ const iconMail = `<svg class="ib-act-icon" viewBox="0 0 16 16" aria-hidden="true
 // loudest thing on it — the same argument that keeps Home's brief quiet on a
 // quiet day. Here is worth saying; not here is the default.
 func personFacts(them *auth.Account) string {
-	// One line each, rather than two facts on a row.
+	// No join date.
 	//
-	// They are different kinds of fact and they change on different clocks: the
-	// join date is fixed for the life of the account and presence flips while
-	// you are looking at the page. Sharing a line made the second one look like
-	// a qualifier on the first, and moved the first sideways every time it
-	// appeared.
+	// It was the first fact this page said about somebody and it is the least
+	// useful one: when an account was made says nothing about the person, does
+	// not change what you would do next, and on an instance a year old it says
+	// the same thing about nearly everybody. It was reached for because a
+	// profile felt like it ought to have a fact under the name, which is the
+	// wrong reason to put anything on a page.
+	//
+	// What is left is presence, which is about right now and is the one thing
+	// here that changes what you do.
 	var parts []string
-	if !them.Created.IsZero() {
-		parts = append(parts, `<p class="ib-person-fact ib-person-since">Joined `+
-			html.EscapeString(them.Created.Format("January 2006"))+`</p>`)
-	}
 	for _, id := range auth.OnlineUsers() {
 		if id == them.ID {
 			parts = append(parts, `<p class="ib-person-fact ib-person-live">`+

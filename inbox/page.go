@@ -291,14 +291,25 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	// Plain text separated by middots rather than pills. A pill is for a thing
 	// you can act on; the channel a message arrived by is a fact about it, and
 	// two facts in boxes read as two buttons.
-	meta := []string{html.EscapeString(who)}
+	// Who on the left, everything qualifying it on the right.
+	//
+	// All four ran together on the left for a commit, which put the date — the
+	// one thing on this row somebody scans a column of — at the end of a
+	// sentence whose length depends on how long the sender's name is, so it
+	// landed in a different place on every row. A date column is read down; it
+	// cannot be read down when it moves.
+	//
+	// The split is by kind. Who wrote is what the row is about; the channel, the
+	// agent whose box it is and how long ago are all facts *about* that, and
+	// they belong together at the end where the eye finishes.
+	var tags []string
 	if c := app.ClientName(t.Client); c != "" {
-		meta = append(meta, html.EscapeString(c))
+		tags = append(tags, html.EscapeString(c))
 	}
 	if name := agentLabel(accountID, t.Agent); name != "" {
-		meta = append(meta, html.EscapeString(trimTo(name, labelChars)))
+		tags = append(tags, html.EscapeString(trimTo(name, labelChars)))
 	}
-	meta = append(meta, html.EscapeString(app.TimeAgo(t.Updated)))
+	tags = append(tags, html.EscapeString(app.TimeAgo(t.Updated)))
 
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every
@@ -320,7 +331,8 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	// meanings. So the row is a flex pair — the link, which fills it, and this.
 	return `<div class="ib-item">` +
 		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `"` + titleAttr(full) + `>` +
-		`<span class="ib-meta">` + strings.Join(meta, `<span class="ib-dot">·</span>`) + `</span>` +
+		`<span class="ib-meta"><span class="ib-who">` + html.EscapeString(who) + `</span>` +
+		`<span class="ib-tags">` + strings.Join(tags, `<span class="ib-dot">·</span>`) + `</span></span>` +
 		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 90)) + `</span>` +
 		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></a>` +
 		rowDelete(r, t.ID) + `</div>`
