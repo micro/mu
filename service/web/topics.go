@@ -61,17 +61,17 @@ func regenerateTopics() {
 	// Gather recent content titles
 	var headlines []string
 
-	newsItems := data.ByType("news", 30)
+	newsItems := data.ByType(data.KindNews, 30)
 	for _, item := range newsItems {
 		headlines = append(headlines, item.Title)
 	}
 
-	blogItems := data.ByType("post", 10)
+	blogItems := data.ByType(data.KindPost, 10)
 	for _, item := range blogItems {
 		headlines = append(headlines, item.Title)
 	}
 
-	videoItems := data.ByType("video", 10)
+	videoItems := data.ByType(data.KindVideo, 10)
 	for _, item := range videoItems {
 		headlines = append(headlines, item.Title)
 	}

@@ -491,7 +491,7 @@ func indexMarketPrices(prices map[string]float64) {
 	for ticker, price := range prices {
 		data.Index(
 			"market_"+ticker,
-			"market",
+			data.KindMarket,
 			ticker,
 			fmt.Sprintf("$%.2f", price),
 			map[string]interface{}{

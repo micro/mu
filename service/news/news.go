@@ -1044,7 +1044,7 @@ func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
 
 	data.Index(
 		post.ID,
-		"news",
+		data.KindNews,
 		post.Title,
 		fullContent,
 		map[string]interface{}{
@@ -1382,7 +1382,7 @@ func Load() {
 					// Re-index with summary as content
 					data.Index(
 						itemID,
-						"news",
+						data.KindNews,
 						title,
 						summary, // Use summary as content for chat context
 						metadata,
@@ -1734,7 +1734,7 @@ func newsSearchPayload(query string, limit int) map[string]interface{} {
 	// Search indexed news articles first, then merge in the live in-memory feed.
 	// The live feed powers /news and is the most truthful fallback when the
 	// search index is cold or stale, which can happen just after startup.
-	results := data.Search(query, limit, data.WithType("news"), data.WithKeywordOnly())
+	results := data.Search(query, limit, data.WithType(data.KindNews), data.WithKeywordOnly())
 	articles := newsSearchArticles(query, results, limit)
 	payload := map[string]interface{}{
 		"query":        query,
@@ -2594,7 +2594,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
+	results := data.Search(query, 20, data.WithType(data.KindNews), data.WithKeywordOnly())
 	quota.Charge(caller, quota.OpNewsSearch, nil) //nolint:errcheck
 
 	var searchResults []byte
@@ -2678,7 +2678,7 @@ func RefreshHNMetadata(uri string) (*Metadata, error) {
 		}
 		metadata["url"] = uri
 		metadata["category"] = "Dev"
-		data.Index(id, "news", md.Title, fullContent, metadata)
+		data.Index(id, data.KindNews, md.Title, fullContent, metadata)
 		app.Log("news", "Reindexed HN article with fresh comments for RAG: %s", uri)
 	}
 

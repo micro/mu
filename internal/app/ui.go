@@ -131,13 +131,9 @@ func Page(opts PageOpts) string {
 	return b.String()
 }
 
-// --- System user ---
-// The internal/system account used for automated posts, seeded threads, and AI responses.
-// "micro" is already registered as a user account.
-const (
-	SystemUserID   = "micro"
-	SystemUserName = "Micro"
-)
+// The instance's own agent was named here too, as a pair of display constants
+// from before it had an account. It has one now and the name went with it —
+// see auth.MicroID, which carries the rest of this note.
 
 // --- Shared content components ---
 // Used across blog, news, mail, and other packages

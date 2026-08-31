@@ -799,7 +799,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		// Index the video for search/RAG
 		data.Index(
 			"video_"+id,
-			"video",
+			data.KindVideo,
 			item.Snippet.Title,
 			item.Snippet.Description,
 			map[string]interface{}{

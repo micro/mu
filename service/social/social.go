@@ -809,7 +809,7 @@ func indexMessages(toIndex []*Message) {
 	for _, p := range toIndex {
 		data.Index(
 			"social_"+p.ID,
-			"social",
+			data.KindSocial,
 			p.Author,
 			p.Content,
 			map[string]interface{}{

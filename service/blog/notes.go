@@ -10,6 +10,7 @@ import (
 
 	"mu/internal/ai"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/settings"
 )
 
@@ -112,7 +113,7 @@ func publishNextNote() {
 		app.Log("notes", "generation failed [%s]: %v", name, err)
 		return
 	}
-	if err := CreatePost(title, body, app.SystemUserName, app.SystemUserID, notesTag+",notes", false); err != nil {
+	if err := CreatePost(title, body, auth.MicroName, auth.MicroID, notesTag+",notes", false); err != nil {
 		app.Log("notes", "failed to create post [%s]: %v", name, err)
 		return
 	}
@@ -140,8 +141,8 @@ func nextNote() (string, string) {
 // notesTag, authored by the system account), or zero.
 func latestNoteTime() time.Time {
 	var latest time.Time
-	for _, post := range PostsByAuthor(app.SystemUserName) {
-		if !strings.EqualFold(post.AuthorID, app.SystemUserID) || !hasTag(post.Tags, notesTag) {
+	for _, post := range PostsByAuthor(auth.MicroName) {
+		if !strings.EqualFold(post.AuthorID, auth.MicroID) || !hasTag(post.Tags, notesTag) {
 			continue
 		}
 		if post.CreatedAt.After(latest) {

@@ -36,8 +36,9 @@ import (
 	"mu/internal/data"
 )
 
-// indexType is what mail is called in the index.
-const indexType = "mail"
+// indexType is what mail is called in the index. The word is data's, like
+// every other kind — see data.Vocabulary.
+const indexType = data.KindMail
 
 // indexKey is one party's view of one message.
 //

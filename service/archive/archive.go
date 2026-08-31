@@ -34,6 +34,17 @@
 // "search" would have derived search_search, which is how service/web got its
 // name after service/search proved the point. The archive is the noun; searching
 // it is what you do to it.
+//
+// # The kinds are data's, not this package's
+//
+// The two schemas here advertised "news, video, market, blog, prayer" and two
+// of those five are words nothing writes: the blog indexes as "post" and the
+// prayer service as "reminder". So archive_list kind:"blog" answered "Nothing
+// of kind \"blog\" is archived" on an instance with thousands of posts, and a
+// model got it wrong every time, because a schema is the only thing it can
+// read. A struct tag has to be a literal, so the words cannot be built from
+// data.Vocabulary here — TestTheAdvertisedKindsAreTheRealOnes makes them agree
+// instead.
 package archive
 
 import (
@@ -59,7 +70,7 @@ const shown = 20
 
 type SearchRequest struct {
 	Query string `json:"query" required:"true" description:"What to look for"`
-	Kind  string `json:"kind" description:"Narrow to one kind: news, video, market, blog, prayer. Omit to search everything"`
+	Kind  string `json:"kind" description:"Narrow to one kind: news, post, video, market, social, reminder. Omit to search everything"`
 	Limit int    `json:"limit" description:"Max results (default 20, max 100)"`
 }
 
@@ -96,7 +107,7 @@ func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchRespons
 // ── List ────────────────────────────────────────────────────────
 
 type ListRequest struct {
-	Kind  string `json:"kind" description:"One kind: news, video, market, blog, prayer. Omit for a summary of what is here"`
+	Kind  string `json:"kind" description:"One kind: news, post, video, market, social, reminder. Omit for a summary of what is here"`
 	Limit int    `json:"limit" description:"Max entries (default 20, max 100)"`
 }
 

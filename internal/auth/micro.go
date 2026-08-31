@@ -3,8 +3,8 @@ package auth
 // The instance's own agent, as an account.
 //
 // Micro already behaved like one — it writes the daily opinion, it posts to the
-// blog under its own name, it surfaces breaking stories — but app.SystemUserID
-// was a display constant and nothing more. There was no accounts["micro"], so
+// blog under its own name, it surfaces breaking stories — but the id was a
+// display constant and nothing more. There was no accounts["micro"], so
 // nothing the agent did could be attributed, metered or rate limited. Its web
 // searches are paid calls to Brave that appear in no usage record and are
 // charged to nobody, because there was no identity to charge.
@@ -32,9 +32,24 @@ import (
 	"time"
 )
 
-// MicroID is the account id of the instance's own agent. It matches
-// app.SystemUserID, which is what the blog has posted under all along.
-const MicroID = "micro"
+// Who the instance's own agent is, in one place.
+//
+// This was two places. app.SystemUserID and app.SystemUserName were display
+// constants from before the agent had an account, and MicroID was added beside
+// them when it got one — both "micro", with a comment here noting they matched
+// rather than making them the same constant. So the digest published as
+// app.SystemUserID through blog.CreatePost while the opinion agent published
+// as MicroID through blog_create: same account, two names for it, and two
+// publish paths, only one of which is metered.
+//
+// They live here because this is the lower layer — internal/app already
+// imports internal/auth and not the other way round — and because the id is an
+// account fact rather than a display one. The day the agent is renamed, or an
+// instance wants its own name for it, this is the line.
+const (
+	MicroID   = "micro"
+	MicroName = "Micro"
+)
 
 // EnsureMicro creates the instance's agent account if it is missing.
 //

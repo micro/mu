@@ -100,7 +100,7 @@ func fetchReminder() {
 	// will split "reminder_daily" into type="reminder" and id="daily", then look up just "daily"
 	data.Index(
 		"daily",
-		"reminder",
+		data.KindReminder,
 		"Daily Reminder",
 		summary,
 		map[string]interface{}{
@@ -134,7 +134,7 @@ func fetchReminder() {
 	if key := reflectionKey(updated); key != "" {
 		data.Index(
 			"reminder-"+key,
-			"reminder",
+			data.KindReminder,
 			reflectionTitle(val, updated),
 			reflectionText(val),
 			reflectionMeta(val, updated),

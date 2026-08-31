@@ -1112,7 +1112,7 @@ func DeletePost(id string) error {
 // copy before handing it to a goroutine: posts are mutated under the mutex and
 // the index write is not holding it.
 func indexPost(p Post) {
-	data.Index(p.ID, "post", p.Title, p.Content, map[string]interface{}{
+	data.Index(p.ID, data.KindPost, p.Title, p.Content, map[string]interface{}{
 		"url":       "/blog/post?id=" + p.ID,
 		"author":    p.Author,
 		"tags":      p.Tags,
@@ -1206,7 +1206,7 @@ func FindTodayDigest() *Post {
 	now := time.Now()
 	y, m, d := now.Date()
 	for _, post := range posts {
-		if !strings.EqualFold(post.AuthorID, app.SystemUserID) {
+		if !strings.EqualFold(post.AuthorID, auth.MicroID) {
 			continue
 		}
 		if !strings.Contains(strings.ToLower(post.Tags), "digest") {

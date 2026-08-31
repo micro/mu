@@ -24,6 +24,39 @@ type Kind struct {
 	Count int    `json:"count"`
 }
 
+// The words. One lowercase singular noun for what an entry *is*.
+//
+// These were string literals at the call sites, and the readers had their own
+// copy: service/archive advertised "news, video, market, blog, prayer" in the
+// tool schema for both archive_search and archive_list, and two of those five
+// are not words anything writes. archive_list kind:"blog" answered "Nothing of
+// kind \"blog\" is archived" — on an instance with thousands of posts in it —
+// and a model reading the schema got it wrong every time, because the schema
+// is the only thing it can read.
+//
+// So the writer and the reader take the same constant, and the schema is built
+// from Vocabulary below rather than typed out again.
+//
+// KindSocial is the odd one: it names its service where the rest name their
+// thing. It stays because a social post and a blog post are both posts, and
+// the archive is more useful able to tell them apart than consistent about it
+// — and because renaming it would rewrite every social row already stored.
+const (
+	KindPost     = "post"     // blog articles
+	KindNews     = "news"     // news items
+	KindVideo    = "video"    // videos
+	KindMarket   = "market"   // a price, at a time
+	KindReminder = "reminder" // the prayer service's reflections
+	KindSocial   = "social"   // social posts
+	KindMail     = "mail"     // private, always written with IndexOwned
+)
+
+// Vocabulary is every kind that may be written, in the order a reader meets
+// them. Public ones only: mail is owned, and the archive never returns it.
+func Vocabulary() []string {
+	return []string{KindNews, KindPost, KindVideo, KindMarket, KindSocial, KindReminder}
+}
+
 // Kinds is what has been archived, largest first.
 //
 // Public entries only. A per-account count would be a different question and a

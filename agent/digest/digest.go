@@ -235,8 +235,20 @@ func createDigest() {
 
 	response += buildReferences(refs)
 
+	// Published through the door, like the pieces it was written from.
+	//
+	// This called blog.CreatePost directly while agent/blog published the same
+	// kind of post through blog_create — one publish free and uncounted, the
+	// other attributed and priced, for two posts by the same account on the
+	// same blog. Every other thing this agent does already goes through
+	// RunPlannedAs; the one write did not, which is the half that costs money.
 	title := "Daily Digest — " + time.Now().Format("2 Jan 2006")
-	err = blog.CreatePost(title, response, app.SystemUserName, app.SystemUserID, "digest", false)
+	_, failed, err := api.ExecuteToolAs(auth.MicroID, "blog_create", map[string]any{
+		"title": title, "content": response, "tags": "digest",
+	})
+	if err == nil && failed {
+		err = fmt.Errorf("blog_create refused the post")
+	}
 	if err != nil {
 		setError(err.Error())
 		app.Log("digest", "Failed to publish digest blog post: %v", err)
