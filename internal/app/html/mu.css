@@ -6628,7 +6628,14 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 18px calc(18px + var(--tabbar));
+  /* The safe-area inset, not --tabbar.
+     --tabbar is what a page reserves so the fixed tab bar does not sit on top
+     of its last row. This panel is z-index 200 and the tab bar is 100, so the
+     panel covers it — and reserving its height anyway left 52px of nothing
+     under the box on every phone, which is what "a massive gap beneath the
+     input" is. The inset stays: that is the home indicator, which is hardware
+     and is over everything. */
+  padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
   background: var(--card-background, #fff);
   border-left: 1px solid var(--border-color, #e0e0e0);
   box-shadow: -10px 0 30px rgba(0, 0, 0, .06);

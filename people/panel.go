@@ -56,10 +56,18 @@ import (
 // Which is also why it is only drawn where there is no room page. On /chat
 // those ids already exist and two of each would leave mu.js binding to
 // whichever came first.
+//
+// # It is called Chat, not Lobby
+//
+// "Lobby" is the room's id showing through. It is the one room with no subject,
+// which is a fact about how the chat service is arranged and not something a
+// person opening a panel needs to know — and the control that opens this says
+// "Open chat", so the heading saying something else made them read as two
+// different things.
 func PanelHTML() string {
 	return `<div id="people-panel" hidden aria-hidden="true">` +
 		`<div class="people-panel-head">` +
-		`<span class="people-panel-title">Lobby</span>` +
+		`<span class="people-panel-title">Chat</span>` +
 		`<button type="button" class="people-panel-x" onclick="muChatPanel(false)" ` +
 		`aria-label="Close chat">&times;</button></div>` +
 		`<div id="messages"></div>` +
