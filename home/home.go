@@ -18,6 +18,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/event"
 	"mu/internal/service"
+	"mu/people"
 	"mu/service/news"
 )
 
@@ -576,6 +577,15 @@ function fetchW(la,lo){
 
 	b.WriteString(`</div>`) // close .home-main
 	b.WriteString(`</div>`) // close #home-cards
+
+	// The chat, over the page rather than instead of it.
+	//
+	// Outside #home-cards, because it is fixed to the viewport and a grid item
+	// that is position:fixed is a grid item the grid still reserves a track
+	// for. Only for somebody signed in: the panel joins a room as them.
+	if viewerID != "" {
+		b.WriteString(people.PanelHTML())
+	}
 
 	// Auto-refresh: poll every 2 minutes, update card content in-place
 	displayMode := r.URL.Query().Get("mode") == "display"

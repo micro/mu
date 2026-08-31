@@ -93,6 +93,13 @@ const (
 	lobbyID    = "chat_" + lobbyTopic
 )
 
+// Lobby is the room to open when nobody has chosen one.
+//
+// Exported for people/, which draws it in a panel over Home. A composition
+// naming the room by assembling "chat_" + "lobby" for itself would be a second
+// place the id is spelled, and the two would agree until one changed.
+const Lobby = lobbyID
+
 // channels is the row of rooms across the top of one, so there is a way out of
 // the room you are in that is not the back button.
 //

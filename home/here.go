@@ -47,8 +47,8 @@ import (
 	"net/url"
 	"sort"
 
-	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/people"
 )
 
 // hereShown caps the strip.
@@ -91,8 +91,8 @@ func hereHTML(viewerID string) string {
 // whatever presence state they left behind. Nothing that reads those can be
 // asked "what do you do when I am the only one here", which is the case this
 // block exists to get right. Given a list, this is a pure function of it.
-func hereStrip(people []person, viewerID string) string {
-	if len(people) == 0 {
+func hereStrip(present []person, viewerID string) string {
+	if len(present) == 0 {
 		return ""
 	}
 
@@ -101,7 +101,7 @@ func hereStrip(people []person, viewerID string) string {
 	// there is nobody to talk to, is the part that had to go. It is drawn under
 	// the names rather than at the end of them — see below.
 	others := 0
-	for _, p := range people {
+	for _, p := range present {
 		if p.online && p.id != viewerID {
 			others++
 		}
@@ -115,7 +115,7 @@ func hereStrip(people []person, viewerID string) string {
 	// the services column, on the same line, as if they were two blocks. The
 	// wrapper is what gets the span.
 	out := `<div class="here-block">` + sectionRule("Here") + `<div class="here-strip">`
-	for _, p := range people {
+	for _, p := range present {
 		cls := "here-who"
 		if p.online {
 			cls += " here-on"
@@ -129,15 +129,12 @@ func hereStrip(people []person, viewerID string) string {
 	// In the row it was a link that appeared and disappeared as people came and
 	// went, moving everything before it; and it is a different kind of thing
 	// from the names beside it — they are people, this is a door.
-	// "Go to chat", the same as the two blocks under it say "Go to inbox" and
-	// "Go to agents". One word was doing a different job from its neighbours —
-	// they name a destination and this named a subject.
-	//
-	// It becomes "Open chat" when there is a panel to open rather than a page
-	// to go to. Until then the label would be describing something that does
-	// not happen.
+	// Open chat, which is now a thing that happens here rather than somewhere
+	// to go. Presence is on this page, so the conversation is too: seeing that
+	// somebody is here and then navigating away from the page that told you is
+	// the friction the panel removes. See people.PanelHTML.
 	if others > 0 {
-		out += app.Link("Go to chat", "/chat")
+		out += people.OpenLink()
 	}
 	return out + `</div>`
 }
@@ -154,7 +151,7 @@ func hereStrip(people []person, viewerID string) string {
 // alternative was the reader first, which puts the least informative name in
 // the most valuable position.
 func roster() []person {
-	var people []person
+	var present []person
 	for _, id := range auth.OnlineUsers() {
 		acc, err := auth.GetAccount(id)
 		if err != nil || acc == nil {
@@ -179,12 +176,12 @@ func roster() []person {
 		if acc.Agent {
 			continue
 		}
-		people = append(people, person{id: acc.ID, online: true})
+		present = append(present, person{id: acc.ID, online: true})
 	}
 
-	sort.Slice(people, func(i, j int) bool { return people[i].id < people[j].id })
-	if len(people) > hereShown {
-		people = people[:hereShown]
+	sort.Slice(present, func(i, j int) bool { return present[i].id < present[j].id })
+	if len(present) > hereShown {
+		present = present[:hereShown]
 	}
-	return people
+	return present
 }

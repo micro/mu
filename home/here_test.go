@@ -40,7 +40,7 @@ func TestHereDrawsWhenYouAreAlone(t *testing.T) {
 	if !strings.Contains(got, "here-on") {
 		t.Errorf("you are on the instance and your dot is not lit:\n%s", got)
 	}
-	if strings.Contains(got, `href="/chat"`) {
+	if strings.Contains(got, "muChatPanel") {
 		t.Error("alone, the strip offers a way through to a chat with nobody in it")
 	}
 	for _, banned := range []string{"Just you", "just you", "alone", "Nobody", "nobody"} {
@@ -70,7 +70,10 @@ func TestHereNamesTheOthersPresent(t *testing.T) {
 			t.Errorf("@%s is not in the strip:\n%s", id, got)
 		}
 	}
-	if !strings.Contains(got, `href="/chat"`) {
+	// The control, not a link. It opens the panel on this page rather than
+	// navigating to one — see people.PanelHTML — so the assertion is on what it
+	// does, which is the part that would break silently if the panel went away.
+	if !strings.Contains(got, "muChatPanel(true)") {
 		t.Errorf("somebody else is here and there is no way to them:\n%s", got)
 	}
 }
