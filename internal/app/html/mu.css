@@ -6802,6 +6802,30 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   background: var(--online, #2ea44f);
 }
 
+/* The last thing said in the room, under the way in. See people.OpenLink.
+   The panel connects on first open, so before that nothing said the room had
+   moved — "Open chat" alone is a door with no window. Muted and one line: it is
+   a reason to press the button, not the conversation. */
+.people-latest {
+  margin: 4px 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  min-width: 0;
+}
+.people-latest-who { font-weight: var(--font-weight-semibold, 600); flex: none }
+/* The line gives, the name and the time do not: on a phone the sentence is the
+   part that can be cut without losing who said it or when. */
+.people-latest-said {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.people-latest-when { margin-left: auto; flex: none; white-space: nowrap }
+
 /* The way to them, under the names. It was in the row, on the argument that a
    link appearing on its own line would move everything under it as people come
    and go — which is true and is the smaller cost: in the row it moved the row

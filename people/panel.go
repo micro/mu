@@ -26,6 +26,10 @@
 package people
 
 import (
+	"html"
+	"strings"
+	"time"
+
 	"mu/internal/app"
 	"mu/service/chat"
 )
@@ -82,15 +86,62 @@ func PanelHTML() string {
 		`<button>Send</button></form></div>` + panelScript()
 }
 
-// OpenLink is the control that opens it.
+// OpenLink is the control that opens it, and the window in the door.
 //
 // A button rather than a link, because it does not go anywhere — and the label
 // says so. It read "Go to chat" while it was a link to a page; opening a panel
 // is a different promise and the word has to match it or the control lies about
 // what happens next.
+//
+// # What is in there
+//
+// The panel connects its socket on first open, so before you open it nothing on
+// the page knows the room has moved — and "Open chat" alone is a door with no
+// window. The only way to find out anything had happened was to open it and
+// look, which is the report.
+//
+// So the last thing said, beside the button: who, and what. Not a count — "3
+// new" is a number you still have to open the room to understand, and the line
+// itself is the thing that makes somebody want to. It is the room's own last
+// message rather than an unread mark, which would need a per-account read state
+// for a room nobody has a thread in; what this answers is "is anything
+// happening", which is the question that was asked.
+//
+// Quiet after a day. A room whose last message is from last week is not
+// happening, and a line saying so under a live presence strip reads as though it
+// is.
 func OpenLink() string {
 	return `<button type="button" class="link people-open" onclick="muChatPanel(true)">` +
-		`Open chat →</button>`
+		`Open chat →</button>` + latest()
+}
+
+// latest is the last line in the room, or nothing.
+func latest() string {
+	who, text, at := chat.Latest(chat.Lobby)
+	if who == "" || text == "" || at.IsZero() || time.Since(at) > quiet {
+		return ""
+	}
+	return `<p class="people-latest"><span class="people-latest-who">@` +
+		html.EscapeString(who) + `</span> ` +
+		`<span class="people-latest-said">` + html.EscapeString(trimTo(text, 70)) + `</span>` +
+		`<span class="people-latest-when">` + html.EscapeString(app.TimeAgo(at)) +
+		`</span></p>`
+}
+
+// quiet is how old the last message may be and still count as something
+// happening. A day: past that it is history, and history under a strip of who is
+// online reads as if they had just said it.
+const quiet = 24 * time.Hour
+
+// trimTo shortens a line to fit beside the button. Runes, because cutting a
+// multi-byte character in half renders as a replacement glyph.
+func trimTo(s string, n int) string {
+	s = strings.Join(strings.Fields(s), " ")
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
 }
 
 // panelScript opens and closes it, and connects the room once.

@@ -2,6 +2,15 @@ package home
 
 // Who is on this instance, under the box.
 //
+// # Online, not Here
+//
+// "Here" was meant as here-on-this-page and reads as here-in-the-room, which is
+// a claim this cannot make: presence is a three-minute window over the whole
+// instance, so somebody reading their mail in another tab is on the strip. The
+// dot means they are using this server right now, and Online is the word for
+// that — the one every product this could be compared to already uses, which is
+// worth more than a word we would have to teach.
+//
 // Home had no people on it. The brief is about your day, the inbox is what
 // arrived, the agents are yours and the cards are the world — four blocks and
 // not one of them says that anybody else uses this server. On a thing whose
@@ -114,7 +123,7 @@ func hereStrip(present []person, viewerID string) string {
 	// tracks: HERE at the top of the rail and the names in the first cell of
 	// the services column, on the same line, as if they were two blocks. The
 	// wrapper is what gets the span.
-	out := `<div class="here-block">` + sectionRule("Here") + `<div class="here-strip">`
+	out := `<div class="here-block">` + sectionRule("Online") + `<div class="here-strip">`
 	for _, p := range present {
 		cls := "here-who"
 		if p.online {

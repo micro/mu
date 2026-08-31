@@ -1869,6 +1869,61 @@ func lastLine(roomID string) (string, time.Time) {
 		" · " + app.TimeAgo(m.Timestamp), m.Timestamp
 }
 
+// Latest is the last thing a person said in a room, for a caller drawing a way
+// into it.
+//
+// Home needs it. The panel over Home connects its socket on first open — see
+// people.PanelHTML — so before you open it there is no socket and nothing on the
+// page says whether anything has happened. "Open chat" with nothing beside it is
+// a door with no window, and the answer was to open it and look.
+//
+// Who and what, not a count. "3 new" is a number you still have to open the room
+// to understand; the last line is the thing itself, and it is what makes the
+// difference between a door and a door with a window in it.
+//
+// # A person, not the agent
+//
+// The agent answers in every room, so the newest message is very often its
+// reply — and this line is drawn directly under the strip naming who is online,
+// which the agent is deliberately not on. Two lines apart the page would say
+// "@alice and @carol are here" and then quote @micro, who by its own account is
+// neither. It reads as somebody present that the list forgot.
+//
+// So it skips back to the last thing a person said. That is a narrower fact than
+// "the newest message" and it is the one this window is for: what the people the
+// strip just named are talking about. The time makes it honest — an older line
+// says it is older.
+//
+// Whether an agent belongs on a presence list at all is a real question and this
+// does not answer it; it just stops one block contradicting the one above it.
+//
+// Zero time when nobody has said anything, which the caller reads as "nothing to
+// say about it" rather than drawing an empty line.
+func Latest(roomID string) (who, text string, at time.Time) {
+	roomsMutex.RLock()
+	room := rooms[roomID]
+	roomsMutex.RUnlock()
+
+	var msgs []RoomMessage
+	if room != nil {
+		room.mutex.RLock()
+		msgs = append(msgs, room.Messages...)
+		room.mutex.RUnlock()
+	} else {
+		msgs = loadRoomMessages(roomID)
+	}
+	for i := len(msgs) - 1; i >= 0; i-- {
+		m := msgs[i]
+		if m.IsLLM || m.UserID == agentName {
+			continue
+		}
+		if text := strings.TrimSpace(m.Content); text != "" {
+			return m.UserID, text, m.Timestamp
+		}
+	}
+	return "", "", time.Time{}
+}
+
 // roomState is what a room looks like from outside: who is in it and when it
 // last moved. Zero for a room that has never been opened, which describeRoom
 // reads as "nobody here now".
