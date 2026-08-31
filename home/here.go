@@ -55,17 +55,21 @@ import (
 	"html"
 	"net/url"
 	"sort"
+	"strconv"
 
 	"mu/internal/auth"
-	"mu/people"
 )
 
-// hereShown caps the strip.
+// hereShown caps the names, not the count.
 //
-// It is one line at the width Home gives it and stops being scannable long
-// before it stops fitting. A number this size is only ever reached by an
-// instance with a real crowd on it, and there the cap is the difference
-// between a line and a paragraph.
+// The revealed row is one line at the width Home gives it and stops being
+// scannable long before it stops fitting. A number this size is only ever
+// reached by an instance with a real crowd on it, and there the cap is the
+// difference between a line and a paragraph.
+//
+// It was applied in roster, which was fine while the strip was the names and
+// wrong the moment the strip became a number: twelve of forty people here, and
+// the count would have said twelve. See names.
 const hereShown = 12
 
 // person is one name in the strip.
@@ -123,7 +127,75 @@ func hereStrip(present []person, viewerID string) string {
 	// tracks: HERE at the top of the rail and the names in the first cell of
 	// the services column, on the same line, as if they were two blocks. The
 	// wrapper is what gets the span.
-	out := `<div class="here-block">` + sectionRule("Online") + `<div class="here-strip">`
+	out := `<div class="here-block">` + sectionRule("Online") + `<div class="here-line">`
+
+	// How many, not who.
+	//
+	// It listed every name, every time, and a row of usernames is a thing you
+	// read once and then never again: on a busy instance it is a wall, and on a
+	// quiet one it is the same four names every day. The number is the part
+	// that changes and the part somebody actually wants — is anyone about — and
+	// it says it in two words instead of a line of handles.
+	//
+	// Who they are is one click away, because that is a question somebody asks
+	// rather than one the page should keep answering.
+	//
+	// # Except when it is one
+	//
+	// Alone, the count is the name: "1 person" is longer than "@you", says
+	// less, and summarising a list of one is how a page ends up telling
+	// somebody they are by themselves. The strip still draws — the lit dot
+	// beside your own name is the instance saying it knows you are here — and
+	// it still says nothing about being alone. See the note at the top.
+	if len(present) == 1 {
+		out += names(present)
+	} else {
+		out += `<button type="button" class="here-count" aria-expanded="false" ` +
+			`aria-controls="here-who" onclick="muHereWho(this)">` +
+			strconv.Itoa(len(present)) + ` people</button>`
+	}
+
+	// The way in, beside the count rather than under it.
+	//
+	// Only when there is somebody on the other end of it: an invitation to go
+	// and talk, on a day when there is nobody to talk to, is the part that had
+	// to go. A bubble rather than words — see openChat. Presence is on this
+	// page, so the conversation is too: seeing that somebody is here and then
+	// navigating away from the page that told you is the friction the panel
+	// removes. See panelHTML.
+	if others > 0 {
+		out += openChat()
+	}
+	out += `</div>`
+
+	// The names, when asked for.
+	if len(present) > 1 {
+		out += `<div class="here-strip" id="here-who" hidden>` + names(present) + `</div>`
+	}
+
+	// And what was last said, when the room is live. Nothing when it is not,
+	// which is most instances most of the time — a chat that says it is
+	// happening when it is not is worse than one that says nothing.
+	if others > 0 {
+		out += latest()
+	}
+	return out + `</div>`
+}
+
+// names is the roster as links, lit, up to the cap.
+//
+// The cap is on the names and not on the roster, which is the whole of it now
+// that there is a count: roster used to truncate, so on an instance with forty
+// people here the number would have said twelve. A cap that silently changes a
+// number is worse than one that hides a name, and the remainder is stated
+// rather than dropped.
+func names(present []person) string {
+	rest := 0
+	if len(present) > hereShown {
+		rest = len(present) - hereShown
+		present = present[:hereShown]
+	}
+	var out string
 	for _, p := range present {
 		cls := "here-who"
 		if p.online {
@@ -132,29 +204,22 @@ func hereStrip(present []person, viewerID string) string {
 		out += `<a class="` + cls + `" href="/@` + url.PathEscape(p.id) + `">` +
 			`<span class="here-dot"></span>@` + html.EscapeString(p.id) + `</a>`
 	}
-	out += `</div>`
-	// Its own line under the names, not the end of the row.
-	//
-	// In the row it was a link that appeared and disappeared as people came and
-	// went, moving everything before it; and it is a different kind of thing
-	// from the names beside it — they are people, this is a door.
-	// Open chat, which is now a thing that happens here rather than somewhere
-	// to go. Presence is on this page, so the conversation is too: seeing that
-	// somebody is here and then navigating away from the page that told you is
-	// the friction the panel removes. See people.PanelHTML.
-	if others > 0 {
-		out += people.OpenLink()
+	if rest > 0 {
+		out += `<span class="here-who">and ` + strconv.Itoa(rest) + ` more</span>`
 	}
-	return out + `</div>`
+	return out
 }
 
-// roster is who is on this instance right now.
+// roster is who is on this instance right now — all of them.
 //
 // Present only. It returned every account for one commit, sorted online-first
 // with a last-seen against the rest, and on an instance with a real signup list
 // that is twelve strangers under a heading saying HERE — none of them here, in
 // alphabetical order because presence had never heard of any of them. Who else
 // has an account is a real question and /users is the page for it.
+//
+// Uncapped: the cap belongs to the names, which is a display decision, and not
+// to this, which is now also the count. See hereShown.
 //
 // Alphabetical, so the strip does not reshuffle under somebody reading it. The
 // alternative was the reader first, which puts the least informative name in
@@ -189,8 +254,5 @@ func roster() []person {
 	}
 
 	sort.Slice(present, func(i, j int) bool { return present[i].id < present[j].id })
-	if len(present) > hereShown {
-		present = present[:hereShown]
-	}
 	return present
 }

@@ -18,7 +18,6 @@ import (
 	"mu/internal/auth"
 	"mu/internal/event"
 	"mu/internal/service"
-	"mu/people"
 	"mu/service/news"
 )
 
@@ -584,7 +583,7 @@ function fetchW(la,lo){
 	// that is position:fixed is a grid item the grid still reserves a track
 	// for. Only for somebody signed in: the panel joins a room as them.
 	if viewerID != "" {
-		b.WriteString(people.PanelHTML())
+		b.WriteString(panelHTML())
 	}
 
 	// Auto-refresh: poll every 2 minutes, update card content in-place

@@ -6704,28 +6704,65 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
    happens to accept a newline on shift+enter, not a document. */
 #people-panel #prompt { flex: 1; min-width: 0; resize: none; font: inherit }
 
-/* Opens it, and is a button because it does not go anywhere. .link styles it
-   like the other ways out of a block; this strips what a button brings.
+/* The count, and the bubble beside it. See home/here.go.
 
-   Background and colour together, both at rest and on hover — see the note by
-   the base button rule. It shipped once with the fill removed and the colour
-   left alone, which is `color: #fff` from `button`, so "Open chat" was white
-   text on the page's white background until you pointed at it, and a dark pill
-   the moment you did. */
-.people-open {
+   One line: how many people are here, and the way in. It was a row of every
+   name followed by the words "Open chat" on a line of its own — a wall on a
+   busy instance, the same four handles every day on a quiet one, and three
+   words for a control whose shape is the word.
+
+   Background and colour are named on both states, at rest and on hover — see
+   the note by the base button rule. The first version of the old control
+   stripped the fill and left the colour, which is `color: #fff` inherited from
+   `button`, so it was white text on a white page until you pointed at it. */
+.here-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 4px;
+}
+
+/* How many. A button, because it answers a question when pressed. */
+.here-count {
   border: 0;
   background: none;
   padding: 0;
   font: inherit;
-  color: var(--text-primary, #111);
+  font-size: 13px;
+  color: var(--text-secondary, #555);
   cursor: pointer;
   text-align: left;
 }
-.people-open:hover {
+.here-count:hover {
   background: none;
   border-color: transparent;
-  color: var(--accent-color, #000);
+  color: var(--text-primary, #111);
   text-decoration: underline;
+}
+
+/* The way in. A speech bubble and no caption: the shape is the word, and the
+   label lives in aria-label and title for anything not looking at it.
+
+   Sized like the icon it is rather than like a button — width and height auto
+   against the base `button` rule, which gives every button a square control
+   height and a dark fill. */
+.here-chat {
+  width: auto;
+  min-width: 0;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.here-chat:hover {
+  background: none;
+  border-color: transparent;
+  color: var(--text-primary, #111);
 }
 
 /* Who is on this instance, under the box. See home/here.go.
@@ -6742,6 +6779,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   gap: 6px 16px;
   margin: 0 0 4px;
 }
+.here-strip[hidden] { display: none }
 
 /* One person.
    
@@ -6802,10 +6840,10 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   background: var(--online, #2ea44f);
 }
 
-/* The last thing said in the room, under the way in. See people.OpenLink.
+/* The last thing said in the room, under the count. See home.latest.
    The panel connects on first open, so before that nothing said the room had
-   moved — "Open chat" alone is a door with no window. Muted and one line: it is
-   a reason to press the button, not the conversation. */
+   moved — a bubble alone is a door with no window. Muted and one line: it is a
+   reason to press it, not the conversation. */
 .people-latest {
   margin: 4px 0 0;
   display: flex;
@@ -6826,15 +6864,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 }
 .people-latest-when { margin-left: auto; flex: none; white-space: nowrap }
 
-/* The way to them, under the names. It was in the row, on the argument that a
-   link appearing on its own line would move everything under it as people come
-   and go — which is true and is the smaller cost: in the row it moved the row
-   itself, and it read as one more name in a list of people when it is a door. */
-.here-block .link {
-  display: inline-block;
-  margin: 6px 0 0;
-  font-size: 13px;
-}
 
 /* A profile: the handle, then since when, then whether they are about — one
    line each. See inbox.personFacts.

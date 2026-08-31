@@ -1873,9 +1873,9 @@ func lastLine(roomID string) (string, time.Time) {
 // into it.
 //
 // Home needs it. The panel over Home connects its socket on first open — see
-// people.PanelHTML — so before you open it there is no socket and nothing on the
-// page says whether anything has happened. "Open chat" with nothing beside it is
-// a door with no window, and the answer was to open it and look.
+// home.panelHTML — so before you open it there is no socket and nothing on the
+// page says whether anything has happened. A bubble with nothing beside it is a
+// door with no window, and the answer was to open it and look.
 //
 // Who and what, not a count. "3 new" is a number you still have to open the room
 // to understand; the last line is the thing itself, and it is what makes the
