@@ -379,6 +379,38 @@ func handlePatternMatch(content string, room *Room) string {
 // than conjure the conversation — the caller has gone, and the message would
 // sit in a room with no readers holding memory until the cleanup found it.
 //
+// Watching reports whether an account has a live connection to a room right
+// now.
+//
+// Not auth.OnlineUsers, which is a three minute window over the whole instance
+// and answers "have they used this server lately" — true of somebody who is
+// reading their mail in another tab. This is the narrower fact the inbox needs:
+// they are in this room, with this conversation on screen, so a message landing
+// in it has been seen.
+//
+// A live socket, so it goes false the moment the tab closes. That is the right
+// side to err on: marking a message read that somebody did not see loses it,
+// and leaving one unread that they did costs them a click.
+func Watching(roomID, account string) bool {
+	if strings.TrimSpace(roomID) == "" || strings.TrimSpace(account) == "" {
+		return false
+	}
+	roomsMutex.RLock()
+	room, ok := rooms[roomID]
+	roomsMutex.RUnlock()
+	if !ok {
+		return false
+	}
+	room.mutex.RLock()
+	defer room.mutex.RUnlock()
+	for _, c := range room.Clients {
+		if c != nil && c.UserID == account {
+			return true
+		}
+	}
+	return false
+}
+
 // Reports whether it landed, so a caller can say so rather than assume.
 func Say(roomID, from, text string) bool {
 	if strings.TrimSpace(roomID) == "" || strings.TrimSpace(text) == "" {

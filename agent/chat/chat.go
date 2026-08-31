@@ -138,11 +138,59 @@ func answer(s spoken) {
 	if strings.HasPrefix(s.Room, "xmpp_") {
 		if !chat.SayTo(s.Account, chat.AgentAddress(), reply) {
 			app.Log("chat", "answered %s and nobody was connected", s.Account)
+			return
 		}
+		// SayTo only succeeds when they had a client connected, which is the
+		// same fact Watching establishes for a room: the answer went to a
+		// screen somebody was looking at. See seen.
+		markSeen(s.Account, s.Room)
 		return
 	}
 	if !chat.Say(s.Room, chat.AgentName, reply) {
 		app.Log("chat", "answered %s and the room had gone", s.Room)
+		return
+	}
+	seen(s.Room, s.Account)
+}
+
+// seen marks the conversation read when the answer landed in front of somebody.
+//
+// Reported as: talk in a room, get a reply, and an unread conversation appears
+// in the inbox for a message you just watched arrive. The record is right —
+// this happened, and it belongs in the account's threads — but the inbox is a
+// notification hub as well as a record, and those two jobs disagree here. What
+// arrived is not news to somebody who was in the room.
+//
+// The condition is a live socket on this room, not auth.OnlineUsers. That is a
+// three minute window over the whole instance and answers "have they used this
+// server lately", which is true of somebody reading their mail in another tab —
+// and marking a message read for them would lose it. In the room, now, is the
+// fact that means they saw it.
+//
+// Only the account that spoke. A room can hold several people and the others
+// may well be away from it; each of them has their own thread and their own
+// unread state, and this says nothing about theirs.
+func seen(room, account string) {
+	if !chat.Watching(room, account) {
+		return
+	}
+	markSeen(account, room)
+}
+
+// markSeen stamps the conversation this room is recorded as.
+//
+// Split from seen because the two deliveries establish "they saw it" in
+// different ways and neither should reimplement the lookup: a websocket room
+// asks Watching, and an XMPP delivery has already been told by SayTo that a
+// client was connected.
+func markSeen(account, room string) {
+	if account == "" || room == "" {
+		return
+	}
+	// The room id is the thread key — see the Thread field on the Ask above,
+	// which is what makes a second message in a room a second turn.
+	if t := thread.Find(account, Client, room); t != nil {
+		thread.MarkSeen(account, t.ID)
 	}
 }
 
