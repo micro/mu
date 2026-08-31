@@ -193,3 +193,87 @@ func TestAnArrivedConversationStillAnswersWhoeverSpokeLast(t *testing.T) {
 		t.Errorf("replyTo = %q, want second@example.test (whoever spoke last)", got)
 	}
 }
+
+// The profile lists conversations. It does not render one.
+//
+// It used to print the newest in full at the top with the rest listed under it,
+// which made the page two things: a profile for one line and a conversation for
+// the rest of the screen. The answer to "who is @henrik" was buried under the
+// answer to "what did we last say" — and that second question already has a
+// page, /inbox?id=, with the reply box and the read-marking built for it.
+//
+// It also declared one channel the real one. Somebody who writes by mail and by
+// WhatsApp has two conversations, and rendering the newest whole made that one
+// important on the grounds that it happened most recently.
+func TestTheProfileListsConversationsRatherThanRenderingOne(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	c := person(t, "lister", "listed")
+
+	// Two conversations, on two channels, so neither is obviously the one.
+	// Named for the other person, because thread.With is what the page uses to
+	// find them and it matches on how the record names a correspondent.
+	for _, c := range []struct{ client, text string }{
+		{"mail", "the invoice is attached"},
+		{"whatsapp", "running ten minutes late"},
+	} {
+		// Keyed on the other person: thread.With matches the thread's own key as
+		// well as its party list, which is how a conversation from before Parties
+		// existed still turns up on somebody's page.
+		said(t, "lister", c.client, "listed", "", c.text)
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/@listed", nil)
+	r.AddCookie(c)
+	w := httptest.NewRecorder()
+	PersonHandler(w, r)
+	body := w.Body.String()
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("the page did not render: %d", w.Code)
+	}
+	// Both are listed, and each is a link to the one page that reads a
+	// conversation.
+	if n := strings.Count(body, `href="/inbox?id=`); n < 2 {
+		t.Errorf("the page links to %d conversations, want both:\n%s", n, body)
+	}
+	// And neither is rendered here. Checked on the reader's own markup rather
+	// than on the message text, because the text is also the subject and a
+	// subject belongs in a list.
+	for _, markup := range []string{`class="ib-conv"`, `class="ib-msg`, `class="ib-reply"`} {
+		if strings.Contains(body, markup) {
+			t.Errorf("the profile still embeds the conversation reader (%s is on it); "+
+				"/inbox?id= is the page that reads one:\n%s", markup, body)
+		}
+	}
+}
+
+// Your own profile says where people reach you.
+//
+// Your addresses were on /account, behind a click, in a section about
+// configuration — and they are not configuration. They are your identity here,
+// which is what a profile is for. Before this, /@you was your name, your handle
+// and a link to settings: three lines, none of them a fact you did not know.
+func TestYourOwnProfileNamesYourAddresses(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	c := person(t, "addressed", "addressed")
+
+	r := httptest.NewRequest(http.MethodGet, "/@addressed", nil)
+	r.AddCookie(c)
+	w := httptest.NewRecorder()
+	PersonHandler(w, r)
+	body := w.Body.String()
+
+	if !strings.Contains(body, "Where people reach you") {
+		t.Errorf("your own profile does not say where people reach you:\n%s", body)
+	}
+	// The handle, which is how somebody here reaches you.
+	if !strings.Contains(body, "<code>@addressed</code>") {
+		t.Errorf("your own profile does not name your handle:\n%s", body)
+	}
+	// And the mail address, which is how anybody else does. Resolved the same
+	// way the To box resolves it, so the two agree by construction.
+	if addr, ok := addressOfPerson("@addressed"); ok && !strings.Contains(body, addr) {
+		t.Errorf("your own profile does not name %s, the address anybody outside "+
+			"this instance would use:\n%s", addr, body)
+	}
+}

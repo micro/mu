@@ -7722,7 +7722,13 @@ a.btn-secondary:hover, .btn-secondary:hover {
 }
 
 /* /@somebody: the conversation with them. See inbox/person.go. */
-.ib-person-head { display: flex; justify-content: flex-end; margin: 0 0 var(--spacing-md, 16px) }
+/* The two ways to reach somebody, under their handle.
+   Left, not right. It was flex-end from when it sat above a conversation and
+   read as that pane's toolbar; the page is a profile now and these are its
+   primary actions, so they belong where every other page puts one — and the
+   empty state has always drawn the same pair on the left, so the buttons moved
+   sideways depending on whether you had ever written to the person. */
+.ib-person-head { display: flex; gap: 8px; margin: 0 0 var(--spacing-md, 16px) }
 /* What the page is, under the name the shell prints. Reported as a page
    somebody landed on from a username and could not identify. */
 .ib-person-sub { margin: 0 0 var(--spacing-md, 16px); color: var(--text-secondary, #555); font-size: 14px }
@@ -7736,8 +7742,15 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .ib-person-list li { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 7px 0;
   border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
 .ib-person-list li:last-child { border-bottom: 0 }
-.ib-person-when { margin-left: auto; font-size: 12px; color: var(--text-muted, #888); white-space: nowrap }
-@media only screen and (max-width: 600px) { .ib-person-when { margin-left: 0 } }
+/* Channel and date travel together, on the right.
+   They were two siblings of the subject with margin-left:auto on the date, so
+   the channel pill sat against the subject and the date flew to the far edge —
+   two related facts about one conversation, at opposite ends of the row. One
+   wrapper, pushed as a unit, the way the inbox rows do it. */
+.ib-person-tags { margin-left: auto; display: flex; align-items: baseline; gap: 8px }
+.ib-person-when { font-size: 12px; color: var(--text-muted, #888); white-space: nowrap }
+.ib-person-list code { font-size: 13px }
+@media only screen and (max-width: 600px) { .ib-person-tags { margin-left: 0 } }
 
 /* /code — describing an app, watching it run, saying the next thing.
    The app itself is the largest thing on the page, because the question every

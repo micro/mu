@@ -1,42 +1,52 @@
 package inbox
 
-// /@somebody is the conversation with them.
+// /@somebody is the person: who they are, how to reach them, and what you have
+// with them.
 //
-// It was a profile: a name, a tick, a join date, a status box, an apps grid and
-// a list of their posts. That is a social network's page, and this is not a
-// social network — internal/app/content.go already says so in as many words,
-// where Save, Hide and Block were deleted because "those three are the controls
-// of a feed… Mu has no feed." A profile is downstream of the same thing.
+// It was a profile once and the profile was deleted, correctly: a name, a tick,
+// a join date, a status box, an apps grid and a list of their posts. That is a
+// social network's page, and this is not a social network — internal/app/
+// content.go says so in as many words, where Save, Hide and Block went because
+// "those three are the controls of a feed… Mu has no feed."
 //
-// What survives the deletion is the address. "Everything has an address —
-// people, agents, services, conversations" is one of four commitments, and an
-// address is worth having in proportion to what it lets you do. A page you look
-// at does nothing. A page where you say something is the whole of it.
+// What replaced it went one step too far the other way. The page became the
+// correspondence — the newest conversation rendered whole, with the others
+// listed underneath — and a page whose top line is a name and whose remaining
+// screen is a wall of messages is not answering "who is @henrik". It is
+// answering "what did we last say", which is a question /inbox?id= already
+// answers, in a reader built for it.
 //
-// So /@henrik is what the two of you have said to each other, with the way to
-// say the next thing. Not a new screen: the inbox keyed by correspondent
-// instead of by conversation, over the same record, rendered by the same
-// ConversationView.
+// So: the person, and the relationship, and nothing rendered whole. Identity is
+// what survived the first deletion — "everything has an address" is one of four
+// commitments, and an address is worth having in proportion to what it lets you
+// do — and the relationship is what a profile is *for* here, because on this
+// instance knowing somebody means having said something to them.
 //
-// # Three consequences, and the middle one is the point
+// # What that means in practice
 //
-// Compose is the empty state. Somebody you have never written to has no
-// conversation, so the page offers the blank message — /inbox/new, which is
-// already the page for writing one. There is no separate compose screen to
-// keep.
+// One reader, not two. A conversation is read at /inbox?id=, with its reply
+// box, its threading and its read-marking. This page linked to that for every
+// conversation but the newest and kept its own copy of the call for that one, so
+// a fix to one was a fix to one.
 //
-// Offers, not redirects. It used to redirect straight there, which is the same
-// idea taken one step too far: you click @micro expecting @micro, and the
-// address bar says /inbox/new with nothing explaining that you were moved. The
-// empty state of a thing is that thing, empty — so the page stands, names whose
-// it is, and puts one button on it.
+// No channel is the real one. Somebody who writes to you by mail and by
+// WhatsApp has two conversations, and rendering the newest whole declared that
+// one the important one on the grounds that it happened most recently.
 //
-// It stops being public. What this renders is *your* history with them, so
-// there is nothing to show a stranger and nothing for a crawler to take. That
-// retires the problem writeLink was built to work around: a public profile
-// published every account's mailbox to anybody who opened it, and the fix was
-// to name the person and resolve the address inside the send. With no public
-// page there is nothing to publish.
+// Your own page says where people reach you. Your addresses were on /account,
+// behind a click, in a section about configuration — and they are not
+// configuration. They are your identity here, which is exactly what a profile
+// is for.
+//
+// Offers, not redirects. Somebody you have never written to used to bounce
+// straight to /inbox/new: you click @micro expecting @micro and the address bar
+// says something else, with nothing explaining it. The empty state of a thing is
+// that thing, empty.
+//
+// It is not public. What this renders is *your* history with them, so there is
+// nothing to show a stranger and nothing for a crawler to take. That retires the
+// problem writeLink worked around — a public profile published every account's
+// mailbox to anybody who opened it.
 //
 // And it is uniform. A person, an agent, a service — all of them answer the
 // same question at the same kind of address, which is what turns an addressing
@@ -140,7 +150,8 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 		// Your own page carries no way to write to yourself and no
 		// correspondence, because your correspondence is the inbox and this is
 		// not a second one. What is left is what a profile is: who you are on
-		// this instance, and the way to the settings that change it.
+		// this instance, where people reach you, and the way to change it.
+		b.WriteString(yourAddresses(acc.ID))
 		b.WriteString(`<div class="ib-person-empty">` +
 			app.Link("Account settings", "/account") + `</div></div>`)
 		app.Respond(w, r, app.Response{
@@ -162,22 +173,28 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The newest, whole. The rest as a list rather than stacked: one person on
-	// several channels is several conversations, and concatenating them would
-	// read as one exchange that jumps transport mid-sentence.
+	// All of them, as a list. None of them rendered whole.
 	//
-	// The reply goes to them, said rather than worked out. See
-	// conversationPaneTo — inferring it from who spoke last leaves a
-	// conversation you started with no Reply on it at all.
+	// The newest one used to be printed in full at the top with the rest listed
+	// under it, which made the page two things at once: a profile for one line
+	// and a conversation for the rest of the screen. Three costs, and the middle
+	// one is why it had to go.
+	//
+	// The page stopped being about the person. Everything a profile says — who
+	// they are, whether they are here, how to reach them — was a strip above a
+	// wall of messages, so the answer to "who is @henrik" was buried under the
+	// answer to "what did we last say".
+	//
+	// It picked one channel and gave it the screen. Somebody who has written to
+	// you by mail and by WhatsApp has two conversations, and rendering the newest
+	// whole declares that one the real one because it happened most recently.
+	//
+	// And it was a second reader. /inbox?id= renders a conversation, with its
+	// reply box and its threading and its read-marking; this had its own copy of
+	// that call with its own arguments, so a fix to one was a fix to one. There
+	// is one page that reads a conversation, and this points at it.
 	b.WriteString(head)
-
-	first := convs[0]
-	msgs := thread.Messages(acc.ID, first.ID, MessagesShown)
-	b.WriteString(conversationPaneTo(acc.ID, &first, msgs,
-		len(msgs) >= MessagesShown, true, "", replyAddressFor(them.ID, &first)))
-	if len(convs) > 1 {
-		b.WriteString(alsoWith(title, convs[1:]))
-	}
+	b.WriteString(conversationsWith(title, convs))
 	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{
@@ -279,44 +296,66 @@ func personFacts(them *auth.Account) string {
 	return strings.Join(parts, "")
 }
 
-// replyAddressFor is where a reply to this person goes, on the channel this
-// conversation is on.
-//
-// A text is answered with a text and mail with mail — the transport is a
-// property of the conversation, not of the person — so the thread's own key is
-// the answer wherever it has one. Their address is the fallback, which is the
-// mail case and the one a conversation started from this page will be.
-func replyAddressFor(accountID string, t *thread.Thread) string {
-	if k := strings.TrimSpace(t.Key); k != "" && t.Client != mailClient {
-		return k
-	}
-	if addr, ok := addressOfPerson("@" + accountID); ok {
-		return addr
-	}
-	return ""
-}
-
-// alsoWith is the other conversations with the same person.
+// conversationsWith is everything you have with one person.
 //
 // Named for what they are rather than "Threads". Somebody who has written to
 // you by mail and by WhatsApp has two of these, and the useful thing to say is
 // which channel each one is, because that is the difference a reader is
 // actually navigating by.
-func alsoWith(who string, rest []thread.Thread) string {
+//
+// This was alsoWith, and it started at the second conversation because the
+// first was printed above it in full. All of them now, on the argument in the
+// handler: a profile lists what you have with somebody and /inbox?id= is the
+// page that reads one.
+//
+// Channel and date on the right, the way the inbox rows put them there, so the
+// subjects line up as a column somebody can run an eye down.
+func conversationsWith(who string, convs []thread.Thread) string {
+	if len(convs) == 0 {
+		return ""
+	}
 	var b strings.Builder
-	b.WriteString(`<div class="ib-person-also"><h3>Also with ` +
+	b.WriteString(`<div class="ib-person-also"><h3>With ` +
 		html.EscapeString(who) + `</h3><ul class="ib-person-list">`)
-	for i := range rest {
-		t := rest[i]
+	for i := range convs {
+		t := convs[i]
 		subject := strings.TrimSpace(t.Subject)
 		if subject == "" {
 			subject = "Untitled"
 		}
 		b.WriteString(`<li><a href="/inbox?id=` + html.EscapeString(url.QueryEscape(t.ID)) + `">` +
 			html.EscapeString(subject) + `</a>` +
-			`<span class="pill">` + html.EscapeString(app.ClientName(t.Client)) + `</span>` +
+			`<span class="ib-person-tags"><span class="pill">` +
+			html.EscapeString(app.ClientName(t.Client)) + `</span>` +
 			`<span class="ib-person-when">` + html.EscapeString(app.TimeAgo(t.Updated)) +
-			`</span></li>`)
+			`</span></span></li>`)
+	}
+	b.WriteString(`</ul></div>`)
+	return b.String()
+}
+
+// yourAddresses is where people reach you, on your own page.
+//
+// Your own profile said your name, your handle and a link to settings, which is
+// three lines none of which is a fact you did not already know. What is missing
+// from it is the thing this instance exists to give you: an address. It is on
+// /account, behind a click, in a section about configuration — and it is not
+// configuration, it is your identity here, which is exactly what a profile is
+// for.
+//
+// The handle and the mail address, because those are the two a person hands
+// over. The handle is how somebody here reaches you and the mail address is how
+// anybody else does, which is the whole of the claim that this is a real
+// address on a real network rather than a username on a site.
+func yourAddresses(accountID string) string {
+	var b strings.Builder
+	b.WriteString(`<div class="ib-person-also"><h3>Where people reach you</h3>` +
+		`<ul class="ib-person-list">`)
+	b.WriteString(`<li><code>@` + html.EscapeString(accountID) + `</code>` +
+		`<span class="ib-person-tags"><span class="ib-person-when">here</span></span></li>`)
+	if addr, ok := addressOfPerson("@" + accountID); ok {
+		b.WriteString(`<li><code>` + html.EscapeString(addr) + `</code>` +
+			`<span class="ib-person-tags"><span class="ib-person-when">mail</span></span></li>`)
 	}
 	b.WriteString(`</ul></div>`)
 	return b.String()
