@@ -212,9 +212,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 			// pointing at a line that has gone.
 			b.WriteString(`<p class="ib-empty">Nothing has arrived yet. Write to your ` +
 				`address from anywhere — your own mail, your phone — and it turns up here. ` +
-				`The agent reads what arrives and answers in the thread. ` +
-				app.TextLink("Connect a mail client", "/inbox/imap") + ` to see the ` +
-				`addresses and the settings.</p>` +
+				`The agent reads what arrives and answers in the thread.</p>` +
 				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
 				`the agent, on ` + app.TextLink("Agents", "/agents") + `. Or ` +
 				app.TextLink("write one yourself", "/inbox/new") + `.</p>`)
@@ -494,7 +492,15 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 		return app.PillLink(label, boxPath(box), strings.EqualFold(box, current))
 	}
 
+	// Say what the row is.
+	//
+	// It was a row of names with nothing above it, and a name on a chip does
+	// not say whether it filters, navigates or addresses. These are the account's
+	// mailboxes — one per agent, each with its own address — so the word is
+	// Mailboxes, which is what the rail already calls them (see Mailboxes) and
+	// what a person coming from any mail client already knows.
 	var b strings.Builder
+	b.WriteString(`<p class="home-section ib-boxes-head"><small>Mailboxes</small></p>`)
 	b.WriteString(`<div class="ib-boxes">` + chip("All", ""))
 	for _, a := range agents {
 		if a.Tag == "" {
@@ -560,10 +566,15 @@ func addressBar(accountID, box string) string {
 	if mail.Reachable() {
 		acts = app.ActionLink("/inbox/new", "New")
 	}
-	// Writing one is what somebody does from here; setting up a mail client is
-	// something they do once, if ever. Two buttons side by side said those were
-	// the same size of decision, and touching so that they read as one control.
-	acts += app.TextLink("Connect a mail client", "/inbox/imap")
+	// No Connect a mail client here.
+	//
+	// It sat beside New as a text link, on the reasoning that writing a message
+	// is what somebody does from here and setting up a mail client is something
+	// they do once, if ever. That reasoning is the argument for taking it off
+	// the page rather than for shrinking it: a control used once in the life of
+	// an account does not belong on the screen its owner opens every day, where
+	// it is read past several thousand times to be used never again. /inbox/imap
+	// still exists and /account is where a thing you set up once belongs.
 	b.WriteString(`<div class="page-action ib-acts">` + acts + `</div>`)
 	return b.String()
 }

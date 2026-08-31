@@ -63,31 +63,20 @@ import (
 // Named for what it returns, because the package holding the world's sentence
 // is called brief and one of the two had to give. Sibling of cardHTML.
 //
-// # Yours, and only yours
+// # Four clauses, and the last one is the world
 //
-// It ended with a clause about the world — see happening, which is now
-// somewhere else. The question that settled it was asked plainly: what use is a
-// brief over the services, when some of that is useful and none of it is about
-// you or your inbox.
+// The world's sentence was moved out to sit over the Services cards for one
+// commit and came straight back. The argument for moving it was that it is
+// about the world and the cards are the world; the answers are that services
+// are services, and that a bare paragraph over a grid had no card of its own so
+// it read as text that had escaped. Where something belongs is not settled by
+// what it is about.
 //
-// Two things were wrong with it in one. The world's sentence is 256 characters
-// and each of these is about forty, so the block read as a news line with your
-// own day as a preamble — the proportions said what it was about, whatever the
-// order claimed. And the News card is two inches to the right, showing the same
-// stories, on the same screen. A prose summary of the card beside it is the one
-// thing this page had already refused everywhere else.
-//
-// So the split is by subject, and each block says what it is about. What
-// happened in the world belongs with the services that fetched it, and that is
-// where the sentence went. What is left here is the thing nothing else on the
-// page can say: what arrived for you, what is being worked on, what is owed.
-//
-// That also settles whether this can arrive in an inbox. Commit b1d8201c took
-// the daily briefing out of everybody's inbox because "a daily arrival
-// identical for every account is a feed… what belongs in an inbox is what
-// arrived for you". That objection is fatal to the world half and is the
-// argument for this half: these clauses are about one account and nobody
-// else's, which is what makes them postable.
+// What that attempt was right about is the proportion. The world's sentence is
+// 256 characters and each of the others is about forty, so this block is mostly
+// news whatever the order says. That is a reason to shorten the sentence or to
+// give this block more to say about your day — not a reason to file it
+// elsewhere.
 //
 // Silent when there is nothing true to say, which is most of a quiet week. A
 // line reading "Nothing new" costs a reader a glance and gives them nothing
@@ -111,6 +100,9 @@ func briefHTML(accountID string) string {
 		parts = append(parts, s)
 	}
 	if s := owed(accountID); s != "" {
+		parts = append(parts, s)
+	}
+	if s := happening(); s != "" {
 		parts = append(parts, s)
 	}
 	if len(parts) == 0 {
@@ -221,32 +213,30 @@ func owed(accountID string) string {
 	return app.TextLink(count(len(todo), "task", "tasks"), "/tasks") + " open."
 }
 
-// happening is what the world did today, in agent/brief's words, under the
-// heading of the services that fetched it.
+// happening is what the world did today, in agent/brief's words.
 //
-// It was the last clause of the personal brief and it does not belong there.
-// The sentence runs to 256 characters against clauses of about forty, so the
-// block read as a news line with somebody's own day as a preamble — and the
-// News card sits two inches to the right of it showing the same stories.
+// Last of the four on purpose. The three above are things that need you and
+// this is a thing that happened, which is the right order on a day when both
+// are true; on a quiet day it is the only clause, which is the day it matters.
 //
-// Here it is doing the opposite job. The cards below are seven services
-// answering at once, which is a demonstration and is not a summary; this is the
-// summary, in one sentence, before the evidence. A reader who stops at the line
-// has had the news, and one who does not knows what they are about to look at.
+// It spent one commit under the Services heading instead, on the argument that
+// the sentence is about the world and the cards are the world. Wrong twice
+// over: services are services, and a bare paragraph over a grid of cards had no
+// card of its own, so it read as text that had escaped from something. Where a
+// thing belongs is not settled by what it is about.
 //
-// Escaped, because unlike the counts in the personal brief this is a model's
-// prose.
+// Escaped, because unlike the other three this is a model's prose rather than
+// counts and names from this instance's own stores.
 //
-// Not per-account, which is the other half of why it moved: the rows behind it
-// are public, so the sentence is the same for everybody. A block written once
-// for the instance sits correctly over the instance's services and sat wrongly
-// inside a brief that is about one person.
+// Not per-account: the rows behind it are public, so the sentence is the same
+// for everybody and is written once for the instance rather than once per
+// person. What is personal on this line is the three clauses above it.
 func happening() string {
 	line := brief.Line()
 	if line == "" {
 		return ""
 	}
-	return `<p class="home-happening">` + html.EscapeString(line) + `</p>`
+	return html.EscapeString(line)
 }
 
 // sameDay is whether two times fall on the same date, in the same zone.

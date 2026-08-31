@@ -120,8 +120,7 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// Where there are conversations it earns its place, because there it means
 	// "a different one from these".
-	head := `<div class="ib-person-head"><a class="pill" href="/inbox/new?to=` +
-		html.EscapeString(url.QueryEscape(handle)) + `">New message</a></div>`
+	head := `<div class="ib-person-head">` + sendMailTo(handle) + `</div>`
 
 	// Nobody you have spoken to yet is still a page.
 	//
@@ -150,16 +149,8 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(convs) == 0 {
-		// "Send a message", not "Start a conversation". The second describes a
-		// relationship beginning, which is a bigger thing than the button does
-		// and a bigger thing than somebody clicking it means; the first says
-		// what happens next. It is also the wording everywhere else that
-		// composes — see /inbox/new, which this opens.
 		b.WriteString(`<div class="ib-person-empty">` +
-			`<p>Nothing between you yet.</p>` +
-			`<a class="btn" href="/inbox/new?to=` +
-			html.EscapeString(url.QueryEscape(handle)) + `">Send a message</a>` +
-			`</div></div>`)
+			`<p>Nothing between you yet.</p>` + sendMailTo(handle) + `</div></div>`)
 		app.Respond(w, r, app.Response{
 			Title:       title,
 			Description: "Your conversation with " + title,
@@ -193,6 +184,43 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// sendMailTo is the way to write to somebody, as an icon with a word.
+//
+// Mail and chat are different promises — one is answered when they get to it,
+// the other is answered now — and "Send a message" named neither. It also read
+// as a sentence where a button belongs. So the label says which door it is:
+// Send mail, because mail is what /inbox/new writes.
+//
+// The envelope and the bubble carry the distinction faster than the words do,
+// which is the point of having both: the icon separates the two at a glance and
+// the word says which is which for anybody who does not read icons.
+//
+// # No Chat button yet
+//
+// It belongs here and there is nowhere for it to go. service/chat has topic
+// rooms and no concept of a room that is these two people — see task #96 — so
+// the only thing this could link to today is a room id assembled from two
+// account names, which anybody could guess and open. A private conversation
+// with a URL-guessable address is not a private conversation, and a button that
+// lies about that is worse than a button that is not there yet.
+func sendMailTo(handle string) string {
+	to := html.EscapeString(url.QueryEscape(handle))
+	return `<a class="btn ib-act" href="/inbox/new?to=` + to + `">` +
+		iconMail + `Send mail</a>`
+}
+
+// iconMail is an envelope, drawn rather than fetched.
+//
+// Inline SVG because it is two lines of markup and the alternative is a request
+// for an image that has to exist, be cached and be found again by whoever moves
+// it. currentColor so it takes the button's own colour rather than needing one
+// of its own for every place a button appears.
+const iconMail = `<svg class="ib-act-icon" viewBox="0 0 16 16" aria-hidden="true">` +
+	`<rect x="1.5" y="3.5" width="13" height="9" rx="1.5" fill="none" ` +
+	`stroke="currentColor" stroke-width="1.3"/>` +
+	`<path d="M2 4.5l6 4 6-4" fill="none" stroke="currentColor" ` +
+	`stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+
 // personFacts is the two things a profile says about somebody that are true
 // whether or not you have ever spoken: since when, and whether they are about.
 //
@@ -211,22 +239,29 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 // loudest thing on it — the same argument that keeps Home's brief quiet on a
 // quiet day. Here is worth saying; not here is the default.
 func personFacts(them *auth.Account) string {
+	// One line each, rather than two facts on a row.
+	//
+	// They are different kinds of fact and they change on different clocks: the
+	// join date is fixed for the life of the account and presence flips while
+	// you are looking at the page. Sharing a line made the second one look like
+	// a qualifier on the first, and moved the first sideways every time it
+	// appeared.
 	var parts []string
 	if !them.Created.IsZero() {
-		parts = append(parts, `<span class="ib-person-since">Joined `+
-			html.EscapeString(them.Created.Format("January 2006"))+`</span>`)
+		parts = append(parts, `<p class="ib-person-fact ib-person-since">Joined `+
+			html.EscapeString(them.Created.Format("January 2006"))+`</p>`)
 	}
 	for _, id := range auth.OnlineUsers() {
 		if id == them.ID {
-			parts = append(parts, `<span class="ib-person-live">`+
-				`<span class="here-dot"></span>Here now</span>`)
+			parts = append(parts, `<p class="ib-person-fact ib-person-live">`+
+				`<span class="here-dot"></span>Here now</p>`)
 			break
 		}
 	}
 	if len(parts) == 0 {
 		return ""
 	}
-	return `<p class="ib-person-facts">` + strings.Join(parts, "") + `</p>`
+	return strings.Join(parts, "")
 }
 
 // replyAddressFor is where a reply to this person goes, on the channel this

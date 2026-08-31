@@ -805,6 +805,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
 	content := notice + profile +
+		mailClientCard() +
 		passwordCard(acc) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
@@ -1017,6 +1018,25 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 // knows perfectly well they typed a password at signup. Being wrong about
 // somebody's own credentials is a good way to make them doubt the rest of the
 // page.
+// mailClientCard is the way to /inbox/imap.
+//
+// It lived on the inbox, beside New, as a text link. That is the screen an
+// account owner opens every day and this is a thing they do once in the life of
+// the account, if ever — so it was read past several thousand times to be used
+// never again, and it made the two controls at the top of the inbox look like
+// the same size of decision.
+//
+// Here instead, with the password, the passkeys and the phone: the things you
+// set up once and then forget. It has to be somewhere — /inbox/imap is served,
+// and a served page with nothing linking to it is a page nobody can find, which
+// TestTheMailClientPageIsReachable exists to prevent.
+func mailClientCard() string {
+	return app.Section("Mail client",
+		`<p>Read and send this account's mail from Apple Mail, Thunderbird, `+
+			`Gmail on Android — anything that speaks IMAP.</p>`+
+			app.Link("Server settings and addresses", "/inbox/imap"))
+}
+
 func passwordCard(acc *auth.Account) string {
 	note := "Signing up with Google or a passkey leaves no password you could type. " +
 		"Setting one here lets you sign in with your username, and unlocks exporting " +

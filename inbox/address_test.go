@@ -33,9 +33,16 @@ func TestTheTopOfTheInboxIsItsActions(t *testing.T) {
 		t.Errorf("the lede is back above every list:\n%s", all)
 	}
 
-	// Both controls, and only these two.
-	if !strings.Contains(all, `href="/inbox/imap"`) {
-		t.Errorf("no way through to a mail client:\n%s", all)
+	// One control, and only one.
+	//
+	// Connect a mail client sat beside New and has moved to /account. Setting
+	// up IMAP is done once in the life of an account, if ever, and this is the
+	// screen its owner opens every day — so the link was read past several
+	// thousand times to be used never again, and two controls side by side said
+	// those were the same size of decision. See account.mailClientCard, which
+	// is where it went and where TestTheMailClientPageIsReachable now looks.
+	if strings.Contains(all, `href="/inbox/imap"`) {
+		t.Errorf("the mail-client link is back at the top of the inbox:\n%s", all)
 	}
 	if !strings.Contains(all, `href="/inbox/new"`) {
 		t.Errorf("no way to write one:\n%s", all)

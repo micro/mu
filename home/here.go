@@ -98,7 +98,8 @@ func hereStrip(people []person, viewerID string) string {
 
 	// The way to them, and only when there is a them. See the note above about
 	// the two useless sentences: an invitation to go and talk, on a day when
-	// there is nobody to talk to, is the part that had to go.
+	// there is nobody to talk to, is the part that had to go. It is drawn under
+	// the names rather than at the end of them — see below.
 	others := 0
 	for _, p := range people {
 		if p.online && p.id != viewerID {
@@ -122,10 +123,16 @@ func hereStrip(people []person, viewerID string) string {
 		out += `<a class="` + cls + `" href="/@` + url.PathEscape(p.id) + `">` +
 			`<span class="here-dot"></span>@` + html.EscapeString(p.id) + `</a>`
 	}
+	out += `</div>`
+	// Its own line under the names, not the end of the row.
+	//
+	// In the row it was a link that appeared and disappeared as people came and
+	// went, moving everything before it; and it is a different kind of thing
+	// from the names beside it — they are people, this is a door.
 	if others > 0 {
 		out += app.Link("Chat", "/chat")
 	}
-	return out + `</div></div>`
+	return out + `</div>`
 }
 
 // roster is who is on this instance right now.
