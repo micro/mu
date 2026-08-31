@@ -406,21 +406,47 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// sortForDirectory orders the apps directory: ours first, in the order we
-// chose, then everybody else's by installs and then by recency.
+// sortForDirectory orders the apps directory with nobody's apps first, which
+// is the ordering for a caller that has no reader — see sortForReader for the
+// page, which does.
 //
 // One comparator because there were two, character for character, in
 // handleList and Public — and a list that is ordered twice is a list that will
 // eventually be ordered two ways.
+func sortForDirectory(list []*App) { sortForReader(list, "") }
+
+// sortForReader orders the directory for the person looking at it: yours
+// first, then everybody else's by installs and recency, then the ones that
+// ship with the instance.
 //
-// Official leads because the question a first-time reader is asking is what
-// this thing can do, and a calculator somebody uploaded is not the answer.
-// Order within that is explicit: see service/apps/seeds.
-func sortForDirectory(list []*App) {
+// Official used to lead, on the argument that a first-time reader is asking
+// what this thing can do and a calculator somebody uploaded is not the answer.
+// That is right for a first-time reader and wrong every time after: the apps
+// you wrote were filed under "From the community", below a fixed list you have
+// already read, on your own server. The first visit is one visit; the page is
+// for the person who lives here.
+//
+// Empty viewer keeps the old order exactly. The API listing has no reader to
+// be relative to, and an ordering that varied by who asked would make a cached
+// response wrong for the next caller.
+func sortForReader(list []*App, viewerID string) {
+	mine := func(a *App) bool { return viewerID != "" && a.AuthorID == viewerID }
+
 	sort.Slice(list, func(i, j int) bool {
 		a, b := list[i], list[j]
+		if am, bm := mine(a), mine(b); am != bm {
+			return am
+		}
 		if a.Official != b.Official {
-			return a.Official
+			// A stranger gets the catalogue and the person who lives here gets
+			// their own things: officials lead when there is no reader to be
+			// relative to, and come last when there is. Both readings of "what
+			// goes at the top" are correct, for different readers, and the
+			// viewer is the only thing that can tell them apart.
+			if viewerID == "" {
+				return a.Official
+			}
+			return !a.Official
 		}
 		if a.Official {
 			if a.Order != b.Order {
@@ -482,6 +508,11 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		userID = sess.Account
 		isAdmin = acc.Admin
 	}
+
+	// Re-ordered for whoever is reading it. The sort above ran before there
+	// was a session to read and still serves the JSON branch, which returns
+	// the same bytes to everybody and must not vary by caller.
+	sortForReader(list, userID)
 
 	// HTML
 	var sb strings.Builder
@@ -579,20 +610,34 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	if len(list) == 0 {
 		sb.WriteString(`<p>No apps yet. <a href="/apps/new">Create the first one</a>.</p>`)
 	} else {
-		// Two sections, because the list is already sorted ours-first and a
-		// reader otherwise cannot tell which is which. Emitted from the run
-		// rather than by partitioning the slice, so a filter that leaves no
-		// official apps leaves no heading either.
-		var saidOurs, saidTheirs bool
+		// Three sections now, in the order sortForReader put them: yours, then
+		// everybody else's, then the ones that ship with the instance.
+		//
+		// Yours is the new one and is the whole point. They were filed under
+		// "From the community" — your own apps, on your own server, described
+		// as somebody else's and listed below a fixed set you have already
+		// read.
+		//
+		// And the built-ins are Templates. "Built in" says where they came
+		// from, which is a fact about us; what they are for is being copied
+		// and changed, which is a fact about what you can do with them, and
+		// that is what a heading on a directory should say.
+		//
+		// Emitted from the run rather than by partitioning the slice, so a
+		// filter that leaves a section empty leaves out its heading too.
+		var saidMine, saidTheirs, saidOurs bool
 		for _, a := range list {
-			if a.Official && !saidOurs {
+			switch {
+			case userID != "" && a.AuthorID == userID && !saidMine:
+				saidMine = true
+				sb.WriteString(`<h2 class="app-section">Yours</h2>`)
+			case a.Official && !saidOurs:
 				saidOurs = true
-				sb.WriteString(`<h2 class="app-section">Built in</h2>`)
-			}
-			if !a.Official && !saidTheirs {
+				sb.WriteString(`<h2 class="app-section">Templates</h2>`)
+			case !a.Official && (userID == "" || a.AuthorID != userID) && !saidTheirs:
 				saidTheirs = true
 				heading := "From the community"
-				if !saidOurs {
+				if !saidMine && !saidOurs {
 					heading = "Apps"
 				}
 				sb.WriteString(`<h2 class="app-section">` + heading + `</h2>`)

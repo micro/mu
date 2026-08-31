@@ -648,7 +648,18 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
 		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
 		`<div class="chat-sess-scroll">` +
-		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
+		// Chats, which is what the store has always called them in every way
+		// but this one. The record is threads.json, the package is
+		// internal/thread, the types are thread.Thread and thread.Message —
+		// "Conversations" appeared in exactly one place, this heading, and was
+		// a word the UI invented for something the code names twice over.
+		//
+		// Not "Sessions": auth.Session is a login, and reusing it here would
+		// make the one word in this product that means "you are signed in"
+		// also mean "a chat you had". Chat is what these are, it is what the
+		// button under them starts, and thread.WebClient is the client that
+		// makes them.
+		`<div class="chat-sess-head">Chats</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
 		// "No conversations yet" is a true sentence that leaves somebody looking
