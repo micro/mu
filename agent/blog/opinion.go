@@ -18,6 +18,7 @@ package blog
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -105,12 +106,52 @@ func opinionEngageLoop() {
 	app.Log("opinion", "Engagement loop disabled to reduce API costs")
 }
 
-// maxDailyOpinions limits how many opinion posts are generated per day.
-const maxDailyOpinions = 1
+// One piece per topic, per day — and a ceiling, because the topic list is a
+// data file and a data file can grow.
+//
+// This was `const maxDailyOpinions = 1`, added as cost control, and one a day
+// against eight topics means each subject gets a piece every eight days. A
+// blog that says it is about Finance and last mentioned it a week ago is not
+// covering Finance. opinionInterval was already written for one-per-category —
+// it divides sixteen waking hours by the count — so the pacing has been
+// waiting for this the whole time.
+//
+// The ceiling is the honest part of the cost argument. Each piece is a
+// catalogue gather, a web research pass and a generation, all billed to
+// Micro's own account, so the number of them has to be bounded by something
+// other than how many strings somebody put in topics.json.
+const maxDailyOpinions = 8
+
+// dailyOpinions is how many pieces today should have: one per topic, capped.
+func dailyOpinions() int {
+	n := len(opinionCategories())
+	if n > maxDailyOpinions {
+		return maxDailyOpinions
+	}
+	return n
+}
+
+// opinionsEnabled is the switch for an instance that does not want them.
+//
+// The same shape as NOTES=off in service/blog/notes.go rather than a new idea:
+// a self-hosted instance whose model costs money is entitled to a blog that
+// does not write itself, and the alternative to a switch is editing
+// topics.json down to nothing, which reads as a mistake rather than a
+// decision.
+func opinionsEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("OPINIONS"))) {
+	case "off", "false", "no", "0", "none":
+		return false
+	}
+	return true
+}
 
 // publishNextOpinion finds the next category that needs an opinion today
 // and publishes it, respecting the spacing between posts.
 func publishNextOpinion() {
+	if !opinionsEnabled() {
+		return
+	}
 	categories := opinionCategories()
 	if len(categories) == 0 {
 		return
@@ -119,14 +160,15 @@ func publishNextOpinion() {
 	published := findTodayOpinionCategories()
 
 	// Cost control: limit daily opinion posts
-	if len(published) >= maxDailyOpinions {
+	want := dailyOpinions()
+	if len(published) >= want {
 		return
 	}
 
 	// Find last publish time today
 	if last := latestTodayOpinionTime(); !last.IsZero() {
 		elapsed := time.Since(last)
-		interval := opinionInterval(maxDailyOpinions)
+		interval := opinionInterval(want)
 		if elapsed < interval {
 			return // too soon
 		}
@@ -194,13 +236,34 @@ func publishCategoryOpinion(category string) {
 func FindTodayOpinions() []*blogsvc.Post {
 	now := time.Now()
 	y, m, d := now.Date()
+	return opinions(func(t time.Time) bool {
+		py, pm, pd := t.Date()
+		return py == y && pm == m && pd == d
+	})
+}
+
+// OpinionsSince is the same pieces, over a window rather than a calendar day.
+//
+// The digest needs this and "today" is the wrong question for it: the briefing
+// goes out at 06:00 and the pieces are written across the sixteen hours before
+// that, so a digest asking what was published today would always find nothing
+// and fall back to the feeds — every morning, silently, which is the failure
+// mode where the feature looks implemented and never runs.
+//
+// A window also survives the thing a calendar day does not: an instance whose
+// clock is UTC and whose readers are not.
+func OpinionsSince(t time.Time) []*blogsvc.Post {
+	return opinions(func(at time.Time) bool { return at.After(t) })
+}
+
+// opinions is the shared walk: Micro's posts, tagged opinion, matching when.
+func opinions(when func(time.Time) bool) []*blogsvc.Post {
 	var result []*blogsvc.Post
 	for _, post := range blogsvc.PostsByAuthorID(auth.MicroID, "Micro") {
 		if !strings.Contains(post.Tags, opinionTag) {
 			continue
 		}
-		py, pm, pd := post.CreatedAt.Date()
-		if py == y && pm == m && pd == d {
+		if when(post.CreatedAt) {
 			result = append(result, post)
 		}
 	}

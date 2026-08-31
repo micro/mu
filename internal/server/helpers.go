@@ -22,7 +22,6 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/version"
-	"mu/service/blog"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
@@ -249,9 +248,14 @@ func runHealthChecks() []app.ServiceHealth {
 	// works. Anything without one is reported on being registered and reachable,
 	// which is still a real check — the service failed to start otherwise.
 	probes := map[string]func() bool{
-		"news":    func() bool { return len(news.GetFeed()) > 0 },
-		"blog":    func() bool { return blog.Topics() != nil },
-		"video":   func() bool { return video.LatestVideos(1) != nil },
+		"news":  func() bool { return len(news.GetFeed()) > 0 },
+		"video": func() bool { return video.LatestVideos(1) != nil },
+		// No probe for the blog. It had one — Topics() != nil — which was a
+		// test of whether Load had run, back when Load was what parsed the
+		// embedded topic list. It is parsed at build time now, so that answer
+		// is a constant. There is no cheap signal that a blog works: an
+		// instance with no posts yet is not a broken one. Registered and
+		// serving, like mail below.
 		"markets": func() bool { return len(markets.AllPrices()) > 0 },
 		"social":  func() bool { return len(social.Threads()) > 0 },
 		// No probe for mail. It had one — ConfiguredDomain() != "" — which

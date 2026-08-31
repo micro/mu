@@ -25,7 +25,7 @@ The services available via the web, API or as tools, reachable via MCP, and comm
 |---|---|
 | **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_embed` · `apps_read` · `apps_search` · `apps_test` — build small web tools and put them anywhere |
 | **Archive** | `archive_search` · `archive_list` — everything this instance has collected, across news, video, markets and posts at once. Use it when the question crosses a service, or when you do not know which one would hold the answer |
-| **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
+| **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with an AI-written piece per topic and a daily briefing drawn from them |
 | **Browser** | `browser_read` · `browser_shot` — a real browser for the pages a plain fetch cannot read: open one and get its text after its JavaScript has run, or photograph it and get a URL for the picture. Costs, because it runs a Chromium; a plain fetch is free and is the right first try |
 | **Chat** | `chat_rooms` · `chat_messages` · `chat_send` — the live discussion rooms attached to an item, and saying something in one |
 | **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |

@@ -69,8 +69,26 @@ var postsItems []listItem
 // postsPerPage is how much of the blog one page is.
 const postsPerPage = 20
 
-// Valid topics/categories for posts
-var topics []string
+// What the blog is about, read at build time because that is when it is
+// decided.
+//
+// This was unmarshalled in Load, which meant Topics() answered nil to anything
+// running before the server had started — including a test, which is how the
+// file came to contain a single entry and nothing noticed. It is an embedded
+// constant: no filesystem, no HOME, nothing to wait for.
+//
+// The fallback is not decoration. topics.json is edited by hand and a trailing
+// comma there would otherwise leave the blog with no categories at all, which
+// stops the opinion agent silently.
+var topics = loadTopics()
+
+func loadTopics() []string {
+	var out []string
+	if err := json.Unmarshal(topicsJSON, &out); err != nil || len(out) == 0 {
+		return []string{"Crypto", "Dev", "Finance", "Islam", "Politics", "Tech", "UK", "World"}
+	}
+	return out
+}
 
 type Post struct {
 	ID        string     `json:"id"`
@@ -171,12 +189,6 @@ func Load() {
 	cardSnap = snapshot.New("blog")
 
 	// Register tools
-
-	// Load topics from embedded JSON
-	if err := json.Unmarshal(topicsJSON, &topics); err != nil {
-		app.Log("blog", "Error loading topics: %v", err)
-		topics = []string{"Crypto", "Dev", "Finance", "Islam", "Politics", "Tech", "UK", "World"}
-	}
 
 	// Subscribe to tag generation responses
 	tagSub := event.Subscribe(event.TagGenerated)

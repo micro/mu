@@ -28,6 +28,24 @@
 // door every other caller uses — so the work is attributed to Micro's account,
 // counted in usage, and priced if it ever stops being free. Widening the list
 // is one line in digestSources.
+//
+// # It reads the pieces before it reads the feeds
+//
+// agent/blog writes one piece per topic across the day: it takes a subject,
+// reads what the feeds and the web have on it, and forms a view. This ran
+// beside that and re-summarised the same headlines from scratch — two model
+// passes over the same material, the second starting from nothing the first
+// had learned, and the second one calling itself the briefing.
+//
+// So the pieces are the input now, and the feeds are underneath them for
+// whatever the pieces did not reach. That is the order a person works in, and
+// it means the briefing is built on something this instance has already
+// understood rather than on rows. See opinionContext.
+//
+// One agent reading another agent's output is the composition, not a
+// shortcut: agent/blog exports OpinionsSince and this imports it, which is
+// allowed in a way a service reaching sideways is not — see
+// test/layering_test.go.
 package digest
 
 import (
@@ -37,6 +55,7 @@ import (
 	"sync"
 	"time"
 
+	agentblog "mu/agent/blog"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -116,11 +135,12 @@ func Today() *blog.Post { return blog.FindTodayDigest() }
 // TestGenerate runs the digest pipeline synchronously and returns the
 // result or error. Used by diagnostics to test without publishing.
 func TestGenerate() (string, error) {
+	pieces := opinionContext()
 	context, _ := gatherContext()
-	if context == "" {
+	if context == "" && pieces == "" {
 		return "", fmt.Errorf("no content available (news feed may be empty)")
 	}
-	return generateDigestContent(context)
+	return generateDigestContent(pieces+context, pieces != "")
 }
 
 func scheduler() {
@@ -195,14 +215,18 @@ func generate() {
 func createDigest() {
 	app.Log("digest", "Creating new daily digest")
 
+	pieces := opinionContext()
 	context, refs := gatherContext()
-	if context == "" {
+	if context == "" && pieces == "" {
 		setError("no content available")
 		app.Log("digest", "No content available for digest")
 		return
 	}
+	if pieces != "" {
+		app.Log("digest", "Reading %d chars of the instance's own pieces", len(pieces))
+	}
 
-	response, err := generateDigestContent(context)
+	response, err := generateDigestContent(pieces+context, pieces != "")
 	if err != nil {
 		setError(err.Error())
 		app.Log("digest", "AI generation failed: %v", err)
@@ -233,15 +257,76 @@ func createDigest() {
 	app.Log("digest", "Daily digest published as blog post: %s", title)
 }
 
-func generateDigestContent(context string) (string, error) {
-	if context == "" {
-		return "", nil
+// opinionWindow is how far back the briefing looks for the instance's own
+// pieces: since the last briefing.
+//
+// Not "today". The digest goes out at 06:00 UTC and the pieces are written
+// across the sixteen hours before that, so "published today" is empty every
+// single morning — the failure mode where the feature is implemented, never
+// runs, and nothing says so because falling back to the feeds looks exactly
+// like working.
+const opinionWindow = 24 * time.Hour
+
+// maxPieces bounds what one briefing reads. Newest first, which is the order
+// blog.PostsByAuthorID answers in.
+const maxPieces = 10
+
+// opinionContext is what this instance has already worked out, put in front of
+// the raw feeds.
+//
+// This is the whole point of the change. Research is reading the links and
+// forming a view; the instance does that per topic already, and then the
+// briefing ignored it and re-summarised the same feeds from scratch — two AI
+// passes over the same headlines, the second one starting from nothing the
+// first had learned. A person does not work that way round.
+//
+// So the pieces go first and the feeds go after, and the prompt says which is
+// which. When there are none — a fresh instance, OPINIONS=off, a day the model
+// was unreachable — this returns nothing and the briefing is exactly what it
+// was before, which is the fallback that has to stay working.
+//
+// Whole bodies, not summaries. The piece is already the compressed form of a
+// day's reading; summarising a summary is where the specifics go.
+func opinionContext() string {
+	pieces := agentblog.OpinionsSince(time.Now().Add(-opinionWindow))
+	if len(pieces) == 0 {
+		return ""
+	}
+	// A rolling day is not a calendar day, so it can hold two days' worth: the
+	// pieces published late yesterday and the ones published early today. Each
+	// is capped at 2500 characters by its own prompt, and the newest are the
+	// ones the briefing is about.
+	if len(pieces) > maxPieces {
+		pieces = pieces[:maxPieces]
+	}
+	var sb strings.Builder
+	sb.WriteString("## What Mu published since the last briefing\n\n")
+	for _, p := range pieces {
+		fmt.Fprintf(&sb, "### %s\n\n%s\n\n", p.Title, strings.TrimSpace(p.Content))
+	}
+	return sb.String()
+}
+
+// digestSystem is the briefing's instructions, and what it is reading.
+//
+// Split out from the ai.Prompt so a test can read it: the whole change here is
+// that the model is told the pieces come first and to build on them, and a
+// prompt that is only ever assembled inside a call to a model is a prompt
+// nothing can check.
+func digestSystem(fromPieces bool) string {
+	// What the briefing is built on, said in the prompt rather than left for
+	// the model to infer from a heading. Two different jobs: reporting the
+	// day, and reporting what this instance made of the day.
+	source := `You will be given news headlines, market data, and video content from today.`
+	if fromPieces {
+		source = `You will be given, in this order: the pieces Mu itself published since the last briefing, and then the raw news headlines, market data and video from today.
+
+The pieces come first because they are the work. Each one is Mu reading a subject and forming a view on it, and the briefing is what those views add up to — so build on them, carry their conclusions forward, and use the raw feeds underneath for anything the pieces did not reach. Do not re-derive from the headlines what a piece has already worked out, and do not simply list the pieces: a reader who has read none of them should still get one briefing rather than eight summaries.`
 	}
 
-	prompt := &ai.Prompt{
-		System: `You are a senior analyst writing a daily briefing for Mu, an independent platform built in the UK. Your audience is global and diverse, with particular relevance to Muslim readers — but the content is for everyone.
+	return `You are a senior analyst writing a daily briefing for Mu, an independent platform built in the UK. Your audience is global and diverse, with particular relevance to Muslim readers — but the content is for everyone.
 
-You will be given news headlines, market data, and video content from today.
+` + source + `
 
 Write a coherent, integrated summary that connects the dots between events and market movements. The reader wants to understand what happened today and WHY markets moved — not just see raw prices.
 
@@ -268,7 +353,16 @@ Rules:
 - Every major claim or event should link to its source
 - Write dollar amounts as plain numbers like $94 or $1.2 trillion — NEVER use LaTeX formatting, backslashes, or math notation
 - Keep it human and readable — like a morning briefing email
-- CRITICAL: Keep under 2000 characters total.`,
+- CRITICAL: Keep under 2000 characters total.`
+}
+
+func generateDigestContent(context string, fromPieces bool) (string, error) {
+	if context == "" {
+		return "", nil
+	}
+
+	prompt := &ai.Prompt{
+		System:   digestSystem(fromPieces),
 		Question: context,
 		Priority: ai.PriorityLow,
 		Model:    ai.BackgroundModel(),
