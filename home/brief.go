@@ -94,15 +94,28 @@ func briefHTML(accountID string) string {
 		return ""
 	}
 
+	// In a card, like the two blocks under it.
+	//
+	// It was a bare paragraph under a heading, which was right when Home was
+	// one column: the brief ran the width of the page and the border would have
+	// been a box around a single sentence. In the rail it sits directly above
+	// the inbox and the agents, both of them bordered, and the odd one out was
+	// the one at the top — three blocks under matching headings, the first
+	// looking like a caption that had escaped.
+	//
+	// brief-peek, and the class is in the same rule as inbox-peek and
+	// agent-peek in mu.css rather than beside them. Three names for one shape,
+	// kept in one place, because the whole complaint was that they had drifted.
+	//
 	// Who is here first. It is the only thing on this page that can change
 	// because somebody else did something, and it is the one thing worth
 	// acting on immediately — the news will still be there in an hour and a
 	// person online now will not.
-	out := sectionRule("Brief") + room
+	out := sectionRule("Brief") + `<div class="brief-peek">` + room
 	if len(parts) > 0 {
 		out += `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
 	}
-	return out
+	return out + `</div>`
 }
 
 // here is who else is on this instance right now, and the way to them.

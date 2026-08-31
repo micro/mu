@@ -846,12 +846,20 @@ body.page-home #page-title ~ #customize-link {
 /* Says what the block underneath is. The cards read as a dashboard somebody
    arranged; they are the tools answering live, and two words are the whole
    difference between those two readings. Quiet, because a label that competes
-   with what it labels is worse than none. */
+   with what it labels is worse than none.
+
+   15px above, halved from 30. That number was set when Home was a single
+   column and these headings were the only thing separating a stack of
+   unrelated blocks, so it had to be a real break. It is doing less work now:
+   the columns already separate the rail from the cards, the cards have borders
+   of their own, and the first heading in each column carries this margin as
+   the gap under the box — which at 30px was a band of empty page between the
+   thing you type into and everything it is about. */
 .home-section {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 30px 0 12px;
+  margin: 15px 0 12px;
   color: var(--text-muted, #888);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -6241,6 +6249,11 @@ button.pill:hover {
 /* Your agents and your inbox are the two "what is yours" blocks on Home, so
    they are the same object: same border, same background, same inset. Drawing
    the second one differently would say they are different kinds of thing. */
+/* The three blocks in Home's rail, which are one shape and are listed here
+   together so they cannot drift apart again. The brief was a bare paragraph
+   under its heading while the two below it were bordered, which read as a
+   caption that had escaped its card. */
+.brief-peek,
 .inbox-peek,
 .agent-peek {
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
@@ -6248,6 +6261,14 @@ button.pill:hover {
   background: var(--card-background, #fff);
   padding: 4px var(--item-padding, 16px) 12px;
   margin: 0;
+}
+
+/* The brief's own padding is even, unlike the two below it. Theirs is 4px at
+   the top because their first child is a row carrying 11px of its own; this
+   holds a paragraph, and 4px above a sentence with 12px under it sits it
+   against the top edge. */
+.brief-peek {
+  padding-top: 12px;
 }
 
 /* One agent: its name, what it last dealt with, and when. Three columns rather
@@ -6483,10 +6504,12 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
    against it to a wider gap than Inbox or Agents leave under their own
    headings. One block, spaced like the three under it.
 
-   And little below it: the section's bottom gap is .link's 12px when somebody
-   is here, and this paragraph's own when nobody is. */
+   Nothing below it. The 24px this carried was the gap to the next section,
+   from when the brief was a bare paragraph; the card it is in now owns that,
+   and the margin inside the border was a band of empty white under the last
+   line. */
 .home-brief {
-  margin: 0 0 var(--spacing-lg, 24px);
+  margin: 0;
   font-size: 15px;
   line-height: var(--line-height, 1.6);
   color: var(--text-secondary, #555);
