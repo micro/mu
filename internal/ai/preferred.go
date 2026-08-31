@@ -133,6 +133,12 @@ func PreferredModel(provider string, background bool) string {
 		return GeminiModel()
 	case ProviderOpenRouter:
 		return OpenRouterModel()
+	case ProviderLocal:
+		// Whatever the operator named. There is no default worth inventing for
+		// an endpoint whose model ids are whatever that machine has pulled — see
+		// LocalModel. Empty here means the agent says it is not configured
+		// rather than asking for a model nobody mentioned.
+		return LocalModel()
 	}
 	return ""
 }

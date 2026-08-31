@@ -137,7 +137,9 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 
 	opts := []gmai.Option{gmai.WithAPIKey(apiKey), gmai.WithModel(useModel)}
 	if baseURL != "" {
-		opts = append(opts, gmai.WithBaseURL(baseURL))
+		// The library appends its own /v1; the setting carries one. See
+		// ProviderBaseURL.
+		opts = append(opts, gmai.WithBaseURL(ProviderBaseURL(baseURL)))
 	}
 	if maxTok > 0 {
 		opts = append(opts, gmai.WithMaxTokens(maxTok))
@@ -203,7 +205,9 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 
 	opts := []gmai.Option{gmai.WithAPIKey(apiKey), gmai.WithModel(useModel)}
 	if baseURL != "" {
-		opts = append(opts, gmai.WithBaseURL(baseURL))
+		// The library appends its own /v1; the setting carries one. See
+		// ProviderBaseURL.
+		opts = append(opts, gmai.WithBaseURL(ProviderBaseURL(baseURL)))
 	}
 	if maxTok > 0 {
 		opts = append(opts, gmai.WithMaxTokens(maxTok))

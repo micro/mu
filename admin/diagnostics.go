@@ -255,7 +255,10 @@ func providerLabel() string {
 	switch {
 	case settings.Get("ANTHROPIC_API_KEY") != "":
 		return "Anthropic"
-	case settings.Get("ATLASCLOUD_API_KEY") != "" || settings.Get("ATLAS_API_KEY") != "" || settings.Get("OPENAI_API_KEY") != "":
+	// Atlas's own two names. OPENAI_API_KEY was a third and is not one — it is
+	// the key for whatever OpenAI-compatible endpoint is configured, so a local
+	// Ollama install was diagnosed as running on Atlas Cloud. See getAtlasAPIKey.
+	case settings.Get("ATLASCLOUD_API_KEY") != "" || settings.Get("ATLAS_API_KEY") != "":
 		return "Atlas Cloud"
 	case settings.Get("OPENROUTER_API_KEY") != "":
 		return "OpenRouter"

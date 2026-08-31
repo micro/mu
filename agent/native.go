@@ -425,11 +425,17 @@ func nativeLLMFor(prefer string) (provider, key, model, baseURL string, ok bool)
 	// which provider this box uses. They did for months.
 	if p, k, base, ok := ai.PreferredProvider(); ok {
 		if m := ai.PreferredModel(p, false); m != "" {
-			return p, k, m, base, true
+			// ProviderBaseURL, not the configured string. The setting carries the
+			// version segment — detectOllama returns it and INSTALL.md documents
+			// it — and the go-micro provider appends its own, so passing it
+			// through asked for /v1/v1/chat/completions. See ai.ProviderBaseURL.
+			return p, k, m, ai.ProviderBaseURL(base), true
 		}
-		if p == ai.ProviderLocal {
-			return p, k, openAIModel(), base, true
-		}
+		// ai.PreferredModel answers for the local provider too, so there is no
+		// second branch here deciding what an OpenAI-compatible endpoint runs.
+		// There was, and it is exactly the split this function's own comment
+		// above says it exists to prevent: the agent and the chat asking two
+		// different questions and getting two different models.
 	}
 
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
@@ -444,18 +450,25 @@ func nativeLLMFor(prefer string) (provider, key, model, baseURL string, ok bool)
 	if key := ai.OpenRouterKey(); key != "" {
 		return "openrouter", key, ai.OpenRouterModel(), "", true
 	}
+	// An OpenAI-compatible endpoint, last, and only when it has been told what
+	// to run. A base URL with no model is half a configuration, and answering
+	// anyway means asking that server for a model id somebody made up.
 	if base := settings.Get("OPENAI_BASE_URL"); base != "" {
-		return ai.ProviderLocal, settings.Get("OPENAI_API_KEY"), openAIModel(), base, true
+		if model := ai.LocalModel(); model != "" {
+			return ai.ProviderLocal, settings.Get("OPENAI_API_KEY"), model,
+				ai.ProviderBaseURL(base), true
+		}
+		unservedLocal.Do(func() {
+			app.Log("agent", "OPENAI_BASE_URL is set and OPENAI_MODEL is not, so "+
+				"the agent has no model to ask that endpoint for")
+		})
 	}
 	return "", "", "", "", false
 }
 
-func openAIModel() string {
-	if model := strings.TrimSpace(settings.Get("OPENAI_MODEL")); model != "" {
-		return model
-	}
-	return "gpt-4o-mini"
-}
+// unservedLocal keeps that warning to once per process rather than once per
+// question, the same as unservedModel above.
+var unservedLocal sync.Once
 
 // maxSteps is how many tools one question may use.
 //
