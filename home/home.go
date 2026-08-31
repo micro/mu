@@ -572,6 +572,14 @@ function fetchW(la,lo){
 	// More, the heading says what they are, and Services is in the nav and in
 	// the phone tab bar.
 	b.WriteString(sectionRule("Services"))
+	// What the world did today, over the services that found it out.
+	//
+	// This was the last clause of the brief in the rail, and moved because the
+	// proportions gave it away: 256 characters of news against personal clauses
+	// of about forty, with the News card showing the same stories a few inches
+	// to the right. Over the cards it is doing the opposite job — the summary
+	// before the evidence, rather than a prose duplicate of the evidence.
+	b.WriteString(happening())
 	b.WriteString(CardsHTML(r, viewerAcc))
 
 	b.WriteString(`</div>`) // close .home-main

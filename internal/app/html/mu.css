@@ -6521,6 +6521,22 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   color: var(--text-secondary, #555);
 }
 
+/* What the world did today, over the services that found it out. See
+   home.happening.
+
+   Set below the cards rather than over them: it is one sentence introducing a
+   grid, and a line that competes with what it introduces is a headline. The
+   measure is capped because it is prose — the cards region runs to a thousand
+   pixels on a wide screen and a single sentence across all of it is unreadable
+   in the way a newspaper column never is. */
+.home-happening {
+  max-width: 62ch;
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: var(--line-height, 1.6);
+  color: var(--text-secondary, #555);
+}
+
 /* Who is on this instance, under the box. See home/here.go.
 
    A row of names rather than a list, because it is one fact per person — are
