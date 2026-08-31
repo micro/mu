@@ -23,7 +23,7 @@ func TestAnAgentCanNameItsOwnModel(t *testing.T) {
 	t.Setenv("AGENT_MODEL", "")
 
 	// A DeepSeek id goes to Atlas, whatever else this box holds.
-	provider, _, model, ok := nativeLLMFor("deepseek-ai/deepseek-v4-flash")
+	provider, _, model, _, ok := nativeLLMFor("deepseek-ai/deepseek-v4-flash")
 	if !ok || provider != "atlascloud" {
 		t.Errorf("an Atlas model resolved to %q, want atlascloud", provider)
 	}
@@ -32,7 +32,7 @@ func TestAnAgentCanNameItsOwnModel(t *testing.T) {
 	}
 
 	// A bare id is Anthropic's shape and goes there.
-	provider, _, model, ok = nativeLLMFor("claude-sonnet-5")
+	provider, _, model, _, ok = nativeLLMFor("claude-sonnet-5")
 	if !ok || provider != "anthropic" {
 		t.Errorf("a bare model id resolved to %q, want anthropic", provider)
 	}
@@ -41,7 +41,7 @@ func TestAnAgentCanNameItsOwnModel(t *testing.T) {
 	}
 
 	// And naming none leaves the instance's own choice alone.
-	if _, _, _, ok := nativeLLMFor(""); !ok {
+	if _, _, _, _, ok := nativeLLMFor(""); !ok {
 		t.Error("an agent with no preference got no model at all")
 	}
 }
@@ -66,7 +66,7 @@ func TestAModelWithNoKeyFallsBackRatherThanFailing(t *testing.T) {
 		t.Setenv(k, "")
 	}
 
-	provider, _, model, ok := nativeLLMFor("deepseek-ai/deepseek-v4-flash")
+	provider, _, model, _, ok := nativeLLMFor("deepseek-ai/deepseek-v4-flash")
 	if !ok {
 		t.Fatal("an unservable model left the agent with no model at all")
 	}

@@ -212,11 +212,24 @@ func TestAGeminiIdIsNotMistakenForAnthropics(t *testing.T) {
 // front of them in Atlas's dashboard. ATLAS_API_KEY was ours; it keeps working
 // so the installs already on it do not break on an upgrade.
 func TestAtlasAnswersToBothNames(t *testing.T) {
-	for _, name := range []string{"ATLASCLOUD_API_KEY", "ATLAS_API_KEY", "OPENAI_API_KEY"} {
+	for _, name := range []string{"ATLASCLOUD_API_KEY", "ATLAS_API_KEY"} {
 		clearProviders(t)
 		t.Setenv(name, "atlas-test")
 		if got := AtlasKey(); got != "atlas-test" {
 			t.Errorf("%s set and the key reads %q", name, got)
 		}
+	}
+
+	// And not to a third. OPENAI_API_KEY was on that list, and it is the
+	// credential for whatever OpenAI-compatible endpoint the operator
+	// configured — `mu setup` writes OPENAI_API_KEY=ollama for the Ollama path,
+	// so a fresh local install reported an Atlas key of "ollama" and the
+	// instance started posting it to Atlas Cloud. It also made the local
+	// endpoint unreachable: nativeLLMFor checks the Atlas key first.
+	clearProviders(t)
+	t.Setenv("OPENAI_API_KEY", "ollama")
+	if got := AtlasKey(); got != "" {
+		t.Errorf("AtlasKey() = %q from OPENAI_API_KEY — that key belongs to the "+
+			"endpoint in OPENAI_BASE_URL, not to Atlas Cloud", got)
 	}
 }

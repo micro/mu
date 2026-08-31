@@ -38,8 +38,25 @@ var (
 //
 // OPENAI_API_KEY last, and only because Atlas speaks the OpenAI protocol: an
 // instance pointed at a compatible endpoint had one key for both.
+// getAtlasAPIKey reads Atlas Cloud's key, under either of its own names.
+//
+// OPENAI_API_KEY was a third name on this list and is not one. That setting is
+// the credential for whatever OpenAI-compatible endpoint the operator
+// configured — Ollama, vLLM, llama.cpp, a proxy — and reading it here had two
+// consequences, both bad.
+//
+// It sent that key somewhere it was never meant to go. AtlasKey() is what
+// decides whether this box "has Atlas", so setting OPENAI_API_KEY for a server
+// on localhost made the instance start posting it to Atlas Cloud.
+//
+// And it made the local endpoint unreachable. nativeLLMFor checks the Atlas key
+// before it reaches the OPENAI_BASE_URL branch, so an operator who set a base
+// URL and a key — which is the whole documented configuration — got Atlas and a
+// DeepSeek model id instead of their own server. The one arrangement where it
+// worked was AI_PROVIDER set explicitly, which takes the preferred-provider path
+// above the check.
 func getAtlasAPIKey() string {
-	for _, k := range []string{"ATLASCLOUD_API_KEY", "ATLAS_API_KEY", "OPENAI_API_KEY"} {
+	for _, k := range []string{"ATLASCLOUD_API_KEY", "ATLAS_API_KEY"} {
 		if v := settings.Get(k); v != "" {
 			return v
 		}

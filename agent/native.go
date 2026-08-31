@@ -252,7 +252,7 @@ func nativeToolCallKey(call gmai.ToolCall) string {
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
 func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (a gmagent.Agent, question string, ok bool) {
-	provider, key, model, ok := nativeLLMFor(opts.Model)
+	provider, key, model, baseURL, ok := nativeLLMFor(opts.Model)
 	if !ok {
 		return nil, "", false
 	}
@@ -300,7 +300,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
 	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
-	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools),
+	agentOpts := []gmagent.Option{
 		gmagent.Model(model),
 		// What was said before, as turns. Read-only, which is what stops the
 		// question being counted twice — go-micro adds it to memory and then
@@ -323,9 +323,14 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		// and a single transient failure lost the whole question. Shelley has
 		// the same pair for the same reason — an idle bound plus a retry budget
 		// — arrived at from running one in production.
-		gmagent.ModelCallTimeout(90*time.Second),
+		gmagent.ModelCallTimeout(90 * time.Second),
 		gmagent.ModelRetry(3, 2*time.Second),
-		gmagent.WrapTool(toolWrappers...))
+		gmagent.WrapTool(toolWrappers...),
+	}
+	if baseURL != "" {
+		agentOpts = append(agentOpts, gmagent.BaseURL(baseURL))
+	}
+	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools), agentOpts...)
 	return a, question, true
 }
 
@@ -343,7 +348,8 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 // feeling worse than the rest of the product while looking identically
 // configured.
 //
-// Same order as everywhere else now: Anthropic, then Atlas, then OpenRouter.
+// Same order as everywhere else now: Anthropic, then Atlas, then Gemini, then
+// OpenRouter, then an OpenAI-compatible endpoint.
 //
 // AGENT_MODEL overrides the model without changing the provider choice, which
 // is how an operator spends credit they already have — set it to a
@@ -351,10 +357,8 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 // to put the hardest reasoning on the loop. Naming a model is a decision about
 // cost per question, so it is an operator's to make and not a constant here.
 //
-// Local Ollama is still not wired: the go-micro agent cannot set a BaseURL, so
-// a local server would hit api.openai.com.
 // nativeLLM is the instance's own choice, for a caller that has not made one.
-func nativeLLM() (provider, key, model string, ok bool) {
+func nativeLLM() (provider, key, model, baseURL string, ok bool) {
 	return nativeLLMFor("")
 }
 
@@ -365,7 +369,7 @@ func nativeLLM() (provider, key, model string, ok bool) {
 // because the hard part — which provider serves this id, and does this box hold
 // its key — is the same question whoever is asking, and the comment below about
 // what happens when the answer is no was worth having once, not twice.
-func nativeLLMFor(prefer string) (provider, key, model string, ok bool) {
+func nativeLLMFor(prefer string) (provider, key, model, baseURL string, ok bool) {
 	want := strings.TrimSpace(prefer)
 	if want == "" {
 		want = strings.TrimSpace(settings.Get("AGENT_MODEL"))
@@ -389,24 +393,24 @@ func nativeLLMFor(prefer string) (provider, key, model string, ok bool) {
 		switch {
 		case ai.AtlasHosted(want):
 			if k := ai.AtlasKey(); k != "" {
-				return "atlascloud", k, want, true
+				return "atlascloud", k, want, "", true
 			}
 		case ai.GeminiHosted(want):
 			// Before the bare-id case below. A Gemini id has no slash in it,
 			// which is Anthropic's shape, so left to fall through it is sent to
 			// Anthropic and answered with a 400 on every question.
 			if k := ai.GeminiKey(); k != "" {
-				return "gemini", k, want, true
+				return "gemini", k, want, "", true
 			}
 		case strings.Contains(want, "/"):
 			// provider/model and not one of Atlas's, so OpenRouter's shape.
 			if k := ai.OpenRouterKey(); k != "" {
-				return "openrouter", k, want, true
+				return "openrouter", k, want, "", true
 			}
 		default:
 			// A bare id is Anthropic's shape.
 			if k := settings.Get("ANTHROPIC_API_KEY"); k != "" {
-				return "anthropic", k, want, true
+				return "anthropic", k, want, "", true
 			}
 		}
 		unservedModel.Do(func() {
@@ -419,26 +423,52 @@ func nativeLLMFor(prefer string) (provider, key, model string, ok bool) {
 	// What the instance prefers, before the built-in order — the same question
 	// internal/ai now asks, so the agent and the chat cannot disagree about
 	// which provider this box uses. They did for months.
-	if p, k, _, ok := ai.PreferredProvider(); ok {
+	if p, k, base, ok := ai.PreferredProvider(); ok {
 		if m := ai.PreferredModel(p, false); m != "" {
-			return p, k, m, true
+			// ProviderBaseURL, not the configured string. The setting carries the
+			// version segment — detectOllama returns it and INSTALL.md documents
+			// it — and the go-micro provider appends its own, so passing it
+			// through asked for /v1/v1/chat/completions. See ai.ProviderBaseURL.
+			return p, k, m, ai.ProviderBaseURL(base), true
 		}
+		// ai.PreferredModel answers for the local provider too, so there is no
+		// second branch here deciding what an OpenAI-compatible endpoint runs.
+		// There was, and it is exactly the split this function's own comment
+		// above says it exists to prevent: the agent and the chat asking two
+		// different questions and getting two different models.
 	}
 
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
-		return "anthropic", key, ai.DefaultModel(), true
+		return "anthropic", key, ai.DefaultModel(), "", true
 	}
 	if key := ai.AtlasKey(); key != "" {
-		return "atlascloud", key, ai.AtlasModel(), true
+		return "atlascloud", key, ai.AtlasModel(), "", true
 	}
 	if key := ai.GeminiKey(); key != "" {
-		return "gemini", key, ai.GeminiModel(), true
+		return "gemini", key, ai.GeminiModel(), "", true
 	}
 	if key := ai.OpenRouterKey(); key != "" {
-		return "openrouter", key, ai.OpenRouterModel(), true
+		return "openrouter", key, ai.OpenRouterModel(), "", true
 	}
-	return "", "", "", false
+	// An OpenAI-compatible endpoint, last, and only when it has been told what
+	// to run. A base URL with no model is half a configuration, and answering
+	// anyway means asking that server for a model id somebody made up.
+	if base := settings.Get("OPENAI_BASE_URL"); base != "" {
+		if model := ai.LocalModel(); model != "" {
+			return ai.ProviderLocal, settings.Get("OPENAI_API_KEY"), model,
+				ai.ProviderBaseURL(base), true
+		}
+		unservedLocal.Do(func() {
+			app.Log("agent", "OPENAI_BASE_URL is set and OPENAI_MODEL is not, so "+
+				"the agent has no model to ask that endpoint for")
+		})
+	}
+	return "", "", "", "", false
 }
+
+// unservedLocal keeps that warning to once per process rather than once per
+// question, the same as unservedModel above.
+var unservedLocal sync.Once
 
 // maxSteps is how many tools one question may use.
 //
@@ -940,7 +970,7 @@ func nativeToolNameParts(name string) []string {
 // answered, worse, and the status line explained the degradation instead of
 // reporting a fault.
 func Status() (string, bool) {
-	provider, _, model, ok := nativeLLM()
+	provider, _, model, _, ok := nativeLLM()
 	if !ok {
 		return "Not configured — the agent cannot answer until a provider key is set", false
 	}
