@@ -6,9 +6,10 @@ package home
 // This is on the screen somebody sees most often, so a line reading "Nothing
 // new" costs a glance every visit and gives nothing back.
 //
-// That includes being alone. Who else is here draws when somebody else is
-// here, and the way to them draws with it — a count of one and an invitation
-// to go and talk to nobody is worse than a blank space.
+// Who is here is no longer one of the clauses. It was, for a while, and it is
+// its own block under the box now — see here_test.go. What is left here is the
+// four clauses about your own day, and the rule that they say nothing when
+// there is nothing to say.
 
 import (
 	"strings"
@@ -26,7 +27,9 @@ import (
 // sees most often. For one commit this drew a section saying "Just you here"
 // over a link to the chat, on the argument that who is present is true on the
 // quietest day. True, and the two most useless sentences on the page: it told
-// somebody they were alone and then invited them to go and talk about it.
+// somebody they were alone and then invited them to go and talk about it. Who
+// is here is a strip of names under the box now, which states the same fact
+// without the sentence.
 func TestAQuietAccountGetsNoBrief(t *testing.T) {
 	const who = "brief-quiet"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
@@ -128,28 +131,4 @@ func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
 	// Nothing here about the silent case: TestAQuietAccountGetsNoBrief pins
 	// that, and it has to, because it runs before anything marks a second
 	// person present.
-}
-
-// Who is here draws only when somebody else is.
-//
-// Last in this file, and it has to stay last. auth.UpdatePresence writes into
-// a package map with a three minute window and there is nothing that takes a
-// name back out, so once this has marked two people present every brief
-// rendered after it in this binary says so.
-func TestWhoIsHereDrawsOnlyWhenSomebodyIs(t *testing.T) {
-	if got := here(); got != "" {
-		t.Errorf("alone, the brief says %q", got)
-	}
-
-	// Two present, and it says so — with the way to them, which is the only
-	// reason the count is worth printing.
-	auth.UpdatePresence("brief-here-a")
-	auth.UpdatePresence("brief-here-b")
-	got := here()
-	if !strings.Contains(got, "2 people online") {
-		t.Errorf("with two present the brief says %q", got)
-	}
-	if !strings.Contains(got, `href="/chat"`) {
-		t.Errorf("no way through to them:\n%s", got)
-	}
 }

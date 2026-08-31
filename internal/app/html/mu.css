@@ -58,6 +58,11 @@
   --accent-color: #000;
   --accent-blue: #007bff;
   --accent-blue-hover: #0056b3;
+  /* Somebody is here, now. The one colour in this file that stands for a live
+     state rather than for emphasis, which is why it is not --accent-color: a
+     lit dot beside a name has to read as a light and black reads as ink. See
+     .here-dot. */
+  --online: #2ea44f;
   
   /* Button colors */
   --btn-primary: #000;
@@ -954,7 +959,8 @@ body.page-home #page-title ~ #customize-link {
      beside it read as a widget in a sidebar rather than as the thing the page
      is for. */
   #home-date,
-  #home-agent {
+  #home-agent,
+  .here-block {
     grid-column: 1 / -1;
   }
 
@@ -6515,13 +6521,70 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   color: var(--text-secondary, #555);
 }
 
-/* Who else is here, and the way to them. Quieter than the brief above: the
-   brief is what happened and this is the state of the room, which is worth
-   knowing and not worth reading twice. */
-.home-here {
-  margin: 0 0 6px;
+/* Who is on this instance, under the box. See home/here.go.
+
+   A row of names rather than a list, because it is one fact per person — are
+   they here — and a stack of twelve lines saying that would be the biggest
+   block on the page for the least in it. It wraps rather than scrolls: a row
+   that runs off the side hides exactly the people the cap already deprioritised,
+   and does it invisibly. */
+.here-strip {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0 0 4px;
+}
+
+/* One person. Muted by default and dark when they are here, which is the same
+   move the inbox makes for an unread row — the page has one way of saying
+   "this one, now" and it is weight and colour rather than a badge. */
+.here-who {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   font-size: 14px;
   color: var(--text-muted, #888);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.here-who:hover { text-decoration: underline }
+
+.here-on {
+  color: var(--text-primary, #1a1a1a);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+/* The dot. Hollow for somebody who is not here — an outline reads as a place
+   where a light would be, which is the state it stands for; a filled grey dot
+   reads as a bullet. */
+.here-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--text-muted, #bbb);
+  flex: none;
+  align-self: center;
+}
+.here-on .here-dot {
+  border-color: var(--online, #2ea44f);
+  background: var(--online, #2ea44f);
+}
+
+/* When they were last here. Smaller than the name it follows: the name is what
+   somebody scans for and this is the qualifier, so it reads last. */
+.here-when {
+  font-size: 12px;
+  color: var(--text-muted, #aaa);
+}
+
+/* The way to them. It is in the row rather than under it, because it is only
+   there when somebody else is online and a link that appears on its own line
+   would move everything under it as people come and go. */
+.here-strip .link {
+  display: inline-block;
+  margin: 0;
+  font-size: 14px;
 }
 
 /* The counts are the part somebody scans for, so they carry the weight the

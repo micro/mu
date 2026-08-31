@@ -249,8 +249,20 @@ func ChatComponent(cfg ChatConfig) string {
 	// answering would be worse than one picker.
 	agentPicker := ""
 	if cfg.OfferAgentPicker {
+		// The word is a field label, and is set like one.
+		//
+		// Sentence case, it read as a phrase: "Agent Micro (default)" is a
+		// noun followed by a name, so the eye takes the whole thing as one
+		// caption and the control stops looking like a control. Small caps
+		// with letter-spacing is the same treatment the section headings on
+		// Home get, and it does the separating that the sentence case did not.
+		//
+		// The alternative was dropping the word — the select does say a name.
+		// It says a name and nothing about what the name is for, and a bare
+		// dropdown beside a text box is a control with no question attached.
 		agentPicker = `<label id="mu-chat-agent" title="Which of your agents answers. Each has its own instructions and its own scope">` +
-			`Agent <select id="mu-chat-agent-pick"><option value="">Micro (default)</option></select></label>`
+			`<span class="mu-chat-agent-label">Agent</span>` +
+			`<select id="mu-chat-agent-pick"><option value="">Micro (default)</option></select></label>`
 	}
 
 	initialConv := ""
@@ -340,7 +352,8 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-form:focus-within{border-color:#999}
 #mu-chat-opts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:6px 0 0}
 #mu-chat-opts:empty{margin:0}
-#mu-chat-agent{display:flex;align-items:center;gap:6px;font-size:12px;color:#999;cursor:pointer;user-select:none}
+#mu-chat-agent{display:flex;align-items:center;gap:8px;font-size:12px;color:#999;cursor:pointer;user-select:none}
+.mu-chat-agent-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:#aaa}
 #mu-chat-agent select{width:auto;padding:2px 4px;font-size:12px;font-family:inherit;color:#555;border:1px solid #e0e0e0;border-radius:4px;background:#fff}
 #mu-chat-input{flex:1;padding:6px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 /* A square icon button, sized from the control scale rather than from two

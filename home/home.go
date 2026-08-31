@@ -466,6 +466,15 @@ function fetchW(la,lo){
 		// the screen.
 		b.WriteString(`</div>`)
 
+		// Who is on this instance, directly under the box and across both
+		// columns. Home had no people on it at all — see hereHTML — and this
+		// is the one block on the page that can change because somebody other
+		// than you did something, so it goes where it is seen rather than in a
+		// rail somebody scrolls past.
+		if viewerID != "" {
+			b.WriteString(hereHTML(viewerID))
+		}
+
 		b.WriteString(`<div class="home-rail">`)
 
 		// How things are, before you look anywhere.

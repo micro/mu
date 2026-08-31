@@ -663,6 +663,26 @@ func UpdatePresence(username string) {
 	userPresence[username] = time.Now()
 }
 
+// LastSeen is when a username was last on this instance, and whether that is
+// known at all.
+//
+// The same map OnlineUsers reads, without the three minute window — so it
+// answers for somebody who was here yesterday as well as somebody who is here
+// now. Home's Here strip uses it to say how long ago, and OnlineUsers to say
+// whether the dot is lit.
+//
+// Not known is a real answer and is why this returns two values. userPresence
+// is in memory: it is empty after a restart and has no entry for an account
+// that has never made a request, and those two are the same state here.
+// Reporting the zero time as a timestamp would put "56 years ago" against
+// every name on the page the first time somebody loaded Home after a deploy.
+func LastSeen(username string) (time.Time, bool) {
+	presenceMutex.RLock()
+	defer presenceMutex.RUnlock()
+	at, ok := userPresence[username]
+	return at, ok
+}
+
 // OnlineUsers returns a list of currently online usernames
 func OnlineUsers() []string {
 	presenceMutex.RLock()

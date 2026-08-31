@@ -55,7 +55,6 @@ import (
 	"mu/agent/brief"
 	"mu/inbox"
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/service/tasks"
 )
 
@@ -70,7 +69,9 @@ import (
 //
 // That includes being alone. For one commit this drew a section saying "Just
 // you here" over a link to the chat, on the argument that who is present is
-// true on the quietest day. True and useless — see here().
+// true on the quietest day. True and useless as a sentence — who is here is its
+// own block under the box now, and it names people rather than telling you
+// there are none. See hereHTML.
 func briefHTML(accountID string) string {
 	if accountID == "" {
 		return ""
@@ -89,8 +90,7 @@ func briefHTML(accountID string) string {
 	if s := happening(); s != "" {
 		parts = append(parts, s)
 	}
-	room := here()
-	if len(parts) == 0 && room == "" {
+	if len(parts) == 0 {
 		return ""
 	}
 
@@ -107,44 +107,16 @@ func briefHTML(accountID string) string {
 	// agent-peek in mu.css rather than beside them. Three names for one shape,
 	// kept in one place, because the whole complaint was that they had drifted.
 	//
-	// Who is here first. It is the only thing on this page that can change
-	// because somebody else did something, and it is the one thing worth
-	// acting on immediately — the news will still be there in an hour and a
-	// person online now will not.
-	out := sectionRule("Brief") + `<div class="brief-peek">` + room
-	if len(parts) > 0 {
-		out += `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
-	}
-	return out + `</div>`
-}
-
-// here is who else is on this instance right now, and the way to them.
-//
-// The one line on Home about somebody other than you. Everything else — what
-// arrived, what is owed, what happened in the world — is a fact about your
-// account or about the news, and a page made only of those reads as a place
-// with nobody in it however much is on it.
-//
-// Nothing at all when you are alone, which is the correction to the first
-// version of this. It said "Just you here." and offered a way through to the
-// chat, on the argument that a line appearing only when somebody arrives reads
-// as a fault. It does not: it reads as an empty room with a sign pointing at
-// it. Telling somebody they are alone and then inviting them to go and talk is
-// the two most useless sentences on the page, and they were on it every day.
-//
-// A count rather than names, because a count is true at any size and a list
-// stops being readable at about six. Naming them is a line's change when an
-// instance is small enough for that to be the better answer.
-//
-// auth.OnlineUsers is a three minute window over UpdatePresence, which every
-// request already calls — so this is a read of something the server has known
-// all along and never said.
-func here() string {
-	if n := len(auth.OnlineUsers()); n > 1 {
-		return `<p class="home-here">` + count(n, "person", "people") + ` online.</p>` +
-			app.Link("Go to chat", "/chat")
-	}
-	return ""
+	// No presence line in here any more.
+	//
+	// Who else was online drew above the clauses for a while, on the argument
+	// that it is the only thing on this page that changes because somebody else
+	// did something. That was right about the fact and wrong about the place: it
+	// is exactly why it does not belong buried in the rail under a heading
+	// saying Brief. It is its own block under the box now, and it names people
+	// rather than counting them — see hereHTML.
+	return sectionRule("Brief") + `<div class="brief-peek">` +
+		`<p class="home-brief">` + strings.Join(parts, " ") + `</p></div>`
 }
 
 // waiting is what has arrived and not been read.
