@@ -44,12 +44,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/notes"
 	"mu/internal/thread"
 	"mu/service/mail"
 	"mu/service/sms"
+	"mu/service/tasks"
 )
 
 // bodyLimit bounds one message. A mail nobody would read is not a mail this
@@ -75,6 +78,17 @@ func NewHandler(w http.ResponseWriter, r *http.Request) {
 		Subject: strings.TrimSpace(r.FormValue("subject")),
 		Body:    r.FormValue("body"),
 		On:      strings.TrimSpace(r.FormValue("on")),
+		// A kind is a vocabulary this page published — three values, all of them
+		// on the picker above the form — which is what a URL query is for. What
+		// gets typed into the boxes is not, and does not travel that way.
+		Kind: kindOf(r.FormValue("kind")),
+	}
+	// A reply is always a message. The kind picker is for something you are
+	// starting; answering a conversation has already decided what it is, and
+	// offering to turn the reply into a note would be a control that throws the
+	// thing you were answering away.
+	if f.On != "" {
+		f.Kind = kindMessage
 	}
 	// A conversation somebody else's id names is not a conversation. Checked on
 	// the way in rather than at the point it is written, so a forged id is a
@@ -108,6 +122,14 @@ type form struct {
 	Body    string
 	Problem string
 	Done    string
+	// Kind is what is being written: a message, a note or a task.
+	//
+	// One form for three things rather than three pages, because the decision
+	// "which of these is it" is the one people put off — and a page per kind
+	// makes them decide before they have written the sentence. The fields are
+	// nearly the same in all three: a title and some text, plus an address when
+	// it is going to somebody.
+	Kind string
 	// On is the conversation this answers, when it is one.
 	//
 	// A reply is a message with a thread already chosen, and that is the whole
@@ -118,7 +140,22 @@ type form struct {
 }
 
 // sent puts it in the post and writes it down.
+//
+// Or writes it down and posts it nowhere, which is what a note and a task are.
+// Each goes to the service that already owns it — internal/notes, service/tasks
+// — rather than into a store of this page's own. See kinds.go: the inbox is a
+// composition over those, and a second copy here would be a second answer to
+// what a note says.
 func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
+	switch f.Kind {
+	case kindNote:
+		saveNote(w, r, accountID, f)
+		return
+	case kindTask:
+		saveTask(w, r, accountID, f)
+		return
+	}
+
 	switch {
 	case f.To == "":
 		f.Problem = "who is it to?"
@@ -338,6 +375,19 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	}
 	b.WriteString(app.Actions(back))
 
+	// What is being written. Three pills, not three pages.
+	//
+	// A note and a task used to live behind their own pages, so somebody with
+	// something on their mind had to decide which of three places it belonged in
+	// before writing it — a filing decision about a sentence that does not exist
+	// yet. Here the decision is one click, and it is reversible right up until
+	// Send. See kinds.go.
+	//
+	// Not on a reply: answering a conversation has already decided what this is.
+	if f.On == "" {
+		b.WriteString(newKinds(f.Kind))
+	}
+
 	// A text has no subject and no address on either end. The same screen, told
 	// what it is writing by the conversation it is answering — rather than a
 	// second compose page that also sends things.
@@ -360,6 +410,15 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 			html.EscapeString(from) + `</code></p>`)
 	}
 
+	// What is being written, decided before anything says who it is from: a note
+	// and a task go to nobody, so there is no From to print. It said
+	// "From alice@localhost" over a note form, which is the page describing a
+	// message while showing something that is not one.
+	writing := f.Kind
+	if writing == "" {
+		writing = kindMessage
+	}
+
 	// Names inside, addresses outside.
 	//
 	// This said "From asim@micro.mu" whoever the message was for, including
@@ -368,7 +427,9 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	// on both ends, so printing it says nothing and reads like posting a letter
 	// to your flatmate. It is the identity the moment the message leaves, and
 	// then it is shown.
-	if texting {
+	if writing != kindMessage {
+		// Nowhere to send it, so nothing to say about where it is from.
+	} else if texting {
 		// Said above, with the number it goes to.
 	} else if _, local := addressOfPerson(f.To); local && f.To != "" {
 		b.WriteString(`<p class="ib-from-line">From <code>` +
@@ -396,7 +457,19 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	// being handed a value it would refuse.
 	//
 	// And shown without the @, because inside one instance a name is a name.
-	if texting {
+	b.WriteString(`<input type="hidden" name="kind" value="` + html.EscapeString(writing) + `">`)
+
+	if writing != kindMessage {
+		// A note and a task go to nobody, so there is no address to ask for. The
+		// title is the same field the subject is, because it is the same thing:
+		// what this is called.
+		placeholder := "What the note is called"
+		if writing == kindTask {
+			placeholder = "What needs doing"
+		}
+		b.WriteString(`<input class="ib-field" type="text" name="subject" required placeholder="` +
+			placeholder + `" value="` + html.EscapeString(f.Subject) + `">`)
+	} else if texting {
 		// The number is the conversation. Editable would mean this one screen
 		// could start a text to anybody, which is sms_send's job and is priced
 		// and capped there.
@@ -408,6 +481,14 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 			html.EscapeString(f.Subject) + `">`)
 	}
 	rows, placeholder, verb := "12", "Write it", "Send"
+	switch writing {
+	case kindNote:
+		rows, placeholder, verb = "12", "Write it down", "Save note"
+	case kindTask:
+		// Three rows. A task is a line about what needs doing, and a twelve-row
+		// box invites the whole of the thing rather than the name of it.
+		rows, placeholder, verb = "3", "Anything else worth saying about it (optional)", "Add task"
+	}
 	if texting {
 		// Three rows, because a text is short and a twelve-row box invites one
 		// that is not — it is charged per segment and refused past three.
@@ -419,8 +500,16 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	b.WriteString(`<div class="ib-ask-row"><button type="submit">` + verb + `</button>`)
 	b.WriteString(`</form></div>`)
 
-	app.Respond(w, r, app.Response{Title: "New message", Description: "Write one",
-		HTML: b.String()})
+	// Named for what is being written. "New message" over a note form is the
+	// page telling you it is doing something other than what it is doing.
+	title, desc := "New message", "Write one"
+	switch writing {
+	case kindNote:
+		title, desc = "New note", "Write something down"
+	case kindTask:
+		title, desc = "New task", "Something that needs doing"
+	}
+	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: b.String()})
 }
 
 // sendText answers an SMS conversation with a text.
@@ -459,4 +548,70 @@ func sendText(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		thread.Add(thread.Message{Thread: th.ID, Account: accountID, Text: body})
 	}
 	http.Redirect(w, r, "/inbox?id="+url.QueryEscape(f.On), http.StatusSeeOther)
+}
+
+// saveNote writes a note down. The title and the text, which is what a note is.
+//
+// Through internal/notes, the store /notes reads, so the note this page writes
+// and the note that page shows are the same note. Titles are the key there —
+// notes.Add updates an existing one rather than making a second — which is why
+// the empty title is refused here rather than defaulted: a note called
+// "Untitled" would silently overwrite the last untitled one.
+func saveNote(w http.ResponseWriter, r *http.Request, accountID string, f form) {
+	title, text := strings.TrimSpace(f.Subject), strings.TrimSpace(f.Body)
+	switch {
+	case title == "":
+		f.Problem = "a note needs a title"
+		writeOne(w, r, accountID, f)
+		return
+	case text == "":
+		f.Problem = "there is nothing in it yet"
+		writeOne(w, r, accountID, f)
+		return
+	}
+	notes.Add(accountID, title, text)
+	http.Redirect(w, r, "/inbox?kind="+kindNote, http.StatusSeeOther)
+}
+
+// saveTask adds one piece of work.
+//
+// Assigned to you. Handing it to an agent is a decision about who does it, and
+// it is made on the task — act.go already does that for a conversation — rather
+// than in the moment of writing the sentence down, which is the moment this page
+// exists to keep cheap.
+func saveTask(w http.ResponseWriter, r *http.Request, accountID string, f form) {
+	title := strings.TrimSpace(f.Subject)
+	if title == "" {
+		f.Problem = "a task needs a title"
+		writeOne(w, r, accountID, f)
+		return
+	}
+	if _, err := tasks.Create(accountID, title, strings.TrimSpace(f.Body), tasks.Me, time.Time{}); err != nil {
+		f.Problem = err.Error()
+		writeOne(w, r, accountID, f)
+		return
+	}
+	http.Redirect(w, r, "/inbox?kind="+kindTask, http.StatusSeeOther)
+}
+
+// newKinds is the picker: what am I writing.
+//
+// Pills rather than a select, because there are three and they are the first
+// decision on the page — a menu hides two of the three answers behind a click,
+// and the whole point is that choosing is cheap.
+func newKinds(current string) string {
+	if current == "" {
+		current = kindMessage
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="ib-boxes ib-new-kinds">`)
+	for _, k := range []struct{ label, val string }{
+		{"Message", kindMessage},
+		{"Note", kindNote},
+		{"Task", kindTask},
+	} {
+		b.WriteString(app.PillLink(k.label, "/inbox/new?kind="+url.QueryEscape(k.val), k.val == current))
+	}
+	b.WriteString(`</div>`)
+	return b.String()
 }

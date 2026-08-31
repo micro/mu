@@ -157,17 +157,17 @@ func arrivals(accountID string) []thread.Thread {
 
 // list is the inbox proper.
 func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
+	// Everything, not only conversations. A note and a task are things you wrote
+	// down and things still to do, and deciding which of three pages a sentence
+	// belongs on before writing it is the reason people keep everything in their
+	// mail. See kinds.go.
+	//
+	// A kind is a view over a vocabulary this page published, which is exactly
+	// what a URL query is for — unlike the search term below it. See AGENTS.md,
+	// "What may travel in a URL".
+	kind := kindOf(r.URL.Query().Get("kind"))
 	all := arrivals(accountID)
-
-	threads := all
-	if box != "" {
-		threads = nil
-		for _, t := range all {
-			if strings.EqualFold(boxOfThread(accountID, t), box) {
-				threads = append(threads, t)
-			}
-		}
-	}
+	items := everything(r, accountID, box, kind)
 
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
@@ -180,6 +180,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 			`. Their reply lands on the same conversation.</p>`)
 	}
 	b.WriteString(boxes(accountID, all, box))
+	b.WriteString(kinds(accountID, kind))
 
 	// What is waiting to be let in, above the mailbox and only when there is
 	// some. A held conversation is deliberately not in the list below, so
@@ -207,7 +208,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 		return
 	}
 
-	if len(threads) == 0 {
+	if len(items) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
 		// "Nothing here" is a true sentence that leaves somebody looking at a
 		// blank page with nothing to do about it. An empty box is a narrower
@@ -241,9 +242,9 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 		return
 	}
 
-	pager := app.Paginate(r, len(threads), shown)
+	pager := app.Paginate(r, len(items), shown)
 	for i := pager.From; i < pager.To; i++ {
-		b.WriteString(row(r, accountID, threads[i]))
+		b.WriteString(items[i].html)
 	}
 	b.WriteString(pager.Nav(boxPath(box)))
 	b.WriteString(`</div>`)
