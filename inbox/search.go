@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/internal/app"
 	"mu/internal/thread"
 )
 
@@ -28,9 +29,30 @@ const searchHits = 200
 // searchBox is the field, carrying whatever was typed so a result page shows
 // its own query.
 //
-// A GET form, so a search is a URL: it can be linked, reloaded and gone back
-// to, which is what somebody comparing two searches actually does.
-func searchBox(box, q string) string {
+// # It posts
+//
+// It was a GET, on the argument that a search should be a URL — linkable,
+// reloadable, back-buttonable, which is what somebody comparing two searches
+// does. That argument is right about public search and wrong here, and the
+// difference is what the words are.
+//
+// This box searches somebody's mail. A GET writes what they typed into the URL,
+// and a URL comes to rest in four places: our own request log (which records
+// the path and not the query, so not there), a Referer (no-referrer on every
+// page, so not there), the browser's history — which syncs to an account — and
+// the access log of whatever terminates TLS in front of us. That last one is
+// the one that matters, because a self-hosted install has an nginx or a Caddy in
+// front and both log the full URI by default. So "search my mail for the
+// solicitor's name" was being written in plaintext to /var/log on the owner's
+// own machine, by software we do not control, on a product whose premise is that
+// the data is theirs.
+//
+// The price is that a result page cannot be linked to, and for a search over
+// your own mail that is closer to a feature: back goes to the unsearched inbox,
+// which is where somebody who has finished looking wants to be.
+//
+// See AGENTS.md, "What may travel in a URL".
+func searchBox(box, q, csrf string) string {
 	// The box is preserved across a search, because a search inside a mailbox
 	// is a narrower question than a search across all of them and the switcher
 	// above has just been used to ask it.
@@ -38,7 +60,8 @@ func searchBox(box, q string) string {
 	if action == "" {
 		action = "/inbox"
 	}
-	return `<form class="ib-search" method="GET" action="` + html.EscapeString(action) + `">` +
+	return `<form class="ib-search" method="POST" action="` + html.EscapeString(action) + `">` +
+		app.CSRFField(csrf) +
 		`<input type="search" name="q" placeholder="Search your conversations" ` +
 		`value="` + html.EscapeString(q) + `" autocomplete="off" class="ib-search-in">` +
 		`<button type="submit" class="btn btn-quiet">Search</button>` +

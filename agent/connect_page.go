@@ -74,8 +74,12 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	// were shown a different one. It comes back here now, and the panel that
 	// shows a secret once has to be drawn here as well or the round trip ends
 	// with the token nowhere.
+	//
+	// Collected rather than read off the URL: a bearer token in the query is a
+	// bearer token in the browser history and in the reverse proxy's access log.
+	// See secret.go.
 	notice := ""
-	if secret := r.URL.Query().Get("secret"); secret != "" {
+	if secret := takeSecret(owner, id); secret != "" {
 		notice = secretPanel(secret, a, app.BaseURL(r))
 	} else if msg := strings.TrimSpace(r.URL.Query().Get("error")); msg != "" {
 		notice = `<p class="text-error">` + html.EscapeString(msg) + `</p>`

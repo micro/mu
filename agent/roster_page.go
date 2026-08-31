@@ -53,13 +53,21 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			// were reading, with the secret somewhere on it. The form says
 			// where it came from and this honours it.
 			back := localPath(r.FormValue("back"))
-			secret, err := IssueToken(owner, r.FormValue("id"))
+			id := r.FormValue("id")
+			secret, err := IssueToken(owner, id)
 			if err != nil {
 				http.Redirect(w, r, back+query(back, "error="+urlSafe(err.Error())), http.StatusSeeOther)
 				return
 			}
-			http.Redirect(w, r, back+query(back,
-				"created="+r.FormValue("id")+"&secret="+urlSafe(secret)), http.StatusSeeOther)
+			// The secret goes across the redirect in memory, not in the URL.
+			//
+			// It was `&secret=…`: a bearer token in the browser's history and in
+			// the access log of whatever terminates TLS in front of us, which on
+			// a self-hosted install is an nginx or Caddy logging the full URI by
+			// default. The URL now says which agent was just given a token, which
+			// is a name, and the page collects the token itself. See secret.go.
+			stashSecret(owner, id, secret)
+			http.Redirect(w, r, back+query(back, "created="+urlSafe(id)), http.StatusSeeOther)
 			return
 		}
 		http.Redirect(w, r, "/agents", http.StatusSeeOther)
@@ -101,7 +109,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="text-sm text-secondary">Agent removed and its token revoked.</p>`)
 	}
 	created := r.URL.Query().Get("created")
-	if secret := r.URL.Query().Get("secret"); secret != "" {
+	if secret := takeSecret(owner, created); secret != "" {
 		b.WriteString(secretPanel(secret, For(owner, created), app.BaseURL(r)))
 	} else if created != "" {
 		// An agent that runs here has no secret to show, so say what happened

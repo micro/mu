@@ -102,7 +102,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// An instruction about the conversation being read. POST here rather than at
 	// a path of its own, because /inbox/<box> is a mailbox name and /inbox/act
 	// would be one an account could have.
+	//
+	// Searching posts here too, for the same reason and one more: what somebody
+	// looks for in their own mail does not go in a URL, so the box posts. The two
+	// are told apart by which field arrived — a search carries q, an instruction
+	// carries ask or an action — rather than by a second route, because a second
+	// route under /inbox is a mailbox name somebody could claim.
 	if r.Method == http.MethodPost {
+		// Parsed here so PostForm is populated: the two are told apart by whether
+		// the field was sent at all, not by whether it has a value, because
+		// pressing Search on an empty box is a search that found everything and
+		// not an instruction with nothing in it.
+		_ = r.ParseForm()
+		if _, searching := r.PostForm["q"]; searching {
+			list(w, r, acc.ID, boxOf(r))
+			return
+		}
 		action(w, r, acc.ID)
 		return
 	}
@@ -179,8 +194,12 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	// there the whole time, exported and complete — but you had to know the
 	// page existed and that it was the same store, which is two facts nothing
 	// on this screen tells you. A mailbox you cannot search is a log.
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	b.WriteString(searchBox(box, q))
+	// From the body, never the URL — see searchBox. PostFormValue rather than
+	// FormValue: FormValue reads the query too, so the form could post while a
+	// hand-made ?q= went on working, which is the leak still open and nothing
+	// looking at it.
+	q := strings.TrimSpace(r.PostFormValue("q"))
+	b.WriteString(searchBox(box, q, auth.CSRFToken(r)))
 	if q != "" {
 		found(&b, r, accountID, box, q)
 		b.WriteString(`</div>`)

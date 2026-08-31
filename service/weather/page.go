@@ -110,10 +110,13 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 		accountID = acc.ID
 	}
 
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	// POST: the place somebody looks up is where they are, or where they are
+	// going. Either is a fact about them and not one to leave in a URL — see
+	// AGENTS.md, "What may travel in a URL".
+	q := strings.TrimSpace(r.PostFormValue("q"))
 	var b strings.Builder
 	b.WriteString(`<div class="wx-page">`)
-	b.WriteString(searchForm(q))
+	b.WriteString(searchForm(q, auth.CSRFToken(r)))
 
 	switch {
 	case q != "":
@@ -130,8 +133,8 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func searchForm(q string) string {
-	return `<form class="wx-find" method="GET" action="/weather">
+func searchForm(q, csrf string) string {
+	return `<form class="wx-find" method="POST" action="/weather">` + app.CSRFField(csrf) + `
   <input class="field" type="search" name="q" placeholder="Anywhere — a town, a city" ` +
 		`value="` + html.EscapeString(q) + `" maxlength="120">
   <button class="btn" type="submit">Look up</button>

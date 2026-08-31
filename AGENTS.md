@@ -116,6 +116,51 @@ MCP is a real rung rather than the API in a different envelope: the same
 services underneath, plus self-description, because a model has to *choose* and
 choosing needs a menu.
 
+## What may travel in a URL
+
+**A URL may carry what a thing is called. Never what a person said.**
+
+| Where | What belongs there | Examples |
+|---|---|---|
+| **path** | public nouns | `/chat/finance`, `/@asim`, `/news/…` |
+| **query** | view state from a vocabulary we already published | `?page=2`, `?tab=sent`, `?view=grid`, `?id=` |
+| **body** | anything typed, and every credential | search terms, agent prompts, tokens |
+
+The query string is *inside* TLS — a middlebox sees the SNI hostname and nothing
+else — so this is not about the wire. It is about the four places a URL comes to
+rest, two of which we have closed and two of which we cannot:
+
+- our own access log records `r.URL.Path`, not `RequestURI` (`internal/server/serve.go`), so a query never reaches it;
+- every page carries `<meta name="referrer" content="no-referrer">`, so nothing leaves in a `Referer`;
+- browser history syncs to an account, and pasted links go wherever links go;
+- **whatever terminates TLS in front of us logs the full URI.** Caddy and nginx
+  both do by default. This is a self-hosted product, so the normal install has
+  a reverse proxy in front of it, and every inbox search would land in plaintext
+  in `/var/log` on a box whose whole premise is that the data is the owner's. We
+  cannot fix that from in here. We can decline to put the words there.
+
+So a search over anything private is `POST /<thing>/search`, not `GET ?q=`. A
+search over something public — news, images, the docs — may stay a GET, because
+the query discloses nothing the reader did not bring, and a searchable public
+page that cannot be linked to is worse.
+
+### A name in the path is not a hole; an id that talks is
+
+Guessable URLs are a feature: `/chat/finance` is how somebody tells somebody
+else where to go. The mistake is never that the name is in the URL — it is
+letting the URL *be* the authorisation. `service/chat/private.go` is the shape:
+the id is public, and `Member` decides.
+
+The separate problem is an id that is itself a disclosure. `dm_asim_henrik`
+names two people and says they talk, and no amount of POST helps, because that
+id is in the page, in an `href`, and in whatever gets pasted into a bug report.
+An id may be derived (cheap, no lookup, both sides compute the same one) or it
+may be opaque (says nothing, needs a stored mapping). It cannot be both, and for
+anything private, opaque is the one that holds.
+
+`TestNothingPrivateTravelsInAURL` holds this line. Its allowlist is the record
+of every surface we decided is public enough to keep a GET.
+
 ## Development
 
 ```bash

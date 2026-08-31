@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/quota"
 	"mu/internal/settings"
 )
@@ -185,10 +186,19 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 
 // Handler serves the /web page (Brave web search, paid, auth required).
 func Handler(w http.ResponseWriter, r *http.Request) {
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	// POST, and out of the URL entirely.
+	//
+	// What somebody searches the web for is the example everybody reaches for
+	// when they say "that is private", and it was the one thing here written into
+	// the URL on every query — so into the browser history, and into the access
+	// log of whatever terminates TLS in front of this instance, which for a
+	// self-hosted install is an nginx or a Caddy logging the full URI by default.
+	// See AGENTS.md, "What may travel in a URL".
+	query := strings.TrimSpace(r.PostFormValue("q"))
 
 	// Render search bar
-	searchBar := `<form class="search-bar" action="/web" method="GET">` +
+	searchBar := `<form class="search-bar" action="/web" method="POST">` +
+		app.CSRFField(auth.CSRFToken(r)) +
 		`<input type="text" name="q" placeholder="Search the web..." value="` +
 		html.EscapeString(query) + `" autofocus>` +
 		`<button type="submit">Search</button>` +

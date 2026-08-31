@@ -473,7 +473,11 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 	codeChallenge := r.FormValue("code_challenge")
 	codeChallengeMethod := r.FormValue("code_challenge_method")
 	username := r.FormValue("username")
-	password := r.FormValue("password")
+	// PostFormValue, not FormValue: FormValue reads the query too, so
+	// ?password=… would authenticate — and put the password in the browser
+	// history and in the reverse proxy's access log on the way. The form posts,
+	// so the body is the only place it should ever be read from.
+	password := r.PostFormValue("password")
 
 	// The same check as the GET, and it has to be here too: this form posts
 	// back whatever hidden fields the page carried, and the page was rendered

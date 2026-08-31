@@ -505,8 +505,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// All users can access mail for internal DMs
 	// External email costs credits (checked at send time)
 
-	// Handle POST - send message or delete
-	if r.Method == "POST" {
+	// Handle POST - send message or delete.
+	//
+	// Except a search, which posts for the reason searchTerm gives and is not a
+	// write. It falls through to the page below, which renders results the way
+	// it did when the term arrived in the query.
+	if r.Method == "POST" && !searching(r) {
 		// Handle spam filter actions
 		if r.URL.Query().Get("view") == "filtered" {
 			if err := r.ParseForm(); err == nil {
@@ -1065,7 +1069,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle search
-	if q := r.URL.Query().Get("q"); q != "" {
+	if q := searchTerm(r); q != "" {
 		results := searchMail(acc.ID, q)
 		var content string
 		if len(results) == 0 {
@@ -1092,15 +1096,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 </div>`, msg.ID, html.EscapeString(subject), html.EscapeString(from), html.EscapeString(body))
 			}
 		}
-		searchQuery := q
-		searchBar := fmt.Sprintf(`<form action="/mail" method="GET" class="mb-3 d-flex gap-2">
-<input type="text" name="q" value="%s" placeholder="Search mail..." class="form-input grow text-base">
-<button type="submit" class="btn">Search</button>
-</form>`, html.EscapeString(searchQuery))
 		pageHTML := app.Page(app.PageOpts{
 			Action:  "/mail?compose=true",
 			Label:   "+ Compose",
-			Content: searchBar + content,
+			Content: mailSearchBar(q, auth.CSRFToken(r)) + content,
 		})
 		app.Respond(w, r, app.Response{Title: "Mail — Search", Description: "", HTML: pageHTML})
 		return
@@ -1361,11 +1360,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		inboxClass, inboxLabel, sentClass, filteredClass, filteredLabel)
 
 	// Search bar
-	searchQuery := r.URL.Query().Get("q")
-	searchBar := fmt.Sprintf(`<form action="/mail" method="GET" class="mb-3 d-flex gap-2">
-<input type="text" name="q" value="%s" placeholder="Search mail..." class="form-input grow text-base">
-<button type="submit" class="btn">Search</button>
-</form>`, html.EscapeString(searchQuery))
+	searchBar := mailSearchBar(searchTerm(r), auth.CSRFToken(r))
 
 	pageHTML := app.Page(app.PageOpts{
 		Action:  "/mail?compose=true",
@@ -2246,4 +2241,53 @@ func theirMail(msg *Message, userID string) bool {
 		}
 	}
 	return true
+}
+
+// searchTerm is what to look for, taken from the body of a POST and never from
+// the URL.
+//
+// PostFormValue rather than FormValue: FormValue reads the query too, so a form
+// switched to POST while the handler kept reading FormValue would stop putting
+// the words in the URL and go on accepting them there — the leak still open,
+// and nothing looking at it.
+//
+// Somebody's mail search does not belong in a URL. Our own request log records
+// the path and not the query and every page sends no-referrer, so two of the
+// four places a URL comes to rest are already closed; the two that are not are
+// the browser's history and the access log of whatever terminates TLS in front
+// of us, which for a self-hosted install is an nginx or a Caddy writing the full
+// URI to disk by default. See AGENTS.md, "What may travel in a URL".
+func searchTerm(r *http.Request) string {
+	if r.Method != http.MethodPost {
+		return ""
+	}
+	return strings.TrimSpace(r.PostFormValue("q"))
+}
+
+// searching reports whether this POST is the search form rather than one of the
+// other things that post to /mail.
+//
+// On whether the field arrived, not on whether it has a value: pressing Search
+// on an empty box is a search that matched everything, and it must not fall
+// through to the send handler.
+func searching(r *http.Request) bool {
+	if r.Method != http.MethodPost {
+		return false
+	}
+	_ = r.ParseForm()
+	_, ok := r.PostForm["q"]
+	return ok
+}
+
+// mailSearchBar is the box, on both the results page and the mailbox.
+//
+// One function because there were two copies of the same eight lines and they
+// had to be changed together — which is how a form gets switched to POST in one
+// place and left as a GET in the other.
+func mailSearchBar(q, csrf string) string {
+	return `<form action="/mail" method="POST" class="mb-3 d-flex gap-2">` +
+		app.CSRFField(csrf) +
+		`<input type="text" name="q" value="` + html.EscapeString(q) + `" ` +
+		`placeholder="Search mail..." class="form-input grow text-base">` +
+		`<button type="submit" class="btn">Search</button></form>`
 }

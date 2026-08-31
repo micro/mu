@@ -16,11 +16,26 @@ import (
 )
 
 func TestSearchBar(t *testing.T) {
-	got := SearchBar("/find", "Search notes", "milk")
-	for _, want := range []string{`action="/find"`, `placeholder="Search notes"`, `value="milk"`} {
+	got := SearchBar("/find", "Search notes", "milk", "tok")
+	for _, want := range []string{
+		`action="/find"`, `placeholder="Search notes"`, `value="milk"`,
+		// It posts, and carries the token to do so. A search box that went back
+		// to GET would put what somebody typed in the URL, and from there into
+		// the browser history and the reverse proxy's access log — see AGENTS.md,
+		// "What may travel in a URL".
+		`method="POST"`, `name="_csrf" value="tok"`,
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %s: %s", want, got)
 		}
+	}
+	if strings.Contains(got, `method="GET"`) {
+		t.Errorf("the search box is a GET again: %s", got)
+	}
+	// No token, no field — a signed-out reader has no session to derive one from
+	// and is not checked.
+	if got := SearchBar("/find", "x", "", ""); strings.Contains(got, "_csrf") {
+		t.Errorf("an empty token still rendered a field: %s", got)
 	}
 }
 
@@ -64,7 +79,9 @@ func TestPage(t *testing.T) {
 func TestEveryComponentEscapesWhatItIsGiven(t *testing.T) {
 	const bad = `<script>alert(1)</script>`
 	for name, got := range map[string]string{
-		"SearchBar.query":   SearchBar("/x", "p", bad),
+		"SearchBar.query":   SearchBar("/x", "p", bad, "t"),
+		"SearchBar.csrf":    SearchBar("/x", "p", "", bad),
+		"CSRFField.token":   CSRFField(bad),
 		"ActionLink.label":  ActionLink("/x", bad),
 		"Empty.message":     Empty(bad),
 		"Desc.text":         Desc(bad),

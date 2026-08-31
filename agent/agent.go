@@ -358,6 +358,18 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prefill prompt from ?q / ?prompt (e.g. home card deep-links).
+	//
+	// The one query that stays a query, and the reason is that here the URL *is*
+	// the message: a link that asks a question has nowhere else to carry it, and
+	// somebody constructed and shared this one deliberately. It is not a search
+	// box — the box on this page posts. See AGENTS.md, "What may travel in a URL".
+	//
+	// It is taken out of the address bar once it has been used — see the
+	// replaceState below, and the same on Home — so it does not sit in the
+	// history of whoever followed the link. That closes one of the four places a
+	// URL comes to rest. The instance's own access log is another and records the
+	// path only. The reverse proxy's log is the one that stays open, and it is
+	// the price of a link that asks a question at all.
 	prefill := r.URL.Query().Get("prompt")
 	if prefill == "" {
 		prefill = r.URL.Query().Get("q")

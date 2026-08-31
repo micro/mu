@@ -61,7 +61,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func applySetup(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id := strings.TrimSpace(r.FormValue("username"))
-	secret := r.FormValue("password")
+	// The body only. FormValue would also accept ?password=… and write the
+	// first admin's password into the access log of whatever is in front.
+	secret := r.PostFormValue("password")
 	provider := r.FormValue("provider")
 	key := strings.TrimSpace(r.FormValue("key"))
 	baseURL := strings.TrimSpace(r.FormValue("base_url"))

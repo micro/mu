@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -77,7 +78,9 @@ func TestSeveralPlacesWithOneNameAreAllOffered(t *testing.T) {
 		{Name: "Cambridge", Admin1: "Massachusetts", Country: "United States", Lat: 42.3, Lon: -71.1},
 	})
 
-	r := httptest.NewRequest(http.MethodGet, "/weather?q=Cambridge", nil)
+	// Posted: the place somebody looks up is where they are or where they are
+	// going, so it does not travel in the URL. See AGENTS.md.
+	r := lookUp("Cambridge")
 	w := httptest.NewRecorder()
 	Handler(w, r)
 
@@ -94,7 +97,7 @@ func TestANameThatMatchesNothingSaysSo(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	stubGeocoder(t, nil)
 
-	r := httptest.NewRequest(http.MethodGet, "/weather?q=zzzznowhere", nil)
+	r := lookUp("zzzznowhere")
 	w := httptest.NewRecorder()
 	Handler(w, r)
 
@@ -160,4 +163,17 @@ func TestYourLocationGetsTheSamePageAsASearch(t *testing.T) {
 	if n := strings.Count(string(src), "forecastHTML(f,"); n < 2 {
 		t.Errorf("forecastHTML is rendered on %d path(s); both arrivals should get it", n)
 	}
+}
+
+// lookUp asks for a place the way the form does: in the body of a POST.
+//
+// The page took ?q= until the search moved out of the URL — a place name is
+// where somebody is or is going, which is a fact about them and not one to
+// leave in a browser history or a reverse proxy's access log. See AGENTS.md,
+// "What may travel in a URL".
+func lookUp(place string) *http.Request {
+	r := httptest.NewRequest(http.MethodPost, "/weather",
+		strings.NewReader(url.Values{"q": {place}}.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return r
 }

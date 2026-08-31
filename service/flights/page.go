@@ -26,7 +26,9 @@ import (
 
 // Handler serves /flights.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	// POST: the flight somebody looks up is who they are meeting or where they
+	// are going. See AGENTS.md, "What may travel in a URL".
+	q := strings.TrimSpace(r.PostFormValue("q"))
 	near := strings.TrimSpace(r.URL.Query().Get("near"))
 	lat, _ := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
 	lon, _ := strconv.ParseFloat(r.URL.Query().Get("lon"), 64)
@@ -38,7 +40,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	radius := radiusOr(r.URL.Query().Get("radius"))
-	b.WriteString(forms(q, near, radius))
+	b.WriteString(forms(q, near, radius, auth.CSRFToken(r)))
 
 	switch {
 	case q != "":
@@ -84,7 +86,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request, q, near string, lat, lon
 }
 
 // forms are the two questions the page answers.
-func forms(q, near string, radius int) string {
+func forms(q, near string, radius int, csrf string) string {
 	return `<div class="card fl-forms">
 <form method="GET" action="/flights" class="fl-form">
 <label class="fl-label" for="fl-near">What's overhead</label>
@@ -95,7 +97,7 @@ func forms(q, near string, radius int) string {
 </div>
 <a href="#" class="fl-here" onclick="muFlightsHere();return false">Use my location</a>
 </form>
-<form method="GET" action="/flights" class="fl-form">
+<form method="POST" action="/flights" class="fl-form">` + app.CSRFField(csrf) + `
 <label class="fl-label" for="fl-q">Where's a flight</label>
 <div class="fl-row">
 <input id="fl-q" type="text" name="q" value="` + html.EscapeString(q) + `" placeholder="BA117, BAW117 or G-ZBKL" autocomplete="off">

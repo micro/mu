@@ -58,7 +58,10 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		default: // save
 			name := strings.TrimSpace(r.FormValue("name"))
-			prompt := strings.TrimSpace(r.FormValue("prompt"))
+			// The body only. This is the agent's system prompt — what it is for,
+			// in the owner's words — and FormValue would take it from ?prompt=
+			// just as happily, writing it into the reverse proxy's log.
+			prompt := strings.TrimSpace(r.PostFormValue("prompt"))
 			if name == "" || prompt == "" {
 				w.WriteHeader(http.StatusBadRequest)
 				_ = json.NewEncoder(w).Encode(map[string]any{"error": "name and prompt are required"})
@@ -102,8 +105,16 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 			// The secret goes back exactly once, and only far enough to reach
 			// the page that shows it. It is stored hashed and cannot be read
 			// again — the same one-shot handoff /agents already did.
+			//
+			// In this response body, and also stashed for the page: the browser
+			// used to take it from here and put it in location.href, which is
+			// how a bearer token ended up in the URL bar and in the reverse
+			// proxy's log. The page collects it now. A caller that is not the
+			// builder still gets it here, which is a body and the right place
+			// for it. See secret.go.
 			if secret != "" {
 				out["secret"] = secret
+				stashSecret(acc.ID, saved.ID, secret)
 			}
 			_ = json.NewEncoder(w).Encode(out)
 			return
@@ -548,7 +559,10 @@ function bSave(e){e.preventDefault();
       // Creation mints no token now, so there is normally nothing to copy and
       // the next screen is the agent itself. The branch stays because /agents
       // is still where a secret is shown once, if one ever comes back.
-      if(a.secret){location.href='/agents?created='+encodeURIComponent(a.id)+'&secret='+encodeURIComponent(a.secret);return;}
+      // The id, never the secret. The server holds the token for the one render
+      // that shows it — putting it here would write a bearer credential into the
+      // URL bar, the history, and the proxy log. See agent/secret.go.
+      if(a.secret){location.href='/agents?created='+encodeURIComponent(a.id);return;}
       location.href='/agent?id='+encodeURIComponent(a.id);}).catch(function(){});
   return false;}
 </script>`

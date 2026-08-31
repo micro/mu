@@ -163,13 +163,31 @@ func TestSearchNarrowsTheList(t *testing.T) {
 	post(t, cookie, "/contacts", url.Values{"name": {"Sarah Chen"}, "email": {"sarah@example.com"}})
 	post(t, cookie, "/contacts", url.Values{"name": {"Tom Baker"}, "email": {"tom@example.com"}})
 
-	body := page(t, cookie, "/contacts?q=tom")
+	// Posted, not in the path: an address book search is a list of the people
+	// somebody knows and does not go in a URL. See AGENTS.md, "What may travel in
+	// a URL". A test that went on asking with ?q= would pass against a handler
+	// that reads the query, which is the handler we are trying not to have.
+	body := searched(t, cookie, "tom")
 	if !strings.Contains(body, "Tom Baker") {
 		t.Error("search did not find Tom")
 	}
 	if strings.Contains(body, "Sarah Chen") {
 		t.Error("search returned everyone")
 	}
+}
+
+// searched runs a search the way the page does one: in the body of a POST.
+func searched(t *testing.T, cookie *http.Cookie, term string) string {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodPost, "/contacts",
+		strings.NewReader(url.Values{"q": {term}}.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if cookie != nil {
+		r.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	Handler(rec, r)
+	return rec.Body.String()
 }
 
 // The phone layout is CSS, but it hangs off the markup: without a thead to hide
