@@ -94,11 +94,15 @@ func briefHTML(accountID string) string {
 		return ""
 	}
 
-	out := sectionRule("Brief")
+	// Who is here first. It is the only thing on this page that can change
+	// because somebody else did something, and it is the one thing worth
+	// acting on immediately — the news will still be there in an hour and a
+	// person online now will not.
+	out := sectionRule("Brief") + room
 	if len(parts) > 0 {
 		out += `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
 	}
-	return out + room
+	return out
 }
 
 // here is who else is on this instance right now, and the way to them.

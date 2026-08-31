@@ -277,29 +277,30 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 		snippet = trimTo(text, 110)
 	}
 
-	// The labels, before the subject rather than after it.
+	// Who, where from, and when — on their own line above the subject.
 	//
-	// They were between the subject and the snippet, which is the one place
-	// they cannot be read: mid-sentence, in the middle of the row. A label is
-	// how you decide whether to read the line at all, so it comes first.
+	// These have been three arrangements and each broke for the same reason:
+	// they were competing with the subject for one line. Beside it they pushed
+	// the subject off; in a fixed column they left a ragged gap on every row
+	// that had one label instead of two; as pills they were two boxes of
+	// chrome in the middle of a sentence. On a phone there was never room for
+	// any of it.
 	//
-	// Which channel carried it — every row here arrived from somewhere that is
-	// not this page, so it answers "where do I reply" — and which agent it is
-	// with, where it is with one. "Agent" as a bare word was the other half of
-	// the confusion: it named a role rather than saying which of them, and
-	// there are eleven.
-	// In a column of their own, so every subject on the page starts at the same
-	// place. They were inline before the subject, and a label is one pill or two
-	// and "Here" or "WhatsApp" wide — so the subject began somewhere different
-	// on every row and the eye had nothing to run down.
+	// A row is three lines now, which is what a mail client on a phone has
+	// always been: who it is from and when, then what it is about, then the
+	// first of what it says. Nothing competes, because nothing shares a line.
 	//
-	// Trimmed, because the column only holds so much and a name clipped
-	// mid-pill looks like a rendering fault rather than a long name.
-	labels := app.Pill(app.ClientName(t.Client))
-	if name := agentLabel(accountID, t.Agent); name != "" {
-		labels += app.Pill(trimTo(name, labelChars))
+	// Plain text separated by middots rather than pills. A pill is for a thing
+	// you can act on; the channel a message arrived by is a fact about it, and
+	// two facts in boxes read as two buttons.
+	meta := []string{html.EscapeString(who)}
+	if c := app.ClientName(t.Client); c != "" {
+		meta = append(meta, html.EscapeString(c))
 	}
-	labels = `<span class="ib-tags">` + labels + `</span>`
+	if name := agentLabel(accountID, t.Agent); name != "" {
+		meta = append(meta, html.EscapeString(trimTo(name, labelChars)))
+	}
+	meta = append(meta, html.EscapeString(app.TimeAgo(t.Updated)))
 
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every
@@ -320,20 +321,10 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	// nesting a submit inside a navigation target means a click has two
 	// meanings. So the row is a flex pair — the link, which fills it, and this.
 	return `<div class="ib-item">` +
-		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
-		`<span class="ib-who"` + titleAttr(full) + `>` + html.EscapeString(who) + `</span>` +
-		// The labels and the subject are one line, and the preview is the next.
-		//
-		// They were three siblings of .ib-mid, which is a flex row on a wide
-		// screen and a column on a phone — so on a phone each got a line of its
-		// own and the labels were pushed under the preview by an order:3 that
-		// existed to stop them being first. A label is how you decide whether to
-		// read the line, so it belongs beside what it labels on every width.
-		`<span class="ib-mid"><span class="ib-line">` + labels +
-		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 70)) +
-		`</span></span>` +
-		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></span>` +
-		`<span class="ib-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></a>` +
+		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `"` + titleAttr(full) + `>` +
+		`<span class="ib-meta">` + strings.Join(meta, `<span class="ib-dot">·</span>`) + `</span>` +
+		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 90)) + `</span>` +
+		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></a>` +
 		rowDelete(r, t.ID) + `</div>`
 }
 

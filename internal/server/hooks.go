@@ -454,6 +454,13 @@ func wireHooks() {
 	// Three hooks stood here handing the digest a way to publish. They were the
 	// cost of a service that could not import the blog; the digest is an agent
 	// now and imports it.
+	// Deleting a conversation deletes the runs that made it up.
+	//
+	// They were left behind, and adoptAll read them at the next start-up and
+	// put the conversation back — so Delete looked like it worked until a
+	// restart. See agent.ForgetConversation.
+	thread.Deleted = agent.ForgetConversation
+
 	digest.Load()
 
 	// The line at the top of Home. Same shape as the digest and a tenth of the

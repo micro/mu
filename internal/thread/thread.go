@@ -797,13 +797,38 @@ func Name(account, id, subject string) {
 func Delete(account, id string) {
 	ensure()
 	mu.Lock()
-	defer mu.Unlock()
 	t := threads[id]
 	if t == nil || t.Account != account {
+		mu.Unlock()
 		return
 	}
+	gone := *t
 	dropUnlocked(t)
 	save()
+	mu.Unlock()
+
+	forget(gone)
+}
+
+// Deleted is told when a conversation is removed, so whatever else was written
+// down about it goes too.
+//
+// A hook because this store is underneath the product and the things holding
+// the other half of a conversation are not: agent/ keeps a workflow record per
+// run, and a run belongs to the conversation it was part of.
+//
+// Not an optional tidy-up. Deleting a conversation and leaving its runs behind
+// is not "the two records have different lifetimes", it is orphaned data that a
+// start-up migration then reads and uses to put the conversation back. See
+// agent.ForgetConversation.
+var Deleted func(t Thread)
+
+// forget runs the hook outside the lock, because what it calls will want to
+// read this store.
+func forget(t Thread) {
+	if Deleted != nil {
+		Deleted(t)
+	}
 }
 
 // Forget removes an account's whole record: every conversation, everything said
@@ -820,13 +845,22 @@ func Forget(account string) {
 		return
 	}
 	mu.Lock()
-	defer mu.Unlock()
+	gone := make([]Thread, 0, len(owned[account]))
 	for _, t := range owned[account] {
+		gone = append(gone, *t)
 		dropUnlocked(t)
 	}
 	delete(owned, account)
 	delete(held, account)
 	save()
+	mu.Unlock()
+
+	// Everything written down about every one of them, for the same reason
+	// this function exists: deleting an account that leaves the runs behind
+	// has not deleted the transcript, it has moved it.
+	for _, t := range gone {
+		forget(t)
+	}
 }
 
 // SetRef records the client's identifier for a message after the fact.

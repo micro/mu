@@ -5740,7 +5740,7 @@ button.pill:hover {
    reaches past the text without moving anything. */
 .ib-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 8px;
   padding: 0 10px;
   margin: 0 -10px;
@@ -5823,61 +5823,76 @@ button.pill:hover {
 /* No pointer to hover with, so the cross is simply there. */
 @media (hover: none) { .ib-del-go { opacity: 1 } }
 
-/* On a phone a row is two lines and the cross belongs beside the first of
-   them. .ib-item aligns on the baseline, which is right when the row is one
-   line and drifts down the card when it is two — so on a narrow screen the
-   cross is pinned to the top and nudged to sit on the name's line. */
-@media (max-width: 640px) {
-  .ib-item { align-items: flex-start }
-  .ib-del { padding-top: 12px }
-}
-.ib-row.unseen .ib-who,
+/* The cross sits on the first line of the row at every width, which is what
+   flex-start on .ib-item gives it — the baseline alignment it used to have was
+   right for a one-line row and drifted down the card once the row had three.
+   The nudge keeps it on the sender's line rather than above it. */
+.ib-del { padding-top: 12px }
+/* Unread marks the two lines that say what the message is. Not the snippet:
+   it is the body, and a bold body is a row shouting. */
+.ib-row.unseen .ib-meta,
 .ib-row.unseen .ib-subject { font-weight: var(--font-weight-bold, 700) }
 .ib-row.unseen .ib-snip { color: var(--text-secondary, #555) }
 
-.ib-who {
-  flex: 0 0 130px;
-  font-size: 13px;
-  font-weight: var(--font-weight-medium, 500);
-  color: var(--text-primary, #1a1a1a);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* A row is three lines: who it is from and when, what it is about, and the
+   first of what it says.
+
+   It was one line — sender in a 130px column, then a 150px column of pills,
+   then the subject, then the preview, then the time — and every one of those
+   was competing for the same width. Each rearrangement fixed one and broke
+   another: pills beside the subject pushed it off the row, pills in a column
+   left a ragged gap on every row with only one, and on a phone there was never
+   room for any of it. Nothing competes when nothing shares a line. */
+.ib-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
-.ib-mid { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden }
+/* Who, where from, and when. Small and muted, because it is how you decide
+   whether to read the two lines under it rather than something to read. */
+.ib-meta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  font-size: 12px;
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--text-secondary, #555);
+  min-width: 0;
+}
 
-/* The labels and the subject, together. One box so a phone can stack the
-   preview under them without breaking them apart — see the media query. */
-.ib-line { display: flex; align-items: baseline; gap: 8px; flex: none; max-width: 60%; min-width: 0; overflow: hidden }
-
-/* The labels get a column, so every subject on the page starts at the same
-   place. They were inline: one pill or two, "Here" or "WhatsApp" wide, so the
-   subject began somewhere different on every row and there was no edge for the
-   eye to run down. A fixed basis costs a little empty space on the rows with
-   one label and buys alignment on all of them, which is the trade every mail
-   client makes. */
-.ib-tags { flex: 0 0 150px; display: flex; gap: 6px; overflow: hidden }
+.ib-dot { color: var(--text-faint, #ccc); font-weight: var(--font-weight-normal, 400) }
 
 /* An explicit weight, because the row is a link and `a` is bold app-wide.
    Anything inside a link that does not declare a weight inherits that, so the
    subject was bold on every row and .ib-row.unseen had nothing left to say —
    read or unread, the page looked the same, which is the one distinction a
-   mailbox exists to draw. .ib-who declares 500 and escaped it; this did not.
-   TestAStatefulWeightHasABaseWeight now holds it for every such pair. */
+   mailbox exists to draw. TestAStatefulWeightHasABaseWeight holds it for every
+   such pair. */
 .ib-subject {
   font-size: 14px;
   font-weight: var(--font-weight-normal, 400);
   color: var(--text-primary, #1a1a1a);
-  white-space: nowrap;
-  flex: none;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-.ib-snip { font-size: 13px; color: var(--text-muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.ib-when { flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
+/* The body. Never bold, read or unread — see the rule at the top of this
+   block. */
+.ib-snip {
+  font-size: 13px;
+  font-weight: var(--font-weight-normal, 400);
+  color: var(--text-muted, #888);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 
 /* A conversation, read. */
 .ib-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px }
@@ -6202,29 +6217,17 @@ button.pill:hover {
    row, indistinguishable from the three conversations above it, and the three
    blocks on Home now end the same way and align on the same left edge. */
 
-/* On a phone a row is two lines, not one squeezed into 390px: the name and the
-   time on top, the subject and the preview under it — which is what every mail
-   client on a phone does, and for the same reason. The preview used to be
-   hidden entirely here, so a mobile inbox was a list of subjects with no way to
-   tell what any of them said. */
+/* A row is three lines at every width now, so a phone needs almost nothing
+   said to it — which is the point of the change. What was here was a grid
+   re-laying five competing pieces into two lines, and it went with them.
+
+   Only the wrapping differs: with more width a clipped line is fine, and on a
+   phone the subject and the preview are worth two lines each rather than one
+   truncated one. */
 @media (max-width: 640px) {
-  .ib-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 12px 0 }
-  .ib-who { flex: none; grid-column: 1; font-size: 13px }
-  .ib-when { grid-column: 2; grid-row: 1; font-size: 11px }
-  .ib-mid { grid-column: 1 / -1; flex-direction: column; align-items: flex-start; gap: 2px }
-  /* The labels stay beside the subject; only the preview drops below. There
-     was an order:3 here pushing the pills past the preview, which put a
-     label — the thing you read to decide whether to read the row — at the
-     bottom of the row it labels. */
-  .ib-line { max-width: 100%; flex-wrap: wrap; row-gap: 2px }
-  /* No column on a phone: 150px of the 320px available is most of the row, and
-     the subject wraps to its own line here anyway, so there is nothing left to
-     line up. */
-  .ib-tags { flex: 0 0 auto }
-  .ib-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical }
+  .ib-row { padding: 12px 0 }
+  .ib-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical }
   .ib-snip { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45 }
-  .ib-addr { gap: 6px }
-  .ib-addr-note { font-size: 11px }
 }
 
 /* Writing one yourself, at /inbox/new. See inbox/new.go. */
@@ -6348,11 +6351,10 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
    against it to a wider gap than Inbox or Agents leave under their own
    headings. One block, spaced like the three under it.
 
-   And little below it, because this no longer ends the section — who is here
-   follows, and then the way through to them. The 24px that used to sit here
-   was the gap to the next heading; .link's own 12px is that gap now. */
+   And little below it: the section's bottom gap is .link's 12px when somebody
+   is here, and this paragraph's own when nobody is. */
 .home-brief {
-  margin: 0 0 6px;
+  margin: 0 0 var(--spacing-lg, 24px);
   font-size: 15px;
   line-height: var(--line-height, 1.6);
   color: var(--text-secondary, #555);
@@ -6362,7 +6364,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
    brief is what happened and this is the state of the room, which is worth
    knowing and not worth reading twice. */
 .home-here {
-  margin: 0;
+  margin: 0 0 6px;
   font-size: 14px;
   color: var(--text-muted, #888);
 }
@@ -6954,7 +6956,7 @@ select.field { max-width: 220px }
 .ib-addr-sep { margin: 0 8px; opacity: .5 }
 
 /* A sender you can read, with the whole address on hover. */
-.ib-who[title] { cursor: help }
+.ib-row[title] { cursor: help }
 
 /* The two addresses at the top of the inbox: yours, and the agent's. It showed
    one and composed as the other. See inbox/page.go. */

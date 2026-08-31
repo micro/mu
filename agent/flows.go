@@ -153,6 +153,28 @@ func deleteFlow(accountID, id string) error {
 	return persistFlows()
 }
 
+// ForgetConversation drops every run that made up a deleted conversation.
+//
+// Wired to thread.Deleted. Without it, deleting a conversation removed the
+// record of it and left the runs, and adoptAll — which exists to carry chains
+// written before the record across into it — read those runs at the next
+// start-up and put the conversation back. It could not tell "never adopted"
+// from "adopted, then deleted by the person who owned it", because absence was
+// the only thing it had to go on.
+//
+// Keyed the way adopt keys it: a web conversation's thread Key is the id of the
+// chain's first run, which is what the web has always keyed a conversation on.
+// Anything from another client — mail, SMS, a room — has no chain here and
+// nothing to drop.
+func ForgetConversation(t thread.Thread) {
+	if t.Client != thread.WebClient || t.Key == "" {
+		return
+	}
+	for _, f := range sessionChain(t.Account, t.Key) {
+		deleteFlow(t.Account, f.ID) //nolint:errcheck
+	}
+}
+
 // newFlowID returns a new unique flow ID.
 func newFlowID() string {
 	return uuid.New().String()
