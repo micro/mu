@@ -77,6 +77,23 @@ func Private(roomID string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(roomID)), privatePrefix)
 }
 
+// Listable reports whether a room may be named to somebody who is not in it.
+//
+// The other half of Private, and the half that was missing. Private answers "may
+// this person go in"; nothing answered "may this room be mentioned", so every
+// place that assembled a list of what is happening — the channel row across the
+// top of a room, Happening now, the JSON catalogue — took every room that was
+// not a topic and named it. A conversation between two people is exactly that,
+// so the moment they said anything, "@asim and @henrik" appeared as a tab on
+// everybody else's screen. Not-found at the door is no use when the page before
+// it announces the room.
+//
+// A predicate rather than a check at each call site, because there were three
+// call sites and one of them was written before private rooms existed.
+func Listable(roomID string) bool {
+	return !Private(roomID)
+}
+
 // Member reports whether an account may enter a room.
 //
 // True for every account when the room is public — that is what public means,
@@ -139,6 +156,36 @@ func Members(roomID string) []string {
 	memberMu.RLock()
 	defer memberMu.RUnlock()
 	out := append([]string(nil), members[roomID]...)
+	sort.Strings(out)
+	return out
+}
+
+// Mine is the private rooms an account is in.
+//
+// The other half of Members: that answers "who is in this room", this answers
+// "which rooms am I in", and without it a conversation you are a member of is
+// reachable only from the profile of the person you had it with. A private room
+// is unlisted by construction — nothing links to it and its name is no use to a
+// stranger — so the membership record is the only place the answer lives.
+//
+// Sorted by id, so the caller decides the order it wants. /chat sorts by when
+// the room last moved, which needs the transcript rather than this list.
+func Mine(account string) []string {
+	account = strings.TrimSpace(account)
+	if account == "" {
+		return nil
+	}
+	memberMu.RLock()
+	defer memberMu.RUnlock()
+	var out []string
+	for id, who := range members {
+		for _, m := range who {
+			if m == account {
+				out = append(out, id)
+				break
+			}
+		}
+	}
 	sort.Strings(out)
 	return out
 }

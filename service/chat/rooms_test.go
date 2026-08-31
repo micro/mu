@@ -16,23 +16,47 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Without a room id, a person goes to the lobby.
+// Without a room id, /chat is All: the rooms there are.
 //
-// This used to answer with the catalogue: every topic, a paragraph of summary
-// under each, and a Join link. Nobody arrives at a chat wanting to read about
-// rooms — a directory of conversations is none of them — so the list stood
-// between somebody and the only thing on it worth doing.
-func TestChatDropsYouIntoTheLobby(t *testing.T) {
+// It redirected to the lobby for a while, because a chat needs somewhere to put
+// you and a directory of conversations is none of them. It has somewhere now
+// and it is not this page — the lobby is the panel over Home, next to the names
+// of the people in it — so this page is free to answer the question somebody
+// actually brings to it, which is what else there is.
+//
+// The redirect is the part that must not come back: clicking Chat loaded a page
+// whose only job was to send the browser somewhere else, which is the flicker.
+func TestChatListsTheRooms(t *testing.T) {
 	topics = []string{"Dev", "World"}
 
 	rr := httptest.NewRecorder()
 	Handler(rr, httptest.NewRequest("GET", "/chat", nil))
 
-	if rr.Code != http.StatusFound {
-		t.Fatalf("GET /chat = %d, want a redirect", rr.Code)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /chat = %d, want the list", rr.Code)
 	}
-	if got := rr.Header().Get("Location"); got != "/chat?id="+lobbyID {
-		t.Errorf("GET /chat went to %q, want the lobby", got)
+	body := rr.Body.String()
+	for _, want := range []string{`href="/chat?id=chat_Dev"`, `href="/chat?id=chat_World"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the list does not reach %s", want)
+		}
+	}
+}
+
+// And the lobby is not one of them.
+//
+// It is on Home. Listing it here as well would make the page a way to leave what
+// you are reading to reach a room you could already see, and would put the one
+// room with no subject at the top of a list organised by subject.
+func TestTheLobbyIsNotOnTheList(t *testing.T) {
+	topics = []string{lobbyTopic, "Dev"}
+	defer func() { topics = []string{"Dev", "World"} }()
+
+	rr := httptest.NewRecorder()
+	Handler(rr, httptest.NewRequest("GET", "/chat", nil))
+
+	if body := rr.Body.String(); strings.Contains(body, `href="/chat?id=`+lobbyID+`"`) {
+		t.Errorf("the lobby is on /chat — it lives in the panel on Home:\n%s", body)
 	}
 }
 
@@ -56,12 +80,20 @@ func TestTheChannelRowReachesTheOtherRooms(t *testing.T) {
 			t.Errorf("the channel row does not reach %s", want)
 		}
 	}
+	// All is the way back to the list, and is /chat itself rather than a room.
+	if !strings.Contains(body, `<a class="head" href="/chat">All</a>`) {
+		t.Errorf("the channel row has no way back to the list:\n%s", body)
+	}
+
 	// The room you are in is marked and is not a link to itself.
-	if !strings.Contains(body, `<span class="head head-on">Lobby</span>`) {
+	rr = httptest.NewRecorder()
+	Handler(rr, httptest.NewRequest("GET", "/chat?id=chat_Dev", nil))
+	body = rr.Body.String()
+	if !strings.Contains(body, `<span class="head head-on">Dev</span>`) {
 		t.Errorf("the current channel is not marked:\n%s", body)
 	}
-	if strings.Contains(body, `href="/chat?id=`+lobbyID+`"`) {
-		t.Error("the lobby links to itself")
+	if strings.Contains(body, `href="/chat?id=chat_Dev"`) {
+		t.Error("the room links to itself")
 	}
 }
 

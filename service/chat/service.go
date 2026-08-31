@@ -64,6 +64,12 @@ func (Server) Rooms(_ context.Context, req *RoomsRequest, rsp *RoomsResponse) er
 	mutex.RLock()
 	out := make([]RoomInfo, 0, len(rooms))
 	for _, r := range rooms {
+		// Not somebody's conversation. This is the list a tool call gets and the
+		// list Card puts on Home, so a pair room reaching it would put "@asim and
+		// @henrik" on the front page of everybody's instance. See Listable.
+		if !Listable(r.ID) {
+			continue
+		}
 		r.mutex.RLock()
 		out = append(out, RoomInfo{
 			ID: r.ID, Type: r.Type, Title: r.Title,
@@ -93,10 +99,21 @@ type MessagesResponse struct {
 
 // Messages returns the recent conversation in a room.
 // @example {"room": "news_456"}
-func (Server) Messages(_ context.Context, req *MessagesRequest, rsp *MessagesResponse) error {
+func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesResponse) error {
 	id := strings.TrimSpace(req.Room)
 	if id == "" {
 		return fmt.Errorf("room is required")
+	}
+
+	// A private room answers to its members and to nobody else.
+	//
+	// The web door has checked this since private rooms existed; this one had no
+	// check at all, so the whole transcript of a conversation between two people
+	// was a tool call away for anybody who could name the room — and the name is
+	// two usernames, by construction. Same wording as the page: refusing by name
+	// confirms the name.
+	if !Member(id, service.AccountFrom(ctx)) {
+		return fmt.Errorf("no room here called %q", id)
 	}
 
 	mutex.RLock()
@@ -168,6 +185,12 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	}
 	if text == "" {
 		return fmt.Errorf("message is required")
+	}
+	// And not into a conversation you are not in. Reading it was the leak;
+	// speaking into it is the other half, and a stranger's line appearing in a
+	// private room is worse than a stranger reading one.
+	if !Member(id, who) {
+		return fmt.Errorf("no room here called %q", id)
 	}
 
 	mutex.RLock()

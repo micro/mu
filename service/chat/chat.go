@@ -103,15 +103,25 @@ const Lobby = lobbyID
 // channels is the row of rooms across the top of one, so there is a way out of
 // the room you are in that is not the back button.
 //
-// The lobby first, then the topics this instance follows, then whatever else
-// has somebody in it right now. That last group is the reason this is not a
-// static list: an article's discussion room is where the conversation actually
-// is on the day somebody starts one, and it existed nowhere a person could
-// find it except the article.
+// All first, then the topics this instance follows, then whatever else has
+// somebody in it right now. That last group is the reason this is not a static
+// list: an article's discussion room is where the conversation actually is on
+// the day somebody starts one, and it existed nowhere a person could find it
+// except the article.
 //
 // The same .head row news and video use for their topics, because switching
 // channel and switching topic are the same gesture and there is no reason for
-// this page to invent a second look for it.
+// this page to invent a second look for it. All is /chat itself, the way All is
+// /news itself: the page that has everything on it, and the thing the row falls
+// back to.
+//
+// # The lobby is not on it
+//
+// It was the first tab, on the argument that a chat needs somewhere to put you.
+// It has somewhere now, and it is not this page: the lobby is the panel over
+// Home, beside the strip that says who is here. Two entrances to one room meant
+// the tab was a way to leave the page you were reading to go to the room you
+// could already see, and the row is for rooms you cannot.
 func channels(current string) string {
 	mutex.RLock()
 	names := append([]string(nil), topics...)
@@ -126,11 +136,15 @@ func channels(current string) string {
 			b.WriteString(`<span class="head head-on">` + htmlpkg.EscapeString(label) + `</span>`)
 			return
 		}
-		b.WriteString(`<a class="head" href="/chat?id=` + url.QueryEscape(id) + `">` +
+		href := "/chat"
+		if id != "" {
+			href += "?id=" + url.QueryEscape(id)
+		}
+		b.WriteString(`<a class="head" href="` + href + `">` +
 			htmlpkg.EscapeString(label) + `</a>`)
 	}
 
-	tab(lobbyID, "Lobby")
+	tab("", "All")
 	for _, topic := range names {
 		if topic == lobbyTopic {
 			continue
@@ -140,12 +154,14 @@ func channels(current string) string {
 
 	// And anything live that is not a topic — an article or a video somebody is
 	// discussing. Capped, newest first: this is a way to what is happening, not
-	// a second catalogue.
+	// a second catalogue. Listable keeps somebody's conversation out of everybody
+	// else's tab row — see the note there.
 	var live []*Room
 	roomsMutex.RLock()
 	for _, room := range rooms {
 		room.mutex.RLock()
-		if !strings.HasPrefix(room.ID, "chat_") && (len(room.Clients) > 0 || len(room.Messages) > 0) {
+		if !strings.HasPrefix(room.ID, "chat_") && Listable(room.ID) &&
+			(len(room.Clients) > 0 || len(room.Messages) > 0) {
 			live = append(live, room)
 		}
 		room.mutex.RUnlock()
@@ -1524,24 +1540,20 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 		}
 	}
 
-	// Without a room id, a person goes to the lobby and a program gets the
-	// catalogue.
+	// Without a room id, /chat is All: every room there is, the way /news is
+	// every story.
 	//
-	// This showed everybody the catalogue: a list of topics, each with a
-	// paragraph of summary under it and a Join link. Nobody arrives at a chat
-	// wanting to read about rooms — they arrive wanting to be in one, and the
-	// list was a page of prose standing between them and the only thing on it
-	// worth doing. The channels are a row across the top of the room now, so
-	// the list has nothing left to do that being in a room does not do better.
+	// It redirected to the lobby for a while, on the argument that arriving at a
+	// directory of conversations is arriving at none of them. That was right and
+	// the fix was in the wrong place: what a chat needs is somewhere to put you,
+	// and the lobby is now the panel over Home — open beside the names of the
+	// people who are in it. So this page is free to be what a person actually
+	// comes to it for, which is the conversation they are not already in.
 	//
-	// A JSON caller still gets the list, because "what rooms are there" is a
-	// real question for something that is not a person and cannot click.
+	// It also stopped the redirect flicker: clicking Chat loaded a page whose
+	// only job was to send the browser somewhere else.
 	if roomID == "" {
-		if app.WantsJSON(r) {
-			listRooms(w, r)
-			return
-		}
-		http.Redirect(w, r, "/chat?id="+lobbyID, http.StatusFound)
+		listRooms(w, r)
 		return
 	}
 
@@ -1686,8 +1698,11 @@ func listRooms(w http.ResponseWriter, r *http.Request) {
 	roomsMutex.RLock()
 	for _, room := range rooms {
 		room.mutex.RLock()
-		// A topic room is already listed below under its own name.
-		if !strings.HasPrefix(room.ID, "chat_") && (len(room.Messages) > 0 || len(room.Clients) > 0) {
+		// A topic room is already listed below under its own name, and a private
+		// one is nobody's business but its members' — including in the JSON below,
+		// which is the same list handed to a program.
+		if !strings.HasPrefix(room.ID, "chat_") && Listable(room.ID) &&
+			(len(room.Messages) > 0 || len(room.Clients) > 0) {
 			live = append(live, RoomInfo{
 				ID: room.ID, Type: room.Type, Title: room.Title,
 				Participants: len(room.Clients), LastActivity: room.LastActivity,
@@ -1709,31 +1724,162 @@ func listRooms(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
+	b.WriteString(channels(""))
 	b.WriteString(`<div class="rooms">`)
+
+	// Yours first.
+	//
+	// A private room is unlisted by construction and nothing links to it, so
+	// before this the conversation you had with somebody yesterday was reachable
+	// only by going to their profile and pressing Chat again. It is the one
+	// section on this page that is about people rather than subjects, and it is
+	// the reason somebody opens /chat at all.
+	_, acc := auth.TrySession(r)
+	if acc != nil {
+		if mine := conversations(acc.ID); len(mine) > 0 {
+			b.WriteString(`<h3>Conversations</h3>`)
+			for _, c := range mine {
+				b.WriteString(roomRow(c.ID, c.Title, c.Last))
+			}
+		}
+	}
 
 	if len(live) > 0 {
 		b.WriteString(`<h3>Happening now</h3>`)
 		for _, room := range live {
-			b.WriteString(`<div class="summary-item"><a class="link" href="/chat?id=` +
-				htmlpkg.EscapeString(room.ID) + `"><strong>` + htmlpkg.EscapeString(room.Title) + `</strong></a>`)
-			b.WriteString(`<p class="summary-meta">` + describeRoom(room) + `</p></div>`)
+			b.WriteString(roomRow(room.ID, roomName(room.Title), describeRoom(room)))
 		}
 	}
 
-	b.WriteString(`<h3>Topics</h3>`)
+	// The topics, and what is in them rather than what they are about.
+	//
+	// It listed a paragraph of generated summary under each name, which is a page
+	// of prose standing between somebody and the only thing on it worth doing.
+	// Who is in there and when it last moved is the whole basis for deciding
+	// whether to walk in — the same line the live rooms above carry, so the two
+	// halves of the page answer the same question. What a room is about is on the
+	// room, folded, where somebody who has walked in can ask.
+	b.WriteString(`<h3>Rooms</h3>`)
 	for _, topic := range topicsData {
-		b.WriteString(`<div class="summary-item"><span class="category">` + htmlpkg.EscapeString(topic) + `</span>`)
-		if s := summariesData[topic]; s != "" {
-			b.WriteString(`<p>` + htmlpkg.EscapeString(s) + `</p>`)
+		if topic == lobbyTopic {
+			// The lobby is on Home, in the panel beside the people who are in it.
+			continue
 		}
-		b.WriteString(`<a class="link" href="/chat?id=chat_` + url.QueryEscape(topic) + `">Join →</a></div>`)
-	}
-	if len(summariesData) > 0 {
-		b.WriteString(`<p class="summary-meta">Summaries: ` + htmlpkg.EscapeString(meta.Source) + ` · ` + htmlpkg.EscapeString(meta.Status) + `</p>`)
+		id := "chat_" + topic
+		b.WriteString(roomRow(id, topic, describeRoom(roomState(id))))
 	}
 	b.WriteString(`</div>`)
 
-	app.Respond(w, r, app.Response{Title: "Chat", Description: "Live discussion rooms", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Chat", Description: "Rooms on this instance", HTML: b.String()})
+}
+
+// roomRow is one line of the list: what it is, and what state it is in.
+//
+// One line rather than a block. Every row here says the same two things — a
+// name, and whether anything is happening in it — and as a stacked pair with a
+// margin between them, eight rooms filled a screen and a half to deliver eight
+// words. The state goes to the right, the way the inbox puts a date there, so
+// the names line up as a column somebody can run an eye down.
+//
+// The whole row is the link, not the name inside it. A one-line row with a
+// four-character target in it is a row you miss on a phone.
+func roomRow(id, name, state string) string {
+	return `<a class="room-row" href="/chat?id=` + url.QueryEscape(id) + `">` +
+		`<span class="room-name">` + htmlpkg.EscapeString(name) + `</span>` +
+		`<span class="room-state">` + htmlpkg.EscapeString(state) + `</span></a>`
+}
+
+// conversation is one private room as it appears in somebody's list.
+type conversation struct {
+	ID    string
+	Title string
+	Last  string
+}
+
+// conversations is the private rooms an account is in, newest first.
+//
+// Titled for the reader: pairTitle names everybody in the room, which is right
+// on the room's own heading and wrong in a list of yours, where every line would
+// begin with your own name. Here it is who you are talking to.
+//
+// The last line is read from the room if it is loaded and from disk if it is
+// not. Rooms are evicted when they go idle — see cleanupIdleRooms — so the
+// in-memory map is who is talking now, not who has ever talked, and a list built
+// from it alone would lose a conversation the moment it went quiet.
+func conversations(account string) []conversation {
+	type entry struct {
+		conversation
+		at time.Time
+	}
+	var out []entry
+	for _, id := range Mine(account) {
+		var who []string
+		for _, m := range Members(id) {
+			if m != account {
+				who = append(who, "@"+m)
+			}
+		}
+		title := strings.Join(who, ", ")
+		if title == "" {
+			// A room with nobody else in it. Reachable if the other member was
+			// deleted; the room is still yours to read.
+			title = pairTitle(id)
+		}
+
+		last, at := lastLine(id)
+		out = append(out, entry{conversation{ID: id, Title: title, Last: last}, at})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].at.After(out[j].at) })
+
+	list := make([]conversation, 0, len(out))
+	for _, e := range out {
+		list = append(list, e.conversation)
+	}
+	return list
+}
+
+// lastLine is the most recent thing said in a room, and when.
+//
+// Without instantiating it. getOrCreateRoom on every id in a list would start a
+// goroutine and a summariser per room on a page that is only asking what is in
+// them, which is a lot of work to render a sentence.
+func lastLine(roomID string) (string, time.Time) {
+	roomsMutex.RLock()
+	room := rooms[roomID]
+	roomsMutex.RUnlock()
+
+	var msgs []RoomMessage
+	if room != nil {
+		room.mutex.RLock()
+		msgs = append(msgs, room.Messages...)
+		room.mutex.RUnlock()
+	} else {
+		msgs = loadRoomMessages(roomID)
+	}
+	if len(msgs) == 0 {
+		return "nothing said yet", time.Time{}
+	}
+	m := msgs[len(msgs)-1]
+	return "@" + m.UserID + ": " + trimTo(strings.TrimSpace(m.Content), 60) +
+		" · " + app.TimeAgo(m.Timestamp), m.Timestamp
+}
+
+// roomState is what a room looks like from outside: who is in it and when it
+// last moved. Zero for a room that has never been opened, which describeRoom
+// reads as "nobody here now".
+func roomState(roomID string) RoomInfo {
+	roomsMutex.RLock()
+	room := rooms[roomID]
+	roomsMutex.RUnlock()
+	if room == nil {
+		return RoomInfo{ID: roomID}
+	}
+	room.mutex.RLock()
+	defer room.mutex.RUnlock()
+	return RoomInfo{
+		ID: roomID, Type: room.Type, Title: room.Title,
+		Participants: len(room.Clients), LastActivity: room.LastActivity,
+	}
 }
 
 // describeRoom says who is there and when it last moved, which is the whole
@@ -1748,8 +1894,12 @@ func describeRoom(room RoomInfo) string {
 	default:
 		parts = append(parts, fmt.Sprintf("%d people here", room.Participants))
 	}
+	// "Last active", not "last message". The field is LastActivity and opening a
+	// room moves it, so a room somebody looked into and left announced a message
+	// that was never sent — visible the moment the list started drawing this line
+	// for rooms nobody had spoken in.
 	if !room.LastActivity.IsZero() {
-		parts = append(parts, "last message "+app.TimeAgo(room.LastActivity))
+		parts = append(parts, "last active "+app.TimeAgo(room.LastActivity))
 	}
 	return strings.Join(parts, " · ")
 }

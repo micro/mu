@@ -1476,6 +1476,48 @@ body:has(#messages) #chat-back-link {
   color: #888;
   font-size: 13px;
 }
+
+/* One room, one line: the name, and what state it is in. See chat.roomRow.
+
+   It was .summary-item — name, then the state on its own line under it, with a
+   margin between — and eight rooms filled a screen and a half to deliver eight
+   words. The state is pushed right the way the inbox pushes a date there, so
+   the names line up as a column and the row reads as one fact about one room.
+
+   Both children name their own colour. The whole row is an <a>, and the global
+   `a:visited { color: #000 }` is 0-1-1, which beats a bare class — so a room
+   somebody had been in went black while the rest stayed grey. A two-class
+   selector outranks it and says the same thing in both states. */
+.rooms .room-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--divider, #f0f0f0);
+  text-decoration: none;
+}
+.rooms .room-row:last-child { border-bottom: none }
+.rooms .room-row:hover .room-name { text-decoration: underline }
+
+.rooms .room-name {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--text-primary, #111);
+}
+
+/* The state is the part that gives when the row is narrow: a room's name is
+   the thing being chosen between, and "last message 4 minutes ago" is not worth
+   a second line on a phone. */
+.rooms .room-state {
+  margin-left: auto;
+  min-width: 0;
+  color: var(--text-muted, #888);
+  font-size: 13px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #messages p {
   margin-top: 8px;
   margin-bottom: 12px;
