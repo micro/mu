@@ -1073,6 +1073,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 }
 
 func Load() {
+	// Who is in which private room, before anything can be asked for one.
+	loadPrivate()
+
 	// This service's own record, the way service/mail loads its mailbox.
 	LoadStore()
 
@@ -1358,6 +1361,25 @@ func generateSummaries() {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Check if this is a room-based chat (e.g., /chat?id=post_123)
 	roomID := r.URL.Query().Get("id")
+
+	// A private room admits its members and does not exist for anybody else.
+	//
+	// Before getOrCreateRoom, and that ordering is the whole fix: the attack is
+	// not joining somebody's room, it is *creating* it. Ask for an id nobody has
+	// used and getOrCreateRoom hands back a fresh room with that name, so a
+	// check inside the room would run against a room the guesser had just made.
+	// See private.go.
+	//
+	// Not found rather than forbidden. "You are not a member of dm_asim_henrik"
+	// confirms that asim and henrik are talking, which is most of what there was
+	// to learn.
+	if Private(roomID) {
+		_, acc, err := auth.RequireSession(r)
+		if err != nil || !Member(roomID, acc.ID) {
+			app.NotFound(w, r, "no room here by that name")
+			return
+		}
+	}
 
 	// Check if this is a WebSocket upgrade request
 	if r.Header.Get("Upgrade") == "websocket" && roomID != "" {

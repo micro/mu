@@ -129,8 +129,15 @@ func hereStrip(people []person, viewerID string) string {
 	// In the row it was a link that appeared and disappeared as people came and
 	// went, moving everything before it; and it is a different kind of thing
 	// from the names beside it — they are people, this is a door.
+	// "Go to chat", the same as the two blocks under it say "Go to inbox" and
+	// "Go to agents". One word was doing a different job from its neighbours —
+	// they name a destination and this named a subject.
+	//
+	// It becomes "Open chat" when there is a panel to open rather than a page
+	// to go to. Until then the label would be describing something that does
+	// not happen.
 	if others > 0 {
-		out += app.Link("Chat", "/chat")
+		out += app.Link("Go to chat", "/chat")
 	}
 	return out + `</div>`
 }
