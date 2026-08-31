@@ -328,18 +328,49 @@ func ChatComponent(cfg ChatConfig) string {
 		return searchBox(SearchBoxOpts{Why: "No model is configured, so the agent cannot answer yet. " +
 			"Add a provider at "})
 	}
+	// A list with nothing in it, never null.
+	//
+	// json.Marshal of a nil slice is the literal null, and SUGGEST.forEach on
+	// null throws — which does not fail quietly. Everything after
+	// showSuggestions() in that one script block stops running: the agent
+	// picker, the poll for an answer that landed while the page was gone,
+	// window.muChatAsk, and the voice controls. An agent with no examples of
+	// its own is the ordinary case for one somebody made, so this was the
+	// whole page's JavaScript resting on a field being filled in.
 	suggestJS, err := json.Marshal(suggestions)
-	if err != nil {
+	if err != nil || suggestions == nil {
 		suggestJS = []byte("[]")
 	}
+
+	// micIcon is a microphone, drawn rather than fetched.
+	//
+	// Inline SVG for the reason iconMail gives: it is three lines of markup and the
+	// alternative is a request for an image that has to exist, be cached and be
+	// found again by whoever moves it. currentColor so it takes the button's colour
+	// rather than needing one of its own.
+	const micIcon = `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">` +
+		`<rect x="6" y="2" width="4" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/>` +
+		`<path d="M4 7.5a4 4 0 0 0 8 0M8 11.5V14" fill="none" stroke="currentColor" ` +
+		`stroke-width="1.3" stroke-linecap="round"/></svg>`
 
 	form := `<form id="mu-chat-form">
     <textarea id="mu-chat-input" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="1024" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('mu-chat-form').dispatchEvent(new Event('submit'))}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
+    <button type="button" id="mu-chat-mic" aria-label="Speak" hidden
+      title="Speak instead of typing">` + micIcon + `</button>
     <button type="submit" aria-label="Send">&#x2192;</button>
   </form>`
-	opts := `<div id="mu-chat-opts">` + agentPicker + `</div>`
+	// Read it back, beside who is answering.
+	//
+	// Next to the picker because they are the same kind of decision — how this
+	// conversation happens — and because that row is where somebody already
+	// looks before asking. Hidden until the script finds a voice: a control that
+	// does nothing is worse than one that is not there.
+	sayToggle := `<label id="mu-chat-say" hidden title="Read the answer out loud">` +
+		`<input type="checkbox" id="mu-chat-say-on">` +
+		`<span class="mu-chat-agent-label">Speak</span></label>`
+	opts := `<div id="mu-chat-opts">` + agentPicker + sayToggle + `</div>`
 	suggest := `<div id="mu-chat-suggest"></div>`
 	conv := `<div id="mu-chat-conv">` + initialConv + `</div>`
 
@@ -359,6 +390,22 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat{max-width:760px;margin:0 auto;width:100%}
 #mu-chat-form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;background:#fff;padding:4px 4px 4px 12px;transition:border-color .2s;position:sticky;top:8px;z-index:5}
 #mu-chat-form:focus-within{border-color:#999}
+/* The microphone, in the box beside Send. Quiet until it is listening, then it
+   is the loudest thing on the form — you need to be able to tell at a glance
+   that something is recording you.
+
+   Written as #mu-chat-form #mu-chat-mic and not as the id alone, because the
+   "#mu-chat-form button" rule below is 0-1-1 and paints every button in the
+   box black — so the id alone lost, and the microphone rendered as a second
+   Send button sitting next to Send. */
+#mu-chat-form #mu-chat-mic{width:auto;min-width:0;height:auto;background:none;border:0;border-radius:0;padding:6px 8px;cursor:pointer;color:#888;display:flex;align-items:center}
+#mu-chat-form #mu-chat-mic:hover{background:none;color:#111}
+#mu-chat-form #mu-chat-mic.on{color:#c00}
+#mu-chat-form #mu-chat-mic.on svg{animation:mu-mic-pulse 1.2s ease-in-out infinite}
+@keyframes mu-mic-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+/* Reading back, beside who is answering — the same kind of decision. */
+#mu-chat-say{display:flex;align-items:center;gap:6px;cursor:pointer}
+#mu-chat-say input{margin:0}
 #mu-chat-opts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:6px 0 0}
 #mu-chat-opts:empty{margin:0}
 #mu-chat-agent{display:flex;align-items:center;gap:8px;font-size:12px;color:#999;cursor:pointer;user-select:none}
@@ -709,6 +756,9 @@ function ask(q){
               history.push({prompt:q,answer:streamText});
               save();
               toBottom(false);
+              // Out loud, when that was asked for. streamText and not ev.html:
+              // a voice reading markup says "less than div" at you.
+              if(window.muSay)window.muSay(streamText);
             }else if(ev.type==='error'){
               stopWork();
               a.innerHTML='<div class="mu-err">'+esc(ev.message)+'</div>';
@@ -812,6 +862,77 @@ window.muChatNew=function(){
     .catch(function(){ var l=document.getElementById('mu-chat-agent'); if(l) l.remove(); });
 })();
 window.muChatAsk=ask;
+
+// Speaking, and being spoken to.
+//
+// Both are the browser's, both are optional, and each is drawn only where it
+// works — a microphone button that does nothing when pressed is worse than no
+// microphone button, and Firefox has no SpeechRecognition at all.
+//
+// # The microphone fills the box, it does not send
+//
+// Dictation is wrong often enough that sending on the last word would mean
+// watching your own mistake go out. It types for you and stops; the send is
+// still yours, and the box is still editable, which is the difference between a
+// faster input and a worse one.
+//
+// Interim results are shown as they arrive. Without them the button looks
+// broken for the length of a sentence, which is exactly when somebody presses
+// it again and stops the thing that was working.
+(function(){
+  var box=document.getElementById('mu-chat-input');
+  var mic=document.getElementById('mu-chat-mic');
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(box&&mic&&SR){
+    mic.hidden=false;
+    var rec=null,on=false,settled='';
+    mic.addEventListener('click',function(){
+      if(on&&rec){rec.stop();return;}
+      rec=new SR();
+      rec.lang=document.documentElement.lang||'en-GB';
+      rec.interimResults=true;
+      rec.continuous=false;
+      // What was already in the box stays. Somebody who typed half a sentence
+      // and then reached for the microphone meant to finish it, not replace it.
+      settled=box.value?box.value.replace(/\s*$/,'')+' ':'';
+      rec.onstart=function(){on=true;mic.classList.add('on');mic.setAttribute('aria-label','Stop');};
+      rec.onresult=function(e){
+        var said='';
+        for(var i=e.resultIndex;i<e.results.length;i++)said+=e.results[i][0].transcript;
+        box.value=settled+said;
+        box.style.height='auto';box.style.height=Math.min(box.scrollHeight,140)+'px';
+      };
+      var off=function(){on=false;mic.classList.remove('on');mic.setAttribute('aria-label','Speak');rec=null;box.focus();};
+      rec.onerror=off;rec.onend=off;
+      try{rec.start();}catch(e){off();}
+    });
+  }
+
+  // And back. The toggle is remembered per browser, which is the right scope
+  // for it: whether the room you are sitting in is one you can have a machine
+  // talking out loud in is a fact about the room, not about the account.
+  var say=document.getElementById('mu-chat-say');
+  var sayOn=document.getElementById('mu-chat-say-on');
+  if(say&&sayOn&&window.speechSynthesis){
+    say.hidden=false;
+    try{sayOn.checked=localStorage.getItem('mu_speak')==='1';}catch(e){}
+    sayOn.addEventListener('change',function(){
+      try{localStorage.setItem('mu_speak',sayOn.checked?'1':'0');}catch(e){}
+      // Silence now, not after the current sentence. Turning it off is
+      // something somebody does because it is talking and they want it to stop.
+      if(!sayOn.checked)window.speechSynthesis.cancel();
+    });
+    window.muSay=function(text){
+      if(!sayOn.checked)return;
+      text=String(text||'').trim();
+      if(!text)return;
+      // One answer at a time. Asking again before the last one finished would
+      // otherwise queue them and read both.
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    };
+  }
+})();
 
 // An answer that landed while the page was gone.
 //
