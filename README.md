@@ -19,7 +19,7 @@ What's included
 
 ## Services
 
-The services available via the web, API or as tools, reachable via MCP, and as cli command
+The services available via the web, API or as tools, reachable via MCP, and command line 
 
 | Service | Tools |
 |---|---|
@@ -59,7 +59,7 @@ The services available via the web, API or as tools, reachable via MCP, and as c
 | **Weather** | `weather_forecast` · `weather_air` · `weather_marine` · `weather_history` — conditions and the days ahead; air quality, pollutants, UV and pollen; wave height, period and direction at a coastal point; and what the weather actually was between two dates. Everything but the forecast is keyless |
 | **Web** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 
-[Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
+[Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a service.
 
 ## Agents
 
