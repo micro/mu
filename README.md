@@ -106,7 +106,7 @@ where things turn up. Reply to a thread and the agent answers in it.
 Connect a normal mail client over IMAP and read the same threads from your
 phone.
 
-## Use the Tools
+## Tools
 
 If you want to use the tools with an existing agent.
 
