@@ -718,6 +718,42 @@ td {
    was in the sidebar too for a moment, and the same number twice on one screen
    reads as a mistake. The top bar is fixed, always visible, and the same on
    every viewport. */
+/* Admin, beside the balance. Two items and they have to look like two of the
+   same thing: this carries the rail's markup — an <img> and a .label — and
+   without a rule of its own it inherited nothing, so the icon stacked above
+   the word in the corner.
+
+   Same shape as the balance below it, which is the other thing in this cluster:
+   a small mark, a gap, a word or a number, on one line, in the secondary
+   colour. The label goes at phone width — #head-right is beside a centred brand
+   and the two of them fight for the middle — and the icon stays, which is why
+   there is an aria-label on the link. */
+#head-admin {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #555;
+  line-height: 1;
+  white-space: nowrap;
+}
+#head-admin img {
+  width: 17px;
+  height: 17px;
+  vertical-align: middle;
+  opacity: .7;
+}
+#head-admin .label {
+  margin-left: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  vertical-align: middle;
+}
+#head-admin:hover img { opacity: 1 }
+@media only screen and (max-width: 600px) {
+  #head-admin .label { display: none }
+}
+
 #head-wallet {
   display: flex;
   align-items: center;
