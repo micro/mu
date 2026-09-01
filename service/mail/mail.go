@@ -290,36 +290,75 @@ func MessageUnlocked(msgID string) *Message {
 }
 
 // rebuildInboxes reconstructs inbox structures from messages (must hold mutex)
+//
+// For a change that touches the whole store — loading it, deleting from it.
+// Delivering one message calls fileMessage instead; see the note there for why
+// the difference is not a micro-optimisation.
 func rebuildInboxes() {
 	inboxes = make(map[string]*Inbox)
-
 	for _, msg := range messages {
-		// Skip spam messages from normal inbox
-		if msg.Spam {
-			continue
-		}
+		fileMessage(msg)
+	}
+}
 
-		// Add to sender's inbox (sent messages).
-		//
-		// Keyed on the account rather than on FromID, which is an account id
-		// on one path and an address on another — so the address form built an
-		// inbox called "asim@micro.mu" that nothing ever reads, and the thread
-		// went missing from the one belonging to asim.
-		sender := senderAccount(msg)
-		if sender != "" {
-			if inboxes[sender] == nil {
-				inboxes[sender] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
-			}
-			addMessageToInbox(inboxes[sender], msg, sender)
-		}
+// fileMessage puts one message in the inboxes it belongs to (must hold mutex).
+//
+// # Why delivery does not rebuild
+//
+// It did, and the cost was quadratic. rebuildInboxes discards every inbox and
+// files every message again; addMessageToInbox, for a message that starts a
+// thread, calls MessageUnlocked to find the thread root — which is a linear
+// scan of the whole store. n messages each scanning n is n², which is why the
+// measurement was worse than linear: five times the messages cost 6.9 times
+// the time.
+//
+//	messages stored    one delivery
+//	            100          1.4 ms
+//	          1,000         10.4 ms
+//	          5,000         71.3 ms
+//
+// And it ran holding the package's write mutex, so every reader and every
+// other writer on the instance waited behind it. At 5,000 messages that is a
+// 71ms stall on the whole instance to deliver one message; at 50,000 it is
+// closer to a second.
+//
+// Nothing about the arriving message requires the other n to be re-examined.
+// It belongs in at most two inboxes and one thread in each, which is what this
+// does — and rebuildInboxes is this in a loop, so there is still one place
+// that decides which inbox a message goes to.
+func fileMessage(msg *Message) {
+	if msg == nil || msg.Spam {
+		// Spam is not in the normal inbox.
+		return
+	}
+	// rebuildInboxes made the map on its way past, and delivery used to go
+	// through it — so a message arriving before Load had run wrote into a nil
+	// map and panicked. Made here because this is now the only thing that
+	// writes an inbox.
+	if inboxes == nil {
+		inboxes = make(map[string]*Inbox)
+	}
 
-		// Add to recipient's inbox
-		if msg.ToID != "" && msg.ToID != sender {
-			if inboxes[msg.ToID] == nil {
-				inboxes[msg.ToID] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
-			}
-			addMessageToInbox(inboxes[msg.ToID], msg, msg.ToID)
+	// Add to sender's inbox (sent messages).
+	//
+	// Keyed on the account rather than on FromID, which is an account id
+	// on one path and an address on another — so the address form built an
+	// inbox called "asim@micro.mu" that nothing ever reads, and the thread
+	// went missing from the one belonging to asim.
+	sender := senderAccount(msg)
+	if sender != "" {
+		if inboxes[sender] == nil {
+			inboxes[sender] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
 		}
+		addMessageToInbox(inboxes[sender], msg, sender)
+	}
+
+	// Add to recipient's inbox
+	if msg.ToID != "" && msg.ToID != sender {
+		if inboxes[msg.ToID] == nil {
+			inboxes[msg.ToID] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
+		}
+		addMessageToInbox(inboxes[msg.ToID], msg, msg.ToID)
 	}
 }
 
@@ -1495,7 +1534,8 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 	}
 
 	messages = append([]*Message{msg}, messages...)
-	rebuildInboxes()
+	// This message, not every message. See fileMessage.
+	fileMessage(msg)
 	err := save()
 	mutex.Unlock()
 
@@ -1622,7 +1662,8 @@ func SendMessageTo(d Delivery) error {
 	}
 
 	messages = append([]*Message{msg}, messages...)
-	rebuildInboxes()
+	// This message, not every message. See fileMessage.
+	fileMessage(msg)
 	err := save()
 	mutex.Unlock()
 
