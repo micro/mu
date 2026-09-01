@@ -508,16 +508,23 @@ function fetchW(la,lo){
 		// for it, which is the difference between offering a room and putting
 		// one in front of you.
 
-		// How things are, before you look anywhere.
+		// How things are, under the box and across both columns.
 		//
-		// Between the box and the inbox on purpose: somebody arrives with one
-		// question — is there anything I need to know — and answering it used
-		// to mean three pages.
+		// It was the first block in the rail, on the argument that the brief is
+		// yours in the same sense the inbox is. True, and it read wrong there:
+		// the rail is three lists of things — what arrived, who is working, what
+		// is left — and the brief is not a list, it is a sentence about all of
+		// them. A paragraph indented to a third of the page under a full-width
+		// input, with a grid of cards starting beside it, reads as a caption on
+		// the box rather than as the answer to "is there anything I need to
+		// know".
 		//
-		// Labelled like the three blocks under it — see briefHTML, which draws
-		// its own heading for the same reason it decides its own silence.
+		// So it sits with the box, which is the other thing here that spans:
+		// you ask, or you are told. Everything below is a place to look.
 		if viewerID != "" {
-			rail.WriteString(briefHTML(viewerID))
+			if brief := briefHTML(viewerID); brief != "" {
+				b.WriteString(`<div id="home-brief">` + brief + `</div>`)
+			}
 		}
 
 		// What arrived, under a heading that looks like one.
@@ -548,6 +555,12 @@ function fetchW(la,lo){
 		if who := agent.Preview(viewerID); who != "" {
 			rail.WriteString(sectionRule("Agents") + who)
 		}
+	}
+
+	// And what it is being paid for, last. See wallet.go for why it is at the
+	// foot and why the header's chip goes quiet on this page.
+	if viewerID != "" {
+		rail.WriteString(walletHTML(viewerID))
 	}
 
 	// The rail, if there is one, and then the world.

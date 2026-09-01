@@ -18,10 +18,12 @@ package home
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/thread"
 )
 
@@ -70,14 +72,19 @@ func TestHomeSplitsWhatIsYoursFromWhatIsTheWorlds(t *testing.T) {
 			"at every width again")
 	}
 
-	// Yours, on the left: how things are, then what arrived, then who is
-	// working — the order somebody reads them in.
+	// Yours, on the left: what arrived, then who is working, then what it is
+	// being paid for — the order somebody reads them in.
+	//
+	// Brief is not in this list any more. It spans both columns with the box:
+	// the rail is lists and the brief is a sentence about all of them. See
+	// TestTheBriefIsWithTheBoxAndNotInTheRail, which pins that from the
+	// other side.
 	//
 	// The headings are matched as sectionRule writes them rather than as bare
-	// words. All three are also names in the nav and in the phone tab bar, and
-	// the tab bar is rendered after the columns — so ">Inbox<" alone finds the
-	// tab and reports the inbox block on the wrong side of the page.
-	for _, want := range []string{sectionRule("Brief"), sectionRule("Inbox"), sectionRule("Agents")} {
+	// words. Both are also names in the nav and in the phone tab bar, and the
+	// tab bar is rendered after the columns — so ">Inbox<" alone finds the tab
+	// and reports the inbox block on the wrong side of the page.
+	for _, want := range []string{sectionRule("Inbox"), sectionRule("Agents")} {
 		if !strings.Contains(rail, want) {
 			t.Errorf("%s is not in the rail, so it takes the width the cards need", want)
 		}
@@ -191,5 +198,94 @@ func TestARailWithContentIsStillWritten(t *testing.T) {
 	}
 	if strings.Contains(body, `<div class="home-main full">`) {
 		t.Error("the main column claims both tracks while a rail is beside it")
+	}
+}
+
+// The brief is with the box, not in the rail.
+//
+// It was the rail's first block. The rail is three lists — what arrived, who is
+// working, what is left — and the brief is not a list, it is a sentence about
+// all of them; indented to a third of the page under a full-width input it read
+// as a caption on the box. It spans both columns now, with the box: you ask, or
+// you are told, and everything below is a place to look.
+func TestTheBriefIsWithTheBoxAndNotInTheRail(t *testing.T) {
+	const who = "briefplace"
+
+	th := thread.Open(who, "mail", "<brief@example.com>")
+	if th == nil {
+		t.Fatal("no thread")
+	}
+	thread.Join(who, th.ID, thread.Party{Kind: thread.RolePerson,
+		Key: "henrik@example.com", Name: "Henrik"})
+	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RolePerson,
+		Text: "Are you free Tuesday?", From: "henrik@example.com"})
+
+	body := homeFor(t, who)
+	rail, _, ok := splitHome(body)
+	if !ok {
+		t.Fatal("no rail at all")
+	}
+	if strings.Contains(rail, `id="home-brief"`) {
+		t.Error("the brief is back inside the rail, where it is a paragraph in a " +
+			"column of lists")
+	}
+	// And it is on the page, above the rail — otherwise this passes because the
+	// brief stopped rendering.
+	at := strings.Index(body, `id="home-brief"`)
+	if at < 0 {
+		t.Fatal("no brief on the page at all")
+	}
+	if railAt := strings.Index(body, `class="home-rail"`); railAt >= 0 && at > railAt {
+		t.Error("the brief is below the rail rather than above both columns")
+	}
+}
+
+// The balance is in the rail, and only where the header's chip is not.
+func TestTheBalanceIsInTheRailOnHome(t *testing.T) {
+	const who = "walletrail"
+
+	was := quota.Enabled
+	quota.Enabled = func() bool { return true }
+	t.Cleanup(func() { quota.Enabled = was })
+
+	got := walletHTML(who)
+	if got == "" {
+		t.Fatal("no balance block on an instance that charges")
+	}
+	if !strings.Contains(got, `href="/wallet"`) {
+		t.Error("the balance does not lead to the wallet")
+	}
+	if !strings.Contains(got, "credits") {
+		t.Error("the number has no unit on it")
+	}
+
+	// And nothing at all where nobody is charged, which is the same condition
+	// the header's chip uses — the two must never disagree about whether money
+	// exists on this instance.
+	quota.Enabled = func() bool { return false }
+	if walletHTML(who) != "" {
+		t.Error("a balance is drawn on an instance that does not charge")
+	}
+}
+
+// Home hides the header chip, or the same number is on the screen twice —
+// which internal/app/credits.go already records as a mistake once made.
+func TestHomeHidesTheHeaderBalance(t *testing.T) {
+	b, err := os.ReadFile("../internal/app/html/mu.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(b)
+	i := strings.Index(css, "body.page-home #head-wallet")
+	if i < 0 {
+		t.Fatal("nothing hides the header's balance on Home, so the balance is in " +
+			"the rail and in the corner at once")
+	}
+	rule := css[i:]
+	if j := strings.Index(rule, "}"); j > 0 {
+		rule = rule[:j]
+	}
+	if !strings.Contains(rule, "display: none") {
+		t.Errorf("the rule does not hide it: %s", rule)
 	}
 }

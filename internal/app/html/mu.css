@@ -754,6 +754,20 @@ td {
   #head-admin .label { display: none }
 }
 
+/* One number, one place. The balance is a chip in the header on every page —
+   and on Home it is a block at the foot of the rail instead, because that rail
+   is the list of what is yours and money was the only one of those you could
+   find nowhere but a badge in a corner.
+
+   Hidden here rather than not rendered, because the header is one shell shared
+   by every page and a per-page hole in it would be a parameter threaded through
+   renderShell for one page's benefit. The rule that matters is the one
+   credits.go states: the same number twice on one screen reads as a mistake.
+   This keeps it true from the other end. */
+body.page-home #head-wallet {
+  display: none;
+}
+
 #head-wallet {
   display: flex;
   align-items: center;
@@ -996,6 +1010,7 @@ body.page-home #page-title ~ #customize-link {
      is for. */
   #home-date,
   #home-agent,
+  #home-brief,
   .here-block {
     grid-column: 1 / -1;
   }
@@ -1175,6 +1190,29 @@ body.page-home #page-title ~ #customize-link {
 #home h1 {
   margin-top: 0;
 }
+
+/* The balance at the foot of Home's rail. A number and its unit on one line,
+   sized like a figure rather than like a heading: the sections above it are
+   lists you read and this is one fact you glance at. */
+.home-wallet {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  text-decoration: none;
+  padding: 2px 0 4px;
+}
+.home-wallet-n {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary, #111);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.home-wallet-w {
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+.home-wallet:hover .home-wallet-n { text-decoration: underline }
 
 .home-left, .home-right {
   display: flex;
