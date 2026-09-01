@@ -68,146 +68,63 @@ func tableRows(t *testing.T, file, heading string) [][]string {
 
 var backticked = regexp.MustCompile("`([a-z0-9_]+)`")
 
-// The README's tool table is grouped by service, and the group names have to be
-// the names those services go by everywhere else — the sidebar, /tools, the
-// tool prefix. They drifted once already: Calendar for events, Faith for what
-// is now prayer, Web for a service the sidebar calls Search.
-func TestReadmeToolTableUsesServiceNames(t *testing.T) {
-	registerAll(t)
-
-	seen := map[string]bool{}
-	for _, cells := range tableRows(t, at("README.md"), "## Services") {
-		if len(cells) < 2 {
-			t.Errorf("malformed row: %v", cells)
-			continue
-		}
-		label := strings.Trim(cells[0], "*")
-
-		// Tools with no service in front of the underscore — agent, quran,
-		// save, the moderation verbs — have no service to be named after and
-		// live in one row together.
-		if label == "Platform" {
-			for _, m := range backticked.FindAllStringSubmatch(cells[1], -1) {
-				if svc, _, ok := strings.Cut(m[1], "_"); ok {
-					if _, registered := service.SpecFor(svc); registered {
-						t.Errorf("%s belongs under %s, not Platform", m[1], service.Label(svc))
-					}
-				}
-			}
-			continue
-		}
-
-		for _, m := range backticked.FindAllStringSubmatch(cells[1], -1) {
-			svc, _, hasPrefix := strings.Cut(m[1], "_")
-			if !hasPrefix {
-				svc = m[1] // a bare tool named for its service, like chat
-			}
-			_, registered := service.SpecFor(svc)
-			if !registered && !hasPrefix {
-				continue // backticked prose, not a tool name
-			}
-			if !registered {
-				t.Errorf("%s is listed under %q but %q is not a registered service", m[1], label, svc)
-				continue
-			}
-			seen[svc] = true
-			if want := service.Label(svc); label != want {
-				t.Errorf("%s is listed under %q; %s is called %q in the sidebar and on /tools",
-					m[1], label, svc, want)
-			}
-		}
-	}
-
-	// Every registered service should be findable in the table, page or no
-	// page. It used to be only the ones with a page, which let the headless
-	// ones go undocumented without anything failing: context and memory —
-	// four tools, the first thing an agent should call — were missing from the
-	// README entirely and this test was satisfied.
-	for _, s := range allSpecs() {
-		if !seen[s.Name] {
-			t.Errorf("%s is registered but has no tools in the README table", s.Name)
-		}
-	}
-}
-
-// The README table names tools, and a name that no longer exists reads exactly
-// like one that does. This is the same rot toolrefs_test.go catches in shipped
-// descriptions, in the one document most people read first: the table went on
-// listing `chat` after it was removed, and `hadith`, `save` and `dismiss` for a
-// commit after they were namespaced.
+// The README's command examples name real tools.
 //
-// Aliases count. Keeping the old name working is a deliberate kindness to
-// anything already calling it; printing the old name in the table is different,
-// because it teaches the alias instead of the tool.
-func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
+// There was a "## Services" table here and three tests read it: that every
+// group was named what the service is called elsewhere, that every tool in it
+// existed, and that it was alphabetical. The README has been compacted and the
+// table is gone, so all three were reading a heading that is not there.
+//
+// The claim survives the table, which is why this is a repoint rather than a
+// deletion. The CLI section is a block of worked examples — "mu news search",
+// "mu markets list" — and an example naming a renamed service reads exactly as
+// well as one that does not. That is the same rot the table tests caught, in
+// the part of the document people actually copy from.
+//
+// Only examples whose first word is a registered service are checked. The rest
+// of the block is CLI verbs — login, config, ask, agent, help — which are not
+// tools and have no service in front of them.
+func TestTheReadmesCommandExamplesNameToolsThatExist(t *testing.T) {
 	registerAll(t)
 	tool.DeriveTools()
 
 	real := map[string]bool{}
-	for _, tool := range api.Commands() {
-		real[tool.Name] = true
+	for _, c := range api.Commands() {
+		real[c.Name] = true
 	}
-	// Tools registered by hand rather than derived from a Spec.
-	src := []byte(registrationSource(t))
-	for _, m := range regexp.MustCompile(`Name:\s*"([a-z][a-z0-9_]*)"`).FindAllStringSubmatch(string(src), -1) {
+	for _, m := range regexp.MustCompile(`Name:\s*"([a-z][a-z0-9_]*)"`).
+		FindAllStringSubmatch(registrationSource(t), -1) {
 		real[m[1]] = true
 	}
 
-	var gone []string
-	for _, cells := range tableRows(t, at("README.md"), "## Services") {
-		if len(cells) < 2 {
-			continue
-		}
-		for _, m := range backticked.FindAllStringSubmatch(cells[1], -1) {
-			name := m[1]
-			// Only things shaped like a tool; the cells also contain prose in
-			// backticks, like `mu.db` and `id`.
-			if !strings.Contains(name, "_") || strings.Contains(name, ".") {
-				continue
-			}
-			if !real[name] {
-				gone = append(gone, name+" (under "+strings.Trim(cells[0], "*")+")")
-			}
-		}
-	}
-	if len(gone) > 0 {
-		t.Errorf("the README lists %d tool(s) that do not exist:\n  %s",
-			len(gone), strings.Join(gone, "\n  "))
-	}
-}
-
-// The tool table is alphabetical, and a new row appended to the bottom looks
-// fine in a diff and wrong on the page. Database went in below Video, between
-// V and W, because appending is what you do to a list you are not looking at.
-//
-// Platform is last on purpose: it is the tools with no service in front of the
-// underscore, so it is a remainder rather than a name to sort.
-func TestReadmeToolTableIsAlphabetical(t *testing.T) {
-	var labels []string
-	for _, cells := range tableRows(t, at("README.md"), "## Services") {
-		if len(cells) < 2 {
-			continue
-		}
-		labels = append(labels, strings.Trim(cells[0], "*"))
-	}
-	if len(labels) < 2 {
-		t.Fatalf("found %d rows in the tool table", len(labels))
+	b, err := os.ReadFile(at("README.md"))
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	// There used to be a Platform row at the end, holding the tools that came
-	// from no service: agent_ask, quran_search, the content verbs. There are
-	// none — every tool is derived from a service now — so the table is one
-	// alphabetical list with no remainder, and a Platform row reappearing means
-	// a tool has been written somewhere other than a service.
-	if last := labels[len(labels)-1]; last == "Platform" {
-		t.Error("a Platform row is back; a tool that belongs to no service is a " +
-			"service that has not been written yet")
+	// "mu <service> <method>" at the start of a line in a fenced block, which
+	// is how every example in the file is written.
+	example := regexp.MustCompile(`(?m)^mu ([a-z][a-z0-9]*) ([a-z][a-z0-9_]*)`)
+	found := example.FindAllStringSubmatch(string(b), -1)
+	if len(found) == 0 {
+		t.Fatal("no `mu <service> <method>` examples in the README — the CLI " +
+			"section has moved and this test is reading the wrong thing")
 	}
-	named := labels
 
-	for i := 1; i < len(named); i++ {
-		if strings.ToLower(named[i]) < strings.ToLower(named[i-1]) {
-			t.Errorf("%q comes after %q in the table but before it alphabetically", named[i], named[i-1])
+	checked := 0
+	for _, m := range found {
+		svc, method := m[1], m[2]
+		if _, registered := service.SpecFor(svc); !registered {
+			continue // a CLI verb, not a service: login, config, ask, help
 		}
+		checked++
+		if name := svc + "_" + method; !real[name] {
+			t.Errorf("the README shows `mu %s %s`, and %s is not a tool that exists",
+				svc, method, name)
+		}
+	}
+	if checked == 0 {
+		t.Error("not one README example named a registered service, so this test " +
+			"passed without checking anything")
 	}
 }

@@ -1071,19 +1071,28 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// navAdmin is the operator's door, directly under Home.
+// headAdmin is the operator's door, in the header rather than the rail.
 //
-// It sat at the bottom with Account and Logout, on the reasoning that admin is a
-// role and a role belongs with identity. That is true and it is not what an
-// operator does with it: this is the page they open most, several times a day,
-// and it was the last item in the second group — past Usage, past whatever is
-// pinned, below the fold on a phone. Home is where you go to see how the
-// instance is; Admin is the same question with the lid off, so it goes next to
-// it.
+// It has been three places. At the foot with Account and Log out, on the
+// reasoning that admin is a role and a role belongs with identity; then second
+// in the rail under Home, on the reasoning that an operator opens it several
+// times a day and the foot of a list is not where a thing used that often
+// belongs. The second reason was right about the frequency and wrong about the
+// list.
 //
-// Nothing changes for anybody else. It is drawn only for an admin, and /admin
-// checks the session itself regardless — this is about not showing a door that
-// is not yours, not about guarding it.
+// The rail is the product: Home, Inbox, Agents, Services, and the account's
+// own. Admin is none of those — it is the instance with the lid off, and a
+// console sitting second among the four things this *is* made the rail read as
+// four destinations plus an exception. It is a different kind of thing, so it
+// goes somewhere that is a different kind of place.
+//
+// The header, beside the balance, which is the other item there that is a fact
+// about your standing rather than a page in the product. #head-right was built
+// as a flex cluster for exactly this: an item that comes and goes without
+// anything being nudged.
+//
+// Drawn only for an admin, and /admin checks the session itself regardless —
+// this is about not showing a door that is not yours, not about guarding it.
 // navMain is the menu: every destination, in one flat list.
 //
 // It was two lists. Four links here — Home, Inbox, Agents, Services — and five
@@ -1110,12 +1119,11 @@ func navMain(acc *auth.Account) string {
 	// beside Log out — which is where somebody looks when the question is "who
 	// am I signed in as and what is mine".
 	//
-	// Admin stays. It is not yours, it is the instance's, and an operator
-	// reaches for it in the middle of doing something rather than at the moment
-	// they think about their own account.
-	if acc != nil {
-		b += navAdmin(acc)
-	}
+	// Admin is not here either, and no longer in this rail at all. It is the
+	// one door in the list that is not a place in the product — Home, Inbox,
+	// Agents and Services are the four things this is, and an operator console
+	// wedged second among them made the rail read as a list of pages plus one
+	// exception. It is in the header now, beside the balance: see headAdmin.
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
 	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
 	b += item("nav-services", "/services", "/services.svg", "Services")
@@ -1181,11 +1189,12 @@ func navTabs(acc *auth.Account) string {
 // put anything in.
 var TopUpConfigured func() bool
 
-func navAdmin(acc *auth.Account) string {
+func headAdmin(acc *auth.Account) string {
 	if acc == nil || !acc.Admin {
 		return ""
 	}
-	return `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
+	return `<a id="head-admin" href="/admin" aria-label="Admin"><img src="/admin.svg?` + Version +
+		`"><span class="label">Admin</span></a>`
 }
 
 // navPinned is the reader's own services, under a heading of their own.
@@ -1607,7 +1616,7 @@ func ValidEmail(s string) bool {
 func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path string) string {
 	return fmt.Sprintf(Template,
 		lang, title, desc, bodyAttr,
-		headBalance(acc),
+		headAdmin(acc)+headBalance(acc),
 		navMain(acc),
 		navPinned(acc),
 		navBottom(acc),

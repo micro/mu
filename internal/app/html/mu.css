@@ -5876,7 +5876,18 @@ button.pill:hover {
    The pill shapes it drew four ways are gone; it uses .pill above. What is left
    here is the part that is genuinely only true of a mailbox. */
 
-.ib { max-width: 760px }
+/* No width of its own. This was 760px — a bare number with no reason beside
+   it, in a file where every other measure has one — inside a column that is
+   1120px on a laptop. So the inbox was the one page that did not fill its own
+   page, and the difference read as the mailbox being a narrower kind of place
+   than the catalogue next to it.
+
+   A list is not prose and does not want a prose measure. The row is three
+   lines with the facts pushed right, and what the extra width buys is the
+   subject and its snippet clearing the timestamp instead of wrapping under it.
+   The reading measure that 760 was reaching for belongs on the message, which
+   has one — see .ib-msg — not on the list of them. */
+.ib { max-width: none }
 
 /* The top of the mailbox: what this list is, and what you do from here.
  *

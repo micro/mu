@@ -175,7 +175,12 @@ func kinds(accountID, current string) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<p class="home-section ib-boxes-head"><small>Kind</small></p>`)
+	// "Type", not "Kind". Kind is this repository's own word — data.Vocabulary
+	// calls them kinds and the URL still says kind=, because that vocabulary
+	// travels and renaming it would break a link somebody saved. What a reader
+	// is being asked here is what sort of thing to show, and the word for that
+	// on a screen is Type.
+	b.WriteString(`<p class="home-section ib-boxes-head"><small>Type</small></p>`)
 	b.WriteString(`<div class="ib-boxes">`)
 	for _, k := range []struct{ label, val string }{
 		{"Everything", ""},

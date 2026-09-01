@@ -595,10 +595,22 @@ func addressBar(r *http.Request, accountID, box string) string {
 	// are the page's actions and every other page in this product puts those at
 	// the top left in that shape; two pills floated right were this page's own
 	// arrangement and nowhere else's.
-	acts := ""
-	if mail.Reachable() {
-		acts = app.ActionLink("/inbox/new", "New")
-	}
+	// New is always here.
+	//
+	// It was drawn only when mail.Reachable() — which is only "an operator has
+	// set a mail domain". Three lines under that function the package says what
+	// the shape actually is: "an inbox that always works, and a domain that
+	// turns it into an email address when an operator adds one." The button did
+	// not believe it. On every fresh install, and on every instance that never
+	// intends to send mail outside itself, there was no way to write anything
+	// at all from the page whose whole job is what you write and what arrives.
+	//
+	// A domain is needed to reach a stranger. It is needed for none of the
+	// things this button starts: a note and a task have no recipient, and a
+	// message to your own agent or to somebody with an account here is
+	// delivered locally — see the send path in new.go, which resolves @name
+	// against the accounts on this instance and never leaves it.
+	acts := app.ActionLink("/inbox/new", "New")
 	// No Connect a mail client here.
 	//
 	// It sat beside New as a text link, on the reasoning that writing a message

@@ -1,22 +1,23 @@
 package app
 
-// Running the place is a nav item, not a line of text on a settings page.
+// Running the place is a door, and not one of the four the product is.
 //
 // The admin dashboard was reachable only as "Admin Dashboard →" inside the
 // Settings card on /account — three clicks from anywhere, below passkeys and
 // blocked users, on the page you go to in order to change your language. It is
 // the page an operator opens most and it was the hardest one to reach.
 //
-// It sat in the bottom group with Account and Logout, on the reasoning that
-// admin is a role and roles sit with identity. That was right, and the objection
-// to it was about position rather than grouping: it ended up last in the second
-// group, past Usage and past whatever is pinned. Moving it under Home fixed the
-// position and broke the grouping — it read as a fourth level of the product,
-// between how the instance looks and what you do with it, sitting above Inbox
-// for the one account that has it.
+// Then the bottom group with Account and Log out, on the reasoning that admin
+// is a role and roles sit with identity; then second in the rail under Home,
+// on the reasoning that the foot of a list is the wrong place for something
+// opened several times a day. That was right about the frequency and wrong
+// about the list: the rail is Home, Inbox, Agents, Services and the account's
+// own pages, and a console sitting second among them made the rail read as
+// four destinations plus an exception.
 //
-// It is directly under Account now, which answers both. Usage has left the group
-// for a card on /account, so there is nothing between them.
+// It is in the header now, beside the balance — the other item there that is a
+// fact about your standing rather than a page in the product. So these tests
+// assert two things: an admin has the door, and it is not in the rail.
 
 import (
 	"os"
@@ -27,32 +28,33 @@ import (
 )
 
 func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
-	nav := navAdmin(&auth.Account{ID: "boss", Admin: true})
+	nav := headAdmin(&auth.Account{ID: "boss", Admin: true})
 	if !strings.Contains(nav, `href="/admin"`) {
 		t.Fatal("an admin has no way to the dashboard from the sidebar")
 	}
 	if strings.Contains(nav, "display: none") {
 		t.Error("the admin's own link is hidden, so it needs JavaScript to appear")
 	}
-	// And it is drawn in the rail, above the foot.
+	// And it is in the header, before the rail starts.
 	//
-	// It used to assert "between Account and Log out", which stopped being a
-	// statement about Admin the moment Account moved to the foot. Admin did not
-	// move: it is the instance's, not yours, and an operator reaches for it in
-	// the middle of doing something rather than when thinking about their own
-	// account. So the claim is that it is in the rail with the destinations and
-	// above the foot, which is where the personal pages and Log out are.
+	// Read by position, because that is the whole claim. #head-right is in the
+	// markup above #container, so an Admin link that landed anywhere in the
+	// rail — where it was, second under Home — comes after it. Asserting on the
+	// id alone would pass with the link back in the list it left.
 	page := renderWithLang("t", "d", "", "en", &auth.Account{ID: "boss", Admin: true})
-	adm, who, out := strings.Index(page, `id="nav-admin"`), strings.Index(page, "Signed in as"),
+	adm, rail, out := strings.Index(page, `id="head-admin"`), strings.Index(page, `id="nav"`),
 		strings.Index(page, `id="nav-logout"`)
-	if adm < 0 || who < 0 || out < 0 {
-		t.Fatalf("the menu is missing an item (admin %d, signed-in %d, logout %d)", adm, who, out)
+	if adm < 0 || rail < 0 || out < 0 {
+		t.Fatalf("the shell is missing a part (admin %d, rail %d, logout %d)", adm, rail, out)
 	}
-	if adm > who {
-		t.Errorf("admin is below the foot rather than in the rail (admin %d, signed-in %d)", adm, who)
+	if adm > rail {
+		t.Errorf("admin is inside the rail rather than in the header (admin %d, rail %d) — "+
+			"the rail is the four things the product is, and an operator console is "+
+			"not one of them", adm, rail)
 	}
-	if out < who {
-		t.Errorf("log out is above the name rather than under it (signed-in %d, logout %d)", who, out)
+	// Nothing named nav-admin anywhere: the rail entry is gone, not duplicated.
+	if strings.Contains(page, `id="nav-admin"`) {
+		t.Error("the rail still draws its own Admin entry, so the door is in two places")
 	}
 }
 
@@ -65,7 +67,7 @@ func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
 // Two then came back, which is not the menu returning: Account and Profile are
 // the two that are about you rather than about the instance, and a flat list
 // under your own name hides nothing. Wallet and Tokens stayed in the rail, and
-// so did Admin, which is the instance's rather than yours.
+// Admin is in neither: it has left the rail for the header.
 //
 // The dead-link checks stay. Saved pointed at /user, deleted along with the
 // feed controls it held, and Support pointed at /support after that page and
@@ -113,9 +115,9 @@ func TestTheBottomIsWhoYouAreAndTheWayOut(t *testing.T) {
 }
 
 // Nothing at all for anybody else, rather than a hidden link JavaScript removes:
-// the nav is rendered per viewer, so there is no cached page to defend against.
+// the shell is rendered per viewer, so there is no cached page to defend against.
 func TestAnOrdinaryAccountIsNotShownTheDoor(t *testing.T) {
-	if nav := navAdmin(&auth.Account{ID: "reader"}); nav != "" {
+	if nav := headAdmin(&auth.Account{ID: "reader"}); nav != "" {
 		t.Errorf("a non-admin is offered the admin dashboard: %s", nav)
 	}
 	if strings.Contains(navBottom(&auth.Account{ID: "reader"}), "/admin") {
@@ -124,7 +126,7 @@ func TestAnOrdinaryAccountIsNotShownTheDoor(t *testing.T) {
 }
 
 func TestSignedOutGetsNoAdminLink(t *testing.T) {
-	if navAdmin(nil) != "" || strings.Contains(navBottom(nil), "/admin") {
+	if headAdmin(nil) != "" || strings.Contains(navBottom(nil), "/admin") {
 		t.Error("a signed-out visitor is offered the admin dashboard")
 	}
 }

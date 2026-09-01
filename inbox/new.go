@@ -261,6 +261,49 @@ func addressOfPerson(at string) (string, bool) {
 	return mail.EmailForUser(acc.ID, mail.ConfiguredDomain()), true
 }
 
+// whoIsHere is the datalist behind the To box: everyone on this instance.
+//
+// The field already took a handle — addressOfPerson resolves one, and has since
+// the Write button on a profile started putting @name in here — but nothing on
+// the page said so. A bare box labelled To, on a product whose whole point is
+// that you can write to an agent, asks a question it does not answer: who can I
+// write to, and how do I spell them?
+//
+// A datalist rather than a picker, because the answer is not a closed set. An
+// email address is a perfectly good value here and always was; suggesting the
+// local names does not stop anybody typing one. That is the whole reason this
+// is not a <select>.
+//
+// Agents are in it. They are accounts — acc.Agent marks one — and an agent is
+// the recipient somebody on a fresh instance is most likely to want, since it
+// is the one correspondent guaranteed to exist. Labelled so, because "who is
+// this" is the question the list is answering and a name alone does not say
+// whether it is a person or a program.
+//
+// Read from auth rather than from mu/agent: agent imports inbox, so this
+// package cannot import it back. An account knows it is an agent, which is the
+// fact needed here anyway.
+func whoIsHere(accountID string) string {
+	var b strings.Builder
+	b.WriteString(`<datalist id="ib-to-list">`)
+	for _, acc := range auth.AllAccounts() {
+		if acc == nil || acc.ID == accountID {
+			continue
+		}
+		label := acc.Name
+		if label == "" {
+			label = acc.ID
+		}
+		if acc.Agent {
+			label += " — agent"
+		}
+		b.WriteString(`<option value="` + html.EscapeString(acc.ID) +
+			`" label="` + html.EscapeString(label) + `">`)
+	}
+	b.WriteString(`</datalist>`)
+	return b.String()
+}
+
 // record files what was sent as a conversation, keyed so the reply joins it.
 func record(accountID, messageID string, f form) {
 	th := replyTarget(accountID, f)
@@ -475,8 +518,10 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		// and capped there.
 		b.WriteString(`<input type="hidden" name="to" value="` + html.EscapeString(f.To) + `">`)
 	} else {
-		b.WriteString(`<input class="ib-field" type="text" name="to" required placeholder="To" value="` +
+		b.WriteString(`<input class="ib-field" type="text" name="to" required placeholder="To" ` +
+			`list="ib-to-list" autocomplete="off" value="` +
 			html.EscapeString(strings.TrimPrefix(f.To, "@")) + `">`)
+		b.WriteString(whoIsHere(accountID))
 		b.WriteString(`<input class="ib-field" type="text" name="subject" placeholder="Subject" value="` +
 			html.EscapeString(f.Subject) + `">`)
 	}

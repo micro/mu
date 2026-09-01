@@ -88,9 +88,8 @@ mu x402                                 # paying per call: config, and your key
 mu help                                 # full tool list
 ```
 
-Every tool in the table above is a command: the service, then the method. The
-underscore form works too, so `mu news list` and `mu news_list` are the same
-call.
+Every tool is a command: the service, then the method. The underscore form works
+too, so `mu news list` and `mu news_list` are the same call.
 
 To authenticate
 
