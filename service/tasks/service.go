@@ -131,6 +131,13 @@ func Load() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("tasks", "service register failed: %v", err)
 	}
+
+	// The index is a separate file from the store, so an instance with one and
+	// not the other answers every search with nothing — including every
+	// instance upgrading to the first build that indexes tasks. In the
+	// background: a boot-time cost proportional to the work recorded, and
+	// nothing needs it before the first search.
+	go Reindex()
 }
 
 var Spec = service.Spec{

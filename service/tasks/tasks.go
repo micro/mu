@@ -148,7 +148,9 @@ func CreateOn(owner, threadID, agentID, title, detail, assignee string, due time
 	if err != nil {
 		return nil, err
 	}
-	return toTask(rec.ID, rec.Owner, rec.Data), nil
+	made := toTask(rec.ID, rec.Owner, rec.Data)
+	index(made)
+	return made, nil
 }
 
 // List returns the caller's tasks. status filters to one state; empty returns
@@ -268,7 +270,11 @@ func Update(owner, id, title, detail, status, assignee, result string, runSteps 
 	if err != nil {
 		return nil, err
 	}
-	return toTask(rec.ID, rec.Owner, rec.Data), nil
+	// Indexed on every update, because a task's Result — the thing most worth
+	// finding again — only exists after the run that produced it.
+	changed := toTask(rec.ID, rec.Owner, rec.Data)
+	index(changed)
+	return changed, nil
 }
 
 // Remove deletes a task the caller owns.
@@ -276,7 +282,14 @@ func Remove(owner, id string) error {
 	if owner == "" {
 		return fmt.Errorf("sign in to use tasks")
 	}
-	return userdb.Delete(ns, owner, collection, strings.TrimSpace(id))
+	id = strings.TrimSpace(id)
+	if err := userdb.Delete(ns, owner, collection, id); err != nil {
+		return err
+	}
+	// After the store confirms. Unindexing a task the store then refused to
+	// delete would hide one that is still on the list.
+	unindex(owner, id)
+	return nil
 }
 
 // Render writes tasks the way a model should read them: what to do, what state
@@ -418,9 +431,21 @@ func DeleteAll(owner string) {
 	if owner == "" {
 		return
 	}
+	// The ids first: after DeleteOwner there is nothing left to read them from
+	// and every one of them would stay on the index.
+	var ids []string
+	for _, t := range List(owner, "") {
+		ids = append(ids, t.ID)
+	}
+
 	if n, err := userdb.DeleteOwner(ns, owner); err != nil {
 		app.Log("tasks", "deleting %s's records: %v", owner, err)
+		return
 	} else if n > 0 {
 		app.Log("tasks", "deleted %d records for %s", n, owner)
+	}
+
+	for _, id := range ids {
+		unindex(owner, id)
 	}
 }
