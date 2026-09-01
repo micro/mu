@@ -346,6 +346,27 @@ about state, an agent decides which question to ask, and a service calling an
 agent is asking the model what its own answer should be. Enforced by
 `TestNoNewServiceCallsAnAgent`, which asserts zero.
 
+That test reads import paths, and `internal/ai` is not one of them — it is
+substrate, and a service is entitled to know about the runtime. So the
+forbidden act can be performed through a permitted import, and the rule passes.
+**The line is whether the model is producing the answer the caller asked for,
+or deciding what the answer should be.** Generating an image is the first: the
+caller asked for an image, and the model is the implementation the way an HTTP
+call to a provider would be. Composing a message in a chat room is the second —
+nobody asked for those words, so the service decided both that there should be
+a message and what it says. The first is a service using a tool. The second is
+a service being an agent, and belongs in one: publish the fact on
+`internal/event` and let an agent subscribe, as `service/mail` and `agent/mail`
+do.
+
+Counted rather than forbidden, in `test/service_models_test.go`, for the reason
+`test/service_hooks_test.go` gives about hooks: a test that failed on all of
+them would be deleted within a week, and the tool-shaped ones would be "fixed"
+into something worse. The ledger records which are which so the judgement is
+not re-derived from each call site, and pins the count so it cannot go up
+quietly. Two are debt today — `service/blog` and `service/chat` — tracked in
+#1469, and chat in #89 where moving it out also unblocks serving XMPP.
+
 Four things ask an agent for work: a chat message, an email arriving, a task
 assigned, a schedule firing. Three of the four used to reach upward through a
 function variable filled in at boot. They are one fact now —
