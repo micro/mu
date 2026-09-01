@@ -6,7 +6,7 @@ A home for agents, tools and services
 
 We're building services that operate as the building blocks for agents. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive become tools for agents to use.
 
-Using agents has also been a very fragmented experience. Work here is unified with everything going to one inbox, 
+Using agents has also been a very fragmented experience. Communication here is unified with everything going to one inbox, 
 whether it's mail, chat, notes, tasks, etc. Do it all and keep track of it from one place. 
 
 ## Features
