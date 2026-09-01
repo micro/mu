@@ -93,3 +93,45 @@ func TestTheAdminLinkIsFoundByTheIdItHas(t *testing.T) {
 			"something that is not there")
 	}
 }
+
+// The loading dim waits, so quick navigations never show one.
+//
+// It was applied the moment a click landed. That made every navigation flicker,
+// and made one of them look broken: an app page is a standalone document with
+// no #content — a frame around untrusted HTML, deliberately not part of the
+// shell — so opening an app dimmed the page, found nothing to swap, and then
+// hard-navigated. Dim, then reload, for a page that was always going to be a
+// full load.
+func TestTheLoadingDimIsDelayed(t *testing.T) {
+	body := script(t)
+	i := strings.Index(body, "data-loading")
+	if i < 0 {
+		t.Fatal("nothing sets data-loading any more")
+	}
+	// Set behind a timer rather than inline on the click.
+	if !strings.Contains(body, "setTimeout(function(){ content.setAttribute('data-loading'") {
+		t.Error("the dim is applied immediately, so every navigation flickers and " +
+			"a full-page one dims before it reloads")
+	}
+	if !strings.Contains(body, "clearTimeout(dim)") {
+		t.Error("the pending dim is never cancelled, so a fast response still dims " +
+			"after it has already been swapped in")
+	}
+}
+
+// And a response with nothing to swap hands over without leaving the dim on.
+func TestAFullPageResponseDoesNotStayDimmed(t *testing.T) {
+	body := script(t)
+	i := strings.Index(body, "if (!next)")
+	if i < 0 {
+		t.Fatal("swap() no longer handles a response with no #content")
+	}
+	branch := body[i:]
+	if j := strings.Index(branch, "\n"); j > 0 {
+		branch = branch[:j]
+	}
+	if !strings.Contains(branch, "removeAttribute('data-loading')") {
+		t.Errorf("the no-#content branch hard-navigates without clearing the dim, "+
+			"so the page it leaves is dimmed on the way out: %s", branch)
+	}
+}

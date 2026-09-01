@@ -500,7 +500,9 @@ var Template = `
           var leavingY = scrollNow();
           var doc = new DOMParser().parseFromString(html, 'text/html');
           var next = doc.getElementById('content');
-          if (!next) { location.href = url; return; }
+          // Not a shell page — an app is a frame around untrusted HTML and has
+          // no #content. Hand it to the browser, without leaving the dim on.
+          if (!next) { content.removeAttribute('data-loading'); location.href = url; return; }
 
           // The body's classes come with the page, and a soft navigation was
           // not bringing them.
@@ -619,10 +621,23 @@ var Template = `
             if (snap) remember(location.href, snap);
           }
 
-          content.setAttribute('data-loading', '1');
+          // The dim waits, so a navigation that is quick never shows one.
+          //
+          // It used to be applied the moment a click landed, which made every
+          // navigation flicker and made one of them look broken: an app page is
+          // a standalone document with no #content in it — it is a frame around
+          // untrusted HTML and deliberately not part of the shell — so opening
+          // an app dimmed the page, discovered there was nothing to swap, and
+          // then hard-navigated. Dim, then reload, for a page that was only ever
+          // going to be a full load.
+          //
+          // 150ms is under the threshold where a delay reads as one. Anything
+          // answered faster than that never dims, which is most of them.
+          var dim = setTimeout(function(){ content.setAttribute('data-loading', '1'); }, 150);
+          function undim() { clearTimeout(dim); content.removeAttribute('data-loading'); }
           fetch(url, {credentials: 'same-origin', headers: {'X-Mu-Nav': '1'}})
             .then(function(r){
-              if (!r.ok || (r.redirected && r.url !== url)) { location.href = url; return null; }
+              if (!r.ok || (r.redirected && r.url !== url)) { undim(); location.href = url; return null; }
               return r.text();
             })
             .then(function(html){
@@ -630,8 +645,8 @@ var Template = `
               remember(url, html);
               swap(html, push, url, restoreY);
             })
-            .catch(function(){ location.href = url; })
-            .then(function(){ content.removeAttribute('data-loading'); });
+            .catch(function(){ undim(); location.href = url; })
+            .then(undim);
         }
 
         document.addEventListener('click', function(e){
