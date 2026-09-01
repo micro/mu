@@ -29,9 +29,20 @@ import (
 // Short, and expected to stay short. Adding one means its page had nothing the
 // card did not; removing one means the opposite was discovered, which is what
 // happened to flights.
-var derived = map[string]string{
-	"hazards": "a magnitude picker over the same list the card shows",
-}
+// Empty, and that is a live position rather than an absence.
+//
+// hazards was the one entry. Its old page was a magnitude picker, a period
+// picker, a table and its own stylesheet — a form over one tool with one
+// argument — and deriving it was right against that page. It was wrong against
+// the question: the derived page answers "how do I call this" with argument
+// tables, curl lines and a POST form, and somebody opening /hazards is asking
+// "is anything happening". See service/hazards/page.go and #1483.
+//
+// The rule below has not changed and this does not weaken it. A service earns a
+// page by showing something the card cannot; hazards shows three feeds at once
+// where the card shows four quakes, which is the third reason — it is
+// browsable.
+var derived = map[string]string{}
 
 // keptItsPage records why, for the ones that draw their own. The reason is the
 // point: an entry with no reason is a page nobody has asked the question about.
@@ -73,6 +84,8 @@ var keptItsPage = map[string]string{
 		"directory nobody opens it for",
 	"news": "many stories, paged", "video": "many videos", "blog": "many posts",
 	"social": "a feed", "apps": "a directory you run things from",
+	"hazards": "three feeds in one answer — quakes, disaster alerts and flood " +
+		"warnings — where the card shows four quakes",
 	"chat": "rooms you talk in", "archive": "a search over everything kept",
 	"stream": "this instance's timeline", "prayer": "the day's reflection, the " +
 		"full timetable and the qibla — the card carries the verse and the next prayer",

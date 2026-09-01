@@ -167,7 +167,7 @@ var Spec = service.Spec{
 	Name:        "hazards",
 	Handler:     new(Server),
 	Description: "What is going wrong in the physical world: earthquakes and disaster alerts, live",
-	Page:        "/services/hazards",
+	Page:        "/hazards",
 	Icon:        "hazards.svg",
 	Card:        service.Glance(Card),
 	Endpoints: map[string]service.Endpoint{
