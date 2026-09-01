@@ -1013,7 +1013,14 @@ body.page-home #page-title ~ #customize-link {
    1400 rather than a rounder 1500 because 1440x900 is the laptop this is most
    often read on, and it clears the sum with 40px to spare. */
 @media only screen and (min-width: 1400px) {
-  .home-main #home {
+  /* :not(.full) here as well as at 1024, and not only for consistency: it is
+     what makes this rule win. A cascade tie is broken by source order, and
+     these two are not tied — :not() takes the specificity of its argument, so
+     .home-main:not(.full) #home carries two classes to .home-main #home's one
+     and beats it from a lower breakpoint whatever the order. Written without
+     it, this rule lost to the column rule at 1024 and Home stopped being three
+     columns at any width. */
+  .home-main:not(.full) #home {
     flex-direction: row;
   }
   /* :not(.full) throughout the three-column rules. With no rail this column is
