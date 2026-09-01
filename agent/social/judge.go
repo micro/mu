@@ -52,8 +52,17 @@ func judge(short []*candidate) []*candidate {
 	}
 
 	answer, err := ai.Ask(&ai.Prompt{
-		System:    judgeSystem,
-		Question:  numbered(short),
+		System:   judgeSystem,
+		Question: numbered(short),
+		// The cheap tier, like every other judgement nobody asked for.
+		//
+		// This named no model, so it got DefaultModel — the one the agent
+		// answers people on. It was the only automatic path on this instance
+		// doing that: gate, moderate, memory extraction, compaction, the
+		// digest, the brief and the summaries all take BackgroundModel. A
+		// ranking of posts nobody is waiting for does not need the model
+		// somebody talking to their agent is waiting for.
+		Model:     ai.BackgroundModel(),
 		Priority:  ai.PriorityLow,
 		MaxTokens: 200,
 		Caller:    "social-judge",

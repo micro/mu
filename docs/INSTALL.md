@@ -1096,7 +1096,8 @@ that same file, so this page does not repeat twenty-six rows.
 | `PUBLIC_URL` · `APP_URL` | — | Public origin, when it can't be derived |
 | `TOR_ONION` | — | Onion address, shown in the footer |
 | `NOTES` | on | Mu posts its own story to its own blog on a low cadence; `off` disables |
-| `OPINIONS` | on | One opinion piece per blog topic per day, spread across the waking hours, and the daily briefing is written from them. Each piece is a research pass and a generation billed to the instance's own account, so `off` disables them — the briefing then falls back to summarising the raw feeds |
+| `OPINIONS` | on | The blog writes an opinion piece a day, and the daily briefing is written from them. Each piece is a research pass and a generation billed to the instance's own account, so `off` disables them — the briefing then falls back to summarising the raw feeds |
+| `OPINIONS_PER_DAY` | 1 | How many pieces a day. The topic picked is whichever has gone longest without one, so the whole topic list is covered over as many days as there are topics. Raise it for a busier blog; never exceeds the number of topics, and is capped at 8 |
 
 ### CLI
 

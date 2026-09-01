@@ -37,25 +37,75 @@ func TestThereIsMoreThanOneTopicToWriteAbout(t *testing.T) {
 	}
 }
 
-// One piece per topic per day, up to the ceiling.
-func TestEveryTopicGetsAPieceInADay(t *testing.T) {
-	n := len(opinionCategories())
-	want := n
-	if want > maxDailyOpinions {
-		want = maxDailyOpinions
+// One piece a day, and every topic reached by rotation rather than by volume.
+//
+// This asserted one piece per topic per day — eight a day against eight topics
+// — on the argument that a topic visited every N days is not covered. The
+// argument that wins is the other one: nobody publishes eight opinion pieces a
+// day, and each piece is a research pass and a generation billed to the
+// instance. Coverage comes from nextCategory picking the topic that has gone
+// longest without one.
+func TestOnePieceADayByDefault(t *testing.T) {
+	if got := dailyOpinions(); got != 1 {
+		t.Errorf("dailyOpinions() = %d, want 1 — eight a day is the largest "+
+			"scheduled expense on the instance and no publication writes at that rate",
+			got)
 	}
-	if got := dailyOpinions(); got != want {
-		t.Errorf("dailyOpinions() = %d for %d topics, want %d — a topic that gets a "+
-			"piece every N days is not covered, it is visited", got, n, want)
+}
+
+// An operator can ask for more, up to the ceiling and never past the topics.
+func TestTheDailyCountCanBeRaisedButIsBounded(t *testing.T) {
+	t.Setenv("OPINIONS_PER_DAY", "3")
+	if got := dailyOpinions(); got != 3 {
+		t.Errorf("OPINIONS_PER_DAY=3 gives %d", got)
 	}
 
-	// And they fit in a day. opinionInterval spreads them across the sixteen
-	// waking hours but clamps at an hour, so a long enough topic list would
-	// schedule more pieces than there are slots and the last few would never
-	// be written.
-	if span := time.Duration(dailyOpinions()) * opinionInterval(dailyOpinions()); span > 24*time.Hour {
+	// Never more than the ceiling, whatever is asked for.
+	t.Setenv("OPINIONS_PER_DAY", "500")
+	if got := dailyOpinions(); got > maxDailyOpinions {
+		t.Errorf("OPINIONS_PER_DAY=500 gives %d, past the ceiling of %d",
+			got, maxDailyOpinions)
+	}
+	// And never more than there are topics — a second piece on the only
+	// subject configured is that subject twice.
+	if got := dailyOpinions(); got > len(opinionCategories()) {
+		t.Errorf("%d pieces for %d topics", got, len(opinionCategories()))
+	}
+
+	// Nonsense is ignored rather than taken as zero.
+	t.Setenv("OPINIONS_PER_DAY", "banana")
+	if got := dailyOpinions(); got != 1 {
+		t.Errorf("an unparseable OPINIONS_PER_DAY gives %d, want the default 1", got)
+	}
+}
+
+// The topic picked is the one that has gone longest without a piece.
+//
+// At eight a day the picker walked the file in order and the order did not
+// matter, because the whole list was covered before the day was out. At one a
+// day that is the bug the old shape was hiding: the first topic in
+// topics.json would win every morning and the blog would cover one subject for
+// ever.
+func TestTheTopicPickedIsTheOneLeftLongest(t *testing.T) {
+	cats := []string{"Crypto", "Dev", "Finance"}
+
+	// None published today. With no history at all, the first is as good as
+	// any — what matters is that a topic already covered today is skipped.
+	if got := nextCategory(cats, map[string]bool{"crypto": true}); got == "Crypto" {
+		t.Error("a topic already published today was picked again")
+	}
+	if got := nextCategory(cats, map[string]bool{"crypto": true, "dev": true,
+		"finance": true}); got != "" {
+		t.Errorf("every topic has had one today and %q was picked anyway", got)
+	}
+}
+
+// And the pieces still fit in a day.
+func TestThePiecesFitInADay(t *testing.T) {
+	n := dailyOpinions()
+	if span := time.Duration(n) * opinionInterval(n); span > 24*time.Hour {
 		t.Errorf("%d pieces at %v apart is %v of publishing — the ones at the end "+
-			"of the list never get written", dailyOpinions(), opinionInterval(dailyOpinions()), span)
+			"never get written", n, opinionInterval(n), span)
 	}
 }
 

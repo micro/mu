@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/internal/settings"
 
 	blogsvc "mu/service/blog"
 )
@@ -106,27 +108,50 @@ func opinionEngageLoop() {
 	app.Log("opinion", "Engagement loop disabled to reduce API costs")
 }
 
-// One piece per topic, per day — and a ceiling, because the topic list is a
-// data file and a data file can grow.
+// One piece a day.
 //
-// This was `const maxDailyOpinions = 1`, added as cost control, and one a day
-// against eight topics means each subject gets a piece every eight days. A
-// blog that says it is about Finance and last mentioned it a week ago is not
-// covering Finance. opinionInterval was already written for one-per-category —
-// it divides sixteen waking hours by the count — so the pacing has been
-// waiting for this the whole time.
+// This has been 1, then 8, and is 1 again. The argument for eight was
+// coverage: one per topic, so a blog that says it is about Finance does not
+// go a week without mentioning it. The argument against it is the one that
+// wins — nobody writes eight opinion pieces a day, and a blog that does is
+// not covering eight subjects, it is producing filler at a rate no reader
+// asked for and no human publication attempts.
 //
-// The ceiling is the honest part of the cost argument. Each piece is a
+// The cost is the same argument from the other side. Each piece is a
 // catalogue gather, a web research pass and a generation, all billed to
-// Micro's own account, so the number of them has to be bounded by something
-// other than how many strings somebody put in topics.json.
+// Micro's own account, and eight of those a day is the single largest
+// scheduled expense on the instance.
+//
+// Coverage is answered by rotation instead of by volume: publishNextOpinion
+// takes the category that has gone longest without one, so eight topics are
+// covered over eight days rather than eight times in one.
+//
+// OPINIONS_PER_DAY raises it on an instance that wants more, because this is
+// a judgement about editorial pace rather than a constant — the same shape as
+// OPINIONS=off below.
+const defaultDailyOpinions = 1
+
+// maxDailyOpinions is the ceiling, kept because the topic list is a data file
+// and a data file can grow.
 const maxDailyOpinions = 8
 
-// dailyOpinions is how many pieces today should have: one per topic, capped.
+// dailyOpinions is how many pieces today should have.
+//
+// One, unless an operator asked for more. Never more than there are topics —
+// a second piece on the only subject configured is the same subject twice —
+// and never more than the ceiling.
 func dailyOpinions() int {
-	n := len(opinionCategories())
+	n := defaultDailyOpinions
+	if v := strings.TrimSpace(settings.Get("OPINIONS_PER_DAY")); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 0 {
+			n = parsed
+		}
+	}
+	if topics := len(opinionCategories()); n > topics {
+		n = topics
+	}
 	if n > maxDailyOpinions {
-		return maxDailyOpinions
+		n = maxDailyOpinions
 	}
 	return n
 }
@@ -174,13 +199,50 @@ func publishNextOpinion() {
 		}
 	}
 
-	// Find next category to publish (tags are stored lowercase)
-	for _, cat := range categories {
-		if _, done := published[strings.ToLower(cat)]; !done {
-			publishCategoryOpinion(cat)
-			return
+	if cat := nextCategory(categories, published); cat != "" {
+		publishCategoryOpinion(cat)
+	}
+}
+
+// nextCategory is the topic that has gone longest without a piece.
+//
+// This took the first category in the file that had not been published today,
+// and `published` resets at midnight. At eight pieces a day that was fine — it
+// walked the whole list before the day was out, so the order did not matter.
+// At one a day it is the bug that shape was hiding: the first topic in
+// topics.json wins every morning, and the blog covers Crypto for ever while
+// the other seven are never reached.
+//
+// So the order is by when each topic last had one, oldest first, across all
+// time rather than today. Eight topics at one a day is each of them every
+// eight days, which is the coverage the eight-a-day version was reaching for
+// at eight times the cost.
+//
+// A topic that has never had a piece sorts before every topic that has, so a
+// newly added subject is written about next rather than in eight days.
+func nextCategory(categories []string, today map[string]bool) string {
+	last := map[string]time.Time{}
+	for _, post := range opinions(func(time.Time) bool { return true }) {
+		for _, cat := range categories {
+			if strings.Contains(strings.ToLower(post.Tags), strings.ToLower(cat)) {
+				if post.CreatedAt.After(last[cat]) {
+					last[cat] = post.CreatedAt
+				}
+			}
 		}
 	}
+
+	best, bestAt := "", time.Time{}
+	for _, cat := range categories {
+		if today[strings.ToLower(cat)] {
+			continue // already had one today
+		}
+		at := last[cat]
+		if best == "" || at.Before(bestAt) {
+			best, bestAt = cat, at
+		}
+	}
+	return best
 }
 
 // opinionInterval calculates spacing between posts.
