@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/auth"
+	"mu/internal/origin"
 	"mu/internal/quota"
 	"mu/internal/userdb"
 )
@@ -86,7 +88,7 @@ func StartVerify(owner, number string) error {
 	// who keeps hitting a provider error retry without limit.
 	noteStart(owner, number)
 
-	if _, err := send(number, "Your code is "+code+". It is good for ten minutes."); err != nil {
+	if _, err := send(number, intro(code)); err != nil {
 		return err
 	}
 	if err := quota.Charge(owner, quota.OpSMSSend, map[string]interface{}{
@@ -223,4 +225,51 @@ func digits(n int) (string, error) {
 		b.WriteString(d.String())
 	}
 	return b.String(), nil
+}
+
+// intro is the verification text, and the only message this instance is
+// guaranteed to send somebody.
+//
+// It said "Your code is 481920. It is good for ten minutes." — six digits from
+// a number nobody recognises, with nothing to say who sent it. So the one
+// message a new person is actually waiting for, with their attention on it,
+// spent itself on the code and told them nothing.
+//
+// It can do three things for the same money. It verifies. It puts the agent in
+// the address book, because a number that says who it is gets saved and every
+// phone offers to add an unknown sender. And it teaches the whole product —
+// "reply to this and I'll answer" is the entire interaction, learned by doing
+// it once rather than read on a settings page.
+//
+// # Plain ASCII, deliberately
+//
+// A text is charged per segment: 160 characters in GSM-7, and 70 the moment
+// one character is not in that alphabet. An em dash or a curly apostrophe
+// would double the price of every verification on the instance for a
+// typographic preference. Straight quote, full stops, no dashes.
+//
+// # The domain only when there is one
+//
+// origin.Self is empty until an operator sets one, and "your agent at " with
+// nothing after it is worse than not saying where.
+func intro(code string) string {
+	msg := "Your code is " + code + ". It is good for ten minutes. "
+	msg += "I'm " + auth.MicroName + ", your agent"
+	if host := selfHost(); host != "" {
+		msg += " at " + host
+	}
+	return msg + ". Reply to this any time and I'll answer."
+}
+
+// selfHost is the instance's domain with no scheme on it, or nothing.
+//
+// Trimmed of the scheme because this is read aloud in a text message, where
+// "https://" is four words of noise nobody needs to dial.
+func selfHost() string {
+	u := strings.TrimSpace(origin.Self())
+	if u == "" {
+		return ""
+	}
+	u = strings.TrimPrefix(strings.TrimPrefix(u, "https://"), "http://")
+	return strings.TrimSuffix(u, "/")
 }

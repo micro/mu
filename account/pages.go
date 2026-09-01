@@ -879,6 +879,21 @@ func otherAddresses(acc *auth.Account) string {
 // Absent entirely on an instance with no number to text from. A form that can
 // only fail reads as broken rather than as unconfigured — the same call the
 // wallet's convert form makes.
+// agentNumber is the number the agent texts from, for saving as a contact.
+//
+// Drawn only when the instance has one. A line saying where texts come from,
+// on an instance that cannot send any, is furniture that teaches the page is
+// broken.
+func agentNumber() string {
+	from := strings.TrimSpace(sms.From())
+	if from == "" {
+		return ""
+	}
+	return app.NoteHTML("It texts you from <code>" + htmlpkg.EscapeString(from) +
+		"</code>. Save that as " + htmlpkg.EscapeString(auth.MicroName) +
+		" and you can write to it from your phone.")
+}
+
 func renderPhoneCard(accountID string) string {
 	if !sms.Configured() {
 		return ""
@@ -897,6 +912,15 @@ func renderPhoneCard(accountID string) string {
 			b.String(),
 			app.Note("A text from here reaches your agent, and it answers. "+
 				"Texts from anywhere else are filed and answered by nobody."),
+			// The other direction, which this card never mentioned.
+			//
+			// Every section on this page asks the same question — prove this is
+			// yours, so we will listen to it — and none of them says how the
+			// agent reaches you or what number it comes from. So the one thing
+			// somebody needs in order to save the contact was on the page
+			// nowhere, and the number arrived unannounced in a text about a
+			// code. See #1485.
+			agentNumber(),
 			app.Form{Action: "/account", Inline: true,
 				Fields: []app.Field{{Name: "verify_number", Type: "tel", Required: true,
 					Placeholder: "+447700900123"}},
