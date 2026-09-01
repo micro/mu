@@ -667,10 +667,8 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			mine := userID != "" && (userID == a.AuthorID || isAdmin)
 			controls := ""
 			if mine {
-				controls = fmt.Sprintf(` · <a href="/apps/%s/edit">Edit</a>`+
-					` · <a href="/apps/%s/delete" class="text-error" `+
-					`onclick="return confirm('Delete this app?')">Delete</a>`,
-					htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug))
+				controls = fmt.Sprintf(` · <a href="/apps/%s/edit">Edit</a> · %s`,
+					htmlpkg.EscapeString(a.Slug), deleteLink(a.Slug, ""))
 			} else {
 				controls = app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "", "")
 			}
@@ -988,7 +986,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	if detailAdmin || detailUserID == a.AuthorID {
 		sb.WriteString(`<p class="text-sm">`)
 		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" class="text-muted no-underline">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
-		sb.WriteString(fmt.Sprintf(` · <a href="#" class="text-error no-underline" onclick="if(confirm('Delete this app?')){fetch('/apps/%s/delete',{method:'POST'}).then(function(){window.location='/apps'})}return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(` · ` + deleteLink(a.Slug, " no-underline"))
 		sb.WriteString(`</p>`)
 	}
 
@@ -1474,6 +1472,32 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 	save()
 
 	app.RespondJSON(w, a)
+}
+
+// deleteLink is the Delete control, and it posts.
+//
+// It was written twice and one of the two was a plain <a href> to
+// /apps/<slug>/delete with a confirm on it. That route is POST-only, so a
+// click was a GET, matched nothing, and 404d — after the confirmation dialog
+// had already asked whether you were sure, which is the worst place to find
+// out. The other copy did it correctly by fetch, so the same button worked on
+// one page and not the other.
+//
+// Deleting is a write and a write is a POST. Not because the route happens to
+// insist: a link is something a browser may follow on its own — prefetched,
+// crawled, or opened by anything walking the page — and "delete this app"
+// behind a GET is a thing that can happen without a person deciding it.
+//
+// One function, because three copies of a delete is how one of them ends up
+// being the wrong verb. The third is in the editor, which has its own script
+// and its own error line, and stays there.
+func deleteLink(slug, extraClass string) string {
+	esc := htmlpkg.EscapeString(slug)
+	return fmt.Sprintf(`<a href="#" class="text-error%s" `+
+		`onclick="if(confirm('Delete this app?')){`+
+		`fetch('/apps/%s/delete',{method:'POST',credentials:'same-origin'})`+
+		`.then(function(r){if(r.ok){window.location='/apps'}else{alert('Could not delete this app.')}})}`+
+		`return false;">Delete</a>`, extraClass, esc)
 }
 
 // handleDelete deletes an app.
