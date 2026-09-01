@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"mu/internal/app"
+	"mu/internal/contacts"
 	"mu/internal/service"
 )
 
@@ -144,6 +145,13 @@ func Load() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("contacts", "service register failed: %v", err)
 	}
+
+	// The index is a separate file from the store, so an instance that has one
+	// and not the other answers every search with nothing — including every
+	// instance upgrading to the first build that indexes contacts. In the
+	// background because it is a boot-time cost proportional to the address
+	// books on the instance, and nothing needs it before the first search.
+	go contacts.Reindex()
 }
 
 var Spec = service.Spec{

@@ -93,14 +93,18 @@ func Add(owner, name, email, phone, note string) (*Contact, error) {
 		if err != nil {
 			return nil, err
 		}
-		return toContact(rec.ID, rec.Owner, rec.Data), nil
+		updated := toContact(rec.ID, rec.Owner, rec.Data)
+		index(updated)
+		return updated, nil
 	}
 
 	rec, err := userdb.Create(ns, owner, collection, fields, false)
 	if err != nil {
 		return nil, err
 	}
-	return toContact(rec.ID, rec.Owner, rec.Data), nil
+	added := toContact(rec.ID, rec.Owner, rec.Data)
+	index(added)
+	return added, nil
 }
 
 // Find looks a contact up by name, part of a name, or address.
@@ -167,7 +171,14 @@ func Remove(owner, id string) error {
 	if owner == "" {
 		return fmt.Errorf("sign in to use contacts")
 	}
-	return userdb.Delete(ns, owner, collection, strings.TrimSpace(id))
+	id = strings.TrimSpace(id)
+	if err := userdb.Delete(ns, owner, collection, id); err != nil {
+		return err
+	}
+	// After the delete succeeded, not before: unindexing a contact the store
+	// then refused to remove would hide somebody who is still in the book.
+	unindex(owner, id)
+	return nil
 }
 
 // byExactName finds a contact whose name matches exactly, case-insensitively.
@@ -220,9 +231,21 @@ func DeleteAll(owner string) {
 	if owner == "" {
 		return
 	}
+	// The ids before the records go, because afterwards there is nothing to
+	// read them from and the index would keep every one of them.
+	var ids []string
+	for _, c := range List(owner) {
+		ids = append(ids, c.ID)
+	}
+
 	if n, err := userdb.DeleteOwner(ns, owner); err != nil {
 		app.Log("contacts", "deleting %s's records: %v", owner, err)
+		return
 	} else if n > 0 {
 		app.Log("contacts", "deleted %d records for %s", n, owner)
+	}
+
+	for _, id := range ids {
+		unindex(owner, id)
 	}
 }
