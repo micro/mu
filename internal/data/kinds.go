@@ -49,12 +49,42 @@ const (
 	KindReminder = "reminder" // the prayer service's reflections
 	KindSocial   = "social"   // social posts
 	KindMail     = "mail"     // private, always written with IndexOwned
+
+	// The personal kinds. Every one of these is written with IndexOwned and is
+	// never public, so none of them appears in Vocabulary below or in the
+	// archive — see the note there.
+	//
+	// They exist because the half of the instance that belongs to a person was
+	// not on the index at all: notes, contacts, documents, files and
+	// conversations each had their own store and their own scan, or no search
+	// whatsoever. "What do I know about Henrik" was four calls to four services,
+	// three of which could not answer.
+	KindNote         = "note"         // what somebody wrote down on purpose
+	KindContact      = "contact"      // a person in somebody's address book
+	KindDoc          = "doc"          // a document in somebody's collection
+	KindFile         = "file"         // a stored file, by its name and type
+	KindTask         = "task"         // something to be done
+	KindConversation = "conversation" // a turn in a conversation
 )
 
 // Vocabulary is every kind that may be written, in the order a reader meets
 // them. Public ones only: mail is owned, and the archive never returns it.
 func Vocabulary() []string {
 	return []string{KindNews, KindPost, KindVideo, KindMarket, KindSocial, KindReminder}
+}
+
+// Personal is the kinds that always carry an owner.
+//
+// Separate from Vocabulary because the two answer different questions.
+// Vocabulary is what the archive holds — the world, public, askable by anyone.
+// These are one person's, returned only to them, and a caller who mixed them
+// into an archive listing would be publishing somebody's notes.
+//
+// Written down as a list rather than left implicit so the rule is checkable:
+// see TestEveryPersonalKindIsWrittenWithAnOwner.
+func Personal() []string {
+	return []string{KindNote, KindContact, KindDoc, KindFile, KindTask,
+		KindConversation, KindMail}
 }
 
 // Kinds is what has been archived, largest first.

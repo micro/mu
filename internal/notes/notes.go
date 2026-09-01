@@ -64,23 +64,32 @@ func Add(userID, title, text string) {
 			e.Text = text
 			e.UpdatedAt = now
 			save()
+			index(userID, e)
 			return
 		}
 	}
 
-	entries = append(entries, &Entry{
+	added := &Entry{
 		Title:     title,
 		Text:      text,
 		CreatedAt: now,
 		UpdatedAt: now,
-	})
+	}
+	entries = append(entries, added)
 
+	// Past the cap the oldest go, and they have to leave the index with the
+	// store. A note trimmed here but left indexed is a search hit that opens
+	// nothing, which is worse than not finding it.
 	if len(entries) > MaxPerUser {
+		for _, gone := range entries[:len(entries)-MaxPerUser] {
+			unindex(userID, gone.Title)
+		}
 		entries = entries[len(entries)-MaxPerUser:]
 	}
 
 	store[userID] = entries
 	save()
+	index(userID, added)
 }
 
 // Get returns one note's text by title.
@@ -170,12 +179,20 @@ func Delete(userID, title string) {
 	}
 	store[userID] = kept
 	save()
+	unindex(userID, title)
 }
 
 // Clear removes every note a user has (account deletion).
 func Clear(userID string) {
 	mu.Lock()
-	defer mu.Unlock()
+	gone := store[userID]
 	delete(store, userID)
 	save()
+	mu.Unlock()
+
+	// Every one of them, by name. data.UnindexOwned would take the whole
+	// account's entries across every kind, and this owns only its own.
+	for _, e := range gone {
+		unindex(userID, e.Title)
+	}
 }

@@ -41,6 +41,7 @@ import (
 	"mu/service/files"
 	"mu/service/flights"
 	"mu/service/food"
+	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/maps"
@@ -130,6 +131,7 @@ func authRequired() map[string]bool {
 		"/social/thread":     false, // Public thread view, auth for messaging
 		"/places":            false, // Public map, auth for search
 		"/weather":           false, // Public — the forecast, as a page or as JSON
+		"/hazards":           false, // Public — quakes and alerts are public record
 		"/flights":           false, // Public — aircraft broadcast their positions in clear
 		"/mail":              true,  // Require auth for inbox
 		"/logout":            true,
@@ -507,6 +509,10 @@ func registerRoutes() {
 	// JSON only. The page is /services/weather; this no longer bounces there.
 	http.HandleFunc("/weather", weather.Handler)
 	http.HandleFunc("/prayer", prayer.Handler)
+
+	// Every service answers at its own name. This was the one that did not —
+	// see service/hazards/page.go for how the route went missing.
+	http.HandleFunc("/hazards", hazards.Handler)
 
 	// serve places page
 	http.HandleFunc("/places", places.Handler)

@@ -156,6 +156,17 @@ func LoadService() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("notes", "service register failed: %v", err)
 	}
+
+	// The index is a separate file from the store, so an instance that has one
+	// and not the other answers every search with nothing — including every
+	// instance upgrading to the first build that indexes notes at all.
+	//
+	// Here rather than in the store's init(): init runs before the index is
+	// open, and a package that indexed from init would write into whatever
+	// happened to exist at the time. In the background because it is a
+	// boot-time cost proportional to how much has been written down, and
+	// nothing needs it before the first search.
+	go notes.Reindex()
 }
 
 var Spec = service.Spec{
