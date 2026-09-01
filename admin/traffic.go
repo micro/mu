@@ -16,7 +16,9 @@ package admin
 // same data whether the operator is on a laptop or a phone.
 
 import (
+	"html"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -61,16 +63,53 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Chart.
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(usage.Tabs("/admin/traffic", win))
+	// The window switcher keeps the caller, if there is one — see TabsWith.
+	var keep url.Values
+	if c := strings.TrimSpace(r.URL.Query().Get("caller")); c != "" {
+		keep = url.Values{"caller": {c}}
+	}
+	sb.WriteString(usage.TabsWith("/admin/traffic", win, keep))
 	sb.WriteString(usage.ChartSVG(usage.Series(win.Res, win.Points), win))
 	sb.WriteString(`</div>`)
+
+	// One caller, if the Callers table was clicked through.
+	//
+	// The whole table listed who was busy and nothing said what any of them
+	// were doing — the two facts were on the same page, one row apart, and
+	// unconnectable. "asim: 400" is a number an operator cannot act on.
+	who := strings.TrimSpace(r.URL.Query().Get("caller"))
 
 	// Breakdowns over the same window.
 	sb.WriteString(`<div class="traffic-grid">`)
 	usage.Table(&sb, "Endpoints and tools", usage.Top(win.Res, win.Points, usage.ByName, 20))
-	usage.Table(&sb, "Callers", usage.Top(win.Res, win.Points, usage.ByUser, 20))
+
+	// Each caller links to their own breakdown, in the window being looked at
+	// — a drill-down that silently changed the window would answer a different
+	// question from the one the row was showing.
+	usage.LinkTable(&sb, "Callers", usage.Top(win.Res, win.Points, usage.ByUser, 20),
+		func(key string) string {
+			if key == usage.Other {
+				return "" // the tail past maxKeys, not a caller
+			}
+			q := url.Values{"caller": {key}}
+			if win.Slug != "" {
+				q.Set("window", win.Slug)
+			}
+			return "/admin/traffic?" + q.Encode()
+		})
+
 	usage.Table(&sb, "Surface", usage.Top(win.Res, win.Points, usage.BySurface, 10))
+
+	if who != "" {
+		rows := usage.TopFor(win.Res, win.Points, who, 20)
+		usage.Table(&sb, who+" is calling", rows)
+	}
 	sb.WriteString(`</div>`)
+
+	if who != "" {
+		sb.WriteString(`<p class="text-sm"><a href="/admin/traffic?window=` +
+			html.EscapeString(win.Slug) + `">&larr; All callers</a></p>`)
+	}
 
 	sb.WriteString(`<p class="text-sm text-muted">Counts only — no request is stored. ` +
 		`Minutes are kept for 2 hours, hours for 7 days, days for 90.</p>`)

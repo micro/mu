@@ -14,6 +14,7 @@ package usage
 import (
 	"fmt"
 	"html"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -47,7 +48,16 @@ func WindowFor(slug string) Window {
 }
 
 // Tabs renders the window switcher for a page at base (e.g. "/usage").
-func Tabs(base string, current Window) string {
+func Tabs(base string, current Window) string { return TabsWith(base, current, nil) }
+
+// TabsWith is Tabs, keeping the rest of the page's state in the links.
+//
+// The window switcher wrote "?window=..." and nothing else, which is right
+// while the window is all the page's state. It stopped being right the moment
+// /admin/traffic could be looking at one caller: clicking "7 days" answered the
+// same question about everybody instead of a wider version of the question you
+// were asking, and the way back was the browser's back button.
+func TabsWith(base string, current Window, extra url.Values) string {
 	var sb strings.Builder
 	sb.WriteString(`<div class="traffic-tabs">`)
 	for _, w := range Windows {
@@ -55,8 +65,15 @@ func Tabs(base string, current Window) string {
 		if w.Slug == current.Slug {
 			active = " active"
 		}
-		fmt.Fprintf(&sb, `<a href="%s?window=%s" class="traffic-tab%s">%s</a>`,
-			html.EscapeString(base), w.Slug, active, html.EscapeString(w.Label))
+		q := url.Values{"window": {w.Slug}}
+		for k, vs := range extra {
+			for _, v := range vs {
+				q.Add(k, v)
+			}
+		}
+		fmt.Fprintf(&sb, `<a href="%s?%s" class="traffic-tab%s">%s</a>`,
+			html.EscapeString(base), html.EscapeString(q.Encode()), active,
+			html.EscapeString(w.Label))
 	}
 	sb.WriteString(`</div>`)
 	return sb.String()
@@ -136,7 +153,20 @@ func HumanCount(n int) string {
 }
 
 // Table renders a breakdown, each row's bar showing it against the largest.
+// LinkTable is Table with each row's key a link.
+//
+// href returns where a key goes, or "" for a row that leads nowhere — which is
+// what Other is: an aggregate of the tail past maxKeys, not a caller, and a
+// link on it would promise a page about a thing that is not one.
+func LinkTable(sb *strings.Builder, title string, rows []Count, href func(string) string) {
+	table(sb, title, rows, href)
+}
+
 func Table(sb *strings.Builder, title string, rows []Count) {
+	table(sb, title, rows, nil)
+}
+
+func table(sb *strings.Builder, title string, rows []Count, href func(string) string) {
 	sb.WriteString(`<div class="card"><h3>` + html.EscapeString(title) + `</h3>`)
 	if len(rows) == 0 {
 		sb.WriteString(`<p class="text-sm text-muted">Nothing yet.</p></div>`)
@@ -151,8 +181,14 @@ func Table(sb *strings.Builder, title string, rows []Count) {
 			pct = row.Count * 100 / peak
 		}
 		// The bar behind the row is the comparison; the number is the fact.
+		key := html.EscapeString(row.Key)
+		if href != nil {
+			if to := href(row.Key); to != "" {
+				key = `<a href="` + html.EscapeString(to) + `">` + key + `</a>`
+			}
+		}
 		fmt.Fprintf(sb, `<tr><td class="traffic-key"><span class="traffic-rowbar" style="width:%d%%"></span><span>%s</span></td><td class="traffic-n">%d</td></tr>`,
-			pct, html.EscapeString(row.Key), row.Count)
+			pct, key, row.Count)
 	}
 	sb.WriteString(`</table></div>`)
 }

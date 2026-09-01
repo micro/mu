@@ -56,13 +56,35 @@ const (
 )
 
 // Bucket is one interval's counts.
+//
+// Pairs is the one cross-index: who called what. The other three maps are
+// independent tallies, which is why "asim made 400 calls" and "news_list was
+// called 900 times" could both be on the page with no way to ask what asim
+// called — the association was never stored. An admin looking at a busy caller
+// wants exactly that question answered, and no combination of the other three
+// answers it.
+//
+// It costs the pairs actually observed rather than users times names: a minute
+// bucket holds the handful of people who called something in that minute
+// crossed with what they touched, not the cross product of the roster and the
+// catalogue. And it goes through add() like the rest, so maxKeys caps it and
+// the tail lands in Other.
 type Bucket struct {
 	At       time.Time      `json:"at"`
 	Total    int            `json:"total"`
 	Names    map[string]int `json:"names,omitempty"`
 	Users    map[string]int `json:"users,omitempty"`
 	Surfaces map[string]int `json:"surfaces,omitempty"`
+	Pairs    map[string]int `json:"pairs,omitempty"`
 }
+
+// pairKey is one caller and one thing they called.
+//
+// NUL-joined because neither half is allowed to contain one and both halves
+// can contain anything else: a tool name has underscores, an endpoint can carry
+// an app slug, and an account id is whatever signup allowed. Any printable
+// separator is a separator one of them could contain.
+func pairKey(account, name string) string { return account + "\x00" + name }
 
 type ring struct {
 	Step    time.Duration `json:"step"`
@@ -139,6 +161,12 @@ func Record(surface, name, account string) {
 		add(b.Names, name)
 		add(b.Users, account)
 		add(b.Surfaces, surface)
+		// A bucket restored from a file written before Pairs existed has a nil
+		// map here, and add returns on nil rather than panicking — so an
+		// upgraded instance answers "nothing yet" for the window it already
+		// holds and fills in from now on, which is the right answer rather than
+		// a crash on the first request after a deploy.
+		add(b.Pairs, pairKey(account, name))
 	}
 	dirty = true
 }
@@ -188,6 +216,7 @@ func (r *ring) current(t time.Time) *Bucket {
 		Names:    map[string]int{},
 		Users:    map[string]int{},
 		Surfaces: map[string]int{},
+		Pairs:    map[string]int{},
 	})
 	if len(r.Buckets) > r.Keep {
 		r.Buckets = append(r.Buckets[:0:0], r.Buckets[len(r.Buckets)-r.Keep:]...)
@@ -249,7 +278,11 @@ func Series(res Resolution, n int) []Bucket {
 
 func copyBucket(b Bucket) Bucket {
 	out := Bucket{At: b.At, Total: b.Total,
-		Names: map[string]int{}, Users: map[string]int{}, Surfaces: map[string]int{}}
+		Names: map[string]int{}, Users: map[string]int{}, Surfaces: map[string]int{},
+		Pairs: map[string]int{}}
+	for k, v := range b.Pairs {
+		out.Pairs[k] = v
+	}
 	for k, v := range b.Names {
 		out.Names[k] = v
 	}
@@ -277,6 +310,33 @@ const (
 	BySurface Dimension = "surface"
 )
 
+// TopFor is what one caller called, over the same window Top uses.
+//
+// The drill-down behind the Callers table. It reads Pairs rather than filtering
+// Names, because Names is a tally with the caller already thrown away — there
+// is nothing in it to filter on.
+//
+// The counts add up to that caller's row in the Callers table, which is the
+// point of taking it from the same store: a drill-down whose numbers come from
+// the ledger or from quota's daily counters would sum to something smaller than
+// the total it was reached from, and look like a bug rather than a different
+// denominator.
+func TopFor(res Resolution, n int, account string, limit int) []Count {
+	if account == "" {
+		return nil
+	}
+	prefix := account + "\x00"
+	totals := map[string]int{}
+	for _, b := range Series(res, n) {
+		for k, v := range b.Pairs {
+			if strings.HasPrefix(k, prefix) {
+				totals[k[len(prefix):]] += v
+			}
+		}
+	}
+	return ranked(totals, limit)
+}
+
 // Top returns the busiest keys over the last n buckets at a resolution,
 // highest first.
 func Top(res Resolution, n int, dim Dimension, limit int) []Count {
@@ -296,6 +356,11 @@ func Top(res Resolution, n int, dim Dimension, limit int) []Count {
 		}
 	}
 
+	return ranked(totals, limit)
+}
+
+// ranked turns a tally into rows, busiest first, capped.
+func ranked(totals map[string]int, limit int) []Count {
 	out := make([]Count, 0, len(totals))
 	for k, v := range totals {
 		out = append(out, Count{Key: k, Count: v})
