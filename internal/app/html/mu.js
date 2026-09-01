@@ -912,17 +912,33 @@ function displayRoomMessage(msg, shouldScroll = true) {
   // function draws every one of those with micro's byline — so a conversation
   // between two people opened with "micro: @asim joined", which reads as the
   // agent announcing itself into a private room. It was reported as that.
+  // When it was said, which the room never showed at all.
+  //
+  // Every message has carried a Timestamp since there were messages, the socket
+  // sends it, and this function dropped it — so a transcript was a wall of
+  // lines with no way to tell a reply from a minute ago from one from Tuesday.
+  //
+  // data-timestamp rather than a formatted string, because that is the
+  // attribute updateTimestamps already looks for: it rewrites every one of
+  // them once a minute, so "1 min ago" on a page somebody leaves open does not
+  // sit there saying 1 min for an hour. Unix seconds, which is what timeAgo
+  // takes; the wire carries RFC 3339, which is what Go marshals a time.Time to.
+  const when = msg.timestamp ? Math.floor(Date.parse(msg.timestamp) / 1000) : 0;
+  const timeSpan = when > 0 ?
+    ' <span class="msg-when" data-timestamp="' + when + '">' + timeAgo(when) + '</span>' : '';
+
   if (msg.system) {
     msgDiv.className = 'message message-system';
     msgDiv.textContent = msg.content;
+    if (timeSpan) msgDiv.innerHTML = msgDiv.innerHTML + timeSpan;
     messagesDiv.appendChild(msgDiv);
     if (shouldScroll) messagesDiv.scrollTop = messagesDiv.scrollHeight;
     return;
   }
 
   const userSpan = msg.is_llm ?
-    '<span class="llm"><a href="/@micro" style="color:inherit;text-decoration:none;">micro</a></span>' :
-    '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a></span>';
+    '<span class="llm"><a href="/@micro" style="color:inherit;text-decoration:none;">micro</a>' + timeSpan + '</span>' :
+    '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a>' + timeSpan + '</span>';
 
   let content;
   if (msg.is_llm) {
