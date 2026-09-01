@@ -86,7 +86,7 @@ import (
 // you here" over a link to the chat, on the argument that who is present is
 // true on the quietest day. True and useless as a sentence — who is here is its
 // own block under the box now, and it names people rather than telling you
-// there are none. See hereHTML.
+// there are none.
 func briefHTML(accountID string) string {
 	if accountID == "" {
 		return ""
@@ -129,7 +129,7 @@ func briefHTML(accountID string) string {
 	// did something. That was right about the fact and wrong about the place: it
 	// is exactly why it does not belong buried in the rail under a heading
 	// saying Brief. It is its own block under the box now, and it names people
-	// rather than counting them — see hereHTML.
+	// rather than counting them.
 	return sectionRule("Brief") + `<div class="brief-peek">` +
 		`<p class="home-brief">` + strings.Join(parts, " ") + `</p></div>`
 }

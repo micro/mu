@@ -172,7 +172,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
-	b.WriteString(addressBar(accountID, box))
+	b.WriteString(addressBar(r, accountID, box))
 	// What just happened, when something did. A message you sent appears in the
 	// list below as a conversation, which is right and is also indistinguishable
 	// from a message that failed to send — so the page says so once.
@@ -188,20 +188,6 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	// without this the difference between holding a stranger's message and
 	// dropping it would be invisible from here.
 	b.WriteString(waiting(r, accountID))
-
-	// And the offer to be told when the next one arrives.
-	//
-	// It was only on /account, in a card between the passkey list and the legal
-	// links — a page you visit to change a setting you already knew you wanted.
-	// So the thing that makes an inbox worth having with the page closed was
-	// visible only to somebody who went looking for it.
-	//
-	// Here because this is the screen things arrive on, which is where wanting
-	// to be told about them is a thought somebody actually has. It draws itself
-	// only when this device could take notifications and does not already —
-	// which the server cannot know, so it renders hidden and its own script
-	// reveals it. See push.Ask.
-	b.WriteString(push.Ask(r, accountID))
 
 	// Search, over everything in the record rather than over the page.
 	//
@@ -589,7 +575,7 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 // And the address is a link into New with it already filled in, because
 // "write to the agent" is what somebody reading this line is trying to do and
 // the alternative was copying it by hand into a form two clicks away.
-func addressBar(accountID, box string) string {
+func addressBar(r *http.Request, accountID, box string) string {
 	var b strings.Builder
 
 	// The two controls, and nothing else.
@@ -622,7 +608,24 @@ func addressBar(accountID, box string) string {
 	// an account does not belong on the screen its owner opens every day, where
 	// it is read past several thousand times to be used never again. /inbox/imap
 	// still exists and /account is where a thing you set up once belongs.
-	b.WriteString(`<div class="page-action ib-acts">` + acts + `</div>`)
+	// And whether to be told when the next one arrives, at the other end of the
+	// same row.
+	//
+	// It was only on /account, in a card between the passkey list and the legal
+	// links — a page you visit to change a setting you already knew you wanted.
+	// So the thing that makes an inbox worth having with the page closed was
+	// visible only to somebody who went looking for it. This is the screen
+	// things arrive on, which is where wanting to be told about them is a
+	// thought somebody actually has.
+	//
+	// On the actions row rather than above the list. It shipped as a bordered
+	// banner with a sentence in it and was the biggest thing on the page —
+	// reported as "way too big" — and an explainer is not what a control needs:
+	// "Turn on notifications" already says what pressing it does. See push.Ask,
+	// which renders hidden and reveals itself, because whether this device is
+	// subscribed is a fact only the browser has.
+	b.WriteString(`<div class="page-action ib-acts">` + acts +
+		push.Ask(r, accountID) + `</div>`)
 	return b.String()
 }
 

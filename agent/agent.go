@@ -321,7 +321,9 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if sessionID == "" {
 		sessionID = r.URL.Query().Get("continue")
 	}
-	cfg := app.ChatConfig{StorageNS: "agent"}
+	// This page is for talking to an agent and requires a session to reach,
+	// so an answer arrives here — which is what Speak is a control over.
+	cfg := app.ChatConfig{StorageNS: "agent", Speak: true}
 	activeRoot := "" // the reopened conversation, for the rail highlight
 	reopened := false
 	reopenAgent := "" // agent the reopened conversation is with

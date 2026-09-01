@@ -62,13 +62,35 @@ func TestTheOfferCarriesEverythingItNeeds(t *testing.T) {
 			"notifications is asked to turn them on")
 	}
 
-	// And a way to say no that is remembered.
-	if !strings.Contains(got, `id="push-ask-no"`) {
-		t.Error("there is no way to decline, so the only way to stop being asked " +
-			"is to accept")
+	// Two labels, and only two. It shipped as a banner with a sentence, a
+	// filled button and a "Not now" — reported as "way too big". A control is
+	// smaller than the thing it controls, and "Turn on notifications" already
+	// says what pressing it does, so the explainer and the dismissal both went:
+	// a button at the end of a row is not in anybody's way, which is what the
+	// dismissal existed to fix.
+	if !strings.Contains(got, ">Turn on notifications</button>") {
+		t.Error("nothing says how to turn notifications on")
 	}
-	if !strings.Contains(got, "localStorage") {
-		t.Error("declining is not remembered, so it is asked again on the next load")
+	if !strings.Contains(got, ">Turn off</button>") {
+		t.Error("a device that has them on is not offered the way off, so the " +
+			"control has one state and is a button rather than a toggle")
+	}
+	if strings.Contains(got, "Not now") {
+		t.Error("the dismissal is back — there is nothing to dismiss when the " +
+			"control is a toggle at the end of the actions row")
+	}
+	for _, explainer := range []string{"Get told when", "with this page closed"} {
+		if strings.Contains(got, explainer) {
+			t.Errorf("the control carries an explainer (%q); the label is the "+
+				"explanation", explainer)
+		}
+	}
+
+	// The off button is cardJS's own — it swaps the pair, so this needs no
+	// state of its own and cannot disagree with the card on /account.
+	if !strings.Contains(got, `id="push-off"`) {
+		t.Error("the way off is not the id cardJS drives, so something here is " +
+			"deciding the state a second time")
 	}
 }
 

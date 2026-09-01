@@ -146,10 +146,7 @@ func channels(current string) string {
 
 	tab("", "All")
 	for _, topic := range names {
-		if topic == lobbyTopic {
-			continue
-		}
-		tab("chat_"+topic, topic)
+		tab("chat_"+topic, roomName(topic))
 	}
 
 	// And anything live that is not a topic — an article or a video somebody is
@@ -642,11 +639,14 @@ func getOrCreateRoom(id string) *Room {
 			// About block draws over the messages — there is nothing to say
 			// about a room whose subject is whoever is in it.
 			//
-			// Home, because that is where it is: the panel over Home is this
-			// room, beside the strip naming the people in it. The id stays
-			// chat_lobby — it is on disk in every transcript already, and
-			// renaming a room to fix a label is a migration for a word.
-			room.Title = "Home"
+			// General, which is the word for a room about nothing in
+			// particular. It was "Home" while its only door was a panel over
+			// Home; that block has gone and the room is an ordinary one on
+			// /chat now — see roomName, which says the same thing for the
+			// tabs and the list. The id stays chat_lobby: it is on disk in
+			// every transcript already, and renaming a room to fix a label is
+			// a migration for a word.
+			room.Title = "General"
 		} else {
 			mutex.RLock()
 			if summary, exists := summaries[itemID]; exists {
@@ -1710,6 +1710,21 @@ func aboutRoom(roomData map[string]interface{}) string {
 // it: the rooms that already exist keep the name they were given, and a
 // migration to delete one word from a title is not worth writing.
 func roomName(title string) string {
+	// The one room with no subject, named like the rest of them.
+	//
+	// It was called "Home" and it was not listed here at all: its only door was
+	// a panel over Home, beside a strip of who else was on the instance. That
+	// whole block has gone — Home is one person's screen now, and a room with
+	// strangers in it on the page somebody opens every day was the Discord
+	// failure, people arriving, seeing that others arrived, and saying nothing.
+	//
+	// So this is an ordinary room on the page of rooms, which is what the
+	// comment by lobbyTopic has always said it is. "General" because that is
+	// the word for a room about nothing in particular, and because "Lobby" is
+	// the id showing through.
+	if strings.EqualFold(strings.TrimSpace(title), lobbyTopic) {
+		return "General"
+	}
 	if t := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(title), "Discussion")); t != "" {
 		return t
 	}
@@ -1764,6 +1779,7 @@ func listRooms(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(channels(""))
+	b.WriteString(whoIsHere())
 	b.WriteString(`<div class="rooms">`)
 
 	// Yours first.
@@ -1800,12 +1816,8 @@ func listRooms(w http.ResponseWriter, r *http.Request) {
 	// room, folded, where somebody who has walked in can ask.
 	b.WriteString(`<h3>Rooms</h3>`)
 	for _, topic := range topicsData {
-		if topic == lobbyTopic {
-			// The lobby is on Home, in the panel beside the people who are in it.
-			continue
-		}
 		id := "chat_" + topic
-		b.WriteString(roomRow(id, topic, describeRoom(roomState(id))))
+		b.WriteString(roomRow(id, roomName(topic), describeRoom(roomState(id))))
 	}
 	b.WriteString(`</div>`)
 
@@ -1899,6 +1911,20 @@ func lastLine(roomID string) (string, time.Time) {
 		return "nothing said yet", time.Time{}
 	}
 	m := msgs[len(msgs)-1]
+
+	// What the room said about itself has no author, and is quoted as one.
+	//
+	// An arrival used to go out as the agent, with micro's name on it; it
+	// carries no author now, which is right, and this still prefixed "@" to
+	// whatever it found — so a conversation somebody had just opened was
+	// listed as "@: @asim joined · 1 minute ago". Reported as exactly that.
+	//
+	// The line is the room's, so it is repeated as the room's: no name, no
+	// colon, just what happened.
+	if m.System || m.UserID == "" {
+		return trimTo(strings.TrimSpace(m.Content), 60) +
+			" · " + app.TimeAgo(m.Timestamp), m.Timestamp
+	}
 	return "@" + m.UserID + ": " + trimTo(strings.TrimSpace(m.Content), 60) +
 		" · " + app.TimeAgo(m.Timestamp), m.Timestamp
 }

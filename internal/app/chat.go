@@ -74,6 +74,19 @@ type ChatConfig struct {
 	// from the place you would naturally talk to it. That is most of why a new
 	// agent reads as a toy.
 	OfferAgentPicker bool
+	// Speak offers to read the answer out loud.
+	//
+	// Off by default, and the default is the landing page. The box there is the
+	// front door: a signed-out ask returns 401 and the component renders a
+	// refusal with two ways on — search the archive, or sign in and ask it. So
+	// no answer can arrive on that page, and a toggle controlling how one is
+	// delivered sat under it anyway, on the first screen a stranger sees.
+	//
+	// The microphone is not gated with it, and the asymmetry is the point: the
+	// mic fills the box, and the box works — what you dictate can be carried to
+	// the archive or through a sign-in. It is an input to something that
+	// happens. Speak is an output from something that cannot.
+	Speak bool
 	// Placeholder is the grey text in the empty box, and Suggestions are the
 	// pills under it.
 	//
@@ -367,9 +380,17 @@ func ChatComponent(cfg ChatConfig) string {
 	// conversation happens — and because that row is where somebody already
 	// looks before asking. Hidden until the script finds a voice: a control that
 	// does nothing is worse than one that is not there.
-	sayToggle := `<label id="mu-chat-say" hidden title="Read the answer out loud">` +
-		`<input type="checkbox" id="mu-chat-say-on">` +
-		`<span class="mu-chat-agent-label">Speak</span></label>`
+	//
+	// And only where an answer can arrive. It shipped on every surface with a
+	// box, which includes the signed-out landing, where asking returns 401 and
+	// renders a refusal — a toggle for the delivery of something that cannot be
+	// delivered, on the first screen a stranger sees. See ChatConfig.Speak.
+	sayToggle := ""
+	if cfg.Speak {
+		sayToggle = `<label id="mu-chat-say" hidden title="Read the answer out loud">` +
+			`<input type="checkbox" id="mu-chat-say-on">` +
+			`<span class="mu-chat-agent-label">Speak</span></label>`
+	}
 	opts := `<div id="mu-chat-opts">` + agentPicker + sayToggle + `</div>`
 	suggest := `<div id="mu-chat-suggest"></div>`
 	conv := `<div id="mu-chat-conv">` + initialConv + `</div>`

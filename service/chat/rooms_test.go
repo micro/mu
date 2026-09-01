@@ -43,20 +43,45 @@ func TestChatListsTheRooms(t *testing.T) {
 	}
 }
 
-// And the lobby is not one of them.
+// And the lobby is one of them, under a name.
 //
-// It is on Home. Listing it here as well would make the page a way to leave what
-// you are reading to reach a room you could already see, and would put the one
-// room with no subject at the top of a list organised by subject.
-func TestTheLobbyIsNotOnTheList(t *testing.T) {
+// It was excluded here because its only door was a panel over Home, beside a
+// strip of who else was on the instance. That whole block has gone — a room
+// with strangers in it on the screen somebody opens every day was the Discord
+// failure, people arriving, seeing that others arrived, and saying nothing —
+// so the room it opened had no way in at all.
+//
+// It is an ordinary room on the page of rooms now, which is what the comment
+// by lobbyTopic has always said it is. Named General: "Lobby" is the id
+// showing through, and "Home" was the name it had while it was a panel over
+// Home.
+func TestTheLobbyIsAnOrdinaryRoom(t *testing.T) {
 	topics = []string{lobbyTopic, "Dev"}
 	defer func() { topics = []string{"Dev", "World"} }()
 
 	rr := httptest.NewRecorder()
 	Handler(rr, httptest.NewRequest("GET", "/chat", nil))
+	body := rr.Body.String()
 
-	if body := rr.Body.String(); strings.Contains(body, `href="/chat?id=`+lobbyID+`"`) {
-		t.Errorf("the lobby is on /chat — it lives in the panel on Home:\n%s", body)
+	if !strings.Contains(body, `href="/chat?id=`+lobbyID+`"`) {
+		t.Errorf("the room with no subject has no way in — the panel that used to "+
+			"open it has gone:\n%s", body)
+	}
+	// The name, read out of the rooms block rather than the whole page: the
+	// nav carries a Home link on every page and would match a bare search for
+	// the old name.
+	rooms := body
+	if i := strings.Index(rooms, `<div class="rooms">`); i >= 0 {
+		rooms = rooms[i:]
+	}
+	if !strings.Contains(rooms, "General") {
+		t.Errorf("the lobby is listed and not named:\n%s", rooms)
+	}
+	for _, showing := range []string{">lobby<", ">Lobby<", ">Home<"} {
+		if strings.Contains(rooms, showing) {
+			t.Errorf("the room is listed as %s — that is the id, or the name it had "+
+				"as a panel over Home:\n%s", showing, rooms)
+		}
 	}
 }
 

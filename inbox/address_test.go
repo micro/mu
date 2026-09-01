@@ -3,6 +3,7 @@ package inbox
 // The two addresses at the top of the inbox, and which agent the second one is.
 
 import (
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -20,7 +21,7 @@ func TestTheTopOfTheInboxIsItsActions(t *testing.T) {
 	Address = func() string { return "agent@micro.mu" }
 	t.Cleanup(func() { Address = nil })
 
-	all := addressBar("asim", "")
+	all := addressBar(httptest.NewRequest("GET", "/inbox", nil), "asim", "")
 
 	// The identity strip is gone, and staying gone is the point of the test.
 	for _, addr := range []string{"asim@micro.mu", "agent@micro.mu"} {

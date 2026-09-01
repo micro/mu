@@ -28,19 +28,24 @@ package push
 // applicationServerKey, the base64url encoding, the re-post that keeps a
 // rotated endpoint alive — is the thing most likely to drift from the first.
 //
-// # And it goes away
+// # A control, not an announcement
 //
-// Three ways, because there are three different "no" here and only one of them
-// is a decision:
+// It shipped as a bordered banner across the top of the inbox: a sentence
+// explaining the feature, a filled button, and a "Not now" to make it go away.
+// That is the shape of something being announced, and it was the largest thing
+// on a page whose job is to show what arrived. Reported as "way too big".
 //
-//   - This device is already subscribed. Not a decision, a fact, and the
-//     server cannot know it — only the browser can, which is why this renders
-//     hidden and the script reveals it rather than the other way round.
-//   - The browser cannot do it, or the permission is already denied. Offering
-//     is noise; /account explains.
-//   - "Not now". That is the decision, and it is remembered per browser,
-//     because a subscription is per browser. Somebody who dismissed it on a
-//     laptop has said nothing about their phone.
+// So it is one quiet control on the row the page's actions are already on,
+// opposite New, and it says what pressing it does: "Turn on notifications", or
+// "Turn off" once this device has them. There is nothing to dismiss, because
+// there is nothing being pushed at anybody — a toggle sitting at the end of a
+// row is not in the way, which is what the "Not now" existed to fix.
+//
+// It still renders hidden and reveals itself, for the reason that has not
+// changed: whether *this device* is subscribed is a fact only the browser
+// knows, and it decides which of the two labels is true. A browser that cannot
+// take notifications at all, or has had the permission denied, gets nothing —
+// /account is where that is explained.
 
 import (
 	"html"
@@ -49,36 +54,47 @@ import (
 	"mu/internal/auth"
 )
 
-// Ask is the offer: one line, a button, and a way to say no.
+// Ask is the control: one quiet button that says what pressing it does.
 //
 // Empty when this instance cannot send at all — no VAPID key means the button
 // would ask for a permission nothing can use.
+//
+// Both labels ship. push-go is the one cardJS drives, and push-off is the one
+// it reveals when the device is subscribed — the same pair the card on
+// /account uses, so this needs no state of its own and cannot disagree with it.
 func Ask(r *http.Request, accountID string) string {
 	key := PublicKey()
 	if key == "" || accountID == "" {
 		return ""
 	}
-	return `<div class="push-ask" id="push-ask" hidden>` +
-		`<span class="push-ask-say">Get told when something arrives, ` +
-		`with this page closed.</span>` +
-		`<button class="btn" id="push-go" type="button">Turn on notifications</button>` +
-		`<button class="btn btn-quiet" id="push-ask-no" type="button">Not now</button>` +
+	return `<span class="push-ask" id="push-ask" hidden>` +
+		`<button class="btn-quiet push-ask-go" id="push-go" type="button">` +
+		`Turn on notifications</button>` +
+		`<button class="btn-quiet push-ask-go d-none" id="push-off" type="button">` +
+		`Turn off</button>` +
+		// Empty, so it takes no room until there is something to say — and not
+		// hidden, which is what it was for one commit. cardJS writes every
+		// failure into this element: a permission refused, a subscribe that
+		// did not take, a server that would not have it. Hidden, pressing the
+		// button and having nothing happen would be indistinguishable from a
+		// dead control, which is the report this whole feature started from.
 		`<span class="push-state" id="push-state"></span>` +
 		`<input type="hidden" id="push-key" value="` + html.EscapeString(key) + `">` +
 		`<input type="hidden" id="push-csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`</div>` + askCSS + cardJS + askJS
+		`</span>` + askCSS + cardJS + askJS
 }
 
 const askCSS = `<style>
-/* One line, quiet, and out of the way of the list under it. It is an offer,
- * not a notice: a bordered banner at the top of the inbox is the shape of
- * something being announced, and this is something being made available. */
-.push-ask{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  margin:0 0 14px;padding:10px 12px;border:1px solid var(--card-border,#eee);
-  border-radius:6px;background:var(--card-bg,#fff)}
+/* At the end of the row the page's actions are on, pushed to the right by the
+ * auto margin — opposite New rather than under a banner of its own.
+ *
+ * It was a bordered box across the full width with a sentence in it, which is
+ * the shape of an announcement. A control is smaller than the thing it
+ * controls. */
+.push-ask{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
 .push-ask[hidden]{display:none}
-.push-ask-say{font-size:13px;color:var(--text-secondary,#555);margin-right:auto}
-.push-ask .push-state{flex-basis:100%}
+.push-ask .push-state{font-size:12px;color:var(--text-muted,#888)}
+.push-ask-go{font-size:13px}
 </style>`
 
 // askJS decides whether the offer is worth making, and takes it away when it
@@ -93,46 +109,18 @@ const askJS = `<script>
   var go = document.getElementById('push-go');
   if (!ask || !go) return;
 
-  var KEY = 'mu_push_not_now';
-  function said(){ try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
-  function remember(){ try { localStorage.setItem(KEY, '1'); } catch (e) {} }
-
   // A control that cannot work is worse than no control. cardJS disables the
   // button and writes the reason into push-state for both of these; on this
-  // page there is nothing to read the reason, so there is nothing to show.
-  var usable = ('serviceWorker' in navigator) && ('PushManager' in window) &&
-    (typeof Notification !== 'undefined') && Notification.permission !== 'denied';
-
-  function show(){ if (!said()) ask.hidden = false; }
-  function hide(){ ask.hidden = true; }
-
-  if (!usable) return; // stays hidden
-
-  // Already on for this device? Only the browser knows — "on" for the account
-  // is not "on here", which is the whole reason the card corrects itself after
-  // asking. Ask before offering.
-  if (Notification.permission === 'granted') {
-    navigator.serviceWorker.ready.then(function(reg){
-      return reg.pushManager.getSubscription();
-    }).then(function(sub){
-      if (sub) return;    // this device has it; say nothing
-      show();
-    }).catch(show);
-  } else {
-    show();
+  // row there is no room to read a reason, so there is nothing to show.
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) ||
+      typeof Notification === 'undefined' || Notification.permission === 'denied') {
+    return; // stays hidden
   }
 
-  // cardJS hides the button by adding d-none once the server has the
-  // subscription. That is the success signal, and watching for it is how this
-  // stays out of the transaction rather than running a second copy of it.
-  new MutationObserver(function(){
-    if (go.classList.contains('d-none')) hide();
-  }).observe(go, {attributes: true, attributeFilter: ['class']});
-
-  var no = document.getElementById('push-ask-no');
-  if (no) no.addEventListener('click', function(){
-    remember();
-    hide();
-  });
+  // Reveal once, whichever way round it is. cardJS decides which of the two
+  // buttons is showing — it swaps them on load if this device already has a
+  // subscription, and again after turning on or off — so all this has to do is
+  // stop hiding the pair. Nothing here duplicates that decision.
+  ask.hidden = false;
 })();
 </script>`

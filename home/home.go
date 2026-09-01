@@ -440,6 +440,11 @@ function fetchW(la,lo){
 			HideSuggestions:  true,
 			Placeholder:      "What do you need?",
 			OfferAgentPicker: viewerID != "",
+			// Read-back needs an answer to read, and a signed-out reader
+			// cannot get one — see ChatConfig.Speak. Same condition as the
+			// picker, and for the same reason: both are decisions about a
+			// conversation somebody is able to have.
+			Speak: viewerID != "",
 		}))
 
 		// The address, under the box. Quiet, because it is a fact about the
@@ -466,14 +471,25 @@ function fetchW(la,lo){
 		// the screen.
 		b.WriteString(`</div>`)
 
-		// Who is on this instance, directly under the box and across both
-		// columns. Home had no people on it at all — see hereHTML — and this
-		// is the one block on the page that can change because somebody other
-		// than you did something, so it goes where it is seen rather than in a
-		// rail somebody scrolls past.
-		if viewerID != "" {
-			b.WriteString(hereHTML(viewerID))
-		}
+		// No Online strip here, and no chat panel below.
+		//
+		// Home carried who else was on the instance, a count you could open to
+		// see the names, a bubble that slid a chat over the page, and the last
+		// thing anybody had said in it. Each piece answered the objection to
+		// the one before it and the whole was still wrong: nobody is on the
+		// other end.
+		//
+		// The argument for it was that a place ought to show you it is a place.
+		// What it actually put on the screen a person opens every day was a
+		// room with strangers in it, or nobody, which is the Discord failure —
+		// people join, see that others joined, and say nothing. The go-micro
+		// Slack worked the other way round: three people who already had a
+		// reason to talk, and it grew from there. A chat is the second thing.
+		//
+		// So the front screen is one person's: the brief, what arrived, the
+		// agents, the world. /chat is still there for somebody who goes looking
+		// for it, which is the difference between offering a room and putting
+		// one in front of you.
 
 		b.WriteString(`<div class="home-rail">`)
 
@@ -576,15 +592,6 @@ function fetchW(la,lo){
 
 	b.WriteString(`</div>`) // close .home-main
 	b.WriteString(`</div>`) // close #home-cards
-
-	// The chat, over the page rather than instead of it.
-	//
-	// Outside #home-cards, because it is fixed to the viewport and a grid item
-	// that is position:fixed is a grid item the grid still reserves a track
-	// for. Only for somebody signed in: the panel joins a room as them.
-	if viewerID != "" {
-		b.WriteString(panelHTML())
-	}
 
 	// Auto-refresh: poll every 2 minutes, update card content in-place
 	displayMode := r.URL.Query().Get("mode") == "display"

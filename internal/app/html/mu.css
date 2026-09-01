@@ -1458,24 +1458,15 @@ body:has(#messages) #chat-back-link {
 /* .link is display:block globally, which is right for a card's one call to
    action but wrong for a sentence of them separated by middots. */
 .notice .link,
-.rooms .row .link {
-  display: inline;
-  margin-top: 0;
-}
-
 .rooms h3 {
   margin: 24px 0 8px;
 }
 
-.rooms .row {
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.rooms .row .muted {
-  color: #888;
-  font-size: 13px;
-}
+/* The .row shape that used to be in here has gone with its last caller. The
+   card on /services and Home drew the name as an inline link with the activity
+   straight after it, so the second column started wherever each name happened
+   to end — reported as janky, and as the activity being the thing that would
+   not line up. It draws .room-row now, the same as the list below it. */
 
 /* One room, one line: the name, and what state it is in. See chat.roomRow.
 
@@ -6626,164 +6617,20 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   color: var(--text-secondary, #555);
 }
 
-/* The chat, slid in from the right. See people/panel.go.
+/* Who is on this instance, on /chat. See service/chat.whoIsHere.
 
-   Mirrors #nav-container deliberately — same fixed position under the header,
-   same full height, same transform — so the product has one motion rather than
-   two that nearly match. Off-screen by transform rather than display:none, so
-   it animates and so the room inside keeps its socket and its scroll position
-   when it is closed and opened again.
+   The panel, the count, the disclosure, the bubble and the last-line-said were
+   all here and have gone with the strip on Home. They existed to make a block
+   of strangers bearable on the screen somebody opens every day, and the answer
+   was that it did not belong there: on the page you go to in order to talk to
+   a person, the names are the whole of it.
 
-   [hidden] is what the script toggles, and it needs the !important: the
-   attribute's own display:none loses to this rule's display:flex, and a panel
-   that is only off-screen is still in the tab order. */
-#people-panel {
-  position: fixed;
-  right: 0;
-  top: 50px;
-  width: 380px;
-  max-width: 100%;
-  height: calc(100vh - 50px);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  /* The safe-area inset, not --tabbar.
-     --tabbar is what a page reserves so the fixed tab bar does not sit on top
-     of its last row. This panel is z-index 200 and the tab bar is 100, so the
-     panel covers it — and reserving its height anyway left 52px of nothing
-     under the box on every phone, which is what "a massive gap beneath the
-     input" is. The inset stays: that is the home indicator, which is hardware
-     and is over everything. */
-  padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
-  background: var(--card-background, #fff);
-  border-left: 1px solid var(--border-color, #e0e0e0);
-  box-shadow: -10px 0 30px rgba(0, 0, 0, .06);
-  z-index: 200;
-  transform: translateX(0);
-  transition: transform .18s ease;
-}
-#people-panel[hidden] {
-  display: flex !important;
-  transform: translateX(101%);
-  pointer-events: none;
-  visibility: hidden;
-}
+   A row rather than a list, because it is one fact per person — are they
+   here — and a stack of lines saying that would be the biggest block on the
+   page for the least in it. It wraps rather than scrolls: a row that runs off
+   the side hides exactly the people the cap already deprioritised, and does it
+   invisibly. */
 
-/* On a phone it covers the page. A 380px panel beside nothing is a page with a
-   margin. */
-@media only screen and (max-width: 560px) {
-  #people-panel { width: 100% }
-}
-
-.people-panel-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--divider, #f0f0f0);
-}
-.people-panel-title {
-  font-weight: var(--font-weight-semibold, 600);
-}
-/* The way out, top right, and big enough to hit. Escape closes it too — see
-   panelScript — because a thing that covers the page with no keyboard way out
-   is a trap for anybody not using a mouse. */
-.people-panel-x {
-  margin-left: auto;
-  border: 0;
-  background: none;
-  font-size: 22px;
-  line-height: 1;
-  padding: 0 4px;
-  cursor: pointer;
-  color: var(--text-muted, #888);
-}
-.people-panel-x:hover { color: var(--text-primary, #1a1a1a) }
-
-/* The room fills what is left, and the box sits under it. */
-#people-panel #messages {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-#people-panel #chat-form {
-  display: flex;
-  gap: 8px;
-  flex: none;
-}
-/* The box is a <textarea> so Chrome's autofill leaves it alone — see the note
-   on the chat template. One row, and no drag handle: it is a message box that
-   happens to accept a newline on shift+enter, not a document. */
-#people-panel #prompt { flex: 1; min-width: 0; resize: none; font: inherit }
-
-/* The count, and the bubble beside it. See home/here.go.
-
-   One line: how many people are here, and the way in. It was a row of every
-   name followed by the words "Open chat" on a line of its own — a wall on a
-   busy instance, the same four handles every day on a quiet one, and three
-   words for a control whose shape is the word.
-
-   Background and colour are named on both states, at rest and on hover — see
-   the note by the base button rule. The first version of the old control
-   stripped the fill and left the colour, which is `color: #fff` inherited from
-   `button`, so it was white text on a white page until you pointed at it. */
-.here-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 4px;
-}
-
-/* How many. A button, because it answers a question when pressed. */
-.here-count {
-  border: 0;
-  background: none;
-  padding: 0;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text-secondary, #555);
-  cursor: pointer;
-  text-align: left;
-}
-.here-count:hover {
-  background: none;
-  border-color: transparent;
-  color: var(--text-primary, #111);
-  text-decoration: underline;
-}
-
-/* The way in. A speech bubble and no caption: the shape is the word, and the
-   label lives in aria-label and title for anything not looking at it.
-
-   Sized like the icon it is rather than like a button — width and height auto
-   against the base `button` rule, which gives every button a square control
-   height and a dark fill. */
-.here-chat {
-  width: auto;
-  min-width: 0;
-  height: auto;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  padding: 0;
-  color: var(--text-muted, #888);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-}
-.here-chat:hover {
-  background: none;
-  border-color: transparent;
-  color: var(--text-primary, #111);
-}
-
-/* Who is on this instance, under the box. See home/here.go.
-
-   A row of names rather than a list, because it is one fact per person — are
-   they here — and a stack of twelve lines saying that would be the biggest
-   block on the page for the least in it. It wraps rather than scrolls: a row
-   that runs off the side hides exactly the people the cap already deprioritised,
-   and does it invisibly. */
 .here-strip {
   display: flex;
   align-items: baseline;
@@ -6852,29 +6699,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   background: var(--online, #2ea44f);
 }
 
-/* The last thing said in the room, under the count. See home.latest.
-   The panel connects on first open, so before that nothing said the room had
-   moved — a bubble alone is a door with no window. Muted and one line: it is a
-   reason to press it, not the conversation. */
-.people-latest {
-  margin: 4px 0 0;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-muted, #888);
-  min-width: 0;
-}
-.people-latest-who { font-weight: var(--font-weight-semibold, 600); flex: none }
-/* The line gives, the name and the time do not: on a phone the sentence is the
-   part that can be cut without losing who said it or when. */
-.people-latest-said {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.people-latest-when { margin-left: auto; flex: none; white-space: nowrap }
 
 
 /* A profile: the handle, then since when, then whether they are about — one

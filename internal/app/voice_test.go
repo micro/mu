@@ -21,7 +21,7 @@ func TestTheVoiceControlsAreHiddenUntilTheBrowserHasAVoice(t *testing.T) {
 	AgentReady = func() bool { return true }
 	t.Cleanup(func() { AgentReady = nil })
 
-	got := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe"})
+	got := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe", Speak: true})
 
 	for _, want := range []struct{ id, feature string }{
 		{"mu-chat-mic", "SpeechRecognition"},
@@ -87,5 +87,39 @@ func TestABoxWithNoSuggestionsStillHasWorkingJavaScript(t *testing.T) {
 	if !strings.Contains(got, "var SUGGEST=[]") {
 		t.Error("no empty suggestion list; a page that suggests nothing should say so " +
 			"as a list with nothing in it")
+	}
+}
+
+// Speak is not on the front door.
+//
+// The landing renders the same box with Ask set, and a signed-out ask returns
+// 401: the component draws a refusal with two ways on — search the archive, or
+// sign in and ask it. So no answer can arrive there, and a toggle controlling
+// how one is read out sat under it anyway, on the first screen a stranger
+// sees. Reported as exactly that.
+//
+// The microphone stays, and the asymmetry is the point. It fills the box, and
+// the box works: what you dictate is carried to the archive or through the
+// sign-in. An input to something that happens, against an output from
+// something that cannot.
+func TestSpeakIsOnlyWhereAnAnswerCanArrive(t *testing.T) {
+	AgentReady = func() bool { return true }
+	t.Cleanup(func() { AgentReady = nil })
+
+	// The landing: Ask, and nobody signed in.
+	front := ChatComponent(ChatConfig{Ask: true, HideSuggestions: true})
+	if strings.Contains(front, `id="mu-chat-say"`) {
+		t.Errorf("the signed-out landing offers to read an answer out loud, and "+
+			"cannot produce one:\n%s", front)
+	}
+	if !strings.Contains(front, `id="mu-chat-mic"`) {
+		t.Error("the microphone went with it — dictating into the box still works, " +
+			"and what it types is carried to the archive or through a sign-in")
+	}
+
+	// And where somebody can have a conversation, it is there.
+	in := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe", Speak: true})
+	if !strings.Contains(in, `id="mu-chat-say"`) {
+		t.Error("a surface that can answer does not offer to read it out")
 	}
 }

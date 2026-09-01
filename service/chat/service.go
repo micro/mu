@@ -3,7 +3,7 @@ package chat
 import (
 	"context"
 	"fmt"
-	htmlpkg "html"
+
 	"sort"
 	"strings"
 	"time"
@@ -244,12 +244,24 @@ func Card() string {
 		return ""
 	}
 
+	// The same row the list on /chat draws, in the same wrapper.
+	//
+	// It had its own: the name as an inline link with the activity as muted
+	// text straight after it, so the second column started wherever the room's
+	// name happened to end and eight rooms gave eight different left edges.
+	// Reported as janky, and as the activity rather than a description being
+	// the thing that would not line up — which is exactly what .room-row
+	// already solves on /chat, by pushing the state right the way the inbox
+	// pushes a date there.
+	//
+	// The wrapper is what makes it work: .room-row is styled under .rooms, so
+	// a card that borrowed the class without it would get an unstyled span.
 	var b strings.Builder
+	b.WriteString(`<div class="rooms">`)
 	for _, r := range live {
-		b.WriteString(`<div class="row"><a class="link" href="/chat?id=` +
-			htmlpkg.EscapeString(r.ID) + `">` + htmlpkg.EscapeString(r.Title) + `</a> `)
-		b.WriteString(`<span class="muted">` + describeRoom(r) + `</span></div>`)
+		b.WriteString(roomRow(r.ID, roomName(r.Title), describeRoom(r)))
 	}
+	b.WriteString(`</div>`)
 	return b.String()
 }
 
