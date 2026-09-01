@@ -1,21 +1,21 @@
 # mu
 
-A home for agents, tools and services
+A home for agents, tasks and services
 
 ## Overview
 
-We're building services that operate as the building blocks for agents. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive become tools for agents to use. 
+We're building services that operate as the building blocks for agents. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive become tools for agents to use.
 
-Using agents has also been a very synchronous experience. Communication here is async with everything going to one inbox, 
-whether it's email, chat or sms, etc. Use it from the web, your phone, the command line, email, anywhere.
+Using agents has also been a very fragmented experience. Work here is unified with everything going to one inbox, 
+whether it's mail, chat, notes, tasks, etc. Do it all and keep track of it from one place. 
 
 ## Features
 
 What's included
 
 - **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI or the Web
-- **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it on the web, mail or xmpp
-- **Inbox** - A single place to keep track of threads across channels. Use it on the web or via IMAP in an email client.
+- **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it via the web or api 
+- **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents of reply directly.
 
 ## Services
 
@@ -60,91 +60,6 @@ The services available via the web, API or as tools, reachable via MCP, and comm
 | **Web** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a service.
-
-## Agents
-
-An agent is a name, a prompt, and which of the services above it may reach. No
-code and no deployment — the services are the same ones in the table, so
-defining an agent is choosing a subset and saying what it is for.
-
-Two come built in:
-
-- **Micro** — general. Every service, for the questions that cross several of
-  them: what happened today, what is moving, what is in my mail.
-- **Code** — specific. A machine of its own and somewhere to put what it makes:
-  `shell` and `apps` only. Describe an app and it writes it, runs it and hosts
-  it.
-
-Make your own at `/agents`: a name, a standing instruction, and the services it
-is allowed. Leaving the services empty gives it everything you can reach, which
-is a choice rather than the default.
-
-Then talk to it wherever you already are:
-
-```bash
-mu ask "what is in my inbox?"                    # the default agent
-mu ask --agent research "anything new this week?"
-```
-
-On the web it is `/agent/<name>`. By mail, write to `you+name@` and that agent
-answers in the thread. Each keeps its own notes, so what it learns about your
-projects does not end up in the pool another agent answers from.
-
-Agents run on the instance, using its model, so nothing needs a key of your
-own. `mu agent` is the other direction — see [CLI](#cli).
-
-## Inbox
-
-One place for what arrived, whichever channel carried it — mail, chat, sms, and
-the conversations you have had with your agents. It is a view over the record
-every client writes to, so a question you asked from the terminal this morning
-sits next to an email that came in overnight, in the same list.
-
-It is not a second mailbox. `service/mail` is the mail server; `/inbox` is
-where things turn up. Reply to a thread and the agent answers in it.
-
-Connect a normal mail client over IMAP and read the same threads from your
-phone.
-
-## Tools
-
-If you want to use the tools with an existing agent.
-
-**Cursor, and clients with a config file.** Create a token at
-[/token](https://micro.mu/token):
-
-```json
-{
-  "mcpServers": {
-    "mu": {
-      "url": "https://micro.mu/mcp",
-      "headers": {
-        "Authorization": "Bearer ${env:MU_TOKEN}"
-      }
-    }
-  }
-}
-```
-
-**Claude Desktop.** Settings → Connectors → Add custom connector, and paste
-`https://micro.mu/mcp`. It registers itself, opens a browser and asks you to
-sign in — no token needed. Pasting the URL into `claude_desktop_config.json`
-will not work: that file only takes local command-line servers.
-
-**Anything else.** It is JSON-RPC over HTTP POST:
-
-```bash
-curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-```
-
-Scope the connection to the services you need:
-
-```
-https://micro.mu/mcp?tools=news,web,mail
-```
-
-See [micro.mu/tools](https://micro.mu/tools) for all the tools.
 
 ## Install
 
@@ -204,8 +119,7 @@ See the [installation guide](docs/INSTALL.md).
 
 ## CLI
 
-Every tool is a `mu` subcommand. The same binary runs the server (`mu --serve`)
-and the CLI.
+Every service is a `mu` subcommand
 
 ```bash
 mu news list                            # latest headlines
@@ -222,8 +136,7 @@ Every tool in the table above is a command: the service, then the method. The
 underscore form works too, so `mu news list` and `mu news_list` are the same
 call.
 
-The CLI is registry-driven — a tool added to the server automatically becomes a
-CLI command.
+To authenticate
 
 ```bash
 mu login                  # opens /token in your browser, paste the PAT back
@@ -232,9 +145,6 @@ export MU_TOKEN=xxx       # or use the environment
 ```
 
 Run `mu --help` for the list — it reads the same catalogue the agent does.
-
-These are tool calls: one command, one tool, no model involved and nothing to
-pay for unless the tool itself costs.
 
 To talk to your agent instead, `mu ask` — it runs on the instance, so it needs
 your token and no model key of your own:
@@ -251,9 +161,7 @@ round.
 
 ## API
 
-Every tool is also an HTTP endpoint, at `/api/v1/<service>/<method>`. The same
-catalogue the CLI and the agent read, so a tool added to the server is an
-endpoint without anybody writing a route.
+Every service has a HTTP endpoint, at `/api/v1/<service>/<method>`.
 
 ```bash
 curl https://micro.mu/api/v1/                      # the catalogue
@@ -262,38 +170,20 @@ curl -X POST https://micro.mu/api/v1/news/list \
   -H 'Content-Type: application/json' -d '{"limit":5}'
 ```
 
-GET and POST mean the same thing and both work, because a REST API where reads
-are GETs is what every client library expects. What is not offered is a GET
-that changes something: a method the catalogue marks as writing needs a POST,
-so a link, a prefetch or a crawler cannot fire one.
-
 Authenticate with a token from `/token` as `Authorization: Bearer`, or with an
 OAuth client. A priced endpoint answers 402 without one, which an x402 client
 pays per call with no account at all.
 
-MCP clients connect at `/mcp` — same tools, same auth, same prices. The
-reference is at `/api`, and each service has its own page at `/services/<name>`.
+For Tools via MCP use `/mcp`. See [/tools](https://micro.mu/tools) for more info.
 
 ## Web
 
-The same instance is a web app, and every page on it is a service answering.
-
-- `/home` — what arrived, who is working on it, and what this instance knows
-  right now, with a box at the top to ask.
-- `/inbox` — the threads, whichever channel carried them.
-- `/agents` — your roster, and where you make a new one.
-- `/services` — the catalogue, and a page for each: `/news`, `/weather`,
-  `/markets`, and the rest.
-
-The service pages are not a separate product built over the API. They make the
-same calls an agent makes and render the result, which is why anything you can
-ask for you can also go and look at.
+- `/home` — an overview of everything going on.
+- `/inbox` — the place to see chats, mail, tasks, etc.
+- `/agents` — your agents, and where you make a new one.
+- `/services` — `/news`, `/weather`, `/markets`, etc.
 
 ## Configuration
-
-What a call costs is data, not code: `quota.json` at the top of the repo is the
-one price list, and everything that charges or displays a price reads it. Drop a
-`quota.json` into the data directory to override any entry without rebuilding.
 
 Some files are embedded in the binary, so editing means rebuilding:
 
