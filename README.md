@@ -15,7 +15,7 @@ What's included
 
 - **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI or the Web
 - **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it via the web or api 
-- **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents of reply directly.
+- **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents or reply directly.
 
 ## Services
 
