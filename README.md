@@ -143,9 +143,9 @@ For Tools via MCP use `/mcp`. See [/tools](https://micro.mu/tools) for more info
 
 Some files are embedded in the binary, so editing means rebuilding:
 
+- `home/cards.json` — home screen cards
 - `service/news/feeds.json` — RSS news feeds
 - `service/chat/prompts.json` — chat topics
-- `home/cards.json` — home screen cards
 - `service/video/channels.json` — YouTube channels
 - `service/places/locations.json` — saved locations
 
