@@ -13,11 +13,11 @@ import "testing"
 func TestSearchScopedToAccount(t *testing.T) {
 	indexed(t)
 	mutex.Lock()
-	messages = []*Message{
+	setMessages([]*Message{
 		{ID: "m1", From: "acme", FromID: "ext-acme", To: "alice", ToID: "alice", Subject: "Invoice", Body: "your bitcoin invoice is ready"},
 		{ID: "m2", From: "bobcorp", FromID: "ext-bob", To: "bob", ToID: "bob", Subject: "Bitcoin update", Body: "bob's private bitcoin note"},
 		{ID: "m3", From: "spammer", FromID: "ext-spam", To: "alice", ToID: "alice", Subject: "Bitcoin riches", Body: "claim your bitcoin now", Spam: true},
-	}
+	})
 	mutex.Unlock()
 	Reindex()
 

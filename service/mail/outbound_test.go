@@ -178,7 +178,7 @@ func TestSendOutRefusesALocalRecipient(t *testing.T) {
 func arrived(t *testing.T, owner, from string, spam bool) {
 	t.Helper()
 	mutex.Lock()
-	messages = append(messages, &Message{
+	addMessage(&Message{
 		ID: from + "-" + owner, From: from, FromID: from,
 		To: owner, ToID: owner, Subject: "Hello", Body: "hi",
 		Spam: spam, CreatedAt: time.Now(),
@@ -186,13 +186,13 @@ func arrived(t *testing.T, owner, from string, spam bool) {
 	mutex.Unlock()
 	t.Cleanup(func() {
 		mutex.Lock()
-		kept := messages[:0]
+		var kept []*Message
 		for _, m := range messages {
 			if m.ID != from+"-"+owner {
 				kept = append(kept, m)
 			}
 		}
-		messages = kept
+		setMessages(kept)
 		mutex.Unlock()
 	})
 }

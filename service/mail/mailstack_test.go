@@ -105,9 +105,9 @@ func newStack(t *testing.T, id string) *stack {
 	// The mailbox starts empty, and is emptied again after. Tests in this
 	// package share the package-level store.
 	mutex.Lock()
-	messages = nil
+	setMessages(nil)
 	mutex.Unlock()
-	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+	t.Cleanup(func() { mutex.Lock(); setMessages(nil); mutex.Unlock() })
 
 	return s
 }

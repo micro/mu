@@ -78,13 +78,13 @@ func seedStore(tb testing.TB, n int) {
 			CreatedAt: now.Add(-time.Duration(i) * time.Minute),
 		})
 	}
-	messages = built
+	setMessages(built)
 	rebuildInboxes()
 	mutex.Unlock()
 
 	tb.Cleanup(func() {
 		mutex.Lock()
-		messages = saved
+		setMessages(saved)
 		rebuildInboxes()
 		mutex.Unlock()
 	})

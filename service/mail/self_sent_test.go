@@ -28,16 +28,16 @@ func TestSelfAddressedMailIsRecognised(t *testing.T) {
 func TestMarkingSelfSentReadLeavesRealMailAlone(t *testing.T) {
 	mutex.Lock()
 	saved := messages
-	messages = []*Message{
+	setMessages([]*Message{
 		{ID: "1", FromID: "asim", ToID: "asim", Read: false},
 		{ID: "2", FromID: "stranger@example.com", ToID: "asim", Read: false},
 		{ID: "3", FromID: "asim", ToID: "asim", Read: true},
-	}
+	})
 	mine := messages
 	mutex.Unlock()
 	t.Cleanup(func() {
 		mutex.Lock()
-		messages = saved
+		setMessages(saved)
 		mutex.Unlock()
 	})
 

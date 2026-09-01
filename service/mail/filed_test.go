@@ -21,6 +21,7 @@ package mail
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -36,7 +37,7 @@ func TestDeliveryFilesOneMessageRatherThanRebuilding(t *testing.T) {
 	// The two delivery paths: the local one and the inbound one. Both append a
 	// message to the front of the store and then have to put it in an inbox.
 	deliver := regexp.MustCompile(
-		`messages = append\(\[\]\*Message\{msg\}, messages\.\.\.\)\s*\n(?:\s*//[^\n]*\n)*\s*(\w+)\(`)
+		`addMessage\(msg\)\s*\n\s*(\w+)\(`)
 
 	found := deliver.FindAllStringSubmatch(src, -1)
 	if len(found) != 2 {
@@ -65,11 +66,13 @@ func TestDeliveryFilesOneMessageRatherThanRebuilding(t *testing.T) {
 func TestAFiledMessageReachesSenderAndRecipient(t *testing.T) {
 	mutex.Lock()
 	msgs, boxes := messages, inboxes
-	messages, inboxes = nil, nil
+	setMessages(nil)
+	inboxes = nil
 	mutex.Unlock()
 	t.Cleanup(func() {
 		mutex.Lock()
-		messages, inboxes = msgs, boxes
+		setMessages(msgs)
+		inboxes = boxes
 		mutex.Unlock()
 	})
 
@@ -80,7 +83,7 @@ func TestAFiledMessageReachesSenderAndRecipient(t *testing.T) {
 	}
 
 	mutex.Lock()
-	messages = []*Message{msg}
+	addMessage(msg)
 	fileMessage(msg)
 	got := len(inboxes)
 	toBox := inboxes["filedto"]
@@ -103,11 +106,13 @@ func TestAFiledMessageReachesSenderAndRecipient(t *testing.T) {
 func TestSpamIsNotFiled(t *testing.T) {
 	mutex.Lock()
 	msgs, boxes := messages, inboxes
-	messages, inboxes = nil, nil
+	setMessages(nil)
+	inboxes = nil
 	mutex.Unlock()
 	t.Cleanup(func() {
 		mutex.Lock()
-		messages, inboxes = msgs, boxes
+		setMessages(msgs)
+		inboxes = boxes
 		mutex.Unlock()
 	})
 
@@ -115,7 +120,7 @@ func TestSpamIsNotFiled(t *testing.T) {
 		FromID: "spammer", ToID: "filedto", Spam: true}
 
 	mutex.Lock()
-	messages = []*Message{junk}
+	addMessage(junk)
 	fileMessage(junk)
 	box := inboxes["filedto"]
 	mutex.Unlock()
@@ -123,5 +128,76 @@ func TestSpamIsNotFiled(t *testing.T) {
 	if box != nil && len(box.Threads) > 0 {
 		t.Error("spam was filed into the normal inbox, which is the one thing " +
 			"rebuildInboxes skipped")
+	}
+}
+
+// The store is only assigned through the two helpers that keep the lookups
+// honest.
+//
+// byID and byHeaderID are built by setMessages and maintained by addMessage.
+// An index kept up to date by remembering to keep it up to date is wrong on
+// the path somebody forgot — and this package already had one of those before
+// there was an index: removing a message marked spam skipped the inbox rebuild
+// every other removal did.
+//
+// A stale entry is worse than the scan it replaced. A lookup that misses
+// reports a message that exists as absent, which breaks threading and makes a
+// delete claim there is nothing to delete. Fixtures count: a test that writes
+// straight into the slice is testing a store the product cannot produce, and
+// TestSearchScopedToAccount did exactly that and failed the moment search
+// started going through the map.
+func TestNothingAssignsTheStoreDirectly(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// `messages = ` at the start of a statement. setMessages and addMessage are
+	// where it is allowed, so lookups.go is the one file exempt.
+	direct := regexp.MustCompile(`(?m)^\s*messages\s*(=[^=]|,[^=\n]*=[^=])`)
+
+	for _, f := range files {
+		if f == "lookups.go" {
+			continue
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range strings.Split(string(b), "\n") {
+			if !direct.MatchString(line) {
+				continue
+			}
+			if s := strings.TrimSpace(line); strings.HasPrefix(s, "//") {
+				continue
+			}
+			t.Errorf("%s:%d assigns the store directly:\n    %s\n"+
+				"    Use setMessages or addMessage — see lookups.go — or byID and "+
+				"byHeaderID stop matching what is stored.",
+				f, i+1, strings.TrimSpace(line))
+		}
+	}
+}
+
+// And the lookups answer from the maps rather than by walking.
+func TestFindingOneMessageDoesNotReadThemAll(t *testing.T) {
+	b, err := os.ReadFile("mail.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(b)
+
+	for _, fn := range []string{"func MessageUnlocked(", "func byMessageIDUnlocked("} {
+		i := strings.Index(src, fn)
+		if i < 0 {
+			t.Fatalf("%s has gone", fn)
+		}
+		body := src[i:]
+		if j := strings.Index(body, "\n}\n"); j > 0 {
+			body = body[:j]
+		}
+		if strings.Contains(body, "range messages") {
+			t.Errorf("%s still walks the whole store; it is called once per new "+
+				"thread and once per inbound reply, holding the write mutex", fn)
+		}
 	}
 }

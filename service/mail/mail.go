@@ -25,6 +25,9 @@ import (
 var mutex sync.RWMutex
 
 // stored messages
+//
+// Assigned through setMessages and addMessage rather than directly, so the
+// lookups below cannot go stale. See index.go.
 var messages []*Message
 
 // Inbox organizes messages by thread for a user
@@ -105,17 +108,23 @@ func Load() {
 	initEncryption()
 
 	b, err := data.LoadFile("mail.json")
+	var loaded []*Message
+	if err == nil {
+		if uerr := json.Unmarshal(b, &loaded); uerr != nil {
+			// Mail that will not parse is moved out of the way before anything
+			// can overwrite it. This branch emptied the list and carried on,
+			// and the next save wrote that empty list over every account's
+			// mail — the one store where losing it silently is worst, and the
+			// one that reads its own bytes and so is not covered by
+			// data.LoadJSON.
+			data.Quarantine("mail.json", uerr)
+			loaded, err = nil, uerr
+		}
+	}
+	// Through setMessages either way, so the lookups in index.go are built from
+	// whatever was actually loaded — including nothing.
+	setMessages(loaded)
 	if err != nil {
-		messages = []*Message{}
-		inboxes = make(map[string]*Inbox)
-	} else if err := json.Unmarshal(b, &messages); err != nil {
-		// Mail that will not parse is moved out of the way before anything can
-		// overwrite it. This branch emptied the list and carried on, and the
-		// next save wrote that empty list over every account's mail — the one
-		// store where losing it silently is worst, and the one that reads its
-		// own bytes and so is not covered by data.LoadJSON.
-		data.Quarantine("mail.json", err)
-		messages = []*Message{}
 		inboxes = make(map[string]*Inbox)
 	} else {
 		app.Log("mail", "Loaded %d messages", len(messages))
@@ -260,12 +269,10 @@ func byMessageIDUnlocked(headerID string) *Message {
 	if headerID == "" {
 		return nil
 	}
-	for _, msg := range messages {
-		if msg != nil && strings.EqualFold(strings.TrimSpace(msg.MessageID), headerID) {
-			return msg
-		}
-	}
-	return nil
+	// A map, not a scan. This ran for every inbound reply, resolving a
+	// References header against the whole store while holding the write mutex.
+	// See lookups.go.
+	return byHeaderID[headerKey(headerID)]
 }
 
 // referenceIDs splits a References header, newest last as the header is
@@ -281,12 +288,11 @@ func referenceIDs(references string) []string {
 
 // MessageUnlocked finds a message without locking (for internal use when lock is held)
 func MessageUnlocked(msgID string) *Message {
-	for _, msg := range messages {
-		if msg.ID == msgID {
-			return msg
-		}
-	}
-	return nil
+	// A map, not a scan. addMessageToInbox calls this for every message that
+	// starts a thread, which is what made rebuilding the inboxes quadratic —
+	// and it is still on the delivery path for every new thread. See
+	// lookups.go.
+	return byID[msgID]
 }
 
 // rebuildInboxes reconstructs inbox structures from messages (must hold mutex)
@@ -1533,8 +1539,9 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 		msg.ThreadID = msg.ID // Root message
 	}
 
-	messages = append([]*Message{msg}, messages...)
-	// This message, not every message. See fileMessage.
+	// This message, not every message: added and indexed, then filed into the
+	// inboxes it belongs to. See addMessage and fileMessage.
+	addMessage(msg)
 	fileMessage(msg)
 	err := save()
 	mutex.Unlock()
@@ -1661,8 +1668,9 @@ func SendMessageTo(d Delivery) error {
 		msg.ReplyTo = parent.ID
 	}
 
-	messages = append([]*Message{msg}, messages...)
-	// This message, not every message. See fileMessage.
+	// This message, not every message: added and indexed, then filed into the
+	// inboxes it belongs to. See addMessage and fileMessage.
+	addMessage(msg)
 	fileMessage(msg)
 	err := save()
 	mutex.Unlock()
@@ -1806,7 +1814,7 @@ func DeleteSpamMessage(userID, msgID string) error {
 
 	for i, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID && msg.Spam {
-			messages = append(messages[:i], messages[i+1:]...)
+			setMessages(append(messages[:i:i], messages[i+1:]...))
 			unindexMessage(msg)
 			return save()
 		}
@@ -2024,7 +2032,7 @@ func DeleteMessage(msgID, userID string) error {
 	for i, msg := range messages {
 		// Allow deletion if user is sender or recipient
 		if msg.ID == msgID && (sentBy(msg, userID) || msg.ToID == userID) {
-			messages = append(messages[:i], messages[i+1:]...)
+			setMessages(append(messages[:i:i], messages[i+1:]...))
 			rebuildInboxes()
 			unindexMessage(msg)
 			return save()
@@ -2072,7 +2080,7 @@ func DeleteThread(msgID, userID string) error {
 		return fmt.Errorf("no messages to delete")
 	}
 
-	messages = remaining
+	setMessages(remaining)
 	rebuildInboxes()
 	for _, m := range gone {
 		unindexMessage(m)
@@ -2233,7 +2241,7 @@ func DeleteInbox(userID string) {
 		}
 		kept = append(kept, msg)
 	}
-	messages = kept
+	setMessages(kept)
 	delete(inboxes, userID)
 	// From `messages`, which has just changed — and which is what made the
 	// original bug survive: rebuilding without deleting puts it all back.

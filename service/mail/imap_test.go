@@ -201,13 +201,13 @@ func TestAClientsOpeningMovesAreAnswered(t *testing.T) {
 	}
 
 	mutex.Lock()
-	messages = []*Message{
+	setMessages([]*Message{
 		{ID: "1", ToID: acc.ID, From: "a@example.com", To: "imapopening@micro.mu",
 			Subject: "Older than the client", Body: "still here",
 			CreatedAt: time.Now().Add(-72 * time.Hour)},
-	}
+	})
 	mutex.Unlock()
-	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+	t.Cleanup(func() { mutex.Lock(); setMessages(nil); mutex.Unlock() })
 
 	c := dial(t)
 
@@ -284,14 +284,14 @@ func TestAndroidsSyncFindsTheMail(t *testing.T) {
 	}
 
 	mutex.Lock()
-	messages = []*Message{
+	setMessages([]*Message{
 		{ID: "1", ToID: acc.ID, From: "a@example.com", To: "imapandroid@micro.mu",
 			Subject: "First", Body: "one", CreatedAt: time.Now().Add(-48 * time.Hour)},
 		{ID: "2", ToID: acc.ID, From: "b@example.com", To: "imapandroid@micro.mu",
 			Subject: "Second", Body: "two", CreatedAt: time.Now().Add(-time.Hour)},
-	}
+	})
 	mutex.Unlock()
-	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+	t.Cleanup(func() { mutex.Lock(); setMessages(nil); mutex.Unlock() })
 
 	c := dial(t)
 	c.ok("LOGIN " + acc.ID + " " + token)
@@ -548,15 +548,15 @@ func TestFoldersAreTheAccountsAliases(t *testing.T) {
 	const who = "imap-folders"
 
 	mutex.Lock()
-	messages = []*Message{
+	setMessages([]*Message{
 		{ID: "1", ToID: who, Subject: "plain", CreatedAt: time.Now().Add(-3 * time.Hour)},
 		{ID: "2", ToID: who, Tag: "research", Subject: "tagged", CreatedAt: time.Now().Add(-2 * time.Hour)},
 		{ID: "3", ToID: who, Spam: true, Subject: "junk", CreatedAt: time.Now().Add(-time.Hour)},
 		{ID: "4", ToID: "somebody-else", Subject: "not yours", CreatedAt: time.Now()},
 		{ID: "5", FromID: who, ToID: "somebody-else", Subject: "one you sent", CreatedAt: time.Now()},
-	}
+	})
 	mutex.Unlock()
-	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+	t.Cleanup(func() { mutex.Lock(); setMessages(nil); mutex.Unlock() })
 
 	folders := imapFolders(who)
 	if fmt.Sprint(folders) != "[INBOX INBOX/research Sent Junk]" {
@@ -653,9 +653,9 @@ func TestPeekDoesNotMarkRead(t *testing.T) {
 
 	m := &Message{ID: "1", ToID: who, Subject: "hello", Body: "there", CreatedAt: time.Now()}
 	mutex.Lock()
-	messages = []*Message{m}
+	setMessages([]*Message{m})
 	mutex.Unlock()
-	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+	t.Cleanup(func() { mutex.Lock(); setMessages(nil); mutex.Unlock() })
 
 	s := &imapSession{account: who, folder: "INBOX", msgs: []*Message{m},
 		uids: []uint32{1}, deleted: map[string]bool{}}
@@ -678,9 +678,9 @@ func TestExamineChangesNothing(t *testing.T) {
 
 	m := &Message{ID: "1", ToID: who, Body: "there", CreatedAt: time.Now()}
 	mutex.Lock()
-	messages = []*Message{m}
+	setMessages([]*Message{m})
 	mutex.Unlock()
-	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+	t.Cleanup(func() { mutex.Lock(); setMessages(nil); mutex.Unlock() })
 
 	s := &imapSession{account: who, folder: "INBOX", readOnly: true,
 		msgs: []*Message{m}, uids: []uint32{1}, deleted: map[string]bool{}}
@@ -814,16 +814,16 @@ func TestAClientCanReadItsMail(t *testing.T) {
 	}
 
 	mutex.Lock()
-	messages = []*Message{
+	setMessages([]*Message{
 		{ID: "1", ToID: acc.ID, From: "a@example.com", To: "imapreader@micro.mu",
 			Subject: "Invoice 4021", Body: "Attached is this month's invoice.",
 			MessageID: "<inv@example.com>", CreatedAt: time.Now().Add(-2 * time.Hour)},
 		{ID: "2", ToID: acc.ID, From: "b@example.com", To: "imapreader+research@micro.mu",
 			Tag: "research", Subject: "Three papers", Body: "All on retrieval.",
 			CreatedAt: time.Now().Add(-time.Hour)},
-	}
+	})
 	mutex.Unlock()
-	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+	t.Cleanup(func() { mutex.Lock(); setMessages(nil); mutex.Unlock() })
 
 	c := dial(t)
 	c.ok("LOGIN " + acc.ID + " " + token)
