@@ -382,6 +382,23 @@ function fetchW(la,lo){
 		viewerID = sess.Account
 	}
 
+	// The rail is built before it is placed, because whether there is a second
+	// column at all depends on whether anything goes in it.
+	//
+	// Everything in the rail belongs to an account. Signed out there is no
+	// brief, no inbox and no roster, so the rail was an empty div — and an empty
+	// grid track is still 320px wide. A logged-out visitor got a third of the
+	// screen of nothing on the left and the services pushed right, with nothing
+	// on the page to say a column was missing rather than broken. Signed in it
+	// happens too: each of the three decides its own silence, so on a new
+	// account all three are empty at once, which is the first thing anybody
+	// sees.
+	//
+	// Written as "is there anything in it" rather than "is somebody signed in",
+	// because the empty column looks the same either way and a viewer check
+	// would leave the new-account version of it standing.
+	var rail strings.Builder
+
 	// ── Cards ──
 	b.WriteString(`<div id="home-cards">`)
 
@@ -491,8 +508,6 @@ function fetchW(la,lo){
 		// for it, which is the difference between offering a room and putting
 		// one in front of you.
 
-		b.WriteString(`<div class="home-rail">`)
-
 		// How things are, before you look anywhere.
 		//
 		// Between the box and the inbox on purpose: somebody arrives with one
@@ -502,7 +517,7 @@ function fetchW(la,lo){
 		// Labelled like the three blocks under it — see briefHTML, which draws
 		// its own heading for the same reason it decides its own silence.
 		if viewerID != "" {
-			b.WriteString(briefHTML(viewerID))
+			rail.WriteString(briefHTML(viewerID))
 		}
 
 		// What arrived, under a heading that looks like one.
@@ -513,7 +528,7 @@ function fetchW(la,lo){
 		// conversations came to look like loose links under the address line.
 		if viewerID != "" {
 			if peek := inbox.Preview(viewerID); peek != "" {
-				b.WriteString(sectionRule("Inbox") + peek)
+				rail.WriteString(sectionRule("Inbox") + peek)
 			}
 		}
 	}
@@ -531,11 +546,27 @@ function fetchW(la,lo){
 	// life against each. See agent.Preview.
 	if viewerID != "" {
 		if who := agent.Preview(viewerID); who != "" {
-			b.WriteString(sectionRule("Agents") + who)
+			rail.WriteString(sectionRule("Agents") + who)
 		}
 	}
 
-	b.WriteString(`</div><div class="home-main">`) // rail ends, the world begins
+	// The rail, if there is one, and then the world.
+	//
+	// With nothing to put in it the wrapper is not written at all and the main
+	// column takes both tracks — see .home-main.full in mu.css. Otherwise the
+	// services start a third of the way across the page, beside a column that
+	// is not there.
+	main := `<div class="home-main">`
+	if rail.Len() > 0 {
+		b.WriteString(`<div class="home-rail">` + rail.String() + `</div>`)
+	} else {
+		// Both tracks, since there is no rail to sit beside. On the main column
+		// rather than as a modifier on the grid above, because the grid is
+		// opened before this is known and a class there would mean building the
+		// rail somewhere else than where it reads.
+		main = `<div class="home-main full">`
+	}
+	b.WriteString(main)
 
 	// No counts strip. Four tiles reading Agents 0, Unread 0, Apps 0, Credits
 	// 100 is a dashboard of numbers rather than a thing you can act on, and

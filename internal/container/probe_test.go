@@ -3,6 +3,7 @@ package container
 // A missing runtime is asked about again; a present one is not.
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -68,6 +69,39 @@ func TestTheNotFoundMessageNamesThePath(t *testing.T) {
 	}
 	if !containsAny(unreachable, "PATH", "docker") {
 		t.Errorf("the reason names neither PATH nor docker: %q", unreachable)
+	}
+}
+
+// A stopped daemon is named as one, whichever words the client uses for it.
+//
+// The CLI's phrasing is the CLI's, and it has already changed once under this
+// code: the message whyNot was written against shares no matched substring with
+// the one a current client prints. When it stopped matching, an operator with a
+// stopped daemon got "the container runtime did not answer: |0|0" — the probe's
+// own template rendering itself empty, which names nothing to start.
+//
+// Table-driven because the point is that there is more than one wording, and
+// the next one goes in here.
+func TestAStoppedDaemonIsNamedWhateverTheClientCallsIt(t *testing.T) {
+	// Each as the probe sees it: our template on stdout, the complaint on
+	// stderr, one buffer.
+	for _, out := range []string{
+		"|0|0\nCannot connect to the Docker daemon at unix:///var/run/docker.sock. " +
+			"Is the docker daemon running?",
+		"|0|0\nfailed to connect to the docker API at unix:///var/run/docker.sock; " +
+			"check if the path is correct and if the daemon is running: dial unix " +
+			"/var/run/docker.sock: connect: no such file or directory",
+		"|0|0\nerror during connect: Get \"http://%2Fvar%2Frun%2Fdocker.sock/v1.51/info\": " +
+			"dial unix /var/run/docker.sock: connect: connection refused",
+	} {
+		why := whyNot(out, errors.New("exit status 1"))
+		if !containsAny(why, "daemon is not running") {
+			t.Errorf("a stopped daemon was not reported as one:\n  said: %s\n  from: %s",
+				why, trimLine(out))
+		}
+		if containsAny(why, "|0|0") {
+			t.Errorf("the reason quotes the probe's own empty template at the operator: %s", why)
+		}
 	}
 }
 

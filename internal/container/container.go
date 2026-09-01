@@ -220,17 +220,54 @@ func whyNot(out string, err error) string {
 			"as a user that is not in the docker group. Adding it and restarting the " +
 			"server is the fix; the group is read once when a process starts, so the " +
 			"restart is not optional"
-	case strings.Contains(text, "cannot connect"), strings.Contains(text, "is the docker daemon running"):
+	case daemonDown(text):
 		return "docker is installed but its daemon is not running"
-	case strings.TrimSpace(out) != "":
+	case trimLine(out) != "":
 		return "the container runtime did not answer: " + trimLine(out)
 	}
 	return "the container runtime did not answer"
 }
 
+// daemonDown is the runtime's several ways of saying the client is fine and
+// nothing answered it.
+//
+// More than one phrasing because the phrasing belongs to the CLI and the CLI
+// changes it. This was written against "Cannot connect to the Docker daemon at
+// unix:///var/run/docker.sock. Is the docker daemon running?"; a current client
+// says "failed to connect to the docker API at unix:///var/run/docker.sock;
+// check if the path is correct and if the daemon is running" instead, which
+// shares no matched substring with it — not "cannot connect", not "is the
+// docker daemon running".
+//
+// So the client whose words moved fell past this case to the one below, and an
+// operator with a stopped daemon was told "the container runtime did not
+// answer: |0|0". That is the probe's own template rendering itself empty. It
+// names nothing to start and nothing to look at, which is the failure this
+// package's messages exist to avoid.
+func daemonDown(text string) bool {
+	for _, phrase := range []string{
+		"cannot connect", "failed to connect", "connection refused",
+		"daemon is running", "docker.sock",
+	} {
+		if strings.Contains(text, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
 // trimLine is the first useful line of a command's output, bounded.
+//
+// Useful excludes our own probe template coming back. run combines stdout and
+// stderr, so a failed probe's output holds both the runtime's complaint and the
+// template rendering itself empty — and the template is first, because it is on
+// stdout. Quoting that at an operator explains nothing: "|0|0" is this file
+// talking to itself.
 func trimLine(out string) string {
 	for _, line := range strings.Split(out, "\n") {
+		if _, _, _, ours := readFacts(line); ours || strings.Count(line, "|") == 2 {
+			continue
+		}
 		if line = strings.TrimSpace(line); line != "" {
 			if len(line) > 200 {
 				line = line[:200] + "…"

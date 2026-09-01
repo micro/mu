@@ -973,6 +973,16 @@ body.page-home #page-title ~ #customize-link {
     min-width: 0;
   }
 
+  /* No rail, no track for one. An empty grid track is still 320px wide, so a
+     signed-out visitor — who has no brief, no inbox and no roster — got a
+     third of the screen of nothing and the services shunted right. home.go
+     leaves the rail out entirely when there is nothing to put in it and marks
+     this column full; the rules below that address .home-main are unaffected,
+     since the column is the same column at a different width. */
+  .home-main.full {
+    grid-column: 1 / -1;
+  }
+
   /* Nothing resets the first heading's top margin, and that is deliberate.
      Both columns now begin with a .home-section — Brief on the left, Services
      on the right — so the 30px they each carry is what puts them on the same
@@ -985,10 +995,10 @@ body.page-home #page-title ~ #customize-link {
   /* One column of cards at this width, because there is not room for two
      beside a rail. The two-column rule is below, at the width where two
      actually fit. */
-  .home-main #home {
+  .home-main:not(.full) #home {
     flex-direction: column;
   }
-  .home-main .home-right {
+  .home-main:not(.full) .home-right {
     width: 100%;
   }
 }
@@ -1006,6 +1016,11 @@ body.page-home #page-title ~ #customize-link {
   .home-main #home {
     flex-direction: row;
   }
+  /* :not(.full) throughout the three-column rules. With no rail this column is
+     the page, and the page's own proportions — 1fr beside a 370px right — are
+     what the cards were drawn for. The narrowing below is for a main column
+     sharing the width with a rail; applied to one that is not, it would leave
+     a card column 50px short of its natural measure for no reason. */
   /* Not equal. cards.json is not a pair of interchangeable halves: the left
      column is blog, prayer and news — headlines, standfirsts and body text,
      all of which read better long — and the right is markets, images and
@@ -1018,12 +1033,12 @@ body.page-home #page-title ~ #customize-link {
      every figure. Same relationship as the full-width layout's 1fr + 370px,
      re-proportioned for a region that is smaller because the rail is beside
      it. */
-  .home-main .home-left {
+  .home-main:not(.full) .home-left {
     flex: 1 1 auto;
     width: auto;
     min-width: 0;
   }
-  .home-main .home-right {
+  .home-main:not(.full) .home-right {
     flex: 0 0 320px;
     width: 320px;
     min-width: 0;

@@ -134,3 +134,62 @@ func splitHome(body string) (rail, main string, ok bool) {
 	}
 	return rest[:j], rest[j+len(mid):], true
 }
+
+// With nothing in the rail there is no rail, and the world takes the page.
+//
+// The rail's three blocks all belong to an account, so signed out all three are
+// empty and the wrapper held nothing. It was still a grid track: 320px of blank
+// on the left of the first screen a visitor ever sees, with the services
+// starting a third of the way across from a column that is not there. Nothing
+// on the page distinguished that from the layout being broken, which is what it
+// looked like.
+//
+// A new account is the same page — briefHTML, inbox.Preview and agent.Preview
+// each decide their own silence, and on a fresh account all three are silent —
+// which is why the condition is what is in the rail and not who is reading.
+func TestWithNothingInTheRailThereIsNoRail(t *testing.T) {
+	r := httptest.NewRequest("GET", "/home", nil)
+	rec := httptest.NewRecorder()
+	Handler(rec, r)
+	body := rec.Body.String()
+
+	if strings.Contains(body, `<div class="home-rail">`) {
+		t.Error("a signed-out Home still opens a rail; empty, it is a 320px grid " +
+			"track of nothing beside the services")
+	}
+	// And the column that is left says it is the whole width, or the grid puts
+	// it in the second track regardless — see .home-main.full in mu.css.
+	if !strings.Contains(body, `<div class="home-main full">`) {
+		t.Error("the main column is not marked full, so it stays in the second " +
+			"grid track with an empty first one beside it")
+	}
+
+	// The services really are on the page — otherwise this passes on a Home
+	// that rendered nothing at all.
+	if !strings.Contains(body, "Services") {
+		t.Error("no services on a signed-out Home, so there is nothing for the " +
+			"full-width column to hold")
+	}
+}
+
+// And a rail with something in it is still a rail.
+func TestARailWithContentIsStillWritten(t *testing.T) {
+	const who = "railcontent"
+
+	th := thread.Open(who, "mail", "<rail@example.com>")
+	if th == nil {
+		t.Fatal("no thread")
+	}
+	thread.Join(who, th.ID, thread.Party{Kind: thread.RolePerson,
+		Key: "henrik@example.com", Name: "Henrik"})
+	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RolePerson,
+		Text: "Are you free Tuesday?", From: "henrik@example.com"})
+
+	body := homeFor(t, who)
+	if _, _, ok := splitHome(body); !ok {
+		t.Fatal("an account with mail waiting has no rail")
+	}
+	if strings.Contains(body, `<div class="home-main full">`) {
+		t.Error("the main column claims both tracks while a rail is beside it")
+	}
+}
