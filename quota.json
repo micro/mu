@@ -238,7 +238,8 @@
       "op": "app_create",
       "cost": 0,
       "label": "Create an app",
-      "env": "CREDIT_COST_APP_CREATE"
+      "env": "CREDIT_COST_APP_CREATE",
+      "note": "Zero next to app_build at 19 looks like an oversight and is not. apps_create takes the HTML the caller already has and writes it to this instance's storage; apps_build is the one that asks a model to write it, and that is what the 19 pays for. Nothing here reaches a provider, which is the rule for a zero price. An agent that builds an app pays once, at the build"
     },
     {
       "op": "mail_send",

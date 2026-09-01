@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/quota"
 )
 
@@ -117,6 +118,34 @@ func SendOn(channel Channel, owner, to, text string) (*Message, error) {
 			return nil, fmt.Errorf("that is %d %s in a day, which is this account's limit. %s",
 				n, channel.Things(), raiseIt(channel))
 		}
+	}
+
+	// The same gate mail has, for the same reason. What leaves here leaves on
+	// this instance's number, and a number that gets reported for spam carries
+	// every other account's messages down with it — the same shared thing a
+	// domain is in service/mail/outbound.go, and no balance repairs either one.
+	//
+	// So an account nobody has vouched for may answer a number it knows and may
+	// not cold-call a stranger. Known() is already the test for that: a contact,
+	// a number verified as their own, or one that has written in. Trusted is
+	// auth's — an admin, an approved account, a verified address, or money the
+	// account put in.
+	//
+	// Price and the daily limit do not cover this. They bound what one account
+	// spends, not what a hundred of them do, and a new account arrives with a
+	// hundred credits, which is five strangers texted before it has told us
+	// anything about itself.
+	//
+	// Last of the refusals, and after the operator's switches rather than with
+	// the other rules about the recipient. Every reason above it is either more
+	// specific or more actionable — the message is a duplicate, the instance is
+	// not sending at all, the account is over its cap for the day — and telling
+	// somebody to verify their email address when the real answer is that
+	// sending is switched off is advice that does not work.
+	if !Known(owner, number) && !auth.Trusted(owner) {
+		return nil, fmt.Errorf("this account cannot message %s yet — it is not in your contacts and has "+
+			"not written to you, and messages leaving here go out on this instance's own number. "+
+			"Verify your email address in your Account, or add credit to your Balance, and it will", number)
 	}
 
 	// Priced per segment, because that is how it is billed to us. A caller who

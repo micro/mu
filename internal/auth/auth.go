@@ -701,24 +701,35 @@ func OnlineUsers() []string {
 // so self-hosters without mail aren't accidentally locked out.
 var VerificationRequired func() bool
 
-// HasCredit is set by main.go and reports whether an account has a positive
-// credit balance. Kept as a hook because the wallet imports auth, not the
-// other way round.
-var HasCredit func(accountID string) bool
+// HasPaid is set by main.go and reports whether an account has ever put money
+// in. Kept as a hook because the wallet imports auth, not the other way round.
+//
+// It was HasCredit and it asked whether the balance was positive, which is a
+// different question and stopped being the same one the day new accounts were
+// given a hundred credits to start with. A grant is not a signal — see
+// account.Paid, which is what this points at.
+var HasPaid func(accountID string) bool
 
 // trusted reports whether an account has shown it is a person rather than a
 // signup script. Three things count, and any one of them is enough:
 //
 //   - an admin said so (Admin, Approved),
 //   - a verified email address,
-//   - money in the wallet.
+//   - money the account put in.
+//
+// Put in, not held. What makes money a signal is that producing it costs
+// something a script cannot spend at scale — a card that clears is a person a
+// chargeback can reach. Credits we handed out at signup cost the holder
+// nothing, so a balance made of them says only that somebody signed up, and
+// reading it as trust promoted every new account past the 24-hour wait, the
+// new-account post cap, the agent cap and the gate on mail leaving here.
 //
 // The 24-hour wait is not a fourth signal, it is what we fall back on when we
 // have none of these. Waiting proves nothing about a bot — it costs a script
 // nothing and costs a new user their whole first session — so anything that
 // does carry signal has to be able to skip it.
 //
-// Takes a copy, not the live account, because it calls out to HasCredit and
+// Takes a copy, not the live account, because it calls out to HasPaid and
 // must not do that under auth's mutex: the wallet reads accounts, so holding
 // the lock across the call would deadlock the first time someone checked a
 // balance. Callers snapshot under the lock and evaluate after releasing it.
@@ -726,7 +737,7 @@ func trusted(acc Account) bool {
 	if acc.Admin || acc.Approved || acc.EmailVerified {
 		return true
 	}
-	return HasCredit != nil && HasCredit(acc.ID)
+	return HasPaid != nil && HasPaid(acc.ID)
 }
 
 // Trusted is the same question asked by account id.

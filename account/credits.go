@@ -368,6 +368,13 @@ func settled(l *ledger, userID, key string) bool {
 // shape a trial should have.
 const WelcomeCredits = 100
 
+// OpWelcome is what the welcome grant is called on the ledger.
+//
+// Its own name rather than "topup", because everything downstream needs to be
+// able to tell a gift from a payment — see Paid — and a receipt that reads
+// "Deposit" for money nobody deposited is the first thing that goes wrong.
+const OpWelcome = "welcome"
+
 // Welcome grants a new account its starting balance.
 //
 // Called from the signup paths rather than from auth.Create, because credits
@@ -381,11 +388,76 @@ func Welcome(userID string) {
 	if strings.TrimSpace(userID) == "" || !PaymentsEnabled() {
 		return
 	}
-	if err := AddCredits(userID, WelcomeCredits, TxTopup, map[string]interface{}{
+	if err := AddCredits(userID, WelcomeCredits, OpWelcome, map[string]interface{}{
 		"welcome": true,
 	}); err != nil {
 		app.Log("credits", "welcome grant for %s failed: %v", userID, err)
 	}
+}
+
+// isWelcome reports whether a movement is the grant rather than a payment.
+//
+// Two handles on the same fact. The operation name is the one to write and the
+// one to read; the metadata flag is what the first grants were written with,
+// before they had a name of their own, and those are on disk on a live
+// instance. Either is enough, so an old row answers the same as a new one.
+func isWelcome(tx *Transaction) bool {
+	if tx == nil {
+		return false
+	}
+	if tx.Operation == OpWelcome {
+		return true
+	}
+	v, ok := tx.Metadata["welcome"].(bool)
+	return ok && v
+}
+
+// Paid reports whether this account has ever put money in.
+//
+// Not "has a balance". The two were the same function until new accounts were
+// given a hundred credits to start with, and that grant quietly answered yes to
+// a question the rest of the product asks about accountability: may this
+// account mail a stranger, may it post before its first day is out, how many
+// agents may it run, how hard may it hit the service gateway. See auth.HasPaid,
+// which is where that is decided, and internal/auth.trusted, which is what it
+// decides.
+//
+// Money is a trust signal because it costs something to produce — a card that
+// clears is a person a chargeback can reach. Money we handed over costs a
+// signup script nothing, so it signals nothing, and treating it as a signal
+// turned "put a pound in" into "sign up", for every control keyed on it at
+// once.
+//
+// Ever, not now: an account that paid and then spent it all has still shown
+// what it showed. The balance can go back to zero; the fact cannot.
+//
+// A transfer in does not count either, nor does revenue from an app. Both are
+// somebody else's money arriving, which is exactly the shape of one funded
+// account paying for a hundred empty ones — buy your own app for a credit and
+// the shell that sold it is established. The person who actually paid is
+// already trusted on their own account, which is where the signal belongs.
+//
+// Both are excluded by name as well as by type. A transfer writes TxTransfer
+// and would be skipped anyway, and the belt is there because the type is the
+// kind of thing a later refactor changes without meaning anything by it.
+//
+// So what is left is what somebody put in: a card, USDC, or an operator's own
+// grant, which is a human decision about a specific account and the same one
+// Approved records. Every other way credits arrive is named here, and
+// TestEveryWayCreditsArriveIsClassified fails when a new one is not.
+func Paid(userID string) bool {
+	return withLedger(func(l *ledger) bool {
+		for _, tx := range transactions[userID] {
+			if tx == nil || tx.Type != TxTopup || tx.Amount <= 0 {
+				continue
+			}
+			if isWelcome(tx) || tx.Operation == quota.OpAppRevenue || tx.Operation == quota.OpTransfer {
+				continue
+			}
+			return true
+		}
+		return false
+	})
 }
 
 func AddCredits(userID string, amount int, operation string, metadata map[string]interface{}) error {

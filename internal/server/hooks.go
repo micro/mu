@@ -857,11 +857,14 @@ func wireHooks() {
 		return app.EmailSender != nil
 	}
 
-	// Money is a trust signal, so auth needs to be able to see it. Wired as a
-	// hook because the wallet imports auth and cannot be imported back.
-	auth.HasCredit = func(accountID string) bool {
-		return account.Balance(accountID) > 0
-	}
+	// Money somebody put in is a trust signal, so auth needs to be able to see
+	// it. Wired as a hook because the wallet imports auth and cannot be imported
+	// back.
+	//
+	// account.Paid and not account.Balance. A balance includes the welcome
+	// grant, and reading a gift as a signal made every signup established the
+	// moment it existed.
+	auth.HasPaid = account.Paid
 
 	// The status page asks the AI package what the model is doing rather than
 	// guessing from one env var.

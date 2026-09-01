@@ -183,6 +183,10 @@ func transactionLabel(tx *Transaction) string {
 			return "Earned: " + appSlug
 		}
 		return "App revenue"
+	case isWelcome(tx):
+		// Not "Deposit". Nobody deposited it, and the first line of somebody's
+		// history should say where the money they did not pay for came from.
+		return "Welcome credit"
 	case tx.Type == TxTopup:
 		return "Deposit"
 	case tx.Type == TxTransfer:

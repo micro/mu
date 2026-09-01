@@ -82,7 +82,7 @@ func TestPostBlockReasonOffersTheWayOut(t *testing.T) {
 // either one lets a brand-new account post immediately.
 func TestTrustSignalsSkipTheWait(t *testing.T) {
 	originalVerificationRequired := VerificationRequired
-	originalHasCredit := HasCredit
+	originalHasPaid := HasPaid
 	t.Cleanup(func() {
 		mutex.Lock()
 		delete(accounts, "fresh-verified")
@@ -90,7 +90,7 @@ func TestTrustSignalsSkipTheWait(t *testing.T) {
 		delete(accounts, "fresh-broke")
 		mutex.Unlock()
 		VerificationRequired = originalVerificationRequired
-		HasCredit = originalHasCredit
+		HasPaid = originalHasPaid
 	})
 
 	now := time.Now()
@@ -101,7 +101,7 @@ func TestTrustSignalsSkipTheWait(t *testing.T) {
 	mutex.Unlock()
 
 	VerificationRequired = func() bool { return true }
-	HasCredit = func(id string) bool { return id == "fresh-funded" }
+	HasPaid = func(id string) bool { return id == "fresh-funded" }
 
 	if !CanPost("fresh-verified") {
 		t.Fatal("a verified address should clear the new-account wait")
@@ -140,24 +140,24 @@ func TestTrustSignalsSkipTheWait(t *testing.T) {
 	}
 }
 
-// HasCredit reaches into the wallet, which reads accounts. Calling it under
+// HasPaid reaches into the wallet, which reads accounts. Calling it under
 // auth's own mutex would deadlock the first time anyone posted, so the trust
 // rules snapshot the account and evaluate after releasing the lock. This test
 // fails by hanging if that ever regresses.
 func TestTrustRulesDoNotHoldTheLock(t *testing.T) {
-	originalHasCredit := HasCredit
+	originalHasPaid := HasPaid
 	t.Cleanup(func() {
 		mutex.Lock()
 		delete(accounts, "reentrant")
 		mutex.Unlock()
-		HasCredit = originalHasCredit
+		HasPaid = originalHasPaid
 	})
 
 	mutex.Lock()
 	accounts["reentrant"] = &Account{ID: "reentrant", Created: time.Now()}
 	mutex.Unlock()
 
-	HasCredit = func(id string) bool {
+	HasPaid = func(id string) bool {
 		// What the wallet does: look the account up again.
 		mutex.Lock()
 		_, ok := accounts[id]
