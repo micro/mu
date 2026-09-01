@@ -252,11 +252,23 @@ func TestTheBalanceIsInTheRailOnHome(t *testing.T) {
 	if got == "" {
 		t.Fatal("no balance block on an instance that charges")
 	}
+	// The heading leads to /wallet, which on Home is the only thing that does:
+	// the header chip is hidden here and Wallet is not in the rail.
 	if !strings.Contains(got, `href="/wallet"`) {
-		t.Error("the balance does not lead to the wallet")
+		t.Error("nothing on Home leads to /wallet — the header chip is hidden here, " +
+			"so hiding it without this link makes the wallet unreachable from Home")
 	}
 	if !strings.Contains(got, "credits") {
 		t.Error("the number has no unit on it")
+	}
+	// The real card's contents, not a hand-rolled number. Those two links are
+	// what somebody looking at a balance has come to do, and a figure with no
+	// rate beside it does not say what a credit is.
+	for _, want := range []string{"/wallet/topup", "/wallet/transfer", "1 credit = 1"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the balance block is missing %s — it should be account.BalanceBody, "+
+				"not a number written again here", want)
+		}
 	}
 
 	// And nothing at all where nobody is charged, which is the same condition

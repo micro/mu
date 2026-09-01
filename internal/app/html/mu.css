@@ -1191,28 +1191,32 @@ body.page-home #page-title ~ #customize-link {
   margin-top: 0;
 }
 
-/* The balance at the foot of Home's rail. A number and its unit on one line,
-   sized like a figure rather than like a heading: the sections above it are
-   lists you read and this is one fact you glance at. */
-.home-wallet {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  text-decoration: none;
-  padding: 2px 0 4px;
-}
-.home-wallet-n {
+/* The balance at the foot of Home's rail. account.BalanceBody, which is the
+   same markup /account puts in a card — the figure, the rate, an admin's note,
+   and Top up / Transfer — with the card taken off, because the blocks either
+   side of it here are a heading and a list.
+
+   The figure is sized down from the /account version: there it is the first
+   thing on the page and it leads, here it is the last block in a column and a
+   32px number under two lists shouts over them. */
+.home-wallet .balance-figure {
+  margin: 4px 0 2px;
   font-size: 22px;
-  font-weight: 600;
-  color: var(--text-primary, #111);
-  font-variant-numeric: tabular-nums;
   line-height: 1;
 }
-.home-wallet-w {
+.home-wallet .balance-figure span {
   font-size: 13px;
+  font-weight: 400;
   color: var(--text-secondary, #666);
 }
-.home-wallet:hover .home-wallet-n { text-decoration: underline }
+.home-wallet .note {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.home-wallet .balance-links {
+  margin: 0;
+  font-size: 13px;
+}
 
 .home-left, .home-right {
   display: flex;

@@ -66,6 +66,22 @@ func thousands(n int) string {
 // nav item of its own called Wallet, which put a person's money one click
 // further away than their choice of language.
 func BalanceCard(userID string) string {
+	return app.SectionID("balance", "Balance", BalanceBody(userID)...)
+}
+
+// BalanceBody is what is inside that card, without the card.
+//
+// Split out for Home's rail, which draws the balance under a "Wallet" heading
+// in the same shape as the Inbox and Agents blocks beside it — a card nested
+// under a section heading would be a second frame around one number, and a
+// second "Balance" title under a "Wallet" one.
+//
+// Split rather than reimplemented, because the parts are not decoration: the
+// figure is meaningless without "1 credit = 1¢" next to it, an admin needs
+// telling their own calls are never charged, and Top up and Transfer are the
+// two things anybody comes to a balance to do. Home had a hand-rolled number
+// and a link for one commit and it was already missing all four.
+func BalanceBody(userID string) []string {
 	c := CreditsOf(userID)
 
 	isAdmin := false
@@ -95,13 +111,14 @@ func BalanceCard(userID string) string {
 	// balances — this one in credits, and the USDC the key holds — but the
 	// second card names itself "Crypto", so this one does not have to
 	// carry the disambiguation in its own title as well.
-	return app.SectionID("balance", "Balance",
-		`<p class="balance-figure"><b>`+thousands(c.Balance)+`</b> <span>credits</span></p>`,
-		app.Note(money(c.Balance)+" · 1 credit = 1¢"),
+	return []string{
+		`<p class="balance-figure"><b>` + thousands(c.Balance) + `</b> <span>credits</span></p>`,
+		app.Note(money(c.Balance) + " · 1 credit = 1¢"),
 		free,
 		admin,
-		`<p class="balance-links"><a href="/wallet/topup">Top up &rarr;</a> · `+
-			`<a href="/wallet/transfer">Transfer &rarr;</a></p>`)
+		`<p class="balance-links"><a href="/wallet/topup">Top up &rarr;</a> · ` +
+			`<a href="/wallet/transfer">Transfer &rarr;</a></p>`,
+	}
 }
 
 // LedgerSection is the receipts: what things cost, and what this account has

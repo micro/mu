@@ -20,6 +20,16 @@ package home
 // this is the balance, and on every other page the chip is. One number, one
 // place, always. See body.page-home #head-wallet in mu.css.
 //
+// # The real card, not a number
+//
+// This drew its own figure and its own link for one commit, and a balance
+// rendered by hand is a balance that drifts from the one on /account. It is
+// account.BalanceBody now — the same figure, the same "1 credit = 1¢", the same
+// note to an admin that their calls are never charged, and the same Top up and
+// Transfer. Those are not trimmings: the number means nothing without the rate
+// beside it, and topping up is the thing somebody looking at a balance has come
+// to do.
+//
 // # At the foot
 //
 // Inbox and Agents are things that want something from you. A balance does not:
@@ -28,11 +38,9 @@ package home
 // badge rather than a nav item everywhere else.
 
 import (
-	"html"
-	"strconv"
 	"strings"
 
-	"mu/internal/auth"
+	"mu/account"
 	"mu/internal/quota"
 )
 
@@ -47,48 +55,23 @@ func walletHTML(accountID string) string {
 		return ""
 	}
 
-	// Unlimited for an admin, which is what the header shows them too. Reading
-	// the account rather than trusting the caller: this draws money, and the
-	// session is the only thing that says whose.
-	balance := ""
-	if acc, err := auth.GetAccount(accountID); err == nil && acc != nil && acc.Admin {
-		balance = "∞"
-	} else {
-		balance = groupThousands(quota.BalanceOf(accountID))
-	}
-
+	// Under a "Wallet" heading in the rail's own shape, rather than as the card
+	// it is on /account: the blocks either side of it are a heading and a list,
+	// and a bordered card between them reads as something that has been pasted
+	// in. The card's own "Balance" title goes with the frame — two titles for
+	// one number, one of them inside the other, is what nesting them would give.
+	//
+	// The heading is a link, and it is the only one to /wallet on this page.
+	// Wallet is not in the rail — Tokens is, money is not — so the header chip
+	// was the way there, and Home is the one page that hides the chip. Top up
+	// and Transfer below go to their own pages and neither is the wallet
+	// itself.
 	var b strings.Builder
-	b.WriteString(sectionRule("Wallet"))
-	b.WriteString(`<a class="home-wallet" href="/wallet">`)
-	b.WriteString(`<span class="home-wallet-n">` + html.EscapeString(balance) + `</span>`)
-	// The word, because a number on its own in a rail of lists is a number
-	// without a unit — and "credits" is what the wallet page, the pricing and
-	// the refusals all call it.
-	b.WriteString(`<span class="home-wallet-w">credits</span>`)
-	b.WriteString(`</a>`)
+	b.WriteString(`<p class="home-section"><small><a href="/wallet">Wallet</a></small></p>`)
+	b.WriteString(`<div class="home-wallet">`)
+	for _, part := range account.BalanceBody(accountID) {
+		b.WriteString(part)
+	}
+	b.WriteString(`</div>`)
 	return b.String()
-}
-
-// groupThousands is 1200 as 1,200, matching the header's badge.
-//
-// Duplicated rather than exported from internal/app, which formats it for a
-// badge that is its own: one unexported six-line helper in two packages is a
-// smaller thing than a formatting function in the app package's API, and the
-// two would not be allowed to diverge anyway — see the test.
-func groupThousands(n int) string {
-	if n < 0 {
-		n = 0
-	}
-	s := strconv.Itoa(n)
-	if len(s) <= 3 {
-		return s
-	}
-	var out []byte
-	for i, c := range []byte(s) {
-		if i > 0 && (len(s)-i)%3 == 0 {
-			out = append(out, ',')
-		}
-		out = append(out, c)
-	}
-	return string(out)
 }
