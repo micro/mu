@@ -153,44 +153,85 @@ func HumanCount(n int) string {
 }
 
 // Table renders a breakdown, each row's bar showing it against the largest.
-// LinkTable is Table with each row's key a link.
+// LinkTable is Table with each row a link.
 //
 // href returns where a key goes, or "" for a row that leads nowhere — which is
-// what Other is: an aggregate of the tail past maxKeys, not a caller, and a
-// link on it would promise a page about a thing that is not one.
-func LinkTable(sb *strings.Builder, title string, rows []Count, href func(string) string) {
-	table(sb, title, rows, href)
+// what Other is: an aggregate of the tail past the cap, not a caller. selected
+// marks the row currently being drilled into.
+func LinkTable(sb *strings.Builder, title string, rows []Count, selected string, href func(string) string) {
+	table(sb, title, rows, selected, href, 0)
 }
 
 func Table(sb *strings.Builder, title string, rows []Count) {
-	table(sb, title, rows, nil)
+	table(sb, title, rows, "", nil, 0)
 }
 
-func table(sb *strings.Builder, title string, rows []Count, href func(string) string) {
+// TableWithRest is Table plus a final muted row for what the breakdown could
+// not account for. Drawn only when there is something to say — see TopFor.
+func TableWithRest(sb *strings.Builder, title string, rows []Count, rest int) {
+	table(sb, title, rows, "", nil, rest)
+}
+
+// table draws one breakdown.
+//
+// Rows are flex, not table cells. They were a <table>, and when the callers
+// became clickable the only thing carrying the link was the label — so the hit
+// area was one underlined word in a row twenty times its width, with no hover
+// on the row and nothing showing which one you were looking at. A row that acts
+// like a button has to look and behave like one across its whole width.
+func table(sb *strings.Builder, title string, rows []Count, selected string, href func(string) string, rest int) {
 	sb.WriteString(`<div class="card"><h3>` + html.EscapeString(title) + `</h3>`)
-	if len(rows) == 0 {
+	if len(rows) == 0 && rest == 0 {
 		sb.WriteString(`<p class="text-sm text-muted">Nothing yet.</p></div>`)
 		return
 	}
 
-	peak := rows[0].Count
-	sb.WriteString(`<table class="traffic-table">`)
+	peak := 0
+	if len(rows) > 0 {
+		peak = rows[0].Count
+	}
+	if rest > peak {
+		peak = rest
+	}
+
+	sb.WriteString(`<div class="traffic-rows">`)
 	for _, row := range rows {
 		pct := 0
 		if peak > 0 {
 			pct = row.Count * 100 / peak
 		}
-		// The bar behind the row is the comparison; the number is the fact.
-		key := html.EscapeString(row.Key)
+		to := ""
 		if href != nil {
-			if to := href(row.Key); to != "" {
-				key = `<a href="` + html.EscapeString(to) + `">` + key + `</a>`
-			}
+			to = href(row.Key)
 		}
-		fmt.Fprintf(sb, `<tr><td class="traffic-key"><span class="traffic-rowbar" style="width:%d%%"></span><span>%s</span></td><td class="traffic-n">%d</td></tr>`,
-			pct, key, row.Count)
+		cls := "traffic-row"
+		if selected != "" && row.Key == selected {
+			cls += " selected"
+		}
+		// The bar behind the row is the comparison; the number is the fact.
+		inner := fmt.Sprintf(`<span class="traffic-rowbar" style="width:%d%%"></span>`+
+			`<span class="traffic-label">%s</span><span class="traffic-n">%d</span>`,
+			pct, html.EscapeString(row.Key), row.Count)
+		if to != "" {
+			fmt.Fprintf(sb, `<a class="%s" href="%s">%s</a>`, cls, html.EscapeString(to), inner)
+		} else {
+			fmt.Fprintf(sb, `<div class="%s">%s</div>`, cls, inner)
+		}
 	}
-	sb.WriteString(`</table></div>`)
+	if rest > 0 {
+		pct := 0
+		if peak > 0 {
+			pct = rest * 100 / peak
+		}
+		// Named for what it is rather than left out. See TopFor: this is the
+		// difference between the caller's total and what the breakdown could
+		// account for, and hiding it is what made the two tables disagree.
+		fmt.Fprintf(sb, `<div class="traffic-row traffic-rest">`+
+			`<span class="traffic-rowbar" style="width:%d%%"></span>`+
+			`<span class="traffic-label">not broken down</span>`+
+			`<span class="traffic-n">%d</span></div>`, pct, rest)
+	}
+	sb.WriteString(`</div></div>`)
 }
 
 // Since is a short "3 days ago" for a page that has room for one word.
@@ -220,13 +261,21 @@ const CSS = `<style>
 .traffic-bar{fill:var(--accent-color,#000);opacity:.75}
 .traffic-bar:hover{opacity:1}
 .traffic-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px}
+.traffic-drill{margin-top:16px}
 .traffic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 16px}
-.traffic-table{width:100%;border-collapse:collapse;font-size:13px}
-.traffic-table td{padding:5px 0;border:0}
-.traffic-key{position:relative;padding-left:6px!important;word-break:break-all}
-.traffic-key span{position:relative}
-.traffic-rowbar{position:absolute!important;left:0;top:0;bottom:0;background:var(--hover-background);border-radius:3px;z-index:0}
-.traffic-n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:10px!important}
+.traffic-rows{display:flex;flex-direction:column}
+.traffic-row{position:relative;display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:3px;font-size:13px;color:inherit;text-decoration:none}
+.traffic-rowbar{position:absolute;left:0;top:0;bottom:0;background:var(--hover-background);border-radius:3px;z-index:0}
+.traffic-label{position:relative;z-index:1;flex:1;min-width:0;word-break:break-all}
+.traffic-n{position:relative;z-index:1;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+a.traffic-row{cursor:pointer}
+a.traffic-row:hover .traffic-rowbar,a.traffic-row:focus-visible .traffic-rowbar{background:var(--card-border)}
+a.traffic-row:hover .traffic-label{text-decoration:underline}
+a.traffic-row:focus-visible{outline:2px solid var(--text-primary);outline-offset:-2px}
+.traffic-row.selected{font-weight:600}
+.traffic-row.selected .traffic-rowbar{background:var(--card-border)}
+.traffic-rest{color:var(--text-muted)}
+.traffic-rest .traffic-rowbar{opacity:.45}
 @media only screen and (max-width:600px){
   .traffic-stat-n{font-size:20px}
 }

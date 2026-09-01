@@ -86,10 +86,10 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 	// Each caller links to their own breakdown, in the window being looked at
 	// — a drill-down that silently changed the window would answer a different
 	// question from the one the row was showing.
-	usage.LinkTable(&sb, "Callers", usage.Top(win.Res, win.Points, usage.ByUser, 20),
+	usage.LinkTable(&sb, "Callers", usage.Top(win.Res, win.Points, usage.ByUser, 20), who,
 		func(key string) string {
 			if key == usage.Other {
-				return "" // the tail past maxKeys, not a caller
+				return "" // the tail past the cap, not a caller
 			}
 			q := url.Values{"caller": {key}}
 			if win.Slug != "" {
@@ -99,16 +99,21 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 		})
 
 	usage.Table(&sb, "Surface", usage.Top(win.Res, win.Points, usage.BySurface, 10))
-
-	if who != "" {
-		rows := usage.TopFor(win.Res, win.Points, who, 20)
-		usage.Table(&sb, who+" is calling", rows)
-	}
 	sb.WriteString(`</div>`)
 
+	// The drill-down below the grid, not inside it.
+	//
+	// It was a fourth cell in a three-up auto-fit grid, so opening a caller
+	// reflowed the other three into different columns — the page rearranged
+	// itself around the thing you had just clicked, which reads as the click
+	// having broken something.
 	if who != "" {
+		rows, rest := usage.TopFor(win.Res, win.Points, who, 20)
+		sb.WriteString(`<div class="traffic-drill">`)
+		usage.TableWithRest(&sb, who+" is calling", rows, rest)
 		sb.WriteString(`<p class="text-sm"><a href="/admin/traffic?window=` +
 			html.EscapeString(win.Slug) + `">&larr; All callers</a></p>`)
+		sb.WriteString(`</div>`)
 	}
 
 	sb.WriteString(`<p class="text-sm text-muted">Counts only — no request is stored. ` +

@@ -49,6 +49,12 @@ const (
 	// counted under "other" so a single visitor cannot grow the file.
 	maxKeys = 200
 
+	// maxPairs bounds the who-called-what index, which is the one map whose
+	// keys multiply. Larger than maxKeys because a cap that bites routinely
+	// would make every busy caller's breakdown a guess; bounded because this
+	// is held per bucket and there are hundreds of buckets.
+	maxPairs = 1000
+
 	// Other is where counts land once a bucket is full.
 	Other = "other"
 
@@ -162,11 +168,10 @@ func Record(surface, name, account string) {
 		add(b.Users, account)
 		add(b.Surfaces, surface)
 		// A bucket restored from a file written before Pairs existed has a nil
-		// map here, and add returns on nil rather than panicking — so an
-		// upgraded instance answers "nothing yet" for the window it already
-		// holds and fills in from now on, which is the right answer rather than
-		// a crash on the first request after a deploy.
-		add(b.Pairs, pairKey(account, name))
+		// map here, and addPair returns on nil rather than panicking. That
+		// window is then counted in Users and not in Pairs, which is what
+		// TopFor reports as unattributed rather than quietly leaving out.
+		addPair(b.Pairs, account, name)
 	}
 	dirty = true
 }
@@ -222,6 +227,49 @@ func (r *ring) current(t time.Time) *Bucket {
 		r.Buckets = append(r.Buckets[:0:0], r.Buckets[len(r.Buckets)-r.Keep:]...)
 	}
 	return &r.Buckets[len(r.Buckets)-1]
+}
+
+// addPair records who called what, keeping the caller when it has to drop
+// something.
+//
+// Pairs saturates long before the other three maps do: its cardinality is the
+// callers seen crossed with what they touched, so 200 keys is reached by a
+// handful of busy accounts while Users is nowhere near 200 callers. Going
+// through add() meant the overflow landed on the bare "other" key, which
+// carries no caller — so those calls vanished from every drill-down while
+// still counting in the Callers table, and a row saying 400 opened onto rows
+// summing to less with nothing saying why.
+//
+// The caller is the half worth keeping. It is the lower-cardinality half and
+// the one both tables agree on, so overflow goes to <caller>|other: the
+// breakdown still adds up, and what it lost is the name of the tool rather
+// than the fact that the call happened.
+func addPair(m map[string]int, account, name string) {
+	if m == nil {
+		return
+	}
+	k := pairKey(account, name)
+	if _, seen := m[k]; seen {
+		m[k]++
+		return
+	}
+	if len(m) < maxPairs {
+		m[k]++
+		return
+	}
+	// Full. Keep the caller, lose the name. Bounded by the number of distinct
+	// callers, which is why there is headroom above maxPairs rather than a
+	// second unbounded map.
+	o := pairKey(account, Other)
+	if _, seen := m[o]; seen {
+		m[o]++
+		return
+	}
+	if len(m) < maxPairs+maxKeys {
+		m[o]++
+		return
+	}
+	m[Other]++
 }
 
 func add(m map[string]int, key string) {
@@ -310,31 +358,44 @@ const (
 	BySurface Dimension = "surface"
 )
 
-// TopFor is what one caller called, over the same window Top uses.
+// TopFor is what one caller called, over the same window Top uses, with
+// whatever it could not account for.
 //
-// The drill-down behind the Callers table. It reads Pairs rather than filtering
-// Names, because Names is a tally with the caller already thrown away — there
-// is nothing in it to filter on.
+// unattributed is that caller's total in the Callers table minus what the
+// breakdown adds up to. It is normally zero. It is not zero in two cases, and
+// both are honest rather than broken:
 //
-// The counts add up to that caller's row in the Callers table, which is the
-// point of taking it from the same store: a drill-down whose numbers come from
-// the ledger or from quota's daily counters would sum to something smaller than
-// the total it was reached from, and look like a bug rather than a different
-// denominator.
-func TopFor(res Resolution, n int, account string, limit int) []Count {
+//   - Buckets recorded before this index existed. They have counts in Users and
+//     a nil Pairs map, so the window can reach back past the deploy that added
+//     the breakdown.
+//   - Overflow. addPair keeps the caller and drops the tool name past maxPairs,
+//     which lands in <caller>|other and is returned as an ordinary row; past
+//     that headroom it loses the caller too, and lands here.
+//
+// Returned rather than absorbed because the alternative is what shipped first:
+// a row saying 400 opening onto rows summing to less, with nothing on the page
+// saying why. A number that does not add up is a bug report; a number that says
+// what it could not see is a measurement.
+func TopFor(res Resolution, n int, account string, limit int) (rows []Count, unattributed int) {
 	if account == "" {
-		return nil
+		return nil, 0
 	}
 	prefix := account + "\x00"
 	totals := map[string]int{}
+	var counted, total int
 	for _, b := range Series(res, n) {
 		for k, v := range b.Pairs {
 			if strings.HasPrefix(k, prefix) {
 				totals[k[len(prefix):]] += v
+				counted += v
 			}
 		}
+		total += b.Users[account]
 	}
-	return ranked(totals, limit)
+	if d := total - counted; d > 0 {
+		unattributed = d
+	}
+	return ranked(totals, limit), unattributed
 }
 
 // Top returns the busiest keys over the last n buckets at a resolution,
