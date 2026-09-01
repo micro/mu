@@ -1,6 +1,6 @@
 # mu
 
-A home for agents, tasks and services
+A home for agents, tools and services
 
 ## Overview
 
