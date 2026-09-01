@@ -252,11 +252,8 @@ func TestTheBalanceIsInTheRailOnHome(t *testing.T) {
 	if got == "" {
 		t.Fatal("no balance block on an instance that charges")
 	}
-	// The heading leads to /wallet, which on Home is the only thing that does:
-	// the header chip is hidden here and Wallet is not in the rail.
 	if !strings.Contains(got, `href="/wallet"`) {
-		t.Error("nothing on Home leads to /wallet — the header chip is hidden here, " +
-			"so hiding it without this link makes the wallet unreachable from Home")
+		t.Error("nothing on Home leads to /wallet")
 	}
 	if !strings.Contains(got, "credits") {
 		t.Error("the number has no unit on it")
@@ -280,24 +277,48 @@ func TestTheBalanceIsInTheRailOnHome(t *testing.T) {
 	}
 }
 
-// Home hides the header chip, or the same number is on the screen twice —
-// which internal/app/credits.go already records as a mistake once made.
-func TestHomeHidesTheHeaderBalance(t *testing.T) {
+// The header keeps its balance on Home, so the corner does not change shape.
+//
+// This hid it for one commit, on the rule that the same number twice on one
+// screen reads as a mistake. What that produced was worse: the header gained
+// and lost an item as you moved between pages — Admin alone on Home, Admin and
+// a balance everywhere else — so the one piece of chrome meant to be identical
+// everywhere was the piece that moved.
+func TestTheHeaderBalanceIsNotHiddenOnHome(t *testing.T) {
 	b, err := os.ReadFile("../internal/app/html/mu.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	css := string(b)
-	i := strings.Index(css, "body.page-home #head-wallet")
-	if i < 0 {
-		t.Fatal("nothing hides the header's balance on Home, so the balance is in " +
-			"the rail and in the corner at once")
+	if strings.Contains(string(b), "page-home #head-wallet") {
+		t.Error("Home hides the header's balance again, so the top right has one " +
+			"item on Home and two everywhere else")
 	}
-	rule := css[i:]
-	if j := strings.Index(rule, "}"); j > 0 {
-		rule = rule[:j]
+}
+
+// And the wallet block is shaped like the blocks it sits under.
+//
+// It shipped as a bare heading with a link in it and an unbordered div, beneath
+// two bordered cards with plain headings — the only thing in the rail that did
+// not look like the rail.
+func TestTheWalletBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
+	was := quota.Enabled
+	quota.Enabled = func() bool { return true }
+	t.Cleanup(func() { quota.Enabled = was })
+
+	got := walletHTML("walletshape")
+
+	// The heading is the same plain one the others use, not a link.
+	if !strings.Contains(got, sectionRule("Wallet")) {
+		t.Error("the Wallet heading is not sectionRule's, so it does not match " +
+			"Inbox and Agents above it")
 	}
-	if !strings.Contains(rule, "display: none") {
-		t.Errorf("the rule does not hide it: %s", rule)
+	// A card, sharing the class the other two are styled by.
+	if !strings.Contains(got, `class="wallet-peek"`) {
+		t.Error("the balance is not in a card, and both blocks above it are")
+	}
+	// And the way to the page, where the others put it.
+	if !strings.Contains(got, `href="/wallet" class="link"`) {
+		t.Error("no `Go to wallet` link — every other rail block ends with one, " +
+			"and it is the only route to /wallet from Home")
 	}
 }

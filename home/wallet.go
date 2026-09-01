@@ -11,14 +11,20 @@ package home
 // standing on this screen at all, which made money the one thing you could only
 // find by noticing a badge in a corner.
 //
-// # And why it does not appear twice
+// # The header keeps its chip
 //
-// internal/app/credits.go carries the reason: the balance was in the header and
-// the sidebar at once for a while, and "the same number twice on one screen
-// reads as a mistake". That is still true, and it is a rule about the screen
-// rather than about either position — so on Home the header chip is hidden and
-// this is the balance, and on every other page the chip is. One number, one
-// place, always. See body.page-home #head-wallet in mu.css.
+// This hid the header's balance on Home for one commit, on the rule in
+// internal/app/credits.go that the same number twice on one screen reads as a
+// mistake. What that produced was worse than the repetition: the header gained
+// and lost an item as you moved between pages — Admin alone on Home, Admin and
+// a balance everywhere else — so the one piece of chrome that is meant to be
+// identical on every page was the piece that moved.
+//
+// The rule was about chrome, and it still holds: it was written when the number
+// was in the sidebar, which is chrome, on every page at once. This is a block
+// in a page's content, with a rate and two actions the chip does not have —
+// the same relationship Inbox has to the Inbox in the rail. A glance and a
+// place are allowed to be about the same thing.
 //
 // # The real card, not a number
 //
@@ -55,23 +61,25 @@ func walletHTML(accountID string) string {
 		return ""
 	}
 
-	// Under a "Wallet" heading in the rail's own shape, rather than as the card
-	// it is on /account: the blocks either side of it are a heading and a list,
-	// and a bordered card between them reads as something that has been pasted
-	// in. The card's own "Balance" title goes with the frame — two titles for
-	// one number, one of them inside the other, is what nesting them would give.
+	// The same shape as the two blocks above it, because they set the pattern
+	// and there was no reason for a third.
 	//
-	// The heading is a link, and it is the only one to /wallet on this page.
-	// Wallet is not in the rail — Tokens is, money is not — so the header chip
-	// was the way there, and Home is the one page that hides the chip. Top up
-	// and Transfer below go to their own pages and neither is the wallet
-	// itself.
+	// This shipped as a bare heading with a link in it and a div with no card
+	// around it, sitting under two bordered blocks with plain grey headings. It
+	// was the only thing in the rail that did not look like the rail. The
+	// reasoning was that a card would read as pasted in — written without
+	// looking at the rendered page, where both neighbours are cards.
+	//
+	// So: a plain heading, a bordered block, and the way to the page at the
+	// foot of it. "Go to wallet" is also what makes /wallet reachable from
+	// Home, which is the same job "Go to inbox" does above.
 	var b strings.Builder
-	b.WriteString(`<p class="home-section"><small><a href="/wallet">Wallet</a></small></p>`)
-	b.WriteString(`<div class="home-wallet">`)
+	b.WriteString(sectionRule("Wallet"))
+	b.WriteString(`<div class="wallet-peek">`)
 	for _, part := range account.BalanceBody(accountID) {
 		b.WriteString(part)
 	}
+	b.WriteString(`<a href="/wallet" class="link">Go to wallet &rarr;</a>`)
 	b.WriteString(`</div>`)
 	return b.String()
 }

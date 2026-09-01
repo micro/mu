@@ -754,17 +754,7 @@ td {
   #head-admin .label { display: none }
 }
 
-/* One number, one place. The balance is a chip in the header on every page —
-   and on Home it is a block at the foot of the rail instead, because that rail
-   is the list of what is yours and money was the only one of those you could
-   find nowhere but a badge in a corner.
-
-   Hidden here rather than not rendered, because the header is one shell shared
-   by every page and a per-page hole in it would be a parameter threaded through
-   renderShell for one page's benefit. The rule that matters is the one
-   credits.go states: the same number twice on one screen reads as a mistake.
-   This keeps it true from the other end. */
-body.page-home #head-wallet {
+#head-wallet {
   display: none;
 }
 
@@ -1191,30 +1181,28 @@ body.page-home #page-title ~ #customize-link {
   margin-top: 0;
 }
 
-/* The balance at the foot of Home's rail. account.BalanceBody, which is the
-   same markup /account puts in a card — the figure, the rate, an admin's note,
-   and Top up / Transfer — with the card taken off, because the blocks either
-   side of it here are a heading and a list.
+/* The balance at the foot of Home's rail: account.BalanceBody, the same markup
+   /account puts in a card. The card is .wallet-peek above, shared with the two
+   blocks over it, so this only has to size the figure for a rail.
 
-   The figure is sized down from the /account version: there it is the first
-   thing on the page and it leads, here it is the last block in a column and a
-   32px number under two lists shouts over them. */
-.home-wallet .balance-figure {
-  margin: 4px 0 2px;
+   On /account the number leads the page and is set large. Here it is the last
+   block in a column under two lists, and a 32px figure shouts over them. */
+.wallet-peek .balance-figure {
+  margin: 8px 0 2px;
   font-size: 22px;
   line-height: 1;
 }
-.home-wallet .balance-figure span {
+.wallet-peek .balance-figure span {
   font-size: 13px;
   font-weight: 400;
   color: var(--text-secondary, #666);
 }
-.home-wallet .note {
+.wallet-peek .note {
   margin: 0 0 6px;
   font-size: 12px;
 }
-.home-wallet .balance-links {
-  margin: 0;
+.wallet-peek .balance-links {
+  margin: 0 0 10px;
   font-size: 13px;
 }
 
@@ -6483,7 +6471,8 @@ button.pill:hover {
    caption that had escaped its card. */
 .brief-peek,
 .inbox-peek,
-.agent-peek {
+.agent-peek,
+.wallet-peek {
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
   background: var(--card-background, #fff);
