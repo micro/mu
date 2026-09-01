@@ -27,12 +27,47 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"mu/internal/notes"
+	"mu/internal/quota"
 	"mu/internal/safety"
 	"mu/internal/thread"
 )
+
+// affordable reports whether this account can pay for an answer, and what to
+// say if not.
+//
+// Empty reason when it can. The message names both ways forward the way the
+// mail gate does — the balance, and where to add to it — because a refusal
+// that does not say what to do next is indistinguishable from the feature
+// being broken.
+//
+// An admin, an agent account and an unmetered instance all pass: Charge
+// exempts the first two and OperationCost is zero on a build that does not
+// charge, so this only ever stops an ordinary account on a paying instance.
+func affordable(accountID string) (string, bool) {
+	if !quota.Metered(quota.OpAgentRun) {
+		return "", true
+	}
+	// ok alone decides. CheckQuota returns a non-nil error *because* the
+	// balance is short — the error is the refusal, not a failure to work out
+	// whether there should be one — so treating err as "let it through" opens
+	// the gate on exactly the accounts it exists to stop. It did, until a test
+	// with an empty account said so.
+	//
+	// Admin, agent accounts and an instance that does not charge all come back
+	// ok from inside CheckQuota, so this only ever stops an ordinary account
+	// on a paying instance.
+	ok, _, cost, _ := quota.CheckQuota(accountID, quota.OpAgentRun)
+	if ok {
+		return "", true
+	}
+	return fmt.Sprintf("That needs %d credits and there are %d on this account. "+
+		"Top up from your Wallet and ask me again.",
+		cost, quota.BalanceOf(accountID)), false
+}
 
 // errNoConversation is a caller naming a conversation that is not theirs, or is
 // not there. Not "forbidden": scoped by account, somebody else's id is not a
@@ -284,7 +319,31 @@ func Ask(r AskRequest) (Answer, error) {
 		return Answer{Text: reason, Thread: threadID(th)}, nil
 	}
 
+	// Can this account afford an answer.
+	//
+	// Checked before the model is called, not after, because a refusal that
+	// arrives having already spent the money is not a refusal. Answered so it
+	// lands in the conversation like any other reply — somebody who asked a
+	// question on their phone should read why nothing happened in the place
+	// they asked, not find out by opening a wallet page.
+	if reason, ok := affordable(r.Account); !ok {
+		Answered(r.Account, threadID(th), reason, "")
+		return Answer{Text: reason, Thread: threadID(th)}, nil
+	}
+
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
+
+	// Charged on the way out, and only for an answer.
+	//
+	// A run that failed cost us the model call and is not the caller's fault —
+	// a provider timing out is our problem, and billing for it teaches people
+	// to distrust the number. The same reasoning as service/web, which charges
+	// only when the fetch came back.
+	if err == nil && strings.TrimSpace(answer) != "" {
+		quota.Charge(r.Account, quota.OpAgentRun, map[string]interface{}{
+			"agent": r.Agent, "client": r.Client,
+		}) //nolint:errcheck
+	}
 
 	via := r.Via
 	via.Client, via.Thread = r.Client, r.Thread

@@ -551,6 +551,9 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			auth.ConsumeInvite(invCode, id)
 		}
 
+		// Something to spend, so the first question can be asked. See Welcome.
+		Welcome(id)
+
 		// login
 		sess, err := auth.Login(id, secret)
 		if err != nil {

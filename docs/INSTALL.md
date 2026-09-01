@@ -1097,6 +1097,7 @@ that same file, so this page does not repeat twenty-six rows.
 | `TOR_ONION` | — | Onion address, shown in the footer |
 | `NOTES` | on | Mu posts its own story to its own blog on a low cadence; `off` disables |
 | `OPINIONS` | on | The blog writes an opinion piece a day, and the daily briefing is written from them. Each piece is a research pass and a generation billed to the instance's own account, so `off` disables them — the briefing then falls back to summarising the raw feeds |
+| `CREDIT_COST_AGENT_RUN` | 3 | What one answered question costs the caller, in credits. Set to 0 to make the agent free, which is what a self-hosted instance paying its own model bill usually wants — an instance with no payments configured charges nothing regardless |
 | `OPINIONS_PER_DAY` | 1 | How many pieces a day. The topic picked is whichever has gone longest without one, so the whole topic list is covered over as many days as there are topics. Raise it for a busier blog; never exceeds the number of topics, and is capped at 8 |
 
 ### CLI

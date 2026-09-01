@@ -348,6 +348,46 @@ func settled(l *ledger, userID, key string) bool {
 }
 
 // AddCredits adds credits to a user's wallet
+// WelcomeCredits is what a new account starts with, in credits. One credit is
+// one cent, so this is a pound.
+//
+// It exists because talking to the agent is charged now, and an account that
+// starts at zero cannot ask the question it signed up to ask. That was the
+// objection that kept the agent free, and it was right — what was wrong was
+// the old answer to it: a daily grant of credits that cancelled the charge
+// back out, two mechanisms doing nothing between them, leaving a number a
+// person had to understand before they could ask anything.
+//
+// A balance is different from a grant that renews. It is spent once, it is
+// visible on Home and on /account, and running out is a thing that happens for
+// a legible reason with a Top up next to it. Nobody has to reason about a
+// daily reset.
+//
+// A pound is roughly thirty questions at the current price. Enough to find out
+// whether the thing is useful, not enough to run on for ever, which is the
+// shape a trial should have.
+const WelcomeCredits = 100
+
+// Welcome grants a new account its starting balance.
+//
+// Called from the signup paths rather than from auth.Create, because credits
+// are the product's and internal/auth may not reach up into them — see
+// AGENTS.md on the direction things point.
+//
+// Silent when the instance does not charge: on a self-hosted build with no
+// payments configured, a balance is a number that means nothing and a
+// transaction on the ledger is a receipt for nothing.
+func Welcome(userID string) {
+	if strings.TrimSpace(userID) == "" || !PaymentsEnabled() {
+		return
+	}
+	if err := AddCredits(userID, WelcomeCredits, TxTopup, map[string]interface{}{
+		"welcome": true,
+	}); err != nil {
+		app.Log("credits", "welcome grant for %s failed: %v", userID, err)
+	}
+}
+
 func AddCredits(userID string, amount int, operation string, metadata map[string]interface{}) error {
 	if amount <= 0 {
 		return errors.New("amount must be positive")

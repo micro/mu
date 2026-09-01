@@ -9,12 +9,26 @@
     "product wants more of. Abuse control for those is auth.CheckPostRate,",
     "not the price.",
     "",
-    "Talking to your agent is 0 as well, and that is a product decision rather",
-    "than an arithmetic one. The agent is the thing you came for; metering it",
-    "meant a new account could not ask a question until it had paid, which is",
-    "why there used to be a daily grant of credits here to cancel the charge",
-    "back out. Both are gone. What bounds it now is `limit` — a count of runs",
-    "a day, which is abuse control and not a price.",
+    "Talking to your agent is charged, because on a hosted instance it is the",
+    "single largest thing this costs and it was the only model call not",
+    "priced. Everything else that reaches a model already was: text_* 1-6,",
+    "app_build 19, image_generate 19, web_search 3.",
+    "",
+    "It was free, on the argument that the agent is the thing you came for and",
+    "metering it meant a new account could not ask a question until it had",
+    "paid. That was a real problem and the old fix was wrong: a daily grant of",
+    "credits that cancelled the charge back out, two mechanisms doing nothing",
+    "between them. The fix is a welcome balance at signup — see",
+    "quota.WelcomeCredits. You get some use, then you pay for what you use.",
+    "",
+    "`agent_run` is the one operation here that is not the name of a tool, and",
+    "it is not the first: quran_search, db_write, app_build, places_eta and",
+    "eight others already are not. An operation is a billing key — the name of",
+    "something that costs money — and most of them are tools because most",
+    "things that cost money happen to be. An agent is not a tool and must not",
+    "become one: a service may never import an agent, and a tool in the",
+    "catalogue is a thing agents choose from, so an agent that could call the",
+    "agent is a loop with a price on it.",
     "",
     "A price is what a *fetch* costs. A call the instance answered from",
     "something it already had — a cached forecast, a stored tile — is not",
@@ -143,7 +157,7 @@
       "limit_env": "WHATSAPP_DAILY_LIMIT",
       "label": "WhatsApp message",
       "env": "CREDIT_COST_WHATSAPP",
-      "note": "Billed by Meta per 24-hour conversation rather than per message, so a long reply costs the same as a short one and the second message in a conversation is free to us. Cheaper than a text and with a higher daily limit for that reason \u2014 and the window itself is the real limit, since this instance can only message somebody who wrote to it in the last day"
+      "note": "Billed by Meta per 24-hour conversation rather than per message, so a long reply costs the same as a short one and the second message in a conversation is free to us. Cheaper than a text and with a higher daily limit for that reason — and the window itself is the real limit, since this instance can only message somebody who wrote to it in the last day"
     },
     {
       "op": "news_search",
@@ -240,6 +254,13 @@
       "cost": 0,
       "label": "App data storage",
       "env": "CREDIT_COST_DB_WRITE"
+    },
+    {
+      "op": "agent_run",
+      "cost": 3,
+      "label": "Agent",
+      "env": "CREDIT_COST_AGENT_RUN",
+      "note": "One question answered, whatever it took to answer it. Roughly what a Sonnet-class call with tools costs us."
     }
   ]
 }

@@ -203,18 +203,39 @@ func TestEveryPricedOperationIsChargedSomewhere(t *testing.T) {
 	}
 
 	// Debited by a service itself: the variable-price arrangement.
+	// Where a charge may be taken from.
+	//
+	// service/ was the whole list, because until the agent was priced
+	// everything that cost money was a service. The agent is not one and must
+	// not become one — a service may never import an agent, and a tool in the
+	// catalogue is a thing agents choose from, so an agent able to call the
+	// agent is a loop with a price on it — but it is still the largest thing a
+	// hosted instance pays for, and it charges for itself in agent/ask.go.
+	//
+	// So the scan follows the money rather than the directory layout. A
+	// charging site that is not a service is a fact about this product, not an
+	// error to be tidied away by moving code.
 	selfCharged := map[string]bool{}
-	entries, err := os.ReadDir(at("service"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
+	for _, root := range []string{"service", "agent"} {
+		entries, err := os.ReadDir(at(root))
+		if err != nil {
+			t.Fatal(err)
 		}
-		for name := range consumesOps(t, at("service", e.Name())) {
+		// The root itself, for a package whose files sit directly in it —
+		// agent/ask.go is one, and reading only the subdirectories missed it.
+		for name := range consumesOps(t, at(root)) {
 			if id, ok := consts[name]; ok {
 				selfCharged[id] = true
+			}
+		}
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			for name := range consumesOps(t, at(root, e.Name())) {
+				if id, ok := consts[name]; ok {
+					selfCharged[id] = true
+				}
 			}
 		}
 	}

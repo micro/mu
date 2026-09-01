@@ -118,25 +118,39 @@ const (
 	OpShellRun         = "shell_run"
 	OpDBWrite          = "db_write"
 	OpImageGenerate    = "image_generate"
-	OpTextSummarise    = "text_summarise"
-	OpTextExtract      = "text_extract"
-	OpTextClassify     = "text_classify"
-	OpTextTranslate    = "text_translate"
-	OpSocialSearch     = "social_search"
-	OpSocialPost       = "social_post"
-	OpSocialReply      = "social_reply"
-	OpAppCreate        = "app_create"
-	OpBlogComment      = "blog_comment"
-	OpAppBuild         = "app_build"
-	OpAppEdit          = "app_edit"
-	OpAppUse           = "app_use"
-	OpAppRevenue       = "app_revenue"
-	OpTopup            = "topup"
-	OpRefund           = "refund"
-	OpTransfer         = "transfer"
-	OpEscrowHold       = "escrow_hold"
-	OpEscrowRelease    = "escrow_release"
-	OpEscrowRefund     = "escrow_refund"
+
+	// OpAgentRun is one question answered, and the one operation here that is
+	// not the name of a tool.
+	//
+	// It is not the first: quran_search, db_write, app_build, places_eta and
+	// eight others are already not tools either. An operation is a billing key
+	// — the name of something that costs money — and most of them are tools
+	// because most things that cost money happen to be.
+	//
+	// The agent is not a tool and must not become one to make billing tidy. A
+	// service may never import an agent, and a tool in the catalogue is a thing
+	// agents choose from, so an agent able to call the agent is a loop with a
+	// price on it.
+	OpAgentRun      = "agent_run"
+	OpTextSummarise = "text_summarise"
+	OpTextExtract   = "text_extract"
+	OpTextClassify  = "text_classify"
+	OpTextTranslate = "text_translate"
+	OpSocialSearch  = "social_search"
+	OpSocialPost    = "social_post"
+	OpSocialReply   = "social_reply"
+	OpAppCreate     = "app_create"
+	OpBlogComment   = "blog_comment"
+	OpAppBuild      = "app_build"
+	OpAppEdit       = "app_edit"
+	OpAppUse        = "app_use"
+	OpAppRevenue    = "app_revenue"
+	OpTopup         = "topup"
+	OpRefund        = "refund"
+	OpTransfer      = "transfer"
+	OpEscrowHold    = "escrow_hold"
+	OpEscrowRelease = "escrow_release"
+	OpEscrowRefund  = "escrow_refund"
 )
 
 // Metered reports whether this operation costs the caller anything here.
