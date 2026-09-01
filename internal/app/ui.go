@@ -61,7 +61,7 @@ func SearchBar(action, placeholder, query, csrf string) string {
 	return b.String()
 }
 
-// ActionLink renders a primary action link (e.g., "+ New Note")
+// ActionLink renders a primary action link (e.g. "New note").
 func ActionLink(href, label string) string {
 	return `<a href="` + href + `" class="btn">` + html.EscapeString(label) + `</a>`
 }
@@ -84,7 +84,7 @@ func Desc(text string) string {
 // PageOpts defines the standard page layout options
 type PageOpts struct {
 	Action  string // Primary action URL (shows button if set)
-	Label   string // Action button label (default: "+ New")
+	Label   string // Action button label (default: "New")
 	Search  string // Search endpoint (shows search bar if set)
 	Query   string // Current search query
 	CSRF    string // Token for the search form, which posts — see SearchBar
@@ -107,7 +107,7 @@ func Page(opts PageOpts) string {
 	if opts.Action != "" {
 		label := opts.Label
 		if label == "" {
-			label = "+ New"
+			label = "New"
 		}
 		b.WriteString(`<div class="page-action">`)
 		b.WriteString(ActionLink(opts.Action, label))

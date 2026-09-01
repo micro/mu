@@ -97,7 +97,7 @@ func eventRow(e *Event, csrf string) string {
   <div class="text-sm link-colour">%s</div>
   %s
 </div>
-<a href="%s" target="_blank" rel="noopener" title="Add to Google Calendar" class="text-xs text-muted no-underline nowrap">+ Calendar</a>
+<a href="%s" target="_blank" rel="noopener" title="Add to Google Calendar" class="text-xs text-muted no-underline nowrap">Add to calendar</a>
 <form method="POST" action="/events" class="m-0">
   <input type="hidden" name="_csrf" value="%s">
   <input type="hidden" name="action" value="cancel">

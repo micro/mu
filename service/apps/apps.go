@@ -285,7 +285,7 @@ func Preview() string {
 	defer mutex.RUnlock()
 
 	if len(apps) == 0 {
-		return `<p><a href="/apps/new">+ Create your first app</a></p>`
+		return `<p><a href="/apps/new">Create your first app</a></p>`
 	}
 
 	// Show 3 most recent public apps
@@ -296,7 +296,7 @@ func Preview() string {
 		}
 	}
 	if len(public) == 0 {
-		return `<p><a href="/apps/new">+ Create your first app</a></p>`
+		return `<p><a href="/apps/new">Create your first app</a></p>`
 	}
 	sort.Slice(public, func(i, j int) bool {
 		return public[i].CreatedAt.After(public[j].CreatedAt)
@@ -530,7 +530,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/code", "+ New app") + `</p>`)
+	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/code", "New app") + `</p>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")

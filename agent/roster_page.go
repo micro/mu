@@ -214,7 +214,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 func newAgentAction(owner string) string {
 	full, have, max := AtAgentLimit(owner)
 	if !full {
-		return app.ActionLink("/agent/new", "+ New agent")
+		return app.ActionLink("/agent/new", "New agent")
 	}
 	return app.ActionLink("/wallet/topup", "Top up to lift the limit") +
 		fmt.Sprintf(`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and `+

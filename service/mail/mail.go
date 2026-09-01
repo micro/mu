@@ -1098,7 +1098,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		pageHTML := app.Page(app.PageOpts{
 			Action:  "/mail?compose=true",
-			Label:   "+ Compose",
+			Label:   "Compose",
 			Content: mailSearchBar(q, auth.CSRFToken(r)) + content,
 		})
 		app.Respond(w, r, app.Response{Title: "Mail — Search", Description: "", HTML: pageHTML})
@@ -1364,7 +1364,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	pageHTML := app.Page(app.PageOpts{
 		Action:  "/mail?compose=true",
-		Label:   "+ Compose",
+		Label:   "Compose",
 		Filters: tabs,
 		Content: addressPanel(acc.ID) + tagFilter(userInbox, acc.ID, viewTag) + searchBar +
 			`<div id="mailbox">` + content + `</div>`,
@@ -1407,7 +1407,7 @@ func tagFilter(inbox *Inbox, accountID, active string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="mail-tags"><a class="` + cls(active == "") + `" href="/mail">All</a>`)
 	for _, tag := range tags {
-		b.WriteString(`<a class="` + cls(active == tag) + `" href="/mail?tag=` + url.QueryEscape(tag) + `">+` +
+		b.WriteString(`<a class="` + cls(active == tag) + `" href="/mail?tag=` + url.QueryEscape(tag) + `">` +
 			html.EscapeString(tag) + ` <span>` + strconv.Itoa(counts[tag]) + `</span></a>`)
 	}
 	b.WriteString(`</div>

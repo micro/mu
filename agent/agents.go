@@ -266,7 +266,7 @@ func (e *agentErr) Error() string { return e.s }
 // default or one of your agents. Creating/editing happens on /agent/new.
 func renderAgentsPanel() string {
 	return `<div class="agents-panel">
-  <div class="agents-head"><span>Agents</span><a class="agents-new" href="/agent/new">+ New</a></div>
+  <div class="agents-head"><span>Agents</span><a class="agents-new" href="/agent/new">New</a></div>
   <div class="agents-list" id="agents-list"><div class="on" data-id="" onclick="muAgentPick('')">Micro <span class="agents-def">default</span></div></div>
 </div>
 <style>

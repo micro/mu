@@ -22,7 +22,7 @@ import (
 )
 
 func TestTheNewAppButtonIsTheSharedButton(t *testing.T) {
-	want := app.ActionLink("/apps/new", "+ New app")
+	want := app.ActionLink("/apps/new", "New app")
 	if !strings.Contains(want, `class="btn"`) {
 		t.Fatalf("ActionLink no longer renders the shared button class: %s", want)
 	}
@@ -47,7 +47,7 @@ func TestTheAppsPageDoesNotRollItsOwnButton(t *testing.T) {
 	// app happens and not a change to how the button is drawn — the one thing
 	// this test exists to hold. Where it goes is
 	// TestThereIsOneBoxThatBuildsAnAppFromASentence's business.
-	if !strings.Contains(src, `+ New app`) {
+	if !strings.Contains(src, `"New app"`) {
 		t.Fatal("there is no new-app button on the apps page at all")
 	}
 	if !strings.Contains(src, `app.ActionLink(`) {

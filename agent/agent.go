@@ -659,7 +659,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 	}
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
-		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
+		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">New</button>` +
 		`<div class="chat-sess-scroll">` +
 		// Chats, which is what the store has always called them in every way
 		// but this one. The record is threads.json, the package is

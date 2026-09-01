@@ -30,6 +30,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/push"
 	"mu/internal/thread"
 	"mu/service/mail"
 )
@@ -187,6 +188,20 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	// without this the difference between holding a stranger's message and
 	// dropping it would be invisible from here.
 	b.WriteString(waiting(r, accountID))
+
+	// And the offer to be told when the next one arrives.
+	//
+	// It was only on /account, in a card between the passkey list and the legal
+	// links — a page you visit to change a setting you already knew you wanted.
+	// So the thing that makes an inbox worth having with the page closed was
+	// visible only to somebody who went looking for it.
+	//
+	// Here because this is the screen things arrive on, which is where wanting
+	// to be told about them is a thought somebody actually has. It draws itself
+	// only when this device could take notifications and does not already —
+	// which the server cannot know, so it renders hidden and its own script
+	// reveals it. See push.Ask.
+	b.WriteString(push.Ask(r, accountID))
 
 	// Search, over everything in the record rather than over the page.
 	//
