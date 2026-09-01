@@ -18,6 +18,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/thread"
+	"mu/service/events"
 	"mu/service/tasks"
 )
 
@@ -131,4 +132,80 @@ func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
 	// Nothing here about the silent case: TestAQuietAccountGetsNoBrief pins
 	// that, and it has to, because it runs before anything marks a second
 	// person present.
+}
+
+// What is on today, and only what is still ahead.
+//
+// The brief said what was waiting, what the agent was doing and what was owed
+// — three questions about work — and nothing about the day. Somebody with a
+// dentist at four read a line about their inbox and then went to look at a
+// calendar, which is the trip a brief exists to save.
+func TestTheBriefSaysWhatIsOnToday(t *testing.T) {
+	const who = "briefday"
+	t.Cleanup(func() {
+		for _, e := range events.List(who) {
+			events.Remove(who, e.ID) //nolint:errcheck
+		}
+	})
+
+	now := time.Now()
+	soon := now.Add(2 * time.Hour)
+	later := now.Add(4 * time.Hour)
+	if soon.Day() != now.Day() || later.Day() != now.Day() {
+		t.Skip("too near midnight for a same-day fixture to mean anything")
+	}
+
+	if _, err := events.Create(who, "Dentist", later, ""); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, err := events.Create(who, "School pickup", soon, ""); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	got := onToday(who)
+	if got == "" {
+		t.Fatal("two things in the diary today and the brief says nothing")
+	}
+	// The soonest, named, with its time — not merely the first one stored.
+	if !strings.Contains(got, "School pickup") {
+		t.Errorf("the next thing is not named, or is not the soonest: %s", got)
+	}
+	if !strings.Contains(got, soon.Format("15:04")) {
+		t.Errorf("the time is missing, which is the fact somebody wants: %s", got)
+	}
+	if !strings.Contains(got, "1 more today") {
+		t.Errorf("the rest of the day is not counted: %s", got)
+	}
+}
+
+// An event that has already happened is not news.
+//
+// A brief read at six that says "3 things today" when all three are done is a
+// number nobody can act on, and finding that out means opening the calendar.
+func TestWhatHasAlreadyHappenedIsNotInTheBrief(t *testing.T) {
+	const who = "briefpast"
+	t.Cleanup(func() {
+		for _, e := range events.List(who) {
+			events.Remove(who, e.ID) //nolint:errcheck
+		}
+	})
+
+	past := time.Now().Add(-2 * time.Hour)
+	if past.Day() != time.Now().Day() {
+		t.Skip("too near midnight for a same-day fixture to mean anything")
+	}
+	if _, err := events.Create(who, "Standup", past, ""); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if got := onToday(who); got != "" {
+		t.Errorf("an event that has already happened is still in the brief: %s", got)
+	}
+}
+
+// And a diary that is empty says nothing at all, rather than saying it is empty.
+func TestAnEmptyDiaryIsSilent(t *testing.T) {
+	if got := onToday("briefnobody"); got != "" {
+		t.Errorf("an account with no events gets a line about it: %s", got)
+	}
 }

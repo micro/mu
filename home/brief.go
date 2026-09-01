@@ -48,6 +48,7 @@ package home
 
 import (
 	"html"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -55,6 +56,7 @@ import (
 	"mu/agent/brief"
 	"mu/inbox"
 	"mu/internal/app"
+	"mu/service/events"
 	"mu/service/tasks"
 )
 
@@ -100,6 +102,16 @@ func briefHTML(accountID string) string {
 		parts = append(parts, s)
 	}
 	if s := owed(accountID); s != "" {
+		parts = append(parts, s)
+	}
+	// What is actually on today, before the world's line.
+	//
+	// The brief said what was waiting, what the agent was doing and what was
+	// owed — three questions about work — and nothing at all about the day. So
+	// somebody with a dentist at four and a school pickup at three read a line
+	// about their inbox and went to look at a calendar, which is the one thing
+	// a brief is supposed to save.
+	if s := onToday(accountID); s != "" {
 		parts = append(parts, s)
 	}
 	if s := happening(); s != "" {
@@ -231,6 +243,43 @@ func owed(accountID string) string {
 // Not per-account: the rows behind it are public, so the sentence is the same
 // for everybody and is written once for the instance rather than once per
 // person. What is personal on this line is the three clauses above it.
+// onToday is what is in the diary between now and the end of the day.
+//
+// Only what is still ahead. A brief read at six in the evening that says "3
+// things today" when all three have happened is worse than saying nothing —
+// it is a number that cannot be acted on, and the reader has to open the
+// calendar to find that out, which is the trip this exists to save.
+//
+// The next one is named, with its time, because that is the fact somebody
+// actually wants: not how many, but what and when. The count carries the rest.
+func onToday(accountID string) string {
+	now := time.Now()
+	var ahead []*events.Event
+	for _, e := range events.List(accountID) {
+		if e == nil || e.When.IsZero() {
+			continue
+		}
+		if sameDay(e.When, now) && e.When.After(now) {
+			ahead = append(ahead, e)
+		}
+	}
+	if len(ahead) == 0 {
+		return ""
+	}
+
+	// Soonest first. events.List does not promise an order, and "the next
+	// thing" is wrong if it is merely the first one stored.
+	sort.Slice(ahead, func(i, j int) bool { return ahead[i].When.Before(ahead[j].When) })
+
+	next := ahead[0]
+	out := app.TextLink(next.Title, "/events") + " at " +
+		html.EscapeString(next.When.Format("15:04"))
+	if rest := len(ahead) - 1; rest > 0 {
+		out += ", and " + strconv.Itoa(rest) + " more today"
+	}
+	return out + "."
+}
+
 func happening() string {
 	line := brief.Line()
 	if line == "" {
