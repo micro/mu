@@ -495,7 +495,7 @@ function setSession() {
     var navLogout = document.getElementById("nav-logout");
     var navLogin = document.getElementById("nav-login");
     var navUsername = document.getElementById("nav-username");
-    var navAdmin = document.getElementById("nav-admin");
+    var navAdmin = document.getElementById("head-admin");
 
     if (sess.type == "account") {
       isAuthenticated = true;
@@ -544,7 +544,7 @@ function setSession() {
     var navAccount = document.getElementById("nav-account");
     var navLogout = document.getElementById("nav-logout");
     var navLogin = document.getElementById("nav-login");
-    var navAdmin = document.getElementById("nav-admin");
+    var navAdmin = document.getElementById("head-admin");
     if (navAdmin) navAdmin.style.display = 'none';
     if (navAccount) navAccount.style.display = 'none';
     if (navLogout) navLogout.style.display = 'none';

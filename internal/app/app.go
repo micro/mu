@@ -501,6 +501,31 @@ var Template = `
           var doc = new DOMParser().parseFromString(html, 'text/html');
           var next = doc.getElementById('content');
           if (!next) { location.href = url; return; }
+
+          // The body's classes come with the page, and a soft navigation was
+          // not bringing them.
+          //
+          // Only #content and the title were being replaced, so body kept
+          // whatever the last full page load put there — and the page's width
+          // is decided from it: body.page-home #content is 1700px where every
+          // other page is 1400. Load /apps, click Home, and Home laid itself
+          // out under Apps' rules until you refreshed. The width appeared to
+          // follow you around, which reads as a caching bug and is not one:
+          // nothing was stale, the selector was simply matching the wrong page.
+          //
+          // Runtime classes are kept. None of these is in the server's markup —
+          // nav-collapsed is the reader's own choice, and signed-in is added by
+          // mu.js once the session check comes back — so copying className
+          // wholesale would open the sidebar on every navigation and make every
+          // soft-navigated page look signed out until the next session check.
+          var runtime = ['nav-collapsed', 'menu-open', 'signed-in'];
+          var keep = [];
+          for (var k = 0; k < runtime.length; k++) {
+            if (document.body.classList.contains(runtime[k])) keep.push(runtime[k]);
+          }
+          document.body.className = doc.body ? doc.body.className : '';
+          for (var k2 = 0; k2 < keep.length; k2++) document.body.classList.add(keep[k2]);
+
           content.innerHTML = next.innerHTML;
           // innerHTML does not run scripts, and half these pages carry one:
           // the weather card, the flights radar, the notes editor. Without this
