@@ -904,11 +904,26 @@ function displayRoomMessage(msg, shouldScroll = true) {
   
   const msgDiv = document.createElement('div');
   msgDiv.className = 'message';
-  
+
+  // What the room says about itself: somebody arrived, somebody left. No
+  // byline, because nobody said it.
+  //
+  // It arrived as an is_llm line with the agent's name on it, and this
+  // function draws every one of those with micro's byline — so a conversation
+  // between two people opened with "micro: @asim joined", which reads as the
+  // agent announcing itself into a private room. It was reported as that.
+  if (msg.system) {
+    msgDiv.className = 'message message-system';
+    msgDiv.textContent = msg.content;
+    messagesDiv.appendChild(msgDiv);
+    if (shouldScroll) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    return;
+  }
+
   const userSpan = msg.is_llm ?
     '<span class="llm"><a href="/@micro" style="color:inherit;text-decoration:none;">micro</a></span>' :
     '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a></span>';
-  
+
   let content;
   if (msg.is_llm) {
     // Markdown, which brings its own <p>, <ul> and headings — so no wrapper of

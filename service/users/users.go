@@ -186,7 +186,7 @@ func Count() int { return len(List()) }
 func publicOf(acc *auth.Account, online map[string]bool) User {
 	return User{
 		ID:      acc.ID,
-		Address: addressOf(acc.ID),
+		Address: addressFor(acc),
 		Account: Account{
 			Name:   acc.Name,
 			Agent:  acc.Agent,
@@ -214,6 +214,30 @@ func addressOf(id string) string {
 		return ""
 	}
 	return id + "@" + d
+}
+
+// An agent has no address here.
+//
+// This published micro@micro.mu — the account id, at the domain, the same rule
+// every person gets. Two things wrong with it. It stutters on an instance
+// named after its agent, which is what got it noticed; and it is not where you
+// write to the agent. That is agent@ (see service/mail.SharedAgentAddress, and
+// agent+<name>@ for a particular one), published on the Connect page, which is
+// the page for it. micro@ is a local part nothing routes.
+//
+// The field says "Where to write to them". An address that does not receive is
+// worse than none — the same reason this returns nothing on an instance with
+// no mail domain rather than name@localhost, since the empty case is the one a
+// reader can act on correctly.
+//
+// A rule about agents rather than about "micro", because the id is one
+// instance of it and acc.Agent is the rule: a person and a program are not the
+// same caller.
+func addressFor(acc *auth.Account) string {
+	if acc == nil || acc.Agent {
+		return ""
+	}
+	return addressOf(acc.ID)
 }
 
 // onlineSet is auth.OnlineUsers as a set, so a list of a hundred and eighty

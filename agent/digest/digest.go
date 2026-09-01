@@ -325,6 +325,10 @@ func opinionContext() string {
 // that the model is told the pieces come first and to build on them, and a
 // prompt that is only ever assembled inside a call to a model is a prompt
 // nothing can check.
+// System is digestSystem, for a test in another package. See
+// test/sources_test.go, which holds the one rule both writers share.
+func System(fromPieces bool) string { return digestSystem(fromPieces) }
+
 func digestSystem(fromPieces bool) string {
 	// What the briefing is built on, said in the prompt rather than left for
 	// the model to infer from a heading. Two different jobs: reporting the

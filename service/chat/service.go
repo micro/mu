@@ -132,6 +132,13 @@ func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesR
 
 	rsp.Messages = make([]Message, 0, len(msgs))
 	for _, m := range msgs {
+		// Arrivals and departures are the room talking about itself. A reader
+		// asking for the transcript wants what was said, and an entry with no
+		// author in a list whose first field is the author is a line something
+		// has to guess about. See RoomMessage.System.
+		if m.System {
+			continue
+		}
 		rsp.Messages = append(rsp.Messages, Message{
 			Author: m.UserID, Content: m.Content, IsAgent: m.IsLLM, Timestamp: m.Timestamp,
 		})

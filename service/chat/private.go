@@ -259,16 +259,24 @@ func (room *Room) has(account string) bool {
 // unreadable — IRC solved this by letting people turn joins off, which is an
 // admission that they are noise. In a room with two people in it, somebody
 // arriving is the most useful thing that can be said.
+//
+// # Nobody said it
+//
+// It went out as the agent: UserID micro, IsLLM true. The client renders any
+// IsLLM line with micro's byline, so the first thing in a conversation between
+// two people was "micro: @asim joined" — which reads as the agent announcing
+// itself into a private room, and was reported as exactly that.
+//
+// So it carries no author and says so. See RoomMessage.System.
 func (room *Room) arrival(account, what string) {
 	if account == "" || account == agentName || !Private(room.ID) {
 		return
 	}
 	select {
 	case room.Broadcast <- RoomMessage{
-		UserID:    agentName,
 		Content:   "@" + account + " " + what,
 		Timestamp: time.Now(),
-		IsLLM:     true,
+		System:    true,
 	}:
 	default:
 	}

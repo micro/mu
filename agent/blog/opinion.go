@@ -316,7 +316,45 @@ func generateOpinion(category string) (string, string, error) {
 	}
 
 	prompt := &ai.Prompt{
-		System: agentPurpose + fmt.Sprintf(`
+		System: opinionSystem(category),
+		// The same model the rest of the instance's background writing uses.
+		// This was the one of the four that did not set it — the digest, the
+		// brief and the notes all do — so the piece that does the most work
+		// per run was billed at whatever the default happened to be.
+		Model:    ai.BackgroundModel(),
+		Question: fullContext,
+		Priority: ai.PriorityLow,
+		Caller:   "opinion-generate",
+	}
+
+	response, err := ai.Ask(prompt)
+	if err != nil {
+		return "", "", err
+	}
+	return splitOpinion(response)
+}
+
+// opinionSystem is what the writer is told, split out from the ai.Prompt so a
+// test can read it.
+//
+// The instance publishes two kinds of piece and they disagreed about sources.
+// The digest asks for inline markdown links and gets them; this said only "Do
+// NOT include a references section" and asked for nothing in their place — so
+// a piece built from three researched projects named all three and linked
+// none:
+//
+//	A bird identification system running silently on a home server. A
+//	walkable cyberpunk city crafted entirely from letters and symbols in a
+//	single HTML file. A weathered phone booth on a desert playa…
+//
+// researchCategoryStories had fetched those pages and had the URLs. The piece
+// dropped them, and a reader who wanted to go and look had nowhere to go.
+// System is opinionSystem, for a test in another package. See
+// test/sources_test.go, which holds the one rule both writers share.
+func System(category string) string { return opinionSystem(category) }
+
+func opinionSystem(category string) string {
+	return agentPurpose + fmt.Sprintf(`
 
 Your task: Write today's analysis piece for the **%s** category.
 
@@ -348,19 +386,16 @@ Rules:
 - Do NOT start with "Today" or "In today's"
 - Do NOT include bullet points, lists, or headings in the body
 - Do NOT include a references section
+- Link to what you name, INLINE, as markdown: "[BirdNET-Go](https://...)" — take the URLs from the research above, and link the first mention of each thing
+- Every specific project, company, paper or event you name should be reachable from the piece
 - Write dollar amounts as plain numbers like $94 or $1.2 trillion — NEVER use LaTeX formatting
 - Do NOT include preamble like "Here is my opinion"
-- CRITICAL: Keep under 2500 characters total (title + body).`, category, category),
-		Question: fullContext,
-		Priority: ai.PriorityLow,
-		Caller:   "opinion-generate",
-	}
+- CRITICAL: Keep under 2500 characters total (title + body).`, category, category)
+}
 
-	response, err := ai.Ask(prompt)
-	if err != nil {
-		return "", "", err
-	}
-
+// splitOpinion takes the model's answer apart: the first line is the title and
+// the rest is the piece.
+func splitOpinion(response string) (string, string, error) {
 	response = strings.TrimSpace(app.StripLatexDollars(response))
 
 	parts := strings.SplitN(response, "\n", 2)

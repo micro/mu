@@ -249,6 +249,20 @@ type RoomMessage struct {
 	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
 	IsLLM     bool      `json:"is_llm"`
+
+	// System marks a line the room is saying about itself — somebody arriving
+	// or leaving — rather than a line somebody said.
+	//
+	// It needs its own flag because the client renders by author and there is
+	// no author here. Sent as IsLLM with the agent's name on it, the join
+	// notice was drawn with micro's byline (see displayRoomMessage, which
+	// hardcodes it), so a conversation between two people opened with
+	//
+	//	micro   @asim joined
+	//
+	// and read as the agent announcing itself into the room. It was the room,
+	// with the wrong name on it.
+	System bool `json:"system,omitempty"`
 }
 
 // Client represents a connected websocket client
@@ -794,25 +808,45 @@ func getOrCreateRoom(id string) *Room {
 	return room
 }
 
-// roster is who is in the room: everybody connected, and the agent.
+// roster is who is in the room: everybody connected.
 //
-// The agent is in every room because it answers in every room. This listed it
-// for chat_ rooms only, and the rule about when it answers lives in another
-// function and says something else — an item room (news, video, post,
-// reminder) always gets a reply. So "Discuss with AI" on a news article showed
-// one person present, nobody else, and then the AI answered. Two conditions
-// about the same fact, written apart, disagreeing.
+// # People, not programs
 //
-// Split out from broadcastUserList so that fact can be tested without a
-// websocket on the other end of it.
+// This appended the agent to every room, on the argument that it answers in
+// every room and a roster that said otherwise disagreed with the rule about
+// when it replies. The argument was right about the disagreement and wrong
+// about which side to fix.
+//
+// Reported by somebody who started a conversation with one other person and
+// found @micro in it — announcing their arrival, listed as present, and
+// answering. A two-person conversation with a third party on the roster is not
+// a cosmetic problem: it is the product telling you somebody is in the room
+// with you.
+//
+// The rule is already written for the strip on Home, which filters on
+// acc.Agent for exactly this reason, and having it hold in one place and not
+// the other is how @micro came to be listed here and not there — reported as
+// that, in those words, before it was reported as this.
+//
+// So: presence lists people. Being able to reach the agent is not presence —
+// it is reachable by name in every room, in the same way it is reachable from
+// every page, and neither makes it a participant. Where a page exists to
+// discuss something with it, the page says so in words; that is a better
+// statement than a name in a list of who is here.
+//
+// Split out from broadcastUserList so this can be tested without a websocket
+// on the other end of it.
 func (room *Room) roster() []string {
 	room.mutex.RLock()
-	names := make([]string, 0, len(room.Clients)+1)
+	defer room.mutex.RUnlock()
+	names := make([]string, 0, len(room.Clients))
 	for _, client := range room.Clients {
+		if client == nil || client.UserID == agentName {
+			continue
+		}
 		names = append(names, client.UserID)
 	}
-	room.mutex.RUnlock()
-	return append(names, agentName)
+	return names
 }
 
 // broadcastUserList sends the current list of usernames to all clients
@@ -1914,7 +1948,10 @@ func Latest(roomID string) (who, text string, at time.Time) {
 	}
 	for i := len(msgs) - 1; i >= 0; i-- {
 		m := msgs[i]
-		if m.IsLLM || m.UserID == agentName {
+		// Not the agent, and not the room talking about itself. "@asim joined"
+		// under a count of who is online is not a thing anybody said, and this
+		// line is drawn as though somebody did.
+		if m.IsLLM || m.System || m.UserID == agentName {
 			continue
 		}
 		if text := strings.TrimSpace(m.Content); text != "" {

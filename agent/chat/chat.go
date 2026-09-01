@@ -203,25 +203,58 @@ func markSeen(account, room string) {
 // It says what the conversation is, not what the agent is — a room attached to
 // a news article is a different medium from a bare room, in the same way mail
 // with three people copied in is different from mail with one.
+// about is what the agent is told before it reads the message.
+//
+// # It always says who the agent is
+//
+// This returned "" for any room with no subject — which is every conversation
+// between two people. So the agent was handed the bare text with no framing at
+// all, and somebody who typed "@micro ?" in a private room got this back:
+//
+//	@micro is an agent on this instance.
+//	Name: micro · Address: micro@micro.mu · Agent: yes
+//	Currently online: no
+//
+// It had looked its own handle up in the directory. With nothing saying it was
+// @micro, "@micro ?" is a string containing a username, and looking up a
+// username is a reasonable thing to do with one — so it reported its own
+// profile, in its own voice, in the room it was speaking in, and said it was
+// offline while saying it.
+//
+// The framing is not decoration, then. It is the difference between being
+// addressed and being mentioned, and only the room knows which.
+//
+// # And where it is
+//
+// A room is not the agent page. Several people can be in one and the agent is
+// not one of them: it is not on the roster and it answers when it is named.
+// Told that, it can answer as a participant rather than as an assistant with a
+// single user in front of it.
 func about(s spoken) string {
 	var b strings.Builder
+
+	b.WriteString("You are @" + chat.AgentName + ", the agent on this instance. " +
+		"You are answering in a chat room, where other people may be present and " +
+		"can read what you say. Somebody has just spoken to you.\n\n" +
+		"When a message names you — \"@" + chat.AgentName + "\", or your name on " +
+		"its own — that is somebody addressing you, not asking you to look up an " +
+		"account. Never answer with your own profile, and never report your own " +
+		"presence: you are speaking, so you are here. If you have been named with " +
+		"no question attached, say hello and ask what they need, briefly.")
+
 	if s.Title != "" {
-		b.WriteString("This conversation is about: " + s.Title)
+		b.WriteString("\n\nThis conversation is about: " + s.Title)
 	}
 	if s.Summary != "" {
-		if b.Len() > 0 {
+		if s.Title != "" {
 			b.WriteString(". ")
+		} else {
+			b.WriteString("\n\n")
 		}
 		b.WriteString(s.Summary)
 	}
 	if s.URL != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString("(Source: " + s.URL + ")")
-	}
-	if b.Len() == 0 {
-		return ""
+		b.WriteString(" (Source: " + s.URL + ")")
 	}
 	return b.String()
 }

@@ -1581,6 +1581,18 @@ body:has(#messages) #chat-back-link {
   display: block;
 }
 
+/* What the room says about itself — somebody arrived, somebody left.
+
+   Quiet, small, and with no byline, because nobody said it. It went out as an
+   agent message and was drawn with micro's name on it, so a conversation
+   between two people opened with "micro: @asim joined" and read as the agent
+   announcing itself into a private room. See RoomMessage.System. */
+.message-system {
+  font-size: 0.8em;
+  color: var(--text-muted, #888);
+  margin-bottom: var(--spacing-sm);
+}
+
 .you {
   font-size: 0.85em;
   font-weight: bold;

@@ -140,7 +140,13 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	// it to open.
 	to = replyTo(accountID, t, msgs)
 	b.WriteString(actionBar(t, to, assign != ""))
-	if to == "" {
+	// The note explains; it does not carry the action.
+	//
+	// A room conversation has Reply on the bar now — it goes to the room — so
+	// the sentence would be repeating a button six pixels above it, with the
+	// same link inside it. Everything else that cannot be answered here still
+	// needs saying.
+	if to == "" && room(t) == "" {
 		b.WriteString(`<p class="ib-note">This happened on ` +
 			html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
 			`the way it arrived and the agent picks it up in the same thread.` +
@@ -245,7 +251,8 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 func actionBar(t *thread.Thread, to string, canAssign bool) string {
 	var b strings.Builder
 	b.WriteString(`<div class="ib-reply">`)
-	if to != "" {
+	switch {
+	case to != "":
 		subject := strings.TrimSpace(t.Subject)
 		if subject == "" {
 			subject = "your message"
@@ -256,6 +263,20 @@ func actionBar(t *thread.Thread, to string, canAssign bool) string {
 		}
 		q := url.Values{"to": {to}, "subject": {subject}, "on": {t.ID}}
 		b.WriteString(app.ActionLink("/inbox/new?"+q.Encode(), "Reply"))
+
+	// A room conversation is answered in the room, and that is still Reply.
+	//
+	// There is no address to compose to, so this drew nothing here and left
+	// "Assign to agent" as the only control on a chat thread — reported as
+	// "so many of these chat threads are assign to agent, why not Reply".
+	// Assign was never meant to be the primary verb; it was the second one on
+	// a row whose first was missing.
+	//
+	// The way back to the room existed, in the sentence underneath. A link
+	// inside an explanatory paragraph is not an action, and the paragraph is
+	// the wrong place to put the thing somebody came to do.
+	case room(t) != "":
+		b.WriteString(app.ActionLink(room(t), "Reply"))
 	}
 	// The button only opens the dialog, so it carries no state and needs no
 	// form — and it is drawn only where there is a dialog to open. See
@@ -564,10 +585,24 @@ func mailBody(accountID string, m thread.Message) string {
 // where "where it arrived" is somebody's phone and this instance has no URL
 // that opens it.
 func backTo(t *thread.Thread) string {
+	if r := room(t); r != "" {
+		return ` <a href="` + r + `">Open the room &rarr;</a>`
+	}
+	return ""
+}
+
+// room is where a chat conversation carries on, or empty.
+//
+// The thread key for a room conversation is the room id — agent/chat sets it
+// that way so a second message in the same room is a second turn — so the way
+// back is the key. Split out because two things want it now: the note under
+// the conversation, and Reply on the action bar, which is the same journey and
+// was only ever offered as a link inside a sentence.
+func room(t *thread.Thread) string {
 	if t == nil || t.Client != thread.ChatClient || strings.TrimSpace(t.Key) == "" {
 		return ""
 	}
-	return ` <a href="/chat?id=` + url.QueryEscape(t.Key) + `">Open the room &rarr;</a>`
+	return "/chat?id=" + url.QueryEscape(t.Key)
 }
 
 // onAPhone reports whether a conversation is one that goes back to a number.
