@@ -58,17 +58,19 @@ func TestTheFrontDoorHangsOffOneEdge(t *testing.T) {
 			"header now, and a page rule for it is the large-centred-name\n" +
 			"arrangement coming back one property at a time")
 	}
-	if !strings.Contains(src, `class="btag"`) {
-		t.Error("the name no longer says what it is, which is the one thing a\n" +
-			"stranger reading a domain in a corner does not know")
+	if strings.Contains(src, `class="btag"`) {
+		t.Error("the wordmark has a description under it again. That is our copy\n" +
+			"for our product, and every instance anybody deploys serves this\n" +
+			"page — /about is where it belongs, and it is theirs to change")
 	}
 
-	// And it says what this is. A stranger arriving here has never been told:
-	// the box, the row of services and the brief are all evidence, and none of
-	// them is a sentence.
-	if !strings.Contains(src, "a personal assistant") {
-		t.Error("the front door never says what this is")
-	}
+	// It does not say what this is, and that is the decision rather than an
+	// omission.
+	//
+	// "A personal assistant" was under the name for a while. It reads well on
+	// micro.mu and is our description of our product, served by every instance
+	// anybody deploys — a stranger's server explaining itself in our words is
+	// the same fault as our name in their header, one size down. See /about.
 
 	// And the block is the measure the rest of the product uses.
 	if !strings.Contains(src, ".lwrap{padding:0;max-width:760px") {
@@ -95,18 +97,35 @@ func TestTheBoxsFurnitureIsNotCentredHere(t *testing.T) {
 // visitor has arrived at is a domain, and the domain is what they will tell
 // somebody else about.
 func TestTheFrontDoorIsNamedAfterThisInstance(t *testing.T) {
-	t.Setenv("MU_DOMAIN", "example.test")
-	if got := brand(); !strings.Contains(got, "example.test") {
-		t.Errorf("brand() = %q, want this instance's own domain", got)
-	}
-	if strings.Contains(brand(), ">Mu<") {
-		t.Errorf("a configured instance still calls itself Mu: %q", brand())
+	// The name, not the address. micro.mu is "Micro": a wordmark is a name and
+	// a hostname is an address, and the TLD is the part that makes it the
+	// second one.
+	for _, c := range []struct{ domain, want string }{
+		{"micro.mu", "Micro"},
+		{"assistant.example.com", "Assistant"},
+		{"www.example.com", "Example"}, // www names nothing
+		{"example.test:8080", "Example"},
+		{"https://micro.mu/", "Micro"},
+	} {
+		t.Setenv("MU_DOMAIN", c.domain)
+		if got := brand(); got != c.want {
+			t.Errorf("brand() for %q = %q, want %q", c.domain, got, c.want)
+		}
 	}
 	// And a machine that has not been told its own name — a development box —
 	// falls back rather than showing an empty corner.
 	t.Setenv("MU_DOMAIN", "")
-	if got := brand(); !strings.Contains(got, "Mu") {
-		t.Errorf("an unconfigured instance has no name at all: %q", got)
+	if got := brand(); got != "Mu" {
+		t.Errorf("an unconfigured instance calls itself %q", got)
+	}
+	// No description under it. "A personal assistant" is our copy for our
+	// product, and every instance anybody deploys serves this page — a
+	// stranger's server explaining itself in our words is the same fault as our
+	// name in their header, one size down. /about is where that belongs, and it
+	// is theirs to change.
+	t.Setenv("MU_DOMAIN", "example.test")
+	if strings.Contains(brand(), "personal assistant") {
+		t.Errorf("the wordmark carries our description of our product: %q", brand())
 	}
 	// A domain is a value an operator sets, and it lands in markup.
 	t.Setenv("MU_DOMAIN", `<script>x</script>`)

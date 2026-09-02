@@ -86,18 +86,21 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// page's job and not a server's.
 		Title:       "Mu",
 		Description: "A personal assistant you can reach from anywhere: the web, a text, WhatsApp, mail, or a program. Open source and self-hostable.",
-		// The instance names itself.
+		// The instance names itself, and nothing else.
 		//
-		// It said "Mu", which is the software's name and not this server's. Mu
-		// is a thing you run, so on somebody else's box a wordmark reading Mu
-		// is our name on their front door — the same fault as the pricing copy
-		// that used to ship in every binary. What a visitor has actually
-		// arrived at is a domain, and the domain is what they will tell
-		// somebody else. So: the domain where there is one, and Mu on a machine
-		// that has not been told its own name yet, which is a development box.
+		// It said "Mu", which is what you run rather than what you arrived at —
+		// so on somebody else's box that is our name on their front door, the
+		// same fault as the pricing copy that used to ship in every binary.
 		//
-		// The line under it is the explanation, and it stays whatever the name
-		// is: "micro.mu" says as little to a stranger as "Mu" does.
+		// And it is the name, not the address: micro.mu reads as "micro", the
+		// way any site's wordmark is its name and not its hostname. A TLD in a
+		// wordmark is a URL somebody has typed into the wrong element.
+		//
+		// No line under it either. "A personal assistant" is our description of
+		// our product, and this page is served by every instance anybody
+		// deploys — a stranger's server explaining itself in our words is the
+		// same mistake one size down. What this is, is on /about, which is
+		// theirs to change.
 		Brand:    brand(),
 		TopRight: topRight(),
 		Body:     indexBody(),
@@ -106,6 +109,11 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// The same revalidation every other page gets — see app.Respond. This page
+	// writes its own response because it does not go through the app shell, and
+	// a page with no cache headers is one the browser holds for as long as it
+	// likes.
+	w.Header().Set("Cache-Control", "no-cache, private")
 	w.Write([]byte(page)) //nolint:errcheck
 }
 
@@ -334,14 +342,36 @@ func topRight() string {
 	return signup + `<a href="/login">Log in</a>`
 }
 
-// brand is what this instance calls itself, with what it is under the name.
+// brand is what this instance calls itself: the first label of its hostname.
+//
+// micro.mu is "micro", assistant.example.com is "assistant". A wordmark is a
+// name and a hostname is an address, and the TLD is the part that makes it the
+// second one — nobody writes their own site's TLD in their own header.
+//
+// www is skipped because it names nothing: a server at www.example.com is
+// called example, and "www" is a convention from when a domain had several
+// machines on it.
+//
+// Mu where there is no domain at all, which is a box that has not been told its
+// own name — a development instance, or a first boot before the operator has
+// been through /admin/config. A blank corner would be worse than the software's
+// name in it.
 func brand() string {
-	name := client.Host()
-	if name == "" {
-		name = "Mu"
+	host := client.Host()
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		host = host[:i] // a port is not part of a name
 	}
-	return html.EscapeString(name) +
-		`<div class="btag">a personal assistant</div>`
+	host = strings.TrimPrefix(host, "www.")
+	if i := strings.IndexByte(host, '.'); i > 0 {
+		host = host[:i]
+	}
+	if strings.TrimSpace(host) == "" {
+		return "Mu"
+	}
+	// Capitalised, because it is a name here and not a hostname. Only the first
+	// letter: an instance called "myassistant" is Myassistant, and title-casing
+	// every word would turn a name somebody chose into something they did not.
+	return html.EscapeString(strings.ToUpper(host[:1]) + host[1:])
 }
 
 // today is what you are given for arriving, before you ask anything.

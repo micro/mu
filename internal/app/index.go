@@ -87,12 +87,6 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 .index-head{width:100%;max-width:760px;margin:0 auto;display:flex;
   align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 0 0}
 .brand{font-size:1.05rem;font-weight:800;letter-spacing:-.2px;line-height:1.25}
-/* What the name is, under it. Inline and baseline-aligned reads as a
-   continuation of the wordmark, which worked while the wordmark was 2.5rem in
-   the middle of the page; at the size a name in a corner is set, a second
-   phrase on the same line is just a longer name. */
-.brand .btag{display:block;margin-top:2px;font-size:12px;font-weight:400;
-  letter-spacing:0;color:#888}
 /* Air above the box, which the header no longer provides by being enormous. */
 .index-body{padding-top:12vh}
 .tagline{color:#111;font-size:18px;font-weight:700;margin-bottom:6px}

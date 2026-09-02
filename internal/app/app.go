@@ -227,6 +227,25 @@ func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 		return
 	}
 
+	// Revalidate every time.
+	//
+	// Pages went out with no cache headers at all, which does not mean "do not
+	// cache" — it means the browser guesses, and an installed app guessing
+	// wrong holds a page for as long as it likes. That is how a fix ships and
+	// somebody on their home screen keeps the old screen: the assets are
+	// versioned and the *page* that names those versions is not, so a stale
+	// page goes on asking for the stale stylesheet it was built against, and
+	// any inline script in it stays whatever it was the day it was cached.
+	//
+	// no-cache rather than no-store: the page is still cached, it just has to
+	// ask first, so an unchanged one costs a 304 rather than a download.
+	//
+	// private because these are not interchangeable between people. Every page
+	// carries the corner that says who is signed in, so a shared cache holding
+	// one and handing it to the next reader is somebody else's name in the
+	// header.
+	w.Header().Set("Cache-Control", "no-cache, private")
+
 	// HTML response — renderForRequest already prepends the verify banner for
 	// unverified users on verification-gated instances.
 	w.Write([]byte(renderForRequest(resp.Title, resp.Description, resp.HTML, resp.BodyClass, r))) //nolint:errcheck
