@@ -273,7 +273,16 @@ func indexBody() string {
  * was rebuilt to escape. */
 @media (max-width:600px){
   .index-page{padding-top:8vh}
-  .index-page .brand{justify-content:center;text-align:center;margin-bottom:4px}
+  /* Centred, the tag goes under the name rather than beside it.
+   *
+   * Baseline-aligned on one line is what makes it read as a continuation of
+   * the wordmark, and that only works against a left edge — centred, the pair
+   * is one lump whose optical centre is somewhere inside the gap, so neither
+   * half is where the eye expects it. Stacked, the name is centred and the tag
+   * is a caption under it, which is the shape that reads. */
+  .index-page .brand{flex-direction:column;align-items:center;gap:2px;
+    justify-content:center;text-align:center;margin-bottom:6px;line-height:1.05}
+  .btag{font-size:14px}
 }
 /* Baseline-aligned, not centred on the cap height: the two sit on one line and
    the eye reads the smaller one as a continuation rather than as a label. */

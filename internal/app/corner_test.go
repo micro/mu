@@ -18,7 +18,7 @@ import (
 )
 
 func TestTheCornerIsTheWayInOrWhatYouHave(t *testing.T) {
-	out := headCorner(nil)
+	out := headCorner(nil, "")
 	if !strings.Contains(out, `href="/login"`) {
 		t.Errorf("signed out, the corner does not offer a way in: %q", out)
 	}
@@ -52,7 +52,7 @@ func TestNoSignUpWhereSigningUpIsNotAllowed(t *testing.T) {
 	if !auth.InviteOnly() {
 		t.Skip("this build does not read INVITE_ONLY, so there is nothing to assert")
 	}
-	out := headCorner(nil)
+	out := headCorner(nil, "")
 	if strings.Contains(out, `href="/signup"`) {
 		t.Errorf("an invite-only instance offers Sign up: %q", out)
 	}
@@ -69,7 +69,7 @@ func TestNoSignUpWhereSigningUpIsNotAllowed(t *testing.T) {
 // corner exists to answer going unanswered in exactly the state you would check
 // it in. That was invisible while the front door drew a corner of its own.
 func TestSignedInTheCornerSaysWhoYouAre(t *testing.T) {
-	got := headCorner(&auth.Account{ID: "tester"})
+	got := headCorner(&auth.Account{ID: "tester"}, "")
 	if !strings.Contains(got, "@tester") {
 		t.Errorf("the corner does not name the account: %q", got)
 	}
@@ -84,8 +84,26 @@ func TestSignedInTheCornerSaysWhoYouAre(t *testing.T) {
 
 // A username is somebody's own text and lands in markup.
 func TestTheNameInTheCornerIsEscaped(t *testing.T) {
-	got := headCorner(&auth.Account{ID: `<script>x</script>`})
+	got := headCorner(&auth.Account{ID: `<script>x</script>`}, "")
 	if strings.Contains(got, "<script>") {
 		t.Errorf("an account id went into the corner as markup: %q", got)
+	}
+}
+
+// Signing in from a page you were reading brings you back to it.
+//
+// A page that bounced you to /login has always carried a redirect — see
+// RedirectToLogin — but a public page you chose to sign in from did not, so
+// reading /archive and pressing Log in landed you on /home with the page you
+// were on gone.
+func TestTheCornerComesBackToThePageYouWereOn(t *testing.T) {
+	got := headCorner(nil, "/archive?q=go+micro")
+	if !strings.Contains(got, "redirect=%2Farchive%3Fq%3Dgo%2Bmicro") {
+		t.Errorf("Log in does not carry the page you were on: %q", got)
+	}
+	// The landing is the one page where signing in should move you, and it
+	// redirects on its own. Carrying it would be a round trip to nowhere.
+	if got := headCorner(nil, "/"); strings.Contains(got, "redirect=") {
+		t.Errorf("the corner sends you back to the landing: %q", got)
 	}
 }

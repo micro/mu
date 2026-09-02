@@ -1080,7 +1080,15 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 	_, acc := auth.TrySession(r)
 	// The path, so the rail can show which mailbox or agent you are in. Only
 	// this render has a request to read it from.
-	return renderShell(lang, title, desc, bodyClass, html, acc, navPath(r.URL.Path))
+	// The address as asked for, query and all, so signing in from a search
+	// result comes back to that result rather than to the bare page. navPath
+	// above is the rail's idea of where you are, which is a different question
+	// and a lossy answer to this one.
+	here := r.URL.Path
+	if r.URL.RawQuery != "" {
+		here += "?" + r.URL.RawQuery
+	}
+	return renderShell(lang, title, desc, bodyClass, html, acc, navPath(r.URL.Path), here)
 }
 
 // VerifyBanner says, before you write anything, that you cannot post yet and
@@ -1368,18 +1376,30 @@ func navPinned(acc *auth.Account) string {
 // every other page had nothing, so the two states of this product differed by
 // which page you happened to be on rather than by whether you had an account.
 // One corner, on every page, saying which of the two you are.
-func headCorner(acc *auth.Account) string {
+func headCorner(acc *auth.Account, here string) string {
 	if acc == nil {
 		// Sign up only where signing up is a thing this instance allows. On an
 		// invite-only one it is a door that opens onto a form asking for a
 		// code, which is worse than no door.
+		// And back where you were afterwards.
+		//
+		// A page that bounced you to /login has always carried this — see
+		// RedirectToLogin — but a public page you were reading and chose to
+		// sign in from did not, so reading /archive or /contact and pressing
+		// Log in landed you on /home with the page you were on gone. The one
+		// case where signing in *should* move you is the landing, and that
+		// redirects on its own.
+		back := ""
+		if here != "" && here != "/" {
+			back = "?redirect=" + url.QueryEscape(here)
+		}
 		signup := ""
 		if !auth.InviteOnly() {
 			// First: it is what somebody without an account is deciding. Log in
 			// is for whoever already decided and knows where it goes.
-			signup = `<a href="/signup">Sign up</a>`
+			signup = `<a href="/signup` + back + `">Sign up</a>`
 		}
-		return `<div id="head-out">` + signup + `<a href="/login">Log in</a></div>`
+		return `<div id="head-out">` + signup + `<a href="/login` + back + `">Log in</a></div>`
 	}
 	// And who you are, which is the other half of the same answer.
 	//
@@ -1439,7 +1459,7 @@ func renderWithLang(title, desc, html, lang string, acc *auth.Account) string {
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return renderShell(lang, title, desc, "", html, acc, "")
+	return renderShell(lang, title, desc, "", html, acc, "", "")
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1460,7 +1480,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return renderShell("en", title, desc, "", body, nil, "")
+	return renderShell("en", title, desc, "", body, nil, "", "")
 }
 
 func ServeHTML(html string) http.Handler {
@@ -1744,10 +1764,13 @@ func ValidEmail(s string) bool {
 // no request to read it from. It was also what the nested mailbox list under
 // Inbox matched itself against; that list is gone — see navlist.go — and the
 // parameter stays because the pinned items still use it.
-func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path string) string {
+// renderShell draws the page. here is the address of the page being drawn, so
+// the corner can send somebody back to it after they sign in; empty where there
+// is no request to read one from.
+func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path, here string) string {
 	return fmt.Sprintf(Template,
 		lang, title, desc, bodyAttr,
-		headCorner(acc),
+		headCorner(acc, here),
 		navMain(acc),
 		navPinned(acc),
 		navBottom(acc),

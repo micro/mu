@@ -1,36 +1,35 @@
 package account
 
-// Where someone lands after signing in or signing up. The test moved with the
-// pages: safeRedirect is theirs, and an open redirect on a login page is a
-// phishing primitive reachable from a link an OAuth client hands to a user.
+// Where you come back to after signing in.
 
-import (
-	"net/http/httptest"
-	"net/url"
-	"testing"
-)
+import "testing"
 
-// Where someone lands after signing in or signing up. Same-site only: an open
-// redirect on a login page is a phishing primitive, and this one is reachable
-// from a link an OAuth client hands to a user.
-func TestSafeRedirect(t *testing.T) {
-	// The fallback is the front door, not the dashboard. It was /home while the
-	// front door was a pitch a signed-in account had no use for; / is the same
-	// page for everybody now, and landing on the dashboard put a rail and a grid
-	// of sixteen cards in front of somebody whose next move is to type a
-	// question. See home.Index.
-	for in, want := range map[string]string{
-		"":                             "/",
-		"/oauth/authorize?client_id=x": "/oauth/authorize?client_id=x",
-		"/tools":                       "/tools",
-		"//evil.example":               "/", // a browser reads this as a host
-		"https://evil.example":         "/",
-		"http://evil.example":          "/",
-		"evil.example":                 "/",
+// And the destination is a page here, whoever wrote the link.
+//
+// The value arrives on a URL anybody can compose and ends up in a Location
+// header, so a link to our own login page could otherwise land somebody on
+// somebody else's site with our domain in the address bar on the way — which
+// is what makes a phishing page convincing.
+func TestWhereYouComeBackToIsAPageHere(t *testing.T) {
+	for _, elsewhere := range []string{
+		"//evil.example",       // protocol-relative
+		"/\\evil.example",      // a backslash a browser folds into a slash
+		"/\tevil.example",      // stripped by the parser before it is followed
+		"https://evil.example", // not even a path
+		"evil.example",
 	} {
-		r := httptest.NewRequest("GET", "/signup?redirect="+url.QueryEscape(in), nil)
-		if got := safeRedirect(r); got != want {
-			t.Errorf("safeRedirect(%q) = %q, want %q", in, got, want)
+		if got := SafeRedirectTo(elsewhere); got != "/" {
+			t.Errorf("SafeRedirectTo(%q) = %q — that leaves this instance", elsewhere, got)
+		}
+	}
+	// And a real page still works.
+	if got := SafeRedirectTo("/archive?q=x"); got != "/archive?q=x" {
+		t.Errorf("SafeRedirectTo dropped a legitimate destination: %q", got)
+	}
+	// A login page is not a destination — it is a loop.
+	for _, loop := range []string{"/login", "/logout", "/signup?invite=x"} {
+		if got := SafeRedirectTo(loop); got != "/" {
+			t.Errorf("SafeRedirectTo(%q) = %q", loop, got)
 		}
 	}
 }

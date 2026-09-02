@@ -592,7 +592,12 @@ const cardJS = `<script>
   var off = document.getElementById('push-off');
 
   function on(){
-    say('On for this device.');
+    // Nothing to say. The pair of buttons is the state: "Notifications ·
+    // Turn off" already means they are on, and "On for this device." beside
+    // it was the same fact a second time — which is what made the row read
+    // as two unrelated things rather than one control. push-state stays for
+    // what it is actually for, which is the failures below.
+    say('');
     go.classList.add('d-none');
     if (test) test.classList.remove('d-none');
     if (off) off.classList.remove('d-none');

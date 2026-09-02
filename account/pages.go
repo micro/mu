@@ -1221,9 +1221,48 @@ type signupBucket struct {
 // go and look at things, reached from the corner when that is what you came
 // for. See home.Index.
 func safeRedirect(r *http.Request) string {
-	to := r.URL.Query().Get("redirect")
-	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
-		return "/"
+	return SafeRedirectTo(r.URL.Query().Get("redirect"))
+}
+
+// SafeRedirectTo is where to send somebody after signing in: back where they
+// were, or the front door.
+//
+// Everything here is about one attack. This value arrives on a URL anybody can
+// write, and it ends up in a Location header — so a link to our own login page
+// can be made to land somebody on a site of the attacker's choosing, wearing
+// our domain in the address bar on the way. That is what makes a phishing page
+// convincing, and it is why the only thing accepted is a path on this instance.
+//
+// A leading slash and not two was the whole check, and it is not enough:
+//
+//   - "//evil.example" is protocol-relative and was already refused.
+//   - "/\evil.example" is not, and browsers normalise the backslash to a
+//     slash, so it becomes the case above after the check has passed.
+//   - "/	//evil.example" and friends: control characters are stripped by the
+//     parser, so the string checked is not the string followed.
+//
+// So: one leading slash, and the character after it may not be another slash
+// or a backslash. No control characters anywhere. Nothing that would send
+// somebody straight back to a login page, which is a loop rather than a
+// vulnerability but is still not a destination.
+func SafeRedirectTo(to string) string {
+	const home = "/"
+	if to == "" || to[0] != '/' {
+		return home
+	}
+	if len(to) > 1 && (to[1] == '/' || to[1] == '\\') {
+		return home
+	}
+	for _, c := range to {
+		// Control characters and anything a URL parser might strip or fold.
+		// The check has to be on the bytes that were sent, because what a
+		// browser follows is what is left after it has removed these.
+		if c < 0x20 || c == 0x7f {
+			return home
+		}
+	}
+	if path := strings.SplitN(to, "?", 2)[0]; path == "/login" || path == "/logout" || path == "/signup" {
+		return home
 	}
 	return to
 }

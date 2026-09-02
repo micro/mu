@@ -55,9 +55,16 @@ func TestTheFrontDoorHangsOffOneEdge(t *testing.T) {
 	// stops doing any work and a heading jammed into the corner is all that is
 	// left. Only the wordmark — the brief under it is prose, and prose is read
 	// from a left edge on any screen.
-	if !strings.Contains(src, ".index-page .brand{justify-content:center") {
+	if !strings.Contains(src, ".index-page .brand{flex-direction:column;align-items:center") {
 		t.Error("the wordmark does not centre on a phone, where the axis it is\n" +
 			"aligned to does not exist")
+	}
+	// And stacked when it does, because baseline-aligned on one line only reads
+	// as a continuation against a left edge. Centred, the pair is one lump
+	// whose optical centre is inside the gap between them.
+	if !strings.Contains(src, "flex-direction:column") {
+		t.Error("the tag stays beside the wordmark when the wordmark is centred,\n" +
+			"so neither half sits where the eye looks for it")
 	}
 	// And it says what this is. A stranger arriving here has never been told:
 	// the box, the row of services and the brief are all evidence, and none of
