@@ -240,17 +240,30 @@ func TestNoGuestToolReachesAnAccount(t *testing.T) {
 	}
 }
 
-// And Home shows the same row, from the same list, in the same place. It is the
-// one control both pages share, and it read as a different product on each
-// while only one of them had the doors.
-func TestHomeHasTheDoorsToo(t *testing.T) {
+// The doors row is the front door's, and only the front door's.
+//
+// It was on both, on the argument that the box is the one control the two pages
+// share. That is consistency of the component rather than of the page: the row
+// is a way to reach the services, the front door has no other one, and Home has
+// two — Services in the rail and a grid of those same services below the fold.
+// On Home it was a third row of furniture under one input, above the agent
+// picker and the read-aloud toggle, duplicating a rail six inches to the left.
+func TestOnlyTheFrontDoorCarriesTheDoors(t *testing.T) {
 	src, err := os.ReadFile("home.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(src), "Doors:            directDoors(),") &&
-		!strings.Contains(string(src), "Doors: directDoors(),") {
-		t.Error("Home's box has no doors under it, so the two surfaces that share\n" +
-			"one control offer different things around it")
+	if strings.Contains(string(src), "Doors:") {
+		t.Error("Home draws the row of doors again — it already reaches the\n" +
+			"services twice, from the rail and from the grid below")
+	}
+
+	index, err := os.ReadFile("index.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(index), "Doors: directDoors(),") {
+		t.Error("the front door has lost the row, and it is the page with no\n" +
+			"other way to reach a service")
 	}
 }

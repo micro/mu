@@ -456,10 +456,18 @@ function fetchW(la,lo){
 			Ask:             true,
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
-			// The same row the front door has, in the same place relative to the
-			// same box. It is the one control both pages share, and it read as a
-			// different product on each while only one of them had the doors.
-			Doors:            directDoors(),
+			// No doors row here, and the front door keeps it.
+			//
+			// It was on both for a while, on the argument that the box is the one
+			// control the two pages share and it read as a different product on
+			// each. That is consistency of the component and not of the page: the
+			// row is a way to reach the services, the front door has no other
+			// one, and this page has two — Services in the rail, and a grid of
+			// those same services below the fold.
+			//
+			// So on the front door it is navigation and here it was a third row
+			// of furniture stacked under one input, above the agent picker and
+			// the read-aloud toggle, duplicating a rail six inches to the left.
 			OfferAgentPicker: viewerID != "",
 			// Read-back needs an answer to read, and a signed-out reader
 			// cannot get one — see ChatConfig.Speak. Same condition as the
