@@ -66,11 +66,26 @@ func TestEveryFooterLinkOpensForAStranger(t *testing.T) {
 				"rendered signed out, so this link bounces every reader who sees it.", href)
 		}
 	}
-	// And the one that is the point: what this server remembers is public, and
-	// a stranger can open it without asking the agent for permission to look.
-	if !strings.Contains(app.FooterLinks(), `href="/archive"`) {
-		t.Error("the archive is not in the footer — everything the agent reads " +
-			"has to be somewhere a person can read directly")
+}
+
+// What this server has read stays openable by a person, without asking the
+// agent for permission to look.
+//
+// That was asserted on the footer, which is one route and turned out to be the
+// wrong one to pin: the footer is where a site keeps the addresses a stranger
+// has a question about, and a corpus is not one of those. The archive is on the
+// row of doors under the box on the front page, which is where somebody goes
+// looking, and /about links it for the pages that have no doors row.
+//
+// The property is the reachability, so that is what this checks.
+func TestTheArchiveIsReachableWithoutTheAgent(t *testing.T) {
+	src, err := os.ReadFile(repoRoot(t) + "/home/about.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), `href="/archive"`) {
+		t.Error("nothing on /about reaches the archive, and it is out of the\n" +
+			"footer — so everything this server has read is behind the agent")
 	}
 }
 

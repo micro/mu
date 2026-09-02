@@ -69,6 +69,18 @@ type Client struct {
 	Href string
 	// Note is the one thing you have to know that the address does not say.
 	Note string
+	// Example is the call itself, for the one way in that is not
+	// self-explanatory.
+	//
+	// A phone number, an email address and a URL are addresses: somebody reads
+	// one and knows what to do with it. "POST /agent/micro" is an instruction,
+	// and the row was answering that by linking to /api — a page about calling
+	// *services*, which is a different door, so the one row that needed
+	// explaining sent you somewhere that did not explain it.
+	//
+	// So it carries its own. Empty on every other client, because a phone
+	// number with a worked example under it would be condescending.
+	Example string
 }
 
 // All is every way to reach this instance's agent, in the order somebody meets
@@ -133,8 +145,11 @@ func All() []Client {
 	// somebody reading a card that says "API" goes to /api and does not find
 	// this. Both doors belong on that page.
 	if host != "" {
-		out = append(out, Client{Label: "API", Address: "POST https://" + host + "/agent/micro",
-			Href: "/api", Note: `{"text": "…"} with a token, and read the answer`})
+		out = append(out, Client{Label: "API", Address: "https://" + host + "/agent/micro",
+			Href: "/token", Note: "for a program — needs a token",
+			Example: "curl -X POST https://" + host + "/agent/micro \\\n" +
+				`  -H "Authorization: Bearer $MU_TOKEN" \` + "\n" +
+				`  -d '{"text": "what is on my calendar?"}'`})
 	}
 	return out
 }

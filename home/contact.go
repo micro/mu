@@ -75,7 +75,13 @@ func contactBody(acc *auth.Account) string {
 				html.EscapeString(c.Address) + `</a>`
 		}
 		b.WriteString(addr)
-		b.WriteString(`<span class="cnote">` + html.EscapeString(c.Note) + `</span></div>`)
+		b.WriteString(`<span class="cnote">` + html.EscapeString(c.Note) + `</span>`)
+		// The call itself, for the one row that is an instruction rather than
+		// an address. See client.Client.Example.
+		if c.Example != "" {
+			b.WriteString(`<pre class="cex">` + html.EscapeString(c.Example) + `</pre>`)
+		}
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
 
@@ -116,8 +122,14 @@ a.caddr:hover{text-decoration:underline}
 .cnote{grid-column:2;font-size:13px;color:#888}
 .ccap{color:#666;font-size:14px;line-height:1.5;margin:0}
 .cnext{margin:16px 0 0;font-size:14px;color:#666}
+/* The worked example, under the row it belongs to. Scrolls inside itself
+   rather than widening the card: a curl line with a URL in it is longer than
+   any column this page has. */
+.cex{grid-column:2;margin:8px 0 0;padding:10px 12px;background:#fafafa;
+  border:1px solid #f0f0f0;border-radius:6px;font-size:12px;line-height:1.6;
+  overflow-x:auto;white-space:pre;color:#333}
 @media (max-width:520px){
   .crow{grid-template-columns:1fr}
-  .cnote,.caddr{grid-column:1}
+  .cnote,.caddr,.cex{grid-column:1}
 }
 </style>`

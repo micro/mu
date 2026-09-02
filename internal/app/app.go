@@ -274,41 +274,29 @@ func FooterLinks() string {
 	// with its own row of Tools · API · Pricing — two of the three repeated from
 	// this line, a few centimetres above it. A footer is where a site keeps its
 	// destinations; a second copy of most of one is furniture.
-	// Alphabetical, which is the only ordering a footer can defend.
+	// Four links, alphabetical.
 	//
-	// Every other order is an argument about which destination matters most,
-	// and a footer is the one place on a page that is not making an argument —
-	// it is where a site keeps its addresses. Ranked, it also has to be re-ranked
-	// every time something is added, and nobody ever does.
+	// Alphabetical because every other order is an argument about which
+	// destination matters most, and a footer is the one place on a page that is
+	// not making an argument — it is where a site keeps its addresses. A ranked
+	// row also needs re-ranking whenever something is added, which nobody does.
 	//
-	// About and Contact are new and they are what this row was missing. A
-	// stranger who lands here has two questions — what is this, and how do I
-	// use it — and neither had a page: Archive is a corpus, Tools was a
-	// catalogue, and both answer questions you can only ask once you know what
-	// you are looking at. See home/about.go and home/contact.go.
+	// About and Contact are the two questions somebody with no account has:
+	// what is this, and how do I use it. Privacy and Status are the two a site
+	// is expected to answer whoever is asking.
 	//
-	// Archive stays, and not because it is a destination anybody arrives
-	// wanting. What this server has read being openable by a person, without
-	// asking the agent for permission to look, is the argument for keeping a
-	// public archive at all — and the row of doors that also reaches it is only
-	// on the front page, so on /about, /api, /privacy and /status this is the
-	// only way there.
+	// Tools, API and Archive were all here and are all the same mistake in
+	// different clothes — a footer full of doors onto machinery. A tool is a
+	// property of something rather than a destination, which is what took it
+	// off the sidebar. The API is for programs, and a program does not read a
+	// footer; the people who want it arrive at /about or /contact, which link
+	// it. And the archive is a corpus: what this server has read stays openable
+	// by a person, which is the argument for having a public one, but the row
+	// of doors under the box on the front page is where somebody goes looking
+	// and /about links it too.
 	//
-	// Tools is gone. A tool is not a destination, it is a property of something
-	// — an agent's tools are what it may reach for, a service's are its methods
-	// — which is the reasoning that took it out of the sidebar, and it applies
-	// here unchanged. The page stays and API links it.
-	//
-	// Agent was here for an afternoon, on the argument that the agent is what
-	// this is for. That is right and it belongs to the box on the front page,
-	// which is where it is. It does not belong here for a plain reason: /agent
-	// redirects to /login for anybody without a session, and this footer renders
-	// on exactly one kind of page — the signed-out one. So the link was
-	// redundant for everybody who could use it and a bounce for everybody who
-	// saw it. A destination that asks you to sign in first is not one. Contact
-	// answers the same question and is public, which is the difference.
-	return `<a href="/about">About</a> · <a href="/api">API</a> · ` +
-		`<a href="/archive">Archive</a> · <a href="/contact">Contact</a> · ` +
+	// What is left is four links a stranger might actually want.
+	return `<a href="/about">About</a> · <a href="/contact">Contact</a> · ` +
 		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 

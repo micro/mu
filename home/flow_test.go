@@ -52,13 +52,17 @@ func TestTheLandingAsksTheAgent(t *testing.T) {
 		t.Error("the box does not say what it is for")
 	}
 
-	// And it is not the only door. A box that answers everything, alone on a
-	// page, is a thing you have to go through — so the services are one click
-	// away without asking it. Everything the agent does, you can do yourself.
-	if !strings.Contains(body, `href="/archive"`) {
-		t.Error("the archive is not reachable from the front page, so the agent " +
-			"is the only way to what this server remembers")
-	}
+	// And it is not the only door — the services are one click away without
+	// asking the agent. Not asserted here: the row is drawn from the live
+	// registry, which is empty in a unit test, so there is nothing to find.
+	// This passed on the footer's /archive link, which is a different element
+	// in a different part of the page and has since left the footer — so it was
+	// never testing what it said.
+	//
+	// The property is pinned twice already, on the two halves that can be:
+	// TestOnlyTheFrontDoorCarriesTheDoors, that this page wires the row, and
+	// TestTheDoorsAreTheToolsAGuestCanReach, that the row and the agent's tools
+	// are one list. A third copy here would only be a fourth thing to update.
 	// And the way in, which is the only other thing a stranger needs.
 	if !strings.Contains(body, `href="/login"`) {
 		t.Error("no way to sign in from the signed-out page")
@@ -161,10 +165,11 @@ func TestTheServiceWorkerStillRegistersWithNoInstallButton(t *testing.T) {
 // both of which the footer links. So the property left to hold is that the
 // footer still does.
 func TestTheFooterCarriesTheDestinations(t *testing.T) {
-	// Tools was here and is not: a tool is a property of something rather than
-	// a destination, which is why it left the sidebar too. /api is the door a
-	// program arrives at and links the catalogue.
-	for _, want := range []string{`href="/api"`, `href="/about"`} {
+	// Four links, and these are the two a stranger has a question about. Tools,
+	// API and Archive were all here and all went for the same reason: a footer
+	// full of doors onto machinery. /about links the archive, and a program
+	// does not read a footer.
+	for _, want := range []string{`href="/about"`, `href="/contact"`} {
 		if !strings.Contains(app.FooterLinks(), want) {
 			t.Errorf("the footer does not carry %s", want)
 		}
