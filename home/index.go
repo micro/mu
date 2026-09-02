@@ -196,13 +196,25 @@ func indexBody(viewerID string) string {
 			// Everything on this page is centred, including the two rows under
 			// the box. See ChatConfig.Centred.
 			Centred: true,
-			// The picker chooses among your agents, and a signed-out visitor has
-			// none — an empty select is a control with nothing behind it.
-			OfferAgentPicker: viewerID != "",
-			// Speak is not gated. A guest gets a real answer here — see
-			// agent/guest.go — so the control that reads one aloud belongs to
-			// anybody who can get one, which is everybody on this page.
-			Speak: true,
+			// No agent picker here, signed in or not.
+			//
+			// Not because it would not work — signed in it would — but because
+			// choosing which of your agents answers is not a front-door
+			// question. This page is for arriving and asking one thing; picking
+			// a specialist first is the opposite motion, and it belongs where
+			// the rest of the customised surface is. Home has it.
+			//
+			// Signed out it would be an empty select besides.
+			OfferAgentPicker: false,
+			// And no read-aloud for a stranger.
+			//
+			// A guest does get a real answer here — that part of the old
+			// reasoning had expired and the comment on ChatConfig.Speak now says
+			// so. This is a different reason: the first screen somebody sees is
+			// a wordmark, a box and a day, and a checkbox about how answers are
+			// delivered is furniture in front of somebody who has not asked
+			// anything yet. Signed in, they have.
+			Speak: viewerID != "",
 		}) +
 		today(viewerID) + `
 </div>

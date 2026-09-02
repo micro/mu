@@ -76,20 +76,19 @@ type ChatConfig struct {
 	OfferAgentPicker bool
 	// Speak offers to read the answer out loud.
 	//
-	// Off by default, on where an answer can arrive — which is now everywhere
-	// the box is, including signed out.
+	// Off by default, and the callers decide. This is the offer, not the
+	// behaviour: a page that starts talking is a page nobody asked to talk.
 	//
-	// It was gated on having an account, and the reason it gave has expired: "a
-	// signed-out ask returns 401 and the component renders a refusal, so no
-	// answer can arrive on that page". Guests get answers now — see
-	// agent/guest.go and the allowance in internal/app/client.go — so the
-	// premise is gone and with it the argument built on it. A stranger who asks
-	// the front page a question gets a real answer, and hiding the control that
-	// reads it aloud is hiding it from the one visitor most likely to be on a
-	// phone.
+	// The old note here said a signed-out ask returns 401 so no answer could
+	// arrive, and that has expired — guests get real answers now, through the
+	// allowance in agent/guest.go. It is recorded because the argument built on
+	// it read as settled and was not: the landing page still hides this, but for
+	// a reason about what belongs on a front door rather than a claim about what
+	// the server does.
 	//
-	// Off remains the default, because a page that starts talking is a page
-	// nobody asked to talk. This is the offer, not the behaviour.
+	// The microphone is not gated with it, and the asymmetry survives both
+	// versions: the mic fills the box, which is an input to something that
+	// happens whoever you are.
 	Speak bool
 	// Placeholder is the grey text in the empty box, and Suggestions are the
 	// pills under it.
