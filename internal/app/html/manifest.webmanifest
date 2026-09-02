@@ -2,6 +2,7 @@
   "name": "Mu",
   "short_name": "Mu",
   "description": "A personal assistant. Ask it here, or write to it by mail, text or WhatsApp — with news, web search, your mail, markets, weather, places and storage behind it.",
+  "id": "/",
   "scope": "/",
   "start_url": "/home?from=app",
   "background_color": "#ffffff",

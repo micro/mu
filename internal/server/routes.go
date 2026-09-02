@@ -98,7 +98,7 @@ func authRequired() map[string]bool {
 		"/prayer":                     false, // Public prayer times, daily verse and hadith
 		"/oauth2/google":              false, // Google sign-in start (no session yet)
 		"/oauth2/google/connect":      true,  // Link Google to the current account
-		"/agents":                     true,  // Your agents and their tokens — sign-in required
+		"/agents":                     false, // Public — the instance's own agents; yours needs a session, checked in the handler
 		"/agents/data":                true,  // JSON behind the chat's agent picker
 		"/oauth2/google/calendar":     true,  // Grant calendar access to the current account
 		"/oauth2/google/contacts":     true,  // Grant contacts access to the current account

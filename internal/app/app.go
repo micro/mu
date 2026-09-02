@@ -1524,6 +1524,28 @@ func Serve() http.Handler {
 		if compressed(w, r, htmlContent) {
 			return
 		}
+		// The type Go's own table does not know.
+		//
+		// http.FileServer sniffs by extension and .webmanifest is not in
+		// mime.TypeByExtension, so it fell through to sniffing the bytes and
+		// answered text/plain. With X-Content-Type-Options: nosniff on every
+		// response — which is right and is not going anywhere — a browser is
+		// then required to refuse it, and a refused manifest is a site that
+		// cannot be installed.
+		//
+		// It only showed on this path. compressed() sets the type itself and
+		// every real browser sends Accept-Encoding: gzip, so the one request
+		// that got it wrong was the one nobody makes with a browser. That is
+		// how it survived: correct in the case anybody tested, wrong in the
+		// fallback.
+		// Only this one. contentType answers application/octet-stream for
+		// anything it does not recognise, so asking it about every path would
+		// serve every png and ico as a download — and .css, .js and .svg are
+		// in Go's own table, so FileServer already gets those right. The
+		// manifest is the single extension it does not know.
+		if strings.HasSuffix(r.URL.Path, ".webmanifest") {
+			w.Header().Set("Content-Type", "application/manifest+json")
+		}
 		fileServer.ServeHTTP(w, r)
 	})
 }

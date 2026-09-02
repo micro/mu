@@ -38,10 +38,14 @@ func TestTheMoreSpecificPathWins(t *testing.T) {
 	for path, want := range map[string]bool{
 		"/mail":             true,  // your inbox
 		"/mail/unsubscribe": false, // the token in the link is the credential
-		"/agents":           true,
-		"/agents/data":      true,
-		"/oauth2/google":    false, // sign-in start, no session yet
-		"/oauth2/callback":  false,
+		// A public page whose one private slice is named separately. The
+		// listing of this instance's own agents is for anybody; the JSON of
+		// *your* agents behind the chat's picker is not, and it is a longer
+		// prefix, so it has to win.
+		"/agents":          false,
+		"/agents/data":     true,
+		"/oauth2/google":   false, // sign-in start, no session yet
+		"/oauth2/callback": false,
 	} {
 		got, found := resolve(policy, path)
 		if !found {

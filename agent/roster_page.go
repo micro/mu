@@ -26,7 +26,19 @@ import (
 func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
-		app.RedirectToLogin(w, r)
+		// Signed out, this page is what the instance already has.
+		//
+		// It was a bounce to /login, which is a door with nothing visible
+		// behind it: a stranger has no roster, so the page they were sent to
+		// sign in for is empty for them by definition. What this instance can
+		// already do, and the address of each agent, is a real answer — and it
+		// is the same argument /contact makes, that "how do I use this" should
+		// not need an account to ask. See builtinsPage.
+		app.Respond(w, r, app.Response{
+			Title:       "Agents",
+			Description: "The agents on this instance, what each is for, and the address to write to.",
+			HTML:        builtinsPage(),
+		})
 		return
 	}
 	owner := sess.Account
@@ -196,6 +208,16 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// The model is one sentence now: you make an agent, it gets an address, you
 	// talk to it. The registry is untouched — it still routes, and agent+news@
 	// still answers — it is just not what this page is about.
+
+	// And the instance's own, under yours.
+	//
+	// They were the top of this page and were removed for a reason that holds:
+	// rows of things nobody made, above the one thing that is yours, teach that
+	// an agent is something you are handed. That is an argument about position.
+	// They are real, they route, agent+news@ answers today, and nothing on the
+	// site said so — which is the failure the client list exists to stop.
+	b.WriteString(builtinsSection(true))
+	b.WriteString(builtinsCSS)
 
 	// Close the column this page opened. Without it the footer was swallowed
 	// into a 720px div and rendered halfway up the page: #content is a flex
