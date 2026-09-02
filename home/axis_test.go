@@ -1,16 +1,17 @@
 package home
 
-// One axis.
+// One axis, and it is the middle one now.
 //
-// Everything on the front door was centred in a 640px column on a 1280px
-// screen. Two failures compounded: two thirds of the viewport was empty so the
-// container could only grow downward — every element added made the page taller
-// rather than fuller — and six things of different weights centred against each
-// other have a ragged edge on both sides, so nothing lines up with anything and
-// they read as fragments rather than as one thing.
+// This page was left-aligned against a 760px edge, and the reason was real:
+// six things of different weights centred against each other have a ragged edge
+// on both sides, so nothing lines up and they read as fragments. That is what
+// happens when a page has six things on it.
 //
-// Left, against a single edge, at the measure every other page uses. The block
-// is still centred in the screen; its contents are not centred in the block.
+// It has four: a name, a box, a date, two sentences. Hung off a left edge they
+// are three items pinned to the side of an empty screen, and the axis that was
+// holding a document together has no document to hold. Centred and narrow, they
+// read as one object — which is what a page with almost nothing on it needs to
+// do to look composed rather than unfinished.
 //
 // The alignment itself is measured in a browser — seven elements, one left edge
 // — because CSS is what decides it. What is pinned here is the intent, so that
@@ -72,9 +73,19 @@ func TestTheFrontDoorHangsOffOneEdge(t *testing.T) {
 	// anybody deploys — a stranger's server explaining itself in our words is
 	// the same fault as our name in their header, one size down. See /about.
 
-	// And the block is the measure the rest of the product uses.
-	if !strings.Contains(src, ".lwrap{padding:0;max-width:760px") {
-		t.Error("the front door is not at the shared measure — see --measure in mu.css")
+	// And it is narrower than the shared measure, deliberately.
+	//
+	// 760 is what a page with a document on it uses, and there is no document
+	// here — a name, a box, a date and two sentences. A short block centred in
+	// a wide column has the ragged-edge problem the old left axis was avoiding,
+	// so the fix is a measure the eye takes in without tracking.
+	if !strings.Contains(src, ".lwrap{padding:0;max-width:560px") {
+		t.Error("the landing is at the document measure, which is too wide for\n" +
+			"four centred elements")
+	}
+	if !strings.Contains(src, "text-align:center}") {
+		t.Error("the landing is not centred, so the name sits above a box that\n" +
+			"does not line up with it")
 	}
 }
 
@@ -111,7 +122,7 @@ func TestTheNameIsTheSameOnEverySurface(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(src)
-	if !strings.Contains(body, `Brand:    "Mu",`) {
+	if !strings.Contains(body, `<div class="lbrand">Mu</div>`) {
 		t.Error("the wordmark is not the instance's one name — if it is derived\n" +
 			"from something, the title and the manifest have to be derived from\n" +
 			"the same thing or the product has two names and explains neither")

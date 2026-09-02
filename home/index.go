@@ -99,7 +99,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// answered properly: a setting an operator sets once that moves the
 		// wordmark, the title and the manifest together. Deriving a different
 		// name for one element out of a hostname is not that.
-		Brand:    "Mu",
+		// No wordmark in the chrome. It goes on the page, directly above the
+		// box — see indexBody.
 		TopRight: topRight(),
 		Body:     indexBody(),
 		Footer:   app.FooterLinks(),
@@ -217,7 +218,19 @@ func indexBody() string {
 	// the archive, the news, the video — so anything the agent would fetch is
 	// also one click away without asking it. That is the property that keeps it
 	// a tool: everything it does, you can do yourself.
+	// The name, directly above the box.
+	//
+	// It was a line in the top left, which is where a name goes on a site with
+	// a page under it. There is no page under this one any more — a box, a
+	// date and two sentences — so a name in a corner is a label on an empty
+	// room, floating a long way from the only thing you are here to use.
+	//
+	// Above the box and slightly larger, so the two read as one object: this is
+	// the thing, and that is where you talk to it. Everything below it is
+	// centred on the same axis, which is what makes a page with almost nothing
+	// on it look composed rather than unfinished.
 	return `<div class="lwrap">` +
+		`<div class="lbrand">Mu</div>` +
 		app.ChatComponent(app.ChatConfig{
 			Ask:             true,
 			HideSuggestions: true,
@@ -270,37 +283,38 @@ func indexBody() string {
  *
  * Left, against a single edge, at the measure every other page uses. The block
  * is still centred in the screen; its contents are not centred in the block. */
-.lwrap{padding:0;max-width:760px;margin:0 auto;width:100%;text-align:left}
-/* The wordmark is in the header now, not on the page.
+/* One centred stack: the name, the box, the day, the brief.
  *
- * It was the hero here — 2.5rem, centred over the box, with its own rules for
- * measure, axis and how the tag sat beside it — and every one of those rules
- * existed to make a large centred name coexist with a left-aligned document
- * under it. There is nothing to reconcile once the name is a line in the top
- * left, which is where a name goes on any site, so all of it went: see
- * .index-head in internal/app/index.go for what replaced it.
+ * It was left-aligned against a 760px edge, which is right for a page with a
+ * document on it — six elements of different weights sharing one edge instead
+ * of six ragged centres. There is no document now. A box, a date and two
+ * sentences hung off a left edge is three things pinned to the side of an empty
+ * screen, and the axis that held them together has nothing left to hold.
  *
- * What is left is the tag, because it is this page's copy rather than the
- * shell's furniture. Under the name and not beside it: inline and
- * baseline-aligned reads as a continuation of the wordmark, which worked at
- * 2.5rem and at the size a name in a corner is set is just a longer name. */
-/* Today, under the box. Three rows, each one line, and the block does not
-   scroll — see today() for why this is not a grid of cards. */
-.ltoday{margin:34px 0 0}
-/* The name of the thing, then the date under it. Set as a heading because it
-   is one — this block is the brief, and everything below it belongs to it. */
-.lbrief-head{margin:0 0 3px;font-size:15px;font-weight:600;color:#333}
-.lday{display:block;margin-bottom:12px;font-size:11px;
-  text-transform:uppercase;letter-spacing:.08em;color:#aaa}
+ * So it centres, and it stays narrow: a short block centred in a wide column
+ * has the ragged-edge problem the axis was avoiding, and the fix is a measure
+ * the eye can take in without tracking. */
+.lwrap{padding:0;max-width:560px;margin:0 auto;width:100%;text-align:center}
+/* Slightly larger than the box's own text, so the pair reads as one object —
+   this is the thing, that is where you talk to it. */
+.lbrand{font-size:2rem;font-weight:800;letter-spacing:-1px;margin:0 0 18px;line-height:1}
+/* Today, under the box. */
+.ltoday{margin:30px 0 0}
+/* The day, in the page's quietest voice. All caps and letter-spaced because it
+   is a label rather than a sentence: it says when, and gets out of the way of
+   the thing that says what. */
+.lday{display:block;margin-bottom:10px;font-size:11px;
+  text-transform:uppercase;letter-spacing:.09em;color:#aaa}
 .lrow{margin:0;line-height:1.6}
 /* A labelled group, separated from the one above it. Just enough that the eye
    finds the seam — this is still one block, not three sections. */
 .lgroup{margin-top:18px}
 .lgroup-label{display:block;margin-bottom:5px;font-size:10px;
   text-transform:uppercase;letter-spacing:.09em;color:#bbb}
-/* The brief is prose and is set as prose. It is the one thing here worth
-   reading rather than clicking, so it gets the size and the measure. */
-.lbrief{font-size:15px;color:#444}
+/* The brief is the one thing here worth reading, so it gets the size — and it
+   is two sentences, which is short enough to centre without the ragged edge
+   that makes centred prose hard to track. */
+.lbrief{font-size:15px;color:#444;line-height:1.65}
 .lbrief a{color:#444;text-decoration:underline;text-underline-offset:2px}
 /* Numbers, so they are set as numbers: tabular, quiet, one line. */
 .lmarkets{font-size:13px;font-variant-numeric:tabular-nums}
@@ -422,9 +436,15 @@ func today(viewerID string) string {
 	//
 	// Dated once, at the top, rather than per row. Three timestamps on three
 	// lines is a page about its own freshness.
+	// The day, then what happened. No heading over it.
+	//
+	// It said "Morning brief" / "Afternoon brief" above the date, which is a
+	// label on the only block there is — and naming a thing that has nothing to
+	// be distinguished from is furniture. The date says when, the brief says
+	// what, and between them is the weather where the reader has said where
+	// they are.
 	now := account.LocalNow(viewerID)
 	return `<div class="ltoday" data-brief>` +
-		`<h2 class="lbrief-head">` + html.EscapeString(briefName(now)) + `</h2>` +
 		`<span class="lday">` +
 		html.EscapeString(now.Format("Monday, 2 January")) +
 		weatherBit(viewerID) + `</span>` +
