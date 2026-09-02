@@ -1684,7 +1684,11 @@ func ServerError(w http.ResponseWriter, r *http.Request, message string) {
 // EmailSender is set by main.go and called to deliver verification
 // emails. It's a callback to avoid an import cycle (mail imports app).
 // If nil, email verification is unavailable on this instance.
-var EmailSender func(to, subject, bodyPlain, bodyHTML string) error
+// replyTo is where an answer should go, when that is not this instance. Empty
+// for the transactional mails — a verification, an invite — which are notices
+// from us and have nobody to reply to. Set for a forwarded message, which is a
+// copy of somebody else's mail and whose reply belongs to them.
+var EmailSender func(to, subject, bodyPlain, bodyHTML, replyTo string) error
 
 // PublicURL returns the externally-reachable base URL for the instance.
 // Falls back to relative paths when not configured.

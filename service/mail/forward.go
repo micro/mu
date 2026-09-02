@@ -99,8 +99,34 @@ func forward(m InboundMail) {
 		subject = "New message"
 	}
 
+	// Reply goes to whoever wrote, not to us.
+	//
+	// This is a copy of somebody's message, so the obvious thing to do with it
+	// is answer it — and every one of these went out as From: no-reply@ with
+	// nothing else, so hitting reply produced a mail that looked sent and
+	// reached nobody. The body's "read and reply at /inbox" was the only route
+	// that worked, which is asking somebody to open a website to answer an
+	// email.
+	//
+	// Only a real address. m.From is a username on a local message and an
+	// address on one from outside; a Reply-To of "florian" is not a reply-to,
+	// and a mail client offered one silently produces an undeliverable answer.
+	// Where it is a handle the body's link is still the way, which is what it
+	// was for everybody until now.
+	replyTo := strings.TrimSpace(m.From)
+	if !strings.Contains(replyTo, "@") {
+		if local := strings.TrimSpace(m.From); local != "" && ConfiguredDomain() != "" {
+			// A local sender does have an address here: theirs. A reply to it
+			// arrives in their Mu inbox and is forwarded on to them exactly
+			// like this one, which is the whole loop working.
+			replyTo = local + "@" + ConfiguredDomain()
+		} else {
+			replyTo = ""
+		}
+	}
+
 	plain, htmlBody := forwardBody(m, acc.ID)
-	if err := app.EmailSender(acc.Email, subject, plain, htmlBody); err != nil {
+	if err := app.EmailSender(acc.Email, subject, plain, htmlBody, replyTo); err != nil {
 		app.Log("mail", "forwarding to %s failed: %v", acc.ID, err)
 	}
 }

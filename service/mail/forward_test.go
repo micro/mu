@@ -9,6 +9,9 @@ package mail
 import (
 	"strings"
 	"testing"
+
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 func TestAnUnsubscribeTokenNamesOneAccountAndCannotBeForged(t *testing.T) {
@@ -88,5 +91,51 @@ func TestTheHTMLCopyEscapesTheMessage(t *testing.T) {
 	_, htmlBody := forwardBody(m, "alice")
 	if strings.Contains(htmlBody, "<script>") {
 		t.Errorf("a message went into the forwarded HTML as markup: %q", htmlBody)
+	}
+}
+
+// A reply to a forwarded message reaches whoever wrote it.
+//
+// Every one of these went out as From: no-reply@<domain> with nothing else, so
+// hitting reply produced a mail that looked sent and reached nobody. The body's
+// "read and reply at /inbox" was the only route that worked, which is asking
+// somebody to open a website to answer an email — and it is the one thing a
+// person will not do, so a forwarded message was effectively a dead end.
+//
+// The transport had carried a Reply-To since it was written; nothing exported
+// it. Caught by writing a mail to two hundred people asking them to reply.
+func TestAReplyToAForwardedMessageReachesTheSender(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "example.test")
+
+	var got struct{ to, replyTo string }
+	orig := app.EmailSender
+	app.EmailSender = func(to, subject, plain, html, replyTo string) error {
+		got.to, got.replyTo = to, replyTo
+		return nil
+	}
+	t.Cleanup(func() { app.EmailSender = orig })
+
+	// From outside: the address arrived with the message and is the answer.
+	if err := auth.Create(&auth.Account{
+		ID: "recipient", Email: "real@elsewhere.test", EmailVerified: true,
+	}); err != nil {
+		t.Skipf("no account store to forward against: %v", err)
+	}
+	forward(InboundMail{Owner: "recipient", From: "alice@outside.test",
+		Subject: "hello", Text: "a message"})
+	if got.replyTo != "alice@outside.test" {
+		t.Errorf("Reply-To = %q, want the sender's address — without it, replying\n"+
+			"to a forwarded message goes to no-reply@ and reaches nobody", got.replyTo)
+	}
+
+	// From a local account: the sender is a username, and a Reply-To of
+	// "florian" is not one. Their address on this instance is, and a reply to
+	// it is forwarded to them exactly like this one — the loop closing.
+	got.replyTo = ""
+	forward(InboundMail{Owner: "recipient", From: "florian",
+		Subject: "hello", Text: "a message"})
+	if got.replyTo != "florian@example.test" {
+		t.Errorf("Reply-To = %q, want florian@example.test — a bare username in\n"+
+			"Reply-To is an address a mail client cannot deliver to", got.replyTo)
 	}
 }

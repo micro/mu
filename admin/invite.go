@@ -69,7 +69,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		if app.EmailSender != nil {
 			plain := fmt.Sprintf("You've been invited to join Mu.\n\nSign up here: %s\n\nThis link is single-use.", link)
 			html := fmt.Sprintf(`<p>You've been invited to join Mu.</p><p><a href="%s">Sign up here</a></p><p>This link is single-use.</p>`, link)
-			if err := app.EmailSender(email, "You're invited to Mu", plain, html); err != nil {
+			if err := app.EmailSender(email, "You're invited to Mu", plain, html, ""); err != nil {
 				app.Log("admin", "Failed to email invite to %s: %v", email, err)
 			} else {
 				emailSent = true

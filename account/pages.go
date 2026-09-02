@@ -288,7 +288,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		if app.EmailSender != nil {
 			plain := fmt.Sprintf("%s invited you to join Mu.\n\nSign up here: %s", acc.Name, link)
 			html := fmt.Sprintf(`<p>%s invited you to join Mu.</p><p><a href="%s">Sign up here</a></p>`, htmlpkg.EscapeString(acc.Name), link)
-			app.EmailSender(email, acc.Name+" invited you to Mu", plain, html)
+			app.EmailSender(email, acc.Name+" invited you to Mu", plain, html, "")
 		}
 		body := fmt.Sprintf(`<div class="card">
 <h4>Invite sent</h4>
@@ -1256,7 +1256,7 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 	plain := fmt.Sprintf("Hi %s,\n\nClick the link below to verify your email and unlock posting on Mu:\n\n%s\n\nThis link expires in 24 hours. If you didn't request this, you can ignore this email.\n\n— Mu", acc.Name, link)
 	html := fmt.Sprintf(`<p>Hi %s,</p><p>Click the link below to verify your email and unlock posting on Mu:</p><p><a href="%s">%s</a></p><p>This link expires in 24 hours. If you didn't request this, you can ignore this email.</p><p>— Mu</p>`, htmlpkg.EscapeString(acc.Name), link, link)
 
-	if err := app.EmailSender(email, "Verify your Mu account", plain, html); err != nil {
+	if err := app.EmailSender(email, "Verify your Mu account", plain, html, ""); err != nil {
 		app.Log("auth", "Failed to send verification email to %s: %v", email, err)
 		app.ServerError(w, r, "Failed to send verification email. Please try again.")
 		return

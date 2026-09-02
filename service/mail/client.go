@@ -103,7 +103,22 @@ func LoadDKIMConfig(domain, selector string) error {
 // Sends multipart/alternative with both plain text and HTML versions (like Gmail)
 // Returns the generated Message-ID for threading purposes
 func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML string, replyToMsgID string) (string, error) {
-	return sendExternal(displayName, from, "", to, subject, bodyPlain, bodyHTML, replyToMsgID, "")
+	return SendExternalEmailAs(displayName, from, "", to, subject, bodyPlain, bodyHTML, replyToMsgID)
+}
+
+// SendExternalEmailAs is SendExternalEmail saying where a reply should go.
+//
+// From and Reply-To are different questions and only one of them was askable.
+// The transport has carried a replyTo since it was written and nothing exported
+// it, so every mail this instance sends went out with From: no-reply@ and
+// nothing else — which is right for a verification mail and wrong for the one
+// case that is not a notice from us but a copy of somebody's message. Hit reply
+// on a forwarded Mu message and it went to no-reply@, which is a mail that
+// looks like it worked and reaches nobody.
+//
+// Empty replyTo is the ordinary case and means what it did before.
+func SendExternalEmailAs(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string, replyToMsgID string) (string, error) {
+	return sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML, replyToMsgID, "")
 }
 
 // SendExternalReply answers into a thread that already exists.

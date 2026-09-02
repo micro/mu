@@ -852,9 +852,9 @@ func wireHooks() {
 	// instances without mail configured skip the verification gate
 	// entirely (see auth.VerificationRequired below).
 	if domain := mail.ConfiguredDomain(); domain != "" && domain != "localhost" {
-		app.EmailSender = func(to, subject, plain, html string) error {
+		app.EmailSender = func(to, subject, plain, html, replyTo string) error {
 			from := "no-reply@" + domain
-			_, err := mail.SendExternalEmail("Mu", from, to, subject, plain, html, "")
+			_, err := mail.SendExternalEmailAs("Mu", from, replyTo, to, subject, plain, html, "")
 			return err
 		}
 	}
