@@ -536,17 +536,20 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 		return app.PillLink(label, boxPath(box), strings.EqualFold(box, current))
 	}
 
-	// No heading over the row.
+	// Labelled, on the row rather than over it.
 	//
-	// It had one — "Mailboxes" — added because a row of names with nothing
+	// It had a heading — "Mailboxes" — because a row of names with nothing
 	// above it does not say whether it filters, navigates or addresses. That
-	// was true of a row on its own and stopped being true when the row moved
-	// under the search box and next to the other filter: a chip row directly
-	// below a search field, beside a second chip row, is read as a filter
-	// without being told. Two headings for two one-line rows was more chrome
-	// than the thing it labelled. "All" is the first chip and says the axis.
+	// was right. Dropping it when the two filter rows merged fixed the wrong
+	// half: what was heavy was two headings stacked over two one-line rows, not
+	// the words themselves. Unlabelled, the row became a set of names beside a
+	// set of types with nothing saying which axis either one is — and "All"
+	// beside "Everything" is two words for the same idea on one line.
+	//
+	// So the label is inline, in front of the chips it names. One row, and it
+	// says what it is.
 	var b strings.Builder
-	b.WriteString(`<div class="ib-boxes">` + chip("All", ""))
+	b.WriteString(`<div class="ib-boxes"><span class="ib-axis">Mailbox</span>` + chip("All", ""))
 	for _, a := range agents {
 		if a.Tag == "" {
 			continue // no alias, so nothing arrives at one: it is only in All

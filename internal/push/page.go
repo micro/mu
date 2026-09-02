@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"html"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -232,6 +233,14 @@ func Card(r *http.Request, accountID string) string {
 		// about a row in a file and stays true while every send is refused.
 		lastLine(accountID) +
 		recentLines(accountID) +
+		// Which devices, and the way to remove one.
+		//
+		// Subscription.Label has carried "what the device is, as far as the
+		// browser will say — for a page listing them, so somebody can tell
+		// which one to remove" since it was added, and no page listed them.
+		// So the card could say "On for three devices" and offer no way to find
+		// out what the third one was. See devicesList.
+		devicesList(accountID) +
 		`<button class="btn" id="push-go" type="button">Turn on for this device</button>` +
 		`<button class="btn btn-quiet push-test d-none" id="push-test" type="button">Send a test</button>` +
 		// And the way out. /push/unsubscribe existed from the beginning with
@@ -370,6 +379,68 @@ func ago(t time.Time) string {
 	}
 }
 
+// devicesList is every device this account is subscribed on, and the way to
+// take one off.
+//
+// The card could count them and not name them, so "On for three devices" was
+// unanswerable if you had thrown one away or, as happens, deleted and
+// reinstalled an app: a reinstall is a new subscription, and the old one sits
+// in the list being sent to. Dead ones are pruned — a push service answers 404
+// or 410 and sendTo removes them — but only when something is actually sent, so
+// between notifications the list is longer than the truth.
+//
+// Nothing here is a secret from the reader: it is their own account's list,
+// shown to them. The endpoint is the identity a removal names, so it rides on
+// the button.
+//
+// One device is not a list. A single row saying "this device" under a control
+// that already says it is on for this device is furniture; the count line above
+// already says everything there is to say.
+func devicesList(accountID string) string {
+	list := Devices(accountID)
+	if len(list) < 2 {
+		return ""
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].Added.After(list[j].Added) })
+
+	var b strings.Builder
+	b.WriteString(`<div class="push-devices">`)
+	for _, d := range list {
+		label := strings.TrimSpace(d.Label)
+		if label == "" {
+			// The browser did not say. Naming it by its push service is the
+			// only true thing left, and it is better than "a device" because
+			// two rows of "a device" cannot be told apart — which is the exact
+			// problem this list exists to solve.
+			label = Where(d.Endpoint)
+		}
+		b.WriteString(`<div class="push-device" data-endpoint="` +
+			html.EscapeString(d.Endpoint) + `">`)
+		b.WriteString(`<span class="push-dev-name">` + html.EscapeString(label) + `</span>`)
+		b.WriteString(`<span class="push-dev-when">` + html.EscapeString(deviceWhen(d)) + `</span>`)
+		b.WriteString(`<button type="button" class="btn-quiet push-dev-off">Remove</button>`)
+		b.WriteString(`</div>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// deviceWhen is the one fact about a row that decides whether to remove it.
+//
+// Not when it was added, which is a fact about the past that says nothing about
+// whether this device still exists. What was last sent to it does: a device
+// that has been refusing since March is one you no longer have.
+func deviceWhen(d Subscription) string {
+	switch {
+	case d.Failed.After(d.Sent) && d.Error != "":
+		return "failing since " + ago(d.Failed)
+	case !d.Sent.IsZero():
+		return "last reached " + ago(d.Sent)
+	default:
+		return "added " + ago(d.Added)
+	}
+}
+
 // devicesLine says how many, because "on" on a phone and "on" on a laptop are
 // the same word for different situations.
 func devicesLine(accountID string) string {
@@ -413,6 +484,19 @@ const cardCSS = `<style>
 .push-log-state{margin-left:auto}
 .push-log-when{color:var(--text-muted,#999);white-space:nowrap}
 .push-card .btn{margin-right:6px}
+/* The devices, one per row: what it is, when it was last reached, and the way
+   to take it off. Drawn only where there is more than one — a single row under
+   a control that already says "on for this device" is furniture. */
+.push-devices{margin:10px 0 12px;border-top:1px solid #f0f0f0}
+.push-device{display:flex;align-items:baseline;gap:10px;padding:8px 0;
+  border-bottom:1px solid #f5f5f5}
+.push-dev-name{font-size:13px;font-weight:600;color:#333;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:22ch}
+.push-dev-when{font-size:12px;color:#999;flex:1;min-width:0}
+.push-device.is-here .push-dev-name::after{content:" — this one";font-weight:400;color:#999}
+.push-dev-off{font-size:12px;color:#b3261e;background:none;border:0;padding:0;cursor:pointer}
+.push-dev-off:hover{text-decoration:underline}
+.push-device.going{opacity:.45}
 </style>`
 
 // cardJS is the three steps, in the order the browser insists on — plus the
@@ -616,6 +700,57 @@ const cardJS = `<script>
   // two disagreeing — a device the server goes on sending to forever, or a
   // browser that silently re-registers on the next page load, which is exactly
   // what the re-post below does.
+  // Removing one device by name, from the list.
+  //
+  // The endpoint is the identity, and it is on the row. Removing the one this
+  // browser is holding also has to unsubscribe the browser — otherwise the
+  // server forgets it and the browser goes on holding a subscription nothing
+  // will ever send to, which is the state that made "turn it off" unreliable
+  // before there was a way off at all.
+  document.querySelectorAll('.push-dev-off').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var row = btn.closest('.push-device');
+      if (!row) return;
+      var ep = row.getAttribute('data-endpoint');
+      row.classList.add('going');
+      btn.disabled = true;
+      var done = function(){ row.remove(); };
+      var drop = function(){
+        return fetch('/push/unsubscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.getElementById('push-csrf').value
+          },
+          body: JSON.stringify({endpoint: ep})
+        });
+      };
+      // If this is the browser's own subscription, let go of it here too.
+      navigator.serviceWorker.ready.then(function(reg){
+        return reg.pushManager.getSubscription();
+      }).then(function(sub){
+        if (sub && sub.endpoint === ep) return sub.unsubscribe();
+      }).catch(function(){}).then(drop).then(done).catch(function(){
+        row.classList.remove('going');
+        btn.disabled = false;
+        say('That did not work.');
+      });
+    });
+  });
+
+  // And say which row is the browser you are looking at, because "Remove" on
+  // the wrong one is the mistake this list makes possible.
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).then(function(sub){
+      if (!sub) return;
+      var row = document.querySelector('.push-device[data-endpoint="' +
+        (window.CSS && CSS.escape ? CSS.escape(sub.endpoint) : sub.endpoint) + '"]');
+      if (row) row.classList.add('is-here');
+    }).catch(function(){});
+  }
+
   if (off) off.addEventListener('click', function(){
     off.disabled = true;
     off.textContent = 'Turning off…';

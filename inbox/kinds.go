@@ -175,11 +175,15 @@ func kinds(accountID, current string) string {
 		return ""
 	}
 	var b strings.Builder
-	// No heading. It said "Type" — the right word for the question, Kind being
-	// this repository's own vocabulary — and the heading has gone with its pair
-	// over the mailboxes: see boxes. "Everything" is the first chip and says
-	// the axis, the same way "All" does on the row beside it.
-	b.WriteString(`<div class="ib-boxes ib-kinds">`)
+	// "Type", not "Kind". Kind is this repository's own word — data.Vocabulary
+	// calls them kinds and the URL still says kind=, because that vocabulary
+	// travels and renaming it would break a link somebody saved. What a reader
+	// is being asked here is what sort of thing to show, and the word for that
+	// on a screen is Type.
+	//
+	// Inline, in front of its chips, the same as the mailbox row it sits
+	// beside — see boxes for why the heading came off the top and went here.
+	b.WriteString(`<div class="ib-boxes ib-kinds"><span class="ib-axis">Type</span>`)
 	for _, k := range []struct{ label, val string }{
 		{"Everything", ""},
 		{"Messages", kindMessage},
