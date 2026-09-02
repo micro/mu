@@ -202,13 +202,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		query = strings.TrimSpace(r.PostFormValue("topic"))
 	}
 
-	// Render search bar
-	searchBar := `<form class="search-bar" id="web-search" action="/web" method="POST">` +
+	// The row, and the form around it, kept apart.
+	//
+	// .search-bar is display:flex — it is the input beside the button — so it
+	// has to be the element that holds exactly those two and nothing else.
+	// Putting the topic chips inside it made them a third flex child and
+	// squashed the search box into a third of the width.
+	//
+	// So the form is the outer element and carries no styling, and the row is a
+	// div inside it. The chips then sit inside the form, where a submit button
+	// has to be, and outside the row, where the flexbox is.
+	searchRow := `<div class="search-bar">` +
 		app.CSRFField(auth.CSRFToken(r)) +
 		`<input type="text" name="q" placeholder="Search the web..." value="` +
 		html.EscapeString(query) + `" autofocus>` +
 		`<button type="submit">Search</button>` +
-		`</form>`
+		`</div>`
+	form := func(inner string) string {
+		return `<form id="web-search" action="/web" method="POST">` + inner + `</form>`
+	}
+	// One column, at the measure every other column page uses.
+	//
+	// This page had no wrapper, so it took the shell's full width while the
+	// result cards under it stopped at the card measure — the search box ran
+	// wider than its own results. Every page in the row under the front door's
+	// box is a column of text now, and they are all the same column. See
+	// --measure in mu.css.
+	page := func(inner string) string { return `<div class="w-760">` + inner + `</div>` }
 
 	if query == "" {
 		var landing strings.Builder
@@ -242,14 +262,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			topicChips = t.String()
 		}
 
-		// One form around both, so the chips submit it. The search bar closes
-		// itself, so the chips are spliced in before that close rather than
-		// appended after it.
-		landing.WriteString(strings.TrimSuffix(searchBar, `</form>`) + topicChips + `</form>`)
+		// One form around both, so a chip submits the same thing the button does.
+		landing.WriteString(form(searchRow + topicChips))
 		landing.WriteString(`<div id="recent-searches-container"></div>`)
 
 		landing.WriteString(webRecentSearchesScript)
-		content := landing.String()
+		content := page(landing.String())
 		app.Respond(w, r, app.Response{Title: "Search", Description: "Search the web", HTML: content})
 		return
 	}
@@ -286,7 +304,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(searchBar)
+	b.WriteString(form(searchRow))
 
 	if braveErr != nil {
 		app.Log("search", "Brave search error: %v", braveErr)
@@ -324,7 +342,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	})();
 	</script>`)
 
-	app.Respond(w, r, app.Response{Title: "Search: " + query, Description: "Results for " + query, HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Search: " + query, Description: "Results for " + query, HTML: page(b.String())})
 }
 
 // PreviewHandler returns cached Brave results as JSON for the landing page.

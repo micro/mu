@@ -194,23 +194,36 @@ func TopMovers(n int) string {
 	return strings.Join(parts, ", ")
 }
 
-// Spread is a handful of prices across the kinds of thing this tracks, for a
-// caller with one line to spend.
+// Spread is the handful of prices a front page shows, in a fixed order.
 //
-// Not TopMovers, and the difference is the whole point. That one sorts by
-// absolute change and picks the loudest, which on a list containing crypto
-// means crypto: BTC, ETH and SOL move several percent on a quiet day and oil
-// moves half of one, so "the three biggest movers" was three coins every time
-// and the front page read as a crypto site.
+// # Why a fixed list and not the biggest movers
 //
-// A person glancing at how markets went wants a spread, not a leaderboard. So
-// one from each kind, in a fixed order — a commodity, a share, a coin — and
-// each is the biggest mover within its own kind, which is where the question
-// "did anything happen" still gets a useful answer.
+// TopMovers sorts by absolute change and picks the loudest, which on a list
+// containing crypto means crypto: BTC, ETH and SOL move several percent on a
+// quiet day and oil moves half of one, so "the three biggest movers" was three
+// coins every time and the front page read as a crypto ticker.
 //
-// Fixed order rather than sorted, because the order changing between loads is
-// the thing that makes a page look live and worth refreshing. It is a price
-// list; it should sit still.
+// The first repair was one mover from each kind — a commodity, a share, a coin —
+// and that was clever and still wrong. It produced "Wheat, Tesla, SOL", which is
+// three things a reader has to work out the reason for. Nobody glancing at a
+// front page wants to know which commodity moved most today; they want the four
+// numbers they already have a feel for.
+//
+// # Why these four
+//
+// Two currencies and two commodities: what money is doing and what the physical
+// world costs. They are the four this instance's own agent context has always
+// named, they do not change, and a reader learns where each one sits on the row.
+//
+// No shares. A single company's price is a fact about that company, and there is
+// no non-arbitrary way to pick which of ten to show — the one that moved is the
+// leaderboard problem again, and a fixed pick is this instance having opinions
+// about Tesla. Anybody who wants a share can ask for it.
+//
+// Fixed order, because an order that changes between loads is what makes a page
+// look live and worth refreshing. It is a price list; it should sit still.
+var spreadOrder = []string{"BTC", "ETH", "OIL", "GOLD"}
+
 func Spread(n int) []Quote {
 	marketsMutex.RLock()
 	defer marketsMutex.RUnlock()
@@ -218,39 +231,17 @@ func Spread(n int) []Quote {
 	if len(cachedPriceData) == 0 || n <= 0 {
 		return nil
 	}
-
-	// The kinds, in the order they are shown. Commodities first because they
-	// are what a news story is usually about, shares second, crypto last —
-	// it is the smallest of the three by every measure except how loudly it
-	// moves.
-	kinds := [][]string{
-		{"OIL", "GOLD", "SILVER", "COPPER", "WHEAT"},
-		stockSymbols,
-		{"BTC", "ETH", "SOL"},
-	}
-
 	out := make([]Quote, 0, n)
-	for _, kind := range kinds {
+	for _, sym := range spreadOrder {
 		if len(out) >= n {
 			break
 		}
-		var best string
-		var bestChange float64
-		for _, sym := range kind {
-			pd, ok := cachedPriceData[sym]
-			if !ok {
-				continue
-			}
-			if best == "" || math.Abs(pd.Change24h) > math.Abs(bestChange) {
-				best, bestChange = sym, pd.Change24h
-			}
-		}
-		if best == "" {
+		pd, ok := cachedPriceData[sym]
+		if !ok {
 			continue
 		}
-		pd := cachedPriceData[best]
 		out = append(out, Quote{
-			Symbol: best, Name: displayName(best),
+			Symbol: sym, Name: displayName(sym),
 			Price: pd.Price, Change24h: pd.Change24h,
 		})
 	}

@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/service/markets"
 	"mu/service/news"
+	"mu/service/weather"
 )
 
 // Index is the front door for anyone not signed in: something to try, then
@@ -191,22 +194,30 @@ func indexBody(viewerID string) string {
 			OfferAgentPicker: viewerID != "",
 			Speak:            viewerID != "",
 		}) +
-		today(viewerID) +
-		`<p class="lwhat">` + directDoors() + `</p>
+		`<p class="lwhat">` + directDoors() + `</p>` +
+		today(viewerID) + `
 </div>
 
 <style>
 .lwrap{padding:0;max-width:640px;margin:0 auto;width:100%}
-.lwhat{text-align:center;color:#888;font-size:13px;line-height:1.9;margin:20px auto 0}
+/* Directly under the box, close enough to belong to it. */
+.lwhat{text-align:center;color:#888;font-size:13px;line-height:1.9;margin:14px auto 0}
 .lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
 .lwhat a:hover{text-decoration:underline}
 /* Today, under the box. Three rows, each one line, and the block does not
    scroll — see today() for why this is not a grid of cards. */
-.ltoday{margin:24px auto 0;max-width:580px;text-align:center}
-.lday{display:block;margin-bottom:10px;font-size:11px;
+.ltoday{margin:34px auto 0;max-width:580px;text-align:center}
+/* The name of the thing, then the date under it. Set as a heading because it
+   is one — this block is the brief, and everything below it belongs to it. */
+.lbrief-head{margin:0 0 3px;font-size:15px;font-weight:600;color:#333}
+.lday{display:block;margin-bottom:12px;font-size:11px;
   text-transform:uppercase;letter-spacing:.08em;color:#aaa}
-.lrow{margin:0 0 10px;line-height:1.6}
-.lrow:last-child{margin-bottom:0}
+.lrow{margin:0;line-height:1.6}
+/* A labelled group, separated from the one above it. Just enough that the eye
+   finds the seam — this is still one block, not three sections. */
+.lgroup{margin-top:18px}
+.lgroup-label{display:block;margin-bottom:5px;font-size:10px;
+  text-transform:uppercase;letter-spacing:.09em;color:#bbb}
 /* The brief is prose and is set as prose. It is the one thing here worth
    reading rather than clicking, so it gets the size and the measure. */
 .lbrief{font-size:15px;color:#444}
@@ -305,8 +316,8 @@ func topRight(viewerID string) string {
 func today(viewerID string) string {
 	rows := []string{
 		briefRow(viewerID),
-		marketsRow(),
-		headlinesRow(),
+		group("Markets", marketsRow()),
+		group("Headlines", headlinesRow()),
 	}
 
 	var b strings.Builder
@@ -327,9 +338,91 @@ func today(viewerID string) string {
 	//
 	// Dated once, at the top, rather than per row. Three timestamps on three
 	// lines is a page about its own freshness.
-	return `<div class="ltoday" data-brief><span class="lday">` +
-		html.EscapeString(time.Now().Format("Monday, 2 January")) + `</span>` +
+	now := account.LocalNow(viewerID)
+	return `<div class="ltoday" data-brief>` +
+		`<h2 class="lbrief-head">` + html.EscapeString(briefName(now)) + `</h2>` +
+		`<span class="lday">` +
+		html.EscapeString(now.Format("Monday, 2 January")) +
+		weatherBit(viewerID) + `</span>` +
 		b.String() + `</div>`
+}
+
+// group puts a faded heading over a row, and nothing at all over an empty one.
+//
+// The three rows ran together as one block of decreasing font size, so the
+// prices read as a footnote to the brief and the headlines as a footnote to the
+// prices. A word over each says what it is and, more usefully, says where one
+// thing stops. Small caps and grey, the same treatment Home gives its sections
+// — see sectionRule — so the two pages label things the same way.
+//
+// The brief has no heading. It is the answer to "is there anything I need to
+// know", it sits directly under the date, and "Brief" over one sentence is a
+// caption on a caption.
+func group(label, row string) string {
+	if row == "" {
+		return ""
+	}
+	return `<div class="lgroup"><span class="lgroup-label">` +
+		html.EscapeString(label) + `</span>` + row + `</div>`
+}
+
+// briefName is what to call the brief at this hour.
+//
+// Morning, Afternoon, Evening — and the hour is the reader's, not the server's.
+// account.LocalNow reads the zone they set with their place, so an instance in
+// Virginia does not wish somebody in Tokyo good morning at nine at night. With
+// no place set it is the machine's clock, which on a self-hosted install is the
+// same room as the person.
+//
+// Not "Daily Brief". The line under it is already dated, and a word that says
+// which part of the day it is says something the date does not: the same brief
+// read at eight and at six is a different thing to the person reading it.
+//
+// The boundaries are the ordinary ones and nothing turns on them being exactly
+// right — five in the afternoon is arguably still afternoon, and calling it
+// evening costs nobody anything.
+func briefName(now time.Time) string {
+	switch h := now.Hour(); {
+	case h < 12:
+		return "Morning brief"
+	case h < 17:
+		return "Afternoon brief"
+	}
+	return "Evening brief"
+}
+
+// weatherBit is the temperature where you are, beside the date.
+//
+// Only for somebody signed in who has told us where they are — /account keeps a
+// place, and account.PlaceLine is what the agent already reads. Nothing here
+// asks: a permission prompt on the first screen a stranger sees is the highest
+// friction there is, and it is the move of a site that wants something from you
+// before it gives you anything.
+//
+// From the cache only, so the page never waits on a third party. See
+// weather.Now. The fetch that fills it is kicked off behind the answer, so the
+// line is there next time rather than never.
+//
+// Beside the date because that is what it is: the other half of "what is today
+// like". Two facts, one line, and neither is worth a row of its own.
+func weatherBit(viewerID string) string {
+	if viewerID == "" {
+		return ""
+	}
+	lat, lon, ok := account.PlaceOf(viewerID)
+	if !ok {
+		return ""
+	}
+	temp, desc, hit := weather.Now(lat, lon)
+	if !hit {
+		go weather.Warm(lat, lon)
+		return ""
+	}
+	out := ` · ` + strconv.Itoa(temp) + `°C`
+	if d := strings.TrimSpace(desc); d != "" {
+		out += ` ` + d
+	}
+	return html.EscapeString(out)
 }
 
 // briefRow is what happened, in a sentence.
@@ -351,14 +444,13 @@ func briefRow(viewerID string) string {
 
 // marketsRow is where the money went, in one line.
 //
-// A spread across the kinds of thing markets tracks — a commodity, a share, a
-// coin — rather than the three biggest movers. It was the movers, from the
-// function the agent's context uses, and on a list containing crypto the three
-// biggest movers are three coins every time: BTC, ETH and SOL move several
-// percent on a quiet day and oil moves half of one. The front page of a
-// personal server read as a crypto ticker. See markets.Spread.
+// Four fixed names — BTC, ETH, OIL, GOLD — and not the biggest movers. The
+// movers are three coins every time, because coins move most; one mover from
+// each kind gives "Wheat, Tesla, SOL", which is three things a reader has to
+// work out the reason for. These four do not change, so somebody learns where
+// each sits on the row and reads it in a glance. See markets.Spread.
 func marketsRow() string {
-	quotes := markets.Spread(3)
+	quotes := markets.Spread(4)
 	if len(quotes) == 0 {
 		return ""
 	}
@@ -468,7 +560,13 @@ func workerScript() string {
 </script>`
 }
 
-// directDoors is the row of doors under the box.
+// directDoors is the row of doors directly under the box.
+//
+// Under the box, not at the foot of the page. Every one of these is a search,
+// the thing above them is a search box, and the row reads as the second half of
+// the same sentence: ask anything here, or search one of these. At the bottom,
+// under the day, it read as a footer — a list of other places to go, which is
+// what it used to say and the least interesting thing about it.
 //
 // Every service a signed-out visitor can open came to twenty-one names — a
 // paragraph of them, wrapping onto two lines, including Browser and Text and

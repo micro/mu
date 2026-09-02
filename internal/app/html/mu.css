@@ -16,6 +16,24 @@
    rules have to agree about, and they did not. See navTabs. */
 :root {
   --tabbar: 0px;
+  /* One measure for a page of prose, a form or a list.
+   *
+   * There were ten. .max-w-xl was 750, .w-760 was 760, .col-feed 800, .w-820
+   * 820, .browser-page 860, .page-col 720, and the archive, weather and markets
+   * pages each shipped their own number in their own <style> block. Nothing was
+   * wrong with any one of them and the result was that walking the row of
+   * services under the search box — Archive, News, Video, Social, Markets,
+   * Weather, Places, Web — moved the content sideways on every click, and put
+   * the search box on one page at a different width from the results under it.
+   *
+   * 760 because it was already the most common, so the fewest pages move.
+   *
+   * Not every page: a grid of cards wants the width it can get, and those use
+   * the shell's own 1400 by having no wrapper at all. The rule is the shape of
+   * the content — one column reads at --measure, a grid fills the shell — and
+   * it is a decision each page makes once rather than a number each page
+   * invents. */
+  --measure: 760px;
   /* This product is light. Say so, rather than letting a browser guess.
    *
    * Reported as "topup amounts have black text on black background", followed
@@ -3262,7 +3280,7 @@ a.highlight {
 .whitespace-pre-wrap { white-space: pre-wrap; }
 /* Width */
 .w-full { width: 100%; }
-.max-w-xl { max-width: 750px; }
+.max-w-xl { max-width: var(--measure); }
 
 /* Margins */
 /* The shapes pages were writing by hand.
@@ -3433,7 +3451,7 @@ a.highlight {
 .w-160 { width: 160px; }
 .w-260 { width: 260px; }
 .w-640 { max-width: 640px; }
-.w-760 { max-width: 760px; }
+.w-760 { max-width: var(--measure); }
 
 /* A row separated from the next by a hairline and nothing else. .feed-row is
    the roomier version; this is for a dense list. */
@@ -3645,7 +3663,7 @@ a.highlight {
 .fill { height: 100%; width: 100%; }
 .w-320 { max-width: 320px; }
 .w-440 { max-width: 440px; }
-.w-820 { max-width: 820px; }
+.w-820 { max-width: var(--measure); }
 .centered { margin: 0 auto; }
 .mt-half { margin-top: 6px; }
 .mt-14 { margin-top: 14px; }
@@ -3860,7 +3878,7 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
 /* A feed is read, not filled in, so it gets more room than a form does.
    Its own width rather than a wider .col-narrow, which apps and agents also
    use — they are forms and lists and want the narrower measure. */
-.col-feed { max-width: 800px; }
+.col-feed { max-width: var(--measure); }
 
 /* A textarea for prose you type: full width, growable, in the page's own face
    rather than the browser's monospace default. */
@@ -4403,7 +4421,11 @@ a.btn-primary:hover, .btn-primary:hover {
 
 /* Base card */
 .card {
-  max-width: 750px;
+  /* The same measure every page column uses — see --measure. It was 750, one
+     of eleven numbers in this file meaning "a readable width", and it is what
+     put the form on /places and /tasks at 716 while the one on /news ran to
+     1000. */
+  max-width: var(--measure);
   box-sizing: border-box;
   display: block;
   position: relative;
@@ -5229,7 +5251,7 @@ a.card-hover:hover {
    MARKETS PAGE
    ======================================== */
 .markets-page {
-  max-width: 750px;
+  max-width: var(--measure);
 }
 
 .markets-page .description {
@@ -6664,7 +6686,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 @media only screen and (max-width: 600px) { .ib-held-when { margin-left: 0 } }
 
 /* Putting an app on somebody else's page. See service/apps/embed.go. */
-.embed-page { max-width: 760px }
+.embed-page { max-width: var(--measure) }
 .embed-title { font-size: 20px; margin: 0 0 6px }
 .embed-lead { font-size: 14px; color: var(--text-secondary, #555); margin: 0 0 var(--spacing-lg, 24px); line-height: var(--line-height, 1.6) }
 .embed-empty { font-size: 14px; color: var(--text-muted, #888) }
@@ -6871,7 +6893,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .home-brief a:hover { text-decoration: underline }
 
 /* A real browser, at /browser. See service/browser/page.go. */
-.browser-page { max-width: 860px }
+.browser-page { max-width: var(--measure) }
 
 .browser-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 var(--spacing-md, 16px) }
 
@@ -7023,7 +7045,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .pf-write { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 0 }
 
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
-.tool-page { max-width: 760px }
+.tool-page { max-width: var(--measure) }
 .tool-name { font-size: 24px; margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
 .tool-lead { font-size: 15px; color: var(--text-secondary, #555); margin: 0 0 var(--spacing-md, 16px); line-height: var(--line-height, 1.6) }
 .tool-cost, .tool-from { font-size: 13px; color: var(--text-secondary, #555); margin: 0 0 8px }
@@ -7046,7 +7068,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 }
 
 /* A service, derived from its Spec. See internal/api/service_page.go. */
-.svc-page { max-width: 760px }
+.svc-page { max-width: var(--measure) }
 .svc-lead { font-size: 15px; color: var(--text-secondary, #555); margin: 0 0 var(--spacing-md, 16px); line-height: var(--line-height, 1.6) }
 
 /* The card, at the size the page has room for. It is the answer somebody came
@@ -7358,7 +7380,7 @@ select.field { max-width: 220px }
    on the grounds that "a pannable map means a JavaScript dependency and this
    page is the demonstration rather than the product". A page you cannot use is
    a screenshot, and a slippy map is a hundred lines of plain JavaScript. */
-.maps-page { max-width: 760px }
+.maps-page { max-width: var(--measure) }
 .maps-styles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
 
 .map-wrap { position: relative; margin: 0 0 var(--spacing-lg, 24px) }
@@ -7479,7 +7501,7 @@ a.ib-addr-write:hover { text-decoration: underline }
    Pages chose their own — 600, 640, 680, 700, 720, 760, 820 — so the text
    changed width as you walked between them, and /privacy centred itself on top
    of that, which moved it sideways as well. */
-.page-col { max-width: 720px }
+.page-col { max-width: var(--measure) }
 
 /* A date or time input carries its own intrinsic sizing, which is why it came
  * out 32px in a row of 30px controls: the browser lays out its internal

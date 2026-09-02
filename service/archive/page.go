@@ -187,7 +187,7 @@ func kindChips(kinds []data.Kind, query, active string) string {
 }
 
 const pageCSS = `<style>
-.ar{max-width:760px}
+.ar{max-width:var(--measure,760px)}
 .ar-form{display:flex;gap:8px;margin:0 0 14px}
 .ar-input{flex:1;font:inherit;font-size:15px;padding:9px 13px;border:1px solid #e2e2e2;border-radius:8px}
 .ar-input:focus{outline:none;border-color:#bbb}

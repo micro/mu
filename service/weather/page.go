@@ -358,7 +358,7 @@ func airFor(lat, lon float64) *AirQuality {
 }
 
 const pageCSS = `<style>
-.wx-page{max-width:760px}
+.wx-page{max-width:var(--measure,760px)}
 .wx-find{display:flex;gap:8px;margin:0 0 var(--spacing-lg,24px);flex-wrap:wrap}
 .wx-find .field{flex:1;min-width:0}
 .wx-note{color:var(--text-secondary,#555);line-height:1.6;margin:0}

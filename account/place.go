@@ -32,6 +32,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -61,6 +62,49 @@ func SetPlace(accountID, place string, lat, lon float64, zone string) error {
 		acc.Lon = math.Round(lon*100) / 100
 	}
 	return auth.UpdateAccount(acc)
+}
+
+// LocalNow is the time where an account is.
+//
+// Their zone when they have set a place, and this machine's clock when they
+// have not — which is right for a self-hosted instance, where the server and
+// the person are usually in the same room, and is the only honest fallback for
+// anybody else.
+//
+// Exported because more than the prompt wants it now: a page that greets
+// somebody with "Morning" has to mean their morning, and a server in Virginia
+// saying good morning to somebody in Tokyo at nine at night is worse than
+// saying nothing.
+func LocalNow(accountID string) time.Time {
+	if accountID == "" {
+		return time.Now()
+	}
+	acc, err := auth.GetAccount(accountID)
+	if err != nil || acc == nil || acc.Zone == "" {
+		return time.Now()
+	}
+	loc, err := time.LoadLocation(acc.Zone)
+	if err != nil {
+		return time.Now()
+	}
+	return time.Now().In(loc)
+}
+
+// PlaceOf is where an account is, as coordinates, and false when nobody has
+// said.
+//
+// PlaceLine's fact without PlaceLine's sentence. That one is written for a
+// model's prompt — a name, coordinates and a zone, joined with dashes — and a
+// caller that wants to look something up by position had to parse it back out.
+func PlaceOf(accountID string) (lat, lon float64, ok bool) {
+	acc, err := auth.GetAccount(accountID)
+	if err != nil || acc == nil {
+		return 0, 0, false
+	}
+	if acc.Lat == 0 && acc.Lon == 0 {
+		return 0, 0, false
+	}
+	return acc.Lat, acc.Lon, true
 }
 
 // PlaceLine is where an account is, as one line for a prompt, and empty when
