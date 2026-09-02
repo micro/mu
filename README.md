@@ -133,6 +133,7 @@ For Tools via MCP use `/mcp`. See [/tools](https://micro.mu/tools) for more info
 
 ## Web
 
+- `/` - the main way to ask anything
 - `/home` — an overview of everything going on.
 - `/inbox` — the place to see chats, mail, tasks, etc.
 - `/agents` — your agents, and where you make a new one.
