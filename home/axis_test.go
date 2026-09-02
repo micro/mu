@@ -89,47 +89,43 @@ func TestTheBoxsFurnitureIsNotCentredHere(t *testing.T) {
 	}
 }
 
-// The instance names itself, and a bare one still has a name.
+// One name, on every surface.
 //
-// "Mu" is the software's name, not this server's. Mu is a thing you run, so on
-// somebody else's box a wordmark reading Mu is our name on their front door —
-// the same fault as the pricing copy that used to ship in every binary. What a
-// visitor has arrived at is a domain, and the domain is what they will tell
-// somebody else about.
-func TestTheFrontDoorIsNamedAfterThisInstance(t *testing.T) {
-	// The name, not the address. micro.mu is "Micro": a wordmark is a name and
-	// a hostname is an address, and the TLD is the part that makes it the
-	// second one.
-	for _, c := range []struct{ domain, want string }{
-		{"micro.mu", "Micro"},
-		{"assistant.example.com", "Assistant"},
-		{"www.example.com", "Example"}, // www names nothing
-		{"example.test:8080", "Example"},
-		{"https://micro.mu/", "Micro"},
-	} {
-		t.Setenv("MU_DOMAIN", c.domain)
-		if got := brand(); got != c.want {
-			t.Errorf("brand() for %q = %q, want %q", c.domain, got, c.want)
-		}
+// The wordmark derived a name from the hostname for a while — micro.mu reading
+// as "Micro" — on the argument that Mu is what you run rather than what you
+// arrived at, so our name on somebody else's front door is the same fault as
+// the pricing copy that used to ship in every binary.
+//
+// The argument is real and the fix was in the wrong place. It changed one
+// surface: the browser tab still said Mu, the manifest still said Mu, and the
+// app still installed as Mu with a Mu icon. Four surfaces, two names, and
+// nothing explaining the relation — worse than either answer on its own.
+//
+// So this pins the agreement rather than the string. Whatever the wordmark
+// says, the title and the manifest say the same thing; a self-hosted instance
+// that wants its own name is a setting that moves all three, not a hostname
+// parsed into one of them.
+func TestTheNameIsTheSameOnEverySurface(t *testing.T) {
+	src, err := os.ReadFile("index.go")
+	if err != nil {
+		t.Fatal(err)
 	}
-	// And a machine that has not been told its own name — a development box —
-	// falls back rather than showing an empty corner.
-	t.Setenv("MU_DOMAIN", "")
-	if got := brand(); got != "Mu" {
-		t.Errorf("an unconfigured instance calls itself %q", got)
+	body := string(src)
+	if !strings.Contains(body, `Brand:    "Mu",`) {
+		t.Error("the wordmark is not the instance's one name — if it is derived\n" +
+			"from something, the title and the manifest have to be derived from\n" +
+			"the same thing or the product has two names and explains neither")
 	}
-	// No description under it. "A personal assistant" is our copy for our
-	// product, and every instance anybody deploys serves this page — a
-	// stranger's server explaining itself in our words is the same fault as our
-	// name in their header, one size down. /about is where that belongs, and it
-	// is theirs to change.
-	t.Setenv("MU_DOMAIN", "example.test")
-	if strings.Contains(brand(), "personal assistant") {
-		t.Errorf("the wordmark carries our description of our product: %q", brand())
+	if !strings.Contains(body, `Title:       "Mu",`) {
+		t.Error("the page title and the wordmark disagree")
 	}
-	// A domain is a value an operator sets, and it lands in markup.
-	t.Setenv("MU_DOMAIN", `<script>x</script>`)
-	if strings.Contains(brand(), "<script>") {
-		t.Errorf("the domain went onto the page as markup: %q", brand())
+	// And the manifest, which is what an installed app is called on a home
+	// screen — the surface somebody looks at most and can change least.
+	man, err := os.ReadFile("../internal/app/html/manifest.webmanifest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(man), `"name": "Mu"`) {
+		t.Error("the installed app is called something other than the wordmark")
 	}
 }

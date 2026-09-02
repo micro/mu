@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"mu/account"
-	"mu/client"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
@@ -86,22 +85,24 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// page's job and not a server's.
 		Title:       "Mu",
 		Description: "A personal assistant you can reach from anywhere: the web, a text, WhatsApp, mail, or a program. Open source and self-hostable.",
-		// The instance names itself, and nothing else.
+		// One name, everywhere.
 		//
-		// It said "Mu", which is what you run rather than what you arrived at —
-		// so on somebody else's box that is our name on their front door, the
-		// same fault as the pricing copy that used to ship in every binary.
+		// This derived a name from the hostname for a while — micro.mu reading
+		// as "Micro" — on the argument that Mu is what you run rather than what
+		// you arrived at, so our name on somebody else's front door is the same
+		// fault as the pricing copy that used to ship in every binary.
 		//
-		// And it is the name, not the address: micro.mu reads as "micro", the
-		// way any site's wordmark is its name and not its hostname. A TLD in a
-		// wordmark is a URL somebody has typed into the wrong element.
+		// The argument is real and the fix was in the wrong place. The wordmark
+		// was the only surface it changed: the browser tab still said Mu, the
+		// manifest still said Mu, and the app still installed as Mu with a Mu
+		// icon. Four surfaces, two names, and nothing explaining the relation —
+		// which is worse than either answer on its own.
 		//
-		// No line under it either. "A personal assistant" is our description of
-		// our product, and this page is served by every instance anybody
-		// deploys — a stranger's server explaining itself in our words is the
-		// same mistake one size down. What this is, is on /about, which is
-		// theirs to change.
-		Brand:    brand(),
+		// So one name, and the self-hosting concern belongs where it can be
+		// answered properly: a setting an operator sets once that moves the
+		// wordmark, the title and the manifest together. Deriving a different
+		// name for one element out of a hostname is not that.
+		Brand:    "Mu",
 		TopRight: topRight(),
 		Body:     indexBody(),
 		Footer:   app.FooterLinks(),
@@ -340,38 +341,6 @@ func topRight() string {
 		signup = `<a href="/signup">Sign up</a>`
 	}
 	return signup + `<a href="/login">Log in</a>`
-}
-
-// brand is what this instance calls itself: the first label of its hostname.
-//
-// micro.mu is "micro", assistant.example.com is "assistant". A wordmark is a
-// name and a hostname is an address, and the TLD is the part that makes it the
-// second one — nobody writes their own site's TLD in their own header.
-//
-// www is skipped because it names nothing: a server at www.example.com is
-// called example, and "www" is a convention from when a domain had several
-// machines on it.
-//
-// Mu where there is no domain at all, which is a box that has not been told its
-// own name — a development instance, or a first boot before the operator has
-// been through /admin/config. A blank corner would be worse than the software's
-// name in it.
-func brand() string {
-	host := client.Host()
-	if i := strings.IndexByte(host, ':'); i >= 0 {
-		host = host[:i] // a port is not part of a name
-	}
-	host = strings.TrimPrefix(host, "www.")
-	if i := strings.IndexByte(host, '.'); i > 0 {
-		host = host[:i]
-	}
-	if strings.TrimSpace(host) == "" {
-		return "Mu"
-	}
-	// Capitalised, because it is a name here and not a hostname. Only the first
-	// letter: an instance called "myassistant" is Myassistant, and title-casing
-	// every word would turn a name somebody chose into something they did not.
-	return html.EscapeString(strings.ToUpper(host[:1]) + host[1:])
 }
 
 // today is what you are given for arriving, before you ask anything.

@@ -630,6 +630,20 @@ function toBottom(force,smooth){
 // the form knows how tall it is, so the arithmetic is exact and it is redone
 // whenever the window changes — including when the textarea grows as somebody
 // types a long message.
+// screenH is how much of the page is actually on screen.
+//
+// window.innerHeight is the layout viewport, and on iOS a keyboard does not
+// change it — the keyboard overlays the visual viewport instead. So this
+// returned the full height of the window with a keyboard covering the bottom
+// third of it, fitConv sized the conversation to fill that, and the composer
+// underneath ended up beneath the keyboard. On a phone, in a standalone app,
+// that is the box you were about to type in.
+//
+// visualViewport.height is what is left. Falling back to innerHeight where
+// there is no visualViewport is what every desktop browser wants anyway.
+function screenH(){
+  return (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+}
 function fitConv(){
   if(!transcript||!conv) return;
   var top=conv.getBoundingClientRect().top;
@@ -638,7 +652,7 @@ function fitConv(){
   var opts=document.getElementById('mu-chat-opts');
   var sug=document.getElementById('mu-chat-suggest');
   [form,opts,sug].forEach(function(el){ if(el) below+=el.offsetHeight; });
-  var h=Math.max(minConv, window.innerHeight-top-below-convGap);
+  var h=Math.max(minConv, screenH()-top-below-convGap);
   conv.style.maxHeight=h+'px';
 }
 // minConv keeps the region usable on a short window rather than collapsing it
@@ -1160,6 +1174,18 @@ toBottom(true);
 window.addEventListener('load',function(){ fitConv(); pin(); });
 if(conv&&window.ResizeObserver){ new ResizeObserver(pin).observe(conv); }
 window.addEventListener('resize',function(){ fitConv(); toBottom(false); });
+// And on the keyboard, which is a different event.
+//
+// iOS fires no window resize when a keyboard opens — nothing about the layout
+// viewport changed — so fitConv never ran and the composer stayed under it.
+// visualViewport is where that is reported. scroll as well as resize, because
+// the visual viewport also moves when the page is panned with a keyboard up,
+// and the height we sized against goes stale with it.
+if(window.visualViewport){
+  var onView=function(){ fitConv(); toBottom(false); };
+  window.visualViewport.addEventListener('resize',onView);
+  window.visualViewport.addEventListener('scroll',onView);
+}
 if(input) input.addEventListener('input',fitConv);
 })();
 </script>`
