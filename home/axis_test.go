@@ -41,31 +41,28 @@ func TestTheFrontDoorHangsOffOneEdge(t *testing.T) {
 		}
 	}
 
-	// The wordmark shares the block's measure and its edge. It is drawn by the
-	// page now rather than handed to a shell as a Brand string — the front door
-	// is a page in the app, and the app's header carries its own "Mu" which
-	// .page-front hides — so it has to be given both rather than inherit them.
-	// Without that the page's largest element is the one thing not on the axis.
-	if !strings.Contains(src, ".index-page .brand{width:100%;max-width:760px;text-align:left;") {
-		t.Error("the wordmark is not aligned to the block, so the biggest thing on\n" +
-			"the page sits on a different edge from everything under it")
+	// The wordmark is not on this page any more, and the axis survived it.
+	//
+	// It was the hero — 2.5rem, centred over the box — and it carried its own
+	// rules for measure, edge, and how the tag sat beside it. Every one of
+	// those existed to make a large centred name coexist with a left-aligned
+	// document underneath. The name is a line in the top left now, the way it
+	// is on any site, so there is nothing left to reconcile.
+	//
+	// The axis is unbroken because the header takes the same measure: .index-head
+	// is max-width 760 with margin auto, so the name sits over the left edge of
+	// the box rather than on an edge of its own. Measured, both land at x=260 in
+	// a 1280 window.
+	if strings.Contains(src, ".index-page .brand{") {
+		t.Error("the front door is styling the wordmark again — it belongs to the\n" +
+			"header now, and a page rule for it is the large-centred-name\n" +
+			"arrangement coming back one property at a time")
 	}
-	// And on a phone it centres, because there the argument reverses: at 390px
-	// there is no second column and nothing to line up against, so the edge
-	// stops doing any work and a heading jammed into the corner is all that is
-	// left. Only the wordmark — the brief under it is prose, and prose is read
-	// from a left edge on any screen.
-	if !strings.Contains(src, ".index-page .brand{flex-direction:column;align-items:center") {
-		t.Error("the wordmark does not centre on a phone, where the axis it is\n" +
-			"aligned to does not exist")
+	if !strings.Contains(src, `class="btag"`) {
+		t.Error("the name no longer says what it is, which is the one thing a\n" +
+			"stranger reading a domain in a corner does not know")
 	}
-	// And stacked when it does, because baseline-aligned on one line only reads
-	// as a continuation against a left edge. Centred, the pair is one lump
-	// whose optical centre is inside the gap between them.
-	if !strings.Contains(src, "flex-direction:column") {
-		t.Error("the tag stays beside the wordmark when the wordmark is centred,\n" +
-			"so neither half sits where the eye looks for it")
-	}
+
 	// And it says what this is. A stranger arriving here has never been told:
 	// the box, the row of services and the brief are all evidence, and none of
 	// them is a sentence.
@@ -87,5 +84,33 @@ func TestTheBoxsFurnitureIsNotCentredHere(t *testing.T) {
 	if strings.Contains(indexBody(), `class="mu-chat-centred"`) {
 		t.Error("the doors and options rows are centred while everything else on\n" +
 			"the page hangs off the left edge")
+	}
+}
+
+// The instance names itself, and a bare one still has a name.
+//
+// "Mu" is the software's name, not this server's. Mu is a thing you run, so on
+// somebody else's box a wordmark reading Mu is our name on their front door —
+// the same fault as the pricing copy that used to ship in every binary. What a
+// visitor has arrived at is a domain, and the domain is what they will tell
+// somebody else about.
+func TestTheFrontDoorIsNamedAfterThisInstance(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "example.test")
+	if got := brand(); !strings.Contains(got, "example.test") {
+		t.Errorf("brand() = %q, want this instance's own domain", got)
+	}
+	if strings.Contains(brand(), ">Mu<") {
+		t.Errorf("a configured instance still calls itself Mu: %q", brand())
+	}
+	// And a machine that has not been told its own name — a development box —
+	// falls back rather than showing an empty corner.
+	t.Setenv("MU_DOMAIN", "")
+	if got := brand(); !strings.Contains(got, "Mu") {
+		t.Errorf("an unconfigured instance has no name at all: %q", got)
+	}
+	// A domain is a value an operator sets, and it lands in markup.
+	t.Setenv("MU_DOMAIN", `<script>x</script>`)
+	if strings.Contains(brand(), "<script>") {
+		t.Errorf("the domain went onto the page as markup: %q", brand())
 	}
 }

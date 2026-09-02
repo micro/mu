@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mu/account"
+	"mu/client"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
@@ -85,9 +86,19 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// page's job and not a server's.
 		Title:       "Mu",
 		Description: "A personal assistant you can reach from anywhere: the web, a text, WhatsApp, mail, or a program. Open source and self-hostable.",
-		// The name, and what it is for, on one line — see .btag. Everybody who
-		// reaches this page needs telling, which is the whole of who is here.
-		Brand:    `Mu <span class="btag">a personal assistant</span>`,
+		// The instance names itself.
+		//
+		// It said "Mu", which is the software's name and not this server's. Mu
+		// is a thing you run, so on somebody else's box a wordmark reading Mu
+		// is our name on their front door — the same fault as the pricing copy
+		// that used to ship in every binary. What a visitor has actually
+		// arrived at is a domain, and the domain is what they will tell
+		// somebody else. So: the domain where there is one, and Mu on a machine
+		// that has not been told its own name yet, which is a development box.
+		//
+		// The line under it is the explanation, and it stays whatever the name
+		// is: "micro.mu" says as little to a stranger as "Mu" does.
+		Brand:    brand(),
 		TopRight: topRight(),
 		Body:     indexBody(),
 		Footer:   app.FooterLinks(),
@@ -244,49 +255,19 @@ func indexBody() string {
  * Left, against a single edge, at the measure every other page uses. The block
  * is still centred in the screen; its contents are not centred in the block. */
 .lwrap{padding:0;max-width:760px;margin:0 auto;width:100%;text-align:left}
-/* This page is the brand, so the chrome does not repeat it.
+/* The wordmark is in the header now, not on the page.
  *
- * The wordmark is the shell's Brand slot again, so .index-page .brand is what
- * carries it. It shares the block's measure and its edge — a sibling in the
- * shell rather than a child, so it has to be given both rather than inherit
- * them, and without that the page's largest element is the one thing off the
- * axis.
+ * It was the hero here — 2.5rem, centred over the box, with its own rules for
+ * measure, axis and how the tag sat beside it — and every one of those rules
+ * existed to make a large centred name coexist with a left-aligned document
+ * under it. There is nothing to reconcile once the name is a line in the top
+ * left, which is where a name goes on any site, so all of it went: see
+ * .index-head in internal/app/index.go for what replaced it.
  *
- * It was centred for a moment on the argument that a wordmark over a search box
- * is the shape everybody knows. True on a wide screen, and it costs the thing
- * the axis bought: a name floating over a left-aligned document reads as a
- * header from a different page. */
-.index-page .brand{width:100%;max-width:760px;text-align:left;
-  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-/* On a phone the argument reverses, which is the whole reason for this block.
- *
- * The axis is what makes a wide screen read as one thing: six elements of
- * different weights sharing a left edge instead of six ragged centres. At 390px
- * there is no second column and nothing to line up against — the block *is* the
- * screen — so the edge stops doing any work, and what is left is a heading
- * jammed into the top-left corner with the tag wrapped underneath it. Centred,
- * the wordmark reads as the thing you have arrived at, which is what a landing
- * page is for.
- *
- * Only the wordmark. The brief below it is prose and prose is read from a left
- * edge on any screen; centring that would be the ragged-centre fault this page
- * was rebuilt to escape. */
-@media (max-width:600px){
-  .index-page{padding-top:8vh}
-  /* Centred, the tag goes under the name rather than beside it.
-   *
-   * Baseline-aligned on one line is what makes it read as a continuation of
-   * the wordmark, and that only works against a left edge — centred, the pair
-   * is one lump whose optical centre is somewhere inside the gap, so neither
-   * half is where the eye expects it. Stacked, the name is centred and the tag
-   * is a caption under it, which is the shape that reads. */
-  .index-page .brand{flex-direction:column;align-items:center;gap:2px;
-    justify-content:center;text-align:center;margin-bottom:6px;line-height:1.05}
-  .btag{font-size:14px}
-}
-/* Baseline-aligned, not centred on the cap height: the two sit on one line and
-   the eye reads the smaller one as a continuation rather than as a label. */
-.btag{font-size:15px;font-weight:400;letter-spacing:0;color:#888}
+ * What is left is the tag, because it is this page's copy rather than the
+ * shell's furniture. Under the name and not beside it: inline and
+ * baseline-aligned reads as a continuation of the wordmark, which worked at
+ * 2.5rem and at the size a name in a corner is set is just a longer name. */
 /* Today, under the box. Three rows, each one line, and the block does not
    scroll — see today() for why this is not a grid of cards. */
 .ltoday{margin:34px 0 0}
@@ -351,6 +332,16 @@ func topRight() string {
 		signup = `<a href="/signup">Sign up</a>`
 	}
 	return signup + `<a href="/login">Log in</a>`
+}
+
+// brand is what this instance calls itself, with what it is under the name.
+func brand() string {
+	name := client.Host()
+	if name == "" {
+		name = "Mu"
+	}
+	return html.EscapeString(name) +
+		`<div class="btag">a personal assistant</div>`
 }
 
 // today is what you are given for arriving, before you ask anything.

@@ -71,14 +71,36 @@ func RenderIndex(l Index) string {
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:100vh;display:flex;flex-direction:column}
-.index-page{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14vh 20px 40px;position:relative;width:100%}
-.brand{font-size:2.5rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
+.index-page{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0 20px 40px;position:relative;width:100%}
+/* The name on the left, the way in on the right, on one row at the top.
+ *
+ * The wordmark used to be the hero: 2.5rem, centred over the box, with the two
+ * links floated into the corner away from it. That is a launch page's shape,
+ * and this is a utility somebody arrives at wanting something — so the name
+ * goes where a name goes on any site, and the box gets the middle of the
+ * screen to itself.
+ *
+ * A row rather than two absolutely positioned corners: the old .login-link was
+ * position:absolute and could not see the wordmark, so nothing lined the two up
+ * and neither could push the other. Same measure as the content below it, so
+ * the name sits over the left edge of the box. */
+.index-head{width:100%;max-width:760px;margin:0 auto;display:flex;
+  align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 0 0}
+.brand{font-size:1.05rem;font-weight:800;letter-spacing:-.2px;line-height:1.25}
+/* What the name is, under it. Inline and baseline-aligned reads as a
+   continuation of the wordmark, which worked while the wordmark was 2.5rem in
+   the middle of the page; at the size a name in a corner is set, a second
+   phrase on the same line is just a longer name. */
+.brand .btag{display:block;margin-top:2px;font-size:12px;font-weight:400;
+  letter-spacing:0;color:#888}
+/* Air above the box, which the header no longer provides by being enormous. */
+.index-body{padding-top:12vh}
 .tagline{color:#111;font-size:18px;font-weight:700;margin-bottom:6px}
 .subtag{color:#666;font-size:15px;margin-bottom:32px;max-width:520px;text-align:center;line-height:1.5}
 /* The corner. It held one link and now holds two controls, so it is a row —
    and buttons and links take different defaults, which is 3px of misalignment
    side by side unless both are told the same. */
-.login-link{position:absolute;top:20px;right:20px;display:flex;align-items:center;gap:14px}
+.login-link{display:flex;align-items:center;gap:14px;flex:0 0 auto;padding-top:2px}
 .login-link a,.login-link button{color:#555;text-decoration:none;font-size:14px;font-weight:600;
   background:none;border:0;padding:0;font-family:inherit;line-height:20px;cursor:pointer}
 .login-link a:hover,.login-link button:hover{color:#111}
@@ -97,7 +119,8 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 /* 14vh of air above the wordmark is right on a tall window and is a fifth of a
    short one — a 1280x600 laptop spent 84px on padding and then scrolled by 23.
    Height is the axis that decides here, so the query is on height. */
-@media (max-height:720px){.index-page{padding-top:6vh}}
+@media (max-height:720px){.index-body{padding-top:6vh}}
+@media (max-width:600px){.index-body{padding-top:8vh}}
 /* The hero cards on these pages are capped at ~240px so three sit in a row on
    desktop. Below that the cap left them stranded mid-screen, so let them fill
    the column like every card elsewhere in the app. */
@@ -115,9 +138,11 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 </head>
 <body>
 <div class="index-page">
-  ` + top + `
-  <div class="brand">` + l.Brand + `</div>
-  ` + tag + sub + l.Body + below + `
+  <div class="index-head">
+    <div class="brand">` + l.Brand + `</div>
+    ` + top + `
+  </div>
+  <div class="index-body">` + tag + sub + l.Body + below + `</div>
 </div>
 ` + footer + l.Tail + `
 </body>
