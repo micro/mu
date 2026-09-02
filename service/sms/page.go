@@ -317,9 +317,16 @@ func threads(r *http.Request, who string, history []Message) string {
 			if m.Direction == "out" {
 				cls = "sms-out-msg"
 			}
+			when := app.TimeAgo(m.At)
+			// What became of it, where that is worth saying. Quiet on a message
+			// that arrived promptly, which is almost all of them — see
+			// deliveryNote.
+			if note := deliveryNote(m); note != "" {
+				when += " · " + note
+			}
 			b.WriteString(`<div class="sms-msg ` + cls + `">` +
 				`<span class="sms-body">` + html.EscapeString(m.Text) + `</span>` +
-				`<span class="sms-when">` + html.EscapeString(app.TimeAgo(m.At)) + `</span></div>`)
+				`<span class="sms-when">` + html.EscapeString(when) + `</span></div>`)
 		}
 		// Somebody who has said STOP has said it to us, and the page should say
 		// so where the reply box would be rather than take a message and fail.

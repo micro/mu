@@ -494,6 +494,9 @@ func registerRoutes() {
 	// so both paths answer and whichever is configured works.
 	http.HandleFunc("/whatsapp/twilio", sms.WebhookHandler)
 	http.HandleFunc("/sms/webhook", sms.WebhookHandler)
+	// What became of a message we sent. The provider's own signature is the
+	// credential, the same as the inbound webhook beside it.
+	http.HandleFunc("/sms/status", sms.StatusHandler)
 	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/tasks", tasks.Handler)
 	http.HandleFunc("/tasks/", tasks.Handler)

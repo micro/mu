@@ -64,6 +64,7 @@ const (
 	numbers  = "numbers"  // numbers this account has verified as its own
 	optouts  = "optouts"  // numbers that said STOP — instance-wide
 	routes   = "routes"   // number → the account an inbound reply belongs to
+	sends    = "sends"    // provider message id → the message it names
 	claims   = "claims"   // number → the account that proved the number is theirs
 	instance = "instance" // what the instance owns rather than any account
 
@@ -81,8 +82,34 @@ type Message struct {
 	// Channel is which carrier this rode on: empty for a text, "whatsapp" for
 	// WhatsApp. Empty rather than "sms" so every message written before there
 	// was more than one channel reads correctly.
-	Channel string    `json:"channel,omitempty"`
-	At      time.Time `json:"at"`
+	Channel string `json:"channel,omitempty"`
+	// SID is the provider's own id for the message, on the ones this instance
+	// sent. It is what a delivery receipt names, and it is the only way one
+	// finds the message it is about — see status.go.
+	//
+	// A separate field from ID, which is this record's id here. Send used to
+	// overwrite ID with the SID on the value it returned and leave the stored
+	// record alone, so the same field meant one thing to whoever had just sent
+	// a message and another to whoever read the history back.
+	SID string    `json:"sid,omitempty"`
+	At  time.Time `json:"at"`
+	// Status is the last thing the provider said became of it: queued, sent,
+	// delivered, undelivered, failed. Empty on an inbound message, and on an
+	// outbound one until the first receipt arrives.
+	Status string `json:"status,omitempty"`
+	// StatusAt is when that was said, which is the half of "slow" that is not
+	// ours. At is when we handed the message over; the gap between them is the
+	// carrier's.
+	StatusAt time.Time `json:"status_at,omitempty"`
+}
+
+// Took is how long the provider had the message before it reported this status,
+// or zero where nothing has been reported.
+func (m Message) Took() time.Duration {
+	if m.StatusAt.IsZero() || m.At.IsZero() || m.StatusAt.Before(m.At) {
+		return 0
+	}
+	return m.StatusAt.Sub(m.At)
 }
 
 // ── Numbers ─────────────────────────────────────────────────────
@@ -571,6 +598,15 @@ func Record(owner, direction, number, text string, segments int) *Message {
 // person on the other end — a second thread on their phone, from a number they
 // do not recognise — and the record is the only thing that knows which it was.
 func RecordOn(channel Channel, owner, direction, number, text string, segments int) *Message {
+	return recordOn(channel, owner, direction, number, text, segments, "")
+}
+
+// recordOn is RecordOn, also writing the provider's id for the message.
+//
+// Unexported and with the id last, because only one caller has one — the send
+// path, which learns it from the provider a line earlier — and the two public
+// names are the ones every other caller wants.
+func recordOn(channel Channel, owner, direction, number, text string, segments int, sid string) *Message {
 	if direction == "out" {
 		route(owner, e164(number))
 	}
@@ -580,6 +616,7 @@ func RecordOn(channel Channel, owner, direction, number, text string, segments i
 		Text:      text,
 		Segments:  segments,
 		Channel:   string(channel),
+		SID:       sid,
 		At:        time.Now(),
 	}
 	rec, err := userdb.Create(ns, owner, msgs, map[string]interface{}{
@@ -588,6 +625,7 @@ func RecordOn(channel Channel, owner, direction, number, text string, segments i
 		"text":      m.Text,
 		"segments":  m.Segments,
 		"channel":   m.Channel,
+		"sid":       m.SID,
 		"at":        m.At.Format(time.RFC3339),
 	}, false)
 	if err != nil {
@@ -616,6 +654,13 @@ func History(owner string, limit int) []Message {
 		// Which channel carried it. Absent on every message written before
 		// there was more than one, which reads correctly as a text.
 		m.Channel, _ = r.Data["channel"].(string)
+		// The provider's id and what it last said about the message. Absent on
+		// everything inbound, and on anything sent before there were receipts.
+		m.SID, _ = r.Data["sid"].(string)
+		m.Status, _ = r.Data["status"].(string)
+		if s, ok := r.Data["status_at"].(string); ok {
+			m.StatusAt, _ = time.Parse(time.RFC3339, s)
+		}
 		if f, ok := r.Data["segments"].(float64); ok {
 			m.Segments = int(f)
 		} else if n, ok := r.Data["segments"].(int); ok {

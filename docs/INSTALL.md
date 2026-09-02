@@ -883,6 +883,18 @@ request is verified against `TWILIO_AUTH_TOKEN`, so nothing else needs opening
 up, and `MU_DOMAIN` has to match what Twilio calls or the signature will not
 check out.
 
+Delivery receipts need no setting at all. Every outgoing message asks Twilio to
+post back to `https://<your domain>/sms/status` as it moves — queued, sent,
+delivered, failed — and the address is derived from `TWILIO_WEBHOOK_URL` where
+that is set and `MU_DOMAIN` otherwise, because a third place to write down where
+this instance lives is a third place for the three to disagree. Nothing is
+asked for on a box with no reachable address, so a development instance does not
+send Twilio retrying at localhost. The receipts are what make "it was slow"
+answerable: sending is not delivering, `twilio.Send` returns when the provider
+*accepts* a message, and without a receipt the record stops there — a text that
+took a second and one that took a minute look identical. `/sms` shows the gap
+when there is one, and says nothing when there is not.
+
 ### File storage
 
 Uploaded files and archived images go to the local disk by default, under

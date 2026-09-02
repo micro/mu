@@ -46,6 +46,16 @@ func deliver(to, body string) (string, error) { return deliverOn(ChannelSMS, to,
 func sendForm(c Channel, to, body string) (url.Values, error) {
 	form := url.Values{"To": {c.wire(to)}, "Body": {body}}
 
+	// Ask to be told what becomes of it. Both channels: WhatsApp reports read
+	// as well as delivered, and it is the one people said was slow.
+	//
+	// Empty on an instance with no address the provider can reach — a
+	// development box — because an unreachable callback is not a missing
+	// feature there, it is Twilio retrying against somebody else's DNS.
+	if u := callbackURL(); u != "" {
+		form.Set("StatusCallback", u)
+	}
+
 	if c == ChannelWhatsApp {
 		// One sender, not a pool. A WhatsApp sender is a number registered with
 		// Meta against a business; a Messaging Service routing by country is

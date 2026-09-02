@@ -179,10 +179,14 @@ func SendOn(channel Channel, owner, to, text string) (*Message, error) {
 		}
 	}
 
-	m := RecordOn(channel, owner, "out", number, text, segments)
-	if id != "" {
-		m.ID = id
-	}
+	// The provider's id goes on the record beside this record's own, rather
+	// than on top of it. It used to be assigned to m.ID on the way out and
+	// never stored, so the same field was the provider's id to whoever had just
+	// sent a message and this record's id to whoever read the history back —
+	// and a delivery receipt, which names the provider's id and nothing else,
+	// had nothing to match against.
+	m := recordOn(channel, owner, "out", number, text, segments, id)
+	noteSend(owner, m.ID, id)
 	return m, nil
 }
 
