@@ -5,27 +5,26 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"mu/internal/origin"
 )
 
-// ClientIP returns the originating client IP for a request, honouring
-// X-Forwarded-For (first hop) and X-Real-IP when present, falling back
-// to RemoteAddr. The returned value is the IP only (no port).
+// ClientIP returns the originating client IP for a request.
+//
+// X-Forwarded-For and X-Real-IP are believed only when the request reached us
+// through a hop we put there — see fromTrustedProxy in client.go. They used to
+// be believed from anybody, which on an instance reachable from the internet
+// meant every limit keyed on an address was one header away from unlimited.
+// A caller could pick a new address per request and get a new guest allowance,
+// or a new three-signups-per-address allowance, for each one.
+//
+// The returned value is the IP only, no port.
 func ClientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.Index(xff, ","); i > 0 {
-			xff = xff[:i]
-		}
-		ip := strings.TrimSpace(xff)
-		if ip != "" {
+	if fromTrustedProxy(r) {
+		if ip := forwardedIP(r); ip != "" {
 			return ip
 		}
-	}
-	if xr := strings.TrimSpace(r.Header.Get("X-Real-IP")); xr != "" {
-		return xr
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

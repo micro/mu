@@ -740,7 +740,7 @@ func wireHooks() {
 			// is charged nothing, so the limit is the only one of the two
 			// doing any work here, and it applies to guests because a
 			// signed-in caller is already accountable.
-			if _, err := auth.GetSession(r); err != nil && !app.GuestCallAllowed(app.ClientIP(r)) {
+			if _, err := auth.GetSession(r); err != nil && !app.GuestAllowed(r) {
 				return false, 0, fmt.Errorf("too many free calls from this address — " +
 					"sign in at /token to keep going, or wait a few minutes")
 			}

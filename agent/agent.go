@@ -1400,7 +1400,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		//
 		// An operator who does not want to pay for strangers sets
 		// GUEST_MAX_PER_IP=0 and gets the old behaviour, stated below.
-		if !app.GuestCallAllowed(app.ClientIP(r)) {
+		if !app.GuestAllowed(r) {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(`{"error":"This instance is not answering strangers right now."}`)) //nolint:errcheck
 			return

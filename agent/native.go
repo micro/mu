@@ -252,7 +252,7 @@ func nativeToolCallKey(call gmai.ToolCall) string {
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
 func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (a gmagent.Agent, question string, ok bool) {
-	provider, key, model, baseURL, ok := nativeLLMFor(opts.Model)
+	provider, key, model, baseURL, ok := nativeLLMFor(opts.Model, opts.Public)
 	if !ok {
 		return nil, "", false
 	}
@@ -358,8 +358,9 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 // cost per question, so it is an operator's to make and not a constant here.
 //
 // nativeLLM is the instance's own choice, for a caller that has not made one.
+// The thorough end, because this answers for a signed-in account.
 func nativeLLM() (provider, key, model, baseURL string, ok bool) {
-	return nativeLLMFor("")
+	return nativeLLMFor("", false)
 }
 
 // nativeLLMFor resolves the provider, key and model for a named model.
@@ -369,7 +370,31 @@ func nativeLLM() (provider, key, model, baseURL string, ok bool) {
 // because the hard part — which provider serves this id, and does this box hold
 // its key — is the same question whoever is asking, and the comment below about
 // what happens when the answer is no was worth having once, not twice.
-func nativeLLMFor(prefer string) (provider, key, model, baseURL string, ok bool) {
+// fast says whether this run wants the quick end of the provider rather than
+// the thorough one.
+//
+// True for a guest, and the reason is what the front door is for. A better
+// model spends more tokens and more seconds on the same question, and both of
+// those are the wrong currency here: somebody who arrived to find one thing out
+// is waiting, and somebody who wants a model to work a problem through has
+// signed in and gone to /agent, where the thorough one is. Getting an answer
+// and leaving is the product; a slow good answer on the landing page is a worse
+// version of the thing this is defined against.
+//
+// It is also what makes the front door free to leave open. The quick end of
+// every provider here is between one and two orders of magnitude cheaper, and
+// what a stranger costs is the whole reason a guest allowance has to exist.
+//
+// GUEST_MODEL overrides it for an operator who wants their visitors on
+// something specific — a local model, or the same one signed-in accounts get.
+func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL string, ok bool) {
+	if fast && prefer == "" {
+		if m := strings.TrimSpace(settings.Get("GUEST_MODEL")); m != "" {
+			prefer = m
+			fast = false // an operator named one; do not second-guess it
+		}
+	}
+
 	want := strings.TrimSpace(prefer)
 	if want == "" {
 		want = strings.TrimSpace(settings.Get("AGENT_MODEL"))
@@ -424,7 +449,7 @@ func nativeLLMFor(prefer string) (provider, key, model, baseURL string, ok bool)
 	// internal/ai now asks, so the agent and the chat cannot disagree about
 	// which provider this box uses. They did for months.
 	if p, k, base, ok := ai.PreferredProvider(); ok {
-		if m := ai.PreferredModel(p, false); m != "" {
+		if m := ai.PreferredModel(p, fast); m != "" {
 			// ProviderBaseURL, not the configured string. The setting carries the
 			// version segment — detectOllama returns it and INSTALL.md documents
 			// it — and the go-micro provider appends its own, so passing it
@@ -438,17 +463,28 @@ func nativeLLMFor(prefer string) (provider, key, model, baseURL string, ok bool)
 		// different questions and getting two different models.
 	}
 
-	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
-		return "anthropic", key, ai.DefaultModel(), "", true
-	}
-	if key := ai.AtlasKey(); key != "" {
-		return "atlascloud", key, ai.AtlasModel(), "", true
-	}
-	if key := ai.GeminiKey(); key != "" {
-		return "gemini", key, ai.GeminiModel(), "", true
-	}
-	if key := ai.OpenRouterKey(); key != "" {
-		return "openrouter", key, ai.OpenRouterModel(), "", true
+	// The built-in order, each provider's model asked for through
+	// ai.PreferredModel so that fast is honoured here as well as above.
+	//
+	// It used to name a model per branch — ai.DefaultModel, ai.AtlasModel,
+	// ai.GeminiModel — which is the same question PreferredModel answers and a
+	// second place for it to be answered differently. The tell was that a guest
+	// on an instance with no preferred provider got the thorough model anyway:
+	// the fast flag reached the branch above and none of these.
+	for _, p := range []struct {
+		name, key string
+	}{
+		{"anthropic", settings.Get("ANTHROPIC_API_KEY")},
+		{"atlascloud", ai.AtlasKey()},
+		{"gemini", ai.GeminiKey()},
+		{"openrouter", ai.OpenRouterKey()},
+	} {
+		if p.key == "" {
+			continue
+		}
+		if m := ai.PreferredModel(p.name, fast); m != "" {
+			return p.name, p.key, m, "", true
+		}
 	}
 	// An OpenAI-compatible endpoint, last, and only when it has been told what
 	// to run. A base URL with no model is half a configuration, and answering

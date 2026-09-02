@@ -12,6 +12,8 @@ package agent
 // are asserted here rather than left to the handler reading correctly.
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -73,21 +75,27 @@ func has(list []string, want string) bool {
 
 // The limiter is what stops a stranger spending the operator's money without
 // end. It already existed, tested, wired to nothing on this path.
-func TestGuestAsksAreRateLimitedPerAddress(t *testing.T) {
+func TestGuestAsksAreRateLimited(t *testing.T) {
 	t.Setenv("GUEST_MAX_PER_IP", "2")
-	const ip = "198.51.100.44"
 
-	if !app.GuestCallAllowed(ip) || !app.GuestCallAllowed(ip) {
+	ask := func() bool {
+		r := httptest.NewRequest(http.MethodGet, "/agent", nil)
+		r.RemoteAddr = "198.51.100.44:1"
+		return app.GuestAllowed(r)
+	}
+	if !ask() || !ask() {
 		t.Fatal("the first two asks from an address were refused")
 	}
-	if app.GuestCallAllowed(ip) {
+	if ask() {
 		t.Error("a third ask was allowed past the limit, so an instance can be " +
 			"billed without bound by one visitor")
 	}
 	// Localhost is never limited: a self-hosted instance is one person on their
 	// own machine, and rationing them against their own server is absurd.
 	for i := 0; i < 5; i++ {
-		if !app.GuestCallAllowed("127.0.0.1") {
+		r := httptest.NewRequest(http.MethodGet, "/agent", nil)
+		r.RemoteAddr = "127.0.0.1:1"
+		if !app.GuestAllowed(r) {
 			t.Fatal("localhost was rate limited")
 		}
 	}
@@ -97,7 +105,7 @@ func TestGuestAsksAreRateLimitedPerAddress(t *testing.T) {
 // because the alternative is standing up a model to prove a branch was taken.
 func TestTheHandlerOffersAGuestPathBeforeRefusing(t *testing.T) {
 	src := readSource(t, "agent.go")
-	if !strings.Contains(src, "app.GuestCallAllowed(app.ClientIP(r))") {
+	if !strings.Contains(src, "app.GuestAllowed(r)") {
 		t.Fatal("nothing lets a guest through, so the front page still answers " +
 			"every question with a sign-in")
 	}
@@ -108,5 +116,55 @@ func TestTheHandlerOffersAGuestPathBeforeRefusing(t *testing.T) {
 	}
 	if !strings.Contains(src, "QueryOpts{Public: guest}") {
 		t.Error("a guest run is not marked public, so it is given the full tool set")
+	}
+}
+
+// A guest gets the quick model, not the thorough one.
+//
+// Both currencies a better model spends are the wrong ones on the front door.
+// Somebody who arrived to find one thing out is waiting, and somebody who wants
+// a model to work a problem through has signed in and gone to /agent. It is
+// also what makes leaving the door open affordable: the quick end of every
+// provider here is one to two orders of magnitude cheaper, and what a stranger
+// costs is the whole reason a guest allowance exists.
+func TestAGuestGetsTheQuickModel(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("ATLASCLOUD_API_KEY", "test-key")
+	t.Setenv("GUEST_MODEL", "")
+
+	_, _, guestModel, _, ok := nativeLLMFor("", true)
+	if !ok {
+		t.Skip("no provider resolves in this build")
+	}
+	_, _, userModel, _, _ := nativeLLMFor("", false)
+
+	if guestModel == userModel {
+		t.Errorf("a guest and a signed-in account get the same model (%q).\n"+
+			"The front door is meant to be fast and cheap; the thorough one is\n"+
+			"what signing in gets you.", guestModel)
+	}
+}
+
+// And an operator who names one is not second-guessed.
+func TestAnOperatorCanNameTheGuestModel(t *testing.T) {
+	t.Setenv("ATLASCLOUD_API_KEY", "test-key")
+	t.Setenv("GUEST_MODEL", "deepseek-ai/DeepSeek-V3")
+
+	_, _, model, _, ok := nativeLLMFor("", true)
+	if !ok {
+		t.Skip("no provider resolves in this build")
+	}
+	if model != "deepseek-ai/DeepSeek-V3" {
+		t.Errorf("GUEST_MODEL was ignored: got %q", model)
+	}
+}
+
+// The guest path asks for it. Read from the source, because proving the branch
+// was taken otherwise means standing up a model.
+func TestTheGuestRunIsMarkedPublic(t *testing.T) {
+	src := readSource(t, "native.go")
+	if !strings.Contains(src, "nativeLLMFor(opts.Model, opts.Public)") {
+		t.Error("the model choice does not know whether the caller is a guest, so\n" +
+			"every stranger's question runs on the expensive model")
 	}
 }

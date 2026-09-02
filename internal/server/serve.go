@@ -90,6 +90,19 @@ func serve(addr string) {
 				r.URL.Path = r.URL.Path[:v-1]
 			}
 
+			// One mark per browser, before anything asks who this is.
+			//
+			// Here rather than at each gate, so nothing downstream needs a
+			// ResponseWriter to find out who it is talking to, and so the very
+			// first request of a visit is already marked — on a front page that
+			// answers a question on arrival, that is most first questions.
+			//
+			// Above the static fast path on purpose: an image is not a call and
+			// is not counted, but it may well be the first thing a browser
+			// fetches, and a mark handed out there is one the page below it
+			// already has. See app.MarkClient for what this is and is not.
+			app.MarkClient(w, r)
+
 			// Fast path for static assets - skip all middleware
 			for _, ext := range staticPaths {
 				if strings.HasSuffix(r.URL.Path, ext) {
