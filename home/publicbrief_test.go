@@ -20,40 +20,47 @@ import (
 	"mu/internal/app"
 )
 
-func TestTheLandingCarriesTodaysBrief(t *testing.T) {
-	const line = "Oil slipped below $70 as Gulf tensions eased."
-
-	got := briefBlock(line)
-	if !strings.Contains(got, line) {
-		t.Fatalf("the line is not on the page: %q", got)
+func TestTheLandingCarriesToday(t *testing.T) {
+	got := today("")
+	if got == "" {
+		t.Skip("nothing fetched in this build, so there is no day to show")
 	}
 	if !strings.Contains(got, "data-brief") {
-		t.Error("the brief is not marked data-brief, so asking a question will\n" +
+		t.Error("today is not marked data-brief, so asking a question will\n" +
 			"leave it on the page and push it under the answer")
 	}
-	// Dated, because a brief with no date could be from any morning and the
-	// claim is that this one is today's.
-	if !strings.Contains(got, "lbrief-day") {
-		t.Error("the brief is not dated")
+	// Dated once, at the top. Three timestamps on three rows is a page about
+	// its own freshness.
+	if !strings.Contains(got, "lday") {
+		t.Error("the block is not dated")
+	}
+	if n := strings.Count(got, "lday"); n != 1 {
+		t.Errorf("the date appears %d times, want once", n)
 	}
 }
 
 // Nothing at all when there is no line — a new instance, a model that has not
 // run, or the first hours of a day. A heading over nothing is worse than
 // nothing, and this page is built to fit on one screen.
-func TestNoLineIsNoBlock(t *testing.T) {
-	for _, line := range []string{"", "   ", "\n\t "} {
-		if got := briefBlock(line); got != "" {
-			t.Errorf("briefBlock(%q) rendered %q", line, got)
-		}
+func TestNothingToSayIsNoBlock(t *testing.T) {
+	if got := briefRow(""); got != "" && strings.TrimSpace(got) == "" {
+		t.Errorf("an empty brief still rendered a row: %q", got)
+	}
+	// With no clauses at all there is no row, and with no rows at all there is
+	// no block — no date floating over nothing.
+	if len(briefParts("")) == 0 && briefRow("") != "" {
+		t.Error("a brief with no clauses rendered a row anyway")
 	}
 }
 
-// It is the world's day, so it is escaped like anything else off a model.
-func TestTheBriefIsEscaped(t *testing.T) {
-	got := briefBlock(`markets <script>alert(1)</script> fell`)
-	if strings.Contains(got, "<script>") {
-		t.Errorf("a line went onto the landing page as markup: %q", got)
+// The rows that carry third-party text escape it. The brief is the exception
+// and says so: its clauses are built with their own links by home/brief.go.
+func TestTheRowsOffThirdPartiesAreEscaped(t *testing.T) {
+	if got := marketsRow(); strings.Contains(got, "<script") {
+		t.Errorf("the markets line went onto the page as markup: %q", got)
+	}
+	if got := headlinesRow(); strings.Contains(got, "<script") {
+		t.Errorf("a headline went onto the page as markup: %q", got)
 	}
 }
 
@@ -92,5 +99,72 @@ func TestHomesBriefIsMarkedToo(t *testing.T) {
 	if !strings.Contains(string(src), `id="home-brief" data-brief`) {
 		t.Error("Home's brief is not marked data-brief, so it stays on the page\n" +
 			"under the answer while the landing page's steps aside")
+	}
+}
+
+// One front door, in two states.
+//
+// Signing in used to move you to /home, so the page a person chose to visit was
+// replaced by a different one the moment they had an account — and a question
+// half-typed in the box did not survive the move. This is the same page either
+// way; what changes is the corner and the brief.
+func TestTheFrontDoorIsTheSamePageSignedInOrOut(t *testing.T) {
+	out := indexBody("")
+	in := indexBody("somebody")
+
+	for _, want := range []string{"mu-chat-input", "lwhat"} {
+		if !strings.Contains(out, want) || !strings.Contains(in, want) {
+			t.Errorf("%q is not on both states of the front door", want)
+		}
+	}
+	// And no rail. The moment this grows a column of your inbox and your
+	// agents it is /home with worse navigation, and there is no reason for two
+	// of those.
+	for _, dashboard := range []string{"home-cards", "home-rail", "home-main"} {
+		if strings.Contains(in, dashboard) {
+			t.Errorf("%q is on the front door — that is the dashboard, and it lives at /home", dashboard)
+		}
+	}
+}
+
+// The corner is the only thing that says whether anybody is signed in.
+func TestTheCornerIsTheWayInOrTheWayDeeper(t *testing.T) {
+	out := topRight("")
+	if !strings.Contains(out, `href="/login"`) {
+		t.Errorf("signed out, the corner does not offer a way in: %q", out)
+	}
+	if strings.Contains(out, `href="/home"`) {
+		t.Errorf("signed out, the corner offers Home: %q", out)
+	}
+
+	in := topRight("somebody")
+	if !strings.Contains(in, `href="/home"`) {
+		t.Errorf("signed in, the corner does not reach the dashboard: %q", in)
+	}
+	if strings.Contains(in, `href="/login"`) {
+		t.Errorf("signed in, the corner still says sign in: %q", in)
+	}
+	// Install survives both — it is the same page, made resident, not a
+	// destination.
+	for _, s := range []string{out, in} {
+		if !strings.Contains(s, "install-app") {
+			t.Errorf("Install is missing from the corner: %q", s)
+		}
+	}
+}
+
+// The signed-in brief is the signed-out one plus the clauses that need an
+// account. One function decides what a brief says; nothing else does.
+func TestSigningInAddsToTheBriefRatherThanReplacingIt(t *testing.T) {
+	world := briefParts("")
+	for _, p := range world {
+		if strings.TrimSpace(p) == "" {
+			t.Error("an empty clause is in the brief")
+		}
+	}
+	// Signed out, only the world's clause can be there — everything else is
+	// read from an account.
+	if len(world) > 1 {
+		t.Errorf("a signed-out brief has %d clauses, want at most the world's one: %v", len(world), world)
 	}
 }

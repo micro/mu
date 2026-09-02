@@ -90,33 +90,7 @@ import (
 // own block under the box now, and it names people rather than telling you
 // there are none.
 func briefHTML(accountID string) string {
-	if accountID == "" {
-		return ""
-	}
-
-	var parts []string
-	if s := waiting(accountID); s != "" {
-		parts = append(parts, s)
-	}
-	if s := working(accountID); s != "" {
-		parts = append(parts, s)
-	}
-	if s := owed(accountID); s != "" {
-		parts = append(parts, s)
-	}
-	// What is actually on today, before the world's line.
-	//
-	// The brief said what was waiting, what the agent was doing and what was
-	// owed — three questions about work — and nothing at all about the day. So
-	// somebody with a dentist at four and a school pickup at three read a line
-	// about their inbox and went to look at a calendar, which is the one thing
-	// a brief is supposed to save.
-	if s := onToday(accountID); s != "" {
-		parts = append(parts, s)
-	}
-	if s := happening(); s != "" {
-		parts = append(parts, s)
-	}
+	parts := briefParts(accountID)
 	if len(parts) == 0 {
 		return ""
 	}
@@ -144,6 +118,47 @@ func briefHTML(accountID string) string {
 	// rather than counting them.
 	return sectionRule("Brief") + `<div class="brief-peek">` +
 		`<p class="home-brief">` + strings.Join(parts, " ") + `</p></div>`
+}
+
+// briefParts is the clauses, without deciding how they are set.
+//
+// Split out because the front door shows the same sentence in a different
+// shape: a centred line on a page with nothing else on it, rather than a card
+// in a rail between the inbox and the agents. Two renderings of one brief, and
+// only one place that decides what is in it — which is the property worth
+// having, because a second copy of these five calls would answer the same
+// question differently within a month.
+//
+// The last clause is the world's and is the only one an account is not needed
+// for, so a signed-out reader gets it alone. That is the whole of the public
+// brief: everyone's day is the same, yours is not.
+func briefParts(accountID string) []string {
+	var parts []string
+	if accountID != "" {
+		if s := waiting(accountID); s != "" {
+			parts = append(parts, s)
+		}
+		if s := working(accountID); s != "" {
+			parts = append(parts, s)
+		}
+		if s := owed(accountID); s != "" {
+			parts = append(parts, s)
+		}
+		// What is actually on today, before the world's line.
+		//
+		// The brief said what was waiting, what the agent was doing and what
+		// was owed — three questions about work — and nothing at all about the
+		// day. So somebody with a dentist at four and a school pickup at three
+		// read a line about their inbox and went to look at a calendar, which
+		// is the one thing a brief is supposed to save.
+		if s := onToday(accountID); s != "" {
+			parts = append(parts, s)
+		}
+	}
+	if s := happening(); s != "" {
+		parts = append(parts, s)
+	}
+	return parts
 }
 
 // waiting is what has arrived and not been read.

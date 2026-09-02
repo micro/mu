@@ -6,9 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"mu/agent/brief"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/service/markets"
+	"mu/service/news"
 )
 
 // Index is the front door for anyone not signed in: something to try, then
@@ -43,7 +45,11 @@ import (
 //
 // The description still follows. It reads better as a caption than as a pitch.
 func Index(w http.ResponseWriter, r *http.Request) {
-	body := indexBody()
+	var viewerID string
+	if _, acc := auth.TrySession(r); acc != nil {
+		viewerID = acc.ID
+	}
+	body := indexBody(viewerID)
 
 	page := app.RenderIndex(app.Index{
 		// What it is, not what to think of it. This said "A network for
@@ -71,9 +77,15 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// may not allow — and "Get started" is the phrase for persuading a
 		// stranger, which is not what a server's front door is for. Sign in is
 		// the door; whoever runs this decides who gets a key.
-		TopRight: `<a href="/login">Sign in</a>` +
-			`<button type="button" id="install-app" hidden>Install app</button>` +
-			`<span id="install-how" hidden>Share, then Add to Home Screen</span>`,
+		// Sign in, or Home. One slot, two states, and the difference between
+		// them is the only thing on this page that says whether anybody is
+		// signed in.
+		//
+		// Home rather than a sidebar. Somebody signed in gets this same page —
+		// see the note on Index — so the way into the dashboard has to be
+		// somewhere, and it is one link in the corner rather than a rail down
+		// the side. The front door stays a front door.
+		TopRight: topRight(viewerID),
 		Body:   body,
 		Footer: app.FooterLinks(),
 		Tail:   installScript(),
@@ -172,7 +184,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 // That is also the whole of what a utility's front door is. nginx's default
 // page says it is nginx and that it is working. This says what it is, that it
 // is running, and gives you something to do with it.
-func indexBody() string {
+func indexBody(viewerID string) string {
 	// The agent, not a search box.
 	//
 	// This searched the archive, and the reason was that search is the half
@@ -197,8 +209,11 @@ func indexBody() string {
 			Ask:             true,
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
+			// Both only mean something to somebody who can get an answer back.
+			OfferAgentPicker: viewerID != "",
+			Speak:            viewerID != "",
 		}) +
-		publicBrief() +
+		today(viewerID) +
 		`<p class="lwhat">` + directDoors() + `</p>
 </div>
 
@@ -207,67 +222,170 @@ func indexBody() string {
 .lwhat{text-align:center;color:#888;font-size:13px;line-height:1.9;margin:20px auto 0}
 .lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
 .lwhat a:hover{text-decoration:underline}
-/* Today, under the box. Prose, so it is set as prose and not as a caption —
-   this is the one thing on the page that is worth reading rather than
-   clicking. */
-.lbrief{margin:22px auto 0;max-width:560px;text-align:center;
-  font-size:15px;line-height:1.7;color:#444}
-.lbrief-day{display:block;margin-bottom:6px;font-size:11px;
+/* Today, under the box. Three rows, each one line, and the block does not
+   scroll — see today() for why this is not a grid of cards. */
+.ltoday{margin:24px auto 0;max-width:580px;text-align:center}
+.lday{display:block;margin-bottom:10px;font-size:11px;
   text-transform:uppercase;letter-spacing:.08em;color:#aaa}
+.lrow{margin:0 0 10px;line-height:1.6}
+.lrow:last-child{margin-bottom:0}
+/* The brief is prose and is set as prose. It is the one thing here worth
+   reading rather than clicking, so it gets the size and the measure. */
+.lbrief{font-size:15px;color:#444}
+.lbrief a{color:#444;text-decoration:underline;text-underline-offset:2px}
+/* Numbers, so they are set as numbers: tabular, quiet, one line. */
+.lmarkets{font-size:13px;font-variant-numeric:tabular-nums}
+.lmarkets a{color:#777;text-decoration:none}
+.lmarkets a:hover{text-decoration:underline}
+/* Headlines are links out, and look like the sentences they are rather than
+   like a list of results. */
+.lnews{list-style:none;padding:0;font-size:13px;color:#888}
+.lnews li{margin:0 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lnews li:last-child{margin-bottom:0}
+.lnews a{color:#666;text-decoration:none}
+.lnews a:hover{text-decoration:underline}
 </style>`
 }
 
-// publicBrief is what happened today, for somebody with no account.
-//
-// # Why this is the right thing on a landing page
-//
-// The page's whole argument is that you can get what you need and leave, and
-// until now it made that argument with a text box — which is a promise, and one
-// a stranger has to spend something to test. This is the same claim
-// demonstrated: two sentences about the day, complete, and then you are done.
-// It is the product, working, above the fold, before anybody signs anything.
-//
-// # It costs nothing to show
-//
-// agent/brief already writes this line for the whole instance on a timer, and
-// already blanks it when the day it describes has ended. Every visitor gets the
-// same string out of memory. Nothing here calls a model, which is what makes it
-// safe on the one page that takes arbitrary traffic.
-//
-// # Public, and that is the point of it
-//
-// This line is written from news, posts and prices — rows that are public by
-// construction — so it is the same for everybody and there is nothing here to
-// leak. That is also what makes it a reason to sign up rather than a substitute
-// for doing so: the world's day is the same for all of us, and yours is not.
-// Home's brief adds what arrived, what your agents have in hand and what is
-// owed, which is the half that needs an account to exist at all.
-//
-// Silent when there is no line — a new instance, a model that has not run yet,
-// or the first hours of a day before the run. A heading over nothing is worse
-// than nothing, and this page is built to fit on one screen.
-func publicBrief() string { return briefBlock(brief.Line()) }
+// topRight is the one control in the corner: the way in, or the way deeper in.
+func topRight(viewerID string) string {
+	entry := `<a href="/login">Sign in</a>`
+	if viewerID != "" {
+		entry = `<a href="/home">Home</a>`
+	}
+	return entry +
+		`<button type="button" id="install-app" hidden>Install app</button>` +
+		`<span id="install-how" hidden>Share, then Add to Home Screen</span>`
+}
 
-// briefBlock is how the line is set, given the line.
+// today is what you are given for arriving, before you ask anything.
 //
-// Split from publicBrief so a test can look at the markup without reaching into
-// another package's unexported state to plant a line first. The question "is
-// there anything to say today" and the question "what does it look like" are
-// separate, and only one of them has an interesting answer.
-func briefBlock(line string) string {
-	line = strings.TrimSpace(line)
+// # Why the front door has content at all
+//
+// The page argued that you can get what you need and leave, and made the
+// argument with a text box — which is a promise a stranger has to spend
+// something to test. This is the claim demonstrated instead: the date, what
+// happened, where the markets went, three headlines. Read in twenty seconds,
+// finished, and then you are done. The box is there for the times that is not
+// enough.
+//
+// # Why it is four lines and not four cards
+//
+// Because the thing being avoided is a portal. Cards are the dashboard idiom
+// and /home is the dashboard: it has a rail of your inbox, your agents and your
+// balance, and a grid of sixteen services, and it is the right page for
+// somebody who came to look at things. This page is for somebody who came to
+// find one thing out. The moment it grows a second column it is /home with
+// worse navigation, and there is no reason for two of those.
+//
+// So: rows, each one line, and a hard rule that nothing here scrolls.
+//
+// # It costs nothing to draw
+//
+// Every line is read from something already in memory. agent/brief writes its
+// sentence on a timer for the whole instance; markets and news are fetched by
+// their own services for the cards. Nothing on this page calls a model, which
+// is what makes it safe on the one page that takes arbitrary traffic.
+//
+// # Signed in, it is the same page with your day in it
+//
+// The brief gains the clauses that need an account — what arrived, what your
+// agents have in hand, what is owed, what is on today — and everything else is
+// identical. That is the whole difference between the two states of this page,
+// and it is deliberately the entire pitch for signing up: the world's day is
+// the same for everybody and yours is not.
+func today(viewerID string) string {
+	rows := []string{
+		briefRow(viewerID),
+		marketsRow(),
+		headlinesRow(),
+	}
+
+	var b strings.Builder
+	for _, row := range rows {
+		if row != "" {
+			b.WriteString(row)
+		}
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+
+	// data-brief on the block, so asking a question takes the whole of today
+	// off the page rather than pushing it under the answer. All of this is what
+	// you are told without asking; an answer is what you get when you do, and
+	// they are not both on the screen at once. See hideBrief in
+	// app.ChatComponent.
+	//
+	// Dated once, at the top, rather than per row. Three timestamps on three
+	// lines is a page about its own freshness.
+	return `<div class="ltoday" data-brief><span class="lday">` +
+		html.EscapeString(time.Now().Format("Monday, 2 January")) + `</span>` +
+		b.String() + `</div>`
+}
+
+// briefRow is what happened, in a sentence.
+//
+// Signed out that is the instance's line about the world; signed in it is that
+// plus the clauses about you, from the same function Home's card uses. See
+// briefParts — one place decides what a brief says, two places decide how it is
+// set.
+func briefRow(viewerID string) string {
+	parts := briefParts(viewerID)
+	if len(parts) == 0 {
+		return ""
+	}
+	// The clauses carry their own markup — waiting() links the inbox, owed()
+	// links the wallet — so this is not escaped. briefParts is the boundary,
+	// and everything reaching it escapes its own text. See home/brief.go.
+	return `<p class="lrow lbrief">` + strings.Join(parts, " ") + `</p>`
+}
+
+// marketsRow is where the money went, in one line.
+//
+// The same five the agent is told about, biggest movers first, which is the
+// only ordering that says anything: five prices in a fixed order is a table,
+// and a table is a thing to study rather than to glance at.
+func marketsRow() string {
+	line := strings.TrimSpace(markets.TopMovers(3))
 	if line == "" {
 		return ""
 	}
-	// Dated, because a brief with no date on it is a sentence that could be
-	// from any morning — and the whole claim being made here is that this is
-	// today's and that reading it once is enough.
-	//
-	// data-brief, so asking a question takes it off the page rather than
-	// pushing it under the answer. See hideBrief in app.ChatComponent.
-	return `<p class="lbrief" data-brief><span class="lbrief-day">` +
-		html.EscapeString(time.Now().Format("Monday, 2 January")) + `</span>` +
-		html.EscapeString(line) + `</p>`
+	return `<p class="lrow lmarkets"><a href="/markets">` +
+		html.EscapeString(line) + `</a></p>`
+}
+
+// headlinesRow is three headlines, as links out.
+//
+// Three, because the page has to end. There are hundreds behind /news and the
+// whole design of this page is that it is not a way into them — somebody who
+// wants the rest has a link, and somebody who does not has read the day in a
+// line and can leave.
+//
+// Straight to the source rather than to a reader page here. This is a front
+// door, and keeping somebody on the site to read a story they could read at the
+// publisher is the engagement move this product exists to not make.
+func headlinesRow() string {
+	feed := news.GetFeed()
+	var links []string
+	for _, p := range feed {
+		if p == nil || strings.TrimSpace(p.Title) == "" || strings.TrimSpace(p.URL) == "" {
+			continue
+		}
+		links = append(links, `<a href="`+html.EscapeString(p.URL)+
+			`" rel="noopener noreferrer">`+html.EscapeString(p.Title)+`</a>`)
+		if len(links) == 3 {
+			break
+		}
+	}
+	if len(links) == 0 {
+		return ""
+	}
+	// One per line rather than three joined by a separator. Run together they
+	// wrapped into a paragraph of six lines with two faint dots in it, and a
+	// headline is a sentence — three sentences in a row read as one bad
+	// sentence. Three short lines are scannable; that is the whole job here.
+	return `<ul class="lrow lnews"><li>` + strings.Join(links, `</li><li>`) + `</li></ul>`
 }
 
 // directDoors is the handful of services worth putting under the box.

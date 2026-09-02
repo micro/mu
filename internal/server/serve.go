@@ -195,25 +195,33 @@ func serve(addr string) {
 						http.Redirect(w, r, "/setup", http.StatusSeeOther)
 						return
 					}
-					if _, acc := auth.TrySession(r); acc != nil {
-						// Every section has a named URL: the dashboard is /home and a
-						// query goes to the agent (/agent). The root just funnels
-						// logged-in users to the right named place.
-						q := r.URL.Query()
-						if q.Get("q") != "" || q.Get("prompt") != "" {
+					// A query in the URL is a question, and questions have their
+					// own page with the history on it.
+					q := r.URL.Query()
+					if q.Get("q") != "" || q.Get("prompt") != "" {
+						if _, acc := auth.TrySession(r); acc != nil {
 							http.Redirect(w, r, "/agent?"+r.URL.RawQuery, http.StatusFound)
-						} else {
-							http.Redirect(w, r, "/home", http.StatusFound)
+							return
 						}
-					} else {
-						// Logged out: say what this is. The live home used to be
-						// the front door, which meant a visitor saw cards of news
-						// and prices and no indication that any of it is callable
-						// by an agent. The landing says that, and "See it working"
-						// links straight to the live home for anyone who wants the
-						// cards.
-						home.Index(w, r)
 					}
+
+					// The same front door either way.
+					//
+					// Signing in used to move you to /home, so the page a person
+					// chose to visit was replaced by a different one the moment
+					// they had an account — and the thing they were doing, which
+					// is asking a question in the box, did not survive the move.
+					// A product whose front page becomes a different product
+					// once you sign up has two front pages and no front door.
+					//
+					// So this is one page in two states: the box, the day, the
+					// way on, and signed in the day is also yours. /home is
+					// still there and is still the dashboard — the rail of your
+					// inbox and agents and balance, the grid of services — and
+					// it is reached by the link in the corner, deliberately, by
+					// somebody who came to look at things rather than to find
+					// one thing out. See home.today.
+					home.Index(w, r)
 					return
 				}
 			}
