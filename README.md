@@ -9,7 +9,7 @@ Mail, chat, news, video, search, etc. Any data is archived locally so it's all s
 Services and the archive become tools for the assistant to use.
 
 Using agents has become a very fragmented experience. Communication here is unified with everything going to one inbox, 
-whether it's mail, chat, sms, whatsapp, notes, tasks, etc. Do it all and keep track of it from one place. 
+whether it's mail, chat, sms, whatsapp, notes, tasks, etc. Keep track of it all from one place. 
 
 ## Features
 
