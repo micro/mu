@@ -19,7 +19,7 @@ What's included
 - **Agents** - Define an agent by name, prompt and give it specific tools, then chat with it via the web or api.
 - **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents or reply directly.
 - **Clients** - Web, sms, email, whatsapp and more are all included by default. You may need to set it up.
-- 
+
 ## Install
 
 Quick install guide for self hosting (let us know if it's broken).
