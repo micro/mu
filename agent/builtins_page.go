@@ -2,28 +2,26 @@ package agent
 
 // The agents this instance ships with, listed where somebody can find them.
 //
-// # Why they were taken off this page, and why they are back below the fold
+// # Signed out only, because signed in the roster already draws them
 //
-// They used to be the top of /agents, and were removed for a reason worth
-// keeping: eleven things nobody made, with no stated principle behind why news
-// but not sport, taught that an agent is something the product hands you rather
-// than something you make. Six rows of somebody else's things above the one
-// thing that is yours.
+// This started as a second listing under your own agents, on the strength of a
+// comment on the roster page saying the instance's agents were not listed
+// there. They were: the loop over PlatformNames has drawn a row per built-in
+// for a long time, and the comment underneath it was stale prose describing a
+// state the code had since left. So Micro and Code appeared twice on one page.
 //
-// That argument is about *position*, not about existence. They are real, they
-// route, agent+news@ answers today, and nothing on the site said so — which is
-// its own failure: a specialist with an address that nobody is told about is a
-// feature that quietly stops being maintained, the same way the CLI was. See
-// client.All, which exists because of exactly that.
+// The lesson is not about agents. A comment that disagrees with the code five
+// lines above it is worse than no comment, because it is read as a fact about
+// the present and acted on — which is exactly what happened.
 //
-// So: your agents first, and these under them, said to be the instance's rather
-// than yours. Signed out this is the whole page, because a stranger has no
-// roster and "here is what this instance can already do, and the address of
-// each" is a better answer than a login form.
+// What is left here is the page a stranger gets. They have no roster, so
+// bouncing them to /login sends them to something empty by definition; "here is
+// what this instance can already do, and the address of each" is a real answer,
+// and it is the same argument /contact makes. See client.All, which exists
+// because a way in that nothing enumerates quietly stops being maintained.
 
 import (
 	"html"
-	"sort"
 	"strings"
 
 	"mu/agent/micro"
@@ -73,37 +71,25 @@ func Builtins() []Builtin {
 	return out
 }
 
-// builtinNames is the sorted set, for a caller that only wants the words.
-func builtinNames() []string {
-	var out []string
-	for _, b := range Builtins() {
-		out = append(out, b.Name)
-	}
-	sort.Strings(out)
-	return out
-}
-
-// builtinsSection renders them. Empty on an instance with none registered,
-// which is a build that has not loaded the platform agents rather than a
-// state anybody is in.
-func builtinsSection(mine bool) string {
+// builtinsSection renders them, for the signed-out page.
+//
+// It took a `mine` flag once, to say "these come with the instance rather than
+// being yours" on the signed-in roster — which turned out to be a second copy
+// of a list that page had been drawing all along. One caller and one value is a
+// decision wearing a choice's clothes, so the flag went with the duplicate.
+//
+// Empty on an instance with none registered, which is a build that has not
+// loaded the platform agents rather than a state anybody is in.
+func builtinsSection() string {
 	list := Builtins()
 	if len(list) == 0 {
 		return ""
 	}
 
 	var b strings.Builder
-	head := "The agents on this instance"
-	note := "Each has its own address and its own tools. Write to one and it answers; " +
+	const head = "The agents on this instance"
+	const note = "Each has its own address and its own tools. Write to one and it answers; " +
 		"ask the first about anything and it decides which tools to reach for."
-	if mine {
-		// Under your own, and said to be somebody else's. The whole reason
-		// these left the top of this page was that they read as a roster you
-		// had been given.
-		head = "Also here"
-		note = "These come with the instance rather than being yours. They route the " +
-			"same way — write to the address and that agent answers."
-	}
 
 	b.WriteString(`<div class="card"><h3>` + head + `</h3>`)
 	b.WriteString(`<p class="text-sm text-muted">` + note + `</p>`)
@@ -138,7 +124,7 @@ func builtinsSection(mine bool) string {
 func builtinsPage() string {
 	var b strings.Builder
 	b.WriteString(app.Column())
-	b.WriteString(builtinsSection(false))
+	b.WriteString(builtinsSection())
 	b.WriteString(`<div class="card"><h3>Or make your own</h3>` +
 		`<p class="text-sm text-muted">An agent you make gets its own name, its own ` +
 		`instructions and its own address, and only the tools you give it. ` +

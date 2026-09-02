@@ -195,29 +195,21 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// not to browse tools, and the link was above both the list and the button.
 	b.WriteString(`<p class="lens-go">` + app.TextLink("See the tools", "/tools") + `</p>`)
 
-	// The instance's own agents are not listed here.
+	// The instance's own agents are listed here, at the top, by the loop over
+	// PlatformNames above.
 	//
-	// They were, for a while, on the argument that eleven had been in the
-	// registry since the router was written and were reachable at agent+news@
-	// and nowhere else. True, and the cure was worse: this page is where you
-	// understand what an agent *is*, and eleven things nobody made, with no
-	// stated principle behind why news but not sport, taught that an agent is
-	// something the product hands you rather than something you make. Six rows
-	// of somebody else's things above the one thing that is yours.
+	// The comment that stood here said the opposite — that they had been
+	// removed, because rows of things nobody made above the one thing that is
+	// yours teach that an agent is something the product hands you. That was
+	// true when it was written and the code had since gone back the other way,
+	// so the file argued with itself; a second listing was added underneath on
+	// the strength of the prose, and Micro and Code appeared twice on the page.
 	//
-	// The model is one sentence now: you make an agent, it gets an address, you
-	// talk to it. The registry is untouched — it still routes, and agent+news@
-	// still answers — it is just not what this page is about.
-
-	// And the instance's own, under yours.
-	//
-	// They were the top of this page and were removed for a reason that holds:
-	// rows of things nobody made, above the one thing that is yours, teach that
-	// an agent is something you are handed. That is an argument about position.
-	// They are real, they route, agent+news@ answers today, and nothing on the
-	// site said so — which is the failure the client list exists to stop.
-	b.WriteString(builtinsSection(true))
-	b.WriteString(builtinsCSS)
+	// The prose was the stale half. They belong here: they are real, they
+	// route, agent+news@ answers today, and a specialist with an address that
+	// nothing tells you about is a feature that quietly stops being maintained.
+	// What the original objection was actually about is the ordering, and that
+	// is a live question rather than a settled one.
 
 	// Close the column this page opened. Without it the footer was swallowed
 	// into a 720px div and rendered halfway up the page: #content is a flex
