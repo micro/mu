@@ -788,31 +788,19 @@ td {
    colour. The label goes at phone width — #head-right is beside a centred brand
    and the two of them fight for the middle — and the icon stays, which is why
    there is an aria-label on the link. */
+/* Admin, beside the name. It was an icon with a label — the rail's markup,
+   borrowed — and the icon said nothing the word did not; on a phone the label
+   was hidden and what was left was a glyph you had to guess. Set like the rest
+   of the corner, because it is a link to somewhere the same as the name is. */
 #head-admin {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
   color: #555;
-  line-height: 1;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
   white-space: nowrap;
 }
-#head-admin img {
-  width: 17px;
-  height: 17px;
-  vertical-align: middle;
-  opacity: .7;
-}
-#head-admin .label {
-  margin-left: 5px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #555;
-  vertical-align: middle;
-}
-#head-admin:hover img { opacity: 1 }
-@media only screen and (max-width: 600px) {
-  #head-admin .label { display: none }
-}
+#head-admin:hover { color: #111; }
 
 #head-wallet {
   display: none;

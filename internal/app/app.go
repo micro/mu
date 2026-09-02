@@ -1344,8 +1344,17 @@ func headAdmin(acc *auth.Account) string {
 	if acc == nil || !acc.Admin {
 		return ""
 	}
-	return `<a id="head-admin" href="/admin" aria-label="Admin"><img src="/admin.svg?` + Version +
-		`"><span class="label">Admin</span></a>`
+	// The word, not a glyph.
+	//
+	// It was an icon with a label beside it, borrowed from the rail's markup,
+	// and the icon was doing nothing the word was not: a gear or a shield in a
+	// corner is a guess you have to make, and the guess is wrong often enough
+	// that the label had to be there anyway. Two things saying one thing, and
+	// on a phone the label was hidden so what was left was the guess alone.
+	//
+	// Set like the rest of this corner — it is a link to somewhere, the same as
+	// the name beside it, and it should read as one.
+	return `<a id="head-admin" href="/admin">Admin</a>`
 }
 
 // navPinned is the reader's own services, under a heading of their own.
@@ -1437,31 +1446,33 @@ func navPinned(acc *auth.Account) string {
 // every other page had nothing, so the two states of this product differed by
 // which page you happened to be on rather than by whether you had an account.
 // One corner, on every page, saying which of the two you are.
+// loginBack sends somebody back to the page they were reading.
+//
+// A page that bounced you to /login has always carried this — see
+// RedirectToLogin — but a public page you were reading and chose to sign in
+// from did not, so reading /archive or /contact and pressing Log in landed you
+// on /home with the page you were on gone. The one case where signing in
+// *should* move you is the landing, and that redirects on its own.
+func loginBack(here string) string {
+	if here == "" || here == "/" {
+		return ""
+	}
+	return "?redirect=" + url.QueryEscape(here)
+}
+
 func headCorner(acc *auth.Account, here string) string {
 	if acc == nil {
-		// Sign up only where signing up is a thing this instance allows. On an
-		// invite-only one it is a door that opens onto a form asking for a
-		// code, which is worse than no door.
-		// And back where you were afterwards.
+		// One link, and it is the way in.
 		//
-		// A page that bounced you to /login has always carried this — see
-		// RedirectToLogin — but a public page you were reading and chose to
-		// sign in from did not, so reading /archive or /contact and pressing
-		// Log in landed you on /home with the page you were on gone. The one
-		// case where signing in *should* move you is the landing, and that
-		// redirects on its own.
-		back := ""
-		if here != "" && here != "/" {
-			back = "?redirect=" + url.QueryEscape(here)
-		}
-		signup := ""
-		if !auth.InviteOnly() {
-			// First: it is what somebody without an account is deciding. Log in
-			// is for whoever already decided and knows where it goes.
-			signup = `<a href="/signup` + back + `">Sign up</a>`
-		}
-		return `<div id="head-out">` + signup + `<a href="/login` + back + `">Log in</a></div>`
+		// It was Sign up and Log in. Two controls in a corner whose whole job
+		// is to be the one thing you can do from here, and the login page
+		// already offers signing up on it — so the pair was a fork in front of
+		// somebody who had not asked for one, and it also meant the corner was
+		// a different width on an invite-only instance, where Sign up is not
+		// offered at all.
+		return `<div id="head-out"><a href="/login` + loginBack(here) + `">Log in</a></div>`
 	}
+
 	// And who you are, which is the other half of the same answer.
 	//
 	// The corner held only Admin and the balance, and both are conditional —

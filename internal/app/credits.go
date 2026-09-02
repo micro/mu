@@ -57,16 +57,34 @@ func creditsFor(acc *auth.Account) creditView {
 		return creditView{}
 	}
 	balance := quota.BalanceOf(acc.ID)
+	// An admin is never charged, so there is no number and nothing to warn
+	// about. It said "∞" in the corner of every page, which is a fact about
+	// billing that the one person who cannot be billed does not need on screen
+	// — and for the operator of an instance, that is every page they ever look
+	// at. /wallet still says it, which is where somebody checking that the
+	// payment UI works is already standing.
 	if acc.Admin {
-		return creditView{Show: true, Unlimited: true}
+		return creditView{}
 	}
+	// Only when it is something to act on.
+	//
+	// It showed the balance always, which is a meter for something nobody is
+	// thinking about: an assistant that puts your remaining credit in the
+	// header of every page is asking you to watch a number instead of asking it
+	// things. What is worth interrupting for is running out, and the two states
+	// below are exactly that — they are also the only two the stylesheet
+	// bothers to colour, which is the same judgement made once already.
+	//
+	// The balance is on /wallet and on /account for anybody who wants it, and
+	// the agent says what it cost when it refuses. This is the corner, and the
+	// corner's job is who you are.
 	switch {
 	case balance <= 0:
 		return creditView{Show: true, Balance: balance, State: " empty"}
 	case balance <= LowBalance:
 		return creditView{Show: true, Balance: balance, State: " low"}
 	}
-	return creditView{Show: true, Balance: balance}
+	return creditView{}
 }
 
 // headBalance renders the balance in the top bar, beside Tools.

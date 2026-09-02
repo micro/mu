@@ -22,44 +22,31 @@ func TestTheCornerIsTheWayInOrWhatYouHave(t *testing.T) {
 	if !strings.Contains(out, `href="/login"`) {
 		t.Errorf("signed out, the corner does not offer a way in: %q", out)
 	}
-	if !strings.Contains(out, `href="/signup"`) {
-		t.Errorf("signed out, the corner does not offer a way to join: %q", out)
+	// One link. It was Sign up and Log in, on the argument that a stranger is
+	// deciding whether to join and somebody returning already decided — true,
+	// and it put two controls in a corner whose whole job is to be the one
+	// thing you can do from here. The login page offers signing up on it, so
+	// the pair was a fork in front of somebody who had not asked for one, and
+	// it made the corner a different width on an invite-only instance where
+	// Sign up is not offered at all.
+	if n := strings.Count(out, "<a "); n != 1 {
+		t.Errorf("the signed-out corner has %d links, want 1: %q", n, out)
 	}
-	// Sign up first. It is the decision somebody without an account is making;
-	// Log in already knows where it is going.
-	if strings.Index(out, "/signup") > strings.Index(out, "/login") {
-		t.Errorf("Log in comes before Sign up: %q", out)
-	}
-	// Two links and no third. Install app stood in the old corner and did not
-	// earn the slot: it appeared only on some browsers and said nothing about
-	// what state you are in or what to do about it, which is the corner's whole
-	// job. Browsers offer installing in their own menus.
-	if n := strings.Count(out, "<a "); n != 2 {
-		t.Errorf("the signed-out corner has %d links, want 2: %q", n, out)
-	}
+	// Install app stood here once and appeared on only some browsers, saying
+	// nothing about what state you are in or what to do about it — which is the
+	// corner's entire purpose.
 	if strings.Contains(out, "install-app") {
 		t.Errorf("Install is back in the corner: %q", out)
 	}
 }
 
-// And no door onto a form asking for a code.
+// Sign up left the corner entirely, so there is nothing left for invite-only
+// to suppress.
 //
-// On an invite-only instance Sign up opens onto "enter your invite code",
-// which is a worse answer than not offering it — the person clicking it has no
-// code and no way to get one from that page.
-func TestNoSignUpWhereSigningUpIsNotAllowed(t *testing.T) {
-	t.Setenv("INVITE_ONLY", "true")
-	if !auth.InviteOnly() {
-		t.Skip("this build does not read INVITE_ONLY, so there is nothing to assert")
-	}
-	out := headCorner(nil, "")
-	if strings.Contains(out, `href="/signup"`) {
-		t.Errorf("an invite-only instance offers Sign up: %q", out)
-	}
-	if !strings.Contains(out, `href="/login"`) {
-		t.Errorf("and then there is no way in at all: %q", out)
-	}
-}
+// There was a test here for it: an invite-only instance must not offer Sign up,
+// because that door opens onto a form asking for a code the person clicking it
+// does not have. That rule still exists and now lives where the door does —
+// /signup and /login — rather than in a corner that no longer draws it.
 
 // Signed in, the corner says which account this browser is.
 //

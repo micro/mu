@@ -86,10 +86,20 @@ func TestAnInstanceThatDoesNotChargeNeverAsks(t *testing.T) {
 	}
 }
 
-// An admin is never charged. They are told that — not shown "0 credits", which
-// is false, and not shown nothing, which is how the operator of an instance
-// ends up unable to see whether their own payment UI works at all.
-func TestAdminsSeeUnlimitedAndAreNeverAskedToTopUp(t *testing.T) {
+// An admin is never charged, so there is no number and nothing to warn about.
+//
+// The corner said "∞" for them, on the argument that showing nothing is how the
+// operator of an instance ends up unable to see whether their own payment UI
+// works — an empty top bar reads as a broken deploy. That was true when the
+// corner held only this and Admin, both conditional, so an admin on an
+// unmetered instance got a genuinely empty corner. It is not true now: the
+// corner carries @you on every page, so there is no blank to misread, and a
+// permanent ∞ is a fact about billing shown to the one person who cannot be
+// billed, on every page they will ever look at.
+//
+// What has to keep holding is the half that was never about display: an admin
+// is not asked to top up.
+func TestAdminsAreNeverAskedToTopUp(t *testing.T) {
 	withBalance(t, 0, true)
 	admin := withToken(t, "boss")
 	admin.Admin = true
@@ -98,11 +108,11 @@ func TestAdminsSeeUnlimitedAndAreNeverAskedToTopUp(t *testing.T) {
 		t.Errorf("an admin was asked to top up: %q", got)
 	}
 	head := headBalance(admin)
-	if !strings.Contains(head, "∞") {
-		t.Errorf("an admin's balance was %q, want the unlimited mark", head)
-	}
 	if strings.Contains(head, "empty") || strings.Contains(head, ">0<") {
 		t.Errorf("an admin was shown an empty balance: %q", head)
+	}
+	if head != "" {
+		t.Errorf("an admin carries a balance indicator on every page: %q", head)
 	}
 }
 
@@ -149,29 +159,44 @@ func TestNoWalletMeansNoCreditsUI(t *testing.T) {
 	}
 }
 
-// The top bar is the only place the balance appears, so it carries every state.
-func TestTheHeadBalanceShowsEveryState(t *testing.T) {
+// The corner speaks when running out, and not otherwise.
+//
+// It showed the balance always, which is a meter for something nobody is
+// thinking about: an assistant that keeps your remaining credit in the header
+// of every page is asking you to watch a number instead of asking it things.
+// What is worth interrupting for is running out — and empty and low were
+// already the only two states the stylesheet bothered to colour, which is this
+// same judgement made once and then not acted on.
+//
+// The number is on /wallet and /account for anybody who wants it, and the agent
+// says what a refusal cost.
+func TestTheHeadBalanceSpeaksOnlyWhenItMatters(t *testing.T) {
 	for _, c := range []struct {
 		balance int
 		want    string
 	}{
 		{0, "head-wallet empty"},
 		{LowBalance, "head-wallet low"},
-		{LowBalance + 1, `class="head-wallet"`},
 	} {
 		withBalance(t, c.balance, true)
 		if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, c.want) {
 			t.Errorf("balance %d rendered %q, want %q", c.balance, got, c.want)
 		}
 	}
-
-	withBalance(t, 1200, true)
-	got := headBalance(&auth.Account{ID: "x"})
-	if !strings.Contains(got, ">1,200<") {
-		t.Errorf("head balance rendered %q", got)
+	// And says nothing at a balance nobody needs to act on.
+	withBalance(t, LowBalance+1, true)
+	if got := headBalance(&auth.Account{ID: "x"}); got != "" {
+		t.Errorf("a healthy balance is in the corner of every page: %q", got)
 	}
-	if !strings.Contains(got, `href="/wallet"`) {
-		t.Error("the balance is not a link to where the balance lives")
+	withBalance(t, 1200, true)
+	if got := headBalance(&auth.Account{ID: "x"}); got != "" {
+		t.Errorf("a healthy balance is in the corner of every page: %q", got)
+	}
+
+	// When it does speak, it leads where the money is.
+	withBalance(t, 0, true)
+	if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, `href="/wallet"`) {
+		t.Errorf("the warning is not a link to where the balance lives: %q", got)
 	}
 
 	// Same suppressions as everywhere else.

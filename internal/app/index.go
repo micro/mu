@@ -72,20 +72,19 @@ func RenderIndex(l Index) string {
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:100vh;display:flex;flex-direction:column}
 .index-page{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0 20px 40px;position:relative;width:100%}
-/* The name on the left, the way in on the right, on one row at the top.
+/* The same header the app has: name centred, the way in on the right.
  *
- * The wordmark used to be the hero: 2.5rem, centred over the box, with the two
- * links floated into the corner away from it. That is a launch page's shape,
- * and this is a utility somebody arrives at wanting something — so the name
- * goes where a name goes on any site, and the box gets the middle of the
- * screen to itself.
+ * This page and the app were two different headers — the app centres its brand
+ * with the corner floated right, and this had the name on the left. So signing
+ * in moved the wordmark across the screen, which is the discrepancy that shows
+ * once everything else has stopped moving.
  *
- * A row rather than two absolutely positioned corners: the old .login-link was
- * position:absolute and could not see the wordmark, so nothing lined the two up
- * and neither could push the other. Same measure as the content below it, so
- * the name sits over the left edge of the box. */
-.index-head{width:100%;max-width:760px;margin:0 auto;display:flex;
-  align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 0 0}
+ * Centred by the row, with the link taken out of the flow — the same shape as
+ * #head/#head-right in mu.css, arrived at for the same reason: a name centred
+ * against a variable-width link on the other side is not centred on the page,
+ * it is centred on what is left over. */
+.index-head{position:relative;width:100%;max-width:760px;margin:0 auto;
+  display:flex;align-items:center;justify-content:center;padding:20px 0 0}
 .brand{font-size:1.05rem;font-weight:800;letter-spacing:-.2px;line-height:1.25}
 /* Air above the box, which the header no longer provides by being enormous. */
 .index-body{padding-top:12vh}
@@ -94,7 +93,8 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 /* The corner. It held one link and now holds two controls, so it is a row —
    and buttons and links take different defaults, which is 3px of misalignment
    side by side unless both are told the same. */
-.login-link{display:flex;align-items:center;gap:14px;flex:0 0 auto;padding-top:2px}
+.login-link{position:absolute;right:0;top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;gap:14px}
 .login-link a,.login-link button{color:#555;text-decoration:none;font-size:14px;font-weight:600;
   background:none;border:0;padding:0;font-family:inherit;line-height:20px;cursor:pointer}
 .login-link a:hover,.login-link button:hover{color:#111}

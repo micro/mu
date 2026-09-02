@@ -321,26 +321,19 @@ func indexBody() string {
 </style>`
 }
 
-// topRight is the corner: the way in.
+// topRight is the corner: the way in, and nothing else.
 //
-// One state, because signing in leaves this page — see Index. It carried Home
-// and Log out for the version of this that a signed-in reader could see, and
-// that version is gone.
+// One link. It was Sign up and Log in, on the argument that a stranger here is
+// deciding whether to join and somebody returning already decided — which is
+// true and put two controls in a corner whose whole job is to be the one thing
+// you can do from here. The login page offers signing up on it, so nothing is
+// lost but a fork in front of somebody who has not asked for one.
 //
-// Sign up first: it is what a stranger here is deciding about, and Log in is
-// for somebody who already decided. Sign up only where signing up is a thing
-// this instance allows; on an invite-only one it is a door onto a form asking
-// for a code, which is worse than no door.
-//
-// No Install app. The corner says what state you are in and what to do about
-// it, and a third control that appears only on some browsers says neither.
-// Browsers offer installing in their own menus.
+// Nothing else has ever earned this slot. Install app stood here for a while
+// and appeared on only some browsers, saying nothing about what state you are
+// in or what to do about it, which is the corner's entire purpose.
 func topRight() string {
-	signup := ""
-	if !auth.InviteOnly() {
-		signup = `<a href="/signup">Sign up</a>`
-	}
-	return signup + `<a href="/login">Log in</a>`
+	return `<a href="/login">Log in</a>`
 }
 
 // today is what you are given for arriving, before you ask anything.
