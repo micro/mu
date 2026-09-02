@@ -1165,10 +1165,21 @@ type signupBucket struct {
 // absolute URL, or "//evil.example" which a browser reads as one — falls back
 // to /home. An open redirect on a login page is a phishing primitive, and this
 // one is reachable from a link an OAuth client hands to a user.
+// safeRedirect is where signing in lands you.
+//
+// Where you were going, when you were going somewhere — signing in should
+// finish the thing you were doing. Otherwise the front door.
+//
+// It was the dashboard, and that was right while the front door was a pitch a
+// signed-in account had no use for. It is the same page for everybody now, and
+// landing on /home instead put a rail and a grid of sixteen cards in front of
+// somebody whose next move is to type a question. The dashboard is a place to
+// go and look at things, reached from the corner when that is what you came
+// for. See home.Index.
 func safeRedirect(r *http.Request) string {
 	to := r.URL.Query().Get("redirect")
 	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
-		return "/home"
+		return "/"
 	}
 	return to
 }

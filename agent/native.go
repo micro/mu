@@ -47,18 +47,21 @@ var ErrNoProvider = errors.New("no AI provider is configured for the agent")
 // registry so a newly registered service becomes available to the agent (and
 // the /agent/new tool picker) without editing a hardcoded list here.
 func nativeServices(public bool) []string {
+	// A guest gets the front door's set, not everything that is not
+	// account-scoped.
+	//
+	// That was the rule, and it meant twenty-four services and all their
+	// methods in the prompt of every stranger's question — slow, paid for per
+	// question by whoever runs the instance, and mostly tools nobody arrives
+	// asking for: shell, browser, transit, flights, images, apps. The set is
+	// the same one the front page draws its row of doors from, so what the page
+	// offers and what the agent can reach cannot drift. See service.Guest.
+	if public {
+		return service.Guest()
+	}
 	all := service.Services()
 	sort.Strings(all)
-	out := make([]string, 0, len(all))
-	for _, s := range all {
-		// A public run can't reach account-scoped or metered services; the policy
-		// lives in internal/service so the agent and the app SDK share it.
-		if public && service.AccountScoped(s) {
-			continue
-		}
-		out = append(out, s)
-	}
-	return out
+	return all
 }
 
 // AllAgentTools lists the service tools a user-defined agent may be scoped to —

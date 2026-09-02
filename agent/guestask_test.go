@@ -21,14 +21,23 @@ import (
 	"mu/internal/service"
 )
 
-// The tool set a guest run is given excludes everything account-scoped. This is
-// the security property: a guest has no account, so a run that could reach
-// mail, files or the wallet would be reaching into somebody's — whichever
-// account the tool decided to use, or none, and neither is acceptable.
-func TestAGuestRunCannotReachAccountScopedServices(t *testing.T) {
-	// Two services, one of each kind, because the registry in a test binary is
-	// whatever the test put in it — asserting over an empty one passes while
-	// proving nothing, which is how a filter like this stops being checked.
+// What a guest run can reach, and what it must not.
+//
+// Two properties, and the second is the security one.
+//
+// The set is the front door's, named in internal/service. It used to be
+// "everything not account-scoped", which is two dozen services and all their
+// methods in the prompt of every stranger's question — slow, and paid for per
+// question by whoever runs the instance.
+//
+// And nothing account-scoped is in it, whatever else is registered. A guest has
+// no account, so a run that could reach mail, files or the wallet would be
+// reaching into somebody's — whichever account the tool decided to use, or none,
+// and neither is acceptable.
+func TestAGuestRunGetsTheFrontDoorSetAndNothingScoped(t *testing.T) {
+	// One of each kind, because the registry in a test binary is whatever the
+	// test put in it — asserting over an empty one passes while proving
+	// nothing, which is how a filter like this stops being checked.
 	for _, spec := range []service.Spec{
 		{Name: "guestpublic", Handler: new(AgentProbe), Page: "/guestpublic",
 			Endpoints: map[string]service.Endpoint{"List": {Doc: "probe"}}},
@@ -43,9 +52,12 @@ func TestAGuestRunCannotReachAccountScopedServices(t *testing.T) {
 	public := nativeServices(true)
 	all := nativeServices(false)
 
-	if !has(public, "guestpublic") {
-		t.Error("a guest is not offered a public service, so the answer can only " +
-			"ever be talk")
+	// A public service that is not on the front door's list is not offered
+	// either. Being harmless is not the same as being worth a slot in every
+	// stranger's prompt.
+	if has(public, "guestpublic") {
+		t.Error("a guest is offered a service that is not in the front door's set, " +
+			"so the set is not being applied at all")
 	}
 	if has(public, "guestprivate") {
 		t.Error("a guest run is offered an account-scoped service — it has no " +
@@ -55,6 +67,12 @@ func TestAGuestRunCannotReachAccountScopedServices(t *testing.T) {
 		t.Error("the full set has lost the scoped service, so this comparison " +
 			"proves nothing")
 	}
+	if len(public) >= len(all) {
+		t.Errorf("a guest is offered %d services and a signed-in caller %d — "+
+			"the guest set is meant to be the smaller one, and the whole reason "+
+			"it exists is speed", len(public), len(all))
+	}
+
 	// The policy itself, not this list: anything scoped is absent, whatever
 	// else is registered by the time this runs.
 	for _, name := range public {

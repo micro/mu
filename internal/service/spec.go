@@ -437,6 +437,58 @@ func Specs() []Spec {
 	return out
 }
 
+// guestOrder is what a signed-out caller can reach, in the order a page should
+// offer it.
+//
+// # Why a list and not a rule
+//
+// The rule was "everything that is not account-scoped", which is twenty-four
+// services and every one of their methods in the prompt of every stranger's
+// question. That is slow and it is paid for per question by whoever runs the
+// instance, and most of it is not what anybody arrives asking: browser, shell,
+// text, users, transit, flights, routes, food, prayer, images, apps, blog,
+// docs, stream. Each is a fine tool and none is the reason somebody typed a
+// question into a front page.
+//
+// So the front door has a set, and it is small on purpose. A guest run is meant
+// to be quick — see nativeLLMFor, which puts guests on the fast model for the
+// same reason — and the fastest thing you can do for a tool-calling loop is
+// give it fewer tools to consider.
+//
+// # Why it is the same list the doors are drawn from
+//
+// The front page prints these as a row of links under the box: Archive, News,
+// Video, Social, Markets, Weather, Places, Web. That row is a promise about
+// what this instance can answer, and the tools behind it are how it keeps the
+// promise. Two lists would be one list that had drifted, and the drift is
+// invisible — the page would offer a door the agent cannot walk through.
+//
+// Not a claim about what exists: an instance that does not run one of these
+// simply has fewer, and Guest filters through the registry to say so.
+var guestOrder = []string{
+	"archive", "news", "video", "social", "markets", "weather", "places", "web",
+}
+
+// Guest is the services a signed-out caller may reach, in order.
+//
+// Filtered twice: through the registry, so an instance that does not run one is
+// not offered it, and through Scoped, so a service that starts requiring an
+// account drops out of the guest set the day it does rather than the day
+// somebody remembers this list.
+func Guest() []string {
+	out := make([]string, 0, len(guestOrder))
+	for _, name := range guestOrder {
+		if _, ok := SpecFor(name); !ok {
+			continue
+		}
+		if AccountScoped(name) {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out
+}
+
 // AccountScoped reports whether a service requires an authenticated caller.
 // Derived from the spec, so the agent and the app SDK cannot drift apart.
 func AccountScoped(name string) bool {

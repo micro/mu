@@ -194,6 +194,98 @@ func TopMovers(n int) string {
 	return strings.Join(parts, ", ")
 }
 
+// Spread is a handful of prices across the kinds of thing this tracks, for a
+// caller with one line to spend.
+//
+// Not TopMovers, and the difference is the whole point. That one sorts by
+// absolute change and picks the loudest, which on a list containing crypto
+// means crypto: BTC, ETH and SOL move several percent on a quiet day and oil
+// moves half of one, so "the three biggest movers" was three coins every time
+// and the front page read as a crypto site.
+//
+// A person glancing at how markets went wants a spread, not a leaderboard. So
+// one from each kind, in a fixed order — a commodity, a share, a coin — and
+// each is the biggest mover within its own kind, which is where the question
+// "did anything happen" still gets a useful answer.
+//
+// Fixed order rather than sorted, because the order changing between loads is
+// the thing that makes a page look live and worth refreshing. It is a price
+// list; it should sit still.
+func Spread(n int) []Quote {
+	marketsMutex.RLock()
+	defer marketsMutex.RUnlock()
+
+	if len(cachedPriceData) == 0 || n <= 0 {
+		return nil
+	}
+
+	// The kinds, in the order they are shown. Commodities first because they
+	// are what a news story is usually about, shares second, crypto last —
+	// it is the smallest of the three by every measure except how loudly it
+	// moves.
+	kinds := [][]string{
+		{"OIL", "GOLD", "SILVER", "COPPER", "WHEAT"},
+		stockSymbols,
+		{"BTC", "ETH", "SOL"},
+	}
+
+	out := make([]Quote, 0, n)
+	for _, kind := range kinds {
+		if len(out) >= n {
+			break
+		}
+		var best string
+		var bestChange float64
+		for _, sym := range kind {
+			pd, ok := cachedPriceData[sym]
+			if !ok {
+				continue
+			}
+			if best == "" || math.Abs(pd.Change24h) > math.Abs(bestChange) {
+				best, bestChange = sym, pd.Change24h
+			}
+		}
+		if best == "" {
+			continue
+		}
+		pd := cachedPriceData[best]
+		out = append(out, Quote{
+			Symbol: best, Name: displayName(best),
+			Price: pd.Price, Change24h: pd.Change24h,
+		})
+	}
+	return out
+}
+
+// Quote is one price, named the way a person would say it.
+type Quote struct {
+	Symbol    string  `json:"symbol"`
+	Name      string  `json:"name"`
+	Price     float64 `json:"price"`
+	Change24h float64 `json:"change_24h"`
+}
+
+// displayName is what to call a symbol in front of somebody. The ticker when
+// there is nothing better — for oil and gold the ticker is the word.
+func displayName(sym string) string {
+	if n, ok := stockNames[sym]; ok {
+		return n
+	}
+	switch sym {
+	case "OIL":
+		return "Oil"
+	case "GOLD":
+		return "Gold"
+	case "SILVER":
+		return "Silver"
+	case "COPPER":
+		return "Copper"
+	case "WHEAT":
+		return "Wheat"
+	}
+	return sym
+}
+
 func refreshMarkets() {
 	// A failed fetch used to cost a full cycle: fetchPrices returns nil on any
 	// error, the loop slept the whole interval and served the old price again,

@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"mu/internal/app"
+	"mu/internal/service"
 )
 
 func TestTheLandingCarriesToday(t *testing.T) {
@@ -133,6 +134,9 @@ func TestTheCornerIsTheWayInOrTheWayDeeper(t *testing.T) {
 	if !strings.Contains(out, `href="/login"`) {
 		t.Errorf("signed out, the corner does not offer a way in: %q", out)
 	}
+	if !strings.Contains(out, `href="/signup"`) {
+		t.Errorf("signed out, the corner does not offer a way to join: %q", out)
+	}
 	if strings.Contains(out, `href="/home"`) {
 		t.Errorf("signed out, the corner offers Home: %q", out)
 	}
@@ -144,12 +148,22 @@ func TestTheCornerIsTheWayInOrTheWayDeeper(t *testing.T) {
 	if strings.Contains(in, `href="/login"`) {
 		t.Errorf("signed in, the corner still says sign in: %q", in)
 	}
-	// Install survives both — it is the same page, made resident, not a
-	// destination.
+	// Two links either side of the line, and no third. Install app stood here
+	// and did not earn the slot: it appeared only on some browsers and said
+	// nothing about what state you are in or what to do about it, which is the
+	// corner's whole job. Browsers offer installing in their own menus.
 	for _, s := range []string{out, in} {
-		if !strings.Contains(s, "install-app") {
-			t.Errorf("Install is missing from the corner: %q", s)
+		if strings.Contains(s, "install-app") {
+			t.Errorf("Install is back in the corner: %q", s)
 		}
+		if n := strings.Count(s, "<a "); n != 2 {
+			t.Errorf("the corner has %d links, want 2: %q", n, s)
+		}
+	}
+
+	// And the way out is here, because this page has no rail to put it in.
+	if !strings.Contains(in, `href="/logout"`) {
+		t.Errorf("signed in, there is no way to sign out: %q", in)
 	}
 }
 
@@ -166,5 +180,46 @@ func TestSigningInAddsToTheBriefRatherThanReplacingIt(t *testing.T) {
 	// read from an account.
 	if len(world) > 1 {
 		t.Errorf("a signed-out brief has %d clauses, want at most the world's one: %v", len(world), world)
+	}
+}
+
+// The doors and the guest's tools are one list.
+//
+// The row under the box is a promise about what this instance can answer, and
+// the tools behind a guest's question are how it keeps the promise. Two lists
+// would be one that had drifted, and the drift is invisible from either side:
+// the page offers a door the agent cannot walk through, and nothing looks wrong
+// on either.
+//
+// Read from the source, because the registry is empty in a unit test and the
+// thing worth pinning is that there is one list rather than what is in it.
+func TestTheDoorsAreTheToolsAGuestCanReach(t *testing.T) {
+	src, err := os.ReadFile("index.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "range service.Guest()") {
+		t.Error("the row of doors is not drawn from service.Guest, so the page can\n" +
+			"offer a door the agent has no tool for")
+	}
+
+	agentSrc, err := os.ReadFile("../agent/native.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(agentSrc), "return service.Guest()") {
+		t.Error("a guest's tools are not service.Guest's, so every stranger's\n" +
+			"question carries every service that is not account-scoped —\n" +
+			"two dozen of them, in the prompt, paid for per question")
+	}
+}
+
+// And nothing account-scoped is ever in it. Somebody's mail, contacts, files
+// and wallet are the whole reason this filter exists.
+func TestNoGuestToolReachesAnAccount(t *testing.T) {
+	for _, name := range service.Guest() {
+		if service.AccountScoped(name) {
+			t.Errorf("%s is account-scoped and is offered to signed-out callers", name)
+		}
 	}
 }

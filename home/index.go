@@ -1,6 +1,7 @@
 package home
 
 import (
+	"fmt"
 	"html"
 	"net/http"
 	"strings"
@@ -67,28 +68,12 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// slot is 18px, so the chrome copy was a smaller, duplicate version of
 		// the thing immediately below it. Nothing renders the two together
 		// except the page, which is why neither reading caught it.
-		// Two controls, both of them things you do rather than things to
-		// consider. Install ships hidden: the browser decides whether a site
-		// can be installed and says so by firing beforeinstallprompt, and a
-		// button that does nothing in Firefox is worse than no button. See
-		// installScript.
-		//
-		// There is no Get started. Signing up is a thing this instance may or
-		// may not allow — and "Get started" is the phrase for persuading a
-		// stranger, which is not what a server's front door is for. Sign in is
-		// the door; whoever runs this decides who gets a key.
-		// Sign in, or Home. One slot, two states, and the difference between
-		// them is the only thing on this page that says whether anybody is
-		// signed in.
-		//
-		// Home rather than a sidebar. Somebody signed in gets this same page —
-		// see the note on Index — so the way into the dashboard has to be
-		// somewhere, and it is one link in the corner rather than a rail down
-		// the side. The front door stays a front door.
+		// Two links, and which two says whether anybody is signed in. That is
+		// the only thing on this page that does. See topRight.
 		TopRight: topRight(viewerID),
 		Body:     body,
 		Footer:   app.FooterLinks(),
-		Tail:     installScript(),
+		Tail:     workerScript(),
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -118,13 +103,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 // asked; then "Browse the agents", which sends somebody signed out to a page
 // that lists the agents they have not made. A second button is a choice, and
 // there was only one thing to do here.
-//
-// Install app is the exception, and the reason is the thing both of those got
-// wrong: they were other destinations, so the page asked you to pick where to
-// go. This one is not a destination at all — it is the same page, made
-// resident — and it appears only when the browser has told us it can be
-// installed, so on a browser that cannot it is not a choice on the page at
-// all. See installScript.
 //
 // And it has to actually fit, which is a measurement rather than an intention.
 // The first version of this centred the block with min-height:calc(100vh -
@@ -236,7 +214,15 @@ func indexBody(viewerID string) string {
 /* Numbers, so they are set as numbers: tabular, quiet, one line. */
 .lmarkets{font-size:13px;font-variant-numeric:tabular-nums}
 .lmarkets a{color:#777;text-decoration:none}
-.lmarkets a:hover{text-decoration:underline}
+.lmarkets a:hover{color:#555}
+/* Direction is a colour, so the row can be read without reading it. Muted
+   rather than a traffic light: this is a glance, not an alarm. */
+.lup{color:#2e7d32}
+.ldown{color:#b3261e}
+/* The dot between two things on one row. It was defined with the headlines and
+   went with them when those became a list, leaving the markets row joining
+   "-2.1%" to "Tesla" with an unspaced dot. */
+.lsep{margin:0 7px;color:#ccc}
 /* Headlines are links out, and look like the sentences they are rather than
    like a list of results. */
 .lnews{list-style:none;padding:0;font-size:13px;color:#888}
@@ -247,15 +233,37 @@ func indexBody(viewerID string) string {
 </style>`
 }
 
-// topRight is the one control in the corner: the way in, or the way deeper in.
+// topRight is the corner: the way in, or the way deeper in and the way out.
+//
+// Two links either side of the line. Signed out, Sign up and Log in, in that
+// order — the first is what a stranger on this page is deciding about and the
+// second is for somebody who already decided. Signed in, Home and Log out:
+// Home is the dashboard, which is where the rail of your inbox and agents and
+// balance lives, and Log out is here because this page has no rail to put it
+// in.
+//
+// Sign up only where signing up is a thing this instance allows. On an
+// invite-only one it is a door that opens onto a form asking for a code, which
+// is worse than no door.
+//
+// # No Install app
+//
+// It stood here on the argument that it is not a destination — the same page,
+// made resident — and that is still true and is not the point. The corner is
+// where somebody looks to find out what state they are in and what they can do
+// about it, and a third control that appears only on some browsers, saying
+// something about neither, made a two-word answer into a three-word one. The
+// page is still installable; browsers offer it in their own menus, which is
+// where a browser feature belongs.
 func topRight(viewerID string) string {
-	entry := `<a href="/login">Sign in</a>`
 	if viewerID != "" {
-		entry = `<a href="/home">Home</a>`
+		return `<a href="/home">Home</a><a href="/logout">Log out</a>`
 	}
-	return entry +
-		`<button type="button" id="install-app" hidden>Install app</button>` +
-		`<span id="install-how" hidden>Share, then Add to Home Screen</span>`
+	signup := ""
+	if !auth.InviteOnly() {
+		signup = `<a href="/signup">Sign up</a>`
+	}
+	return signup + `<a href="/login">Log in</a>`
 }
 
 // today is what you are given for arriving, before you ask anything.
@@ -343,103 +351,166 @@ func briefRow(viewerID string) string {
 
 // marketsRow is where the money went, in one line.
 //
-// The same five the agent is told about, biggest movers first, which is the
-// only ordering that says anything: five prices in a fixed order is a table,
-// and a table is a thing to study rather than to glance at.
+// A spread across the kinds of thing markets tracks — a commodity, a share, a
+// coin — rather than the three biggest movers. It was the movers, from the
+// function the agent's context uses, and on a list containing crypto the three
+// biggest movers are three coins every time: BTC, ETH and SOL move several
+// percent on a quiet day and oil moves half of one. The front page of a
+// personal server read as a crypto ticker. See markets.Spread.
 func marketsRow() string {
-	line := strings.TrimSpace(markets.TopMovers(3))
-	if line == "" {
+	quotes := markets.Spread(3)
+	if len(quotes) == 0 {
 		return ""
 	}
+	var parts []string
+	for _, q := range quotes {
+		sign := ""
+		if q.Change24h >= 0 {
+			sign = "+"
+		}
+		cls := "ldown"
+		if q.Change24h >= 0 {
+			cls = "lup"
+		}
+		parts = append(parts, html.EscapeString(q.Name)+" "+
+			html.EscapeString(price(q.Price))+
+			` <span class="`+cls+`">`+
+			html.EscapeString(fmt.Sprintf("%s%.1f%%", sign, q.Change24h))+`</span>`)
+	}
 	return `<p class="lrow lmarkets"><a href="/markets">` +
-		html.EscapeString(line) + `</a></p>`
+		strings.Join(parts, `<span class="lsep">·</span>`) + `</a></p>`
+}
+
+// price is a number somebody reads rather than reconciles.
+//
+// No decimals above a hundred — nobody glancing at a page needs to know
+// bitcoin is at 77551.38 rather than 77551 — and two below it, where the
+// pennies are the whole movement.
+func price(v float64) string {
+	if v >= 100 {
+		return fmt.Sprintf("$%.0f", v)
+	}
+	return fmt.Sprintf("$%.2f", v)
 }
 
 // headlinesRow is three headlines, as links out.
 //
 // Three, because the page has to end. There are hundreds behind /news and the
 // whole design of this page is that it is not a way into them — somebody who
-// wants the rest has a link, and somebody who does not has read the day in a
-// line and can leave.
+// wants the rest has a link, and somebody who does not has read the day in
+// three lines and can leave.
+//
+// One per topic, not the newest three. The feeds run hot on whatever is moving,
+// so the three most recent stories were three stories about the same thing:
+// "Solana, ether, xrp lead majors slide", "Bitcoin withstands $90 oil". Three
+// headlines from one subject is one headline, printed three times, and it makes
+// a front page look like a section front.
 //
 // Straight to the source rather than to a reader page here. This is a front
 // door, and keeping somebody on the site to read a story they could read at the
 // publisher is the engagement move this product exists to not make.
 func headlinesRow() string {
-	feed := news.GetFeed()
 	var links []string
-	for _, p := range feed {
-		if p == nil || strings.TrimSpace(p.Title) == "" || strings.TrimSpace(p.URL) == "" {
-			continue
-		}
-		links = append(links, `<a href="`+html.EscapeString(p.URL)+
-			`" rel="noopener noreferrer">`+html.EscapeString(p.Title)+`</a>`)
-		if len(links) == 3 {
-			break
+	seen := map[string]bool{}
+
+	// Two passes. The first takes the newest story from each subject, which is
+	// the spread; the second fills up from whatever is left, so a day with only
+	// one subject in the feed still gets three lines rather than one.
+	for _, pass := range []bool{true, false} {
+		for _, p := range news.GetFeed() {
+			if len(links) == 3 {
+				break
+			}
+			if p == nil || strings.TrimSpace(p.Title) == "" || strings.TrimSpace(p.URL) == "" {
+				continue
+			}
+			topic := strings.ToLower(strings.TrimSpace(p.Category))
+			if pass {
+				if topic == "" || seen[topic] {
+					continue
+				}
+				seen[topic] = true
+			} else if seen["url:"+p.URL] {
+				continue
+			}
+			seen["url:"+p.URL] = true
+			links = append(links, `<a href="`+html.EscapeString(p.URL)+
+				`" rel="noopener noreferrer">`+html.EscapeString(p.Title)+`</a>`)
 		}
 	}
 	if len(links) == 0 {
 		return ""
 	}
-	// One per line rather than three joined by a separator. Run together they
-	// wrapped into a paragraph of six lines with two faint dots in it, and a
-	// headline is a sentence — three sentences in a row read as one bad
-	// sentence. Three short lines are scannable; that is the whole job here.
 	return `<ul class="lrow lnews"><li>` + strings.Join(links, `</li><li>`) + `</li></ul>`
 }
 
-// directDoors is the handful of services worth putting under the box.
+// workerScript registers the service worker on the front door.
+//
+// This was the tail of installScript, which has gone with the Install button.
+// The registration is not about that button and never was: a browser will not
+// offer to install a site that has no worker, the worker is what handles a push
+// notification when nothing is open, and the app shell registers it on every
+// other page. Without this the first page a visitor sees is the one page it is
+// never registered from — which is the exact bug the script was written to fix,
+// and which removing the button reintroduced. TestTheServiceWorkerStillRegisters
+// is what caught it.
+func workerScript() string {
+	return `<script>
+(function () {
+  if (!navigator.serviceWorker) return;
+  // updateViaCache:'none', the same as the app shell — see internal/app. The
+  // default consults the HTTP cache for the worker script, which is how a
+  // device ends up running a months-old copy.
+  navigator.serviceWorker.register('/mu.js', {scope: '/', updateViaCache: 'none'})
+    .then(function (reg) { if (reg && reg.update) reg.update(); })
+    .catch(function () {});
+})();
+</script>`
+}
+
+// directDoors is the row of doors under the box.
 //
 // Every service a signed-out visitor can open came to twenty-one names — a
 // paragraph of them, wrapping onto two lines, including Browser and Text and
 // Users, which are tools rather than places anybody arrives wanting. A list
 // that long is not a set of doors, it is a wall with the doors drawn on it.
 //
-// So: an order, and a cap. The order is what somebody actually came for, which
-// is a judgement and is written down as one rather than derived from something
-// that only looks objective. Everything else stays reachable — /tools lists all
-// of them, and the footer links it.
+// The set and its order are service.Guest's, which is also the set of tools a
+// guest's question can reach. One list, so a door the page offers is always a
+// door the agent can walk through — two would be one that had drifted, and the
+// drift would be invisible from either side.
 //
-// Still filtered through the registry, so a service this instance does not run
-// is not offered and one it adds can appear: the list below is a preference,
-// not a claim about what exists. AccountScoped is the same question the tools
-// and the SDK ask, so the three cannot drift.
-var doorOrder = []string{"news", "video", "social", "markets", "weather", "places", "web"}
-
-// doorsShown is how many. Seven names and the archive fit one line at the width
-// this page is set to, which is the only reason for the number.
-const doorsShown = 8
+// Everything else stays reachable: /tools lists all of them and the footer
+// links it.
 
 func directDoors() string {
-	open := map[string]string{}
+	page := map[string]string{}
 	for _, spec := range service.Specs() {
-		if spec.Page == "" || service.AccountScoped(spec.Name) {
+		if spec.Page == "" {
 			continue
 		}
-		open[strings.ToLower(spec.Name)] = spec.Page
+		page[strings.ToLower(spec.Name)] = spec.Page
 	}
 
 	var links []string
-	add := func(label, href string) {
-		if href == "" || len(links) >= doorsShown {
-			return
+	for _, name := range service.Guest() {
+		href, ok := page[name]
+		if !ok {
+			continue
 		}
 		links = append(links, `<a href="`+html.EscapeString(href)+`">`+
-			html.EscapeString(label)+`</a>`)
-	}
-
-	// The archive first. It is what this server already knows, which is the one
-	// door the agent itself goes through.
-	add("Archive", "/archive")
-	for _, name := range doorOrder {
-		if page, ok := open[name]; ok {
-			add(title(name), page)
-		}
+			html.EscapeString(title(name))+`</a>`)
 	}
 	if len(links) == 0 {
 		return ""
 	}
-	return "Or go straight there — " + strings.Join(links, " · ") + "."
+	// "Search" and not "Or go straight there". Every one of these is a search
+	// over a different set — the archive, the news, the video, the shops — and
+	// the old line said only that they were somewhere else to go, which is the
+	// least interesting thing about them. Naming the verb says what the row is
+	// for and, next to a box that also searches, says what the difference is:
+	// the box asks anything, these each ask one thing.
+	return "Search — " + strings.Join(links, " · ") + "."
 }
 
 // title is a service's name as a heading would write it. The registry keys are
@@ -450,78 +521,4 @@ func title(name string) string {
 		return ""
 	}
 	return strings.ToUpper(name[:1]) + name[1:]
-}
-
-// installScript makes the Install app button work, and decides whether it is
-// there at all.
-//
-// A web app is installed by the browser, not by the page. Chromium browsers
-// announce that they are willing by firing beforeinstallprompt, which is the
-// only signal there is — so the button ships hidden and appears when that
-// arrives. A button that is always on the page would do nothing in Firefox and
-// nothing in an installed window, and a control that does nothing is worse than
-// no control.
-//
-// iOS is the exception worth handling. There is no API at all — the only way in
-// is Share, then Add to Home Screen — so on an iPhone the button says where
-// that is instead of pretending it can do it.
-//
-// It registers the service worker too. The app shell does that and this page
-// does not, and a browser will not offer to install a site that has none — so
-// the first page a visitor sees was the one page that could never be installed
-// from.
-func installScript() string {
-	return `<script>
-(function () {
-  // The worker first, and unconditionally.
-  //
-  // This sat below a "no install button, nothing to do here" bail, which was
-  // fine while the button was always on the page. The button has gone with the
-  // pitch it stood next to, and the registration is not about the button: it
-  // is what makes this page installable at all, and the comment above this
-  // function exists because the first page a visitor sees was once the one
-  // page that could never be installed from. Ordering put it back.
-  if (navigator.serviceWorker) {
-    // updateViaCache:'none', the same as the app shell — see internal/app.
-    // The default consults the HTTP cache for the worker script, which is how
-    // a device ends up running a months-old copy.
-    navigator.serviceWorker.register('/mu.js', {scope: '/', updateViaCache: 'none'})
-      .then(function (reg) { if (reg && reg.update) reg.update(); })
-      .catch(function () {});
-  }
-
-  var btn = document.getElementById('install-app');
-  if (!btn) return;
-  var how = document.getElementById('install-how');
-
-  // Already installed: this is the app, running in its own window.
-  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) return;
-
-  var offer = null;
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault();
-    offer = e;
-    btn.hidden = false;
-  });
-  window.addEventListener('appinstalled', function () {
-    offer = null;
-    btn.hidden = true;
-    if (how) how.hidden = true;
-  });
-
-  // An iPad reports itself as a Mac, so the touch points are the tell.
-  var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (ios && how) btn.hidden = false;
-
-  btn.addEventListener('click', function () {
-    if (offer) {
-      offer.prompt();
-      offer.userChoice.then(function () { offer = null; btn.hidden = true; });
-      return;
-    }
-    if (how) how.hidden = !how.hidden;
-  });
-})();
-</script>`
 }
