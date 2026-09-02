@@ -62,6 +62,32 @@ func routesReady(t *testing.T) {
 // not a question source text can answer.
 var linkIn = regexp.MustCompile(`href="(/[^"'<>{}%\s` + "`" + `]*)"`)
 
+// And the links this product does not write as href at all.
+//
+// Most of them do not. app.ActionLink and app.TextLink render the anchor, so a
+// page that uses either — which is every page that draws a button — has no
+// href in its source for the scan above to find. /code was linked from two
+// places on /apps through ActionLink as the primary call to action of that
+// whole section, was gated in the route table, and no handler ever claimed it.
+// This test is the one that should have said so and could not see the link.
+//
+// Two expressions because the two helpers take their arguments in opposite
+// orders — ActionLink(href, label) and TextLink(label, href) — which is its own
+// small trap and not this test's to fix.
+var helperLinks = []*regexp.Regexp{
+	regexp.MustCompile(`ActionLink\("(/[^"]*)"`),
+	regexp.MustCompile(`TextLink\("[^"]*",\s*"(/[^"]*)"`),
+}
+
+// landingMarker is on the front page and on no other. See home.indexBody.
+//
+// The catch-all serves the embedded static files, so a path that falls through
+// to it is not necessarily dead — /mu.css is served exactly that way. But the
+// catch-all is also the landing page, which answers 200 to anything it is
+// handed, so a dead link fell through, rendered the front page and passed. The
+// two are told apart by what came back.
+const landingMarker = `class="lbrand"`
+
 func TestEveryLinkInTheProductGoesSomewhere(t *testing.T) {
 	routesReady(t)
 
@@ -83,7 +109,11 @@ func TestEveryLinkInTheProductGoesSomewhere(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		for _, m := range linkIn.FindAllStringSubmatch(string(b), -1) {
+		matches := linkIn.FindAllStringSubmatch(string(b), -1)
+		for _, re := range helperLinks {
+			matches = append(matches, re.FindAllStringSubmatch(string(b), -1)...)
+		}
+		for _, m := range matches {
 			// The path alone. A query is arguments to the page and a fragment
 			// is a place on it; neither decides whether it exists.
 			p := m[1]
@@ -124,6 +154,14 @@ func TestEveryLinkInTheProductGoesSomewhere(t *testing.T) {
 			if w.Code == http.StatusNotFound {
 				t.Errorf("%s is linked from %s and nothing serves it",
 					p, strings.Join(uniq(where), ", "))
+				continue
+			}
+			// 200 from the catch-all is not proof it exists: the landing page
+			// answers to any path handed to it, so a link to a page nobody
+			// wrote quietly lands somebody on the front page.
+			if strings.Contains(w.Body.String(), landingMarker) {
+				t.Errorf("%s is linked from %s and lands on the front page — "+
+					"nothing serves it", p, strings.Join(uniq(where), ", "))
 			}
 		}
 	}

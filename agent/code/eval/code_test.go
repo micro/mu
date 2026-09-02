@@ -75,10 +75,10 @@
 // those, and the top level is the one place in the tree where that distinction
 // is load-bearing: it is the same reason tool/ moved under internal/.
 //
-// It lives with what it measures instead. There is no agent/code package to put
-// it in — the Code agent is a registry entry in agent/micro, next to Micro — so
-// this sits under that, as its own package rather than as a file in it, because
-// it brings a Node script along and nothing imports it.
+// It lives with what it measures instead: agent/code, which is the package this
+// agent got when it stopped being a struct literal in somebody else's registry.
+// Its own package under that rather than a file in it, because it brings a Node
+// script along and nothing imports it.
 //
 // The script is found relative to the working directory, which `go test` sets
 // to the package's own, so browser.js has to stay in this directory.

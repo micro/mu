@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/agent/code"
 	"mu/agent/micro"
 	"mu/inbox"
 	"mu/internal/api"
@@ -457,9 +458,14 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// on /agent/<name> both threw ReferenceError, which is why the delete cross
 	// did nothing and why a named agent's page did not look like the default
 	// one. What this page needs it now defines itself, in chatPageJS.
+	// The Code agent's rail carries its workspace under the conversations: the
+	// files on its machine and the apps it has hosted. Called for every agent
+	// and empty for all but one — which agent has a machine is agent/code's
+	// fact to know, not this page's. See code.RailSection.
 	rail := `<div class="chat-side">` +
 		`<div class="chat-pane" id="pane-chats">` +
-		renderSessionsRail(accountID, activeRoot, selAgent, named) + `</div></div>`
+		renderSessionsRail(accountID, activeRoot, selAgent, named,
+			code.RailSection(accountID, selAgent)) + `</div></div>`
 
 	// The bar above the conversation: how you got here, and how to see the
 	// other conversations on a phone. Nothing else.
@@ -659,7 +665,11 @@ func inboxAddress(accountID, agentID string) string {
 // calling it one is not a rename for its own sake. The rail was a list of chats
 // on a page, and what it actually holds is every conversation this account has
 // had with an agent, on any client, most of which did not start here.
-func renderSessionsRail(accountID, currentID, agentID string, named bool) string {
+// renderSessionsRail is the column beside the conversation: this agent's chats,
+// and whatever else that agent has. extra is appended inside the one scroll
+// region — see the note on .chat-sess-scroll, which exists because two lists
+// with their own overflow in a fixed-height column draw over each other.
+func renderSessionsRail(accountID, currentID, agentID string, named bool, extra string) string {
 	sessions := chatThreads(accountID, agentID, named)
 	// A new chat with the agent whose rail this is. It used to rewrite the URL
 	// to a bare /agent, which dropped the agent out of the address bar while
@@ -744,7 +754,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 	if len(sessions) >= railShown {
 		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)
 	}
-	b.WriteString(`</div>`)
+	b.WriteString(`</div>` + extra)
 
 	b.WriteString(`</div>` + sessionDeleteJS(base) + `</aside>`)
 	return b.String()

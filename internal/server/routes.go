@@ -13,10 +13,10 @@ import (
 	"strings"
 
 	"mu/account"
-
 	"mu/admin"
 	"mu/agent"
 	"mu/agent/brief"
+	"mu/agent/code"
 	"mu/agent/digest"
 	"mu/agent/micro"
 	help "mu/docs"
@@ -166,7 +166,8 @@ func authRequired() map[string]bool {
 		"/wallet/":           true, // Money: top-up, transfer, Stripe, the price list
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
-		"/code":      true,  // Writing an app: yours, and it spends credits
+		"/code":      true,  // The Code agent's front door — see agent/code
+		"/code/":     true,  // and one file out of its workspace
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
 		"/web":       false, // Public - the open web: search it, read a page from it
 		"/search":    false, // Public - an old name for /web, redirected
@@ -382,6 +383,11 @@ func registerRoutes() {
 	// And what it costs, which was a 404 while three comments described the page
 	// that rendered it. See home/pricing.go.
 	http.HandleFunc("/pricing", home.PricingHandler)
+
+	// The Code agent, at the address two pages of /apps have been linking to
+	// since before there was a handler for it. See agent/code.
+	http.HandleFunc("/code", code.Handler)
+	http.HandleFunc("/code/file", code.FileHandler)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)
