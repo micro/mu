@@ -190,20 +190,19 @@ func indexBody(viewerID string) string {
 			Ask:             true,
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
+			// Directly under the input, which is why the component draws it
+			// rather than this page writing it afterwards — written after, it
+			// lands below the Speak toggle. See ChatConfig.Doors.
+			Doors: directDoors(),
 			// Both only mean something to somebody who can get an answer back.
 			OfferAgentPicker: viewerID != "",
 			Speak:            viewerID != "",
 		}) +
-		`<p class="lwhat">` + directDoors() + `</p>` +
 		today(viewerID) + `
 </div>
 
 <style>
 .lwrap{padding:0;max-width:640px;margin:0 auto;width:100%}
-/* Directly under the box, close enough to belong to it. */
-.lwhat{text-align:center;color:#888;font-size:13px;line-height:1.9;margin:14px auto 0}
-.lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
-.lwhat a:hover{text-decoration:underline}
 /* Today, under the box. Three rows, each one line, and the block does not
    scroll — see today() for why this is not a grid of cards. */
 .ltoday{margin:34px auto 0;max-width:580px;text-align:center}

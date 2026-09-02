@@ -113,7 +113,7 @@ func TestTheFrontDoorIsTheSamePageSignedInOrOut(t *testing.T) {
 	out := indexBody("")
 	in := indexBody("somebody")
 
-	for _, want := range []string{"mu-chat-input", "lwhat"} {
+	for _, want := range []string{"mu-chat-input", "mu-chat-form"} {
 		if !strings.Contains(out, want) || !strings.Contains(in, want) {
 			t.Errorf("%q is not on both states of the front door", want)
 		}
@@ -221,5 +221,20 @@ func TestNoGuestToolReachesAnAccount(t *testing.T) {
 		if service.AccountScoped(name) {
 			t.Errorf("%s is account-scoped and is offered to signed-out callers", name)
 		}
+	}
+}
+
+// And Home shows the same row, from the same list, in the same place. It is the
+// one control both pages share, and it read as a different product on each
+// while only one of them had the doors.
+func TestHomeHasTheDoorsToo(t *testing.T) {
+	src, err := os.ReadFile("home.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "Doors:            directDoors(),") &&
+		!strings.Contains(string(src), "Doors: directDoors(),") {
+		t.Error("Home's box has no doors under it, so the two surfaces that share\n" +
+			"one control offer different things around it")
 	}
 }

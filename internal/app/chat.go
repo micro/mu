@@ -102,6 +102,16 @@ type ChatConfig struct {
 	// each other's. When empty the component is ephemeral: it neither restores
 	// nor saves, so it always starts clean (used for Home's quick-ask box).
 	StorageNS string
+	// Doors is a row of links rendered directly under the input — the handful
+	// of services that are each a search over one set, where the box above is a
+	// search over anything.
+	//
+	// Markup, and the caller's to compose: which services are worth a slot is a
+	// product decision and this package sits under the product. Empty renders
+	// nothing, which is right for every surface that is already inside one of
+	// those services.
+	Doors string
+
 	// Pending says this conversation is waiting on an answer that is not in
 	// InitialConvHTML, because it had not been written when the page rendered.
 	//
@@ -395,11 +405,29 @@ func ChatComponent(cfg ChatConfig) string {
 	suggest := `<div id="mu-chat-suggest"></div>`
 	conv := `<div id="mu-chat-conv">` + initialConv + `</div>`
 
+	// The doors, directly under the input.
+	//
+	// Directly, which is the whole reason they are a field on this component
+	// rather than something the page writes after it. Written after, they land
+	// below the Speak toggle and the suggestion row — near the box rather than
+	// under it — and the row is the second half of the box's own sentence: ask
+	// anything here, or search one of these. A control between the two breaks
+	// the sentence.
+	//
+	// A string rather than a list of services, because which doors to offer is
+	// a decision about the product and this package is underneath it. The
+	// caller composes the row; this decides where it goes, once, for every
+	// surface that shows a box. See home.directDoors.
+	doors := ""
+	if strings.TrimSpace(cfg.Doors) != "" {
+		doors = `<div id="mu-chat-doors">` + cfg.Doors + `</div>`
+	}
+
 	// Two orders, one component. See ChatConfig.Transcript.
-	body := form + opts + suggest + conv
+	body := form + doors + opts + suggest + conv
 	shell := `<div id="mu-chat">`
 	if cfg.Transcript {
-		body = conv + suggest + form + opts
+		body = conv + suggest + form + doors + opts
 		shell = `<div id="mu-chat" class="mu-chat-transcript">`
 	}
 
@@ -446,6 +474,14 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .mu-pills a{padding:8px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#555;text-decoration:none;cursor:pointer}
 .mu-pills a:hover{background:#f5f5f5}
+/* The row of doors, directly under the box.
+   Styled here rather than in mu.css because the component draws it and travels
+   to pages that do not load that sheet — the landing page is one, which is how
+   the row arrived there as default blue underlined links. A component that
+   brings its own markup brings its own style. */
+#mu-chat-doors{margin:12px 0 0;text-align:center;color:#888;font-size:13px;line-height:1.9}
+#mu-chat-doors a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
+#mu-chat-doors a:hover{text-decoration:underline}
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}
 #mu-chat-conv:empty{margin-top:0}
 /* A conversation, not a box.

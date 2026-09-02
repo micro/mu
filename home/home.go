@@ -453,9 +453,13 @@ function fetchW(la,lo){
 	{
 		b.WriteString(`<div id="home-agent">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{
-			Ask:              true,
-			HideSuggestions:  true,
-			Placeholder:      "What do you need?",
+			Ask:             true,
+			HideSuggestions: true,
+			Placeholder:     "What do you need?",
+			// The same row the front door has, in the same place relative to the
+			// same box. It is the one control both pages share, and it read as a
+			// different product on each while only one of them had the doors.
+			Doors:            directDoors(),
 			OfferAgentPicker: viewerID != "",
 			// Read-back needs an answer to read, and a signed-out reader
 			// cannot get one — see ChatConfig.Speak. Same condition as the
