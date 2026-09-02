@@ -13,6 +13,7 @@ package home
 // You are told, or you ask.
 
 import (
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -144,42 +145,35 @@ func TestTheFrontDoorIsTheSamePageSignedInOrOut(t *testing.T) {
 	}
 }
 
-// The corner is the only thing that says whether anybody is signed in.
-func TestTheCornerIsTheWayInOrTheWayDeeper(t *testing.T) {
-	out := topRight("")
-	if !strings.Contains(out, `href="/login"`) {
-		t.Errorf("signed out, the corner does not offer a way in: %q", out)
-	}
-	if !strings.Contains(out, `href="/signup"`) {
-		t.Errorf("signed out, the corner does not offer a way to join: %q", out)
-	}
-	if strings.Contains(out, `href="/home"`) {
-		t.Errorf("signed out, the corner offers Home: %q", out)
-	}
+// The corner is the shell's now, and this page gets it like every other.
+//
+// It used to be drawn here — home.topRight — and only here, which is what "the
+// signed-out pages do not match the signed-in ones" was: the front door had a
+// corner saying which state you were in and no other page did. The assertions
+// about what it contains moved to internal/app with the function; what is left
+// to hold here is that this page goes through the shell that draws it, rather
+// than a second document of its own.
+func TestTheFrontDoorIsDrawnByTheAppShell(t *testing.T) {
+	rec := httptest.NewRecorder()
+	Index(rec, httptest.NewRequest("GET", "/", nil))
+	page := rec.Body.String()
 
-	in := topRight("somebody")
-	if !strings.Contains(in, `href="/home"`) {
-		t.Errorf("signed in, the corner does not reach the dashboard: %q", in)
-	}
-	if strings.Contains(in, `href="/login"`) {
-		t.Errorf("signed in, the corner still says sign in: %q", in)
-	}
-	// Two links either side of the line, and no third. Install app stood here
-	// and did not earn the slot: it appeared only on some browsers and said
-	// nothing about what state you are in or what to do about it, which is the
-	// corner's whole job. Browsers offer installing in their own menus.
-	for _, s := range []string{out, in} {
-		if strings.Contains(s, "install-app") {
-			t.Errorf("Install is back in the corner: %q", s)
-		}
-		if n := strings.Count(s, "<a "); n != 2 {
-			t.Errorf("the corner has %d links, want 2: %q", n, s)
+	for _, want := range []struct{ what, snippet string }{
+		{"the shell's corner", `id="head-out"`},
+		{"the shell's header", `id="head"`},
+		{"the way to the sidebar", `id="menu-toggle"`},
+		{"the app stylesheet", "/mu.css"},
+	} {
+		if !strings.Contains(page, want.snippet) {
+			t.Errorf("the front door has no %s (looked for %q) — it is rendering\n"+
+				"a document of its own again, which is the two-front-doors bug",
+				want.what, want.snippet)
 		}
 	}
-
-	// And the way out is here, because this page has no rail to put it in.
-	if !strings.Contains(in, `href="/logout"`) {
-		t.Errorf("signed in, there is no way to sign out: %q", in)
+	// And it is marked as the page that hides the duplicate wordmark.
+	if !strings.Contains(page, `class="page-front"`) {
+		t.Error("the front door is not marked page-front, so the shell draws its\n" +
+			"own Mu and an <h1> reading Mu above the wordmark")
 	}
 }
 

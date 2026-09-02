@@ -41,13 +41,21 @@ func TestTheFrontDoorHangsOffOneEdge(t *testing.T) {
 		}
 	}
 
-	// The wordmark shares the block's measure and its edge. It is a sibling in
-	// the shell, not a child, so it has to be given both rather than inherit
-	// them — without that the page's largest element is the one thing not on the
-	// axis.
-	if !strings.Contains(src, ".index-page .brand{width:100%;max-width:760px;text-align:left;") {
+	// The wordmark shares the block's measure and its edge. It is drawn by the
+	// page now rather than handed to a shell as a Brand string — the front door
+	// is a page in the app, and the app's header carries its own "Mu" which
+	// .page-front hides — so it has to be given both rather than inherit them.
+	// Without that the page's largest element is the one thing not on the axis.
+	if !strings.Contains(src, "text-align:left;display:flex;align-items:baseline") {
 		t.Error("the wordmark is not aligned to the block, so the biggest thing on\n" +
 			"the page sits on a different edge from everything under it")
+	}
+	// And the chrome does not say the name a second time, two centimetres above
+	// it. An <h1> reading "Mu" over a wordmark reading "Mu" is the same word
+	// three times counting the browser tab.
+	if !strings.Contains(src, "body.page-front #brand,\nbody.page-front #page-title{display:none}") {
+		t.Error("the shell still draws its own wordmark and page title on the front\n" +
+			"door, which is the name twice on one screen")
 	}
 
 	// And it says what this is. A stranger arriving here has never been told:

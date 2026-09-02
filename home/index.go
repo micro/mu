@@ -53,37 +53,36 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	if _, acc := auth.TrySession(r); acc != nil {
 		viewerID = acc.ID
 	}
-	body := indexBody(viewerID)
-
-	page := app.RenderIndex(app.Index{
+	// One shell, for this page and every other.
+	//
+	// This rendered through app.RenderIndex — a whole second HTML document with
+	// its own stylesheet, its own webfont link, its own corner and its own
+	// footer, sharing nothing with the app but the chat component. That is what
+	// "the logged-out experience doesn't match the logged-in one" was: not a
+	// difference of content, which is legitimate and stays, but two different
+	// products' chrome depending on which page you were standing on. A stranger
+	// who signed up watched the header, the fonts and the corner all change
+	// under them, and a signed-in reader who clicked the wordmark watched it
+	// change back.
+	//
+	// So the front door is a page in the app now, like /contact and /archive:
+	// the same header, the same hamburger, the same stylesheet, the same corner
+	// saying which of the two states you are in. What is different about it is
+	// what should be — no page title, because the wordmark is the title, and a
+	// column of air rather than a document. See .page-front.
+	//
+	// app.RenderIndex stays for the developer portal, which is the other thing
+	// it renders and is genuinely not this app.
+	app.Respond(w, r, app.Response{
 		// What it is, not what to think of it. This said "A network for
 		// humans, agents and services" with a paragraph of positioning under
 		// it — a claim a stranger is invited to weigh, which is a landing
 		// page's job and not a server's.
 		Title:       "Mu",
-		Description: "A personal server: mail, chat, files, an inbox with an address, and an agent that reaches its tools. Open source and self-hostable.",
-		// The name, and what it is for. Markup rather than the shell's own
-		// tagline slot, because that renders a separate block underneath and
-		// this belongs on the same line — see .btag.
-		Brand: `Mu <span class="btag">a personal assistant</span>`,
-		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
-		// line this positioning replaced — sitting directly above a headline
-		// that said something else, and swapping it for the new line only made
-		// the page say the headline twice in three centimetres. The
-		// headline is where the line belongs: it is set at 38px and the tagline
-		// slot is 18px, so the chrome copy was a smaller, duplicate version of
-		// the thing immediately below it. Nothing renders the two together
-		// except the page, which is why neither reading caught it.
-		// Two links, and which two says whether anybody is signed in. That is
-		// the only thing on this page that does. See topRight.
-		TopRight: topRight(viewerID),
-		Body:     body,
-		Footer:   app.FooterLinks(),
-		Tail:     workerScript(),
+		Description: "A personal assistant you can reach from anywhere: the web, a text, WhatsApp, mail, or a program. Open source and self-hostable.",
+		BodyClass:   ` class="page-front"`,
+		HTML:        indexBody(viewerID),
 	})
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(page)) //nolint:errcheck
 }
 
 // indexBody is the page itself, separate from serving it.
@@ -189,6 +188,18 @@ func indexBody(viewerID string) string {
 	// also one click away without asking it. That is the property that keeps it
 	// a tool: everything it does, you can do yourself.
 	return `<div class="lwrap">` +
+		// The wordmark, on the page rather than in the chrome.
+		//
+		// The header carries "Mu" on every page in the app, and .page-front
+		// hides it here — one name on a screen, and on this screen it is this
+		// one, at the size that makes it the thing you have arrived at rather
+		// than a label above it.
+		//
+		// A stranger arriving has never been told what this is. The page has a
+		// box, a row of services and a brief, all of which are evidence and none
+		// of which is a sentence. Four words next to the name is the whole
+		// explanation, and it costs a line that was empty anyway.
+		`<div class="lbrand">Mu <span class="btag">a personal assistant</span></div>` +
 		app.ChatComponent(app.ChatConfig{
 			Ask:             true,
 			HideSuggestions: true,
@@ -236,20 +247,33 @@ func indexBody(viewerID string) string {
  * Left, against a single edge, at the measure every other page uses. The block
  * is still centred in the screen; its contents are not centred in the block. */
 .lwrap{padding:0;max-width:760px;margin:0 auto;width:100%;text-align:left}
+/* This page is the brand, so the chrome does not repeat it.
+ *
+ * The header carries "Mu" centred on every page in the app, which is right
+ * everywhere else and is a second, smaller copy of the wordmark here, two
+ * centimetres above it. The page title goes for the same reason — an <h1>
+ * reading "Mu" above a wordmark reading "Mu" is the same word three times.
+ *
+ * The hamburger and the corner stay. They are the two controls that say where
+ * you can go and who you are, and they are the whole of what this page was
+ * missing when it had a shell of its own. */
+body.page-front #brand,
+body.page-front #page-title{display:none}
+/* Air above the wordmark, which the app shell does not give a document and this
+   is not a document. Enough that the block sits where the eye lands and not so
+   much that a short window scrolls — height is the axis that decides, so the
+   query below is on height. */
+body.page-front #content{padding-top:9vh}
+@media (max-height:720px){body.page-front #content{padding-top:4vh}}
 /* The wordmark keeps the block's left edge, and says what this is.
  *
  * It was centred for a moment on the argument that a wordmark over a search box
  * is the shape everybody knows. True, and it costs the one thing the axis
  * bought: a name floating over a left-aligned document reads as a header from a
  * different page. The better answer is to give the left edge something worth
- * holding — the name, and then in a smaller face what the name is for.
- *
- * A stranger arriving here has never been told what this is. The page has a
- * box, a row of services and a brief, all of which are evidence and none of
- * which is a sentence. Four words next to the name is the whole explanation,
- * and it costs a line that was empty anyway. */
-.index-page .brand{width:100%;max-width:760px;text-align:left;
-  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+ * holding — the name, and then in a smaller face what the name is for. */
+.lbrand{font-size:2.5rem;font-weight:800;letter-spacing:-1px;margin-bottom:18px;
+  width:100%;text-align:left;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 /* Baseline-aligned, not centred on the cap height: the two sit on one line and
    the eye reads the smaller one as a continuation rather than as a label. */
 .btag{font-size:15px;font-weight:400;letter-spacing:0;color:#888}
@@ -295,39 +319,6 @@ func indexBody(viewerID string) string {
 .lcap{display:block;margin-top:6px;font-size:11px;text-transform:uppercase;
   letter-spacing:.08em;color:#bbb}
 </style>`
-}
-
-// topRight is the corner: the way in, or the way deeper in and the way out.
-//
-// Two links either side of the line. Signed out, Sign up and Log in, in that
-// order — the first is what a stranger on this page is deciding about and the
-// second is for somebody who already decided. Signed in, Home and Log out:
-// Home is the dashboard, which is where the rail of your inbox and agents and
-// balance lives, and Log out is here because this page has no rail to put it
-// in.
-//
-// Sign up only where signing up is a thing this instance allows. On an
-// invite-only one it is a door that opens onto a form asking for a code, which
-// is worse than no door.
-//
-// # No Install app
-//
-// It stood here on the argument that it is not a destination — the same page,
-// made resident — and that is still true and is not the point. The corner is
-// where somebody looks to find out what state they are in and what they can do
-// about it, and a third control that appears only on some browsers, saying
-// something about neither, made a two-word answer into a three-word one. The
-// page is still installable; browsers offer it in their own menus, which is
-// where a browser feature belongs.
-func topRight(viewerID string) string {
-	if viewerID != "" {
-		return `<a href="/home">Home</a><a href="/logout">Log out</a>`
-	}
-	signup := ""
-	if !auth.InviteOnly() {
-		signup = `<a href="/signup">Sign up</a>`
-	}
-	return signup + `<a href="/login">Log in</a>`
 }
 
 // today is what you are given for arriving, before you ask anything.
@@ -570,30 +561,6 @@ func price(v float64) string {
 		return fmt.Sprintf("$%.0f", v)
 	}
 	return fmt.Sprintf("$%.2f", v)
-}
-
-// workerScript registers the service worker on the front door.
-//
-// This was the tail of installScript, which has gone with the Install button.
-// The registration is not about that button and never was: a browser will not
-// offer to install a site that has no worker, the worker is what handles a push
-// notification when nothing is open, and the app shell registers it on every
-// other page. Without this the first page a visitor sees is the one page it is
-// never registered from — which is the exact bug the script was written to fix,
-// and which removing the button reintroduced. TestTheServiceWorkerStillRegisters
-// is what caught it.
-func workerScript() string {
-	return `<script>
-(function () {
-  if (!navigator.serviceWorker) return;
-  // updateViaCache:'none', the same as the app shell — see internal/app. The
-  // default consults the HTTP cache for the worker script, which is how a
-  // device ends up running a months-old copy.
-  navigator.serviceWorker.register('/mu.js', {scope: '/', updateViaCache: 'none'})
-    .then(function (reg) { if (reg && reg.update) reg.update(); })
-    .catch(function () {});
-})();
-</script>`
 }
 
 // directDoors is the row of doors directly under the box.

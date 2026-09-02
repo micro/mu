@@ -340,13 +340,30 @@ var Template = `
   </head>
   <body%s>
     <script>
-      // Restore the collapsed sidebar before anything paints. Doing this in a
-      // deferred script would show the sidebar for a frame and then yank it.
+      // The sidebar is out of the way until asked for, and the reader's own
+      // choice outranks that.
+      //
+      // It used to be the other way round — always there unless you had
+      // collapsed it — and the cost was not the width. It was that a rail of
+      // twenty destinations is the shape of a console for a system, and this is
+      // one assistant: the page you are on and the box you type in are the
+      // product, and the rail is how you get somewhere else on the rare
+      // occasion you want to. Permanently open, it also made a signed-in page
+      // and a signed-out one two different-looking products, because a stranger
+      // never had one.
+      //
+      // Absent means collapsed, so a first visit is the quiet version. An
+      // explicit '0' is somebody who opened it and wants it kept, which wins.
+      //
+      // Before anything paints: in a deferred script the sidebar shows for a
+      // frame and is then yanked.
       try {
-        if (localStorage.getItem('mu_nav_collapsed') === '1') {
+        if (localStorage.getItem('mu_nav_collapsed') !== '0') {
           document.body.classList.add('nav-collapsed');
         }
-      } catch (e) {}
+      } catch (e) {
+        document.body.classList.add('nav-collapsed');
+      }
     </script>
     <div id="head">
       <button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
@@ -1324,6 +1341,51 @@ func navPinned(acc *auth.Account) string {
 //
 // nav-username is a label mu.js corrects from the session: a page cached for
 // one viewer and served to another would otherwise greet them by the wrong name.
+// headCorner is the top right of every page: what this account has, or the way
+// to have one.
+//
+// Signed out it was empty, and the only way in was Login at the foot of the
+// sidebar. That was survivable while the sidebar was always open and is not now
+// that it is collapsed by default — a stranger on /contact or /archive would
+// have had to find a hamburger to find a way to sign in.
+//
+// It is also the half of "the signed-out pages do not match the signed-in ones"
+// that is real. The front page had a corner with Sign up and Log in in it and
+// every other page had nothing, so the two states of this product differed by
+// which page you happened to be on rather than by whether you had an account.
+// One corner, on every page, saying which of the two you are.
+func headCorner(acc *auth.Account) string {
+	if acc == nil {
+		// Sign up only where signing up is a thing this instance allows. On an
+		// invite-only one it is a door that opens onto a form asking for a
+		// code, which is worse than no door.
+		signup := ""
+		if !auth.InviteOnly() {
+			// First: it is what somebody without an account is deciding. Log in
+			// is for whoever already decided and knows where it goes.
+			signup = `<a href="/signup">Sign up</a>`
+		}
+		return `<div id="head-out">` + signup + `<a href="/login">Log in</a></div>`
+	}
+	// And who you are, which is the other half of the same answer.
+	//
+	// The corner held only Admin and the balance, and both are conditional —
+	// an ordinary account on an unmetered instance got an empty corner. That
+	// was survivable while the front door drew its own "Home · Log out" and the
+	// sidebar was always open; with one corner on every page and the rail
+	// collapsed, it meant signed out said "Sign up · Log in" and signed in said
+	// nothing at all. The one thing this corner exists to answer went
+	// unanswered in exactly the state you would check it in.
+	//
+	// The name, not Log out. Log out is in the rail under "Signed in as", which
+	// is where somebody goes to leave; the corner's job is to say which account
+	// this browser is, and on a shared or long-lived one that is a real
+	// question. It links to /account, which is where the answer leads.
+	return headAdmin(acc) + headBalance(acc) +
+		`<a id="head-me" href="/account" title="Your account"><span class="label">@` +
+		htmlpkg.EscapeString(acc.ID) + `</span></a>`
+}
+
 func navBottom(acc *auth.Account) string {
 	if acc == nil {
 		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
@@ -1667,7 +1729,7 @@ func ValidEmail(s string) bool {
 func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path string) string {
 	return fmt.Sprintf(Template,
 		lang, title, desc, bodyAttr,
-		headAdmin(acc)+headBalance(acc),
+		headCorner(acc),
 		navMain(acc),
 		navPinned(acc),
 		navBottom(acc),

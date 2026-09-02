@@ -115,21 +115,24 @@ func TestThereIsNoTagline(t *testing.T) {
 	}
 }
 
-// Install app is on the page, and hidden until the browser says it can.
+// The service worker registers on the front door.
 //
-// The browser decides whether a site can be installed and announces it by
-// firing beforeinstallprompt. Nothing on the page can ask. So the button ships
-// with the hidden attribute and the script reveals it — and the attribute has
-// to survive the stylesheet, because .lcta sets display:inline-block and an
-// author rule beats the browser's own [hidden]{display:none} whatever its
-// specificity. Without the override the button is on the page in Firefox, where
-// pressing it does nothing at all.
+// It used to be the front door's own script, because the front door had a shell
+// of its own — a separate HTML document that shared nothing with the app — and
+// the registration lived in the app's shell where this page never saw it. So
+// the first page a visitor met was the one page that could not be installed
+// from.
+//
+// The front door is a page in the app now, which fixes it by construction and
+// makes the property stronger than it was: every page registers, because there
+// is one shell. This still asks the front door specifically, because that is
+// the page the bug was on.
 func TestTheServiceWorkerStillRegistersWithNoInstallButton(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Index(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	if !strings.Contains(body, "serviceWorker.register('/mu.js'") {
+	if !strings.Contains(body, "navigator.serviceWorker.register(") {
 		t.Fatal("the signed-out page no longer registers the service worker, so the " +
 			"first page a visitor sees is the one page that cannot be installed " +
 			"from — the exact bug the script was written to fix")
@@ -137,7 +140,7 @@ func TestTheServiceWorkerStillRegistersWithNoInstallButton(t *testing.T) {
 	// Ordering, which is the whole hazard. The registration sat below a bail on
 	// the install button being absent, and the button has gone with the pitch it
 	// stood next to. A guard above it puts the bug back with nothing to notice.
-	reg := strings.Index(body, "serviceWorker.register('/mu.js'")
+	reg := strings.Index(body, "navigator.serviceWorker.register(")
 	if bail := strings.Index(body, "if (!btn) return"); bail >= 0 && bail < reg {
 		t.Error("the service worker registration is behind a check for an install " +
 			"button that is not on the page")

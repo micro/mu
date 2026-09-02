@@ -732,6 +732,48 @@ td {
   gap: 14px;
 }
 
+/* The signed-out corner: the way to have an account, on every page.
+
+   Two links and nothing else. It is the only thing in the chrome that says
+   which of the two states you are in, which is why it is not an icon — a
+   stranger reads words. Sign up is first because it is the decision being
+   made; Log in already knows where it is going. */
+#head-out {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+#head-out a {
+  color: #555;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+#head-out a:hover { color: #111; }
+
+/* Who this browser is signed in as. The same face as the signed-out pair
+   opposite it, because they are the two answers to one question. */
+#head-me {
+  color: #555;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#head-me:hover { color: #111; }
+/* At phone width #head-right is beside a centred brand and the two fight for
+   the middle, which is why Admin drops its label here too. The rail says
+   "Signed in as @you" a tap away. */
+@media only screen and (max-width: 600px) {
+  #head-me { display: none; }
+}
+
 /* Credit balance in the top bar, beside Tools. The only place it appears: it
    was in the sidebar too for a moment, and the same number twice on one screen
    reads as a mistake. The top bar is fixed, always visible, and the same on
@@ -2728,6 +2770,26 @@ a.highlight {
   }
   body.nav-collapsed #nav-container ~ #content {
     padding-left: 40px;
+  }
+
+  /* With no rail, the page does not hug the edge it was aligned to.
+
+     Everything here is left-aligned against the sidebar, which is what a
+     sidebar is for. Collapsed, that leaves a 760px column against the left of a
+     1280px window with half the screen empty beside it — the page still laid
+     out around something that is not there.
+
+     So the whole content box narrows and centres, and every page moves as one:
+     the title and what is under it keep the single edge they share, which is
+     the thing that goes wrong if you centre the column and leave the heading
+     behind. A page that is genuinely wide — the API reference, a grid of cards
+     — still gets 1000px, which is more than any of them use.
+
+     Not the reading measure. Capping this at 760 would be deciding for every
+     page at once what only a page knows, and the ones with a grid or two panes
+     in them would be squeezed by a rule written for prose. */
+  body.nav-collapsed #nav-container ~ #content {
+    max-width: 1080px;
   }
 }
 
