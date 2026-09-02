@@ -1,13 +1,15 @@
 # mu
 
-A home for agents, tools and services
+A personal assistant
 
 ## Overview
 
-We're building services that operate as the building blocks for agents. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive become tools for agents to use.
+We're building a personal assistant with access to the real world. Services operate as the building blocks for agents. 
+Mail, chat, news, video, search, etc. Any data is archived locally so it's all searchable and becomes contextual memory. 
+Services and the archive become tools for the assistant to use.
 
-Using agents has also been a very fragmented experience. Communication here is unified with everything going to one inbox, 
-whether it's mail, chat, notes, tasks, etc. Do it all and keep track of it from one place. 
+Using agents has become a very fragmented experience. Communication here is unified with everything going to one inbox, 
+whether it's mail, chat, sms, whatsapp, notes, tasks, etc. Do it all and keep track of it from one place. 
 
 ## Features
 
@@ -16,7 +18,8 @@ What's included
 - **Services** - 30+ services including news, mail, markets, video, etc accessible via API, CLI or the Web.
 - **Agents** - Define an agent by name, prompt and give it specific tools, then chat with it via the web or api.
 - **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents or reply directly.
-
+- **Clients** - Web, sms, email, whatsapp and more are all included by default. You may need to set it up.
+- 
 ## Install
 
 Quick install guide for self hosting (let us know if it's broken).
