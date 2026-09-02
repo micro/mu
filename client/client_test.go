@@ -10,25 +10,29 @@ package client
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
 
 // Nothing is offered that is not configured.
 //
-// With no Twilio account and no mail domain there is one client — the web, the
-// one that needs no configuration and cannot be switched off.
-func TestAnUnconfiguredInstanceOffersOnlyTheWeb(t *testing.T) {
+// With no Twilio account and no mail domain, what is left is the two that need
+// no configuration and cannot be switched off: the web, and the command line
+// against it. Everything else is a number or an address somebody has to set up,
+// and printing one that does not exist sends a person to text nothing.
+func TestAnUnconfiguredInstanceOffersOnlyWhatNeedsNoSetup(t *testing.T) {
 	for _, k := range []string{"TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM",
 		"TWILIO_WHATSAPP_FROM", "TWILIO_MESSAGING_SERVICE_SID", "MAIL_DOMAIN", "MU_DOMAIN"} {
 		t.Setenv(k, "")
 	}
-	got := All()
-	if len(got) != 1 {
-		t.Fatalf("an unconfigured instance offers %d ways in: %+v", len(got), got)
+	var labels []string
+	for _, c := range All() {
+		labels = append(labels, c.Label)
 	}
-	if got[0].Label != "Web" {
-		t.Errorf("the one client on a bare instance is %q", got[0].Label)
+	if !slices.Equal(labels, []string{"Web", "CLI"}) {
+		t.Errorf("a bare instance offers %v, want [Web CLI] — anything else is a\n"+
+			"door that is not there", labels)
 	}
 }
 

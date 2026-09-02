@@ -319,6 +319,25 @@ func torFooterLink() string {
 	return ""
 }
 
+// Why the sidebar starts out of the way, and why this note is out here.
+//
+// It was the other way round — always there unless you had collapsed it — and
+// the cost was not the width. A rail of twenty destinations is the shape of a
+// console for a system, and this is one assistant: the page you are on and the
+// box you type in are the product, and the rail is how you get somewhere else
+// on the rare occasion you want to. Permanently open it also made a signed-in
+// page and a signed-out one two different-looking products, because a stranger
+// never had one.
+//
+// So absent means collapsed and a first visit is the quiet version; an explicit
+// '0' is somebody who opened it and wants it kept, which wins.
+//
+// This note is here rather than in the script it describes, because everything
+// inside Template is served to every visitor on every page. Fifteen lines of
+// reasoning about a design decision is not something to put on the wire a
+// million times. See home/index.go, which learned the same lesson about a
+// comment inside a <style> block.
+
 var Template = `
 <html lang="%s">
   <head>
@@ -350,23 +369,8 @@ var Template = `
   </head>
   <body%s>
     <script>
-      // The sidebar is out of the way until asked for, and the reader's own
-      // choice outranks that.
-      //
-      // It used to be the other way round — always there unless you had
-      // collapsed it — and the cost was not the width. It was that a rail of
-      // twenty destinations is the shape of a console for a system, and this is
-      // one assistant: the page you are on and the box you type in are the
-      // product, and the rail is how you get somewhere else on the rare
-      // occasion you want to. Permanently open, it also made a signed-in page
-      // and a signed-out one two different-looking products, because a stranger
-      // never had one.
-      //
-      // Absent means collapsed, so a first visit is the quiet version. An
-      // explicit '0' is somebody who opened it and wants it kept, which wins.
-      //
-      // Before anything paints: in a deferred script the sidebar shows for a
-      // frame and is then yanked.
+      // Absent means collapsed; an explicit '0' is the reader's own choice
+      // and wins. Runs before paint. Reasoning: the note above Template.
       try {
         if (localStorage.getItem('mu_nav_collapsed') !== '0') {
           document.body.classList.add('nav-collapsed');

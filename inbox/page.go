@@ -180,8 +180,32 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 		b.WriteString(`<p class="ib-sent">Sent to ` + html.EscapeString(trimTo(to, 80)) +
 			`. Their reply lands on the same conversation.</p>`)
 	}
+	// Search first, because it is the one thing on this page somebody arrives
+	// already knowing they want. It sat under two rows of filter chips, which
+	// is the order the page was built in rather than the order it is read in —
+	// a mailbox you have to scroll past furniture to search is a log with a box
+	// at the bottom.
+	//
+	// From the body, never the URL — see searchBox. PostFormValue rather than
+	// FormValue: FormValue reads the query too, so the form could post while a
+	// hand-made ?q= went on working, which is the leak still open and nothing
+	// looking at it.
+	q := strings.TrimSpace(r.PostFormValue("q"))
+	b.WriteString(searchBox(box, q, auth.CSRFToken(r)))
+
+	// The two filters, on one row.
+	//
+	// They were two labelled rows stacked — "Mailboxes" over one set of chips,
+	// "Type" over another — which is two headings and two boxes of chrome
+	// between the address and the mail, for two questions that are each one
+	// click. They still answer different questions and are still not merged
+	// into one set, because a combined row would offer combinations that are
+	// always empty. They just sit on one line with a rule between them, which
+	// is enough to say they are two things.
+	b.WriteString(`<div class="ib-filters">`)
 	b.WriteString(boxes(accountID, all, box))
 	b.WriteString(kinds(accountID, kind))
+	b.WriteString(`</div>`)
 
 	// What is waiting to be let in, above the mailbox and only when there is
 	// some. A held conversation is deliberately not in the list below, so
@@ -189,19 +213,6 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	// dropping it would be invisible from here.
 	b.WriteString(waiting(r, accountID))
 
-	// Search, over everything in the record rather than over the page.
-	//
-	// The inbox is where the conversations are, on every channel there is, and
-	// there was no way to look for one. /recall could — thread.Search has been
-	// there the whole time, exported and complete — but you had to know the
-	// page existed and that it was the same store, which is two facts nothing
-	// on this screen tells you. A mailbox you cannot search is a log.
-	// From the body, never the URL — see searchBox. PostFormValue rather than
-	// FormValue: FormValue reads the query too, so the form could post while a
-	// hand-made ?q= went on working, which is the leak still open and nothing
-	// looking at it.
-	q := strings.TrimSpace(r.PostFormValue("q"))
-	b.WriteString(searchBox(box, q, auth.CSRFToken(r)))
 	if q != "" {
 		found(&b, r, accountID, box, q)
 		b.WriteString(`</div>`)
@@ -525,15 +536,16 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 		return app.PillLink(label, boxPath(box), strings.EqualFold(box, current))
 	}
 
-	// Say what the row is.
+	// No heading over the row.
 	//
-	// It was a row of names with nothing above it, and a name on a chip does
-	// not say whether it filters, navigates or addresses. These are the account's
-	// mailboxes — one per agent, each with its own address — so the word is
-	// Mailboxes, which is what the rail already calls them (see Mailboxes) and
-	// what a person coming from any mail client already knows.
+	// It had one — "Mailboxes" — added because a row of names with nothing
+	// above it does not say whether it filters, navigates or addresses. That
+	// was true of a row on its own and stopped being true when the row moved
+	// under the search box and next to the other filter: a chip row directly
+	// below a search field, beside a second chip row, is read as a filter
+	// without being told. Two headings for two one-line rows was more chrome
+	// than the thing it labelled. "All" is the first chip and says the axis.
 	var b strings.Builder
-	b.WriteString(`<p class="home-section ib-boxes-head"><small>Mailboxes</small></p>`)
 	b.WriteString(`<div class="ib-boxes">` + chip("All", ""))
 	for _, a := range agents {
 		if a.Tag == "" {

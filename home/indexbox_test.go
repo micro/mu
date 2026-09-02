@@ -15,7 +15,7 @@ import (
 )
 
 func TestTheFrontPageUsesTheOneSearchBox(t *testing.T) {
-	got := indexBody("")
+	got := indexBody()
 
 	if !strings.Contains(got, `id="mu-chat-input"`) && !strings.Contains(got, `id="mu-search-input"`) {
 		t.Errorf("the front page is not using the shared component:\n%s", got)

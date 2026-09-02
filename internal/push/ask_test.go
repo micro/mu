@@ -62,13 +62,21 @@ func TestTheOfferCarriesEverythingItNeeds(t *testing.T) {
 			"notifications is asked to turn them on")
 	}
 
-	// Two labels, and only two. It shipped as a banner with a sentence, a
-	// filled button and a "Not now" — reported as "way too big". A control is
-	// smaller than the thing it controls, and "Turn on notifications" already
-	// says what pressing it does, so the explainer and the dismissal both went:
-	// a button at the end of a row is not in anybody's way, which is what the
-	// dismissal existed to fix.
-	if !strings.Contains(got, ">Turn on notifications</button>") {
+	// A noun and a verb. It shipped as a banner with a sentence, a filled
+	// button and a "Not now" — reported as "way too big" — so the explainer and
+	// the dismissal went, on the argument that "Turn on notifications" already
+	// says what pressing it does. Which held for that label and not for its
+	// pair: once a device was subscribed the row read "Turn off · On for this
+	// device" and named the thing nowhere.
+	//
+	// So the label names what it controls and the button says what pressing it
+	// does. A control is still smaller than the thing it controls; it just has
+	// to say which thing.
+	if !strings.Contains(got, ">Notifications</span>") {
+		t.Error("the control does not name what it controls, so in the state you\n" +
+			"spend all your time in it reads \"Turn off\" beside \"On for this device\"")
+	}
+	if !strings.Contains(got, ">Turn on</button>") {
 		t.Error("nothing says how to turn notifications on")
 	}
 	if !strings.Contains(got, ">Turn off</button>") {

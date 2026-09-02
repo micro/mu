@@ -46,18 +46,19 @@ func TestTheFrontDoorHangsOffOneEdge(t *testing.T) {
 	// is a page in the app, and the app's header carries its own "Mu" which
 	// .page-front hides — so it has to be given both rather than inherit them.
 	// Without that the page's largest element is the one thing not on the axis.
-	if !strings.Contains(src, "text-align:left;display:flex;align-items:baseline") {
+	if !strings.Contains(src, ".index-page .brand{width:100%;max-width:760px;text-align:left;") {
 		t.Error("the wordmark is not aligned to the block, so the biggest thing on\n" +
 			"the page sits on a different edge from everything under it")
 	}
-	// And the chrome does not say the name a second time, two centimetres above
-	// it. An <h1> reading "Mu" over a wordmark reading "Mu" is the same word
-	// three times counting the browser tab.
-	if !strings.Contains(src, "body.page-front #brand,\nbody.page-front #page-title{display:none}") {
-		t.Error("the shell still draws its own wordmark and page title on the front\n" +
-			"door, which is the name twice on one screen")
+	// And on a phone it centres, because there the argument reverses: at 390px
+	// there is no second column and nothing to line up against, so the edge
+	// stops doing any work and a heading jammed into the corner is all that is
+	// left. Only the wordmark — the brief under it is prose, and prose is read
+	// from a left edge on any screen.
+	if !strings.Contains(src, ".index-page .brand{justify-content:center") {
+		t.Error("the wordmark does not centre on a phone, where the axis it is\n" +
+			"aligned to does not exist")
 	}
-
 	// And it says what this is. A stranger arriving here has never been told:
 	// the box, the row of services and the brief are all evidence, and none of
 	// them is a sentence.
@@ -76,7 +77,7 @@ func TestTheFrontDoorHangsOffOneEdge(t *testing.T) {
 func TestTheBoxsFurnitureIsNotCentredHere(t *testing.T) {
 	// The class on the element, not the word: the component's own stylesheet
 	// used to name it, and a substring match was true either way.
-	if strings.Contains(indexBody(""), `class="mu-chat-centred"`) {
+	if strings.Contains(indexBody(), `class="mu-chat-centred"`) {
 		t.Error("the doors and options rows are centred while everything else on\n" +
 			"the page hangs off the left edge")
 	}

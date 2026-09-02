@@ -1,9 +1,9 @@
 {
   "name": "Mu",
   "short_name": "Mu",
-  "description": "A personal agent. Chat with it here or write to it from anywhere, with news, web search, mail, markets, weather, places and storage behind it.",
+  "description": "A personal assistant. Ask it here, or write to it by mail, text or WhatsApp — with news, web search, your mail, markets, weather, places and storage behind it.",
   "scope": "/",
-  "start_url": "/",
+  "start_url": "/home?from=app",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "display": "standalone", 

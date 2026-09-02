@@ -109,16 +109,32 @@ func All() []Client {
 				Href: "mailto:" + addr, Note: "write to it and it writes back"})
 		}
 	}
+	// The command line, which was forgotten and is a real way in.
+	//
+	// It has been shippable the whole time — `mu login` then `mu ask` — and it
+	// appeared on no page, so the one client with actual documentation was the
+	// one nobody was told about. That is the lesson this list exists to stop:
+	// a way in that nothing enumerates is a way in that quietly stops being
+	// maintained.
+	out = append(out, Client{ID: thread.CLIClient, Label: "CLI",
+		Address: `mu ask "…"`, Href: "/api",
+		Note: "the same agent from a terminal, after mu login"})
+
 	// The API, which is what a program arrives on.
 	//
 	// Not "curl". curl is one program that speaks HTTP, the way Thunderbird is
-	// one program that speaks IMAP — naming the client after a tool somebody
-	// might use would be the only row here that does. The address is a command
-	// because that is the shortest true thing to show somebody, and the label
-	// is the protocol.
+	// one program that speaks IMAP — naming the way in after a tool somebody
+	// might use would be the only row here that does.
+	//
+	// The address is /agent/<name> and not /api/v1/…, and that is not a slip.
+	// /api/v1/<service>/<method> is the door onto services — the things the
+	// agent calls. The agent is not one of them; it is what does the calling,
+	// so it has a door of its own. Which is defensible and is also the reason
+	// somebody reading a card that says "API" goes to /api and does not find
+	// this. Both doors belong on that page.
 	if host != "" {
-		out = append(out, Client{Label: "API", Address: "curl https://" + host + "/agent/micro",
-			Href: "/api", Note: "POST {\"text\": \"…\"} and read the answer"})
+		out = append(out, Client{Label: "API", Address: "POST https://" + host + "/agent/micro",
+			Href: "/api", Note: `{"text": "…"} with a token, and read the answer`})
 	}
 	return out
 }

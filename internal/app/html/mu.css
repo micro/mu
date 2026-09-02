@@ -6075,7 +6075,33 @@ button.pill:hover {
   gap: 12px;
   flex-wrap: wrap;
 }
-.ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
+.ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 }
+
+/* The two filters on one row: which mailbox, and what sort of thing.
+
+   They were two labelled rows stacked between the address and the mail — two
+   headings and two boxes of chrome for two questions that are each one click.
+   They are still two sets rather than one, because a merged row would offer
+   combinations that are always empty; the rule between them is what says so.
+
+   It wraps on a phone, where the two sets stack and the rule turns into the
+   space above the second one — a vertical rule on a wrapped flex row draws in
+   the wrong place, so there is not one. */
+.ib-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 14px }
+.ib-filters .ib-kinds { position: relative; padding-left: 14px }
+.ib-filters .ib-kinds::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 16px;
+  border-left: 1px solid var(--border, #e5e5e5);
+}
+@media only screen and (max-width: 600px) {
+  .ib-filters .ib-kinds { padding-left: 0 }
+  .ib-filters .ib-kinds::before { display: none }
+}
 /* What is being written, above the compose form. See inbox.newKinds.
    The same pill row the mailbox and kind filters use, because picking what
    this is and picking what to look at are the same gesture — and a page that

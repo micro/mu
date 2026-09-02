@@ -266,6 +266,28 @@ func ForceRefresh() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// An installed app opens on the app, not on a pitch.
+	//
+	// The manifest's start_url was "/", so tapping the icon on a home screen
+	// opened the landing page — a wordmark, a tagline explaining what this is,
+	// and a marketing footer, inside a window with no browser chrome. That is
+	// the worst place it can appear: somebody who installed this has decided,
+	// and an installed app that opens on an argument for installing it reads as
+	// the wrong app having opened.
+	//
+	// start_url is /home?from=app now. Signed in that is the app, which is the
+	// whole point. Signed out it is a public page with nothing of yours on it,
+	// which is right in a browser and wrong in an app window — so from the app,
+	// signed out, the answer is the way in. The flag is on the URL because it
+	// is the only way the server can know: display-mode is a fact the browser
+	// has and does not send.
+	if r.URL.Query().Get("from") == "app" {
+		if _, acc := auth.TrySession(r); acc == nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+	}
+
 	// JSON endpoint for auto-refresh polling
 	if app.WantsJSON(r) {
 		RefreshCards()

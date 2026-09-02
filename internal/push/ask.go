@@ -68,8 +68,22 @@ func Ask(r *http.Request, accountID string) string {
 		return ""
 	}
 	return `<span class="push-ask" id="push-ask" hidden>` +
+		// The noun first, then the verb.
+		//
+		// It was the button alone — "Turn on notifications", and once a device
+		// was subscribed just "Turn off", with "On for this device." written
+		// beside it. So in the state you spend all your time in, the row read
+		// "Turn off · On for this device" and named the thing nowhere. A
+		// control whose label only says what pressing it does is fine while
+		// the label is a whole sentence and stops being fine the moment it
+		// shortens.
+		//
+		// So the label is what it controls, and the button is what pressing it
+		// does. That also lets both buttons be two words instead of one being
+		// four, which is what made the pair look like two different controls.
+		`<span class="push-what">Notifications</span>` +
 		`<button class="btn-quiet push-ask-go" id="push-go" type="button">` +
-		`Turn on notifications</button>` +
+		`Turn on</button>` +
 		`<button class="btn-quiet push-ask-go d-none" id="push-off" type="button">` +
 		`Turn off</button>` +
 		// Empty, so it takes no room until there is something to say — and not
@@ -94,6 +108,9 @@ const askCSS = `<style>
 .push-ask{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
 .push-ask[hidden]{display:none}
 .push-ask .push-state{font-size:12px;color:var(--text-muted,#888)}
+/* The noun, in the page's ordinary voice — this is a label rather than a
+   heading, and it sits on the row with the button it names. */
+.push-ask .push-what{font-size:13px;color:var(--text-muted,#888)}
 .push-ask-go{font-size:13px}
 </style>`
 

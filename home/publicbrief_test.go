@@ -120,60 +120,76 @@ func TestHomesBriefIsMarkedToo(t *testing.T) {
 	}
 }
 
-// One front door, in two states.
+// Two pages, for two audiences.
 //
-// Signing in used to move you to /home, so the page a person chose to visit was
-// replaced by a different one the moment they had an account — and a question
-// half-typed in the box did not survive the move. This is the same page either
-// way; what changes is the corner and the brief.
-func TestTheFrontDoorIsTheSamePageSignedInOrOut(t *testing.T) {
-	out := indexBody("")
-	in := indexBody("somebody")
-
-	for _, want := range []string{"mu-chat-input", "mu-chat-form"} {
-		if !strings.Contains(out, want) || !strings.Contains(in, want) {
-			t.Errorf("%q is not on both states of the front door", want)
+// This went round twice. First the landing was one page in two states, on the
+// argument that signing in should not move you somewhere else and a question
+// half-typed in the box should survive it. Both true, and both smaller than
+// what they cost: a landing page is written for somebody deciding whether they
+// want this, and serving it to somebody who already has an account makes the
+// app's front door an argument aimed at a stranger. Then the landing was folded
+// into the app shell instead, which put a hamburger over a wordmark and, on a
+// phone, a tab bar under it.
+//
+// The app has Home in its tab bar. You press Home and you know where you are.
+// So: signed out, a landing; signed in, /home — which has the rail, the tabs,
+// the inbox and the same box to type in.
+func TestSigningInLeavesTheLanding(t *testing.T) {
+	src, err := os.ReadFile("index.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), `http.Redirect(w, r, "/home", http.StatusSeeOther)`) {
+		t.Error("the landing page is served to people who are signed in, so the\n" +
+			"app's front door is a pitch aimed at somebody who already bought")
+	}
+	// And it is not a dashboard either. The moment this grows a column of your
+	// inbox and your agents it is /home with worse navigation.
+	body := indexBody()
+	for _, dashboard := range []string{"home-cards", "home-rail", "home-main"} {
+		if strings.Contains(body, dashboard) {
+			t.Errorf("%q is on the landing — that is the dashboard, and it lives at /home", dashboard)
 		}
 	}
-	// And no rail. The moment this grows a column of your inbox and your
-	// agents it is /home with worse navigation, and there is no reason for two
-	// of those.
-	for _, dashboard := range []string{"home-cards", "home-rail", "home-main"} {
-		if strings.Contains(in, dashboard) {
-			t.Errorf("%q is on the front door — that is the dashboard, and it lives at /home", dashboard)
+	// The box is still the thing on it.
+	for _, want := range []string{"mu-chat-input", "mu-chat-form"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("%q is not on the landing", want)
 		}
 	}
 }
 
-// The corner is the shell's now, and this page gets it like every other.
+// The front door has no rail, and does not grow one.
 //
-// It used to be drawn here — home.topRight — and only here, which is what "the
-// signed-out pages do not match the signed-in ones" was: the front door had a
-// corner saying which state you were in and no other page did. The assertions
-// about what it contains moved to internal/app with the function; what is left
-// to hold here is that this page goes through the shell that draws it, rather
-// than a second document of its own.
-func TestTheFrontDoorIsDrawnByTheAppShell(t *testing.T) {
+// It was folded into the app shell for an afternoon, on a misreading: the
+// complaint was that logged-out and logged-in did not match "on any pages that
+// use the header and sidebar", and this is not one of those pages. What came
+// back was a hamburger over a landing page and, on a phone, a tab bar under it
+// — the app wearing a landing page's clothes.
+//
+// The corner is still the thing that says which state you are in. Here it is
+// this page's own, because this page has no rail to put a way out in; on every
+// app page it is the shell's. See app.headCorner.
+func TestTheFrontDoorIsItsOwnPage(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Index(rec, httptest.NewRequest("GET", "/", nil))
 	page := rec.Body.String()
 
-	for _, want := range []struct{ what, snippet string }{
-		{"the shell's corner", `id="head-out"`},
-		{"the shell's header", `id="head"`},
-		{"the way to the sidebar", `id="menu-toggle"`},
-		{"the app stylesheet", "/mu.css"},
+	for _, chrome := range []struct{ what, snippet string }{
+		{"the app's rail", `id="nav-container"`},
+		{"the hamburger", `id="menu-toggle"`},
+		{"the phone tab bar", `id="tabs"`},
+		{"a page title", `id="page-title"`},
 	} {
-		if !strings.Contains(page, want.snippet) {
-			t.Errorf("the front door has no %s (looked for %q) — it is rendering\n"+
-				"a document of its own again, which is the two-front-doors bug",
-				want.what, want.snippet)
+		if strings.Contains(page, chrome.snippet) {
+			t.Errorf("the front door carries %s (%s) — that is the app shell, and\n"+
+				"a landing page with a hamburger on it is the app in a costume",
+				chrome.what, chrome.snippet)
 		}
 	}
-	// And it is marked as the page that hides the duplicate wordmark.
-	if !strings.Contains(page, `class="page-front"`) {
-		t.Error("the front door is not marked page-front, so the shell draws its\n" +
-			"own Mu and an <h1> reading Mu above the wordmark")
+	// And it still says which state you are in.
+	if !strings.Contains(page, `href="/login"`) {
+		t.Error("signed out, the front door offers no way in")
 	}
 }
 
