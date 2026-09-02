@@ -60,8 +60,24 @@ func TestTheRowsOffThirdPartiesAreEscaped(t *testing.T) {
 	if got := marketsRow(); strings.Contains(got, "<script") {
 		t.Errorf("the markets line went onto the page as markup: %q", got)
 	}
-	if got := headlinesRow(); strings.Contains(got, "<script") {
-		t.Errorf("a headline went onto the page as markup: %q", got)
+}
+
+// The headlines are not on the front door, because the brief is written from
+// them.
+//
+// agent/brief reads the headlines and writes a sentence about the day — see its
+// sources — so printing both put the working above the answer, and the answer
+// is the better of the two because somebody judged it. A front page that prints
+// its own source material is a feed with a summary at the top.
+func TestTheFrontDoorDoesNotPrintTheBriefsSources(t *testing.T) {
+	src, err := os.ReadFile("index.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(src), "news.GetFeed()") {
+		t.Error("the front door reads the news feed again. The brief is written\n" +
+			"from it, so this is the same day twice — the summary and the\n" +
+			"material it summarises, one above the other.")
 	}
 }
 

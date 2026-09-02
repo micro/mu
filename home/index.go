@@ -13,7 +13,6 @@ import (
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/service/markets"
-	"mu/service/news"
 	"mu/service/weather"
 )
 
@@ -197,9 +196,13 @@ func indexBody(viewerID string) string {
 			// Everything on this page is centred, including the two rows under
 			// the box. See ChatConfig.Centred.
 			Centred: true,
-			// Both only mean something to somebody who can get an answer back.
+			// The picker chooses among your agents, and a signed-out visitor has
+			// none — an empty select is a control with nothing behind it.
 			OfferAgentPicker: viewerID != "",
-			Speak:            viewerID != "",
+			// Speak is not gated. A guest gets a real answer here — see
+			// agent/guest.go — so the control that reads one aloud belongs to
+			// anybody who can get one, which is everybody on this page.
+			Speak: true,
 		}) +
 		today(viewerID) + `
 </div>
@@ -236,13 +239,6 @@ func indexBody(viewerID string) string {
    went with them when those became a list, leaving the markets row joining
    "-2.1%" to "Tesla" with an unspaced dot. */
 .lsep{margin:0 7px;color:#ccc}
-/* Headlines are links out, and look like the sentences they are rather than
-   like a list of results. */
-.lnews{list-style:none;padding:0;font-size:13px;color:#888}
-.lnews li{margin:0 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lnews li:last-child{margin-bottom:0}
-.lnews a{color:#666;text-decoration:none}
-.lnews a:hover{text-decoration:underline}
 </style>`
 }
 
@@ -286,11 +282,19 @@ func topRight(viewerID string) string {
 // The page argued that you can get what you need and leave, and made the
 // argument with a text box — which is a promise a stranger has to spend
 // something to test. This is the claim demonstrated instead: the date, what
-// happened, where the markets went, three headlines. Read in twenty seconds,
-// finished, and then you are done. The box is there for the times that is not
-// enough.
+// happened, where the markets went. Read in fifteen seconds, finished, and then
+// you are done. The box is there for the times that is not enough.
 //
-// # Why it is four lines and not four cards
+// # And not the headlines
+//
+// Three of them were here, under their own heading, and they were the brief
+// again. agent/brief writes that sentence *from* the headlines — see its
+// sources — so the page was showing the working and the answer, one above the
+// other, and the answer is the better of the two because somebody judged it.
+// A front page that prints its own source material is a feed with a summary at
+// the top of it.
+//
+// # Why it is rows and not cards
 //
 // Because the thing being avoided is a portal. Cards are the dashboard idiom
 // and /home is the dashboard: it has a rail of your inbox, your agents and your
@@ -319,7 +323,6 @@ func today(viewerID string) string {
 	rows := []string{
 		briefRow(viewerID),
 		group("Markets", marketsRow()),
-		group("Headlines", headlinesRow()),
 	}
 
 	var b strings.Builder
@@ -485,57 +488,6 @@ func price(v float64) string {
 		return fmt.Sprintf("$%.0f", v)
 	}
 	return fmt.Sprintf("$%.2f", v)
-}
-
-// headlinesRow is three headlines, as links out.
-//
-// Three, because the page has to end. There are hundreds behind /news and the
-// whole design of this page is that it is not a way into them — somebody who
-// wants the rest has a link, and somebody who does not has read the day in
-// three lines and can leave.
-//
-// One per topic, not the newest three. The feeds run hot on whatever is moving,
-// so the three most recent stories were three stories about the same thing:
-// "Solana, ether, xrp lead majors slide", "Bitcoin withstands $90 oil". Three
-// headlines from one subject is one headline, printed three times, and it makes
-// a front page look like a section front.
-//
-// Straight to the source rather than to a reader page here. This is a front
-// door, and keeping somebody on the site to read a story they could read at the
-// publisher is the engagement move this product exists to not make.
-func headlinesRow() string {
-	var links []string
-	seen := map[string]bool{}
-
-	// Two passes. The first takes the newest story from each subject, which is
-	// the spread; the second fills up from whatever is left, so a day with only
-	// one subject in the feed still gets three lines rather than one.
-	for _, pass := range []bool{true, false} {
-		for _, p := range news.GetFeed() {
-			if len(links) == 3 {
-				break
-			}
-			if p == nil || strings.TrimSpace(p.Title) == "" || strings.TrimSpace(p.URL) == "" {
-				continue
-			}
-			topic := strings.ToLower(strings.TrimSpace(p.Category))
-			if pass {
-				if topic == "" || seen[topic] {
-					continue
-				}
-				seen[topic] = true
-			} else if seen["url:"+p.URL] {
-				continue
-			}
-			seen["url:"+p.URL] = true
-			links = append(links, `<a href="`+html.EscapeString(p.URL)+
-				`" rel="noopener noreferrer">`+html.EscapeString(p.Title)+`</a>`)
-		}
-	}
-	if len(links) == 0 {
-		return ""
-	}
-	return `<ul class="lrow lnews"><li>` + strings.Join(links, `</li><li>`) + `</li></ul>`
 }
 
 // workerScript registers the service worker on the front door.
