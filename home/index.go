@@ -86,9 +86,9 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// somewhere, and it is one link in the corner rather than a rail down
 		// the side. The front door stays a front door.
 		TopRight: topRight(viewerID),
-		Body:   body,
-		Footer: app.FooterLinks(),
-		Tail:   installScript(),
+		Body:     body,
+		Footer:   app.FooterLinks(),
+		Tail:     installScript(),
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
