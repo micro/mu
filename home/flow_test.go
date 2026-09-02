@@ -161,7 +161,10 @@ func TestTheServiceWorkerStillRegistersWithNoInstallButton(t *testing.T) {
 // both of which the footer links. So the property left to hold is that the
 // footer still does.
 func TestTheFooterCarriesTheDestinations(t *testing.T) {
-	for _, want := range []string{`href="/tools"`, `href="/api"`} {
+	// Tools was here and is not: a tool is a property of something rather than
+	// a destination, which is why it left the sidebar too. /api is the door a
+	// program arrives at and links the catalogue.
+	for _, want := range []string{`href="/api"`, `href="/about"`} {
 		if !strings.Contains(app.FooterLinks(), want) {
 			t.Errorf("the footer does not carry %s", want)
 		}

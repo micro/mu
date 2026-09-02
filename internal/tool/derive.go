@@ -2,11 +2,22 @@ package tool
 
 // Package tool builds the catalogue an agent calls.
 //
-// It sits at the top level because it is a staple: Tools is one of the two
-// doors onto the services, and the thing behind that door has to be somewhere a
-// person can find. It used to be built inside internal/api, which is the MCP
-// protocol server — JSON-RPC framing, the /mcp endpoint, the payment gate — and
-// that had a consequence nobody chose.
+// It sat at the top level on the argument that Tools is one of the two doors
+// onto the services and a staple of the product. That stopped being true when
+// Tools came out of the sidebar: a tool is not a destination, it is a property
+// of something — an agent's tools are what it may reach for, a service's are
+// its methods — and this package does not model a noun anybody meets. It
+// derives one list from another. That is machinery, and machinery lives under
+// internal/.
+//
+// Nothing about the constraint below changed with the move, because the
+// constraint was never about which directory this is in. It was about which
+// direction the import goes: main calls Load with the registered Specs and
+// hands the result down, so this never imports a service.
+//
+// It used to be built inside internal/api, which is the MCP protocol server —
+// JSON-RPC framing, the /mcp endpoint, the payment gate — and that had a
+// consequence nobody chose.
 //
 // internal/ may not import the product. So a tool registered there could not
 // call a service; it could only name a URL, and calling it synthesised an HTTP

@@ -8,7 +8,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/service"
-	"mu/tool"
+	"mu/internal/tool"
 )
 
 // The server half of the binary.

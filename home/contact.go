@@ -25,99 +25,20 @@ package home
 // package may, which is the same reason the doors row is built here from
 // service.Guest.
 //
-// So Clients() is the list, and it answers for this instance rather than in
-// general: a channel with nothing configured is not offered. An instance with no
-// Twilio account does not tell people to text a number that does not exist, and
-// that is the whole of why this is computed rather than written down.
-//
-// If a second consumer appears — the sidebar, the contacts page — this lifts
-// into its own package. One consumer does not need one.
+// So the list lives in mu/client, which is the package that names the other
+// half of what Go Micro started with: a service is a name with registered
+// handlers, and a client is a way to reach one. This page renders it.
 
 import (
 	"html"
 	"net/http"
 	"strings"
 
+	"mu/client"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/settings"
-	"mu/internal/thread"
-	"mu/service/mail"
 	"mu/service/sms"
 )
-
-// A Client is one way in, and this instance's address on it.
-type Client struct {
-	// ID is the name the record files a conversation under, so what this page
-	// offers and what /recall shows you are the same word. Empty for the two
-	// that are not conversations — the API is a door onto every client rather
-	// than one of them.
-	ID string
-	// Label is what it is called out loud.
-	Label string
-	// Address is where to send something: a number, an address, a URL, a
-	// command. The only field somebody actually needs.
-	Address string
-	// Href is where the label goes when it can be clicked — sms:, mailto:, a
-	// path. Empty where the address is not a link.
-	Href string
-	// Note is the one thing you have to know that the address does not say.
-	Note string
-}
-
-// Clients is every way to reach this instance's agent, in the order somebody
-// meets them.
-//
-// Only the ones that work. An instance with no Twilio account has no number,
-// and a page that prints one anyway is worse than a page with four rows — it
-// sends somebody to text nothing and reads as broken rather than unconfigured.
-func Clients() []Client {
-	var out []Client
-
-	host := strings.TrimSpace(settings.Get("MU_DOMAIN"))
-	host = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(host, "https://"), "http://"), "/")
-
-	// The web, always, because you are looking at it. It is the only client
-	// that needs no configuration and the only one that cannot be switched off.
-	web := Client{ID: thread.WebClient, Label: "Web", Address: host, Href: "/",
-		Note: "the box on the front page"}
-	if host == "" {
-		web.Address = "this page"
-	}
-	out = append(out, web)
-
-	if n := sms.From(); n != "" && sms.Configured() {
-		out = append(out, Client{ID: thread.SMSClient, Label: "SMS", Address: n,
-			Href: "sms:" + n, Note: "text it like a person"})
-	}
-	if w := sms.SendersFor(sms.ChannelWhatsApp); len(w) > 0 && sms.ConfiguredFor(sms.ChannelWhatsApp) {
-		out = append(out, Client{ID: thread.WhatsAppClient, Label: "WhatsApp", Address: w[0],
-			Href: "https://wa.me/" + strings.TrimPrefix(w[0], "+"),
-			Note: "the same conversation, on WhatsApp"})
-	}
-	// Mail, and only where the domain is a real one.
-	//
-	// SharedAgentAddress is never empty: mail.ConfiguredDomain falls back to
-	// localhost, which is the right answer for an instance talking to itself and
-	// the wrong one on a card, where it prints agent@localhost and invites
-	// somebody to write to it. That is the exact failure this list exists to
-	// avoid — a door that is not there — and the only reason it is caught is
-	// that a test asked what a bare instance offers.
-	if d := strings.TrimSpace(mail.ConfiguredDomain()); d != "" && d != "localhost" {
-		if addr := mail.SharedAgentAddress(); addr != "" {
-			out = append(out, Client{ID: "mail", Label: "Email", Address: addr,
-				Href: "mailto:" + addr, Note: "write to it and it writes back"})
-		}
-	}
-	// Not a client — a door onto all of them, and the one a program uses. It is
-	// here because "how do I reach it" is the same question whether the thing
-	// asking has hands.
-	if host != "" {
-		out = append(out, Client{Label: "API", Address: "curl https://" + host + "/agent/micro",
-			Href: "/api", Note: "POST {\"text\": \"…\"} and read the answer"})
-	}
-	return out
-}
 
 // ContactHandler serves the card.
 //
@@ -146,7 +67,7 @@ func contactBody(acc *auth.Account) string {
 	b.WriteString(`<p class="ccap">The same assistant, the same memory, whichever way you write. ` +
 		`A conversation you start by text is one you can carry on here.</p>`)
 	b.WriteString(`<div class="clist">`)
-	for _, c := range Clients() {
+	for _, c := range client.All() {
 		b.WriteString(`<div class="crow"><span class="clabel">` + html.EscapeString(c.Label) + `</span>`)
 		addr := `<code class="caddr">` + html.EscapeString(c.Address) + `</code>`
 		if c.Href != "" {

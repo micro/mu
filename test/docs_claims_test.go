@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"mu/tool"
+	"mu/internal/tool"
 
 	"mu/internal/api"
 	"mu/internal/service"

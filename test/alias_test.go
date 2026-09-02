@@ -18,7 +18,7 @@ package test
 import (
 	"testing"
 
-	"mu/tool"
+	"mu/internal/tool"
 
 	"mu/internal/api"
 )

@@ -23,7 +23,7 @@ import (
 
 	"mu/internal/api"
 	"mu/internal/service"
-	"mu/tool"
+	"mu/internal/tool"
 )
 
 const goldenPath = "permissions.golden"

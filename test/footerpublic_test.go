@@ -22,6 +22,7 @@ package test
 import (
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -70,5 +71,31 @@ func TestEveryFooterLinkOpensForAStranger(t *testing.T) {
 	if !strings.Contains(app.FooterLinks(), `href="/archive"`) {
 		t.Error("the archive is not in the footer — everything the agent reads " +
 			"has to be somewhere a person can read directly")
+	}
+}
+
+// Alphabetical, and carrying the two questions a stranger actually has.
+//
+// Any other order is an argument about which destination matters most, and a
+// footer is the one place on a page that is not making one — it is where a site
+// keeps its addresses. A ranked row also has to be re-ranked every time
+// something is added, which nobody ever does.
+func TestTheFooterIsAlphabeticalAndSaysWhatThisIs(t *testing.T) {
+	f := app.FooterLinks()
+	for _, want := range []string{`href="/about"`, `href="/contact"`} {
+		if !strings.Contains(f, want) {
+			t.Errorf("the footer does not carry %s — the two questions somebody "+
+				"with no account has are what this is and how to use it", want)
+		}
+	}
+	var order []string
+	for _, m := range footerHref.FindAllStringSubmatch(f, -1) {
+		order = append(order, m[1])
+	}
+	if len(order) < 4 {
+		t.Fatalf("found %d footer links — this scan is broken, not the code", len(order))
+	}
+	if !sort.StringsAreSorted(order) {
+		t.Errorf("the footer is not alphabetical: %v", order)
 	}
 }

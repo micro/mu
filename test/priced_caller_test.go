@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"mu/internal/api"
-	"mu/tool"
+	"mu/internal/tool"
 )
 
 // TestEveryPricedToolKnowsWhoIsCalling.
