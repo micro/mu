@@ -67,6 +67,21 @@
 // to MU_EVAL_ARTIFACTS (or a temp dir, named in the output) so a person can
 // read the code the checks passed or failed on: a score nobody can look behind
 // is worth very little.
+//
+// # Why it is here
+//
+// It was a top-level eval/ directory, beside account/, agent/, client/ and
+// service/ — which are what the product is. A measurement harness is not one of
+// those, and the top level is the one place in the tree where that distinction
+// is load-bearing: it is the same reason tool/ moved under internal/.
+//
+// It lives with what it measures instead. There is no agent/code package to put
+// it in — the Code agent is a registry entry in agent/micro, next to Micro — so
+// this sits under that, as its own package rather than as a file in it, because
+// it brings a Node script along and nothing imports it.
+//
+// The script is found relative to the working directory, which `go test` sets
+// to the package's own, so browser.js has to stay in this directory.
 package eval
 
 import (

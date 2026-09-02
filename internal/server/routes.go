@@ -177,6 +177,7 @@ func authRequired() map[string]bool {
 		"/privacy":                       false, // Public - privacy policy
 		"/contact":                       false, // Public - how to reach the agent, which is the question an account is for
 		"/about":                         false, // Public - what this is, for somebody who does not know yet
+		"/pricing":                       false, // Public - what it costs, which is what a stranger is deciding on
 		"/install":                       false, // Public - run your own instance
 		"/mcp":                           false, // Public - MCP tools page
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
@@ -378,6 +379,9 @@ func registerRoutes() {
 	// And what it is, for somebody who has not worked it out from the page they
 	// landed on. See home/about.go.
 	http.HandleFunc("/about", home.AboutHandler)
+	// And what it costs, which was a 404 while three comments described the page
+	// that rendered it. See home/pricing.go.
+	http.HandleFunc("/pricing", home.PricingHandler)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)

@@ -83,7 +83,14 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
  * #head/#head-right in mu.css, arrived at for the same reason: a name centred
  * against a variable-width link on the other side is not centred on the page,
  * it is centred on what is left over. */
-.index-head{position:relative;width:100%;max-width:760px;margin:0 auto;
+/* Not positioned, and that is deliberate: the corner below anchors to the page
+ * instead. This row is a centred 760px column, so a corner anchored to it sat
+ * at the right edge of that column rather than of the screen — on a wide
+ * desktop, a Log in link floating in the middle of the empty half of the page.
+ * It looked right only while this row also held a wordmark for it to sit
+ * beside, and the wordmark moved into the body when the landing became one
+ * centred stack. */
+.index-head{width:100%;max-width:760px;margin:0 auto;
   display:flex;align-items:center;justify-content:center;padding:20px 0 0}
 .brand{font-size:1.05rem;font-weight:800;letter-spacing:-.2px;line-height:1.25}
 /* The body sits in the middle of what is left, not at the top of it.
@@ -107,10 +114,24 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
   width:100%;padding:6vh 0}
 .tagline{color:#111;font-size:18px;font-weight:700;margin-bottom:6px}
 .subtag{color:#666;font-size:15px;margin-bottom:32px;max-width:520px;text-align:center;line-height:1.5}
-/* The corner. It held one link and now holds two controls, so it is a row —
-   and buttons and links take different defaults, which is 3px of misalignment
-   side by side unless both are told the same. */
-.login-link{position:absolute;right:0;top:50%;transform:translateY(-50%);
+/* The corner: the page's top right, the same place the app shell puts it.
+   Anchored to .index-page rather than to the header row above, so it is in the
+   corner of the screen whether or not that row has anything in it.
+
+   A fixed top rather than centring in the row, because the row's height depends
+   on whether a wordmark is in it: centred, it collapsed to the very top edge on
+   the landing, which has none. 20px lines it up with the middle of a brand
+   where there is one and reads as a margin where there is not.
+
+   right:20px and not 0, because an absolute box is placed against its
+   containing block's padding box — so right:0 is the window's own edge, with
+   the page's 20px gutter passing behind the link. It matches .index-page's
+   horizontal padding, which is what everything else here lines up to.
+
+   It held one link and now holds two controls, so it is a row — and buttons and
+   links take different defaults, which is 3px of misalignment side by side
+   unless both are told the same. */
+.login-link{position:absolute;right:20px;top:20px;
   display:flex;align-items:center;gap:14px}
 .login-link a,.login-link button{color:#555;text-decoration:none;font-size:14px;font-weight:600;
   background:none;border:0;padding:0;font-family:inherit;line-height:20px;cursor:pointer}

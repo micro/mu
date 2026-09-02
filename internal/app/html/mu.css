@@ -984,10 +984,6 @@ body.page-home #page-title ~ #customize-link {
   font-size: 13px;
   color: #999;
 }
-#home-date-actions {
-  margin-left: auto;
-  font-size: 13px;
-}
 /* Two columns on desktop; the media queries below flip it to one.
    
    display:flex was missing here and only here. .home-left carries flex:1 and
@@ -2600,6 +2596,17 @@ a.btn-plain:hover {
 #login, #signup {
   max-width: 400px;
   margin: 0 auto;
+}
+
+/* The title belongs to the column it heads.
+   Everything else in these forms is symmetric — full-width inputs, a
+   full-width button, the "or" and the sign-up line both centred — and the
+   heading was the one element left aligned to the left edge of a 400px block
+   floating in the middle of a 1280px screen. It read as the page's title
+   rather than the form's, and as the only thing on the page that had not been
+   placed. */
+#login h1, #signup h1 {
+  text-align: center;
 }
 
 #login input, #signup input {

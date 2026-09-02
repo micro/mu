@@ -345,9 +345,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// sitting at the top of everybody's console, which put an errand nobody
 		// runs beside the date.
 	} else {
-		// Logged out: the home screen IS the landing, so once a visitor has
-		// used it, offer a clear free sign-up (primary) plus log in.
-		inviteHTML = `<span id="home-date-actions"><a href="/signup" class="no-underline bold">Sign up</a> <a href="/login" class="text-muted no-underline ml-3">Log in</a></span>`
+		// Nothing here either, and for the same reason it went from the corner.
+		//
+		// This was "Sign up · Log in" beside the date, written when this screen
+		// was the landing and the only place a visitor could sign in from. The
+		// corner is in the shell now — see app.headCorner — so the pair sat a
+		// few centimetres under a Log in link that does the same thing, on the
+		// same screen, in a different style. Two ways in is a fork in front of
+		// somebody who has not asked for one, which is the argument that took
+		// Sign up out of the corner; a third and fourth control is that
+		// argument again with the volume up. The login page offers signing up
+		// on it, so nothing is lost.
 	}
 	// No cog. It toggled a card picker, and there is no card selection to pick
 	// any more — the instance chooses the cards and everybody gets the same

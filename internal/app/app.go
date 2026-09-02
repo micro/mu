@@ -289,11 +289,16 @@ func FooterLinks() string {
 	// somebody deciding whether to sign up is asking the second question. It is
 	// not the plan chooser that was deleted — see home.PricingHandler.
 	//
+	// This paragraph was here and the link was not, and /pricing was a 404 in
+	// production: the argument survived the page. A footer that argues for a
+	// destination it does not carry is worse than one that never mentioned it,
+	// because it reads as done.
+	//
 	// API is here rather than in the landing's developer band, which used to end
 	// with its own row of Tools · API · Pricing — two of the three repeated from
 	// this line, a few centimetres above it. A footer is where a site keeps its
 	// destinations; a second copy of most of one is furniture.
-	// Four links, alphabetical.
+	// Five links, alphabetical.
 	//
 	// Alphabetical because every other order is an argument about which
 	// destination matters most, and a footer is the one place on a page that is
@@ -314,8 +319,9 @@ func FooterLinks() string {
 	// of doors under the box on the front page is where somebody goes looking
 	// and /about links it too.
 	//
-	// What is left is four links a stranger might actually want.
+	// What is left is five links a stranger might actually want.
 	return `<a href="/about">About</a> · <a href="/contact">Contact</a> · ` +
+		`<a href="/pricing">Pricing</a> · ` +
 		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 

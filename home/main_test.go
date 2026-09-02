@@ -15,6 +15,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"mu/internal/quota"
 )
 
 func TestMain(m *testing.M) {
@@ -26,6 +28,15 @@ func TestMain(m *testing.M) {
 		panic("tests need a scratch home: " + err.Error())
 	}
 	os.Setenv("HOME", home)
+
+	// And the price list, which reaches this package from above: main embeds
+	// quota.json and calls Load, and a test binary has no main. Without it
+	// every operation costs the 1-credit fallback and /pricing renders a table
+	// of nothing — which is a page that would pass a test asserting it exists
+	// and show a stranger no prices at all.
+	if err := quota.LoadFromTree(); err != nil {
+		panic("tests need quota.json: " + err.Error())
+	}
 
 	code := m.Run()
 	os.RemoveAll(home)

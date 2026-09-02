@@ -776,7 +776,12 @@ func PricingTableHTML() string {
 			htmlEsc(strings.Join(free, ", "))))
 	}
 	for _, it := range charged {
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td>`+price+`%dp</td></tr>`,
+		// Cents, and the symbol says so. It said "3p" — pence — while every
+		// charge Stripe makes is in USD (see stripe.go, "currency": "usd") and
+		// the ledger's own Currency field is USD. A price list in one currency
+		// over a checkout in another is the sort of thing that stops a purchase
+		// at the last step, and it was one character.
+		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td>`+price+`%d¢</td></tr>`,
 			htmlEsc(it.Description), it.Cost))
 	}
 	// Paid apps are charged per request at a price the app's author sets, so

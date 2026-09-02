@@ -259,7 +259,7 @@
     {
       "op": "agent_run",
       "cost": 3,
-      "label": "Agent",
+      "label": "Question to the agent",
       "env": "CREDIT_COST_AGENT_RUN",
       "note": "One question answered, whatever it took to answer it. Roughly what a Sonnet-class call with tools costs us."
     }
