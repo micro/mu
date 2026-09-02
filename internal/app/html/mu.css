@@ -4655,16 +4655,24 @@ a.card-hover:hover {
   margin-bottom: 10px;
   white-space: normal;
 }
+/* A chip. Sometimes an <a>, sometimes a <button> — /web's topics are submit
+   buttons so that clicking one posts the search rather than putting it in the
+   URL — so the button defaults have to be undone here or the two shapes do not
+   match: a button brings its own border, its own background and, on Safari,
+   its own font. */
 .recent-search-item {
   display: inline-block;
   margin: 5px 10px 5px 0;
   padding: 5px 10px;
   background-color: #f0f0f0;
+  border: 0;
   border-radius: 5px;
   text-decoration: none;
   color: #333;
   cursor: pointer;
   white-space: nowrap;
+  font: inherit;
+  line-height: inherit;
 }
 .recent-search-item:hover {
   background-color: #e0e0e0;

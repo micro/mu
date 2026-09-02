@@ -195,9 +195,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// self-hosted install is an nginx or a Caddy logging the full URI by default.
 	// See AGENTS.md, "What may travel in a URL".
 	query := strings.TrimSpace(r.PostFormValue("q"))
+	if query == "" {
+		// A topic chip, which is a submit button in the same form under its own
+		// name. Its own name because a button called q alongside a text input
+		// called q sends both, and the empty input is the one that wins.
+		query = strings.TrimSpace(r.PostFormValue("topic"))
+	}
 
 	// Render search bar
-	searchBar := `<form class="search-bar" action="/web" method="POST">` +
+	searchBar := `<form class="search-bar" id="web-search" action="/web" method="POST">` +
 		app.CSRFField(auth.CSRFToken(r)) +
 		`<input type="text" name="q" placeholder="Search the web..." value="` +
 		html.EscapeString(query) + `" autofocus>` +
@@ -206,20 +212,41 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if query == "" {
 		var landing strings.Builder
-		landing.WriteString(searchBar)
-		landing.WriteString(`<div id="recent-searches-container"></div>`)
 
-		// Topics from indexed content
-		topics := Topics()
-		if len(topics) > 0 {
-			landing.WriteString(`<div class="recent-searches"><h3>Topics</h3><div class="recent-searches-scroll">`)
+		// The topics go inside the form, as submit buttons.
+		//
+		// They were links to /web?q=<topic>, and they did nothing: this handler
+		// reads the query from the POST body and not from the URL, deliberately,
+		// because what somebody searches the web for is the example everybody
+		// reaches for when they say "that is private" — see the note above and
+		// AGENTS.md, "What may travel in a URL". So the chips were putting a
+		// search term in the browser history and in the access log of whatever
+		// terminates TLS, and getting the landing page back for their trouble.
+		//
+		// Fixing it by also reading the URL would have made them work by
+		// reintroducing exactly the leak the POST-only rule exists to prevent.
+		// A submit button posts, carries the CSRF field the form already has,
+		// and needs no JavaScript — so a topic works on the first paint and
+		// leaves nothing behind it.
+		var topicChips string
+		if topics := Topics(); len(topics) > 0 {
+			var t strings.Builder
+			t.WriteString(`<div class="recent-searches"><h3>Topics</h3><div class="recent-searches-scroll">`)
 			for _, topic := range topics {
-				landing.WriteString(`<a class="recent-search-item" href="/web?q=` + url.QueryEscape(topic) + `">`)
-				landing.WriteString(`<span class="recent-search-label">` + html.EscapeString(topic) + `</span>`)
-				landing.WriteString(`</a>`)
+				t.WriteString(`<button type="submit" class="recent-search-item" name="topic" value="` +
+					html.EscapeString(topic) + `">` +
+					`<span class="recent-search-label">` + html.EscapeString(topic) + `</span>` +
+					`</button>`)
 			}
-			landing.WriteString(`</div></div>`)
+			t.WriteString(`</div></div>`)
+			topicChips = t.String()
 		}
+
+		// One form around both, so the chips submit it. The search bar closes
+		// itself, so the chips are spliced in before that close rather than
+		// appended after it.
+		landing.WriteString(strings.TrimSuffix(searchBar, `</form>`) + topicChips + `</form>`)
+		landing.WriteString(`<div id="recent-searches-container"></div>`)
 
 		landing.WriteString(webRecentSearchesScript)
 		content := landing.String()
