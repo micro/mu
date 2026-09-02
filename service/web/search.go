@@ -201,6 +201,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// called q sends both, and the empty input is the one that wins.
 		query = strings.TrimSpace(r.PostFormValue("topic"))
 	}
+	if query == "" && app.SendsJSON(r) {
+		// A JSON body, which PostFormValue cannot see.
+		//
+		// The apps SDK posts one — mu.search(q) — and used to GET /web?q=,
+		// which returned the landing page because the query was never in a
+		// place this handler reads. Both halves of that are fixed: it posts
+		// now, and this reads what it posts.
+		var body struct {
+			Q     string `json:"q"`
+			Query string `json:"query"`
+		}
+		if err := app.DecodeJSON(r, &body); err == nil {
+			query = strings.TrimSpace(body.Q)
+			if query == "" {
+				query = strings.TrimSpace(body.Query)
+			}
+		}
+	}
 
 	// The row, and the form around it, kept apart.
 	//
@@ -516,7 +534,19 @@ var webRecentSearchesScript = `
           e.preventDefault(); e.stopPropagation();
           var q = decodeURIComponent(item.getAttribute('data-query') || '');
           saveRecentSearch(q);
-          window.location.href = '/web?q=' + encodeURIComponent(q);
+          // Post it, the same as the box and the topic chips.
+          //
+          // This navigated to /web?q=<query>, which had both of the faults the
+          // topic links had: it does not work, because the handler reads the
+          // query from the body and not the URL, and on the way to not working
+          // it wrote what somebody searched for into their history and into the
+          // access log of whatever terminates TLS. A recent search is the worst
+          // one to leak — it is by definition a search somebody ran before.
+          var form = document.getElementById('web-search');
+          var input = form ? form.querySelector('input[name=q]') : null;
+          if (form && input) { input.value = q; form.submit(); return; }
+          // No form on this page: fall back to the box's own submit path.
+          window.location.href = '/web';
         });
       }
       if (close) {

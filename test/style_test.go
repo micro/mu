@@ -188,11 +188,29 @@ const inlineStyles = 13
 // parameter called style= and it is not markup.
 var styleAttr = regexp.MustCompile(`<[a-zA-Z][^<>]{0,300}?\sstyle="`)
 
+// emailBodies are the files that compose a message rather than a page.
+//
+// The exception was in the comment above and not in the code, so an email body
+// counted against a ratchet meant for pages — and the only way past it was to
+// raise the number, which loosens the rule for every page too. Mail clients
+// strip <style> blocks; an inline attribute is the only styling that survives
+// delivery, and that is a fact about email rather than a decision a page made.
+//
+// Named files, so adding one is deliberate. A new page cannot join this list by
+// accident.
+var emailBodies = map[string]bool{
+	"service/mail/client.go":  true,
+	"service/mail/forward.go": true,
+}
+
 func TestInlineStylesAreGoingDown(t *testing.T) {
 	total := 0
 	worst := map[string]int{}
 	walkGo(t, func(path, src string) {
 		if strings.HasSuffix(path, "_test.go") {
+			return
+		}
+		if emailBodies[filepath.ToSlash(strings.TrimPrefix(path, "../"))] {
 			return
 		}
 		n := len(styleAttr.FindAllString(src, -1))

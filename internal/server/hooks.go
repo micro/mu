@@ -308,6 +308,15 @@ func wireHooks() {
 	// not apply to, so it was the one address spam could reach. A URL is a valid
 	// VAPID contact, and it is the honest one: a push service with a problem
 	// should look at the instance, not write to a mailbox nobody reads.
+	// And to the address they signed up with, if they verified one. Mail that
+	// lands in an inbox nobody was told about is mail nobody reads — see
+	// service/mail/forward.go, and the unsubscribe link in every one of them.
+	mail.StartForwarding()
+	// And the account page's door to the same setting. The unsubscribe link in
+	// a forwarded message is the way out; this is the way back on.
+	account.MailForwarding = mail.ForwardingOn
+	account.SetMailForward = mail.SetForwarding
+
 	push.Contact(origin.Self)
 
 	// Resolve app author display names server-side from the authenticated

@@ -194,6 +194,9 @@ func indexBody(viewerID string) string {
 			// rather than this page writing it afterwards — written after, it
 			// lands below the Speak toggle. See ChatConfig.Doors.
 			Doors: directDoors(),
+			// Everything on this page is centred, including the two rows under
+			// the box. See ChatConfig.Centred.
+			Centred: true,
 			// Both only mean something to somebody who can get an answer back.
 			OfferAgentPicker: viewerID != "",
 			Speak:            viewerID != "",

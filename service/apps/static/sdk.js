@@ -19,7 +19,10 @@
     social:function(){return get('/social')},
     places:{search:function(o){return post('/places/search',o)},nearby:function(o){return post('/places/nearby',o)}},
     chat:function(prompt){return post('/chat',{prompt:prompt})},
-    search:function(q){return get('/web?q='+encodeURIComponent(q))},
+    // Posted, not a GET with the query in the URL. /web reads the query from
+    // the body — see service/web/search.go — so this returned the landing page
+    // rather than results, and put what an app searched for in the access log.
+    search:function(q){return post('/web',{q:q})},
     apps:{list:function(){return get('/apps')},read:function(s){return get('/apps/'+s)}},
     ai:function(prompt,opts){return sdk('ai',{prompt:prompt,options:opts||{}}).then(function(j){return j.result||j})},
     agent:function(prompt){return post('/agent/run',{prompt:prompt}).then(function(j){return j.answer||j})},

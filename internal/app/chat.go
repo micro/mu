@@ -102,6 +102,16 @@ type ChatConfig struct {
 	// each other's. When empty the component is ephemeral: it neither restores
 	// nor saves, so it always starts clean (used for Home's quick-ask box).
 	StorageNS string
+	// Centred lines the box's furniture up with a centred page.
+	//
+	// The doors row and the options row sit under the input, and where they sit
+	// horizontally is the page's business rather than this component's: the
+	// front door centres everything on it and the dashboard aligns everything
+	// left. With the row centred and the Speak toggle left — which is what
+	// happened when only one of the two had an opinion — the same box has two
+	// different alignments six pixels apart.
+	Centred bool
+
 	// Doors is a row of links rendered directly under the input — the handful
 	// of services that are each a search over one set, where the box above is a
 	// search over anything.
@@ -425,10 +435,14 @@ func ChatComponent(cfg ChatConfig) string {
 
 	// Two orders, one component. See ChatConfig.Transcript.
 	body := form + doors + opts + suggest + conv
-	shell := `<div id="mu-chat">`
+	classes := ""
+	if cfg.Centred {
+		classes += " mu-chat-centred"
+	}
+	shell := `<div id="mu-chat" class="` + strings.TrimSpace(classes) + `">`
 	if cfg.Transcript {
 		body = conv + suggest + form + doors + opts
-		shell = `<div id="mu-chat" class="mu-chat-transcript">`
+		shell = `<div id="mu-chat" class="` + strings.TrimSpace("mu-chat-transcript"+classes) + `">`
 	}
 
 	html := shell + `
@@ -479,7 +493,13 @@ func ChatComponent(cfg ChatConfig) string {
    to pages that do not load that sheet — the landing page is one, which is how
    the row arrived there as default blue underlined links. A component that
    brings its own markup brings its own style. */
-#mu-chat-doors{margin:12px 0 0;text-align:center;color:#888;font-size:13px;line-height:1.9}
+#mu-chat-doors{margin:12px 0 0;color:#888;font-size:13px;line-height:1.9}
+/* One alignment for everything under the box. See ChatConfig.Centred: the row
+   of doors and the row of options are the same furniture, and centring one
+   while the other stays left is the same box wearing two alignments. */
+.mu-chat-centred #mu-chat-doors{text-align:center}
+.mu-chat-centred #mu-chat-opts{justify-content:center}
+.mu-chat-centred #mu-chat-suggest{text-align:center}
 #mu-chat-doors a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
 #mu-chat-doors a:hover{text-decoration:underline}
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}

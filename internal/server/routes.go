@@ -121,19 +121,23 @@ func authRequired() map[string]bool {
 		// Your WhatsApp threads. Sign-in checked in the handler, for the same
 		// reason as /sms: this map is matched by prefix and /whatsapp/twilio is
 		// the provider posting an inbound message with no session at all.
-		"/whatsapp":          false,
-		"/agent/session/":    true,  // Deleting one of your conversations
-		"/recall":            true,  // Your own past — sign-in required
-		"/agent/connect":     true,  // How to reach one agent
-		"/agent/pending":     true,  // Has an in-flight run answered yet — your own conversations
-		"/tasks":             true,  // Your task list — sign-in required
-		"/social":            false, // Public viewing, auth for search
-		"/social/thread":     false, // Public thread view, auth for messaging
-		"/places":            false, // Public map, auth for search
-		"/weather":           false, // Public — the forecast, as a page or as JSON
-		"/hazards":           false, // Public — quakes and alerts are public record
-		"/flights":           false, // Public — aircraft broadcast their positions in clear
-		"/mail":              true,  // Require auth for inbox
+		"/whatsapp":       false,
+		"/agent/session/": true,  // Deleting one of your conversations
+		"/recall":         true,  // Your own past — sign-in required
+		"/agent/connect":  true,  // How to reach one agent
+		"/agent/pending":  true,  // Has an in-flight run answered yet — your own conversations
+		"/tasks":          true,  // Your task list — sign-in required
+		"/social":         false, // Public viewing, auth for search
+		"/social/thread":  false, // Public thread view, auth for messaging
+		"/places":         false, // Public map, auth for search
+		"/weather":        false, // Public — the forecast, as a page or as JSON
+		"/hazards":        false, // Public — quakes and alerts are public record
+		"/flights":        false, // Public — aircraft broadcast their positions in clear
+		"/mail":           true,  // Require auth for inbox
+		// The token in the link is the credential, the same as /verify: it
+		// arrived at an address only the recipient reads. An unsubscribe link
+		// that asks you to sign in first is not an unsubscribe link.
+		"/mail/unsubscribe":  false,
 		"/logout":            true,
 		"/account":           true,
 		"/report":            true,  // Telling an operator about somebody else's item
@@ -349,6 +353,9 @@ func registerRoutes() {
 	http.HandleFunc("/web/fetch", web.FetchHandler)
 
 	// serve clean reader page for web results
+	// Stopping the copies, from inside one of them. No session: see
+	// service/mail/unsubscribe.go.
+	http.HandleFunc("/mail/unsubscribe", mail.UnsubscribeHandler)
 	http.HandleFunc("/web/read", web.ReadHandler)
 	// A search that has an address. See service/web/shared.go.
 	http.HandleFunc("/web/r/", web.ResultsHandler)

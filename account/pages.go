@@ -607,6 +607,16 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Copies of arriving mail, on or off. The way out is also in every
+		// forwarded message — see service/mail/unsubscribe.go — because somebody
+		// who wants them to stop should not have to find this page. This is the
+		// way back on.
+		if state := strings.TrimSpace(r.Form.Get("forwarding")); state != "" {
+			SetMailForwarding(acc.ID, state == "on")
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+
 		// Email verification request
 		if email := strings.TrimSpace(r.Form.Get("email")); email != "" {
 			handleVerifyStart(w, r, acc, email)
@@ -949,6 +959,32 @@ func renderPhoneCard(accountID string) string {
 			Submit: "Send me a code"}.HTML())
 }
 
+// forwardingToggle is whether mail arriving here is copied to that address.
+//
+// On this card rather than one of its own, because it is a fact about the
+// verified address: it is the thing that address is used for besides a password
+// reset, and a section elsewhere asking about "forwarding" would be a setting
+// with no visible subject.
+//
+// The way out is also in every forwarded message — see
+// service/mail/unsubscribe.go — because somebody who wants these to stop should
+// not have to find this page, or sign in, to say so. This is the way back on.
+func forwardingToggle(acc *auth.Account) string {
+	on := MailForwardingOn(acc.ID)
+	state, submit := "off", "Turn off"
+	note := "Mail sent to your Mu address is also copied to you here."
+	if !on {
+		state, submit = "on", "Turn on"
+		note = "Mail sent to your Mu address is not copied to you here."
+	}
+	// Posted to /account with a named field, the same as every other control on
+	// this page — submit, land back here, see the result.
+	return app.Note(note) +
+		`<form method="POST" action="/account" class="d-inline">` +
+		`<input type="hidden" name="forwarding" value="` + state + `">` +
+		`<button type="submit" class="btn-link">` + submit + `</button></form>`
+}
+
 // renderEmailCard renders the email verification card on the account
 // page. The card looks different depending on whether the email is set,
 // pending, or verified — and whether email sending is configured at all.
@@ -956,7 +992,14 @@ func renderEmailCard(acc *auth.Account) string {
 	if acc.Admin || acc.Approved {
 		// Admins/approved users don't need verification.
 		if acc.EmailVerified {
-			return app.Section("Email", `<p>`+htmlpkg.EscapeString(acc.Email)+` — verified</p>`)
+			// The toggle here too. An admin gets forwarded mail like anybody
+			// else and had no way to turn it off from this page — only the link
+			// at the bottom of a message, which is the way out for somebody who
+			// does not want to come here and the wrong only way for somebody
+			// who is already on the page.
+			return app.Section("Email",
+				`<p>`+htmlpkg.EscapeString(acc.Email)+` — verified</p>`,
+				forwardingToggle(acc))
 		}
 		return ""
 	}
@@ -975,6 +1018,7 @@ func renderEmailCard(acc *auth.Account) string {
 		return app.Section("Email",
 			`<p><strong>`+htmlpkg.EscapeString(acc.Email)+`</strong> — verified ✓</p>`,
 			app.Note("Where a password reset goes. Verifying a different one replaces it."),
+			forwardingToggle(acc),
 			app.Form{Action: "/account", Inline: true,
 				Fields: []app.Field{{Name: "email", Type: "email", Required: true,
 					Placeholder: "you@example.com"}},
