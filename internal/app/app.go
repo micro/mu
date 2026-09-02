@@ -550,7 +550,10 @@ var Template = `
           // mu.js once the session check comes back — so copying className
           // wholesale would open the sidebar on every navigation and make every
           // soft-navigated page look signed out until the next session check.
-          var runtime = ['nav-collapsed', 'menu-open', 'signed-in'];
+          // typing is here for the same reason: it is set by a focus handler
+          // and is not in any server markup, so a soft navigation would drop
+          // it and bring the tab bar back over an open keyboard.
+          var runtime = ['nav-collapsed', 'menu-open', 'signed-in', 'typing'];
           var keep = [];
           for (var k = 0; k < runtime.length; k++) {
             if (document.body.classList.contains(runtime[k])) keep.push(runtime[k]);
@@ -754,6 +757,51 @@ var Template = `
       // One button, two meanings. On a phone the sidebar is an overlay that
       // slides in, so this opens it. On desktop the sidebar is always there,
       // so this collapses it out of the way and the choice is remembered.
+      // The tab bar, while somebody is typing.
+      //
+      // It is fixed to the bottom of the layout viewport, and on iOS a
+      // keyboard does not shrink that viewport — it moves the visual one — so
+      // the bar sat over the field that had just been tapped. The viewport meta
+      // asks for interactive-widget=resizes-content, which is the right request
+      // and is not honoured there.
+      //
+      // So the bar goes away while a field has focus and comes back when it
+      // does not. Four destinations are not useful mid-sentence, and the
+      // alternative — holding the bar above the keyboard — is arithmetic on
+      // numbers no browser reports honestly.
+      //
+      // focusin and focusout rather than per-element listeners: the chat input
+      // is drawn by a component on some pages and not others, and a soft
+      // navigation swaps the content under this script. Delegating to the
+      // document means nothing has to be re-bound.
+      (function () {
+        var typing = function (on) {
+          document.body.classList.toggle('typing', on);
+        };
+        var wants = function (el) {
+          if (!el || !el.tagName) return false;
+          if (el.isContentEditable) return true;
+          var t = el.tagName.toLowerCase();
+          if (t === 'textarea') return true;
+          if (t !== 'input') return false;
+          // Not every input opens a keyboard. A checkbox or a button taking
+          // focus should not take the navigation away with it.
+          return !/^(checkbox|radio|button|submit|reset|file|range|color)$/i
+            .test(el.type || 'text');
+        };
+        document.addEventListener('focusin', function (e) {
+          if (wants(e.target)) typing(true);
+        });
+        document.addEventListener('focusout', function () {
+          // On the next tick, because focus moving between two fields fires
+          // focusout before the focusin that follows it — without this the bar
+          // flickers back on every tab between inputs.
+          setTimeout(function () {
+            typing(wants(document.activeElement));
+          }, 0);
+        });
+      })();
+
       function toggleMenu() {
         if (window.matchMedia('(min-width: 901px)').matches) {
           var collapsed = document.body.classList.toggle('nav-collapsed');

@@ -1383,6 +1383,23 @@ body.page-home #page-title ~ #customize-link {
     --tabbar: calc(52px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Out of the way while the keyboard is up.
+   *
+   * The bar is fixed to the bottom of the layout viewport. The viewport meta
+   * asks for interactive-widget=resizes-content, which shrinks that viewport
+   * when a keyboard opens — and iOS does not implement it: it moves the
+   * *visual* viewport and leaves the layout one alone. So on an iPhone, and in
+   * the installed app especially, the bar stayed where it was and the keyboard
+   * came up over the input somebody had just tapped.
+   *
+   * Hidden rather than moved. Four destinations are not useful mid-sentence,
+   * and anything that tries to hold the bar above a keyboard is doing
+   * arithmetic on numbers the browser will not give it honestly. The class is
+   * set on focus by the shell — see the keyboard block in Template. */
+  body.typing #tabs {
+    display: none;
+  }
+
   #tabs {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
