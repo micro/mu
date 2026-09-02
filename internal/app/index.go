@@ -86,8 +86,25 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 .index-head{position:relative;width:100%;max-width:760px;margin:0 auto;
   display:flex;align-items:center;justify-content:center;padding:20px 0 0}
 .brand{font-size:1.05rem;font-weight:800;letter-spacing:-.2px;line-height:1.25}
-/* Air above the box, which the header no longer provides by being enormous. */
-.index-body{padding-top:12vh}
+/* The body sits in the middle of what is left, not at the top of it.
+ *
+ * It was a fixed 12vh above the box, which put the block high and left the
+ * spare space in one lump underneath: measured at 1280x900, 108px above and
+ * 248px below. A page that ends a quarter of a screen short of its own footer
+ * reads as unfinished rather than as roomy.
+ *
+ * Centring the leftover space was tried once before and rejected, because the
+ * wordmark was then the hero at the top of this element and centring what came
+ * after it left the name stranded with a hole under it. The wordmark is in the
+ * header now, so there is nothing above the box to strand: the block is the
+ * whole body, and it centres.
+ *
+ * flex-grow on the body rather than a margin, so the header keeps its place at
+ * the top and the footer keeps its at the bottom; only what is between them
+ * moves. Padding rather than centring the flex line, so a body taller than the
+ * space scrolls from its top instead of having its head cut off. */
+.index-body{flex:1;display:flex;flex-direction:column;justify-content:center;
+  width:100%;padding:6vh 0}
 .tagline{color:#111;font-size:18px;font-weight:700;margin-bottom:6px}
 .subtag{color:#666;font-size:15px;margin-bottom:32px;max-width:520px;text-align:center;line-height:1.5}
 /* The corner. It held one link and now holds two controls, so it is a row —
