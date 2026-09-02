@@ -809,7 +809,34 @@ var Template = `
             .test(el.type || 'text');
         };
         document.addEventListener('focusin', function (e) {
-          if (wants(e.target)) typing(true);
+          if (!wants(e.target)) return;
+          typing(true);
+          // And put the field where it can be seen.
+          //
+          // Hiding the bar is not enough on iOS. A keyboard there does not
+          // resize the layout viewport — it overlays the visual one — so
+          // nothing reflows and the browser's own "scroll the focused element
+          // into view" has the wrong idea of where the bottom of the screen
+          // is. In a standalone app, with no browser chrome to absorb the
+          // difference, the field somebody just tapped can end up under the
+          // keyboard with the page believing it is perfectly visible.
+          //
+          // visualViewport is the only thing that knows: its height is what is
+          // actually on screen. If the field's bottom is below that, scroll it
+          // up. Deferred, because the measurement is meaningless until the
+          // keyboard has finished animating, and repeated once because iOS
+          // reports the intermediate height during the animation.
+          var el = e.target;
+          var show = function () {
+            var vv = window.visualViewport;
+            if (!vv) { el.scrollIntoView({block: 'center'}); return; }
+            var r = el.getBoundingClientRect();
+            if (r.bottom > vv.height - 8 || r.top < 0) {
+              el.scrollIntoView({block: 'center', behavior: 'smooth'});
+            }
+          };
+          setTimeout(show, 150);
+          setTimeout(show, 450);
         });
         document.addEventListener('focusout', function () {
           // On the next tick, because focus moving between two fields fires
