@@ -75,3 +75,37 @@ func AccountFrom(ctx context.Context) string {
 	}
 	return v
 }
+
+// agentKey says this call is a tool the model chose to run, rather than
+// something a person did.
+//
+// It rides on metadata for the reasons above: it must survive the RPC hop, and
+// it must not be an argument, because an argument is set by the caller and this
+// is a fact about *who the caller is*. The agent's tool wrapper stamps it —
+// see injectAccount, which is the one place every tool call passes through.
+//
+// It exists because "do this" and "write down that this should be done" are the
+// same call with different consequences depending on who made it. A person
+// filing a task for the agent means start it. An agent filing a task for itself
+// while it is already running means record it — starting a second run for the
+// same request is how one question becomes a loop, and the guard has to be able
+// to tell the two apart. See service/tasks.
+const agentKey = "Mu-Agent-Run"
+
+// WithAgentRun marks ctx as a tool call inside an agent's own run.
+func WithAgentRun(ctx context.Context) context.Context {
+	return metadata.Set(ctx, agentKey, "1")
+}
+
+// InAgentRun reports whether this call is the model reaching for a tool.
+//
+// False for a person pressing a button, a REST call, or an agent's own
+// scheduled work reaching a service directly — all of which are somebody
+// deciding, which is the distinction that matters.
+func InAgentRun(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	v, ok := metadata.Get(ctx, agentKey)
+	return ok && v == "1"
+}

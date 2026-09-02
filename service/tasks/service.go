@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"mu/internal/app"
@@ -69,6 +70,33 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse)
 	if err != nil {
 		return err
 	}
+
+	// Assigned to the agent means the agent starts on it.
+	//
+	// This endpoint has said "assign it to the agent and it can pick the task
+	// up itself" since it was written, and nothing picked anything up: Run is
+	// what announces the work, and its only caller was a button on /inbox. So
+	// "file this for the agent" put a row in a list and waited for somebody to
+	// press a thing they had no reason to know about.
+	//
+	// Not when the agent filed it. A model that creates a task for itself
+	// mid-run is describing what it is already doing; starting a second run
+	// from inside the first is how one question becomes a loop, and Run's
+	// status guard does not catch it because each turn creates a *new* task.
+	// The distinction is who called, which is why it is on the context and not
+	// in the request — see service.InAgentRun.
+	//
+	// In the background, because this call should return the task rather than
+	// wait for the work: Run marks it doing and announces, and /tasks is the
+	// progress indicator.
+	if strings.EqualFold(strings.TrimSpace(req.Assignee), Agent) && !service.InAgentRun(ctx) {
+		go func() {
+			if err := Run(owner, t.ID); err != nil {
+				app.Log("tasks", "starting %s for %s: %v", t.ID, owner, err)
+			}
+		}()
+	}
+
 	rsp.Text = Render([]*Task{t})
 	return nil
 }

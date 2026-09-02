@@ -122,7 +122,13 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
 			delete(call.Input, "account_id")
-			return next(service.WithAccount(ctx, accountID), call)
+			// And that this is the model reaching for a tool rather than a
+			// person doing something. Stamped here because this wrapper is the
+			// one place every tool call passes through, and for the same reason
+			// the account is: a handler that needs to know cannot be given a
+			// field the caller could set. See service.InAgentRun.
+			ctx = service.WithAgentRun(service.WithAccount(ctx, accountID))
+			return next(ctx, call)
 		}
 	}
 }
