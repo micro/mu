@@ -350,6 +350,8 @@ func registerRoutes() {
 
 	// serve clean reader page for web results
 	http.HandleFunc("/web/read", web.ReadHandler)
+	// A search that has an address. See service/web/shared.go.
+	http.HandleFunc("/web/r/", web.ResultsHandler)
 
 	// serve fact-check page and API
 

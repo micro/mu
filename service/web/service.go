@@ -79,6 +79,9 @@ func Load() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("web", "service register failed: %v", err)
 	}
+	// Shared result links survive a restart, or they are not links. See
+	// shared.go.
+	LoadShares()
 }
 
 var Spec = service.Spec{

@@ -303,46 +303,118 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var b strings.Builder
-	b.WriteString(form(searchRow))
-
-	if braveErr != nil {
-		app.Log("search", "Brave search error: %v", braveErr)
-		b.WriteString(`<p class="empty">Web search unavailable.</p>`)
-	} else if len(braveResults) == 0 {
-		b.WriteString(`<p class="empty">No web results found.</p>`)
-	} else {
-		for _, result := range braveResults {
-			rid := cacheResult(result)
-			b.WriteString(`<div class="card mb-3">`)
-			readURL := "/web/read?id=" + rid + "&url=" + url.QueryEscape(result.URL)
-			b.WriteString(`<div><a href="` + html.EscapeString(readURL) +
-				`" class="card-title">` +
-				html.EscapeString(result.Title) + `</a></div>`)
-			if result.Description != "" {
-				b.WriteString(`<p class="card-desc mt-1 m-0">` +
-					html.EscapeString(stripHTML(result.Description)) + `</p>`)
-			}
-			meta := `<a href="` + html.EscapeString(result.URL) + `" target="_blank" rel="noopener noreferrer" class="text-muted">` + html.EscapeString(result.URL) + `</a>`
-			if result.Age != "" {
-				meta += ` · ` + html.EscapeString(result.Age)
-			}
-			b.WriteString(`<div class="text-sm text-muted mt-px">` + meta + `</div>`)
-			b.WriteString(`</div>`)
+	// A search gets an address, and the address says nothing.
+	//
+	// Post, then redirect, then get: the results are stored under a short random
+	// id and the browser is sent to /web/r/<id>. That page can be bookmarked,
+	// reloaded and sent to somebody, which a posted page cannot — and the id in
+	// the history, in the log and in the pasted link carries eight random
+	// characters rather than what was typed. See shared.go.
+	//
+	// Only when there is something to share. An error or an empty result set is
+	// rendered here: an address for "no results" is an address for nothing, and
+	// a link to a provider outage is worse than useless a day later.
+	if braveErr == nil && len(braveResults) > 0 {
+		if id := Share(query, braveResults); id != "" {
+			http.Redirect(w, r, "/web/r/"+id, http.StatusSeeOther)
+			return
 		}
 	}
 
-	// Save this search to recent searches on the client
-	b.WriteString(`<script>
+	var b strings.Builder
+	b.WriteString(form(searchRow))
+	if braveErr != nil {
+		app.Log("search", "Brave search error: %v", braveErr)
+		b.WriteString(`<p class="empty">Web search unavailable.</p>`)
+	} else {
+		b.WriteString(`<p class="empty">No web results found.</p>`)
+	}
+	b.WriteString(rememberScript(query))
+	app.Respond(w, r, app.Response{Title: "Search: " + query, Description: "Results for " + query, HTML: page(b.String())})
+}
+
+// ResultsHandler serves /web/r/<id> — a search that has an address.
+//
+// No auth. The results were fetched and paid for when the search ran; serving
+// them again calls nothing and costs nothing, and a link only its author could
+// open is not a link. See shared.go.
+//
+// A missing id is a 404 and not a redirect to the search page: an expired share
+// and a mistyped one look the same from here, and quietly landing somebody on
+// an empty search box tells them nothing about which it was.
+func ResultsHandler(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/web/r/")
+	query, results, ok := Shared(id)
+	if !ok {
+		app.NotFound(w, r, "That search link has expired or does not exist.")
+		return
+	}
+
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{"results": results, "query": query})
+		return
+	}
+
+	var b strings.Builder
+	b.WriteString(searchForm(r, query))
+	b.WriteString(renderResults(results))
+	b.WriteString(rememberScript(query))
+	app.Respond(w, r, app.Response{
+		Title:       "Search: " + query,
+		Description: "Results for " + query,
+		HTML:        `<div class="w-760">` + b.String() + `</div>`,
+	})
+}
+
+// renderResults is the list, wherever it is being shown.
+func renderResults(results []BraveResult) string {
+	if len(results) == 0 {
+		return `<p class="empty">No web results found.</p>`
+	}
+	var b strings.Builder
+	for _, result := range results {
+		rid := cacheResult(result)
+		b.WriteString(`<div class="card mb-3">`)
+		readURL := "/web/read?id=" + rid + "&url=" + url.QueryEscape(result.URL)
+		b.WriteString(`<div><a href="` + html.EscapeString(readURL) +
+			`" class="card-title">` +
+			html.EscapeString(result.Title) + `</a></div>`)
+		if result.Description != "" {
+			b.WriteString(`<p class="card-desc mt-1 m-0">` +
+				html.EscapeString(stripHTML(result.Description)) + `</p>`)
+		}
+		meta := `<a href="` + html.EscapeString(result.URL) + `" target="_blank" rel="noopener noreferrer" class="text-muted">` + html.EscapeString(result.URL) + `</a>`
+		if result.Age != "" {
+			meta += ` · ` + html.EscapeString(result.Age)
+		}
+		b.WriteString(`<div class="text-sm text-muted mt-px">` + meta + `</div>`)
+		b.WriteString(`</div>`)
+	}
+	return b.String()
+}
+
+// searchForm is the box, prefilled, for a page that is not Handler.
+func searchForm(r *http.Request, query string) string {
+	return `<form id="web-search" action="/web" method="POST"><div class="search-bar">` +
+		app.CSRFField(auth.CSRFToken(r)) +
+		`<input type="text" name="q" placeholder="Search the web..." value="` +
+		html.EscapeString(query) + `"><button type="submit">Search</button></div></form>`
+}
+
+// rememberScript adds this search to the recent list in the browser.
+//
+// The client keeps its own list because the server does not: a record of what
+// somebody searched for, keyed to them, is the thing this page is arranged not
+// to have. localStorage is theirs, on their machine, and they can clear it.
+func rememberScript(query string) string {
+	return `<script>
 	(function(){
 		var KEY='mu_recent_web_searches',MAX=10;
 		try{var s=localStorage.getItem(KEY);var a=s?JSON.parse(s):[];var q="` + html.EscapeString(strings.ReplaceAll(query, `"`, `\"`)) + `";
 		a=a.filter(function(x){return x!==q});a.unshift(q);
 		if(a.length>MAX)a=a.slice(0,MAX);localStorage.setItem(KEY,JSON.stringify(a));}catch(e){}
 	})();
-	</script>`)
-
-	app.Respond(w, r, app.Response{Title: "Search: " + query, Description: "Results for " + query, HTML: page(b.String())})
+	</script>`
 }
 
 // PreviewHandler returns cached Brave results as JSON for the landing page.
