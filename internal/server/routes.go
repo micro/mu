@@ -175,6 +175,7 @@ func authRequired() map[string]bool {
 
 		"/status":                        false, // Public - server health status
 		"/privacy":                       false, // Public - privacy policy
+		"/contact":                       false, // Public - how to reach the agent, which is the question an account is for
 		"/install":                       false, // Public - run your own instance
 		"/mcp":                           false, // Public - MCP tools page
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
@@ -371,6 +372,8 @@ func registerRoutes() {
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
 	http.HandleFunc("/privacy", home.PrivacyHandler)
+	// Every way in, on one page. See home/contact.go.
+	http.HandleFunc("/contact", home.ContactHandler)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)

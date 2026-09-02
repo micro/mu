@@ -274,20 +274,31 @@ func FooterLinks() string {
 	// with its own row of Tools · API · Pricing — two of the three repeated from
 	// this line, a few centimetres above it. A footer is where a site keeps its
 	// destinations; a second copy of most of one is furniture.
-	// Archive, not Agent.
+	// Contact first.
 	//
-	// Agent was here for an afternoon, on the argument that the archive is a
-	// tool rather than a destination and the agent is what this is for. The
-	// second half of that is right and it belongs to the box on the front page,
-	// which is where it now is. It does not belong here, for a plain reason:
-	// /agent redirects to /login for anybody without a session, and this footer
-	// is rendered on exactly one kind of page — the signed-out one. A signed-in
-	// account gets the sidebar instead, where Agents already is.
+	// Archive led this row and is the one link here that is also in the row of
+	// doors under the box, a few centimetres above it — which reads as the same
+	// destination twice. It stays, because the footer is not only rendered on
+	// the front page: /tools, /api, /privacy and /status have no doors row, and
+	// what this server has read being openable by a person without asking the
+	// agent is the whole argument for a public archive. It is not first.
 	//
-	// So the link was redundant for everybody who could use it and a bounce for
-	// everybody who saw it. A footer is where a site keeps its destinations, and
-	// a destination that asks you to sign in first is not one.
-	return `<a href="/archive">Archive</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · ` +
+	// Contact is, because it is the one question a stranger on this page is
+	// actually asking. This is a personal assistant; "how do I reach it" is not
+	// a footer link about the company, it is the product's own instructions, and
+	// nothing answered it — the number was on /sms, the address on /agents, the
+	// curl line on /api, and all three behind a session. See home/contact.go.
+	//
+	// Agent was here for an afternoon, on the argument that the agent is what
+	// this is for. That is right and it belongs to the box on the front page,
+	// which is where it is. It does not belong here for a plain reason: /agent
+	// redirects to /login for anybody without a session, and this footer renders
+	// on exactly one kind of page — the signed-out one. So the link was
+	// redundant for everybody who could use it and a bounce for everybody who
+	// saw it. A destination that asks you to sign in first is not one. Contact
+	// answers the same question and is public, which is the difference.
+	return `<a href="/contact">Contact</a> · <a href="/archive">Archive</a> · ` +
+		`<a href="/tools">Tools</a> · <a href="/api">API</a> · ` +
 		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
