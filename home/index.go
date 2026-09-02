@@ -194,9 +194,6 @@ func indexBody(viewerID string) string {
 			// rather than this page writing it afterwards — written after, it
 			// lands below the Speak toggle. See ChatConfig.Doors.
 			Doors: directDoors(),
-			// Everything on this page is centred, including the two rows under
-			// the box. See ChatConfig.Centred.
-			Centred: true,
 			// No agent picker here, signed in or not.
 			//
 			// Not because it would not work — signed in it would — but because
@@ -221,10 +218,28 @@ func indexBody(viewerID string) string {
 </div>
 
 <style>
-.lwrap{padding:0;max-width:640px;margin:0 auto;width:100%}
+/* One axis, and one measure.
+ *
+ * Everything on this page was centred in a 640px column on a 1280px screen —
+ * so two thirds of the viewport was empty and the container could only grow
+ * downward. Every element added made the page taller rather than fuller, which
+ * is why each new one felt like it did not fit.
+ *
+ * And six things of different weights centred against each other — a heading,
+ * a small-caps date, prose, tabular numbers, a picture, a caption — have a
+ * ragged edge on both sides. Nothing lines up with anything, so they read as
+ * fragments rather than as one thing.
+ *
+ * Left, against a single edge, at the measure every other page uses. The block
+ * is still centred in the screen; its contents are not centred in the block. */
+.lwrap{padding:0;max-width:760px;margin:0 auto;width:100%;text-align:left}
+/* The wordmark starts on the same edge as everything under it. It is a sibling
+   of this block in the shell, not a child, so it is given the same measure
+   rather than inheriting one. */
+.index-page .brand{width:100%;max-width:760px;text-align:left}
 /* Today, under the box. Three rows, each one line, and the block does not
    scroll — see today() for why this is not a grid of cards. */
-.ltoday{margin:34px auto 0;max-width:580px;text-align:center}
+.ltoday{margin:34px 0 0}
 /* The name of the thing, then the date under it. Set as a heading because it
    is one — this block is the brief, and everything below it belongs to it. */
 .lbrief-head{margin:0 0 3px;font-size:15px;font-weight:600;color:#333}

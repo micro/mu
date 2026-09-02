@@ -105,16 +105,6 @@ type ChatConfig struct {
 	// each other's. When empty the component is ephemeral: it neither restores
 	// nor saves, so it always starts clean (used for Home's quick-ask box).
 	StorageNS string
-	// Centred lines the box's furniture up with a centred page.
-	//
-	// The doors row and the options row sit under the input, and where they sit
-	// horizontally is the page's business rather than this component's: the
-	// front door centres everything on it and the dashboard aligns everything
-	// left. With the row centred and the Speak toggle left — which is what
-	// happened when only one of the two had an opinion — the same box has two
-	// different alignments six pixels apart.
-	Centred bool
-
 	// Doors is a row of links rendered directly under the input — the handful
 	// of services that are each a search over one set, where the box above is a
 	// search over anything.
@@ -264,8 +254,10 @@ func searchBox(o SearchBoxOpts) string {
 <style>
 /* Left, not centred. The rest of the page it sits on starts at the
    left margin, and a box centred inside a left-aligned column reads as
-   misaligned rather than as centred. The front page is the exception: it
-   passes Centred, because there is nothing on it to line up with. */
+   misaligned rather than as centred. That includes the front page, which used
+   to be the exception and is not any more — everything on it hangs off one
+   edge. Nothing passes Centred today; it is kept because a page with a box and
+   nothing else is a shape somebody will want again. */
 #mu-search{max-width:760px;margin:0;width:100%}
 #mu-search.mu-search-mid{max-width:560px;margin:0 auto}
 #mu-search-form{display:flex;align-items:center;gap:0;border:1px solid var(--card-border,#ddd);
@@ -438,14 +430,10 @@ func ChatComponent(cfg ChatConfig) string {
 
 	// Two orders, one component. See ChatConfig.Transcript.
 	body := form + doors + opts + suggest + conv
-	classes := ""
-	if cfg.Centred {
-		classes += " mu-chat-centred"
-	}
-	shell := `<div id="mu-chat" class="` + strings.TrimSpace(classes) + `">`
+	shell := `<div id="mu-chat">`
 	if cfg.Transcript {
 		body = conv + suggest + form + doors + opts
-		shell = `<div id="mu-chat" class="` + strings.TrimSpace("mu-chat-transcript"+classes) + `">`
+		shell = `<div id="mu-chat" class="mu-chat-transcript">`
 	}
 
 	html := shell + `
@@ -497,12 +485,10 @@ func ChatComponent(cfg ChatConfig) string {
    the row arrived there as default blue underlined links. A component that
    brings its own markup brings its own style. */
 #mu-chat-doors{margin:12px 0 0;color:#888;font-size:13px;line-height:1.9}
-/* One alignment for everything under the box. See ChatConfig.Centred: the row
-   of doors and the row of options are the same furniture, and centring one
-   while the other stays left is the same box wearing two alignments. */
-.mu-chat-centred #mu-chat-doors{text-align:center}
-.mu-chat-centred #mu-chat-opts{justify-content:center}
-.mu-chat-centred #mu-chat-suggest{text-align:center}
+/* The furniture under the box inherits the page's alignment rather than having
+   an opinion. It had one for a while — a Centred flag, because the front door
+   centred everything and the dashboard did not — and the front door is left
+   now, so both surfaces want the same thing and the flag had no callers. */
 #mu-chat-doors a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
 #mu-chat-doors a:hover{text-decoration:underline}
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}
