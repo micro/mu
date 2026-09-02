@@ -45,9 +45,26 @@ import (
 // difference between an agent and a completion endpoint. Leave it out and one
 // is opened.
 type apiAsk struct {
-	Text string `json:"text"`
+	// Prompt is the question. It is what everything else in this codebase
+	// calls the thing you send an agent — the page posts a prompt, QueryOpts
+	// takes one, a task's Run builds one — and this door called it "text",
+	// which made one idea have two names depending on which door you came
+	// through.
+	Prompt string `json:"prompt"`
+	// Text is the name this door shipped with. Kept, because a program that
+	// learned it last week should not find it gone; prompt wins where both are
+	// sent, because it is the name.
+	Text string `json:"text,omitempty"`
 	// Thread is a conversation id from a previous answer.
 	Thread string `json:"thread,omitempty"`
+}
+
+// ask is what was actually asked, under whichever name it arrived.
+func (a apiAsk) ask() string {
+	if p := strings.TrimSpace(a.Prompt); p != "" {
+		return p
+	}
+	return strings.TrimSpace(a.Text)
 }
 
 // apiAnswer is what comes back.
@@ -83,25 +100,47 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	accountID := sess.Account
 
-	slug := strings.TrimPrefix(r.URL.Path, "/agent/")
-	if slug == "" || strings.Contains(slug, "/") {
+	// /agent is an address, the same as agent@ is.
+	//
+	// It took a name and nothing else, so the shortest way to ask this instance
+	// a question from a program was POST /agent/micro — which names the default
+	// agent, which is the one thing a caller should not have to know. Writing to
+	// agent@<domain> has never needed a name; the plain address means "whatever
+	// answers here", and the tag is how you ask for one in particular. The two
+	// doors should read the same way, because they are the same door: see
+	// mail.SharedAgentAddressFor, where an empty tag is the default agent for
+	// exactly this reason.
+	//
+	// So POST /agent is the default and POST /agent/<name> is a specialist,
+	// which lines up agent@ with /agent and agent+news@ with /agent/news.
+	slug := strings.TrimPrefix(strings.TrimSuffix(r.URL.Path, "/"), "/agent")
+	slug = strings.TrimPrefix(slug, "/")
+	agentID := ""
+	switch {
+	case slug == "":
+		// Whatever answers here, which is the same agent agent@ reaches and
+		// the same one /agent redirects a browser to.
+		agentID = DefaultPlatformAgent
+	case strings.Contains(slug, "/"):
 		app.NotFound(w, r, "no agent named")
 		return
-	}
-	// The same lookup the page does, so /agent/research and POST /agent/research
-	// cannot disagree about which agent that is.
-	agentID, ok := agentSlugTarget(accountID, slug)
-	if !ok {
-		app.NotFound(w, r, "no agent called "+slug)
-		return
+	default:
+		// The same lookup the page does, so /agent/research and POST
+		// /agent/research cannot disagree about which agent that is.
+		var ok bool
+		agentID, ok = agentSlugTarget(accountID, slug)
+		if !ok {
+			app.NotFound(w, r, "no agent called "+slug)
+			return
+		}
 	}
 
 	var req apiAsk
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, askLimit*4)).Decode(&req); err != nil {
-		app.BadRequest(w, r, "send JSON: {\"text\": \"...\"}")
+		app.BadRequest(w, r, "send JSON: {\"prompt\": \"...\"}")
 		return
 	}
-	req.Text = strings.TrimSpace(req.Text)
+	req.Text = req.ask()
 	if req.Text == "" {
 		app.BadRequest(w, r, "nothing to ask")
 		return

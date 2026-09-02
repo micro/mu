@@ -55,11 +55,25 @@ func TestNothingToSayIsNoBlock(t *testing.T) {
 	}
 }
 
-// The rows that carry third-party text escape it. The brief is the exception
-// and says so: its clauses are built with their own links by home/brief.go.
-func TestTheRowsOffThirdPartiesAreEscaped(t *testing.T) {
-	if got := marketsRow(); strings.Contains(got, "<script") {
-		t.Errorf("the markets line went onto the page as markup: %q", got)
+// Nothing on the page is third-party text put there raw.
+//
+// This asked it of marketsRow, which was a line of tickers under the brief and
+// is gone with the rest of the furniture — see TestNeitherPageCarriesARowOfDoors
+// for why. The brief is what is left, and it is the exception that has to say
+// so out loud: its clauses are built with their own links by home/brief.go, so
+// it is the one row that may carry markup, and the reason it may is that we
+// wrote it.
+func TestTheBriefIsTheOnlyRowThatMayCarryMarkup(t *testing.T) {
+	src, err := os.ReadFile("index.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// One row, so one place to check. A second unescaped row appearing here is
+	// the thing worth catching, and it would show as another briefRow-shaped
+	// call in the list.
+	if n := strings.Count(string(src), "briefRow(viewerID),"); n != 1 {
+		t.Errorf("today() assembles %d rows, want 1 — every row but the brief\n"+
+			"has to escape what it prints, and this test only reads the brief", n)
 	}
 }
 
@@ -209,34 +223,30 @@ func TestSigningInAddsToTheBriefRatherThanReplacingIt(t *testing.T) {
 	}
 }
 
-// The doors and the guest's tools are one list.
+// A guest's tools are the front door's set, and nothing wider.
 //
-// The row under the box is a promise about what this instance can answer, and
-// the tools behind a guest's question are how it keeps the promise. Two lists
-// would be one that had drifted, and the drift is invisible from either side:
-// the page offers a door the agent cannot walk through, and nothing looks wrong
-// on either.
+// This used to pin two things against each other: that the row of doors under
+// the box and the tools behind a guest's question came from one list, so the
+// page could not offer a door the agent had no tool for. The row is gone — see
+// TestNeitherPageCarriesARowOfDoors — and the half that mattered is the half
+// that is left.
+//
+// Because the alternative is not "a smaller list". It is every service that is
+// not account-scoped: two dozen of them and all their methods, in the prompt of
+// every stranger's question, paid for per question by whoever runs the
+// instance, and mostly tools nobody arrives asking for — shell, browser,
+// transit, flights, images, apps.
 //
 // Read from the source, because the registry is empty in a unit test and the
-// thing worth pinning is that there is one list rather than what is in it.
-func TestTheDoorsAreTheToolsAGuestCanReach(t *testing.T) {
-	src, err := os.ReadFile("index.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(src), "range service.Guest()") {
-		t.Error("the row of doors is not drawn from service.Guest, so the page can\n" +
-			"offer a door the agent has no tool for")
-	}
-
+// thing worth pinning is where the list comes from rather than what is in it.
+func TestAGuestsToolsAreTheGuestSet(t *testing.T) {
 	agentSrc, err := os.ReadFile("../agent/native.go")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(agentSrc), "return service.Guest()") {
 		t.Error("a guest's tools are not service.Guest's, so every stranger's\n" +
-			"question carries every service that is not account-scoped —\n" +
-			"two dozen of them, in the prompt, paid for per question")
+			"question carries every service that is not account-scoped")
 	}
 }
 
@@ -250,30 +260,30 @@ func TestNoGuestToolReachesAnAccount(t *testing.T) {
 	}
 }
 
-// The doors row is the front door's, and only the front door's.
+// Neither page carries a row of doors.
 //
-// It was on both, on the argument that the box is the one control the two pages
-// share. That is consistency of the component rather than of the page: the row
-// is a way to reach the services, the front door has no other one, and Home has
-// two — Services in the rail and a grid of those same services below the fold.
-// On Home it was a third row of furniture under one input, above the agent
-// picker and the read-aloud toggle, duplicating a rail six inches to the left.
-func TestOnlyTheFrontDoorCarriesTheDoors(t *testing.T) {
-	src, err := os.ReadFile("home.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(src), "Doors:") {
-		t.Error("Home draws the row of doors again — it already reaches the\n" +
-			"services twice, from the rail and from the grid below")
-	}
-
-	index, err := os.ReadFile("index.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(index), "Doors: directDoors(),") {
-		t.Error("the front door has lost the row, and it is the page with no\n" +
-			"other way to reach a service")
+// It was on both, then only on the front door — Home reaches the services from
+// the rail and from a grid below the fold, so a third row of the same links
+// under one input was furniture. That reasoning held and did not go far enough.
+//
+// The front door lost it too. Nine links under the box, on the argument that a
+// box which answers everything alone on a page is a thing you have to go
+// through, and that everything the agent does you should be able to do
+// yourself. Still true, and not an argument for putting the list *here*: held
+// against the thing this competes with — writing to agent@, where nothing comes
+// back but an answer — a front door with a ticker, a photograph and nine links
+// on it is the noisiest version of the quietest idea in the product.
+//
+// The services are on /about and in the catalogue, and a signed-in reader has
+// the rail. What a stranger needs from this page is somewhere to type.
+func TestNeitherPageCarriesARowOfDoors(t *testing.T) {
+	for _, f := range []string{"index.go", "home.go"} {
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(src), "Doors: directDoors()") {
+			t.Errorf("%s draws the row of doors again", f)
+		}
 	}
 }

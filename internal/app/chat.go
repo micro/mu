@@ -758,7 +758,14 @@ function ask(q){
   var streamText='';
   var streaming=false;
   var body=JSON.stringify({prompt:q,history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
-  fetch('/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:body,credentials:'same-origin'})
+  // Accept says which of the two doors at /agent this is.
+  //
+  // The same path answers a program with JSON and this box with an event
+  // stream, and what separates them is what they ask for — not the shape of
+  // what they send, which is how it was told apart for one commit and which
+  // made a naming inconsistency load-bearing. This wants tokens as they
+  // arrive, so it says so.
+  fetch('/agent',{method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},body:body,credentials:'same-origin'})
   .then(function(resp){
     if(resp.status===401){
       return resp.json().catch(function(){return {};}).then(function(j){

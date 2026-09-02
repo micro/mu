@@ -11,9 +11,6 @@ import (
 	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/service"
-	"mu/service/images"
-	"mu/service/markets"
 	"mu/service/weather"
 )
 
@@ -225,10 +222,20 @@ func indexBody() string {
 			Ask:             true,
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
-			// Directly under the input, which is why the component draws it
-			// rather than this page writing it afterwards — written after, it
-			// lands below the Speak toggle. See ChatConfig.Doors.
-			Doors: directDoors(),
+			// No row of doors.
+			//
+			// It was nine links under the box — Search — Archive · News · Video
+			// · Social · Markets · Weather · Places · Web — on the argument that
+			// a box which answers everything, alone on a page, is a thing you
+			// have to go through, and everything the agent does you should be
+			// able to do yourself. That argument is still true and it is not an
+			// argument for putting the list here: the same page also has to be
+			// the quietest thing this product owns, and nine links is the
+			// busiest element on it.
+			//
+			// The services are on /about and in the catalogue, and a signed-in
+			// person has them in the rail. What a stranger needs from this page
+			// is somewhere to type.
 			// No agent picker here, signed in or not.
 			//
 			// Not because it would not work — signed in it would — but because
@@ -381,10 +388,20 @@ func topRight() string {
 // and it is deliberately the entire pitch for signing up: the world's day is
 // the same for everybody and yours is not.
 func today(viewerID string) string {
+	// The brief, and nothing beside it.
+	//
+	// This carried a row of market tickers and the day's image as well. Held
+	// against the thing this competes with, that is indefensible: write to
+	// agent@ and what comes back is an answer, with no ticker under it and no
+	// picture attached. The web front door had accumulated four-colour price
+	// movements and a photograph on a page whose whole argument is that you get
+	// what you need and leave.
+	//
+	// Both still exist for somebody who asked to see them — /markets, /images,
+	// and the cards on Home, which is a dashboard because a signed-in person
+	// went looking for one. A stranger did not.
 	rows := []string{
 		briefRow(viewerID),
-		group("Markets", marketsRow()),
-		imageRow(),
 	}
 
 	var b strings.Builder
@@ -412,25 +429,6 @@ func today(viewerID string) string {
 		html.EscapeString(now.Format("Monday, 2 January")) +
 		weatherBit(viewerID) + `</span>` +
 		b.String() + `</div>`
-}
-
-// group puts a faded heading over a row, and nothing at all over an empty one.
-//
-// The three rows ran together as one block of decreasing font size, so the
-// prices read as a footnote to the brief and the headlines as a footnote to the
-// prices. A word over each says what it is and, more usefully, says where one
-// thing stops. Small caps and grey, the same treatment Home gives its sections
-// — see sectionRule — so the two pages label things the same way.
-//
-// The brief has no heading. It is the answer to "is there anything I need to
-// know", it sits directly under the date, and "Brief" over one sentence is a
-// caption on a caption.
-func group(label, row string) string {
-	if row == "" {
-		return ""
-	}
-	return `<div class="lgroup"><span class="lgroup-label">` +
-		html.EscapeString(label) + `</span>` + row + `</div>`
 }
 
 // briefName is what to call the brief at this hour.
@@ -492,32 +490,6 @@ func weatherBit(viewerID string) string {
 	return html.EscapeString(out)
 }
 
-// imageRow is the day's picture, last.
-//
-// Last because it is the one thing here you look at rather than read, and
-// because it is the only row that is not information — it is the instance
-// having made something today. A page that ends on it ends on a full stop
-// rather than trailing off into more text.
-//
-// No heading over it. Every other row needs a word to say what the numbers are;
-// a picture does not, and the caption under it says the rest more quietly than
-// a label above would.
-//
-// Nothing at all on a day it has not run, the same as every other row here.
-func imageRow() string {
-	url, theme, ok := images.Today()
-	if !ok {
-		return ""
-	}
-	caption := "Daily image"
-	if t := strings.TrimSpace(theme); t != "" {
-		caption += " · " + t
-	}
-	return `<div class="lgroup limage"><a href="/images">` +
-		`<img src="` + html.EscapeString(url) + `" alt="` + html.EscapeString(caption) + `" loading="lazy">` +
-		`<span class="lcap">` + html.EscapeString(caption) + `</span></a></div>`
-}
-
 // briefRow is what happened, in a sentence.
 //
 // Signed out that is the instance's line about the world; signed in it is that
@@ -533,37 +505,6 @@ func briefRow(viewerID string) string {
 	// links the wallet — so this is not escaped. briefParts is the boundary,
 	// and everything reaching it escapes its own text. See home/brief.go.
 	return `<p class="lrow lbrief">` + strings.Join(parts, " ") + `</p>`
-}
-
-// marketsRow is where the money went, in one line.
-//
-// Four fixed names — BTC, ETH, OIL, GOLD — and not the biggest movers. The
-// movers are three coins every time, because coins move most; one mover from
-// each kind gives "Wheat, Tesla, SOL", which is three things a reader has to
-// work out the reason for. These four do not change, so somebody learns where
-// each sits on the row and reads it in a glance. See markets.Spread.
-func marketsRow() string {
-	quotes := markets.Spread(4)
-	if len(quotes) == 0 {
-		return ""
-	}
-	var parts []string
-	for _, q := range quotes {
-		sign := ""
-		if q.Change24h >= 0 {
-			sign = "+"
-		}
-		cls := "ldown"
-		if q.Change24h >= 0 {
-			cls = "lup"
-		}
-		parts = append(parts, html.EscapeString(q.Name)+" "+
-			html.EscapeString(price(q.Price))+
-			` <span class="`+cls+`">`+
-			html.EscapeString(fmt.Sprintf("%s%.1f%%", sign, q.Change24h))+`</span>`)
-	}
-	return `<p class="lrow lmarkets"><a href="/markets">` +
-		strings.Join(parts, `<span class="lsep">·</span>`) + `</a></p>`
 }
 
 // price is a number somebody reads rather than reconciles.
@@ -622,36 +563,6 @@ func workerScript() string {
 //
 // Everything else stays reachable: /tools lists all of them and the footer
 // links it.
-
-func directDoors() string {
-	page := map[string]string{}
-	for _, spec := range service.Specs() {
-		if spec.Page == "" {
-			continue
-		}
-		page[strings.ToLower(spec.Name)] = spec.Page
-	}
-
-	var links []string
-	for _, name := range service.Guest() {
-		href, ok := page[name]
-		if !ok {
-			continue
-		}
-		links = append(links, `<a href="`+html.EscapeString(href)+`">`+
-			html.EscapeString(title(name))+`</a>`)
-	}
-	if len(links) == 0 {
-		return ""
-	}
-	// "Search" and not "Or go straight there". Every one of these is a search
-	// over a different set — the archive, the news, the video, the shops — and
-	// the old line said only that they were somewhere else to go, which is the
-	// least interesting thing about them. Naming the verb says what the row is
-	// for and, next to a box that also searches, says what the difference is:
-	// the box asks anything, these each ask one thing.
-	return "Search — " + strings.Join(links, " · ") + "."
-}
 
 // title is a service's name as a heading would write it. The registry keys are
 // lower case because they are identifiers.

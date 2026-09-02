@@ -284,14 +284,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		servePage(w, r)
 	case "POST":
 		// /agent/<name> is a place: GET reads the conversation, POST asks a
-		// question. /agent itself is the page's own streaming box, which is a
-		// different shape — SSE, a session, a browser at the other end — so it
-		// keeps handleQuery. See api.go.
+		// question.
 		if strings.TrimPrefix(path, "/agent/") != "" && path != "/agent" {
 			APIHandler(w, r)
 			return
 		}
-		handleQuery(w, r)
+		// /agent is both doors, told apart by what the caller asks for.
+		//
+		// It was the page's streaming box alone, so the shortest address a
+		// program could use was /agent/micro — which names the default agent,
+		// and naming it is the one thing a caller should not have to do.
+		// agent@<domain> has never needed a name; these two doors should read
+		// the same way.
+		//
+		// Routed on Accept, not on the shape of the body. The first attempt
+		// keyed on the field name — the page sent "prompt" and the API sent
+		// "text" — which worked and encoded an inconsistency as a rule: two
+		// names for one thing, load-bearing. Everything in this codebase sends
+		// an agent a prompt, so the API takes a prompt too, and what separates
+		// the callers is the honest difference between them. handleQuery
+		// answers text/event-stream and nothing else; a program wants an
+		// answer, not a stream of one.
+		if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+			handleQuery(w, r)
+			return
+		}
+		APIHandler(w, r)
 	default:
 		app.MethodNotAllowed(w, r)
 	}

@@ -138,18 +138,22 @@ func All() []Client {
 	// one program that speaks IMAP — naming the way in after a tool somebody
 	// might use would be the only row here that does.
 	//
-	// The address is /agent/<name> and not /api/v1/…, and that is not a slip.
+	// The address is /agent and not /api/v1/…, and that is not a slip.
 	// /api/v1/<service>/<method> is the door onto services — the things the
 	// agent calls. The agent is not one of them; it is what does the calling,
-	// so it has a door of its own. Which is defensible and is also the reason
-	// somebody reading a card that says "API" goes to /api and does not find
-	// this. Both doors belong on that page.
+	// so it has a door of its own.
+	//
+	// And it is /agent, not /agent/micro. Naming the default agent is asking a
+	// caller to know which one that is, which is the one thing they should not
+	// have to: agent@<domain> has never needed a name either. The plain address
+	// means "whatever answers here" on both doors, and a specialist is
+	// agent+news@ or /agent/news. Same shape, same rule.
 	if host != "" {
-		out = append(out, Client{Label: "API", Address: "https://" + host + "/agent/micro",
+		out = append(out, Client{Label: "API", Address: "https://" + host + "/agent",
 			Href: "/token", Note: "for a program — needs a token",
-			Example: "curl -X POST https://" + host + "/agent/micro \\\n" +
+			Example: "curl -X POST https://" + host + "/agent \\\n" +
 				`  -H "Authorization: Bearer $MU_TOKEN" \` + "\n" +
-				`  -d '{"text": "what is on my calendar?"}'`})
+				`  -d '{"prompt": "what is on my calendar?"}'`})
 	}
 	return out
 }
