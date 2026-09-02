@@ -1,8 +1,25 @@
 package places
 
+// Recent searches, kept without being asked.
+//
+// There was a "Save this search" button under every result list, and it is the
+// wrong shape for what it does. Somebody who has just searched for a cafe near
+// the office does not want to file that; they want it there tomorrow when they
+// look again. Asking is asking somebody to predict, before they know whether
+// the answer was any good, whether they will want it back — and the answer to
+// "was that useful" arrives after the moment the button was in front of them.
+//
+// So a search is remembered because it happened, which is what /video and /web
+// already do. The only interaction left is removing one.
+//
+// Server-side and per account, unlike those two, which keep theirs in
+// localStorage. A places search is not a word: it is a query, a location, a
+// radius and a sort order, and it is worth having on the phone you looked it up
+// on and the laptop you did not. The store was already here — this changes when
+// it is written, not where.
+
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -57,16 +74,89 @@ func getUserSavedSearches(userID string) []SavedSearch {
 	return out
 }
 
+// maxRecentSearches is how many are kept per account.
+//
+// The same ten /video keeps. It was twenty, from when each one was a deliberate
+// save and the list was short because saving was work. A list that fills itself
+// fills up, and twenty rows of near-identical searches above the cities is a
+// worse page than ten.
+const maxRecentSearches = 10
+
 func addUserSavedSearch(userID string, s SavedSearch) {
 	savedMu.Lock()
-	// Prepend new search; limit to 20 per user
-	searches := append([]SavedSearch{s}, savedData[userID]...)
-	if len(searches) > 20 {
-		searches = searches[:20]
+	// The same search again moves to the front rather than appearing twice.
+	// Without this a list that records every search is a list of one search,
+	// repeated, for anybody who ran it more than once — which is the shape of
+	// looking something up.
+	searches := []SavedSearch{s}
+	for _, old := range savedData[userID] {
+		if sameSearch(old, s) {
+			continue
+		}
+		searches = append(searches, old)
+	}
+	if len(searches) > maxRecentSearches {
+		searches = searches[:maxRecentSearches]
 	}
 	savedData[userID] = searches
 	savedMu.Unlock()
 	go persistSavedSearches()
+}
+
+// sameSearch reports whether two searches would return the same page.
+//
+// Everything that goes into the request, and nothing that does not: the id and
+// the time it was run are what distinguishes two records of one search, which
+// is exactly what this has to see past. The label is derived from the rest, so
+// comparing it as well would only find disagreements between it and them.
+func sameSearch(a, b SavedSearch) bool {
+	return a.Type == b.Type &&
+		strings.EqualFold(strings.TrimSpace(a.Query), strings.TrimSpace(b.Query)) &&
+		strings.EqualFold(strings.TrimSpace(a.Location), strings.TrimSpace(b.Location)) &&
+		a.Lat == b.Lat && a.Lon == b.Lon &&
+		a.Radius == b.Radius && a.SortBy == b.SortBy
+}
+
+// Remember records a search that just ran.
+//
+// Called from the two handlers that render a result page, and only for a signed
+// in person looking at one — an agent calling places_search is not building
+// somebody's recent list, and a JSON caller has nowhere to see it.
+//
+// Silent about failure by design. Nothing here is worth a broken search page:
+// if the list cannot be written the results are still the results.
+func Remember(userID, searchType, query, location string, lat, lon float64, radius int, sortBy string) {
+	if strings.TrimSpace(userID) == "" {
+		return
+	}
+	if searchType != "nearby" {
+		searchType = "search"
+	}
+	addUserSavedSearch(userID, SavedSearch{
+		ID:        uuid.New().String(),
+		Label:     searchLabel(query, location),
+		Type:      searchType,
+		Query:     strings.TrimSpace(query),
+		Location:  strings.TrimSpace(location),
+		Lat:       lat,
+		Lon:       lon,
+		Radius:    radius,
+		SortBy:    sortBy,
+		CreatedAt: time.Now(),
+	})
+}
+
+// searchLabel is what one row reads as.
+func searchLabel(query, location string) string {
+	query, location = strings.TrimSpace(query), strings.TrimSpace(location)
+	label := query
+	if label == "" {
+		label = "Nearby"
+	}
+	if location != "" {
+		label += " near " + location
+	}
+	return label
 }
 
 func deleteUserSavedSearch(userID, id string) {
@@ -80,62 +170,6 @@ func deleteUserSavedSearch(userID, id string) {
 	}
 	savedMu.Unlock()
 	go persistSavedSearches()
-}
-
-// handleSaveSearch handles POST /places/save
-func handleSaveSearch(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.MethodNotAllowed(w, r)
-		return
-	}
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
-	}
-	r.ParseForm()
-
-	searchType := r.Form.Get("type")
-	if searchType != "nearby" {
-		searchType = "search"
-	}
-
-	query := strings.TrimSpace(r.Form.Get("q"))
-	location := strings.TrimSpace(r.Form.Get("near"))
-	latStr := r.Form.Get("near_lat")
-	lonStr := r.Form.Get("near_lon")
-	radius, _ := strconv.Atoi(r.Form.Get("radius"))
-	sortBy := r.Form.Get("sort")
-
-	var lat, lon float64
-	if latStr != "" && lonStr != "" {
-		lat, _ = strconv.ParseFloat(latStr, 64)
-		lon, _ = strconv.ParseFloat(lonStr, 64)
-	}
-
-	label := query
-	if label == "" {
-		label = "Nearby"
-	}
-	if location != "" {
-		label += " near " + location
-	}
-
-	s := SavedSearch{
-		ID:        uuid.New().String(),
-		Label:     label,
-		Type:      searchType,
-		Query:     query,
-		Location:  location,
-		Lat:       lat,
-		Lon:       lon,
-		Radius:    radius,
-		SortBy:    sortBy,
-		CreatedAt: time.Now(),
-	}
-	addUserSavedSearch(acc.ID, s)
-
-	http.Redirect(w, r, "/places", http.StatusSeeOther)
 }
 
 // handleDeleteSavedSearch handles POST /places/save/delete

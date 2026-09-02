@@ -124,6 +124,20 @@ type overpassResponse struct {
 // 35s accommodates Overpass queries which use a 25s server-side timeout.
 var httpClient = &http.Client{Timeout: 35 * time.Second}
 
+// defaultRadiusM is how far the pages mean by "nearby" when nobody has said.
+//
+// A kilometre, which is walking distance and what the form preselects. It was
+// written out as 1000 at each of the places that needed it, so a city link and
+// the form could have disagreed about what nearby meant without either of them
+// looking wrong.
+//
+// The pages, not the whole service. places_search defaults to 2000, places_near
+// to 1000, and the web nearby handler to 500 when a caller sends no radius at
+// all — three answers to one question, each of them documented. Unifying those
+// changes what an API call returns, so they are left alone and named here
+// rather than quietly folded in.
+const defaultRadiusM = 1000
+
 // Load initialises the places package
 func Load() {
 	initCities()
@@ -220,7 +234,7 @@ func searchNominatim(query string) ([]*Place, error) {
 // indexes the results into SQLite. Otherwise falls back to Overpass.
 func searchNearbyKeyword(query string, lat, lon float64, radiusM int) ([]*Place, error) {
 	if radiusM <= 0 {
-		radiusM = 1000
+		radiusM = defaultRadiusM
 	}
 
 	// Google Places (primary when key is configured)
@@ -364,9 +378,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case "/places/nearby":
 		handleNearby(w, r)
 		return
-	case "/places/save":
-		handleSaveSearch(w, r)
-		return
 	case "/places/save/delete":
 		handleDeleteSavedSearch(w, r)
 		return
@@ -448,7 +459,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse radius (used when doing a nearby keyword search)
-	radiusM := 1000
+	radiusM := defaultRadiusM
 	if rs := formValue("radius"); rs != "" {
 		if v, perr := strconv.Atoi(rs); perr == nil && v >= 100 && v <= 50000 {
 			radiusM = v
@@ -485,6 +496,13 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 			"count":   len(results),
 		})
 		return
+	}
+
+	// Remembered because it happened, not because somebody pressed a star. See
+	// saved.go. From the session rather than from caller, which can be an agent
+	// holding a token — a tool call is not somebody's recent search.
+	if _, acc := auth.TrySession(r); acc != nil {
+		Remember(acc.ID, "search", query, nearAddr, nearLat, nearLon, radiusM, sortBy)
 	}
 
 	// Render results page
@@ -609,6 +627,14 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	if label == "" {
 		label = fmt.Sprintf("%.4f, %.4f", lat, lon)
 	}
+
+	// See saved.go. The label rather than the raw address, because it is what
+	// the row will read as and a nearby search with no address has coordinates
+	// for a name.
+	if _, acc := auth.TrySession(r); acc != nil {
+		Remember(acc.ID, "nearby", "", label, lat, lon, radius, sortBy)
+	}
+
 	html := renderNearbyResults(label, lat, lon, radius, results)
 	app.Respond(w, r, app.Response{
 		Title:       "Nearby - " + label,
@@ -634,90 +660,28 @@ func renderPlacesPage(r *http.Request) string {
 
 	cityCardsHTML := renderCitiesSection()
 
-	mapHTML := renderIndexMap()
-
+	// No <h4>Places</h4>. The page is already titled Places by app.Respond, and
+	// a card headed with the name of the page it is the only card on says the
+	// same word twice. The line under it is what the card is for.
 	return fmt.Sprintf(`<div class="places-page">
 %s
 <div class="card">
-  <h4>Places</h4>
   <p class="text-muted places-form-desc">Find somewhere by name or category — cafe, pharmacy — or leave it empty and see what is nearby.</p>
   %s
 </div>
 %s
 %s
 %s
-%s
-</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), savedHTML, mapHTML, cityCardsHTML, renderPlacesPageJS())
+</div>`, authNote, renderSearchFormHTML("", "", "", "", "", ""), savedHTML, cityCardsHTML, renderPlacesPageJS())
 }
 
-// renderIndexMap returns an embedded Leaflet.js map for the main places page.
-// It auto-detects the user's current location via geolocation and shows a marker.
-// City clicks will recenter this map and update the nearby form.
-func renderIndexMap() string {
-	return `<div class="map-box"><div id="places-index-map" class="fill"></div></div>
-<script>
-var placesIndexMap = null;
-var placesIndexMarker = null;
-(function(){
-  function initIndexMap(lat, lon, zoom) {
-    // Default: world overview centred on 20°N 0°E, zoom 2
-    lat = lat || 20; lon = lon || 0; zoom = zoom || 2;
-    placesIndexMap = L.map('places-index-map').setView([lat, lon], zoom);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',maxZoom:19
-    }).addTo(placesIndexMap);
-    if (zoom > 2) {
-      placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup('Your location').openPopup();
-    }
-  }
-  // Draw first, then move.
-  //
-  // This waited for geolocation before drawing anything, with an eight second
-  // timeout — so somebody who has not answered the permission prompt gets a
-  // 280px white box between the form and the cities for eight seconds, on
-  // every load. That is the gap; the map was never missing, it had not been
-  // told to exist yet.
-  //
-  // The world view costs nothing and is what the answer degrades to anyway
-  // when permission is refused, so it is what the page starts with.
-  function tryGeolocation() {
-    initIndexMap();
-    if (!navigator.geolocation) { return; }
-    navigator.geolocation.getCurrentPosition(function(pos) {
-      var lat = pos.coords.latitude, lon = pos.coords.longitude;
-      placesIndexMap.setView([lat, lon], 15);
-      if (placesIndexMarker) { placesIndexMap.removeLayer(placesIndexMarker); }
-      placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup('Your location').openPopup();
-      fillLocation(lat, lon, lat.toFixed(4) + ', ' + lon.toFixed(4));
-    }, function() {}, {timeout: 8000, maximumAge: 300000 /* 5 minutes */});
-  }
-  function loadLeafletThenInit() {
-    var lnk=document.createElement('link');
-    lnk.rel='stylesheet';
-    lnk.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    lnk.crossOrigin='anonymous';
-    document.head.appendChild(lnk);
-    var s=document.createElement('script');
-    s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    s.crossOrigin='anonymous';
-    s.onload=tryGeolocation;
-    document.head.appendChild(s);
-  }
-  if(window.L){ tryGeolocation(); } else { loadLeafletThenInit(); }
-})();
-function selectCity(lat, lon, name, country) {
-  if (placesIndexMap) {
-    placesIndexMap.setView([lat, lon], 13);
-    if (placesIndexMarker) { placesIndexMap.removeLayer(placesIndexMarker); }
-    placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup(name).openPopup();
-  }
-  fillLocation(lat, lon, name + ', ' + country);
-  askNearby();
-}
-</script>`
-}
-
-// renderCitiesSection renders a grid of city cards as direct nearby links
+// renderCitiesSection renders a grid of city cards as direct nearby links.
+//
+// Links, not onclick handlers. These called selectCity, which recentred the map
+// and then submitted the form — so with the map gone the handler was a
+// roundabout way of writing a URL. A link is what it always was underneath: it
+// works before the page's JavaScript has run, it can be opened in a new tab,
+// and the address it goes to is the one you would share.
 func renderCitiesSection() string {
 	cs := Cities()
 	if len(cs) == 0 {
@@ -726,10 +690,12 @@ func renderCitiesSection() string {
 	var sb strings.Builder
 	sb.WriteString(`<h3>Browse by City</h3><div class="city-grid">`)
 	for _, c := range cs {
+		href := fmt.Sprintf("/places/nearby?lat=%f&lon=%f&radius=%d&address=%s",
+			c.Lat, c.Lon, defaultRadiusM,
+			url.QueryEscape(c.Name+", "+c.Country))
 		sb.WriteString(fmt.Sprintf(
-			`<a href="#" onclick="selectCity(%f,%f,%s,%s);return false;" class="city-link">%s <span class="text-muted text-08">%s</span></a>`,
-			c.Lat, c.Lon, escapeHTML(jsonStr(c.Name)), escapeHTML(jsonStr(c.Country)),
-			escapeHTML(c.Name), escapeHTML(c.Country),
+			`<a href="%s" class="city-link">%s <span class="text-muted text-08">%s</span></a>`,
+			escapeHTML(href), escapeHTML(c.Name), escapeHTML(c.Country),
 		))
 	}
 	sb.WriteString(`</div>`)
@@ -740,7 +706,7 @@ func renderCitiesSection() string {
 // Used on the main page and on results pages.
 func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) string {
 	if radius == "" {
-		radius = "1000"
+		radius = strconv.Itoa(defaultRadiusM)
 	}
 	radiusOptions := ""
 	for _, opt := range []struct {
@@ -788,14 +754,14 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
 		radiusOptions, sortDistSel, sortNameSel)
 }
 
-// renderSavedSearchesSection returns HTML for the saved searches list
+// renderSavedSearchesSection returns HTML for the recent searches list
 func renderSavedSearchesSection(userID string) string {
 	searches := getUserSavedSearches(userID)
 	if len(searches) == 0 {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(`<div class="card places-saved-card"><h4>Saved searches</h4><ul class="saved-search-list">`)
+	sb.WriteString(`<div class="card places-saved-card"><h4>Recent searches</h4><ul class="saved-search-list">`)
 	for _, s := range searches {
 		latStr := fmt.Sprintf("%f", s.Lat)
 		lonStr := fmt.Sprintf("%f", s.Lon)
@@ -858,14 +824,6 @@ func renderSearchResults(query string, places []*Place, nearLocation bool, nearA
 			sortLabel = "distance"
 		}
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d result(s) &middot; sorted by %s</p>`, len(places), sortLabel))
-		sb.WriteString(renderSaveSearchForm("search", query, nearAddr, nearLatStr, nearLonStr, radiusStr, sortBy))
-		mapCenterLat, mapCenterLon := nearLat, nearLon
-		if !nearLocation && len(places) > 0 {
-			mapCenterLat, mapCenterLon = places[0].Lat, places[0].Lon
-		}
-		if mapCenterLat != 0 || mapCenterLon != 0 {
-			sb.WriteString(renderLeafletMap(mapCenterLat, mapCenterLon, places))
-		}
 	}
 
 	sb.WriteString(`<div class="places-results">`)
@@ -898,8 +856,6 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 		sb.WriteString(`<p class="text-muted">No places found. Try increasing the radius.</p>`)
 	} else {
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d place(s) found</p>`, len(places)))
-		sb.WriteString(renderSaveSearchForm("nearby", "", label, latStr, lonStr, radiusStr, ""))
-		sb.WriteString(renderLeafletMap(lat, lon, places))
 		sb.WriteString(renderTypeFilter(places))
 	}
 
@@ -910,66 +866,6 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 	sb.WriteString(`</div></div>`)
 
 	return sb.String()
-}
-
-// renderLeafletMap returns an embedded Leaflet.js map showing the center and place markers
-func renderLeafletMap(centerLat, centerLon float64, places []*Place) string {
-	var markers []string
-	for _, p := range places {
-		if p.Lat == 0 && p.Lon == 0 {
-			continue
-		}
-		markers = append(markers, fmt.Sprintf(`{"lat":%f,"lon":%f,"name":%s}`, p.Lat, p.Lon, jsonStr(p.Name)))
-	}
-	markersJSON := "[" + strings.Join(markers, ",") + "]"
-	return fmt.Sprintf(`<div class="map-box"><div id="places-map" class="fill"></div></div>
-<script>
-(function(){
-  function initPlacesMap(){
-    var map=L.map('places-map').setView([%f,%f],15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',maxZoom:19
-    }).addTo(map);
-    var ps=%s;
-    var bounds=[];
-    ps.forEach(function(p){
-      L.marker([p.lat,p.lon]).addTo(map).bindPopup(p.name);
-      bounds.push([p.lat,p.lon]);
-    });
-    if(bounds.length>1){map.fitBounds(bounds,{padding:[30,30],maxZoom:16});}
-  }
-  if(window.L){
-    initPlacesMap();
-  } else {
-    var lnk=document.createElement('link');
-    lnk.rel='stylesheet';
-    lnk.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    lnk.crossOrigin='anonymous';
-    document.head.appendChild(lnk);
-    var s=document.createElement('script');
-    s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    s.crossOrigin='anonymous';
-    s.onload=initPlacesMap;
-    document.head.appendChild(s);
-  }
-})();
-</script>`, centerLat, centerLon, markersJSON)
-}
-
-// renderSaveSearchForm returns a small "Save this search" form
-func renderSaveSearchForm(searchType, q, near, nearLat, nearLon, radius, sortBy string) string {
-	return fmt.Sprintf(`<form action="/places/save" method="POST" class="d-inline-block mb-2">
-  <input type="hidden" name="type" value="%s">
-  <input type="hidden" name="q" value="%s">
-  <input type="hidden" name="near" value="%s">
-  <input type="hidden" name="near_lat" value="%s">
-  <input type="hidden" name="near_lon" value="%s">
-  <input type="hidden" name="radius" value="%s">
-  <input type="hidden" name="sort" value="%s">
-  <button type="submit" class="btn-link">&#9733; Save this search</button>
-</form>`,
-		escapeHTML(searchType), escapeHTML(q), escapeHTML(near),
-		escapeHTML(nearLat), escapeHTML(nearLon), escapeHTML(radius), escapeHTML(sortBy))
 }
 
 // renderPlacesPageJS returns the shared JavaScript used on all places pages
