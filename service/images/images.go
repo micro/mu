@@ -380,6 +380,24 @@ func CardHTML() string {
 <p class="text-sm text-muted mt-2 m-0">Daily image · ` + theme + `</p></a>`
 }
 
+// Today is the day's image, for a page that wants to show it without knowing
+// how one is made.
+//
+// Three plain values rather than the Daily record, because a caller outside
+// this package wants a picture and a word for it, and the record carries a
+// prompt, a storage key and the provider URL the local copy replaced.
+// displayURL is the one that has already decided which of the two to serve.
+//
+// False when there is none — a new instance, or a day the generator has not run
+// for. A caller renders nothing then, the same as CardHTML does.
+func Today() (url, theme string, ok bool) {
+	d := getDaily()
+	if d.URL == "" {
+		return "", "", false
+	}
+	return d.displayURL(), d.Theme, true
+}
+
 // Handler serves /images: GET renders the page (or JSON), POST generates.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {

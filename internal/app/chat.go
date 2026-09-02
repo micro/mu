@@ -1025,6 +1025,62 @@ window.muChatAsk=ask;
       // something somebody does because it is talking and they want it to stop.
       if(!sayOn.checked)window.speechSynthesis.cancel();
     });
+    // Which voice, because the default is the worst one on the machine.
+    //
+    // An utterance with no voice set uses the platform default, and every
+    // platform's default is its oldest speech engine: Microsoft David on
+    // Windows, the 1984 Macintalk descendants on macOS. That is where "why is
+    // it so robotic" comes from — nothing was choosing, so the OS chose the
+    // fallback.
+    //
+    // Every modern platform also ships something much better and exposes it
+    // through the same API. They are recognisable by name, which is unlovely
+    // and is the only signal there is: the API reports a name, a language, and
+    // whether the voice runs locally, and nothing about quality.
+    //
+    //   "Natural"            Windows 11's neural voices, the best commonly there
+    //   "Google …"           Chrome's own network voices, on any OS
+    //   "Premium"/"Enhanced" macOS's downloadable higher-quality voices
+    //   localService=false   a network voice, which is usually the better one
+    //
+    // And a list of names to avoid, because macOS ships joke voices — Bells,
+    // Bubbles, Deranged, Zarvox — that match a language query perfectly well
+    // and would be picked by anything that only filtered on language.
+    var voice=null;
+    function pickVoice(){
+      var vs=window.speechSynthesis.getVoices()||[];
+      if(!vs.length)return null;
+      var want=(document.documentElement.lang||navigator.language||'en').toLowerCase();
+      var base=want.split('-')[0];
+      var best=null,bestScore=-1e9;
+      for(var i=0;i<vs.length;i++){
+        var v=vs[i],n=v.name||'',lang=(v.lang||'').toLowerCase(),s=0;
+        // Language first, and it is a filter rather than a preference: a
+        // beautiful German voice reading English is worse than any English one.
+        if(lang===want)s+=30;
+        else if(lang.split('-')[0]===base)s+=15;
+        else continue;
+        if(/natural/i.test(n))s+=100;
+        else if(/^google/i.test(n))s+=80;
+        else if(/premium|enhanced/i.test(n))s+=60;
+        if(v.localService===false)s+=20;
+        if(/\b(david|zira|mark|albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox)\b/i.test(n))s-=200;
+        if(v.default)s+=1;
+        if(s>bestScore){bestScore=s;best=v;}
+      }
+      return best;
+    }
+    voice=pickVoice();
+    // The list is often empty on the first call and arrives asynchronously.
+    // Without this the first answer of a session is read by the default voice
+    // and every one after it by the good one, which is worse than either.
+    window.speechSynthesis.addEventListener('voiceschanged',function(){voice=pickVoice();});
+    // Exposed so a test can see which voice this would choose from a given
+    // list. There is no other way to check the choice: the API reports nothing
+    // about quality, so the ranking is a judgement about names and the only
+    // thing worth pinning is that it makes the judgement it claims to.
+    window.muPickVoice=pickVoice;
+
     window.muSay=function(text){
       if(!sayOn.checked)return;
       text=String(text||'').trim();
@@ -1032,7 +1088,9 @@ window.muChatAsk=ask;
       // One answer at a time. Asking again before the last one finished would
       // otherwise queue them and read both.
       window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+      var u=new SpeechSynthesisUtterance(text);
+      if(voice){u.voice=voice;u.lang=voice.lang;}
+      window.speechSynthesis.speak(u);
     };
   }
 })();

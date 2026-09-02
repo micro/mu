@@ -12,6 +12,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/service/images"
 	"mu/service/markets"
 	"mu/service/weather"
 )
@@ -251,6 +252,17 @@ func indexBody(viewerID string) string {
    went with them when those became a list, leaving the markets row joining
    "-2.1%" to "Tesla" with an unspaced dot. */
 .lsep{margin:0 7px;color:#ccc}
+/* The day's picture, last. Sized to the block rather than to itself, so a
+   provider that changes its dimensions cannot change the page. */
+.limage a{display:block;text-decoration:none;color:inherit}
+/* A band, not a poster. The image arrives square and at the block's full width
+   it is 580px tall — taller than everything above it put together, which
+   inverts the page: the brief is the point and the picture is the flourish.
+   Cropped to a band it finishes the page instead of becoming it, and the page
+   still ends on one screen. */
+.limage img{width:100%;height:150px;object-fit:cover;border-radius:8px;display:block}
+.lcap{display:block;margin-top:6px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.08em;color:#bbb}
 </style>`
 }
 
@@ -335,6 +347,7 @@ func today(viewerID string) string {
 	rows := []string{
 		briefRow(viewerID),
 		group("Markets", marketsRow()),
+		imageRow(),
 	}
 
 	var b strings.Builder
@@ -440,6 +453,32 @@ func weatherBit(viewerID string) string {
 		out += ` ` + d
 	}
 	return html.EscapeString(out)
+}
+
+// imageRow is the day's picture, last.
+//
+// Last because it is the one thing here you look at rather than read, and
+// because it is the only row that is not information — it is the instance
+// having made something today. A page that ends on it ends on a full stop
+// rather than trailing off into more text.
+//
+// No heading over it. Every other row needs a word to say what the numbers are;
+// a picture does not, and the caption under it says the rest more quietly than
+// a label above would.
+//
+// Nothing at all on a day it has not run, the same as every other row here.
+func imageRow() string {
+	url, theme, ok := images.Today()
+	if !ok {
+		return ""
+	}
+	caption := "Daily image"
+	if t := strings.TrimSpace(theme); t != "" {
+		caption += " · " + t
+	}
+	return `<div class="lgroup limage"><a href="/images">` +
+		`<img src="` + html.EscapeString(url) + `" alt="` + html.EscapeString(caption) + `" loading="lazy">` +
+		`<span class="lcap">` + html.EscapeString(caption) + `</span></a></div>`
 }
 
 // briefRow is what happened, in a sentence.

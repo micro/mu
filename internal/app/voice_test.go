@@ -123,3 +123,59 @@ func TestSpeakIsOnlyWhereAnAnswerCanArrive(t *testing.T) {
 		t.Error("a surface that can answer does not offer to read it out")
 	}
 }
+
+// Which voice reads an answer.
+//
+// The utterance was constructed with nothing set — new SpeechSynthesisUtterance(text)
+// and straight to speak() — which uses the platform default, and every
+// platform's default is its oldest speech engine. That is where "why is it so
+// robotic" came from: nothing was choosing, so the OS chose its fallback.
+//
+// The ranking itself is judged in a browser against the voice lists the
+// platforms actually report, because the API says nothing about quality and the
+// only signal is the name. What is pinned here is that a choice is made at all
+// and that the utterance carries it — the two things whose absence produced the
+// original bug and would produce it again silently.
+func TestAnAnswerIsReadInAChosenVoice(t *testing.T) {
+	js := ChatComponent(ChatConfig{Ask: true, Speak: true})
+
+	if !strings.Contains(js, "u.voice=voice") {
+		t.Error("the utterance is spoken without a voice set, so it uses the\n" +
+			"platform default — Microsoft David on Windows, the oldest Macintalk\n" +
+			"descendant on macOS. That is the robotic one.")
+	}
+	if !strings.Contains(js, "pickVoice()") {
+		t.Error("nothing chooses a voice")
+	}
+	// The list arrives asynchronously and is usually empty on the first call.
+	// Without re-picking, the first answer of a session is read by the default
+	// and every one after it by the good one, which is worse than either.
+	if !strings.Contains(js, "voiceschanged") {
+		t.Error("the voice is chosen once, before the browser has loaded the list —\n" +
+			"so the first answer of a session gets the default voice")
+	}
+}
+
+// Language is a filter and not a preference: a good German voice reading
+// English is worse than any English one.
+func TestAVoiceInTheWrongLanguageIsNotConsidered(t *testing.T) {
+	js := ChatComponent(ChatConfig{Ask: true, Speak: true})
+	if !strings.Contains(js, "else continue;") {
+		t.Error("a voice whose language does not match is scored rather than\n" +
+			"skipped, so a machine with no voice in the page's language reads\n" +
+			"the answer in some other one")
+	}
+}
+
+// macOS ships joke voices — Bells, Bubbles, Deranged, Zarvox — that match a
+// language query perfectly well and would be picked by anything filtering on
+// language alone.
+func TestTheNoveltyVoicesAreExcluded(t *testing.T) {
+	js := ChatComponent(ChatConfig{Ask: true, Speak: true})
+	for _, name := range []string{"zarvox", "bubbles", "deranged"} {
+		if !strings.Contains(js, name) {
+			t.Errorf("%q is not excluded — it is a macOS novelty voice that matches\n"+
+				"en-US and would be a candidate", name)
+		}
+	}
+}
