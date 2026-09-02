@@ -62,7 +62,10 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// page's job and not a server's.
 		Title:       "Mu",
 		Description: "A personal server: mail, chat, files, an inbox with an address, and an agent that reaches its tools. Open source and self-hostable.",
-		Brand:       "Mu",
+		// The name, and what it is for. Markup rather than the shell's own
+		// tagline slot, because that renders a separate block underneath and
+		// this belongs on the same line — see .btag.
+		Brand: `Mu <span class="btag">a personal assistant</span>`,
 		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
 		// line this positioning replaced — sitting directly above a headline
 		// that said something else, and swapping it for the new line only made
@@ -233,10 +236,23 @@ func indexBody(viewerID string) string {
  * Left, against a single edge, at the measure every other page uses. The block
  * is still centred in the screen; its contents are not centred in the block. */
 .lwrap{padding:0;max-width:760px;margin:0 auto;width:100%;text-align:left}
-/* The wordmark starts on the same edge as everything under it. It is a sibling
-   of this block in the shell, not a child, so it is given the same measure
-   rather than inheriting one. */
-.index-page .brand{width:100%;max-width:760px;text-align:left}
+/* The wordmark keeps the block's left edge, and says what this is.
+ *
+ * It was centred for a moment on the argument that a wordmark over a search box
+ * is the shape everybody knows. True, and it costs the one thing the axis
+ * bought: a name floating over a left-aligned document reads as a header from a
+ * different page. The better answer is to give the left edge something worth
+ * holding — the name, and then in a smaller face what the name is for.
+ *
+ * A stranger arriving here has never been told what this is. The page has a
+ * box, a row of services and a brief, all of which are evidence and none of
+ * which is a sentence. Four words next to the name is the whole explanation,
+ * and it costs a line that was empty anyway. */
+.index-page .brand{width:100%;max-width:760px;text-align:left;
+  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+/* Baseline-aligned, not centred on the cap height: the two sit on one line and
+   the eye reads the smaller one as a continuation rather than as a label. */
+.btag{font-size:15px;font-weight:400;letter-spacing:0;color:#888}
 /* Today, under the box. Three rows, each one line, and the block does not
    scroll — see today() for why this is not a grid of cards. */
 .ltoday{margin:34px 0 0}

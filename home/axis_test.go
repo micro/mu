@@ -41,12 +41,20 @@ func TestTheFrontDoorHangsOffOneEdge(t *testing.T) {
 		}
 	}
 
-	// The wordmark shares the block's measure. It is a sibling in the shell, not
-	// a child, so it has to be given the edge rather than inherit it — without
-	// this the page's largest element is the one thing not on the axis.
-	if !strings.Contains(src, ".index-page .brand{width:100%;max-width:760px;text-align:left}") {
+	// The wordmark shares the block's measure and its edge. It is a sibling in
+	// the shell, not a child, so it has to be given both rather than inherit
+	// them — without that the page's largest element is the one thing not on the
+	// axis.
+	if !strings.Contains(src, ".index-page .brand{width:100%;max-width:760px;text-align:left;") {
 		t.Error("the wordmark is not aligned to the block, so the biggest thing on\n" +
 			"the page sits on a different edge from everything under it")
+	}
+
+	// And it says what this is. A stranger arriving here has never been told:
+	// the box, the row of services and the brief are all evidence, and none of
+	// them is a sentence.
+	if !strings.Contains(src, "a personal assistant") {
+		t.Error("the front door never says what this is")
 	}
 
 	// And the block is the measure the rest of the product uses.

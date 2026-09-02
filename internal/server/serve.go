@@ -163,12 +163,31 @@ func serve(addr string) {
 			if !isStaticAsset {
 				var isAuthed bool
 
-				// Check if path requires authentication
+				// Check if path requires authentication.
+				//
+				// Longest prefix wins, and the reason is that this used to break
+				// on the first match while ranging over a map — so where one
+				// entry is a prefix of another, which answer you got was Go's
+				// map iteration order, which is deliberately random per run.
+				//
+				// The policy has a dozen such pairs: /mail and
+				// /mail/unsubscribe, /maps and /maps/, /agents and
+				// /agents/data, /oauth2/google and /oauth2/google/connect. Each
+				// was answering at random, per request. Ten identical requests
+				// to the unsubscribe link on the live instance returned
+				// 303 303 303 404 303 404 404 303 303 303 — a link in an email
+				// that worked slightly less than half the time, which is worse
+				// than one that never works because nobody reports it.
+				//
+				// Longest wins is the rule every router uses and the one the
+				// table was obviously written for: the more specific line is
+				// there precisely to override the general one.
 				{
+					longest := -1
 					for url, authed := range authenticated {
-						if strings.HasPrefix(r.URL.Path, url) {
+						if strings.HasPrefix(r.URL.Path, url) && len(url) > longest {
+							longest = len(url)
 							isAuthed = authed
-							break
 						}
 					}
 				}
