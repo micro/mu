@@ -131,11 +131,11 @@ func TestNativeAgentUsesOpenAICompatibleEndpoint(t *testing.T) {
 		t.Fatalf("baseURL = %q, want the root — the provider appends /v1/chat/completions", baseURL)
 	}
 
-	a, _, built := buildNativeAgent("", "hello", QueryOpts{})
+	run, built := buildNativeAgent("", "hello", QueryOpts{})
 	if !built {
 		t.Fatal("native agent was not built for an OpenAI-compatible endpoint")
 	}
-	if got := a.Options().BaseURL; got != baseURL {
+	if got := run.agent.Options().BaseURL; got != baseURL {
 		t.Fatalf("agent BaseURL = %q, want %q", got, baseURL)
 	}
 }
@@ -172,10 +172,22 @@ func clearProviders(t *testing.T) {
 		"GEMINI_API_KEY", "OPENROUTER_API_KEY",
 		"OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL", "AGENT_MODEL",
 	} {
-		previous := settings.Get(key)
-		settings.Set(key, "")
-		t.Cleanup(func() { settings.Set(key, previous) })
+		// The environment first, and that order is the whole of this.
+		//
+		// settings.Get answers from the environment before its own file, and
+		// settings.Set writes to the file. So reading before clearing read the
+		// exported key and then wrote it into the stored settings on cleanup —
+		// a key this helper exists to remove, made permanent, in the store that
+		// t.Setenv cannot reach. Every later test in the package that clears
+		// only the environment (see noProviders) then found a provider on a box
+		// that was supposed to have none, and which tests failed depended on
+		// which file this helper was first called from.
+		//
+		// Cleared first, Get returns what is actually stored.
 		t.Setenv(key, "")
+		stored := settings.Get(key)
+		settings.Set(key, "")
+		t.Cleanup(func() { settings.Set(key, stored) })
 	}
 }
 

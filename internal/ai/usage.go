@@ -180,6 +180,35 @@ func providerName(model string) string {
 	return "claude"
 }
 
+// RecordAgentUsage records what one agent run spent on one model.
+//
+// Everything below this line is reached from ai.Ask, and an agent run does not
+// go through Ask: go-micro's agent holds the tool-calling loop and talks to the
+// provider itself. So the one path that answers most questions — and the only
+// one that makes forty model calls to answer a single question — recorded
+// nothing at all, and the spend log's honest report of the money was sixty-odd
+// cents since March, all of it Google and Brave. Not a rounding error: the
+// entire cost of the product, missing.
+//
+// One record per model per run, not per call. A run is up to maxSteps calls,
+// the log keeps two thousand records, and per call an afternoon of questions
+// would push every other service out of it. Calls says how many were summed, so
+// a record still tells you how much work the run was.
+//
+// Cache tokens are not a field: go-micro's ai.Usage has input, output and
+// total, so what is not reported cannot be recorded. It reads as a slightly
+// high bill on a provider that caches, which is the safe direction.
+func RecordAgentUsage(caller, model string, inputTokens, outputTokens, calls int) {
+	app.RecordUsage(providerName(model), caller,
+		estimateCostCents(model, inputTokens, outputTokens, 0, 0),
+		map[string]any{
+			"model":         model,
+			"input_tokens":  inputTokens,
+			"output_tokens": outputTokens,
+			"model_calls":   calls,
+		})
+}
+
 func recordUsage(caller, model string, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens int) {
 	costCents := estimateCostCents(model, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens)
 

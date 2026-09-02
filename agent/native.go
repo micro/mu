@@ -15,6 +15,7 @@ import (
 
 	gmagent "go-micro.dev/v6/agent"
 	gmai "go-micro.dev/v6/ai"
+	"go-micro.dev/v6/store"
 
 	"mu/internal/ai"
 	"mu/internal/api"
@@ -257,13 +258,28 @@ func nativeToolCallKey(call gmai.ToolCall) string {
 	return strings.TrimSpace(call.Name) + "\x00" + string(b)
 }
 
+// nativeRun is a built agent and everything the caller needs to run it and
+// account for it afterwards.
+//
+// It is a struct rather than a longer return list because what was added is not
+// another output: name and runs are one fact, which is where this run's
+// timeline is written. See cost.go for what reads it.
+type nativeRun struct {
+	agent    gmagent.Agent
+	question string
+	// name is the per-request agent name the timeline is filed under.
+	name string
+	// runs is where it is filed: a store that lives as long as the run.
+	runs store.Store
+}
+
 // buildNativeAgent constructs the go-micro agent and the question (history +
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
-func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (a gmagent.Agent, question string, ok bool) {
+func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (run nativeRun, ok bool) {
 	provider, key, model, baseURL, ok := nativeLLMFor(opts.Model, opts.Public)
 	if !ok {
-		return nil, "", false
+		return nativeRun{}, false
 	}
 
 	now := time.Now().UTC()
@@ -303,14 +319,31 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// The question, on its own. What was said before it goes to the model as
 	// turns rather than as prose — see memory.go, which is also where the
 	// reason the whole conversation used to be sent twice is written down.
-	question = prompt
+	question := prompt
 
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
 	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
+	// A store that lasts as long as the run.
+	//
+	// go-micro's agent writes a timeline of the run — every model call with the
+	// tokens it used, every tool call with what it spent — to whatever store it
+	// is given. It was being given the shared one, which is bbolt on disk, and
+	// the agent name above is fresh per request, so each question left a
+	// database file in ~/.mu/store/agent that nothing has ever read and nothing
+	// ever deleted. One file per question, kept forever.
+	//
+	// The timeline is worth having; keeping it is not. cost.go reads it as soon
+	// as the run finishes, to price what the run spent, and then the store goes
+	// out of scope with everything else belonging to the request.
+	//
+	// It overrides the shared store because service.NewAgent applies its own
+	// options first and these after, so the last one set wins.
+	runs := store.NewMemoryStore()
 	agentOpts := []gmagent.Option{
 		gmagent.Model(model),
+		gmagent.WithStore(runs),
 		// What was said before, as turns. Read-only, which is what stops the
 		// question being counted twice — go-micro adds it to memory and then
 		// reads memory back alongside it. See memory.go.
@@ -339,8 +372,9 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	if baseURL != "" {
 		agentOpts = append(agentOpts, gmagent.BaseURL(baseURL))
 	}
-	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools), agentOpts...)
-	return a, question, true
+	name := nativeAgentInstanceName()
+	a := service.NewAgent(name, sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools), agentOpts...)
+	return nativeRun{agent: a, question: question, name: name, runs: runs}, true
 }
 
 // nativeLLM picks the go-micro provider the native agent talks to.
@@ -583,11 +617,19 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 	if opts.OnStep != nil {
 		wrappers = append(wrappers, stepReporter(opts.OnStep))
 	}
-	a, question, ok := buildNativeAgent(accountID, prompt, opts, wrappers...)
+	run, ok := buildNativeAgent(accountID, prompt, opts, wrappers...)
 	if !ok {
 		return "", ErrNoProvider
 	}
+	a, question := run.agent, run.question
 	defer a.Stop()
+	// What it cost, whichever way this returns.
+	//
+	// Deferred rather than written after the answer because a run that fails
+	// has still been paid for: a provider error on the ninth step is nine model
+	// calls of tokens, and accounting for only the runs that worked would
+	// under-report exactly the runs worth knowing about.
+	defer recordRunCost(run.runs, run.name, costCaller(opts))
 
 	// Streaming when somebody is watching.
 	//
