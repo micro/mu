@@ -521,9 +521,15 @@ function fetchW(la,lo){
 		//
 		// So it sits with the box, which is the other thing here that spans:
 		// you ask, or you are told. Everything below is a place to look.
+		//
+		// data-brief, so it steps aside when somebody asks. The brief and the
+		// answer are the same shape — a paragraph of prose — and stacking them
+		// makes the reader work out where one stops; worse, every turn pushes
+		// the brief further down the page. You are told, or you ask. See
+		// hideBrief in app.ChatComponent.
 		if viewerID != "" {
 			if brief := briefHTML(viewerID); brief != "" {
-				b.WriteString(`<div id="home-brief">` + brief + `</div>`)
+				b.WriteString(`<div id="home-brief" data-brief>` + brief + `</div>`)
 			}
 		}
 

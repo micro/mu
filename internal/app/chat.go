@@ -546,6 +546,22 @@ var conv=document.getElementById('mu-chat-conv');
 // A transcript keeps its input at the bottom and its newest turn above it.
 // See ChatConfig.Transcript.
 var transcript=!!document.querySelector('#mu-chat.mu-chat-transcript');
+
+// The brief steps aside when you ask.
+//
+// The brief and the answer are the two halves of the same idea — one is what
+// you are told without asking, the other is what you get when you do — and they
+// are both a paragraph of prose. Stacked, the answer arrives under a sentence
+// about the day and the reader has to work out where one stops. Worse, the
+// brief is pushed down the page by every turn, so the thing that was the point
+// of the page ends up below a conversation.
+//
+// So asking replaces it, and starting a fresh session brings it back. Anything
+// marked data-brief takes part; the landing page and Home both mark theirs, and
+// nothing else has to know this exists.
+function briefs(){return document.querySelectorAll('[data-brief]');}
+function hideBrief(){var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=true;}}
+function showBrief(){var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=false;}}
 // nearBottom is the difference between "following the answer" and "reading
 // something further up". Scrolling to the bottom in the second case is the
 // thing that makes a chat unusable while a long answer streams.
@@ -610,6 +626,11 @@ if(!SESSION && PERSIST){
   }catch(e){}
 }
 
+// A conversation already on the page means the asking has happened, whether it
+// came back from sessionStorage or was rendered by the server. Without this a
+// reload put the brief back above a transcript that was still there.
+if(conv.innerHTML.trim())hideBrief();
+
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function protectCurrencyDollars(s){return String(s||'').replace(/\$(?=\d)/g,'$\u2060');}
 
@@ -642,6 +663,7 @@ function save(){
 function ask(q){
   q=String(q||'').trim();
   if(!q)return;
+  hideBrief();
   sugDiv.innerHTML='';
   var u=document.createElement('div');u.className='mu-user';u.textContent=q;conv.appendChild(u);
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
@@ -807,6 +829,7 @@ showSuggestions();
 window.muChatNew=function(){
   conv.innerHTML='';history=[];contextId='';
   try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);sessionStorage.removeItem(TKEY);}catch(e){}
+  showBrief();
   showSuggestions();input.focus();
 };
 // Exposed so server-rendered prefill (?q= / ?prompt=) can auto-submit.

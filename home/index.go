@@ -4,7 +4,9 @@ import (
 	"html"
 	"net/http"
 	"strings"
+	"time"
 
+	"mu/agent/brief"
 	"mu/internal/app"
 	"mu/internal/service"
 )
@@ -196,6 +198,7 @@ func indexBody() string {
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
 		}) +
+		publicBrief() +
 		`<p class="lwhat">` + directDoors() + `</p>
 </div>
 
@@ -204,7 +207,67 @@ func indexBody() string {
 .lwhat{text-align:center;color:#888;font-size:13px;line-height:1.9;margin:20px auto 0}
 .lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
 .lwhat a:hover{text-decoration:underline}
+/* Today, under the box. Prose, so it is set as prose and not as a caption —
+   this is the one thing on the page that is worth reading rather than
+   clicking. */
+.lbrief{margin:22px auto 0;max-width:560px;text-align:center;
+  font-size:15px;line-height:1.7;color:#444}
+.lbrief-day{display:block;margin-bottom:6px;font-size:11px;
+  text-transform:uppercase;letter-spacing:.08em;color:#aaa}
 </style>`
+}
+
+// publicBrief is what happened today, for somebody with no account.
+//
+// # Why this is the right thing on a landing page
+//
+// The page's whole argument is that you can get what you need and leave, and
+// until now it made that argument with a text box — which is a promise, and one
+// a stranger has to spend something to test. This is the same claim
+// demonstrated: two sentences about the day, complete, and then you are done.
+// It is the product, working, above the fold, before anybody signs anything.
+//
+// # It costs nothing to show
+//
+// agent/brief already writes this line for the whole instance on a timer, and
+// already blanks it when the day it describes has ended. Every visitor gets the
+// same string out of memory. Nothing here calls a model, which is what makes it
+// safe on the one page that takes arbitrary traffic.
+//
+// # Public, and that is the point of it
+//
+// This line is written from news, posts and prices — rows that are public by
+// construction — so it is the same for everybody and there is nothing here to
+// leak. That is also what makes it a reason to sign up rather than a substitute
+// for doing so: the world's day is the same for all of us, and yours is not.
+// Home's brief adds what arrived, what your agents have in hand and what is
+// owed, which is the half that needs an account to exist at all.
+//
+// Silent when there is no line — a new instance, a model that has not run yet,
+// or the first hours of a day before the run. A heading over nothing is worse
+// than nothing, and this page is built to fit on one screen.
+func publicBrief() string { return briefBlock(brief.Line()) }
+
+// briefBlock is how the line is set, given the line.
+//
+// Split from publicBrief so a test can look at the markup without reaching into
+// another package's unexported state to plant a line first. The question "is
+// there anything to say today" and the question "what does it look like" are
+// separate, and only one of them has an interesting answer.
+func briefBlock(line string) string {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return ""
+	}
+	// Dated, because a brief with no date on it is a sentence that could be
+	// from any morning — and the whole claim being made here is that this is
+	// today's and that reading it once is enough.
+	//
+	// data-brief, so asking a question takes it off the page rather than
+	// pushing it under the answer. See hideBrief in app.ChatComponent.
+	return `<p class="lbrief" data-brief><span class="lbrief-day">` +
+		html.EscapeString(time.Now().Format("Monday, 2 January")) + `</span>` +
+		html.EscapeString(line) + `</p>`
 }
 
 // directDoors is the handful of services worth putting under the box.
