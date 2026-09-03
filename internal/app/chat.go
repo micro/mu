@@ -552,6 +552,9 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-by{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:#999;margin:0 0 6px}
 .mu-think{color:#888;font-size:14px}
+/* A step that has finished: the same voice as the one running, one shade back,
+   so the list reads as a trail rather than as a stack of live things. */
+.mu-step{color:#aaa;font-size:13px;line-height:1.6}
 .mu-err{color:#c00}
 .mu-cta{padding:12px 14px;border:1px solid #e0e0e0;border-radius:8px;background:#fafafa;font-size:14px}
 .mu-cta a{color:#111;font-weight:600;text-decoration:none}
@@ -771,12 +774,34 @@ function ask(q){
   var workLabel='Working';
   var t0=Date.now();
   var timer=null;
+  // What it has already done, above what it is doing now.
+  //
+  // One line that replaced itself showed a five-tool run as a single label
+  // changing every second or two: you could tell it was alive and not what it
+  // had got through, which is the difference between a spinner and progress.
+  // The steps go when the answer arrives — they are the wait, not the record;
+  // the record is the run.
+  var done=[];
   function renderWork(){
     var dots=['.','..','...'][Math.floor((Date.now()-t0)/450)%3];
     var secs=Math.round((Date.now()-t0)/1000);
-    a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>'+esc(workLabel)+dots+'</span>'+(secs>=1?'<span class="mu-think-t">'+secs+'s</span>':'')+'</div>';
+    var past='';
+    // The last few. A run may take forty steps and a list that long is the
+    // spinner problem again with more text in it.
+    for(var i=Math.max(0,done.length-5);i<done.length;i++){
+      past+='<div class="mu-step">'+esc(done[i])+'</div>';
+    }
+    a.innerHTML=past+'<div class="mu-think"><span class="mu-spin"></span><span>'+esc(workLabel)+dots+'</span>'+(secs>=1?'<span class="mu-think-t">'+secs+'s</span>':'')+'</div>';
   }
-  function startWork(label){if(label)workLabel=label;renderWork();if(!timer)timer=setInterval(renderWork,450);}
+  // startWork moves the current label into the list behind it, so each step
+  // stays on screen once the next one starts.
+  function startWork(label){
+    if(label&&label!==workLabel){
+      if(workLabel&&workLabel!=='Working'&&done[done.length-1]!==workLabel)done.push(workLabel);
+      workLabel=label;
+    }
+    renderWork();if(!timer)timer=setInterval(renderWork,450);
+  }
   // How many tools are in flight, so the label goes back to the plain one only
   // when they have all finished.
   var running=0;

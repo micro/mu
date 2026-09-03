@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"mu/agent/micro"
+	"mu/client"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
@@ -423,6 +424,27 @@ func platformPanel(a *micro.Agent, base string) string {
 			`<span class="conn-sub">From your verified address. The tag names the agent ` +
 			`rather than you, so it is one thing to remember — and it answers in the ` +
 			`thread, which turns up in your inbox.</span></span></div>`)
+	}
+
+	// And the numbers, as a card a phone will save.
+	//
+	// This page hands you the things you copy somewhere else, and a contact is
+	// the one of them nobody can usefully copy: a number, a WhatsApp number and
+	// an address are three fields to retype into an address book, so somebody
+	// who has had an account for months still ends up adding the agent by hand.
+	// See client.VCard.
+	//
+	// The default agent only. The card carries the shared number and the plain
+	// agent@ address, which is what reaches Micro — a second agent saved under
+	// the same number would be a contact that reaches somebody else. And Code
+	// answers on the web and on a machine: a coding agent in your contacts,
+	// under a number you would never text a file to, offers the wrong thing.
+	if a.ID == DefaultPlatformAgent && client.Savable() {
+		b.WriteString(`<div class="conn-row"><span class="conn-k">Contact</span>` +
+			`<span class="conn-v">` + app.TextLink("Add to contacts", "/contact.vcf") +
+			`<br><span class="conn-sub">Every number and address it answers on, saved ` +
+			`under one name. On a phone it opens your contacts and offers to keep ` +
+			`it.</span></span></div>`)
 	}
 
 	b.WriteString(connChat(base, "/agent/"+html.EscapeString(a.ID)))
