@@ -1619,9 +1619,28 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	app.Log("news", "Final title='%s', desc='%s'", title, description)
 
 	// Build the article page
+	// Served from here, not from the publisher's CDN.
+	//
+	// This page was the one that still hotlinked. The cards have gone through
+	// internal/imageproxy for a while, and its package comment describes what
+	// happens to anything that does not, in the words of the bug that was
+	// reported against this page: "when one says no the image is simply gone,
+	// and the onerror handler hides it, so the page looks like it never had a
+	// picture". A hotlinked image is at the mercy of the publisher's hotlink
+	// rules, a resource policy, a content blocker's list, an expiring signed
+	// URL or a rate limit, and any one of them turns a page that had a picture
+	// yesterday into one that does not.
+	//
+	// referrerpolicy goes with it. It was there to hide the reader from the
+	// publisher, which is now done by not asking the publisher at all — the
+	// bytes are fetched once, server-side, and cached.
+	//
+	// Escaped, unlike before: the proxy URL is built from a query string this
+	// escapes anyway, and the raw one came out of a publisher's markup.
 	imageSection := ""
 	if image != "" {
-		imageSection = fmt.Sprintf(`<img src="%s" class="article-image" referrerpolicy="no-referrer" onerror="this.style.display='none'">`, image)
+		imageSection = fmt.Sprintf(`<img src="%s" class="article-image" onerror="this.style.display='none'">`,
+			htmlpkg.EscapeString(imageproxy.URL(image)))
 	}
 
 	summarySection := ""
@@ -2603,7 +2622,7 @@ func formatSearchResult(entry *data.IndexEntry) string {
     </div>
   </a>
   <div class="summary">%s</div>
-</div>`, entry.ID, url, image, categoryBadge, title, description, summary)
+</div>`, entry.ID, url, htmlpkg.EscapeString(imageproxy.URL(image)), categoryBadge, title, description, summary)
 	}
 
 	return fmt.Sprintf(`
