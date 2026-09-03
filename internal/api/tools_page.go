@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"mu/client"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
@@ -353,7 +352,7 @@ func connectSection(r *http.Request) string {
 	// They were on /contact until now, which is a card headed "How to reach
 	// Micro" and is about texting an assistant. A shell snippet at the bottom of
 	// it was answering a question that page does not ask. This one does.
-	if dev := client.Developer(); len(dev) > 0 {
+	if dev := devClients(); len(dev) > 0 {
 		b.WriteString(`<div class="connect-way">`)
 		b.WriteString(`<h4>Or talk to the agent directly</h4>`)
 		b.WriteString(`<p class="card-desc">MCP is how another agent borrows this ` +

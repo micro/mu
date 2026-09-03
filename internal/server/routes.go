@@ -19,6 +19,7 @@ import (
 	"mu/agent/code"
 	"mu/agent/digest"
 	"mu/agent/micro"
+	"mu/client"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -644,6 +645,20 @@ func registerRoutes() {
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
 	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)
 	http.HandleFunc("/oauth/token", auth.OAuthTokenHandler)
+
+	// The doors that are not MCP, for the connect card on /tools.
+	//
+	// Handed over rather than imported: mu/client is a product package and
+	// internal/api is underneath it — see api.DevClientsFunc, and the layering
+	// test that catches the shortcut. This function is the assembly, which is
+	// the one place allowed to know both halves.
+	api.DevClientsFunc = func() []api.DevClient {
+		var out []api.DevClient
+		for _, c := range client.Developer() {
+			out = append(out, api.DevClient{Address: c.Address, Note: c.Note, Example: c.Example})
+		}
+		return out
+	}
 
 	// internal status (injected into admin server page)
 	app.DKIMStatusFunc = mail.DKIMStatus
