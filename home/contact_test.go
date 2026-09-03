@@ -38,3 +38,24 @@ func TestTheCardIsReadableWithoutAnAccount(t *testing.T) {
 		t.Error("/contact is not public in the route table")
 	}
 }
+
+// The contact card is for people, not programs.
+//
+// It drew client.All(), which ends in `mu ask "…"` and a curl invocation with a
+// bearer token in it, so a card headed "How to reach Micro" — whose argument is
+// that you write to this thing the way you write to a person — finished in a
+// shell snippet. See client.Personal.
+func TestTheContactCardIsNotADeveloperPage(t *testing.T) {
+	body := contactBody(nil)
+	for _, dev := range []string{"mu ask", "curl", "Bearer", "MU_TOKEN"} {
+		if strings.Contains(body, dev) {
+			t.Errorf("the contact card carries %q, which is /api's answer to a "+
+				"different question", dev)
+		}
+	}
+	// And it still lists the ways a person does reach it. Web is the one client
+	// that is always there.
+	if !strings.Contains(body, ">Web<") {
+		t.Error("the card lists no way in at all")
+	}
+}

@@ -81,6 +81,46 @@ type Client struct {
 	// So it carries its own. Empty on every other client, because a phone
 	// number with a worked example under it would be condescending.
 	Example string
+	// Dev marks a way in that a program arrives on rather than a person.
+	//
+	// The list is still whole — see the package comment on why a way in that
+	// nothing enumerates is one that quietly stops being maintained — but not
+	// every reader of it is the same reader. /contact answers "how do I write
+	// to this thing", and `mu ask "…"` and a curl invocation with a bearer
+	// token in it are not answers to that question: they are answers to "how
+	// do I call it from a program", which is /api's, and putting them on the
+	// contact card meant a page about texting an assistant ended in a shell
+	// snippet.
+	Dev bool
+}
+
+// Personal is the ways a person reaches this instance, as a person.
+//
+// All() minus the developer doors. The distinction is on the row rather than in
+// a second list, so adding a client cannot leave it out of the enumeration by
+// accident — a new client is in All() the moment it exists, and only its own
+// Dev flag decides which pages draw it.
+func Personal() []Client {
+	return filter(false)
+}
+
+// Developer is the other half: the ways a program arrives.
+//
+// Drawn on /api, which is the page those rows have always pointed at — see
+// Client.Example on why linking there was not the same as being explained
+// there.
+func Developer() []Client {
+	return filter(true)
+}
+
+func filter(dev bool) []Client {
+	var out []Client
+	for _, c := range All() {
+		if c.Dev == dev {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // All is every way to reach this instance's agent, in the order somebody meets
@@ -128,7 +168,7 @@ func All() []Client {
 	// one nobody was told about. That is the lesson this list exists to stop:
 	// a way in that nothing enumerates is a way in that quietly stops being
 	// maintained.
-	out = append(out, Client{ID: thread.CLIClient, Label: "CLI",
+	out = append(out, Client{ID: thread.CLIClient, Label: "CLI", Dev: true,
 		Address: `mu ask "…"`, Href: "/api",
 		Note: "the same agent from a terminal, after mu login"})
 
@@ -149,7 +189,8 @@ func All() []Client {
 	// means "whatever answers here" on both doors, and a specialist is
 	// agent+news@ or /agent/news. Same shape, same rule.
 	if host != "" {
-		out = append(out, Client{Label: "API", Address: "https://" + host + "/agent",
+		out = append(out, Client{Label: "API", Dev: true,
+			Address: "https://" + host + "/agent",
 			Href: "/token", Note: "for a program — needs a token",
 			Example: "curl -X POST https://" + host + "/agent \\\n" +
 				`  -H "Authorization: Bearer $MU_TOKEN" \` + "\n" +

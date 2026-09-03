@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"mu/client"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
@@ -339,6 +340,33 @@ func connectSection(r *http.Request) string {
 		`<code>claude_desktop_config.json</code> will not work: that file only takes local ` +
 		`command-line servers.</p>`)
 	b.WriteString(`</div>`)
+
+	// And the two doors that are not MCP at all.
+	//
+	// The CLI row has always pointed here — client.All gives it Href "/api" —
+	// and this page had nothing on it about `mu ask`, so the one client with
+	// real documentation sent you to a page about calling services. The API row
+	// carries its own worked example for the same reason: "POST /agent" is an
+	// instruction rather than an address, and the row that needed explaining
+	// was the row explaining nothing.
+	//
+	// They were on /contact until now, which is a card headed "How to reach
+	// Micro" and is about texting an assistant. A shell snippet at the bottom of
+	// it was answering a question that page does not ask. This one does.
+	if dev := client.Developer(); len(dev) > 0 {
+		b.WriteString(`<div class="connect-way">`)
+		b.WriteString(`<h4>Or talk to the agent directly</h4>`)
+		b.WriteString(`<p class="card-desc">MCP is how another agent borrows this ` +
+			`instance's tools. These are how you reach the agent itself.</p>`)
+		for _, c := range dev {
+			b.WriteString(`<p class="card-desc"><code>` + html.EscapeString(c.Address) +
+				`</code> — ` + html.EscapeString(c.Note) + `</p>`)
+			if c.Example != "" {
+				b.WriteString(`<pre class="connect-cfg">` + html.EscapeString(c.Example) + `</pre>`)
+			}
+		}
+		b.WriteString(`</div>`)
+	}
 
 	// No x402 here, deliberately — see TestConnectOffersOneWayIn. This card is
 	// somebody wiring up Cursor or Claude Desktop, and a reader choosing between

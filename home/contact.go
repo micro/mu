@@ -109,7 +109,14 @@ func contactBody(acc *auth.Account) string {
 	b.WriteString(`<p class="ccap">The same assistant, the same memory, whichever way you write. ` +
 		`A conversation you start by text is one you can carry on here.</p>`)
 	b.WriteString(`<div class="clist">`)
-	for _, c := range client.All() {
+	// The ways a person writes to it, and not the ways a program calls it.
+	//
+	// This drew client.All(), which ends in `mu ask "…"` and a curl invocation
+	// with a bearer token in it — so a card headed "How to reach Micro", whose
+	// whole argument is that you can text this thing like a person, finished
+	// with a shell snippet. Those are answers to a different question and /api
+	// is where it is asked. See client.Personal.
+	for _, c := range client.Personal() {
 		b.WriteString(`<div class="crow"><span class="clabel">` + html.EscapeString(c.Label) + `</span>`)
 		addr := `<code class="caddr">` + html.EscapeString(c.Address) + `</code>`
 		if c.Href != "" {
@@ -118,11 +125,10 @@ func contactBody(acc *auth.Account) string {
 		}
 		b.WriteString(addr)
 		b.WriteString(`<span class="cnote">` + html.EscapeString(c.Note) + `</span>`)
-		// The call itself, for the one row that is an instruction rather than
-		// an address. See client.Client.Example.
-		if c.Example != "" {
-			b.WriteString(`<pre class="cex">` + html.EscapeString(c.Example) + `</pre>`)
-		}
+		// No worked example here any more. The one row that needed one was the
+		// API, which is a developer door and is drawn on /api instead — see
+		// client.Developer. Every row left is an address: somebody reads one and
+		// knows what to do with it.
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
@@ -182,14 +188,8 @@ a.caddr:hover{text-decoration:underline}
 .cnote{grid-column:2;font-size:13px;color:#888}
 .ccap{color:#666;font-size:14px;line-height:1.5;margin:0}
 .cnext{margin:16px 0 0;font-size:14px;color:#666}
-/* The worked example, under the row it belongs to. Scrolls inside itself
-   rather than widening the card: a curl line with a URL in it is longer than
-   any column this page has. */
-.cex{grid-column:2;margin:8px 0 0;padding:10px 12px;background:#fafafa;
-  border:1px solid #f0f0f0;border-radius:6px;font-size:12px;line-height:1.6;
-  overflow-x:auto;white-space:pre;color:#333}
 @media (max-width:520px){
   .crow{grid-template-columns:1fr}
-  .cnote,.caddr,.cex{grid-column:1}
+  .cnote,.caddr{grid-column:1}
 }
 </style>`
