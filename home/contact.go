@@ -98,6 +98,13 @@ func vcardName() string {
 func contactBody(acc *auth.Account) string {
 	var b strings.Builder
 	b.WriteString(contactCSS)
+	// The same column every other page of its kind uses.
+	//
+	// This drew a bare card, so its content sat against the left of the content
+	// box while /about and /privacy — which do use the column — sat centred
+	// under a collapsed rail. Four pages a stranger reads in one sitting, at
+	// three different widths and two different left edges. See app.Column.
+	b.WriteString(app.Column())
 	b.WriteString(`<div class="card"><h3>How to reach Micro</h3>`)
 	b.WriteString(`<p class="ccap">The same assistant, the same memory, whichever way you write. ` +
 		`A conversation you start by text is one you can carry on here.</p>`)
@@ -148,6 +155,7 @@ func contactBody(acc *auth.Account) string {
 			`<a href="/sms">verified a number</a> as yours. Mail and the web already know you.</p>`)
 	}
 	b.WriteString(`</div>`)
+	b.WriteString(app.Close())
 	return b.String()
 }
 

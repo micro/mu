@@ -124,12 +124,29 @@ func record(e event.Event) {
 		return
 	}
 
+	c := Change{At: time.Now().UTC(), Service: svc,
+		Text: strings.TrimSpace(text), URL: strings.TrimSpace(url)}
+
 	mu.Lock()
 	defer mu.Unlock()
-	changes = append(changes, Change{
-		At: time.Now().UTC(), Service: svc,
-		Text: strings.TrimSpace(text), URL: strings.TrimSpace(url),
-	})
+	// The same thing announced twice is one thing.
+	//
+	// An announcement carries no id, so what makes two of them the same is
+	// what they say: the service and the words. news announces its top headline
+	// once an hour and only when it changes, which is right until the process
+	// restarts and announces the same one again — and a restart is exactly what
+	// a deploy is. Without this, "what has changed" fills up with the same
+	// change.
+	//
+	// Compared against what is still held rather than against everything ever
+	// seen, which is the same window a reader gets: an event repeating tomorrow
+	// is news again, and it should be.
+	for _, have := range changes {
+		if have.Service == c.Service && have.Text == c.Text {
+			return
+		}
+	}
+	changes = append(changes, c)
 	trimLocked()
 }
 

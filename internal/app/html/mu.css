@@ -2871,6 +2871,24 @@ a.highlight {
   body.nav-collapsed .page-col {
     margin-inline: auto;
   }
+
+  /* And the title moves with it.
+   *
+   * The rule above centres a page's column and left the heading where it was,
+   * against the left of the content box — so on a wide screen with the rail
+   * closed, "About" sat 220px to the left of the paragraph under it. The
+   * comment on the cap this replaced said exactly that would happen: "the
+   * title and what is under it keep the single edge they share, which is the
+   * thing that goes wrong if you centre the column and leave the heading
+   * behind". It was right and I removed it along with the cap.
+   *
+   * :has, so only the pages with a column are affected — a grid or a two-pane
+   * page fills the box and its title belongs at the edge of it. The selector
+   * is already used twice in this file for the same reason. */
+  body.nav-collapsed #content:has(.page-col) #page-title {
+    max-width: var(--measure);
+    margin-inline: auto;
+  }
 }
 
 /* Respect a user who has asked for less motion. */

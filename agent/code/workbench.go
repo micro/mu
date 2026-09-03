@@ -121,8 +121,19 @@ func appsHTML(accountID string) string {
 			b.WriteString(note(strconv.Itoa(len(mine)-appsShown) + " more."))
 			break
 		}
+		// Said when it is not published.
+		//
+		// AuthoredBy is every app of this account's; the directory lists only
+		// the public ones — see apps.Directory. So a private app appeared here
+		// looking exactly like a published one, and the only way to find out it
+		// was not in the directory was to go and look. Reported as an app
+		// listed here that "doesn't exist as an app".
+		mark := ""
+		if !a.Public {
+			mark = ` <span class="text-muted text-sm">private</span>`
+		}
 		b.WriteString(`<div class="chat-sess-row"><a class="chat-sess" href="/apps/` +
-			html.EscapeString(a.Slug) + `">` + html.EscapeString(a.Name) + `</a></div>`)
+			html.EscapeString(a.Slug) + `">` + html.EscapeString(a.Name) + mark + `</a></div>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()

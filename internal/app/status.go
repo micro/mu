@@ -136,6 +136,10 @@ func renderPublicStatusHTML(status PublicStatusResponse) string {
 		statusClass = "status-error"
 	}
 
+	// In the column the other public pages use. It had a 600px cap of its own,
+	// which made it the fourth width among four pages a stranger reads in one
+	// sitting. See Column.
+	sb.WriteString(Column())
 	sb.WriteString(`<div class="status-page">`)
 
 	// Header
@@ -181,6 +185,7 @@ document.querySelectorAll('.status-item[data-path]').forEach(function(el) {
 </script>`)
 
 	sb.WriteString(`</div>`)
+	sb.WriteString(Close())
 	return sb.String()
 }
 

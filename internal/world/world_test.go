@@ -129,3 +129,29 @@ func waitFor(t *testing.T, n int) []Change {
 		time.Sleep(5 * time.Millisecond)
 	}
 }
+
+// The same announcement twice is one change.
+//
+// An announcement carries no id, so what makes two the same is what they say.
+// news announces its top headline once an hour and only when it changes — until
+// the process restarts and announces the same one again, which is what a deploy
+// is. Without this the record of what changed fills with one change.
+func TestTheSameAnnouncementIsRecordedOnce(t *testing.T) {
+	Forget()
+	Watch()
+
+	event.Announce("news", "The very same headline", "https://example.test/x", "")
+	waitFor(t, 1)
+	event.Announce("news", "The very same headline", "https://example.test/x", "")
+	// Give the second one every chance to land before concluding it did not.
+	time.Sleep(100 * time.Millisecond)
+
+	if got := Lately("news"); len(got) != 1 {
+		t.Errorf("one headline announced twice was recorded %d times: %#v", len(got), got)
+	}
+	// And a different one from the same service still counts.
+	event.Announce("news", "A different headline", "", "")
+	if got := waitFor(t, 2); len(got) != 2 {
+		t.Errorf("a genuinely new change was swallowed: %#v", got)
+	}
+}
