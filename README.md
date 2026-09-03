@@ -17,8 +17,24 @@ What's included
 
 - **Clients** - Use it via Web, sms, email, whatsapp and more are all included by default. Requires setup.
 - **Services** - 30+ services including news, mail, markets, video, etc accessible via API, CLI or the Web.
-- **Agents** - Define an agent by name, prompt and give it specific tools, then chat with it via the web or api.
+- **Agents** - Micro answers by default; define your own by name, prompt and tools, then chat via the web or api.
 - **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents or reply directly.
+
+## Agents
+
+Mu is the software. An agent is who you talk to on it, and one ships with it.
+
+- **Micro** is the first agent and the one that answers unless you pick another
+  one. General purpose, with the services above as its tools, so it answers from
+  what is true now rather than from what a model remembers: the news this
+  morning, the price this minute, your own mail.
+- **Code** is the second, and is not finished. It builds things on a machine of
+  its own — writes the files, runs them, hosts the result — and what it makes
+  outlives the conversation.
+
+Your own agents are the same shape: a name, an instruction, and the tools it
+may reach. Each has an address, so `agent+yours@` reaches it from anywhere that
+can send mail, the same way `agent@` reaches Micro.
 
 ## Install
 
