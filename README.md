@@ -15,10 +15,10 @@ whether it's mail, chat, sms, whatsapp, notes, tasks, etc. Keep track of it all 
 
 What's included
 
+- **Clients** - Use it via Web, sms, email, whatsapp and more are all included by default. Requires setup.
 - **Services** - 30+ services including news, mail, markets, video, etc accessible via API, CLI or the Web.
 - **Agents** - Define an agent by name, prompt and give it specific tools, then chat with it via the web or api.
 - **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents or reply directly.
-- **Clients** - Web, sms, email, whatsapp and more are all included by default. You may need to set it up.
 
 ## Install
 
