@@ -177,6 +177,7 @@ func authRequired() map[string]bool {
 		"/status":                        false, // Public - server health status
 		"/privacy":                       false, // Public - privacy policy
 		"/contact":                       false, // Public - how to reach the agent, which is the question an account is for
+		"/contact.vcf":                   false, // Public - the same list as a contact card; everything in it is on that page
 		"/about":                         false, // Public - what this is, for somebody who does not know yet
 		"/pricing":                       false, // Public - what it costs, which is what a stranger is deciding on
 		"/install":                       false, // Public - run your own instance
@@ -377,6 +378,8 @@ func registerRoutes() {
 	http.HandleFunc("/privacy", home.PrivacyHandler)
 	// Every way in, on one page. See home/contact.go.
 	http.HandleFunc("/contact", home.ContactHandler)
+	// And the same list as a file a phone will save. See home.VCardHandler.
+	http.HandleFunc("/contact.vcf", home.VCardHandler)
 	// And what it is, for somebody who has not worked it out from the page they
 	// landed on. See home/about.go.
 	http.HandleFunc("/about", home.AboutHandler)

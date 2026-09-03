@@ -34,6 +34,7 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/agent"
 	"mu/client"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -57,6 +58,40 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 		Description: "Every way to reach this instance's assistant — the web, a text, WhatsApp, mail, or a program.",
 		HTML:        contactBody(acc),
 	})
+}
+
+// VCardHandler serves /contact.vcf — the agent as an address-book entry.
+//
+// A file rather than a page, and the Content-Type is what does the work: a
+// phone offered text/vcard opens its contacts app and asks whether to save.
+// Served to anybody, because everything in it is already on the page above it.
+func VCardHandler(w http.ResponseWriter, r *http.Request) {
+	if !client.Savable() {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/vcard; charset=utf-8")
+	// The filename a phone shows while it asks. inline rather than attachment:
+	// a phone that downloads this to a Files app instead of opening it has put
+	// the contact somewhere nobody will look again.
+	w.Header().Set("Content-Disposition", `inline; filename="`+vcardName()+`.vcf"`)
+	w.Header().Set("Cache-Control", "no-cache, private")
+	w.Write([]byte(client.VCard(agent.DefaultName()))) //nolint:errcheck
+}
+
+// vcardName is the file's name: the agent's, lowercased, with nothing in it
+// that a filesystem would argue about.
+func vcardName() string {
+	var out strings.Builder
+	for _, r := range strings.ToLower(agent.DefaultName()) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			out.WriteRune(r)
+		}
+	}
+	if out.Len() == 0 {
+		return "assistant"
+	}
+	return out.String()
 }
 
 // contactBody is the card, separate from serving it.
@@ -84,6 +119,23 @@ func contactBody(acc *auth.Account) string {
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
+
+	// And the card itself, for a phone.
+	//
+	// Everything above is four things to copy out by hand, and nobody does
+	// that: the point of an assistant you can text is that texting it is the
+	// easy thing, and it is only easy once it is in the list where your phone
+	// keeps the people you write to. One tap saves it there under one name,
+	// with every way of reaching it under that name.
+	//
+	// Only when there is something a phone can hold. On an instance with no
+	// number and no mail domain the card would be a name and a URL, which is a
+	// bookmark, and the button would be a promise of more than it does.
+	if client.Savable() {
+		b.WriteString(`<p class="mt-4">` + app.ActionLink("/contact.vcf", "Add to contacts") +
+			`</p><p class="ccap">Saves ` + html.EscapeString(agent.DefaultName()) +
+			` to your phone with every number and address on it.</p>`)
+	}
 
 	// What it needs from you before a phone number is you rather than a
 	// stranger's. Only where it is actionable: signed out there is no account
