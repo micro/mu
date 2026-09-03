@@ -14,9 +14,13 @@ package agent
 // the split, adding a built-in agent could silently take over an address
 // somebody was already using.
 //
-// The list is the micro registry — the same eleven specialists the router picks
-// between — so an agent is addressable by mail the moment it is registered, and
-// nothing here has to be kept in step by hand.
+// The list is the micro registry, so an agent is addressable by mail the moment
+// it is registered and nothing here has to be kept in step by hand.
+//
+// It said "the same eleven specialists the router picks between". There are
+// two: micro, which is the catch-all, and code, which registers itself from
+// agent/code. The eleven were a plan, and a comment describing a plan reads as
+// a description of the thing.
 
 import (
 	"sort"
