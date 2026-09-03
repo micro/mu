@@ -10,8 +10,11 @@ package agent
 import (
 	"strings"
 	"testing"
+	"time"
 
+	"mu/internal/event"
 	"mu/internal/service"
+	"mu/internal/world"
 )
 
 // A service that says what it already knows gets into the prompt.
@@ -75,5 +78,44 @@ func saying(name, text string) []service.Spec {
 func TestASpecWithNoNowIsSkipped(t *testing.T) {
 	if got := nowContextFrom([]string{"quiet-svc"}, []service.Spec{{Name: "quiet-svc"}}); got != "" {
 		t.Errorf("a service with no Now wrote into the prompt: %q", got)
+	}
+}
+
+// What has changed rides along with what is true.
+//
+// A snapshot says what is true; it cannot say that something happened, and
+// "anything new?" is the second question. See internal/world.
+func TestWhatChangedIsInThePromptToo(t *testing.T) {
+	world.Forget()
+	world.Watch()
+	event.Announce("delta-svc", "A thing happened", "", "")
+	waitForChange(t, "delta-svc")
+
+	got := nowContextFrom([]string{"delta-svc"}, saying("delta-svc", "State, as of now: fine"))
+	if !strings.Contains(got, "A thing happened") {
+		t.Errorf("the prompt carries the state and not the change: %q", got)
+	}
+	if !strings.Contains(got, "What has changed") {
+		t.Errorf("the change is not labelled as one: %q", got)
+	}
+
+	// And it is scoped like everything else: an agent that cannot reach the
+	// service does not hear about it.
+	if out := nowContextFrom([]string{"shell"}, saying("shell", "")); strings.Contains(out, "A thing happened") {
+		t.Errorf("an out-of-scope change reached the prompt: %q", out)
+	}
+}
+
+func waitForChange(t *testing.T, svc string) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if len(world.Lately(svc)) > 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no change recorded for %s", svc)
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }

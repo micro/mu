@@ -49,6 +49,7 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/thread"
+	"mu/internal/world"
 	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
@@ -311,6 +312,13 @@ func wireHooks() {
 	// And to the address they signed up with, if they verified one. Mail that
 	// lands in an inbox nobody was told about is mail nobody reads — see
 	// service/mail/forward.go, and the unsubscribe link in every one of them.
+	// What is true and what has just changed, kept as it happens.
+	//
+	// Subscribed at boot rather than on first use, because a view assembled
+	// when somebody asks has nothing in it: the delta is a record of what went
+	// past while nobody was looking. See internal/world.
+	world.Watch()
+
 	mail.StartForwarding()
 	// And the account page's door to the same setting. The unsubscribe link in
 	// a forwarded message is the way out; this is the way back on.

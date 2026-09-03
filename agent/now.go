@@ -58,6 +58,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/service"
 	"mu/internal/snapshot"
+	"mu/internal/world"
 )
 
 // nowBudget is the most this block may take, in characters.
@@ -119,6 +120,20 @@ func nowContextFrom(services []string, specs []service.Spec) string {
 		spent += len(text)
 		parts = append(parts, text)
 	}
+	// And what has changed, which the state cannot say.
+	//
+	// A snapshot says what is true; it cannot say that something happened. The
+	// two are different questions and the second is the one somebody means by
+	// "anything new?" — see internal/world, which folds the announcements into
+	// a record the same way the state is folded into the plane.
+	//
+	// Scoped like everything else here, and short: the newest few, one line
+	// each. The whole record is available to something that wants to reason
+	// over it; a prompt wants the top of it.
+	if recent := lately(services); recent != "" {
+		parts = append(parts, recent)
+	}
+
 	if len(parts) == 0 {
 		return ""
 	}
@@ -161,6 +176,27 @@ func published(spec service.Spec) string {
 	text := spec.Now()
 	snapshot.Channel(spec.Name, "now").Publish(text)
 	return text
+}
+
+// latelyShown is how many changes ride along on a question. Enough to answer
+// "anything new?", short of a feed.
+const latelyShown = 5
+
+// lately is what has just happened, from the services in scope.
+func lately(services []string) string {
+	changes := world.Lately(services...)
+	if len(changes) == 0 {
+		return ""
+	}
+	if len(changes) > latelyShown {
+		changes = changes[:latelyShown]
+	}
+	var b strings.Builder
+	b.WriteString("What has changed, newest first:\n")
+	for _, c := range changes {
+		b.WriteString("- [" + c.Service + "] " + c.Text + "\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 // overBudget keeps the warning to once per process rather than once per
