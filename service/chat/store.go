@@ -98,8 +98,26 @@ func LoadStore() {
 	}
 }
 
+// saveStore writes the record out.
+//
+// The marshal is under the lock and the disk write is not.
+//
+// It used to be neither. Keep and Forget each took the lock, changed the map,
+// released it, and then called this — so the encoder walked a map that another
+// goroutine was free to be writing to. Two people talking at once is enough:
+// one Keep appending while this marshals is a concurrent map read and write,
+// which Go does not make recoverable. It kills the process.
+//
+// Found by the race detector, which was worth turning on the moment the suite
+// stopped flaking — the report came from a test, and nothing about the fault
+// was the test's. Every XMPP message goes through Keep.
+//
+// The disk write stays outside, because that is the slow half and no caller
+// should wait behind somebody else's fsync to say a sentence.
 func saveStore() {
+	saidMu.RLock()
 	b, err := json.Marshal(said)
+	saidMu.RUnlock()
 	if err != nil {
 		app.Log("chat", "could not marshal the chat record: %v", err)
 		return

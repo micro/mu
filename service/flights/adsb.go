@@ -168,6 +168,14 @@ type cacheEntry struct {
 var (
 	gate     sync.Mutex
 	nextSlot time.Time
+
+	// now is overridable so a test can roll time forward instead of waiting for
+	// it. The same seam internal/usage uses, for the same reason: what this
+	// pacer decides is a function of the clock, and a test that checks the
+	// decision by measuring wall-clock arrivals at a stub server is a test of
+	// whether the machine was busy. That one failed under load and passed on a
+	// re-run, which is how a green suite stops being a fact about the code.
+	now = time.Now
 )
 
 // minInterval is the provider's published rate for the free v2 API, with a
@@ -186,11 +194,11 @@ const maxQueueWait = 4 * time.Second
 func reserve() (time.Duration, bool) {
 	gate.Lock()
 	defer gate.Unlock()
-	now := time.Now()
-	if nextSlot.Before(now) {
-		nextSlot = now
+	at := now()
+	if nextSlot.Before(at) {
+		nextSlot = at
 	}
-	wait := nextSlot.Sub(now)
+	wait := nextSlot.Sub(at)
 	if wait > maxQueueWait {
 		return 0, false
 	}

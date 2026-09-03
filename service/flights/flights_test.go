@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"sort"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
@@ -298,42 +296,61 @@ func TestGroundVehiclesAreNotAircraft(t *testing.T) {
 // TestPacingKeepsUsUnderTheLimit is the bug this exists for. Three lookups fired
 // back to back earned a 429, and the caller was told positions were unavailable
 // when they were merely being rationed.
+//
+// Asserted on what the pacer decides, against a clock this test holds still.
+//
+// It used to fire four goroutines at a stub server and measure the gaps between
+// their arrivals, which is a test of whether the machine was busy: it failed
+// once under load and passed on a re-run of the same tree. A suite that fails
+// for reasons unrelated to the change teaches people to re-run on red, and
+// somebody who does that will eventually re-run past a real failure.
 func TestPacingKeepsUsUnderTheLimit(t *testing.T) {
-	old := minInterval
-	minInterval = 40 * time.Millisecond
-	defer func() { minInterval = old }()
+	oldInterval, oldNow, oldSlot := minInterval, now, nextSlot
+	t.Cleanup(func() { minInterval, now, nextSlot = oldInterval, oldNow, oldSlot })
 
-	var mu sync.Mutex
-	var at []time.Time
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		mu.Lock()
-		at = append(at, time.Now())
-		mu.Unlock()
-		w.Write([]byte(`{"ac":[]}`))
-	}))
-	defer srv.Close()
-	oldURL := adsbBaseURL
-	adsbBaseURL, cache, nextSlot = srv.URL, map[string]cacheEntry{}, time.Time{}
-	defer func() { adsbBaseURL = oldURL }()
+	minInterval = time.Second
+	at := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	now = func() time.Time { return at }
+	nextSlot = time.Time{}
 
-	var wg sync.WaitGroup
+	// Four callers arriving at the same instant are told to wait nought, one,
+	// two and three intervals — one at a time, at the pace the provider
+	// publishes, rather than four at once and a 429 for the last of them.
 	for i := 0; i < 4; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			ByCallsign(fmt.Sprintf("TEST%d", i))
-		}(i)
-	}
-	wg.Wait()
-
-	if len(at) != 4 {
-		t.Fatalf("got %d requests, want 4", len(at))
-	}
-	sort.Slice(at, func(i, j int) bool { return at[i].Before(at[j]) })
-	for i := 1; i < len(at); i++ {
-		if gap := at[i].Sub(at[i-1]); gap < 30*time.Millisecond {
-			t.Errorf("requests %d and %d were %v apart, faster than the pace", i-1, i, gap)
+		wait, ok := reserve()
+		if !ok {
+			t.Fatalf("caller %d was refused a slot inside the queue window", i)
 		}
+		if want := time.Duration(i) * minInterval; wait != want {
+			t.Errorf("caller %d was told to wait %v, want %v", i, wait, want)
+		}
+	}
+
+	// And a caller arriving after the queue has drained goes straight through,
+	// rather than inheriting a place behind people who have already been.
+	at = at.Add(10 * time.Second)
+	if wait, ok := reserve(); !ok || wait != 0 {
+		t.Errorf("a caller arriving to an empty queue waited %v (ok=%v)", wait, ok)
+	}
+}
+
+// A queue longer than anybody will wait is a busy signal, not a wait.
+//
+// Told rather than left holding the page open: four seconds for an aircraft
+// position is worse than "try again", and the two are different answers — see
+// TestBusyIsNotUnavailable, which keeps busy apart from unavailable.
+func TestAQueueTooLongIsRefused(t *testing.T) {
+	oldInterval, oldNow, oldSlot := minInterval, now, nextSlot
+	t.Cleanup(func() { minInterval, now, nextSlot = oldInterval, oldNow, oldSlot })
+
+	minInterval = time.Second
+	at := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	now = func() time.Time { return at }
+	nextSlot = at.Add(maxQueueWait + time.Second)
+
+	if _, ok := reserve(); ok {
+		t.Error("a caller was queued past the point where waiting is worse than " +
+			"being told to come back")
 	}
 }
 
