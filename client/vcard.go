@@ -99,8 +99,18 @@ func VCard(name string) string {
 			item++
 			b.WriteString(labelled(item, "TEL;TYPE=CELL:"+c.Address, "WhatsApp"))
 		case "mail":
-			item++
-			b.WriteString(labelled(item, "EMAIL;TYPE=INTERNET:"+c.Address, "Write to it"))
+			// No type and no label.
+			//
+			// It was EMAIL;TYPE=INTERNET, which is what most exporters write and
+			// what RFC 2426 already makes the default — so it says nothing, and
+			// an address book that has no better idea prints the type as the
+			// label. The row read "INTERNET" in somebody's contacts.
+			//
+			// No X-ABLabel either. A label earns its place by telling two rows
+			// apart, which is what Text and WhatsApp do above; there is one
+			// address, and "Write to it" under a field already labelled email
+			// is a sentence where a category belongs.
+			b.WriteString("EMAIL:" + c.Address + "\r\n")
 		}
 	}
 

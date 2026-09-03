@@ -9,6 +9,20 @@ import (
 	"mu/internal/settings"
 )
 
+// The email row carries no type, so nothing prints one as its label.
+//
+// TYPE=INTERNET is RFC 2426's default and says nothing; an address book with no
+// better idea shows it, and the row read "INTERNET" in somebody's contacts.
+func TestTheEmailRowHasNoTypeToPrint(t *testing.T) {
+	if !Savable() {
+		t.Skip("nothing configured on this box to build a card from")
+	}
+	got := VCard("Micro")
+	if strings.Contains(got, "INTERNET") {
+		t.Errorf("the card names a type an address book will show as a label:\n%s", got)
+	}
+}
+
 func TestACardIsWhatAPhoneReads(t *testing.T) {
 	got := VCard("Micro")
 	for _, want := range []string{"BEGIN:VCARD", "VERSION:3.0", "FN:Micro", "END:VCARD"} {
