@@ -261,6 +261,32 @@ func parentOf(d Delivery) *Message {
 	return nil
 }
 
+// deliveredAlready is the copy of this delivery already stored, if there is
+// one.
+//
+// Must be called with the mutex held.
+//
+// A delivery with no Message-ID cannot be recognised as a repeat, and is not
+// treated as one: an id is what makes two arrivals the same arrival, and
+// without it the honest answer is that this is a new message. Locally generated
+// mail is the case — see SendMessageTo's callers, several of which set none.
+func deliveredAlready(d Delivery) *Message {
+	if strings.TrimSpace(d.MessageID) == "" || strings.TrimSpace(d.ToID) == "" {
+		return nil
+	}
+	prior := byMessageIDUnlocked(d.MessageID)
+	if prior == nil {
+		return nil
+	}
+	// The same id to somebody else is somebody else's mail — a list, or a Cc —
+	// and the tag matters too: agent+news@ and agent+code@ are two addresses,
+	// and a message sent to both is two deliveries with one id.
+	if !strings.EqualFold(prior.ToID, d.ToID) || prior.Tag != d.Tag {
+		return nil
+	}
+	return prior
+}
+
 // byMessageIDUnlocked finds a stored message by its mail header id.
 //
 // Must be called with the mutex held.
@@ -1660,6 +1686,30 @@ func SendMessageTo(d Delivery) error {
 	// and Delivery's own comment already said the two fields were not the same
 	// thing and were being used as though they were.
 	mutex.Lock()
+	// The same message twice is one message.
+	//
+	// A sending server retries when a delivery is not cleanly acknowledged, and
+	// RFC 5321 says a receiver has to be ready for that: the same mail, same
+	// Message-ID, arriving again minutes later. Nothing here checked. A retry
+	// stored a second copy with a new id, and because announcing happens below
+	// this line it also rang the phone a second time and forwarded a second
+	// copy to the account's real address — which is what a restart mid-session
+	// looks like from the outside, and how a DMARC report arrived twice with
+	// nothing new in the inbox to explain it.
+	//
+	// Keyed on the header id and the recipient, because the same Message-ID
+	// delivered to two accounts is two deliveries — a list, or a Cc — and only
+	// the same id to the same person is a repeat.
+	//
+	// Under the lock and before anything is written, so two deliveries racing
+	// cannot both find nothing. Silent to the sender: it asked us to accept a
+	// message we already have, and we have it.
+	if prior := deliveredAlready(d); prior != nil {
+		mutex.Unlock()
+		app.Log("mail", "duplicate delivery of %s to %s ignored (already stored as %s)",
+			d.MessageID, d.ToID, prior.ID)
+		return nil
+	}
 	msg.ThreadID = msg.ID
 	if parent := parentOf(d); parent != nil {
 		msg.ThreadID = computeThreadID(parent)
