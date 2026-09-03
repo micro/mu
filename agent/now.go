@@ -57,6 +57,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/service"
+	"mu/internal/snapshot"
 )
 
 // nowBudget is the most this block may take, in characters.
@@ -100,7 +101,7 @@ func nowContextFrom(services []string, specs []service.Spec) string {
 		if !inScope[spec.Name] {
 			continue
 		}
-		text := strings.TrimSpace(spec.Now())
+		text := strings.TrimSpace(published(spec))
 		if text == "" {
 			continue
 		}
@@ -132,6 +133,34 @@ func nowContextFrom(services []string, specs []service.Spec) string {
 		"calling a tool for what is already written here. Call the tools when " +
 		"you need more than this, or anything not in it.\n\n" +
 		strings.Join(parts, "\n\n")
+}
+
+// published is what a service last put on the read plane, or — before it has
+// put anything there — what it says right now.
+//
+// The plane is the point. A service publishes when its data changes, the same
+// way it publishes its card, and every reader holds a mirror fed by the broker:
+// so assembling this block is a handful of map reads rather than a call into
+// each service, nothing a service does can sit on the answer path, and once the
+// registry is networked the reader does not have to be in the same process as
+// the producer. See internal/snapshot.
+//
+// The fallback is for the cold start and nothing else. A service publishes on
+// its own refresh, so between this process starting and that first refresh the
+// mirror is empty — and a question asked in that window should get the context
+// rather than a principle. Calling Now here is safe by its own contract, which
+// is that it reads memory; publishing the answer means the next reader takes
+// the mirror.
+func published(spec service.Spec) string {
+	if v := snapshot.Value(spec.Name, "now"); v != "" {
+		return v
+	}
+	if spec.Now == nil {
+		return ""
+	}
+	text := spec.Now()
+	snapshot.Channel(spec.Name, "now").Publish(text)
+	return text
 }
 
 // overBudget keeps the warning to once per process rather than once per

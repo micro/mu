@@ -1,6 +1,11 @@
 package agent
 
 // What goes in front of the question, and what must not.
+//
+// Each test names a service of its own. The read plane is keyed by service name
+// and is process-global — that is the whole point of it, a mirror every reader
+// shares — so two tests using one name are two tests sharing a published value,
+// and the second reads what the first left behind.
 
 import (
 	"strings"
@@ -11,7 +16,7 @@ import (
 
 // A service that says what it already knows gets into the prompt.
 func TestWhatIsAlreadyKnownIsInThePrompt(t *testing.T) {
-	got := nowContextFrom([]string{"news", "weather"}, saying("news", "Headlines, as of now:\n- [World] Something happened"))
+	got := nowContextFrom([]string{"known-svc", "weather"}, saying("known-svc", "Headlines, as of now:\n- [World] Something happened"))
 	if !strings.Contains(got, "Something happened") {
 		t.Errorf("the headlines are not in the prompt: %q", got)
 	}
@@ -28,7 +33,7 @@ func TestWhatIsAlreadyKnownIsInThePrompt(t *testing.T) {
 // The Code agent is scoped to shell and apps. Putting the news in its prompt is
 // paying for a fetch it could not have made, on every question about a file.
 func TestAnAgentOutOfScopeGetsNothing(t *testing.T) {
-	news := saying("news", "Headlines, as of now:\n- [World] Something happened")
+	news := saying("scope-svc", "Headlines, as of now:\n- [World] Something happened")
 	if got := nowContextFrom([]string{"shell", "apps"}, news); got != "" {
 		t.Errorf("an agent that cannot reach news was given the news: %q", got)
 	}
@@ -39,7 +44,7 @@ func TestAnAgentOutOfScopeGetsNothing(t *testing.T) {
 
 // A service with nothing to say adds nothing — no heading, no empty section.
 func TestSilenceIsSilent(t *testing.T) {
-	if got := nowContextFrom([]string{"news"}, saying("news", "   ")); got != "" {
+	if got := nowContextFrom([]string{"silent-svc"}, saying("silent-svc", "   ")); got != "" {
 		t.Errorf("a service with nothing to say still wrote into the prompt: %q", got)
 	}
 }
@@ -50,13 +55,25 @@ func TestSilenceIsSilent(t *testing.T) {
 // is worse than not having it — the model answers "that is all the news there
 // is".
 func TestAVerboseServiceIsLeftOut(t *testing.T) {
-	got := nowContextFrom([]string{"news"}, saying("news", strings.Repeat("x", nowBudget+1)))
+	got := nowContextFrom([]string{"big-svc"}, saying("big-svc", strings.Repeat("x", nowBudget+1)))
 	if strings.Contains(got, "xxx") {
 		t.Errorf("a Now over the budget went into the prompt: %d characters", len(got))
 	}
 }
 
 // saying is one service's declaration, with the text it would contribute.
+//
+// The Now function rather than a published value, which exercises the cold
+// start: nothing is on the plane in a test binary, so the block is assembled
+// from the declaration and published as it goes. See published.
 func saying(name, text string) []service.Spec {
 	return []service.Spec{{Name: name, Now: func() string { return text }}}
+}
+
+// A service that declares nothing contributes nothing, and does not panic on
+// the way — published is called for every spec in the list.
+func TestASpecWithNoNowIsSkipped(t *testing.T) {
+	if got := nowContextFrom([]string{"quiet-svc"}, []service.Spec{{Name: "quiet-svc"}}); got != "" {
+		t.Errorf("a service with no Now wrote into the prompt: %q", got)
+	}
 }

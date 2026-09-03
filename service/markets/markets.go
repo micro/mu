@@ -302,6 +302,11 @@ func refreshMarkets() {
 			// Publish the new snapshot to the go-micro store + broker; the read
 			// path serves it from a mirror (see internal/snapshot).
 			cardSnap.Publish(html)
+			// And the prices as an agent should already know them, on the same
+			// plane. Published where the card is, because they are the same
+			// prices in two renderings and a second schedule would let them
+			// disagree.
+			snapshot.Channel(Spec.Name, "now").Publish(Now())
 
 			indexMarketPrices(prices)
 			data.SaveFile("markets.html", html)

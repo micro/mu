@@ -10,6 +10,7 @@ package mail
 import (
 	"encoding/base64"
 	"fmt"
+	"mime"
 	"strconv"
 	"strings"
 	"time"
@@ -99,8 +100,10 @@ func (s *imapSession) fetchBody(m *Message, item string) string {
 		body = full
 	case up == "HEADER":
 		body = head
-	case up == "TEXT", up == "1":
+	case up == "TEXT":
 		body = text
+	case up == "1", up == "2", up == "3":
+		body = imapPart(full, int(up[0]-'0'))
 	case strings.HasPrefix(up, "HEADER.FIELDS.NOT"):
 		body = imapHeaderFields(head, imapNames(section), true)
 	case strings.HasPrefix(up, "HEADER.FIELDS"):
@@ -151,6 +154,86 @@ func imapSplitMessage(full []byte) (head, text []byte) {
 		return full[:i+4], full[i+4:]
 	}
 	return full, nil
+}
+
+// imapPart is the content of one numbered part of a rendered message, as
+// transmitted: BODY[1] is the text, BODY[2] the attachment.
+//
+// # What was wrong
+//
+// There was no part 2. BODY[1] returned everything after the headers and
+// anything else returned nothing, which is right for a message of one part and
+// wrong for every message carrying an attachment — and imapBodyStructure has
+// always described those correctly, as a two-part MIXED. So a client did what
+// the structure told it to, asked for BODY[2], and was handed an empty literal:
+// the message showed the line the body carries in place of the attachment —
+// "[report.zip (application/zip), 684 bytes — not shown]" — with no file behind
+// it, while the same message rendered its report on the web. Reported against
+// a DMARC report, which is the attachment this instance receives constantly.
+//
+// BODY[1] was wrong in the same message and less visibly: it returned the whole
+// multipart body, boundaries and base64 included, as if it were the text.
+//
+// # Why it slices rather than parses
+//
+// A part fetched by number is returned exactly as it was transmitted — the
+// client decodes it using the encoding BODYSTRUCTURE named, which for an
+// attachment is BASE64. mime/multipart would decode quoted-printable on the way
+// past and not base64, so what came back would be decoded or not depending on
+// the part, and a client applying the stated encoding on top would corrupt one
+// of them. Slicing between the boundaries cannot do that.
+//
+// Numbered from 1, and out of range is empty rather than an error: a client
+// that asks about a structure this message does not have has guessed, and RFC
+// 3501 says an absent part is the empty string.
+func imapPart(full []byte, n int) []byte {
+	if n < 1 {
+		return nil
+	}
+	head, body := imapSplitMessage(full)
+	boundary := imapBoundary(head)
+	if boundary == "" {
+		// One part, and it is the body. Anything else does not exist.
+		if n == 1 {
+			return body
+		}
+		return nil
+	}
+
+	// The parts are what lies between the delimiters. The preamble before the
+	// first one is not a part, and neither is anything after the closing
+	// delimiter, which is why the split is taken from index 1.
+	sections := strings.Split(string(body), "--"+boundary)
+	if n >= len(sections) {
+		return nil
+	}
+	part := sections[n]
+	if strings.HasPrefix(part, "--") {
+		return nil // the closing delimiter: there is no part here
+	}
+	part = strings.TrimPrefix(part, "\r\n")
+	// A part is its own headers, a blank line, then its content. BODY[n] is the
+	// content; BODY[n.MIME] is the headers, which nothing here claims to serve.
+	if i := strings.Index(part, "\r\n\r\n"); i >= 0 {
+		part = part[i+4:]
+	}
+	return []byte(strings.TrimSuffix(part, "\r\n"))
+}
+
+// imapBoundary is the multipart boundary a rendered message declares, or "" for
+// a message of one part.
+func imapBoundary(head []byte) string {
+	for _, line := range strings.Split(string(head), "\r\n") {
+		if !strings.HasPrefix(strings.ToLower(line), "content-type:") {
+			continue
+		}
+		_, params, err := mime.ParseMediaType(strings.TrimSpace(line[len("content-type:"):]))
+		if err != nil {
+			return ""
+		}
+		return params["boundary"]
+	}
+	return ""
 }
 
 // imapHeaderFields keeps or drops the named headers, which is how a client

@@ -1328,6 +1328,10 @@ func parseFeed() {
 	// Publish the new snapshot to the go-micro store + broker; Headlines serves
 	// it from a mirror (see internal/snapshot).
 	cardSnap.Publish(headlineHtml)
+	// And what an agent should already know, on the same plane. Published where
+	// the card is, because they are the same fact in two renderings and a
+	// second schedule would let them disagree about what the news is.
+	snapshot.Channel(Spec.Name, "now").Publish(Now())
 
 	// The top headline, once an hour, and only when it has changed. Every
 	// article ingested would be several hundred an hour, which is a feed
