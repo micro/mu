@@ -64,6 +64,18 @@ type ChatConfig struct {
 	// HideSuggestions suppresses the component's built-in suggestion pills — used
 	// where the host page supplies its own (e.g. Home's personalised chips).
 	HideSuggestions bool
+	// AgentName is who answers here, for the byline over a reply.
+	//
+	// The display name and not the id: it is read, not resolved. Empty leaves
+	// the byline off, which is right for a box that is not an agent — a search
+	// box has no author — and wrong for every other caller, so a page that
+	// asks (Ask: true) and does not set this is a page whose answers arrive
+	// anonymous.
+	//
+	// The picker can change who answers after the page is drawn, so the browser
+	// prefers the selected option's label when there is one and falls back to
+	// this. See mu-by below.
+	AgentName string
 	// OfferAgentPicker shows which agent is answering, and lets the reader
 	// change it.
 	//
@@ -535,6 +547,10 @@ func ChatComponent(cfg ChatConfig) string {
 }
 .mu-user{margin:0 0 12px;padding:10px 14px;background:#f5f5f5;border-radius:8px;font-size:14px;color:#333;scroll-margin-top:64px}
 .mu-agent{margin-bottom:24px;scroll-margin-top:64px}
+/* Who answered. The same shape as the rail's section headings, because it is
+   the same kind of thing — a label over a block, not a line of the block. */
+.mu-by{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:#999;margin:0 0 6px}
 .mu-think{color:#888;font-size:14px}
 .mu-err{color:#c00}
 .mu-cta{padding:12px 14px;border:1px solid #e0e0e0;border-radius:8px;background:#fafafa;font-size:14px}
@@ -585,6 +601,7 @@ var contextId=` + JSString(cfg.ContextID) + `;
 var SESSION=` + boolJS(cfg.InitialConvHTML != "") + `;
 var PENDING=` + boolJS(cfg.Pending) + `;
 var HIDE_SUGGEST=` + boolJS(cfg.HideSuggestions) + `;
+var AGENT_NAME=` + JSString(cfg.AgentName) + `;
 var form=document.getElementById('mu-chat-form');
 var input=document.getElementById('mu-chat-input');
 var conv=document.getElementById('mu-chat-conv');
@@ -719,12 +736,35 @@ function save(){
   }catch(e){}
 }
 
+// agentName is who answers: whatever the picker is showing when there is one,
+// and the page's own answer otherwise. The picker holds ids and displays names,
+// and the name is what goes on screen.
+function agentName(){
+  try{
+    var sel=document.getElementById('mu-chat-agent-pick');
+    // Only when one is actually chosen. The empty value is the default, whose
+    // option reads "Micro (default)" — a parenthetical for a menu and not a
+    // name, and it would go on screen as one.
+    if(sel&&sel.value&&sel.selectedIndex>=0){
+      var label=(sel.options[sel.selectedIndex].textContent||'').trim();
+      if(label)return label;
+    }
+  }catch(e){}
+  return AGENT_NAME;
+}
+
 function ask(q){
   q=String(q||'').trim();
   if(!q)return;
   hideBrief();
   sugDiv.innerHTML='';
   var u=document.createElement('div');u.className='mu-user';u.textContent=q;conv.appendChild(u);
+  // Who is about to answer, above the answer, the same as the transcript draws
+  // it on reload — see agent.renderTurn. Written before the reply arrives
+  // because the name is known before the reply is, and a label that appears
+  // afterwards is a layout shift on the thing you are reading.
+  var byName=agentName();
+  if(byName){var by=document.createElement('div');by.className='mu-by';by.textContent=byName;conv.appendChild(by);}
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
   input.value='';input.style.height='auto';input.focus();
 

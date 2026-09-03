@@ -96,9 +96,16 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Who is answering in this conversation. The thread records it — see
+	// thread.Thread.Agent — so the poll and the page agree without either
+	// guessing from the message.
+	who := ""
+	if th := thread.Get(acc.ID, id); th != nil {
+		who = agentTitle(acc.ID, th.Agent)
+	}
 	var b strings.Builder
 	for _, m := range msgs[cut+1:] {
-		b.WriteString(renderTurn(m))
+		b.WriteString(renderTurn(m, who))
 	}
 
 	app.RespondJSON(w, map[string]any{
@@ -112,10 +119,32 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 // Shared with renderThreadTurns so a turn appended by the poll is the same
 // markup as one rendered with the page. Two renderers for the same thing is
 // how a reloaded conversation ends up styled differently below the fold.
-func renderTurn(m thread.Message) string {
+//
+// by is the name of whoever wrote it, and an answer carries it.
+//
+// Nothing did. An agent's reply was a bare card, so on any screen where more
+// than one of them can appear — the inbox, Home, a conversation you reopened
+// from /recall — nothing said which agent had answered, and platform-written
+// content in a card of the same shape read as an agent's too. Mu is the place
+// and the agent is who answers; the second half of that was never on screen.
+//
+// Empty leaves it off, which is what a caller with no thread to ask has. A
+// wrong name is worse than none: that is the whole property being fixed.
+func renderTurn(m thread.Message, by string) string {
 	if m.Role == thread.RoleAgent {
-		return `<div class="mu-agent"><div class="card" id="agent-response">` +
+		return `<div class="mu-agent">` + byline(by) + `<div class="card">` +
 			app.RenderString(m.Text) + `</div></div>`
 	}
 	return `<div class="mu-user">` + htmlEsc(m.Text) + `</div>`
+}
+
+// byline is the name above an answer, in the same shape the live one takes —
+// see mu-by in internal/app/chat.go, which builds it in the browser for a reply
+// arriving now. Two renderers for one thing again, and unavoidable: one of them
+// runs before the answer exists.
+func byline(who string) string {
+	if strings.TrimSpace(who) == "" {
+		return ""
+	}
+	return `<div class="mu-by">` + htmlEsc(who) + `</div>`
 }

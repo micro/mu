@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mu/account"
+	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/service/weather"
@@ -235,6 +236,9 @@ func indexBody() string {
 			Ask:             true,
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
+			// Who answers, for the byline over the reply. The default agent,
+			// which is what an unpicked box reaches — see agent.DefaultName.
+			AgentName: agent.DefaultName(),
 			// No row of doors.
 			//
 			// It was nine links under the box — Search — Archive · News · Video

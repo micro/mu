@@ -343,6 +343,9 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// This page is for talking to an agent and requires a session to reach,
 	// so an answer arrives here — which is what Speak is a control over.
 	cfg := app.ChatConfig{StorageNS: "agent", Speak: true}
+	// Set again below, once the page has resolved which agent it is about. Here
+	// so that a page which returns early still names somebody.
+	cfg.AgentName = agentTitle(accountID, "")
 	activeRoot := "" // the reopened conversation, for the rail highlight
 	reopened := false
 	reopenAgent := "" // agent the reopened conversation is with
@@ -440,6 +443,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if ex := examplesFor(selAgent); len(ex) > 0 {
 		cfg.Suggestions = ex
 	}
+	// And who answers, for the byline over the reply. The same resolution the
+	// title uses, so the page and the answer cannot disagree about which agent
+	// this is.
+	cfg.AgentName = agentTitle(accountID, selAgent)
 
 	// One panel beside the conversation: the conversations. On a phone it folds
 	// away behind the bar below and the chat is the first thing on the page —
@@ -572,9 +579,16 @@ func openThread(accountID, id string) string {
 // renderThreadTurns renders a conversation into the chat log, most recent
 // inbox.MessagesShown of it — see the constant.
 func renderThreadTurns(accountID, threadID string) string {
+	// Who answered, once for the conversation rather than once per message: a
+	// thread is with one agent — see thread.Thread.Agent — so asking per turn
+	// would be the same lookup repeated.
+	who := ""
+	if th := thread.Get(accountID, threadID); th != nil {
+		who = agentTitle(accountID, th.Agent)
+	}
 	var b strings.Builder
 	for _, m := range thread.Messages(accountID, threadID, inbox.MessagesShown) {
-		b.WriteString(renderTurn(m))
+		b.WriteString(renderTurn(m, who))
 	}
 	return b.String()
 }

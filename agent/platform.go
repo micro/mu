@@ -31,6 +31,20 @@ import (
 // first time means.
 const DefaultPlatformAgent = "micro"
 
+// DefaultName is what the agent that answers by default is called.
+//
+// The display name and not the id, for the places that put it on screen: the
+// byline over a reply on Home and on the front door, where the reader has
+// picked nobody and Micro is who answers. Read from the registry rather than
+// written out, so an instance that renames or replaces its default agent says
+// the new name everywhere without a second edit.
+func DefaultName() string {
+	if a := micro.Get(DefaultPlatformAgent); a != nil && strings.TrimSpace(a.Name) != "" {
+		return a.Name
+	}
+	return ""
+}
+
 // Platform resolves a name on the shared address to one of this instance's
 // agents. Empty names the default. Nil when it names nothing.
 func Platform(name string) *micro.Agent {
