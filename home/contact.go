@@ -150,12 +150,26 @@ func contactBody(acc *auth.Account) string {
 			` to your phone with every number and address on it.</p>`)
 	}
 
-	// What it needs from you before a phone number is you rather than a
-	// stranger's. Only where it is actionable: signed out there is no account
-	// to attach a number to, and the honest next step is an account.
+	// What it needs from you before any of these answer.
+	//
+	// This said texting needs an account and left mail alone, so the Email row
+	// above it — "write to it and it writes back" — was a promise this instance
+	// does not keep for the reader it was written for. A stranger who mails
+	// agent@ is dropped without a reply and without a record: see
+	// service/mail/smtp.go, where AccountForVerifiedEmail returns nothing and
+	// the message is discarded. A stranger who texts the number is filed and
+	// not answered, because service/sms only wakes an agent for a sender the
+	// account knows.
+	//
+	// So the caveat covers every row except the web, which is the one door a
+	// guest really can walk through — the box on the front page answers without
+	// an account, bounded. Naming the exception is what keeps this a fact rather
+	// than a wall: there is something you can try right now, and the rest is
+	// what an account is for.
 	if acc == nil {
-		b.WriteString(`<p class="cnext">Texting works once it knows the number is yours — ` +
-			`<a href="/signup">make an account</a> and verify it.</p>`)
+		b.WriteString(`<p class="cnext">These answer once it knows who you are. ` +
+			`The box on the <a href="/">front page</a> works without an account — ` +
+			`for the rest, <a href="/signup">make one</a> and verify your number.</p>`)
 	} else if !numberVerified(acc.ID) {
 		b.WriteString(`<p class="cnext">It will not recognise you by phone until you have ` +
 			`<a href="/sms">verified a number</a> as yours. Mail and the web already know you.</p>`)

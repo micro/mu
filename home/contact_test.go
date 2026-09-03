@@ -59,3 +59,33 @@ func TestTheContactCardIsNotADeveloperPage(t *testing.T) {
 		t.Error("the card lists no way in at all")
 	}
 }
+
+// Signed out, the card says what actually answers.
+//
+// The Email row reads "write to it and it writes back", and for the reader this
+// page exists for — a stranger deciding whether to have an account — that is not
+// true: service/mail drops mail from a sender with no account, and service/sms
+// files a text from an unknown number without waking anything. The caveat used
+// to cover texting only, so the one row it left alone was the one making the
+// strongest promise.
+func TestASignedOutReaderIsToldWhatAnswers(t *testing.T) {
+	body := contactBody(nil)
+	at := strings.Index(body, `class="cnext"`)
+	if at < 0 {
+		t.Fatal("signed out, the card carries no caveat at all")
+	}
+	note := body[at:]
+	// The exception is named, because there is one and it is the whole reason
+	// somebody would stay on the site: the box answers a guest.
+	if !strings.Contains(note, `href="/"`) {
+		t.Error("the caveat does not name the one door a guest can walk through")
+	}
+	if !strings.Contains(note, `href="/signup"`) {
+		t.Error("the caveat does not say what would open the others")
+	}
+	// And it is not about the phone alone any more.
+	if strings.HasPrefix(strings.TrimPrefix(note, `class="cnext">`), "Texting works") {
+		t.Error("the caveat still covers texting only, leaving the mail row's " +
+			"promise standing for somebody with no account")
+	}
+}
