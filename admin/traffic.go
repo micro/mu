@@ -45,6 +45,10 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(trafficTabs(spend))
 	if spend {
 		sb.WriteString(spendCard())
+		// And how the runs behind that spend actually went — see
+		// agentHealthCard, and agent/outcome.go for why this had no reader
+		// until now.
+		sb.WriteString(agentHealthCard())
 		app.Respond(w, r, app.Response{Title: "Spend",
 			Description: "What this instance spends on third parties", HTML: sb.String()})
 		return

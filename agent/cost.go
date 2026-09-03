@@ -77,6 +77,14 @@ func recordRunCost(st store.Store, agentName, caller string) {
 		if err != nil {
 			continue
 		}
+		// How it went, as well as what it cost.
+		//
+		// The timeline is already here and it carries far more than tokens:
+		// the status of every step, the error, the latency, the retry count.
+		// All of it was being loaded and dropped, which is why nothing in this
+		// product could say whether Micro was answering — only what it had
+		// spent trying. See outcome.go.
+		recordOutcome(events, agentName, caller)
 		for _, m := range spendByModel(events) {
 			if m.input == 0 && m.output == 0 {
 				// A model call that reported no tokens. Priced at zero it would
