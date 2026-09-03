@@ -29,9 +29,9 @@ func TestSignedOutHomeDoesNotOfferASecondWayIn(t *testing.T) {
 	}
 	// The corner itself is the shell's and is expected — this is about the
 	// page's own content, so it is the count that matters rather than the
-	// presence.
-	if n := strings.Count(body, `href="/signup"`); n > 0 {
-		t.Errorf("the signed-out home offers Sign up %d times in the page; the login page offers it", n)
+	// presence. One is the corner's; a second is this page drawing its own.
+	if n := strings.Count(body, `href="/signup"`); n != 1 {
+		t.Errorf("the signed-out home offers Sign up %d times; want once, in the shell's corner", n)
 	}
 }
 

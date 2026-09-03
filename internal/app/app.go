@@ -1468,15 +1468,31 @@ func loginBack(here string) string {
 
 func headCorner(acc *auth.Account, here string) string {
 	if acc == nil {
-		// One link, and it is the way in.
+		// Two links: the decision, then the return.
 		//
-		// It was Sign up and Log in. Two controls in a corner whose whole job
-		// is to be the one thing you can do from here, and the login page
-		// already offers signing up on it — so the pair was a fork in front of
-		// somebody who had not asked for one, and it also meant the corner was
-		// a different width on an invite-only instance, where Sign up is not
-		// offered at all.
-		return `<div id="head-out"><a href="/login` + loginBack(here) + `">Log in</a></div>`
+		// This was cut to Log in alone, on the argument that a corner should be
+		// the one thing you can do from here and the login page offers signing
+		// up on it. The argument reads well and the instance stopped taking
+		// signups — which is the measurement the argument did not have. A link
+		// on the login page is only reachable by somebody who already pressed
+		// Log in, and a stranger who has never had an account does not press
+		// Log in; there was nothing on any page of this product telling them
+		// they could have one.
+		//
+		// Sign up first, and it is the darker of the two: it is the decision
+		// being made here. Log in already knows where it is going.
+		//
+		// Not offered where it cannot be taken. On an invite-only instance
+		// /signup is a form asking for a code the person clicking it does not
+		// have, so the corner narrows to one link there — which is the width
+		// difference the cut was partly made to avoid, kept as the exception
+		// rather than made the rule for everybody.
+		signup := ""
+		if !auth.InviteOnly() {
+			signup = `<a id="head-signup" href="/signup">Sign up</a>`
+		}
+		return `<div id="head-out">` + signup +
+			`<a href="/login` + loginBack(here) + `">Log in</a></div>`
 	}
 
 	// And who you are, which is the other half of the same answer.

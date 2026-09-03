@@ -136,6 +136,11 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 .login-link a,.login-link button{color:#555;text-decoration:none;font-size:14px;font-weight:600;
   background:none;border:0;padding:0;font-family:inherit;line-height:20px;cursor:pointer}
 .login-link a:hover,.login-link button:hover{color:#111}
+/* Sign up is the decision this page exists to put in front of somebody, so it
+   is the darker of the two. Weight and colour only — a filled button here
+   competes with the box in the middle of the page, which is the actual thing
+   to do. */
+.login-link a.primary{color:#111;font-weight:700}
 /* An author rule beats the browser's own [hidden]{display:none} whatever its
    specificity, and the rule above sets a display on buttons via the flex row.
    Without this the install control is on the page in every browser that cannot

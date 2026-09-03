@@ -230,8 +230,17 @@ func indexBody() string {
 	// the thing, and that is where you talk to it. Everything below it is
 	// centred on the same axis, which is what makes a page with almost nothing
 	// on it look composed rather than unfinished.
+	// And what it is, under the name.
+	//
+	// The wordmark stood alone over a box, which tells somebody arriving what
+	// this is called and not what it is. "Mu" is three characters of Greek and
+	// carries nothing; the <title> and the meta description both said personal
+	// assistant and neither is on the page. So the one line that answers the
+	// question, directly under the name, quiet enough that the name is still
+	// the name.
 	return `<div class="lwrap">` +
 		`<div class="lbrand">Mu</div>` +
+		`<div class="lwhat">A personal assistant</div>` +
 		app.ChatComponent(app.ChatConfig{
 			Ask:             true,
 			HideSuggestions: true,
@@ -301,7 +310,15 @@ func indexBody() string {
 .lwrap{padding:0;max-width:560px;margin:0 auto;width:100%;text-align:center}
 /* Slightly larger than the box's own text, so the pair reads as one object —
    this is the thing, that is where you talk to it. */
-.lbrand{font-size:2rem;font-weight:800;letter-spacing:-1px;margin:0 0 18px;line-height:1}
+.lbrand{font-size:2rem;font-weight:800;letter-spacing:-1px;margin:0 0 6px;line-height:1}
+/* What it is, under what it is called. Grey and small: it is a caption on the
+   name, not a tagline arguing for anything — the moment it is dark enough to
+   read as a pitch this page is a landing again.
+
+   The 18px that used to be under the wordmark is under this instead, so the
+   gap between the name and the box is unchanged and the two lines sit together
+   as one block. */
+.lwhat{color:#888;font-size:14px;margin:0 0 18px;line-height:1.3}
 /* Today, under the box. */
 .ltoday{margin:30px 0 0}
 /* The day, in the page's quietest voice. All caps and letter-spaced because it
@@ -357,8 +374,23 @@ func indexBody() string {
 // Nothing else has ever earned this slot. Install app stood here for a while
 // and appeared on only some browsers, saying nothing about what state you are
 // in or what to do about it, which is the corner's entire purpose.
+// topRight is the landing's corner: the way to have an account, and the way
+// back to one.
+//
+// The same pair the app shell draws — see app.headCorner, which carries the
+// reasoning and the invite-only exception. Written out here rather than called,
+// because this page has its own shell and its own stylesheet: the corner in
+// mu.css is #head-out and this one is .login-link, and the markup differs by
+// the wrapper each of them needs.
+//
+// No redirect on the way in. The landing is the one page where signing in
+// should move you somewhere else, and it already does.
 func topRight() string {
-	return `<a href="/login">Log in</a>`
+	signup := ""
+	if !auth.InviteOnly() {
+		signup = `<a class="primary" href="/signup">Sign up</a>`
+	}
+	return signup + `<a href="/login">Log in</a>`
 }
 
 // today is what you are given for arriving, before you ask anything.

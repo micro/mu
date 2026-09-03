@@ -752,6 +752,13 @@ td {
   white-space: nowrap;
 }
 #head-out a:hover { color: #111; }
+/* Sign up is the darker of the two: it is the decision, and the other is a
+   return. Weight and colour only, so the corner stays a corner.
+
+   Written as a descendant of #head-out rather than as the id alone, because
+   `#head-out a` above is an id plus a type and outranks a bare id — the rule
+   would lose to the one it is meant to override. */
+#head-out a#head-signup { color: #111; font-weight: 700; }
 
 /* Who this browser is signed in as. The same face as the signed-out pair
    opposite it, because they are the two answers to one question. */
