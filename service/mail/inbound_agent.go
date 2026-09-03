@@ -47,8 +47,21 @@ func SharedAgentAddress() string { return SharedAgentAddressFor("") }
 // difference from you+research@ — one thing to remember instead of two, and the
 // one you actually chose.
 func SharedAgentAddressFor(tag string) string {
-	domain := ConfiguredDomain()
-	if domain == "" {
+	domain := strings.TrimSpace(ConfiguredDomain())
+	// localhost is not an address somebody can write to.
+	//
+	// ConfiguredDomain falls back to it, which is the right answer for an
+	// instance talking to itself and the wrong one anywhere a person reads it:
+	// a page that prints agent@localhost invites somebody to write to nothing
+	// and reads as broken rather than as unconfigured. client.All guarded
+	// against exactly this and was the only caller that did — the agent page's
+	// empty rail said "write to it at agent+code@localhost" on every
+	// development instance.
+	//
+	// Guarded here rather than at each caller, because which of them remembers
+	// is not a property anybody can keep true: this is the one function that
+	// knows whether there is a domain, so it is the one that should answer no.
+	if domain == "" || strings.EqualFold(domain, "localhost") {
 		return ""
 	}
 	if tag = cleanTag(tag); tag != "" {

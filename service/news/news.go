@@ -1171,6 +1171,55 @@ func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[strin
 }
 
 // generateHeadlinesHTML creates the headlines HTML section
+
+// cardPosts is what the home card shows: the latest headline from each
+// category, freshest first, at most cardHeadlines of them.
+//
+// # Why the cut comes after the sort
+//
+// It came before. The ten were taken by iterating the category map and
+// breaking at ten — and Go randomises map order, so an instance with more than
+// ten categories dropped a different two on every rebuild of the card. The sort
+// by time then ran on a selection that had already lost the wrong ones, which
+// is why it looked ordered and was not. Eight feeds ship with this so the cut
+// never fired by default; feeds.json is an operator's file and a ninth category
+// is the ordinary thing to add to it.
+//
+// Sorted first and cut after, the category the card drops is the one that has
+// been quiet longest, which is a reason rather than an accident.
+func cardPosts(all []*Post) []*Post {
+	latest := map[string]*Post{}
+	for _, post := range all {
+		if post == nil {
+			continue
+		}
+		if existing, ok := latest[post.Category]; !ok || post.PostedAt.After(existing.PostedAt) {
+			latest[post.Category] = post
+		}
+	}
+
+	out := make([]*Post, 0, len(latest))
+	for _, post := range latest {
+		out = append(out, post)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].PostedAt.Equal(out[j].PostedAt) {
+			return out[i].PostedAt.After(out[j].PostedAt)
+		}
+		// Two feeds that published in the same second still have to order the
+		// same way twice, or the card changes between rebuilds for no reason.
+		return out[i].Category < out[j].Category
+	})
+	if len(out) > cardHeadlines {
+		out = out[:cardHeadlines]
+	}
+	return out
+}
+
+// cardHeadlines is how many make the card: one from each category, the freshest
+// first. Ten, because the card is a glance and the page under it is the feed.
+const cardHeadlines = 10
+
 func generateHeadlinesHTML(headlines []*Post) string {
 	var sb strings.Builder
 	sb.WriteString(`<div class=section>`)
@@ -1261,28 +1310,7 @@ func parseFeed() {
 	allNews = dedupePosts(allNews)
 	allHeadlines = dedupePosts(allHeadlines)
 
-	// Generate headlines HTML - filter to one per category (the latest from each)
-	// First, build a map of category -> latest post
-	categoryLatest := make(map[string]*Post)
-	for _, post := range allHeadlines {
-		if existing, ok := categoryLatest[post.Category]; !ok || post.PostedAt.After(existing.PostedAt) {
-			categoryLatest[post.Category] = post
-		}
-	}
-
-	// Convert map to slice
-	var filteredHeadlines []*Post
-	for _, post := range categoryLatest {
-		filteredHeadlines = append(filteredHeadlines, post)
-		if len(filteredHeadlines) >= 10 {
-			break
-		}
-	}
-
-	// Sort filtered headlines by timestamp (newest first)
-	sort.Slice(filteredHeadlines, func(i, j int) bool {
-		return filteredHeadlines[i].PostedAt.After(filteredHeadlines[j].PostedAt)
-	})
+	filteredHeadlines := cardPosts(allHeadlines)
 
 	headlineHtml := generateHeadlinesHTML(filteredHeadlines)
 	allContent = append([]byte(headlineHtml), allContent...)
