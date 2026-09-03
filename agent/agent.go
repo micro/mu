@@ -1541,6 +1541,20 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// conversation came to be one thing.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID, "thread": threadID})
 
+	// And what it is doing, before it is doing anything nameable.
+	//
+	// The first stretch of a run is the longest and the only one with nothing
+	// to show: the model is reading the question and deciding which tools to
+	// call, which takes seconds and produces no event until the first tool
+	// starts. The client filled it with a label of its own, so the one word on
+	// screen during the longest wait was the only word on the page the server
+	// did not choose.
+	//
+	// Not "Thinking", which is what the unused branch this fills was called. It
+	// is not thinking, and a product that says so about a model call is making
+	// a claim it cannot support in the one place a person is watching.
+	sse(w, map[string]any{"type": "working", "message": "Working"})
+
 	nopts := QueryOpts{Public: guest}
 	if !guest && req.Cards && CardContextFunc != nil {
 		nopts.Extra = CardContextFunc(accountID)

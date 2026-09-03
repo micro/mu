@@ -316,6 +316,16 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		sys += "\n\n" + opts.Extra
 	}
 
+	// What is already true, in front of the question.
+	//
+	// See nowContext. This is the half of the latency that is architecture
+	// rather than tuning: a question answered from here is one model call
+	// instead of three.
+	services := filterServices(nativeServices(opts.Public), opts.Tools)
+	if now := nowContext(services); now != "" {
+		sys += "\n\n" + now
+	}
+
 	// The question, on its own. What was said before it goes to the model as
 	// turns rather than as prose — see memory.go, which is also where the
 	// reason the whole conversation used to be sent twice is written down.
@@ -373,7 +383,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		agentOpts = append(agentOpts, gmagent.BaseURL(baseURL))
 	}
 	name := nativeAgentInstanceName()
-	a := service.NewAgent(name, sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools), agentOpts...)
+	a := service.NewAgent(name, sys, provider, key, services, agentOpts...)
 	return nativeRun{agent: a, question: question, name: name, runs: runs}, true
 }
 

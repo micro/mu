@@ -96,6 +96,9 @@ var Spec = service.Spec{
 	Page:        "/news",
 	Icon:        "news.png",
 	Card:        service.Timed(func() (string, time.Time) { return Headlines(), CardAt() }),
+	// What is happening, in front of the question rather than one round trip
+	// behind it — see service.Spec.Now and Now, above.
+	Now: Now,
 	Endpoints: map[string]service.Endpoint{
 		"List":   {Aliases: []string{"news", "news_headlines"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
 		"Read":   {Doc: "Read one news article in full by its id or URL"},

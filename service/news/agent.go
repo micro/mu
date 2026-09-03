@@ -299,3 +299,34 @@ func HeadlineItems(topic string, limit int) []Headline {
 	}
 	return out
 }
+
+// Now is the headlines as a prompt reads them: one line each, no descriptions
+// and no urls.
+//
+// The short form, deliberately. HeadlinesText is the tool's answer and carries
+// a description and a source and an id per item, because a model that asked for
+// the news wants to be able to read one. This is paid for on every question
+// whether or not it was about the news, so it holds the part that answers "what
+// is happening" and nothing else: eight titles under their topics is about a
+// hundred and fifty tokens, and the tool is still there for the rest.
+//
+// Nothing is fetched. The feed is in memory — GetFeed reads it under a lock —
+// which is what makes this free to put in front of every question. See
+// service.Spec.Now.
+func Now() string {
+	posts := cardPosts(GetFeed())
+	if len(posts) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("Headlines, as of now:\n")
+	for _, p := range posts {
+		cat := p.Category
+		if cat == "" {
+			cat = "General"
+		}
+		fmt.Fprintf(&b, "- [%s] %s\n", cat, strings.TrimSpace(p.Title))
+	}
+	b.WriteString("Ask news_list for more, news_read for an article in full.")
+	return b.String()
+}

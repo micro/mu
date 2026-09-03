@@ -83,3 +83,44 @@ func marketsPriceStr(p float64) string {
 		return fmt.Sprintf("%.6f", p)
 	}
 }
+
+// Now is the prices as a prompt reads them: the crypto majors, one line each.
+//
+// Purpose-built rather than Text(CategoryCrypto), for two reasons this cost a
+// test to notice. Text opens with "Current request date", which the system
+// prompt has already said one paragraph earlier — a second, differently worded
+// copy of the date is how a model comes to disagree with itself about what day
+// it is. And with no prices Text says "No crypto prices available right now",
+// which is a true sentence and the wrong thing to put in front of every
+// question on the instance: silence is what "I have nothing to add" looks like
+// in a prompt.
+//
+// Nothing is fetched. AllPriceData reads the poller's last answer out of
+// memory, which is what makes this free to carry. See service.Spec.Now.
+func Now() string {
+	priceData := AllPriceData()
+	var lines []string
+	for _, symbol := range getAssetsForCategory(CategoryCrypto) {
+		pd, ok := priceData[symbol]
+		if !ok || pd.Price == 0 {
+			continue
+		}
+		line := fmt.Sprintf("- %s $%s", symbol, marketsPriceStr(pd.Price))
+		if pd.Change24h != 0 {
+			line += fmt.Sprintf(" (%+.2f%% 24h)", pd.Change24h)
+		}
+		lines = append(lines, line)
+		if len(lines) >= nowAssets {
+			break
+		}
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	return "Prices, as of now:\n" + strings.Join(lines, "\n") +
+		"\nAsk markets_list for other categories, markets_convert to convert."
+}
+
+// nowAssets is how many prices ride along on every question. The majors answer
+// "what is bitcoin doing"; the rest are a tool call away and always were.
+const nowAssets = 6

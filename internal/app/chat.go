@@ -891,7 +891,13 @@ function ask(q){
                 contextId=id;save();
                 if(fresh&&window.muSessionStarted)window.muSessionStarted(id,q);
               }
-            }else if(ev.type==='thinking'){
+            }else if(ev.type==='working'){
+              // What it is doing, when that is not a tool. It was called
+              // 'thinking' and the server never sent it — a branch waiting for
+              // an event that did not exist — and the name was wrong twice
+              // over: the model is not thinking, and between two tool calls it
+              // is choosing the next one, which the tool_start after it names
+              // anyway.
               startWork(ev.message);
             }else if(ev.type==='tool_start'){
               // What it is doing, while it does it. The server has been

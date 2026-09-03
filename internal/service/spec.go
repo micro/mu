@@ -79,6 +79,42 @@ type Spec struct {
 	// Personal, and one that knows when what it shows happened with Timed.
 	// See Viewer, whose zero value is the shared render.
 	Card Renderer
+	// Now is what this service already knows, in words, for an agent's prompt.
+	//
+	// # What it is for
+	//
+	// A question to the agent costs two model round trips: one to decide which
+	// tools to call, and one to compose an answer from what they returned. The
+	// first is invisible — nothing can be on screen until it has decided — and
+	// for the questions people actually ask the front door it is spent
+	// deciding to fetch something this instance already had in memory.
+	//
+	// Google's summaries are not fast because the agent is clever. They are
+	// fast because the retrieval already happened: by the time a model is
+	// invoked the context is in the prompt, so there is one call and it streams
+	// from the first token. This is that, for the things a service is already
+	// holding.
+	//
+	// # What belongs here
+	//
+	// Only what is already in memory and small. A Now that fetches is a network
+	// round trip added to every question, including the ones that did not need
+	// it, which is the opposite of the point. A Now that runs long is worse: it
+	// is on the answer path before the model is even asked.
+	//
+	// Small matters as much. Every character is tokens on every request, paid
+	// whether or not the question was about this service — so a headline list
+	// belongs here and the articles behind it do not. The rule is: enough to
+	// answer the common question outright, and no more; anything else is what
+	// the tool is for, and the tool is still there.
+	//
+	// # Shared, never personal
+	//
+	// No Viewer, unlike Card. What a service knows about one account is that
+	// account's, and putting it in every prompt is a cost and a disclosure
+	// nobody asked for. Personal context reaches the agent by its own route —
+	// see agent.UserContextFunc.
+	Now func() string
 }
 
 // Renderer is a card's renderer, and whether its answer is the same for
@@ -348,6 +384,31 @@ func Cards() []Spec {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].NavLabel() < out[j].NavLabel() })
 	return out
+}
+
+// Nows is every service that can say what it already knows, in name order.
+//
+// Ordered so the same instance builds the same prompt twice: a block whose
+// sections move around is one the model reads differently for no reason, and
+// it defeats prompt caching on every provider that offers it.
+func Nows() []Spec {
+	out := make([]Spec, 0, 4)
+	for _, s := range Specs() {
+		if s.Now != nil {
+			out = append(out, s)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// NowFor is what one service already knows, or "" if it does not say.
+func NowFor(name string) string {
+	s, ok := SpecFor(name)
+	if !ok || s.Now == nil {
+		return ""
+	}
+	return strings.TrimSpace(s.Now())
 }
 
 // CardFor renders one service's card, or the zero card if it has none.

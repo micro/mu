@@ -87,3 +87,52 @@ func categories(posts []*Post) []string {
 	}
 	return out
 }
+
+// What the prompt carries, and what it does not.
+//
+// The short form: titles under their topics. HeadlinesText is the tool's
+// answer and carries a description, a source and an id per item, because a
+// model that asked for the news wants to read one — this is paid for on every
+// question whether or not it was about the news, so it holds the part that
+// answers "what is happening" and nothing else.
+func TestNowIsTitlesAndNothingElse(t *testing.T) {
+	mutex.Lock()
+	was := feed
+	feed = []*Post{{
+		ID: "1", Title: "Something happened", Category: "World",
+		Description: "A long description that has no business being in every prompt",
+		URL:         "https://example.test/a", PostedAt: time.Now(),
+	}}
+	mutex.Unlock()
+	t.Cleanup(func() { mutex.Lock(); feed = was; mutex.Unlock() })
+
+	got := Now()
+	if !strings.Contains(got, "Something happened") || !strings.Contains(got, "World") {
+		t.Errorf("the headline is not in the block: %q", got)
+	}
+	if strings.Contains(got, "no business") {
+		t.Errorf("the description is in the block, which is paid for on every question: %q", got)
+	}
+	if strings.Contains(got, "https://") {
+		t.Errorf("a url is in the block: %q", got)
+	}
+	// And it says where to get more, or the model has no reason to believe
+	// there is any.
+	if !strings.Contains(got, "news_read") {
+		t.Errorf("the block does not say how to read one in full: %q", got)
+	}
+}
+
+// An instance whose feeds have not run says nothing, rather than saying it has
+// nothing. A sentence about having no news would ride along on every question.
+func TestNoNewsIsSilence(t *testing.T) {
+	mutex.Lock()
+	was := feed
+	feed = nil
+	mutex.Unlock()
+	t.Cleanup(func() { mutex.Lock(); feed = was; mutex.Unlock() })
+
+	if got := Now(); got != "" {
+		t.Errorf("an empty feed wrote into the prompt: %q", got)
+	}
+}

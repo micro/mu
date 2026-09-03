@@ -84,6 +84,9 @@ var Spec = service.Spec{
 	Page:        "/markets",
 	Icon:        "markets.svg",
 	Card:        service.Glance(HTML),
+	// The prices, in front of the question rather than one round trip behind
+	// it — see service.Spec.Now and Now, above.
+	Now: Now,
 	Endpoints: map[string]service.Endpoint{
 		"List": {Aliases: []string{"markets"}, Doc: "Get live prices for cryptocurrencies, stocks, commodities (oil, gold, silver, copper and crops), futures and currencies"},
 		"Convert": {Doc: "Convert an amount from one currency to another — 250 GBP in JPY. Uses European " +
