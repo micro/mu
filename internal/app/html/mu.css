@@ -774,6 +774,23 @@ td {
   #head-me { display: none; }
 }
 
+/* And on a desktop with the rail open, because the rail is already saying it.
+   
+   The corner answers "which account is this browser", and it was added because
+   the rail is collapsed by default: signed out the corner offered a way in and
+   signed in it said nothing at all, which is the one question it exists for
+   going unanswered in the state you would check it in. Open, the foot of the
+   rail says "Signed in as @you" with Account under it — so the name was on
+   screen twice, in two styles, both linking to /account.
+   
+   Only here. Below 901px the rail is an overlay rather than a column, so it is
+   not on screen beside the corner and there is nothing to duplicate. And only
+   the name: Admin has no other home — see the note above headAdmin, which is
+   why it is in the corner rather than in the rail. */
+@media only screen and (min-width: 901px) {
+  body:not(.nav-collapsed) #head-me { display: none; }
+}
+
 /* Credit balance in the top bar, beside Tools. The only place it appears: it
    was in the sidebar too for a moment, and the same number twice on one screen
    reads as a mistake. The top bar is fixed, always visible, and the same on
@@ -1308,6 +1325,49 @@ body.page-home #page-title ~ #customize-link {
 #mu-overview .card .headline:first-of-type {
   padding-top: 0;
 }
+
+/* News on Home is headlines, and the card was showing articles.
+ *
+ * Eight items, each a category, a title, the feed's description sentence and a
+ * source line: 882px measured at 1728, against 469 for the next biggest card
+ * and 164 for the smallest. One card was half the page while everything around
+ * it was a glance.
+ *
+ * The description is the part that goes. It is a third telling of the same
+ * thing on one screen — the brief at the top of the page is the synthesis, this
+ * is the headlines, and /news is the articles — and a headline that needs its
+ * description to be worth reading is one click away from it either way.
+ *
+ * Nothing is dropped from the list. A time window was the other way to shorten
+ * this and it is the wrong one: somebody who slept through the night would
+ * arrive to an empty card, which is exactly when there is most to catch up on.
+ * Eight headlines that fit are eight headlines.
+ *
+ * auto-fill rather than a breakpoint, because what decides how many columns fit
+ * is the width of this card and not of the window — the same card is 472px wide
+ * with the rail open at 1440 and 892 with it closed at 1728. The grid answers
+ * for both without either being written down.
+ *
+ * 280 and not 300, because the card's own padding is inside the measurement: at
+ * 1280 with the rail open the card is 652 wide and the grid had about 610 of
+ * it, which is two 300px tracks and a gap short by eighteen pixels — so that
+ * width, which is an ordinary laptop, fell back to one column. */
+#home #news .section {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  column-gap: 28px;
+}
+#home #news .headline .description { display: none; }
+/* In a grid the first and last item are not the first and last of a column, so
+   the rules above that trim their padding would leave one row short of its
+   neighbour. Uniform instead. */
+#home #news .headline,
+#home #news .headline:first-of-type,
+#home #news .headline:last-of-type {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
+}
+#home #news .headline .title { line-height: 1.35; }
 
 #home .card .item,
 #home .card .post-item,
@@ -2788,20 +2848,28 @@ a.highlight {
 
      Everything here is left-aligned against the sidebar, which is what a
      sidebar is for. Collapsed, that leaves a 760px column against the left of a
-     1280px window with half the screen empty beside it — the page still laid
-     out around something that is not there.
+     wide window with half the screen empty beside it — the page still laid out
+     around something that is not there.
 
-     So the whole content box narrows and centres, and every page moves as one:
-     the title and what is under it keep the single edge they share, which is
-     the thing that goes wrong if you centre the column and leave the heading
-     behind. A page that is genuinely wide — the API reference, a grid of cards
-     — still gets 1000px, which is more than any of them use.
+     That was answered by capping this box at 1080px so it narrowed and centred,
+     on the reasoning that a page which is genuinely wide "still gets 1000px,
+     which is more than any of them use". Home uses more. Measured at 1728: with
+     the rail open the news card is 692px wide, and closing the rail took it to
+     272 — the content box went from 1700 to 1080 while the fixed 320px
+     right-hand track kept its width, so the whole loss landed on the column
+     beside it. Closing a sidebar has to give a page more room than opening it,
+     and this took away up to 620px of it, on every page, at any width past
+     about 1300.
 
-     Not the reading measure. Capping this at 760 would be deciding for every
-     page at once what only a page knows, and the ones with a grid or two panes
-     in them would be squeezed by a rule written for prose. */
-  body.nav-collapsed #nav-container ~ #content {
-    max-width: 1080px;
+     So the box keeps whatever cap its page already has — 1400, or Home's 1700 —
+     and only the gutter changes: 240px of rail becomes 40px of margin. It
+     already centres, from the margin:0 auto on #content.
+
+     The stranded column is answered where it lives, below: a page that sets
+     .page-col has said its content is one column of prose, and that is the only
+     thing a missing rail leaves floating. Nothing else is narrowed to fix it. */
+  body.nav-collapsed .page-col {
+    margin-inline: auto;
   }
 }
 
