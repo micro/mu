@@ -7,7 +7,7 @@ import (
 
 // History reaches the model as turns, in the roles they happened in.
 func TestHistoryKeepsItsRoles(t *testing.T) {
-	m := history([]QueryMessage{
+	m := history("", []QueryMessage{
 		{Role: "user", Text: "what is the weather in London"},
 		{Role: "assistant", Text: "It is 14°C and raining."},
 		{Role: "user", Text: "and tomorrow?"},
@@ -34,7 +34,7 @@ func TestHistoryKeepsItsRoles(t *testing.T) {
 func TestAnAssistantTurnIsNotCutOff(t *testing.T) {
 	long := "item one. " + strings.Repeat("filler so this runs well past three hundred characters. ", 20) + "item three is the last one."
 
-	m := history([]QueryMessage{
+	m := history("", []QueryMessage{
 		{Role: "user", Text: "list three things"},
 		{Role: "assistant", Text: long},
 	})
@@ -56,7 +56,7 @@ func TestAnAssistantTurnIsNotCutOff(t *testing.T) {
 // memory that accepted writes would send the question twice, which is exactly
 // what the flattened blob was doing with the whole conversation.
 func TestTheQuestionIsNotCountedTwice(t *testing.T) {
-	m := history([]QueryMessage{{Role: "user", Text: "first"}})
+	m := history("", []QueryMessage{{Role: "user", Text: "first"}})
 
 	before := len(m.Messages())
 	m.Add("user", "the question being asked right now")
@@ -74,7 +74,7 @@ func TestTheQuestionIsNotCountedTwice(t *testing.T) {
 // Empty turns are dropped rather than sent as empty messages, which some
 // providers reject outright.
 func TestEmptyTurnsAreDropped(t *testing.T) {
-	m := history([]QueryMessage{
+	m := history("", []QueryMessage{
 		{Role: "user", Text: "something"},
 		{Role: "assistant", Text: ""},
 		{Role: "user", Text: "something else"},
@@ -86,7 +86,7 @@ func TestEmptyTurnsAreDropped(t *testing.T) {
 
 // A role nothing recognises becomes the user's rather than being sent as-is.
 func TestAnUnknownRoleIsNotSentToTheProvider(t *testing.T) {
-	m := history([]QueryMessage{{Role: "system", Text: "hello"}, {Role: "", Text: "hi"}})
+	m := history("", []QueryMessage{{Role: "system", Text: "hello"}, {Role: "", Text: "hi"}})
 	for i, msg := range m.Messages() {
 		if msg.Role != "user" && msg.Role != "assistant" {
 			t.Errorf("message %d has role %q, which no provider accepts", i, msg.Role)
@@ -96,7 +96,7 @@ func TestAnUnknownRoleIsNotSentToTheProvider(t *testing.T) {
 
 // Nil and empty are safe: a first message has no history.
 func TestNoHistoryIsNotAnError(t *testing.T) {
-	if n := len(history(nil).Messages()); n != 0 {
+	if n := len(history("", nil).Messages()); n != 0 {
 		t.Errorf("nil history produced %d messages", n)
 	}
 	var m *threadMemory
@@ -119,7 +119,7 @@ func TestALongConversationSurvives(t *testing.T) {
 			QueryMessage{Role: "assistant", Text: "answer " + itoa(i)})
 	}
 
-	msgs := history(turns).Messages()
+	msgs := history("", turns).Messages()
 	if len(msgs) != len(turns) {
 		t.Fatalf("kept %d of %d messages; 120 short turns are nowhere near the budget",
 			len(msgs), len(turns))
@@ -148,7 +148,7 @@ func TestTheBudgetIsSizeNotTurnCount(t *testing.T) {
 		{Role: "user", Text: "the newest question"},
 	}
 
-	msgs := history(turns).Messages()
+	msgs := history("", turns).Messages()
 
 	spent := 0
 	for _, m := range msgs {
@@ -190,7 +190,7 @@ func TestTheBudgetIsSizeNotTurnCount(t *testing.T) {
 // alternative is a question with no context at all.
 func TestOneEnormousTurnIsNotDroppedEntirely(t *testing.T) {
 	huge := strings.Repeat("y", historyBudget*2)
-	msgs := history([]QueryMessage{{Role: "user", Text: huge}}).Messages()
+	msgs := history("", []QueryMessage{{Role: "user", Text: huge}}).Messages()
 	if len(msgs) != 1 {
 		t.Fatalf("got %d messages, want the one turn there is", len(msgs))
 	}
@@ -226,7 +226,7 @@ func TestTheNativePathDoesNotFlattenHistory(t *testing.T) {
 		t.Error("native.go builds the conversation as prose again; history goes to " +
 			"the model as turns — see memory.go")
 	}
-	if !strings.Contains(src, "gmagent.WithMemory(history(opts.History))") {
+	if !strings.Contains(src, `gmagent.WithMemory(history(briefing(facts), opts.History))`) {
 		t.Error("the native agent is not given the conversation at all, so every " +
 			"question arrives with no context")
 	}

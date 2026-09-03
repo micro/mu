@@ -25,7 +25,7 @@ func TestATrimmedConversationStillSaysWhatIsMissing(t *testing.T) {
 		{Role: "user", Text: "what should I do next?"},
 	}
 
-	msgs := history(turns).Messages()
+	msgs := history("", turns).Messages()
 	first, _ := msgs[0].Content.(string)
 
 	if !strings.HasPrefix(first, "[") {

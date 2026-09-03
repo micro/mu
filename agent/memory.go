@@ -57,6 +57,7 @@ package agent
 
 import (
 	"fmt"
+	"strings"
 
 	gmai "go-micro.dev/v6/ai"
 )
@@ -99,7 +100,36 @@ type threadMemory struct {
 // "assistant" already; anything else would become a role no provider accepts,
 // and a message from an unknown speaker is better read as the user's than
 // dropped.
-func history(turns []QueryMessage) *threadMemory {
+// briefing is what is true right now, as one block, or "" when there is nothing
+// to say.
+//
+// Separate from the instructions on purpose. See the note on sys in
+// buildNativeAgent: a provider caches the prefix up to a breakpoint at the end
+// of the system prompt, which is where the tool catalogue is cached too, and a
+// system prompt carrying a timestamp is a prefix that never repeats. So the
+// clock, the account's own context and what has just happened come in here
+// instead, behind the breakpoint, where changing them costs nothing.
+func briefing(parts []string) string {
+	var kept []string
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			kept = append(kept, p)
+		}
+	}
+	if len(kept) == 0 {
+		return ""
+	}
+	return strings.Join(kept, "\n\n")
+}
+
+// history is the conversation the model is given: what is true now, then what
+// was said before.
+//
+// The briefing goes first and as the user's, because it is what the person
+// asking would have told it if they had had to. A provider takes two roles and
+// the alternative is to put facts in the assistant's mouth, which is a model
+// reading its own words as something it already said.
+func history(brief string, turns []QueryMessage) *threadMemory {
 	m := &threadMemory{}
 
 	kept := make([]gmai.Message, 0, len(turns))
@@ -145,6 +175,12 @@ func history(turns []QueryMessage) *threadMemory {
 				m.dropped)
 		}
 		m.msgs = append([]gmai.Message{{Role: "user", Content: opening}}, m.msgs...)
+	}
+
+	// In front of all of it, including the note about what was dropped: what is
+	// true now is true of the whole conversation, not of its last turn.
+	if brief != "" {
+		m.msgs = append([]gmai.Message{{Role: "user", Content: brief}}, m.msgs...)
 	}
 	return m
 }
