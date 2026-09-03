@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mu/internal/geo"
 )
 
 // withRoutes points the provider at a canned answer and returns the field mask
@@ -106,6 +108,15 @@ func TestDirectionsSayWhenTheyCannotDirect(t *testing.T) {
 // matrix. Nobody wants a matrix; they want to know which one is closest.
 func TestNearestPutsThemInOrder(t *testing.T) {
 	t.Setenv("GOOGLE_API_KEY", "")
+
+	// Where those two are, said here rather than asked of a free geocoder on
+	// every run. The names resolve through internal/geo, which caches, so this
+	// is the same path the code takes and nothing goes over the network — see
+	// geo.Remember. Without it the second name in a package that already
+	// resolved one came back rate-limited, and "Heathrow Airport — could not be
+	// found" failed a test about ordering.
+	geo.Remember("Heathrow Airport", 51.4700, -0.4543)
+	geo.Remember("Camden Town", 51.5390, -0.1426)
 
 	var rsp NearestResponse
 	// From central London: Heathrow is far, Camden is near. Coordinates would be
@@ -222,6 +233,8 @@ func TestThePageAsksBeforeItAnswers(t *testing.T) {
 // paragraph, so it has to survive a rewrite of the handler.
 func TestThePageDrawsTheJourney(t *testing.T) {
 	withRoutes(t, walkWithSteps)
+	// The far end is a name, and resolving it is not what this is about.
+	geo.Remember("Gower Street", 51.5220, -0.1340)
 
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest(http.MethodGet, "/routes?from=51.5308,-0.1238&to=Gower+Street&mode=walk", nil))
@@ -231,5 +244,43 @@ func TestThePageDrawsTheJourney(t *testing.T) {
 	}
 	if !strings.Contains(body, "Head north on Euston Road") {
 		t.Error("the turns are not on the page")
+	}
+}
+
+// A pair of numbers is a point, not a place name.
+//
+// The service takes coordinates in their own fields; the page has two text
+// boxes and everything typed into them arrives as a name. So "51.5308,-0.1238"
+// went to a free geocoder to be told what it had just been given — answered
+// only because Nominatim is lenient about coordinate strings, and rate-limited
+// into "could not be found" the moment a run asked twice.
+func TestCoordinatesAreNotSentToAGeocoder(t *testing.T) {
+	lat, lon, ok := coords("51.5308,-0.1238")
+	if !ok || lat != 51.5308 || lon != -0.1238 {
+		t.Errorf("coords read %v, %v, %v", lat, lon, ok)
+	}
+	// Spaces around them are how a person types.
+	if _, _, ok := coords(" 51.5 , -0.12 "); !ok {
+		t.Error("a pair typed with spaces was not read as a pair")
+	}
+	// And a name with a comma in it is a name. Reading the first half as a
+	// latitude would put somebody in the sea.
+	for _, name := range []string{"Camden, London", "King's Cross, N1", "Paris, France"} {
+		if _, _, ok := coords(name); ok {
+			t.Errorf("%q was read as coordinates", name)
+		}
+	}
+	// Numbers that are not on the Earth are not coordinates either.
+	if _, _, ok := coords("999,999"); ok {
+		t.Error("a point off the planet was accepted")
+	}
+}
+
+// And locate takes the shortcut, so nothing goes over the network for a point
+// the caller already had.
+func TestLocateResolvesAPairWithoutAsking(t *testing.T) {
+	lat, lon, ok := locate("51.5308,-0.1238", 0, 0)
+	if !ok || lat != 51.5308 || lon != -0.1238 {
+		t.Errorf("locate gave %v, %v, %v", lat, lon, ok)
 	}
 }

@@ -53,6 +53,31 @@ var (
 // place names must not be able to grow it without limit.
 const maxCacheEntries = 2000
 
+// Remember puts a known place in the cache, so nothing goes and asks for it.
+//
+// For tests in other packages. nominatimURL above is a variable so this
+// package's own tests can point it at a stub, and a test one package up cannot
+// reach it — so service/routes geocoded London landmarks over the real network
+// on every run: slow, rude to a free provider, and rate-limited into failure
+// the moment more than one test in a package wanted a name resolved. That is
+// what "Heathrow Airport — could not be found" was, in a suite that passed when
+// the same test ran alone.
+//
+// A seam and not a stub. What those tests are about is what the code does with
+// two points, and having to stand up an HTTP server to say where Camden is puts
+// the fixture further from the test than the fact it encodes.
+func Remember(address string, lat, lon float64) {
+	if address == "" {
+		return
+	}
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if len(cache) >= maxCacheEntries {
+		cache = map[string]Point{}
+	}
+	cache[address] = Point{Lat: lat, Lon: lon}
+}
+
 // Geocode resolves an address, postcode or place name to coordinates.
 //
 // Cached for the life of the process. Towns do not move, and the same name is

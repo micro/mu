@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -302,12 +303,47 @@ func locate(name string, lat, lon float64) (float64, float64, bool) {
 	if lat != 0 || lon != 0 {
 		return lat, lon, true
 	}
-	if n := strings.TrimSpace(name); n != "" {
-		if glat, glon, err := geo.Geocode(n); err == nil {
-			return glat, glon, true
-		}
+	n := strings.TrimSpace(name)
+	if n == "" {
+		return 0, 0, false
+	}
+	// A pair of numbers is already a point.
+	//
+	// The service takes coordinates in their own fields and the page does not
+	// have those: it has two text boxes, and whatever is typed arrives here as
+	// a name. So "51.5308,-0.1238" was being sent to a geocoder as if it were a
+	// place — which asks a free service to look up a thing it was just told,
+	// and answers only because Nominatim is generous about coordinate strings.
+	// When it is not, or when it rate-limits, a journey between two points the
+	// caller had exactly becomes a journey between nowhere.
+	if plat, plon, ok := coords(n); ok {
+		return plat, plon, true
+	}
+	if glat, glon, err := geo.Geocode(n); err == nil {
+		return glat, glon, true
 	}
 	return 0, 0, false
+}
+
+// coords reads "lat,lon" and says whether that is what it was.
+//
+// Strict: both halves must parse and both must be on the Earth. A name with a
+// comma in it — "Camden, London" — is a name, and reading half of it as a
+// latitude would put somebody in the sea.
+func coords(s string) (lat, lon float64, ok bool) {
+	a, b, found := strings.Cut(s, ",")
+	if !found {
+		return 0, 0, false
+	}
+	lat, err1 := strconv.ParseFloat(strings.TrimSpace(a), 64)
+	lon, err2 := strconv.ParseFloat(strings.TrimSpace(b), 64)
+	if err1 != nil || err2 != nil {
+		return 0, 0, false
+	}
+	if lat < -90 || lat > 90 || lon < -180 || lon > 180 {
+		return 0, 0, false
+	}
+	return lat, lon, true
 }
 
 // locationLabel prefers the human name the caller gave, falling back to coords.
