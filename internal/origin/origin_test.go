@@ -20,6 +20,29 @@ func TestURLIgnoresTheLoopbackHostBehindAProxy(t *testing.T) {
 	}
 }
 
+// A second public surface is a request identity, not a second deployment. The
+// configured instance domain still names background work, while a request that
+// entered through m3o.com must advertise m3o.com in OAuth and x402 responses.
+func TestURLPreservesExplicitPublicSurface(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "micro.mu")
+
+	r := httptest.NewRequest("POST", "/mcp", nil)
+	r.Host = "localhost:8081"
+	r.Header.Set("X-Mu-Surface", "m3o")
+	r.Header.Set("X-Forwarded-Host", "m3o.com")
+	r.Header.Set("X-Forwarded-Proto", "https")
+	if got := URL(r); got != "https://m3o.com" {
+		t.Fatalf("URL = %q, want https://m3o.com", got)
+	}
+
+	// Merely forwarding a different host does not override the configured
+	// canonical instance. The proxy has to opt into a second public surface.
+	r.Header.Del("X-Mu-Surface")
+	if got := URL(r); got != "https://micro.mu" {
+		t.Fatalf("URL without surface = %q, want https://micro.mu", got)
+	}
+}
+
 func TestURLFallsBackThroughTheProxyThenTheHost(t *testing.T) {
 	t.Setenv("MU_DOMAIN", "")
 
