@@ -24,29 +24,44 @@ import (
 	"mu/internal/settings"
 )
 
-// URL returns the public origin — "https://micro.mu" — for anything a caller
-// outside this process will read back: an OAuth issuer, an x402 resource
-// identifier, a payment return URL, a link in an email.
+// URL returns the public origin for anything a caller outside this process will
+// read back: an OAuth issuer, an x402 resource identifier, a payment return URL,
+// a link in an email.
 //
-// r.Host cannot be used on its own. Mu runs behind a reverse proxy that
-// forwards to a loopback port, so r.Host is "localhost:8081" and any URL built
-// from it names an address no client can reach.
+// An operator may expose one Mu process through a second, machine-facing public
+// surface (for example m3o.com in front of micro.mu). That surface is selected
+// by the trusted reverse proxy with X-Mu-Surface. In that case the forwarded
+// host is the public identity of this request and must win over MU_DOMAIN;
+// otherwise an agent calling m3o.com/mcp receives an x402 or OAuth URL naming
+// micro.mu and the public boundary leaks.
 //
-// Order: MU_DOMAIN when configured, then the proxy's X-Forwarded-Host, then
-// r.Host. X-Forwarded-Host is only trustworthy because the proxy sets it; a
-// directly exposed instance would be taking it from the client, which is the
-// same assumption ClientIP already makes.
+// X-Mu-Surface deliberately does not contain a hostname. The proxy selects the
+// surface; X-Forwarded-Host says which public host the request used. This keeps
+// the mechanism domain-agnostic and gives self-hosters the same capability.
+//
+// Without an explicit surface, MU_DOMAIN remains authoritative. r.Host cannot
+// be used on its own behind a reverse proxy because it may be localhost:8081.
 func URL(r *http.Request) string {
+	if strings.TrimSpace(r.Header.Get("X-Mu-Surface")) != "" {
+		if h := forwardedHost(r); h != "" {
+			return scheme(r) + "://" + trimScheme(h)
+		}
+	}
 	if u := Self(); u != "" {
 		return u
 	}
-	if h := strings.TrimSpace(r.Header.Get("X-Forwarded-Host")); h != "" {
-		if i := strings.Index(h, ","); i > 0 {
-			h = strings.TrimSpace(h[:i])
-		}
+	if h := forwardedHost(r); h != "" {
 		return scheme(r) + "://" + trimScheme(h)
 	}
 	return scheme(r) + "://" + r.Host
+}
+
+func forwardedHost(r *http.Request) string {
+	h := strings.TrimSpace(r.Header.Get("X-Forwarded-Host"))
+	if i := strings.Index(h, ","); i > 0 {
+		h = strings.TrimSpace(h[:i])
+	}
+	return h
 }
 
 // Self is the public origin when there is no request to derive it from.
