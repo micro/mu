@@ -322,9 +322,7 @@ func WritePaymentRequired(w http.ResponseWriter, operation, resource string, ext
 		return false
 	}
 	if reason == "" {
-		reason = "This tool costs credits. Sign in, or send a token from /token as " +
-			"'Authorization: Bearer' — see /tools. Machine callers can pay per call " +
-			"with an X-PAYMENT header instead; see accepts."
+		reason = "Payment required. Choose an entry from accepts, submit payment, and retry."
 	}
 	body := map[string]any{
 		"x402Version": x402Ver(),
@@ -340,7 +338,7 @@ func WritePaymentRequired(w http.ResponseWriter, operation, resource string, ext
 			"url":         resource,
 			"description": "Access to " + operation,
 			"mimeType":    "application/json",
-			"serviceName": serviceName(),
+			"serviceName": serviceName(resource),
 			"tags":        []string{"mcp", "agent-tools"},
 		}
 	}
@@ -866,12 +864,15 @@ func PayerFrom(ctx context.Context) string {
 
 // serviceName is what this instance calls itself in a discovery listing.
 //
-// The index shows a name rather than a URL, so without one an entry is a bare
-// address next to entries that read like products. Derived from the mail domain
-// or the public URL rather than configured separately: an operator has already
-// said what this instance is called, and asking twice invites the two to
-// disagree.
-func serviceName() string {
+// The public resource is the authoritative identity for a request. That matters
+// when one Mu instance is exposed through more than one public surface: the
+// x402 challenge should name the host the caller is actually paying, not leak
+// the instance's configured mail/application domain. Configuration remains the
+// fallback for callers that provide a non-URL resource.
+func serviceName(resource string) string {
+	if u, err := url.Parse(strings.TrimSpace(resource)); err == nil && u.Host != "" {
+		return u.Host
+	}
 	if u := strings.TrimSpace(settings.Get("MU_DOMAIN")); u != "" {
 		return u
 	}
