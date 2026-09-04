@@ -43,3 +43,19 @@ func ToolByName(name string) (Tool, bool) {
 	}
 	return Tool{}, false
 }
+
+// ToolForWalletOp maps the operation known by the payment gate back to the
+// canonical MCP tool that sells it. This lets discovery reuse the MCP registry
+// instead of carrying a second list of tool names, descriptions and schemas.
+func ToolForWalletOp(op string) (Tool, bool) {
+	if op == "" {
+		return Tool{}, false
+	}
+	for i := range tools {
+		if tools[i].RESTOnly || tools[i].Name == "" || tools[i].WalletOp != op {
+			continue
+		}
+		return tools[i], true
+	}
+	return Tool{}, false
+}
