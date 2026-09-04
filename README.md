@@ -17,7 +17,7 @@ What's included
 
 - **Clients** - Use it via Web, sms, email, whatsapp and more are all included by default. Requires setup.
 - **Services** - 30+ services including news, mail, markets, video, etc accessible via API, CLI or the Web.
-- **Agents** - Micro answers by default; define your own by name, prompt and tools, then chat via the web or api.
+- **Agents** - Micro answers by default; define your own by name, prompt and tools, then chat via the web.
 - **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents or reply directly.
 
 ## Agents
