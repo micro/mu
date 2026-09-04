@@ -191,7 +191,7 @@ func All() []Client {
 	if host != "" {
 		out = append(out, Client{Label: "API", Dev: true,
 			Address: "https://" + host + "/agent",
-			Href: "/token", Note: "for a program — needs a token",
+			Href:    "/token", Note: "for a program — needs a token",
 			Example: "curl -X POST https://" + host + "/agent \\\n" +
 				`  -H "Authorization: Bearer $MU_TOKEN" \` + "\n" +
 				`  -d '{"prompt": "what is on my calendar?"}'`})

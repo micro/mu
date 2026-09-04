@@ -81,7 +81,6 @@ func TestAnAttachmentIsFetchableByPartNumber(t *testing.T) {
 	}
 }
 
-
 // A message of one part is one part: the body, and nothing at 2.
 func TestASimpleMessageHasOnePart(t *testing.T) {
 	m := &Message{ID: "m2", From: "a@example.test", To: "asim", ToID: "asim",
