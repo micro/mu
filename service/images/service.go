@@ -33,6 +33,14 @@ func (Server) Generate(ctx context.Context, req *GenerateRequest, rsp *GenerateR
 	if err != nil {
 		return err
 	}
+	// Generate returns a path relative to this instance, which is what a
+	// browser on the same origin needs. A tool call has no origin of its own —
+	// the model hands the URL back to whoever asked, on the web, over mail, in
+	// chat — so it needs the full address, the same reasoning AbsoluteURL
+	// exists for.
+	if id, ok := strings.CutPrefix(url, DisplayURL("")); ok {
+		url = AbsoluteURL(id)
+	}
 	rsp.URL = url
 	return nil
 }
