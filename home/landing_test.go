@@ -31,31 +31,27 @@ func TestTheWordmarkSaysWhatItIs(t *testing.T) {
 	}
 }
 
-// The corner offers an account, not only a way back to one.
+// The corner offers the public tool catalogue and one way into an account.
 //
-// The landing's corner was cut to Log in for the same reason the shell's was —
-// see app.headCorner — and this is the page where it cost the most: everybody
-// standing here is a stranger, because signing in redirects to /home.
-func TestTheLandingOffersAWayToJoin(t *testing.T) {
+// Sign up is available from the login page. Keeping it here as a third link
+// makes the smallest piece of navigation ask a stranger to choose between two
+// account actions before they have decided to use either.
+func TestTheLandingOffersToolsAndOneWayIn(t *testing.T) {
 	got := topRight()
-	if !strings.Contains(got, `href="/signup"`) {
-		t.Errorf("the front door has no way to sign up on it: %q", got)
+	for _, want := range []string{`href="/tools"`, `href="/login"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the front door is missing %s: %q", want, got)
+		}
 	}
-	if strings.Index(got, "/signup") > strings.Index(got, "/login") {
-		t.Errorf("Log in comes before Sign up on the front door: %q", got)
+	if strings.Contains(got, `href="/signup"`) {
+		t.Errorf("the front door has three corner links instead of Tools and Log in: %q", got)
+	}
+	if strings.Index(got, "/tools") > strings.Index(got, "/login") {
+		t.Errorf("Log in comes before Tools on the front door: %q", got)
 	}
 	// No redirect on the way in. This is the one page where signing in should
-	// move you somewhere else, and it already does — carrying the page you were
-	// on would be a round trip back to a redirect.
+	// move you somewhere else, and it already does.
 	if strings.Contains(got, "redirect=") {
 		t.Errorf("the front door sends you back to itself after signing in: %q", got)
-	}
-}
-
-// And not where the door is shut.
-func TestTheLandingDoesNotOfferSignupOnAnInviteOnlyInstance(t *testing.T) {
-	t.Setenv("INVITE_ONLY", "true")
-	if got := topRight(); strings.Contains(got, "/signup") {
-		t.Errorf("an invite-only instance offers a form nobody can complete: %q", got)
 	}
 }
