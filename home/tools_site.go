@@ -2,11 +2,9 @@ package home
 
 import (
 	"fmt"
-	"html"
 	"net/http"
 	"strings"
 
-	"mu/internal/app"
 	"mu/internal/origin"
 	"mu/internal/settings"
 )
@@ -18,33 +16,20 @@ const toolsDescription = "Infrastructure for agents"
 // not enable, disable or partition any tools.
 func IsToolsHost(r *http.Request) bool { return origin.IsToolsHost(r) }
 
-// ToolsIndex is the lightweight front page for the optional tools hostname.
-// Everything linked here is served by the same Mu instance.
+// ToolsIndex is the machine-first front page for the optional tools hostname.
+// It deliberately has no Mu HTML shell, navigation or styling: this hostname is
+// an entry point for callers that want protocols and capabilities, not the app.
 func ToolsIndex(w http.ResponseWriter, r *http.Request) {
 	name := toolsName(r)
 	base := strings.TrimRight(origin.URL(r), "/")
-	body := `<div class="lwrap">` +
-		`<div class="lbrand">` + html.EscapeString(name) + `</div>` +
-		`<div class="lwhat">` + toolsDescription + `</div>` +
-		`<div style="margin-top:28px;line-height:2">` +
-		`<a href="/tools">Tools</a> · ` +
-		`<a href="/mcp">MCP</a> · ` +
-		`<a href="/api/v1/">API</a> · ` +
-		`<a href="/llms.txt">llms.txt</a>` +
-		`</div>` +
-		`<p style="margin-top:22px;color:#777;font-size:14px">` +
-		`MCP: <code>` + html.EscapeString(base+"/mcp") + `</code></p>` +
-		`</div>`
-
-	page := app.RenderIndex(app.Index{
-		Title:       name,
-		Description: toolsDescription,
-		Body:        body,
-		Footer:      app.FooterLinks(),
-	})
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache, private")
-	_, _ = w.Write([]byte(page))
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	fmt.Fprintf(w, "%s\n%s\n\n", name, toolsDescription)
+	fmt.Fprintf(w, "MCP: %s/mcp\n", base)
+	fmt.Fprintf(w, "Tools: %s/tools\n", base)
+	fmt.Fprintf(w, "API: %s/api/v1/\n", base)
+	fmt.Fprintf(w, "LLMs: %s/llms.txt\n", base)
+	fmt.Fprintln(w, "\nPriced calls use HTTP 402/x402. MCP tools/list is the canonical live catalogue.")
 }
 
 func toolsName(r *http.Request) string {
@@ -78,6 +63,6 @@ func init() {
 		fmt.Fprintf(w, "- MCP: %s/mcp\n", base)
 		fmt.Fprintf(w, "- Tools: %s/tools\n", base)
 		fmt.Fprintf(w, "- API catalogue: %s/api/v1/\n", base)
-		fmt.Fprintf(w, "\nPriced calls use HTTP 402/x402. Discover the current tool names, descriptions and schemas from /tools or the MCP tools/list method.\n")
+		fmt.Fprintf(w, "\nPriced calls use HTTP 402/x402. Discover the current tool names, descriptions and schemas with MCP tools/list.\n")
 	})
 }
