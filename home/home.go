@@ -486,6 +486,8 @@ function fetchW(la,lo){
 			Ask:             true,
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
+			StorageNS:       "home",
+			ImportNS:        "landing",
 			// Who answers, for the byline over the reply. The default agent,
 			// which is what an unpicked box reaches — see agent.DefaultName.
 			AgentName: agent.DefaultName(),
