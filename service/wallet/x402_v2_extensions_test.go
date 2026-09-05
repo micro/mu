@@ -67,7 +67,7 @@ func TestPayAndCallMCPEchoesChallengeExtensions(t *testing.T) {
 				PayTo: "0x9a717EFF039622231C65ADbF7B2A002b544b06A9", Asset: baseUSDC,
 				MaxTimeoutSeconds: 60, Extra: map[string]string{"name": "USD Coin", "version": "2"},
 			}},
-			"resource": map[string]any{"url": "https://m3o.com/mcp", "description": "Access to web_search", "mimeType": "application/json"},
+			"resource":   map[string]any{"url": "https://m3o.com/mcp", "description": "Access to web_search", "mimeType": "application/json"},
 			"extensions": map[string]any{"bazaar": map[string]any{"info": map[string]any{"input": map[string]any{"type": "mcp", "toolName": "web_search"}}}},
 		})
 	}))

@@ -189,8 +189,8 @@ func firstNonEmpty(vals ...string) string {
 func choosePayableChallenge(body []byte) (x402.PaymentRequirements, map[string]any, map[string]any, error) {
 	var challenge struct {
 		Accepts    []x402.PaymentRequirements `json:"accepts"`
-		Resource   map[string]any              `json:"resource"`
-		Extensions map[string]any              `json:"extensions"`
+		Resource   map[string]any             `json:"resource"`
+		Extensions map[string]any             `json:"extensions"`
 	}
 	if err := json.Unmarshal(body, &challenge); err != nil {
 		return x402.PaymentRequirements{}, nil, nil, fmt.Errorf("bad 402 body: %w", err)
