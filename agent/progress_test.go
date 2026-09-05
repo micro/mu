@@ -71,3 +71,21 @@ func TestInterruptedFlowsAreClosedOnStartup(t *testing.T) {
 		t.Error("reconciliation was not idempotent")
 	}
 }
+
+func TestInterruptedFlowErrorIsVisibleToPendingClient(t *testing.T) {
+	flow := &Flow{ID: "interrupted_pending_flow", AccountID: "interrupted_pending_account",
+		ThreadID: "interrupted_pending_thread", Status: "error", Error: interruptedFlowError,
+		CreatedAt: time.Now()}
+	flowMu.Lock()
+	flowStore[flow.ID] = flow
+	flowMu.Unlock()
+	t.Cleanup(func() {
+		flowMu.Lock()
+		delete(flowStore, flow.ID)
+		flowMu.Unlock()
+	})
+
+	if got := flowError(flow.AccountID, flow.ThreadID); got != interruptedFlowError {
+		t.Errorf("flowError = %q", got)
+	}
+}
