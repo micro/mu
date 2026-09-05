@@ -50,10 +50,10 @@ func newS3FromSettings() (*s3Store, error) {
 		return nil, fmt.Errorf("S3_ENDPOINT and S3_BUCKET must both be set")
 	}
 
-	access := strings.TrimSpace(settings.Get("S3_ACCESS_KEY"))
-	secret := strings.TrimSpace(settings.Get("S3_SECRET_KEY"))
+	access := s3AccessKey()
+	secret := s3SecretKey()
 	if access == "" || secret == "" {
-		return nil, fmt.Errorf("S3_ACCESS_KEY and S3_SECRET_KEY are required")
+		return nil, fmt.Errorf("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required")
 	}
 
 	region := strings.TrimSpace(settings.Get("S3_REGION"))
@@ -71,6 +71,23 @@ func newS3FromSettings() (*s3Store, error) {
 		client: httpClient(),
 		now:    time.Now,
 	}, nil
+}
+
+// s3AccessKey and s3SecretKey keep one canonical pair for object storage while
+// still accepting the names used by older Files deployments. The canonical
+// names are the ones backups already use and the conventional AWS/S3 names.
+func s3AccessKey() string {
+	if v := strings.TrimSpace(settings.Get("S3_ACCESS_KEY_ID")); v != "" {
+		return v
+	}
+	return strings.TrimSpace(settings.Get("S3_ACCESS_KEY"))
+}
+
+func s3SecretKey() string {
+	if v := strings.TrimSpace(settings.Get("S3_SECRET_ACCESS_KEY")); v != "" {
+		return v
+	}
+	return strings.TrimSpace(settings.Get("S3_SECRET_KEY"))
 }
 
 // httpClient is the client S3 requests use, shared so a test can build a store
