@@ -411,6 +411,15 @@ function fetchW(la,lo){
 	if sess, _ := auth.TrySession(r); sess != nil {
 		viewerID = sess.Account
 	}
+	chatStorageNS := ""
+	chatImportNS := ""
+	if viewerID != "" {
+		// Browser-held Home state belongs to the account, just like the server
+		// thread it mirrors. A fixed namespace would let the next account using
+		// this tab restore and submit the previous account's conversation.
+		chatStorageNS = "home:" + viewerID
+		chatImportNS = "landing"
+	}
 
 	// The rail is built before it is placed, because whether there is a second
 	// column at all depends on whether anything goes in it.
@@ -486,8 +495,8 @@ function fetchW(la,lo){
 			Ask:             true,
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
-			StorageNS:       "home",
-			ImportNS:        "landing",
+			StorageNS:       chatStorageNS,
+			ImportNS:        chatImportNS,
 			// Who answers, for the byline over the reply. The default agent,
 			// which is what an unpicked box reaches — see agent.DefaultName.
 			AgentName: agent.DefaultName(),
