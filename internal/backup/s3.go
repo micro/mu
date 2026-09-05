@@ -98,26 +98,16 @@ func Push() (string, error) {
 	return key, put(key, f, size, hex.EncodeToString(sum.Sum(nil)))
 }
 
-// DefaultPrefix is where archives go when nothing says otherwise.
+// DefaultPrefix is the namespace archives own in the shared object store.
 //
-// Not the root of the bucket, because the bucket is not ours alone:
-// internal/blob reads the same S3_BUCKET for user file storage, so an archive
-// written to the root sits among the files it is supposed to protect. A
-// directory named for what is in it costs nothing and keeps the two apart.
+// It is fixed rather than configurable because the bucket is shared by
+// services: files owns files/, backups owns backups/. An operator should choose
+// the bucket once, not have to coordinate internal paths between services.
 const DefaultPrefix = "backups"
 
 // archiveKey is where one day's archive goes.
-//
-// S3_PREFIX names a directory inside the bucket and nothing else — the bucket
-// is S3_BUCKET, so repeating it here is what produces micro/micro. Trailing
-// and leading slashes are trimmed for the same reason: "/backups/" and
-// "backups" mean the same thing to a person and different things to S3.
 func archiveKey(at time.Time) string {
-	prefix := strings.Trim(strings.TrimSpace(settings.Get("S3_PREFIX")), "/")
-	if prefix == "" {
-		prefix = DefaultPrefix
-	}
-	return prefix + "/" + at.Format("2006-01-02") + ".tar.gz"
+	return DefaultPrefix + "/" + at.Format("2006-01-02") + ".tar.gz"
 }
 
 // archive writes the whole instance as a gzipped tar.
