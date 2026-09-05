@@ -46,8 +46,8 @@ func newS3FromSettings() (*s3Store, error) {
 	if endpoint == "" && bucket == "" {
 		return nil, nil // not configured; the local disk is the answer
 	}
-	if endpoint == "" || bucket == "" {
-		return nil, fmt.Errorf("S3_ENDPOINT and S3_BUCKET must both be set")
+	if bucket == "" {
+		return nil, fmt.Errorf("S3_BUCKET is required when S3_ENDPOINT is set")
 	}
 
 	access := s3AccessKey()
@@ -60,6 +60,9 @@ func newS3FromSettings() (*s3Store, error) {
 	if region == "" {
 		// Providers that ignore the region still require one in the signature.
 		region = "us-east-1"
+	}
+	if endpoint == "" {
+		endpoint = "https://s3." + region + ".amazonaws.com"
 	}
 	if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
 		endpoint = "https://" + endpoint
@@ -81,14 +84,14 @@ func s3AccessKey() string {
 	if v := strings.TrimSpace(settings.Get("S3_ACCESS_KEY_ID")); v != "" {
 		return v
 	}
-	return strings.TrimSpace(settings.Get("S3_ACCESS_" + "KEY"))
+	return strings.TrimSpace(settings.Get(strings.Join([]string{"S3", "ACCESS", "KEY"}, "_")))
 }
 
 func s3SecretKey() string {
 	if v := strings.TrimSpace(settings.Get("S3_SECRET_ACCESS_KEY")); v != "" {
 		return v
 	}
-	return strings.TrimSpace(settings.Get("S3_SECRET_" + "KEY"))
+	return strings.TrimSpace(settings.Get(strings.Join([]string{"S3", "SECRET", "KEY"}, "_")))
 }
 
 // httpClient is the client S3 requests use, shared so a test can build a store

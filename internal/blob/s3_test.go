@@ -253,6 +253,29 @@ func TestCanonicalCredentialNamesWin(t *testing.T) {
 	}
 }
 
+func TestAWSDoesNotRequireAnExplicitEndpoint(t *testing.T) {
+	t.Setenv("S3_ENDPOINT", "")
+	t.Setenv("S3_BUCKET", "mu-files")
+	t.Setenv("S3_REGION", "eu-west-2")
+	t.Setenv("S3_ACCESS_KEY_ID", "k")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "s")
+
+	s, err := newS3FromSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := s.endpoint, "https://s3.eu-west-2.amazonaws.com"; got != want {
+		t.Errorf("endpoint = %q, want %q", got, want)
+	}
+	req, err := s.request("PUT", "files/report.csv", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := req.URL.Path, "/mu-files/files/report.csv"; got != want {
+		t.Errorf("path = %q, want %q", got, want)
+	}
+}
+
 // A bare hostname is a reasonable thing to paste; it should not produce an
 // unusable endpoint.
 func TestEndpointGetsAScheme(t *testing.T) {

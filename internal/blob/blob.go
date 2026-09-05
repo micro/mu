@@ -42,8 +42,9 @@ var (
 	configured string
 )
 
-// Default returns the configured store: S3-compatible when an endpoint and
-// bucket are set, otherwise the local disk.
+// Default returns the configured store: S3-compatible when a bucket and
+// credentials are set, otherwise the local disk. An explicit endpoint is only
+// needed for providers other than AWS.
 func Default() Store {
 	cfg := configFingerprint()
 

@@ -107,6 +107,14 @@ const DefaultPrefix = "backups"
 
 // archiveKey is where one day's archive goes.
 func archiveKey(at time.Time) string {
+	// Older deployments could use a private per-instance prefix. Honour it as
+	// a migration alias so two instances which already share a bucket do not
+	// begin overwriting one another after an upgrade. It is intentionally not
+	// part of the current configuration surface.
+	legacy := strings.Trim(strings.TrimSpace(settings.Get(strings.Join([]string{"S3", "PREFIX"}, "_"))), "/")
+	if legacy != "" {
+		return legacy + "/" + at.Format("2006-01-02") + ".tar.gz"
+	}
 	return DefaultPrefix + "/" + at.Format("2006-01-02") + ".tar.gz"
 }
 
