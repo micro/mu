@@ -10,7 +10,7 @@ import (
 
 func TestAChatCanHandItsTabStateToAnotherSurface(t *testing.T) {
 	got := ChatComponent(ChatConfig{
-		Ask:       true,
+		Ask:      true,
 		StorageNS: "home",
 		ImportNS:  "landing",
 	})
@@ -19,6 +19,9 @@ func TestAChatCanHandItsTabStateToAnotherSurface(t *testing.T) {
 		`var IMPORT_NS="landing"`,
 		"'mu_chat_'+from[n]+':'+IMPORT_NS",
 		"sessionStorage.removeItem(source)",
+		"pendingAgent.querySelector('.mu-think')",
+		"sessionStorage.setItem(DKEY,user.textContent||'')",
+		"sessionStorage.removeItem(TKEY)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the one-time chat handoff is missing %q", want)
