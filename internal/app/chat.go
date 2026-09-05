@@ -672,6 +672,15 @@ function fitConv(){
   var opts=document.getElementById('mu-chat-opts');
   var sug=document.getElementById('mu-chat-suggest');
   [form,opts,sug].forEach(function(el){ if(el) below+=el.offsetHeight; });
+  // A fixed tab bar is not in the document flow, so none of the elements
+  // above account for the screen it covers. The CSS fallback subtracts
+  // --tabbar, but this measured inline max-height replaces that rule as soon
+  // as the script runs. Measure the actual visible bar here; while a keyboard
+  // is open the shell hides it and its height is naturally zero.
+  var tabs=document.getElementById('tabs');
+  if(tabs&&window.getComputedStyle(tabs).display!=='none'){
+    below+=tabs.getBoundingClientRect().height;
+  }
   var h=Math.max(minConv, screenH()-top-below-convGap);
   conv.style.maxHeight=h+'px';
 }
@@ -954,8 +963,38 @@ function ask(q){
   .catch(function(err){
     stopWork();
     if(err==='handled')return;
-    a.innerHTML='<div class="mu-err">Error: '+esc(err&&err.message||err)+'</div>';
-    save();
+    // Losing the stream is not the same as losing the run. The server uses a
+    // run context independent of this request and records the eventual answer
+    // in the conversation. Stay attached to that record instead of replacing
+    // a still-running answer with the browser's unhelpful "network error".
+    if(contextId){
+      var reconnectUntil=Date.now()+600000;
+      a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>Connection lost. Reconnecting...</span></div>';
+      save();
+      (function recover(){
+        fetch('/agent/pending?thread='+encodeURIComponent(contextId),
+          {headers:{'Accept':'application/json'},credentials:'same-origin'})
+          .then(function(r){return r.ok?r.json():null})
+          .then(function(d){
+            if(d&&d.html){a.outerHTML=d.html;save();toBottom(false);return;}
+            if(d&&!d.waiting){
+              a.innerHTML='<div class="mu-err">The run stopped without returning an answer.</div>';save();return;
+            }
+            if(Date.now()>reconnectUntil){
+              a.innerHTML='<div class="mu-err">The connection was lost and no answer came back. Please try again.</div>';save();return;
+            }
+            setTimeout(recover,3000);
+          })
+          .catch(function(){
+            if(Date.now()>reconnectUntil){
+              a.innerHTML='<div class="mu-err">The connection was lost and no answer came back. Please try again.</div>';save();return;
+            }
+            setTimeout(recover,3000);
+          });
+      })();
+      return;
+    }
+    a.innerHTML='<div class="mu-err">Error: '+esc(err&&err.message||err)+'</div>';save();
   });
 }
 
