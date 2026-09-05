@@ -321,7 +321,9 @@ func WritePaymentRequired(w http.ResponseWriter, operation, resource string, ext
 		return false
 	}
 	if reason == "" {
-		reason = "Payment required. Choose an entry from accepts, submit payment, and retry."
+		reason = "This tool costs credits. Sign in, or send a token from /token as " +
+			"'Authorization: Bearer' — see /tools. Machine callers can pay per call " +
+			"via x402 instead; choose an entry from accepts, submit payment, and retry."
 	}
 	if extensions == nil {
 		extensions = BazaarExtensions(operation, resource)
