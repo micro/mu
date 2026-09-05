@@ -9,11 +9,10 @@ import (
 
 // A challenge says why this particular caller was refused.
 //
-// There was one sentence for everybody — "Sign in, or send a token from
-// /token" — which is the right thing to tell a stranger and useless to somebody
-// already signed in and out of credits. Telling an agent to sign in when it
-// already has is how a refusal becomes a dead end: the one action it is offered
-// is the one it has done.
+// The generic x402 wording is surface-neutral because this layer does not know
+// whether the public host is a normal Mu instance or X402_HOST. The layer that
+// does know the caller and surface can supply a context-specific reason, which
+// must pass through unchanged.
 func TestAChallengeSaysWhyThisCallerWasRefused(t *testing.T) {
 	t.Setenv("X402_ENABLED", "true")
 	t.Setenv("X402_PAY_TO", "0x000000000000000000000000000000000000dEaD")
@@ -30,11 +29,11 @@ func TestAChallengeSaysWhyThisCallerWasRefused(t *testing.T) {
 		return out
 	}
 
-	// No reason: the wording that names both ways in for somebody with no
-	// account. It lives in one place, so an empty reason means "use it".
+	// No reason: use the generic surface-neutral payment guidance.
 	anon, _ := body("")["error"].(string)
-	if !strings.Contains(anon, "Sign in") {
-		t.Errorf("the default challenge no longer tells a stranger how to start: %q", anon)
+	if !strings.Contains(anon, "Payment required") ||
+		!strings.Contains(anon, "accepts") {
+		t.Errorf("the default challenge no longer explains how to pay: %q", anon)
 	}
 
 	// A reason: used as given, and the accepts block still rides along, because
