@@ -1,12 +1,16 @@
-# mu
+# Mu
 
-The open source runtime behind **Micro**, a personal assistant.
+**Tools for agents.**
+
+Mu is an open-source runtime for agents. It provides services, tools, memory and machine interfaces for agents to use.
+
+**Micro** is the personal assistant that ships with Mu and the default human-facing front door.
 
 ## Overview
 
-**Micro** is the front door: the personal assistant people talk to at [micro.mu](https://micro.mu). It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
+**Mu** is the definitive unit: the runtime, services, archive, inbox and agent system. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data can be archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
 
-**Mu** is the software underneath it: the runtime, services, archive, inbox and agent system that Micro runs on. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data can be archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
+**Micro** is the first agent and the one people meet first. It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
 
 Using agents has become a fragmented experience. Mu unifies communication into one inbox, whether it's mail, chat, SMS, WhatsApp, notes, tasks or agent activity, while Micro gives that system a single human-facing assistant.
 
