@@ -9,7 +9,7 @@ import (
 	"mu/internal/settings"
 )
 
-const toolsDescription = "Infrastructure for agents"
+const toolsDescription = "Tools for agents"
 
 // IsToolsHost reports whether the request came through the optional tools host.
 // The host is only a second public identity for this same Mu process; it does
