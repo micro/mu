@@ -122,11 +122,18 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 			progress = append(progress, progressStep{Label: label, Status: step.Status})
 		}
 	}
+	waiting := msgs[len(msgs)-1].Role != thread.RoleAgent
+	runError := ""
+	if waiting {
+		runError = flowError(acc.ID, id)
+		waiting = runError == ""
+	}
 
 	app.RespondJSON(w, map[string]any{
-		"waiting": msgs[len(msgs)-1].Role != thread.RoleAgent,
+		"waiting": waiting,
 		"html":    b.String(),
 		"steps":   progress,
+		"error":   runError,
 	})
 }
 
