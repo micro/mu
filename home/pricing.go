@@ -66,7 +66,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// changes it, and this file is served by every instance.
 	b.WriteString(`<div class="card"><h3>What this costs</h3>` +
 		`<p>A question to the agent is ` + strconv.Itoa(quota.OperationCost(quota.OpAgentRun)) +
-		`¢. Mu charges for what it has to buy from somebody else: a question is a ` +
+		`¢. This instance charges for what it has to buy from somebody else: a question is a ` +
 		`model call, a search is a search company's, a text message is a carrier's. ` +
 		`Anything that only touches this server — reading the news, your mail, your ` +
 		`notes, the archive — is free, because serving it costs nothing.</p>` +
@@ -104,7 +104,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	app.Respond(w, r, app.Response{
 		Title:       "Pricing",
-		Description: "What Mu costs: a dollar of credit to start, then a credit is a cent.",
+		Description: "What this instance costs: a dollar of credit to start, then a credit is a cent.",
 		HTML:        b.String(),
 	})
 }
