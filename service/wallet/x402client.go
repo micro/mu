@@ -173,6 +173,9 @@ func settlementFromHeaders(h http.Header) (*x402.SettleResponse, string) {
 	if !settle.Success {
 		return nil, firstNonEmpty(settle.Message, settle.ErrorReason, "settlement reported failure")
 	}
+	if strings.TrimSpace(settle.Transaction) == "" || strings.TrimSpace(settle.Network) == "" {
+		return nil, "incomplete PAYMENT-RESPONSE: missing transaction or network"
+	}
 	return &settle, ""
 }
 
