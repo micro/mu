@@ -119,7 +119,8 @@ type ChatConfig struct {
 	StorageNS string
 	// ImportNS is a one-time handoff from another chat surface. This surface
 	// adopts the other namespace's conversation, history, context and draft,
-	// then removes the source copy.
+	// then removes the source copy. The destination namespace must include the
+	// account identity when the destination is account-owned.
 	// Used when the public landing becomes the signed-in Home after login.
 	ImportNS string
 	// Doors is a row of links rendered directly under the input — the handful
@@ -729,6 +730,26 @@ if(!SESSION && PERSIST){
       if(imported)savedConv=sessionStorage.getItem(CKEY);
     }
     if(savedConv)conv.innerHTML=savedConv;
+    // A guest can leave while its answer is still streaming. That run has no
+    // account-owned thread for Home to recover, so carrying its spinner across
+    // login would make it permanent. Put the unanswered prompt back in the
+    // composer and retain only the completed turns.
+    if(imported){
+      var agents=conv.querySelectorAll('.mu-agent');
+      var pendingAgent=agents.length?agents[agents.length-1]:null;
+      if(pendingAgent&&pendingAgent.querySelector('.mu-think')){
+        var by=pendingAgent.previousElementSibling;
+        var user=by&&by.classList.contains('mu-by')?by.previousElementSibling:by;
+        if(user&&user.classList.contains('mu-user')&&!sessionStorage.getItem(DKEY)){
+          sessionStorage.setItem(DKEY,user.textContent||'');
+        }
+        pendingAgent.remove();
+        if(by&&by.classList.contains('mu-by'))by.remove();
+        if(user&&user.classList.contains('mu-user'))user.remove();
+        sessionStorage.setItem(CKEY,conv.innerHTML);
+        sessionStorage.removeItem(TKEY);
+      }
+    }
     var savedHist=sessionStorage.getItem(HKEY);
     if(savedHist)history=JSON.parse(savedHist)||[];
     var savedCtx=sessionStorage.getItem(TKEY);
