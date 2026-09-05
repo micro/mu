@@ -115,8 +115,13 @@ type ChatConfig struct {
 	// StorageNS namespaces the component's sessionStorage keys so different
 	// surfaces (Home, /agent) keep separate in-tab conversations and never show
 	// each other's. When empty the component is ephemeral: it neither restores
-	// nor saves, so it always starts clean (used for Home's quick-ask box).
+	// nor saves, so it always starts clean.
 	StorageNS string
+	// ImportNS is a one-time handoff from another chat surface. This surface
+	// adopts the other namespace's conversation, history, context and draft,
+	// then removes the source copy.
+	// Used when the public landing becomes the signed-in Home after login.
+	ImportNS string
 	// Doors is a row of links rendered directly under the input — the handful
 	// of services that are each a search over one set, where the box above is a
 	// search over anything.
@@ -690,6 +695,7 @@ var minConv=220, convGap=28;
 var sugDiv=document.getElementById('mu-chat-suggest');
 if(!form)return;
 var NS=` + JSString(cfg.StorageNS) + `;
+var IMPORT_NS=` + JSString(cfg.ImportNS) + `;
 // Persistence is per-surface and opt-in. With no namespace the component is
 // ephemeral (Home's quick-ask box) so it never restores or leaks a
 // conversation — in particular it must not show the /agent app's thread.
@@ -697,6 +703,7 @@ var PERSIST=!!NS;
 var CKEY='mu_chat_conv:'+NS;
 var HKEY='mu_chat_hist:'+NS;
 var TKEY='mu_chat_ctx:'+NS;
+var DKEY='mu_chat_draft:'+NS;
 var history=[];
 
 // A reopened server session is authoritative; otherwise restore this surface's
@@ -706,11 +713,28 @@ var history=[];
 if(!SESSION && PERSIST){
   try{
     var savedConv=sessionStorage.getItem(CKEY);
+    // A login turns the public entry into Home. Adopt that tab's conversation
+    // once, then remove the public copy so a later signed-out landing does not
+    // echo an exchange that has already moved inside.
+    if(IMPORT_NS){
+      var from=['conv','hist','ctx','draft'];
+      var to=[CKEY,HKEY,TKEY,DKEY];
+      var imported=false;
+      for(var n=0;n<from.length;n++){
+        var source='mu_chat_'+from[n]+':'+IMPORT_NS;
+        var value=sessionStorage.getItem(source);
+        if(value!==null){sessionStorage.setItem(to[n],value);imported=true;}
+        sessionStorage.removeItem(source);
+      }
+      if(imported)savedConv=sessionStorage.getItem(CKEY);
+    }
     if(savedConv)conv.innerHTML=savedConv;
     var savedHist=sessionStorage.getItem(HKEY);
     if(savedHist)history=JSON.parse(savedHist)||[];
     var savedCtx=sessionStorage.getItem(TKEY);
     if(savedCtx)contextId=savedCtx;
+    var savedDraft=sessionStorage.getItem(DKEY);
+    if(savedDraft)input.value=savedDraft;
   }catch(e){}
 }
 
@@ -747,6 +771,10 @@ function save(){
     sessionStorage.setItem(TKEY,contextId||'');
   }catch(e){}
 }
+function saveDraft(){
+  if(!PERSIST)return;
+  try{sessionStorage.setItem(DKEY,input.value||'');}catch(e){}
+}
 
 // agentName is who answers: whatever the picker is showing when there is one,
 // and the page's own answer otherwise. The picker holds ids and displays names,
@@ -778,7 +806,7 @@ function ask(q){
   var byName=agentName();
   if(byName){var by=document.createElement('div');by.className='mu-by';by.textContent=byName;conv.appendChild(by);}
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
-  input.value='';input.style.height='auto';input.focus();
+  input.value='';saveDraft();input.style.height='auto';input.focus();
 
   var workLabel='Working';
   var t0=Date.now();
@@ -1004,7 +1032,7 @@ showSuggestions();
 // Start a fresh session (clears the log + thread id).
 window.muChatNew=function(){
   conv.innerHTML='';history=[];contextId='';
-  try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);sessionStorage.removeItem(TKEY);}catch(e){}
+  try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);sessionStorage.removeItem(TKEY);sessionStorage.removeItem(DKEY);}catch(e){}
   showBrief();
   showSuggestions();input.focus();
 };
@@ -1303,7 +1331,7 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('resize',onView);
   window.visualViewport.addEventListener('scroll',onView);
 }
-if(input) input.addEventListener('input',fitConv);
+if(input) input.addEventListener('input',function(){fitConv();saveDraft();});
 })();
 </script>`
 
