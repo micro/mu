@@ -39,7 +39,7 @@ func TestWebToolProgressIsPersistedWhileRunning(t *testing.T) {
 	src := webSource(t)
 	for _, want := range []string{
 		`Status: "running"`,
-		`Status: "done"`,
+		`f.Steps[i].Status = "done"`,
 		"updateFlow(flow.ID",
 		"flow.ThreadID = threadID",
 	} {
