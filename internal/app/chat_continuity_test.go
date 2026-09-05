@@ -10,7 +10,7 @@ import (
 
 func TestAChatCanHandItsTabStateToAnotherSurface(t *testing.T) {
 	got := ChatComponent(ChatConfig{
-		Ask:      true,
+		Ask:       true,
 		StorageNS: "home",
 		ImportNS:  "landing",
 	})
