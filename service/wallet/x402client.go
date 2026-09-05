@@ -31,10 +31,12 @@ type Server402 struct {
 }
 
 // PaymentCallResult is a tool result plus the payment diagnostics exposed by
-// the server after a paid retry. Settlement is nil for free calls.
+// the server after a paid retry. Settlement is nil for free calls or a failed
+// settlement receipt; PaymentError explains the latter when available.
 type PaymentCallResult struct {
 	Text               string
 	Settlement         *x402.SettleResponse
+	PaymentError       string
 	ExtensionResponses string
 }
 
@@ -149,31 +151,46 @@ func PayAndCallMCPWithReceipt(ctx context.Context, accountID, baseURL, tool stri
 	}
 	out := PaymentCallResult{Text: text}
 	if paid {
-		out.Settlement = settlementFromHeaders(headers)
+		out.Settlement, out.PaymentError = settlementFromHeaders(headers)
 		out.ExtensionResponses = strings.TrimSpace(headers.Get("EXTENSION-RESPONSES"))
 	}
 	return out, nil
 }
 
-func settlementFromHeaders(h http.Header) *x402.SettleResponse {
+func settlementFromHeaders(h http.Header) (*x402.SettleResponse, string) {
 	value := firstHeader(h, x402.HeaderPaymentRespV2, x402.HeaderPaymentRespV1)
 	if value == "" {
-		return nil
+		return nil, "no PAYMENT-RESPONSE returned by server"
 	}
 	raw, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
-		return nil
+		return nil, "invalid PAYMENT-RESPONSE encoding"
 	}
 	var settle x402.SettleResponse
 	if err := json.Unmarshal(raw, &settle); err != nil {
-		return nil
+		return nil, "invalid PAYMENT-RESPONSE JSON"
 	}
-	return &settle
+	if !settle.Success {
+		return nil, firstNonEmpty(settle.Message, settle.ErrorReason, "settlement reported failure")
+	}
+	if strings.TrimSpace(settle.Transaction) == "" || strings.TrimSpace(settle.Network) == "" {
+		return nil, "incomplete PAYMENT-RESPONSE: missing transaction or network"
+	}
+	return &settle, ""
 }
 
 func firstHeader(h http.Header, names ...string) string {
 	for _, name := range names {
 		if v := strings.TrimSpace(h.Get(name)); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
 			return v
 		}
 	}
@@ -247,7 +264,7 @@ func postJSON(ctx context.Context, endpoint string, payload any, xPayment string
 			if h, herr := SignAuth(bw, u.Host); herr == nil {
 				req.Header.Set("Authorization", h)
 			}
-	}
+		}
 	}
 	if xPayment != "" {
 		req.Header.Set("X-PAYMENT", xPayment)

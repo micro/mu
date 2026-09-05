@@ -94,12 +94,14 @@ func runX402Pay(args []string, rc *ResolvedConfig) int {
 	}
 
 	if out.Settlement != nil {
-		fmt.Printf("settled: %s on %s\n", out.Settlement.Transaction, out.Settlement.Network)
-		if out.ExtensionResponses != "" {
-			fmt.Printf("extensions: %s\n", out.ExtensionResponses)
-		} else {
-			fmt.Println("extensions: none returned by server")
-		}
+		fmt.Printf("payment: settled %s on %s\n", out.Settlement.Transaction, out.Settlement.Network)
+	} else if out.PaymentError != "" {
+		fmt.Printf("payment: %s\n", out.PaymentError)
+	}
+	if out.ExtensionResponses != "" {
+		fmt.Printf("extensions: %s\n", out.ExtensionResponses)
+	} else if out.Settlement != nil || out.PaymentError != "" {
+		fmt.Println("extensions: none returned by server")
 	}
 	fmt.Println(out.Text)
 	return 0
