@@ -187,6 +187,9 @@ func TestDeletingAMissingObjectSucceeds(t *testing.T) {
 // Configuration is all-or-nothing. Half a bucket is a mistake worth reporting
 // rather than a store to half-use.
 func TestConfigurationIsAllOrNothing(t *testing.T) {
+	for _, k := range []string{"S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_ACCESS_KEY", "S3_SECRET_KEY"} {
+		t.Setenv(k, "")
+	}
 	t.Setenv("S3_ENDPOINT", "")
 	t.Setenv("S3_BUCKET", "")
 	s, err := newS3FromSettings()
@@ -204,8 +207,8 @@ func TestConfigurationIsAllOrNothing(t *testing.T) {
 		t.Error("a bucket with no credentials was accepted")
 	}
 
-	t.Setenv("S3_ACCESS_KEY", "k")
-	t.Setenv("S3_SECRET_KEY", "s")
+	t.Setenv("S3_ACCESS_KEY_ID", "k")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "s")
 	got, err := newS3FromSettings()
 	if err != nil || got == nil {
 		t.Fatalf("a complete configuration was refused: %v", err)
@@ -215,13 +218,71 @@ func TestConfigurationIsAllOrNothing(t *testing.T) {
 	}
 }
 
+func TestLegacyCredentialNamesStillWork(t *testing.T) {
+	for _, k := range []string{"S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"} {
+		t.Setenv(k, "")
+	}
+	t.Setenv("S3_ENDPOINT", "https://lon1.digitaloceanspaces.com")
+	t.Setenv("S3_BUCKET", "mu-files")
+	t.Setenv("S3_ACCESS_KEY", "old-key")
+	t.Setenv("S3_SECRET_KEY", "old-secret")
+
+	s, err := newS3FromSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.accessKey != "old-key" || s.secretKey != "old-secret" {
+		t.Errorf("legacy credentials were not used: %q / %q", s.accessKey, s.secretKey)
+	}
+}
+
+func TestCanonicalCredentialNamesWin(t *testing.T) {
+	t.Setenv("S3_ENDPOINT", "https://lon1.digitaloceanspaces.com")
+	t.Setenv("S3_BUCKET", "mu-files")
+	t.Setenv("S3_ACCESS_KEY", "old-key")
+	t.Setenv("S3_SECRET_KEY", "old-secret")
+	t.Setenv("S3_ACCESS_KEY_ID", "new-key")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "new-secret")
+
+	s, err := newS3FromSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.accessKey != "new-key" || s.secretKey != "new-secret" {
+		t.Errorf("canonical credentials did not win: %q / %q", s.accessKey, s.secretKey)
+	}
+}
+
+func TestAWSDoesNotRequireAnExplicitEndpoint(t *testing.T) {
+	t.Setenv("S3_ENDPOINT", "")
+	t.Setenv("S3_BUCKET", "mu-files")
+	t.Setenv("S3_REGION", "eu-west-2")
+	t.Setenv("S3_ACCESS_KEY_ID", "k")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "s")
+
+	s, err := newS3FromSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := s.endpoint, "https://s3.eu-west-2.amazonaws.com"; got != want {
+		t.Errorf("endpoint = %q, want %q", got, want)
+	}
+	req, err := s.request("PUT", "files/report.csv", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := req.URL.Path, "/mu-files/files/report.csv"; got != want {
+		t.Errorf("path = %q, want %q", got, want)
+	}
+}
+
 // A bare hostname is a reasonable thing to paste; it should not produce an
 // unusable endpoint.
 func TestEndpointGetsAScheme(t *testing.T) {
 	t.Setenv("S3_ENDPOINT", "lon1.digitaloceanspaces.com")
 	t.Setenv("S3_BUCKET", "mu-files")
-	t.Setenv("S3_ACCESS_KEY", "k")
-	t.Setenv("S3_SECRET_KEY", "s")
+	t.Setenv("S3_ACCESS_KEY_ID", "k")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "s")
 
 	s, err := newS3FromSettings()
 	if err != nil {
@@ -242,8 +303,8 @@ func TestEndpointGetsAScheme(t *testing.T) {
 func TestABucketQualifiedEndpointIsNotRepeatedInThePath(t *testing.T) {
 	t.Setenv("S3_ENDPOINT", "https://micro.lon1.digitaloceanspaces.com")
 	t.Setenv("S3_BUCKET", "micro")
-	t.Setenv("S3_ACCESS_KEY", "k")
-	t.Setenv("S3_SECRET_KEY", "s")
+	t.Setenv("S3_ACCESS_KEY_ID", "k")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "s")
 
 	s, err := newS3FromSettings()
 	if err != nil {
@@ -262,8 +323,8 @@ func TestABucketQualifiedEndpointIsNotRepeatedInThePath(t *testing.T) {
 func TestARegionalEndpointKeepsTheBucketInThePath(t *testing.T) {
 	t.Setenv("S3_ENDPOINT", "https://lon1.digitaloceanspaces.com")
 	t.Setenv("S3_BUCKET", "micro")
-	t.Setenv("S3_ACCESS_KEY", "k")
-	t.Setenv("S3_SECRET_KEY", "s")
+	t.Setenv("S3_ACCESS_KEY_ID", "k")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "s")
 
 	s, err := newS3FromSettings()
 	if err != nil {

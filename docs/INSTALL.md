@@ -905,12 +905,13 @@ Backblaze B2, MinIO, S3.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `S3_ENDPOINT` | — | Bucket endpoint, e.g. `https://lon1.digitaloceanspaces.com`. Unset means the local disk |
+| `S3_ENDPOINT` | — | For anything that is not AWS, e.g. `https://lon1.digitaloceanspaces.com`. Leave empty for AWS |
 | `S3_BUCKET` | — | Bucket name |
-| `S3_ACCESS_KEY` · `S3_SECRET_KEY` | — | Credentials |
+| `S3_ACCESS_KEY_ID` · `S3_SECRET_ACCESS_KEY` | — | Credentials used by Files and backups |
 | `S3_REGION` | `us-east-1` | Region for the signature. DigitalOcean uses the datacentre slug, e.g. `lon1` |
 
-`S3_ENDPOINT` and `S3_BUCKET` must both be set, with both credentials. Anything
+`S3_BUCKET` and both credentials must be set. For AWS, leave `S3_ENDPOINT`
+empty; for another S3-compatible provider, set its endpoint as well. Anything
 less is a misconfiguration: it is logged and the instance keeps using the disk
 rather than failing.
 
@@ -921,7 +922,8 @@ leisure; the fallback stops mattering once you have.
 
 Keep the bucket **private**. Files are served through Mu, which checks who is
 asking — a public bucket would let anyone holding an object URL route around
-that.
+that. The bucket is shared by durable services with fixed namespaces: Files
+uses `files/` and off-box backups use `backups/`.
 
 ### Mail
 
@@ -1166,10 +1168,9 @@ without changing the token gets you a 401 — `mu login <url>` does both.
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `S3_BUCKET` | — | Bucket for off-box backups. A snapshot on the same disk survives a bad write and not the disk; this is the copy that survives losing the machine. Later it is also where files and generated images belong, which is why these are named for the storage rather than for the backup |
+| `S3_BUCKET` | — | Shared bucket for durable storage. Files use `files/`; off-box backups use `backups/` |
 | `S3_REGION` | `us-east-1` | Region of the bucket |
 | `S3_ENDPOINT` | — | For anything that is not AWS — R2, Backblaze, MinIO. Leave empty for AWS |
-| `S3_ACCESS_KEY_ID` | — | Access key. Give it write access to this bucket and nothing else: it is on a machine that runs model output |
+| `S3_ACCESS_KEY_ID` | — | Access key for the bucket. Files need read, write and delete access; backups use the same credentials |
 | `S3_SECRET_ACCESS_KEY` | — | Secret key |
-| `S3_PREFIX` | — | Optional path inside the bucket, so one bucket can hold several instances |
-| `BACKUP_S3` | `false` | Whether backups are pushed to the bucket above |
+| `BACKUP_S3` | `false` | Whether backups are pushed to the bucket above under `backups/` |

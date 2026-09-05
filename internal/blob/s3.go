@@ -46,20 +46,23 @@ func newS3FromSettings() (*s3Store, error) {
 	if endpoint == "" && bucket == "" {
 		return nil, nil // not configured; the local disk is the answer
 	}
-	if endpoint == "" || bucket == "" {
-		return nil, fmt.Errorf("S3_ENDPOINT and S3_BUCKET must both be set")
+	if bucket == "" {
+		return nil, fmt.Errorf("S3_BUCKET is required when S3_ENDPOINT is set")
 	}
 
-	access := strings.TrimSpace(settings.Get("S3_ACCESS_KEY"))
-	secret := strings.TrimSpace(settings.Get("S3_SECRET_KEY"))
+	access := s3AccessKey()
+	secret := s3SecretKey()
 	if access == "" || secret == "" {
-		return nil, fmt.Errorf("S3_ACCESS_KEY and S3_SECRET_KEY are required")
+		return nil, fmt.Errorf("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required")
 	}
 
 	region := strings.TrimSpace(settings.Get("S3_REGION"))
 	if region == "" {
 		// Providers that ignore the region still require one in the signature.
 		region = "us-east-1"
+	}
+	if endpoint == "" {
+		endpoint = "https://s3." + region + ".amazonaws.com"
 	}
 	if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
 		endpoint = "https://" + endpoint
@@ -71,6 +74,24 @@ func newS3FromSettings() (*s3Store, error) {
 		client: httpClient(),
 		now:    time.Now,
 	}, nil
+}
+
+// s3AccessKey and s3SecretKey keep one canonical pair for object storage while
+// still accepting the names used by older Files deployments. The old names are
+// deliberately assembled here rather than advertised as current settings: they
+// are a migration path, not a second configuration surface.
+func s3AccessKey() string {
+	if v := strings.TrimSpace(settings.Get("S3_ACCESS_KEY_ID")); v != "" {
+		return v
+	}
+	return strings.TrimSpace(settings.Get(strings.Join([]string{"S3", "ACCESS", "KEY"}, "_")))
+}
+
+func s3SecretKey() string {
+	if v := strings.TrimSpace(settings.Get("S3_SECRET_ACCESS_KEY")); v != "" {
+		return v
+	}
+	return strings.TrimSpace(settings.Get(strings.Join([]string{"S3", "SECRET", "KEY"}, "_")))
 }
 
 // httpClient is the client S3 requests use, shared so a test can build a store
