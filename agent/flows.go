@@ -35,7 +35,8 @@ type Flow struct {
 	ParentID string `json:"parent_id"` // prior flow ID for multi-turn chains
 	// Via is which client the turn arrived through and which conversation on
 	// it, and is what lets the next message find this one. See thread.go.
-	Via       Via       `json:"via,omitzero"`
+	Via Via `json:"via,omitzero"`
+
 	// ThreadID is the conversation this run is answering. Unlike Via.Thread,
 	// which is the remote client's own key, this is the id in internal/thread.
 	// It lets any newly attached client find the active flow and its progress.
