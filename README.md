@@ -2,23 +2,25 @@
 
 **Tools for agents.**
 
-Mu is an open-source runtime for agents. It provides services, tools, memory and machine interfaces for agents to use.
-
-**Micro** is the personal assistant that ships with Mu and the default human-facing front door.
-
 ## Overview
 
-**Mu** is the definitive unit: the runtime, services, archive, inbox and agent system. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data can be archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
+Mu is an open-source runtime for agents, tools and services.
 
-**Micro** is the first agent and the one people meet first. It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
+It includes **Micro**, a personal assistant that has access to all the tools and services.
 
-Using agents has become a fragmented experience. Mu unifies communication into one inbox, whether it's mail, chat, SMS, WhatsApp, notes, tasks or agent activity, while Micro gives that system a single human-facing assistant.
+## How it works
+
+**Mu** is a monolothic codebase: the runtime, services, archive, inbox and agent system all in one host. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data gets archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
+
+**Micro** is the first agent and the one you use for everything. It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
+
+Mu comes with a unified inbox, for mail, chat, SMS, WhatsApp, notes, tasks or agent activity, where Micro can operate on it like a workspace or triage.
 
 ## Features
 
-What's included
+What's included:
 
-- **Micro** - The default personal assistant and the main front door to the system.
+- **Micro** - The default personal assistant and the front door to the system.
 - **Clients** - Use Micro via Web, SMS, email, WhatsApp and more. Requires setup.
 - **Services** - 30+ services including news, mail, markets and video, accessible via API, CLI or the Web.
 - **Agents** - Micro answers by default; define your own by name, prompt and tools, then chat via the web.
