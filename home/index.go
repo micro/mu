@@ -245,6 +245,9 @@ func indexBody() string {
 			Ask:             true,
 			HideSuggestions: true,
 			Placeholder:     "What do you need?",
+			// Kept for the login handoff. Home adopts this tab's public
+			// conversation once, so signing in continues rather than resets.
+			StorageNS: "landing",
 			// Who answers, for the byline over the reply. The default agent,
 			// which is what an unpicked box reaches — see agent.DefaultName.
 			AgentName: agent.DefaultName(),
