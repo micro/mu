@@ -21,7 +21,11 @@ func TestMain(m *testing.M) {
 
 func unconfigure(t *testing.T) {
 	t.Helper()
-	for _, k := range []string{"S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_REGION"} {
+	for _, k := range []string{
+		"S3_ENDPOINT", "S3_BUCKET", "S3_REGION",
+		"S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY",
+		"S3_ACCESS_KEY", "S3_SECRET_KEY",
+	} {
 		t.Setenv(k, "")
 	}
 	reset()
@@ -93,8 +97,8 @@ func TestReadsFallBackToDiskAfterSwitching(t *testing.T) {
 
 	t.Setenv("S3_ENDPOINT", srv.URL)
 	t.Setenv("S3_BUCKET", "b")
-	t.Setenv("S3_ACCESS_KEY", "k")
-	t.Setenv("S3_SECRET_KEY", "s")
+	t.Setenv("S3_ACCESS_KEY_ID", "k")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "s")
 	reset()
 	defer reset()
 
@@ -134,8 +138,8 @@ func TestConfigurationChangeIsPickedUp(t *testing.T) {
 
 	t.Setenv("S3_ENDPOINT", "https://example.invalid")
 	t.Setenv("S3_BUCKET", "b")
-	t.Setenv("S3_ACCESS_KEY", "k")
-	t.Setenv("S3_SECRET_KEY", "s")
+	t.Setenv("S3_ACCESS_KEY_ID", "k")
+	t.Setenv("S3_SECRET_ACCESS_KEY", "s")
 	defer reset()
 
 	if _, ok := Default().(Local); ok {
