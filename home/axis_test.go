@@ -100,43 +100,21 @@ func TestTheBoxsFurnitureIsNotCentredHere(t *testing.T) {
 	}
 }
 
-// One name, on every surface.
-//
-// The wordmark derived a name from the hostname for a while — micro.mu reading
-// as "Micro" — on the argument that Mu is what you run rather than what you
-// arrived at, so our name on somebody else's front door is the same fault as
-// the pricing copy that used to ship in every binary.
-//
-// The argument is real and the fix was in the wrong place. It changed one
-// surface: the browser tab still said Mu, the manifest still said Mu, and the
-// app still installed as Mu with a Mu icon. Four surfaces, two names, and
-// nothing explaining the relation — worse than either answer on its own.
-//
-// So this pins the agreement rather than the string. Whatever the wordmark
-// says, the title and the manifest say the same thing; a self-hosted instance
-// that wants its own name is a setting that moves all three, not a hostname
-// parsed into one of them.
-func TestTheNameIsTheSameOnEverySurface(t *testing.T) {
+// The logged-out human front door is Micro. Mu remains the runtime and the
+// installed app name, so this deliberately pins only the landing surface.
+func TestTheLoggedOutFrontDoorIsMicro(t *testing.T) {
 	src, err := os.ReadFile("index.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := string(src)
-	if !strings.Contains(body, `<div class="lbrand">Mu</div>`) {
-		t.Error("the wordmark is not the instance's one name — if it is derived\n" +
-			"from something, the title and the manifest have to be derived from\n" +
-			"the same thing or the product has two names and explains neither")
+	if !strings.Contains(string(src), `Title:       "Micro",`) {
+		t.Error("the logged-out page title is not Micro")
 	}
-	if !strings.Contains(body, `Title:       "Mu",`) {
-		t.Error("the page title and the wordmark disagree")
+	body := indexBody()
+	if !strings.Contains(body, `<div class="lbrand">Micro</div>`) {
+		t.Error("the logged-out wordmark is not Micro")
 	}
-	// And the manifest, which is what an installed app is called on a home
-	// screen — the surface somebody looks at most and can change least.
-	man, err := os.ReadFile("../internal/app/html/manifest.webmanifest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(man), `"name": "Mu"`) {
-		t.Error("the installed app is called something other than the wordmark")
+	if !strings.Contains(body, `<div class="lwhat">A personal assistant</div>`) {
+		t.Error("the logged-out caption changed")
 	}
 }

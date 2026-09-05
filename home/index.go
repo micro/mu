@@ -81,7 +81,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// humans, agents and services" with a paragraph of positioning under
 		// it — a claim a stranger is invited to weigh, which is a landing
 		// page's job and not a server's.
-		Title:       "Mu",
+		Title:       "Micro",
 		Description: "A personal assistant you can reach from anywhere: the web, a text, WhatsApp, mail, or a program. Open source and self-hostable.",
 		// One name, everywhere.
 		//
@@ -239,7 +239,7 @@ func indexBody() string {
 	// question, directly under the name, quiet enough that the name is still
 	// the name.
 	return `<div class="lwrap">` +
-		`<div class="lbrand">Mu</div>` +
+		`<div class="lbrand">Micro</div>` +
 		`<div class="lwhat">A personal assistant</div>` +
 		app.ChatComponent(app.ChatConfig{
 			Ask:             true,
