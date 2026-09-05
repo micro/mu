@@ -35,15 +35,46 @@ type Flow struct {
 	ParentID string `json:"parent_id"` // prior flow ID for multi-turn chains
 	// Via is which client the turn arrived through and which conversation on
 	// it, and is what lets the next message find this one. See thread.go.
-	Via       Via       `json:"via,omitzero"`
+	Via Via `json:"via,omitzero"`
+
+	// ThreadID is the conversation this run is answering. Unlike Via.Thread,
+	// which is the remote client's own key, this is the id in internal/thread.
+	// It lets any newly attached client find the active flow and its progress.
+	ThreadID  string    `json:"thread_id,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 // FlowStep records one tool call and its result within a flow.
 type FlowStep struct {
-	Tool   string         `json:"tool"`
-	Args   map[string]any `json:"args"`
-	Result string         `json:"result"`
+	ID       string         `json:"id,omitempty"`
+	Tool     string         `json:"tool"`
+	Label    string         `json:"label,omitempty"`
+	Args     map[string]any `json:"args"`
+	Result   string         `json:"result"`
+	Status   string         `json:"status,omitempty"`
+	Started  time.Time      `json:"started,omitzero"`
+	Finished time.Time      `json:"finished,omitzero"`
+}
+
+// flowProgress returns the live steps for the newest running flow on a thread.
+// It returns copies: callers must not observe a step being mutated after the
+// flow lock is released.
+func flowProgress(accountID, threadID string) []FlowStep {
+	flowMu.RLock()
+	defer flowMu.RUnlock()
+	var latest *Flow
+	for _, f := range flowStore {
+		if f.AccountID != accountID || f.ThreadID != threadID || f.Status != "running" {
+			continue
+		}
+		if latest == nil || f.CreatedAt.After(latest.CreatedAt) {
+			latest = f
+		}
+	}
+	if latest == nil {
+		return nil
+	}
+	return append([]FlowStep(nil), latest.Steps...)
 }
 
 var (

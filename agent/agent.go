@@ -1254,8 +1254,6 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	emitted := false
 	var captured strings.Builder
 	var nativeTools []string
-	// The tool names behind those labels, for the run record.
-	var nativeToolNames []string
 	// Pairing a start with its end, by the provider's call id.
 	//
 	// It was keyed on the label, which is the same string for every command in
@@ -1289,8 +1287,13 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			startedTools[key] = true
 			emitted = true
 			nativeTools = append(nativeTools, run.Label)
-			nativeToolNames = append(nativeToolNames, NativeToolName(run.Name))
 			wmu.Unlock()
+			if accountID != "" {
+				updateFlow(flow.ID, func(f *Flow) {
+					f.Steps = append(f.Steps, FlowStep{ID: key, Tool: NativeToolName(run.Name),
+						Label: run.Label, Status: "running", Started: time.Now().UTC()})
+				})
+			}
 			send(map[string]any{"type": "tool_start", "name": run.Label, "message": run.Label})
 		},
 		ToolEnd: func(run ToolRun) {
@@ -1302,6 +1305,19 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			}
 			endedTools[key] = true
 			wmu.Unlock()
+			if accountID != "" {
+				updateFlow(flow.ID, func(f *Flow) {
+					name := NativeToolName(run.Name)
+					for i := len(f.Steps) - 1; i >= 0; i-- {
+						if f.Steps[i].ID == key || (run.ID == "" &&
+							f.Steps[i].Status == "running" && f.Steps[i].Tool == name) {
+							f.Steps[i].Status = "done"
+							f.Steps[i].Finished = time.Now().UTC()
+							break
+						}
+					}
+				})
+			}
 			send(map[string]any{"type": "tool_done", "name": run.Label, "message": run.Label + " — done"})
 		},
 		Token: func(tok string) {
@@ -1328,7 +1344,16 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 		} else {
 			app.Log("agent", "stream failed before output: %v", err)
 		}
-		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
+		updateFlow(flow.ID, func(f *Flow) {
+			f.Status = "error"
+			f.Error = err.Error()
+			for i := range f.Steps {
+				if f.Steps[i].Status == "running" {
+					f.Steps[i].Status = "error"
+					f.Steps[i].Finished = time.Now().UTC()
+				}
+			}
+		})
 		send(map[string]any{"type": "error", "message": agentErrorMessage(err)})
 		send(map[string]any{"type": "done"})
 		return
@@ -1365,12 +1390,6 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			f.Answer = answer
 			f.HTML = html
 			f.Status = "done"
-			// What it ran. The stream emitted tool_start and tool_done to the
-			// browser and then dropped both on the floor, so a finished run
-			// recorded an answer and no account of how it got there.
-			for _, name := range nativeToolNames {
-				f.Steps = append(f.Steps, FlowStep{Tool: name})
-			}
 		})
 	}
 	send(map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
@@ -1511,13 +1530,14 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// turn to Ask and wait — but it must not write its own version of the record
 	// either, which is why it goes through the same three calls Ask uses.
 	if !guest {
-		if err := saveFlow(flow); err != nil {
-			app.Log("agent", "Failed to create flow: %v", err)
-		}
 		if threadID == "" {
 			// A conversation that starts here. Keyed on this first run, which is
 			// unique and is what the record was already keyed on.
 			threadID = Opened(accountID, thread.WebClient, flow.ID, "", req.Agent)
+		}
+		flow.ThreadID = threadID
+		if err := saveFlow(flow); err != nil {
+			app.Log("agent", "Failed to create flow: %v", err)
 		}
 		Said(accountID, threadID, req.Prompt, "", "")
 

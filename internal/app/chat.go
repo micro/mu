@@ -1026,6 +1026,11 @@ function ask(q){
           .then(function(r){return r.ok?r.json():null})
           .then(function(d){
             if(d&&d.html){a.outerHTML=d.html;save();toBottom(false);return;}
+            if(d&&Array.isArray(d.steps)&&d.steps.length){
+              done=[];workLabel='Working';
+              d.steps.forEach(function(s){if(s.status==='running')workLabel=s.label;else done.push(s.label);});
+              renderWork();save();
+            }
             if(d&&!d.waiting){
               a.innerHTML='<div class="mu-err">The run stopped without returning an answer.</div>';save();return;
             }
@@ -1273,11 +1278,12 @@ window.muChatAsk=ask;
 // broken". That was the whole report.
 if(PENDING&&contextId&&conv){(function(){
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
-  var t0=Date.now(),timer=null;
+	var t0=Date.now(),timer=null,progress=[],current='Working';
   function draw(){
     var dots=['.','..','...'][Math.floor((Date.now()-t0)/450)%3];
     var secs=Math.round((Date.now()-t0)/1000);
-    a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>Working'+dots+
+		var past='';for(var i=Math.max(0,progress.length-5);i<progress.length;i++)past+='<div class="mu-step">'+esc(progress[i])+'</div>';
+		a.innerHTML=past+'<div class="mu-think"><span class="mu-spin"></span><span>'+esc(current)+dots+
       '</span>'+(secs>=1?'<span class="mu-think-t">'+secs+'s</span>':'')+'</div>';
   }
   draw();timer=setInterval(draw,450);
@@ -1303,6 +1309,11 @@ if(PENDING&&contextId&&conv){(function(){
       .then(function(d){
         if(!d){done('');return;}
         if(d.html){done(d.html);return;}
+        if(Array.isArray(d.steps)){
+          progress=[];current='Working';
+          d.steps.forEach(function(s){if(s.status==='running')current=s.label;else progress.push(s.label);});
+          draw();
+        }
         if(!d.waiting){done('');return;}
         if(Date.now()>giveUp){
           done('<div class="mu-agent"><div class="card">No answer came back. '+

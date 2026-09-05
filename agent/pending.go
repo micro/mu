@@ -107,10 +107,26 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 	for _, m := range msgs[cut+1:] {
 		b.WriteString(renderTurn(m, who))
 	}
+	steps := flowProgress(acc.ID, id)
+	type progressStep struct {
+		Label  string `json:"label"`
+		Status string `json:"status"`
+	}
+	progress := make([]progressStep, 0, len(steps))
+	for _, step := range steps {
+		label := step.Label
+		if label == "" {
+			label = step.Tool
+		}
+		if label != "" {
+			progress = append(progress, progressStep{Label: label, Status: step.Status})
+		}
+	}
 
 	app.RespondJSON(w, map[string]any{
 		"waiting": msgs[len(msgs)-1].Role != thread.RoleAgent,
 		"html":    b.String(),
+		"steps":   progress,
 	})
 }
 
