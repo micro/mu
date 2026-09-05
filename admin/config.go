@@ -100,39 +100,25 @@ var settingGroups = []settingGroup{
 			"IMAP_PUBLIC",
 			"SUBMISSION_PUBLIC",
 		}},
-	// Object storage. Backups go here first, because a copy on the same disk
-	// does not survive losing the disk — and later the same bucket is where
-	// files and generated images belong, which is why these are named for the
-	// storage rather than for the backup.
+	// One object store, shared by the services that need durable bytes. Each
+	// service owns its namespace in the bucket — files/ for user files and
+	// backups/ for instance archives — so an operator configures the storage
+	// once rather than maintaining two almost-identical credential sets.
 	{Name: "Object storage (S3)",
-		Does:  "Where files and images are kept, instead of this machine's disk.",
-		Needs: []string{"S3_BUCKET", "S3_ACCESS_KEY", "S3_SECRET_KEY"},
+		Does:  "Where durable files and backups live instead of this machine's disk.",
+		Needs: []string{"S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"},
 		Vars: []string{
 			"S3_ENDPOINT",
 			"S3_BUCKET",
 			"S3_REGION",
-			// internal/blob reads these two. They were in a group described as
-			// "the older S3 names, kept so a configured instance keeps working —
-			// set the group above instead", which was wrong in the way that
-			// costs somebody something: they are not older names for the backup
-			// credentials, they are a different subsystem's, and neither falls
-			// back to the other. An operator who took the advice configured
-			// backups and left file storage with no credentials at all.
-			"S3_ACCESS_KEY",
-			"S3_SECRET_KEY",
-		}},
-	{Name: "Backups",
-		Does:  "A copy of this instance's data, sent to object storage on a schedule. Uses the endpoint, bucket and region above, with its own credentials.",
-		Needs: []string{"BACKUP_S3", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"},
-		Vars: []string{
-			"BACKUP_S3",
-			// internal/backup reads these. Separate credentials from the ones
-			// above on purpose — a backup key that can only write is the point
-			// of having two — and the names differ by so little that the page
-			// has to say which is which.
 			"S3_ACCESS_KEY_ID",
 			"S3_SECRET_ACCESS_KEY",
-			"S3_PREFIX",
+		}},
+	{Name: "Backups",
+		Does:  "A copy of this instance's data, sent to object storage under backups/ on a schedule.",
+		Needs: []string{"BACKUP_S3"},
+		Vars: []string{
+			"BACKUP_S3",
 		}}, {Name: "Payments",
 		Does:  "Taking money: a card through Stripe, or per-request from an agent over x402.",
 		Needs: nil,
