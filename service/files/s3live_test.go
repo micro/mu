@@ -23,8 +23,8 @@ func TestFilesLandInTheBucket(t *testing.T) {
 	for _, kv := range [][2]string{
 		{"S3_ENDPOINT", os.Getenv("MU_TEST_S3_ENDPOINT")},
 		{"S3_BUCKET", os.Getenv("MU_TEST_S3_BUCKET")},
-		{"S3_ACCESS_KEY", os.Getenv("MU_TEST_S3_KEY")},
-		{"S3_SECRET_KEY", os.Getenv("MU_TEST_S3_SECRET")},
+		{"S3_ACCESS_KEY_ID", os.Getenv("MU_TEST_S3_KEY")},
+		{"S3_SECRET_ACCESS_KEY", os.Getenv("MU_TEST_S3_SECRET")},
 	} {
 		t.Setenv(kv[0], kv[1])
 	}
