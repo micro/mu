@@ -77,6 +77,27 @@ func flowProgress(accountID, threadID string) []FlowStep {
 	return append([]FlowStep(nil), latest.Steps...)
 }
 
+// flowError returns the terminal error for the newest flow on a thread. The
+// conversation may still end with the person's unanswered message, so pending
+// clients need the flow outcome to distinguish stopped work from live work.
+func flowError(accountID, threadID string) string {
+	flowMu.RLock()
+	defer flowMu.RUnlock()
+	var latest *Flow
+	for _, f := range flowStore {
+		if f.AccountID != accountID || f.ThreadID != threadID {
+			continue
+		}
+		if latest == nil || f.CreatedAt.After(latest.CreatedAt) {
+			latest = f
+		}
+	}
+	if latest == nil || latest.Status != "error" {
+		return ""
+	}
+	return latest.Error
+}
+
 var (
 	flowMu    sync.RWMutex
 	flowStore = map[string]*Flow{} // id → flow
@@ -85,6 +106,7 @@ var (
 func init() {
 	var flows []*Flow
 	if err := data.LoadJSON("agent_flows.json", &flows); err == nil {
+		changed := reconcileInterruptedFlows(flows)
 		for _, f := range flows {
 			// Backfill status for pre-existing flows
 			if f.Status == "" && f.Answer != "" {
@@ -92,7 +114,33 @@ func init() {
 			}
 			flowStore[f.ID] = f
 		}
+		if changed {
+			persistFlows() //nolint:errcheck
+		}
 	}
+}
+
+const interruptedFlowError = "Run interrupted when the service restarted."
+
+// reconcileInterruptedFlows closes work restored from disk as running. The
+// goroutine that owned it belonged to the previous process, so presenting it
+// as live would leave every client waiting forever.
+func reconcileInterruptedFlows(flows []*Flow) bool {
+	changed := false
+	for _, f := range flows {
+		if f.Status != "running" {
+			continue
+		}
+		f.Status = "error"
+		f.Error = interruptedFlowError
+		for i := range f.Steps {
+			if f.Steps[i].Status == "running" {
+				f.Steps[i].Status = "error"
+			}
+		}
+		changed = true
+	}
+	return changed
 }
 
 // maxFlowsPerUser is the maximum number of flows kept per user.

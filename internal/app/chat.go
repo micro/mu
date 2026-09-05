@@ -1032,7 +1032,7 @@ function ask(q){
               renderWork();save();
             }
             if(d&&!d.waiting){
-              a.innerHTML='<div class="mu-err">The run stopped without returning an answer.</div>';save();return;
+              a.innerHTML='<div class="mu-err">'+esc(d.error||'The run stopped without returning an answer.')+'</div>';save();return;
             }
             if(Date.now()>reconnectUntil){
               a.innerHTML='<div class="mu-err">The connection was lost and no answer came back. Please try again.</div>';save();return;
@@ -1314,7 +1314,9 @@ if(PENDING&&contextId&&conv){(function(){
           d.steps.forEach(function(s){if(s.status==='running')current=s.label;else progress.push(s.label);});
           draw();
         }
-        if(!d.waiting){done('');return;}
+        if(!d.waiting){
+          done(d.error?'<div class="mu-agent"><div class="card mu-err">'+esc(d.error)+'</div></div>':'');return;
+        }
         if(Date.now()>giveUp){
           done('<div class="mu-agent"><div class="card">No answer came back. '+
             'The run may have stopped when the server restarted — ask again.</div></div>');
