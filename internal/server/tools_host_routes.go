@@ -60,15 +60,23 @@ func init() {
 }
 
 func toolsHostName() string {
-	if v := strings.TrimSpace(settings.Get("TOOLS_NAME")); v != "" {
-		return v
+	v := strings.TrimSpace(settings.Get("TOOLS_HOST"))
+	if v == "" {
+		return "Mu"
 	}
-	if v := strings.TrimSpace(settings.Get("TOOLS_HOST")); v != "" {
-		v = strings.TrimPrefix(strings.TrimPrefix(v, "https://"), "http://")
-		if i := strings.IndexByte(v, '/'); i >= 0 {
-			v = v[:i]
-		}
-		return v
+	v = strings.TrimPrefix(strings.TrimPrefix(v, "https://"), "http://")
+	if i := strings.IndexByte(v, '/'); i >= 0 {
+		v = v[:i]
 	}
-	return "Tools"
+	if i := strings.IndexByte(v, ':'); i >= 0 {
+		v = v[:i]
+	}
+	parts := strings.Split(v, ".")
+	if len(parts) >= 2 {
+		return strings.ToUpper(parts[len(parts)-2])
+	}
+	if v != "" {
+		return strings.ToUpper(v)
+	}
+	return "Mu"
 }
