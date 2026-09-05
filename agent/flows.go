@@ -85,6 +85,7 @@ var (
 func init() {
 	var flows []*Flow
 	if err := data.LoadJSON("agent_flows.json", &flows); err == nil {
+		changed := reconcileInterruptedFlows(flows)
 		for _, f := range flows {
 			// Backfill status for pre-existing flows
 			if f.Status == "" && f.Answer != "" {
@@ -92,7 +93,33 @@ func init() {
 			}
 			flowStore[f.ID] = f
 		}
+		if changed {
+			persistFlows() //nolint:errcheck
+		}
 	}
+}
+
+const interruptedFlowError = "Run interrupted when the service restarted."
+
+// reconcileInterruptedFlows closes work restored from disk as running. The
+// goroutine that owned it belonged to the previous process, so presenting it
+// as live would leave every client waiting forever.
+func reconcileInterruptedFlows(flows []*Flow) bool {
+	changed := false
+	for _, f := range flows {
+		if f.Status != "running" {
+			continue
+		}
+		f.Status = "error"
+		f.Error = interruptedFlowError
+		for i := range f.Steps {
+			if f.Steps[i].Status == "running" {
+				f.Steps[i].Status = "error"
+			}
+		}
+		changed = true
+	}
+	return changed
 }
 
 // maxFlowsPerUser is the maximum number of flows kept per user.
