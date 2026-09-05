@@ -47,9 +47,20 @@ func chainIDFor(network string) (int64, bool) {
 	return 0, false
 }
 
-// SignX402Payment builds and signs an EIP-3009 authorization paying the given
-// requirement from the wallet, and returns the base64 X-PAYMENT header value.
+// SignX402Payment builds and signs a payment without extension context. It is
+// retained for callers that construct requirements directly (for example credit
+// top-ups). A resource-server challenge should use SignX402PaymentWithContext so
+// v2 resource and extension declarations are echoed as required by the protocol.
 func SignX402Payment(bw *BaseWallet, req x402.PaymentRequirements) (string, error) {
+	return SignX402PaymentWithContext(bw, req, nil, nil)
+}
+
+// SignX402PaymentWithContext builds and signs an EIP-3009 authorization paying
+// the given requirement. For x402 v2, resource and extensions are copied from
+// the PaymentRequired challenge into PaymentPayload. Extensions are deliberately
+// opaque here: the payer must echo declarations it understands without changing
+// the server-provided info, and the facilitator decides how to process them.
+func SignX402PaymentWithContext(bw *BaseWallet, req x402.PaymentRequirements, resource, extensions map[string]any) (string, error) {
 	if bw == nil {
 		return "", fmt.Errorf("no wallet")
 	}
@@ -124,6 +135,12 @@ func SignX402Payment(bw *BaseWallet, req x402.PaymentRequirements) (string, erro
 	payload := map[string]any{"x402Version": payloadVersion, "payload": inner}
 	if payloadVersion >= 2 {
 		payload["accepted"] = req
+		if len(resource) > 0 {
+			payload["resource"] = resource
+		}
+		if len(extensions) > 0 {
+			payload["extensions"] = extensions
+		}
 	} else {
 		payload["scheme"] = "exact"
 		payload["network"] = req.Network
