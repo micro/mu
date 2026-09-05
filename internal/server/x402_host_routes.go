@@ -10,9 +10,10 @@ import (
 	"mu/internal/settings"
 )
 
-// The optional x402 hostname is a machine/payment door, not a replacement for
-// /tools on the primary host. GET documentation is plain text here; POST /mcp
-// and API calls continue through the same underlying dispatchers.
+// GET on the x402 host is documentation for a machine, not another copy of
+// Mu's web application. Method-specific patterns are more specific than the
+// existing /mcp and /tools registrations, so POST /mcp still reaches the MCP
+// server while the primary host keeps its normal human-facing catalogue.
 func init() {
 	http.HandleFunc("GET /mcp", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
@@ -25,6 +26,7 @@ func init() {
 		fmt.Fprintf(w, "Endpoint: %s/mcp\n", base)
 		fmt.Fprintln(w, "Transport: streamable-http")
 		fmt.Fprintln(w, "Methods: initialize, tools/list, tools/call")
+		fmt.Fprintf(w, "Catalogue: %s/tools\n", base)
 		fmt.Fprintln(w, "Payments: HTTP 402/x402 on priced calls")
 	})
 
@@ -35,14 +37,17 @@ func init() {
 		}
 		base := strings.TrimRight(origin.URL(r), "/")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintf(w, "%s\nTools for agents\n\n", x402HostName())
-		fmt.Fprintln(w, "Discover the live tool catalogue through MCP tools/list.")
+		fmt.Fprintf(w, "%s tools\n\n", x402HostName())
+		fmt.Fprintln(w, "The live tool catalogue is available through MCP tools/list.")
 		fmt.Fprintf(w, "MCP: %s/mcp\n", base)
 		fmt.Fprintf(w, "HTTP API: %s/api/v1/\n", base)
 		fmt.Fprintf(w, "Agent metadata: %s/llms.txt\n", base)
 		fmt.Fprintln(w, "Priced tools return HTTP 402 with x402 payment requirements.")
 	})
 
+	// A human tool-detail page is useful on the primary host but is the wrong
+	// representation here. Keep the machine door small and point callers at the
+	// canonical schema-bearing catalogue instead.
 	http.HandleFunc("GET /tools/", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
 			api.ToolPageHandler(w, r)

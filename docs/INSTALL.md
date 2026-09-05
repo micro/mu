@@ -1029,6 +1029,7 @@ token.
 | Variable | What it does |
 |---|---|
 | `X402_PAY_TO` | Your wallet address — receives x402 payments |
+| `X402_HOST` | Optional second public hostname for the x402 machine interface; requests on this host keep that origin in MCP, OAuth and payment URLs |
 | `X402_NETWORK` · `X402_VERSION` | The advertised pair. Default `eip155:8453` + `2`. CDP settles `base`+`1` too, and that pair works — but the discovery index carries only v2 entries, so a v1 server is payable and unfindable. Both are live: change them at `/admin/config` and the next request uses them |
 | `X402_ASSETS` | Accepted tokens (default USDC) |
 | `TFL_APP_KEY` | Optional. Transit works with no key at all — this only raises TfL's rate limit, and one is free to register at api-portal.tfl.gov.uk |
