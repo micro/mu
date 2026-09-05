@@ -1,0 +1,83 @@
+name: Storage cleanup fixup
+
+on:
+  push:
+    branches:
+      - asim/s3-storage-cleanup
+
+permissions:
+  contents: write
+
+jobs:
+  fixup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: asim/s3-storage-cleanup
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Update object storage docs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('docs/INSTALL.md')
+          s = p.read_text()
+
+          s = s.replace(
+              '| `S3_ACCESS_KEY` · `S3_SECRET_KEY` | — | Credentials |',
+              '| `S3_ACCESS_KEY_ID` · `S3_SECRET_ACCESS_KEY` | — | Credentials used by Files and backups |',
+          )
+
+          old = '''Keep the bucket **private**. Files are served through Mu, which checks who is
+asking — a public bucket would let anyone holding an object URL route around
+that.
+'''
+          new = '''Keep the bucket **private**. Files are served through Mu, which checks who is
+asking — a public bucket would let anyone holding an object URL route around
+that. The bucket is shared by durable services with fixed namespaces: Files
+uses `files/` and off-box backups use `backups/`.
+'''
+          if old not in s:
+              raise SystemExit('file storage paragraph not found')
+          s = s.replace(old, new, 1)
+
+          s = s.replace(
+              '| `S3_BUCKET` | — | Bucket for off-box backups. A snapshot on the same disk survives a bad write and not the disk; this is the copy that survives losing the machine. Later it is also where files and generated images belong, which is why these are named for the storage rather than for the backup |',
+              '| `S3_BUCKET` | — | Shared bucket for durable storage. Files use `files/`; off-box backups use `backups/` |',
+          )
+          s = s.replace(
+              '| `S3_ACCESS_KEY_ID` | — | Access key. Give it write access to this bucket and nothing else: it is on a machine that runs model output |',
+              '| `S3_ACCESS_KEY_ID` | — | Access key for the bucket. Files need read, write and delete access; backups use the same credentials |',
+          )
+          s = s.replace(
+              '| `S3_SECRET_ACCESS_KEY` | — | Secret key |\n| `S3_PREFIX` | — | Optional path inside the bucket, so one bucket can hold several instances |\n| `BACKUP_S3` | `false` | Whether backups are pushed to the bucket above |',
+              '| `S3_SECRET_ACCESS_KEY` | — | Secret key |\n| `BACKUP_S3` | `false` | Whether backups are pushed to the bucket above under `backups/` |',
+          )
+
+          # The old file credentials remain accepted in code as migration aliases,
+          # but they are not a second supported configuration surface.
+          p.write_text(s)
+          PY
+
+      - name: Format
+        run: gofmt -w internal/blob/blob.go internal/blob/s3.go internal/blob/blob_test.go internal/blob/s3_test.go internal/backup/s3.go internal/backup/key_test.go service/files/s3live_test.go admin/config.go admin/backup.go
+
+      - name: Test storage and config
+        run: go test ./internal/blob ./internal/backup ./service/files ./admin ./docs -short -count=1
+
+      - name: Commit fixup
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/INSTALL.md internal/blob internal/backup service/files/s3live_test.go admin/config.go admin/backup.go
+          git commit -m 'Finish object storage configuration cleanup'
+          git push origin HEAD:asim/s3-storage-cleanup
