@@ -11,6 +11,9 @@ import "testing"
 // somebody else's site with our domain in the address bar on the way — which
 // is what makes a phishing page convincing.
 func TestWhereYouComeBackToIsAPageHere(t *testing.T) {
+	if got := SafeRedirectTo(""); got != "/home" {
+		t.Errorf("a plain login lands at %q, want /home", got)
+	}
 	for _, elsewhere := range []string{
 		"//evil.example",       // protocol-relative
 		"/\\evil.example",      // a backslash a browser folds into a slash
@@ -18,7 +21,7 @@ func TestWhereYouComeBackToIsAPageHere(t *testing.T) {
 		"https://evil.example", // not even a path
 		"evil.example",
 	} {
-		if got := SafeRedirectTo(elsewhere); got != "/" {
+		if got := SafeRedirectTo(elsewhere); got != "/home" {
 			t.Errorf("SafeRedirectTo(%q) = %q — that leaves this instance", elsewhere, got)
 		}
 	}
@@ -28,7 +31,7 @@ func TestWhereYouComeBackToIsAPageHere(t *testing.T) {
 	}
 	// A login page is not a destination — it is a loop.
 	for _, loop := range []string{"/login", "/logout", "/signup?invite=x"} {
-		if got := SafeRedirectTo(loop); got != "/" {
+		if got := SafeRedirectTo(loop); got != "/home" {
 			t.Errorf("SafeRedirectTo(%q) = %q", loop, got)
 		}
 	}
