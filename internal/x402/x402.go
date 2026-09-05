@@ -324,6 +324,9 @@ func WritePaymentRequired(w http.ResponseWriter, operation, resource string, ext
 	if reason == "" {
 		reason = "Payment required. Choose an entry from accepts, submit payment, and retry."
 	}
+	if extensions == nil {
+		extensions = BazaarExtensions(operation, resource)
+	}
 	body := map[string]any{
 		"x402Version": x402Ver(),
 		"error":       reason,

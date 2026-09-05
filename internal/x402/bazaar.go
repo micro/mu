@@ -1,25 +1,94 @@
 package x402
 
-// The bazaar, and why there is not one.
-//
-// There was a discovery extension here. The x402 Bazaar is the ecosystem's
-// answer to "a priced endpoint nobody can find is a shop with the lights off":
-// facilitators index resources by reading an extension out of the 402 challenge
-// itself, so you are listed at the moment a facilitator asks what you charge.
-// It suited an MCP server exactly, because every field a listing wants — tool
-// name, description, argument schema — is what tools/list already publishes.
-//
-// It was off by default and stayed off, which is the part worth reading twice.
-// Listing tells a third party that this instance exists, what it sells and what
-// it charges, and buys discovery by an index nobody is searching. There are no
-// other Mu servers. Federation needs something to federate with, and when there
-// is, DNS is how instances will find each other rather than a facilitator's
-// catalogue — a Mu instance is already a domain with services under it, which
-// is the same shape mail has used for forty years.
-//
-// So the setting is gone rather than defaulted off. A switch for something that
-// is not going to happen is a decision left lying around for somebody to make
-// by accident.
-//
-// The word is worth keeping in mind, though. A bazaar is a marketplace, and
-// being one is a better ambition than being listed in somebody else's.
+import (
+	"net/url"
+	"strings"
+
+	"mu/internal/settings"
+)
+
+const mcpTransport = "streamable-http"
+
+// BazaarLookup is wired by the server to the MCP registry. It returns the
+// canonical tool name, description and input schema for a priced operation.
+var BazaarLookup func(op string) (name, description string, inputSchema map[string]any, ok bool)
+
+// BazaarExtensions describes one paid MCP tool for the x402 Bazaar. It is
+// emitted only when the resource is on an alternate public host (for example
+// m3o.com in front of micro.mu), so self-hosted Mu instances remain
+// private-by-default while an explicitly exposed machine surface is findable.
+func BazaarExtensions(op, resource string) map[string]any {
+	if !alternatePublicResource(resource) || BazaarLookup == nil {
+		return nil
+	}
+	name, description, inputSchema, ok := BazaarLookup(op)
+	if !ok || strings.TrimSpace(name) == "" {
+		return nil
+	}
+	if inputSchema == nil {
+		inputSchema = map[string]any{"type": "object", "properties": map[string]any{}}
+	}
+
+	input := map[string]any{
+		"type":        "mcp",
+		"toolName":    name,
+		"inputSchema": inputSchema,
+		"transport":   mcpTransport,
+	}
+	if d := strings.TrimSpace(description); d != "" {
+		input["description"] = d
+	}
+
+	inputProps := map[string]any{
+		"type":        map[string]any{"type": "string", "const": "mcp"},
+		"toolName":    map[string]any{"type": "string"},
+		"inputSchema": map[string]any{"type": "object"},
+		"transport":   map[string]any{"type": "string", "enum": []string{mcpTransport}},
+	}
+	if _, ok := input["description"]; ok {
+		inputProps["description"] = map[string]any{"type": "string"}
+	}
+
+	return map[string]any{
+		"bazaar": map[string]any{
+			"info": map[string]any{"input": input},
+			"schema": map[string]any{
+				"$schema": "https://json-schema.org/draft/2020-12/schema",
+				"type":    "object",
+				"properties": map[string]any{
+					"input": map[string]any{
+						"type":                 "object",
+						"properties":           inputProps,
+						"required":             []string{"type", "toolName", "inputSchema"},
+						"additionalProperties": false,
+					},
+				},
+				"required": []string{"input"},
+			},
+		},
+	}
+}
+
+func alternatePublicResource(resource string) bool {
+	u, err := url.Parse(strings.TrimSpace(resource))
+	if err != nil || u.Hostname() == "" {
+		return false
+	}
+	configured := configuredHost()
+	return configured != "" && strings.ToLower(u.Hostname()) != configured
+}
+
+func configuredHost() string {
+	if v := strings.TrimSpace(settings.Get("MU_DOMAIN")); v != "" {
+		v = strings.TrimPrefix(strings.TrimPrefix(v, "https://"), "http://")
+		if u, err := url.Parse("https://" + v); err == nil {
+			return strings.ToLower(u.Hostname())
+		}
+	}
+	if v := strings.TrimSpace(settings.Get("APP_URL")); v != "" {
+		if u, err := url.Parse(v); err == nil {
+			return strings.ToLower(u.Hostname())
+		}
+	}
+	return ""
+}
