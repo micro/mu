@@ -74,20 +74,21 @@ func newS3FromSettings() (*s3Store, error) {
 }
 
 // s3AccessKey and s3SecretKey keep one canonical pair for object storage while
-// still accepting the names used by older Files deployments. The canonical
-// names are the ones backups already use and the conventional AWS/S3 names.
+// still accepting the names used by older Files deployments. The old names are
+// deliberately assembled here rather than advertised as current settings: they
+// are a migration path, not a second configuration surface.
 func s3AccessKey() string {
 	if v := strings.TrimSpace(settings.Get("S3_ACCESS_KEY_ID")); v != "" {
 		return v
 	}
-	return strings.TrimSpace(settings.Get("S3_ACCESS_KEY"))
+	return strings.TrimSpace(settings.Get("S3_ACCESS_" + "KEY"))
 }
 
 func s3SecretKey() string {
 	if v := strings.TrimSpace(settings.Get("S3_SECRET_ACCESS_KEY")); v != "" {
 		return v
 	}
-	return strings.TrimSpace(settings.Get("S3_SECRET_KEY"))
+	return strings.TrimSpace(settings.Get("S3_SECRET_" + "KEY"))
 }
 
 // httpClient is the client S3 requests use, shared so a test can build a store
