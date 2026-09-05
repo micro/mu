@@ -1,40 +1,37 @@
-# mu
+# Mu
 
-A personal assistant
+**Tools for agents.**
+
+Mu is an open-source runtime for agents. It provides services, tools, memory and machine interfaces for agents to use.
+
+**Micro** is the personal assistant that ships with Mu and the default human-facing front door.
 
 ## Overview
 
-We're building a personal assistant with access to the real world. Services operate as the building blocks for agents. 
-Mail, chat, news, video, search, etc. Any data is archived locally so it's all searchable and becomes contextual memory. 
-Services and the archive become tools for the assistant to use.
+**Mu** is the definitive unit: the runtime, services, archive, inbox and agent system. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data can be archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
 
-Using agents has become a very fragmented experience. Communication here is unified with everything going to one inbox, 
-whether it's mail, chat, sms, whatsapp, notes, tasks, etc. Keep track of it all from one place. 
+**Micro** is the first agent and the one people meet first. It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
+
+Using agents has become a fragmented experience. Mu unifies communication into one inbox, whether it's mail, chat, SMS, WhatsApp, notes, tasks or agent activity, while Micro gives that system a single human-facing assistant.
 
 ## Features
 
 What's included
 
-- **Clients** - Use it via Web, sms, email, whatsapp and more are all included by default. Requires setup.
-- **Services** - 30+ services including news, mail, markets, video, etc accessible via API, CLI or the Web.
+- **Micro** - The default personal assistant and the main front door to the system.
+- **Clients** - Use Micro via Web, SMS, email, WhatsApp and more. Requires setup.
+- **Services** - 30+ services including news, mail, markets and video, accessible via API, CLI or the Web.
 - **Agents** - Micro answers by default; define your own by name, prompt and tools, then chat via the web.
 - **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents or reply directly.
 
 ## Agents
 
-Mu is the software. An agent is who you talk to on it, and one ships with it.
+Mu is the runtime. Micro is the first agent and the one people meet first.
 
-- **Micro** is the first agent and the one that answers unless you pick another
-  one. General purpose, with the services above as its tools, so it answers from
-  what is true now rather than from what a model remembers: the news this
-  morning, the price this minute, your own mail.
-- **Code** is the second, and is not finished. It builds things on a machine of
-  its own — writes the files, runs them, hosts the result — and what it makes
-  outlives the conversation.
+- **Micro** is the default personal assistant. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
+- **Code** is the second, and is not finished. It builds things on a machine of its own — writes the files, runs them, hosts the result — and what it makes outlives the conversation.
 
-Your own agents are the same shape: a name, an instruction, and the tools it
-may reach. Each has an address, so `agent+yours@` reaches it from anywhere that
-can send mail, the same way `agent@` reaches Micro.
+Your own agents are the same shape: a name, an instruction, and the tools they may reach. Each has an address, so `agent+yours@` reaches it from anywhere that can send mail, the same way `agent@` reaches Micro.
 
 ## Install
 
@@ -48,7 +45,6 @@ mu --serve
 Open **http://localhost:8080**. The first account you create is the admin.
 
 Quite a few things need API keys, but here's some must haves.
-
 
 | For | Set | Notes |
 |---|---|---|
@@ -65,17 +61,14 @@ mu --serve
 
 Everything else — mail, Google sign-in, Stripe for payments, etc — is optional.
 
-The binary is a client, and by default it calls **https://micro.mu** —
-the instance this project runs live. Running your own? Point it there:
+The binary is a client, and by default it calls **https://micro.mu** — the hosted Mu instance where Micro runs publicly. Running your own? Point it there:
 
 ```bash
 mu login https://your.host   # saves the address and a token
 mu config get                # says which instance is in use, and why
 ```
 
-Without that, `mu news list` on the machine you just installed calls the
-hosted instance rather than the one you are running. `MU_URL` and `--url`
-override per shell and per command.
+Without that, `mu news list` on the machine you just installed calls the hosted instance rather than the one you are running. `MU_URL` and `--url` override per shell and per command.
 
 Other ways to run it:
 
@@ -107,8 +100,7 @@ mu x402                                 # paying per call: config, and your key
 mu help                                 # full tool list
 ```
 
-Every tool is a command: the service, then the method. The underscore form works
-too, so `mu news list` and `mu news_list` are the same call.
+Every tool is a command: the service, then the method. The underscore form works too, so `mu news list` and `mu news_list` are the same call.
 
 To authenticate
 
@@ -120,18 +112,14 @@ export MU_TOKEN=xxx       # or use the environment
 
 Run `mu --help` for the list — it reads the same catalogue the agent does.
 
-To talk to your agent instead, `mu ask` — it runs on the instance, so it needs
-your token and no model key of your own:
+To talk to **Micro** instead, use `mu ask` — it runs on the instance, so it needs your token and no model key of your own:
 
 ```bash
 mu ask "what is in my inbox?"
 mu ask --agent research "anything new this week?"
 ```
 
-`mu agent` is the other direction and easy to reach for by mistake: it runs the
-agent *here*, on your machine, with your own model key, renting tools from an
-instance over x402 and paying per call. Same word in English, opposite ways
-round.
+`mu agent` is the other direction and easy to reach for by mistake: it runs the agent *here*, on your machine, with your own model key, renting tools from an instance over x402 and paying per call. Same word in English, opposite ways round.
 
 ## API
 
@@ -144,15 +132,13 @@ curl -X POST https://micro.mu/api/v1/news/list \
   -H 'Content-Type: application/json' -d '{"limit":5}'
 ```
 
-Authenticate with a token from `/token` as `Authorization: Bearer`, or with an
-OAuth client. A priced endpoint answers 402 without one, which an x402 client
-pays per call with no account at all.
+Authenticate with a token from `/token` as `Authorization: Bearer`, or with an OAuth client. A priced endpoint answers 402 without one, which an x402 client pays per call with no account at all.
 
 For Tools via MCP use `/mcp`. See [/tools](https://micro.mu/tools) for more info.
 
 ## Web
 
-- `/` - the main way to ask anything
+- `/` - talk to Micro
 - `/home` — an overview of everything going on.
 - `/inbox` — the place to see chats, mail, tasks, etc.
 - `/agents` — your agents, and where you make a new one.
