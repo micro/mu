@@ -99,6 +99,53 @@ func TestPayAndCallMCPWithReceipt(t *testing.T) {
 	if out.Settlement == nil || out.Settlement.Transaction != "0xabc123" || out.Settlement.Network != "eip155:8453" {
 		t.Fatalf("settlement = %#v", out.Settlement)
 	}
+	if out.PaymentError != "" {
+		t.Fatalf("payment error = %q", out.PaymentError)
+	}
+	if out.ExtensionResponses != `{"bazaar":{"status":"processing"}}` {
+		t.Fatalf("extension responses = %q", out.ExtensionResponses)
+	}
+}
+
+func TestPayAndCallMCPWithFailedReceiptStillReportsExtensions(t *testing.T) {
+	priv, addr, _ := GenerateKeypair()
+	bw := &BaseWallet{Address: addr, PrivateKey: priv}
+	settle := x402.SettleResponse{Success: false, ErrorReason: "insufficient funds"}
+	settleJSON, _ := json.Marshal(settle)
+	settleHeader := base64.StdEncoding.EncodeToString(settleJSON)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-PAYMENT") != "" {
+			w.Header().Set(x402.HeaderPaymentRespV2, settleHeader)
+			w.Header().Set("EXTENSION-RESPONSES", `{"bazaar":{"status":"processing"}}`)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"jsonrpc": "2.0", "id": 1,
+				"result": map[string]any{"content": []map[string]any{{"type": "text", "text": "tool result"}}},
+			})
+			return
+		}
+		w.WriteHeader(http.StatusPaymentRequired)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"x402Version": 2, "error": "payment required",
+			"accepts": []x402.PaymentRequirements{{
+				Scheme: "exact", Network: "eip155:8453", Amount: "10000",
+				PayTo: "0x9a717EFF039622231C65ADbF7B2A002b544b06A9", Asset: baseUSDC,
+				MaxTimeoutSeconds: 60, Extra: map[string]string{"name": "USD Coin", "version": "2"},
+			}},
+		})
+	}))
+	defer srv.Close()
+
+	out, err := PayAndCallMCPWithReceipt(context.Background(), "acct-test", srv.URL, "web_search", map[string]any{"query": "x402"}, bw)
+	if err != nil {
+		t.Fatalf("PayAndCallMCPWithReceipt: %v", err)
+	}
+	if out.Settlement != nil {
+		t.Fatalf("failed settlement reported as success: %#v", out.Settlement)
+	}
+	if out.PaymentError != "insufficient funds" {
+		t.Fatalf("payment error = %q", out.PaymentError)
+	}
 	if out.ExtensionResponses != `{"bazaar":{"status":"processing"}}` {
 		t.Fatalf("extension responses = %q", out.ExtensionResponses)
 	}
