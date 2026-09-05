@@ -14,7 +14,7 @@ It includes **Micro**, a personal assistant that has access to all the tools and
 
 **Micro** is the first agent and the one you use for everything. It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
 
-Mu comes with a unified inbox, for mail, chat, SMS, WhatsApp, notes, tasks or agent activity, where Micro can operate on it like a workspace or triage.
+Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and agent activity, bringing communication and agent work into one place.
 
 ## Features
 
