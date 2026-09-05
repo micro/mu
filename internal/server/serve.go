@@ -221,6 +221,14 @@ func serve(addr string) {
 						}
 					}
 				} else if r.URL.Path == "/" {
+					// The optional tools hostname is a machine door, including at
+					// its root. Handle it before setup and the normal Micro front
+					// door so it never inherits the state of the human-facing app.
+					if r.Method == http.MethodGet && home.IsToolsHost(r) {
+						home.ToolsIndex(w, r)
+						return
+					}
+
 					// Fresh instance with no admin yet → guide the operator
 					// through the one-time setup wizard.
 					if setup.Needed() {
