@@ -363,34 +363,17 @@ func indexBody() string {
 </style>`
 }
 
-// topRight is the corner: the way in, and nothing else.
+// topRight is the landing's corner: the public catalogue and the way in.
 //
-// One link. It was Sign up and Log in, on the argument that a stranger here is
-// deciding whether to join and somebody returning already decided — which is
-// true and put two controls in a corner whose whole job is to be the one thing
-// you can do from here. The login page offers signing up on it, so nothing is
-// lost but a fork in front of somebody who has not asked for one.
-//
-// Nothing else has ever earned this slot. Install app stood here for a while
-// and appeared on only some browsers, saying nothing about what state you are
-// in or what to do about it, which is the corner's entire purpose.
-// topRight is the landing's corner: the way to have an account, and the way
-// back to one.
-//
-// The same pair the app shell draws — see app.headCorner, which carries the
-// reasoning and the invite-only exception. Written out here rather than called,
-// because this page has its own shell and its own stylesheet: the corner in
-// mu.css is #head-out and this one is .login-link, and the markup differs by
-// the wrapper each of them needs.
+// Two links, for the two audiences arriving here. Tools takes an agent builder
+// to the machine-facing catalogue; Log in takes a returning person home. Sign
+// up remains one step behind Log in, on the login page, rather than making
+// three competing actions in this small corner.
 //
 // No redirect on the way in. The landing is the one page where signing in
 // should move you somewhere else, and it already does.
 func topRight() string {
-	signup := ""
-	if !auth.InviteOnly() {
-		signup = `<a class="primary" href="/signup">Sign up</a>`
-	}
-	return signup + `<a href="/login">Log in</a>`
+	return `<a href="/tools">Tools</a><a href="/login">Log in</a>`
 }
 
 // today is what you are given for arriving, before you ask anything.
