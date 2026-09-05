@@ -1212,14 +1212,8 @@ type signupBucket struct {
 // safeRedirect is where signing in lands you.
 //
 // Where you were going, when you were going somewhere — signing in should
-// finish the thing you were doing. Otherwise the front door.
-//
-// It was the dashboard, and that was right while the front door was a pitch a
-// signed-in account had no use for. It is the same page for everybody now, and
-// landing on /home instead put a rail and a grid of sixteen cards in front of
-// somebody whose next move is to type a question. The dashboard is a place to
-// go and look at things, reached from the corner when that is what you came
-// for. See home.Index.
+// finish the thing you were doing. Otherwise Home: the public front door has
+// become this person's place, with their assistant and context in it.
 func safeRedirect(r *http.Request) string {
 	return SafeRedirectTo(r.URL.Query().Get("redirect"))
 }
@@ -1246,7 +1240,7 @@ func safeRedirect(r *http.Request) string {
 // somebody straight back to a login page, which is a loop rather than a
 // vulnerability but is still not a destination.
 func SafeRedirectTo(to string) string {
-	const home = "/"
+	const home = "/home"
 	if to == "" || to[0] != '/' {
 		return home
 	}
