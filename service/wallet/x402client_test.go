@@ -151,6 +151,20 @@ func TestPayAndCallMCPWithFailedReceiptStillReportsExtensions(t *testing.T) {
 	}
 }
 
+func TestSettlementFromHeadersRejectsIncompleteSuccess(t *testing.T) {
+	settleJSON, _ := json.Marshal(x402.SettleResponse{Success: true})
+	h := http.Header{}
+	h.Set(x402.HeaderPaymentRespV2, base64.StdEncoding.EncodeToString(settleJSON))
+
+	settle, paymentErr := settlementFromHeaders(h)
+	if settle != nil {
+		t.Fatalf("incomplete receipt reported as success: %#v", settle)
+	}
+	if paymentErr != "incomplete PAYMENT-RESPONSE: missing transaction or network" {
+		t.Fatalf("payment error = %q", paymentErr)
+	}
+}
+
 func TestPayAndCallMCPNoWallet(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusPaymentRequired)
