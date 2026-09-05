@@ -31,25 +31,23 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"mu/internal/quota"
-
 	"time"
-
-	"mu/internal/settings"
 
 	"mu/internal/app"
 	_ "mu/internal/env" // load ~/.env before x402 config is read at init
+	"mu/internal/quota"
+	"mu/internal/settings"
 )
 
 // x402 payment headers. Version 1 uses X-PAYMENT / X-PAYMENT-RESPONSE; version 2
 // renamed them to PAYMENT-SIGNATURE / PAYMENT-RESPONSE. We accept either on the
 // way in and emit both on the way out so any conformant client interoperates.
 const (
-	HeaderPaymentV1     = "X-PAYMENT"
-	HeaderPaymentV2     = "PAYMENT-SIGNATURE"
-	HeaderPaymentRespV1 = "X-PAYMENT-RESPONSE"
-	HeaderPaymentRespV2 = "PAYMENT-RESPONSE"
+	HeaderPaymentV1          = "X-PAYMENT"
+	HeaderPaymentV2          = "PAYMENT-SIGNATURE"
+	HeaderPaymentRespV1      = "X-PAYMENT-RESPONSE"
+	HeaderPaymentRespV2      = "PAYMENT-RESPONSE"
+	HeaderExtensionResponses = "EXTENSION-RESPONSES"
 )
 
 // x402 configuration from the environment. Defaults target Base mainnet via
@@ -235,12 +233,13 @@ func (r PaymentRequirements) AmountAtomic() string {
 
 // SettleResponse is the facilitator's settlement result.
 type SettleResponse struct {
-	Success     bool   `json:"success"`
-	Transaction string `json:"transaction,omitempty"`
-	Network     string `json:"network,omitempty"`
-	Payer       string `json:"payer,omitempty"`
-	ErrorReason string `json:"errorReason,omitempty"`
-	Message     string `json:"message,omitempty"`
+	Success            bool   `json:"success"`
+	Transaction        string `json:"transaction,omitempty"`
+	Network            string `json:"network,omitempty"`
+	Payer              string `json:"payer,omitempty"`
+	ErrorReason        string `json:"errorReason,omitempty"`
+	Message            string `json:"message,omitempty"`
+	ExtensionResponses string `json:"-"`
 }
 
 // creditsToAtomic converts a credit cost (Mu treats 1 credit ≈ 1 US cent) into
@@ -472,7 +471,7 @@ func settlePayload(payload map[string]any, operation, resource string) (*SettleR
 func verifyRequirement(payload map[string]any, req *PaymentRequirements) error {
 	body := map[string]any{"x402Version": x402Ver(), "paymentPayload": payload, "paymentRequirements": req}
 
-	vres, err := facilitatorPost("/verify", body)
+	vres, _, err := facilitatorPost("/verify", body)
 	if err != nil {
 		return fmt.Errorf("verify: %w", err)
 	}
@@ -493,7 +492,7 @@ func verifyRequirement(payload map[string]any, req *PaymentRequirements) error {
 func settleVerified(payload map[string]any, req *PaymentRequirements) (*SettleResponse, error) {
 	body := map[string]any{"x402Version": x402Ver(), "paymentPayload": payload, "paymentRequirements": req}
 
-	sres, err := facilitatorPost("/settle", body)
+	sres, headers, err := facilitatorPost("/settle", body)
 	if err != nil {
 		return nil, fmt.Errorf("settle: %w", err)
 	}
@@ -502,6 +501,7 @@ func settleVerified(payload map[string]any, req *PaymentRequirements) (*SettleRe
 	if !settle.Success {
 		return nil, fmt.Errorf("settlement failed: %s", firstNonEmpty(settle.Message, settle.ErrorReason, "unknown"))
 	}
+	settle.ExtensionResponses = strings.TrimSpace(headers.Get(HeaderExtensionResponses))
 	app.Log("x402", "settled %s: tx=%s payer=%s", req.Resource, settle.Transaction, settle.Payer)
 	return &settle, nil
 }
@@ -555,39 +555,39 @@ func payloadAsset(payload map[string]any) string {
 // facilitatorPost POSTs JSON to a facilitator endpoint, attaching a CDP Bearer
 // JWT when CDP credentials are configured (required by the Coinbase-hosted
 // facilitator; ignored by the open one).
-func facilitatorPost(path string, body map[string]any) ([]byte, error) {
+func facilitatorPost(path string, body map[string]any) ([]byte, http.Header, error) {
 	endpoint := strings.TrimRight(x402FacilitatorURL, "/") + path
 	b, _ := json.Marshal(body)
 	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(b))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if cdpConfigured() {
 		u, err := url.Parse(endpoint)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		bearer, err := cdpBearer(http.MethodPost, u.Host, u.Path)
 		if err != nil {
-			return nil, fmt.Errorf("cdp auth: %w", err)
+			return nil, nil, fmt.Errorf("cdp auth: %w", err)
 		}
 		req.Header.Set("Authorization", "Bearer "+bearer)
 	}
 
 	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, &facilitatorError{Path: path, Status: resp.StatusCode, Body: data}
+		return nil, nil, &facilitatorError{Path: path, Status: resp.StatusCode, Body: data}
 	}
-	return data, nil
+	return data, resp.Header.Clone(), nil
 }
 
 // facilitatorError is a non-200 from the facilitator, carrying the body so it
@@ -786,6 +786,9 @@ func (s *settleWriter) finish() {
 			enc := base64.StdEncoding.EncodeToString(b)
 			s.Header().Set(HeaderPaymentRespV1, enc)
 			s.Header().Set(HeaderPaymentRespV2, enc)
+			if resp.ExtensionResponses != "" {
+				s.Header().Set(HeaderExtensionResponses, resp.ExtensionResponses)
+			}
 		}
 	}
 
