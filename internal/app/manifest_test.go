@@ -23,13 +23,18 @@ func TestTheManifestSaysWhichAppThisIs(t *testing.T) {
 		t.Fatal(err)
 	}
 	var m struct {
-		ID       string `json:"id"`
-		Scope    string `json:"scope"`
-		StartURL string `json:"start_url"`
-		Display  string `json:"display"`
+		Name      string `json:"name"`
+		ShortName string `json:"short_name"`
+		ID        string `json:"id"`
+		Scope     string `json:"scope"`
+		StartURL  string `json:"start_url"`
+		Display   string `json:"display"`
 	}
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatalf("the manifest is not valid JSON, so nothing can install: %v", err)
+	}
+	if m.Name != "Micro" || m.ShortName != "Micro" {
+		t.Errorf("installed app is %q/%q, want Micro/Micro", m.Name, m.ShortName)
 	}
 	if m.ID != "/" {
 		t.Errorf(`id = %q, want "/" — without a stable id the app's identity is`+"\n"+
@@ -38,6 +43,15 @@ func TestTheManifestSaysWhichAppThisIs(t *testing.T) {
 	}
 	if m.StartURL == "" || !strings.HasPrefix(m.StartURL, m.Scope) {
 		t.Errorf("start_url %q is not inside scope %q, so it will not launch", m.StartURL, m.Scope)
+	}
+
+	for _, tag := range []string{
+		`<meta name="apple-mobile-web-app-title" content="Micro">`,
+		`<meta name="application-name" content="Micro">`,
+	} {
+		if !strings.Contains(Template, tag) {
+			t.Errorf("install metadata is missing %s", tag)
+		}
 	}
 }
 
