@@ -77,6 +77,27 @@ func flowProgress(accountID, threadID string) []FlowStep {
 	return append([]FlowStep(nil), latest.Steps...)
 }
 
+// flowError returns the terminal error for the newest flow on a thread. The
+// conversation may still end with the person's unanswered message, so pending
+// clients need the flow outcome to distinguish stopped work from live work.
+func flowError(accountID, threadID string) string {
+	flowMu.RLock()
+	defer flowMu.RUnlock()
+	var latest *Flow
+	for _, f := range flowStore {
+		if f.AccountID != accountID || f.ThreadID != threadID {
+			continue
+		}
+		if latest == nil || f.CreatedAt.After(latest.CreatedAt) {
+			latest = f
+		}
+	}
+	if latest == nil || latest.Status != "error" {
+		return ""
+	}
+	return latest.Error
+}
+
 var (
 	flowMu    sync.RWMutex
 	flowStore = map[string]*Flow{} // id → flow
