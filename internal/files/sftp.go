@@ -29,7 +29,30 @@ func ServeSFTP(account string, ch io.ReadWriteCloser) error {
 	return server.Serve()
 }
 
-type sftpFiles struct{ account string }
+type sftpFiles struct {
+	account  string
+	mu       sync.Mutex
+	buffered int
+}
+
+// reserve bounds data waiting to be committed across every open handle in one
+// SSH session. Persisted quota is checked by Replace; this separate limit keeps
+// a client from opening many nearly-full files and holding them all in memory.
+func (fs *sftpFiles) reserve(n int) bool {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	if n < 0 || fs.buffered+n > MaxBytes {
+		return false
+	}
+	fs.buffered += n
+	return true
+}
+
+func (fs *sftpFiles) release(n int) {
+	fs.mu.Lock()
+	fs.buffered -= n
+	fs.mu.Unlock()
+}
 
 type projected struct {
 	name string
@@ -122,26 +145,42 @@ func (fs *sftpFiles) Filewrite(r *sftp.Request) (io.WriterAt, error) {
 	} else if !flags.Creat {
 		return nil, os.ErrNotExist
 	}
-	return &sftpWriter{account: fs.account, id: id, name: name, data: initial}, nil
+	if !fs.reserve(len(initial)) {
+		return nil, fmt.Errorf("open uploads exceed the %d byte session limit", MaxBytes)
+	}
+	return &sftpWriter{fs: fs, account: fs.account, id: id, name: name, data: initial}, nil
 }
 
 type sftpWriter struct {
+	fs      *sftpFiles
 	account string
 	id      string
 	name    string
 	data    []byte
 	closed  bool
+	failed  error
 	mu      sync.Mutex
 }
 
 func (w *sftpWriter) WriteAt(p []byte, off int64) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.closed || off < 0 || off > MaxBytes || len(p) > MaxBytes-int(off) {
-		return 0, fmt.Errorf("file exceeds the %d byte limit", MaxBytes)
+	if w.closed {
+		return 0, os.ErrClosed
+	}
+	if w.failed != nil {
+		return 0, w.failed
+	}
+	if off < 0 || off > MaxBytes || len(p) > MaxBytes-int(off) {
+		w.failed = fmt.Errorf("file exceeds the %d byte limit", MaxBytes)
+		return 0, w.failed
 	}
 	end := int(off) + len(p)
 	if end > len(w.data) {
+		if !w.fs.reserve(end - len(w.data)) {
+			w.failed = fmt.Errorf("open uploads exceed the %d byte session limit", MaxBytes)
+			return 0, w.failed
+		}
 		w.data = append(w.data, make([]byte, end-len(w.data))...)
 	}
 	return copy(w.data[int(off):], p), nil
@@ -154,6 +193,11 @@ func (w *sftpWriter) Close() error {
 		return nil
 	}
 	w.closed = true
+	if w.failed != nil {
+		w.fs.release(len(w.data))
+		return w.failed
+	}
+	defer w.fs.release(len(w.data))
 	_, err := Replace(w.account, w.id, w.name, "", w.data)
 	return err
 }

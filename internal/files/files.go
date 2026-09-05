@@ -88,6 +88,19 @@ func Put(owner, name, contentType, content, encoding string) (*File, error) {
 	if len(raw) == 0 {
 		return nil, fmt.Errorf("the file is empty")
 	}
+	return create(owner, name, contentType, raw)
+}
+
+// create writes a new record. Unlike the MCP-facing Put, filesystem-shaped
+// callers may create an empty file: zero bytes is ordinary filesystem state.
+func create(owner, name, contentType string, raw []byte) (*File, error) {
+	if owner == "" {
+		return nil, fmt.Errorf("sign in to store files")
+	}
+	name = cleanName(name)
+	if name == "" {
+		return nil, fmt.Errorf("a file name is required")
+	}
 	if len(raw) > MaxBytes {
 		return nil, fmt.Errorf("file is %s; the limit is %s", human(len(raw)), human(MaxBytes))
 	}
@@ -129,7 +142,7 @@ func Put(owner, name, contentType, content, encoding string) (*File, error) {
 // MCP Put deliberately remains append-only and continues creating records.
 func Replace(owner, id, name, contentType string, raw []byte) (*File, error) {
 	if id == "" {
-		return Put(owner, name, contentType, string(raw), "")
+		return create(owner, name, contentType, raw)
 	}
 	f, err := meta(owner, id)
 	if err != nil || f.Owner != owner {
@@ -138,9 +151,6 @@ func Replace(owner, id, name, contentType string, raw []byte) (*File, error) {
 	name = cleanName(name)
 	if name == "" {
 		return nil, fmt.Errorf("a file name is required")
-	}
-	if len(raw) == 0 {
-		return nil, fmt.Errorf("the file is empty")
 	}
 	if len(raw) > MaxBytes {
 		return nil, fmt.Errorf("file is %s; the limit is %s", human(len(raw)), human(MaxBytes))
