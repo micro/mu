@@ -75,7 +75,8 @@ func configFingerprint() string {
 		settings.Get("S3_ENDPOINT"),
 		settings.Get("S3_BUCKET"),
 		settings.Get("S3_REGION"),
-		settings.Get("S3_ACCESS_KEY"),
+		s3AccessKey(),
+		s3SecretKey(),
 	}, "|")
 }
 
