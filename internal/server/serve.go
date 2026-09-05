@@ -221,6 +221,13 @@ func serve(addr string) {
 						}
 					}
 				} else if r.URL.Path == "/" {
+					// The optional x402 hostname has its own machine-first front
+					// door. Resolve it before setup and the normal Mu page so a fresh
+					// instance presents the same x402 identity at this host.
+					if r.Method == http.MethodGet && home.IsX402Host(r) {
+						home.X402IndexHandler(w, r)
+						return
+					}
 					// Fresh instance with no admin yet → guide the operator
 					// through the one-time setup wizard.
 					if setup.Needed() {
