@@ -9,22 +9,22 @@ import (
 	"mu/internal/settings"
 )
 
-const toolsDescription = "Tools for agents"
+const x402Description = "Tools for agents"
 
-// IsToolsHost reports whether the request came through the optional tools host.
+// IsX402Host reports whether the request came through the optional x402 host.
 // The host is only a second public identity for this same Mu process; it does
 // not enable, disable or partition any tools.
-func IsToolsHost(r *http.Request) bool { return origin.IsToolsHost(r) }
+func IsX402Host(r *http.Request) bool { return origin.IsX402Host(r) }
 
-// ToolsIndex is the machine-first front page for the optional tools hostname.
+// X402IndexHandler is the machine-first front page for the optional x402 hostname.
 // It deliberately has no Mu HTML shell, navigation or styling: this hostname is
 // an entry point for callers that want protocols and capabilities, not the app.
-func ToolsIndex(w http.ResponseWriter, r *http.Request) {
-	name := toolsName()
+func X402IndexHandler(w http.ResponseWriter, r *http.Request) {
+	name := x402Name()
 	base := strings.TrimRight(origin.URL(r), "/")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-	fmt.Fprintf(w, "%s\n%s\n\n", name, toolsDescription)
+	fmt.Fprintf(w, "%s\n%s\n\n", name, x402Description)
 	fmt.Fprintf(w, "MCP: %s/mcp\n", base)
 	fmt.Fprintf(w, "Tools: %s/tools\n", base)
 	fmt.Fprintf(w, "API: %s/api/v1/\n", base)
@@ -32,11 +32,11 @@ func ToolsIndex(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "\nPriced calls use HTTP 402/x402. MCP tools/list is the canonical live catalogue.")
 }
 
-// toolsName is deliberately derived rather than configured. A tools hostname
+// x402Name is deliberately derived rather than configured. An x402 hostname
 // is the operator's machine-facing identity: m3o.com becomes M3O, foobar.com
 // becomes FOOBAR. A normal one-host Mu install has no second identity to name.
-func toolsName() string {
-	v := strings.TrimSpace(settings.Get("TOOLS_HOST"))
+func x402Name() string {
+	v := strings.TrimSpace(settings.Get("X402_HOST"))
 	if v == "" {
 		return "Mu"
 	}
@@ -65,9 +65,9 @@ func init() {
 		base := strings.TrimRight(origin.URL(r), "/")
 		name := "Mu"
 		description := "Open source agent runtime"
-		if IsToolsHost(r) {
-			name = toolsName()
-			description = toolsDescription
+		if IsX402Host(r) {
+			name = x402Name()
+			description = x402Description
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintf(w, "# %s\n\n%s\n\n", name, description)

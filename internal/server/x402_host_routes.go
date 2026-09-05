@@ -10,19 +10,19 @@ import (
 	"mu/internal/settings"
 )
 
-// GET on the tools host is documentation for a machine, not another copy of
+// GET on the x402 host is documentation for a machine, not another copy of
 // Mu's web application. Method-specific patterns are more specific than the
 // existing /mcp and /tools registrations, so POST /mcp still reaches the MCP
 // server while the primary host keeps its normal human-facing catalogue.
 func init() {
 	http.HandleFunc("GET /mcp", func(w http.ResponseWriter, r *http.Request) {
-		if !origin.IsToolsHost(r) {
+		if !origin.IsX402Host(r) {
 			api.MCPHandler(w, r)
 			return
 		}
 		base := strings.TrimRight(origin.URL(r), "/")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintf(w, "%s MCP\n\n", toolsHostName())
+		fmt.Fprintf(w, "%s MCP\n\n", x402HostName())
 		fmt.Fprintf(w, "Endpoint: %s/mcp\n", base)
 		fmt.Fprintln(w, "Transport: streamable-http")
 		fmt.Fprintln(w, "Methods: initialize, tools/list, tools/call")
@@ -31,13 +31,13 @@ func init() {
 	})
 
 	http.HandleFunc("GET /tools", func(w http.ResponseWriter, r *http.Request) {
-		if !origin.IsToolsHost(r) {
+		if !origin.IsX402Host(r) {
 			api.ToolsPageHandler(w, r)
 			return
 		}
 		base := strings.TrimRight(origin.URL(r), "/")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintf(w, "%s tools\n\n", toolsHostName())
+		fmt.Fprintf(w, "%s tools\n\n", x402HostName())
 		fmt.Fprintln(w, "The live tool catalogue is available through MCP tools/list.")
 		fmt.Fprintf(w, "MCP: %s/mcp\n", base)
 		fmt.Fprintf(w, "HTTP API: %s/api/v1/\n", base)
@@ -49,7 +49,7 @@ func init() {
 	// representation here. Keep the machine door small and point callers at the
 	// canonical schema-bearing catalogue instead.
 	http.HandleFunc("GET /tools/", func(w http.ResponseWriter, r *http.Request) {
-		if !origin.IsToolsHost(r) {
+		if !origin.IsX402Host(r) {
 			api.ToolPageHandler(w, r)
 			return
 		}
@@ -59,8 +59,8 @@ func init() {
 	})
 }
 
-func toolsHostName() string {
-	v := strings.TrimSpace(settings.Get("TOOLS_HOST"))
+func x402HostName() string {
+	v := strings.TrimSpace(settings.Get("X402_HOST"))
 	if v == "" {
 		return "Mu"
 	}

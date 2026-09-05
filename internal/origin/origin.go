@@ -29,16 +29,24 @@ import (
 // read back: an OAuth issuer, an x402 resource identifier, a payment return URL,
 // a link in an email.
 //
-// A Mu instance may have an optional second public hostname for its tools. The
+// A Mu instance may have an optional second public hostname for x402. The
 // host is configuration, not a second deployment: MCP, API and x402 still run
-// in this process. If the request arrived through TOOLS_HOST, that host is the
+// in this process. If the request arrived through X402_HOST, that host is the
 // public identity and must be reflected back in discovery/payment URLs.
 //
-// We only trust a forwarded/request host when it matches the configured tools
+// We only trust a forwarded/request host when it matches the configured x402
 // host. That lets a normal reverse proxy preserve Host/X-Forwarded-Host without
 // making arbitrary client-supplied forwarded headers authoritative.
 func URL(r *http.Request) string {
-	if h := requestHost(r); h != "" && sameHost(h, settings.Get("TOOLS_HOST")) {
+	// Preserve the explicit surface selected by existing reverse proxies. The
+	// header is an opt-in trust boundary; X-Forwarded-Host alone remains
+	// insufficient to override the configured instance origin.
+	if strings.TrimSpace(r.Header.Get("X-Mu-Surface")) != "" {
+		if h := forwardedHost(r); h != "" {
+			return scheme(r) + "://" + trimScheme(h)
+		}
+	}
+	if h := requestHost(r); h != "" && sameHost(h, settings.Get("X402_HOST")) {
 		return scheme(r) + "://" + trimScheme(h)
 	}
 	if u := Self(); u != "" {
@@ -50,12 +58,12 @@ func URL(r *http.Request) string {
 	return scheme(r) + "://" + r.Host
 }
 
-// IsToolsHost reports whether this request arrived on the configured optional
-// tools hostname. It is intentionally about a hostname, not an audience or a
+// IsX402Host reports whether this request arrived on the configured optional
+// x402 hostname. It is intentionally about a hostname, not an audience or a
 // product brand: operators are free to name and use that second door however
 // they like.
-func IsToolsHost(r *http.Request) bool {
-	return sameHost(requestHost(r), settings.Get("TOOLS_HOST"))
+func IsX402Host(r *http.Request) bool {
+	return sameHost(requestHost(r), settings.Get("X402_HOST"))
 }
 
 func requestHost(r *http.Request) string {

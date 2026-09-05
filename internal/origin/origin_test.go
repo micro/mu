@@ -43,6 +43,22 @@ func TestURLPreservesExplicitPublicSurface(t *testing.T) {
 	}
 }
 
+func TestURLPreservesConfiguredX402Host(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "micro.mu")
+	t.Setenv("X402_HOST", "pay.example")
+
+	r := httptest.NewRequest("POST", "/mcp", nil)
+	r.Host = "localhost:8081"
+	r.Header.Set("X-Forwarded-Host", "pay.example")
+	r.Header.Set("X-Forwarded-Proto", "https")
+	if got := URL(r); got != "https://pay.example" {
+		t.Fatalf("URL = %q, want https://pay.example", got)
+	}
+	if !IsX402Host(r) {
+		t.Fatal("IsX402Host = false, want true")
+	}
+}
+
 func TestURLFallsBackThroughTheProxyThenTheHost(t *testing.T) {
 	t.Setenv("MU_DOMAIN", "")
 

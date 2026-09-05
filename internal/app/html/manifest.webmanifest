@@ -1,7 +1,7 @@
 {
-  "name": "Micro",
-  "short_name": "Micro",
-  "description": "A personal assistant. Ask Micro here, or write by mail, text or WhatsApp — with news, web search, your mail, markets, weather, places and storage behind it.",
+  "name": "Mu",
+  "short_name": "Mu",
+  "description": "A personal assistant. Ask Mu here, or write by mail, text or WhatsApp — with news, web search, your mail, markets, weather, places and storage behind it.",
   "id": "/",
   "scope": "/",
   "start_url": "/home?from=app",
