@@ -42,14 +42,6 @@ type PaymentCallResult struct {
 
 // Servers returns the configured MCP servers: always "self" (this instance),
 // plus any in X402_SERVERS as "name=url,name2=url2".
-//
-// A closed list rather than "any URL the caller names", and that is the point
-// rather than an omission: an agent that can pay a URL it read in a document
-// has a wallet belonging to whoever writes the documents.
-//
-// It was unreachable for a long time — kept whole on the argument that half a
-// payer is worse than none — and wallet_list and wallet_pay are what it was
-// being kept for.
 func Servers() []Server402 {
 	out := []Server402{{Name: "self", URL: selfURL()}}
 	for _, entry := range strings.Split(settings.Get("X402_SERVERS"), ",") {
@@ -66,7 +58,6 @@ func Servers() []Server402 {
 	return out
 }
 
-// ServerURL resolves a server name to its base URL (defaults to self).
 func ServerURL(name string) string {
 	for _, s := range Servers() {
 		if strings.EqualFold(s.Name, name) {
@@ -79,7 +70,6 @@ func ServerURL(name string) string {
 	return ""
 }
 
-// selfURL is this instance's own address.
 func selfURL() string {
 	if v := strings.TrimSpace(settings.Get("APP_URL")); v != "" {
 		return strings.TrimRight(v, "/")
@@ -89,8 +79,6 @@ func selfURL() string {
 
 var payClient = &http.Client{Timeout: 60 * time.Second}
 
-// PayAndCallMCP preserves the long-standing text-only API for agents and other
-// callers that do not care about payment diagnostics.
 func PayAndCallMCP(ctx context.Context, accountID, baseURL, tool string, args map[string]any, bw *BaseWallet) (string, error) {
 	res, err := PayAndCallMCPWithReceipt(ctx, accountID, baseURL, tool, args, bw)
 	if err != nil {
@@ -99,10 +87,6 @@ func PayAndCallMCP(ctx context.Context, accountID, baseURL, tool string, args ma
 	return res.Text, nil
 }
 
-// PayAndCallMCPWithReceipt is PayAndCallMCP plus the settlement receipt and any
-// x402 extension response headers returned after payment. This is primarily for
-// diagnostics: Bazaar indexing acknowledgements are carried in
-// EXTENSION-RESPONSES, while PAYMENT-RESPONSE proves the payment itself settled.
 func PayAndCallMCPWithReceipt(ctx context.Context, accountID, baseURL, tool string, args map[string]any, bw *BaseWallet) (PaymentCallResult, error) {
 	endpoint := strings.TrimRight(baseURL, "/") + "/mcp"
 	rpc := map[string]any{
@@ -120,7 +104,7 @@ func PayAndCallMCPWithReceipt(ctx context.Context, accountID, baseURL, tool stri
 		if bw == nil {
 			return PaymentCallResult{}, fmt.Errorf("payment required but no wallet")
 		}
-		req, perr := choosePayable(body)
+		req, resource, extensions, perr := choosePayableChallenge(body)
 		if perr != nil {
 			return PaymentCallResult{}, perr
 		}
@@ -131,7 +115,7 @@ func PayAndCallMCPWithReceipt(ctx context.Context, accountID, baseURL, tool stri
 		if err := checkAndRecordSpend(accountID, amt); err != nil {
 			return PaymentCallResult{}, err
 		}
-		payHeader, serr := SignX402Payment(bw, req)
+		payHeader, serr := SignX402PaymentWithContext(bw, req, resource, extensions)
 		if serr != nil {
 			return PaymentCallResult{}, fmt.Errorf("sign payment: %w", serr)
 		}
@@ -197,20 +181,31 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-// choosePayable picks a requirement from a 402 body that this wallet can pay.
-func choosePayable(body []byte) (x402.PaymentRequirements, error) {
+// choosePayableChallenge selects a payable requirement while preserving the
+// v2 resource and extension declarations. The x402 v2 client contract requires
+// these declarations to be echoed in PaymentPayload; dropping them makes
+// extension processors such as Bazaar see an empty payload even though the
+// server advertised metadata in its 402 response.
+func choosePayableChallenge(body []byte) (x402.PaymentRequirements, map[string]any, map[string]any, error) {
 	var challenge struct {
-		Accepts []x402.PaymentRequirements `json:"accepts"`
+		Accepts    []x402.PaymentRequirements `json:"accepts"`
+		Resource   map[string]any              `json:"resource"`
+		Extensions map[string]any              `json:"extensions"`
 	}
 	if err := json.Unmarshal(body, &challenge); err != nil {
-		return x402.PaymentRequirements{}, fmt.Errorf("bad 402 body: %w", err)
+		return x402.PaymentRequirements{}, nil, nil, fmt.Errorf("bad 402 body: %w", err)
 	}
 	for _, r := range challenge.Accepts {
 		if _, ok := chainIDFor(r.Network); ok && r.Extra["name"] != "" && r.PayTo != "" {
-			return r, nil
+			return r, challenge.Resource, challenge.Extensions, nil
 		}
 	}
-	return x402.PaymentRequirements{}, fmt.Errorf("no payable requirement offered")
+	return x402.PaymentRequirements{}, nil, nil, fmt.Errorf("no payable requirement offered")
+}
+
+func choosePayable(body []byte) (x402.PaymentRequirements, error) {
+	req, _, _, err := choosePayableChallenge(body)
+	return req, err
 }
 
 func challengeError(body []byte) string {
@@ -224,7 +219,6 @@ func challengeError(body []byte) string {
 	return strings.TrimSpace(string(body))
 }
 
-// parseToolResult extracts text from a JSON-RPC tools/call response.
 func parseToolResult(body []byte) (string, error) {
 	var resp struct {
 		Result struct {
