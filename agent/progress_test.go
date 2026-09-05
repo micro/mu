@@ -48,3 +48,26 @@ func TestWebToolProgressIsPersistedWhileRunning(t *testing.T) {
 		}
 	}
 }
+
+func TestInterruptedFlowsAreClosedOnStartup(t *testing.T) {
+	flows := []*Flow{
+		{Status: "running", Steps: []FlowStep{{Status: "done"}, {Status: "running"}}},
+		{Status: "done", Error: "keep me"},
+	}
+
+	if !reconcileInterruptedFlows(flows) {
+		t.Fatal("running flow was not reconciled")
+	}
+	if flows[0].Status != "error" || flows[0].Error != interruptedFlowError {
+		t.Errorf("interrupted flow = %+v", flows[0])
+	}
+	if flows[0].Steps[0].Status != "done" || flows[0].Steps[1].Status != "error" {
+		t.Errorf("interrupted steps = %+v", flows[0].Steps)
+	}
+	if flows[1].Status != "done" || flows[1].Error != "keep me" {
+		t.Errorf("completed flow changed = %+v", flows[1])
+	}
+	if reconcileInterruptedFlows(flows) {
+		t.Error("reconciliation was not idempotent")
+	}
+}
