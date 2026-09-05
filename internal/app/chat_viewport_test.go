@@ -38,4 +38,27 @@ func TestTheChatFitsWhatIsActuallyOnScreen(t *testing.T) {
 	if !strings.Contains(js, "|| window.innerHeight") {
 		t.Error("there is no fallback for a browser with no visualViewport")
 	}
+	// The mobile tab bar is fixed, so it occupies no layout space. fitConv sets
+	// an inline max-height and therefore has to include the visible bar itself;
+	// the stylesheet's --tabbar fallback no longer participates once it does.
+	if !strings.Contains(js, "tabs.getBoundingClientRect().height") {
+		t.Error("the measured conversation ignores the fixed tab bar, so the composer lands underneath it")
+	}
+	if !strings.Contains(js, "getComputedStyle(tabs).display!=='none'") {
+		t.Error("the fit reserves room for the tab bar even while the keyboard has hidden it")
+	}
+}
+
+// A browser or proxy may drop the SSE connection while the independently
+// running agent continues. The page must follow the recorded conversation in
+// that case rather than turning a transport failure into the run's outcome.
+func TestAChatRecoversTheAnswerAfterItsStreamDrops(t *testing.T) {
+	js := ChatComponent(ChatConfig{Ask: true, Transcript: true, StorageNS: "probe"})
+
+	if !strings.Contains(js, "Connection lost. Reconnecting...") {
+		t.Error("a dropped stream is still presented as a failed run")
+	}
+	if strings.Count(js, "'/agent/pending?thread='") < 2 {
+		t.Error("the live request does not poll the recorded conversation after its stream drops")
+	}
 }
