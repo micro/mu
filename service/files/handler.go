@@ -12,6 +12,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/sshaccess"
 )
 
 // Handler serves /files — the list for a signed-in person, /files/<id> for one
@@ -68,6 +69,13 @@ func handleAction(w http.ResponseWriter, r *http.Request, id, action string) {
 
 	var actErr error
 	switch {
+	case r.FormValue("sshkey") != "":
+		// SSH keys prove the account, not access to one particular service.
+		// The same store is rendered here and on /shell so somebody who came
+		// for SFTP never has to discover Shell first.
+		_, actErr = sshaccess.Register(sess.Account, r.FormValue("sshkey"), r.FormValue("keyname"))
+	case r.FormValue("removekey") != "":
+		actErr = auth.RemoveSSHKey(sess.Account, r.FormValue("removekey"))
 	case id == "":
 		actErr = upload(r, sess.Account)
 	case action == "delete":
@@ -222,6 +230,10 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</tbody></table></div>`)
 	}
+
+	b.WriteString(sshaccess.Card(r, sess.Account, "/files", "SFTP",
+		"Use the same files from a terminal, script, or any standard SFTP client.",
+		"sftp"))
 
 	b.WriteString(filesPageCSS)
 	app.Respond(w, r, app.Response{Title: "Files", Description: "Your stored files", HTML: b.String()})

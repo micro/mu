@@ -21,6 +21,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/container"
 	"mu/internal/quota"
+	"mu/internal/sshaccess"
 )
 
 // Handler serves /shell.
@@ -69,7 +70,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// written first.
 		switch {
 		case r.FormValue("sshkey") != "":
-			b.WriteString(addedKey(acc.ID, r.FormValue("sshkey"), r.FormValue("keyname")))
+			b.WriteString(sshaccess.Add(acc.ID, r.FormValue("sshkey"), r.FormValue("keyname")))
 		case r.FormValue("removekey") != "":
 			if err := auth.RemoveSSHKey(acc.ID, r.FormValue("removekey")); err != nil {
 				b.WriteString(app.Problem(err.Error()))
@@ -123,7 +124,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(app.NoteHTML(note))
 	}
 
-	b.WriteString(keysCard(r, acc.ID))
+	b.WriteString(sshaccess.Card(r, acc.ID, "/shell", "Shell access",
+		"Register a public key and you can open a shell in your machine from a terminal. The same box, the same files, the same limits — a person at the prompt instead of a command at a time.",
+		"ssh"))
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Shell", Description: Spec.Description, HTML: b.String()})
 }

@@ -73,11 +73,13 @@ import (
 	"mu/internal/auth"
 	"mu/internal/container"
 	"mu/internal/data"
+	store "mu/internal/files"
+	"mu/internal/sshaccess"
 )
 
 // LoadSSH starts the SSH door if this instance has been given a port.
 func LoadSSH() {
-	addr := setting("SHELL_SSH_PORT")
+	addr := sshaccess.Port()
 	if addr == "" || strings.EqualFold(addr, "off") {
 		return
 	}
@@ -209,7 +211,8 @@ func serveSSH(nc net.Conn, cfg *ssh.ServerConfig) {
 
 const handshakeWait = 30 * time.Second
 
-// session is one shell.
+// session is one authenticated SSH session: either a shell in the account's
+// container, or SFTP over the account's Files store.
 func session(newCh ssh.NewChannel, accountID string) {
 	ch, reqs, err := newCh.Accept()
 	if err != nil {
@@ -219,12 +222,11 @@ func session(newCh ssh.NewChannel, accountID string) {
 
 	// What the client asks for, and what is answered.
 	//
-	// pty-req and shell are agreed to; everything else is refused, which
-	// includes exec ("ssh host <command>"), subsystem (sftp), and every kind
-	// of forwarding. Refusing exec is deliberate: this door is a person at a
-	// prompt, and a one-shot command over SSH is the tool call that already
-	// exists, with an authentication path of its own.
-	wantsShell := make(chan bool, 1)
+	// A shell and the sftp subsystem are agreed to. Exec and every kind of
+	// forwarding remain refused. SFTP is handled before any container path is
+	// touched: the SSH key proves the account, and Files authorises everything
+	// after that.
+	wants := make(chan string, 1)
 	var size window
 	var resized *container.Session
 	go func() {
@@ -239,11 +241,21 @@ func session(newCh ssh.NewChannel, accountID string) {
 				req.Reply(true, nil) //nolint:errcheck
 			case "shell":
 				req.Reply(true, nil) //nolint:errcheck
-				wantsShell <- true
+				wants <- "shell"
+			case "subsystem":
+				var asked struct{ Name string }
+				if err := ssh.Unmarshal(req.Payload, &asked); err != nil || asked.Name != "sftp" {
+					req.Reply(false, nil) //nolint:errcheck
+					continue
+				}
+				req.Reply(true, nil) //nolint:errcheck
+				wants <- "sftp"
 			case "window-change":
 				w := changeSize(req.Payload)
 				size = w
-				resized.Resize(w.rows, w.cols)
+				if resized != nil {
+					resized.Resize(w.rows, w.cols)
+				}
 				req.Reply(true, nil) //nolint:errcheck
 			default:
 				req.Reply(false, nil) //nolint:errcheck
@@ -251,10 +263,16 @@ func session(newCh ssh.NewChannel, accountID string) {
 		}
 	}()
 
+	var requested string
 	select {
-	case <-wantsShell:
+	case requested = <-wants:
 	case <-time.After(shellWait):
-		fmt.Fprint(ch, "no shell was asked for\r\n")
+		fmt.Fprint(ch, "no shell or sftp subsystem was asked for\r\n")
+		return
+	}
+	if requested == "sftp" {
+		app.Log("files", "sftp session for %s", accountID)
+		_ = store.ServeSFTP(accountID, ch)
 		return
 	}
 
