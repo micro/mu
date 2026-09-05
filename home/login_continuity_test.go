@@ -16,7 +16,11 @@ func TestLoginTurnsTheLandingChatIntoTheHomeChat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`StorageNS:       "home"`, `ImportNS:        "landing"`} {
+	for _, want := range []string{
+		`chatStorageNS = "home:" + viewerID`,
+		`StorageNS:       chatStorageNS`,
+		`ImportNS:        chatImportNS`,
+	} {
 		if !strings.Contains(string(home), want) {
 			t.Errorf("Home does not adopt the landing conversation: missing %q", want)
 		}
