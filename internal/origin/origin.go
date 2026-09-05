@@ -18,6 +18,7 @@
 package origin
 
 import (
+	"net"
 	"net/http"
 	"strings"
 
@@ -28,32 +29,40 @@ import (
 // read back: an OAuth issuer, an x402 resource identifier, a payment return URL,
 // a link in an email.
 //
-// An operator may expose one Mu process through a second, machine-facing public
-// surface (for example m3o.com in front of micro.mu). That surface is selected
-// by the trusted reverse proxy with X-Mu-Surface. In that case the forwarded
-// host is the public identity of this request and must win over MU_DOMAIN;
-// otherwise an agent calling m3o.com/mcp receives an x402 or OAuth URL naming
-// micro.mu and the public boundary leaks.
+// A Mu instance may have an optional second public hostname for its tools. The
+// host is configuration, not a second deployment: MCP, API and x402 still run
+// in this process. If the request arrived through TOOLS_HOST, that host is the
+// public identity and must be reflected back in discovery/payment URLs.
 //
-// X-Mu-Surface deliberately does not contain a hostname. The proxy selects the
-// surface; X-Forwarded-Host says which public host the request used. This keeps
-// the mechanism domain-agnostic and gives self-hosters the same capability.
-//
-// Without an explicit surface, MU_DOMAIN remains authoritative. r.Host cannot
-// be used on its own behind a reverse proxy because it may be localhost:8081.
+// We only trust a forwarded/request host when it matches the configured tools
+// host. That lets a normal reverse proxy preserve Host/X-Forwarded-Host without
+// making arbitrary client-supplied forwarded headers authoritative.
 func URL(r *http.Request) string {
-	if strings.TrimSpace(r.Header.Get("X-Mu-Surface")) != "" {
-		if h := forwardedHost(r); h != "" {
-			return scheme(r) + "://" + trimScheme(h)
-		}
+	if h := requestHost(r); h != "" && sameHost(h, settings.Get("TOOLS_HOST")) {
+		return scheme(r) + "://" + trimScheme(h)
 	}
 	if u := Self(); u != "" {
 		return u
 	}
-	if h := forwardedHost(r); h != "" {
+	if h := requestHost(r); h != "" {
 		return scheme(r) + "://" + trimScheme(h)
 	}
 	return scheme(r) + "://" + r.Host
+}
+
+// IsToolsHost reports whether this request arrived on the configured optional
+// tools hostname. It is intentionally about a hostname, not an audience or a
+// product brand: operators are free to name and use that second door however
+// they like.
+func IsToolsHost(r *http.Request) bool {
+	return sameHost(requestHost(r), settings.Get("TOOLS_HOST"))
+}
+
+func requestHost(r *http.Request) string {
+	if h := forwardedHost(r); h != "" {
+		return h
+	}
+	return strings.TrimSpace(r.Host)
 }
 
 func forwardedHost(r *http.Request) string {
@@ -62,6 +71,21 @@ func forwardedHost(r *http.Request) string {
 		h = strings.TrimSpace(h[:i])
 	}
 	return h
+}
+
+func sameHost(a, b string) bool {
+	a = hostname(a)
+	b = hostname(b)
+	return a != "" && b != "" && strings.EqualFold(a, b)
+}
+
+func hostname(v string) string {
+	v = strings.TrimSpace(trimScheme(v))
+	v = strings.TrimSuffix(v, "/")
+	if h, _, err := net.SplitHostPort(v); err == nil {
+		return h
+	}
+	return v
 }
 
 // Self is the public origin when there is no request to derive it from.
