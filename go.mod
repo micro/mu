@@ -19,10 +19,11 @@ require (
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/mrz1836/go-sanitize v1.5.3
 	github.com/piquette/finance-go v1.1.0
+	github.com/pkg/sftp v1.13.11
 	go-micro.dev/v6 v6.13.1-0.20260903114747-7be9734354a8
-	golang.org/x/crypto v0.53.0
+	golang.org/x/crypto v0.54.0
 	golang.org/x/net v0.56.0
-	golang.org/x/sync v0.21.0
+	golang.org/x/sync v0.22.0
 	golang.org/x/sys v0.47.0
 	google.golang.org/api v0.243.0
 	modernc.org/sqlite v1.42.2
@@ -62,6 +63,7 @@ require (
 	github.com/hablullah/go-juliandays v1.0.1-0.20220316153050-f56193695a5b // indirect
 	github.com/hablullah/go-sampa v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
 	github.com/mmcdole/goxpp v1.1.1-0.20240225020742-a0c311522b23 // indirect
@@ -86,7 +88,7 @@ require (
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/text v0.39.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/tools v0.47.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 	google.golang.org/grpc v1.82.1 // indirect

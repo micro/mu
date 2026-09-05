@@ -10,6 +10,7 @@ package shell
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -17,9 +18,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
 	"mu/internal/auth"
+	store "mu/internal/files"
 )
 
 // Who you are is the key. The username is not consulted.
@@ -218,6 +221,113 @@ func TestARegisteredKeyGetsThroughTheHandshake(t *testing.T) {
 		c.Close()
 		t.Error("an unregistered key opened a connection — and it named a real " +
 			"account, which is the attempt worth making")
+	}
+}
+
+func TestSFTPProjectsOnlyTheAuthenticatedAccountsFiles(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := auth.AddSSHKey("files-owner", "test",
+		strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub))),
+		ssh.FingerprintSHA256(sshPub)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Put("files-owner", "report.txt", "text/plain", "hello", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Put("somebody-else", "secret.txt", "text/plain", "hidden", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := sshConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go accept(ln, cfg)
+
+	client, err := ssh.Dial("tcp", ln.Addr().String(), &ssh.ClientConfig{
+		User: "ignored", Auth: []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: 10 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	sftpClient, err := sftp.NewClient(client)
+	if err != nil {
+		t.Fatalf("start sftp: %v", err)
+	}
+	defer sftpClient.Close()
+
+	entries, err := sftpClient.ReadDir("/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "report.txt" {
+		t.Fatalf("root entries = %#v, want only report.txt", entries)
+	}
+	f, err := sftpClient.Open("/report.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := io.ReadAll(f)
+	f.Close()
+	if err != nil || string(raw) != "hello" {
+		t.Fatalf("read report: %q, %v", raw, err)
+	}
+	overwrite, err := sftpClient.Create("/report.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := overwrite.Write([]byte("updated")); err != nil {
+		t.Fatal(err)
+	}
+	if err := overwrite.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(store.List("files-owner")); got != 1 {
+		t.Fatalf("overwriting report created another record: %d files", got)
+	}
+	_, updated, err := store.Get("files-owner", store.List("files-owner")[0].ID)
+	if err != nil || string(updated) != "updated" {
+		t.Fatalf("overwritten report = %q, %v", updated, err)
+	}
+
+	created, err := sftpClient.Create("/notes.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := created.Write([]byte("from sftp")); err != nil {
+		t.Fatal(err)
+	}
+	if err := created.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := sftpClient.Rename("/notes.txt", "/renamed.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if err := sftpClient.Remove("/renamed.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(store.List("files-owner")); got != 1 {
+		t.Fatalf("files after create, rename and remove = %d, want original only", got)
 	}
 }
 

@@ -257,6 +257,22 @@ func TestListPageMarkupSupportsTheMobileLayout(t *testing.T) {
 	}
 }
 
+func TestFilesPageOwnsSFTPOnboarding(t *testing.T) {
+	t.Setenv("SHELL_SSH_PORT", "2222")
+	cookie := session(t, "sftppage")
+	r := httptest.NewRequest("GET", "/files", nil)
+	r.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	Handler(rec, r)
+
+	body := rec.Body.String()
+	for _, want := range []string{"<h3>SFTP</h3>", "sftp -P 2222", `name="sshkey"`, "Add key"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the Files page is missing %q", want)
+		}
+	}
+}
+
 // An upload past the limit is a mistake a person can fix, so it comes back as a
 // message on the page rather than an error screen.
 func TestOversizeUploadReturnsToThePageWithAMessage(t *testing.T) {
