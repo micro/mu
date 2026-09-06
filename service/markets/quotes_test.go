@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,5 +29,20 @@ func TestHistoryFiltersNullsAndPages(t *testing.T) {
 	}
 	if rsp.Total != 2 || len(rsp.Items) != 1 || rsp.NextOffset == nil || *rsp.NextOffset != 1 {
 		t.Fatalf("bad history page: %+v", rsp)
+	}
+}
+
+func TestListIncludesProseAndStructuredPrices(t *testing.T) {
+	marketsMutex.Lock()
+	old := cachedPriceData
+	cachedPriceData = map[string]PriceData{"BTC": {Price: 42, Source: "fixture"}}
+	marketsMutex.Unlock()
+	defer func() { marketsMutex.Lock(); cachedPriceData = old; marketsMutex.Unlock() }()
+	var rsp ListResponse
+	if err := (Server{}).List(context.Background(), &ListRequest{Category: "crypto"}, &rsp); err != nil {
+		t.Fatal(err)
+	}
+	if len(rsp.Items) == 0 || !strings.Contains(rsp.Text, "BTC: 42") {
+		t.Fatalf("missing price text: %+v", rsp)
 	}
 }

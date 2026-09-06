@@ -381,7 +381,11 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	if StripeEnabled() {
 		sb.WriteString(renderStripeDeposit(sess.Account, r.URL.Query().Get("error")))
 	}
-	sb.WriteString(wallet.Page(sess.Account))
+	if x402.Enabled() {
+		sb.WriteString(wallet.Page(sess.Account))
+	} else if !StripeEnabled() {
+		sb.WriteString(`<div class="card"><p>No payment methods available.</p></div>`)
+	}
 
 	app.Respond(w, r, app.Response{Title: "Top up", Description: "Buy credits", HTML: sb.String()})
 }

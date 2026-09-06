@@ -1,6 +1,7 @@
 package video
 
 import (
+	"context"
 	"fmt"
 	"net/http/httptest"
 	"strings"
@@ -61,5 +62,20 @@ func TestUnknownWatchVideoDoesNotOfferBrokenReferences(t *testing.T) {
 	Handler(w, httptest.NewRequest("GET", "/video?id=unknown-video", nil))
 	if strings.Contains(w.Body.String(), "/agent/micro?item=video_unknown-video") {
 		t.Fatal("offered an unresolved attachment")
+	}
+}
+
+func TestListPreservesEmptyFeedDiagnostic(t *testing.T) {
+	mutex.Lock()
+	old := videos
+	videos = nil
+	mutex.Unlock()
+	defer func() { mutex.Lock(); videos = old; mutex.Unlock() }()
+	var rsp ListResponse
+	if err := (Server{}).List(context.Background(), &ListRequest{}, &rsp); err != nil {
+		t.Fatal(err)
+	}
+	if rsp.Text != LatestText(0) || rsp.Text == "" {
+		t.Fatalf("lost diagnostic: %q", rsp.Text)
 	}
 }

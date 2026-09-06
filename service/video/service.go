@@ -18,7 +18,7 @@ type Server struct{}
 type ListRequest struct {
 	Category string `json:"category" description:"Optional curated category"`
 	Offset   int    `json:"offset" description:"Videos to skip"`
-	Limit    int    `json:"limit" description:"Optional max number of videos (default all recent)"`
+	Limit    int    `json:"limit" description:"Maximum videos per page, default 20, maximum 100"`
 }
 
 // ListResponse is a model-ready video list.
@@ -35,7 +35,13 @@ type ListResponse struct {
 func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
 	seen := map[string]bool{}
 	items := []*Result{}
-	for _, v := range LatestVideos(0) {
+	cached := LatestVideos(0)
+	if len(cached) == 0 {
+		rsp.Items = items
+		rsp.Text = LatestText(req.Limit)
+		return nil
+	}
+	for _, v := range cached {
 		if v == nil || seen[v.ID] || req.Category != "" && v.Category != req.Category {
 			continue
 		}
@@ -56,6 +62,9 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 	}
 	for _, v := range rsp.Items {
 		rsp.Text += fmt.Sprintf("- %s (%s) https://youtube.com/watch?v=%s\n", v.Title, v.Channel, v.ID)
+	}
+	if len(rsp.Items) == 0 {
+		rsp.Text = "No videos match this category or page."
 	}
 	return nil
 }
