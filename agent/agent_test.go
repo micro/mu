@@ -359,7 +359,7 @@ func TestFormatWalletBalanceResult_WithBalance(t *testing.T) {
 	if !strings.Contains(got, "$15.50") {
 		t.Errorf("expected formatted dollars in output, got %q", got)
 	}
-	if !strings.Contains(got, "/wallet/topup") {
+	if !strings.Contains(got, "/account/topup") {
 		t.Errorf("expected topup link in output, got %q", got)
 	}
 }

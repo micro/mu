@@ -69,6 +69,9 @@ func mcpResolverFor(r *http.Request) gwmcp.Resolver {
 				if err != nil {
 					return &gwmcp.CallResult{Text: err.Error(), IsError: true}, nil
 				}
+				if len(text) > maxResultBytes && json.Valid([]byte(text)) {
+					return &gwmcp.CallResult{Text: "Structured response exceeds the MCP response limit. Request fewer items with limit, narrow the query, or use the REST API for the complete structured response.", IsError: true}, nil
+				}
 				return &gwmcp.CallResult{Text: bounded(text), IsError: isErr}, nil
 			})
 	}

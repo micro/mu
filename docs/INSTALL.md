@@ -796,6 +796,7 @@ exist. Any of them can also be set at `/admin/config` in the browser.
 | Variable | Default | What it does |
 |---|---|---|
 | `ADMIN` / `MU_ADMIN` | first account | Who is admin — comma-separated ids, usernames or emails |
+| `MU_OPERATOR_ENABLED` | `false` | Enable operator-only endpoints; human admin account and explicit token permission required. Does not grant OS privileges |
 | `MU_DOMAIN` | `localhost` | Public domain. Used for the OAuth issuer an MCP client discovers, Stripe returns, ActivityPub actor URLs and mail. Set this if you run behind a proxy |
 | `MU_ENV_FILE` | `~/.env`, then `~/.mu/.env` | A dotenv file read at startup; the first that exists wins. Settings saved at `/admin/config` go to `~/.mu/data/settings.json` instead |
 | `MCP_REGISTRY_PROOF` | — | Domain-ownership proof served at `/.well-known/mcp-registry-auth` when publishing to the MCP registry — see the MCP registry listing notes in the repository |
@@ -1174,3 +1175,17 @@ without changing the token gets you a 401 — `mu login <url>` does both.
 | `S3_ACCESS_KEY_ID` | — | Access key for the bucket. Files need read, write and delete access; backups use the same credentials |
 | `S3_SECRET_ACCESS_KEY` | — | Secret key |
 | `BACKUP_S3` | `false` | Whether backups are pushed to the bucket above under `backups/` |
+
+### Operator endpoint policy
+
+`MU_OPERATOR_ENABLED=true` explicitly enables endpoints declared operator-only.
+It defaults to disabled. Access also requires an authenticated human account with
+`Admin` set and `Agent` unset. Personal access tokens must carry an explicit
+`operator` permission as well as any required service scope; existing unscoped
+tokens do not inherit it. Calls within Mu agent runs and x402 identities are
+refused. This policy does not install host-management capabilities or grant OS
+privileges. Mu's existing service user and sandbox permissions are unchanged.
+
+The MCP and REST catalogue responses include `X-Mu-Catalogue-Version` and
+`X-Mu-Tool-Count` headers. Compare these when diagnosing an external client's
+cached tools. Reconnect the client to refresh discovery after a deployment.
