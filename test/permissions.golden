@@ -54,6 +54,7 @@ maps_area                    needsAccount=false destructive=false open accountOn
 maps_tile                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 markets_convert              needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 markets_list                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+news_headlines               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 news_list                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 news_read                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 news_search                  needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
