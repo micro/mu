@@ -58,3 +58,15 @@ func watchTitle(id string) (string, string) {
 	channel, _ := e.Metadata["channel"].(string)
 	return e.Title, channel
 }
+
+// indexVideo gives every fetched video's watch page the same reading metadata,
+// whether it came from a preset feed, search, playlist or channel. No extra fetch.
+func indexVideo(v *Result) {
+	if !validVideoID.MatchString(v.ID) {
+		return
+	}
+	data.Index("video_"+v.ID, data.KindVideo, v.Title, v.Description, map[string]any{
+		"url": "/video?id=" + url.QueryEscape(v.ID), "category": v.Category, "channel": v.Channel,
+		"channel_id": v.ChannelID, "posted_at": v.Published, "thumbnail": v.Thumbnail,
+	})
+}

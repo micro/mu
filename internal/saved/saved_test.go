@@ -119,3 +119,47 @@ func TestPublicSourceAndDurableMetadata(t *testing.T) {
 		t.Fatalf("lost saved metadata: %+v %v", got, err)
 	}
 }
+
+func TestBlogVisibilityIsExplicit(t *testing.T) {
+	for _, v := range []struct {
+		id      string
+		meta    map[string]any
+		allowed bool
+	}{
+		{"blog-legacy", map[string]any{}, false}, {"blog-private", map[string]any{"public": false}, false}, {"blog-public", map[string]any{"public": true}, true},
+	} {
+		if err := data.IndexSQLite(v.id, data.KindPost, "Blog title", "Private body", "", v.meta); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Source(v.id)
+		if (err == nil) != v.allowed {
+			t.Errorf("visibility for %s: %v", v.id, err)
+		}
+		if !v.allowed && strings.Contains(Context(&Item{Ref: v.id}), "Private body") {
+			t.Fatal("context bypassed visibility")
+		}
+	}
+}
+func TestLinkGainsArchiveMetadataWithoutLosingPrivateState(t *testing.T) {
+	owner := t.Name()
+	defer Clear(owner)
+	original, err := Add(owner, Item{URL: "https://example.com/enriched", Note: "my annotation"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := data.IndexSQLite("enriched", data.KindNews, "Actual article title", "Retained excerpt", "", map[string]any{"url": original.URL}); err != nil {
+		t.Fatal(err)
+	}
+	enriched, err := Add(owner, Item{Ref: "enriched"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enriched.ID != original.ID || !enriched.Created.Equal(original.Created) || enriched.Note != original.Note || enriched.Ref != "enriched" || enriched.Kind != "article" {
+		t.Fatalf("incorrect enrichment: %+v", enriched)
+	}
+	data.Unindex("enriched")
+	loaded, err := Get(owner, original.ID)
+	if err != nil || !strings.Contains(Context(loaded), "Retained excerpt") {
+		t.Fatal("enrichment was not persisted")
+	}
+}

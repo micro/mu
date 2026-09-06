@@ -28,6 +28,7 @@ func TestBrowseIsBoundedAndHasReadingActions(t *testing.T) {
 	}
 }
 func TestWatchPageKeepsNavigationAndPlayerControls(t *testing.T) {
+	indexVideo(&Result{ID: "example", Title: "A fetched video", Description: "The description", Channel: "The channel"})
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest("GET", "/video?id=example", nil))
 	body := w.Body.String()
@@ -52,5 +53,13 @@ func TestBrowseKeepsLegacyVideoCache(t *testing.T) {
 	Handler(w, httptest.NewRequest("GET", "/video", nil))
 	if !strings.Contains(w.Body.String(), "legacy video") {
 		t.Fatal("legacy cache lost")
+	}
+}
+
+func TestUnknownWatchVideoDoesNotOfferBrokenReferences(t *testing.T) {
+	w := httptest.NewRecorder()
+	Handler(w, httptest.NewRequest("GET", "/video?id=unknown-video", nil))
+	if strings.Contains(w.Body.String(), "/agent/micro?item=video_unknown-video") {
+		t.Fatal("offered an unresolved attachment")
 	}
 }

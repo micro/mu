@@ -72,11 +72,30 @@ func write(owner string, items []Item) error {
 	return data.SaveFile(k, string(b))
 }
 
-// Source resolves only public reading material, never arbitrary private index entries.
-func Source(ref string) (*Item, error) {
+// publicEntry fails closed for legacy blog rows: older versions indexed even
+// private posts without an owner. Only a freshly declared public post is readable.
+func publicEntry(ref string) (*data.IndexEntry, error) {
 	e := data.ByID(ref)
 	if e == nil || e.Owner != "" {
 		return nil, ErrNotFound
+	}
+	switch e.Type {
+	case data.KindNews, data.KindVideo:
+	case data.KindPost:
+		if public, ok := e.Metadata["public"].(bool); !ok || !public {
+			return nil, ErrNotFound
+		}
+	default:
+		return nil, ErrNotFound
+	}
+	return e, nil
+}
+
+// Source resolves only public reading material, never arbitrary private index entries.
+func Source(ref string) (*Item, error) {
+	e, err := publicEntry(ref)
+	if err != nil {
+		return nil, err
 	}
 	s := func(k string) string { v, _ := e.Metadata[k].(string); return v }
 	item := &Item{Ref: e.ID, Title: e.Title, Excerpt: clip(e.Content, 2000)}
@@ -149,8 +168,16 @@ func Add(owner string, item Item) (*Item, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, old := range items {
+	for i, old := range items {
 		if old.URL == item.URL {
+			if old.Ref == "" && item.Ref != "" {
+				item.ID, item.Created, item.Note = old.ID, old.Created, old.Note
+				items[i] = item
+				if err := write(owner, items); err != nil {
+					return nil, err
+				}
+				return &item, nil
+			}
 			return &old, nil
 		}
 	}
@@ -263,7 +290,7 @@ func Clear(owner string) error {
 func Context(item *Item) string {
 	excerpt := item.Excerpt
 	if item.Ref != "" {
-		if e := data.ByID(item.Ref); e != nil && e.Owner == "" && (e.Type == data.KindNews || e.Type == data.KindVideo || e.Type == data.KindPost) {
+		if e, err := publicEntry(item.Ref); err == nil {
 			excerpt = clip(e.Content, 12000)
 		}
 	}

@@ -1112,8 +1112,13 @@ func DeletePost(id string) error {
 // copy before handing it to a goroutine: posts are mutated under the mutex and
 // the index write is not holding it.
 func indexPost(p Post) {
+	if p.Private {
+		data.Unindex(p.ID)
+		return
+	}
 	data.Index(p.ID, data.KindPost, p.Title, p.Content, map[string]interface{}{
 		"url":       "/blog/post?id=" + p.ID,
+		"public":    true,
 		"author":    p.Author,
 		"tags":      p.Tags,
 		"posted_at": p.CreatedAt,

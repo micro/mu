@@ -69,4 +69,12 @@ func TestAPostIsDatedByWhenItWasWritten(t *testing.T) {
 			t.Errorf("metadata %q = %q, want %q", key, got, want)
 		}
 	}
+	if public, ok := linked.Metadata["public"].(bool); !ok || !public {
+		t.Fatal("public post lacks visibility declaration")
+	}
+	indexPost(Post{ID: "linked", Title: "Now private", Content: "private content", Private: true})
+	if data.ByID("linked") != nil {
+		t.Fatal("private post remains publicly indexed")
+	}
+
 }

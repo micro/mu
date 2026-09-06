@@ -797,26 +797,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		// Append to results
 		results = append(results, res)
 
-		// Index the video for search/RAG
-		data.Index(
-			"video_"+id,
-			data.KindVideo,
-			item.Snippet.Title,
-			item.Snippet.Description,
-			map[string]interface{}{
-				"url":        url,
-				"category":   category,
-				"channel":    item.Snippet.ChannelTitle,
-				"channel_id": item.Snippet.ChannelId,
-				// posted_at, not published: the archive reads posted_at and
-				// falls back to when it indexed the row. The upload date was
-				// right here all along under a name nothing looks for, so a
-				// video from 2023 was dated to whenever this instance last
-				// fetched the channel.
-				"posted_at": t,
-				"thumbnail": thumbnailURL,
-			},
-		)
+		indexVideo(res)
 	}
 
 	return sb.String(), results, nil
@@ -894,6 +875,10 @@ func getResults(query, channel string) (string, []*Result, error) {
 			Thumbnail: thumbnailURL,
 		}
 
+		if kind == "video" {
+			res.Description = item.Snippet.Description
+			indexVideo(res)
+		}
 		if kind == "playlist" {
 			res.PlaylistID = id
 		}
@@ -1156,6 +1141,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
+			indexVideo(&Result{ID: videoID, Title: item.Snippet.Title, Description: item.Snippet.Description, Channel: item.Snippet.ChannelTitle, ChannelID: item.Snippet.ChannelId, Published: t, Thumbnail: thumbnailURL})
+
 			// Through Mu's origin, like every other thumbnail here. This was the
 			// one render path linking straight to i.ytimg.com, and it is the
 			// reason every image on a channel or playlist page could be broken
@@ -1230,6 +1217,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
+
+			indexVideo(&Result{ID: videoID, Title: item.Snippet.Title, Description: item.Snippet.Description, Channel: item.Snippet.ChannelTitle, ChannelID: item.Snippet.ChannelId, Published: t, Thumbnail: thumbnailURL})
 
 			// Through Mu's origin, like every other thumbnail here. This was the
 			// one render path linking straight to i.ytimg.com, and it is the
@@ -1313,7 +1302,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 `
 		title, channel := watchTitle(id)
 		body := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay))
-		body += `<p>` + htmlpkg.EscapeString(channel) + `</p><div class="reading-actions"><a href="https://www.youtube.com/watch?v=` + url.QueryEscape(id) + `" rel="noopener noreferrer">Original ↗</a></div>` + app.ReadingActions(r, "video_"+id) + app.ReadingCSS
+		body += `<p>` + htmlpkg.EscapeString(channel) + `</p><div class="reading-actions"><a href="https://www.youtube.com/watch?v=` + url.QueryEscape(id) + `" rel="noopener noreferrer">Original ↗</a></div>`
+		if e := data.ByID("video_" + id); e != nil && e.Owner == "" && e.Type == data.KindVideo {
+			body += app.ReadingActions(r, "video_"+id)
+		}
+		body += app.ReadingCSS
 		app.Respond(w, r, app.Response{Title: title, Description: title, HTML: body})
 
 		return
