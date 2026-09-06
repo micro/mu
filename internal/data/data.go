@@ -386,6 +386,7 @@ var (
 	index               = make(map[string]*IndexEntry)
 	savePending         = false
 	saveMutex           sync.Mutex
+	indexPersistMutex   sync.Mutex
 	indexWorkQueue      = make(chan IndexWork, 500) // Buffer up to 500 pending index operations
 	indexWorkersStarted = false
 )
@@ -559,11 +560,17 @@ func Unindex(id string) error {
 		return nil
 	}
 	if !UseSQLite {
+		file, err := dataPath("index.json")
+		if err != nil {
+			return err
+		}
 		indexMutex.Lock()
 		delete(index, id)
 		indexMutex.Unlock()
-		go saveIndex()
-		return nil
+		// Withdrawal is complete only once a restart cannot restore the row.
+		// Share the writer lock with debounced saves so an older snapshot can
+		// never overwrite this one after we return.
+		return persistIndex(file)
 	}
 	return UnindexSQLite(id)
 }
@@ -754,19 +761,28 @@ func saveIndex() {
 	time.Sleep(debounce)
 
 	if err == nil {
-		// Marshalled under the read lock, written outside it: the disk write
-		// does not need to hold up every reader of the index.
-		indexMutex.RLock()
-		b, mErr := json.Marshal(index)
-		indexMutex.RUnlock()
-		if mErr == nil {
-			writeAtomic(file, b) //nolint:errcheck
+		if err := persistIndex(file); err != nil {
+			fmt.Printf("[data] Saving index: %v\n", err)
 		}
 	}
 
 	saveMutex.Lock()
 	savePending = false
 	saveMutex.Unlock()
+}
+
+// persistIndex serializes snapshot creation and replacement. Taking the snapshot
+// inside the writer lock prevents a delayed write from restoring withdrawn rows.
+func persistIndex(file string) error {
+	indexPersistMutex.Lock()
+	defer indexPersistMutex.Unlock()
+	indexMutex.RLock()
+	b, err := json.Marshal(index)
+	indexMutex.RUnlock()
+	if err != nil {
+		return err
+	}
+	return writeAtomic(file, b)
 }
 
 // Load loads the index from disk
