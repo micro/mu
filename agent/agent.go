@@ -2043,9 +2043,9 @@ func placesMapURL(args map[string]any, items []placeItem) string {
 // summary suitable for inclusion in the AI synthesis RAG context.
 func formatToolResult(toolName, result string, args map[string]any) string {
 	switch toolName {
-	case "news", "news_search":
+	case "news", "news_search", "news_headlines":
 		return withCurrentDateContext(formatNewsResult(result))
-	case "news_headlines", "news_list", "news_read":
+	case "news_list", "news_read":
 		return withCurrentDateContext(result)
 	case "video_search":
 		return formatVideoResult(result)
@@ -2211,7 +2211,8 @@ func formatNewsResult(result string) string {
 	}
 
 	var data struct {
-		Feed []struct {
+		Items []formattedNewsItem `json:"items"`
+		Feed  []struct {
 			Title       string `json:"title"`
 			Description string `json:"description"`
 			Category    string `json:"category"`
@@ -2237,7 +2238,7 @@ func formatNewsResult(result string) string {
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
 		return result
 	}
-	var items []formattedNewsItem
+	items := data.Items
 	for _, a := range data.Results {
 		items = append(items, formattedNewsItem{a.Title, a.Description, a.Category, a.URL, a.PostedAt, ""})
 	}
