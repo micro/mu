@@ -8,7 +8,10 @@ package agent
 // envelope — which is how an instruction to turn a sender down politely came
 // back as `{"text":"Your inbox (5 messages):\n- ..."}`.
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestTheResponseEnvelopeIsNotAnAnswer(t *testing.T) {
 	unwrapped := map[string]string{
@@ -44,5 +47,20 @@ func TestAToolWithNoFormatterStillReadsAsText(t *testing.T) {
 		t.Errorf("a tool nobody wrote a formatter for rendered as %q — the switch in "+
 			"formatToolResult names the tools somebody got to, and everything after "+
 			"it has to read as prose without being added to that list", got)
+	}
+}
+
+func TestHeadlineItemsRemainReadableInTheAnswerFallback(t *testing.T) {
+	const payload = `{"items":[{"title":"A new discovery","category":"science","url":"https://example.test/story","description":"Researchers report their findings"}]}`
+	got := formatToolResult("news_headlines", payload, nil)
+	if !strings.Contains(got, "A new discovery") || strings.Contains(got, `{"items"`) {
+		t.Fatalf("headlines were not rendered: %q", got)
+	}
+	lines := strings.Join(meaningfulLines(got, 10), "\n")
+	if !strings.Contains(lines, "A new discovery") {
+		t.Fatalf("answer fallback lost headlines: %q", lines)
+	}
+	if got := formatToolResult("news_headlines", `{"items":[]}`, nil); !strings.Contains(got, "No news available") {
+		t.Fatalf("empty headlines: %q", got)
 	}
 }
