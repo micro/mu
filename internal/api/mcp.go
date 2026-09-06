@@ -438,6 +438,7 @@ func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, e
 
 	req, _ := http.NewRequest("POST", "/", nil)
 	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	req = req.WithContext(service.WithAgentRun(req.Context()))
 	return ExecuteTool(req, name, args)
 }
 

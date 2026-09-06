@@ -105,3 +105,17 @@ func TestWritesRequireCSRF(t *testing.T) {
 		t.Fatalf("tokenless mutation accepted: %d", w.Code)
 	}
 }
+
+func TestLegacySavedFormStillWritesSameCollection(t *testing.T) {
+	owner := "saved_legacy"
+	defer DeleteAll(owner)
+	w := httptest.NewRecorder()
+	Handler(w, request(t, owner, "POST", "/saved", url.Values{"action": {"add"}, "url": {"https://example.com/legacy"}}))
+	if w.Code != 303 {
+		t.Fatalf("legacy POST: %d %s", w.Code, w.Body.String())
+	}
+	var rsp ListResponse
+	if err := (Server{}).List(service.WithAccount(context.Background(), owner), &ListRequest{}, &rsp); err != nil || rsp.Total != 1 {
+		t.Fatalf("legacy collection lost: %+v %v", rsp, err)
+	}
+}

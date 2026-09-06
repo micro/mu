@@ -1,6 +1,9 @@
 package api
 
-import "sort"
+import (
+	"net/http"
+	"sort"
+)
 
 // sortedTools returns the registered tools ordered alphabetically by name, for
 // stable, predictable display on /mcp, /api and in the MCP tools/list response.
@@ -15,11 +18,12 @@ func sortedTools() []Tool {
 
 // mcpTools returns the tools the agent surface exposes: everything except the
 // REST-only endpoints, which are HTTP paths rather than tools.
-func mcpTools() []Tool {
+func mcpTools() []Tool { return mcpToolsFor(nil) }
+func mcpToolsFor(r *http.Request) []Tool {
 	all := sortedTools()
 	out := make([]Tool, 0, len(all))
 	for _, t := range all {
-		if t.RESTOnly {
+		if t.RESTOnly || (t.OperatorOnly && !operatorAllowed(r)) {
 			continue
 		}
 		out = append(out, t)

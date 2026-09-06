@@ -36,7 +36,11 @@ type ListResponse struct {
 // commodities and currencies.
 // @example {"category": "crypto"}
 func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
-	rsp.Text = Text(req.Category)
+	var summary strings.Builder
+	for _, item := range rsp.Items {
+		fmt.Fprintf(&summary, "%s: %.8g %s (%s)\n", item.Symbol, item.Value, item.Currency, item.Source)
+	}
+	rsp.Text = summary.String()
 	listPrices(req, rsp)
 	return nil
 }

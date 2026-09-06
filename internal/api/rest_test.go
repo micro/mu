@@ -219,3 +219,14 @@ func TestPrivateSearchUsesTheBody(t *testing.T) {
 		t.Fatalf("example puts private search in a URL: %s", call)
 	}
 }
+
+func TestStructuredResponsePreservesLegacyProse(t *testing.T) {
+	rsp := restResponse(`{"text":"Your tasks","items":[{"id":"one"}]}`)
+	if rsp["result"] != "Your tasks" {
+		t.Fatal("legacy prose lost")
+	}
+	data, ok := rsp["data"].(map[string]any)
+	if !ok || data["items"] == nil {
+		t.Fatal("structured records lost")
+	}
+}

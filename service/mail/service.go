@@ -122,7 +122,7 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
-		"Read":   {Doc: "Read your correspondence by id in bounded body-character pages, including attachment names. Follow next_offset for the rest. Omitting id retains the legacy inbox summary"},
+		"Read":   {Doc: "Read your correspondence by id in bounded body-character pages, including attachment names. Follow the returned next offset for the rest. Omitting id retains the legacy inbox summary"},
 		"Inbox":  {Doc: "List the account's most recent messages — read my mail, check my inbox"},
 		"Search": {Doc: "Search the account's mail and return matching messages"},
 		// Aliased to the name it had, because an agent that learned mail_address

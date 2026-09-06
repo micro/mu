@@ -149,7 +149,7 @@ func (a *asker) ask(text string) (string, error) {
 		return "", fmt.Errorf("not signed in — run `mu login` or set MU_TOKEN")
 	case resp.StatusCode == http.StatusPaymentRequired:
 		return "", fmt.Errorf("out of credits — top up at %s",
-			strings.SplitN(a.url, "/agent/", 2)[0]+"/wallet/topup")
+			strings.SplitN(a.url, "/agent/", 2)[0]+"/account/topup")
 	case resp.StatusCode == http.StatusNotFound:
 		return "", fmt.Errorf("no agent at %s", a.url)
 	case resp.StatusCode >= 400:

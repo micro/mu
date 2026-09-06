@@ -133,13 +133,14 @@ func CreateStanding(owner, title string, when time.Time, note string, minutes in
 	mu.Lock()
 	events[e.ID] = e
 	saveLocked()
+	snapshot := *e
 	mu.Unlock()
 
 	if OnCreate != nil {
-		cp := *e
+		cp := snapshot
 		go OnCreate(&cp)
 	}
-	return e, nil
+	return &snapshot, nil
 }
 
 // List returns owner's events, soonest first.

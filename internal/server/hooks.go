@@ -53,6 +53,7 @@ import (
 	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
+	"mu/service/bookmarks"
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
@@ -64,7 +65,6 @@ import (
 	"mu/service/news"
 	"mu/service/notify"
 	"mu/service/recall"
-	"mu/service/bookmarks"
 	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
@@ -683,7 +683,7 @@ func wireHooks() {
 			return false, err
 		}
 		if !ok {
-			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /wallet/topup",
+			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /account/topup",
 				cost, quota.BalanceOf(account))
 		}
 		return true, nil

@@ -25,7 +25,7 @@ type mcpReqKey struct{}
 func mcpResolver() gwmcp.Resolver { return mcpResolverFor(nil) }
 func mcpResolverFor(r *http.Request) gwmcp.Resolver {
 	res := gwmcp.NewManualResolver()
-	st := mcpTools()
+	st := mcpToolsFor(r)
 	for i := range st {
 		t := st[i]
 		if t.OperatorOnly && !operatorAllowed(r) {
@@ -176,6 +176,7 @@ func itoa(n int) string {
 // stream, and holding a streamed response in memory to add nothing to it would
 // be a bad trade.
 func serveMCP(w http.ResponseWriter, r *http.Request) {
+	catalogueHeaders(w, r)
 	handler := gwmcp.NewHandler(scoped(mcpResolverFor(r), scopeFrom(r)),
 		gwmcp.WithServerInfo("mu", "1.0.0"),
 		gwmcp.WithProtocolVersion(MCPVersion))

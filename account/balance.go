@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"mu/internal/quota"
+	"mu/internal/x402"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -597,7 +598,8 @@ func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
 const maxTopupDollars = 500
 
 type TopupMethod struct {
-	Type  string            `json:"type"`            // "card"
+	Type  string            `json:"type"`
+	Path  string            `json:"path,omitempty"`  // "card"
 	Tiers []StripeTopupTier `json:"tiers,omitempty"` // For card/Stripe
 }
 
@@ -608,7 +610,10 @@ func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var methods []TopupMethod
+	methods := []TopupMethod{}
+	if x402.Enabled() {
+		methods = append(methods, TopupMethod{Type: "usdc", Path: "/account/topup"})
+	}
 
 	if StripeEnabled() {
 		methods = append(methods, TopupMethod{

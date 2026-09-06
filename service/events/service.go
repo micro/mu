@@ -71,11 +71,14 @@ type ListRequest struct {
 
 // ListResponse is the caller's upcoming events as model-ready text.
 type ListResponse struct {
-	Items      []*Event `json:"items"`
-	Total      int      `json:"total"`
-	Offset     int      `json:"offset"`
-	NextOffset *int     `json:"next_offset,omitempty"`
-	Events     string   `json:"events" description:"The caller's upcoming events, soonest first"`
+	External           []External `json:"external"`
+	ExternalTotal      int        `json:"external_total"`
+	ExternalNextOffset *int       `json:"external_next_offset,omitempty"`
+	Items              []*Event   `json:"items"`
+	Total              int        `json:"total"`
+	Offset             int        `json:"offset"`
+	NextOffset         *int       `json:"next_offset,omitempty"`
+	Events             string     `json:"events" description:"The caller's upcoming events, soonest first"`
 }
 
 // List returns the caller's upcoming (not-yet-fired) events.
@@ -108,7 +111,13 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 	// from. Both facts are the same fact: Mu did not schedule these and cannot
 	// cancel them, so offering an id would be offering something that fails.
 	now := time.Now()
-	for _, x := range externalEntries(owner, now, now.Add(14*24*time.Hour)) {
+	external := externalEntries(owner, now, now.Add(14*24*time.Hour))
+	xs, xe := service.PageRange(len(external), req.Offset, req.Limit)
+	rsp.External, rsp.ExternalTotal = external[xs:xe], len(external)
+	if xe < len(external) {
+		rsp.ExternalNextOffset = &xe
+	}
+	for _, x := range rsp.External {
 		fmt.Fprintf(&b, "- %s — %s", x.Start.Format("Mon 2 Jan 15:04 MST"), x.Title)
 		if x.Location != "" {
 			fmt.Fprintf(&b, " (%s)", x.Location)

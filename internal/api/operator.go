@@ -23,5 +23,8 @@ func operatorAllowed(r *http.Request) bool {
 		}
 		return false
 	}
+	if r.Header.Get("Authorization") != "" || r.Header.Get("X-Micro-Token") != "" {
+		return false
+	}
 	return true
 }

@@ -21,14 +21,14 @@ import "time"
 // External is one entry on a calendar Mu does not own. Read-only by
 // construction: there is no id here to cancel by, because Mu cannot cancel it.
 type External struct {
-	Title    string
-	Start    time.Time
-	End      time.Time
-	Location string
-	AllDay   bool
+	Title    string    `json:"title"`
+	Start    time.Time `json:"start"`
+	End      time.Time `json:"end"`
+	Location string    `json:"location"`
+	AllDay   bool      `json:"all_day"`
 	// Source names where it came from, for a UI that must never imply Mu
 	// scheduled something it did not.
-	Source string
+	Source string `json:"source"`
 }
 
 // Length is how long the entry occupies, with the same half-hour default the

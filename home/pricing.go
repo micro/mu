@@ -85,7 +85,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 			`A credit is a cent, and it is spent on what you use rather than on a plan — ` +
 			`there is no subscription, and an account that sits idle is charged nothing.</p>` +
 			`<p class="text-sm"><a href="/signup" class="btn">Sign up</a> ` +
-			`<a href="/wallet/topup" class="btn btn-secondary">Top up</a></p>`
+			`<a href="/account/topup" class="btn btn-secondary">Top up</a></p>`
 	} else {
 		// Metered but with no card route configured — x402 only. Real, and the
 		// page must not offer a top-up form that is not there.
