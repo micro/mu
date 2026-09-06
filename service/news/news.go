@@ -1681,18 +1681,15 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			%s
 			%s
 			%s
-			<div class="article-actions">
+			<div class="article-actions reading-actions">
 				<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
-				<span class="mx-2">·</span>
 				%s
-				<span class="mx-2">·</span>
-				<a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;">Share →</a>
 			</div>
 			<div class="article-back">
 				<a href="/news">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, htmlpkg.EscapeString(articleURL), app.ReadingActions(r, articleID))
+	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, htmlpkg.EscapeString(articleURL), app.ReadingActionItems(r, articleID))
 
 	// Use title for browser tab, but empty page title since article already has its own H1
 	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: articleHtml + app.ReadingCSS})

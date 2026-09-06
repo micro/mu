@@ -16,13 +16,19 @@ type Server struct{}
 
 // SearchRequest searches an account's mail.
 type SearchRequest struct {
-	Query string `json:"query" description:"What to look for"`
-	Limit int    `json:"limit" description:"Max results (default 10)"`
+	Tag    string `json:"tag" description:"Only messages sent to this plus-address tag"`
+	Offset int    `json:"offset" description:"Matching messages to skip"`
+	Query  string `json:"query" description:"What to look for"`
+	Limit  int    `json:"limit" description:"Max results (default 10)"`
 }
 
 // SearchResponse is a model-ready list of matching messages.
 type SearchResponse struct {
-	Text string `json:"text" description:"Matching messages: subject, sender, snippet and id"`
+	Items      []MessageView `json:"items"`
+	Total      int           `json:"total"`
+	Offset     int           `json:"offset"`
+	NextOffset *int          `json:"next_offset,omitempty"`
+	Text       string        `json:"text" description:"Matching messages: subject, sender, snippet and id"`
 }
 
 // Search searches the account's mail and returns the matching messages. With an
@@ -30,35 +36,21 @@ type SearchResponse struct {
 // "read my mail" still works.
 // @example {"query": "invoice"}
 func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchResponse) error {
-	account := service.AccountFrom(ctx)
-	limit := req.Limit
-	if limit <= 0 {
-		limit = 10
-	}
-	if strings.TrimSpace(req.Query) == "" {
-		rsp.Text = renderInbox(ListMessages(account, limit))
-		return nil
-	}
-	msgs := Search(account, req.Query, limit)
-	if len(msgs) == 0 {
-		rsp.Text = fmt.Sprintf("No mail found for %q.", req.Query)
-		return nil
-	}
-	rsp.Text = fmt.Sprintf("Mail matching %q:\n", req.Query) + renderMessages(msgs)
-	return nil
+	return messagePage(service.AccountFrom(ctx), req.Query, req.Tag, req.Offset, req.Limit, strings.TrimSpace(req.Query) != "", rsp)
 }
 
 // InboxRequest lists the account's recent inbox messages.
 type InboxRequest struct {
-	Limit int `json:"limit" description:"Max messages (default 10)"`
+	Tag    string `json:"tag" description:"Only messages sent to this plus-address tag"`
+	Offset int    `json:"offset" description:"Matching messages to skip"`
+	Limit  int    `json:"limit" description:"Max messages (default 10)"`
 }
 
 // Inbox lists the account's most recent messages without needing a search query.
 // Use this for "read my mail", "check my inbox" or "any new email?".
 // @example {}
 func (Server) Inbox(ctx context.Context, req *InboxRequest, rsp *SearchResponse) error {
-	rsp.Text = renderInbox(ListMessages(service.AccountFrom(ctx), req.Limit))
-	return nil
+	return messagePage(service.AccountFrom(ctx), "", req.Tag, req.Offset, req.Limit, false, rsp)
 }
 
 // renderInbox formats an inbox listing (or a friendly empty message).
@@ -130,7 +122,8 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
-		"Inbox":  {Aliases: []string{"mail_read"}, Doc: "List the account's most recent messages — read my mail, check my inbox"},
+		"Read":   {Doc: "Read your correspondence by id in bounded body-character pages, including attachment names. Follow next_offset for the rest. Omitting id retains the legacy inbox summary"},
+		"Inbox":  {Doc: "List the account's most recent messages — read my mail, check my inbox"},
 		"Search": {Doc: "Search the account's mail and return matching messages"},
 		// Aliased to the name it had, because an agent that learned mail_address
 		// last week should not find it gone. What it returns changed shape, and

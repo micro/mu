@@ -23,17 +23,24 @@ type CreateRequest struct {
 
 // TaskResponse carries one task back.
 type TaskResponse struct {
+	Item *Task  `json:"item,omitempty"`
 	Text string `json:"text" description:"The task"`
 }
 
 // ListRequest filters the caller's tasks.
 type ListRequest struct {
+	Offset int    `json:"offset" description:"Tasks to skip"`
+	Limit  int    `json:"limit" description:"Maximum tasks, default 20, max 100"`
 	Status string `json:"status" description:"Optional filter: todo, doing or done"`
 }
 
 // ListResponse is a model-ready list.
 type ListResponse struct {
-	Text string `json:"text" description:"The caller's tasks, open ones first"`
+	Items      []*Task `json:"items"`
+	Total      int     `json:"total"`
+	Offset     int     `json:"offset"`
+	NextOffset *int    `json:"next_offset,omitempty"`
+	Text       string  `json:"text" description:"The caller's tasks, open ones first"`
 }
 
 // NextRequest takes nothing: the next task is a property of the list.
@@ -97,6 +104,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse)
 		}()
 	}
 
+	rsp.Item = t
 	rsp.Text = Render([]*Task{t})
 	return nil
 }
@@ -104,7 +112,13 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse)
 // List returns the caller's tasks.
 // @example {"status": "todo"}
 func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) error {
-	rsp.Text = Render(List(service.AccountFrom(ctx), req.Status))
+	items := List(service.AccountFrom(ctx), req.Status)
+	start, end := service.PageRange(len(items), req.Offset, req.Limit)
+	rsp.Items, rsp.Total, rsp.Offset = items[start:end], len(items), start
+	if end < len(items) {
+		rsp.NextOffset = &end
+	}
+	rsp.Text = Render(rsp.Items)
 	return nil
 }
 
@@ -116,6 +130,7 @@ func (Server) Next(ctx context.Context, _ *NextRequest, rsp *TaskResponse) error
 		rsp.Text = "Nothing assigned to the agent."
 		return nil
 	}
+	rsp.Item = t
 	rsp.Text = Render([]*Task{t})
 	return nil
 }
@@ -127,6 +142,7 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *TaskResponse)
 	if err != nil {
 		return err
 	}
+	rsp.Item = t
 	rsp.Text = Render([]*Task{t})
 	return nil
 }

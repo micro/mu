@@ -21,7 +21,7 @@ func TestBrowseFiltersAndPaginatesWithoutDuplicateHeadlines(t *testing.T) {
 	if strings.Count(body, `<article `) != 5 || strings.Contains(body, ">World story<") || strings.Contains(body, ">Story 0<") {
 		t.Fatal("wrong filtered page")
 	}
-	if !strings.Contains(body, `/agent/micro?item=p20`) || !strings.Contains(body, `/saved?item=p20`) {
+	if !strings.Contains(body, `/agent/micro?item=p20`) || !strings.Contains(body, `/bookmarks?item=p20`) {
 		t.Fatal("missing private reading actions")
 	}
 	if strings.Contains(body, `/chat?id=`) {

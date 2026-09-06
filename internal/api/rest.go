@@ -204,7 +204,12 @@ func RESTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.RespondJSON(w, map[string]any{"result": text})
+	response := map[string]any{"result": text}
+	var structured map[string]any
+	if json.Unmarshal([]byte(text), &structured) == nil && structured != nil {
+		response["data"] = structured
+	}
+	app.RespondJSON(w, response)
 }
 
 // headerCredential reports whether the caller identified itself with something
@@ -334,6 +339,9 @@ func restCatalogue(w http.ResponseWriter, r *http.Request) {
 	for _, sp := range service.Specs() {
 		s := svc{Service: sp.Name, Description: sp.Description, Scoped: sp.Scoped}
 		for name, ep := range sp.Endpoints {
+			if ep.Needs == service.Operator && !operatorAllowed(r) {
+				continue
+			}
 			tool := sp.Name + "_" + strings.ToLower(name)
 			s.Methods = append(s.Methods, method{
 				Method:      name,

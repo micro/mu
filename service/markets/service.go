@@ -14,6 +14,8 @@ type Server struct{}
 
 // ListRequest selects a market category.
 type ListRequest struct {
+	Offset int `json:"offset" description:"Instruments to skip"`
+	Limit  int `json:"limit" description:"Maximum instruments, default 20, max 100"`
 	// Enumerated, because a list of category names tells a caller nothing about
 	// what is in them — which is how an agent asked for the oil price chose
 	// "commodities", got coffee and wheat, and reported oil unavailable while
@@ -23,7 +25,11 @@ type ListRequest struct {
 
 // ListResponse is a model-ready price summary.
 type ListResponse struct {
-	Text string `json:"text" description:"Live prices for the requested category"`
+	Items      []Price `json:"items"`
+	Total      int     `json:"total"`
+	Offset     int     `json:"offset"`
+	NextOffset *int    `json:"next_offset,omitempty"`
+	Text       string  `json:"text" description:"Live prices for the requested category"`
 }
 
 // List returns live market prices for cryptocurrencies, stocks, futures,
@@ -31,6 +37,7 @@ type ListResponse struct {
 // @example {"category": "crypto"}
 func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
 	rsp.Text = Text(req.Category)
+	listPrices(req, rsp)
 	return nil
 }
 
@@ -88,7 +95,9 @@ var Spec = service.Spec{
 	// it — see service.Spec.Now and Now, above.
 	Now: Now,
 	Endpoints: map[string]service.Endpoint{
-		"List": {Aliases: []string{"markets"}, Doc: "Get live prices for cryptocurrencies, stocks, commodities (oil, gold, silver, copper and crops), futures and currencies"},
+		"Quote":   {Doc: "Read one supported instrument price in USD, with source, timestamp and staleness"},
+		"History": {Needs: service.Caller, Doc: "Read daily closing prices for a supported instrument over a range of up to 366 days. Missing trading days are omitted. Uses Yahoo Finance"},
+		"List":    {Aliases: []string{"markets"}, Doc: "Get live prices for cryptocurrencies, stocks, commodities (oil, gold, silver, copper and crops), futures and currencies"},
 		"Convert": {Doc: "Convert an amount from one currency to another — 250 GBP in JPY. Uses European " +
 			"Central Bank reference rates, and takes a past date back to 1999. Crypto converts at the " +
 			"live price through the dollar"},

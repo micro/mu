@@ -2,6 +2,7 @@ package tool
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -125,8 +126,9 @@ func TestASingleTextFieldComesBackAsText(t *testing.T) {
 	if got := renderResponse(map[string]any{"events": "No upcoming events."}); got != "No upcoming events." {
 		t.Errorf("a lone string field was not returned as text: %q", got)
 	}
-	if got := renderResponse(map[string]any{"text": "hello", "count": 2.0}); got != "hello" {
-		t.Errorf("a text field was not preferred: %q", got)
+	var record map[string]any
+	if err := json.Unmarshal([]byte(renderResponse(map[string]any{"text": "hello", "count": 2.0})), &record); err != nil || record["text"] != "hello" || record["count"] != 2.0 {
+		t.Fatalf("structured fields were discarded: %v %v", record, err)
 	}
 	got := renderResponse(map[string]any{"rooms": []any{}, "n": 1.0})
 	if !strings.HasPrefix(got, "{") {

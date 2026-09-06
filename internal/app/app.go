@@ -1202,7 +1202,7 @@ func VerifyBanner(r *http.Request) string {
 	action, href := "Verify →", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
 		// No mail on this instance, so verifying is not on offer: credit is.
-		action, href = "Top up →", "/wallet/topup"
+		action, href = "Top up →", "/account/topup"
 	}
 	// The places named in the sentence are links, because they read as ones.
 	//
@@ -1219,7 +1219,7 @@ func VerifyBanner(r *http.Request) string {
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{
 		{"your Account", "/account"},
-		{"your Balance", "/wallet"},
+		{"your Balance", "/account#balance"},
 	} {
 		said = strings.ReplaceAll(said, l.phrase,
 			`your <a href="`+l.href+`" >`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
@@ -1287,22 +1287,7 @@ func navMain(acc *auth.Account) string {
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
 	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
 	b += item("nav-services", "/services", "/services.svg", "Services")
-	if acc != nil {
-		// Tokens are how you authenticate an agent, so they are yours on every
-		// instance.
-		b += item("nav-saved", "/saved", "/bookmarks.svg", "Saved")
-		b += item("nav-token", "/token", "/token.svg", "Tokens")
-		// A wallet is only a wallet where money can go into it. An instance
-		// somebody runs themselves has no top-up — they are paying the model
-		// vendor directly — so this was a permanent rail entry leading to a
-		// balance that could never change, on the machine where the whole point
-		// is that there is no meter between you and your own server. Hidden the
-		// way Admin is: the page still answers, the rail just does not offer
-		// what this instance cannot do.
-		if TopUpConfigured != nil && TopUpConfigured() {
-			b += item("nav-wallet", "/wallet", "/wallet.png", "Wallet")
-		}
-	}
+
 	return b
 }
 

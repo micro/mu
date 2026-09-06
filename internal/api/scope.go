@@ -80,7 +80,7 @@ func parseScope(raw string) []string {
 	var out []string
 	seen := map[string]bool{}
 	for _, f := range fields {
-		f = strings.ToLower(strings.TrimSpace(f))
+		f = service.CanonicalName(f)
 		if f == "" || seen[f] {
 			continue
 		}
@@ -111,7 +111,7 @@ func inScope(t Tool, scope []string) bool {
 		svc = before
 	}
 	for _, want := range scope {
-		if want == name || (svc != "" && want == svc) {
+		if toolMatches(t, want) || want == name || (svc != "" && service.CanonicalName(want) == svc) {
 			return true
 		}
 		// The nav label is what the sidebar calls it, and what a person is

@@ -135,7 +135,7 @@ func convertForm() string {
 	if !x402.Enabled() {
 		return ""
 	}
-	return `<form class="cw-convert" method="POST" action="/wallet/convert">
+	return `<form class="cw-convert" method="POST" action="/account/convert">
   <label for="cw-amount">Turn into credits</label>
   <div class="cw-convert-row">
     <span class="cw-convert-unit">$</span>

@@ -28,6 +28,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/push"
+	"mu/internal/usage"
 	"mu/service/sms"
 )
 
@@ -799,25 +800,14 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// and destinations belong in the menu with your name on it — see
 	// app.navBottom. Log out was already there.
 
-	// The money is not here any more. Balance, the usage graph and the ledger
-	// were the three cards under the profile, on the reasoning — written above,
-	// twice — that a balance has a deadline and a language picker does not. That
-	// reasoning was right and the conclusion was wrong: the answer to "this
-	// matters more than the rest of the page" is its own page, not the top of
-	// this one. /wallet is that page and Wallet is in the menu beside Account.
-	//
-	// Not even a line pointing at it. There was one for a few minutes, on the
-	// reasoning that somebody would look for money here first — and Wallet is
-	// in the same menu this page is reached from, one item below it. A section
-	// whose only content is a link to its neighbour is the thing being removed
-	// everywhere else on this page.
-	//
+	// Credits and their transaction history belong to this account.
 	// Notifications last, because it is a thing you do rather than a thing you
 	// read, and on a phone it is what makes the product work with the page
 	// closed. It used to render below the Settings section — which ended with
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
-	content := notice + profile +
+	content := notice + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) +
+		app.Section("Access", `<a href="/token">Tokens</a>`) + profile +
 		mailClientCard() +
 		passwordCard(acc) +
 		PlaceCard(r, acc.ID) +

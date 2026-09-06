@@ -14,7 +14,7 @@ package blog
 
 import (
 	"fmt"
-	"mu/internal/saved"
+	"mu/internal/bookmarks"
 	"sync"
 	"testing"
 	"time"
@@ -98,13 +98,13 @@ func TestAPostIsDatedByWhenItWasWritten(t *testing.T) {
 				t.Fatal(err)
 			}
 			id := posts[0].ID
-			if _, err := saved.Source(id); err != nil {
+			if _, err := bookmarks.Source(id); err != nil {
 				t.Fatalf("new public post is not available before CreatePost returns: %v", err)
 			}
 			if err := UpdatePost(id, "Private", "private body", "Tech", true); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := saved.Source(id); err == nil || data.ByID(id) != nil {
+			if _, err := bookmarks.Source(id); err == nil || data.ByID(id) != nil {
 				t.Fatal("private post remains available to saved reading")
 			}
 			var wg sync.WaitGroup
@@ -121,7 +121,7 @@ func TestAPostIsDatedByWhenItWasWritten(t *testing.T) {
 			if err := UpdatePost(id, "Private again", "private body", "Tech", true); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := saved.Source(id); err == nil || data.ByID(id) != nil {
+			if _, err := bookmarks.Source(id); err == nil || data.ByID(id) != nil {
 				t.Fatal("concurrent publication restored a private post")
 			}
 			// A failed save restores the previous source and visibility.
@@ -139,7 +139,7 @@ func TestAPostIsDatedByWhenItWasWritten(t *testing.T) {
 			if err := DeletePost(id); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := saved.Source(id); err == nil || data.ByID(id) != nil {
+			if _, err := bookmarks.Source(id); err == nil || data.ByID(id) != nil {
 				t.Fatal("deleted post remains available to new reading references")
 			}
 			if err := CreatePost("Account post", "body", "writer", "deleted-writer", "Tech", false); err != nil {
@@ -147,7 +147,7 @@ func TestAPostIsDatedByWhenItWasWritten(t *testing.T) {
 			}
 			id = posts[0].ID
 			DeletePostsByAuthor("deleted-writer")
-			if _, err := saved.Source(id); err == nil || data.ByID(id) != nil {
+			if _, err := bookmarks.Source(id); err == nil || data.ByID(id) != nil {
 				t.Fatal("deleted account's post remains available to new reading references")
 			}
 		})

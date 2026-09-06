@@ -88,6 +88,11 @@ func gateway(spec Spec) server.HandlerWrapper {
 		// actually returned — everybody waiting on it as a duplicate gets the
 		// same answer, including the same failure.
 		return func(ctx context.Context, req server.Request, rsp interface{}) (retErr error) {
+			if ep, ok := spec.Endpoints[methodName(req.Method())]; ok && ep.Needs == Operator {
+				if err := requireOperator(ctx, spec.Name+"."+methodName(req.Method())); err != nil {
+					return err
+				}
+			}
 			op := spec.Operation(methodName(req.Method()))
 			if op == "" || Gate.Allow == nil {
 				// Free, or nothing here can charge. Straight through — and

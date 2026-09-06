@@ -138,6 +138,9 @@ func params(t reflect.Type) []api.ToolParam {
 }
 
 func jsonType(t reflect.Type) string {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
 	switch t.Kind() {
 	case reflect.Bool:
 		return "boolean"
@@ -190,8 +193,9 @@ func derivedTool(spec service.Spec, ep service.Endpoint, name string, reqType re
 		// here, or the tool is advertised to an anonymous caller and refused
 		// one call later — and, for web_fetch, is a request this server makes
 		// to wherever a stranger names.
-		AccountOnly: ep.Needs == service.Account,
-		Params:      params(reqType),
+		AccountOnly:  ep.Needs >= service.Account,
+		OperatorOnly: ep.Needs == service.Operator,
+		Params:       params(reqType),
 	}
 }
 
@@ -267,20 +271,14 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 	})
 }
 
-// renderResponse prefers the one text field a response carries, because that is
-// what these endpoints are written to return — model-ready prose, not a struct
-// to be unpacked. Anything else goes back as JSON.
+// renderResponse preserves structured records beside readable text. A legacy
+// response containing only one string keeps its original plain-text shape.
 func renderResponse(rsp map[string]any) string {
 	if len(rsp) == 1 {
 		for _, v := range rsp {
 			if s, ok := v.(string); ok {
 				return s
 			}
-		}
-	}
-	for _, key := range []string{"text", "result", "answer", "status"} {
-		if s, ok := rsp[key].(string); ok && s != "" {
-			return s
 		}
 	}
 	b, err := json.Marshal(rsp)

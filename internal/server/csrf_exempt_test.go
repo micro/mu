@@ -30,7 +30,7 @@ func TestWebhooksAreExemptFromCSRF(t *testing.T) {
 
 // And an ordinary form post is not exempt, which is the whole point.
 func TestOrdinaryPostsStillNeedAToken(t *testing.T) {
-	for _, path := range []string{"/sms", "/blog", "/notes", "/account", "/webhooks"} {
+	for _, path := range []string{"/sms", "/blog", "/notes", "/account", "/webhooks", "/stripe/checkout", "/account/transfer", "/wallet/stripe/checkout", "/account/convert"} {
 		r := httptest.NewRequest(http.MethodPost, path, nil)
 		if csrfExempt(r) {
 			t.Errorf("%s is exempt from CSRF and should not be", path)

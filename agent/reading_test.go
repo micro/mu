@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"mu/internal/auth"
-	"mu/internal/saved"
+	"mu/internal/bookmarks"
 	"mu/internal/thread"
 )
 
@@ -16,11 +16,11 @@ func TestReadingIsPrivateAndAttachedToANewConversation(t *testing.T) {
 	if err := auth.Create(&auth.Account{ID: owner, Name: owner, Secret: "fixture"}); err != nil {
 		t.Fatal(err)
 	}
-	item, err := saved.Add(owner, saved.Item{URL: "https://example.com/material", Title: "Reading title", Note: "private annotation"})
+	item, err := bookmarks.Add(owner, bookmarks.Item{URL: "https://example.com/material", Title: "Reading title", Note: "private annotation"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer saved.Clear(owner)
+	defer bookmarks.Clear(owner)
 	sess, err := auth.CreateSession(owner)
 	if err != nil {
 		t.Fatal(err)

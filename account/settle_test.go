@@ -164,7 +164,7 @@ func TestSettlingChecksThePurchaseBelongsToTheCaller(t *testing.T) {
 // only says a payment worked.
 func TestCheckoutReturnsThroughTheHandlerThatSettles(t *testing.T) {
 	src := readWalletSource(t, "balance.go")
-	if !strings.Contains(src, "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}") {
+	if !strings.Contains(src, "/stripe/success?session_id={CHECKOUT_SESSION_ID}") {
 		t.Error("the checkout does not return with a session id, so it lands " +
 			"somewhere that cannot settle the payment if the webhook never arrives")
 	}

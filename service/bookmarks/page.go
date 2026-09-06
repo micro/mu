@@ -1,4 +1,4 @@
-package saved
+package bookmarks
 
 import (
 	"fmt"
@@ -10,10 +10,17 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	store "mu/internal/saved"
+	store "mu/internal/bookmarks"
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// Old bookmarks and forms keep working, including POST searches.
+	if r.URL.Path == "/saved" || r.URL.Path == "/saved/search" {
+		r = r.Clone(r.Context())
+		u := *r.URL
+		u.Path = strings.Replace(u.Path, "/saved", "/bookmarks", 1)
+		r.URL = &u
+	}
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)
@@ -40,7 +47,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		query = r.PostFormValue("query")
 		kind = r.PostFormValue("kind")
 		offset, _ = strconv.Atoi(r.PostFormValue("offset"))
-		if r.URL.Path != "/saved/search" {
+		if r.URL.Path != "/bookmarks/search" {
 			if err = auth.CheckPostRate(sess.Account); err != nil {
 				app.Error(w, r, http.StatusTooManyRequests, err.Error())
 				return
@@ -61,7 +68,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				app.BadRequest(w, r, err.Error())
 				return
 			}
-			back := "/saved"
+			back := "/bookmarks"
 			if r.PostFormValue("action") == "note" {
 				back += "?id=" + url.QueryEscape(r.PostFormValue("id"))
 			}
@@ -89,7 +96,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="saved-page"><p class="lens-lead">Your reading, kept privately. Save something while browsing, then come back to it or ask Micro about it.</p>`)
+	b.WriteString(`<div class="bookmarks-page"><p class="lens-lead">Your reading, kept privately. Save something while browsing, then come back to it or ask Micro about it.</p>`)
 	if ref := r.URL.Query().Get("item"); ref != "" {
 		item, e := store.Source(ref)
 		if e != nil {
@@ -107,10 +114,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, item)
 			return
 		}
-		b.WriteString(`<p><a href="/saved">← Saved</a></p><h2>` + html.EscapeString(item.Title) + `</h2><p>` + html.EscapeString(item.Excerpt) + `</p>`)
-		b.WriteString(`<div class="reading-actions"><a href="` + html.EscapeString(item.URL) + `" rel="noopener noreferrer">Original ↗</a><a href="/agent/micro?saved=` + url.QueryEscape(item.ID) + `">Ask Micro</a></div>`)
-		b.WriteString(`<form method="POST" action="/saved">` + token(r) + hidden("action", "note") + hidden("id", item.ID) + `<label for="saved-note">Private note</label><textarea id="saved-note" name="note" rows="4" maxlength="4000">` + html.EscapeString(item.Note) + `</textarea><button>Save note</button></form>`)
-		b.WriteString(`<form method="POST" action="/saved" class="reading-actions">` + token(r) + hidden("action", "delete") + hidden("id", item.ID) + `<button>Remove from Saved</button></form>`)
+		b.WriteString(`<p><a href="/bookmarks">← Bookmarks</a></p><h2>` + html.EscapeString(item.Title) + `</h2><p>` + html.EscapeString(item.Excerpt) + `</p>`)
+		b.WriteString(`<div class="reading-actions"><a href="` + html.EscapeString(item.URL) + `" rel="noopener noreferrer">Original ↗</a><a href="/agent/micro?bookmark=` + url.QueryEscape(item.ID) + `">Discuss</a></div>`)
+		b.WriteString(`<form method="POST" action="/bookmarks">` + token(r) + hidden("action", "note") + hidden("id", item.ID) + `<label for="saved-note">Private note</label><textarea id="saved-note" name="note" rows="4" maxlength="4000">` + html.EscapeString(item.Note) + `</textarea><button>Save note</button></form>`)
+		b.WriteString(`<form method="POST" action="/bookmarks" class="reading-actions">` + token(r) + hidden("action", "delete") + hidden("id", item.ID) + `<button>Remove bookmark</button></form>`)
 	} else {
 		items, total, e := store.List(sess.Account, query, kind, offset, 20)
 		if e != nil {
@@ -121,7 +128,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, map[string]any{"items": items, "total": total})
 			return
 		}
-		b.WriteString(`<form method="POST" action="/saved/search" class="saved-search">` + token(r) + `<input type="search" name="query" value="` + html.EscapeString(query) + `" placeholder="Search your saved items"><select name="kind" aria-label="Content type">`)
+		b.WriteString(`<form method="POST" action="/bookmarks/search" class="bookmarks-search">` + token(r) + `<input type="search" name="query" value="` + html.EscapeString(query) + `" placeholder="Search your saved items"><select name="kind" aria-label="Content type">`)
 		for _, k := range []string{"", "article", "video", "post", "link"} {
 			selected := ""
 			if k == kind {
@@ -136,13 +143,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</select><button>Search</button></form>`)
 		if len(items) == 0 {
 			if query != "" || kind != "" {
-				b.WriteString(`<p>No saved items match this search. <a href="/saved">Show all saved items</a>.</p>`)
+				b.WriteString(`<p>No saved items match this search. <a href="/bookmarks">Show all saved items</a>.</p>`)
 			} else {
 				b.WriteString(`<p>Nothing saved here yet. Browse <a href="/news">News</a> or <a href="/video">Video</a>, or add a link below.</p>`)
 			}
 		}
 		for _, i := range items {
-			b.WriteString(`<article class="reading-row"><div class="reading-meta">` + html.EscapeString(i.Kind+" · "+i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3><a href="/saved?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p>` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original ↗</a><a href="/agent/micro?saved=` + url.QueryEscape(i.ID) + `">Ask Micro</a></div></article>`)
+			b.WriteString(`<article class="reading-row"><div class="reading-meta">` + html.EscapeString(i.Kind+" · "+i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p>` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original ↗</a><a href="/agent/micro?bookmark=` + url.QueryEscape(i.ID) + `">Discuss</a></div></article>`)
 		}
 		b.WriteString(`<div class="reading-actions">`)
 		for _, p := range []struct {
@@ -152,12 +159,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if p.off < 0 || p.off >= total {
 				continue
 			}
-			b.WriteString(`<form method="POST" action="/saved/search">` + token(r) + hidden("query", query) + hidden("kind", kind) + hidden("offset", strconv.Itoa(p.off)) + `<button>` + p.label + `</button></form>`)
+			b.WriteString(`<form method="POST" action="/bookmarks/search">` + token(r) + hidden("query", query) + hidden("kind", kind) + hidden("offset", strconv.Itoa(p.off)) + `<button>` + p.label + `</button></form>`)
 		}
-		b.WriteString(`</div><details><summary>Add a link</summary><form method="POST" action="/saved" class="saved-add">` + token(r) + hidden("action", "add") + `<input name="url" type="url" required maxlength="4096" placeholder="https://…" aria-label="Link"><input name="title" maxlength="1000" placeholder="Title" aria-label="Title"><button>Save link</button></form></details>`)
+		b.WriteString(`</div><details><summary>Add a link</summary><form method="POST" action="/bookmarks" class="bookmarks-add">` + token(r) + hidden("action", "add") + `<input name="url" type="url" required maxlength="4096" placeholder="https://…" aria-label="Link"><input name="title" maxlength="1000" placeholder="Title" aria-label="Title"><button>Save link</button></form></details>`)
 	}
-	b.WriteString(`</div>` + app.ReadingCSS + `<style>.saved-page{max-width:800px}.saved-search,.saved-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.saved-search input{flex:1;min-width:160px}.saved-page textarea{display:block;width:100%;box-sizing:border-box;margin:8px 0}.saved-add{margin-top:12px}</style>`)
-	app.Respond(w, r, app.Response{Title: "Saved", Description: "Your private saved reading", HTML: b.String()})
+	b.WriteString(`</div>` + app.ReadingCSS + `<style>.bookmarks-page{max-width:800px}.bookmarks-search,.bookmarks-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.bookmarks-search input{flex:1;min-width:160px}.bookmarks-page textarea{display:block;width:100%;box-sizing:border-box;margin:8px 0}.bookmarks-add{margin-top:12px}</style>`)
+	app.Respond(w, r, app.Response{Title: "Bookmarks", Description: "Your private saved reading", HTML: b.String()})
 }
 func hidden(name, value string) string {
 	return fmt.Sprintf(`<input type="hidden" name="%s" value="%s">`, name, html.EscapeString(value))
