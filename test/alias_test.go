@@ -26,11 +26,13 @@ import (
 // legacy is every retired name that must keep resolving, and what it resolves
 // to. Add to it when a tool is renamed; never remove from it, because removing
 // an entry is exactly the breakage this is here to catch.
+// news_headlines was deliberately promoted to its own no-argument endpoint
+// for the home card selection. Callers wanting topic/limit or ListResponse.Text
+// must use news_list; it is no longer a compatibility alias.
 var legacy = map[string]string{
 	"search_web":     "web_search",
 	"search_fetch":   "web_fetch",
 	"news":           "news_list",
-	"news_headlines": "news_list",
 	"markets":        "markets_list",
 	"image_generate": "images_generate",
 	"image_search":   "images_search",
