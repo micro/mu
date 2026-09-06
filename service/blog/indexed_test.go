@@ -13,6 +13,9 @@ package blog
 // its own terms. This tests the one function they now share.
 
 import (
+	"fmt"
+	"mu/internal/saved"
+	"sync"
 	"testing"
 	"time"
 
@@ -75,6 +78,62 @@ func TestAPostIsDatedByWhenItWasWritten(t *testing.T) {
 	indexPost(Post{ID: "linked", Title: "Now private", Content: "private content", Private: true})
 	if data.ByID("linked") != nil {
 		t.Fatal("private post remains publicly indexed")
+	}
+
+	// Exercise real publication and editing, on both supported index backends.
+	// The returned operation must already have reconciled archive visibility;
+	// a delayed publication must never bring a now-private post back.
+	originalBackend := data.UseSQLite
+	oldPosts, oldMap, oldUnreadable := posts, postsMap, postsUnreadable
+	t.Cleanup(func() {
+		data.UseSQLite = originalBackend
+		posts, postsMap, postsUnreadable = oldPosts, oldMap, oldUnreadable
+		updateCache()
+	})
+	posts, postsMap, postsUnreadable = nil, map[string]*Post{}, false
+	for _, sqlite := range []bool{true, false} {
+		data.UseSQLite = sqlite
+		t.Run(fmt.Sprintf("visibility/sqlite=%v", sqlite), func(t *testing.T) {
+			if err := CreatePost("Public", "public body", "writer", "writer-id", "Tech", false); err != nil {
+				t.Fatal(err)
+			}
+			id := posts[0].ID
+			if _, err := saved.Source(id); err != nil {
+				t.Fatalf("new public post is not available before CreatePost returns: %v", err)
+			}
+			if err := UpdatePost(id, "Private", "private body", "Tech", true); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := saved.Source(id); err == nil || data.ByID(id) != nil {
+				t.Fatal("private post remains available to saved reading")
+			}
+			var wg sync.WaitGroup
+			for i := 0; i < 8; i++ {
+				wg.Add(1)
+				go func(i int) {
+					defer wg.Done()
+					if err := UpdatePost(id, fmt.Sprintf("Public %d", i), "public body", "Tech", false); err != nil {
+						t.Error(err)
+					}
+				}(i)
+			}
+			wg.Wait()
+			if err := UpdatePost(id, "Private again", "private body", "Tech", true); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := saved.Source(id); err == nil || data.ByID(id) != nil {
+				t.Fatal("concurrent publication restored a private post")
+			}
+			// A failed save restores the previous source and visibility.
+			postsUnreadable = true
+			if err := UpdatePost(id, "Failed public", "body", "Tech", false); err == nil {
+				t.Fatal("unwritable source accepted a visibility change")
+			}
+			postsUnreadable = false
+			if !postsMap[id].Private || data.ByID(id) != nil {
+				t.Fatal("failed save changed private source or public index")
+			}
+		})
 	}
 
 }

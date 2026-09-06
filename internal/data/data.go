@@ -443,6 +443,17 @@ func IndexOwned(id, entryType, title, content, owner string, metadata map[string
 	}
 }
 
+// IndexSync makes a public entry visible before returning. Use it where
+// publication and withdrawal must be ordered with the source record's lock.
+// Ordinary ingestion can still use the background Index queue.
+func IndexSync(id, entryType, title, content string, metadata map[string]interface{}) error {
+	if UseSQLite {
+		return IndexSQLite(id, entryType, title, content, "", metadata)
+	}
+	processIndexWork(IndexWork{ID: id, Type: entryType, Title: title, Content: content, Metadata: metadata})
+	return nil
+}
+
 // processIndexWork does the actual indexing work
 func processIndexWork(work IndexWork) {
 	indexMutex.RLock()
@@ -543,13 +554,18 @@ func ByID(id string) *IndexEntry {
 //
 // The half that was missing. Index and IndexOwned had no opposite, so anything
 // deleted stayed findable — see UnindexSQLite.
-func Unindex(id string) {
+func Unindex(id string) error {
 	if id == "" {
-		return
+		return nil
 	}
-	if err := UnindexSQLite(id); err != nil {
-		fmt.Printf("unindex %s: %v\n", id, err)
+	if !UseSQLite {
+		indexMutex.Lock()
+		delete(index, id)
+		indexMutex.Unlock()
+		go saveIndex()
+		return nil
 	}
+	return UnindexSQLite(id)
 }
 
 // UnindexOwned removes everything an account has in the index.

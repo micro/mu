@@ -208,27 +208,28 @@ func Load() {
 					if p.ID == postID {
 						p.Tags = tag
 						post = p
+						if err := indexPost(*p); err != nil {
+							app.Log("blog", "Indexing tagged post: %v", err)
+						}
 						break
 					}
 				}
-				mutex.Unlock()
-
 				if post == nil {
+					mutex.Unlock()
 					app.Log("blog", "Post %s not found for tagging", postID)
 					continue
 				}
 
 				// Save to disk
 				if err := save(); err != nil {
+					mutex.Unlock()
 					app.Log("blog", "Error saving auto-tag for post %s: %v", postID, err)
 					continue
 				}
 
-				// Update cached HTML
-				updateCache()
-
-				// Re-index with the new tag
-				indexPost(*post)
+				updateCacheUnlocked()
+				mutex.Unlock()
+				event.Publish(event.Event{Type: "blog_updated"})
 
 				app.Log("blog", "Auto-tagged post %s with: %s", postID, tag)
 			}
@@ -314,13 +315,15 @@ func Load() {
 	// Update cached HTML
 	updateCache()
 
-	// Index all existing posts for search/RAG
-	go func() {
-		for _, post := range posts {
-			app.Log("blog", "Indexing existing post: %s", post.Title)
-			indexPost(*post)
+	// Reconcile visibility before serving. Read current posts under the lock,
+	// never snapshots that a later background write could republish.
+	mutex.RLock()
+	for _, post := range posts {
+		if err := indexPost(*post); err != nil {
+			app.Log("blog", "Indexing existing post: %v", err)
 		}
-	}()
+	}
+	mutex.RUnlock()
 
 	// Register with moderation subsystem
 	flag.RegisterDeleter("post", &postDeleter{})
@@ -961,26 +964,22 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 		CreatedAt: time.Now(),
 	}
 
+	// Persist and publish while holding the source lock. A later update must
+	// not be followed by an older public index write from this creation.
 	mutex.Lock()
-	// Add to beginning of slice (newest first)
+	defer mutex.Unlock()
 	posts = append([]*Post{post}, posts...)
-	// Add to map for O(1) lookups
 	postsMap[post.ID] = post
-	mutex.Unlock()
-
-	// Save to disk
 	if err := save(); err != nil {
+		posts = posts[1:]
+		delete(postsMap, post.ID)
 		return err
 	}
-
-	// Update cached HTML
-	updateCache()
-
-	// Index the post for search/RAG
-	go func(p Post) {
-		app.Log("blog", "Indexing post: %s", p.Title)
-		indexPost(p)
-	}(*post)
+	updateCacheUnlocked()
+	event.Publish(event.Event{Type: "blog_updated"})
+	if err := indexPost(*post); err != nil {
+		return err
+	}
 
 	// Auto-tag if no tags provided
 	if tags == "" {
@@ -1109,14 +1108,13 @@ func DeletePost(id string) error {
 // post first if it happened to be indexed last.
 //
 // One function, so the next field that has to be there is added once. Take a
-// copy before handing it to a goroutine: posts are mutated under the mutex and
-// the index write is not holding it.
-func indexPost(p Post) {
+// current value while the caller holds mutex. Publication and withdrawal are
+// synchronous on both backends, ordered with changes to the source post.
+func indexPost(p Post) error {
 	if p.Private {
-		data.Unindex(p.ID)
-		return
+		return data.Unindex(p.ID)
 	}
-	data.Index(p.ID, data.KindPost, p.Title, p.Content, map[string]interface{}{
+	return data.IndexSync(p.ID, data.KindPost, p.Title, p.Content, map[string]interface{}{
 		"url":       "/blog/post?id=" + p.ID,
 		"public":    true,
 		"author":    p.Author,
@@ -1135,19 +1133,27 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 		return fmt.Errorf("post not found")
 	}
 
-	post.Title = title
-	post.Content = content
-	post.Tags = tags
-	post.Private = private
+	// Withdraw before acknowledging a private change. If the index cannot be
+	// updated, the source remains public and the caller receives the error.
+	if private {
+		if err := data.Unindex(id); err != nil {
+			return err
+		}
+	}
+	previous := *post
+	post.Title, post.Content, post.Tags, post.Private = title, content, tags, private
 	post.UpdatedAt = time.Now()
-	save()
+	if err := save(); err != nil {
+		*post = previous
+		if indexErr := indexPost(previous); indexErr != nil {
+			app.Log("blog", "Restoring post index: %v", indexErr)
+		}
+		return err
+	}
 	updateCacheUnlocked()
-
-	// Re-index the updated post
-	go func(p Post) {
-		app.Log("blog", "Re-indexing updated post: %s", p.Title)
-		indexPost(p)
-	}(*post)
+	if !private {
+		return indexPost(*post)
+	}
 
 	return nil
 }

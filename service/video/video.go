@@ -1239,6 +1239,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// render watch page
 	if len(id) > 0 {
+		if !validVideoID.MatchString(id) {
+			app.BadRequest(w, r, "Invalid video ID")
+			return
+		}
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
@@ -1256,47 +1260,58 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       <button id="playBtn" onclick="togglePlay()" class="d-none">▶</button>
     </div>
     <script>
-    var player, apiReady=false, tInt;
     (function(){
-      var s=document.createElement('script');
-      s.src='https://www.youtube.com/iframe_api';
-      document.head.appendChild(s);
-    })();
-    function onYouTubeIframeAPIReady(){
-      apiReady=true;
-      player=new YT.Player('ytplayer',{events:{'onReady':onReady,'onStateChange':onState}});
-    }
-    function onReady(){}
-    function onState(e){
-      var b=document.getElementById('playBtn');
-      if(b&&b.style.display!=='none') b.textContent=(e.data===1)?'⏸':'▶';
-    }
-    function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60);var r=s%%60;return m+':'+(r<10?'0':'')+r;}
-    function toggleAudio(){
-      var em=document.querySelector('.video-embed');
-      var vis=document.getElementById('audioVis');
-      var btn=document.getElementById('audioBtn');
-      var pb=document.getElementById('playBtn');
-      var t=document.getElementById('audioTime');
-      var on=em.classList.toggle('audio-only');
-      vis.style.display=on?'flex':'none';
-      btn.textContent=on?'▶ Show video':'♫ Audio only';
-      pb.style.display=on?'inline-flex':'none';
-      if(on){
-        tInt=setInterval(function(){
-          if(!player||!player.getCurrentTime)return;
-          t.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
-          var s=player.getPlayerState();
-          pb.textContent=(s===1)?'⏸':'▶';
-        },500);
-      } else {
-        clearInterval(tInt);t.textContent='';
+      if(window.muVideoCleanup)window.muVideoCleanup();
+      var root=document.querySelector('.watch-page'),player,tInt;
+      function ready(){
+        if(!root.isConnected||player)return;
+        player=new YT.Player('ytplayer',{events:{'onStateChange':onState}});
       }
-    }
-    function togglePlay(){
-      if(!player||!player.getPlayerState)return;
-      player.getPlayerState()===1?player.pauseVideo():player.playVideo();
-    }
+      function onState(e){
+        var b=root.querySelector('#playBtn');
+        if(b&&b.style.display!=='none')b.textContent=(e.data===1)?'⏸':'▶';
+      }
+      function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60);var r=s%%60;return m+':'+(r<10?'0':'')+r;}
+      function toggleAudio(){
+        var em=root.querySelector('.video-embed'),vis=root.querySelector('#audioVis');
+        var btn=root.querySelector('#audioBtn'),pb=root.querySelector('#playBtn'),t=root.querySelector('#audioTime');
+        var on=em.classList.toggle('audio-only');
+        vis.style.display=on?'flex':'none';btn.textContent=on?'▶ Show video':'♫ Audio only';pb.style.display=on?'inline-flex':'none';
+        clearInterval(tInt);
+        if(on){
+          tInt=setInterval(function(){
+            if(!player||!player.getCurrentTime)return;
+            t.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
+            pb.textContent=(player.getPlayerState()===1)?'⏸':'▶';
+          },500);
+        }else{t.textContent='';}
+      }
+      function togglePlay(){
+        if(!player||!player.getPlayerState)return;
+        player.getPlayerState()===1?player.pauseVideo():player.playVideo();
+      }
+      window.toggleAudio=toggleAudio;window.togglePlay=togglePlay;
+      function cleanup(){
+        if(root.isConnected)return;
+        clearInterval(tInt);
+        if(player){try{player.destroy();}catch(e){}}
+        if(window.toggleAudio===toggleAudio)delete window.toggleAudio;
+        if(window.togglePlay===togglePlay)delete window.togglePlay;
+        if(window.muVideoCleanup===cleanup)delete window.muVideoCleanup;
+        document.removeEventListener('mu:navigated',cleanup);
+      }
+      window.muVideoCleanup=cleanup;
+      document.addEventListener('mu:navigated',cleanup);
+      // Soft navigation keeps the API alive between watch pages. Initialise
+      // immediately if it is loaded, and release the previous page's player.
+      if(window.YT&&window.YT.Player){ready();}else{
+        var previous=window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady=function(){if(previous)previous();ready();};
+        if(!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')){
+          var script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';document.head.appendChild(script);
+        }
+      }
+    })();
     </script>
 </div><style>.watch-page{max-width:1000px}.watch-page .video-embed{position:relative;width:100%%;height:auto;aspect-ratio:16/9;background:#000}.watch-page .video-embed iframe{position:absolute;inset:0;width:100%%;height:100%%}.watch-page .video-bar{position:static;background:#111;padding:8px}</style>
 `
