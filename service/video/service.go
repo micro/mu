@@ -101,7 +101,7 @@ var Spec = service.Spec{
 	Endpoints: map[string]service.Endpoint{
 		"List": {Aliases: []string{"video"}, Doc: "Read the latest videos from curated channels"},
 		"Search": {
-			Doc: "Search videos from the channels this instance curates. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist",
+			Doc: "Search YouTube by keyword using this instance's search quota. Results are not restricted to the curated channels",
 			// Priced at zero and still not for strangers: it spends this
 			// instance's YouTube quota, which is shared and cannot be topped
 			// up per caller. Rationing needs somebody to ration — but a wallet
