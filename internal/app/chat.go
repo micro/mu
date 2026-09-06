@@ -57,8 +57,8 @@ type ChatConfig struct {
 	// ContextID seeds the conversation's server-side thread id, so follow-up
 	// messages continue the same session. Empty starts a new session.
 	ContextID string
-	// Attachment is selected reading material, sent with the first question and
-	// persisted as part of that private conversation, never ambient memory.
+	// Attachment is an opaque reference to selected reading material. The agent
+	// resolves it for the caller; source text never becomes the user prompt.
 	Attachment string
 	// InitialConvHTML is pre-rendered conversation HTML (prior turns) injected
 	// into the log when reopening a session. When set, the component does not
@@ -884,7 +884,7 @@ function ask(q){
   if(transcript){ toBottom(true,true); } else { u.scrollIntoView({behavior:'smooth',block:'start'}); }
   var streamText='';
   var streaming=false;
-  var body=JSON.stringify({prompt:(!contextId&&attachment?attachment+"\n\nMy question: "+q:q),history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
+  var body=JSON.stringify({prompt:q,attachment:(!contextId?attachment:""),history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
   // Accept says which of the two doors at /agent this is.
   //
   // The same path answers a program with JSON and this box with an event

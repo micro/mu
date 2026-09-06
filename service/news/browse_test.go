@@ -15,6 +15,9 @@ func TestBrowseFiltersAndPaginatesWithoutDuplicateHeadlines(t *testing.T) {
 	}
 	posts = append(posts, &Post{ID: "world", URL: "https://example.com/world", Title: "World story", Category: "World"})
 	body := browse(httptest.NewRequest("GET", "/news?category=Tech&page=2", nil), posts)
+	if !strings.Contains(body, `id="news-search"`) {
+		t.Fatal("missing search control")
+	}
 	if strings.Count(body, `<article `) != 5 || strings.Contains(body, ">World story<") || strings.Contains(body, ">Story 0<") {
 		t.Fatal("wrong filtered page")
 	}
@@ -23,5 +26,14 @@ func TestBrowseFiltersAndPaginatesWithoutDuplicateHeadlines(t *testing.T) {
 	}
 	if strings.Contains(body, `/chat?id=`) {
 		t.Fatal("private question points at a shared room")
+	}
+}
+
+func TestBrowseKeepsLegacyNewsCache(t *testing.T) {
+	old := newsBodyHtml
+	newsBodyHtml = "legacy news"
+	defer func() { newsBodyHtml = old }()
+	if got := feedBody(httptest.NewRequest("GET", "/news", nil), nil); got != "legacy news" {
+		t.Fatal("legacy cache lost")
 	}
 }

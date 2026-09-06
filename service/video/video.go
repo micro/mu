@@ -426,7 +426,7 @@ func renderItem(res *Result) string {
 	}
 	category := ""
 	if res.Category != "" {
-		category = fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, res.Category, res.Category)
+		category = fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, url.QueryEscape(res.Category), htmlpkg.EscapeString(res.Category))
 	}
 	return fmt.Sprintf(`
 	<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><div class="info">%s · %s%s%s</div></div>`,
@@ -512,7 +512,7 @@ func regenerateHTML() {
 			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
 		}
 		if res.Category != "" {
-			info += fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, res.Category, res.Category)
+			info += fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, url.QueryEscape(res.Category), htmlpkg.EscapeString(res.Category))
 		}
 
 		latestHtml = fmt.Sprintf(`
@@ -656,7 +656,7 @@ func loadVideos() {
 			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
 		}
 		if res.Category != "" {
-			info += fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, res.Category, res.Category)
+			info += fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, url.QueryEscape(res.Category), htmlpkg.EscapeString(res.Category))
 		}
 
 		latestHtml = fmt.Sprintf(`
@@ -966,7 +966,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var headSB strings.Builder
 	for _, channel := range chanNames {
-		fmt.Fprintf(&headSB, `<a href="/video?category=%s" class="head">%s</a>`, channel, channel)
+		fmt.Fprintf(&headSB, `<a href="/video?category=%s" class="head">%s</a>`, url.QueryEscape(channel), htmlpkg.EscapeString(channel))
 	}
 	head := headSB.String()
 
@@ -1323,6 +1323,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	mutex.RLock()
 	currentVideos := videos
+	fallback := videosHtml
 	mutex.RUnlock()
 
 	if app.WantsJSON(r) {
@@ -1332,5 +1333,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.Respond(w, r, app.Response{Title: "Video", Description: "Search for videos", HTML: browse(r, currentVideos)})
+	body := browse(r, currentVideos)
+	if len(currentVideos) == 0 && fallback != "" {
+		body = fallback
+	}
+	app.Respond(w, r, app.Response{Title: "Video", Description: "Search for videos", HTML: body})
 }

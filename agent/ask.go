@@ -272,6 +272,9 @@ func Ask(r AskRequest) (Answer, error) {
 		History: History(r.Account, threadID(th), historyTurns),
 		Stream:  r.Stream,
 	}
+	if !r.Public {
+		opts.Extra = conversationReading(r.Account, threadID(th))
+	}
 	if plat := Platform(r.Agent); r.Agent != "" && plat != nil {
 		// Both halves. It took System only, so every one of this instance's
 		// agents arrived at the chat and at agent+weather@ holding every tool

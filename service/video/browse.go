@@ -1,13 +1,15 @@
 package video
 
 import (
+	"fmt"
 	"html"
-	"mu/internal/app"
-	"mu/internal/data"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
+
+	"mu/internal/app"
+	"mu/internal/data"
 )
 
 func browse(r *http.Request, all map[string]Channel) string {
@@ -45,7 +47,7 @@ func browse(r *http.Request, all map[string]Channel) string {
 	for _, v := range items[start:end] {
 		b.WriteString(`<article id="reading-` + html.EscapeString("video_"+v.ID) + `" class="reading-row"><a href="/video?id=` + url.QueryEscape(v.ID) + `"><img src="` + html.EscapeString(thumbSrc(v.ID, v.Thumbnail)) + `" loading="lazy" alt=""><h3>` + html.EscapeString(v.Title) + `</h3></a><div class="reading-meta">` + html.EscapeString(v.Channel+" · "+app.TimeAgo(v.Published)) + `</div>` + app.ReadingActions(r, "video_"+v.ID) + `</article>`)
 	}
-	return b.String() + `</div>` + app.ReadingPages("/video", category, page, len(items), 12) + app.ReadingCSS + `<style>.video-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.video-grid .reading-row{padding:0 0 16px;min-width:0}.video-grid img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px}.video-grid h3{font-size:16px}.video-grid a{text-decoration:none}@media(max-width:1000px){.video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.video-grid{grid-template-columns:1fr}}</style>`
+	return fmt.Sprintf(Template, "", b.String()+`</div>`) + app.ReadingPages("/video", category, page, len(items), 12) + app.ReadingCSS + `<style>.video-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.video-grid .reading-row{padding:0 0 16px;min-width:0}.video-grid img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px}.video-grid h3{font-size:16px}.video-grid a{text-decoration:none}@media(max-width:1000px){.video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.video-grid{grid-template-columns:1fr}}</style>`
 }
 
 func watchTitle(id string) (string, string) {

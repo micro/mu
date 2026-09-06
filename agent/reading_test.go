@@ -1,12 +1,14 @@
 package agent
 
 import (
-	"mu/internal/auth"
-	"mu/internal/saved"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mu/internal/auth"
+	"mu/internal/saved"
+	"mu/internal/thread"
 )
 
 func TestReadingIsPrivateAndAttachedToANewConversation(t *testing.T) {
@@ -31,8 +33,27 @@ func TestReadingIsPrivateAndAttachedToANewConversation(t *testing.T) {
 		t.Fatalf("page: %d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "private annotation") || !strings.Contains(body, "var attachment=") || !strings.Contains(body, "reading-"+owner) {
+	if strings.Contains(body, "private annotation") || !strings.Contains(body, "saved:"+item.ID) || !strings.Contains(body, "reading-"+owner) {
 		t.Fatal("selected material was not attached to an isolated private chat")
+	}
+	th := thread.Open(owner, thread.WebClient, "reading-test")
+	thread.SetAttachment(owner, th.ID, "saved:"+item.ID)
+	Said(owner, th.ID, "What does this mean?", "", "")
+	if messages := thread.Messages(owner, th.ID, 10); len(messages) != 1 || messages[0].Text != "What does this mean?" {
+		t.Fatal("attachment became user speech")
+	}
+	if got := conversationReading(owner, th.ID); !strings.Contains(got, "private annotation") {
+		t.Fatal("reopened conversation lost selected material")
+	}
+	if got := conversationReading("another", th.ID); got != "" {
+		t.Fatal("conversation attachment crossed accounts")
+	}
+	ctx, err := readingContext(owner, "saved:"+item.ID)
+	if err != nil || !strings.Contains(ctx, "private annotation") {
+		t.Fatal("server failed to resolve private material")
+	}
+	if _, err := readingContext("another", "saved:"+item.ID); err == nil {
+		t.Fatal("resolved another account's material")
 	}
 	r = httptest.NewRequest("GET", "/agent/micro?saved="+item.ID, nil)
 	w = httptest.NewRecorder()

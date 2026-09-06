@@ -353,15 +353,16 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		var err error
 		if id := r.URL.Query().Get("saved"); id != "" {
 			item, err = saved.Get(accountID, id)
+			cfg.Attachment = "saved:" + id
 		} else if ref := r.URL.Query().Get("item"); ref != "" {
 			item, err = saved.Source(ref)
+			cfg.Attachment = "archive:" + ref
 		}
 		if err != nil {
 			app.NotFound(w, r, "Reading material not found")
 			return
 		}
 		if item != nil {
-			cfg.Attachment = saved.Context(item)
 			cfg.StorageNS = "reading-" + accountID + "-" + item.ID + "-" + item.Ref
 			cfg.Placeholder = "What would you like to know about this?"
 			selected = `<div class="card"><strong>` + html.EscapeString(item.Title) + `</strong><p>This material will accompany your question in this private conversation.</p></div>`
@@ -1432,10 +1433,11 @@ func agentErrorMessage(err error) string {
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Prompt    string `json:"prompt"`
-		Model     string `json:"model"`
-		Agent     string `json:"agent"`      // optional: user-defined agent id to answer as
-		ContextID string `json:"context_id"` // optional: prior flow to continue from
+		Prompt     string `json:"prompt"`
+		Attachment string `json:"attachment"`
+		Model      string `json:"model"`
+		Agent      string `json:"agent"`      // optional: user-defined agent id to answer as
+		ContextID  string `json:"context_id"` // optional: prior flow to continue from
 		// Cards asks for the reader's home cards to be included as context, so
 		// a question about what they watch is answered from what is already
 		// known rather than fetched again.
@@ -1512,6 +1514,29 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		threadID = openThread(accountID, req.ContextID)
 	}
 
+	// A reference is held on the private thread and resolved afresh. Publisher
+	// text never passes through Said or personal-memory extraction.
+	attachment := req.Attachment
+	if threadID != "" {
+		attachment = thread.Attachment(accountID, threadID)
+	}
+	reading := ""
+	if attachment != "" {
+		if guest {
+			app.RespondError(w, http.StatusUnauthorized, "Sign in to use reading material")
+			return
+		}
+		var err error
+		reading, err = readingContext(accountID, attachment)
+		if err != nil {
+			if threadID == "" {
+				app.RespondError(w, http.StatusNotFound, "Reading material not found")
+				return
+			}
+			reading = "The material previously attached to this conversation is no longer available."
+		}
+	}
+
 	// Load conversation history when continuing one. What was said, not how it
 	// was produced — this used to walk the workflow chain, which is why an
 	// evicted run silently truncated a conversation.
@@ -1555,6 +1580,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			// A conversation that starts here. Keyed on this first run, which is
 			// unique and is what the record was already keyed on.
 			threadID = Opened(accountID, thread.WebClient, flow.ID, "", req.Agent)
+			thread.SetAttachment(accountID, threadID, attachment)
 		}
 		flow.ThreadID = threadID
 		if err := saveFlow(flow); err != nil {
@@ -1596,9 +1622,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// a claim it cannot support in the one place a person is watching.
 	sse(w, map[string]any{"type": "working", "message": "Working"})
 
-	nopts := QueryOpts{Public: guest}
+	nopts := QueryOpts{Public: guest, Extra: reading}
 	if !guest && req.Cards && CardContextFunc != nil {
-		nopts.Extra = CardContextFunc(accountID)
+		nopts.Extra += "\n\n" + CardContextFunc(accountID)
 	}
 	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
 		nopts.System = ua.SystemPrompt

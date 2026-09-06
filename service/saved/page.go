@@ -3,13 +3,14 @@ package saved
 import (
 	"fmt"
 	"html"
-	"mu/internal/app"
-	"mu/internal/auth"
-	store "mu/internal/saved"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"mu/internal/app"
+	"mu/internal/auth"
+	store "mu/internal/saved"
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -24,6 +25,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16384)
+	if r.Method == http.MethodPost && !auth.StrictCSRF(r) {
+		app.Forbidden(w, r, "Invalid CSRF token")
+		return
+	}
 	if err = r.ParseForm(); err != nil {
 		app.BadRequest(w, r, "Could not read the form")
 		return
@@ -157,4 +162,4 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func hidden(name, value string) string {
 	return fmt.Sprintf(`<input type="hidden" name="%s" value="%s">`, name, html.EscapeString(value))
 }
-func token(r *http.Request) string { return hidden("csrf_token", auth.CSRFToken(r)) }
+func token(r *http.Request) string { return app.CSRFField(auth.CSRFToken(r)) }

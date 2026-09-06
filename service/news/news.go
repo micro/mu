@@ -434,7 +434,7 @@ func generateNewsHtml() string {
 			controls := app.StaticControls("news", post.ID)
 			categoryBadge := ""
 			if post.Category != "" {
-				categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
+				categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, url.QueryEscape(post.Category), htmlpkg.EscapeString(displayNewsCategory(post.Category)))
 			}
 
 			var val string
@@ -1062,7 +1062,7 @@ func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
 func formatFeedItemHTML(post *Post, itemGUID string) string {
 	categoryBadge := ""
 	if post.Category != "" {
-		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, url.QueryEscape(post.Category), htmlpkg.EscapeString(displayNewsCategory(post.Category)))
 	}
 	summary := getSummary(post)
 
@@ -1232,7 +1232,7 @@ func generateHeadlinesHTML(headlines []*Post) string {
 
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, h.Category, displayNewsCategory(h.Category))
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, url.QueryEscape(h.Category), htmlpkg.EscapeString(displayNewsCategory(h.Category)))
 		}
 		summary := getSummary(h)
 
@@ -1657,7 +1657,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(` · <a href="/news?category=%s" class="category">%s</a>`, category, category)
+		categoryBadge = fmt.Sprintf(` · <a href="/news?category=%s" class="category">%s</a>`, url.QueryEscape(category), htmlpkg.EscapeString(category))
 	}
 
 	// Build description section
@@ -2561,7 +2561,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.Respond(w, r, app.Response{Title: "News", Description: "Latest news headlines", HTML: browse(r, currentFeed)})
+	app.Respond(w, r, app.Response{Title: "News", Description: "Latest news headlines", HTML: feedBody(r, currentFeed)})
 }
 
 // formatSearchResult formats a single search result entry as HTML

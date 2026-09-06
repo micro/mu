@@ -3,14 +3,15 @@ package saved
 import (
 	"context"
 	"encoding/json"
-	"mu/internal/auth"
-	store "mu/internal/saved"
-	"mu/internal/service"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"mu/internal/auth"
+	store "mu/internal/saved"
+	"mu/internal/service"
 )
 
 func request(t *testing.T, owner, method, target string, form url.Values) *http.Request {
@@ -27,6 +28,7 @@ func request(t *testing.T, owner, method, target string, form url.Values) *http.
 	r := httptest.NewRequest(method, target, strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	r.Header.Set("X-CSRF-Token", auth.CSRFToken(r))
 	return r
 }
 func TestPageAndToolsSharePrivateCollection(t *testing.T) {
@@ -67,6 +69,9 @@ func TestPageAndToolsSharePrivateCollection(t *testing.T) {
 	w = httptest.NewRecorder()
 	Handler(w, request(t, owner, "GET", "/saved?id="+id, nil))
 	body := w.Body.String()
+	if !strings.Contains(body, `name="_csrf"`) {
+		t.Fatal("forms lack the recognized CSRF field")
+	}
 	if !strings.Contains(body, "/agent/micro?saved="+id) || strings.Contains(body, "/chat?id=") {
 		t.Fatal("saved material does not lead to private Micro")
 	}
@@ -88,5 +93,15 @@ func TestReturnDestinationIsConstrained(t *testing.T) {
 		if !strings.HasPrefix(w.Header().Get("Location"), "/saved?id=") {
 			t.Fatalf("unsafe redirect: %q", w.Header().Get("Location"))
 		}
+	}
+}
+
+func TestWritesRequireCSRF(t *testing.T) {
+	r := request(t, "saved_csrf", "POST", "/saved", url.Values{"action": {"add"}, "url": {"https://example.com"}})
+	r.Header.Del("X-CSRF-Token")
+	w := httptest.NewRecorder()
+	Handler(w, r)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("tokenless mutation accepted: %d", w.Code)
 	}
 }

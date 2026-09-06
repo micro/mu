@@ -2,11 +2,12 @@ package news
 
 import (
 	htmlpkg "html"
-	"mu/internal/app"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
+
+	"mu/internal/app"
 )
 
 func browse(r *http.Request, posts []*Post) string {
@@ -29,6 +30,7 @@ func browse(r *http.Request, posts []*Post) string {
 	sort.SliceStable(items, func(i, j int) bool { return items[i].PostedAt.After(items[j].PostedAt) })
 	page, start, end := app.ReadingPage(r, len(items), 20)
 	var b strings.Builder
+	b.WriteString(`<form id="news-search" class="search-bar" action="/news" method="GET"><input id="news-query" name="query" type="search" placeholder="Search news" aria-label="Search news" maxlength="256"><button type="submit">Search</button></form>`)
 	b.WriteString(app.ReadingFilters("/news", category, categories))
 	b.WriteString(`<div class="reading-list">`)
 	if len(items) == 0 {
@@ -47,4 +49,11 @@ func browse(r *http.Request, posts []*Post) string {
 	}
 	b.WriteString(app.ReadingPages("/news", category, page, len(items), 20))
 	return b.String() + `</div>` + app.ReadingCSS
+}
+
+func feedBody(r *http.Request, posts []*Post) string {
+	if len(posts) == 0 && newsBodyHtml != "" {
+		return newsBodyHtml
+	}
+	return browse(r, posts)
 }

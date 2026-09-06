@@ -3,12 +3,13 @@ package app
 import (
 	"fmt"
 	"html"
-	"mu/internal/auth"
 	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
+
+	"mu/internal/auth"
 )
 
 // SaveControl is rendered per request, so neither saved state nor CSRF tokens
@@ -20,7 +21,7 @@ func SaveControl(r *http.Request, ref string) string {
 	if _, acc := auth.TrySession(r); acc == nil {
 		return `<a href="/saved?item=` + url.QueryEscape(ref) + `">Save</a>`
 	}
-	return `<form method="POST" action="/saved" class="reading-save"><input type="hidden" name="action" value="add"><input type="hidden" name="ref" value="` + html.EscapeString(ref) + `"><input type="hidden" name="back" value="` + html.EscapeString(r.URL.RequestURI()) + `"><input type="hidden" name="csrf_token" value="` + html.EscapeString(auth.CSRFToken(r)) + `"><button type="submit">Save</button></form>`
+	return `<form method="POST" action="/saved" class="reading-save"><input type="hidden" name="action" value="add"><input type="hidden" name="ref" value="` + html.EscapeString(ref) + `"><input type="hidden" name="back" value="` + html.EscapeString(r.URL.RequestURI()) + `">` + CSRFField(auth.CSRFToken(r)) + `<button type="submit">Save</button></form>`
 }
 func ReadingActions(r *http.Request, ref string) string {
 	return `<div class="reading-actions">` + SaveControl(r, ref) + `<a href="/agent/micro?item=` + url.QueryEscape(ref) + `">Ask Micro</a></div>`
