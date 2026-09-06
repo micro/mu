@@ -140,10 +140,15 @@ func RESTHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// A private search belongs in the body, never browser/proxy history.
-		if !service.PublicTool(name) && (r.URL.Query().Has("query") || r.URL.Query().Has("q")) {
-			w.Header().Set("Allow", "POST")
-			app.RespondError(w, http.StatusMethodNotAllowed, "Send private searches in a POST body")
-			return
+		if !service.PublicTool(name) {
+			for key := range r.URL.Query() {
+				// JSON field matching is case-insensitive; the URL guard must be too.
+				if strings.EqualFold(key, "query") || strings.EqualFold(key, "q") {
+					w.Header().Set("Allow", "POST")
+					app.RespondError(w, http.StatusMethodNotAllowed, "Send private searches in a POST body")
+					return
+				}
+			}
 		}
 		// Changes, not Destructive. The two were one flag, so a method that
 		// wrote but was safe for the model to hold — notes_add, docs_write,

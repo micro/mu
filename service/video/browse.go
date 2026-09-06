@@ -65,8 +65,10 @@ func indexVideo(v *Result) {
 	if !validVideoID.MatchString(v.ID) {
 		return
 	}
-	data.Index("video_"+v.ID, data.KindVideo, v.Title, v.Description, map[string]any{
+	if err := data.IndexSync("video_"+v.ID, data.KindVideo, v.Title, v.Description, map[string]any{
 		"url": "/video?id=" + url.QueryEscape(v.ID), "category": v.Category, "channel": v.Channel,
 		"channel_id": v.ChannelID, "posted_at": v.Published, "thumbnail": v.Thumbnail,
-	})
+	}); err != nil {
+		app.Log("video", "Indexing fetched video: %v", err)
+	}
 }

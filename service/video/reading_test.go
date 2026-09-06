@@ -3,6 +3,8 @@ package video
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"mu/internal/data"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -48,25 +50,32 @@ func TestFetchedVideosCanBeSavedOutsideThePresetFeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := getResults("topic", ""); err != nil {
-		t.Fatal(err)
-	}
-	for _, target := range []string{"/video?playlist=playlist", "/video?channel=publisher"} {
-		w := httptest.NewRecorder()
-		Handler(w, httptest.NewRequest("GET", target, nil))
-		if w.Code != 200 {
-			t.Fatalf("%s: %d %s", target, w.Code, w.Body.String())
-		}
-	}
-	owner := "video-reading-fixture"
-	defer saved.Clear(owner)
-	for _, id := range []string{"from-search", "from-playlist", "from-channel"} {
-		item, err := saved.Add(owner, saved.Item{Ref: "video_" + id})
-		if err != nil {
-			t.Fatalf("cannot save %s: %v", id, err)
-		}
-		if item.Title != "Fetched video" || item.Excerpt != "A fetched description" {
-			t.Fatalf("missing video metadata: %+v", item)
-		}
+	wasBackend := data.UseSQLite
+	defer func() { data.UseSQLite = wasBackend }()
+	for _, sqlite := range []bool{true, false} {
+		data.UseSQLite = sqlite
+		t.Run(fmt.Sprintf("sqlite=%v", sqlite), func(t *testing.T) {
+			if _, _, err := getResults("topic", ""); err != nil {
+				t.Fatal(err)
+			}
+			for _, target := range []string{"/video?playlist=playlist", "/video?channel=publisher"} {
+				w := httptest.NewRecorder()
+				Handler(w, httptest.NewRequest("GET", target, nil))
+				if w.Code != 200 {
+					t.Fatalf("%s: %d %s", target, w.Code, w.Body.String())
+				}
+			}
+			owner := "video-reading-fixture"
+			defer saved.Clear(owner)
+			for _, id := range []string{"from-search", "from-playlist", "from-channel"} {
+				item, err := saved.Add(owner, saved.Item{Ref: "video_" + id})
+				if err != nil {
+					t.Fatalf("cannot save %s: %v", id, err)
+				}
+				if item.Title != "Fetched video" || item.Excerpt != "A fetched description" {
+					t.Fatalf("missing video metadata: %+v", item)
+				}
+			}
+		})
 	}
 }

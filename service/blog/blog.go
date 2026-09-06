@@ -1080,6 +1080,13 @@ func DeletePost(id string) error {
 		return fmt.Errorf("post not found")
 	}
 
+	// Remove the reading reference before reporting deletion to the caller.
+	if err := data.Unindex(id); err != nil {
+		return err
+	}
+	previousPosts := append([]*Post(nil), posts...)
+	previous := postsMap[id]
+
 	// Remove from map
 	delete(postsMap, id)
 
@@ -1091,7 +1098,13 @@ func DeletePost(id string) error {
 		}
 	}
 
-	save()
+	if err := save(); err != nil {
+		posts, postsMap[id] = previousPosts, previous
+		if indexErr := indexPost(*previous); indexErr != nil {
+			app.Log("blog", "Restoring deleted post index: %v", indexErr)
+		}
+		return err
+	}
 	updateCacheUnlocked()
 	return nil
 }
@@ -1900,6 +1913,8 @@ func DeletePostsByAuthor(authorID string) {
 	for _, p := range posts {
 		if p.AuthorID != authorID {
 			kept = append(kept, p)
+		} else if err := data.Unindex(p.ID); err != nil {
+			app.Log("blog", "Removing deleted account's post index: %v", err)
 		}
 	}
 	posts = kept
@@ -1916,8 +1931,12 @@ func DeletePostsByAuthor(authorID string) {
 	comments = keptComments
 	populateComments()
 	updateCacheUnlocked()
+	if err := save(); err != nil {
+		app.Log("blog", "Saving account post deletion: %v", err)
+	}
+	if err := data.SaveJSON("comments.json", comments); err != nil {
+		app.Log("blog", "Saving account comment deletion: %v", err)
+	}
 	mutex.Unlock()
-	save()
-	data.SaveJSON("comments.json", comments)
 	event.Publish(event.Event{Type: "blog_updated"})
 }

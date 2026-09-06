@@ -207,10 +207,12 @@ func TestTheDoorAsksBeforeItChangesAnything(t *testing.T) {
 }
 
 func TestPrivateSearchUsesTheBody(t *testing.T) {
-	w := httptest.NewRecorder()
-	RESTHandler(w, httptest.NewRequest("GET", RESTPrefix+"saved/list?query=private", nil))
-	if w.Code != http.StatusMethodNotAllowed || w.Header().Get("Allow") != "POST" {
-		t.Fatalf("private query accepted: %d", w.Code)
+	for _, key := range []string{"query", "Query", "QUERY", "qUeRy", "q", "Q", "%51uery"} {
+		w := httptest.NewRecorder()
+		RESTHandler(w, httptest.NewRequest("GET", RESTPrefix+"saved/list?"+key+"=private", nil))
+		if w.Code != http.StatusMethodNotAllowed || w.Header().Get("Allow") != "POST" {
+			t.Fatalf("private query %s accepted: %d", key, w.Code)
+		}
 	}
 	call := restCurl(restMethod{PrivateSearch: true, Path: RESTPrefix + "saved/list", Params: []ToolParam{{Name: "query", Type: "string", Required: true}}}, "https://example.test")
 	if !strings.Contains(call, "-X POST") || strings.Contains(call, "?query=") {

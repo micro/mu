@@ -133,6 +133,23 @@ func TestAPostIsDatedByWhenItWasWritten(t *testing.T) {
 			if !postsMap[id].Private || data.ByID(id) != nil {
 				t.Fatal("failed save changed private source or public index")
 			}
+			if err := UpdatePost(id, "Public before delete", "body", "Tech", false); err != nil {
+				t.Fatal(err)
+			}
+			if err := DeletePost(id); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := saved.Source(id); err == nil || data.ByID(id) != nil {
+				t.Fatal("deleted post remains available to new reading references")
+			}
+			if err := CreatePost("Account post", "body", "writer", "deleted-writer", "Tech", false); err != nil {
+				t.Fatal(err)
+			}
+			id = posts[0].ID
+			DeletePostsByAuthor("deleted-writer")
+			if _, err := saved.Source(id); err == nil || data.ByID(id) != nil {
+				t.Fatal("deleted account's post remains available to new reading references")
+			}
 		})
 	}
 
