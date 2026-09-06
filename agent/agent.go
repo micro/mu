@@ -1622,7 +1622,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// a claim it cannot support in the one place a person is watching.
 	sse(w, map[string]any{"type": "working", "message": "Working"})
 
-	nopts := QueryOpts{Public: guest, Extra: reading}
+	nopts := QueryOpts{Public: guest}
+	nopts.Extra = reading
 	if !guest && req.Cards && CardContextFunc != nil {
 		nopts.Extra += "\n\n" + CardContextFunc(accountID)
 	}
