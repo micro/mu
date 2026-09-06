@@ -434,7 +434,7 @@ func generateNewsHtml() string {
 			controls := app.StaticControls("news", post.ID)
 			categoryBadge := ""
 			if post.Category != "" {
-				categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
+				categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
 			}
 
 			var val string
@@ -1062,7 +1062,7 @@ func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
 func formatFeedItemHTML(post *Post, itemGUID string) string {
 	categoryBadge := ""
 	if post.Category != "" {
-		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
 	}
 	summary := getSummary(post)
 
@@ -1232,7 +1232,7 @@ func generateHeadlinesHTML(headlines []*Post) string {
 
 		categoryBadge := ""
 		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, displayNewsCategory(h.Category))
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news?category=%s" class="category">%s</a></div>`, h.Category, displayNewsCategory(h.Category))
 		}
 		summary := getSummary(h)
 
@@ -1532,7 +1532,7 @@ func formatSummary(text string) string {
 func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string) {
 	// Get article from index
 	entry := data.ByID(articleID)
-	if entry == nil {
+	if entry == nil || entry.Owner != "" || entry.Type != data.KindNews {
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return
 	}
@@ -1657,7 +1657,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(` · <a href="/news#%s" class="category">%s</a>`, category, category)
+		categoryBadge = fmt.Sprintf(` · <a href="/news?category=%s" class="category">%s</a>`, category, category)
 	}
 
 	// Build description section
@@ -1684,7 +1684,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			<div class="article-actions">
 				<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
 				<span class="mx-2">·</span>
-				<a href="/chat?id=news_%s">Discuss with AI →</a>
+				%s
 				<span class="mx-2">·</span>
 				<a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;">Share →</a>
 			</div>
@@ -1692,13 +1692,14 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				<a href="/news">← Back to news</a>
 			</div>
 		</div>
-	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, articleURL, articleID)
+	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, htmlpkg.EscapeString(articleURL), app.ReadingActions(r, articleID))
 
 	// Use title for browser tab, but empty page title since article already has its own H1
-	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: articleHtml})
+	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: articleHtml + app.ReadingCSS})
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
 	// Handle viewing individual news article
 	if articleID := r.URL.Query().Get("id"); articleID != "" {
 		handleArticleView(w, r, articleID)
@@ -2550,7 +2551,6 @@ func meaningfulNewsQueryTerms(query string) []string {
 func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	currentFeed := feed
-	hasContent := len(feed) > 0
 	mutex.RUnlock()
 
 	// JSON response
@@ -2561,16 +2561,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// HTML response
-	body := newsBodyHtml
-	if hasContent {
-		body = generateNewsHtml()
-	}
-	app.Respond(w, r, app.Response{
-		Title:       "News",
-		Description: "Latest news headlines",
-		HTML:        body,
-	})
+	app.Respond(w, r, app.Response{Title: "News", Description: "Latest news headlines", HTML: browse(r, currentFeed)})
 }
 
 // formatSearchResult formats a single search result entry as HTML

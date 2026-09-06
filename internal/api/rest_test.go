@@ -205,3 +205,15 @@ func TestTheDoorAsksBeforeItChangesAnything(t *testing.T) {
 			"wild, and this door has none")
 	}
 }
+
+func TestPrivateSearchUsesTheBody(t *testing.T) {
+	w := httptest.NewRecorder()
+	RESTHandler(w, httptest.NewRequest("GET", RESTPrefix+"saved/list?query=private", nil))
+	if w.Code != http.StatusMethodNotAllowed || w.Header().Get("Allow") != "POST" {
+		t.Fatalf("private query accepted: %d", w.Code)
+	}
+	call := restCurl(restMethod{PrivateSearch: true, Path: RESTPrefix + "saved/list", Params: []ToolParam{{Name: "query", Type: "string", Required: true}}}, "https://example.test")
+	if !strings.Contains(call, "-X POST") || strings.Contains(call, "?query=") {
+		t.Fatalf("example puts private search in a URL: %s", call)
+	}
+}

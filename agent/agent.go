@@ -20,6 +20,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/saved"
 	"mu/internal/service"
 	"mu/internal/thread"
 	"mu/service/mail"
@@ -346,6 +347,26 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// Set again below, once the page has resolved which agent it is about. Here
 	// so that a page which returns early still names somebody.
 	cfg.AgentName = agentTitle(accountID, "")
+	selected := ""
+	if sessionID == "" {
+		var item *saved.Item
+		var err error
+		if id := r.URL.Query().Get("saved"); id != "" {
+			item, err = saved.Get(accountID, id)
+		} else if ref := r.URL.Query().Get("item"); ref != "" {
+			item, err = saved.Source(ref)
+		}
+		if err != nil {
+			app.NotFound(w, r, "Reading material not found")
+			return
+		}
+		if item != nil {
+			cfg.Attachment = saved.Context(item)
+			cfg.StorageNS = "reading-" + accountID + "-" + item.ID + "-" + item.Ref
+			cfg.Placeholder = "What would you like to know about this?"
+			selected = `<div class="card"><strong>` + html.EscapeString(item.Title) + `</strong><p>This material will accompany your question in this private conversation.</p></div>`
+		}
+	}
 	activeRoot := "" // the reopened conversation, for the rail highlight
 	reopened := false
 	reopenAgent := "" // agent the reopened conversation is with
@@ -427,7 +448,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if reopened {
 		// A reopened conversation decides its own agent; the rail filters to it.
 		selAgent = reopenAgent
-	} else if selAgent != "" && prefill == "" {
+	} else if selAgent != "" && prefill == "" && cfg.Attachment == "" {
 		// Land in the last conversation with this agent, if there is one.
 		if last := latestThreadFor(accountID, selAgent, named); last != "" {
 			cfg.ContextID = last
@@ -510,7 +531,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// search works with no model and a page about an agent obviously does not.
 	cfg.Transcript = true
 	cfg.Ask = true
-	main := app.ChatComponent(cfg)
+	main := selected + app.ChatComponent(cfg)
 	if elsewhere != "" {
 		main = elsewhere
 	}

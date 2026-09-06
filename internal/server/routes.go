@@ -54,6 +54,7 @@ import (
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
+	"mu/service/saved"
 	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
@@ -123,7 +124,8 @@ func authRequired() map[string]bool {
 		// reason as /sms: this map is matched by prefix and /whatsapp/twilio is
 		// the provider posting an inbound message with no session at all.
 		"/whatsapp":       false,
-		"/agent/session/": true,  // Deleting one of your conversations
+		"/agent/session/": true, // Deleting one of your conversations
+		"/saved":          true,
 		"/recall":         true,  // Your own past — sign-in required
 		"/agent/connect":  true,  // How to reach one agent
 		"/agent/pending":  true,  // Has an in-flight run answered yet — your own conversations
@@ -741,6 +743,8 @@ func registerRoutes() {
 	// Search everything you have ever said to an agent. The list of your
 	// conversations is /agent; this is the search over all of them.
 	http.HandleFunc("/recall", recall.Handler)
+	http.HandleFunc("/saved", saved.Handler)
+	http.HandleFunc("/saved/search", saved.Handler)
 	// And the search over what the instance has collected, which is the other
 	// archive and belongs to nobody.
 	http.HandleFunc("/archive", archive.Handler)

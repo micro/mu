@@ -102,7 +102,7 @@ func restErrorsCard() string {
 		{"402", "This method is metered and nothing has paid for it. The challenge says how much."},
 		{"403", "Identified, but not enough — a paid wallet on a method that needs an account, or a cookie-authenticated POST with no CSRF token."},
 		{"404", "No such method."},
-		{"405", "This method changes something, so it cannot be a GET."},
+		{"405", "Changes and private searches require a POST body."},
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
@@ -133,9 +133,10 @@ type restMethod struct {
 	Destructive bool
 	// Changes is whether the method alters state, which decides the verb. Not
 	// the same question as Destructive — see service.Endpoint.Writes.
-	Changes   bool
-	NeedsAuth bool
-	Params    []ToolParam
+	Changes       bool
+	PrivateSearch bool
+	NeedsAuth     bool
+	Params        []ToolParam
 }
 
 // restMethods is every method that can be called here, in the order a reader
@@ -159,16 +160,17 @@ func restMethods() []restMethod {
 				cost = quota.OperationCost(ep.Cost)
 			}
 			out = append(out, restMethod{
-				Service:     sp.Name,
-				Method:      name,
-				Tool:        tool,
-				Path:        RESTPrefix + sp.Name + "/" + strings.ToLower(name),
-				Doc:         ep.Doc,
-				Cost:        cost,
-				Destructive: ep.Destructive,
-				Changes:     ep.Writes || ep.Destructive,
-				NeedsAuth:   ToolNeedsAuth(tool),
-				Params:      t.Params,
+				Service:       sp.Name,
+				Method:        name,
+				Tool:          tool,
+				Path:          RESTPrefix + sp.Name + "/" + strings.ToLower(name),
+				Doc:           ep.Doc,
+				Cost:          cost,
+				Destructive:   ep.Destructive,
+				Changes:       ep.Writes || ep.Destructive,
+				PrivateSearch: sp.Scoped && searchParams(t.Params),
+				NeedsAuth:     ToolNeedsAuth(tool),
+				Params:        t.Params,
 			})
 		}
 	}
@@ -222,13 +224,16 @@ func restMethodCard(m restMethod, base string) string {
 	}
 
 	verb := "GET"
-	if m.Changes {
+	if m.Changes || m.PrivateSearch {
 		verb = "POST"
 	}
 	b.WriteString(`<span class="card-title"><code>` + verb + ` ` + html.EscapeString(m.Path) + `</code></span>`)
 	b.WriteString(app.Desc(m.Doc))
 
 	var notes []string
+	if m.PrivateSearch {
+		notes = append(notes, "Private search terms belong in a <code>POST</code> body.")
+	}
 	if m.NeedsAuth {
 		notes = append(notes, "Needs an account.")
 	}
@@ -286,7 +291,7 @@ func restCurl(m restMethod, base string) string {
 		auth = " \\\n  -H \"Authorization: Bearer $MU_TOKEN\""
 	}
 
-	if m.Changes {
+	if m.Changes || m.PrivateSearch {
 		body, _ := json.Marshal(exampleArgs(m.Params))
 		return "curl -X POST" + auth + " \\\n  -H \"Content-Type: application/json\" \\\n" +
 			"  -d '" + string(body) + "' \\\n  " + base + m.Path
@@ -339,4 +344,13 @@ func exampleQuery(ps []ToolParam) string {
 		return ""
 	}
 	return "?" + strings.Join(parts, "&")
+}
+
+func searchParams(params []ToolParam) bool {
+	for _, p := range params {
+		if p.Name == "query" || p.Name == "q" {
+			return true
+		}
+	}
+	return false
 }

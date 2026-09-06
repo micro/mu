@@ -1559,6 +1559,10 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	var contentSB strings.Builder
 	contentSB.WriteString(`<div id="blog">`)
 	contentSB.WriteString(tagsDisplay)
+	if !post.Private {
+		w.Header().Set("Cache-Control", "private, no-store")
+		contentSB.WriteString(app.ReadingActions(r, post.ID) + app.ReadingCSS)
+	}
 	contentSB.WriteString(`<div class="info">`)
 	contentSB.WriteString(timeInfo + ` · ` + authorLink + shareButton + editButton)
 	contentSB.WriteString(`</div>`)
