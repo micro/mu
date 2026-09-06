@@ -244,7 +244,10 @@ func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 	// carries the corner that says who is signed in, so a shared cache holding
 	// one and handing it to the next reader is somebody else's name in the
 	// header.
-	w.Header().Set("Cache-Control", "no-cache, private")
+	// A private reader may ask for stricter storage rules (e.g. saved notes).
+	if w.Header().Get("Cache-Control") == "" {
+		w.Header().Set("Cache-Control", "no-cache, private")
+	}
 
 	// HTML response — renderForRequest already prepends the verify banner for
 	// unverified users on verification-gated instances.
@@ -1287,6 +1290,7 @@ func navMain(acc *auth.Account) string {
 	if acc != nil {
 		// Tokens are how you authenticate an agent, so they are yours on every
 		// instance.
+		b += item("nav-saved", "/saved", "/bookmarks.svg", "Saved")
 		b += item("nav-token", "/token", "/token.svg", "Tokens")
 		// A wallet is only a wallet where money can go into it. An instance
 		// somebody runs themselves has no top-up — they are paying the model

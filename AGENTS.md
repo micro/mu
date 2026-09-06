@@ -1,8 +1,8 @@
 # Mu
 
 **A personal server: one Go binary you can self-host that carries a web app, an
-HTTP API, a CLI, an MCP server and an installable PWA over the same 35 services
-and 120 tools.** `go build ./...` produces it; nothing else has to be running.
+HTTP API, a CLI, an MCP server and an installable PWA over the same 36 services
+and 125 tools.** `go build ./...` produces it; nothing else has to be running.
 
 It is not a framework or a set of libraries. It is a thing that runs, that you
 sign into, and that other programs can call.
@@ -29,7 +29,7 @@ cron job can all reach the same account.
 
 ## The three things the app is
 
-**Services** are the building blocks: 35 of them, one directory each, each with
+**Services** are the building blocks: 36 of them, one directory each, each with
 a page, an API surface and a set of tools derived from the same Spec. Some run a
 protocol here — mail, chat, files, shell. Others hold an account with an upstream
 provider so the caller does not have to: news, markets, video, weather, places,

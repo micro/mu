@@ -167,3 +167,59 @@ func TestTheDebounceStillBatches(t *testing.T) {
 	}
 	<-done
 }
+
+// A completed deletion must survive an immediate restart even while the normal
+// index writer is waiting to flush an earlier batch.
+func TestAMemoryWithdrawalSurvivesRestartWithAPendingSave(t *testing.T) {
+	quickDebounce(t)
+	t.Setenv("HOME", t.TempDir())
+	previousBackend := UseSQLite
+	UseSQLite = false
+	t.Cleanup(func() { UseSQLite = previousBackend })
+	indexMutex.Lock()
+	index = map[string]*IndexEntry{
+		"removed": {ID: "removed", Type: KindPost, Title: "Deleted public post", Metadata: map[string]interface{}{"public": true}},
+		"kept":    {ID: "kept", Type: KindNews, Title: "Still here"},
+	}
+	indexMutex.Unlock()
+	file, err := dataPath("index.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistIndex(file); err != nil {
+		t.Fatal(err)
+	}
+	done := start(t)
+	t.Cleanup(func() { <-done })
+	if err := Unindex("removed"); err != nil {
+		t.Fatal(err)
+	}
+	// Read precisely what a fresh process would load, before the debounce fires.
+	assertWithdrawn := func() {
+		t.Helper()
+		b, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var restarted map[string]*IndexEntry
+		if err := json.Unmarshal(b, &restarted); err != nil {
+			t.Fatal(err)
+		}
+		if restarted["removed"] != nil || restarted["kept"] == nil {
+			t.Fatalf("restart restores the wrong entries: %v", restarted)
+		}
+	}
+	assertWithdrawn()
+	<-done
+	assertWithdrawn()
+	// Disk failures must reach callers instead of acknowledging deletion.
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(file, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := Unindex("kept"); err == nil {
+		t.Fatal("failed index persistence reported successful withdrawal")
+	}
+}

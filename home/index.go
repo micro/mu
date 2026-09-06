@@ -281,7 +281,7 @@ func indexBody() string {
 			// furniture in front of somebody who has not asked anything yet.
 			Speak: false,
 		}) +
-		today("") + `
+		`<p class="landing-browse"><a href="/home">Browse news, markets, prayer and more →</a></p>` + today("") + `
 </div>
 
 <style>

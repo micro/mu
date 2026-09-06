@@ -9,6 +9,7 @@ import (
 	htmlpkg "html"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -425,7 +426,7 @@ func renderItem(res *Result) string {
 	}
 	category := ""
 	if res.Category != "" {
-		category = fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+		category = fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, url.QueryEscape(res.Category), htmlpkg.EscapeString(res.Category))
 	}
 	return fmt.Sprintf(`
 	<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><div class="info">%s · %s%s%s</div></div>`,
@@ -511,7 +512,7 @@ func regenerateHTML() {
 			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
 		}
 		if res.Category != "" {
-			info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+			info += fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, url.QueryEscape(res.Category), htmlpkg.EscapeString(res.Category))
 		}
 
 		latestHtml = fmt.Sprintf(`
@@ -655,7 +656,7 @@ func loadVideos() {
 			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
 		}
 		if res.Category != "" {
-			info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+			info += fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, url.QueryEscape(res.Category), htmlpkg.EscapeString(res.Category))
 		}
 
 		latestHtml = fmt.Sprintf(`
@@ -796,26 +797,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		// Append to results
 		results = append(results, res)
 
-		// Index the video for search/RAG
-		data.Index(
-			"video_"+id,
-			data.KindVideo,
-			item.Snippet.Title,
-			item.Snippet.Description,
-			map[string]interface{}{
-				"url":        url,
-				"category":   category,
-				"channel":    item.Snippet.ChannelTitle,
-				"channel_id": item.Snippet.ChannelId,
-				// posted_at, not published: the archive reads posted_at and
-				// falls back to when it indexed the row. The upload date was
-				// right here all along under a name nothing looks for, so a
-				// video from 2023 was dated to whenever this instance last
-				// fetched the channel.
-				"posted_at": t,
-				"thumbnail": thumbnailURL,
-			},
-		)
+		indexVideo(res)
 	}
 
 	return sb.String(), results, nil
@@ -893,6 +875,10 @@ func getResults(query, channel string) (string, []*Result, error) {
 			Thumbnail: thumbnailURL,
 		}
 
+		if kind == "video" {
+			res.Description = item.Snippet.Description
+			indexVideo(res)
+		}
 		if kind == "playlist" {
 			res.PlaylistID = id
 		}
@@ -945,13 +931,14 @@ func LatestVideos(n int) []*Result {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
 	r.ParseForm()
 
 	// Don't let browsers (esp. mobile, which caches HTML heuristically when no
 	// cache headers are sent) hold a stale listing/search page. Older pages
 	// linked videos to YouTube directly; without this they keep serving those
 	// external links and miss the internal /video?id= watch page (audio mode).
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "private, no-store")
 
 	ct := r.Header.Get("Content-Type")
 
@@ -964,7 +951,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var headSB strings.Builder
 	for _, channel := range chanNames {
-		fmt.Fprintf(&headSB, `<a href="/video#%s" class="head">%s</a>`, channel, channel)
+		fmt.Fprintf(&headSB, `<a href="/video?category=%s" class="head">%s</a>`, url.QueryEscape(channel), htmlpkg.EscapeString(channel))
 	}
 	head := headSB.String()
 
@@ -1154,6 +1141,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
+			indexVideo(&Result{ID: videoID, Title: item.Snippet.Title, Description: item.Snippet.Description, Channel: item.Snippet.ChannelTitle, ChannelID: item.Snippet.ChannelId, Published: t, Thumbnail: thumbnailURL})
+
 			// Through Mu's origin, like every other thumbnail here. This was the
 			// one render path linking straight to i.ytimg.com, and it is the
 			// reason every image on a channel or playlist page could be broken
@@ -1229,6 +1218,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
+			indexVideo(&Result{ID: videoID, Title: item.Snippet.Title, Description: item.Snippet.Description, Channel: item.Snippet.ChannelTitle, ChannelID: item.Snippet.ChannelId, Published: t, Thumbnail: thumbnailURL})
+
 			// Through Mu's origin, like every other thumbnail here. This was the
 			// one render path linking straight to i.ytimg.com, and it is the
 			// reason every image on a channel or playlist page could be broken
@@ -1248,18 +1239,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// render watch page
 	if len(id) > 0 {
+		if !validVideoID.MatchString(id) {
+			app.BadRequest(w, r, "Invalid video ID")
+			return
+		}
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
-		// Fullscreen video player page
-		tmpl := `<!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Video | Mu</title>
-    <link rel="stylesheet" href="/mu.css?%s">
-  </head>
-  <body class="video-player-body">
+		// A watch page in the app shell; fullscreen remains a player control.
+		tmpl := `<div class="watch-page"><p><a href="/video">← Back to video</a></p>
     <div class="video-embed">
       %s
       <div class="audio-vis" id="audioVis">
@@ -1272,53 +1260,69 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       <button id="playBtn" onclick="togglePlay()" class="d-none">▶</button>
     </div>
     <script>
-    var player, apiReady=false, tInt;
     (function(){
-      var s=document.createElement('script');
-      s.src='https://www.youtube.com/iframe_api';
-      document.head.appendChild(s);
-    })();
-    function onYouTubeIframeAPIReady(){
-      apiReady=true;
-      player=new YT.Player('ytplayer',{events:{'onReady':onReady,'onStateChange':onState}});
-    }
-    function onReady(){}
-    function onState(e){
-      var b=document.getElementById('playBtn');
-      if(b&&b.style.display!=='none') b.textContent=(e.data===1)?'⏸':'▶';
-    }
-    function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60);var r=s%%60;return m+':'+(r<10?'0':'')+r;}
-    function toggleAudio(){
-      var em=document.querySelector('.video-embed');
-      var vis=document.getElementById('audioVis');
-      var btn=document.getElementById('audioBtn');
-      var pb=document.getElementById('playBtn');
-      var t=document.getElementById('audioTime');
-      var on=em.classList.toggle('audio-only');
-      vis.style.display=on?'flex':'none';
-      btn.textContent=on?'▶ Show video':'♫ Audio only';
-      pb.style.display=on?'inline-flex':'none';
-      if(on){
-        tInt=setInterval(function(){
-          if(!player||!player.getCurrentTime)return;
-          t.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
-          var s=player.getPlayerState();
-          pb.textContent=(s===1)?'⏸':'▶';
-        },500);
-      } else {
-        clearInterval(tInt);t.textContent='';
+      if(window.muVideoCleanup)window.muVideoCleanup();
+      var root=document.querySelector('.watch-page'),player,tInt;
+      function ready(){
+        if(!root.isConnected||player)return;
+        player=new YT.Player('ytplayer',{events:{'onStateChange':onState}});
       }
-    }
-    function togglePlay(){
-      if(!player||!player.getPlayerState)return;
-      player.getPlayerState()===1?player.pauseVideo():player.playVideo();
-    }
+      function onState(e){
+        var b=root.querySelector('#playBtn');
+        if(b&&b.style.display!=='none')b.textContent=(e.data===1)?'⏸':'▶';
+      }
+      function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60);var r=s%%60;return m+':'+(r<10?'0':'')+r;}
+      function toggleAudio(){
+        var em=root.querySelector('.video-embed'),vis=root.querySelector('#audioVis');
+        var btn=root.querySelector('#audioBtn'),pb=root.querySelector('#playBtn'),t=root.querySelector('#audioTime');
+        var on=em.classList.toggle('audio-only');
+        vis.style.display=on?'flex':'none';btn.textContent=on?'▶ Show video':'♫ Audio only';pb.style.display=on?'inline-flex':'none';
+        clearInterval(tInt);
+        if(on){
+          tInt=setInterval(function(){
+            if(!player||!player.getCurrentTime)return;
+            t.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
+            pb.textContent=(player.getPlayerState()===1)?'⏸':'▶';
+          },500);
+        }else{t.textContent='';}
+      }
+      function togglePlay(){
+        if(!player||!player.getPlayerState)return;
+        player.getPlayerState()===1?player.pauseVideo():player.playVideo();
+      }
+      window.toggleAudio=toggleAudio;window.togglePlay=togglePlay;
+      function cleanup(){
+        if(root.isConnected)return;
+        clearInterval(tInt);
+        if(player){try{player.destroy();}catch(e){}}
+        if(window.toggleAudio===toggleAudio)delete window.toggleAudio;
+        if(window.togglePlay===togglePlay)delete window.togglePlay;
+        if(window.muVideoCleanup===cleanup)delete window.muVideoCleanup;
+        document.removeEventListener('mu:navigated',cleanup);
+      }
+      window.muVideoCleanup=cleanup;
+      document.addEventListener('mu:navigated',cleanup);
+      // Soft navigation keeps the API alive between watch pages. Initialise
+      // immediately if it is loaded, and release the previous page's player.
+      if(window.YT&&window.YT.Player){ready();}else{
+        var previous=window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady=function(){if(previous)previous();ready();};
+        if(!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')){
+          var script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';document.head.appendChild(script);
+        }
+      }
+    })();
     </script>
-  </body>
-</html>
+</div><style>.watch-page{max-width:1000px}.watch-page .video-embed{position:relative;width:100%%;height:auto;aspect-ratio:16/9;background:#000}.watch-page .video-embed iframe{position:absolute;inset:0;width:100%%;height:100%%}.watch-page .video-bar{position:static;background:#111;padding:8px}</style>
 `
-		html := fmt.Sprintf(tmpl, app.Version, embedVideoWithAutoplay(id, autoplay))
-		w.Write([]byte(html))
+		title, channel := watchTitle(id)
+		body := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay))
+		body += `<p>` + htmlpkg.EscapeString(channel) + `</p><div class="reading-actions"><a href="https://www.youtube.com/watch?v=` + url.QueryEscape(id) + `" rel="noopener noreferrer">Original ↗</a></div>`
+		if e := data.ByID("video_" + id); e != nil && e.Owner == "" && e.Type == data.KindVideo {
+			body += app.ReadingActions(r, "video_"+id)
+		}
+		body += app.ReadingCSS
+		app.Respond(w, r, app.Response{Title: title, Description: title, HTML: body})
 
 		return
 	}
@@ -1327,7 +1331,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	mutex.RLock()
 	currentVideos := videos
-	currentHtml := videosHtml
+	fallback := videosHtml
 	mutex.RUnlock()
 
 	if app.WantsJSON(r) {
@@ -1337,5 +1341,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.Respond(w, r, app.Response{Title: "Video", Description: "Search for videos", HTML: currentHtml})
+	body := browse(r, currentVideos)
+	if len(currentVideos) == 0 && fallback != "" {
+		body = fallback
+	}
+	app.Respond(w, r, app.Response{Title: "Video", Description: "Search for videos", HTML: body})
 }

@@ -51,6 +51,7 @@ var keptItsPage = map[string]string{
 	"mail": "your inbox", "notes": "your notes", "files": "your files",
 	"contacts": "your address book", "tasks": "your tasks", "images": "your images",
 	"docs": "your documents", "events": "your calendar",
+	"saved":  "your private saved reading",
 	"recall": "your own past", "sms": "your messages",
 	"wallet": "your key",
 	"notify": "what you were told, and the devices it went to — a derived page " +

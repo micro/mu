@@ -78,6 +78,10 @@ type Thread struct {
 	Client  string `json:"client"`
 	Key     string `json:"key"`
 	Subject string `json:"subject,omitempty"`
+	// Attachment is an opaque reference supplied by the client. The client
+	// resolves its contents afresh; the record holds neither generated context
+	// nor source text attributed to the person who attached it.
+	Attachment string `json:"attachment,omitempty"`
 	// Agent is who the conversation is with — one of the account's own, by id,
 	// or empty for the default. A conversation is with somebody, and without
 	// this a page that has an agent selected has to either show every
@@ -964,4 +968,32 @@ func Rename(oldID, newID string) {
 	held[newID] = held[oldID]
 	delete(held, oldID)
 	save()
+}
+
+// SetAttachment records the reference accompanying a conversation. Ownership
+// is checked exactly as for the conversation itself.
+func SetAttachment(account, id, reference string) {
+	if len(reference) > 256 {
+		return
+	}
+	ensure()
+	mu.Lock()
+	defer mu.Unlock()
+	t := threads[id]
+	if t == nil || t.Account != account || t.Attachment == reference {
+		return
+	}
+	t.Attachment = reference
+	save()
+}
+
+// Attachment returns the caller's conversation reference under the store lock.
+func Attachment(account, id string) string {
+	ensure()
+	mu.RLock()
+	defer mu.RUnlock()
+	if t := threads[id]; t != nil && t.Account == account {
+		return t.Attachment
+	}
+	return ""
 }

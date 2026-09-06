@@ -693,6 +693,9 @@ function fetchW(la,lo){
 	// line rather than as that block's way out. The cards each carry their own
 	// More, the heading says what they are, and Services is in the nav and in
 	// the phone tab bar.
+	if viewerID != "" {
+		b.WriteString(`<p><a href="/saved">Saved articles, videos and links →</a></p>`)
+	}
 	b.WriteString(sectionRule("Services"))
 	b.WriteString(CardsHTML(r, viewerAcc))
 
