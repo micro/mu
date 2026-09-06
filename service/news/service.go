@@ -12,6 +12,27 @@ import (
 // RPC endpoints and, through the agent and gateways, as AI tools.
 type Server struct{}
 
+// HeadlinesRequest selects the current home card without filters.
+type HeadlinesRequest struct{}
+
+// HeadlinesResponse is the same headline selection shown on the home card.
+type HeadlinesResponse struct {
+	Items []Headline `json:"items" description:"Latest story per topic, freshest first, at most ten, as on the home card"`
+}
+
+// Headlines returns the home card's current stories as data.
+// @example {}
+func (Server) Headlines(_ context.Context, _ *HeadlinesRequest, rsp *HeadlinesResponse) error {
+	posts := cardPosts(GetFeed())
+	rsp.Items = make([]Headline, 0, len(posts))
+	for _, p := range posts {
+		rsp.Items = append(rsp.Items, Headline{
+			Title: p.Title, URL: p.URL, Category: p.Category, Description: p.Description,
+		})
+	}
+	return nil
+}
+
 // ListRequest filters the headline list.
 type ListRequest struct {
 	Topic string `json:"topic" description:"Optional topic/category filter (e.g. tech, world, business)"`
@@ -100,8 +121,9 @@ var Spec = service.Spec{
 	// behind it — see service.Spec.Now and Now, above.
 	Now: Now,
 	Endpoints: map[string]service.Endpoint{
-		"List":   {Aliases: []string{"news", "news_headlines"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
-		"Read":   {Doc: "Read one news article in full by its id or URL"},
-		"Search": {Doc: "Search indexed and live news for a topic", Cost: quota.OpNewsSearch},
+		"Headlines": {Doc: "Read the home card headlines: latest story per topic, freshest first, at most ten"},
+		"List":      {Aliases: []string{"news"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
+		"Read":      {Doc: "Read one news article in full by its id or URL"},
+		"Search":    {Doc: "Search indexed and live news for a topic", Cost: quota.OpNewsSearch},
 	},
 }
