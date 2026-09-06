@@ -30,6 +30,9 @@ func TestHeadlinesReturnsOneStoryPerTopic(t *testing.T) {
 		t.Fatalf("got %d headlines, want 10", len(rsp.Items))
 	}
 	for i, h := range rsp.Items {
+		if !strings.Contains(rsp.Text, "["+h.Category+"] "+h.Title) || !strings.Contains(rsp.Text, h.URL) {
+			t.Errorf("readable output is missing headline %d: %q", i, rsp.Text)
+		}
 		if h.Title != fmt.Sprintf("story %d-0", i) || h.Category != fmt.Sprintf("topic %02d", i) || h.URL != fmt.Sprintf("https://example.test/%d/0", i) || h.Description != "summary" {
 			t.Errorf("headline %d: %+v", i, h)
 		}
@@ -54,7 +57,7 @@ func TestHeadlinesReturnsOneStoryPerTopic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(b) != `{"items":[]}` {
+	if string(b) != `{"text":"No news headlines available right now.","items":[]}` {
 		t.Fatalf("empty feed: %s", b)
 	}
 }

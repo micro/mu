@@ -2,6 +2,8 @@ package news
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"mu/internal/quota"
@@ -17,6 +19,7 @@ type HeadlinesRequest struct{}
 
 // HeadlinesResponse is the same headline selection shown on the home card.
 type HeadlinesResponse struct {
+	Text  string     `json:"text" description:"The home card headlines with topics and article URLs"`
 	Items []Headline `json:"items" description:"Latest story per topic, freshest first, at most ten, as on the home card"`
 }
 
@@ -24,11 +27,24 @@ type HeadlinesResponse struct {
 // @example {}
 func (Server) Headlines(_ context.Context, _ *HeadlinesRequest, rsp *HeadlinesResponse) error {
 	posts := cardPosts(GetFeed())
+	var text strings.Builder
 	rsp.Items = make([]Headline, 0, len(posts))
 	for _, p := range posts {
 		rsp.Items = append(rsp.Items, Headline{
 			Title: p.Title, URL: p.URL, Category: p.Category, Description: p.Description,
 		})
+		fmt.Fprintf(&text, "[%s] %s\n", p.Category, p.Title)
+		if p.Description != "" {
+			fmt.Fprintln(&text, p.Description)
+		}
+		if p.URL != "" {
+			fmt.Fprintln(&text, p.URL)
+		}
+		fmt.Fprintln(&text)
+	}
+	rsp.Text = strings.TrimSpace(text.String())
+	if len(posts) == 0 {
+		rsp.Text = "No news headlines available right now."
 	}
 	return nil
 }
