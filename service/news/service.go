@@ -122,7 +122,7 @@ var Spec = service.Spec{
 	Now: Now,
 	Endpoints: map[string]service.Endpoint{
 		"Headlines": {Doc: "Read the home card headlines: latest story per topic, freshest first, at most ten"},
-		"List":      {Aliases: []string{"news"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
+		"List":      {Commands: []service.Command{{Pattern: "news", Defaults: map[string]any{"limit": 5}}, {Pattern: "headlines", Defaults: map[string]any{"limit": 5}}, {Pattern: "latest headlines", Defaults: map[string]any{"limit": 5}}, {Pattern: "show me the news", Defaults: map[string]any{"limit": 5}}}, Aliases: []string{"news"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
 		"Read":      {Doc: "Read one news article in full by its id or URL"},
 		"Search":    {Doc: "Search indexed and live news for a topic", Cost: quota.OpNewsSearch},
 	},

@@ -668,6 +668,12 @@ type StreamHooks struct {
 // This is the agent. There is no second one — see the note on ErrNoProvider,
 // and AGENTS.md for the rule that says so.
 func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
+	if command, ok := promptCommand(prompt, opts); ok {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		return executeCommand(ctx, accountID, command, opts)
+	}
+
 	recorder := newNativeToolRecorder()
 	wrappers := []gmai.ToolWrapper{recorder.wrap}
 	if opts.OnStep != nil {
