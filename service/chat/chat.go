@@ -42,7 +42,28 @@ var Template = `
 <input id="topic" name="topic" type="hidden">
 <textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
 <button>Send</button>
-</form></div></div><style>.room-layout{display:grid;grid-template-columns:160px minmax(0,1fr);gap:20px}.room-roster{padding:12px 0}.room-roster h3{font-size:13px;margin:0 0 12px}.room-roster #chat-users a{display:block;margin-bottom:8px}.room-main{min-width:0}@media(max-width:760px){.room-layout{grid-template-columns:1fr;gap:8px}.room-roster{padding:0}.room-roster #chat-users a{display:inline-block;margin-right:10px}.room-roster h3{margin-bottom:6px}}</style>`
+</form></div></div><style>
+/* Keep the scroll viewport connected to the page's bounded flex column. */
+body:has(#messages):has(.room-layout) #content { height:calc(100dvh - 70px - var(--tabbar)); }
+.room-layout { display:grid; grid-template-columns:160px minmax(0,1fr); grid-template-rows:minmax(0,1fr); gap:20px; flex:1 1 0; min-height:0; min-width:0; }
+.room-roster { padding:12px 0; min-width:0; overflow-y:auto; overflow-wrap:anywhere; }
+.room-roster h3 { font-size:13px; margin:0 0 12px; }
+.room-roster #chat-users a { display:block; margin-bottom:8px; }
+.room-main { display:flex; flex-direction:column; min-width:0; min-height:0; }
+.room-main #messages { min-height:0; max-height:none; overflow-wrap:anywhere; }
+.room-main #messages img, .room-main #messages video { max-width:100%%; height:auto; }
+.room-main #messages pre { max-width:100%%; overflow-x:auto; }
+.room-main #chat-form { flex:0 0 auto; min-width:0; }
+.room-main #prompt { width:0; min-width:0; max-width:none; flex:1 1 0; }
+@media(max-width:760px) {
+  .room-layout { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); gap:8px; }
+  .room-roster { display:flex; align-items:baseline; gap:10px; padding:0; overflow:hidden; font-size:13px; }
+  .room-roster h3 { font-size:inherit; margin:0; flex-shrink:0; }
+  .room-roster #chat-users { flex:1; min-width:0; white-space:nowrap; overflow-x:auto; border:0; margin:0; padding:0; }
+  .room-roster #chat-users a { display:inline-block; margin:0 8px 0 0; }
+  .room-roster > a { flex-shrink:0; }
+}
+</style>`
 
 var mutex sync.RWMutex
 

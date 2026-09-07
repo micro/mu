@@ -3055,7 +3055,7 @@ a.highlight {
     font-size: small;
   }
   #blog > div:first-child {
-    text-align: center;
+    text-align: left;
   }
   
   /* Topic selectors */
@@ -8017,3 +8017,25 @@ a.btn-secondary:hover, .btn-secondary:hover {
 /* Links retain their colour and keyboard focus without hover underlines. */
 a:hover, a:hover * { text-decoration: none !important; }
 .mu-agent .card p, .mu-user { white-space: pre-wrap; }
+
+/* Shared collection and editor contract: Docs and Notes supply fields and
+   actions, never their own width, wrapping or mobile spacing. */
+.collection-head { display:flex; flex-direction:column; align-items:flex-start; gap:12px; margin:0 0 16px; min-width:0; }
+.collection-list { display:flex; flex-direction:column; border:1px solid var(--border-color,#eee); border-radius:8px; overflow:hidden; }
+.collection-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:5px 12px; padding:14px; border-bottom:1px solid var(--divider,#eee); min-width:0; }
+.collection-item:last-child { border-bottom:0; }
+.collection-title { font-size:14px; font-weight:600; overflow-wrap:anywhere; }
+.collection-preview { grid-column:1; font-size:13px; color:var(--text-muted,#666); overflow-wrap:anywhere; }
+.collection-when { grid-column:2; grid-row:1; font-size:12px; color:var(--text-muted,#888); }
+.record-card { width:100%; max-width:794px; min-width:0; box-sizing:border-box; }
+.record-editor { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.record-editor > * { min-width:0; max-width:100%; box-sizing:border-box; }
+.record-editor input.record-title { width:100%; font:inherit; font-size:19px; font-weight:600; padding:9px 0; border:0; border-bottom:1px solid var(--border-color,#eee); background:transparent; }
+.record-editor textarea.record-body { width:100%; min-height:50dvh; padding:12px; font:inherit; line-height:1.6; resize:vertical; border:1px solid var(--border-color,#eee); }
+.record-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.record-actions button { flex-shrink:0; margin:0; }
+@media(max-width:760px) {
+ .collection-item { grid-template-columns:minmax(0,1fr); }
+ .collection-when { grid-column:1; grid-row:auto; }
+ .record-editor input.record-title,.record-editor textarea.record-body { font-size:16px; }
+}

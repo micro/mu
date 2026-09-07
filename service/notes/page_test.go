@@ -24,7 +24,7 @@ func TestTheListLinksIntoAnEditor(t *testing.T) {
 	if !strings.Contains(body, `href="/notes?note=shopping"`) {
 		t.Error("a note in the list does not open")
 	}
-	if !strings.Contains(body, "New note") {
+	if !strings.Contains(body, `href="/notes?new=1">New</a>`) {
 		t.Error("no way to write a new note")
 	}
 	if strings.Contains(body, "Remember that my") {
@@ -48,7 +48,7 @@ func TestTheEditorHasABody(t *testing.T) {
 
 	// A new note needs a title field; an existing one is addressed by its
 	// title, so that field is fixed and posted as it stands.
-	if fresh := editor(r, "", ""); !strings.Contains(fresh, `name="title" class="note-title-in"`) ||
+	if fresh := editor(r, "", ""); !strings.Contains(fresh, `name="title" class="record-title"`) ||
 		strings.Contains(fresh, `readonly aria-label`) {
 		t.Error("a new note should ask for a title")
 	}

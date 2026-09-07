@@ -156,3 +156,9 @@ func Column() string { return `<div class="page-col">` }
 
 // Close closes what Column opened.
 func Close() string { return `</div>` }
+
+// CollectionItem renders a linked record using the shared collection layout.
+// Services supply content; the app owns wrapping, spacing and mobile layout.
+func CollectionItem(href, title, preview, when string) string {
+	return `<a class="collection-item" href="` + html.EscapeString(href) + `"><span class="collection-title">` + html.EscapeString(title) + `</span><span class="collection-preview">` + html.EscapeString(preview) + `</span><span class="collection-when">` + html.EscapeString(when) + `</span></a>`
+}

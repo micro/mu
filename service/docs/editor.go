@@ -1,6 +1,6 @@
 package docs
 
-const editorTools = `<div class="doc-toolbar d-flex gap-2 mb-3" role="group" aria-label="Text formatting" style="flex-wrap:wrap">
+const editorTools = `<div class="doc-toolbar" role="group" aria-label="Text formatting">
 <button type="button" data-before="**" data-after="**" title="Bold"><strong>B</strong></button>
 <button type="button" data-before="_" data-after="_" title="Italic"><em>I</em></button>
 <button type="button" data-before="## " data-line="1">Heading</button>
@@ -9,8 +9,10 @@ const editorTools = `<div class="doc-toolbar d-flex gap-2 mb-3" role="group" ari
 <button type="button" data-before="&gt; " data-line="1">Quote</button>
 <button type="button" data-before="[" data-after="](https://)">Link</button>
 <button type="button" data-before="&#96;" data-after="&#96;">Code</button>
-<label class="btn">Import text<input id="doc-import" type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" class="sr-only"></label>
-</div><p id="doc-import-status" class="text-sm text-muted" role="status">Import a Markdown or plain-text file, then save it as a document.</p>`
+</div>`
+
+const importTools = `<label class="btn" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('doc-import').click()}">Choose file<input id="doc-import" type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden></label>
+<p id="doc-import-status" class="text-sm text-muted" role="status">Import a Markdown or plain-text file, then save it as a document.</p>`
 
 const editorScript = `<script>(function(){
 var body=document.getElementById('doc-body'),pick=document.getElementById('doc-import');if(!body||body.dataset.editorWired)return;body.dataset.editorWired='1';
