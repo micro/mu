@@ -729,6 +729,9 @@ var Template = `
           // happened. Let the browser do the whole page: rebuilding the chrome
           // is the point, not a side effect.
           if (u.pathname === '/logout') return;
+          // Agent pages own live streams and per-thread draft/scroll state.
+          // Use document navigation so pagehide saves it and listeners retire.
+          if (/^\/agent(?:\/|$)/.test(u.pathname) || /^\/agent(?:\/|$)/.test(location.pathname)) return;
           e.preventDefault();
           if (u.href === location.href) return;
           go(u.href, true);
@@ -1275,7 +1278,8 @@ func navMain(acc *auth.Account) string {
 			`"><span class="label">` + label + `</span></a>`
 	}
 
-	b := item("nav-home", "/home", "/home.png", "Home")
+	b := item("nav-micro", "/agent/micro", "/agent.svg", "Micro")
+	b += item("nav-home", "/home", "/home.png", "Home")
 	// Account and Profile are not here. They are the two that are about *you*
 	// rather than about the instance, so they sit under your name at the foot
 	// beside Log out — which is where somebody looks when the question is "who
@@ -1320,6 +1324,7 @@ func navTabs(acc *auth.Account) string {
 			`" alt=""><span>` + label + `</span></a>`
 	}
 	return `<nav id="tabs" aria-label="Main">` +
+		tab("/agent/micro", "/agent.svg", "Micro") +
 		tab("/home", "/home.png", "Home") +
 		tab("/inbox", "/mail.png", "Inbox") +
 		tab("/agents", "/agent.svg", "Agents") +

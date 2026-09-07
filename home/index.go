@@ -67,7 +67,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	// So: two pages for two audiences. Out here, a landing. Signed in, /home,
 	// which has the rail, the tabs, your inbox and the same box to type in.
 	if _, acc := auth.TrySession(r); acc != nil {
-		http.Redirect(w, r, "/home", http.StatusSeeOther)
+		http.Redirect(w, r, "/agent/micro", http.StatusSeeOther)
 		return
 	}
 
