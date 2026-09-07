@@ -143,8 +143,8 @@ func TestTheInstructionLandsOnTheConversation(t *testing.T) {
 	thread.Add(thread.Message{Thread: mine.ID, Account: who, Text: "dinner on the 4th at 8"})
 
 	said := ""
-	AgentSaid(func(accountID, threadID, text string) { said = text })
-	t.Cleanup(func() { AgentSaid(func(string, string, string) {}) })
+	AgentSaid(func(accountID, threadID, text, agentID string) { said = text })
+	t.Cleanup(func() { AgentSaid(func(string, string, string, string) {}) })
 
 	form := url.Values{"id": {mine.ID}, "ask": {"add this to my calendar"}}
 	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
@@ -176,8 +176,8 @@ func TestHandingOverMakesATaskOnTheConversation(t *testing.T) {
 	reader(t, who)
 
 	said := ""
-	AgentSaid(func(accountID, threadID, text string) { said = text })
-	t.Cleanup(func() { AgentSaid(func(string, string, string) {}) })
+	AgentSaid(func(accountID, threadID, text, agentID string) { said = text })
+	t.Cleanup(func() { AgentSaid(func(string, string, string, string) {}) })
 
 	th := thread.Open(who, "mail", "<hand@example.com>")
 	if th == nil {

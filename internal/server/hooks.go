@@ -361,8 +361,11 @@ func wireHooks() {
 	// One line from the agent onto a conversation — the acknowledgement when
 	// work is handed over. The agent owns how anything it says is written
 	// down, so the inbox asks rather than writing to the record itself.
-	inbox.AgentSaid(func(accountID, threadID, text string) {
-		agent.Answered(accountID, threadID, text, "")
+	inbox.AgentSaid(func(accountID, threadID, text, agentID string) {
+		if agentID == "" {
+			agentID = agent.DefaultName()
+		}
+		agent.AnsweredAs(accountID, threadID, text, "", agentID)
 	})
 	inbox.AgentName = agent.NameOf
 	inbox.Address = mail.SharedAgentAddress

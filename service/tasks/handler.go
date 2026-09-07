@@ -181,7 +181,7 @@ func taskRow(t *Task, csrf string) string {
 	if !t.Open() {
 		class += " task-done"
 	}
-	fmt.Fprintf(&b, `<div class="%s">`, class)
+	fmt.Fprintf(&b, `<div class="%s" data-task-id="%s" data-task-status="%s">`, class, html.EscapeString(t.ID), html.EscapeString(t.Status))
 
 	fmt.Fprintf(&b, `<div class="task-title">%s</div>`, html.EscapeString(t.Title))
 
@@ -265,13 +265,14 @@ func button(b *strings.Builder, id, action, csrf, label, extra string) {
 const taskPollJS = `<script>
 (function(){
   var tries = 0;
+  var watched = Array.from(document.querySelectorAll('[data-task-status="doing"]')).map(function(el){return el.dataset.taskId;});
   function check(){
     if (++tries > 120) return; // ten minutes, then stop asking
     fetch('/tasks', {headers:{'Accept':'application/json'}, credentials:'same-origin'})
       .then(function(r){ return r.json(); })
       .then(function(d){
-        var busy = (d.tasks||[]).some(function(t){ return t.status === 'doing'; });
-        if (!busy) { location.reload(); return; }
+        var changed = watched.some(function(id){return !(d.tasks||[]).some(function(t){return t.id===id && t.status==='doing';});});
+        if (changed) { location.reload(); return; }
         setTimeout(check, 3000);
       })
       .catch(function(){ setTimeout(check, 5000); });
