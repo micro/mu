@@ -744,6 +744,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	notice := ""
 	switch r.URL.Query().Get("saved") {
+	case "converted":
+		notice = app.Notice("USDC converted to account credits.")
 	case "name":
 		notice = app.Notice("Name saved.")
 	case "address":

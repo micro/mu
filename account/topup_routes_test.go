@@ -45,3 +45,14 @@ func TestTopupDoesNotOfferUnusableCryptoFunding(t *testing.T) {
 		}
 	}
 }
+
+func TestAccountShowsConversionConfirmation(t *testing.T) {
+	cookie := holder(t, "convert-notice", "Conversion")
+	req := httptest.NewRequest("GET", "/account?saved=converted", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	Account(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "USDC converted to account credits.") {
+		t.Fatalf("conversion confirmation missing: status %d", rec.Code)
+	}
+}

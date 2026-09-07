@@ -128,7 +128,7 @@ func wireHooks() {
 			return out
 		}
 		events.ExternalEntries = func(owner string, from, to time.Time) []events.External {
-			entries, err := google.Events(owner, from, to, 25)
+			entries, err := google.Events(owner, from, to, 0)
 			if err != nil {
 				if err != google.ErrNotConnected {
 					app.Log("events", "google events for %s: %v", owner, err)
