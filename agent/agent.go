@@ -527,7 +527,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// only exists here put a row of chrome above the conversation to say
 	// something the nav already says.
 	chip := `<div class="agent-bar">` +
-		`<a class="btn chat-open-list" href="` + chatPath(accountID, selAgent) + `?new=1">New chat</a>` +
+		`<a class="btn chat-open-list" href="` + chatPath(accountID, selAgent) + `?new=1">New</a>` +
 		`<button type="button" class="btn chat-open-list" onclick="muPane('chats')">Chats</button>` +
 		`</div>` + paneJS
 
@@ -742,7 +742,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 	}
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
-		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">New chat</button>` +
+		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">New</button>` +
 		`<div class="chat-sess-scroll">` +
 		// Chats, which is what the store has always called them in every way
 		// but this one. The record is threads.json, the package is

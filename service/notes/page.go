@@ -75,7 +75,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // list is every note, newest change first, each one a link into the editor.
 func list(entries []*notes.Entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="collection-head">` +
+	b.WriteString(`<div class="page-action">` +
 		`<a class="btn" href="/notes?new=1">New</a></div>`)
 
 	if len(entries) == 0 {

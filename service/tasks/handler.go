@@ -109,8 +109,6 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
-	b.WriteString(`<p class="text-sm text-muted">What is to be done. Assign a task to the agent ` +
-		`and it can pick it up — or press Run and it starts now.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)

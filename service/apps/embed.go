@@ -103,8 +103,6 @@ func handleEmbed(w http.ResponseWriter, r *http.Request, slug string) {
 	b.WriteString(app.Actions(app.TextLink("← Apps", "/apps"),
 		app.TextLink("Open "+a.Name, "/apps/"+a.Slug)))
 	b.WriteString(`<h2 class="embed-title">Embed ` + html.EscapeString(a.Name) + `</h2>`)
-	b.WriteString(`<p class="embed-lead">An app is a page at a URL. Put this on ` +
-		`any site and it runs there, sandboxed, the same way it runs here.</p>`)
 
 	// Paid apps are not offered. ?raw=1 is what the tag points at and it is the
 	// path that does not charge — see handleApp, where the count and the charge

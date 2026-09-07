@@ -1169,7 +1169,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		pageHTML := app.Page(app.PageOpts{
 			Action:  "/mail?compose=true",
-			Label:   "Compose",
+			Label:   "New",
 			Content: mailSearchBar(q, auth.CSRFToken(r)) + content,
 		})
 		app.Respond(w, r, app.Response{Title: "Mail — Search", Description: "", HTML: pageHTML})
@@ -1435,7 +1435,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	pageHTML := app.Page(app.PageOpts{
 		Action:  "/mail?compose=true",
-		Label:   "Compose",
+		Label:   "New",
 		Filters: tabs,
 		Content: addressPanel(acc.ID) + tagFilter(userInbox, acc.ID, viewTag) + searchBar +
 			`<div id="mailbox">` + content + `</div>`,
@@ -2384,9 +2384,9 @@ func searching(r *http.Request) bool {
 // had to be changed together — which is how a form gets switched to POST in one
 // place and left as a GET in the other.
 func mailSearchBar(q, csrf string) string {
-	return `<form action="/mail" method="POST" class="mb-3 d-flex gap-2">` +
+	return `<form action="/mail" method="POST" class="search-bar">` +
 		app.CSRFField(csrf) +
 		`<input type="text" name="q" value="` + html.EscapeString(q) + `" ` +
-		`placeholder="Search mail..." class="form-input grow text-base">` +
+		`placeholder="Search mail...">` +
 		`<button type="submit" class="btn">Search</button></form>`
 }

@@ -70,7 +70,6 @@ func serveServiceReference(w http.ResponseWriter, r *http.Request, name string) 
 func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="svc-page">`)
-	b.WriteString(`<p class="svc-lead">` + html.EscapeString(spec.Description) + `</p>`)
 
 	// The demonstration, first, and it is the argument the whole instance
 	// makes: a page showing today's actual forecast is the difference between

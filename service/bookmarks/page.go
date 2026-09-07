@@ -96,7 +96,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="bookmarks-page"><p class="lens-lead">Your reading, kept privately. Save something while browsing, then come back to it or ask Micro about it.</p>`)
+	b.WriteString(`<div class="bookmarks-page">`)
 	if ref := r.URL.Query().Get("item"); ref != "" {
 		item, e := store.Source(ref)
 		if e != nil {
@@ -128,7 +128,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, map[string]any{"items": items, "total": total})
 			return
 		}
-		b.WriteString(`<form method="POST" action="/bookmarks/search" class="bookmarks-search">` + token(r) + `<input type="search" name="query" value="` + html.EscapeString(query) + `" placeholder="Search your saved items"><select name="kind" aria-label="Content type">`)
+		b.WriteString(`<form method="POST" action="/bookmarks/search" class="search-bar">` + token(r) + `<input type="search" name="query" value="` + html.EscapeString(query) + `" placeholder="Search your saved items"><select name="kind" aria-label="Content type">`)
 		for _, k := range []string{"", "article", "video", "post", "link"} {
 			selected := ""
 			if k == kind {
@@ -163,7 +163,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</div><details><summary>Add a link</summary><form method="POST" action="/bookmarks" class="bookmarks-add">` + token(r) + hidden("action", "add") + `<input name="url" type="url" required maxlength="4096" placeholder="https://…" aria-label="Link"><input name="title" maxlength="1000" placeholder="Title" aria-label="Title"><button>Save link</button></form></details>`)
 	}
-	b.WriteString(`</div>` + app.ReadingCSS + `<style>.bookmarks-page{max-width:800px}.bookmarks-search,.bookmarks-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.bookmarks-search input{flex:1;min-width:160px}.bookmarks-page textarea{display:block;width:100%;box-sizing:border-box;margin:8px 0}.bookmarks-add{margin-top:12px}</style>`)
+	b.WriteString(`</div>` + app.ReadingCSS + `<style>.bookmarks-page{max-width:800px}.bookmarks-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.bookmarks-page textarea{display:block;width:100%;box-sizing:border-box;margin:8px 0}.bookmarks-add{margin-top:12px}</style>`)
 	app.Respond(w, r, app.Response{Title: "Bookmarks", Description: "Your private saved reading", HTML: b.String()})
 }
 func hidden(name, value string) string {

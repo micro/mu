@@ -66,7 +66,6 @@ func TestAServiceReferenceIsDerivedFromItsSpec(t *testing.T) {
 		"Read the things",              // the doc off the Endpoint
 		"query",                        // the declared argument
 		`href="/refprobe"`,             // the way out to the service itself
-		"A service to render a reference for",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the reference does not carry %q", want)

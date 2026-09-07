@@ -28,9 +28,6 @@ import (
 func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<div class="sbx">`)
-	b.WriteString(`<p class="svc-lead">` + Spec.Description + `. A container of your ` +
-		`own with a shell in it: what you put in it stays there between commands, ` +
-		`and nothing you run can reach this machine.</p>`)
 
 	if !Configured() {
 		// The reason rather than a guess at it. This said "an admin installs

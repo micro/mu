@@ -180,8 +180,8 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	// No heading here: the page is already titled Files by the shell, and a
 	// card that repeats the page title just costs a phone a line of screen.
-	b.WriteString(`<p><a class="btn" href="/files?new=1">New file</a></p><div class="card">`)
-	b.WriteString(`<p class="text-sm text-muted">Anything you or your agent has stored. Using ` +
+	b.WriteString(`<div class="page-action"><a class="btn" href="/files?new=1">New</a></div><div class="card">`)
+	b.WriteString(`<p class="text-sm text-muted">Using ` +
 		human(UsedBytes(sess.Account)) + ` of ` + human(MaxOwnerBytes) + `.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {

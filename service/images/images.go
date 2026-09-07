@@ -520,13 +520,13 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 
 	auth.SetCSRFCookie(w, r)
 	if caller != "" {
-		b.WriteString(`<div class="card"><form method="POST" action="/images?web=1" class="d-flex gap-2">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="query" class="grow" placeholder="Search images on the web" required maxlength="400"><button>Search web</button></form></div>`)
+		b.WriteString(`<div class="card"><form method="POST" action="/images?web=1" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="query" class="grow" placeholder="Search images on the web" required maxlength="400"><button>Search web</button></form></div>`)
 		b.WriteString(uploadForm(r))
 	}
 	// Search box — searches your images plus the public stock pool.
-	b.WriteString(`<div class="card"><form method="GET" action="/images" class="d-flex gap-2 m-0">`)
-	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search your image library…" class="form-input grow text-base">`)
-	b.WriteString(`<button type="submit" class="text-base">Search</button>`)
+	b.WriteString(`<div class="card"><form method="GET" action="/images" class="search-bar">`)
+	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search your image library…">`)
+	b.WriteString(`<button type="submit">Search</button>`)
 	b.WriteString(`</form></div>`)
 
 	// Search results.
@@ -561,7 +561,6 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	if past := pastDailies(d.Date, 60); len(past) > 0 {
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Past dailies</h3>`)
-		b.WriteString(`<p class="card-desc">Every daily image Mu has generated, kept on this server.</p>`)
 		b.WriteString(`<div class="thumb-grid">`)
 		for _, e := range past {
 			title := strings.Title(e.Theme) + " · " + e.Date
@@ -575,7 +574,6 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	// Generate panel.
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Generate an image</h3>`)
-	b.WriteString(`<p class="card-desc">Describe an image and Mu creates it with nano-banana.</p>`)
 	if acc == nil {
 		b.WriteString(`<p><a href="/login">Sign in</a> to generate images.</p>`)
 	} else {
@@ -619,7 +617,6 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	if len(stock) > 0 {
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Community stock</h3>`)
-		b.WriteString(`<p class="card-desc">Public images shared by the community — free to reuse.</p>`)
 		b.WriteString(imageGrid(stock))
 		b.WriteString(`</div>`)
 	}

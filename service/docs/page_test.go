@@ -159,3 +159,16 @@ func TestThePageRefusesAGuest(t *testing.T) {
 		t.Errorf("a guest got %d rather than a redirect to sign in", w.Code)
 	}
 }
+
+func TestSearchDoesNotSaveADocument(t *testing.T) {
+	const owner = "docs_search"
+	post(t, owner, url.Values{"title": {"A plan"}, "content": {"private phrase"}})
+	w := httptest.NewRecorder()
+	Handler(w, signedIn(t, owner, "POST", "/docs", url.Values{"action": {"search"}, "q": {"private phrase"}}))
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "A plan") {
+		t.Fatal("search did not return the matching document")
+	}
+	if len(shown(t, owner)) != 1 {
+		t.Fatal("search changed the document collection")
+	}
+}

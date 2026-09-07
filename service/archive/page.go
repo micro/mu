@@ -77,18 +77,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ar">`)
-	b.WriteString(`<p class="lens-lead">Everything this server has collected and kept — headlines, ` +
-		`video, market moves, what it has written. It archives as it goes, so this is what it ` +
-		`knew as well as what it knows. One search across all of it. What you have said to an ` +
-		`agent is somewhere else that it can ` + app.TextLink("Recall", "/recall") + `.</p>`)
 
-	b.WriteString(`<form method="GET" action="/archive" class="ar-form">`)
+	b.WriteString(`<form method="GET" action="/archive" class="search-bar">`)
 	if kind != "" {
 		b.WriteString(`<input type="hidden" name="kind" value="` + html.EscapeString(kind) + `">`)
 	}
-	b.WriteString(`<input class="ar-input" type="search" name="q" placeholder="Search the archive" ` +
+	b.WriteString(`<input type="search" name="q" placeholder="Search the archive" ` +
 		`value="` + html.EscapeString(query) + `" autofocus>` +
-		`<button class="ar-go" type="submit">Search</button></form>`)
+		`<button type="submit">Search</button></form>`)
 
 	b.WriteString(kindChips(kinds, query, kind))
 
@@ -203,10 +199,6 @@ func kindChips(kinds []data.Kind, query, active string) string {
 
 const pageCSS = `<style>
 .ar{max-width:var(--measure,760px)}
-.ar-form{display:flex;gap:8px;margin:0 0 14px}
-.ar-input{flex:1;font:inherit;font-size:15px;padding:9px 13px;border:1px solid #e2e2e2;border-radius:8px}
-.ar-input:focus{outline:none;border-color:#bbb}
-.ar-go{font:inherit;font-size:14px;padding:8px 18px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;cursor:pointer}
 .ar-empty{font-size:14px;color:#888;line-height:1.6}
 .ar-row{padding:12px 0;border-bottom:1px solid #f4f4f4}
 /* A kind and a time are two facts, and this had nothing between them — the pill
@@ -219,8 +211,4 @@ const pageCSS = `<style>
 .ar-title{font-size:15px;color:#111;font-weight:500;text-decoration:none;display:block}
 a.ar-title:hover{text-decoration:underline}
 .ar-body{font-size:13px;color:#888;line-height:1.55;margin-top:3px}
-@media (max-width:640px){
-  .ar-form{flex-wrap:wrap}
-  .ar-input{flex-basis:100%}
-}
 </style>`

@@ -516,7 +516,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	// HTML
 	var sb strings.Builder
-	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. Build apps, set your price, keep every penny of every sale.</p>`)
 
 	// Building one is the point of the page, so it is a button at the top
 	// rather than a line of text under however many apps happen to be listed —
@@ -530,7 +529,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "New app") + `</p>`)
+	sb.WriteString(`<div class="page-action">` + app.ActionLink("/apps/new", "New") + `</div>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
@@ -727,7 +726,6 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	// Two boxes that both claim to build an app from a sentence is the thing
 	// to avoid here, and the one to delete is the one that cannot iterate. What
 	// stays on this page is the other job entirely: pasting HTML you wrote.
-	sb.WriteString(`<p class="card-desc">Describe what you want and it gets written, checked and run — then you say what to change.</p>`)
 	sb.WriteString(`<p class="col-narrow mb-2">` + app.ActionLink("/agent/micro", "Describe an app to Micro") + `</p>`)
 	sb.WriteString(`<details class="col-narrow mt-5"><summary class="clickable text-secondary text-base">Write the HTML yourself</summary>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" class="mt-4">`)

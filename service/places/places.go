@@ -662,11 +662,10 @@ func renderPlacesPage(r *http.Request) string {
 
 	// No <h4>Places</h4>. The page is already titled Places by app.Respond, and
 	// a card headed with the name of the page it is the only card on says the
-	// same word twice. The line under it is what the card is for.
+	// same word twice.
 	return fmt.Sprintf(`<div class="places-page">
 %s
 <div class="card">
-  <p class="text-muted places-form-desc">Find somewhere by name or category — cafe, pharmacy — or leave it empty and see what is nearby.</p>
   %s
 </div>
 %s

@@ -134,10 +134,10 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func searchForm(q, csrf string) string {
-	return `<form class="wx-find" method="POST" action="/weather">` + app.CSRFField(csrf) + `
-  <input class="field" type="search" name="q" placeholder="Anywhere — a town, a city" ` +
+	return `<form class="search-bar" method="POST" action="/weather">` + app.CSRFField(csrf) + `
+  <input type="search" name="q" placeholder="Anywhere — a town, a city" ` +
 		`value="` + html.EscapeString(q) + `" maxlength="120">
-  <button class="btn" type="submit">Look up</button>
+  <button type="submit">Search</button>
 </form>`
 }
 

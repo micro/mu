@@ -65,16 +65,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="w-760">`)
-	b.WriteString(`<p class="lens-lead">Search everything you have said to an agent and been ` +
-		`told, whether you said it in the browser, by email, or from the command line. ` +
-		`To read a conversation and carry it on, go to ` + app.TextLink("your inbox", "/inbox") + `.</p>`)
 
 	csrf := auth.CSRFToken(r)
-	b.WriteString(`<form method="POST" action="/recall" class="rc-form">` +
+	b.WriteString(`<form method="POST" action="/recall" class="search-bar">` +
 		app.CSRFField(csrf) +
-		`<input class="rc-input" type="search" name="q" placeholder="A word or phrase somebody said" ` +
+		`<input type="search" name="q" placeholder="A word or phrase somebody said" ` +
 		`value="` + html.EscapeString(query) + `" autofocus>` +
-		`<button class="rc-go" type="submit">Search</button></form>`)
+		`<button type="submit">Search</button></form>`)
 
 	// The clients this account has actually used, so an instance that has only ever seen
 	// mail does not offer to narrow to anything else.
@@ -227,10 +224,6 @@ func sortStrings(s []string) {
 }
 
 const pageCSS = `<style>
-.lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
-.rc-form{display:flex;gap:8px;margin:0 0 16px}
-.rc-input{flex:1;padding:9px 12px;font-size:14px;font-family:inherit;border:1px solid var(--border-color,#ddd);border-radius:6px;background:var(--card-background,#fff);color:var(--text-primary,#111)}
-.rc-go{padding:9px 16px;background:#111;color:#fff;border:0;border-radius:6px;font-size:14px;font-family:inherit;cursor:pointer}
 .rc-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
 .rc-chip{border:1px solid #eee;border-radius:6px;padding:3px 11px;font-size:12px;color:#666;text-decoration:none}
 .rc-chip:hover{border-color:#ccc}
