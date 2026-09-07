@@ -77,6 +77,9 @@ func initDB() error {
 		// It cost nothing on a small archive, which is why it was invisible
 		// here and slow on an instance with a real one.
 		db.Exec(`CREATE INDEX IF NOT EXISTS idx_owner_type ON index_entries(owner, type)`)
+		// Recent archive previews should read their limited window directly,
+		// without sorting every record of a kind before applying LIMIT.
+		db.Exec(`CREATE INDEX IF NOT EXISTS idx_owner_type_recent ON index_entries(owner, type, indexed_at DESC)`)
 
 		// Create FTS5 virtual table for full-text search
 		_, err = db.Exec(`

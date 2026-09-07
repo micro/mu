@@ -143,8 +143,12 @@ func ensureBuiltins() {
 			apps[a.Slug] = a
 			added++
 		}
-		apps[a.Slug].Official = true
-		apps[a.Slug].Order = a.Order
+		// A user's app can occupy a shipped slug. Its name alone does not
+		// make it a template; preserve its ownership and classification.
+		if apps[a.Slug].AuthorID == a.AuthorID {
+			apps[a.Slug].Official = true
+			apps[a.Slug].Order = a.Order
+		}
 	}
 	mutex.Unlock()
 	if added > 0 {

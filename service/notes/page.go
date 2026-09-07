@@ -76,8 +76,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func list(entries []*notes.Entry) string {
 	var b strings.Builder
 	b.WriteString(`<div class="note-head">` +
-		`<p class="text-sm text-muted m-0">Notes you keep, and notes your agents keep ` +
-		`for you. All of them are read back into the questions you ask.</p>` +
 		`<a class="note-new" href="/notes?new=1">New note</a></div>`)
 
 	if len(entries) == 0 {
@@ -198,7 +196,7 @@ func preview(text string) string {
 func urlArg(s string) string { return url.QueryEscape(s) }
 
 const pageCSS = `<style>
-.note-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+.note-head{display:flex;align-items:center;justify-content:flex-start;gap:12px;margin:0 0 14px}
 .note-new,.note-new:visited{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:7px 14px;
   border-radius:8px;font-size:13px;font-weight:600;white-space:nowrap}
 .note-new:hover,.note-new:visited:hover{background:#333;color:#fff}

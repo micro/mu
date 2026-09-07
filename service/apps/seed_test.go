@@ -54,6 +54,9 @@ func TestEnsureBuiltinsFillsGapsWithoutClobber(t *testing.T) {
 	if a := GetApp("notes"); a == nil || a.AuthorID != "alice" {
 		t.Fatalf("ensureBuiltins clobbered the user's notes app: %+v", a)
 	}
+	if a := GetApp("notes"); a.Official || a.Order != 0 {
+		t.Fatalf("user's notes app was classified as a template: %+v", a)
+	}
 	if GetApp("hello-world") == nil {
 		t.Error("a missing built-in was not added")
 	}
