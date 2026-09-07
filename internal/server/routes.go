@@ -16,7 +16,6 @@ import (
 	"mu/admin"
 	"mu/agent"
 	"mu/agent/brief"
-	"mu/agent/code"
 	"mu/agent/digest"
 	"mu/agent/micro"
 	"mu/client"
@@ -396,8 +395,8 @@ func registerRoutes() {
 
 	// The Code agent, at the address two pages of /apps have been linking to
 	// since before there was a handler for it. See agent/code.
-	http.HandleFunc("/code", code.Handler)
-	http.HandleFunc("/code/file", code.FileHandler)
+	http.HandleFunc("/code", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/agent/micro", http.StatusSeeOther) })
+	http.HandleFunc("/code/file", http.NotFound)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)

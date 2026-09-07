@@ -37,12 +37,12 @@ var f embed.FS
 // other, /agent is where you talk to something that acts.
 var Template = `
 %s
-<div id="messages"></div>
+<div class="room-layout"><aside class="room-roster"><h3>In this room</h3><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></aside><div class="room-main"><div id="messages"></div>
 <form id="chat-form" onsubmit="return false;">
 <input id="topic" name="topic" type="hidden">
 <textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
 <button>Send</button>
-</form>`
+</form></div></div><style>.room-layout{display:grid;grid-template-columns:160px minmax(0,1fr);gap:20px}.room-roster{padding:12px 0}.room-roster h3{font-size:13px;margin:0 0 12px}.room-roster #chat-users a{display:block;margin-bottom:8px}.room-main{min-width:0}@media(max-width:760px){.room-layout{grid-template-columns:1fr;gap:8px}.room-roster{padding:0}.room-roster #chat-users a{display:inline-block;margin-right:10px}.room-roster h3{margin-bottom:6px}}</style>`
 
 var mutex sync.RWMutex
 
@@ -1544,6 +1544,9 @@ func handleClearChat(w http.ResponseWriter, r *http.Request, roomID string) {
 
 // handleGetChat handles GET /chat - returns chat info as JSON or HTML
 func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
+	if roomID == "" && r.URL.Query().Get("view") != "rooms" && !app.WantsJSON(r) {
+		roomID = Lobby
+	}
 	// Get room data with timeout to prevent hanging
 	roomData := map[string]interface{}{}
 	if roomID != "" {

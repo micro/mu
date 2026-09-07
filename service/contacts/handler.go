@@ -24,6 +24,10 @@ import (
 
 // Handler serves /contacts.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.URL.Path == "/contacts/import" {
+		importHandler(w, r)
+		return
+	}
 	if r.Method == http.MethodPost {
 		// Searching posts too, because the name somebody looks up is one of the
 		// people they know and does not belong in a URL. Told apart from add and
@@ -137,7 +141,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
   <input name="note" placeholder="Note">
   <button type="submit">Add</button>
 </form>`, html.EscapeString(csrf))
-	b.WriteString(`</div>`)
+	b.WriteString(`<details class="mt-3"><summary>Import contacts</summary><form method="POST" action="/contacts/import" enctype="multipart/form-data" class="contact-search">` + app.CSRFField(csrf) + `<input type="file" name="file" accept=".csv,text/csv" required><button>Import CSV</button></form><p class="text-sm">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p></details></div>`)
 
 	if len(people) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">`)
@@ -174,6 +178,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</tbody></table></div>`)
 	}
 
+	b.WriteString(googleCard(r, sess.Account, query))
 	b.WriteString(connectCard(sess.Account, r.URL.Query().Get("connection")))
 	b.WriteString(contactsPageCSS)
 	app.Respond(w, r, app.Response{Title: "Contacts", Description: "Your address book", HTML: b.String()})

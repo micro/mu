@@ -91,7 +91,6 @@ func Load() {
 
 var Spec = service.Spec{
 	Name:        "text",
-	Label:       "Text tools",
 	Handler:     new(Server),
 	Description: "Language work: summarise, extract structure, classify, translate",
 	Page:        "/text",

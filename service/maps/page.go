@@ -156,20 +156,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// dependencies, which argues for writing it rather than against having it.
 	b.WriteString(mapPane(style))
 
-	b.WriteString(`<h2 class="svc-h">Pointing a map at it</h2>`)
-	// app.BaseURL, not r.Host. Mu runs behind a reverse proxy that forwards to a
-	// loopback port, so r.Host is "localhost:8081" and the URL this page hands
-	// somebody to paste into MapLibre named an address no client can reach. See
-	// internal/origin, which is where this question has one answer.
-	b.WriteString(`<pre class="tool-call">` + html.EscapeString(app.BaseURL(r)) + `/maps/tiles/` +
-		style + `/{z}/{x}/{y}.png</pre>`)
-	b.WriteString(app.NoteHTML(`That is a raster tile URL — give it to MapLibre, Leaflet or ` +
-		`OpenLayers as-is. Free: a tile is fetched once, ever, and served from here ` +
-		`afterwards. Signing in is only needed for a tile this instance has never seen, ` +
-		`and there is a limit of ` + strconv.Itoa(coldLimit()) + ` of those an hour per ` +
-		`account so nobody can mirror Britain by accident. Ask <code>tiles_area</code> for ` +
-		`the tiles covering a bounding box. ` +
-		`Contains OS data © Crown copyright and database right.`))
+	b.WriteString(directionsUI)
 
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Maps", Description: Spec.Description, HTML: b.String()})
@@ -251,7 +238,10 @@ const mapJS = `<script>
   if(!el||!layer) return;
   var SIZE=256, style=el.dataset.style, where=document.getElementById('map-where');
   var z=+el.dataset.zoom, minZ=+el.dataset.min, maxZ=+el.dataset.max;
-  var live={}, arrived=0, missing=0, asked=0;
+  var routeShape=[];
+ var overlay=document.createElementNS('http://www.w3.org/2000/svg','svg');overlay.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2';el.appendChild(overlay);
+ el.addEventListener('map-route',function(e){routeShape=e.detail.filter(function(p){return Number.isFinite(p.Lat)&&Number.isFinite(p.Lon);});if(!routeShape.length){overlay.replaceChildren();return;}var lat=routeShape.reduce(function(a,p){return a+p.Lat;},0)/routeShape.length,lon=routeShape.reduce(function(a,p){return a+p.Lon;},0)/routeShape.length;z=Math.min(maxZ,15);while(z>minZ){var xs=routeShape.map(function(p){return xOf(p.Lon,z)*SIZE;}),ys=routeShape.map(function(p){return yOf(p.Lat,z)*SIZE;});if(Math.max.apply(null,xs)-Math.min.apply(null,xs)<el.clientWidth-40&&Math.max.apply(null,ys)-Math.min.apply(null,ys)<el.clientHeight-40)break;z--;}cx=xOf(lon,z);cy=yOf(lat,z);layer.innerHTML='';live={};render();});
+ var live={}, arrived=0, missing=0, asked=0;
   function done(){ say(); }
 
   // Web Mercator, the same formula the service uses server-side. Kept as a
@@ -298,7 +288,8 @@ const mapJS = `<script>
     for(var have in live){
       if(!seen[have]){ layer.removeChild(live[have]); delete live[have]; }
     }
-    asked=Object.keys(live).length;
+    overlay.replaceChildren();if(routeShape.length){var line=document.createElementNS('http://www.w3.org/2000/svg','polyline');line.setAttribute('points',routeShape.map(function(p){return (xOf(p.Lon,z)*SIZE-left)+','+(yOf(p.Lat,z)*SIZE-top);}).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke','#2563eb');line.setAttribute('stroke-width','4');overlay.appendChild(line);}
+ asked=Object.keys(live).length;
     say();
   }
 

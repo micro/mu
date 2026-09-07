@@ -43,6 +43,7 @@ files_put                    needsAccount=true  destructive=false bound accountO
 files_share                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 flights_airport              needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 flights_overhead             needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+flights_status               needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 flights_track                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 food_hygiene                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 food_product                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
@@ -52,6 +53,7 @@ hazards_floods               needsAccount=false destructive=false open accountOn
 hazards_quakes               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 images_generate              needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 images_search                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+images_websearch             needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_inbox                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_info                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_read                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false

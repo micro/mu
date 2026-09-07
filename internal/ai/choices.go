@@ -71,7 +71,10 @@ func Choices() []Choice {
 	}
 
 	if getAtlasAPIKey() != "" {
-		add(AtlasModel(), "DeepSeek — best", ProviderAtlasCloud)
+		add(ModelGLM, "GLM 5.3", ProviderAtlasCloud)
+		add(ModelGLMFlash, "GLM 5.3 Flash", ProviderAtlasCloud)
+		add(ModelDeepSeekPro, "DeepSeek — best", ProviderAtlasCloud)
+		add(AtlasModel(), AtlasModel(), ProviderAtlasCloud)
 		add(ModelDeepSeekFlash, "DeepSeek — fast", ProviderAtlasCloud)
 		add(ModelQwenPlus, "Qwen", ProviderAtlasCloud)
 	}

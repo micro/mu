@@ -23,7 +23,7 @@ func TestThereIsOneBoxThatBuildsAnAppFromASentence(t *testing.T) {
 			"Describing an app is /code, which checks the result and lets you say " +
 			"what to change; a second box that asks once is the one that will rot.")
 	}
-	if !strings.Contains(src, `"/code"`) {
+	if !strings.Contains(src, `"/agent/micro"`) {
 		t.Error("nothing on the apps page leads to /code, so the page that writes " +
 			"apps is unreachable from the page that lists them")
 	}

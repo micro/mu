@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"mu/agent/code"
 	"mu/agent/micro"
 	"mu/inbox"
 	"mu/internal/api"
@@ -405,6 +404,16 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The chat switcher requests only its account-owned transcript.
+	if r.Header.Get("X-Mu-Transcript") == "1" {
+		if !reopened || elsewhere != "" {
+			app.RespondError(w, 404, "Chat not found")
+			return
+		}
+		app.RespondJSON(w, map[string]any{"id": cfg.ContextID, "html": cfg.InitialConvHTML, "pending": cfg.Pending, "agent": reopenAgent})
+		return
+	}
+
 	// Prefill prompt from ?q / ?prompt (e.g. home card deep-links).
 	//
 	// The one query that stays a query, and the reason is that here the URL *is*
@@ -489,14 +498,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// on /agent/<name> both threw ReferenceError, which is why the delete cross
 	// did nothing and why a named agent's page did not look like the default
 	// one. What this page needs it now defines itself, in chatPageJS.
-	// The Code agent's rail carries its workspace under the conversations: the
-	// files on its machine and the apps it has hosted. Called for every agent
-	// and empty for all but one — which agent has a machine is agent/code's
-	// fact to know, not this page's. See code.RailSection.
 	rail := `<div class="chat-side">` +
 		`<div class="chat-pane" id="pane-chats">` +
 		renderSessionsRail(accountID, activeRoot, selAgent, named,
-			code.RailSection(accountID, selAgent)) + `</div></div>`
+			"") + `</div></div>`
 
 	// The bar above the conversation: how you got here, and how to see the
 	// other conversations on a phone. Nothing else.
@@ -521,7 +526,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// something the nav already says.
 	chip := `<div class="agent-bar">` +
 		`<a class="btn chat-open-list" href="` + chatPath(accountID, selAgent) + `?new=1">New chat</a>` +
-		`<button type="button" class="chat-open-list" onclick="muPane('chats')">Conversations</button>` +
+		`<button type="button" class="btn chat-open-list" onclick="muPane('chats')">Chats</button>` +
 		`</div>` + paneJS
 
 	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
@@ -748,7 +753,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 		// also mean "a chat you had". Chat is what these are, it is what the
 		// button under them starts, and thread.WebClient is the client that
 		// makes them.
-		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
+		`<div class="chat-sess-head">Chats</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
 		// "No conversations yet" is a true sentence that leaves somebody looking
@@ -798,7 +803,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 			`onclick="muSessionDelete(` + app.JSAttr(s.ID) + `,event)">&times;</button></div>`)
 	}
 	if len(sessions) >= railShown {
-		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)
+		b.WriteString(`<a class="chat-sess-more" href="/recall">Older chats →</a>`)
 	}
 	b.WriteString(`</div>` + extra)
 
@@ -1065,14 +1070,14 @@ const chatLayoutCSS = `<style>
    children size to their content rather than the screen and a wide answer pushes
    the input off the side. Hence the stretch. */
 @media(max-width:760px){
-  .agent-bar{display:flex}
+  .agent-bar{display:flex;padding-top:12px;gap:8px;margin-bottom:16px}
   .chat-layout{flex-direction:column;gap:12px;align-items:stretch}
   .chat-main{width:100%;min-width:0;max-width:100%}
   .chat-open-list{display:inline-block;border:1px solid var(--border-color,#e5e5e5);
     background:var(--card-background,#fff);color:var(--text-primary,#111);
     border-radius:6px;padding:3px 12px;font-size:12px;font-weight:600;
     font-family:inherit;cursor:pointer}
-  .chat-open-list::after{content:" ▾";color:#999}
+  button.chat-open-list::after{content:" ▾";color:#999}
   /* The sheet. Off-screen rather than display:none, so opening it animates and
      so the panels inside keep their state. */
   /* The sheet ends above the tab bar. It is fixed to bottom:0 with a lower

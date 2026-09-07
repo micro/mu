@@ -33,6 +33,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	to := strings.TrimSpace(r.URL.Query().Get("to"))
 	mode := strings.TrimSpace(r.URL.Query().Get("mode"))
 
+	if app.WantsJSON(r) {
+		j, msg := plan(&ETARequest{From: from, To: to, Mode: mode})
+		if msg != "" {
+			app.RespondError(w, 400, msg)
+			return
+		}
+		route, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full)
+		if err != nil {
+			app.RespondError(w, 502, "Could not load directions")
+			return
+		}
+		app.RespondJSON(w, map[string]any{"summary": j.fromLabel + " → " + j.toLabel + ": " + humanDuration(route.Duration) + ", " + humanDistance(route.Metres), "estimate": route.Estimate, "shape": route.Shape, "steps": route.Steps})
+		return
+	}
 	var b strings.Builder
 	b.WriteString(form(from, to, mode))
 

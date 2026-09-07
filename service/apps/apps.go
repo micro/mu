@@ -530,7 +530,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/code", "New app") + `</p>`)
+	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "New app") + `</p>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
@@ -728,7 +728,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	// to avoid here, and the one to delete is the one that cannot iterate. What
 	// stays on this page is the other job entirely: pasting HTML you wrote.
 	sb.WriteString(`<p class="card-desc">Describe what you want and it gets written, checked and run — then you say what to change.</p>`)
-	sb.WriteString(`<p class="col-narrow mb-2">` + app.ActionLink("/code", "Describe an app") + `</p>`)
+	sb.WriteString(`<p class="col-narrow mb-2">` + app.ActionLink("/agent/micro", "Describe an app to Micro") + `</p>`)
 	sb.WriteString(`<details class="col-narrow mt-5"><summary class="clickable text-secondary text-base">Write the HTML yourself</summary>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" class="mt-4">`)
 	sb.WriteString(`<div class="mb-3"><label>Name</label><br>`)

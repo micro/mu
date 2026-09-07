@@ -1066,6 +1066,35 @@ function ask(q){
 form.addEventListener('submit',function(e){e.preventDefault();ask(input.value);});
 showSuggestions();
 
+// Change the transcript without tearing down the surrounding page.
+var switchSequence=0;
+window.muChatOpen=function(url,push){
+  var seq=++switchSequence;
+  if(conv.querySelector('.mu-cursor')||conv.querySelector('.mu-think'))return;
+  fetch(url,{headers:{'X-Mu-Transcript':'1','Accept':'application/json'},credentials:'same-origin'})
+    .then(function(r){if(!r.ok)throw Error('Unable to open chat');return r.json();})
+    .then(function(d){
+      if(seq!==switchSequence)return;
+      saveDraft();contextId=d.id;history=[];attachment='';conv.innerHTML=d.html;input.value='';
+      try{input.value=sessionStorage.getItem(draftKey())||'';}catch(e){}
+      if(window.muSeedAgent)window.muSeedAgent(d.agent);
+      document.querySelectorAll('.chat-sess').forEach(function(a){a.classList.toggle('active',new URL(a.href,location.href).searchParams.get('session')===d.id);});
+      if(push)window.history.pushState({muThread:true},'',url);
+      if(window.muPaneClose)window.muPaneClose();
+      if(d.pending)watchPending();
+      toBottom(false);
+    }).catch(function(){if(seq===switchSequence)window.alert('Unable to open that chat. Please try again.');});
+};
+var rail=document.querySelector('.chat-sess-list');
+if(rail)rail.addEventListener('click',function(e){
+  var a=e.target.closest('a.chat-sess');
+  if(!a||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  e.preventDefault();e.stopPropagation();window.muChatOpen(a.href,true);
+});
+window.addEventListener('popstate',function(){
+  if(new URL(location.href).searchParams.has('session'))window.muChatOpen(location.href,false);
+});
+
 // Start a fresh session (clears the log + thread id).
 window.muChatNew=function(){
   try{sessionStorage.removeItem(draftKey());sessionStorage.removeItem(scrollKey());}catch(e){}
@@ -1289,7 +1318,8 @@ window.muChatAsk=ask;
 // The spinner first, because a refresh mid-run left the question sitting there
 // with nothing under it and no way to tell "still working" from "this is
 // broken". That was the whole report.
-if(PENDING&&contextId&&conv){(function(){
+function watchPending(){
+  var pendingID=contextId;
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
 	var t0=Date.now(),timer=null,progress=[],current='Working';
   function draw(){
@@ -1316,7 +1346,8 @@ if(PENDING&&contextId&&conv){(function(){
   // calls in it is minutes, and the failure this replaces was silence.
   var every=3000,giveUp=Date.now()+600000;
   function poll(){
-    fetch('/agent/pending?thread='+encodeURIComponent(contextId),
+    if(contextId!==pendingID||!a.isConnected){clearInterval(timer);return;}
+    fetch('/agent/pending?thread='+encodeURIComponent(pendingID),
       {headers:{'Accept':'application/json'},credentials:'same-origin'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(d){
@@ -1340,7 +1371,8 @@ if(PENDING&&contextId&&conv){(function(){
       .catch(function(){setTimeout(poll,every);});
   }
   setTimeout(poll,every);
-})();}
+}
+if(PENDING&&contextId&&conv)watchPending();
 
 // A reopened conversation opens at its end, which is where the reading is.
 // Instant rather than smooth: this is the position the page should have loaded

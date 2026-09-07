@@ -54,8 +54,9 @@ var Spec = service.Spec{
 	Icon:        "images.svg",
 	Card:        service.Glance(CardHTML),
 	Endpoints: map[string]service.Endpoint{
-		"Generate": {Writes: true, Aliases: []string{"image_generate"}, Doc: "Generate an image from a text prompt and return its URL", Cost: quota.OpImageGenerate},
-		"Search":   {Aliases: []string{"image_search"}, Doc: "Search the public image library by description and get URLs to reuse. Cheaper than generating: look here first"},
+		"Generate":  {Writes: true, Aliases: []string{"image_generate"}, Doc: "Generate an image from a text prompt and return its URL", Cost: quota.OpImageGenerate},
+		"WebSearch": {Doc: "Search the web for images with source links and strict SafeSearch", Cost: quota.OpWebSearch},
+		"Search":    {Aliases: []string{"image_search"}, Doc: "Search the public image library by description and get URLs to reuse. Cheaper than generating: look here first"},
 	},
 }
 

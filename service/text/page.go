@@ -53,7 +53,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//nolint:errcheck
-	app.Respond(w, r, app.Response{Title: "Text tools", Description: lede, HTML: page("")})
+	app.Respond(w, r, app.Response{Title: "Text", Description: lede, HTML: page("")})
 }
 
 // run does the work and renders the page with the answer in place.
@@ -71,7 +71,7 @@ func run(w http.ResponseWriter, r *http.Request) {
 		out = err.Error()
 	}
 	//nolint:errcheck
-	app.Respond(w, r, app.Response{Title: "Text tools", Description: lede, HTML: page(result(which, body, second, out))})
+	app.Respond(w, r, app.Response{Title: "Text", Description: lede, HTML: page(result(which, body, second, out))})
 }
 
 // do dispatches to the service, so the page and an agent go through exactly the

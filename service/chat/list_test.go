@@ -23,7 +23,7 @@ import (
 
 func list(t *testing.T, who string) string {
 	t.Helper()
-	r := httptest.NewRequest(http.MethodGet, "/chat", nil)
+	r := httptest.NewRequest(http.MethodGet, "/chat?view=rooms", nil)
 	if who != "" {
 		sess, err := auth.CreateSession(who)
 		if err != nil {

@@ -24,7 +24,7 @@ import (
 // which needs no location at all.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if term := strings.TrimSpace(q.Get("q")); term != "" {
+	if term := strings.TrimSpace(r.URL.Query().Get("q")); term != "" {
 		if len(term) > 200 {
 			app.RespondError(w, 400, "Search is too long")
 			return
@@ -77,8 +77,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.Respond(w, r, app.Response{Title: "Transport", Description: //nolint:errcheck
-	"Stops near you, what is due, and which lines are down", HTML:  page()})
+	app.Respond(w, r, app.Response{Title: "Transit", Description:  //nolint:errcheck
+	"Stops near you, what is due, and which lines are down", HTML: page()})
 }
 
 func stopsJSON(stops []stop) []map[string]any {

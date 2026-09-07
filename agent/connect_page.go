@@ -113,6 +113,14 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 // with three names — "Email", "Message it", "Write to it" — and how only one of
 // them grew a Chat row. One order for all three now: what it may reach, its
 // address, where to chat with it, the endpoint, its token.
+func connModel(prefer string) string {
+	_, _, model, _, ok := nativeLLMFor(prefer, false)
+	if !ok {
+		model = "Not configured"
+	}
+	return connRow("Model", `<code class="conn-v">`+html.EscapeString(model)+`</code>`)
+}
+
 func connRow(k, v string) string {
 	return `<div class="conn-row"><span class="conn-k">` + k + `</span>` + v + `</div>`
 }
@@ -227,6 +235,7 @@ func defaultPanel(base string) string {
 	// *tools*. Pointing Claude at it does not talk to your agent at all — Claude
 	// brings its own instruction and uses the services you scoped this one to.
 	// The row also duplicated the url in the JSON directly below it.
+	b.WriteString(connModel(""))
 	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
@@ -348,6 +357,8 @@ func connectPanel(a *Agent, base, csrf string) string {
 			` to get a new one.</span></div>`)
 	}
 
+	b.WriteString(connModel(a.Model))
+
 	// How to actually wire it up, with this agent's own endpoint in it rather
 	// than the generic one /tools shows.
 	// What this block is, said once, because it is not what the page is
@@ -448,6 +459,7 @@ func platformPanel(a *micro.Agent, base string) string {
 	}
 
 	b.WriteString(connChat(base, "/agent/"+html.EscapeString(a.ID)))
+	b.WriteString(connModel(a.Model))
 	b.WriteString(connEndpoint(base, "/agent/"+html.EscapeString(a.ID)))
 	return b.String()
 }

@@ -87,7 +87,10 @@ var knownPricing = map[string]modelPricing{
 	"claude-haiku-4-5":          {1.0, 5.0, 1.25, 0.10},
 	"claude-3-5-haiku":          {0.80, 4.0, 1.0, 0.08},
 
-	// Atlas Cloud. No cache rate recorded: what they charge for one is small
+	// Atlas Cloud. GLM prices: atlascloud.ai, checked 7 September 2026.
+	ModelGLM:      {1.4, 4.4, 0, 0},
+	ModelGLMFlash: {0.15, 0.50, 0, 0},
+	// No cache rate recorded: what they charge for one is small
 	// enough to be noise and is not Anthropic's, which is what mattered.
 	"deepseek-ai/deepseek-v4-pro":   {1.68, 3.38, 0, 0},
 	"deepseek-ai/deepseek-v4-flash": {0.14, 0.28, 0, 0},

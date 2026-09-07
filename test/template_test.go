@@ -83,13 +83,13 @@ func TestThePhoneCarriesMicroAndHome(t *testing.T) {
 	if tabs == "" {
 		t.Fatal("no tab bar in the rendered shell")
 	}
-	for _, href := range []string{"/", "/home", "/inbox", "/agents", "/services"} {
+	for _, href := range []string{"/home", "/inbox", "/agents", "/services"} {
 		if !strings.Contains(tabs, `href="`+href+`"`) {
 			t.Errorf("the tab bar does not reach %s:\n%s", href, tabs)
 		}
 	}
-	if n := strings.Count(tabs, "<a "); n != 5 {
-		t.Errorf("the tab bar holds %d tabs, want Micro, Home, Inbox, Agents and Services:\n%s", n, tabs)
+	if n := strings.Count(tabs, "<a "); n != 4 {
+		t.Errorf("the tab bar holds %d tabs, want Home, Inbox, Agents and Services:\n%s", n, tabs)
 	}
 	// Not the mail store. That was the bug in the thing this replaced.
 	if strings.Contains(tabs, `href="/mail"`) {

@@ -26,6 +26,11 @@ import (
 
 // Handler serves /flights.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 8192)
+	if r.Method == http.MethodPost && r.PostFormValue("status_lookup") == "1" {
+		statusPage(w, r)
+		return
+	}
 	// POST: the flight somebody looks up is who they are meeting or where they
 	// are going. See AGENTS.md, "What may travel in a URL".
 	q := strings.TrimSpace(r.PostFormValue("q"))
@@ -40,7 +45,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	radius := radiusOr(r.URL.Query().Get("radius"))
+	auth.SetCSRFCookie(w, r)
+	b.WriteString(statusForm(r))
 	b.WriteString(forms(q, near, radius, auth.CSRFToken(r)))
+	b.WriteString(`<div class="d-flex gap-2 mb-3">`)
+	for _, code := range []string{"LHR", "LGW", "MAN", "JFK", "CDG", "DXB"} {
+		b.WriteString(app.PillLink(code, "/flights?near="+code, false))
+	}
+	b.WriteString(`</div>`)
 
 	switch {
 	case q != "":

@@ -55,6 +55,7 @@ type listItem struct {
 	ID       string
 	AuthorID string
 	HTML     string
+	Search   string
 }
 
 // postsItems is every visible post, rendered, newest first.
@@ -659,7 +660,7 @@ func updateCacheUnlocked() {
 			<div>%s</div>
 			%s
 		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, controls, content, keepReading)
-		items = append(items, listItem{ID: post.ID, AuthorID: post.AuthorID, HTML: item})
+		items = append(items, listItem{ID: post.ID, AuthorID: post.AuthorID, HTML: item, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
 	}
 
 	postsItems = items
@@ -722,6 +723,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleGetBlog handles GET /blog - returns posts as JSON or HTML
 func handleGetBlog(w http.ResponseWriter, r *http.Request) {
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	matches := func(text string) bool {
+		for _, word := range strings.Fields(strings.ToLower(query)) {
+			if !strings.Contains(strings.ToLower(text), word) {
+				return false
+			}
+		}
+		return true
+	}
 	// Return JSON if requested
 	if app.WantsJSON(r) {
 		mutex.RLock()
@@ -732,7 +742,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Filter out flagged posts and private posts (unless admin)
 		var visiblePosts []*Post
 		for _, post := range posts {
-			if !flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
+			if !flag.IsHidden("post", post.ID) && !auth.IsBanned(post.AuthorID) && matches(post.Title+" "+post.Content+" "+post.Tags+" "+post.Author) {
 				// Skip private posts for non-admins
 				if post.Private && !isAdmin {
 					continue
@@ -761,11 +771,22 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	if _, acc := auth.TrySession(r); acc != nil {
 		items = visibleTo(acc.ID, items)
 	}
+	if query != "" {
+		var found []listItem
+		for _, item := range items {
+			if matches(item.Search) {
+				found = append(found, item)
+			}
+		}
+		items = found
+	}
 	pager := app.Paginate(r, len(items), postsPerPage)
 	list := joinItems(items[pager.From:pager.To])
 	switch {
 	case list != "":
 		list += pager.Nav("/blog")
+	case query != "":
+		list = "<p>No matching posts.</p>"
 	case written > 0:
 		list = "<p>Nothing to show — you have hidden everything here.</p>"
 	default:
@@ -939,6 +960,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 				<a href="/login?redirect=/blog" class="text-muted">Login</a> to write a post
 			</div>`
 		}
+		actions += `<form method="GET" action="/blog" class="d-flex gap-2 mb-4"><input type="search" name="q" class="grow" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
 		content = fmt.Sprintf(`<div id="blog">
 			%s
 			<div id="posts-list">

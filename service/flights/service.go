@@ -287,6 +287,7 @@ var Spec = service.Spec{
 	Icon:        "flights.svg",
 	Card:        service.Personal(CardHTML),
 	Endpoints: map[string]service.Endpoint{
+		"Status":   {Doc: "Scheduled, estimated and actual flight arrival/departure times from Aviationstack. Requires a configured provider.", Cost: statusCost, Needs: service.Caller},
 		"Overhead": {Doc: "List the aircraft flying near a location right now, nearest first, with altitude, speed, heading and distance. Live positions broadcast by the aircraft themselves, not a schedule"},
 		"Track":    {Doc: "Find where an aircraft is right now by flight number ('BA117'), radio callsign ('BAW117') or registration ('G-ZBKL'). Only sees aeroplanes that are airborne and in range of a receiver — not finding one does not mean the flight was cancelled"},
 		"Airport":  {Doc: "Report what is happening at an airport right now: what is on the ground, what is on approach and what is climbing out. Live positions, not the timetable, so it says nothing about scheduled or delayed departures"},
