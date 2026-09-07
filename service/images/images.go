@@ -631,7 +631,7 @@ function imgGenerate(){
   var r=document.getElementById('img-result');
   r.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="img-full"></a>'+
               '<p class="text-sm text-muted mt-half m-0">'+
-              '<button data-id="'+res.j.id+'" data-next="true" onclick="imgShare(this)" class="text-xs mr-2">Share</button>'+
+              '<button data-id="'+res.j.id+'" data-next="true" onclick="imgShare(this)" class="mini-btn mr-2">Share</button>'+
               'Saved to your images.</p>';
   r.scrollIntoView({block:'nearest'});
   // Add it to the gallery too, so the page matches what a reload would show.
