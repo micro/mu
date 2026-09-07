@@ -3,6 +3,7 @@ package mail
 import (
 	"context"
 	"fmt"
+	"mu/internal/data"
 	"mu/internal/service"
 	"sort"
 	"strings"
@@ -90,18 +91,11 @@ func messagePage(owner, query, tag string, offset, limit int, search bool, rsp *
 		return fmt.Errorf("sign in to read mail")
 	}
 	query, tag = strings.ToLower(strings.TrimSpace(query)), strings.ToLower(strings.TrimSpace(tag))
-	mutex.RLock()
-	count := len(messages)
-	mutex.RUnlock()
-	var indexed []*Message
 	if query != "" {
-		indexed = Search(owner, query, count+1)
+		return searchPage(owner, query, tag, offset, limit, rsp)
 	}
 	mutex.RLock()
 	candidates := messages
-	if query != "" {
-		candidates = indexed
-	}
 	var found []*Message
 	for _, m := range candidates {
 		if m.Spam {
@@ -145,5 +139,59 @@ func messagePage(owner, query, tag string, offset, limit int, search bool, rsp *
 	if query != "" {
 		rsp.Text = fmt.Sprintf("Mail matching %q:\n", query) + renderMessages(found[start:end])
 	}
+	return nil
+}
+
+// searchPage walks bounded index ID pages, then checks live mailbox permissions
+// and tags. Bodies are copied only for the requested response page.
+func searchPage(owner, query, tag string, offset, limit int, rsp *SearchResponse) error {
+	offset = max(offset, 0)
+	if limit <= 0 {
+		limit = 10
+	}
+	limit = min(limit, 100)
+	var found []*Message
+	total := 0
+	for cursor := 0; ; cursor += 200 {
+		ids, err := data.SearchIDPage(query, 200, cursor, data.WithType(indexType), data.WithOwner(owner))
+		if err != nil {
+			return fmt.Errorf("search mail: %w", err)
+		}
+		// SearchIDPage closes its SQL rows before we acquire the mailbox lock.
+		mutex.RLock()
+		for _, key := range ids {
+			suffix := ":" + owner
+			if !strings.HasPrefix(key, indexType+":") || !strings.HasSuffix(key, suffix) {
+				continue
+			}
+			id := strings.TrimSuffix(strings.TrimPrefix(key, indexType+":"), suffix)
+			m := MessageUnlocked(id)
+			if m == nil || m.Spam || (m.ToID != owner && !sentBy(m, owner)) {
+				continue
+			}
+			if tag != "" && !strings.EqualFold(m.Tag, tag) {
+				continue
+			}
+			if total >= offset && len(found) < limit {
+				cp := *m
+				found = append(found, &cp)
+			}
+			total++
+		}
+		mutex.RUnlock()
+		if len(ids) < 200 {
+			break
+		}
+	}
+	rsp.Total, rsp.Offset = total, min(offset, total)
+	rsp.Items = make([]MessageView, 0, len(found))
+	rsp.NextOffset = nil
+	for _, m := range found {
+		rsp.Items = append(rsp.Items, record(m, false))
+	}
+	if end := rsp.Offset + len(found); end < total {
+		rsp.NextOffset = &end
+	}
+	rsp.Text = fmt.Sprintf("Mail matching %q:\n", query) + renderMessages(found)
 	return nil
 }

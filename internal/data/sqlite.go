@@ -243,7 +243,7 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		return nil, err
 	}
 
-	words := strings.Fields(strings.ToLower(query))
+	words := searchWords(query)
 	if len(words) == 0 {
 		return nil, nil
 	}

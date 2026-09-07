@@ -378,8 +378,11 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, html.EscapeString(msg)))
+	}
 	if StripeEnabled() {
-		sb.WriteString(renderStripeDeposit(sess.Account, r.URL.Query().Get("error")))
+		sb.WriteString(renderStripeDeposit(sess.Account, ""))
 	}
 	if x402.TopUpRequirement(100) != nil {
 		sb.WriteString(wallet.Page(sess.Account))

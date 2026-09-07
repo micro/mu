@@ -31,11 +31,14 @@ func TestTopupDoesNotOfferUnusableCryptoFunding(t *testing.T) {
 		t.Setenv("X402_PAY_TO", payTo)
 		t.Setenv("X402_NETWORK", "unsupported-network")
 		for _, path := range []string{"/account/topup", "/wallet/topup"} {
-			r := httptest.NewRequest("GET", path, nil)
+			r := httptest.NewRequest("GET", path+"?error=Conversion+failed+%3Cscript%3E", nil)
 			r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
 			w := httptest.NewRecorder()
 			BalanceHandler(w, r)
 			body := w.Body.String()
+			if !strings.Contains(body, "Conversion failed &lt;script&gt;") || strings.Contains(body, "Conversion failed <script>") {
+				t.Fatalf("funding error missing or unescaped on %s", path)
+			}
 			if !strings.Contains(body, "No payment methods available") || strings.Contains(body, "cw-qrnote") {
 				t.Fatalf("unusable funding offered on %s", path)
 			}
