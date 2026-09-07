@@ -35,6 +35,8 @@ func ParseRepeat(s string) string {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "hourly", "hour", "every hour":
 		return RepeatHourly
+	case "weekdays":
+		return "weekdays"
 	case "daily", "day", "every day", "each day":
 		return RepeatDaily
 	case "weekly", "week", "every week":
@@ -52,6 +54,12 @@ func nextOccurrence(due time.Time, repeat string) (time.Time, bool) {
 	switch repeat {
 	case RepeatHourly:
 		return due.Add(time.Hour), true
+	case "weekdays":
+		next := due.AddDate(0, 0, 1)
+		for next.Weekday() == time.Saturday || next.Weekday() == time.Sunday {
+			next = next.AddDate(0, 0, 1)
+		}
+		return next, true
 	case RepeatDaily:
 		return due.AddDate(0, 0, 1), true
 	case RepeatWeekly:
@@ -88,7 +96,11 @@ func rescheduleLocked(e *Event, now time.Time) {
 	if e.Repeat == RepeatNone {
 		return
 	}
-	next, ok := nextOccurrence(e.When, e.Repeat)
+	due := e.When
+	if loc, err := time.LoadLocation(e.Zone); e.Zone != "" && err == nil {
+		due = due.In(loc)
+	}
+	next, ok := nextOccurrence(due, e.Repeat)
 	if !ok {
 		return
 	}

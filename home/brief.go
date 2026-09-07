@@ -89,9 +89,9 @@ import (
 // true on the quietest day. True and useless as a sentence — who is here is its
 // own block under the box now, and it names people rather than telling you
 // there are none.
-func briefHTML(accountID string) string {
+func briefHTML(accountID string, csrf ...string) string {
 	parts := briefParts(accountID)
-	if len(parts) == 0 {
+	if len(parts) == 0 && accountID == "" {
 		return ""
 	}
 
@@ -117,7 +117,7 @@ func briefHTML(accountID string) string {
 	// saying Brief. It is its own block under the box now, and it names people
 	// rather than counting them.
 	return sectionRule("Brief") + `<div class="brief-peek">` +
-		`<p class="home-brief">` + strings.Join(parts, " ") + `</p></div>`
+		`<p class="home-brief">` + strings.Join(parts, " ") + `</p>` + briefScheduleHTML(accountID, csrf...) + `</div>`
 }
 
 // briefParts is the clauses, without deciding how they are set.
@@ -271,7 +271,7 @@ func onToday(accountID string) string {
 	now := time.Now()
 	var ahead []*events.Event
 	for _, e := range events.List(accountID) {
-		if e == nil || e.When.IsZero() {
+		if e == nil || e.Paused || e.When.IsZero() {
 			continue
 		}
 		if sameDay(e.When, now) && e.When.After(now) {
