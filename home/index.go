@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -49,6 +50,17 @@ import (
 func Index(w http.ResponseWriter, r *http.Request) {
 	// Signed-in users enter Home, which already contains the assistant prompt.
 	if _, acc := auth.TrySession(r); acc != nil {
+		// Preserve links created while the assistant lived at the root.
+		q := url.Values{}
+		for _, key := range []string{"session", "continue", "new"} {
+			if value := r.URL.Query().Get(key); value != "" {
+				q.Set(key, value)
+			}
+		}
+		if len(q) > 0 {
+			http.Redirect(w, r, "/agent/micro?"+q.Encode(), http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/home", http.StatusSeeOther)
 		return
 	}
