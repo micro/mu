@@ -41,12 +41,15 @@
 package work
 
 import (
+	"fmt"
 	"strings"
+	"sync"
 
 	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/internal/thread"
 	"mu/service/events"
 	"mu/service/mail"
 	"mu/service/tasks"
@@ -107,7 +110,22 @@ func requestFrom(data map[string]interface{}) (request, bool) {
 
 // run does the work and puts the answer where it belongs.
 func run(r request) {
+	runWithQuery(r, agent.QueryWithOpts)
+}
+
+func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string, error)) {
 	var steps []tasks.Step
+	var stepsMu sync.Mutex
+	defer func() {
+		if rec := recover(); rec != nil {
+			failure := fmt.Errorf("the agent run stopped unexpectedly")
+			app.Log("work", "running %s %s panicked: %v", r.Kind, r.ID, rec)
+			if r.Kind == tasks.Kind {
+				finishTask(r, "", nil, failure)
+			}
+			answered(r, "", failure)
+		}
+	}()
 
 	// Work that came out of a conversation is framed as acting on one.
 	//
@@ -150,18 +168,13 @@ func run(r request) {
 		system = agent.InboxPrompt(opts.System)
 	}
 
-	answer, err := agent.QueryWithOpts(r.Account, r.Prompt, agent.QueryOpts{
-		System: system,
-		Tools:  opts.Tools,
-		OnStep: func(s agent.Step) {
-			steps = append(steps, tasks.Step{
-				Tool:    s.Tool,
-				Detail:  tasks.StepDetail(s.Args),
-				OK:      s.OK,
-				Seconds: s.Took.Seconds(),
-			})
-		},
-	})
+	opts.System = system
+	opts.OnStep = func(s agent.Step) {
+		stepsMu.Lock()
+		defer stepsMu.Unlock()
+		steps = append(steps, tasks.Step{Tool: s.Tool, Detail: tasks.StepDetail(s.Args), OK: s.OK, Seconds: s.Took.Seconds()})
+	}
+	answer, err := query(r.Account, workPrompt(r), opts)
 
 	switch r.Kind {
 	case tasks.Kind:
@@ -182,6 +195,20 @@ func run(r request) {
 	answered(r, answer, err)
 }
 
+// The text of a conversation does not identify its delivery address. Give the
+// worker the owned thread's destination so an explicit request to reply can
+// actually send, while a summary or draft remains a private result.
+func workPrompt(r request) string {
+	var context strings.Builder
+	if r.Kind == tasks.Kind {
+		fmt.Fprintf(&context, "You are already executing task %q. Do the requested work now; do not create or reassign another task for this same work. Return the outcome; the runner saves it and completes this task automatically.\n\n", r.ID)
+	}
+	if th := thread.Get(r.Account, r.Thread); th != nil && th.Client == thread.ChatClient && !strings.HasPrefix(th.Key, "xmpp_") {
+		fmt.Fprintf(&context, "The source conversation is chat room %q. If the owner asks you to send or reply in this conversation, use the chat Send tool with that exact room id. A draft or summary is not a request to send. Never claim a reply was sent unless the tool confirms it; if the tool is unavailable, say so. Your final answer is a private report to the owner.\n\n", th.Key)
+	}
+	return context.String() + r.Prompt
+}
+
 // answered puts the outcome back on the conversation the work came out of.
 //
 // Through agent.Answered, which is what every client uses to write down what an
@@ -198,7 +225,11 @@ func answered(r request, answer string, err error) {
 		// silence is indistinguishable from work nobody picked up.
 		text = "That did not work: " + err.Error()
 	}
-	agent.Answered(r.Account, r.Thread, text, "")
+	from := r.Agent
+	if from == "" {
+		from = agent.DefaultName()
+	}
+	agent.AnsweredAs(r.Account, r.Thread, text, "", from)
 }
 
 // finishTask writes the result back onto the task.
@@ -208,12 +239,14 @@ func answered(r request, answer string, err error) {
 func finishTask(r request, answer string, steps []tasks.Step, err error) {
 	if err != nil {
 		app.Log("work", "task %q failed for %s: %v", r.Title, r.Account, err)
-		tasks.Update(r.Account, r.ID, "", "", tasks.StatusTodo, "", //nolint:errcheck
-			"Last run failed: "+err.Error(), steps)
+		if _, saveErr := tasks.Update(r.Account, r.ID, "", "", tasks.StatusTodo, "", "Last run failed: "+err.Error(), steps); saveErr != nil {
+			app.Log("work", "saving failed task %s: %v", r.ID, saveErr)
+		}
 		return
 	}
-	tasks.Update(r.Account, r.ID, "", "", tasks.StatusDone, "", //nolint:errcheck
-		strings.TrimSpace(answer), steps)
+	if _, saveErr := tasks.Update(r.Account, r.ID, "", "", tasks.StatusDone, "", strings.TrimSpace(answer), steps); saveErr != nil {
+		app.Log("work", "saving completed task %s: %v", r.ID, saveErr)
+	}
 }
 
 // deliver mails what a standing instruction produced.

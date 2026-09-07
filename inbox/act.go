@@ -156,7 +156,7 @@ func hand(accountID string, t *thread.Thread, ask, agentID string) error {
 	// knows was made — and because inferring that somebody wanted work rather
 	// than an answer is a claim about what they meant, which they should be
 	// able to see and correct.
-	agentSaid(accountID, t.ID, "Taking that on — I will answer here when it is done.")
+	agentSaid(accountID, t.ID, "Taking that on — I will answer here when it is done.", agentID)
 	return tasks.Run(accountID, task.ID)
 }
 
@@ -174,10 +174,10 @@ const (
 // One line rather than the whole of agent.Answered: what is needed here is
 // "say this on that thread", and the agent owns how anything it says is
 // written down.
-var agentSaid = func(accountID, threadID, text string) {}
+var agentSaid = func(accountID, threadID, text, agentID string) {}
 
 // AgentSaid is how the server hands that over. See agentSaid.
-func AgentSaid(f func(accountID, threadID, text string)) {
+func AgentSaid(f func(accountID, threadID, text, agentID string)) {
 	if f != nil {
 		agentSaid = f
 	}

@@ -413,6 +413,26 @@ func partyName(p thread.Party) string {
 	return "You"
 }
 
+// Resolve the author on each message: assigning a thread to another agent
+// must not rename earlier replies. Legacy messages fall back to the thread.
+func messageAgentName(accountID string, t *thread.Thread, m thread.Message) string {
+	if m.From != "" {
+		if name := agentLabel(accountID, m.From); name != "" {
+			return name
+		}
+		for _, p := range thread.Parties(accountID, t.ID) {
+			if p.Kind == thread.RoleAgent && p.Key == m.From && p.Name != "" {
+				return p.Name
+			}
+		}
+		return m.From
+	}
+	if name := agentLabel(accountID, t.Agent); name != "" {
+		return name
+	}
+	return defaultAgentName()
+}
+
 // messageBlock is one message. What a person wrote is escaped and shown as
 // typed; what an agent wrote is markdown, rendered the way the chat renders it —
 // through the untrusted renderer, because model output is exactly what that
@@ -424,7 +444,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 		if m.Workflow != "" {
 			ran = runTools(m.Workflow)
 		}
-		return `<div class="ib-msg ib-agent">` + fromLine("Agent", m.At) +
+		return `<div class="ib-msg ib-agent">` + fromLine(messageAgentName(accountID, t, m), m.At) +
 			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
 	}
 	// The author, by the name the conversation knows them under rather than the

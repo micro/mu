@@ -137,7 +137,11 @@ func noteRow(n *notes.Entry) string {
 func taskRow(t *tasks.Task) string {
 	tags := []string{html.EscapeString(t.Status)}
 	if t.Assignee == tasks.Agent {
-		tags = append(tags, "agent")
+		name := agentLabel(t.Owner, t.Agent)
+		if name == "" {
+			name = defaultAgentName()
+		}
+		tags = append(tags, html.EscapeString(name))
 	}
 	tags = append(tags, html.EscapeString(app.TimeAgo(t.Updated)))
 
