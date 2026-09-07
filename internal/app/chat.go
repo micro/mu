@@ -798,7 +798,7 @@ function save(){
   if(SESSION||!PERSIST)return; // server owns reopened sessions; ephemeral surfaces don't save
   try{
     sessionStorage.setItem(CKEY,conv.innerHTML);
-    sessionStorage.setItem(HKEY,JSON.stringify(history.slice(-6)));
+    sessionStorage.setItem(HKEY,JSON.stringify(NS==='landing'?history:history.slice(-6)));
     sessionStorage.setItem(TKEY,contextId||'');
   }catch(e){}
 }
