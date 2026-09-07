@@ -56,3 +56,17 @@ func TestAccountShowsConversionConfirmation(t *testing.T) {
 		t.Fatalf("conversion confirmation missing: status %d", rec.Code)
 	}
 }
+
+func TestTopupShowsBalanceAndPaymentNoteInTheFormCard(t *testing.T) {
+	got := renderStripeDeposit("topup-display-empty", "")
+	balance := strings.Index(got, "Current balance")
+	divider := strings.Index(got, "<hr")
+	button := strings.Index(got, "Continue to Payment")
+	note := strings.Index(got, "Secure payment via Stripe")
+	if balance < 0 || balance > divider || !strings.Contains(got, "0 credits") {
+		t.Fatal("current balance must appear above the top-up divider")
+	}
+	if button < 0 || note < button || strings.Count(got, `class="card"`) != 1 {
+		t.Fatal("payment note must follow the button inside the same card")
+	}
+}

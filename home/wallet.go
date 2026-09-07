@@ -26,15 +26,7 @@ package home
 // the same relationship Inbox has to the Inbox in the rail. A glance and a
 // place are allowed to be about the same thing.
 //
-// # The real card, not a number
-//
-// This drew its own figure and its own link for one commit, and a balance
-// rendered by hand is a balance that drifts from the one on /account. It is
-// account.BalanceBody now — the same figure, the same "1 credit = 1¢", the same
-// note to an admin that their calls are never charged, and the same Top up and
-// Transfer. Those are not trimmings: the number means nothing without the rate
-// beside it, and topping up is the thing somebody looking at a balance has come
-// to do.
+// Home shares the balance and actions with Account, omitting its conversion note.
 //
 // # At the foot
 //
@@ -75,8 +67,8 @@ func walletHTML(accountID string) string {
 	// Home, which is the same job "Go to inbox" does above.
 	var b strings.Builder
 	b.WriteString(sectionRule("Account"))
-	b.WriteString(`<div class="wallet-peek"><h3 class="mt-0">Balance</h3>`)
-	for _, part := range account.BalanceBody(accountID) {
+	b.WriteString(`<div class="wallet-peek"><h4>Balance</h4>`)
+	for _, part := range account.BalanceBody(accountID, false) {
 		b.WriteString(part)
 	}
 	b.WriteString(`<a href="/account" class="link">Go to account &rarr;</a>`)

@@ -1251,8 +1251,8 @@ body.page-home #page-title ~ #customize-link {
    block in a column under two lists, and a 32px figure shouts over them. */
 .wallet-peek .balance-figure {
   margin: 8px 0 2px;
-  font-size: 22px;
-  line-height: 1;
+  font-size: 1em;
+  line-height: var(--line-height);
 }
 .wallet-peek .balance-figure span {
   font-size: 13px;
@@ -1491,7 +1491,8 @@ body.page-home #page-title ~ #customize-link {
   }
 }
 
-.card h4 {
+.card h4,
+.wallet-peek h4 {
   margin-top: 0;
   margin-bottom: var(--spacing-sm);
   font-size: 1em;
@@ -4085,6 +4086,7 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
 .mt-4 { margin-top: 15px; }
 .mt-5 { margin-top: 20px; }
 .mt-6 { margin-top: 30px; }
+.mb-0 { margin-bottom: 0; }
 .mb-1 { margin-bottom: 5px; }
 .mb-3 { margin-bottom: 10px; }
 .mb-4 { margin-bottom: 15px; }
@@ -8011,3 +8013,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .code-box input[type="text"] { flex: 1 1 auto; min-width: 0 }
 .code-box input:disabled, .code-box button:disabled { opacity: 0.55 }
 .code-status { margin: 8px 0 0 }
+
+/* The account preview starts with a heading, not an inset list row. */
+.wallet-peek { padding-top: 16px; }
+.wallet-peek .balance-figure b { font-weight: 400; }
