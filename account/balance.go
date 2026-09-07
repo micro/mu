@@ -66,22 +66,12 @@ func thousands(n int) string {
 // nav item of its own called Wallet, which put a person's money one click
 // further away than their choice of language.
 func BalanceCard(userID string) string {
-	return app.SectionID("balance", "Balance", BalanceBody(userID)...)
+	return app.SectionID("balance", "Balance", BalanceBody(userID, true)...)
 }
 
-// BalanceBody is what is inside that card, without the card.
-//
-// Split out for Home's rail, which draws the balance under a "Wallet" heading
-// in the same shape as the Inbox and Agents blocks beside it — a card nested
-// under a section heading would be a second frame around one number, and a
-// second "Balance" title under a "Wallet" one.
-//
-// Split rather than reimplemented, because the parts are not decoration: the
-// figure is meaningless without "1 credit = 1¢" next to it, an admin needs
-// telling their own calls are never charged, and Top up and Transfer are the
-// two things anybody comes to a balance to do. Home had a hand-rolled number
-// and a link for one commit and it was already missing all four.
-func BalanceBody(userID string) []string {
+// BalanceBody renders the balance and actions. Conversion is useful on Account,
+// while Home keeps a compact credit balance.
+func BalanceBody(userID string, showConversion bool) []string {
 	c := CreditsOf(userID)
 
 	isAdmin := false
@@ -111,9 +101,13 @@ func BalanceBody(userID string) []string {
 	// balances — this one in credits, and the USDC the key holds — but the
 	// second card names itself "Crypto", so this one does not have to
 	// carry the disambiguation in its own title as well.
+	conversion := ""
+	if showConversion {
+		conversion = app.Note(money(c.Balance) + " · 1 credit = 1¢")
+	}
 	return []string{
 		`<p class="balance-figure"><b>` + thousands(c.Balance) + `</b> <span>credits</span></p>`,
-		app.Note(money(c.Balance) + " · 1 credit = 1¢"),
+		conversion,
 		free,
 		admin,
 		`<p class="balance-links"><a href="/account/topup">Top up &rarr;</a> · ` +
@@ -400,6 +394,8 @@ func renderStripeDeposit(userID, errMsg string) string {
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
+	sb.WriteString(`<h4>Current balance</h4>`)
+	sb.WriteString(`<p class="mt-0">` + thousands(Balance(userID)) + ` credits</p>`)
 	sb.WriteString(`<hr class="hr-soft my-4">`)
 
 	sb.WriteString("<h4>One-time top-up</h4>")
@@ -422,10 +418,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 
 	sb.WriteString(`<button type="submit" class="btn mt-4">Continue to Payment</button>`)
 	sb.WriteString(`</form>`)
-	sb.WriteString(`</div>`)
-
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p class="text-sm text-muted">Secure payment via Stripe. 1 credit = 1¢.</p>`)
+	sb.WriteString(`<p class="text-sm text-muted mt-3 mb-0">Secure payment via Stripe. 1 credit = 1¢.</p>`)
 	sb.WriteString(`</div>`)
 
 	return sb.String()
@@ -497,7 +490,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">1 credit = 1¢. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted mt-0 mb-0">1 credit = 1¢. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
 	sb.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: "Transfer", Description: "Send credits to somebody else", HTML: sb.String()})
