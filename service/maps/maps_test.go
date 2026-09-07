@@ -276,8 +276,8 @@ func TestTheTileURLNamesTheInstance(t *testing.T) {
 	Handler(w, r)
 	body := w.Body.String()
 
-	if !strings.Contains(body, "https://micro.mu/maps/tiles/road/{z}/{x}/{y}.png") {
-		t.Errorf("the tile URL does not name the public address:\n%s", body)
+	if !strings.Contains(body, "fetch('/routes',") {
+		t.Errorf("the map does not offer directions:\n%s", body)
 	}
 	if strings.Contains(body, "localhost:8081") {
 		t.Error("the page is handing out a loopback address to paste into a map")

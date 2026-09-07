@@ -164,6 +164,7 @@ var settingGroups = []settingGroup{
 	// The basemap. /maps sends an operator here by name when it has no key,
 	// so this group has to exist for that sentence to be true — see the note
 	// on the Twilio group, which is the same mistake found the same way.
+	{Name: "Flight status", Does: "Scheduled, estimated and actual flight times through Aviationstack.", Needs: []string{"AVIATIONSTACK_API_KEY"}, Vars: []string{"AVIATIONSTACK_API_KEY"}},
 	{Name: "Maps",
 		Does:  "The basemap tiles behind /maps.",
 		Needs: []string{"OS_MAPS_KEY"},

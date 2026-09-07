@@ -400,6 +400,14 @@ func Today() (url, theme string, ok bool) {
 
 // Handler serves /images: GET renders the page (or JSON), POST generates.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.URL.Query().Get("upload") == "1" {
+		uploadHandler(w, r)
+		return
+	}
+	if r.Method == http.MethodPost && r.URL.Query().Get("web") == "1" {
+		webSearchPage(w, r)
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
 		if app.WantsJSON(r) {
@@ -494,7 +502,7 @@ func imageGrid(recs []userdb.Record) string {
 			continue
 		}
 		url := DisplayURL(rec.ID)
-		b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" class="w-full rounded-lg d-block" loading="lazy"></a>`)
+		b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="` + html.EscapeString(prompt) + `" class="w-full rounded-lg d-block" loading="lazy"><span class="text-sm d-block mt-2">` + html.EscapeString(prompt) + `</span></a>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -510,9 +518,14 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
+	auth.SetCSRFCookie(w, r)
+	if caller != "" {
+		b.WriteString(`<div class="card"><form method="POST" action="/images?web=1" class="d-flex gap-2">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="query" class="grow" placeholder="Search images on the web" required maxlength="400"><button>Search web</button></form></div>`)
+		b.WriteString(uploadForm(r))
+	}
 	// Search box — searches your images plus the public stock pool.
 	b.WriteString(`<div class="card"><form method="GET" action="/images" class="d-flex gap-2 m-0">`)
-	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images by description…" class="form-input grow text-base">`)
+	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search your image library…" class="form-input grow text-base">`)
 	b.WriteString(`<button type="submit" class="text-base">Search</button>`)
 	b.WriteString(`</form></div>`)
 
@@ -594,7 +607,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 				label, next = "Shared ✓", "false"
 			}
 			b.WriteString(`<div class="relative">`)
-			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" class="w-full rounded-lg d-block" loading="lazy"></a>`)
+			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="` + html.EscapeString(prompt) + `" class="w-full rounded-lg d-block" loading="lazy"><span class="text-sm d-block mt-2">` + html.EscapeString(prompt) + `</span></a>`)
 			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" onclick="imgShare(this)" class="overlay-btn">` + label + `</button>`)
 			b.WriteString(`</div>`)
 		}

@@ -137,10 +137,10 @@ func nearbyStops(lat, lon float64, radius int) ([]stop, error) {
 // So a caller can say "Oxford Circus" rather than "940GZZLUOXC". An agent that
 // must know a NaPTAN code before it can ask when the bus is has not been given
 // a usable tool.
-func findStop(name string) (stop, error) {
+func searchStops(name string) ([]stop, error) {
 	body, err := get("/StopPoint/Search/"+url.PathEscape(strings.TrimSpace(name)), nil)
 	if err != nil {
-		return stop{}, err
+		return nil, err
 	}
 	var res struct {
 		Matches []struct {
@@ -150,13 +150,24 @@ func findStop(name string) (stop, error) {
 		} `json:"matches"`
 	}
 	if err := json.Unmarshal(body, &res); err != nil {
-		return stop{}, fmt.Errorf("could not read the search results: %w", err)
+		return nil, fmt.Errorf("could not read the search results: %w", err)
 	}
-	if len(res.Matches) == 0 {
+	out := make([]stop, 0, len(res.Matches))
+	for _, m := range res.Matches {
+		out = append(out, stop{ID: m.ID, Name: m.Name, Modes: m.Modes})
+	}
+	return out, nil
+}
+
+func findStop(name string) (stop, error) {
+	stops, err := searchStops(name)
+	if err != nil {
+		return stop{}, err
+	}
+	if len(stops) == 0 {
 		return stop{}, fmt.Errorf("no stop found called %q — this covers London only", name)
 	}
-	m := res.Matches[0]
-	return stop{ID: m.ID, Name: m.Name, Modes: m.Modes}, nil
+	return stops[0], nil
 }
 
 // arrivalsAt returns what is coming, soonest first.

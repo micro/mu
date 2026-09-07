@@ -29,6 +29,14 @@ import (
 func Handler(w http.ResponseWriter, r *http.Request) {
 	rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/files"), "/")
 
+	if rest == "" && r.URL.Query().Get("new") == "1" {
+		editorHandler(w, r, "")
+		return
+	}
+	if id, action, ok := strings.Cut(rest, "/"); ok && action == "edit" {
+		editorHandler(w, r, id)
+		return
+	}
 	// Uploads post to /files itself; per-file actions to /files/<id>/<action>.
 	if r.Method == http.MethodPost {
 		id, action, _ := strings.Cut(rest, "/")
@@ -172,7 +180,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	// No heading here: the page is already titled Files by the shell, and a
 	// card that repeats the page title just costs a phone a line of screen.
-	b.WriteString(`<div class="card">`)
+	b.WriteString(`<p><a class="btn" href="/files?new=1">New file</a></p><div class="card">`)
 	b.WriteString(`<p class="text-sm text-muted">Anything you or your agent has stored. Using ` +
 		human(UsedBytes(sess.Account)) + ` of ` + human(MaxOwnerBytes) + `.</p>`)
 
@@ -226,7 +234,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
   <button type="submit" class="link-button danger">Delete</button>
 </form>`, html.EscapeString(f.ID), html.EscapeString(strings.ReplaceAll(f.Name, "'", "\\'")), html.EscapeString(csrf))
 
-			b.WriteString(`</td></tr>`)
+			b.WriteString(`<a class="link-button" href="/files/` + html.EscapeString(f.ID) + `/edit">Edit text</a></td></tr>`)
 		}
 		b.WriteString(`</tbody></table></div>`)
 	}

@@ -30,7 +30,7 @@ func TestChatListsTheRooms(t *testing.T) {
 	topics = []string{"Dev", "World"}
 
 	rr := httptest.NewRecorder()
-	Handler(rr, httptest.NewRequest("GET", "/chat", nil))
+	Handler(rr, httptest.NewRequest("GET", "/chat?view=rooms", nil))
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("GET /chat = %d, want the list", rr.Code)
@@ -60,7 +60,7 @@ func TestTheLobbyIsAnOrdinaryRoom(t *testing.T) {
 	defer func() { topics = []string{"Dev", "World"} }()
 
 	rr := httptest.NewRecorder()
-	Handler(rr, httptest.NewRequest("GET", "/chat", nil))
+	Handler(rr, httptest.NewRequest("GET", "/chat?view=rooms", nil))
 	body := rr.Body.String()
 
 	if !strings.Contains(body, `href="/chat?id=`+lobbyID+`"`) {
@@ -138,7 +138,7 @@ func TestTheLobbyIsAboutNothing(t *testing.T) {
 func TestAJSONCallerStillGetsTheList(t *testing.T) {
 	topics = []string{"Dev", "World"}
 
-	r := httptest.NewRequest("GET", "/chat", nil)
+	r := httptest.NewRequest("GET", "/chat?view=rooms", nil)
 	r.Header.Set("Accept", "application/json")
 	rr := httptest.NewRecorder()
 	Handler(rr, r)

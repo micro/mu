@@ -43,7 +43,14 @@ type Choice struct {
 func Choices() []Choice {
 	var out []Choice
 	seen := map[string]bool{}
+	selected, _, _, usable := PreferredProvider()
+	if !usable {
+		selected = ""
+	}
 	add := func(id, label, provider string) {
+		if selected != "" && provider != selected {
+			return
+		}
 		id = strings.TrimSpace(id)
 		if id == "" || seen[id] {
 			return
@@ -71,7 +78,10 @@ func Choices() []Choice {
 	}
 
 	if getAtlasAPIKey() != "" {
-		add(AtlasModel(), "DeepSeek — best", ProviderAtlasCloud)
+		add(ModelGLM, "GLM 5.3", ProviderAtlasCloud)
+		add(ModelGLMFlash, "GLM 5.3 Flash", ProviderAtlasCloud)
+		add(ModelDeepSeekPro, "DeepSeek — best", ProviderAtlasCloud)
+		add(AtlasModel(), AtlasModel(), ProviderAtlasCloud)
 		add(ModelDeepSeekFlash, "DeepSeek — fast", ProviderAtlasCloud)
 		add(ModelQwenPlus, "Qwen", ProviderAtlasCloud)
 	}
@@ -82,6 +92,8 @@ func Choices() []Choice {
 	}
 
 	if getOpenRouterAPIKey() != "" {
+		add("z-ai/glm-5.3", "GLM 5.3", ProviderOpenRouter)
+		add("z-ai/glm-5.3-flash", "GLM 5.3 Flash", ProviderOpenRouter)
 		add(OpenRouterModel(), "OpenRouter", ProviderOpenRouter)
 	}
 

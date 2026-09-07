@@ -149,7 +149,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for _, i := range items {
-			b.WriteString(`<article class="reading-row"><div class="reading-meta">` + html.EscapeString(i.Kind+" · "+i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p>` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/agent/micro?bookmark=` + url.QueryEscape(i.ID) + `">Discuss</a></div></article>`)
+			b.WriteString(`<article class="reading-row"><div class="reading-meta">` + app.Pill(i.Kind) + " · " + html.EscapeString(i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p>` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/agent/micro?bookmark=` + url.QueryEscape(i.ID) + `">Discuss</a></div></article>`)
 		}
 		b.WriteString(`<div class="reading-actions">`)
 		for _, p := range []struct {

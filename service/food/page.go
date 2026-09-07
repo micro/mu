@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -27,21 +28,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`Ingredients and allergens from Open Food Facts; hygiene ratings from the Food ` +
 		`Standards Agency. Both public, neither needs a key.</p>`)
 
-	b.WriteString(`<form class="food-form" method="get" action="/food">`)
+	b.WriteString(`<div class="card"><h3>Products</h3><form class="food-form" method="get" action="/food">`)
 	fmt.Fprintf(&b, `<input class="food-input" type="text" name="q" value="%s" placeholder="Find a product — oat milk" aria-label="Product name">`,
 		html.EscapeString(find))
 	fmt.Fprintf(&b, `<input class="food-input food-code" type="text" name="barcode" value="%s" placeholder="or a barcode" aria-label="Barcode">`,
 		html.EscapeString(barcode))
 	b.WriteString(`<button class="btn" type="submit">Look up</button>`)
-	b.WriteString(`</form>`)
+	b.WriteString(`</form><div class="food-presets" aria-label="Common product searches">`)
+	for _, q := range []string{"Milk", "Oat milk", "Bread", "Eggs", "Yogurt", "Cheese", "Rice", "Pasta", "Cereal", "Peanut butter", "Baked beans", "Chocolate"} {
+		b.WriteString(`<a class="btn" href="/food?q=` + url.QueryEscape(q) + `">` + html.EscapeString(q) + `</a>`)
+	}
+	b.WriteString(`</div></div>`)
 
-	b.WriteString(`<form class="food-form" method="get" action="/food">`)
+	b.WriteString(`<div class="card"><h3>Hygiene ratings</h3><form class="food-form" method="get" action="/food">`)
 	fmt.Fprintf(&b, `<input class="food-input" type="text" name="rating" value="%s" placeholder="Hygiene rating — a business name" aria-label="Business name">`,
 		html.EscapeString(rating))
 	fmt.Fprintf(&b, `<input class="food-input" type="text" name="where" value="%s" placeholder="town or postcode" aria-label="Where">`,
 		html.EscapeString(q.Get("where")))
 	b.WriteString(`<button class="btn" type="submit">Check</button>`)
-	b.WriteString(`</form>`)
+	b.WriteString(`</form></div>`)
 
 	switch {
 	case barcode != "":
@@ -72,7 +77,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       "Food",
 		Description: "Ingredients, allergens and nutrition by barcode, and UK food hygiene ratings",
-		HTML:        b.String(),
+		HTML:        b.String() + foodCSS,
 	})
 }
 
@@ -99,3 +104,11 @@ func Card() string {
 		`or check a restaurant's hygiene rating.</p>` +
 		`<p><a href="/food">Look something up</a></p>`
 }
+
+const foodCSS = `<style>
+.food-form{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0}
+.food-form .food-input{flex:1 1 180px;min-width:0;margin:0}
+.food-form button{flex:0 0 auto;margin:0}
+.food-presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.food-result{white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;background:var(--card-background);border:1px solid var(--border-color);border-radius:8px}
+</style>`

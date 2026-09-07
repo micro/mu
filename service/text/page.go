@@ -112,17 +112,10 @@ func result(which, body, second, out string) string {
 		}
 	}
 
-	args := `{"text": "…"`
-	if j.Field != "" && strings.TrimSpace(second) != "" {
-		args += `, "` + j.Field + `": ` + strconv.Quote(second)
-	}
-	args += "}"
-
 	var b strings.Builder
 	b.WriteString(`<div class="card tresult"><h3>` + html.EscapeString(j.Label) + `</h3>`)
 	b.WriteString(`<pre class="tout">` + html.EscapeString(out) + `</pre>`)
-	b.WriteString(`<p class="tcall">Same call from an agent: <code>text_` +
-		html.EscapeString(j.Name) + ` ` + html.EscapeString(args) + `</code></p>`)
+
 	b.WriteString(`</div>`)
 	return b.String()
 }
@@ -131,9 +124,6 @@ func result(which, body, second, out string) string {
 func page(answer string) string {
 	var b strings.Builder
 	b.WriteString(app.Column())
-	b.WriteString(`<div class="card"><h2>Text</h2>`)
-	b.WriteString(`<p class="tlede">Four things done to a piece of text. ` +
-		`An agent can call these over MCP with no account — see <a href="/tools">Tools</a>.</p></div>`)
 
 	b.WriteString(answer)
 
@@ -155,7 +145,7 @@ func page(answer string) string {
 	b.WriteString(`<textarea name="text" rows="9" placeholder="Paste text here" required></textarea>`)
 	b.WriteString(`<input type="text" name="arg" id="targ" placeholder="` +
 		html.EscapeString(jobs[0].Hint) + `">`)
-	b.WriteString(`<button type="submit">Run</button>`)
+	b.WriteString(`<button type="submit" id="trun">Summarise</button>`)
 	b.WriteString(`<p class="tcap">Up to ` + strconv.Itoa(maxInput/1000) + `,000 characters a call.</p>`)
 	b.WriteString(`</form></div>`)
 
@@ -192,6 +182,7 @@ const pageScript = `<script>
     if (!jobs.length || !arg) return;
     jobs.forEach(function(j){
       j.addEventListener('change', function(){
+        document.getElementById('trun').textContent=j.parentElement.textContent.trim();
         arg.placeholder = j.dataset.hint || '';
         arg.value = '';
         if (note) note.textContent = j.dataset.note || '';

@@ -25,6 +25,14 @@ func TestGoogleSelectsByDistanceBeforeLimiting(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
+		if calls == 1 {
+			if r.URL.Path != "/v1/places:searchNearby" {
+				t.Errorf("cafe query used relevance search: %s", r.URL.Path)
+			}
+			if types, ok := body["includedTypes"].([]interface{}); !ok || len(types) != 1 || types[0] != "cafe" {
+				t.Errorf("missing cafe filter: %v", body["includedTypes"])
+			}
+		}
 		if body["rankPreference"] != "DISTANCE" {
 			t.Errorf("%s ranking = %v", r.URL.Path, body["rankPreference"])
 		}

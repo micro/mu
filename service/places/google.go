@@ -52,7 +52,7 @@ type googlePlacesResponse struct {
 
 // googleNearby fetches POIs near a location using the Places API (New) Nearby Search.
 // Returns nil, nil when GOOGLE_API_KEY is not set.
-func googleNearby(lat, lon float64, radiusM int) ([]*Place, error) {
+func googleNearby(lat, lon float64, radiusM int, types ...string) ([]*Place, error) {
 	key := googleAPIKey()
 	if key == "" {
 		return nil, nil
@@ -71,12 +71,21 @@ func googleNearby(lat, lon float64, radiusM int) ([]*Place, error) {
 			},
 		},
 	}
+	if len(types) > 0 {
+		body["includedTypes"] = types
+	}
 	return googleDo(googlePlacesBaseURL+":searchNearby", key, body)
 }
 
 // googleSearch searches for POIs near a location matching a keyword using the
 // Places API (New) Text Search. Returns nil, nil when GOOGLE_API_KEY is not set.
 func googleSearch(query string, lat, lon float64, radiusM int) ([]*Place, error) {
+	// Category searches need the nearest matching candidates, not a relevance shortlist.
+	types := map[string][]string{"cafe": {"cafe"}, "cafes": {"cafe"}, "café": {"cafe"}, "coffee": {"cafe", "coffee_shop"}, "coffee shop": {"coffee_shop", "cafe"}, "restaurant": {"restaurant"}, "restaurants": {"restaurant"}, "pub": {"bar"}, "pharmacy": {"pharmacy"}, "supermarket": {"supermarket"}}
+	if kinds := types[strings.ToLower(strings.TrimSpace(query))]; len(kinds) > 0 {
+		return googleNearby(lat, lon, radiusM, kinds...)
+	}
+
 	key := googleAPIKey()
 	if key == "" {
 		return nil, nil

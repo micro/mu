@@ -101,7 +101,7 @@ func list(docs []*Doc, query string) string {
 		`<input type="text" name="q" value="` + html.EscapeString(query) +
 		`" placeholder="Search your documents" autocomplete="off">` +
 		`<button type="submit">Search</button></form>`)
-	b.WriteString(`<a class="doc-new" href="/docs?new=1">New document</a>`)
+	b.WriteString(`<a class="doc-new" href="/docs?new=1">New document / Import</a>`)
 	b.WriteString(`</div>`)
 
 	if len(docs) == 0 {
@@ -163,13 +163,13 @@ func editor(r *http.Request, d *Doc) string {
 <form method="POST" action="/docs" class="card doc-editor">
 <input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
 <input type="hidden" name="csrf_token" value="` + html.EscapeString(auth.CSRFToken(r)) + `">
-<input class="doc-title-input" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
-<textarea class="doc-body" name="content" rows="32" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
+<input id="doc-title" class="doc-title-input" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
+` + editorTools + `<textarea id="doc-body" class="doc-body" name="content" rows="32" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
 <div class="doc-actions">
 <label class="doc-public"><input type="checkbox" name="public"` + checked + `> Anyone with the link can read it</label>
 <button type="submit">Save</button>
 </div>
-</form>`
+</form>` + editorScript
 }
 
 func notice(msg string) string {

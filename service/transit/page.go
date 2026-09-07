@@ -24,6 +24,23 @@ import (
 // which needs no location at all.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	if term := strings.TrimSpace(r.URL.Query().Get("q")); term != "" {
+		if len(term) > 200 {
+			app.RespondError(w, 400, "Search is too long")
+			return
+		}
+		stops, err := searchStops(term)
+		if err != nil {
+			app.RespondError(w, 502, "Could not search transport stops")
+			return
+		}
+		out := stopsJSON(stops)
+		for _, v := range out {
+			delete(v, "away")
+		}
+		app.RespondJSON(w, map[string]any{"stops": out})
+		return
+	}
 	if q.Get("lat") != "" && q.Get("lon") != "" {
 		lat, err1 := strconv.ParseFloat(q.Get("lat"), 64)
 		lon, err2 := strconv.ParseFloat(q.Get("lon"), 64)
@@ -85,12 +102,7 @@ func stopsJSON(stops []stop) []map[string]any {
 func page() string {
 	var b strings.Builder
 	b.WriteString(app.Column())
-	b.WriteString(`<div class="card"><h2>Transit</h2>`)
-	b.WriteString(`<p class="xlede">Live London transport — stops near you, what is due, ` +
-		`and which lines are in trouble. Free, and callable by an agent: see <a href="/tools">Tools</a>.</p></div>`)
-
-	b.WriteString(`<div class="card xnear"><h3>Near you</h3>`)
-	b.WriteString(`<p id="xstops" class="xmuted">Asking your browser where you are…</p></div>`)
+	b.WriteString(`<div class="card"><form id="xsearch" class="xsearch"><label for="xquery">Find a London stop or station</label><div class="xsearch-row"><input id="xquery" name="q" type="search" placeholder="Stop, station or area" required maxlength="200"><button type="submit" class="btn">Search</button><button type="button" id="xnear" class="btn">Use my location</button></div></form><div id="xstops" aria-live="polite" class="xmuted">Search for a stop or use your location.</div></div>`)
 
 	b.WriteString(statusCard())
 	b.WriteString(`</div>` + pageStyle + pageScript)
@@ -162,7 +174,10 @@ func Card() string {
 }
 
 const pageStyle = `<style>
-.xlede{color:#666;font-size:15px;margin:0}
+.xsearch label{display:block;margin-bottom:8px}
+.xsearch-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.xsearch-row input{flex:1;min-width:150px}
+.xsearch-row button{white-space:nowrap}
 .xmuted{color:#888;font-size:14px;margin:0}
 .xgood{color:#0f7a52;font-size:15px;margin:0;font-weight:600}
 .xline{padding:8px 0;border-bottom:1px solid var(--border-color,#eee);font-size:15px}
@@ -180,44 +195,36 @@ const pageStyle = `<style>
 // limits for nothing.
 const pageScript = `<script>
 (function(){
-  function wire(){
-    var out = document.getElementById('xstops');
-    if (!out || !navigator.geolocation) {
-      if (out) out.textContent = 'Your browser will not share a location.';
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(function(pos){
-      fetch('/transit?lat=' + pos.coords.latitude + '&lon=' + pos.coords.longitude)
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          if (!d.stops || !d.stops.length) { out.textContent = 'No stops within 400m. London only.'; return; }
-          out.innerHTML = '';
-          d.stops.forEach(function(s){
-            var el = document.createElement('div');
-            el.className = 'xstop';
-            el.innerHTML = '<b>' + s.name + '</b> <span class="xaway">' + s.modes + ' · ' + s.away + '</span>';
-            el.addEventListener('click', function(){
-              if (el.dataset.open) { return; }
-              el.dataset.open = '1';
-              fetch('/transit?stop=' + encodeURIComponent(s.id))
-                .then(function(r){ return r.json(); })
-                .then(function(a){
-                  var box = document.createElement('div');
-                  box.className = 'xarr';
-                  box.textContent = (a.arrivals && a.arrivals.length)
-                    ? a.arrivals.map(function(x){ return x.line + ' to ' + x.to + ' — ' + x['in']; }).join('\n')
-                    : 'Nothing due.';
-                  box.style.whiteSpace = 'pre-line';
-                  el.appendChild(box);
-                });
-            });
-            out.appendChild(el);
-          });
-        })
-        .catch(function(){ out.textContent = 'Could not reach transport data.'; });
-    }, function(){ out.textContent = 'No location, so no stops. Line status is below.'; });
+ function wire(){
+  var form=document.getElementById('xsearch'),out=document.getElementById('xstops'),near=document.getElementById('xnear');
+  if(!form||form.dataset.wired)return;form.dataset.wired='1';
+  var request=0;
+  function load(query,seq){
+   fetch('/transit?'+query).then(function(r){if(!r.ok)throw Error();return r.json();}).then(function(d){
+    if(seq!==request)return;
+    out.replaceChildren();
+    if(!d.stops||!d.stops.length){out.textContent='No matching stops found. Try another London stop or station.';return;}
+    d.stops.forEach(function(s){
+     var row=document.createElement('div');row.className='xstop';
+     var button=document.createElement('button');button.type='button';button.className='btn';button.textContent=s.name;
+     var meta=document.createElement('span');meta.className='xaway';meta.textContent=' '+s.modes+(s.away?' · '+s.away:'');
+     row.append(button,meta);out.appendChild(row);
+     button.addEventListener('click',function(){
+      button.disabled=true;var box=document.createElement('div');box.className='xarr';box.textContent='Loading arrivals…';row.appendChild(box);
+      fetch('/transit?stop='+encodeURIComponent(s.id)).then(function(r){if(!r.ok)throw Error();return r.json();}).then(function(a){
+       box.textContent=a.arrivals&&a.arrivals.length?a.arrivals.map(function(x){return x.line+' to '+x.to+' — '+x['in'];}).join('\n'):'Nothing due.';box.style.whiteSpace='pre-line';
+      }).catch(function(){box.textContent='Could not load arrivals. Try again.';button.disabled=false;});
+     });
+    });
+   }).catch(function(){if(seq===request)out.textContent='Could not reach transport data. Please try again.';});
   }
-  wire();
-  document.addEventListener('mu:navigated', wire);
-})();
-</script>`
+  form.addEventListener('submit',function(e){e.preventDefault();var q=document.getElementById('xquery').value.trim();if(!q)return;out.textContent='Searching…';load('q='+encodeURIComponent(q),++request);});
+  near.addEventListener('click',function(){
+   var seq=++request;
+   if(!navigator.geolocation){out.textContent='Location is unavailable. Search for a stop instead.';return;}
+   out.textContent='Finding nearby stops…';
+   navigator.geolocation.getCurrentPosition(function(pos){if(seq===request)load('lat='+pos.coords.latitude+'&lon='+pos.coords.longitude,seq);},function(){if(seq===request)out.textContent='Location was not available. Search for a stop instead.';},{timeout:10000,maximumAge:60000});
+  });
+ }
+ wire();document.addEventListener('mu:navigated',wire);
+})();</script>`

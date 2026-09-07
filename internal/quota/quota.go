@@ -72,10 +72,11 @@ func record(account, operation string) {
 
 // Operation types
 const (
-	OpNewsSearch  = "news_search"
-	OpQuranSearch = "quran_search"
-	OpVideoSearch = "video_search"
-	OpBlogCreate  = "blog_create"
+	OpFlightStatus = "flights_status"
+	OpNewsSearch   = "news_search"
+	OpQuranSearch  = "quran_search"
+	OpVideoSearch  = "video_search"
+	OpBlogCreate   = "blog_create"
 	// OpMailSend is sending a message, wherever it is going.
 	//
 	// There were two. mail_email was the mailbox answering somebody outside,

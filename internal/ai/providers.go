@@ -112,6 +112,8 @@ const (
 	ModelDeepSeekPro   = "deepseek-ai/deepseek-v4-pro"
 	ModelDeepSeekFlash = "deepseek-ai/deepseek-v4-flash"
 	ModelQwenPlus      = "qwen/qwen3.6-plus"
+	ModelGLM           = "zai-org/glm-5.3"
+	ModelGLMFlash      = "zai-org/glm-5.3-flash"
 
 	// Gemini, by the aliases Google keeps pointed at the current generation
 	// rather than by a pinned id.
@@ -233,7 +235,7 @@ func GeminiKey() string { return getGeminiAPIKey() }
 
 // isAtlasModel returns true if the model should be routed to Atlas Cloud.
 func isAtlasModel(model string) bool {
-	return strings.HasPrefix(model, "deepseek") ||
+	return strings.HasPrefix(strings.ToLower(model), "zai-org/glm-") || strings.HasPrefix(model, "deepseek") ||
 		strings.HasPrefix(model, "qwen") ||
 		strings.HasPrefix(model, "Qwen") ||
 		strings.HasPrefix(model, "glm") ||
@@ -425,4 +427,20 @@ func LocalModelAvailable() bool {
 func init() {
 	// Inject cache stats function into app package to avoid import cycle
 	app.CacheStatsFunc = CacheStats
+}
+
+// GLMModel maps the supported GLM names to the selected provider's identifier.
+// Empty means this is not one of these models or the provider does not serve it.
+func GLMModel(provider, id string) string {
+	name := strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(id)), "zai-org/"), "z-ai/")
+	if name != "glm-5.3" && name != "glm-5.3-flash" {
+		return ""
+	}
+	switch provider {
+	case ProviderAtlasCloud:
+		return "zai-org/" + name
+	case ProviderOpenRouter:
+		return "z-ai/" + name
+	}
+	return ""
 }

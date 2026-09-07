@@ -48,7 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Add form. The datetime-local value is local to the browser; a tiny script
 	// converts it to an RFC3339 UTC instant on submit so 3pm means the user's
 	// 3pm regardless of the server's timezone.
-	b.WriteString(`<div class="w-640">`)
+	b.WriteString(`<div class="page-col">`)
 	b.WriteString(`<form method="POST" action="/events" onsubmit="var d=this.whenlocal.value;if(d){this.when.value=new Date(d).toISOString()}" class="col m-0 mb-6">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">`)
 	b.WriteString(`<input type="hidden" name="action" value="create">`)

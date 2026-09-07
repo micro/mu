@@ -3237,6 +3237,11 @@ a.highlight {
   background: var(--hover-background);
 }
 
+/* The page column sets Mail's width; cards follow its search form. */
+#mailbox .thread-preview.card {
+  max-width: none;
+}
+
 .thread-preview .delete-btn {
   position: absolute;
   top: 15px;
@@ -8008,3 +8013,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .wallet-peek { padding-top: 16px; }
 .wallet-peek .balance-figure b { font-weight: 400; }
 
+
+/* Links retain their colour and keyboard focus without hover underlines. */
+a:hover, a:hover * { text-decoration: none !important; }
+.mu-agent .card p, .mu-user { white-space: pre-wrap; }

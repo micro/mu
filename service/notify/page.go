@@ -32,6 +32,39 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	who := sess.Account
+	notice := ""
+	if r.Method == http.MethodPost {
+		r.Body = http.MaxBytesReader(w, r.Body, 8192)
+		if err := r.ParseForm(); err != nil {
+			app.BadRequest(w, r, "Invalid notification")
+			return
+		}
+		if !auth.StrictCSRF(r) {
+			app.Forbidden(w, r, "Invalid CSRF token")
+			return
+		}
+		if err := auth.CheckPostRate(who); err != nil {
+			app.Error(w, r, 429, "Please wait before sending again")
+			return
+		}
+		title, body := strings.TrimSpace(r.FormValue("title")), r.FormValue("body")
+		if len(title) > 120 || len(body) > bodyLimit {
+			app.BadRequest(w, r, "Notification is too long")
+			return
+		}
+		if err := Send(who, title, body, "/notify", "you"); err != nil {
+			notice = `<p class="text-error" role="alert">` + html.EscapeString(err.Error()) + `</p>`
+		} else {
+			http.Redirect(w, r, "/notify?sent=1", http.StatusSeeOther)
+			return
+		}
+	} else if r.Method != http.MethodGet {
+		app.MethodNotAllowed(w, r)
+		return
+	}
+	if r.URL.Query().Get("sent") == "1" {
+		notice = `<p role="status">Notification sent to your registered devices.</p>`
+	}
 
 	sent := History(who, 50)
 	devices := Devices(who)
@@ -55,7 +88,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b.WriteString(devicesCard(devices))
+	b.WriteString(notice)
+	b.WriteString(push.Card(r, who))
+	b.WriteString(`<div class="card"><h3>Send a notification</h3><form method="post" action="/notify">` + app.CSRFField(auth.CSRFToken(r)) + `<label for="notify-title">Title</label><input id="notify-title" name="title" required maxlength="120"><label for="notify-body">Message</label><textarea id="notify-body" name="body" rows="3" maxlength="300"></textarea><button type="submit">Send to my devices</button></form><p class="text-sm text-muted">For phone numbers and text messages, use <a href="/sms">SMS</a>. Manage your verified number in <a href="/account">Account</a>.</p></div>`)
+
 	b.WriteString(historyCard(sent))
 
 	app.Respond(w, r, app.Response{Title: "Notifications",

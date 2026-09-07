@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"mu/agent/code"
 	"mu/agent/micro"
 	"mu/inbox"
 	"mu/internal/api"
@@ -405,6 +404,18 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The chat switcher requests only its account-owned transcript.
+	if r.Header.Get("X-Mu-Transcript") == "1" {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Add("Vary", "X-Mu-Transcript")
+		if !reopened || elsewhere != "" {
+			app.RespondError(w, 404, "Chat not found")
+			return
+		}
+		app.RespondJSON(w, map[string]any{"id": cfg.ContextID, "html": cfg.InitialConvHTML, "pending": cfg.Pending, "agent": reopenAgent})
+		return
+	}
+
 	// Prefill prompt from ?q / ?prompt (e.g. home card deep-links).
 	//
 	// The one query that stays a query, and the reason is that here the URL *is*
@@ -489,14 +500,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// on /agent/<name> both threw ReferenceError, which is why the delete cross
 	// did nothing and why a named agent's page did not look like the default
 	// one. What this page needs it now defines itself, in chatPageJS.
-	// The Code agent's rail carries its workspace under the conversations: the
-	// files on its machine and the apps it has hosted. Called for every agent
-	// and empty for all but one — which agent has a machine is agent/code's
-	// fact to know, not this page's. See code.RailSection.
 	rail := `<div class="chat-side">` +
 		`<div class="chat-pane" id="pane-chats">` +
 		renderSessionsRail(accountID, activeRoot, selAgent, named,
-			code.RailSection(accountID, selAgent)) + `</div></div>`
+			"") + `</div></div>`
 
 	// The bar above the conversation: how you got here, and how to see the
 	// other conversations on a phone. Nothing else.

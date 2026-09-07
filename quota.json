@@ -87,6 +87,12 @@
       "env": "CREDIT_COST_WEATHER_POLLEN"
     },
     {
+      "op": "flights_status",
+      "cost": 3,
+      "label": "Flight status",
+      "note": "External Aviationstack lookup. Operator should adjust to their provider plan; one bounded request per lookup."
+    },
+    {
       "op": "web_search",
       "cost": 3,
       "label": "Web search",

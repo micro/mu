@@ -63,6 +63,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if query != "" {
 		kinds = data.KindsMatching(query)
 	}
+	if query == "" && kind == "" {
+		for _, k := range kinds {
+			entries = append(entries, data.ByType(k.Name, resultsShown)...)
+		}
+	}
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]any{
@@ -89,7 +94,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case query == "" && kind == "":
-		b.WriteString(`<p class="ar-empty">Pick a kind, or search across all of them.</p>`)
+		if len(entries) == 0 {
+			b.WriteString(`<p class="ar-empty">Nothing is archived yet.</p>`)
+		}
+		previous := ""
+		for _, e := range entries {
+			if e.Type != previous {
+				previous = e.Type
+				b.WriteString(`<h2>` + html.EscapeString(e.Type) + `</h2>`)
+			}
+			b.WriteString(row(e))
+		}
 	case len(entries) == 0 && query != "":
 		b.WriteString(`<p class="ar-empty">Nothing in the archive mentions <strong>` +
 			html.EscapeString(query) + `</strong>.</p>`)

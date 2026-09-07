@@ -748,6 +748,7 @@ var Template = `
         });
 
         window.addEventListener('popstate', function(e){
+          if(window.muChatOpen && /^\/agent(?:\/|$)/.test(location.pathname) && document.querySelector('.chat-sess-list')) return;
           go(location.href, false, e.state && typeof e.state.scroll === 'number' ? e.state.scroll : undefined);
         });
 
