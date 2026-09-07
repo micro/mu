@@ -46,7 +46,7 @@ func TestAnEmptyBalanceSaysHowToStart(t *testing.T) {
 	if !strings.Contains(got, "Top up to get started") {
 		t.Errorf("an empty balance produced %q", got)
 	}
-	if !strings.Contains(got, `href="/wallet/topup"`) {
+	if !strings.Contains(got, `href="/account/topup"`) {
 		t.Error("the banner does not say where to go")
 	}
 }
@@ -195,7 +195,7 @@ func TestTheHeadBalanceSpeaksOnlyWhenItMatters(t *testing.T) {
 
 	// When it does speak, it leads where the money is.
 	withBalance(t, 0, true)
-	if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, `href="/wallet"`) {
+	if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, `href="/account#balance"`) {
 		t.Errorf("the warning is not a link to where the balance lives: %q", got)
 	}
 

@@ -1,12 +1,12 @@
-// Package saved exposes the caller's saved reading through pages and tools.
-package saved
+// Package bookmarks exposes the caller's saved reading through pages and tools.
+package bookmarks
 
 import (
 	"context"
 	"fmt"
 
 	"mu/internal/app"
-	store "mu/internal/saved"
+	store "mu/internal/bookmarks"
 	"mu/internal/service"
 )
 
@@ -78,7 +78,7 @@ type Response struct {
 func (Server) Annotate(ctx context.Context, req *AnnotateRequest, rsp *Response) error {
 	err := store.Annotate(service.AccountFrom(ctx), req.ID, req.Note)
 	if err == nil {
-		rsp.Text = "Note saved."
+		rsp.Text = "Note bookmarks."
 	}
 	return err
 }
@@ -91,19 +91,19 @@ func (Server) Delete(ctx context.Context, req *GetRequest, rsp *Response) error 
 }
 func Load() {
 	if err := service.Register(Spec); err != nil {
-		app.Log("saved", "service register failed: %v", err)
+		app.Log("bookmarks", "service register failed: %v", err)
 	}
 }
 func DeleteAll(owner string) {
 	if err := store.Clear(owner); err != nil {
-		app.Log("saved", "account deletion failed: %v", err)
+		app.Log("bookmarks", "account deletion failed: %v", err)
 	}
 }
 
-var Spec = service.Spec{Name: "saved", Label: "Saved", Description: "Your private saved articles, videos and links", Page: "/saved", Icon: "bookmarks.svg", Scoped: true, Handler: new(Server), Endpoints: map[string]service.Endpoint{
-	"Add":      {Writes: true, Doc: "Save an article, video, blog post or link privately. Re-saving preserves its note"},
-	"List":     {Doc: "Find your saved reading by text or kind, newest first. Private notes are searched too"},
-	"Get":      {Doc: "Read one saved item and its private note, with available archived text. Videos have descriptions, not transcripts"},
-	"Annotate": {Writes: true, Doc: "Set or clear a private note on one saved item"},
-	"Delete":   {Destructive: true, Doc: "Remove one of your saved items"},
+var Spec = service.Spec{Name: "bookmarks", Label: "Bookmarks", Description: "Your private saved articles, videos and links", Page: "/bookmarks", Icon: "bookmarks.svg", Scoped: true, Handler: new(Server), Endpoints: map[string]service.Endpoint{
+	"Add":      {Aliases: []string{"saved_add"}, Writes: true, Doc: "Save an article, video, blog post or link privately. Re-saving preserves its note"},
+	"List":     {Aliases: []string{"saved_list"}, Doc: "Find your saved reading by text or kind, newest first. Private notes are searched too"},
+	"Get":      {Aliases: []string{"saved_get"}, Doc: "Read one saved item and its private note, with available archived text. Videos have descriptions, not transcripts"},
+	"Annotate": {Aliases: []string{"saved_annotate"}, Writes: true, Doc: "Set or clear a private note on one saved item"},
+	"Delete":   {Aliases: []string{"saved_delete"}, Destructive: true, Doc: "Remove one of your saved items"},
 }}

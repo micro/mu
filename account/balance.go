@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"mu/internal/quota"
+	"mu/internal/x402"
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/usage"
 	"mu/service/wallet"
 )
 
@@ -116,8 +116,8 @@ func BalanceBody(userID string) []string {
 		app.Note(money(c.Balance) + " · 1 credit = 1¢"),
 		free,
 		admin,
-		`<p class="balance-links"><a href="/wallet/topup">Top up &rarr;</a> · ` +
-			`<a href="/wallet/transfer">Transfer &rarr;</a></p>`,
+		`<p class="balance-links"><a href="/account/topup">Top up &rarr;</a> · ` +
+			`<a href="/account/transfer">Transfer &rarr;</a></p>`,
 	}
 }
 
@@ -289,9 +289,6 @@ func Wallet(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{Title: "Wallet",
 		Description: "What you have, and the key that spends it",
 		HTML: notice +
-			BalanceCard(sess.Account) +
-			usage.Card(sess.Account) +
-			LedgerSection(sess.Account) +
 			wallet.Page(sess.Account)})
 }
 
@@ -312,6 +309,17 @@ func Wallet(w http.ResponseWriter, r *http.Request) {
 // is registered on its own at /stripe/webhook — see routes.go.
 func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+	// Keep old forms and in-flight checkout returns working without redirecting POSTs.
+	switch path {
+	case "/wallet/topup":
+		path = "/account/topup"
+	case "/wallet/transfer":
+		path = "/account/transfer"
+	case "/wallet/stripe/checkout", "/account/stripe/checkout":
+		path = "/stripe/checkout"
+	case "/wallet/stripe/success", "/account/stripe/success":
+		path = "/stripe/success"
+	}
 
 	// The balance, as data.
 	//
@@ -320,7 +328,7 @@ func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	// returned to something that only wanted a number. The tool dispatcher sets
 	// Accept: application/json on every path-backed call, so honouring Accept
 	// fixes it here and for anything else routed this way.
-	if r.URL.Query().Get("balance") == "1" || app.WantsJSON(r) {
+	if r.Method == http.MethodGet && (path == "/account/" || path == "/wallet/") && (r.URL.Query().Get("balance") == "1" || app.WantsJSON(r)) {
 		sess, _ := auth.TrySession(r)
 		if sess == nil {
 			w.Header().Set("Content-Type", "application/json")
@@ -334,17 +342,17 @@ func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
-	case path == "/wallet/topup" && r.Method == "GET" && app.WantsJSON(r):
+	case path == "/account/topup" && r.Method == "GET" && app.WantsJSON(r):
 		handleTopupJSON(w, r)
-	case path == "/wallet/topup" && r.Method == "GET":
+	case path == "/account/topup" && r.Method == "GET":
 		handleDepositPage(w, r)
-	case path == "/wallet/stripe/checkout" && r.Method == "POST":
+	case path == "/stripe/checkout" && r.Method == "POST":
 		handleStripeCheckout(w, r)
-	case path == "/wallet/stripe/success" && r.Method == "GET":
+	case path == "/stripe/success" && r.Method == "GET":
 		handleStripeSuccess(w, r)
-	case path == "/wallet/transfer" && r.Method == "POST":
+	case path == "/account/transfer" && r.Method == "POST":
 		handleTransfer(w, r)
-	case path == "/wallet/transfer" && r.Method == "GET":
+	case path == "/account/transfer" && r.Method == "GET":
 		handleTransferPage(w, r)
 	case path == "/wallet/pricing":
 		handlePricing(w, r)
@@ -355,7 +363,7 @@ func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 
 // MovedToAccount is gone, and the redirects it performed are gone with it.
 //
-// It sent /wallet/topup and its siblings to /billing/*, on the reasoning that
+// It sent /account/topup and its siblings to /billing/*, on the reasoning that
 // /wallet had come to mean a crypto address and a bookmark for a balance must
 // not land on one. Those paths now mean what they originally meant — see
 // BalanceHandler — so a redirect away from them would send somebody from their
@@ -370,10 +378,16 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, html.EscapeString(msg)))
+	}
 	if StripeEnabled() {
-		sb.WriteString(renderStripeDeposit(sess.Account, r.URL.Query().Get("error")))
-	} else {
-		sb.WriteString(`<div class="card"><p class="text-error">No payment methods available.</p></div>`)
+		sb.WriteString(renderStripeDeposit(sess.Account, ""))
+	}
+	if x402.TopUpRequirement(100) != nil {
+		sb.WriteString(wallet.Page(sess.Account))
+	} else if !StripeEnabled() {
+		sb.WriteString(`<div class="card"><p>No payment methods available.</p></div>`)
 	}
 
 	app.Respond(w, r, app.Response{Title: "Top up", Description: "Buy credits", HTML: sb.String()})
@@ -389,7 +403,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 	sb.WriteString(`<hr class="hr-soft my-4">`)
 
 	sb.WriteString("<h4>One-time top-up</h4>")
-	sb.WriteString(`<form method="POST" action="/wallet/stripe/checkout">`)
+	sb.WriteString(`<form method="POST" action="/stripe/checkout">`)
 
 	// Preset quick-select buttons
 	sb.WriteString(`<div class="d-flex gap-2 mb-3 mt-2">`)
@@ -469,7 +483,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	}
 	sb.WriteString(`</datalist>`)
 
-	sb.WriteString(`<form method="POST" action="/wallet/transfer">`)
+	sb.WriteString(`<form method="POST" action="/account/transfer">`)
 	sb.WriteString(`<div>`)
 	sb.WriteString(`<label for="transfer-to" class="text-sm">Recipient</label>`)
 	sb.WriteString(`<input type="text" id="transfer-to" name="to" placeholder="username" required class="form-input w-full mt-1" list="user-list" autocomplete="off">`)
@@ -520,7 +534,7 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Form submission
 		if err := r.ParseForm(); err != nil {
-			http.Redirect(w, r, "/wallet/transfer?error=Invalid+form", http.StatusSeeOther)
+			http.Redirect(w, r, "/account/transfer?error=Invalid+form", http.StatusSeeOther)
 			return
 		}
 		to = r.FormValue("to")
@@ -576,7 +590,7 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg := fmt.Sprintf("Transferred %d credits to %s", amount, recipient.Name)
-	http.Redirect(w, r, "/wallet/transfer?success="+neturl.QueryEscape(msg), http.StatusSeeOther)
+	http.Redirect(w, r, "/account/transfer?success="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
 func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
@@ -584,14 +598,15 @@ func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
 		app.RespondJSON(w, map[string]string{"error": msg})
 		return
 	}
-	http.Redirect(w, r, "/wallet/transfer?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
+	http.Redirect(w, r, "/account/transfer?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
 // maxTopupDollars is the maximum allowed top-up amount in whole dollars
 const maxTopupDollars = 500
 
 type TopupMethod struct {
-	Type  string            `json:"type"`            // "card"
+	Type  string            `json:"type"`
+	Path  string            `json:"path,omitempty"`  // "card"
 	Tiers []StripeTopupTier `json:"tiers,omitempty"` // For card/Stripe
 }
 
@@ -602,7 +617,10 @@ func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var methods []TopupMethod
+	methods := []TopupMethod{}
+	if x402.TopUpRequirement(100) != nil {
+		methods = append(methods, TopupMethod{Type: "usdc", Path: "/account/topup"})
+	}
 
 	if StripeEnabled() {
 		methods = append(methods, TopupMethod{
@@ -624,7 +642,7 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Redirect(w, r, "/wallet/topup?error=Invalid+form+submission", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/topup?error=Invalid+form+submission", http.StatusSeeOther)
 		return
 	}
 
@@ -634,11 +652,11 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(amountStr, "%d", &dollars)
 
 	if dollars < 1 {
-		http.Redirect(w, r, "/wallet/topup?error=Please+enter+an+amount", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/topup?error=Please+enter+an+amount", http.StatusSeeOther)
 		return
 	}
 	if dollars > maxTopupDollars {
-		http.Redirect(w, r, fmt.Sprintf("/wallet/topup?error=Maximum+top-up+is+$%d", maxTopupDollars), http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("/account/topup?error=Maximum+top-up+is+$%d", maxTopupDollars), http.StatusSeeOther)
 		return
 	}
 
@@ -647,14 +665,14 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	// Success/cancel URLs must name the public origin — see app.BaseURL, which
 	// is the single answer to "what is this instance's address".
 	baseURL := app.BaseURL(r)
-	successURL := baseURL + "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}"
-	cancelURL := baseURL + "/wallet/topup"
+	successURL := baseURL + "/stripe/success?session_id={CHECKOUT_SESSION_ID}"
+	cancelURL := baseURL + "/account/topup"
 
 	// Create checkout session
 	checkoutURL, err := CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
 	if err != nil {
 		app.Log("stripe", "checkout error: %v", err)
-		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/wallet/topup" class="btn">Back</a></p></div>`
+		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/account/topup" class="btn">Back</a></p></div>`
 		w.WriteHeader(http.StatusInternalServerError)
 		app.Respond(w, r, app.Response{Title: "Payment Error", Description: "Checkout failed", HTML: content})
 		return

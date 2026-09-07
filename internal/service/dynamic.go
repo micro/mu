@@ -12,7 +12,7 @@ import (
 // whatever the service actually registered — never a hardcoded list.
 func Endpoints(name string) ([]string, error) {
 	ensure()
-	svcs, err := reg.GetService(name)
+	svcs, err := reg.GetService(CanonicalName(name))
 	if err != nil {
 		return nil, err
 	}

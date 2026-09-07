@@ -230,7 +230,7 @@ func newAgentAction(owner string) string {
 	if !full {
 		return app.ActionLink("/agent/new", "New agent")
 	}
-	return app.ActionLink("/wallet/topup", "Top up to lift the limit") +
+	return app.ActionLink("/account/topup", "Top up to lift the limit") +
 		fmt.Sprintf(`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and `+
 			`you have %d. Verify your address or put credit on <a href="/account">your account</a>, `+
 			`or delete one first.</p>`, max, plural(max), have)

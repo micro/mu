@@ -33,6 +33,7 @@ type CreateRequest struct {
 
 // CreateResponse confirms the scheduled event.
 type CreateResponse struct {
+	Item   *Event `json:"item"`
 	Result string `json:"result" description:"Confirmation of the scheduled event"`
 }
 
@@ -48,6 +49,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	if err != nil {
 		return err
 	}
+	rsp.Item = e
 	if e.Prompt != "" {
 		rsp.Result = fmt.Sprintf("Standing instruction set: %s. The answer will be mailed to you each time.", Describe(e))
 		return nil
@@ -62,22 +64,38 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 }
 
 // ListRequest asks for the caller's upcoming events.
-type ListRequest struct{}
+type ListRequest struct {
+	Offset int `json:"offset" description:"Events to skip"`
+	Limit  int `json:"limit" description:"Maximum events, default 20, max 100"`
+}
 
 // ListResponse is the caller's upcoming events as model-ready text.
 type ListResponse struct {
-	Events string `json:"events" description:"The caller's upcoming events, soonest first"`
+	External           []External `json:"external"`
+	ExternalTotal      int        `json:"external_total"`
+	ExternalNextOffset *int       `json:"external_next_offset,omitempty"`
+	Items              []*Event   `json:"items"`
+	Total              int        `json:"total"`
+	Offset             int        `json:"offset"`
+	NextOffset         *int       `json:"next_offset,omitempty"`
+	Events             string     `json:"events" description:"The caller's upcoming events, soonest first"`
 }
 
 // List returns the caller's upcoming (not-yet-fired) events.
 // @example {}
-func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error {
+func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) error {
 	owner := service.AccountFrom(ctx)
 
 	// The id is on every line because nothing can be cancelled without one, and
 	// this is the only place an agent learns it.
 	var b strings.Builder
-	for _, e := range Upcoming(owner) {
+	items := Upcoming(owner)
+	start, end := service.PageRange(len(items), req.Offset, req.Limit)
+	rsp.Items, rsp.Total, rsp.Offset = items[start:end], len(items), start
+	if end < len(items) {
+		rsp.NextOffset = &end
+	}
+	for _, e := range rsp.Items {
 		fmt.Fprintf(&b, "- %s — %s", e.When.Format("Mon 2 Jan 15:04 MST"), e.Title)
 		if e.Note != "" {
 			fmt.Fprintf(&b, " (%s)", e.Note)
@@ -93,7 +111,13 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 	// from. Both facts are the same fact: Mu did not schedule these and cannot
 	// cancel them, so offering an id would be offering something that fails.
 	now := time.Now()
-	for _, x := range externalEntries(owner, now, now.Add(14*24*time.Hour)) {
+	external := externalEntries(owner, now, now.Add(14*24*time.Hour))
+	xs, xe := service.PageRange(len(external), req.Offset, req.Limit)
+	rsp.External, rsp.ExternalTotal = external[xs:xe], len(external)
+	if xe < len(external) {
+		rsp.ExternalNextOffset = &xe
+	}
+	for _, x := range rsp.External {
 		fmt.Fprintf(&b, "- %s — %s", x.Start.Format("Mon 2 Jan 15:04 MST"), x.Title)
 		if x.Location != "" {
 			fmt.Fprintf(&b, " (%s)", x.Location)
@@ -236,6 +260,7 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "events.svg",
 	Endpoints: map[string]service.Endpoint{
+		"Update": {Writes: true, Doc: "Update one of your scheduled events without changing its id. Omitted fields stay unchanged; empty notes, prompts or recurrence clear them"},
 		"Create": {Writes: true, Doc: "Schedule a reminder or event at a given time; optionally repeating, and optionally running a prompt through the agent when it fires"},
 		"Free":   {Doc: "Find when the caller has nothing booked — open slots of a given length, within working hours"},
 		"List":   {Doc: "List the caller's upcoming events and reminders, each with its id"},

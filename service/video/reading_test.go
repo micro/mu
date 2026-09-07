@@ -12,7 +12,7 @@ import (
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
-	"mu/internal/saved"
+	"mu/internal/bookmarks"
 )
 
 func TestFetchedVideosCanBeSavedOutsideThePresetFeed(t *testing.T) {
@@ -66,9 +66,9 @@ func TestFetchedVideosCanBeSavedOutsideThePresetFeed(t *testing.T) {
 				}
 			}
 			owner := "video-reading-fixture"
-			defer saved.Clear(owner)
+			defer bookmarks.Clear(owner)
 			for _, id := range []string{"from-search", "from-playlist", "from-channel"} {
-				item, err := saved.Add(owner, saved.Item{Ref: "video_" + id})
+				item, err := bookmarks.Add(owner, bookmarks.Item{Ref: "video_" + id})
 				if err != nil {
 					t.Fatalf("cannot save %s: %v", id, err)
 				}

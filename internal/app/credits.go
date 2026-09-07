@@ -103,7 +103,7 @@ func headBalance(acc *auth.Account) string {
 	if v.Unlimited {
 		badge = "∞"
 	}
-	return fmt.Sprintf(`<a id="head-wallet" class="head-wallet%s" href="/wallet" aria-label="Wallet">`+
+	return fmt.Sprintf(`<a id="head-wallet" class="head-wallet%s" href="/account#balance" aria-label="Account balance">`+
 		`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" `+
 		`stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`+
 		`<path d="M16 12h.01"/></svg><span id="head-wallet-badge">%s</span></a>`,
@@ -178,7 +178,7 @@ func creditsBannerFor(acc *auth.Account, path string) string {
 	return `<div class="credits-banner">
 <strong>` + headline + `</strong>
 <span>` + detail + `</span>
-<a href="/wallet/topup">Top up →</a>
+<a href="/account/topup">Top up →</a>
 </div>`
 }
 

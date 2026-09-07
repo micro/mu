@@ -190,7 +190,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "shell",
 	Handler:     new(Server),
-	Description: "A machine of your own: run commands, keep files, build things",
+	Description: "Your persistent container sandbox: run commands, keep files, build things",
 	Page:        "/shell",
 	Icon:        "shell.svg",
 	// One container and one volume per account, so there is no such thing as
@@ -201,7 +201,7 @@ var Spec = service.Spec{
 		"Run": {
 			Cost:   quota.OpShellRun,
 			Writes: true,
-			Doc: "Run a shell command on your own machine and get back what it wrote. " +
+			Doc: "Run a shell command in your account's container sandbox and get back what it wrote. " +
 				"A real shell in a container: pipes, redirection and && all work, the " +
 				"working directory is /work and files there persist between calls. " +
 				"Use it to build, test, run scripts and move files about. A non-zero " +
@@ -210,7 +210,7 @@ var Spec = service.Spec{
 		},
 		"Write": {
 			Writes: true,
-			Doc: "Put a file on your machine, creating any missing directories. The " +
+			Doc: "Put a file in your account's container sandbox, creating any missing directories. The " +
 				"only file operation that is not a shell command, because it is the " +
 				"one a shell is bad at: source is full of quotes and backticks and a " +
 				"heredoc will mangle it. The content arrives as a string and reaches " +

@@ -35,9 +35,10 @@ func ICS(e *Event, organizerEmail string) string {
 	b.WriteString("METHOD:PUBLISH\r\n")
 	b.WriteString("BEGIN:VEVENT\r\n")
 	fmt.Fprintf(&b, "UID:%s@mu\r\n", e.ID)
+	fmt.Fprintf(&b, "SEQUENCE:%d\r\n", e.Sequence)
 	fmt.Fprintf(&b, "DTSTAMP:%s\r\n", stamp(time.Now()))
 	fmt.Fprintf(&b, "DTSTART:%s\r\n", stamp(e.When))
-	fmt.Fprintf(&b, "DTEND:%s\r\n", stamp(e.When.Add(defaultDuration)))
+	fmt.Fprintf(&b, "DTEND:%s\r\n", stamp(e.When.Add(e.Length())))
 	fmt.Fprintf(&b, "SUMMARY:%s\r\n", icsEscape(e.Title))
 	if e.Note != "" {
 		fmt.Fprintf(&b, "DESCRIPTION:%s\r\n", icsEscape(e.Note))

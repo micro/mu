@@ -21,11 +21,12 @@ import (
 
 // Event is a scheduled reminder owned by a single user.
 type Event struct {
-	ID    string    `json:"id"`
-	Owner string    `json:"owner"`
-	Title string    `json:"title"`
-	When  time.Time `json:"when"`
-	Note  string    `json:"note,omitempty"`
+	Sequence int       `json:"sequence,omitempty"`
+	ID       string    `json:"id"`
+	Owner    string    `json:"owner"`
+	Title    string    `json:"title"`
+	When     time.Time `json:"when"`
+	Note     string    `json:"note,omitempty"`
 	// Minutes is how long the event lasts. Zero means the half hour the .ics
 	// export has always assumed, so events stored before this existed keep the
 	// meaning they were saved with.
@@ -133,13 +134,14 @@ func CreateStanding(owner, title string, when time.Time, note string, minutes in
 	mu.Lock()
 	events[e.ID] = e
 	saveLocked()
+	snapshot := *e
 	mu.Unlock()
 
 	if OnCreate != nil {
-		cp := *e
+		cp := snapshot
 		go OnCreate(&cp)
 	}
-	return e, nil
+	return &snapshot, nil
 }
 
 // List returns owner's events, soonest first.

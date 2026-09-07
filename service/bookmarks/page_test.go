@@ -1,4 +1,4 @@
-package saved
+package bookmarks
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"mu/internal/auth"
-	store "mu/internal/saved"
+	store "mu/internal/bookmarks"
 	"mu/internal/service"
 )
 
@@ -35,7 +35,7 @@ func TestPageAndToolsSharePrivateCollection(t *testing.T) {
 	owner := "saved_page"
 	defer DeleteAll(owner)
 	w := httptest.NewRecorder()
-	Handler(w, request(t, owner, "POST", "/saved", url.Values{"action": {"add"}, "url": {"https://example.com/story"}, "title": {"Source"}, "note": {"private phrase"}}))
+	Handler(w, request(t, owner, "POST", "/bookmarks", url.Values{"action": {"add"}, "url": {"https://example.com/story"}, "title": {"Source"}, "note": {"private phrase"}}))
 	if w.Code != 303 {
 		t.Fatalf("save: %d %s", w.Code, w.Body.String())
 	}
@@ -50,7 +50,7 @@ func TestPageAndToolsSharePrivateCollection(t *testing.T) {
 			t.Fatal("tool returned another account's item")
 		}
 	}
-	r := request(t, owner, "POST", "/saved/search", url.Values{"query": {"private phrase"}})
+	r := request(t, owner, "POST", "/bookmarks/search", url.Values{"query": {"private phrase"}})
 	r.Header.Set("Accept", "application/json")
 	w = httptest.NewRecorder()
 	Handler(w, r)
@@ -59,7 +59,7 @@ func TestPageAndToolsSharePrivateCollection(t *testing.T) {
 		t.Fatalf("search failed: %s", w.Body.String())
 	}
 	// A query in a URL is never accepted as a private search.
-	r = request(t, owner, "GET", "/saved?query=not-present", nil)
+	r = request(t, owner, "GET", "/bookmarks?query=not-present", nil)
 	r.Header.Set("Accept", "application/json")
 	w = httptest.NewRecorder()
 	Handler(w, r)
@@ -67,19 +67,19 @@ func TestPageAndToolsSharePrivateCollection(t *testing.T) {
 		t.Fatal("read a private search from the URL")
 	}
 	w = httptest.NewRecorder()
-	Handler(w, request(t, owner, "GET", "/saved?id="+id, nil))
+	Handler(w, request(t, owner, "GET", "/bookmarks?id="+id, nil))
 	body := w.Body.String()
 	if !strings.Contains(body, `name="_csrf"`) {
 		t.Fatal("forms lack the recognized CSRF field")
 	}
-	if !strings.Contains(body, "/agent/micro?saved="+id) || strings.Contains(body, "/chat?id=") {
+	if !strings.Contains(body, "/agent/micro?bookmark="+id) || strings.Contains(body, "/chat?id=") {
 		t.Fatal("saved material does not lead to private Micro")
 	}
 	if w.Header().Get("Cache-Control") != "private, no-store" {
 		t.Fatal("private notes may be cached")
 	}
 	w = httptest.NewRecorder()
-	Handler(w, request(t, "another", "GET", "/saved?id="+id, nil))
+	Handler(w, request(t, "another", "GET", "/bookmarks?id="+id, nil))
 	if w.Code != 404 {
 		t.Fatalf("other account read the page: %d", w.Code)
 	}
@@ -89,19 +89,33 @@ func TestReturnDestinationIsConstrained(t *testing.T) {
 	defer store.Clear(owner)
 	for _, back := range []string{"https://evil.com/news", "//evil.com/news", "/logout", "/admin"} {
 		w := httptest.NewRecorder()
-		Handler(w, request(t, owner, "POST", "/saved", url.Values{"action": {"add"}, "url": {"https://example.com/"}, "back": {back}}))
-		if !strings.HasPrefix(w.Header().Get("Location"), "/saved?id=") {
+		Handler(w, request(t, owner, "POST", "/bookmarks", url.Values{"action": {"add"}, "url": {"https://example.com/"}, "back": {back}}))
+		if !strings.HasPrefix(w.Header().Get("Location"), "/bookmarks?id=") {
 			t.Fatalf("unsafe redirect: %q", w.Header().Get("Location"))
 		}
 	}
 }
 
 func TestWritesRequireCSRF(t *testing.T) {
-	r := request(t, "saved_csrf", "POST", "/saved", url.Values{"action": {"add"}, "url": {"https://example.com"}})
+	r := request(t, "saved_csrf", "POST", "/bookmarks", url.Values{"action": {"add"}, "url": {"https://example.com"}})
 	r.Header.Del("X-CSRF-Token")
 	w := httptest.NewRecorder()
 	Handler(w, r)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("tokenless mutation accepted: %d", w.Code)
+	}
+}
+
+func TestLegacySavedFormStillWritesSameCollection(t *testing.T) {
+	owner := "saved_legacy"
+	defer DeleteAll(owner)
+	w := httptest.NewRecorder()
+	Handler(w, request(t, owner, "POST", "/saved", url.Values{"action": {"add"}, "url": {"https://example.com/legacy"}}))
+	if w.Code != 303 {
+		t.Fatalf("legacy POST: %d %s", w.Code, w.Body.String())
+	}
+	var rsp ListResponse
+	if err := (Server{}).List(service.WithAccount(context.Background(), owner), &ListRequest{}, &rsp); err != nil || rsp.Total != 1 {
+		t.Fatalf("legacy collection lost: %+v %v", rsp, err)
 	}
 }

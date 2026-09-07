@@ -288,6 +288,8 @@ const (
 	// wherever they say. Sending mail spends this domain's reputation.
 	// Rationing needs somebody to ration, and a wallet is not somebody.
 	Account
+	// Operator requires explicit operator authorization at discovery and dispatch.
+	Operator
 )
 
 // Endpoint is one method of a service.
@@ -479,7 +481,17 @@ func recordSpec(s Spec) {
 }
 
 // SpecFor returns a registered service's declaration.
+// CanonicalName resolves retired service names for stored tokens and old clients.
+func CanonicalName(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "saved" {
+		return "bookmarks"
+	}
+	return name
+}
+
 func SpecFor(name string) (Spec, bool) {
+	name = CanonicalName(name)
 	specMu.RLock()
 	defer specMu.RUnlock()
 	s, ok := specs[strings.ToLower(strings.TrimSpace(name))]
@@ -751,6 +763,11 @@ func PublicTool(name string) bool {
 	s, ok := SpecFor(parts[0])
 	if !ok {
 		return false
+	}
+	for method, ep := range s.Endpoints {
+		if len(parts) > 1 && strings.EqualFold(method, parts[1]) && ep.Needs == Operator {
+			return false
+		}
 	}
 	return !s.Scoped
 }

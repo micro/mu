@@ -79,7 +79,7 @@ func TestPricingSaysWhatYouGetToStart(t *testing.T) {
 	if !strings.Contains(body, "$1 of credit") {
 		t.Errorf("the page does not say what a new account gets: %s", clipPage(body))
 	}
-	for _, want := range []string{`href="/signup"`, `href="/wallet/topup"`, "$5"} {
+	for _, want := range []string{`href="/signup"`, `href="/account/topup"`, "$5"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page does not carry %s — a price with no way to pay it is an advert", want)
 		}
@@ -104,7 +104,7 @@ func TestPricingOnAnInstanceThatChargesNothing(t *testing.T) {
 	if !strings.Contains(strings.ToLower(body), "nothing") {
 		t.Errorf("the page does not say that nothing is charged: %s", clipPage(body))
 	}
-	if strings.Contains(body, `href="/wallet/topup"`) {
+	if strings.Contains(body, `href="/account/topup"`) {
 		t.Error("an instance that cannot take a payment is offering a top-up")
 	}
 }

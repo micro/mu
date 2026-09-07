@@ -53,6 +53,7 @@ import (
 	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
+	"mu/service/bookmarks"
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
@@ -64,7 +65,6 @@ import (
 	"mu/service/news"
 	"mu/service/notify"
 	"mu/service/recall"
-	"mu/service/saved"
 	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
@@ -128,7 +128,7 @@ func wireHooks() {
 			return out
 		}
 		events.ExternalEntries = func(owner string, from, to time.Time) []events.External {
-			entries, err := google.Events(owner, from, to, 25)
+			entries, err := google.Events(owner, from, to, 0)
 			if err != nil {
 				if err != google.ErrNotConnected {
 					app.Log("events", "google events for %s: %v", owner, err)
@@ -584,7 +584,7 @@ func wireHooks() {
 		// conversation it had ever had on disk. recall is the reader over it,
 		// and the only thing in the catalogue that knows it exists.
 		recall.Delete,
-		saved.DeleteAll,
+		bookmarks.DeleteAll,
 	)
 
 	// Enable indexing after all content is loaded
@@ -683,7 +683,7 @@ func wireHooks() {
 			return false, err
 		}
 		if !ok {
-			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /wallet/topup",
+			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /account/topup",
 				cost, quota.BalanceOf(account))
 		}
 		return true, nil

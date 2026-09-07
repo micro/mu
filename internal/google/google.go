@@ -437,7 +437,8 @@ type Entry struct {
 	AllDay   bool
 }
 
-// Events lists what is actually scheduled in a window.
+// Events lists what is actually scheduled in a window. A non-positive limit
+// reads every provider page in the window; a positive limit caps returned entries.
 //
 // singleEvents expands recurrence, so a weekly standup arrives as the instances
 // a person would recognise rather than as one rule they would have to apply
@@ -447,8 +448,9 @@ func Events(accountID string, from, to time.Time, limit int) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	if limit <= 0 {
-		limit = 25
+	pageSize := 250
+	if limit > 0 {
+		pageSize = min(limit, pageSize)
 	}
 
 	q := url.Values{}
@@ -456,64 +458,83 @@ func Events(accountID string, from, to time.Time, limit int) ([]Entry, error) {
 	q.Set("timeMax", to.Format(time.RFC3339))
 	q.Set("singleEvents", "true")
 	q.Set("orderBy", "startTime")
-	q.Set("maxResults", fmt.Sprint(limit))
-
-	req, _ := http.NewRequest(http.MethodGet,
-		"https://www.googleapis.com/calendar/v3/calendars/primary/events?"+q.Encode(), nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("google calendar events: %s", resp.Status)
-	}
-
-	var out struct {
-		Items []struct {
-			Summary  string `json:"summary"`
-			Location string `json:"location"`
-			Status   string `json:"status"`
-			Start    struct {
-				DateTime string `json:"dateTime"`
-				Date     string `json:"date"`
-			} `json:"start"`
-			End struct {
-				DateTime string `json:"dateTime"`
-				Date     string `json:"date"`
-			} `json:"end"`
-		} `json:"items"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, err
-	}
+	q.Set("maxResults", fmt.Sprint(pageSize))
 
 	var entries []Entry
-	for _, it := range out.Items {
-		if it.Status == "cancelled" {
-			continue
+	seen := map[string]bool{}
+	for {
+		req, _ := http.NewRequest(http.MethodGet,
+			"https://www.googleapis.com/calendar/v3/calendars/primary/events?"+q.Encode(), nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			return nil, err
 		}
-		e := Entry{Title: strings.TrimSpace(it.Summary), Location: strings.TrimSpace(it.Location)}
-		if e.Title == "" {
-			e.Title = "(no title)"
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("google calendar events: %s", resp.Status)
 		}
-		switch {
-		case it.Start.DateTime != "":
-			e.Start, _ = time.Parse(time.RFC3339, it.Start.DateTime)
-			e.End, _ = time.Parse(time.RFC3339, it.End.DateTime)
-		case it.Start.Date != "":
-			// An all-day event has a date and no time. Parsed in local time so
-			// "today" means the reader's today.
-			e.AllDay = true
-			e.Start, _ = time.ParseInLocation("2006-01-02", it.Start.Date, time.Local)
-			e.End, _ = time.ParseInLocation("2006-01-02", it.End.Date, time.Local)
+
+		var out struct {
+			NextPageToken string `json:"nextPageToken"`
+			Items         []struct {
+				Summary  string `json:"summary"`
+				Location string `json:"location"`
+				Status   string `json:"status"`
+				Start    struct {
+					DateTime string `json:"dateTime"`
+					Date     string `json:"date"`
+				} `json:"start"`
+				End struct {
+					DateTime string `json:"dateTime"`
+					Date     string `json:"date"`
+				} `json:"end"`
+			} `json:"items"`
 		}
-		if e.Start.IsZero() {
-			continue
+		err = json.NewDecoder(resp.Body).Decode(&out)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
 		}
-		entries = append(entries, e)
+
+		for _, it := range out.Items {
+			if it.Status == "cancelled" {
+				continue
+			}
+			e := Entry{Title: strings.TrimSpace(it.Summary), Location: strings.TrimSpace(it.Location)}
+			if e.Title == "" {
+				e.Title = "(no title)"
+			}
+			switch {
+			case it.Start.DateTime != "":
+				e.Start, _ = time.Parse(time.RFC3339, it.Start.DateTime)
+				e.End, _ = time.Parse(time.RFC3339, it.End.DateTime)
+			case it.Start.Date != "":
+				// An all-day event has a date and no time. Parsed in local time so
+				// "today" means the reader's today.
+				e.AllDay = true
+				e.Start, _ = time.ParseInLocation("2006-01-02", it.Start.Date, time.Local)
+				e.End, _ = time.ParseInLocation("2006-01-02", it.End.Date, time.Local)
+			}
+			if e.Start.IsZero() {
+				continue
+			}
+			entries = append(entries, e)
+			if limit > 0 && len(entries) >= limit {
+				return entries, nil
+			}
+		}
+		if out.NextPageToken == "" {
+			break
+		}
+		if seen[out.NextPageToken] {
+			return nil, fmt.Errorf("google calendar repeated a page token")
+		}
+		seen[out.NextPageToken] = true
+		q.Set("pageToken", out.NextPageToken)
 	}
+
 	return entries, nil
 }

@@ -3,6 +3,7 @@ package video
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -15,18 +16,56 @@ type Server struct{}
 
 // ListRequest controls how many videos to return.
 type ListRequest struct {
-	Limit int `json:"limit" description:"Optional max number of videos (default all recent)"`
+	Category string `json:"category" description:"Optional curated category"`
+	Offset   int    `json:"offset" description:"Videos to skip"`
+	Limit    int    `json:"limit" description:"Maximum videos per page, default 20, maximum 100"`
 }
 
 // ListResponse is a model-ready video list.
 type ListResponse struct {
-	Text string `json:"text" description:"Latest videos from curated channels"`
+	Items      []*Result `json:"items"`
+	Total      int       `json:"total"`
+	Offset     int       `json:"offset"`
+	NextOffset *int      `json:"next_offset,omitempty"`
+	Text       string    `json:"text" description:"Latest videos from curated channels"`
 }
 
 // List returns the latest videos from curated channels.
 // @example {}
 func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
-	rsp.Text = LatestText(req.Limit)
+	seen := map[string]bool{}
+	items := []*Result{}
+	cached := LatestVideos(0)
+	if len(cached) == 0 {
+		rsp.Items = items
+		rsp.Text = LatestText(req.Limit)
+		return nil
+	}
+	for _, v := range cached {
+		if v == nil || seen[v.ID] || req.Category != "" && v.Category != req.Category {
+			continue
+		}
+		seen[v.ID] = true
+		cp := *v
+		items = append(items, &cp)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Published.Equal(items[j].Published) {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].Published.After(items[j].Published)
+	})
+	start, end := service.PageRange(len(items), req.Offset, req.Limit)
+	rsp.Items, rsp.Total, rsp.Offset = items[start:end], len(items), start
+	if end < len(items) {
+		rsp.NextOffset = &end
+	}
+	for _, v := range rsp.Items {
+		rsp.Text += fmt.Sprintf("- %s (%s) https://youtube.com/watch?v=%s\n", v.Title, v.Channel, v.ID)
+	}
+	if len(rsp.Items) == 0 {
+		rsp.Text = "No videos match this category or page."
+	}
 	return nil
 }
 
@@ -39,7 +78,9 @@ type SearchRequest struct {
 
 // SearchResponse is a model-ready list of matches.
 type SearchResponse struct {
-	Text string `json:"text" description:"Matching videos: title, channel and link"`
+	Items []*Result `json:"items"`
+	Total int       `json:"total"`
+	Text  string    `json:"text" description:"Matching videos: title, channel and link"`
 }
 
 // Search looks for videos by keyword.
@@ -68,6 +109,8 @@ func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchRespons
 	if err != nil {
 		return err
 	}
+	rsp.Items = results
+	rsp.Total = len(results)
 	if len(results) == 0 {
 		rsp.Text = "No videos found for " + q + "."
 		return nil
@@ -99,9 +142,10 @@ var Spec = service.Spec{
 	Icon:        "video.png",
 	Card:        service.Timed(func() (string, time.Time) { return Latest(), CardAt() }),
 	Endpoints: map[string]service.Endpoint{
+		"Read": {Doc: "Read the metadata and description of one video already discovered by this instance. No transcript is available"},
 		"List": {Aliases: []string{"video"}, Doc: "Read the latest videos from curated channels"},
 		"Search": {
-			Doc: "Search videos from the channels this instance curates. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist",
+			Doc: "Search YouTube by keyword using this instance's search quota. Results are not restricted to the curated channels",
 			// Priced at zero and still not for strangers: it spends this
 			// instance's YouTube quota, which is shared and cannot be topped
 			// up per caller. Rationing needs somebody to ration — but a wallet

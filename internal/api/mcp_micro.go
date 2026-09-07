@@ -22,11 +22,15 @@ type mcpReqKey struct{}
 // exist and how they execute — the per-IP guard, wallet metering and
 // authenticated dispatch ExecuteTool performs. No framework internals are
 // exposed (no store/broker tools).
-func mcpResolver() gwmcp.Resolver {
+func mcpResolver() gwmcp.Resolver { return mcpResolverFor(nil) }
+func mcpResolverFor(r *http.Request) gwmcp.Resolver {
 	res := gwmcp.NewManualResolver()
-	st := mcpTools()
+	st := mcpToolsFor(r)
 	for i := range st {
 		t := st[i]
+		if t.OperatorOnly && !operatorAllowed(r) {
+			continue
+		}
 		props := map[string]interface{}{}
 		var required []string
 		for _, p := range t.Params {
@@ -64,6 +68,9 @@ func mcpResolver() gwmcp.Resolver {
 				text, isErr, err := ExecuteTool(r, name, args)
 				if err != nil {
 					return &gwmcp.CallResult{Text: err.Error(), IsError: true}, nil
+				}
+				if len(text) > maxResultBytes && json.Valid([]byte(text)) {
+					return &gwmcp.CallResult{Text: "Structured response exceeds the MCP response limit. Request fewer items with limit, narrow the query, or use the REST API for the complete structured response.", IsError: true}, nil
 				}
 				return &gwmcp.CallResult{Text: bounded(text), IsError: isErr}, nil
 			})
@@ -172,7 +179,8 @@ func itoa(n int) string {
 // stream, and holding a streamed response in memory to add nothing to it would
 // be a bad trade.
 func serveMCP(w http.ResponseWriter, r *http.Request) {
-	handler := gwmcp.NewHandler(scoped(mcpResolver(), scopeFrom(r)),
+	catalogueHeaders(w, r)
+	handler := gwmcp.NewHandler(scoped(mcpResolverFor(r), scopeFrom(r)),
 		gwmcp.WithServerInfo("mu", "1.0.0"),
 		gwmcp.WithProtocolVersion(MCPVersion))
 	ctx := context.WithValue(r.Context(), mcpReqKey{}, r)

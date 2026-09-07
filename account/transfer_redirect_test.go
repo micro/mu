@@ -16,7 +16,7 @@ func TestRespondTransferErrorEscapesRedirectMessage(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rr.Code, http.StatusSeeOther)
 	}
 	loc := rr.Header().Get("Location")
-	if loc != "/wallet/transfer?error=insufficient+balance+%26+retry" {
+	if loc != "/account/transfer?error=insufficient+balance+%26+retry" {
 		t.Fatalf("Location = %q", loc)
 	}
 }

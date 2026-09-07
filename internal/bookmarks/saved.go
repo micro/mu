@@ -1,6 +1,6 @@
-// Package saved holds private links and their metadata independently of the
+// Package bookmarks holds private links and their metadata independently of the
 // public feed's lifetime. Services and the assistant share this store.
-package saved
+package bookmarks
 
 import (
 	"crypto/sha256"
@@ -40,6 +40,7 @@ func key(owner string) (string, error) {
 	if owner == "" {
 		return "", errors.New("sign in to use saved items")
 	}
+	// Keep the existing on-disk key so renaming the service preserves every item.
 	return fmt.Sprintf("saved/%x.json", sha256.Sum256([]byte(owner))), nil
 }
 func read(owner string) ([]Item, error) {

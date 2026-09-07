@@ -292,8 +292,11 @@ func isAddressTaken(err error) bool {
 //	var rsp weather.ForecastResponse
 //	service.Call(ctx, "weather", "Weather.Forecast", &weather.ForecastRequest{...}, &rsp)
 func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
+	svcName = CanonicalName(svcName)
+	ctx, release := operatorCall(ctx, svcName+"."+methodName(endpoint))
+	defer release()
 	ensure()
-	return cl.Call(ctx, cl.NewRequest(svcName, endpoint, req), rsp)
+	return cl.Call(ctx, cl.NewRequest(CanonicalName(svcName), endpoint, req), rsp)
 }
 
 // StartMCPGateway runs go-micro's MCP gateway on addr (e.g. ":4100"),

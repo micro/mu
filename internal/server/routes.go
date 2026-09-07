@@ -34,6 +34,7 @@ import (
 	"mu/service/apps"
 	"mu/service/archive"
 	"mu/service/blog"
+	"mu/service/bookmarks"
 	"mu/service/browser"
 	"mu/service/chat"
 	"mu/service/contacts"
@@ -54,7 +55,6 @@ import (
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
-	"mu/service/saved"
 	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
@@ -125,7 +125,7 @@ func authRequired() map[string]bool {
 		// the provider posting an inbound message with no session at all.
 		"/whatsapp":       false,
 		"/agent/session/": true, // Deleting one of your conversations
-		"/saved":          true,
+		"/bookmarks":      true,
 		"/recall":         true,  // Your own past — sign-in required
 		"/agent/connect":  true,  // How to reach one agent
 		"/agent/pending":  true,  // Has an in-flight run answered yet — your own conversations
@@ -165,7 +165,9 @@ func authRequired() map[string]bool {
 		"/admin/alerts":      true,
 		"/admin/backup":      true,
 		"/admin/invite":      true,
-		"/account/":          true, // Money: an old prefix, which redirects
+		"/account/":          true, // Account funding and transfers
+		"/stripe/checkout":   true,
+		"/stripe/success":    true,
 		"/wallet/":           true, // Money: top-up, transfer, Stripe, the price list
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
@@ -316,6 +318,8 @@ func registerRoutes() {
 	// was lost between the deploy and the dashboard edit; the dashboard now
 	// names this one.
 	http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)
+	http.HandleFunc("/stripe/checkout", account.BalanceHandler)
+	http.HandleFunc("/stripe/success", account.BalanceHandler)
 
 	// The service is web — searching the open web is one of the things it does,
 	// and a service is named for a domain rather than an action. Its page was
@@ -500,6 +504,7 @@ func registerRoutes() {
 	// that moves money on a chain, and the CSRF and method checks want to be
 	// obvious rather than nested three switches deep.
 	http.HandleFunc("/wallet/convert", account.ConvertUSDC)
+	http.HandleFunc("/account/convert", account.ConvertUSDC)
 	// The money actions. account/ owns them because it owns the ledger.
 	http.HandleFunc("/wallet/", account.BalanceHandler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
@@ -743,8 +748,10 @@ func registerRoutes() {
 	// Search everything you have ever said to an agent. The list of your
 	// conversations is /agent; this is the search over all of them.
 	http.HandleFunc("/recall", recall.Handler)
-	http.HandleFunc("/saved", saved.Handler)
-	http.HandleFunc("/saved/search", saved.Handler)
+	http.HandleFunc("/bookmarks", bookmarks.Handler)
+	http.HandleFunc("/saved", bookmarks.Handler)
+	http.HandleFunc("/saved/search", bookmarks.Handler)
+	http.HandleFunc("/bookmarks/search", bookmarks.Handler)
 	// And the search over what the instance has collected, which is the other
 	// archive and belongs to nobody.
 	http.HandleFunc("/archive", archive.Handler)

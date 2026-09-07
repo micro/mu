@@ -20,6 +20,7 @@ package auth
 // service from the tool name rather than storing tool names.
 
 import (
+	"mu/internal/service"
 	"net/http"
 	"strings"
 )
@@ -32,7 +33,7 @@ func ScopeFor(services []string) []string {
 	out := make([]string, 0, len(services))
 	seen := map[string]bool{}
 	for _, s := range services {
-		s = strings.ToLower(strings.TrimSpace(s))
+		s = service.CanonicalName(s)
 		if s == "" || seen[s] {
 			continue
 		}
@@ -52,7 +53,7 @@ func (t *Token) Services() []string {
 	for _, p := range t.Permissions {
 		if strings.HasPrefix(p, ScopePrefix) {
 			if name := strings.TrimPrefix(p, ScopePrefix); name != "" {
-				out = append(out, name)
+				out = append(out, service.CanonicalName(name))
 			}
 		}
 	}
@@ -69,7 +70,7 @@ func (t *Token) AllowsService(name string) bool {
 	if len(scope) == 0 {
 		return true
 	}
-	name = strings.ToLower(strings.TrimSpace(name))
+	name = service.CanonicalName(name)
 	for _, s := range scope {
 		if s == name {
 			return true

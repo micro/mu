@@ -12,6 +12,7 @@ import (
 	"mu/service/apps"
 	"mu/service/archive"
 	"mu/service/blog"
+	"mu/service/bookmarks"
 	"mu/service/browser"
 	"mu/service/chat"
 	"mu/service/contacts"
@@ -32,7 +33,6 @@ import (
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
-	"mu/service/saved"
 	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
@@ -59,7 +59,7 @@ func allSpecs() []service.Spec {
 	return []service.Spec{
 		apps.Spec, archive.Spec, blog.Spec, chat.Spec, contacts.Spec, docs.Spec, events.Spec,
 		files.Spec, flights.Spec, food.Spec, hazards.Spec, images.Spec, mail.Spec, markets.Spec,
-		notes.Spec, notify.Spec, news.Spec, places.Spec, prayer.Spec, recall.Spec, saved.Spec, routes.Spec,
+		notes.Spec, notify.Spec, news.Spec, places.Spec, prayer.Spec, recall.Spec, bookmarks.Spec, routes.Spec,
 		sms.Spec,
 		social.Spec,
 		stream.Spec, tasks.Spec, text.Spec, maps.Spec, transit.Spec, video.Spec,

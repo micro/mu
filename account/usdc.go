@@ -58,7 +58,7 @@ func ConvertUSDC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/wallet", http.StatusSeeOther)
+		http.Redirect(w, r, "/account", http.StatusSeeOther)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -81,12 +81,12 @@ func ConvertUSDC(w http.ResponseWriter, r *http.Request) {
 	if !added {
 		// The transaction settled and the ledger already had it. Not a failure:
 		// it is what a retry looks like, and the balance is already right.
-		http.Redirect(w, r, "/wallet?saved=converted", http.StatusSeeOther)
+		http.Redirect(w, r, "/account?saved=converted", http.StatusSeeOther)
 		return
 	}
 
 	app.Log("wallet", "converted %d credits of USDC for %s (tx %s)", credits, acc.ID, tx)
-	http.Redirect(w, r, "/wallet?saved=converted", http.StatusSeeOther)
+	http.Redirect(w, r, "/account?saved=converted", http.StatusSeeOther)
 }
 
 // convertAmount reads what somebody typed, in whole dollars.
@@ -177,5 +177,5 @@ func creditsAsUSDCAtomic(credits int) *big.Int {
 
 // convertFailed puts the reason back on the wallet page.
 func convertFailed(w http.ResponseWriter, r *http.Request, msg string) {
-	http.Redirect(w, r, "/wallet?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
+	http.Redirect(w, r, "/account/topup?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }

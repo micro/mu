@@ -204,7 +204,22 @@ func RESTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.RespondJSON(w, map[string]any{"result": text})
+	app.RespondJSON(w, restResponse(text))
+}
+
+func restResponse(text string) map[string]any {
+	response := map[string]any{"result": text}
+	var structured map[string]any
+	if json.Unmarshal([]byte(text), &structured) == nil && structured != nil {
+		response["data"] = structured
+		for _, key := range []string{"text", "result", "events"} {
+			if prose, ok := structured[key].(string); ok {
+				response["result"] = prose
+				break
+			}
+		}
+	}
+	return response
 }
 
 // headerCredential reports whether the caller identified itself with something
@@ -315,6 +330,7 @@ func restStatus(text string, err error) int {
 // list is derived from. A client that wants to know what exists asks here
 // rather than reading a document that has to be kept in step.
 func restCatalogue(w http.ResponseWriter, r *http.Request) {
+	catalogueHeaders(w, r)
 	type method struct {
 		Method      string `json:"method"`
 		Path        string `json:"path"`
@@ -334,6 +350,9 @@ func restCatalogue(w http.ResponseWriter, r *http.Request) {
 	for _, sp := range service.Specs() {
 		s := svc{Service: sp.Name, Description: sp.Description, Scoped: sp.Scoped}
 		for name, ep := range sp.Endpoints {
+			if ep.Needs == service.Operator && !operatorAllowed(r) {
+				continue
+			}
 			tool := sp.Name + "_" + strings.ToLower(name)
 			s.Methods = append(s.Methods, method{
 				Method:      name,

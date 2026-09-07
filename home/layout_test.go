@@ -261,7 +261,7 @@ func TestTheBalanceIsInTheRailOnHome(t *testing.T) {
 	// The real card's contents, not a hand-rolled number. Those two links are
 	// what somebody looking at a balance has come to do, and a figure with no
 	// rate beside it does not say what a credit is.
-	for _, want := range []string{"/wallet/topup", "/wallet/transfer", "1 credit = 1"} {
+	for _, want := range []string{"/account/topup", "/account/transfer", "1 credit = 1"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the balance block is missing %s — it should be account.BalanceBody, "+
 				"not a number written again here", want)

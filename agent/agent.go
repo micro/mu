@@ -20,7 +20,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/saved"
+	"mu/internal/bookmarks"
 	"mu/internal/service"
 	"mu/internal/thread"
 	"mu/service/mail"
@@ -349,13 +349,17 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	cfg.AgentName = agentTitle(accountID, "")
 	selected := ""
 	if sessionID == "" {
-		var item *saved.Item
+		var item *bookmarks.Item
 		var err error
-		if id := r.URL.Query().Get("saved"); id != "" {
-			item, err = saved.Get(accountID, id)
-			cfg.Attachment = "saved:" + id
+		id := r.URL.Query().Get("bookmark")
+		if id == "" {
+			id = r.URL.Query().Get("saved")
+		}
+		if id != "" {
+			item, err = bookmarks.Get(accountID, id)
+			cfg.Attachment = "bookmark:" + id
 		} else if ref := r.URL.Query().Get("item"); ref != "" {
-			item, err = saved.Source(ref)
+			item, err = bookmarks.Source(ref)
 			cfg.Attachment = "archive:" + ref
 		}
 		if err != nil {
@@ -2699,7 +2703,7 @@ func formatWalletBalanceResult(result string) string {
 		} else {
 			n = *data.Balance
 		}
-		fmt.Fprintf(&sb, "Credit balance: %d credits ($%d.%02d). Top up at /wallet/topup.\n", n, n/100, n%100)
+		fmt.Fprintf(&sb, "Credit balance: %d credits ($%d.%02d). Top up at /account/topup.\n", n, n/100, n%100)
 	}
 	switch {
 	case data.USDC != "":

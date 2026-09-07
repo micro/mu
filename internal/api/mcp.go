@@ -119,7 +119,8 @@ type Tool struct {
 	// proves funds, not accountability — mail_send is the case that matters,
 	// because an anonymous funded wallet sending from this domain spends its
 	// reputation and cannot be held to it.
-	AccountOnly bool `json:"-"`
+	AccountOnly  bool `json:"-"`
+	OperatorOnly bool `json:"-"`
 	// RESTOnly marks an HTTP endpoint that is not an agent tool. REST paths are
 	// resource-shaped (/news, /mail) while tools are service_method
 	// (news_list, mail_inbox); the same capability legitimately appears in both
@@ -437,6 +438,7 @@ func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, e
 
 	req, _ := http.NewRequest("POST", "/", nil)
 	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	req = req.WithContext(service.WithAgentRun(req.Context()))
 	return ExecuteTool(req, name, args)
 }
 
@@ -620,6 +622,12 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 		return "", true, fmt.Errorf("unknown tool: %s", name)
 	}
 
+	if tool.OperatorOnly {
+		if !operatorAllowed(r) {
+			return "operator authorization required", true, fmt.Errorf("operator authorization required")
+		}
+		r = r.WithContext(service.WithOperator(r.Context()))
+	}
 	// A scoped token reaches only the services it names.
 	//
 	// This is what makes an agent an agent rather than a copy of you: you hand

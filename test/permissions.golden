@@ -13,6 +13,11 @@ blog_delete                  needsAccount=true  destructive=true  bound accountO
 blog_list                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 blog_read                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 blog_update                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+bookmarks_add                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+bookmarks_annotate           needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+bookmarks_delete             needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
+bookmarks_get                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+bookmarks_list               needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 browser_read                 needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 browser_shot                 needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 chat_messages                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
@@ -30,6 +35,7 @@ events_create                needsAccount=true  destructive=false bound accountO
 events_delete                needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
 events_free                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 events_list                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+events_update                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 files_delete                 needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
 files_get                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 files_list                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
@@ -48,12 +54,15 @@ images_generate              needsAccount=true  destructive=false bound accountO
 images_search                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_inbox                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_info                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+mail_read                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_search                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_send                    needsAccount=true  destructive=true  bound accountOnly=true  optionalAuth=false
 maps_area                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 maps_tile                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 markets_convert              needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+markets_history              needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 markets_list                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+markets_quote                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 news_headlines               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 news_list                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 news_read                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
@@ -81,11 +90,6 @@ recall_search                needsAccount=true  destructive=false bound accountO
 routes_directions            needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 routes_eta                   needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 routes_nearest               needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
-saved_add                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-saved_annotate               needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-saved_delete                 needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
-saved_get                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-saved_list                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 shell_run                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 shell_write                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 sms_history                  needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
@@ -114,6 +118,7 @@ users_find                   needsAccount=true  destructive=false bound accountO
 users_get                    needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 users_list                   needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 video_list                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+video_read                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 video_search                 needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 wallet_address               needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 wallet_balance               needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false

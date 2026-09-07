@@ -132,10 +132,10 @@ function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t
 // Absent when the instance takes no USDC. A form that can only fail is worse
 // than no form — it reads as broken rather than as unconfigured.
 func convertForm() string {
-	if !x402.Enabled() {
+	if x402.TopUpRequirement(100) == nil {
 		return ""
 	}
-	return `<form class="cw-convert" method="POST" action="/wallet/convert">
+	return `<form class="cw-convert" method="POST" action="/account/convert">
   <label for="cw-amount">Turn into credits</label>
   <div class="cw-convert-row">
     <span class="cw-convert-unit">$</span>

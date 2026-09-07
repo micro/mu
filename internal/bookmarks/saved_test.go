@@ -1,4 +1,4 @@
-package saved
+package bookmarks
 
 import (
 	"errors"

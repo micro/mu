@@ -466,6 +466,9 @@ type toolGroup struct {
 func groupTools() []toolGroup {
 	byService := map[string][]Tool{}
 	for _, t := range mcpTools() {
+		if t.OperatorOnly {
+			continue
+		}
 		byService[serviceOf(t.Name)] = append(byService[serviceOf(t.Name)], t)
 	}
 

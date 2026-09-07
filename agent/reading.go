@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"mu/internal/saved"
+	"mu/internal/bookmarks"
 	"mu/internal/thread"
 )
 
@@ -18,20 +18,20 @@ func readingContext(owner, reference string) (string, error) {
 	if !ok || id == "" {
 		return "", errors.New("reading material not found")
 	}
-	var item *saved.Item
+	var item *bookmarks.Item
 	var err error
 	switch kind {
-	case "saved":
-		item, err = saved.Get(owner, id)
+	case "bookmark", "saved":
+		item, err = bookmarks.Get(owner, id)
 	case "archive":
-		item, err = saved.Source(id)
+		item, err = bookmarks.Source(id)
 	default:
 		return "", errors.New("reading material not found")
 	}
 	if err != nil {
 		return "", err
 	}
-	return saved.Context(item), nil
+	return bookmarks.Context(item), nil
 }
 
 func conversationReading(owner, id string) string {
