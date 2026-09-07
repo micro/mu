@@ -298,3 +298,21 @@ func TestTheAgentIsNotOnTheRoster(t *testing.T) {
 		t.Fatalf("roster() = %v, want the two people connected", got)
 	}
 }
+
+func TestRosterListsAnAccountOnceAcrossDevices(t *testing.T) {
+	phone, desktop, other := &websocket.Conn{}, &websocket.Conn{}, &websocket.Conn{}
+	room := &Room{Clients: map[*websocket.Conn]*Client{
+		phone: {UserID: "asim"}, desktop: {UserID: "asim"}, other: {UserID: "zara"},
+	}}
+	check := func(want string) {
+		t.Helper()
+		if got := strings.Join(room.roster(), ","); got != want {
+			t.Fatalf("roster = %q, want %q", got, want)
+		}
+	}
+	check("asim,zara")
+	delete(room.Clients, phone)
+	check("asim,zara")
+	delete(room.Clients, desktop)
+	check("zara")
+}
