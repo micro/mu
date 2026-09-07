@@ -16,7 +16,7 @@ func TestGuestsSignInThroughTheSidebar(t *testing.T) {
 		if got := navMain(nil); got != "" {
 			t.Errorf("guest sidebar exposes signed-in destinations: %q", got)
 		}
-		if got := navBottom(nil); !strings.Contains(got, `href="/login"`) {
+		if got := navBottom(nil, ""); !strings.Contains(got, `href="/login"`) {
 			t.Errorf("guest sidebar has no way to log in: %q", got)
 		}
 	}
@@ -48,5 +48,15 @@ func TestTheNameInTheCornerIsEscaped(t *testing.T) {
 	got := headCorner(&auth.Account{ID: `<script>x</script>`}, "")
 	if strings.Contains(got, "<script>") {
 		t.Errorf("an account id went into the corner as markup: %q", got)
+	}
+}
+
+func TestSidebarLoginReturnsToTheCurrentPage(t *testing.T) {
+	got := navBottom(nil, "/archive?q=go+micro")
+	if !strings.Contains(got, "redirect=%2Farchive%3Fq%3Dgo%2Bmicro") {
+		t.Errorf("sidebar login loses the current page: %q", got)
+	}
+	if strings.Contains(navBottom(nil, "/"), "redirect=") {
+		t.Error("landing login should proceed to Home")
 	}
 }

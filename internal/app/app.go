@@ -1455,9 +1455,16 @@ func headCorner(acc *auth.Account, here string) string {
 		htmlpkg.EscapeString(acc.ID) + `</span></a>`
 }
 
-func navBottom(acc *auth.Account) string {
+func loginBack(here string) string {
+	if here == "" || here == "/" {
+		return ""
+	}
+	return "?redirect=" + url.QueryEscape(here)
+}
+
+func navBottom(acc *auth.Account, here string) string {
 	if acc == nil {
-		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
+		return `<a id="nav-login" href="/login` + loginBack(here) + `"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	}
 	username := htmlpkg.EscapeString(acc.ID)
 
@@ -1830,6 +1837,6 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		headCorner(acc, here),
 		navMain(acc),
 		navPinned(acc),
-		navBottom(acc),
+		navBottom(acc, here),
 		title, body, footerFor(acc), navTabs(acc))
 }

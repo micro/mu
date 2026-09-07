@@ -27,11 +27,11 @@ func TestSignedOutHomeDoesNotOfferASecondWayIn(t *testing.T) {
 	if strings.Contains(body, "home-date-actions") {
 		t.Error("the Sign up / Log in pair is back beside the date, under the corner that already says it")
 	}
-	// The corner itself is the shell's and is expected — this is about the
-	// page's own content, so it is the count that matters rather than the
-	// presence. One is the corner's; a second is this page drawing its own.
-	if n := strings.Count(body, `href="/signup"`); n != 1 {
-		t.Errorf("the signed-out home offers Sign up %d times; want once, in the shell's corner", n)
+	if n := strings.Count(body, `href="/signup"`); n != 0 {
+		t.Errorf("the guest Home page offers redundant signup links: %d", n)
+	}
+	if n := strings.Count(body, `href="/login?redirect=%2Fhome"`); n != 1 {
+		t.Errorf("the guest Home page should offer Login once in the sidebar, got %d", n)
 	}
 }
 
