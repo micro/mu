@@ -287,7 +287,7 @@ func serveGenerated(caller string, w http.ResponseWriter, r *http.Request) {
 	if rec.Public {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	} else {
-		w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+		w.Header().Set("Cache-Control", "no-store")
 	}
 	w.Write(b)
 }

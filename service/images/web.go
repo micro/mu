@@ -9,7 +9,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
-	"mu/internal/service"
 	"mu/internal/settings"
 	"net/http"
 	"net/url"
@@ -38,7 +37,7 @@ type WebSearchResponse struct {
 var imageSearchClient = &http.Client{Timeout: 12 * time.Second}
 var imageSearchURL = "https://api.search.brave.com/res/v1/images/search"
 
-func webImages(owner, query string) ([]WebImage, error) {
+func webImages(query string) ([]WebImage, error) {
 	query = strings.TrimSpace(query)
 	if query == "" || len(query) > 400 || len(strings.Fields(query)) > 50 {
 		return nil, fmt.Errorf("use a search of up to 400 characters and 50 words")
@@ -46,16 +45,6 @@ func webImages(owner, query string) ([]WebImage, error) {
 	key := settings.Get("BRAVE_API_KEY")
 	if key == "" {
 		return nil, fmt.Errorf("web image search is not configured on this instance")
-	}
-	ok, _, cost, err := quota.CheckQuota(owner, quota.OpWebSearch)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("this search costs %d credits; top up your account", cost)
-	}
-	if err := auth.CheckPostRate(owner); err != nil {
-		return nil, err
 	}
 	q := url.Values{"q": {query}, "count": {"24"}, "safesearch": {"strict"}}
 	req, _ := http.NewRequest(http.MethodGet, imageSearchURL+"?"+q.Encode(), nil)
@@ -78,9 +67,6 @@ func webImages(owner, query string) ([]WebImage, error) {
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&result); err != nil {
 		return nil, fmt.Errorf("could not read image search results")
 	}
-	if err := quota.Charge(owner, quota.OpWebSearch, nil); err != nil {
-		return nil, err
-	}
 	if result.Extra.MightBeOffensive {
 		return nil, fmt.Errorf("these results were filtered; try another search")
 	}
@@ -101,13 +87,12 @@ func webURL(s string) bool {
 }
 func (Server) WebSearch(ctx context.Context, req *WebSearchRequest, rsp *WebSearchResponse) error {
 	var err error
-	rsp.Results, err = webImages(service.AccountFrom(ctx), req.Query)
+	rsp.Results, err = webImages(req.Query)
 	return err
 }
 func webSearchPage(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
+	owner, ok := app.BillableCaller(w, r, quota.OpWebSearch)
+	if !ok {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 8192)
@@ -115,7 +100,14 @@ func webSearchPage(w http.ResponseWriter, r *http.Request) {
 		app.Forbidden(w, r, "Invalid CSRF token")
 		return
 	}
-	results, err := webImages(sess.Account, r.PostFormValue("query"))
+	if err := auth.CheckPostRate(owner); err != nil {
+		app.RespondError(w, 429, "Please wait before another search.")
+		return
+	}
+	results, err := webImages(r.PostFormValue("query"))
+	if err == nil {
+		err = quota.Charge(owner, quota.OpWebSearch, nil)
+	}
 	b := `<p><a href="/images">← Images</a></p>`
 	if err != nil {
 		b += `<p role="alert">` + html.EscapeString(err.Error()) + `</p>`

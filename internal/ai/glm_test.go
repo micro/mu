@@ -25,3 +25,27 @@ func TestGLMModelsUseAtlasAndKeepTheirNames(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestGLMUsesSelectedProviderAndMenu(t *testing.T) {
+	clearProviders(t)
+	t.Setenv("ATLAS_API_KEY", "test-atlas")
+	t.Setenv("OPENROUTER_API_KEY", "test-router")
+	for _, provider := range []string{ProviderAtlasCloud, ProviderOpenRouter} {
+		t.Setenv("AI_PROVIDER", provider)
+		for _, choice := range Choices() {
+			if choice.Provider != provider {
+				t.Fatalf("%s offers %s", provider, choice.Provider)
+			}
+		}
+		for _, id := range []string{ModelGLM, ModelGLMFlash, "z-ai/glm-5.3", "z-ai/glm-5.3-flash"} {
+			p, _, _, err := resolveProvider(id)
+			if err != nil || p != provider {
+				t.Fatalf("%s resolved %s: %v", id, p, err)
+			}
+			mapped := modelFor(p, id)
+			if !Offered(mapped) {
+				t.Fatalf("mapped model %s missing from menu", mapped)
+			}
+		}
+	}
+}

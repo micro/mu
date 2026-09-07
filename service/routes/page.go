@@ -25,6 +25,8 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/quota"
 )
 
 // Handler serves /routes.
@@ -33,7 +35,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	to := strings.TrimSpace(r.URL.Query().Get("to"))
 	mode := strings.TrimSpace(r.URL.Query().Get("mode"))
 
+	if r.Method == http.MethodPost {
+		r.Body = http.MaxBytesReader(w, r.Body, 8192)
+		if err := r.ParseForm(); err != nil {
+			app.RespondError(w, 400, "Invalid directions request")
+			return
+		}
+		if !auth.StrictCSRF(r) {
+			app.Forbidden(w, r, "Invalid CSRF token")
+			return
+		}
+		from = strings.TrimSpace(r.PostFormValue("from"))
+		to = strings.TrimSpace(r.PostFormValue("to"))
+		mode = strings.TrimSpace(r.PostFormValue("mode"))
+	}
 	if app.WantsJSON(r) {
+		owner, ok := app.BillableCaller(w, r, quota.OpRoutesDirections)
+		if !ok {
+			return
+		}
+		if err := auth.CheckPostRate(owner); err != nil {
+			app.RespondError(w, 429, "Please wait before another lookup.")
+			return
+		}
+
 		j, msg := plan(&ETARequest{From: from, To: to, Mode: mode})
 		if msg != "" {
 			app.RespondError(w, 400, msg)
@@ -42,6 +67,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		route, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full)
 		if err != nil {
 			app.RespondError(w, 502, "Could not load directions")
+			return
+		}
+		if err := quota.Charge(owner, quota.OpRoutesDirections, nil); err != nil {
+			app.RespondError(w, 402, "Could not charge for directions")
 			return
 		}
 		app.RespondJSON(w, map[string]any{"summary": j.fromLabel + " → " + j.toLabel + ": " + humanDuration(route.Duration) + ", " + humanDistance(route.Metres), "estimate": route.Estimate, "shape": route.Shape, "steps": route.Steps})

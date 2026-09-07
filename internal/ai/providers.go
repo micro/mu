@@ -428,3 +428,19 @@ func init() {
 	// Inject cache stats function into app package to avoid import cycle
 	app.CacheStatsFunc = CacheStats
 }
+
+// GLMModel maps the supported GLM names to the selected provider's identifier.
+// Empty means this is not one of these models or the provider does not serve it.
+func GLMModel(provider, id string) string {
+	name := strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(id)), "zai-org/"), "z-ai/")
+	if name != "glm-5.3" && name != "glm-5.3-flash" {
+		return ""
+	}
+	switch provider {
+	case ProviderAtlasCloud:
+		return "zai-org/" + name
+	case ProviderOpenRouter:
+		return "z-ai/" + name
+	}
+	return ""
+}

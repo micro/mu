@@ -276,7 +276,7 @@ func TestTheTileURLNamesTheInstance(t *testing.T) {
 	Handler(w, r)
 	body := w.Body.String()
 
-	if !strings.Contains(body, "/routes?") {
+	if !strings.Contains(body, "fetch('/routes',") {
 		t.Errorf("the map does not offer directions:\n%s", body)
 	}
 	if strings.Contains(body, "localhost:8081") {

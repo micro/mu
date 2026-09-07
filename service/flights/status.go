@@ -9,7 +9,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
-	"mu/internal/service"
 	"mu/internal/settings"
 	"net/http"
 	"net/url"
@@ -55,13 +54,13 @@ type StatusResponse struct {
 
 func (Server) Status(ctx context.Context, req *StatusRequest, rsp *StatusResponse) error {
 	var err error
-	rsp.Flights, err = flightStatus(service.AccountFrom(ctx), req)
+	rsp.Flights, err = flightStatus(req)
 	if err == nil {
 		rsp.FetchedAt = time.Now().UTC().Format(time.RFC3339)
 	}
 	return err
 }
-func flightStatus(owner string, in *StatusRequest) ([]FlightStatus, error) {
+func flightStatus(in *StatusRequest) ([]FlightStatus, error) {
 	key := settings.Get("AVIATIONSTACK_API_KEY")
 	if key == "" {
 		return nil, fmt.Errorf("arrival and departure times are not configured on this instance")
@@ -87,16 +86,6 @@ func flightStatus(owner string, in *StatusRequest) ([]FlightStatus, error) {
 			return nil, fmt.Errorf("choose arrivals or departures")
 		}
 	}
-	ok, _, cost, err := quota.CheckQuota(owner, statusCost)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("this lookup costs %d credits; top up your account", cost)
-	}
-	if err := auth.CheckPostRate(owner); err != nil {
-		return nil, err
-	}
 	req, _ := http.NewRequest(http.MethodGet, statusURL+"?"+q.Encode(), nil)
 	resp, err := statusClient.Do(req)
 	if err != nil {
@@ -115,9 +104,6 @@ func flightStatus(owner string, in *StatusRequest) ([]FlightStatus, error) {
 	}
 	if len(data.Error) > 0 && string(data.Error) != "null" {
 		return nil, fmt.Errorf("flight status provider rejected the lookup; check the configured plan")
-	}
-	if err := quota.Charge(owner, statusCost, nil); err != nil {
-		return nil, err
 	}
 	if len(data.Data) > 20 {
 		data.Data = data.Data[:20]
@@ -149,7 +135,14 @@ func statusPage(w http.ResponseWriter, r *http.Request) {
 		in.Flight = ""
 		in.Airport = code
 	}
-	flights, err := flightStatus(owner, &in)
+	if err := auth.CheckPostRate(owner); err != nil {
+		app.RespondError(w, 429, "Please wait before another lookup.")
+		return
+	}
+	flights, err := flightStatus(&in)
+	if err == nil {
+		err = quota.Charge(owner, statusCost, nil)
+	}
 	b := statusForm(r)
 	if err != nil {
 		b += `<p role="alert">` + html.EscapeString(err.Error()) + `</p>`

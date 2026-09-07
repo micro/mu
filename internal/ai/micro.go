@@ -22,6 +22,9 @@ import (
 // for provider/model slugs, then Anthropic if a key is set, then OpenRouter
 // as the remaining cloud option, otherwise a local OpenAI-compatible server.
 func resolveProvider(model string) (provider, apiKey, baseURL string, err error) {
+	if p, k, base, ok := PreferredProvider(); ok && GLMModel(p, model) != "" {
+		return p, k, base, nil
+	}
 	if isAtlasModel(model) && getAtlasAPIKey() != "" {
 		return "atlascloud", getAtlasAPIKey(), "", nil
 	}
@@ -83,6 +86,9 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 // hard-coded default. Both mean the same thing — this is not a slug OpenRouter
 // knows — and the answer to both is the configured slug.
 func modelFor(provider, model string) string {
+	if mapped := GLMModel(provider, model); mapped != "" {
+		return mapped
+	}
 	// Atlas is reached either because the model named it, or as the last
 	// remaining provider — and in the second case the model is whatever
 	// DefaultModel returned, which with no Anthropic key is a Claude id Atlas

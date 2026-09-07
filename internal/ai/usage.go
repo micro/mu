@@ -101,6 +101,9 @@ var knownPricing = map[string]modelPricing{
 	"gemini-pro-latest":   {1.25, 10.0, 0, 0.31},
 	"gemini-flash-latest": {0.30, 2.50, 0, 0.075},
 
+	// OpenRouter GLM standard API rates; provider-specific prices can differ.
+	"z-ai/glm-5.3":       {1.4, 4.4, 0, 0},
+	"z-ai/glm-5.3-flash": {0.15, 0.50, 0, 0},
 	// OpenRouter passes through to whoever serves the id, and its own default
 	// here is OpenAI's cheapest.
 	"openai/gpt-4o-mini": {0.15, 0.60, 0, 0.075},
@@ -169,6 +172,9 @@ var unpricedModel sync.Once
 // last branch is a default and an id with no slash and no Atlas word fell into
 // it. Usage by provider is what an operator reads to see where the money went.
 func providerName(model string) string {
+	if strings.HasPrefix(model, "z-ai/") {
+		return "openrouter"
+	}
 	if strings.Contains(model, "deepseek") || strings.Contains(model, "qwen") ||
 		strings.Contains(model, "Qwen") || strings.Contains(model, "glm") ||
 		strings.Contains(model, "kimi") {

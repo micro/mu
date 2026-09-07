@@ -502,6 +502,11 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 	// agent that still answers beats one that fails closed because of a typo,
 	// and the log line is what makes the typo findable.
 	if want != "" {
+		if p, k, base, ok := ai.PreferredProvider(); ok {
+			if m := ai.GLMModel(p, want); m != "" {
+				return p, k, m, ai.ProviderBaseURL(base), true
+			}
+		}
 		switch {
 		case ai.AtlasHosted(want):
 			if k := ai.AtlasKey(); k != "" {

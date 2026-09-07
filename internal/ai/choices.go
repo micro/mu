@@ -43,7 +43,11 @@ type Choice struct {
 func Choices() []Choice {
 	var out []Choice
 	seen := map[string]bool{}
+	selected := normaliseProvider(settings.Get("AI_PROVIDER"))
 	add := func(id, label, provider string) {
+		if selected != "" && provider != selected {
+			return
+		}
 		id = strings.TrimSpace(id)
 		if id == "" || seen[id] {
 			return
@@ -85,6 +89,8 @@ func Choices() []Choice {
 	}
 
 	if getOpenRouterAPIKey() != "" {
+		add("z-ai/glm-5.3", "GLM 5.3", ProviderOpenRouter)
+		add("z-ai/glm-5.3-flash", "GLM 5.3 Flash", ProviderOpenRouter)
 		add(OpenRouterModel(), "OpenRouter", ProviderOpenRouter)
 	}
 

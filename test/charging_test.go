@@ -140,6 +140,8 @@ var pageCharged = map[string]bool{
 	// endpoint, so it charges for it. Same debt, same list.
 	"shell_run":   true,
 	"news_search": true,
+	// These HTML pages call providers directly; their service methods leave all charging to the gateway.
+	"routes_directions": true, "flights_status": true,
 	// /mail's Handler charges for both, for the same reason: the page sends
 	// mail without going through the endpoint.
 	"mail_send": true, "external_email": true,

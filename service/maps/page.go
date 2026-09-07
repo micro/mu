@@ -156,7 +156,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// dependencies, which argues for writing it rather than against having it.
 	b.WriteString(mapPane(style))
 
-	b.WriteString(directionsUI)
+	auth.SetCSRFCookie(w, r)
+	b.WriteString(strings.Replace(directionsUI, "{{csrf}}", app.CSRFField(auth.CSRFToken(r)), 1))
 
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Maps", Description: Spec.Description, HTML: b.String()})
