@@ -79,6 +79,7 @@ func addMessage(p *Message) {
 }
 
 func Load() {
+	flag.RegisterDeleter("social", moderationStore{})
 	if err := service.Register(Spec); err != nil {
 		app.Log("social", "service register failed: %v", err)
 	}

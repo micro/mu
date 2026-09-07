@@ -45,3 +45,28 @@ func TestAbusiveCachedThreadIsHiddenAcrossReaders(t *testing.T) {
 		t.Fatal("operator approval did not restore the post")
 	}
 }
+
+func TestModerationRefreshesTheHomeCard(t *testing.T) {
+	id, _ := mine(t)
+	flag.RegisterDeleter("social", moderationStore{})
+	moderationStore{}.RefreshCache()
+	if !strings.Contains(CardHTML(), "A message that exists") {
+		t.Fatal("initial card missing message")
+	}
+	if err := flag.AdminFlag("social", id, "operator"); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Second)
+	for strings.Contains(CardHTML(), "A message that exists") && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if strings.Contains(CardHTML(), "A message that exists") {
+		t.Fatal("hidden message remained in cached card")
+	}
+	if err := flag.Approve("social", id); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(CardHTML(), "A message that exists") {
+		t.Fatal("approval did not restore cached card")
+	}
+}

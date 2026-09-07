@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 
@@ -88,8 +89,15 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 		flagger = acc.Name
 	}
 
-	// Add flag
-	count, alreadyFlagged, err := flag.Add(contentType, contentID, flagger)
+	// An authenticated operator can hide content directly, including an
+	// item they previously approved. Ordinary reports retain the vote threshold.
+	count, alreadyFlagged, err := 0, false, error(nil)
+	if acc != nil && acc.Admin {
+		err = flag.AdminFlag(contentType, contentID, acc.ID)
+		count = 3
+	} else {
+		count, alreadyFlagged, err = flag.Add(contentType, contentID, flagger)
+	}
 	if err != nil {
 		http.Error(w, "Failed to flag content", http.StatusInternalServerError)
 		return
@@ -153,6 +161,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					contentHTML = fmt.Sprintf(`<p class="whitespace-pre-wrap">%s</p>`, text)
 					author = post.Author
+					createdAt = app.TimeAgo(post.CreatedAt)
+				}
+			case "social":
+				if post, ok := content.(PostContent); ok {
+					title = "Social thread"
+					contentHTML = "<p class=\"whitespace-pre-wrap\">" + html.EscapeString(post.Content) + "</p>"
+					author = html.EscapeString(post.Author)
 					createdAt = app.TimeAgo(post.CreatedAt)
 				}
 			case "news":
