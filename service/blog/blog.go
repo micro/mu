@@ -960,7 +960,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 				<a href="/login?redirect=/blog" class="text-muted">Login</a> to write a post
 			</div>`
 		}
-		actions = `<form method="GET" action="/blog" class="search-bar"><input type="search" name="q" class="grow" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>` + actions
+		actions += `<form method="GET" action="/blog" class="search-bar"><input type="search" name="q" class="grow" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
 		content = fmt.Sprintf(`<div id="blog">
 			%s
 			<div id="posts-list">
