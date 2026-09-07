@@ -136,3 +136,17 @@ func TestADeeperPathIsNotTheService(t *testing.T) {
 		t.Errorf("/services/refprobe/extra answered %d, want 404", w.Code)
 	}
 }
+
+func TestAPIServiceReferenceUsesTheExistingAPIDoor(t *testing.T) {
+	refFixture(t)
+	w := httptest.NewRecorder()
+	RESTPageHandler(w, httptest.NewRequest("GET", "/api?service=refprobe", nil))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "GET /api/v1/refprobe/list") {
+		t.Fatal("API service reference is missing")
+	}
+	w = httptest.NewRecorder()
+	RESTPageHandler(w, httptest.NewRequest("GET", "/api?service=not_a_service", nil))
+	if w.Code != 404 {
+		t.Errorf("unknown reference returned %d", w.Code)
+	}
+}
