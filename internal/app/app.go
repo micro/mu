@@ -1349,7 +1349,7 @@ func headAdmin(acc *auth.Account) string {
 	//
 	// Set like the rest of this corner — it is a link to somewhere, the same as
 	// the name beside it, and it should read as one.
-	return `<a id="head-admin" href="/admin">Admin</a>`
+	return `<a id="head-admin" class="mini-btn" href="/admin">Admin</a>`
 }
 
 // navPinned is the reader's own services, under a heading of their own.

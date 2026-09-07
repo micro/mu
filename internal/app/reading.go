@@ -16,12 +16,12 @@ import (
 // enter the shared feed HTML cache.
 func SaveControl(r *http.Request, ref string) string {
 	if r.URL.Query().Get("saved") == ref {
-		return `<a href="/bookmarks">Saved ✓</a>`
+		return `<a class="mini-btn" href="/bookmarks">Saved ✓</a>`
 	}
 	if _, acc := auth.TrySession(r); acc == nil {
-		return `<a href="/bookmarks?item=` + url.QueryEscape(ref) + `">Save</a>`
+		return `<a class="mini-btn" href="/bookmarks?item=` + url.QueryEscape(ref) + `">Save</a>`
 	}
-	return `<form method="POST" action="/bookmarks" class="reading-save"><input type="hidden" name="action" value="add"><input type="hidden" name="ref" value="` + html.EscapeString(ref) + `"><input type="hidden" name="back" value="` + html.EscapeString(r.URL.RequestURI()) + `">` + CSRFField(auth.CSRFToken(r)) + `<button type="submit">Save</button></form>`
+	return `<form method="POST" action="/bookmarks" class="reading-save"><input type="hidden" name="action" value="add"><input type="hidden" name="ref" value="` + html.EscapeString(ref) + `"><input type="hidden" name="back" value="` + html.EscapeString(r.URL.RequestURI()) + `">` + CSRFField(auth.CSRFToken(r)) + `<button class="mini-btn" type="submit">Save</button></form>`
 }
 func ReadingActions(r *http.Request, ref string) string {
 	return `<div class="reading-actions">` + ReadingActionItems(r, ref) + `</div>`
@@ -36,7 +36,7 @@ func ReadingActionItems(r *http.Request, ref string) string {
 	} else if strings.HasPrefix(r.URL.Path, "/blog") {
 		path = "/blog/post?id=" + url.QueryEscape(ref)
 	}
-	return SaveControl(r, ref) + `<a href="` + html.EscapeString(path) + `" onclick="event.preventDefault();const u=this.href;if(navigator.share){navigator.share({url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).catch(()=>{})}">Share</a>` + `<a href="/agent/micro?item=` + url.QueryEscape(ref) + `">Discuss</a>`
+	return SaveControl(r, ref) + `<button class="mini-btn" type="button" data-url="` + html.EscapeString(path) + `" onclick="const u=new URL(this.dataset.url,location.href).href;if(navigator.share){navigator.share({url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).catch(()=>{})}">Share</button>` + `<a class="mini-btn" href="/agent/micro?item=` + url.QueryEscape(ref) + `">Discuss</a>`
 }
 func ReadingFilters(path, active string, categories []string) string {
 	sort.Strings(categories)
@@ -78,5 +78,5 @@ func ReadingPages(path, category string, page, total, size int) string {
 }
 
 const ReadingCSS = `<style>
-.reading-row{padding:18px 0;border-bottom:1px solid var(--border,#eee)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:12px 0;font-size:14px}.reading-actions form,.reading-save{display:inline-flex;flex:0 0 auto;width:auto;margin:0;padding:0}.reading-actions>a,.reading-save button{white-space:nowrap}.reading-save button{font:inherit;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-decoration:underline}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
+.reading-row{padding:18px 0;border-bottom:1px solid var(--border,#eee)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0;font-size:14px}.reading-actions form,.reading-save{display:inline-flex;flex:0 0 auto;width:auto;margin:0;padding:0}.reading-actions>a,.reading-save button{white-space:nowrap}.reading-actions .mini-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
 </style>`
