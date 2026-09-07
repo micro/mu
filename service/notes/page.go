@@ -75,7 +75,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // list is every note, newest change first, each one a link into the editor.
 func list(entries []*notes.Entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="note-head">` +
+	b.WriteString(`<div class="collection-head">` +
 		`<a class="btn" href="/notes?new=1">New</a></div>`)
 
 	if len(entries) == 0 {
@@ -97,16 +97,13 @@ func list(entries []*notes.Entry) string {
 		ordered[i], ordered[j] = ordered[j], ordered[i]
 	}
 
-	b.WriteString(`<div class="note-grid">`)
+	b.WriteString(`<div class="collection-list">`)
 	for _, e := range ordered {
 		when := e.UpdatedAt
 		if when.IsZero() {
 			when = e.CreatedAt
 		}
-		b.WriteString(`<a class="note-card" href="/notes?note=` + html.EscapeString(urlArg(e.Title)) + `">` +
-			`<span class="note-card-title">` + html.EscapeString(e.Title) + `</span>` +
-			`<span class="note-card-body">` + html.EscapeString(preview(e.Text)) + `</span>` +
-			`<span class="note-card-when">` + html.EscapeString(app.TimeAgo(when)) + `</span></a>`)
+		b.WriteString(app.CollectionItem("/notes?note="+urlArg(e.Title), e.Title, preview(e.Text), app.TimeAgo(when)))
 	}
 	b.WriteString(`</div>` + pageCSS)
 	return b.String()
@@ -116,27 +113,27 @@ func list(entries []*notes.Entry) string {
 func editor(r *http.Request, title, text string) string {
 	csrf := html.EscapeString(auth.CSRFToken(r))
 
-	titleField := `<input name="title" class="note-title-in" required maxlength="40" ` +
+	titleField := `<input name="title" class="record-title" required maxlength="40" ` +
 		`placeholder="Title" autofocus value="` + html.EscapeString(title) + `">`
 	if title != "" {
 		// The title is the note's address — rewriting it would leave the old
 		// note behind and make a second one. Renaming means delete and write,
 		// and it is not worth a control that looks like an edit and is not.
-		titleField = `<input class="note-title-in" value="` + html.EscapeString(title) +
+		titleField = `<input class="record-title" value="` + html.EscapeString(title) +
 			`" readonly aria-label="Title">` +
 			`<input type="hidden" name="title" value="` + html.EscapeString(title) + `">`
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="note-head">` +
+	b.WriteString(`<div class="collection-head">` +
 		`<a class="link" href="/notes">← All notes</a></div>`)
-	b.WriteString(`<div class="card"><form method="POST" action="/notes" class="note-editor">` +
+	b.WriteString(`<div class="card record-card"><form method="POST" action="/notes" class="record-editor">` +
 		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 		`<input type="hidden" name="save" value="1">` +
 		titleField +
-		`<textarea name="text" class="note-body-in" rows="14" required maxlength="` +
+		`<textarea name="text" class="record-body" rows="14" required maxlength="` +
 		strconv.Itoa(maxText) + `" placeholder="Write it down">` + html.EscapeString(text) + `</textarea>` +
-		`<div class="note-actions"><button type="submit">Save</button></div></form>`)
+		`<div class="record-actions"><button type="submit">Save</button></div></form>`)
 
 	if title != "" {
 		b.WriteString(`<form method="POST" action="/notes" class="note-delete" ` +
@@ -195,44 +192,4 @@ func preview(text string) string {
 
 func urlArg(s string) string { return url.QueryEscape(s) }
 
-const pageCSS = `<style>
-.note-head{display:flex;align-items:center;justify-content:flex-start;gap:12px;margin:0 0 14px}
-.note-new,.note-new:visited{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:7px 14px;
-  border-radius:8px;font-size:13px;font-weight:600;white-space:nowrap}
-.note-new:hover,.note-new:visited:hover{background:#333;color:#fff}
-.note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-/* min-width:0 because a grid track sized 1fr will not shrink below its
-   content, so one long unbroken run — a URL, a token, a hash — widens the
-   column instead of wrapping in it. */
-.note-card{display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid var(--border-color,#e5e5e5);
-  border-radius:10px;text-decoration:none;min-height:110px;min-width:0}
-.note-card:hover{border-color:#bbb}
-/* anywhere rather than break-word: break-word only breaks a word when the line
-   has nothing else on it, which leaves a long URL sitting beside a short word
-   and still overflowing. Notes are where somebody pastes a link. */
-.note-card-title{font-size:14px;font-weight:600;color:var(--text-color,#111);overflow-wrap:anywhere}
-.note-card-body{font-size:13px;color:var(--text-muted,#666);line-height:1.45;flex:1;overflow-wrap:anywhere}
-.note-card-when{font-size:12px;color:var(--text-muted,#999)}
-.note-editor{display:flex;flex-direction:column;gap:10px}
-/* Both flush left, because they are the two halves of one note and an eye
-   reading down them should not have to step sideways. They were a bordered box
-   at 12px and a borderless one at 0 — the title inset, the body not — which is
-   what "the title is padded more than the content" looks like. No boxes now: a
-   heading with a rule under it while it can be typed into, and the note under
-   that. See the comment on .note-editor in mu.css for why there were two. */
-/* Qualified, and it has to be. mu.css styles controls globally, and its input
-   rule is input:not([type=checkbox]):not([type=radio]) — specificity 0,2,1,
-   which no single class can outrank. Its textarea rule is a bare element
-   selector at 0,0,1, which any class beats. So .note-body-in applied and
-   .note-title-in did not, and the two lines of a note came out 12px apart with
-   nothing in either file saying why. .note-editor input.note-title-in is 0,2,1
-   and comes later, so it wins. */
-.note-editor input.note-title-in{padding:9px 0;border:0;
-  border-bottom:1px solid var(--border-color,#e5e5e5);font-size:19px;font-weight:600;
-  font-family:inherit;width:100%;outline:none;background:transparent;min-height:0}
-.note-editor input.note-title-in[readonly]{border-bottom-color:transparent}
-.note-body-in{padding:11px 0;border:0;font-size:15px;font-family:inherit;line-height:1.55;
-  resize:vertical;width:100%;outline:none;background:transparent}
-.note-actions{display:flex;gap:10px;align-items:center}
-.note-delete{margin:12px 0 0}
-</style>`
+const pageCSS = `<style>.note-delete{margin:12px 0 0}</style>`

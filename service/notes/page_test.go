@@ -48,7 +48,7 @@ func TestTheEditorHasABody(t *testing.T) {
 
 	// A new note needs a title field; an existing one is addressed by its
 	// title, so that field is fixed and posted as it stands.
-	if fresh := editor(r, "", ""); !strings.Contains(fresh, `name="title" class="note-title-in"`) ||
+	if fresh := editor(r, "", ""); !strings.Contains(fresh, `name="title" class="record-title"`) ||
 		strings.Contains(fresh, `readonly aria-label`) {
 		t.Error("a new note should ask for a title")
 	}

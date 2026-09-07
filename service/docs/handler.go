@@ -96,7 +96,7 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 // list is every document, newest change first.
 func list(docs []*Doc, query string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="doc-head">`)
+	b.WriteString(`<div class="collection-head">`)
 	b.WriteString(`<form method="GET" action="/docs" class="doc-search">` +
 		`<input type="text" name="q" value="` + html.EscapeString(query) +
 		`" placeholder="Search your documents" autocomplete="off">` +
@@ -113,15 +113,9 @@ func list(docs []*Doc, query string) string {
 			`remember, <a href="/notes">notes</a> is the shorter tool.`)
 	}
 
-	b.WriteString(`<div class="doc-list">`)
+	b.WriteString(`<div class="collection-list">`)
 	for _, d := range docs {
-		b.WriteString(`<a class="doc-row" href="/docs?id=` + html.EscapeString(d.ID) + `">`)
-		b.WriteString(`<span class="doc-title">` + html.EscapeString(d.Title) + `</span>`)
-		if s := snippet(d.Content); s != "" {
-			b.WriteString(`<span class="doc-snip">` + html.EscapeString(s) + `</span>`)
-		}
-		b.WriteString(`<span class="doc-when">` + html.EscapeString(app.TimeAgo(d.Updated)) + `</span>`)
-		b.WriteString(`</a>`)
+		b.WriteString(app.CollectionItem("/docs?id="+d.ID, d.Title, snippet(d.Content), app.TimeAgo(d.Updated)))
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -130,7 +124,7 @@ func list(docs []*Doc, query string) string {
 // view is one document, read.
 func view(r *http.Request, d *Doc) string {
 	var b strings.Builder
-	b.WriteString(`<div class="doc-head"><a class="doc-back" href="/docs">← Documents</a>`)
+	b.WriteString(`<div class="collection-head"><a class="doc-back" href="/docs">← Documents</a>`)
 	b.WriteString(`<a class="doc-new" href="/docs?id=` + html.EscapeString(d.ID) + `&amp;edit=1">Edit</a></div>`)
 	b.WriteString(`<article class="card doc-view">`)
 	b.WriteString(`<h2>` + html.EscapeString(d.Title) + `</h2>`)
@@ -163,13 +157,13 @@ func editor(r *http.Request, d *Doc) string {
 	if r.URL.Query().Get("import") == "1" {
 		importOpen = " open"
 	}
-	return `<div class="doc-head">` + back + `</div>
-<form method="POST" action="/docs" class="card doc-editor">
+	return `<div class="collection-head">` + back + `</div>
+<form method="POST" action="/docs" class="card record-card record-editor">
 <input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
 <input type="hidden" name="csrf_token" value="` + html.EscapeString(auth.CSRFToken(r)) + `">
-<input id="doc-title" class="doc-title-input" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
-` + editorTools + `<details class="doc-import-panel"` + importOpen + `><summary>Import</summary>` + importTools + `</details><textarea id="doc-body" class="doc-body" name="content" rows="32" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
-<div class="doc-actions">
+<input id="doc-title" class="record-title" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
+` + editorTools + `<details class="doc-import-panel"` + importOpen + `><summary>Import</summary>` + importTools + `</details><textarea id="doc-body" class="record-body" name="content" rows="32" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
+<div class="record-actions">
 <label class="doc-public"><input type="checkbox" name="public"` + checked + `> Anyone with the link can read it</label>
 <button type="submit">Save</button>
 </div>
@@ -181,47 +175,23 @@ func notice(msg string) string {
 }
 
 const pageCSS = `<style>
-/* A column, so New document sits on its own line under the search rather than
-   at the far end of it. margin-left:auto pushed it to the right edge, which on
-   a wide screen put the one action on the page as far from the reading column
-   as it could be, and on a narrow one wrapped it anyway. */
-.doc-head{display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin:0 0 16px}
 .doc-search{display:flex;gap:8px;width:100%}
 .doc-search input{flex:1;min-width:0}
-.doc-new{font-size:14px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;color:#111;text-decoration:none;white-space:nowrap}
-.doc-back{font-size:14px;color:#888;text-decoration:none}
-.doc-list{border:1px solid #eee;border-radius:8px;overflow:hidden}
-.doc-row{display:flex;align-items:baseline;gap:10px;padding:12px 14px;border-bottom:1px solid #f4f4f4;text-decoration:none;color:inherit}
-.doc-row:last-child{border-bottom:none}
-.doc-row:hover{background:#fafafa}
-.doc-title{font-weight:600;font-size:14px;white-space:nowrap}
-.doc-snip{color:#888;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.doc-when{color:#bbb;font-size:12px;margin-left:auto;white-space:nowrap}
-.doc-view h2{margin:0 0 12px}
-.doc-view img{max-width:100%}
-.doc-meta{font-size:12px;color:#888;display:flex;align-items:center;gap:10px;margin:10px 2px 0}
-.doc-meta form{display:inline;margin:0}
-.doc-delete{background:none;border:none;color:#c00;font-size:12px;padding:0;cursor:pointer}
-/* A page, roughly. 794px is 210mm at 96dpi, so the column is A4's width and
-   the text wraps where it would on paper; the height is the viewport rather
-   than A4's 1123px, because a box taller than the screen is scrolled twice —
-   once inside the textarea and once in the page around it. */
-.doc-editor{display:flex;flex-direction:column;gap:10px;width:100%;min-width:0;max-width:794px;box-sizing:border-box}
-.doc-editor > *{min-width:0;max-width:100%;box-sizing:border-box}
 .doc-create{display:flex;gap:8px;flex-wrap:wrap}
+.doc-back{font-size:14px;color:#888;text-decoration:none}
+.doc-new{font-size:14px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;color:#111;text-decoration:none}
 .doc-toolbar{display:flex;flex-wrap:wrap;gap:6px}
 .doc-toolbar button{flex:0 0 auto;margin:0}
 .doc-import-panel input[type=file]{display:none}
 .doc-import-panel summary{cursor:pointer;margin-bottom:8px}
 .doc-import-panel p{margin:8px 0 0}
-.doc-editor .doc-title-input,.doc-editor .doc-body{width:100%}
 .doc-view{overflow-wrap:anywhere}
+.doc-view h2{margin:0 0 12px}
+.doc-view img{max-width:100%}
 .doc-view pre{overflow-x:auto}
 .doc-view table{display:block;max-width:100%;overflow-x:auto}
-.doc-title-input{font-size:1.15rem;font-weight:600;border:none;border-bottom:1px solid #eee;padding:6px 0;outline:none}
-.doc-body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;border:1px solid #eee;border-radius:6px;padding:24px 28px;resize:vertical;min-height:70vh}
-.doc-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.doc-meta{font-size:12px;color:#888;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 2px 0}
+.doc-meta form{display:inline;margin:0}
+.doc-delete{background:none;border:none;color:#c00;font-size:12px;padding:0;cursor:pointer}
 .doc-public{min-width:0;flex:1 1 200px;font-size:13px;color:#888;display:flex;align-items:center;gap:6px}
-.doc-actions button{margin-left:auto;flex-shrink:0}
-@media(max-width:760px){.doc-body{padding:12px;min-height:50dvh}.doc-title{white-space:normal;overflow-wrap:anywhere;min-width:0}.doc-row{flex-wrap:wrap}.doc-snip{flex-basis:100%}}
 </style>`
