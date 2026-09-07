@@ -21,10 +21,10 @@ func TestBrowseIsBoundedAndHasReadingActions(t *testing.T) {
 	if !strings.Contains(body, `id="video-search"`) || !strings.Contains(body, `id="recent-searches-container"`) {
 		t.Fatal("missing search controls")
 	}
-	if strings.Count(body, `<article `) != 2 || !strings.Contains(body, `video-grid`) {
+	if strings.Count(body, `<article `) != 5 || !strings.Contains(body, `video-grid`) {
 		t.Fatal("wrong video page")
 	}
-	if !strings.Contains(body, `/agent/micro?item=video_v12`) {
+	if !strings.Contains(body, `/agent/micro?item=video_v9`) {
 		t.Fatal("wrong archive reference")
 	}
 }
@@ -77,5 +77,18 @@ func TestListPreservesEmptyFeedDiagnostic(t *testing.T) {
 	}
 	if rsp.Text != LatestText(0) || rsp.Text == "" {
 		t.Fatalf("lost diagnostic: %q", rsp.Text)
+	}
+}
+
+func TestOverviewKeepsSlowChannelsVisible(t *testing.T) {
+	now := time.Now()
+	all := map[string]Channel{"Tech": {Videos: []*Result{
+		{ID: "fast1", ChannelID: "fast", Title: "Fast newest", Published: now},
+		{ID: "fast2", ChannelID: "fast", Title: "Fast older", Published: now.Add(-time.Hour)},
+		{ID: "slow", ChannelID: "slow", Title: "Slow channel", Published: now.Add(-48 * time.Hour)},
+	}}}
+	body := browse(httptest.NewRequest("GET", "/video", nil), all)
+	if strings.Count(body, "<article ") != 2 || !strings.Contains(body, "Slow channel") || strings.Contains(body, "Fast older") {
+		t.Fatal("overview crowded out a channel")
 	}
 }

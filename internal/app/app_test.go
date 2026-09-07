@@ -251,7 +251,7 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 // holds better: Log out is an ordinary link, so it needs no disclosure to open
 // and no script to work.
 func TestTheSignedInRailCarriesEveryDestination(t *testing.T) {
-	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
+	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice", Pinned: []string{}})
 	for _, want := range []string{
 		`id="nav-home"`, `id="nav-account"`, `id="nav-inbox"`,
 		`id="nav-agents"`, `id="nav-services"`,
@@ -304,7 +304,7 @@ func TestSignedOutSeesNoAccountDestinations(t *testing.T) {
 // there now, under the balance, and /usage is still the page it links to. A
 // sidebar entry per view of a page is how a sidebar becomes a site map.
 func TestTheBottomGroupIsTheAccount(t *testing.T) {
-	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice", Pinned: []string{}})
 
 	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`} {
 		if !strings.Contains(result, want) {
@@ -333,7 +333,7 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 // something the rest of the product does not agree with. Anyone who lives in
 // Apps pins it, which is what pinning is for.
 func TestTheSidebarIsTheProductsNouns(t *testing.T) {
-	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice", Pinned: []string{}})
 
 	// The order somebody meets them in: what is yours first — Inbox, then
 	// Agents — and the catalogue after.
@@ -408,7 +408,7 @@ func TestAPinnedServiceReturnsToTheSidebar(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	acc := &auth.Account{ID: "alice"}
+	acc := &auth.Account{ID: "alice", Pinned: []string{}}
 	acc.SetPinned([]string{name})
 	result := renderWithLang("Test", "d", "<p>c</p>", "en", acc)
 	if !strings.Contains(result, `href="/`+name+`"`) {
@@ -426,9 +426,9 @@ func (PinProbe) List(ctx context.Context, req *struct{}, rsp *struct {
 }
 
 // Nothing pinned draws no group at all. An empty heading over an empty list is
-// a worse answer than no heading, and it is what every new account would see.
+// a worse answer than no heading when the reader has unpinned everything.
 func TestPinningNothingDrawsNoGroup(t *testing.T) {
-	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice", Pinned: []string{}})
 	if strings.Contains(result, "nav-group") || strings.Contains(result, "nav-heading") {
 		t.Error("an account that pinned nothing was given a Services group")
 	}

@@ -37,3 +37,19 @@ func TestBrowseKeepsLegacyNewsCache(t *testing.T) {
 		t.Fatal("legacy cache lost")
 	}
 }
+
+func TestOverviewKeepsSlowCategoriesAndPlaceholders(t *testing.T) {
+	now := time.Now()
+	posts := []*Post{
+		{ID: "fast1", URL: "https://example.com/1", Title: "Fast newest", Category: "Tech", PostedAt: now},
+		{ID: "fast2", URL: "https://example.com/2", Title: "Fast older", Category: "Tech", PostedAt: now.Add(-time.Hour)},
+		{ID: "slow", URL: "https://example.com/3", Title: "Slow topic", Category: "World", PostedAt: now.Add(-48 * time.Hour)},
+	}
+	body := browse(httptest.NewRequest("GET", "/news", nil), posts)
+	if strings.Count(body, "<article ") != 2 || !strings.Contains(body, "Slow topic") || strings.Contains(body, "Fast older") {
+		t.Fatal("overview crowded out a topic")
+	}
+	if strings.Count(body, `class="news-reading-image"`) != 2 {
+		t.Fatal("missing image placeholders")
+	}
+}
