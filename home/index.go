@@ -70,6 +70,10 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/agent/micro", http.StatusSeeOther)
 		return
 	}
+	if r.URL.Query().Get("from") == "app" {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
 
 	// Its own shell, and that is the point of it.
 	//

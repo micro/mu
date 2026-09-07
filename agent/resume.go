@@ -17,7 +17,8 @@ try{
   location.replace(saved);return;
  }
  function remember(id){sessionStorage.setItem(key,base+(id?'?session='+encodeURIComponent(id):'?new=1'));}
- remember(` + app.JSString(contextID) + `);
+ var query=new URLSearchParams(location.search);
+ if(!['bookmark','saved','item','prompt','q'].some(function(k){return query.has(k);}))remember(` + app.JSString(contextID) + `);
  window.addEventListener('mu-chat-thread',function(e){remember(e.detail);});
  window.addEventListener('mu-chat-new',function(){remember('');});
 }catch(e){}

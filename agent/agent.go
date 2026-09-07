@@ -534,9 +534,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// This page is for talking to it, so the box asks rather than searches.
 	// See app.ChatConfig.Ask — search is the default everywhere else, because
 	// search works with no model and a page about an agent obviously does not.
-	if cfg.StorageNS == "agent" {
-		cfg.StorageNS = "agent-" + accountID + "-" + selAgent
-	}
+	cfg.StorageNS = "agent-" + accountID + "-" + selAgent
 	cfg.ServerOwned = true
 	cfg.Transcript = true
 	cfg.Ask = true
@@ -567,6 +565,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// non-empty left the tab's remembered selection in charge on a bare /agent:
 	// the rail listed every agent's conversations while the next message went to
 	// whichever agent the tab remembered. The URL is the state.
+	content += `<script>window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `+'?session='+encodeURIComponent(e.detail));});</script>`
 	content += resumeMicroJS(accountID, selAgent, cfg.ContextID)
 	content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	if prefill != "" {

@@ -711,8 +711,8 @@ var CKEY='mu_chat_conv:'+NS;
 var HKEY='mu_chat_hist:'+NS;
 var TKEY='mu_chat_ctx:'+NS;
 var DKEY='mu_chat_draft:'+NS;
-function draftKey(){return DKEY+(SESSION?':'+contextId:'');}
-function scrollKey(){return 'mu_chat_scroll:'+NS+':'+contextId;}
+function draftKey(){return DKEY+(SESSION?':'+(contextId||attachment):'');}
+function scrollKey(){return 'mu_chat_scroll:'+NS+':'+(contextId||attachment);}
 var history=[];
 
 // A reopened server session is authoritative; otherwise restore this surface's
