@@ -406,6 +406,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	// The chat switcher requests only its account-owned transcript.
 	if r.Header.Get("X-Mu-Transcript") == "1" {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Add("Vary", "X-Mu-Transcript")
 		if !reopened || elsewhere != "" {
 			app.RespondError(w, 404, "Chat not found")
 			return

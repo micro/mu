@@ -1189,3 +1189,7 @@ privileges. Mu's existing service user and sandbox permissions are unchanged.
 The MCP and REST catalogue responses include `X-Mu-Catalogue-Version` and
 `X-Mu-Tool-Count` headers. Compare these when diagnosing an external client's
 cached tools. Reconnect the client to refresh discovery after a deployment.
+
+### Flight schedules and estimates
+
+Set `AVIATIONSTACK_API_KEY` in `/admin/config` to enable scheduled, estimated and actual flight times on `/flights`. Without it, the existing aircraft tracking still works. Lookups return up to 20 provider records; missing estimates are shown as unavailable. Set the `flights_status` price in `quota.json` to cover your provider plan (the shipped price is 3 credits per lookup).

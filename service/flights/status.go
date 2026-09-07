@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const statusCost = "flights_status"
+const statusCost = quota.OpFlightStatus
 
 var statusClient = &http.Client{Timeout: 12 * time.Second}
 var statusURL = "https://api.aviationstack.com/v1/flights"

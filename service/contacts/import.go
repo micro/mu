@@ -39,7 +39,12 @@ func importHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer f.Close()
-	reader := csv.NewReader(io.LimitReader(f, (1<<20)+1))
+	raw, err := io.ReadAll(io.LimitReader(f, (1<<20)+1))
+	if err != nil || len(raw) > 1<<20 {
+		app.BadRequest(w, r, "Choose a CSV file up to 1 MB.")
+		return
+	}
+	reader := csv.NewReader(strings.NewReader(string(raw)))
 	reader.FieldsPerRecord = -1
 	rows, err := reader.ReadAll()
 	if err != nil || len(rows) < 2 || len(rows) > 501 {
