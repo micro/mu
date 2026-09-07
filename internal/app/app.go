@@ -864,7 +864,7 @@ var Template = `
       // in the document — so the tab bar was never marked.
       function markNav() {
         var here = location.pathname.replace(/\/+$/, '') || '/';
-        if(here === '/agent/micro') here = '/';
+        if(here === '/agent' || here.indexOf('/agent/') === 0) here = '/agents';
         var groups = ['#nav a, .nav-bottom a', '#tabs a'];
         for (var g = 0; g < groups.length; g++) {
           var links = document.querySelectorAll(groups[g]);
