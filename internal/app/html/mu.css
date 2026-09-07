@@ -812,19 +812,13 @@ td {
    colour. The label goes at phone width — #head-right is beside a centred brand
    and the two of them fight for the middle — and the icon stays, which is why
    there is an aria-label on the link. */
-/* Admin, beside the name. It was an icon with a label — the rail's markup,
-   borrowed — and the icon said nothing the word did not; on a phone the label
-   was hidden and what was left was a glyph you had to guess. Set like the rest
-   of the corner, because it is a link to somewhere the same as the name is. */
+/* Admin uses the same small white control as content actions. */
 #head-admin {
-  color: #555;
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
   white-space: nowrap;
 }
-#head-admin:hover { color: #111; }
 
 #head-wallet {
   display: none;
