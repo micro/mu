@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestLoginTurnsTheLandingChatIntoTheHomeChat(t *testing.T) {
+func TestLoginKeepsTheLandingConversation(t *testing.T) {
 	landing := indexBody()
 	if !strings.Contains(landing, `var NS="landing"`) {
 		t.Error("the public conversation is not retained for the login handoff")
@@ -19,7 +19,7 @@ func TestLoginTurnsTheLandingChatIntoTheHomeChat(t *testing.T) {
 	for _, want := range []string{
 		`chatStorageNS = "home:" + viewerID`,
 		`StorageNS:       chatStorageNS`,
-		`ImportNS:        chatImportNS`,
+		`agent.HandoffHTML(r)`,
 	} {
 		if !strings.Contains(string(home), want) {
 			t.Errorf("Home does not adopt the landing conversation: missing %q", want)

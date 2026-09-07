@@ -438,7 +438,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// named is what removes the roster from the room: on a page about one agent
 	// the list of the others is the same furniture as a services list down the
 	// side of /mail.
-	named := false
+	named := r.URL.Path == "/"
 	if slug := strings.TrimPrefix(r.URL.Path, "/agent/"); r.URL.Path != "/agent" &&
 		slug != "" && !strings.Contains(slug, "/") {
 		id, ok := agentSlugTarget(accountID, slug)
@@ -520,7 +520,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// only exists here put a row of chrome above the conversation to say
 	// something the nav already says.
 	chip := `<div class="agent-bar">` +
-		`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
+		`<a class="btn chat-open-list" href="` + chatPath(accountID, selAgent) + `?new=1">New chat</a>` +
+		`<button type="button" class="chat-open-list" onclick="muPane('chats')">Conversations</button>` +
 		`</div>` + paneJS
 
 	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
@@ -563,11 +564,14 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// non-empty left the tab's remembered selection in charge on a bare /agent:
 	// the rail listed every agent's conversations while the next message went to
 	// whichever agent the tab remembered. The URL is the state.
-	content += `<script>window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `+'?session='+encodeURIComponent(e.detail));});</script>`
+	content += `<script>window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(chatPath(accountID, selAgent)) + `+'?session='+encodeURIComponent(e.detail));});</script>`
 	content += resumeMicroJS(accountID, selAgent, cfg.ContextID)
+	if r.URL.Path == "/" {
+		content += HandoffHTML(r)
+	}
 	content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	if prefill != "" {
-		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `);})()</script>`
+		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(chatPath(accountID, selAgent)) + `);})()</script>`
 	}
 
 	// The agent's own name, because this page is about one agent.
@@ -721,7 +725,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 	// page now — the rail holds the conversations you started here and /inbox
 	// holds what arrived, so a link from one to the other lands somewhere that
 	// does not have the conversation in it.
-	base := Path(accountID, agentID)
+	base := chatPath(accountID, agentID)
 	newURL := base + "?new=1"
 	if agentID != "" && base == "/agent/"+DefaultSlug {
 		// An id that resolves to nothing in the roster. Keep it in the URL
@@ -731,7 +735,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 	}
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
-		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">New</button>` +
+		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">New chat</button>` +
 		`<div class="chat-sess-scroll">` +
 		// Chats, which is what the store has always called them in every way
 		// but this one. The record is threads.json, the package is
@@ -744,7 +748,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 		// also mean "a chat you had". Chat is what these are, it is what the
 		// button under them starts, and thread.WebClient is the client that
 		// makes them.
-		`<div class="chat-sess-head">Chats</div><div class="chat-sess-list">`)
+		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
 		// "No conversations yet" is a true sentence that leaves somebody looking
@@ -788,7 +792,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
 		b.WriteString(`<div class="chat-sess-row has-row-del"><a href="` + base + `?session=` + url.QueryEscape(s.ID) +
-			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
+			`" class="` + cls + `">` + htmlEsc(title) + where + `<small class="chat-sess-date">` + s.Updated.Format("2 Jan 2006") + `</small></a>` +
 			`<button type="button" class="row-del" title="Delete conversation" ` +
 			`aria-label="Delete this conversation" ` +
 			`onclick="muSessionDelete(` + app.JSAttr(s.ID) + `,event)">&times;</button></div>`)
@@ -1019,6 +1023,7 @@ const chatLayoutCSS = `<style>
    Hidden here and shown in the phone query below, rather than left to lay
    out around a child that is not there. */
 .agent-bar{display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
+.chat-sess-date{display:block;font-size:11px;font-weight:normal;color:var(--text-muted,#999);margin-top:3px}
 .chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);padding:0 10px 6px}
 /* Tokens, not hex.

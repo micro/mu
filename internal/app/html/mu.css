@@ -8007,3 +8007,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
 /* The account preview starts with a heading, not an inset list row. */
 .wallet-peek { padding-top: 16px; }
 .wallet-peek .balance-figure b { font-weight: 400; }
+
+.micro-mark { display:inline-flex; align-items:center; justify-content:center; flex:none; width:24px; height:24px; border:1.5px solid currentColor; border-radius:50%; font-family:inherit; font-weight:bold; font-size:11px; line-height:1; }
+#tabs .micro-mark { width:22px; height:22px; font-size:10px; }

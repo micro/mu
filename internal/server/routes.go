@@ -452,6 +452,7 @@ func registerRoutes() {
 		}
 		http.Redirect(w, r, to, http.StatusFound)
 	})
+	http.HandleFunc("/agent/handoff", agent.HandoffHandler)
 	http.HandleFunc("/agent/", agent.Handler)
 	http.HandleFunc("/agents/data", agent.AgentsHandler)
 	// The old path, so a page cached with the previous script keeps working.

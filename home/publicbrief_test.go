@@ -153,7 +153,7 @@ func TestSigningInLeavesTheLanding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(src), `http.Redirect(w, r, "/agent/micro", http.StatusSeeOther)`) {
+	if !strings.Contains(string(src), `agent.MicroHandler(w, r)`) {
 		t.Error("the landing page is served to people who are signed in, so the\n" +
 			"app's front door is a pitch aimed at somebody who already bought")
 	}

@@ -418,7 +418,7 @@ function fetchW(la,lo){
 		// thread it mirrors. A fixed namespace would let the next account using
 		// this tab restore and submit the previous account's conversation.
 		chatStorageNS = "home:" + viewerID
-		chatImportNS = "landing"
+		// Guest conversations move into Micro through HandoffHTML.
 	}
 
 	// The rail is built before it is placed, because whether there is a second
@@ -764,7 +764,7 @@ function fetchW(la,lo){
 	// when the call site it left behind is not removed. See app.renderForRequest,
 	// which is the only place any of the three banners is added.
 	app.Respond(w, r, app.Response{Title: "Home", Description: "The home screen",
-		HTML: b.String(), BodyClass: bodyClass})
+		HTML: agent.HandoffHTML(r) + b.String(), BodyClass: bodyClass})
 }
 
 // htmlEsc escapes text for HTML.

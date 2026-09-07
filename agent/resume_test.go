@@ -26,6 +26,9 @@ func TestMicroEntryReopensHistoryAndNewStartsEmpty(t *testing.T) {
 		path string
 		want bool
 	}{
+		{"/", true},
+		{"/?session=" + id, true},
+		{"/?new=1", false},
 		{"/agent/micro", true},
 		{"/agent/micro?session=" + id, true},
 		{"/agent/micro?new=1", false},
