@@ -101,7 +101,7 @@ func list(docs []*Doc, query string) string {
 		`<input type="text" name="q" value="` + html.EscapeString(query) +
 		`" placeholder="Search your documents" autocomplete="off">` +
 		`<button type="submit">Search</button></form>`)
-	b.WriteString(`<a class="doc-new" href="/docs?new=1">New document / Import</a>`)
+	b.WriteString(`<div class="doc-create"><a class="btn" href="/docs?new=1">New</a><a class="btn" href="/docs?new=1&amp;import=1">Import</a></div>`)
 	b.WriteString(`</div>`)
 
 	if len(docs) == 0 {
@@ -159,12 +159,16 @@ func editor(r *http.Request, d *Doc) string {
 	if d.ID != "" {
 		back = `<a class="doc-back" href="/docs?id=` + html.EscapeString(d.ID) + `">← Back</a>`
 	}
+	importOpen := ""
+	if r.URL.Query().Get("import") == "1" {
+		importOpen = " open"
+	}
 	return `<div class="doc-head">` + back + `</div>
 <form method="POST" action="/docs" class="card doc-editor">
 <input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
 <input type="hidden" name="csrf_token" value="` + html.EscapeString(auth.CSRFToken(r)) + `">
 <input id="doc-title" class="doc-title-input" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
-` + editorTools + `<textarea id="doc-body" class="doc-body" name="content" rows="32" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
+` + editorTools + `<details class="doc-import-panel"` + importOpen + `><summary>Import</summary>` + importTools + `</details><textarea id="doc-body" class="doc-body" name="content" rows="32" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
 <div class="doc-actions">
 <label class="doc-public"><input type="checkbox" name="public"` + checked + `> Anyone with the link can read it</label>
 <button type="submit">Save</button>
@@ -202,10 +206,22 @@ const pageCSS = `<style>
    the text wraps where it would on paper; the height is the viewport rather
    than A4's 1123px, because a box taller than the screen is scrolled twice —
    once inside the textarea and once in the page around it. */
-.doc-editor{display:flex;flex-direction:column;gap:10px;max-width:794px}
+.doc-editor{display:flex;flex-direction:column;gap:10px;width:100%;min-width:0;max-width:794px;box-sizing:border-box}
+.doc-editor > *{min-width:0;max-width:100%;box-sizing:border-box}
+.doc-create{display:flex;gap:8px;flex-wrap:wrap}
+.doc-toolbar{display:flex;flex-wrap:wrap;gap:6px}
+.doc-toolbar button{flex:0 0 auto;margin:0}
+.doc-import-panel input[type=file]{display:none}
+.doc-import-panel summary{cursor:pointer;margin-bottom:8px}
+.doc-import-panel p{margin:8px 0 0}
+.doc-editor .doc-title-input,.doc-editor .doc-body{width:100%}
+.doc-view{overflow-wrap:anywhere}
+.doc-view pre{overflow-x:auto}
+.doc-view table{display:block;max-width:100%;overflow-x:auto}
 .doc-title-input{font-size:1.15rem;font-weight:600;border:none;border-bottom:1px solid #eee;padding:6px 0;outline:none}
 .doc-body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;border:1px solid #eee;border-radius:6px;padding:24px 28px;resize:vertical;min-height:70vh}
-.doc-actions{display:flex;align-items:center;gap:12px}
-.doc-public{font-size:13px;color:#888;display:flex;align-items:center;gap:6px}
-.doc-actions button{margin-left:auto}
+.doc-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.doc-public{min-width:0;flex:1 1 200px;font-size:13px;color:#888;display:flex;align-items:center;gap:6px}
+.doc-actions button{margin-left:auto;flex-shrink:0}
+@media(max-width:760px){.doc-body{padding:12px;min-height:50dvh}.doc-title{white-space:normal;overflow-wrap:anywhere;min-width:0}.doc-row{flex-wrap:wrap}.doc-snip{flex-basis:100%}}
 </style>`

@@ -24,7 +24,7 @@ func TestTheListLinksIntoAnEditor(t *testing.T) {
 	if !strings.Contains(body, `href="/notes?note=shopping"`) {
 		t.Error("a note in the list does not open")
 	}
-	if !strings.Contains(body, "New note") {
+	if !strings.Contains(body, `href="/notes?new=1">New</a>`) {
 		t.Error("no way to write a new note")
 	}
 	if strings.Contains(body, "Remember that my") {

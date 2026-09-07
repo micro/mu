@@ -952,7 +952,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			// a reading page put the operator's job in front of everybody
 			// else's page, and made the one place moderation lives two.
 			actions = `<div class="mb-4">
-				<a href="/blog?write=true" class="btn">New Post</a>
+				<a href="/blog?write=true" class="btn">New</a>
 			</div>`
 		} else {
 			// Guest user, show login prompt

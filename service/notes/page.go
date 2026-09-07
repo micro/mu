@@ -76,7 +76,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func list(entries []*notes.Entry) string {
 	var b strings.Builder
 	b.WriteString(`<div class="note-head">` +
-		`<a class="note-new" href="/notes?new=1">New note</a></div>`)
+		`<a class="btn" href="/notes?new=1">New</a></div>`)
 
 	if len(entries) == 0 {
 		// Most accounts land here, because an agent only writes a note when a

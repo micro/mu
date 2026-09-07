@@ -3055,7 +3055,7 @@ a.highlight {
     font-size: small;
   }
   #blog > div:first-child {
-    text-align: center;
+    text-align: left;
   }
   
   /* Topic selectors */
