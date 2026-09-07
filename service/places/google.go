@@ -59,6 +59,8 @@ func googleNearby(lat, lon float64, radiusM int) ([]*Place, error) {
 	}
 	body := map[string]interface{}{
 		"maxResultCount": googleMaxResults,
+		// Rank before the provider truncates the response, not just afterwards.
+		"rankPreference": "DISTANCE",
 		"locationRestriction": map[string]interface{}{
 			"circle": map[string]interface{}{
 				"center": map[string]interface{}{
@@ -82,6 +84,8 @@ func googleSearch(query string, lat, lon float64, radiusM int) ([]*Place, error)
 	body := map[string]interface{}{
 		"textQuery":      query,
 		"maxResultCount": googleMaxResults,
+		// Rank before the provider truncates the response, not just afterwards.
+		"rankPreference": "DISTANCE",
 		"locationBias": map[string]interface{}{
 			"circle": map[string]interface{}{
 				"center": map[string]interface{}{
