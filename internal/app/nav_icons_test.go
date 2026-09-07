@@ -57,7 +57,7 @@ func TestEveryNavIconExists(t *testing.T) {
 // row collapses to its label rather than showing a broken image, so it reads
 // as a deliberately plain entry rather than a mistake.
 func TestEveryAccountMenuEntryHasAnIcon(t *testing.T) {
-	menu := navBottom(&auth.Account{ID: "someone", Admin: true})
+	menu := navBottom(&auth.Account{ID: "someone", Admin: true}, "")
 	for _, row := range strings.Split(menu, "<a ")[1:] {
 		id := ""
 		if i := strings.Index(row, `id="`); i >= 0 {

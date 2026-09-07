@@ -366,17 +366,9 @@ func indexBody() string {
 </style>`
 }
 
-// topRight is the landing's corner: the public catalogue and the way in.
-//
-// Two links, for the two audiences arriving here. Tools takes an agent builder
-// to the machine-facing catalogue; Log in takes a returning person home. Sign
-// up remains one step behind Log in, on the login page, rather than making
-// three competing actions in this small corner.
-//
-// No redirect on the way in. The landing is the one page where signing in
-// should move you somewhere else, and it already does.
+// topRight offers one way in from the landing; signup is on the login page.
 func topRight() string {
-	return `<a href="/tools">Tools</a><a href="/login">Log in</a>`
+	return `<a href="/login">Log in</a>`
 }
 
 // today is what you are given for arriving, before you ask anything.

@@ -74,7 +74,7 @@ func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
 // its mailbox were removed — both survived here as links to nothing, which is
 // what this half of the test exists to catch.
 func TestTheBottomIsWhoYouAreAndTheWayOut(t *testing.T) {
-	bottom := navBottom(&auth.Account{ID: "someone"})
+	bottom := navBottom(&auth.Account{ID: "someone"}, "")
 
 	if !strings.Contains(bottom, "Signed in as") || !strings.Contains(bottom, "@someone") {
 		t.Errorf("the rail does not say which account this is: %q", bottom)
@@ -120,13 +120,13 @@ func TestAnOrdinaryAccountIsNotShownTheDoor(t *testing.T) {
 	if nav := headAdmin(&auth.Account{ID: "reader"}); nav != "" {
 		t.Errorf("a non-admin is offered the admin dashboard: %s", nav)
 	}
-	if strings.Contains(navBottom(&auth.Account{ID: "reader"}), "/admin") {
+	if strings.Contains(navBottom(&auth.Account{ID: "reader"}, ""), "/admin") {
 		t.Error("the bottom group still carries an admin link")
 	}
 }
 
 func TestSignedOutGetsNoAdminLink(t *testing.T) {
-	if headAdmin(nil) != "" || strings.Contains(navBottom(nil), "/admin") {
+	if headAdmin(nil) != "" || strings.Contains(navBottom(nil, ""), "/admin") {
 		t.Error("a signed-out visitor is offered the admin dashboard")
 	}
 }
