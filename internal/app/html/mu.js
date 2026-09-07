@@ -1079,26 +1079,14 @@ function updateUserList(users) {
     container.id = 'chat-users';
     messagesDiv.insertBefore(container, messagesDiv.firstChild);
   }
-  if (!users || users.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-  var parts = users.map(function(u) {
-    return '<a href="/@' + encodeURIComponent(u) + '" title="View profile" style="color:#555;text-decoration:none;font-weight:600;">@' + u + '</a>';
+  container.replaceChildren();
+  (users || []).forEach(function(u) {
+    var link = document.createElement('a');
+    link.href = '/@' + encodeURIComponent(u);
+    link.title = 'View profile';
+    link.textContent = '@' + u;
+    container.appendChild(link);
   });
-  // And that the agent answers, which the list does not say.
-  //
-  // The roster is people — @micro is a program, it is present in every room in
-  // the sense presence means, and listing it put a third party in a
-  // conversation between two. So it came off the list, and then the line said
-  // "In room: @asim" and micro replied to the next message: reported as "I
-  // don't know that micro is in the chat".
-  //
-  // Both halves are true and the list can only carry one of them. Being
-  // reachable by name is not being here, so the reachable half is said in
-  // words next to the people who are.
-  container.innerHTML = '<span style="color:#999;">In room: </span>' + parts.join(' &nbsp;') +
-    '<span style="color:#999;"> &nbsp;· @micro answers when you name it</span>';
 }
 
 function sendRoomMessage(form) {

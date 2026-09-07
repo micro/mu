@@ -1876,13 +1876,11 @@ body:has(#messages) #chat-back-link {
   margin: 15px 0 0 0;
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: stretch;
 }
 
 #chat-form button {
-  /* Width and flow only. The padding here was 10px 20px, which made the send
-     arrow taller than the field it sits beside — the height comes from the
-     control scale now. */
+  /* Stretch to the textarea height, including when it grows to more rows. */
   margin: 0;
   width: auto;
   flex-shrink: 0;
@@ -7833,8 +7831,9 @@ a.btn-secondary:hover, .btn-secondary:hover {
    are the element's own and there is no display property for .d-none to win an
    argument with. */
 .room-about {
-  margin: 0 0 14px;
-  padding: 0 0 12px;
+  flex-shrink: 0;
+  margin: 0 0 12px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border-color, #eee);
   font-size: 14px;
   line-height: 1.55;
