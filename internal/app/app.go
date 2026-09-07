@@ -1279,8 +1279,7 @@ func navMain(acc *auth.Account) string {
 			`"><span class="label">` + label + `</span></a>`
 	}
 
-	b := `<a id="nav-micro" href="/">` + microMark + `<span class="label">Micro</span></a>`
-	b += item("nav-home", "/home", "/home.png", "Home")
+	b := item("nav-home", "/home", "/home.png", "Home")
 	// Account and Profile are not here. They are the two that are about *you*
 	// rather than about the instance, so they sit under your name at the foot
 	// beside Log out — which is where somebody looks when the question is "who
@@ -1325,7 +1324,6 @@ func navTabs(acc *auth.Account) string {
 			`" alt=""><span>` + label + `</span></a>`
 	}
 	return `<nav id="tabs" aria-label="Main">` +
-		`<a href="/">` + microMark + `<span>Micro</span></a>` +
 		tab("/home", "/home.png", "Home") +
 		tab("/inbox", "/mail.png", "Inbox") +
 		tab("/agents", "/agent.svg", "Agents") +
@@ -1846,5 +1844,3 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		navBottom(acc, here),
 		title, body, footerFor(acc), navTabs(acc))
 }
-
-const microMark = `<span class="micro-mark" aria-hidden="true">Mu</span>`

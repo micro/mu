@@ -358,7 +358,7 @@ func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 		nav = nav[:j]
 	}
 
-	want := []string{`href="/"`, `href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`}
+	want := []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`}
 	at := -1
 	for _, w := range want {
 		i := strings.Index(nav, w)

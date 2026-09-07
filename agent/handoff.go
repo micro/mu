@@ -88,7 +88,7 @@ function finish(id){
  if(draft)sessionStorage.setItem('mu_chat_draft:'+ns+':'+id,draft);
  ['hist','conv','ctx','draft'].forEach(function(k){sessionStorage.removeItem('mu_chat_'+k+':landing');});
  }catch(e){return;}
- location.replace(id?'/?session='+encodeURIComponent(id):'/?new=1');
+ location.replace(id?'/agent/micro?session='+encodeURIComponent(id):'/agent/micro?new=1');
 }
 if(!turns.length){finish('');return;}
 fetch('/agent/handoff',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':` + app.JSString(auth.CSRFToken(r)) + `},body:JSON.stringify({turns:turns})})

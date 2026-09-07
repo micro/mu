@@ -47,9 +47,9 @@ import (
 //
 // The description still follows. It reads better as a caption than as a pitch.
 func Index(w http.ResponseWriter, r *http.Request) {
-	// The front door is the assistant workspace once signed in.
+	// Signed-in users enter Home, which already contains the assistant prompt.
 	if _, acc := auth.TrySession(r); acc != nil {
-		agent.MicroHandler(w, r)
+		http.Redirect(w, r, "/home", http.StatusSeeOther)
 		return
 	}
 	if r.URL.Query().Get("from") == "app" {
