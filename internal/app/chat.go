@@ -1059,6 +1059,7 @@ function ask(q){
             setTimeout(recover,3000);
           })
           .catch(function(){
+            if(epoch!==viewEpoch)return;
             if(Date.now()>reconnectUntil){
               a.innerHTML='<div class="mu-err">The connection was lost and no answer came back. Please try again.</div>';save();return;
             }
@@ -1364,6 +1365,7 @@ function watchPending(){
       {headers:{'Accept':'application/json'},credentials:'same-origin'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(d){
+        if(contextId!==pendingID||!a.isConnected){clearInterval(timer);return;}
         if(!d){done('');return;}
         if(d.html){done(d.html);return;}
         if(Array.isArray(d.steps)){
