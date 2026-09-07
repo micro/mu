@@ -1327,38 +1327,13 @@ body.page-home #page-title ~ #customize-link {
   padding-top: 0;
 }
 
-/* News on Home is headlines, and the card was showing articles.
- *
- * Eight items, each a category, a title, the feed's description sentence and a
- * source line: 882px measured at 1728, against 469 for the next biggest card
- * and 164 for the smallest. One card was half the page while everything around
- * it was a glance.
- *
- * The description is the part that goes. It is a third telling of the same
- * thing on one screen — the brief at the top of the page is the synthesis, this
- * is the headlines, and /news is the articles — and a headline that needs its
- * description to be worth reading is one click away from it either way.
- *
- * Nothing is dropped from the list. A time window was the other way to shorten
- * this and it is the wrong one: somebody who slept through the night would
- * arrive to an empty card, which is exactly when there is most to catch up on.
- * Eight headlines that fit are eight headlines.
- *
- * auto-fill rather than a breakpoint, because what decides how many columns fit
- * is the width of this card and not of the window — the same card is 472px wide
- * with the rail open at 1440 and 892 with it closed at 1728. The grid answers
- * for both without either being written down.
- *
- * 280 and not 300, because the card's own padding is inside the measurement: at
- * 1280 with the rail open the card is 652 wide and the grid had about 610 of
- * it, which is two 300px tracks and a gap short by eighteen pixels — so that
- * width, which is an ordinary laptop, fell back to one column. */
+/* Home keeps one headline per category with its description below.
+   Columns follow the card width, including when the sidebar is open. */
 #home #news .section {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   column-gap: 28px;
 }
-#home #news .headline .description { display: none; }
 /* In a grid the first and last item are not the first and last of a column, so
    the rules above that trim their padding would leave one row short of its
    neighbour. Uniform instead. */

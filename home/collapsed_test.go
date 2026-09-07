@@ -80,22 +80,15 @@ func TestTheCornerDoesNotRepeatTheRail(t *testing.T) {
 	}
 }
 
-// News on Home is headlines rather than articles.
-//
-// Eight items with a category, a title, the feed's description and a source
-// line came to 882px, against 469 for the next biggest card and 164 for the
-// smallest: one card was half the page on a screen of glances. The description
-// is a third telling of the same thing — the brief above it is the synthesis
-// and /news is the article — so it goes, and the items lay out in columns when
-// the card is wide enough for them.
-//
-// Not a time window. Cutting to the last few hours empties the card overnight,
-// which is exactly when there is most to catch up on.
+// Headlines retain their descriptions and use columns when the card has room.
 func TestTheNewsCardIsAGlance(t *testing.T) {
 	css := styles(t)
-	if !strings.Contains(css, "#home #news .headline .description { display: none; }") {
-		t.Error("the news card is showing article descriptions again, which is what " +
-			"made it twice the height of every other card")
+	descriptions := regexp.MustCompile(`#home\s+#news\s+\.headline\s+\.description\s*\{[^}]*\}`).FindAllString(css, -1)
+	hidden := regexp.MustCompile(`(?i)\bdisplay\s*:\s*none\s*(!\s*important\s*)?(;|\})`)
+	for _, rule := range descriptions {
+		if hidden.MatchString(rule) {
+			t.Error("the Home news card hides the descriptions beneath its headlines")
+		}
 	}
 	grid := regexp.MustCompile(`#home #news \.section\s*\{[^}]*\}`).FindString(css)
 	if !strings.Contains(grid, "auto-fill") {
