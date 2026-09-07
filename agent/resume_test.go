@@ -10,7 +10,7 @@ import (
 )
 
 func TestMicroEntryReopensHistoryAndNewStartsEmpty(t *testing.T) {
-	const who = "micro-entry-test"
+	const who = "micro_entry_test"
 	if err := auth.Create(&auth.Account{ID: who}); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestMicroEntryReopensHistoryAndNewStartsEmpty(t *testing.T) {
 		if got := strings.Contains(w.Body.String(), `var contextId="`+id+`"`); got != tc.want {
 			t.Errorf("%s reopened=%v", tc.path, got)
 		}
-		if !strings.Contains(w.Body.String(), `agent-micro-entry-test-`) {
+		if !strings.Contains(w.Body.String(), `agent-micro_entry_test-`) {
 			t.Error("storage lacks account scope")
 		}
 	}
