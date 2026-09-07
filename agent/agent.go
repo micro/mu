@@ -1317,6 +1317,12 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	// frames and owns nothing else about the run.
 	sopts := opts
 	sopts.Stream = StreamHooks{
+		Start: func() {
+			wmu.Lock()
+			defer wmu.Unlock()
+			streaming = false
+			captured.Reset()
+		},
 		ToolStart: func(run ToolRun) {
 			wmu.Lock()
 			key := keyOf(run)
@@ -1361,17 +1367,18 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			send(map[string]any{"type": "tool_done", "name": run.Label, "message": run.Label + " — done"})
 		},
 		Token: func(tok string) {
+			wmu.Lock()
+			defer wmu.Unlock()
+			captured.WriteString(tok)
 			if shouldHoldNativeNewsStreamTokens(prompt, nativeTools) {
-				captured.WriteString(tok)
 				return
 			}
 			if !streaming {
 				streaming = true
 				emitted = true
-				send(map[string]any{"type": "stream_start"})
+				sse(w, map[string]any{"type": "stream_start"})
 			}
-			captured.WriteString(tok)
-			send(map[string]any{"type": "stream_token", "token": tok})
+			sse(w, map[string]any{"type": "stream_token", "token": tok})
 		},
 	}
 	answer, err := runNative(accountID, prompt, sopts)
@@ -1432,7 +1439,7 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			f.Status = "done"
 		})
 	}
-	send(map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
+	send(map[string]any{"type": "response", "html": html, "text": answer, "flow_id": flow.ID})
 	send(map[string]any{"type": "done"})
 }
 
