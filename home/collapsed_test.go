@@ -80,15 +80,13 @@ func TestTheCornerDoesNotRepeatTheRail(t *testing.T) {
 	}
 }
 
-// Headlines retain their descriptions and use columns when the card has room.
+// Headlines stay compact and use columns when the card has room.
 func TestTheNewsCardIsAGlance(t *testing.T) {
 	css := styles(t)
 	descriptions := regexp.MustCompile(`#home\s+#news\s+\.headline\s+\.description\s*\{[^}]*\}`).FindAllString(css, -1)
 	hidden := regexp.MustCompile(`(?i)\bdisplay\s*:\s*none\s*(!\s*important\s*)?(;|\})`)
-	for _, rule := range descriptions {
-		if hidden.MatchString(rule) {
-			t.Error("the Home news card hides the descriptions beneath its headlines")
-		}
+	if len(descriptions) != 1 || !hidden.MatchString(descriptions[0]) {
+		t.Error("the Home news card must hide descriptions beneath its headlines")
 	}
 	grid := regexp.MustCompile(`#home #news \.section\s*\{[^}]*\}`).FindString(css)
 	if !strings.Contains(grid, "auto-fill") {
