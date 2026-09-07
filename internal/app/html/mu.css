@@ -3530,6 +3530,10 @@ a.highlight {
 }
 
 .mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   background: var(--card-background, #fff);
   color: var(--text-secondary, #555);
   cursor: pointer;
