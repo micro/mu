@@ -1327,7 +1327,7 @@ body.page-home #page-title ~ #customize-link {
   padding-top: 0;
 }
 
-/* Home keeps one headline per category with its description below.
+/* Home keeps one compact headline per category.
    Columns follow the card width, including when the sidebar is open. */
 #home #news .section {
   display: grid;
@@ -1343,7 +1343,14 @@ body.page-home #page-title ~ #customize-link {
   padding: 10px 0;
   border-bottom: 1px solid var(--border-color, #f0f0f0);
 }
-#home #news .headline .title { line-height: 1.35; }
+#home #news .headline .description { display: none; }
+#home #news .headline .title {
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#home #news .headline { min-width: 0; }
 
 #home .card .item,
 #home .card .post-item,
