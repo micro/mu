@@ -716,19 +716,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	// Describing an app happens at /code, and only there.
-	//
-	// This was a box that asked once and kept whatever came back. /code asks,
-	// runs the scanner and the tests over the result, and asks again with what
-	// they said — then lets you keep going: "now make it dark" changes the app
-	// you have rather than starting a second one.
-	//
-	// Two boxes that both claim to build an app from a sentence is the thing
-	// to avoid here, and the one to delete is the one that cannot iterate. What
-	// stays on this page is the other job entirely: pasting HTML you wrote.
-	sb.WriteString(`<p class="col-narrow mb-2">` + app.ActionLink("/agent/micro", "Describe an app to Micro") + `</p>`)
-	sb.WriteString(`<details class="col-narrow mt-5"><summary class="clickable text-secondary text-base">Write the HTML yourself</summary>`)
-	sb.WriteString(`<form method="POST" action="/apps/new" class="mt-4">`)
+	sb.WriteString(`<form method="POST" action="/apps/new" class="col-narrow">`)
 	sb.WriteString(`<div class="mb-3"><label>Name</label><br>`)
 	sb.WriteString(`<input type="text" name="name" required maxlength="60" class="form-input w-full" placeholder="Pomodoro Timer"></div>`)
 	sb.WriteString(`<div class="mb-3"><label>Description</label><br>`)
@@ -741,9 +729,8 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" class="form-input w-full" placeholder="0"></div>`)
 	sb.WriteString(`<div class="mb-3"><label class="d-flex items-center gap-1"><input type="checkbox" name="public" value="1" checked class="w-auto m-0"> Public</label></div>`)
 	sb.WriteString(`<p class="mb-3 text-sm text-muted">Set a price and keep all of it. Free apps cost nothing to use.</p>`)
-	sb.WriteString(`<button type="submit" class="btn">Create App</button>`)
+	sb.WriteString(`<button type="submit" class="btn">Create</button>`)
 	sb.WriteString(`</form>`)
-	sb.WriteString(`</details>`)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Create App",
