@@ -381,7 +381,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	if StripeEnabled() {
 		sb.WriteString(renderStripeDeposit(sess.Account, r.URL.Query().Get("error")))
 	}
-	if x402.Enabled() {
+	if x402.TopUpRequirement(100) != nil {
 		sb.WriteString(wallet.Page(sess.Account))
 	} else if !StripeEnabled() {
 		sb.WriteString(`<div class="card"><p>No payment methods available.</p></div>`)
@@ -615,7 +615,7 @@ func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	methods := []TopupMethod{}
-	if x402.Enabled() {
+	if x402.TopUpRequirement(100) != nil {
 		methods = append(methods, TopupMethod{Type: "usdc", Path: "/account/topup"})
 	}
 

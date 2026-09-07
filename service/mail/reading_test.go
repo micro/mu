@@ -32,3 +32,21 @@ func TestReadOwnershipAndBodyPaging(t *testing.T) {
 		t.Fatal("tag filter ignored")
 	}
 }
+
+func TestSearchPageUsesIndexedQuerySemantics(t *testing.T) {
+	indexed(t)
+	mutex.Lock()
+	old := append([]*Message(nil), messages...)
+	m := &Message{ID: "indexed_page", ToID: "indexed_owner", Subject: "Alpha report", Body: "invoice body", Tag: "work"}
+	addMessage(m)
+	mutex.Unlock()
+	indexMessage(m)
+	defer func() { unindexMessage(m); mutex.Lock(); setMessages(old); mutex.Unlock() }()
+	var rsp SearchResponse
+	if err := messagePage("indexed_owner", `"alpha report"`, "work", 0, 10, true, &rsp); err != nil {
+		t.Fatal(err)
+	}
+	if rsp.Total != 1 || len(rsp.Items) != 1 || rsp.Items[0].ID != m.ID {
+		t.Fatalf("indexed phrase query lost: %+v", rsp)
+	}
+}

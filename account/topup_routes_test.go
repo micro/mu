@@ -27,14 +27,18 @@ func TestTopupDoesNotOfferUnusableCryptoFunding(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer auth.EndSession(session.Token)
-	for _, path := range []string{"/account/topup", "/wallet/topup"} {
-		r := httptest.NewRequest("GET", path, nil)
-		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
-		w := httptest.NewRecorder()
-		BalanceHandler(w, r)
-		body := w.Body.String()
-		if !strings.Contains(body, "No payment methods available") || strings.Contains(body, "cw-qrnote") {
-			t.Fatalf("unusable funding offered on %s", path)
+	for _, payTo := range []string{"", "0x1111111111111111111111111111111111111111"} {
+		t.Setenv("X402_PAY_TO", payTo)
+		t.Setenv("X402_NETWORK", "unsupported-network")
+		for _, path := range []string{"/account/topup", "/wallet/topup"} {
+			r := httptest.NewRequest("GET", path, nil)
+			r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
+			w := httptest.NewRecorder()
+			BalanceHandler(w, r)
+			body := w.Body.String()
+			if !strings.Contains(body, "No payment methods available") || strings.Contains(body, "cw-qrnote") {
+				t.Fatalf("unusable funding offered on %s", path)
+			}
 		}
 	}
 }

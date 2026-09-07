@@ -91,8 +91,19 @@ func messagePage(owner, query, tag string, offset, limit int, search bool, rsp *
 	}
 	query, tag = strings.ToLower(strings.TrimSpace(query)), strings.ToLower(strings.TrimSpace(tag))
 	mutex.RLock()
+	count := len(messages)
+	mutex.RUnlock()
+	var indexed []*Message
+	if query != "" {
+		indexed = Search(owner, query, count+1)
+	}
+	mutex.RLock()
+	candidates := messages
+	if query != "" {
+		candidates = indexed
+	}
 	var found []*Message
-	for _, m := range messages {
+	for _, m := range candidates {
 		if m.Spam {
 			continue
 		}
@@ -106,19 +117,18 @@ func messagePage(owner, query, tag string, offset, limit int, search bool, rsp *
 		if tag != "" && !strings.EqualFold(m.Tag, tag) {
 			continue
 		}
-		if query != "" && !strings.Contains(strings.ToLower(m.Subject+"\n"+m.From+"\n"+m.Body), query) {
-			continue
-		}
 		cp := *m
 		found = append(found, &cp)
 	}
 	mutex.RUnlock()
-	sort.Slice(found, func(i, j int) bool {
-		if found[i].CreatedAt.Equal(found[j].CreatedAt) {
-			return found[i].ID < found[j].ID
-		}
-		return found[i].CreatedAt.After(found[j].CreatedAt)
-	})
+	if query == "" {
+		sort.Slice(found, func(i, j int) bool {
+			if found[i].CreatedAt.Equal(found[j].CreatedAt) {
+				return found[i].ID < found[j].ID
+			}
+			return found[i].CreatedAt.After(found[j].CreatedAt)
+		})
+	}
 	if limit <= 0 {
 		limit = 10
 	}

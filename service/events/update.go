@@ -74,6 +74,7 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 	} else if next.Fired || !next.When.After(time.Now()) {
 		return fmt.Errorf("supply a new future time for an event already due or fired")
 	}
+	next.Sequence++
 	events[next.ID] = &next
 	list := make([]*Event, 0, len(events))
 	for _, e := range events {
@@ -86,5 +87,9 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 	cp := next
 	rsp.Item = &cp
 	rsp.Text = "Updated: " + Describe(&next)
+	if OnCreate != nil {
+		invite := next
+		go OnCreate(&invite)
+	}
 	return nil
 }
