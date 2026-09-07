@@ -37,7 +37,7 @@ var f embed.FS
 // other, /agent is where you talk to something that acts.
 var Template = `
 %s
-<div class="room-layout"><aside class="room-roster"><h3>HERE</h3><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></aside><div class="room-main"><div id="messages"></div>
+<div class="room-layout"><aside class="room-roster"><h3>Here</h3><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></aside><div class="room-main"><div id="messages"></div>
 <form id="chat-form" onsubmit="return false;">
 <input id="topic" name="topic" type="hidden">
 <textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
@@ -830,7 +830,7 @@ func getOrCreateRoom(id string) *Room {
 	return room
 }
 
-// roster is who is in the room: everybody connected.
+// roster lists each connected account once, across tabs and devices.
 //
 // # People, not programs
 //
@@ -862,12 +862,15 @@ func (room *Room) roster() []string {
 	room.mutex.RLock()
 	defer room.mutex.RUnlock()
 	names := make([]string, 0, len(room.Clients))
+	seen := make(map[string]bool, len(room.Clients))
 	for _, client := range room.Clients {
-		if client == nil || client.UserID == agentName {
+		if client == nil || client.UserID == "" || client.UserID == agentName || seen[client.UserID] {
 			continue
 		}
+		seen[client.UserID] = true
 		names = append(names, client.UserID)
 	}
+	sort.Strings(names)
 	return names
 }
 
