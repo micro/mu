@@ -181,15 +181,13 @@ func serviceGrid(r *http.Request) string {
 	b.WriteString(`<div class="tool-grid service-grid">`)
 	for _, s := range service.Nav() {
 		b.WriteString(`<div class="service-tile-wrap">`)
-		// Every tile leads to /services/<name> — what the service is, what it
-		// knows right now, and every method with its arguments and its price.
-		// It used to lead straight to the service's own page, which meant a
-		// headless service was a tile you could not click and every other one
-		// skipped the question a reader on this page is asking: not "show me
-		// the weather" but "what is this and how do I call it". The page itself
-		// is one button away at the top of it.
-		open := `<a class="tool-tile service-tile card-hover" href="/services/` +
-			html.EscapeString(s.Name) + `">`
+		// Open the service experience directly. A reference remains the fallback
+		// for services without a dedicated page.
+		destination := s.Page
+		if destination == "" {
+			destination = "/api?service=" + s.Name
+		}
+		open := `<a class="tool-tile service-tile card-hover" href="` + html.EscapeString(destination) + `">`
 		close := `</a>`
 		b.WriteString(open)
 		b.WriteString(`<span class="service-tile-head">` +
@@ -212,18 +210,8 @@ func serviceGrid(r *http.Request) string {
 			b.WriteString(`<a class="service-tile-tools" href="/tools#svc-` +
 				html.EscapeString(groupAnchor(s.NavLabel())) + `">` + label + `</a>`)
 		}
-		// And the way to the thing itself, because the tile answers "what is
-		// this" and a reader who already knows should not have to read it
-		// again to get there. Same move as the count above: a second target on
-		// the tile rather than a second grid on the page.
-		//
-		// Skipped when the service's page *is* its reference — weather and
-		// hazards, whose pages were derived — since that is where the tile
-		// already goes.
-		if s.Page != "" && s.Page != "/services/"+s.Name {
-			b.WriteString(`<a class="service-tile-open" href="` +
-				html.EscapeString(s.Page) + `">Open &rarr;</a>`)
-		}
+		b.WriteString(`<a class="service-tile-open" href="/api?service=` +
+			html.EscapeString(s.Name) + `">API &rarr;</a>`)
 		// Nothing to pin without a page — the sidebar is a list of places.
 		if s.Page != "" {
 			b.WriteString(pinControl(r, s.Name, isPinned[s.Name]))

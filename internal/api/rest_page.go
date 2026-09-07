@@ -35,6 +35,10 @@ import (
 
 // RESTPageHandler serves /api.
 func RESTPageHandler(w http.ResponseWriter, r *http.Request) {
+	if name := r.URL.Query().Get("service"); name != "" {
+		serveServiceReference(w, r, name)
+		return
+	}
 	base := app.BaseURL(r)
 
 	var b strings.Builder
@@ -193,7 +197,7 @@ func restReference(base string) string {
 	last := ""
 	for _, m := range methods {
 		if m.Service != last {
-			nav.WriteString(`<div class="ep-nav-title">` + html.EscapeString(m.Service) + `</div>`)
+			nav.WriteString(`<div class="ep-nav-title"><a href="/api?service=` + html.EscapeString(m.Service) + `">` + html.EscapeString(m.Service) + `</a></div>`)
 			last = m.Service
 		}
 		price := ""

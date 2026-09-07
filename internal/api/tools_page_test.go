@@ -36,10 +36,8 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 
 	svc := serviceGrid(httptest.NewRequest("GET", "/services", nil))
 
-	// Every tile leads to the service's reference, not to the service's own
-	// page. A reader on this page is asking what a thing is and how to call it;
-	// the thing itself is one button away at the top of the reference.
-	if !strings.Contains(svc, `href="/services/catpaged"`) {
+	// The main tile opens the service UI; API documentation is secondary.
+	if !strings.Contains(svc, `class="tool-tile service-tile card-hover" href="/catpaged"`) {
 		t.Errorf("the services lens is missing a paged service:\n%s", svc)
 	}
 	if !strings.Contains(svc, ">Cat Paged<") || !strings.Contains(svc, "A service with a page") {
@@ -54,7 +52,7 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 	//
 	// Every service has a reference page, so there is no such thing as a
 	// service with nowhere to go any more.
-	if !strings.Contains(svc, `href="/services/cathidden"`) {
+	if !strings.Contains(svc, `href="/api?service=cathidden"`) {
 		t.Errorf("a headless service is not reachable from the services lens:\n%s", svc)
 	}
 	if !strings.Contains(svc, ">Cat Hidden<") {
@@ -64,12 +62,8 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 		t.Error("a service was rendered as a link to nowhere")
 	}
 
-	// A tile has three targets: what it is, the thing itself, and its tools.
-	// The reference answers "what is this and how do I call it", which is what
-	// a reader on this page is asking — and somebody who already knows should
-	// not have to read it again to reach the service. A second target on the
-	// tile rather than a second grid on the page.
-	if !strings.Contains(svc, `class="service-tile-open" href="/catpaged"`) {
+	// The API link opens a reference under the existing API door.
+	if !strings.Contains(svc, `class="service-tile-open" href="/api?service=catpaged"`) {
 		t.Errorf("a paged service has no way from its tile to its own page:\n%s", svc)
 	}
 	// A headless service has nothing to open, so it offers nothing.

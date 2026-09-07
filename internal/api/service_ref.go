@@ -45,6 +45,10 @@ func ServiceRefHandler(w http.ResponseWriter, r *http.Request) {
 		app.NotFound(w, r, "No such service")
 		return
 	}
+	serveServiceReference(w, r, name)
+}
+
+func serveServiceReference(w http.ResponseWriter, r *http.Request, name string) {
 	spec, ok := service.SpecFor(strings.ToLower(name))
 	if !ok {
 		app.NotFound(w, r, "No such service")
