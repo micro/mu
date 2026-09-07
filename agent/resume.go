@@ -14,14 +14,9 @@ func resumeMicroJS(accountID, agentID, contextID string) string {
 	}
 	return `<script>(function(){
 var key='mu_micro_resume:'+` + app.JSString(accountID) + `;
-var base='/';
+var base='/agent/micro';
 try{
  if(sessionStorage.getItem('mu_chat_hist:landing')||sessionStorage.getItem('mu_chat_draft:landing'))return;
- var saved=sessionStorage.getItem(key);
- if(saved)saved=saved.replace(/^\/agent\/micro\?/, '/?');
- if(location.pathname===base&&!location.search&&saved&&/^\/\?(session=[A-Za-z0-9_-]+|new=1)$/.test(saved)){
-  location.replace(saved);return;
- }
  function remember(id){sessionStorage.setItem(key,base+(id?'?session='+encodeURIComponent(id):'?new=1'));}
  var query=new URLSearchParams(location.search);
  if(!['bookmark','saved','item','prompt','q'].some(function(k){return query.has(k);}))remember(` + app.JSString(contextID) + `);
@@ -43,7 +38,7 @@ func MicroHandler(w http.ResponseWriter, r *http.Request) {
 
 func chatPath(owner, id string) string {
 	if id == "" {
-		return "/"
+		return "/agent/micro"
 	}
 	return Path(owner, id)
 }
