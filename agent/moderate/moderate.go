@@ -77,6 +77,9 @@ func Load() {
 // not do is pretend — see Configured below, which is what /admin/moderate
 // reads to say so on the page.
 func judge(kind, id, title, text string) {
+	if kind == "social" && flag.IsApproved(kind, id) {
+		return
+	}
 	// Missing AI is a supported local-only setup, not an operational failure.
 	// Explicit profanity still receives the deterministic verdict below.
 	if !Configured() && !flag.Profane(title+"\n"+text) {
@@ -153,3 +156,6 @@ Classify the content with ONLY ONE WORD:
 IMPORTANT: Short personal status updates like "Working on X", "Good morning", "Just shipped Y", "Having lunch" are ALWAYS OK. They are normal status messages, not spam or low quality. Only flag content that is clearly abusive, vulgar, or spam. When in doubt, say OK.
 
 Respond with just the single word.`
+
+// Check evaluates an existing publication using the same policy as new ones.
+func Check(kind, id, title, text string) { judge(kind, id, title, text) }

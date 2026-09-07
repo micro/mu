@@ -1,6 +1,7 @@
 package social
 
 import (
+	"mu/internal/flag"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -8,6 +9,10 @@ import (
 )
 
 func TestAbusiveCachedThreadIsHiddenAcrossReaders(t *testing.T) {
+	mine(t)
+	if err := flag.AdminFlag("social", "unsafe-cached", "system:harmful"); err != nil {
+		t.Fatal(err)
+	}
 	mutex.Lock()
 	old := messages
 	messages = []*Message{
@@ -32,5 +37,11 @@ func TestAbusiveCachedThreadIsHiddenAcrossReaders(t *testing.T) {
 		if w.Code != 404 || strings.Contains(w.Body.String(), "fuckers") {
 			t.Fatalf("direct thread leaked for %s", accept)
 		}
+	}
+	if err := flag.Approve("social", "unsafe-cached"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(FeedText(20), "fuckers") {
+		t.Fatal("operator approval did not restore the post")
 	}
 }

@@ -751,7 +751,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 	results := data.Search(query, 50)
 	var socialResults []map[string]interface{}
 	for _, entry := range results {
-		if entry.Type == "social" && !flag.IsHidden("social", strings.TrimPrefix(entry.ID, "social_")) && !flag.Profane(entry.Content) {
+		if entry.Type == "social" && !flag.IsHidden("social", strings.TrimPrefix(entry.ID, "social_")) {
 			socialResults = append(socialResults, map[string]interface{}{
 				"title":    entry.Title,
 				"content":  entry.Content,
@@ -791,7 +791,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 
 	count := 0
 	for _, entry := range results {
-		if entry.Type != "social" || flag.IsHidden("social", strings.TrimPrefix(entry.ID, "social_")) || flag.Profane(entry.Content) {
+		if entry.Type != "social" || flag.IsHidden("social", strings.TrimPrefix(entry.ID, "social_")) {
 			continue
 		}
 		count++
@@ -1211,5 +1211,5 @@ func DeleteByAuthor(authorID string) {
 }
 
 func visibleMessage(m *Message) bool {
-	return m != nil && !flag.IsHidden("social", m.ID) && !flag.Profane(m.Content) && !auth.IsBanned(m.AuthorID)
+	return m != nil && !flag.IsHidden("social", m.ID) && !auth.IsBanned(m.AuthorID)
 }

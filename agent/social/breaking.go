@@ -20,6 +20,7 @@ import (
 
 	"mu/agent/moderate"
 	"mu/internal/app"
+	"mu/internal/flag"
 	"mu/service/news"
 	socialsvc "mu/service/social"
 )
@@ -27,6 +28,13 @@ import (
 // Start begins watching for stories worth surfacing: this instance's own news,
 // and — where an operator has turned it on — the open social network.
 func Start() {
+	// Migrate explicit abuse in cached social posts into moderation state.
+	// Only the deterministic rule is applied here; no model calls at boot.
+	for _, m := range socialsvc.Threads() {
+		if flag.Profane(m.Content) {
+			moderate.Check("social", m.ID, "", m.Content)
+		}
+	}
 	go detectBreakingStories()
 
 	// What the agent decides, handed to the service to store. Wired here rather

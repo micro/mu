@@ -5,6 +5,7 @@ package flag
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 // FlaggedItem represents a piece of content that has been flagged.
 type FlaggedItem struct {
+	Approved    bool      `json:"approved,omitempty"`
 	ContentType string    `json:"content_type"` // "post", "thread", etc.
 	ContentID   string    `json:"content_id"`
 	FlagCount   int       `json:"flag_count"`
@@ -163,7 +165,7 @@ func Approve(contentType, contentID string) error {
 	key := contentType + ":" + contentID
 
 	mutex.Lock()
-	delete(flags, key)
+	flags[key] = &FlaggedItem{ContentType: contentType, ContentID: contentID, Approved: true}
 	err := saveUnlocked()
 	mutex.Unlock()
 
@@ -189,8 +191,15 @@ func AdminFlag(contentType, contentID, username string) error {
 	key := contentType + ":" + contentID
 
 	mutex.Lock()
+	// Social messages are immutable. An operator's approval must also win
+	// against a classifier that was already in flight when Approve ran.
+	if item := flags[key]; contentType == "social" && strings.HasPrefix(username, "system:") && item != nil && item.Approved && !item.Flagged {
+		mutex.Unlock()
+		return nil
+	}
 	adminFlagger := username + " (admin)"
 	if item, exists := flags[key]; exists {
+		item.Approved = false
 		item.FlagCount = 3
 		item.Flagged = true
 		if !contains(item.FlaggedBy, adminFlagger) {
@@ -260,4 +269,12 @@ type PostContent struct {
 	Author    string
 	AuthorID  string
 	CreatedAt time.Time
+}
+
+// IsApproved reports an explicit operator approval, retained across restarts.
+func IsApproved(contentType, contentID string) bool {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	item := flags[contentType+":"+contentID]
+	return item != nil && item.Approved && !item.Flagged
 }
