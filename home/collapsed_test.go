@@ -80,22 +80,25 @@ func TestTheCornerDoesNotRepeatTheRail(t *testing.T) {
 	}
 }
 
-// Headlines stay compact and use columns when the card has room.
+// Headlines form one readable column with their descriptions.
 func TestTheNewsCardIsAGlance(t *testing.T) {
 	css := styles(t)
-	descriptions := regexp.MustCompile(`#home\s+#news\s+\.headline\s+\.description\s*\{[^}]*\}`).FindAllString(css, -1)
+	descriptions := regexp.MustCompile(`[^{}]*\.headline[^{}]*\.description[^{}]*\{[^}]*\}`).FindAllString(css, -1)
 	hidden := regexp.MustCompile(`(?i)\bdisplay\s*:\s*none\s*(!\s*important\s*)?(;|\})`)
-	if len(descriptions) != 1 || !hidden.MatchString(descriptions[0]) {
-		t.Error("the Home news card must hide descriptions beneath its headlines")
+	if len(descriptions) == 0 {
+		t.Fatal("no headline description styles were checked")
 	}
-	grid := regexp.MustCompile(`#home #news \.section\s*\{[^}]*\}`).FindString(css)
-	if !strings.Contains(grid, "auto-fill") {
-		t.Errorf("the headlines do not lay out in columns: %q", grid)
+	visible := regexp.MustCompile(`#home #news \.headline \.description\s*\{\s*display:\s*block;\s*\}`)
+	if !visible.MatchString(css) {
+		t.Error("Home must explicitly display headline descriptions")
 	}
-	// auto-fill and not a media query, because what decides the number of
-	// columns is the card's width, and that depends on the rail as much as on
-	// the window.
-	if strings.Contains(grid, "@media") {
-		t.Error("the headline columns are keyed to the window rather than to the card")
+	for _, rule := range descriptions {
+		if hidden.MatchString(rule) {
+			t.Error("the Home news card hides descriptions")
+		}
+	}
+	section := regexp.MustCompile(`#home #news \.section\s*\{[^}]*\}`).FindString(css)
+	if !strings.Contains(section, "display: block") {
+		t.Error("Home headlines must use one column")
 	}
 }
