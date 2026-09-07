@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"mu/internal/data"
+	"mu/internal/flag"
 	"mu/internal/quota"
 	"mu/internal/service"
 )
@@ -86,7 +87,7 @@ func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchRespons
 	var b strings.Builder
 	n := 0
 	for _, entry := range data.Search(q, 50) {
-		if entry.Type != "social" {
+		if entry.Type != "social" || flag.IsHidden("social", strings.TrimPrefix(entry.ID, "social_")) || flag.Profane(entry.Content) {
 			continue
 		}
 		if n >= limit {

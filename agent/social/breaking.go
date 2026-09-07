@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/agent/moderate"
 	"mu/internal/app"
 	"mu/service/news"
 	socialsvc "mu/service/social"
@@ -32,7 +33,9 @@ func Start() {
 	// than imported inside the watcher so the filtering and the scoring can be
 	// tested without standing up social.
 	Surface = func(c *candidate) {
-		socialsvc.SurfaceBreaking(c.Category, c.display(), c.Link)
+		if moderate.Approved(c.Category, c.Text) {
+			socialsvc.SurfaceBreaking(c.Category, c.display(), c.Link)
+		}
 	}
 	go Watch()
 }
@@ -103,7 +106,7 @@ func surfaceBreakingFromNews() {
 				// Surface the first one (use URL as dedup key)
 				if !surfaced[a.url] {
 					surfaced[a.url] = true
-					socialsvc.SurfaceBreaking(a.category, a.title, a.url)
+					surfaceApproved(a.category, a.title, a.url)
 					app.Log("social", "Breaking: %q matched across %s and %s", a.title, a.category, b.category)
 				}
 			}
@@ -138,4 +141,12 @@ func extractKeywords(title string) map[string]bool {
 		}
 	}
 	return words
+}
+
+// Both network imports and news-derived threads pass the same content policy.
+func surfaceApproved(category, text, link string) {
+	if !moderate.Approved(category, text) {
+		return
+	}
+	socialsvc.SurfaceBreaking(category, text, link)
 }

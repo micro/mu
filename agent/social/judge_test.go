@@ -47,9 +47,9 @@ func TestTheModelsOrderIsKept(t *testing.T) {
 	}
 }
 
-// TestWithoutAModelTheShortlistIsStillPublished — an instance with no LLM
-// configured is a supported instance, and social should still work on it.
-func TestWithoutAModelTheShortlistIsStillPublished(t *testing.T) {
+// TestWithoutAModelTheShortlistIsNotPublished — an instance with no LLM
+// configured can still host local threads, but must not auto-publish imports.
+func TestWithoutAModelTheShortlistIsNotPublished(t *testing.T) {
 	var got []*candidate
 	Surface = func(c *candidate) { got = append(got, c) }
 	defer func() { Surface = func(*candidate) {} }()
@@ -64,11 +64,8 @@ func TestWithoutAModelTheShortlistIsStillPublished(t *testing.T) {
 	}
 	review() // no AI configured in a test, so judge returns nothing
 
-	if len(got) != 3 {
-		t.Fatalf("surfaced %d with no model configured, want 3", len(got))
-	}
-	if got[0].Link != "https://b" {
-		t.Errorf("fell back to arrival order rather than score: %s first", got[0].Link)
+	if len(got) != 0 {
+		t.Fatalf("surfaced %d without moderation, want none", len(got))
 	}
 }
 
