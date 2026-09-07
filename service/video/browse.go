@@ -18,6 +18,7 @@ func browse(r *http.Request, all map[string]Channel) string {
 	seenCat := map[string]bool{}
 	seen := map[string]bool{}
 	items := []*Result{}
+	feed := map[*Result]string{}
 	for cat, ch := range all {
 		if !seenCat[cat] {
 			seenCat[cat] = true
@@ -29,6 +30,7 @@ func browse(r *http.Request, all map[string]Channel) string {
 			}
 			seen[v.ID] = true
 			items = append(items, v)
+			feed[v] = cat
 		}
 	}
 	sort.Slice(items, func(i, j int) bool {
@@ -41,16 +43,8 @@ func browse(r *http.Request, all map[string]Channel) string {
 		latest := make([]*Result, 0)
 		covered := map[string]bool{}
 		for _, v := range items {
-			key := v.ChannelID
-			if key == "" {
-				key = v.Channel
-			}
-			if key == "" {
-				key = v.Category
-			}
-			if key == "" {
-				key = v.ID
-			}
+			// The enclosing feed is present even in legacy caches without metadata.
+			key := feed[v]
 			if !covered[key] {
 				latest = append(latest, v)
 				covered[key] = true

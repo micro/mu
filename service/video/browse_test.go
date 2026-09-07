@@ -84,8 +84,9 @@ func TestOverviewKeepsSlowChannelsVisible(t *testing.T) {
 	now := time.Now()
 	all := map[string]Channel{"Tech": {Videos: []*Result{
 		{ID: "fast1", ChannelID: "fast", Title: "Fast newest", Published: now},
-		{ID: "fast2", ChannelID: "fast", Title: "Fast older", Published: now.Add(-time.Hour)},
-		{ID: "slow", ChannelID: "slow", Title: "Slow channel", Published: now.Add(-48 * time.Hour)},
+		{ID: "fast2", Title: "Fast older", Published: now.Add(-time.Hour)},
+	}}, "Slow": {Videos: []*Result{
+		{ID: "slow", Title: "Slow channel", Published: now.Add(-48 * time.Hour)},
 	}}}
 	body := browse(httptest.NewRequest("GET", "/video", nil), all)
 	if strings.Count(body, "<article ") != 2 || !strings.Contains(body, "Slow channel") || strings.Contains(body, "Fast older") {
