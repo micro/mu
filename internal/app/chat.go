@@ -824,9 +824,11 @@ function agentName(){
   return AGENT_NAME;
 }
 
+var viewEpoch=0,detachActive=null;
 function ask(q){
   q=String(q||'').trim();
   if(!q)return;
+  var epoch=viewEpoch;
   hideBrief();
   sugDiv.innerHTML='';
   var u=document.createElement('div');u.className='mu-user';u.textContent=q;conv.appendChild(u);
@@ -898,8 +900,11 @@ function ask(q){
   // what they send, which is how it was told apart for one commit and which
   // made a naming inconsistency load-bearing. This wants tokens as they
   // arrive, so it says so.
-  fetch('/agent',{method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},body:body,credentials:'same-origin'})
+  var streamController=new AbortController();
+  detachActive=function(){stopWork();streamController.abort();};
+  fetch('/agent',{signal:streamController.signal,method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},body:body,credentials:'same-origin'})
   .then(function(resp){
+    if(epoch!==viewEpoch)throw 'handled';
     if(resp.status===401){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();
@@ -931,6 +936,7 @@ function ask(q){
     var buf='';
     function read(){
       return reader.read().then(function(chunk){
+        if(epoch!==viewEpoch){stopWork();reader.cancel();return;}
         if(chunk.done){stopWork();save();return;}
         buf+=decoder.decode(chunk.value,{stream:true});
         var lines=buf.split('\n');
@@ -1022,7 +1028,7 @@ function ask(q){
   })
   .catch(function(err){
     stopWork();
-    if(err==='handled')return;
+    if(err==='handled'||epoch!==viewEpoch)return;
     // Losing the stream is not the same as losing the run. The server uses a
     // run context independent of this request and records the eventual answer
     // in the conversation. Stay attached to that record instead of replacing
@@ -1032,10 +1038,12 @@ function ask(q){
       a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>Connection lost. Reconnecting...</span></div>';
       save();
       (function recover(){
+        if(epoch!==viewEpoch)return;
         fetch('/agent/pending?thread='+encodeURIComponent(contextId),
           {headers:{'Accept':'application/json'},credentials:'same-origin'})
           .then(function(r){return r.ok?r.json():null})
           .then(function(d){
+            if(epoch!==viewEpoch)return;
             if(d&&d.html){a.outerHTML=d.html;save();toBottom(false);return;}
             if(d&&Array.isArray(d.steps)&&d.steps.length){
               done=[];workLabel='Working';
@@ -1070,12 +1078,11 @@ showSuggestions();
 var switchSequence=0;
 window.muChatOpen=function(url,push){
   var seq=++switchSequence;
-  if(conv.querySelector('.mu-cursor')||conv.querySelector('.mu-think'))return;
   fetch(url,{headers:{'X-Mu-Transcript':'1','Accept':'application/json'},credentials:'same-origin'})
     .then(function(r){if(!r.ok)throw Error('Unable to open chat');return r.json();})
     .then(function(d){
       if(seq!==switchSequence)return;
-      saveDraft();contextId=d.id;history=[];attachment='';conv.innerHTML=d.html;input.value='';
+      saveDraft();viewEpoch++;if(detachActive){detachActive();detachActive=null;}contextId=d.id;history=[];attachment='';conv.innerHTML=d.html;input.value='';
       try{input.value=sessionStorage.getItem(draftKey())||'';}catch(e){}
       if(window.muSeedAgent)window.muSeedAgent(d.agent);
       document.querySelectorAll('.chat-sess').forEach(function(a){a.classList.toggle('active',new URL(a.href,location.href).searchParams.get('session')===d.id);});
@@ -1091,12 +1098,18 @@ if(rail)rail.addEventListener('click',function(e){
   if(!a||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
   e.preventDefault();e.stopPropagation();window.muChatOpen(a.href,true);
 });
-window.addEventListener('popstate',function(){
-  if(new URL(location.href).searchParams.has('session'))window.muChatOpen(location.href,false);
+if(rail)window.history.replaceState(Object.assign({},window.history.state,{muInitialThread:contextId}),'',location.href);
+window.addEventListener('popstate',function(e){
+  if(!rail||!rail.isConnected)return;
+  var u=new URL(location.href);
+  if(!u.searchParams.has('session')&&e.state&&e.state.muInitialThread)u.searchParams.set('session',e.state.muInitialThread);
+  if(u.searchParams.has('session'))window.muChatOpen(u.href,false);
+  else window.muChatNew();
 });
 
 // Start a fresh session (clears the log + thread id).
 window.muChatNew=function(){
+  viewEpoch++;switchSequence++;if(detachActive){detachActive();detachActive=null;}
   try{sessionStorage.removeItem(draftKey());sessionStorage.removeItem(scrollKey());}catch(e){}
   conv.innerHTML='';history=[];contextId='';input.value='';
   window.dispatchEvent(new CustomEvent('mu-chat-new'));
