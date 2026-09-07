@@ -1331,6 +1331,9 @@ body.page-home #page-title ~ #customize-link {
 #home #news .section {
   display: block;
 }
+#home #news .headline .description {
+  display: block;
+}
 
 #home .card .item,
 #home .card .post-item,

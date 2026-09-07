@@ -83,8 +83,15 @@ func TestTheCornerDoesNotRepeatTheRail(t *testing.T) {
 // Headlines form one readable column with their descriptions.
 func TestTheNewsCardIsAGlance(t *testing.T) {
 	css := styles(t)
-	descriptions := regexp.MustCompile(`#home\s+#news\s+\.headline\s+\.description\s*\{[^}]*\}`).FindAllString(css, -1)
+	descriptions := regexp.MustCompile(`[^{}]*\.headline[^{}]*\.description[^{}]*\{[^}]*\}`).FindAllString(css, -1)
 	hidden := regexp.MustCompile(`(?i)\bdisplay\s*:\s*none\s*(!\s*important\s*)?(;|\})`)
+	if len(descriptions) == 0 {
+		t.Fatal("no headline description styles were checked")
+	}
+	visible := regexp.MustCompile(`#home #news \.headline \.description\s*\{\s*display:\s*block;\s*\}`)
+	if !visible.MatchString(css) {
+		t.Error("Home must explicitly display headline descriptions")
+	}
 	for _, rule := range descriptions {
 		if hidden.MatchString(rule) {
 			t.Error("the Home news card hides descriptions")
