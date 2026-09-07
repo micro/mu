@@ -33,7 +33,7 @@ func TestReadingIsPrivateAndAttachedToANewConversation(t *testing.T) {
 		t.Fatalf("page: %d", w.Code)
 	}
 	body := w.Body.String()
-	if strings.Contains(body, "private annotation") || !strings.Contains(body, "bookmark:"+item.ID) || !strings.Contains(body, "reading-"+owner) {
+	if strings.Contains(body, "private annotation") || !strings.Contains(body, "bookmark:"+item.ID) || !strings.Contains(body, "agent-"+owner+"-") {
 		t.Fatal("selected material was not attached to an isolated private chat")
 	}
 	th := thread.Open(owner, thread.WebClient, "reading-test")

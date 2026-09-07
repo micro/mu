@@ -74,19 +74,8 @@ func TestThePageTitleIsNotInTheSidebar(t *testing.T) {
 	}
 }
 
-// The four hubs are in reach of a thumb.
-//
-// This tested an envelope in the header instead, which pointed at /mail for as
-// long as it existed and was corrected to /inbox — and the whole time it was
-// display:none in the stylesheet with nothing anywhere turning it on. The test
-// checked the href and never whether anybody could see it, so it went on
-// passing over an invisible element for as long as that element existed.
-//
-// So it checks the destinations and the count now. On a phone the rail is
-// behind a hamburger and this bar is how anything is reached; four is what a
-// tab bar holds before the labels stop being readable, and it is the reason
-// Tokens and Wallet are not in it.
-func TestThePhoneCarriesTheFourHubs(t *testing.T) {
+// Micro and Home lead the signed-in destinations within reach on a phone.
+func TestThePhoneCarriesMicroAndHome(t *testing.T) {
 	out := app.RenderHTML("A page", "a description", "<p>body</p>",
 		&auth.Account{ID: "someone", Name: "Someone"})
 
@@ -94,14 +83,13 @@ func TestThePhoneCarriesTheFourHubs(t *testing.T) {
 	if tabs == "" {
 		t.Fatal("no tab bar in the rendered shell")
 	}
-	for _, href := range []string{"/home", "/inbox", "/agents", "/services"} {
+	for _, href := range []string{"/agent/micro", "/home", "/inbox", "/agents", "/services"} {
 		if !strings.Contains(tabs, `href="`+href+`"`) {
 			t.Errorf("the tab bar does not reach %s:\n%s", href, tabs)
 		}
 	}
-	if n := strings.Count(tabs, "<a "); n != 4 {
-		t.Errorf("the tab bar holds %d tabs, want 4 — five stops being readable "+
-			"and the rail is still there for the rest:\n%s", n, tabs)
+	if n := strings.Count(tabs, "<a "); n != 5 {
+		t.Errorf("the tab bar holds %d tabs, want Micro, Home, Inbox, Agents and Services:\n%s", n, tabs)
 	}
 	// Not the mail store. That was the bug in the thing this replaced.
 	if strings.Contains(tabs, `href="/mail"`) {

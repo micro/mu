@@ -288,7 +288,7 @@ func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 
 	app.RespondJSON(w, map[string]interface{}{
 		"success":  true,
-		"redirect": "/home",
+		"redirect": "/agent/micro",
 	})
 }
 

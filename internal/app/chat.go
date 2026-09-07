@@ -120,6 +120,8 @@ type ChatConfig struct {
 	// each other's. When empty the component is ephemeral: it neither restores
 	// nor saves, so it always starts clean.
 	StorageNS string
+	// ServerOwned keeps persisted transcripts authoritative on agent pages.
+	ServerOwned bool
 	// ImportNS is a one-time handoff from another chat surface. This surface
 	// adopts the other namespace's conversation, history, context and draft,
 	// then removes the source copy. The destination namespace must include the
@@ -611,7 +613,7 @@ func ChatComponent(cfg ChatConfig) string {
 (function(){
 var contextId=` + JSString(cfg.ContextID) + `;
 var attachment=` + JSString(cfg.Attachment) + `;
-var SESSION=` + boolJS(cfg.InitialConvHTML != "") + `;
+var SESSION=` + boolJS(cfg.InitialConvHTML != "" || cfg.ServerOwned) + `;
 var PENDING=` + boolJS(cfg.Pending) + `;
 var HIDE_SUGGEST=` + boolJS(cfg.HideSuggestions) + `;
 var AGENT_NAME=` + JSString(cfg.AgentName) + `;
@@ -709,6 +711,8 @@ var CKEY='mu_chat_conv:'+NS;
 var HKEY='mu_chat_hist:'+NS;
 var TKEY='mu_chat_ctx:'+NS;
 var DKEY='mu_chat_draft:'+NS;
+function draftKey(){return DKEY+(SESSION?':'+(contextId||attachment):'');}
+function scrollKey(){return 'mu_chat_scroll:'+NS+':'+(contextId||attachment);}
 var history=[];
 
 // A reopened server session is authoritative; otherwise restore this surface's
@@ -758,10 +762,12 @@ if(!SESSION && PERSIST){
     if(savedHist)history=JSON.parse(savedHist)||[];
     var savedCtx=sessionStorage.getItem(TKEY);
     if(savedCtx)contextId=savedCtx;
-    var savedDraft=sessionStorage.getItem(DKEY);
+    var savedDraft=sessionStorage.getItem(draftKey());
     if(savedDraft)input.value=savedDraft;
   }catch(e){}
 }
+
+if(SESSION&&PERSIST){try{var savedDraft=sessionStorage.getItem(draftKey());if(savedDraft)input.value=savedDraft;}catch(e){}}
 
 // A conversation already on the page means the asking has happened, whether it
 // came back from sessionStorage or was rendered by the server. Without this a
@@ -798,7 +804,7 @@ function save(){
 }
 function saveDraft(){
   if(!PERSIST)return;
-  try{sessionStorage.setItem(DKEY,input.value||'');}catch(e){}
+  try{sessionStorage.setItem(draftKey(),input.value||'');}catch(e){}
 }
 
 // agentName is who answers: whatever the picker is showing when there is one,
@@ -951,6 +957,7 @@ function ask(q){
               if(id){
                 var fresh=!contextId;
                 contextId=id;save();
+                window.dispatchEvent(new CustomEvent('mu-chat-thread',{detail:id}));
                 if(fresh&&window.muSessionStarted)window.muSessionStarted(id,q);
               }
             }else if(ev.type==='working'){
@@ -1061,7 +1068,9 @@ showSuggestions();
 
 // Start a fresh session (clears the log + thread id).
 window.muChatNew=function(){
-  conv.innerHTML='';history=[];contextId='';
+  try{sessionStorage.removeItem(draftKey());sessionStorage.removeItem(scrollKey());}catch(e){}
+  conv.innerHTML='';history=[];contextId='';input.value='';
+  window.dispatchEvent(new CustomEvent('mu-chat-new'));
   try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);sessionStorage.removeItem(TKEY);sessionStorage.removeItem(DKEY);}catch(e){}
   showBrief();
   showSuggestions();input.focus();
@@ -1347,13 +1356,22 @@ if(PENDING&&contextId&&conv){(function(){
 // is also the only signal that says they want to be somewhere else. Anything
 // that changes the height afterwards — late layout, a slow card — keeps it
 // where it was put, and the moment they scroll up it lets go for good.
-var pinned=true;
+var restoredScroll=null;
+try{if(PERSIST)restoredScroll=JSON.parse(sessionStorage.getItem(scrollKey()));}catch(e){}
+var pinned=!restoredScroll||restoredScroll.bottom;
 if(conv){
   conv.addEventListener('scroll',function(){ if(!nearBottom()) pinned=false; });
 }
 function pin(){ if(pinned) toBottom(true); }
 fitConv();
-toBottom(true);
+if(restoredScroll&&!restoredScroll.bottom){
+  requestAnimationFrame(function(){conv.scrollTop=restoredScroll.top;});
+  window.addEventListener("load",function(){conv.scrollTop=restoredScroll.top;});
+}else{toBottom(true);}
+window.addEventListener("pagehide",function(){
+  saveDraft();
+  if(PERSIST&&conv){try{sessionStorage.setItem(scrollKey(),JSON.stringify({top:conv.scrollTop,bottom:nearBottom()}));}catch(e){}}
+});
 window.addEventListener('load',function(){ fitConv(); pin(); });
 if(conv&&window.ResizeObserver){ new ResizeObserver(pin).observe(conv); }
 window.addEventListener('resize',function(){ fitConv(); toBottom(false); });

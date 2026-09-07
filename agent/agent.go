@@ -453,7 +453,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if reopened {
 		// A reopened conversation decides its own agent; the rail filters to it.
 		selAgent = reopenAgent
-	} else if selAgent != "" && prefill == "" && cfg.Attachment == "" {
+	} else if (selAgent != "" || named) && prefill == "" && cfg.Attachment == "" && r.URL.Query().Get("new") != "1" {
 		// Land in the last conversation with this agent, if there is one.
 		if last := latestThreadFor(accountID, selAgent, named); last != "" {
 			cfg.ContextID = last
@@ -534,6 +534,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// This page is for talking to it, so the box asks rather than searches.
 	// See app.ChatConfig.Ask — search is the default everywhere else, because
 	// search works with no model and a page about an agent obviously does not.
+	cfg.StorageNS = "agent-" + accountID + "-" + selAgent
+	cfg.ServerOwned = true
 	cfg.Transcript = true
 	cfg.Ask = true
 	main := selected + app.ChatComponent(cfg)
@@ -563,6 +565,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// non-empty left the tab's remembered selection in charge on a bare /agent:
 	// the rail listed every agent's conversations while the next message went to
 	// whichever agent the tab remembered. The URL is the state.
+	content += `<script>window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `+'?session='+encodeURIComponent(e.detail));});</script>`
+	content += resumeMicroJS(accountID, selAgent, cfg.ContextID)
 	content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	if prefill != "" {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `);})()</script>`
@@ -720,7 +724,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 	// holds what arrived, so a link from one to the other lands somewhere that
 	// does not have the conversation in it.
 	base := Path(accountID, agentID)
-	newURL := base
+	newURL := base + "?new=1"
 	if agentID != "" && base == "/agent/"+DefaultSlug {
 		// An id that resolves to nothing in the roster. Keep it in the URL
 		// rather than silently rewriting to the default, which is what widened
