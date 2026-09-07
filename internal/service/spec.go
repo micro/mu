@@ -294,6 +294,8 @@ const (
 
 // Endpoint is one method of a service.
 type Endpoint struct {
+	Commands []Command
+
 	// Doc is what the method does, written for a model rather than a
 	// developer: it is what the agent reads when choosing a tool.
 	Doc string

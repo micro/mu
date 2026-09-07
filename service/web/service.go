@@ -35,13 +35,30 @@ type SearchRequest struct {
 
 // SearchResponse is a model-ready set of results.
 type SearchResponse struct {
+	Items []BraveResult `json:"items,omitempty"`
+
 	Text string `json:"text" description:"Search results for the query"`
 }
 
 // Search searches the web for current information and news.
 // @example {"query": "latest AI news"}
 func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse) error {
-	rsp.Text = SearchText(req.Query, req.Limit)
+	if req.Limit <= 0 || req.Limit > 10 {
+		req.Limit = 6
+	}
+	results, err := SearchBraveCached(req.Query, req.Limit)
+	if err != nil {
+		return err
+	}
+	if len(results) > req.Limit {
+		results = results[:req.Limit]
+	}
+	rsp.Items = results
+	if len(results) == 0 {
+		rsp.Text = "No web results found."
+	} else {
+		rsp.Text = formatWebSearchResults(req.Query, results)
+	}
 	return nil
 }
 
@@ -114,6 +131,6 @@ var Spec = service.Spec{
 			// agent along with the anonymous one.
 			Needs: service.Caller,
 		},
-		"Search": {Aliases: []string{"search_web"}, Doc: "Search the web for current information and news", Cost: quota.OpWebSearch},
+		"Search": {Commands: []service.Command{{Pattern: "search the web for {query}", Defaults: map[string]any{"limit": 5}}, {Pattern: "web search {query}", Defaults: map[string]any{"limit": 5}}}, Aliases: []string{"search_web"}, Doc: "Search the web for current information and news", Cost: quota.OpWebSearch},
 	},
 }
