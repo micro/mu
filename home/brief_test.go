@@ -22,20 +22,12 @@ import (
 	"mu/service/tasks"
 )
 
-// A quiet account gets nothing, and that includes being alone.
-//
-// "Nothing new" costs a glance and gives nothing back, on the screen somebody
-// sees most often. For one commit this drew a section saying "Just you here"
-// over a link to the chat, on the argument that who is present is true on the
-// quietest day. True, and the two most useless sentences on the page: it told
-// somebody they were alone and then invited them to go and talk about it. Who
-// is here is a strip of names under the box now, which states the same fact
-// without the sentence.
-func TestAQuietAccountGetsNoBrief(t *testing.T) {
+// Quiet accounts still need access to brief scheduling.
+func TestAQuietAccountCanScheduleBrief(t *testing.T) {
 	const who = "brief-quiet"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 
-	if got := briefHTML(who); got != "" {
+	if got := briefHTML(who); !strings.Contains(got, "<summary>Schedule</summary>") {
 		t.Errorf("an account with nothing happening, alone, got %q", got)
 	}
 	if got := briefHTML(""); got != "" {

@@ -21,6 +21,9 @@ import (
 
 // Event is a scheduled reminder owned by a single user.
 type Event struct {
+	Kind     string    `json:"kind,omitempty"`
+	Zone     string    `json:"zone,omitempty"`
+	Paused   bool      `json:"paused,omitempty"`
 	Sequence int       `json:"sequence,omitempty"`
 	ID       string    `json:"id"`
 	Owner    string    `json:"owner"`
@@ -163,7 +166,7 @@ func List(owner string) []*Event {
 func Upcoming(owner string) []*Event {
 	var out []*Event
 	for _, e := range List(owner) {
-		if !e.Fired {
+		if !e.Fired && !e.Paused {
 			out = append(out, e)
 		}
 	}
@@ -203,7 +206,7 @@ func fireDue() {
 	mu.Lock()
 	changed := false
 	for id, e := range events {
-		if !e.Fired && !e.When.After(now) {
+		if !e.Fired && !e.Paused && !e.When.After(now) {
 			e.Fired = true
 			e.FiredAt = now
 			cp := *e
