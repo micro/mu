@@ -43,7 +43,10 @@ type Choice struct {
 func Choices() []Choice {
 	var out []Choice
 	seen := map[string]bool{}
-	selected := normaliseProvider(settings.Get("AI_PROVIDER"))
+	selected, _, _, usable := PreferredProvider()
+	if !usable {
+		selected = ""
+	}
 	add := func(id, label, provider string) {
 		if selected != "" && provider != selected {
 			return

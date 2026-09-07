@@ -54,9 +54,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
-		if err := auth.CheckPostRate(owner); err != nil {
-			app.RespondError(w, 429, "Please wait before another lookup.")
-			return
+		if owner != "" {
+			if err := auth.CheckPostRate(owner); err != nil {
+				app.RespondError(w, 429, "Please wait before another lookup.")
+				return
+			}
 		}
 
 		j, msg := plan(&ETARequest{From: from, To: to, Mode: mode})
@@ -69,10 +71,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondError(w, 502, "Could not load directions")
 			return
 		}
-		if err := quota.Charge(owner, quota.OpRoutesDirections, nil); err != nil {
-			app.RespondError(w, 402, "Could not charge for directions")
-			return
+		if owner != "" && !route.Estimate {
+			if err := quota.Charge(owner, quota.OpRoutesDirections, nil); err != nil {
+				app.RespondError(w, 402, "Could not charge for directions")
+				return
+			}
 		}
+
 		app.RespondJSON(w, map[string]any{"summary": j.fromLabel + " → " + j.toLabel + ": " + humanDuration(route.Duration) + ", " + humanDistance(route.Metres), "estimate": route.Estimate, "shape": route.Shape, "steps": route.Steps})
 		return
 	}

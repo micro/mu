@@ -49,3 +49,18 @@ func TestGLMUsesSelectedProviderAndMenu(t *testing.T) {
 		}
 	}
 }
+
+func TestMissingPreferredKeyStillOffersFallbackModels(t *testing.T) {
+	clearProviders(t)
+	t.Setenv("ANTHROPIC_API_KEY", "test")
+	t.Setenv("AI_PROVIDER", "atlascloud")
+	choices := Choices()
+	if len(choices) == 0 {
+		t.Fatal("stale preference hid working models")
+	}
+	for _, c := range choices {
+		if c.Provider != ProviderAnthropic {
+			t.Fatalf("offered unavailable %s", c.Provider)
+		}
+	}
+}

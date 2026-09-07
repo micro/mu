@@ -135,12 +135,15 @@ func statusPage(w http.ResponseWriter, r *http.Request) {
 		in.Flight = ""
 		in.Airport = code
 	}
-	if err := auth.CheckPostRate(owner); err != nil {
-		app.RespondError(w, 429, "Please wait before another lookup.")
-		return
+	if owner != "" {
+		if err := auth.CheckPostRate(owner); err != nil {
+			app.RespondError(w, 429, "Please wait before another lookup.")
+			return
+		}
 	}
+
 	flights, err := flightStatus(&in)
-	if err == nil {
+	if err == nil && owner != "" {
 		err = quota.Charge(owner, statusCost, nil)
 	}
 	b := statusForm(r)

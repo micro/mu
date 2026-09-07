@@ -100,12 +100,15 @@ func webSearchPage(w http.ResponseWriter, r *http.Request) {
 		app.Forbidden(w, r, "Invalid CSRF token")
 		return
 	}
-	if err := auth.CheckPostRate(owner); err != nil {
-		app.RespondError(w, 429, "Please wait before another search.")
-		return
+	if owner != "" {
+		if err := auth.CheckPostRate(owner); err != nil {
+			app.RespondError(w, 429, "Please wait before another search.")
+			return
+		}
 	}
+
 	results, err := webImages(r.PostFormValue("query"))
-	if err == nil {
+	if err == nil && owner != "" {
 		err = quota.Charge(owner, quota.OpWebSearch, nil)
 	}
 	b := `<p><a href="/images">← Images</a></p>`
