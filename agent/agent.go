@@ -341,9 +341,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if sessionID == "" {
 		sessionID = r.URL.Query().Get("continue")
 	}
-	// This page is for talking to an agent and requires a session to reach,
-	// so an answer arrives here — which is what Speak is a control over.
-	cfg := app.ChatConfig{StorageNS: "agent", Speak: true}
+	cfg := app.ChatConfig{StorageNS: "agent"}
 	// Set again below, once the page has resolved which agent it is about. Here
 	// so that a page which returns early still names somebody.
 	cfg.AgentName = agentTitle(accountID, "")
