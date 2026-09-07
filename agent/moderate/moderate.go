@@ -77,6 +77,11 @@ func Load() {
 // not do is pretend — see Configured below, which is what /admin/moderate
 // reads to say so on the page.
 func judge(kind, id, title, text string) {
+	// Missing AI is a supported local-only setup, not an operational failure.
+	// Explicit profanity still receives the deterministic verdict below.
+	if !Configured() && !flag.Profane(title+"\n"+text) {
+		return
+	}
 	verdict, err := classify(title, text)
 	if err != nil {
 		app.Log("moderate", "could not classify %s %s: %v", kind, id, err)
