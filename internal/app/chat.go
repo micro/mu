@@ -1008,6 +1008,7 @@ function ask(q){
             }else if(ev.type==='response'){
               stopWork();
               a.innerHTML=ev.html;
+              if(typeof ev.text==='string')streamText=ev.text;
               history.push({prompt:q,answer:streamText});
               save();
               toBottom(false);

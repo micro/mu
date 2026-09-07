@@ -267,6 +267,8 @@ func nativeToolCallKey(call gmai.ToolCall) string {
 type nativeRun struct {
 	agent    gmagent.Agent
 	question string
+	provider string
+	baseURL  string
 	// name is the per-request agent name the timeline is filed under.
 	name string
 	// runs is where it is filed: a store that lives as long as the run.
@@ -369,6 +371,9 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
 	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
+	if opts.Stream.wants() {
+		toolWrappers = append([]gmai.ToolWrapper{streamToolReporter(opts.Stream)}, toolWrappers...)
+	}
 	// A store that lasts as long as the run.
 	//
 	// go-micro's agent writes a timeline of the run — every model call with the
@@ -418,7 +423,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	}
 	name := nativeAgentInstanceName()
 	a := service.NewAgent(name, sys, provider, key, services, agentOpts...)
-	return nativeRun{agent: a, question: question, name: name, runs: runs}, true
+	return nativeRun{agent: a, question: question, name: name, runs: runs, provider: provider, baseURL: baseURL}, true
 }
 
 // nativeLLM picks the go-micro provider the native agent talks to.
@@ -643,7 +648,7 @@ func nativeAgentInstanceName() string {
 // wants reports whether anything is listening. A caller with no hooks is not
 // asking for a stream.
 func (h StreamHooks) wants() bool {
-	return h.Token != nil || h.ToolStart != nil || h.ToolEnd != nil
+	return h.Start != nil || h.Token != nil || h.ToolStart != nil || h.ToolEnd != nil
 }
 
 type StreamHooks struct {
@@ -652,7 +657,9 @@ type StreamHooks struct {
 	// a trace, which is exactly what /runs was showing before this.
 	ToolStart func(ToolRun)
 	ToolEnd   func(ToolRun)
-	Token     func(tok string)
+	// Start resets the visible answer when a provider begins another round.
+	Start func()
+	Token func(tok string)
 }
 
 // runNative answers a question with the go-micro agent: the model does native
@@ -712,9 +719,25 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 
 	final := ""
 	if opts.Stream.wants() {
-		var err error
-		if final, err = askStreaming(ctx, a, question, recorder, opts.Stream); err != nil {
-			return "", err
+		liveCtx, live := ai.LiveTokens(ctx, run.provider, run.baseURL, opts.Stream.Start, func(tok string) {
+			if !shouldBufferNativeToken(recorder) && opts.Stream.Token != nil {
+				opts.Stream.Token(tok)
+			}
+		})
+		if live {
+			resp, err := a.Ask(liveCtx, question)
+			if streamErr := ai.LiveError(liveCtx); streamErr != nil {
+				return "", fmt.Errorf("agent stream: %w", streamErr)
+			}
+			if err != nil {
+				return "", fmt.Errorf("agent: %w", err)
+			}
+			final = resp.Reply
+		} else {
+			var err error
+			if final, err = askStreaming(ctx, a, question, recorder, opts.Stream); err != nil {
+				return "", err
+			}
 		}
 	} else {
 		resp, err := a.Ask(ctx, question)
@@ -779,14 +802,33 @@ func stepReporter(onStep func(Step)) gmai.ToolWrapper {
 	}
 }
 
-// askStreaming runs the agent with StreamAsk, reporting tools and tokens as
-// they arrive, and returns the whole answer.
+// streamToolReporter observes the same guarded tool handler for both live and
+// buffered providers. Tool requests cannot inherit the provider HTTP bridge.
+func streamToolReporter(hooks StreamHooks) gmai.ToolWrapper {
+	return func(next gmai.ToolHandler) gmai.ToolHandler {
+		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			run, show := toolRun(call)
+			if show && hooks.ToolStart != nil {
+				hooks.ToolStart(run)
+			}
+			result := next(ai.WithoutLiveTokens(ctx), call)
+			if show && hooks.ToolEnd != nil {
+				hooks.ToolEnd(run)
+			}
+			return result
+		}
+	}
+}
+
+// askStreaming retains the existing StreamAsk behavior for providers whose
+// native wire protocol is not handled by the live completion bridge.
 func askStreaming(ctx context.Context, a gmagent.Agent, question string, recorder *nativeToolRecorder, hooks StreamHooks) (string, error) {
 	stream, err := gmagent.StreamAsk(ctx, a, question)
 	if err != nil {
 		return "", fmt.Errorf("native agent stream: %w", err)
 	}
 
+	defer stream.Close()
 	var reply strings.Builder
 	var final string
 	for {
@@ -801,14 +843,6 @@ func askStreaming(ctx context.Context, a gmagent.Agent, question string, recorde
 			continue
 		}
 		switch ev.Type {
-		case gmagent.StreamEventToolStart:
-			if run, show := toolRun(ev.ToolCall); show && hooks.ToolStart != nil {
-				hooks.ToolStart(run)
-			}
-		case gmagent.StreamEventToolEnd:
-			if run, show := toolRun(ev.ToolCall); show && hooks.ToolEnd != nil {
-				hooks.ToolEnd(run)
-			}
 		case gmagent.StreamEventToken:
 			reply.WriteString(ev.Token)
 			if shouldBufferNativeToken(recorder) {
