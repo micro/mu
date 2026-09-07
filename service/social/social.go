@@ -864,6 +864,10 @@ func generateCardHTML(allMessages []*Message) string {
 		}
 	}
 
+	if len(selected) == 0 {
+		return `<p class="text-muted">No threads yet. Be the first to start one.</p>`
+	}
+
 	var sb strings.Builder
 	for _, p := range selected {
 		content := htmlpkg.EscapeString(p.Content)

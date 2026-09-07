@@ -2,6 +2,7 @@ package social
 
 import (
 	"mu/internal/flag"
+	"mu/internal/snapshot"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -47,6 +48,9 @@ func TestAbusiveCachedThreadIsHiddenAcrossReaders(t *testing.T) {
 }
 
 func TestModerationRefreshesTheHomeCard(t *testing.T) {
+	oldSnap := cardSnap
+	cardSnap = snapshot.New("social-moderation-test")
+	t.Cleanup(func() { cardSnap = oldSnap })
 	id, _ := mine(t)
 	flag.RegisterDeleter("social", moderationStore{})
 	moderationStore{}.RefreshCache()
