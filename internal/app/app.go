@@ -1265,9 +1265,11 @@ func VerifyBanner(r *http.Request) string {
 //
 // A menu is a list of destinations and this is the list. The account's own —
 // Account, Profile, Tokens, Wallet — appear only when there is an account, and
-// Admin only for an admin, so a signed-out visitor sees the four that mean
-// anything to them.
+// Admin only for an admin, and the main destinations require a signed-in account.
 func navMain(acc *auth.Account) string {
+	if acc == nil {
+		return ""
+	}
 	item := func(id, href, icon, label string) string {
 		return `<a id="` + id + `" href="` + href + `"><img src="` + icon + `?` + Version +
 			`"><span class="label">` + label + `</span></a>`
@@ -1428,60 +1430,10 @@ func navPinned(acc *auth.Account) string {
 //
 // nav-username is a label mu.js corrects from the session: a page cached for
 // one viewer and served to another would otherwise greet them by the wrong name.
-// headCorner is the top right of every page: what this account has, or the way
-// to have one.
-//
-// Signed out it was empty, and the only way in was Login at the foot of the
-// sidebar. That was survivable while the sidebar was always open and is not now
-// that it is collapsed by default — a stranger on /contact or /archive would
-// have had to find a hamburger to find a way to sign in.
-//
-// It is also the half of "the signed-out pages do not match the signed-in ones"
-// that is real. The front page had a corner with Sign up and Log in in it and
-// every other page had nothing, so the two states of this product differed by
-// which page you happened to be on rather than by whether you had an account.
-// One corner, on every page, saying which of the two you are.
-// loginBack sends somebody back to the page they were reading.
-//
-// A page that bounced you to /login has always carried this — see
-// RedirectToLogin — but a public page you were reading and chose to sign in
-// from did not, so reading /archive or /contact and pressing Log in landed you
-// on /home with the page you were on gone. The one case where signing in
-// *should* move you is the landing, and that redirects on its own.
-func loginBack(here string) string {
-	if here == "" || here == "/" {
-		return ""
-	}
-	return "?redirect=" + url.QueryEscape(here)
-}
-
+// headCorner shows the signed-in account. Guests sign in through the sidebar.
 func headCorner(acc *auth.Account, here string) string {
 	if acc == nil {
-		// Two links: the decision, then the return.
-		//
-		// This was cut to Log in alone, on the argument that a corner should be
-		// the one thing you can do from here and the login page offers signing
-		// up on it. The argument reads well and the instance stopped taking
-		// signups — which is the measurement the argument did not have. A link
-		// on the login page is only reachable by somebody who already pressed
-		// Log in, and a stranger who has never had an account does not press
-		// Log in; there was nothing on any page of this product telling them
-		// they could have one.
-		//
-		// Sign up first, and it is the darker of the two: it is the decision
-		// being made here. Log in already knows where it is going.
-		//
-		// Not offered where it cannot be taken. On an invite-only instance
-		// /signup is a form asking for a code the person clicking it does not
-		// have, so the corner narrows to one link there — which is the width
-		// difference the cut was partly made to avoid, kept as the exception
-		// rather than made the rule for everybody.
-		signup := ""
-		if !auth.InviteOnly() {
-			signup = `<a id="head-signup" href="/signup">Sign up</a>`
-		}
-		return `<div id="head-out">` + signup +
-			`<a href="/login` + loginBack(here) + `">Log in</a></div>`
+		return ""
 	}
 
 	// And who you are, which is the other half of the same answer.

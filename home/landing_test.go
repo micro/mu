@@ -31,27 +31,9 @@ func TestTheWordmarkSaysWhatItIs(t *testing.T) {
 	}
 }
 
-// The corner offers the public tool catalogue and one way into an account.
-//
-// Sign up is available from the login page. Keeping it here as a third link
-// makes the smallest piece of navigation ask a stranger to choose between two
-// account actions before they have decided to use either.
-func TestTheLandingOffersToolsAndOneWayIn(t *testing.T) {
+func TestTheLandingOffersOneWayIn(t *testing.T) {
 	got := topRight()
-	for _, want := range []string{`href="/tools"`, `href="/login"`} {
-		if !strings.Contains(got, want) {
-			t.Errorf("the front door is missing %s: %q", want, got)
-		}
-	}
-	if strings.Contains(got, `href="/signup"`) {
-		t.Errorf("the front door has three corner links instead of Tools and Log in: %q", got)
-	}
-	if strings.Index(got, "/tools") > strings.Index(got, "/login") {
-		t.Errorf("Log in comes before Tools on the front door: %q", got)
-	}
-	// No redirect on the way in. This is the one page where signing in should
-	// move you somewhere else, and it already does.
-	if strings.Contains(got, "redirect=") {
-		t.Errorf("the front door sends you back to itself after signing in: %q", got)
+	if got != `<a href="/login">Log in</a>` {
+		t.Errorf("unexpected landing navigation: %q", got)
 	}
 }
