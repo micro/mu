@@ -83,7 +83,7 @@ func TestThePhoneCarriesMicroAndHome(t *testing.T) {
 	if tabs == "" {
 		t.Fatal("no tab bar in the rendered shell")
 	}
-	for _, href := range []string{"/agent/micro", "/home", "/inbox", "/agents", "/services"} {
+	for _, href := range []string{"/", "/home", "/inbox", "/agents", "/services"} {
 		if !strings.Contains(tabs, `href="`+href+`"`) {
 			t.Errorf("the tab bar does not reach %s:\n%s", href, tabs)
 		}

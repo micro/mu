@@ -433,7 +433,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 
 	// Carried through every render so the POST keeps it — see renderSignupTo.
 	redirectParam := ""
-	if to := safeRedirect(r); to != "/agent/micro" {
+	if to := safeRedirect(r); to != "/home" {
 		redirectParam = "?redirect=" + url.QueryEscape(to)
 	}
 
@@ -1232,7 +1232,7 @@ func safeRedirect(r *http.Request) string {
 // somebody straight back to a login page, which is a loop rather than a
 // vulnerability but is still not a destination.
 func SafeRedirectTo(to string) string {
-	const home = "/agent/micro"
+	const home = "/home"
 	if to == "" || to[0] != '/' {
 		return home
 	}

@@ -180,7 +180,7 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		Name: "session", Value: sess.Token, Path: "/", MaxAge: 2592000,
 		HttpOnly: true, Secure: requestSecure(r), SameSite: http.SameSiteLaxMode,
 	})
-	http.Redirect(w, r, "/agent/micro", http.StatusFound)
+	http.Redirect(w, r, "/home", http.StatusFound)
 }
 
 // googleExchange trades an authorization code for an access token.

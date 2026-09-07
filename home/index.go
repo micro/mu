@@ -47,27 +47,9 @@ import (
 //
 // The description still follows. It reads better as a caption than as a pitch.
 func Index(w http.ResponseWriter, r *http.Request) {
-	// Signed in, this is not your page.
-	//
-	// It went back and forth twice and the second answer is the right one. The
-	// argument for keeping one page in two states was that signing in should
-	// not move you somewhere else, and a question half-typed in the box should
-	// survive it. Both true, and both smaller than what it cost: a landing page
-	// is written for somebody deciding whether they want this, and showing it
-	// to somebody who already has an account means the app's front door is an
-	// argument aimed at a stranger.
-	//
-	// On a phone it was plainer than that. The app has a tab bar with Home in
-	// it — you press Home and you know where you are — and landing on a
-	// wordmark with a marketing tagline over a search box, no rail, no tabs,
-	// is a different product opening under you. Folding this page into the app
-	// shell instead was the other thing tried, and that made every app page
-	// carry a landing page's furniture.
-	//
-	// So: two pages for two audiences. Out here, a landing. Signed in, /home,
-	// which has the rail, the tabs, your inbox and the same box to type in.
+	// The front door is the assistant workspace once signed in.
 	if _, acc := auth.TrySession(r); acc != nil {
-		http.Redirect(w, r, "/agent/micro", http.StatusSeeOther)
+		agent.MicroHandler(w, r)
 		return
 	}
 	if r.URL.Query().Get("from") == "app" {
