@@ -281,7 +281,7 @@ func indexBody() string {
 			// furniture in front of somebody who has not asked anything yet.
 			Speak: false,
 		}) +
-		`<p class="landing-browse"><a class="mini-btn" href="/home">Browse news, video, markets and more →</a></p>` + today("") + `
+		today("") + `
 </div>
 
 <style>
@@ -321,10 +321,6 @@ func indexBody() string {
    The 18px that used to be under the wordmark is under this instead, so the
    gap between the name and the box is unchanged and the two lines sit together
    as one block. */
-.landing-browse{margin:16px 0 0}
-.landing-browse a,.landing-browse a:visited{display:inline-flex;align-items:center;justify-content:center;max-width:100%;box-sizing:border-box;padding:5px 10px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#555;font-size:13px;line-height:1.5;text-decoration:none}
-.landing-browse a:hover{background:#f5f5f5;color:#111}
-.landing-browse a:focus-visible{outline:2px solid #555;outline-offset:3px}
 .lwhat{color:#888;font-size:14px;margin:0 0 18px;line-height:1.3}
 /* Today, under the box. */
 .ltoday{margin:30px 0 0}

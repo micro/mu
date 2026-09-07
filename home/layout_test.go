@@ -252,7 +252,7 @@ func TestTheBalanceIsInTheRailOnHome(t *testing.T) {
 	if got == "" {
 		t.Fatal("no balance block on an instance that charges")
 	}
-	if !strings.Contains(got, `href="/wallet"`) {
+	if !strings.Contains(got, `href="/account"`) {
 		t.Error("nothing on Home leads to /wallet")
 	}
 	if !strings.Contains(got, "credits") {
@@ -300,16 +300,19 @@ func TestTheHeaderBalanceIsNotHiddenOnHome(t *testing.T) {
 // It shipped as a bare heading with a link in it and an unbordered div, beneath
 // two bordered cards with plain headings — the only thing in the rail that did
 // not look like the rail.
-func TestTheWalletBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
+func TestTheAccountBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
 	was := quota.Enabled
 	quota.Enabled = func() bool { return true }
 	t.Cleanup(func() { quota.Enabled = was })
 
 	got := walletHTML("walletshape")
+	if !strings.Contains(got, ">Balance</h3>") || strings.Contains(got, `href="/wallet"`) {
+		t.Fatal("account card has wrong label or destination")
+	}
 
 	// The heading is the same plain one the others use, not a link.
-	if !strings.Contains(got, sectionRule("Wallet")) {
-		t.Error("the Wallet heading is not sectionRule's, so it does not match " +
+	if !strings.Contains(got, sectionRule("Account")) {
+		t.Error("the Account heading is not sectionRule's, so it does not match " +
 			"Inbox and Agents above it")
 	}
 	// A card, sharing the class the other two are styled by.
@@ -317,8 +320,8 @@ func TestTheWalletBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
 		t.Error("the balance is not in a card, and both blocks above it are")
 	}
 	// And the way to the page, where the others put it.
-	if !strings.Contains(got, `href="/wallet" class="link"`) {
-		t.Error("no `Go to wallet` link — every other rail block ends with one, " +
+	if !strings.Contains(got, `href="/account" class="link"`) {
+		t.Error("no `Go to account` link — every other rail block ends with one, " +
 			"and it is the only route to /wallet from Home")
 	}
 }

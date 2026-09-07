@@ -71,15 +71,15 @@ func walletHTML(accountID string) string {
 	// looking at the rendered page, where both neighbours are cards.
 	//
 	// So: a plain heading, a bordered block, and the way to the page at the
-	// foot of it. "Go to wallet" is also what makes /wallet reachable from
+	// foot of it. "Go to account" keeps the credit ledger reachable from
 	// Home, which is the same job "Go to inbox" does above.
 	var b strings.Builder
-	b.WriteString(sectionRule("Wallet"))
-	b.WriteString(`<div class="wallet-peek">`)
+	b.WriteString(sectionRule("Account"))
+	b.WriteString(`<div class="wallet-peek"><h3 class="mt-0">Balance</h3>`)
 	for _, part := range account.BalanceBody(accountID) {
 		b.WriteString(part)
 	}
-	b.WriteString(`<a href="/wallet" class="link">Go to wallet &rarr;</a>`)
+	b.WriteString(`<a href="/account" class="link">Go to account &rarr;</a>`)
 	b.WriteString(`</div>`)
 	return b.String()
 }
