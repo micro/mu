@@ -18,6 +18,7 @@ func browse(r *http.Request, all map[string]Channel) string {
 	seenCat := map[string]bool{}
 	seen := map[string]bool{}
 	items := []*Result{}
+	feed := map[*Result]string{}
 	for cat, ch := range all {
 		if !seenCat[cat] {
 			seenCat[cat] = true
@@ -29,6 +30,7 @@ func browse(r *http.Request, all map[string]Channel) string {
 			}
 			seen[v.ID] = true
 			items = append(items, v)
+			feed[v] = cat
 		}
 	}
 	sort.Slice(items, func(i, j int) bool {
@@ -37,9 +39,25 @@ func browse(r *http.Request, all map[string]Channel) string {
 		}
 		return items[i].Published.After(items[j].Published)
 	})
-	page, start, end := app.ReadingPage(r, len(items), 12)
+	if category == "" {
+		latest := make([]*Result, 0)
+		covered := map[string]bool{}
+		for _, v := range items {
+			// The enclosing feed is present even in legacy caches without metadata.
+			key := feed[v]
+			if !covered[key] {
+				latest = append(latest, v)
+				covered[key] = true
+			}
+		}
+		items = latest
+	}
+	page, start, end := app.ReadingPage(r, len(items), 9)
 	var b strings.Builder
 	b.WriteString(app.ReadingFilters("/video", category, categories))
+	if category == "" {
+		b.WriteString(`<h2>Latest</h2>`)
+	}
 	b.WriteString(`<div class="video-grid">`)
 	if len(items) == 0 {
 		b.WriteString(`<p>No videos in this category yet.</p>`)
@@ -47,7 +65,7 @@ func browse(r *http.Request, all map[string]Channel) string {
 	for _, v := range items[start:end] {
 		b.WriteString(`<article id="reading-` + html.EscapeString("video_"+v.ID) + `" class="reading-row"><a href="/video?id=` + url.QueryEscape(v.ID) + `"><img src="` + html.EscapeString(thumbSrc(v.ID, v.Thumbnail)) + `" loading="lazy" alt=""><h3>` + html.EscapeString(v.Title) + `</h3></a><div class="reading-meta">` + html.EscapeString(v.Channel+" · "+app.TimeAgo(v.Published)) + `</div>` + app.ReadingActions(r, "video_"+v.ID) + `</article>`)
 	}
-	return fmt.Sprintf(Template, "", b.String()+`</div>`) + app.ReadingPages("/video", category, page, len(items), 12) + app.ReadingCSS + `<style>.video-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.video-grid .reading-row{padding:0 0 16px;min-width:0}.video-grid img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px}.video-grid h3{font-size:16px}.video-grid a{text-decoration:none}@media(max-width:1000px){.video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.video-grid{grid-template-columns:1fr}}</style>`
+	return fmt.Sprintf(Template, "", b.String()+`</div>`) + app.ReadingPages("/video", category, page, len(items), 9) + app.ReadingCSS + `<style>.video-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.video-grid .reading-row{padding:0 0 16px;min-width:0}.video-grid img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px}.video-grid h3{font-size:16px}.video-grid a{text-decoration:none}@media(max-width:1000px){.video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.video-grid{grid-template-columns:1fr}}</style>`
 }
 
 func watchTitle(id string) (string, string) {

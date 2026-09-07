@@ -41,7 +41,7 @@ func TestThePinSaysWhichItMeans(t *testing.T) {
 // Pressing pin twice leaves it pinned, which is what makes the request safe to
 // send from two places.
 func TestPinningIsIdempotent(t *testing.T) {
-	acc := &auth.Account{ID: "pinner"}
+	acc := &auth.Account{ID: "pinner", Pinned: []string{}}
 
 	acc.Pin("news")
 	acc.Pin("news")
