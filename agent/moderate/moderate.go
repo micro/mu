@@ -40,6 +40,7 @@
 package moderate
 
 import (
+	"fmt"
 	"strings"
 
 	"mu/internal/ai"
@@ -76,18 +77,16 @@ func Load() {
 // not do is pretend — see Configured below, which is what /admin/moderate
 // reads to say so on the page.
 func judge(kind, id, title, text string) {
-	if !Configured() {
+	if kind == "social" && flag.IsApproved(kind, id) {
 		return
 	}
-
-	verdict, err := ai.Ask(&ai.Prompt{
-		System:   prompt,
-		Question: "Title: " + title + "\n\nContent: " + text,
-		Model:    ai.BackgroundModel(),
-	})
+	// Missing AI is a supported local-only setup, not an operational failure.
+	// Explicit profanity still receives the deterministic verdict below.
+	if !Configured() && !flag.Profane(title+"\n"+text) {
+		return
+	}
+	verdict, err := classify(title, text)
 	if err != nil {
-		// Worth a line, because a moderator that has stopped working looks
-		// exactly like a well-behaved community.
 		app.Log("moderate", "could not classify %s %s: %v", kind, id, err)
 		return
 	}
@@ -111,6 +110,26 @@ func judge(kind, id, title, text string) {
 	app.Log("moderate", "hid %s %s: %s", kind, id, verdict)
 }
 
+// Approved is the publication gate for externally selected content.
+// Failure or an unrecognised verdict never grants approval.
+func Approved(title, text string) bool {
+	verdict, err := classify(title, text)
+	return err == nil && strings.EqualFold(strings.TrimSpace(verdict), "OK")
+}
+
+func classify(title, text string) (string, error) {
+	if flag.Profane(title + "\n" + text) {
+		return "HARMFUL", nil
+	}
+	if !Configured() {
+		return "", fmt.Errorf("no moderation model configured")
+	}
+	return ai.Ask(&ai.Prompt{
+		System: prompt, Question: "Title: " + title + "\n\nContent: " + text,
+		Model: ai.BackgroundModel(), Priority: ai.PriorityLow, Caller: "moderate",
+	})
+}
+
 // Configured reports whether this instance can moderate at all.
 //
 // An adjective rather than a verb, and a question rather than an instruction —
@@ -131,9 +150,12 @@ const prompt = `You are a strict content moderator for a family-friendly communi
 Classify the content with ONLY ONE WORD:
 - SPAM (promotional spam, advertising, repetitive junk, SEO content)
 - LOW_QUALITY (gibberish, random characters, meaningless typing like "asdf", single letters)
-- HARMFUL (vulgar, crude, sexual, obscene, gossip, slander, personal attacks, mocking, trolling, shock content, swear words)
+- HARMFUL (vulgar, crude, sexual, obscene, gossip, slander, personal attacks, mocking, trolling, shock content, swear words, threats, dehumanisation, incitement or celebration of violence)
 - OK (everything else — status updates, opinions, questions, short messages, work updates, casual conversation)
 
 IMPORTANT: Short personal status updates like "Working on X", "Good morning", "Just shipped Y", "Having lunch" are ALWAYS OK. They are normal status messages, not spam or low quality. Only flag content that is clearly abusive, vulgar, or spam. When in doubt, say OK.
 
 Respond with just the single word.`
+
+// Check evaluates an existing publication using the same policy as new ones.
+func Check(kind, id, title, text string) { judge(kind, id, title, text) }

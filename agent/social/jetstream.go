@@ -650,12 +650,13 @@ func review() {
 	}
 	short := shortlist(batch)
 	chosen := judge(short)
-	if len(chosen) == 0 {
-		// No model, or it had nothing to say. The arithmetic order is what this
-		// did before there was a judge, and it is a reasonable answer.
-		chosen = short
+	posted := publishChosen(chosen)
+	if posted > 0 {
+		app.Log("social", "atproto: surfaced %d of %d candidates", posted, len(batch))
 	}
+}
 
+func publishChosen(chosen []*candidate) int {
 	posted := 0
 	for _, c := range chosen {
 		if posted >= surfacePerReview {
@@ -667,9 +668,7 @@ func review() {
 		posted++
 		Surface(c)
 	}
-	if posted > 0 {
-		app.Log("social", "atproto: surfaced %d of %d candidates", posted, len(batch))
-	}
+	return posted
 }
 
 // shortlist is the arithmetic pass: the best-scoring candidates, one per

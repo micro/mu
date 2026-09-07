@@ -74,10 +74,12 @@ func addMessage(p *Message) {
 	indexMessages([]*Message{p})
 	save()
 
+	event.Published("social", p.ID, "", p.Content)
 	event.Publish(event.Event{Type: "social_updated"})
 }
 
 func Load() {
+	flag.RegisterDeleter("social", moderationStore{})
 	if err := service.Register(Spec); err != nil {
 		app.Log("social", "service register failed: %v", err)
 	}
@@ -207,6 +209,13 @@ func Threads() []*Message {
 	defer mutex.RUnlock()
 	result := make([]*Message, len(messages))
 	copy(result, messages)
+	visible := result[:0]
+	for _, m := range result {
+		if visibleMessage(m) {
+			visible = append(visible, m)
+		}
+	}
+	result = visible
 	return result
 }
 
@@ -347,7 +356,6 @@ func handleCreateThread(w http.ResponseWriter, r *http.Request) {
 	addMessage(p)
 
 	// Async content moderation
-	event.Published("social", threadID, "", content)
 
 	app.Log("social", "New thread by %s (%s)", acc.Name, acc.ID)
 
@@ -405,8 +413,6 @@ func handleJSONRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	addMessage(p)
-
-	event.Published("social", threadID, "", content)
 
 	app.RespondJSON(w, map[string]interface{}{"success": true, "id": threadID})
 }
@@ -471,7 +477,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 		if p.ReplyTo != "" {
 			continue
 		}
-		if flag.IsHidden("social", p.ID) || auth.IsBanned(p.AuthorID) {
+		if !visibleMessage(p) {
 			continue
 		}
 		visible = append(visible, p)
@@ -508,7 +514,7 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 
 	mutex.RLock()
 	p := getMessage(threadID)
-	if p == nil {
+	if !visibleMessage(p) {
 		mutex.RUnlock()
 		http.Error(w, "Thread not found", 404)
 		return
@@ -520,6 +526,13 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	replies := getReplies(threadID)
+	visibleReplies := replies[:0]
+	for _, reply := range replies {
+		if visibleMessage(reply) {
+			visibleReplies = append(visibleReplies, reply)
+		}
+	}
+	replies = visibleReplies
 	mutex.RUnlock()
 
 	if app.WantsJSON(r) {
@@ -584,8 +597,6 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 	}
 
 	addMessage(reply)
-
-	event.Published("social", replyID, "", content)
 
 	app.Log("social", "Message by %s in thread %s", acc.Name, parentID)
 
@@ -684,7 +695,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 
 	// Messages (chronological — oldest first, so conversation reads naturally)
 	for _, reply := range replies {
-		if flag.IsHidden("social", reply.ID) || auth.IsBanned(reply.AuthorID) {
+		if !visibleMessage(reply) {
 			continue
 		}
 		rc := htmlpkg.EscapeString(reply.Content)
@@ -741,7 +752,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 	results := data.Search(query, 50)
 	var socialResults []map[string]interface{}
 	for _, entry := range results {
-		if entry.Type == "social" {
+		if entry.Type == "social" && !flag.IsHidden("social", strings.TrimPrefix(entry.ID, "social_")) {
 			socialResults = append(socialResults, map[string]interface{}{
 				"title":    entry.Title,
 				"content":  entry.Content,
@@ -781,7 +792,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 
 	count := 0
 	for _, entry := range results {
-		if entry.Type != "social" {
+		if entry.Type != "social" || flag.IsHidden("social", strings.TrimPrefix(entry.ID, "social_")) {
 			continue
 		}
 		count++
@@ -834,7 +845,7 @@ func generateCardHTML(allMessages []*Message) string {
 		if p.ReplyTo != "" {
 			continue // skip replies in home card
 		}
-		if flag.IsHidden("social", p.ID) || auth.IsBanned(p.AuthorID) {
+		if !visibleMessage(p) {
 			continue
 		}
 		if p.AuthorID == "_system" {
@@ -851,6 +862,10 @@ func generateCardHTML(allMessages []*Message) string {
 		if len(selected) >= 4 {
 			break
 		}
+	}
+
+	if len(selected) == 0 {
+		return `<p class="text-muted">No threads yet. Be the first to start one.</p>`
 	}
 
 	var sb strings.Builder
@@ -1198,4 +1213,8 @@ func DeleteByAuthor(authorID string) {
 	updateCacheLocked()
 	mutex.Unlock()
 	save()
+}
+
+func visibleMessage(m *Message) bool {
+	return m != nil && !flag.IsHidden("social", m.ID) && !auth.IsBanned(m.AuthorID)
 }

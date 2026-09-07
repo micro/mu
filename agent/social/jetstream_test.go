@@ -279,7 +279,7 @@ func TestReviewTakesTheBestNotTheFirst(t *testing.T) {
 		_ = i
 		candidates = append(candidates, c)
 	}
-	review()
+	publishChosen(shortlist(candidates))
 
 	if len(got) != surfacePerReview {
 		t.Fatalf("surfaced %d, want %d", len(got), surfacePerReview)
@@ -313,7 +313,7 @@ func TestOneVoiceCannotTakeTheBatch(t *testing.T) {
 	} {
 		candidates = append(candidates, c)
 	}
-	review()
+	publishChosen(shortlist(candidates))
 
 	if len(got) != 2 {
 		t.Fatalf("surfaced %d, want one from the bot and one from the person", len(got))
@@ -331,9 +331,9 @@ func TestTheSameLinkIsNotSurfacedTwice(t *testing.T) {
 
 	candidates, surfaced = nil, map[string]bool{}
 	candidates = append(candidates, &candidate{Category: "Tech", Link: "https://same", Score: 10})
-	review()
+	publishChosen(shortlist(candidates))
 	candidates = append(candidates, &candidate{Category: "Tech", Link: "https://same", Score: 90})
-	review()
+	publishChosen(shortlist(candidates))
 
 	if len(got) != 1 {
 		t.Errorf("the same link was surfaced %d times", len(got))

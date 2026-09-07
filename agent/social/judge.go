@@ -15,8 +15,7 @@ package social
 // which is the cheapest thing in this repo that a model does — and it is the
 // step the arithmetic was only ever approximating.
 //
-// The instance is not required to have a model. Without one the shortlist is
-// published in score order, which is what this did before there was a judge.
+// Without a working model no external shortlist is published.
 
 import (
 	"fmt"
@@ -38,17 +37,13 @@ const judgeChars = 300
 
 // judge asks the model which of the shortlist are worth publishing, and returns
 // them in its order. An empty result means no model, no answer, or nothing it
-// thought was worth it — the caller falls back to the arithmetic order.
+// thought was worth it. None of those states authorises publication.
 func judge(short []*candidate) []*candidate {
 	if len(short) == 0 || !ai.Configured() {
 		return nil
 	}
 	if len(short) > shortlistMax {
 		short = short[:shortlistMax]
-	}
-	// One is not a choice.
-	if len(short) < 2 {
-		return short
 	}
 
 	answer, err := ai.Ask(&ai.Prompt{
@@ -68,7 +63,7 @@ func judge(short []*candidate) []*candidate {
 		Caller:    "social-judge",
 	})
 	if err != nil {
-		app.Log("social", "atproto: judge unavailable (%v), publishing by score", err)
+		app.Log("social", "atproto: judge unavailable (%v), publishing nothing", err)
 		return nil
 	}
 	picked := picks(answer, len(short))
@@ -98,6 +93,7 @@ Pick at most 3 that a thoughtful reader would be glad to have seen. Prefer:
 Reject, however well it scores:
 - advertising, recruitment, self-promotion, or anything asking the reader to buy, apply, book or subscribe
 - a press release, a conference programme, or an announcement of an announcement
+- profanity, targeted abuse, dehumanisation, threats, or celebration of violence
 - engagement bait, a thread opener, or a post whose whole content is a reaction
 - anything you cannot tell the subject of from the text given
 
