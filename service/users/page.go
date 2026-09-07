@@ -53,22 +53,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<p class="svc-lead">Everybody on this instance — the people and ` +
-		`the agents.`)
-	// The address only where there is one. Unconfigured this said
-	// "name@this instance", which is not an address and reads as a bug in the
-	// place a reader is most likely to copy something.
-	if d := mailDomain(); d != "" {
-		b.WriteString(` Write to any of them at <code>name@` + html.EscapeString(d) + `</code>.`)
-	}
-	b.WriteString(`</p>`)
 
 	// Search, because a hundred and eighty rows is a list you scroll and a
 	// thousand is one you cannot.
-	b.WriteString(`<form method="GET" action="/users" class="users-find">` +
+	b.WriteString(`<form method="GET" action="/users" class="search-bar">` +
 		`<input name="q" class="field" placeholder="Find somebody" value="` +
 		html.EscapeString(q) + `">` +
-		`<button class="btn" type="submit">Find</button>`)
+		`<button type="submit">Search</button>`)
 	if q != "" {
 		b.WriteString(` <a class="mini-btn" href="/users">Clear</a>`)
 	}

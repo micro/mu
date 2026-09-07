@@ -161,7 +161,7 @@ func TestTheRosterIsYourOwnAgents(t *testing.T) {
 		}
 	}
 	// And the way to make one is on it.
-	if !strings.Contains(page, "New agent") {
+	if !strings.Contains(page, `href="/agent/new" class="btn">New</a>`) {
 		t.Error("there is no way to make an agent on the page about agents")
 	}
 	// Fork is gone: it offered to copy an agent as a first-class action, on a

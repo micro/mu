@@ -951,7 +951,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			// where the rest of the operator's work is. A second door to it on
 			// a reading page put the operator's job in front of everybody
 			// else's page, and made the one place moderation lives two.
-			actions = `<div class="mb-4">
+			actions = `<div class="page-action">
 				<a href="/blog?write=true" class="btn">New</a>
 			</div>`
 		} else {
@@ -960,7 +960,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 				<a href="/login?redirect=/blog" class="text-muted">Login</a> to write a post
 			</div>`
 		}
-		actions += `<form method="GET" action="/blog" class="d-flex gap-2 mb-4"><input type="search" name="q" class="grow" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
+		actions = `<form method="GET" action="/blog" class="search-bar"><input type="search" name="q" class="grow" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>` + actions
 		content = fmt.Sprintf(`<div id="blog">
 			%s
 			<div id="posts-list">

@@ -24,9 +24,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	rating := strings.TrimSpace(q.Get("rating"))
 
 	var b strings.Builder
-	b.WriteString(`<p class="card-desc">What is in a packet, and whether the kitchen is clean. ` +
-		`Ingredients and allergens from Open Food Facts; hygiene ratings from the Food ` +
-		`Standards Agency. Both public, neither needs a key.</p>`)
 
 	b.WriteString(`<div class="card"><h3>Products</h3><form class="food-form" method="get" action="/food">`)
 	fmt.Fprintf(&b, `<input class="food-input" type="text" name="q" value="%s" placeholder="Find a product — oat milk" aria-label="Product name">`,

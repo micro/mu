@@ -66,9 +66,6 @@ func hexID(s string) bool {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<div class="browser-page">`)
-	b.WriteString(`<p class="svc-lead">` + Spec.Description + `. Most of the web builds ` +
-		`itself in the browser, so a plain fetch of it comes back with a nav bar and an ` +
-		`empty box — this is what the page actually says once its scripts have run.</p>`)
 
 	if !Configured() {
 		b.WriteString(app.Problem("This instance has no browser and could not find one on " +

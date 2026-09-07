@@ -115,8 +115,6 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
-	b.WriteString(`<p class="text-sm text-muted">Names your agent can turn into addresses. ` +
-		`Ask it to mail someone and it looks them up here.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
@@ -125,7 +123,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	// POST: an address book is a list of the people somebody knows, and the name
 	// they looked up is not a thing to write into a URL. See AGENTS.md, "What may
 	// travel in a URL".
-	fmt.Fprintf(&b, `<form method="POST" action="/contacts" class="contact-search">
+	fmt.Fprintf(&b, `<form method="POST" action="/contacts" class="search-bar">
   <input type="hidden" name="_csrf" value="%s">
   <input type="search" name="q" value="%s" placeholder="Search by name or address">
   <button type="submit">Search</button>

@@ -129,9 +129,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="maps-page">`)
-	b.WriteString(`<p class="svc-lead">` + Spec.Description + `. Free, and fetched once — a ` +
-		`tile is served from here forever after, so a region costs this instance one look ` +
-		`however many people use it.</p>`)
 
 	if !Configured() {
 		b.WriteString(app.Problem("This instance has no Ordnance Survey key, so it can only " +

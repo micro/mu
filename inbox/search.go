@@ -60,11 +60,11 @@ func searchBox(box, q, csrf string) string {
 	if action == "" {
 		action = "/inbox"
 	}
-	return `<form class="ib-search" method="POST" action="` + html.EscapeString(action) + `">` +
+	return `<form class="search-bar" method="POST" action="` + html.EscapeString(action) + `">` +
 		app.CSRFField(csrf) +
 		`<input type="search" name="q" placeholder="Search your conversations" ` +
-		`value="` + html.EscapeString(q) + `" autocomplete="off" class="ib-search-in">` +
-		`<button type="submit" class="btn btn-quiet">Search</button>` +
+		`value="` + html.EscapeString(q) + `" autocomplete="off">` +
+		`<button type="submit">Search</button>` +
 		clearSearch(action, q) +
 		`</form>`
 }

@@ -33,9 +33,6 @@ import (
 // import TestNoServiceImportsTheAccount forbids, wearing a function variable.
 func SignedOut() string {
 	return `<div class="card">` +
-		`<p>What you have here, and a key of your own on Base: an address that holds ` +
-		`USDC, and an agent that can spend it on priced endpoints anywhere — no account ` +
-		`with those servers, no card on file, no key to rotate.</p>` +
 		`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>`
 }
 
