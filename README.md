@@ -1,12 +1,28 @@
 # Mu
 
-**Tools for agents.**
+A personal home assistant 
 
 ## Overview
 
-Mu is an open-source runtime for agents, tools and services.
+Mu is a personal home assistant. It's a full stack solution to the question, how do I de-platform myself.
 
-It includes **Micro**, a personal assistant that has access to all the tools and services.
+## Features 
+
+It includes:
+
+- **Micro** - an agent that answers all queries.
+- **Home** - a dashboard to see things at a glance.
+- **Inbox** - A place to keep track of everything.
+- **Clients** - Use Micro via Web, SMS, email, etc.
+- **Services** - which act as building blocks for Micro.
+- **Protocols** - a way to self host SMTP, XMPP, SFTP, SSH.
+
+## Why it exists
+
+I'm tired of no easy option to self host and handing everything over to corporations.
+I'll never give up my Google account but I want more control over how I use the internet.
+
+I don't think I'm alone in saying that.
 
 ## How it works
 
@@ -16,22 +32,11 @@ It includes **Micro**, a personal assistant that has access to all the tools and
 
 Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and agent activity, bringing communication and agent work into one place.
 
-## Features
-
-What's included:
-
-- **Micro** - The default personal assistant and the front door to the system.
-- **Clients** - Use Micro via Web, SMS, email, WhatsApp and more. Requires setup.
-- **Services** - 30+ services including news, mail, markets and video, accessible via API, CLI or the Web.
-- **Agents** - Micro answers by default; define your own by name, prompt and tools, then chat via the web.
-- **Inbox** - A single place to keep track of chats, notes, tasks, etc. Assign tasks to agents or reply directly.
-
 ## Agents
 
 Mu is the runtime. Micro is the first agent and the one people meet first.
 
 - **Micro** is the default personal assistant. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
-- **Code** is the second, and is not finished. It builds things on a machine of its own — writes the files, runs them, hosts the result — and what it makes outlives the conversation.
 
 Your own agents are the same shape: a name, an instruction, and the tools they may reach. Each has an address, so `agent+yours@` reaches it from anywhere that can send mail, the same way `agent@` reaches Micro.
 
