@@ -48,7 +48,7 @@ func (Server) Generate(ctx context.Context, req *GenerateRequest, rsp *GenerateR
 var Spec = service.Spec{
 	Name:        "images",
 	Handler:     new(Server),
-	Description: "Image generation, the daily image and its archive",
+	Description: "Generate and browse images",
 	Page:        "/images",
 	Scoped:      true,
 	Icon:        "images.svg",

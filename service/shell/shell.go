@@ -190,7 +190,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "shell",
 	Handler:     new(Server),
-	Description: "Your persistent container sandbox: run commands, keep files, build things",
+	Description: "Run commands in a sandbox",
 	Page:        "/shell",
 	Icon:        "shell.svg",
 	// One container and one volume per account, so there is no such thing as

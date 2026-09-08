@@ -187,7 +187,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "tasks",
 	Handler:     new(Server),
-	Description: "What is to be done: a list you keep, and work you can hand to the agent",
+	Description: "Manage tasks and assign work",
 	Page:        "/tasks",
 	Icon:        "tasks.svg",
 	Scoped:      true,

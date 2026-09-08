@@ -175,7 +175,7 @@ var Spec = service.Spec{
 	Name:        "sms",
 	Label:       "SMS",
 	Handler:     new(Server),
-	Description: "Text somebody, and read what they text back",
+	Description: "Send and receive text messages",
 	Page:        "/sms",
 	Icon:        "sms.svg",
 	Scoped:      true,

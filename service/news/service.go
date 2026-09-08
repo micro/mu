@@ -113,7 +113,7 @@ func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse)
 var Spec = service.Spec{
 	Name:        "news",
 	Handler:     new(Server),
-	Description: "Headlines aggregated from RSS feeds, with search and full articles",
+	Description: "Read and search news",
 	Page:        "/news",
 	Icon:        "news.png",
 	Card:        service.Timed(func() (string, time.Time) { return Headlines(), CardAt() }),

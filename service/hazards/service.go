@@ -166,7 +166,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "hazards",
 	Handler:     new(Server),
-	Description: "What is going wrong in the physical world: earthquakes and disaster alerts, live",
+	Description: "Track earthquakes and disaster alerts",
 	Page:        "/hazards",
 	Icon:        "hazards.svg",
 	Card:        service.Glance(Card),

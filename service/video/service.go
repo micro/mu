@@ -137,7 +137,7 @@ func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchRespons
 var Spec = service.Spec{
 	Name:        "video",
 	Handler:     new(Server),
-	Description: "Video from curated channels, without ads or recommendations",
+	Description: "Videos from YouTube",
 	Page:        "/video",
 	Icon:        "video.png",
 	Card:        service.Timed(func() (string, time.Time) { return Latest(), CardAt() }),

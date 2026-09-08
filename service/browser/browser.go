@@ -233,7 +233,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "browser",
 	Handler:     new(Server),
-	Description: "A real browser: read a page after its JavaScript has run, or photograph it",
+	Description: "Browse pages and take screenshots",
 	Page:        "/browser",
 	Icon:        "browser.svg",
 	Endpoints: map[string]service.Endpoint{

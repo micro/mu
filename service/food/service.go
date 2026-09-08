@@ -248,7 +248,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "food",
 	Handler:     new(Server),
-	Description: "What is in it and whether the kitchen is clean",
+	Description: "Check nutrition and food hygiene",
 	Page:        "/food",
 	Icon:        "food.svg",
 	Card:        service.Glance(Card),

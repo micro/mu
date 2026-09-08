@@ -387,7 +387,7 @@ var Spec = service.Spec{
 	// domain. The same rule is why search became web — search.Search derived the
 	// tool name search_search.
 	Label:       "Routes",
-	Description: "How to get from one place to another — time, traffic and turn-by-turn",
+	Description: "Get directions and travel times",
 	Page:        "/routes",
 	Icon:        "routes.svg",
 	Endpoints: map[string]service.Endpoint{

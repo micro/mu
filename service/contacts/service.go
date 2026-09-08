@@ -157,7 +157,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "contacts",
 	Handler:     new(Server),
-	Description: "The caller's own address book: turn a name into an address",
+	Description: "Manage your address book",
 	Page:        "/contacts",
 	Icon:        "contacts.svg",
 	Scoped:      true,

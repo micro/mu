@@ -175,7 +175,7 @@ func (Server) History(_ context.Context, req *HistoryRequest, rsp *HistoryRespon
 var Spec = service.Spec{
 	Name:        "weather",
 	Handler:     new(Server),
-	Description: "Forecast, air quality, sea state and what the weather actually was",
+	Description: "Check weather and forecasts",
 	Page:        "/weather",
 	Icon:        "weather.svg",
 	Card:        service.Personal(CardHTML),

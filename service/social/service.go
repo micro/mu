@@ -35,7 +35,7 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 var Spec = service.Spec{
 	Name:        "social",
 	Handler:     new(Server),
-	Description: "Public threads, replies and status",
+	Description: "Share posts and replies",
 	Page:        "/social",
 	Icon:        "social.svg",
 	Card:        service.Timed(func() (string, time.Time) { return CardHTML(), CardAt() }),

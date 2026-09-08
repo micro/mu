@@ -74,7 +74,7 @@ func Card(v service.Viewer) string {
 var Spec = service.Spec{
 	Name:        "stream",
 	Handler:     new(Server),
-	Description: "What has been happening here — posts, headlines, video, mail",
+	Description: "See recent activity",
 	Page:        "/stream",
 	Icon:        "stream.svg",
 	Card:        service.Personal(Card),

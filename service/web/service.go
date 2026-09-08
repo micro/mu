@@ -104,7 +104,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "web",
 	Handler:     new(Server),
-	Description: "The open web: search it, read a page from it",
+	Description: "Search the web",
 	Page:        "/web",
 	// No Label. It said "Search", which is what the service was called before
 	// it was renamed for its domain rather than its main action — and it left

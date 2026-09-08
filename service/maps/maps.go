@@ -269,7 +269,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "maps",
 	Handler:     new(Server),
-	Description: "A map of Britain you can move around, and the tiles under it — Ordnance Survey, free",
+	Description: "Explore maps of Britain",
 	Page:        "/maps",
 	Icon:        "maps.svg",
 	Endpoints: map[string]service.Endpoint{

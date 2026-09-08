@@ -92,7 +92,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "text",
 	Handler:     new(Server),
-	Description: "Language work: summarise, extract structure, classify, translate",
+	Description: "Summarise and translate text",
 	Page:        "/text",
 	Icon:        "text.svg",
 	Endpoints: map[string]service.Endpoint{

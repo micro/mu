@@ -247,7 +247,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "recall",
 	Handler:     new(Server),
-	Description: "Search what you have said to an agent and been told, and read any conversation back",
+	Description: "Search past conversations",
 	Page:        "/recall",
 	Icon:        "saved.svg",
 	Scoped:      true,

@@ -100,7 +100,7 @@ func DeleteAll(owner string) {
 	}
 }
 
-var Spec = service.Spec{Name: "bookmarks", Label: "Bookmarks", Description: "Your private saved articles, videos and links", Page: "/bookmarks", Icon: "bookmarks.svg", Scoped: true, Handler: new(Server), Endpoints: map[string]service.Endpoint{
+var Spec = service.Spec{Name: "bookmarks", Label: "Bookmarks", Description: "Save articles, videos and links", Page: "/bookmarks", Icon: "bookmarks.svg", Scoped: true, Handler: new(Server), Endpoints: map[string]service.Endpoint{
 	"Add":      {Aliases: []string{"saved_add"}, Writes: true, Doc: "Save an article, video, blog post or link privately. Re-saving preserves its note"},
 	"List":     {Aliases: []string{"saved_list"}, Doc: "Find your saved reading by text or kind, newest first. Private notes are searched too"},
 	"Get":      {Aliases: []string{"saved_get"}, Doc: "Read one saved item and its private note, with available archived text. Videos have descriptions, not transcripts"},
