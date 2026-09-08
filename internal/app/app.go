@@ -1329,7 +1329,7 @@ func navAdmin(acc *auth.Account) string {
 	if acc == nil || !acc.Admin {
 		return ""
 	}
-	return `<a id="nav-admin" href="/admin"><img src="/admin.png?` + Version + `"><span class="label">Admin</span></a>`
+	return `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
 }
 
 // navPinned is the reader's own services, under a heading of their own.
