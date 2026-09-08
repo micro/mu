@@ -671,12 +671,19 @@ type StreamHooks struct {
 // This is the agent. There is no second one — see the note on ErrNoProvider,
 // and AGENTS.md for the rule that says so.
 func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
-	if command, ok := promptCommand(prompt, opts); ok {
+	if commands, ok := promptCommands(prompt, opts); ok {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		return executeCommand(ctx, accountID, command, opts)
+		return executeCommands(ctx, accountID, commands, opts)
 	}
 
+	if commandDenied(prompt, opts) {
+		return "", fmt.Errorf("command unavailable in this context")
+	}
+	if strings.EqualFold(strings.TrimSpace(prompt), "/help") {
+		examples := service.CommandExamples(filterServices(nativeServices(opts.Public), opts.Tools), !opts.Public)
+		return "Type a command directly, with or without /. Combine independent reads with ‘and’.\n\n" + strings.Join(examples, " · "), nil
+	}
 	if explicitCommand(prompt) {
 		return "", fmt.Errorf("unknown or unavailable command: %s", strings.Fields(prompt)[0])
 	}

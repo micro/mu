@@ -2,6 +2,8 @@ package news
 
 import (
 	"context"
+	"fmt"
+	"mu/internal/auth"
 	"time"
 
 	"mu/internal/quota"
@@ -35,6 +37,7 @@ func (Server) Headlines(_ context.Context, _ *HeadlinesRequest, rsp *HeadlinesRe
 
 // ListRequest filters the headline list.
 type ListRequest struct {
+	Day   string `json:"day,omitempty" description:"today to restrict headlines to the caller’s local calendar day"`
 	Topic string `json:"topic" description:"Optional topic/category filter (e.g. tech, world, business)"`
 	Limit int    `json:"limit" description:"Optional max number of headlines (default 30)"`
 }
@@ -66,10 +69,36 @@ type ListResponse struct {
 // List returns recent news headlines with short summaries, balanced across
 // topics (not dominated by one topic like crypto).
 // @example {"topic": "tech"}
-func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
-	rsp.Text = HeadlinesText(req.Topic, req.Limit)
-	rsp.Items = HeadlineItems(req.Topic, req.Limit)
+func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) error {
+	posts := GetFeed()
+	if req.Day != "" {
+		if req.Day != "today" {
+			return fmt.Errorf("day must be today or empty")
+		}
+		at := time.Now().UTC()
+		if account, err := auth.GetAccount(service.AccountFrom(ctx)); err == nil && account != nil {
+			if zone, err := time.LoadLocation(account.Zone); err == nil {
+				at = at.In(zone)
+			}
+		}
+		posts = newsForDay(posts, at)
+	}
+	rsp.Text = headlinesText(posts, req.Topic, req.Limit)
+	rsp.Items = headlineItems(posts, req.Topic, req.Limit)
+	if req.Day != "" && len(rsp.Items) == 0 {
+		rsp.Text = "No headlines available for today yet."
+	}
 	return nil
+}
+
+func newsForDay(posts []*Post, at time.Time) []*Post {
+	var out []*Post
+	for _, post := range posts {
+		if post != nil && !post.PostedAt.After(at) && post.PostedAt.In(at.Location()).Format("2006-01-02") == at.Format("2006-01-02") {
+			out = append(out, post)
+		}
+	}
+	return out
 }
 
 // ReadRequest selects one article.
@@ -122,7 +151,7 @@ var Spec = service.Spec{
 	Now: Now,
 	Endpoints: map[string]service.Endpoint{
 		"Headlines": {Doc: "Read the home card headlines: latest story per topic, freshest first, at most ten"},
-		"List":      {Commands: []service.Command{{Pattern: "news", Defaults: map[string]any{"limit": 5}}, {Pattern: "headlines", Defaults: map[string]any{"limit": 5}}, {Pattern: "latest headlines", Defaults: map[string]any{"limit": 5}}, {Pattern: "show me the news", Defaults: map[string]any{"limit": 5}}}, Aliases: []string{"news"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
+		"List":      {Commands: []service.Command{{Pattern: "news today", Defaults: map[string]any{"limit": 5, "day": "today"}}, {Pattern: "headlines today", Defaults: map[string]any{"limit": 5, "day": "today"}}, {Pattern: "news", Defaults: map[string]any{"limit": 5}}, {Pattern: "headlines", Defaults: map[string]any{"limit": 5}}, {Pattern: "latest headlines", Defaults: map[string]any{"limit": 5}}, {Pattern: "show me the news", Defaults: map[string]any{"limit": 5}}}, Aliases: []string{"news"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
 		"Read":      {Doc: "Read one news article in full by its id or URL"},
 		"Search":    {Doc: "Search indexed and live news for a topic", Cost: quota.OpNewsSearch},
 	},

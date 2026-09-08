@@ -23,7 +23,9 @@ import (
 // what to read in full via news_read. Categories are interleaved round-robin
 // and ordered by recency, so every topic is represented near the top
 // regardless of its name. An optional topic filters to matching categories.
-func HeadlinesText(topic string, limit int) string {
+func HeadlinesText(topic string, limit int) string { return headlinesText(GetFeed(), topic, limit) }
+
+func headlinesText(posts []*Post, topic string, limit int) string {
 	if limit <= 0 || limit > 100 {
 		limit = 30
 	}
@@ -31,7 +33,7 @@ func HeadlinesText(topic string, limit int) string {
 
 	byCat := map[string][]*Post{}
 	var catOrder []string
-	for _, p := range GetFeed() {
+	for _, p := range posts {
 		if p == nil || strings.TrimSpace(p.Title) == "" {
 			continue
 		}
@@ -273,14 +275,16 @@ func metaTime(v interface{}) time.Time {
 // agent/blog researches the top few of a category, and getting the titles back
 // out of the formatted text it had just been handed is what made it import this
 // package instead of calling it.
-func HeadlineItems(topic string, limit int) []Headline {
+func HeadlineItems(topic string, limit int) []Headline { return headlineItems(GetFeed(), topic, limit) }
+
+func headlineItems(posts []*Post, topic string, limit int) []Headline {
 	if limit <= 0 || limit > 100 {
 		limit = 30
 	}
 	topic = strings.TrimSpace(strings.ToLower(topic))
 
 	var out []Headline
-	for _, p := range GetFeed() {
+	for _, p := range posts {
 		if p == nil || strings.TrimSpace(p.Title) == "" {
 			continue
 		}

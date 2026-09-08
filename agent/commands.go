@@ -2,20 +2,104 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/internal/service"
 )
 
-func promptCommand(prompt string, opts QueryOpts) (service.CommandCall, bool) {
-	// Explicit commands ignore attached prose; inferred phrases retain its context.
+func promptCommands(prompt string, opts QueryOpts) ([]service.CommandCall, bool) {
 	if !explicitCommand(prompt) && strings.TrimSpace(opts.Extra) != "" {
+		return nil, false
+	}
+	return service.MatchCommandsFor(strings.TrimPrefix(strings.TrimSpace(prompt), "/"), filterServices(nativeServices(opts.Public), opts.Tools), !opts.Public)
+}
+
+func promptCommand(prompt string, opts QueryOpts) (service.CommandCall, bool) {
+	calls, ok := promptCommands(prompt, opts)
+	if !ok || len(calls) != 1 {
 		return service.CommandCall{}, false
 	}
-	return service.MatchCommandFor(strings.TrimPrefix(strings.TrimSpace(prompt), "/"), filterServices(nativeServices(opts.Public), opts.Tools), !opts.Public)
+	return calls[0], true
+}
+
+func executeCommands(ctx context.Context, account string, calls []service.CommandCall, opts QueryOpts) (string, error) {
+	if len(calls) == 1 {
+		return executeCommand(ctx, account, calls[0], opts)
+	}
+	// Hooks write to a shared response/record. Serialize them while the service
+	// reads run concurrently, and publish the complete answer in request order.
+	var mu sync.Mutex
+	child := opts
+	child.Stream.Token = nil
+	child.Stream.ToolStart = func(r ToolRun) {
+		mu.Lock()
+		defer mu.Unlock()
+		if opts.Stream.ToolStart != nil {
+			opts.Stream.ToolStart(r)
+		}
+	}
+	child.Stream.ToolEnd = func(r ToolRun) {
+		mu.Lock()
+		defer mu.Unlock()
+		if opts.Stream.ToolEnd != nil {
+			opts.Stream.ToolEnd(r)
+		}
+	}
+	child.OnStep = func(s Step) {
+		mu.Lock()
+		defer mu.Unlock()
+		if opts.OnStep != nil {
+			opts.OnStep(s)
+		}
+	}
+	results := make([]string, len(calls))
+	errs := make([]error, len(calls))
+	var wg sync.WaitGroup
+	for i, call := range calls {
+		wg.Add(1)
+		go func(i int, call service.CommandCall) {
+			defer wg.Done()
+			text, err := executeCommand(ctx, account, call, child)
+			if err != nil {
+				errs[i] = err
+				text = "Could not complete this request: " + err.Error()
+			}
+			results[i] = "### " + service.Label(call.Service+"_"+strings.ToLower(call.Method)) + "\n\n" + text
+		}(i, call)
+	}
+	wg.Wait()
+	failed := 0
+	for _, err := range errs {
+		if err != nil {
+			failed++
+		}
+	}
+	if failed == len(calls) {
+		return "", errors.Join(errs...)
+	}
+	text := strings.Join(results, "\n\n")
+	if opts.Stream.Token != nil {
+		opts.Stream.Token(text)
+	}
+	return text, nil
+}
+
+// A known read outside the current scope is a refusal, not an invitation to
+// spend a model turn trying the same unavailable operation.
+func commandDenied(prompt string, opts QueryOpts) bool {
+	if !explicitCommand(prompt) && strings.TrimSpace(opts.Extra) != "" {
+		return false
+	}
+	if _, ok := promptCommands(prompt, opts); ok {
+		return false
+	}
+	_, known := service.MatchCommandsFor(strings.TrimPrefix(strings.TrimSpace(prompt), "/"), service.Services(), true)
+	return known
 }
 
 func explicitCommand(prompt string) bool {
@@ -24,7 +108,7 @@ func explicitCommand(prompt string) bool {
 
 func executeCommand(ctx context.Context, account string, call service.CommandCall, opts QueryOpts) (string, error) {
 	name := call.Service + "_" + strings.ToLower(call.Method)
-	run := ToolRun{ID: "command", Name: name, Label: toolLabel(name)}
+	run := ToolRun{ID: "command-" + name, Name: name, Label: toolLabel(name)}
 	if opts.Stream.ToolStart != nil {
 		opts.Stream.ToolStart(run)
 	}

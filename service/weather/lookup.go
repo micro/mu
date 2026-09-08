@@ -12,11 +12,15 @@ import (
 
 // LookupRequest names a place rather than requiring coordinates.
 type LookupRequest struct {
+	Day   string `json:"day,omitempty" description:"today or tomorrow; empty returns the current multi-day forecast"`
 	Place string `json:"place" description:"Town or city to look up"`
 	Focus string `json:"focus,omitempty" description:"rain for a rain-focused answer, otherwise a general forecast"`
 }
 
 func (Server) Lookup(ctx context.Context, req *LookupRequest, rsp *ForecastResponse) error {
+	if req.Day != "" && req.Day != "today" && req.Day != "tomorrow" {
+		return fmt.Errorf("day must be today or tomorrow")
+	}
 	if len(req.Place) > 200 {
 		return fmt.Errorf("place name is too long")
 	}
@@ -63,7 +67,15 @@ func (Server) Lookup(ctx context.Context, req *LookupRequest, rsp *ForecastRespo
 	if forecast == nil {
 		return fmt.Errorf("forecast unavailable")
 	}
-	rsp.Summary = lookupForecastText(forecast, place.Label(), req.Focus, localLookupTime(owner))
+	at := localLookupTime(owner)
+	if req.Day == "tomorrow" {
+		at = at.AddDate(0, 0, 1)
+	}
+	if req.Day != "" {
+		rsp.Summary = lookupDayText(forecast, place.Label(), at)
+	} else {
+		rsp.Summary = lookupForecastText(forecast, place.Label(), req.Focus, at)
+	}
 	return nil
 }
 
@@ -130,4 +142,31 @@ func lookupForecastText(f *WeatherForecast, place, focus string, at time.Time) s
 		fmt.Fprintf(&b, "\nForecast updated %s UTC.", f.GeneratedAt.UTC().Format("2 Jan 15:04"))
 	}
 	return b.String()
+}
+
+// Date words are declared by the service that can honour them, not stripped
+// globally by the command parser.
+func lookupCommands(base []service.Command) []service.Command {
+	out := append([]service.Command(nil), base...)
+	for i := range out {
+		if strings.HasSuffix(out[i].Pattern, " today") {
+			out[i].Defaults = map[string]any{"day": "today"}
+		}
+	}
+	for _, day := range []string{"today", "tomorrow"} {
+		for _, pattern := range []string{"weather", "weather in {place}", "weather {place}", "will it rain", "will it rain in {place}"} {
+			out = append(out, service.Command{Pattern: pattern, Suffix: day, Defaults: map[string]any{"day": day}})
+		}
+		out = append(out, service.Command{Pattern: "weather " + day + " in {place}", Defaults: map[string]any{"day": day}})
+	}
+	return out
+}
+
+func lookupDayText(f *WeatherForecast, place string, at time.Time) string {
+	day, ok := dailyItemForDate(f.DailyItems, at)
+	label := at.Format("Monday 2 January")
+	if !ok {
+		return fmt.Sprintf("%s\n\nThe forecast for %s is unavailable.", place, label)
+	}
+	return fmt.Sprintf("%s\n\n%s: %.0f–%.0f°C, %s. Rain: %.1f mm; chance of rain: %d%%.", place, label, day.MinTempC, day.MaxTempC, day.Description, day.RainMM, day.RainChance)
 }
