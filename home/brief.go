@@ -53,6 +53,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/account"
 	"mu/agent/brief"
 	"mu/inbox"
 	"mu/internal/app"
@@ -89,9 +90,9 @@ import (
 // true on the quietest day. True and useless as a sentence — who is here is its
 // own block under the box now, and it names people rather than telling you
 // there are none.
-func briefHTML(accountID string, csrf ...string) string {
+func briefHTML(accountID string) string {
 	parts := briefParts(accountID)
-	if len(parts) == 0 && accountID == "" {
+	if len(parts) == 0 {
 		return ""
 	}
 
@@ -117,7 +118,7 @@ func briefHTML(accountID string, csrf ...string) string {
 	// saying Brief. It is its own block under the box now, and it names people
 	// rather than counting them.
 	return sectionRule("Brief") + `<div class="brief-peek">` +
-		`<p class="home-brief">` + strings.Join(parts, " ") + `</p>` + briefScheduleHTML(accountID, csrf...) + `</div>`
+		`<p class="home-brief">` + strings.Join(parts, " ") + `</p></div>`
 }
 
 // briefParts is the clauses, without deciding how they are set.
@@ -268,13 +269,13 @@ func owed(accountID string) string {
 // The next one is named, with its time, because that is the fact somebody
 // actually wants: not how many, but what and when. The count carries the rest.
 func onToday(accountID string) string {
-	now := time.Now()
+	now := account.LocalNow(accountID)
 	var ahead []*events.Event
 	for _, e := range events.List(accountID) {
 		if e == nil || e.Paused || e.When.IsZero() {
 			continue
 		}
-		if sameDay(e.When, now) && e.When.After(now) {
+		if sameDay(e.When.In(now.Location()), now) && e.When.After(now) {
 			ahead = append(ahead, e)
 		}
 	}
@@ -288,7 +289,7 @@ func onToday(accountID string) string {
 
 	next := ahead[0]
 	out := app.TextLink(next.Title, "/events") + " at " +
-		html.EscapeString(next.When.Format("15:04"))
+		html.EscapeString(next.When.In(now.Location()).Format("15:04"))
 	if rest := len(ahead) - 1; rest > 0 {
 		out += ", and " + strconv.Itoa(rest) + " more today"
 	}
