@@ -1618,14 +1618,14 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	nopts := QueryOpts{Public: guest}
 	nopts.Extra = reading
+	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
+		nopts.System = ua.SystemPrompt
+		nopts.Tools = ua.Tools
+	}
 	if !guest && req.Cards && CardContextFunc != nil {
 		if _, direct := promptCommand(req.Prompt, nopts); !direct {
 			nopts.CardContext = CardContextFunc(accountID)
 		}
-	}
-	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
-		nopts.System = ua.SystemPrompt
-		nopts.Tools = ua.Tools
 	}
 	// What was already said, from the record rather than from workflow
 	// records. The history the page sent up is the fallback, for a

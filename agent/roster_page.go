@@ -93,7 +93,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
-	b.WriteString(app.Column())
+	b.WriteString(`<div class="page-col page-stack">`)
 	// The way to make one, first.
 	//
 	// Three sentences of explanation stood here — what an agent is, what it
@@ -161,7 +161,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// Remove, because neither is a thing you can do to it.
 	EnsureTags(owner)
 	roster := Agents(owner)
-	b.WriteString(`<div class="col m-0 mb-6">`)
+	b.WriteString(`<div class="col">`)
 	// The default carries the same sign of life as the rest. It is the one most
 	// accounts have actually used, so a roster where every row but that one says
 	// when it last spoke is a roster missing the row that would say the most.
@@ -193,7 +193,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// is the page where that is decided. So the way in is from here — but below
 	// what the page is about, because somebody arrives to see their agents and
 	// not to browse tools, and the link was above both the list and the button.
-	b.WriteString(`<p class="lens-go">` + app.TextLink("Tools", "/tools") + `</p>`)
+	b.WriteString(`<div class="section-actions">` + app.TextLink("Tools", "/tools") + `</div>`)
 
 	// The instance's own agents are listed here, at the top, by the loop over
 	// PlatformNames above.
@@ -558,7 +558,6 @@ const agentsCSS = `<style>
 /* The way to the catalogue, on its own line. It trailed the paragraph above
    and read as a footnote to the last clause, which is the wrong weight for the
    one place /tools is reachable from since it left the sidebar. */
-.lens-go{font-size:14px;margin:0 0 18px}
 .agent-note{color:#999;font-size:12px;margin:0 0 12px;max-width:640px}
 /* The sign of life on a row. Quieter than the description above it, because
    what an agent is for is why you would pick it and when it last spoke is
@@ -647,37 +646,4 @@ const agentsCSS = `<style>
 }
 .agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
 .agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
-</style>` + chipCSS
-
-// chipCSS is the selection control both agent pages use.
-//
-// An <input type=checkbox> next to text never lines up: the box sits on the
-// text baseline, its height is the browser's rather than the line's, and every
-// fix is a different magic number per browser. Hiding the input and styling its
-// label removes the alignment problem instead of tuning it — there is nothing
-// inline left to misalign.
-//
-// Shared because /agents was built this way and /agent/new was not, so the same
-// choice — which services or tools may this agent reach — was a row of neat
-// chips on one page and a column of drifting checkboxes on the other.
-// The segmented "where does it run" control moved in here with the chips when
-// creating an agent stopped happening in two places: the builder is the one
-// form now, so the styles it needs have to travel with it rather than living
-// on the roster page that used to own the other copy.
-const chipCSS = `<style>
-.pick input,.chip input{position:absolute;opacity:0;width:0;height:0}
-.pick input:focus-visible+span,.chip input:focus-visible+span{outline:2px solid #111;outline-offset:2px}
-.agent-services{display:flex;flex-wrap:wrap;gap:6px}
-.chip span{display:block;border:1px solid #ddd;border-radius:6px;padding:6px 12px;
-  cursor:pointer;font-size:13px;color:#444;white-space:nowrap}
-.chip span:hover{border-color:#bbb}
-.chip input:checked+span{background:#111;border-color:#111;color:#fff}
-.pick-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
-.pick span{display:block;height:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;
-  cursor:pointer;font-size:12px;color:#666;line-height:1.4}
-.pick strong{display:block;font-size:13px;color:#111;margin:0 0 2px}
-.pick span:hover{border-color:#bbb}
-.pick input:checked+span{border-color:#111;background:#fafafa}
-.pick input:checked+span strong::after{content:" ✓";color:#0a7d33}
-@media only screen and (max-width:600px){.pick-row{grid-template-columns:1fr}}
 </style>`

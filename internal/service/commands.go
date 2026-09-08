@@ -1,6 +1,8 @@
 package service
 
 import (
+	"reflect"
+	"sort"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -22,6 +24,20 @@ type CommandCall struct {
 // MatchCommand resolves only declared, read-only commands in the caller's scope.
 // Conflicting declarations fail closed rather than depending on map order.
 func MatchCommand(input string, allowed []string) (CommandCall, bool) {
+	return MatchCommandFor(input, allowed, false)
+}
+
+// MatchCommandFor admits account reads only for authenticated command surfaces.
+// Dispatch still enforces the caller identity, scopes and endpoint permissions.
+func MatchCommandFor(input string, allowed []string, private bool) (CommandCall, bool) {
+	input = strings.TrimSpace(input)
+	for _, pair := range [][2]string{{"\"", "\""}, {"'", "'"}, {"“", "”"}, {"‘", "’"}} {
+		if len(input) > len(pair[0])+len(pair[1]) && strings.HasPrefix(input, pair[0]) && strings.HasSuffix(input, pair[1]) {
+			input = strings.TrimSuffix(strings.TrimPrefix(input, pair[0]), pair[1])
+			break
+		}
+	}
+
 	var found CommandCall
 	matched := false
 	best := -1
@@ -34,14 +50,14 @@ func MatchCommand(input string, allowed []string) (CommandCall, bool) {
 				break
 			}
 		}
-		if !inScope || spec.Scoped {
+		if !inScope || (spec.Scoped && !private) {
 			continue
 		}
 		for method, ep := range spec.Endpoints {
-			if ep.Writes || ep.Destructive || ep.Needs != 0 {
+			if ep.Writes || ep.Destructive || ep.Needs == Operator || (ep.Needs != Open && !private) {
 				continue
 			}
-			for _, command := range ep.Commands {
+			for _, command := range commandsFor(spec, method, ep) {
 				args, ok := command.match(input)
 				if !ok {
 					continue
@@ -149,4 +165,73 @@ func (c Command) match(input string) (map[string]any, bool) {
 	}
 	args[key] = value
 	return args, true
+}
+
+// commandsFor derives bare service names and ordinary list phrases from List.
+// A required input prevents inference: "maps" cannot invent a destination.
+func commandsFor(spec Spec, method string, ep Endpoint) []Command {
+	out := append([]Command(nil), ep.Commands...)
+	if method != "List" || spec.Handler == nil {
+		return out
+	}
+	m, ok := reflect.TypeOf(spec.Handler).MethodByName(method)
+	if !ok || m.Type.NumIn() != 4 {
+		return out
+	}
+	req := m.Type.In(2)
+	if req.Kind() != reflect.Ptr || req.Elem().Kind() != reflect.Struct {
+		return out
+	}
+	req = req.Elem()
+	defaults := map[string]any{}
+	for i := 0; i < req.NumField(); i++ {
+		f := req.Field(i)
+		if f.Tag.Get("required") == "true" || f.Anonymous {
+			return out
+		}
+		if strings.Split(f.Tag.Get("json"), ",")[0] == "limit" {
+			defaults["limit"] = 5
+		}
+	}
+	names := append([]string{spec.Name, strings.ToLower(spec.NavLabel())}, ep.Aliases...)
+	seen := map[string]bool{}
+	for _, c := range out {
+		seen[strings.ToLower(c.Pattern)] = true
+	}
+	for _, name := range names {
+		for _, prefix := range []string{"", "latest ", "show ", "show me "} {
+			pattern := strings.ToLower(prefix + name)
+			if !seen[pattern] {
+				out = append(out, Command{Pattern: pattern, Defaults: defaults})
+				seen[pattern] = true
+			}
+		}
+	}
+	return out
+}
+
+// CommandExamples is one executable example per eligible endpoint, derived
+// from the same declarations and permissions as matching, never a UI list.
+func CommandExamples(allowed []string, private bool) []string {
+	var out []string
+	for _, spec := range Specs() {
+		for method, ep := range spec.Endpoints {
+			if call, ok := MatchCommandFor(spec.Name, allowed, private); ok && call.Service == spec.Name && call.Method == method {
+				out = append(out, spec.Name)
+				continue
+			}
+			for _, c := range commandsFor(spec, method, ep) {
+				if strings.Contains(c.Pattern, "{") {
+					continue
+				}
+				call, ok := MatchCommandFor(c.Pattern, allowed, private)
+				if ok && call.Service == spec.Name && call.Method == method {
+					out = append(out, c.Pattern)
+					break
+				}
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
 }

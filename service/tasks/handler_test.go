@@ -166,3 +166,16 @@ func TestTheDueFieldPostsAnInstantNotLocalText(t *testing.T) {
 		t.Errorf("ParseDue rejects what the form posts: %v", err)
 	}
 }
+
+func TestOnlyConversationContextSuppressesImages(t *testing.T) {
+	for _, conversation := range []bool{false, true} {
+		task := &Task{ID: "image", Title: "Diagram", Detail: "![diagram](https://example.com/image.png)", Status: StatusTodo}
+		if conversation {
+			task.Thread = "inbox-thread"
+		}
+		got := taskRow(task, "csrf")
+		if strings.Contains(got, "<img") == conversation {
+			t.Fatalf("conversation=%v: %s", conversation, got)
+		}
+	}
+}

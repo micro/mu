@@ -72,3 +72,27 @@ func TestDefaultBriefEnrollmentAndOptOut(t *testing.T) {
 		t.Fatal("timezone update did not enroll")
 	}
 }
+
+func TestLegacyEveningDefaultBecomesMorningWithoutReenabling(t *testing.T) {
+	for _, paused := range []bool{false, true} {
+		owner := "legacy_enabled"
+		if paused {
+			owner = "legacy_paused"
+		}
+		auth.Create(&auth.Account{ID: owner, Zone: "Europe/London"})
+		defer DeleteAll(owner)
+		if err := ScheduleBrief(owner, "20:00", "Europe/London", "daily", "evening", paused); err != nil {
+			t.Fatal(err)
+		}
+		e := Brief(owner)
+		mu.Lock()
+		events[e.ID].Title = "Daily brief"
+		mu.Unlock()
+		ensureDefaultBriefs()
+		got := Brief(owner)
+		loc, _ := time.LoadLocation(got.Zone)
+		if got.When.In(loc).Hour() != 6 || got.Title != "Morning brief" || got.Prompt != "Give me a brief for today" || got.Paused != paused {
+			t.Fatalf("wrong migration: %+v", got)
+		}
+	}
+}

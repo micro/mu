@@ -61,16 +61,19 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 			break
 		}
 	}
-	if builtin && old != nil {
+	if builtin && old != nil && !legacyBrief(old) {
 		return nil
 	}
 	e := &Event{ID: uuid.New().String(), Owner: owner, Created: time.Now().UTC()}
 	if old != nil {
 		*e = *old
 	}
-	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Prompt, e.Paused = "brief", "Daily brief", next, zone, repeat, prompt, paused
+	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Prompt, e.Paused = "brief", "Evening brief", next, zone, repeat, prompt, paused
 	e.Fired, e.FiredAt = false, time.Time{}
 	e.Builtin = builtin
+	if builtin && old != nil {
+		e.Paused = old.Paused
+	}
 	if period == "morning" {
 		e.Title = "Morning brief"
 	}
@@ -93,7 +96,7 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 
 // Reconcile defaults for existing and newly created human accounts. Unknown
 // timezones wait rather than sending at the server's six o'clock. An existing
-// record, including a disabled one, is the durable choice and is never replaced.
+// record is preserved except the exact superseded 20:00 preset. Opt-outs survive.
 func ensureDefaultBriefs() {
 	for _, acc := range auth.AllAccounts() {
 		if acc.Agent || acc.Banned || acc.Unclaimed || acc.Zone == "" || acc.Zone == "Local" {
@@ -102,11 +105,25 @@ func ensureDefaultBriefs() {
 		if _, err := time.LoadLocation(acc.Zone); err != nil {
 			continue
 		}
-		if Brief(acc.ID) != nil {
+		if old := Brief(acc.ID); old != nil && !legacyBrief(old) {
 			continue
 		}
 		if err := scheduleBrief(acc.ID, "06:00", acc.Zone, "daily", "morning", false, true); err != nil {
 			app.Log("events", "default brief: %v", err)
 		}
 	}
+}
+
+// The first shipped brief default was a tomorrow brief at 20:00. Migrate that
+// exact legacy preset once; renamed schedules and other times stay untouched.
+func legacyBrief(e *Event) bool {
+	if e == nil || e.Kind != "brief" || e.Title != "Daily brief" || e.Prompt != "Give me a brief for tomorrow" || e.Repeat != "daily" {
+		return false
+	}
+	loc, err := time.LoadLocation(e.Zone)
+	if err != nil {
+		return false
+	}
+	at := e.When.In(loc)
+	return at.Hour() == 20 && at.Minute() == 0
 }

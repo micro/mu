@@ -316,3 +316,23 @@ func Links(pairs ...[2]string) string {
 	b.WriteString(`</div>`)
 	return b.String()
 }
+
+// ServiceSelect renders the same All/Select control for agents and tokens.
+// Options carry the checked state; an empty selection means All.
+func ServiceSelect(id, listID, name string, options []Option) string {
+	selected := false
+	var choices strings.Builder
+	for _, o := range options {
+		checked := ""
+		if o.On {
+			selected = true
+			checked = " checked"
+		}
+		choices.WriteString(`<label class="choice"><input type="checkbox" name="` + htmlpkg.EscapeString(name) + `" value="` + htmlpkg.EscapeString(o.Value) + `"` + checked + `><span>` + htmlpkg.EscapeString(o.Label) + `</span></label>`)
+	}
+	hidden, on := " hidden", ""
+	if selected {
+		hidden, on = "", " selected"
+	}
+	return `<div class="form-group"><label class="field-label" for="` + htmlpkg.EscapeString(id) + `">Services</label><select class="field field-wide" id="` + htmlpkg.EscapeString(id) + `" name="scope_mode" onchange="document.getElementById('` + jsQuote(listID) + `').hidden=this.value!=='select'"><option value="all">All</option><option value="select"` + on + `>Select</option></select><div id="` + htmlpkg.EscapeString(listID) + `"` + hidden + `><div class="choices">` + choices.String() + `</div></div></div>`
+}

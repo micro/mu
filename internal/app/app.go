@@ -381,7 +381,9 @@ var Template = `
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/mu.css?` + Version + `">
+ <link rel="stylesheet" href="/composition.css?` + Version + `">
     <script src="/mu.js?` + Version + `"></script>
+ <script defer src="/viewport.js?` + Version + `"></script>
   </head>
   <body%s>
     <script>

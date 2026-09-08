@@ -573,6 +573,7 @@ function fetchW(la,lo){
 		// the brief further down the page. You are told, or you ask. See
 		// hideBrief in app.ChatComponent.
 		if viewerID != "" {
+			b.WriteString(shortcutsHTML(true))
 			if brief := briefHTML(viewerID); brief != "" {
 				b.WriteString(`<div id="home-brief" data-brief>` + brief + `</div>`)
 			}
@@ -753,7 +754,7 @@ function fetchW(la,lo){
 	// when the call site it left behind is not removed. See app.renderForRequest,
 	// which is the only place any of the three banners is added.
 	app.Respond(w, r, app.Response{Title: "Home", Description: "The home screen",
-		HTML: agent.HandoffHTML(r) + b.String(), BodyClass: bodyClass})
+		HTML: b.String(), BodyClass: bodyClass})
 }
 
 // htmlEsc escapes text for HTML.

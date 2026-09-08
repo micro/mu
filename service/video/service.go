@@ -143,7 +143,7 @@ var Spec = service.Spec{
 	Card:        service.Timed(func() (string, time.Time) { return Latest(), CardAt() }),
 	Endpoints: map[string]service.Endpoint{
 		"Read": {Doc: "Read the metadata and description of one video already discovered by this instance. No transcript is available"},
-		"List": {Aliases: []string{"video"}, Doc: "Read the latest videos from curated channels"},
+		"List": {Aliases: []string{"video", "videos"}, Doc: "Read the latest videos from curated channels"},
 		"Search": {
 			Doc: "Search YouTube by keyword using this instance's search quota. Results are not restricted to the curated channels",
 			// Priced at zero and still not for strangers: it spends this

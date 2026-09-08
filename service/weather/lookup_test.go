@@ -3,6 +3,9 @@ package weather
 import (
 	"context"
 	"fmt"
+	"mu/internal/auth"
+	"mu/internal/service"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -141,4 +144,48 @@ func TestLookupRejectsInvalidResolvedCoordinates(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "invalid coordinates") {
 		t.Fatalf("accepted invalid location: %v", err)
 	}
+}
+
+func TestLookupUsesOnlyTheCallersSavedLocation(t *testing.T) {
+	oldTransport, oldClient, oldMeteo := http.DefaultTransport, httpClient, openMeteoClient
+	local := localWeatherTransport{base: oldTransport}
+	http.DefaultTransport = local
+	httpClient = &http.Client{Transport: local}
+	openMeteoClient = &http.Client{Transport: local}
+	t.Cleanup(func() { http.DefaultTransport = oldTransport; httpClient = oldClient; openMeteoClient = oldMeteo })
+
+	resetCache()
+	t.Cleanup(resetCache)
+	for _, acc := range []*auth.Account{{ID: "weather_saved", Place: "Hampton", Lat: 51.4, Lon: -0.3, Zone: "Europe/London"}, {ID: "weather_named", Place: "Oxford"}, {ID: "weather_unknown"}} {
+		if err := auth.Create(acc); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { auth.DeleteAccount(acc.ID) })
+	}
+	stubGeocoder(t, []Place{{Name: "Oxford", Lat: 51.75, Lon: -1.25}})
+	for _, loc := range []struct {
+		lat, lon float64
+		temp     float64
+	}{{51.4, -0.3, 18}, {51.75, -1.25, 12}} {
+		storeForecast(loc.lat, loc.lon, &WeatherForecast{Current: &CurrentConditions{TempC: loc.temp, Description: "Cloudy"}, ObservedAt: time.Now()})
+	}
+	for _, tc := range []struct{ owner, place, want string }{{"weather_saved", "", "Hampton"}, {"weather_named", "", "Oxford"}, {"weather_saved", "Oxford", "Oxford"}, {"weather_unknown", "", "Which town or city"}, {"", "", "Which town or city"}} {
+		var rsp ForecastResponse
+		if err := (Server{}).Lookup(service.WithAccount(context.Background(), tc.owner), &LookupRequest{Place: tc.place}, &rsp); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(rsp.Summary, tc.want) {
+			t.Fatalf("%+v: %s", tc, rsp.Summary)
+		}
+	}
+}
+
+type localWeatherTransport struct{ base http.RoundTripper }
+
+func (l localWeatherTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	ip := net.ParseIP(r.URL.Hostname())
+	if ip == nil || !ip.IsLoopback() {
+		return nil, fmt.Errorf("test forbids external weather requests")
+	}
+	return l.base.RoundTrip(r)
 }

@@ -1,0 +1,92 @@
+/* Shared by the signed-in app and the public landing page. */
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
+/* One button, three volumes. The product drew 232 <button> elements against 26
+   uses of .btn, so most of them arrived with the browser's own face on. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-h,30px);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 0 var(--control-pad-x,12px);
+  border-radius:6px;
+  border: var(--border-width, 1px) solid var(--btn-primary, #000);
+  background: var(--btn-primary, #000);
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast, .15s ease), border-color var(--transition-fast, .15s ease);
+}
+
+.btn:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333); color: #fff }
+
+.btn-quiet {
+  background: none;
+  border-color: var(--card-border, #e8e8e8);
+  color: var(--text-secondary, #555);
+}
+
+.btn-quiet:hover { background: none; border-color: #ddd; color: var(--text-primary, #1a1a1a) }
+
+.btn-danger {
+  background: none;
+  border-color: var(--card-border, #e8e8e8);
+  color: var(--text-secondary, #555);
+}
+.btn-danger:hover {
+  background: none;
+  border-color: #e6b3b3;
+  color: var(--btn-danger, #c00);
+}
+
+/* Composition: containers own spacing; children do not add another margin.
+   Use .form / .field-label for forms, .page-stack for adjacent page blocks,
+   .page-section between sections and .section-actions for links after content. */
+:root {
+  --space-control: 8px;
+  --space-field: 16px;
+  --space-section: 24px;
+}
+.page-stack, .page-section { display: flex; flex-direction: column; gap: var(--space-field); min-width: 0; }
+.page-section { margin-block: 0 var(--space-section); }
+.page-stack > *, .page-section > * { margin-block: 0; min-width: 0; }
+.section-actions, .check-label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-control); }
+.section-actions { font-size: 14px; }
+.check-label input { width: auto; margin: 0; }
+.choices { display: flex; flex-wrap: wrap; gap: var(--space-control); }
+.choice { position: relative; max-width: 100%; }
+.choice input { position: absolute; opacity: 0; width: 0; height: 0; }
+.choice span { display: block; border: 1px solid var(--border-color,#ddd); border-radius: var(--border-radius,6px); padding: 5px 12px; font-size: var(--control-font,13px); cursor: pointer; overflow-wrap: anywhere; }
+.choice input:checked + span { background: var(--btn-primary,#111); border-color: var(--btn-primary,#111); color: #fff; }
+.choice input:focus-visible + span { outline: 2px solid var(--text-primary,#111); outline-offset: 2px; }
+.disclosure > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: var(--space-control); }
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::after { content: '+'; }
+.disclosure[open] > summary::after { content: '\2212'; }
+.disclosure > :not(summary) { margin-top: var(--space-field); }
+@media(max-width:900px) {
+ .form:not(.form-inline) .field { width: 100%; max-width: 100%; }
+ .form-inline { align-items: stretch; }
+ .form-inline > input:not([type=hidden]) { flex: 1 1 180px; min-width: 0; }
+}
+/* The quiet button, after .btn rather than before it.
+   It was declared 2,800 lines above .btn, and both are one class, so .btn won
+   on order alone: background went to var(--btn-primary, #000) while the colour
+   stayed dark, because only the colour here was marked important. The result
+   was dark text on a black fill everywhere the pair was used — the top-up
+   presets, the wallet's sign-up button, two on the blog.
+   Marking the background important as well would have hidden the cause and
+   left the next property to do the same thing. Order is the cause. */
+a.btn-secondary, .btn-secondary {
+  background: var(--hover-background, #eee);
+  color: var(--text-primary, #333);
+  border-color: var(--border-color, #ddd);
+}
+a.btn-secondary:hover, .btn-secondary:hover {
+  background: var(--border-color, #ddd);
+  text-decoration: none;
+}
+

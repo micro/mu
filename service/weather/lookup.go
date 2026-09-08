@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/auth"
 	"mu/internal/service"
 )
 
@@ -22,21 +23,36 @@ func (Server) Lookup(ctx context.Context, req *LookupRequest, rsp *ForecastRespo
 	if req.Focus != "" && req.Focus != "rain" {
 		return fmt.Errorf("focus must be rain or empty")
 	}
-	if strings.TrimSpace(req.Place) == "" {
-		service.ServedFromCache(ctx)
-		rsp.Summary = "Which town or city? Try ‘weather in London’."
-		return nil
+	place := Place{}
+	named := strings.TrimSpace(req.Place)
+	owner := service.AccountFrom(ctx)
+	if named == "" {
+		if lat, lon, ok := auth.Located(owner); ok {
+			place = Place{Name: auth.PlaceName(owner), Lat: lat, Lon: lon}
+			if place.Name == "" {
+				place.Name = "Your location"
+			}
+		} else {
+			named = strings.TrimSpace(auth.PlaceName(owner))
+		}
 	}
-	places, err := geocode(ctx, req.Place)
-	if err != nil {
-		return err
+	if place.Name == "" {
+		if named == "" {
+			service.ServedFromCache(ctx)
+			rsp.Summary = "Which town or city? Try ‘weather in London’."
+			return nil
+		}
+		places, err := geocode(ctx, named)
+		if err != nil {
+			return err
+		}
+		if len(places) == 0 {
+			service.ServedFromCache(ctx)
+			rsp.Summary = "I couldn't find that place. Please include the town or city and country."
+			return nil
+		}
+		place = places[0]
 	}
-	if len(places) == 0 {
-		service.ServedFromCache(ctx)
-		rsp.Summary = "I couldn't find that place. Please include the town or city and country."
-		return nil
-	}
-	place := places[0]
 	if !validCoordinates(place.Lat, place.Lon) {
 		return fmt.Errorf("place lookup returned invalid coordinates")
 	}
@@ -47,8 +63,18 @@ func (Server) Lookup(ctx context.Context, req *LookupRequest, rsp *ForecastRespo
 	if forecast == nil {
 		return fmt.Errorf("forecast unavailable")
 	}
-	rsp.Summary = lookupForecastText(forecast, place.Label(), req.Focus, time.Now().UTC())
+	rsp.Summary = lookupForecastText(forecast, place.Label(), req.Focus, localLookupTime(owner))
 	return nil
+}
+
+func localLookupTime(owner string) time.Time {
+	now := time.Now().UTC()
+	if acc, err := auth.GetAccount(owner); owner != "" && err == nil && acc != nil {
+		if loc, err := time.LoadLocation(acc.Zone); err == nil {
+			return now.In(loc)
+		}
+	}
+	return now
 }
 
 // A direct answer is for a person, without the calendar instructions carried

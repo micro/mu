@@ -15,7 +15,7 @@ func promptCommand(prompt string, opts QueryOpts) (service.CommandCall, bool) {
 	if opts.System != "" || strings.TrimSpace(opts.Extra) != "" {
 		return service.CommandCall{}, false
 	}
-	return service.MatchCommand(prompt, filterServices(nativeServices(opts.Public), opts.Tools))
+	return service.MatchCommandFor(prompt, filterServices(nativeServices(opts.Public), opts.Tools), !opts.Public)
 }
 
 func executeCommand(ctx context.Context, account string, call service.CommandCall, opts QueryOpts) (string, error) {
@@ -78,5 +78,6 @@ func commandText(result map[string]any) string {
 			return s
 		}
 	}
+
 	return ""
 }

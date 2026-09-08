@@ -350,14 +350,9 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	for _, t := range selTools {
 		selected[t] = true
 	}
-	var toolsHTML strings.Builder
+	var scopeChoices []app.Option
 	for _, t := range AllAgentTools() {
-		chk := ""
-		if selected[t] {
-			chk = " checked"
-		}
-		toolsHTML.WriteString(`<label class="chip"><input type="checkbox" name="tool" value="` + t + `"` + chk +
-			`><span>` + html.EscapeString(ToolLabel(t)) + `</span></label>`)
+		scopeChoices = append(scopeChoices, app.Option{Value: t, Label: ToolLabel(t), On: selected[t]})
 	}
 
 	// Which model, when there is more than one to pick from.
@@ -396,9 +391,8 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 			opts.WriteString(`<option value="` + html.EscapeString(c.ID) + `"` + sel + `>` +
 				html.EscapeString(c.Label) + `</option>`)
 		}
-		modelHTML = `<label class="b-label">Model <span class="b-hint">` +
-			`— the instance default unless this agent needs something else</span></label>` +
-			`<select id="b-model">` + opts.String() + `</select>`
+		modelHTML = `<label class="field-label">Model<select class="field field-wide" id="b-model">` + opts.String() + `</select></label>`
+
 	}
 
 	// Nothing here asks where it runs.
@@ -421,48 +415,17 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	// "is this scope right" with a list of prompts, which is the question but
 	// not an answer to it — and what an answer actually called is now beside
 	// the answer in the conversation, where somebody looking at an odd one is.
-	scopeOptions, scopeHidden := `<option value="all">All</option><option value="select">Select</option>`, ` hidden`
-	if len(selTools) > 0 {
-		scopeOptions = `<option value="all">All</option><option value="select" selected>Select</option>`
-		scopeHidden = ""
-	}
-	b := `<div class="builder">
-  <form id="bform" onsubmit="return bSave(event)">
-    <input type="hidden" id="b-id" value="` + html.EscapeString(editID) + `">
-    <input type="hidden" id="b-fork" value="` + html.EscapeString(forkFrom) + `">
-    <label class="b-label">Name</label>
-    <input id="b-name" maxlength="60" required value="` + html.EscapeString(name) + `">
-    <label class="b-label">Description</label>
-    <input id="b-desc" maxlength="140" value="` + html.EscapeString(desc) + `">
-    <label class="b-label">System prompt</label>
-    <textarea id="b-prompt" rows="9" required>` + html.EscapeString(prompt) + `</textarea>
-    <label class="b-label" for="b-scope">Services</label>
-    <select id="b-scope" onchange="document.getElementById('b-service-list').hidden=this.value!=='select'">` + scopeOptions + `</select>
-    <div id="b-service-list"` + scopeHidden + `><div class="b-tools">` + toolsHTML.String() + `</div></div>
-    ` + modelHTML + `
-    
-    <div class="b-actions">
-      <button type="submit" class="b-save">Save agent</button>
-      <a class="b-cancel" href="/agents">Cancel</a>
-    </div>
-  </form>
-</div>
-<style>
-.builder{max-width:720px}
-.builder-sub{color:#666;margin:0 0 18px}
-.b-label{display:block;font-size:13px;font-weight:600;color:#374151;margin:14px 0 6px}
-.b-state{font-size:13px;color:#666;line-height:1.5;margin:0 0 4px}
-.b-state strong{color:var(--text-primary,#111)}
-.b-hint{font-weight:400;color:#9ca3af}
-#bform input,#bform textarea,#bform select{width:100%;box-sizing:border-box;padding:9px 11px;font-size:14px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;background:#fff;color:inherit}
-#bform textarea{line-height:1.5;resize:vertical}
-.b-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
-.b-actions{display:flex;align-items:center;gap:12px;margin-top:22px}
-.b-save{padding:10px 22px;font-size:14px;font-weight:600;border:0;border-radius:var(--border-radius,6px);background:var(--btn-primary,#000);color:#fff;cursor:pointer}
-.b-save:hover{background:var(--btn-primary-hover,#333)}
-.b-cancel{color:#6b7280;text-decoration:none;font-size:14px}
-.b-cancel:hover{color:#111}
-</style>` + chipCSS + `
+	b := `<div class="page-col">
+ <form id="bform" class="form" onsubmit="return bSave(event)">
+ <input type="hidden" id="b-id" value="` + html.EscapeString(editID) + `">
+ <input type="hidden" id="b-fork" value="` + html.EscapeString(forkFrom) + `">` +
+		app.Field{ID: "b-name", Label: "Name", Max: 60, Required: true, Wide: true, Value: name}.HTML() +
+		app.Field{ID: "b-desc", Label: "Description", Max: 140, Wide: true, Value: desc}.HTML() +
+		app.Field{ID: "b-prompt", Label: "System prompt", Rows: 9, Required: true, Wide: true, Value: prompt}.HTML() +
+		app.ServiceSelect("b-scope", "b-service-list", "tool", scopeChoices) + modelHTML + `
+ <div class="form-actions"><button type="submit" class="btn">Save agent</button><a href="/agents">Cancel</a></div>
+ </form></div>
+
 <script>
 function bCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
 function bSave(e){e.preventDefault();
@@ -473,7 +436,7 @@ function bSave(e){e.preventDefault();
   b.append('description',document.getElementById('b-desc').value);
   b.append('prompt',document.getElementById('b-prompt').value);
   var mode=document.getElementById('b-scope').value;
-  var selected=Array.from(document.querySelectorAll('.b-tools input:checked'));
+  var selected=Array.from(document.querySelectorAll('#b-service-list input:checked'));
   if(mode==='select'&&!selected.length){alert('Select at least one service');return false;}
   b.append('scope_mode',mode);
   if(mode==='select')selected.forEach(function(el){b.append('tools',el.value);});
