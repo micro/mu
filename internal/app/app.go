@@ -1236,28 +1236,6 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// headAdmin is the operator's door, in the header rather than the rail.
-//
-// It has been three places. At the foot with Account and Log out, on the
-// reasoning that admin is a role and a role belongs with identity; then second
-// in the rail under Home, on the reasoning that an operator opens it several
-// times a day and the foot of a list is not where a thing used that often
-// belongs. The second reason was right about the frequency and wrong about the
-// list.
-//
-// The rail is the product: Home, Inbox, Agents, Services, and the account's
-// own. Admin is none of those — it is the instance with the lid off, and a
-// console sitting second among the four things this *is* made the rail read as
-// four destinations plus an exception. It is a different kind of thing, so it
-// goes somewhere that is a different kind of place.
-//
-// The header, beside the balance, which is the other item there that is a fact
-// about your standing rather than a page in the product. #head-right was built
-// as a flex cluster for exactly this: an item that comes and goes without
-// anything being nudged.
-//
-// Drawn only for an admin, and /admin checks the session itself regardless —
-// this is about not showing a door that is not yours, not about guarding it.
 // navMain is the menu: every destination, in one flat list.
 //
 // It was two lists. Four links here — Home, Inbox, Agents, Services — and five
@@ -1286,11 +1264,8 @@ func navMain(acc *auth.Account) string {
 	// beside Log out — which is where somebody looks when the question is "who
 	// am I signed in as and what is mine".
 	//
-	// Admin is not here either, and no longer in this rail at all. It is the
-	// one door in the list that is not a place in the product — Home, Inbox,
-	// Agents and Services are the four things this is, and an operator console
-	// wedged second among them made the rail read as a list of pages plus one
-	// exception. It is in the header now, beside the balance: see headAdmin.
+	// Admin belongs below Account in navBottom.
+
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
 	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
 	b += item("nav-services", "/services", "/services.svg", "Services")
@@ -1342,21 +1317,11 @@ func navTabs(acc *auth.Account) string {
 // put anything in.
 var TopUpConfigured func() bool
 
-func headAdmin(acc *auth.Account) string {
+func navAdmin(acc *auth.Account) string {
 	if acc == nil || !acc.Admin {
 		return ""
 	}
-	// The word, not a glyph.
-	//
-	// It was an icon with a label beside it, borrowed from the rail's markup,
-	// and the icon was doing nothing the word was not: a gear or a shield in a
-	// corner is a guess you have to make, and the guess is wrong often enough
-	// that the label had to be there anyway. Two things saying one thing, and
-	// on a phone the label was hidden so what was left was the guess alone.
-	//
-	// Set like the rest of this corner — it is a link to somewhere, the same as
-	// the name beside it, and it should read as one.
-	return `<a id="head-admin" class="mini-btn" href="/admin">Admin</a>`
+	return `<a id="nav-admin" href="/admin"><img src="/admin.png?` + Version + `"><span class="label">Admin</span></a>`
 }
 
 // navPinned is the reader's own services, under a heading of their own.
@@ -1455,7 +1420,7 @@ func headCorner(acc *auth.Account, here string) string {
 	// is where somebody goes to leave; the corner's job is to say which account
 	// this browser is, and on a shared or long-lived one that is a real
 	// question. It links to /account, which is where the answer leads.
-	return headAdmin(acc) + headBalance(acc) +
+	return headBalance(acc) +
 		`<a id="head-me" href="/account" title="Your account"><span class="label">@` +
 		htmlpkg.EscapeString(acc.ID) + `</span></a>`
 }
@@ -1496,7 +1461,7 @@ func navBottom(acc *auth.Account, here string) string {
 	// you any more, it is the conversation with somebody — and your own resolves
 	// to your inbox, which is already the first thing in the nav.
 	return `<div class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span></div>
-          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>` + navAdmin(acc) + `
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }

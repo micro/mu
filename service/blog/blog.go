@@ -1554,7 +1554,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Untitled"
 	}
 
-	// Add links and YouTube embeds for full post view
+	// Render the full post, preserving its inline citations.
 	contentHTML := Linkify(post.Content)
 
 	authorLink := post.Author
@@ -1684,26 +1684,10 @@ func renderComments(postID string, r *http.Request) string {
 	return commentsHTML.String()
 }
 
-// Linkify converts markdown to HTML and embeds YouTube videos (for full post display)
+// Linkify renders post markdown. Inline video citations stay links; replacing
+// them with the whole /video page breaks sentences and nests the app in itself.
 func Linkify(text string) string {
-	// Render markdown to HTML first (Render handles LaTeX stripping)
-	html := string(app.Render([]byte(text)))
-
-	// Find YouTube links in the rendered HTML and replace with embeds
-	// Pattern matches: <a href="youtube_url">youtube_url</a>
-	youtubePattern := regexp.MustCompile(`<a href="https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})[^"]*"[^>]*>.*?</a>`)
-	html = youtubePattern.ReplaceAllStringFunc(html, func(match string) string {
-		// Extract video ID from the match
-		idPattern := regexp.MustCompile(`(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})`)
-		matches := idPattern.FindStringSubmatch(match)
-		if len(matches) > 1 {
-			videoID := matches[1]
-			return fmt.Sprintf(`<div class="iframe-container"><iframe src="/video?id=%s" allowfullscreen loading="lazy"></iframe></div>`, videoID)
-		}
-		return match
-	})
-
-	return html
+	return string(app.Render([]byte(text)))
 }
 
 // returnTo is where a finished post lands.

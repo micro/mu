@@ -1682,7 +1682,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			%s
 			%s
 			<div class="article-actions reading-actions">
-				<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
+				<a class="mini-btn" href="%s" target="_blank" rel="noopener noreferrer">Read Original</a>
 				%s
 			</div>
 			<div class="article-back">

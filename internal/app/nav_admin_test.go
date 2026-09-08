@@ -1,23 +1,6 @@
 package app
 
-// Running the place is a door, and not one of the four the product is.
-//
-// The admin dashboard was reachable only as "Admin Dashboard →" inside the
-// Settings card on /account — three clicks from anywhere, below passkeys and
-// blocked users, on the page you go to in order to change your language. It is
-// the page an operator opens most and it was the hardest one to reach.
-//
-// Then the bottom group with Account and Log out, on the reasoning that admin
-// is a role and roles sit with identity; then second in the rail under Home,
-// on the reasoning that the foot of a list is the wrong place for something
-// opened several times a day. That was right about the frequency and wrong
-// about the list: the rail is Home, Inbox, Agents, Services and the account's
-// own pages, and a console sitting second among them made the rail read as
-// four destinations plus an exception.
-//
-// It is in the header now, beside the balance — the other item there that is a
-// fact about your standing rather than a page in the product. So these tests
-// assert two things: an admin has the door, and it is not in the rail.
+// Admin lives directly below Account in the sidebar, for operators only.
 
 import (
 	"os"
@@ -28,34 +11,22 @@ import (
 )
 
 func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
-	nav := headAdmin(&auth.Account{ID: "boss", Admin: true})
+	nav := navAdmin(&auth.Account{ID: "boss", Admin: true})
 	if !strings.Contains(nav, `href="/admin"`) {
 		t.Fatal("an admin has no way to the dashboard from the sidebar")
 	}
 	if strings.Contains(nav, "display: none") {
 		t.Error("the admin's own link is hidden, so it needs JavaScript to appear")
 	}
-	// And it is in the header, before the rail starts.
-	//
-	// Read by position, because that is the whole claim. #head-right is in the
-	// markup above #container, so an Admin link that landed anywhere in the
-	// rail — where it was, second under Home — comes after it. Asserting on the
-	// id alone would pass with the link back in the list it left.
 	page := renderWithLang("t", "d", "", "en", &auth.Account{ID: "boss", Admin: true})
-	adm, rail, out := strings.Index(page, `id="head-admin"`), strings.Index(page, `id="nav"`),
-		strings.Index(page, `id="nav-logout"`)
-	if adm < 0 || rail < 0 || out < 0 {
-		t.Fatalf("the shell is missing a part (admin %d, rail %d, logout %d)", adm, rail, out)
+	account, admin, logout := strings.Index(page, `id="nav-account"`), strings.Index(page, `id="nav-admin"`), strings.Index(page, `id="nav-logout"`)
+	if account < 0 || admin <= account || logout <= admin {
+		t.Fatal("Admin must follow Account and precede Log out")
 	}
-	if adm > rail {
-		t.Errorf("admin is inside the rail rather than in the header (admin %d, rail %d) — "+
-			"the rail is the four things the product is, and an operator console is "+
-			"not one of them", adm, rail)
+	if strings.Contains(headCorner(&auth.Account{ID: "boss", Admin: true}, ""), `href="/admin"`) {
+		t.Fatal("Admin remains in header")
 	}
-	// Nothing named nav-admin anywhere: the rail entry is gone, not duplicated.
-	if strings.Contains(page, `id="nav-admin"`) {
-		t.Error("the rail still draws its own Admin entry, so the door is in two places")
-	}
+
 }
 
 // The bottom of the rail is who you are, what is yours, and the way out.
@@ -117,7 +88,7 @@ func TestTheBottomIsWhoYouAreAndTheWayOut(t *testing.T) {
 // Nothing at all for anybody else, rather than a hidden link JavaScript removes:
 // the shell is rendered per viewer, so there is no cached page to defend against.
 func TestAnOrdinaryAccountIsNotShownTheDoor(t *testing.T) {
-	if nav := headAdmin(&auth.Account{ID: "reader"}); nav != "" {
+	if nav := navAdmin(&auth.Account{ID: "reader"}); nav != "" {
 		t.Errorf("a non-admin is offered the admin dashboard: %s", nav)
 	}
 	if strings.Contains(navBottom(&auth.Account{ID: "reader"}, ""), "/admin") {
@@ -126,7 +97,7 @@ func TestAnOrdinaryAccountIsNotShownTheDoor(t *testing.T) {
 }
 
 func TestSignedOutGetsNoAdminLink(t *testing.T) {
-	if headAdmin(nil) != "" || strings.Contains(navBottom(nil, ""), "/admin") {
+	if navAdmin(nil) != "" || strings.Contains(navBottom(nil, ""), "/admin") {
 		t.Error("a signed-out visitor is offered the admin dashboard")
 	}
 }

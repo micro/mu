@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"mu/internal/ai"
 	"net/http"
 	"net/url"
 	"sort"
@@ -1452,7 +1453,7 @@ func agentErrorMessage(err error) string {
 	if errors.Is(err, ErrNoProvider) {
 		return "The agent has no AI provider configured. Set a provider key in /admin/config."
 	}
-	return "Could not generate response: " + err.Error()
+	return "Could not generate response: " + ai.FailureMessage(err)
 }
 
 // handleQuery processes an agent query request with SSE streaming.

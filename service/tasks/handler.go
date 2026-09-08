@@ -21,6 +21,11 @@ import (
 
 // Handler serves /tasks.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	NamedHandler(w, r, nil)
+}
+
+// NamedHandler receives the agent display-name resolver from the server.
+func NamedHandler(w http.ResponseWriter, r *http.Request, name func(string, string) string) {
 	if r.Method == http.MethodPost {
 		rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/tasks"), "/")
 		id, action, _ := strings.Cut(rest, "/")
@@ -31,7 +36,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleJSON(w, r)
 		return
 	}
-	listPage(w, r)
+	listPage(w, r, name)
 }
 
 func handleJSON(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +100,7 @@ func handleAction(w http.ResponseWriter, r *http.Request, id, action string) {
 	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
-func listPage(w http.ResponseWriter, r *http.Request) {
+func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, string) string) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)
@@ -146,7 +151,11 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		if Running(t) {
 			running++
 		}
-		b.WriteString(taskRow(t, csrf))
+		label := ""
+		if len(names) > 0 && names[0] != nil {
+			label = names[0](t.Owner, t.Agent)
+		}
+		b.WriteString(taskRow(t, csrf, label))
 	}
 	b.WriteString(`</div>`)
 
@@ -175,8 +184,12 @@ func tab(b *strings.Builder, status, active, label string) {
 	fmt.Fprintf(b, `<a href="%s" class="%s">%s</a>`, href, class, html.EscapeString(label))
 }
 
-func taskRow(t *Task, csrf string) string {
+func taskRow(t *Task, csrf string, labels ...string) string {
 	var b strings.Builder
+	label := "Agent"
+	if len(labels) > 0 && strings.TrimSpace(labels[0]) != "" {
+		label = labels[0]
+	}
 	class := "task"
 	if !t.Open() {
 		class += " task-done"
@@ -188,7 +201,7 @@ func taskRow(t *Task, csrf string) string {
 	var meta []string
 	meta = append(meta, html.EscapeString(t.Status))
 	if t.Assignee == Agent {
-		meta = append(meta, "agent")
+		meta = append(meta, html.EscapeString(label))
 	}
 	if !t.Due.IsZero() {
 		meta = append(meta, "due "+html.EscapeString(t.Due.Local().Format("2 Jan 15:04")))
@@ -199,7 +212,13 @@ func taskRow(t *Task, csrf string) string {
 	fmt.Fprintf(&b, `<div class="task-meta">%s</div>`, strings.Join(meta, " · "))
 
 	if t.Detail != "" {
-		fmt.Fprintf(&b, `<div class="task-detail">%s</div>`, html.EscapeString(t.Detail))
+		if t.Thread != "" {
+			b.WriteString(`<details class="task-context"><summary>Conversation context</summary>`)
+		}
+		fmt.Fprintf(&b, `<div class="task-detail">%s</div>`, app.Render([]byte(t.Detail)))
+		if t.Thread != "" {
+			b.WriteString(`</details>`)
+		}
 	}
 	// What the agent did, before what it concluded. A paragraph on its own
 	// gives no way to tell research from invention; a list of the tools it ran
@@ -230,7 +249,7 @@ func taskRow(t *Task, csrf string) string {
 		// app.Render, not RenderTrusted — this text came out of a model that had
 		// just read news articles and web pages, so any HTML in it is HTML
 		// somebody else wrote.
-		fmt.Fprintf(&b, `<div class="task-result">%s</div>`, app.Render([]byte(t.Result)))
+		fmt.Fprintf(&b, `<div class="task-result">%s</div>`, app.Render([]byte(t.Outcome())))
 	}
 
 	b.WriteString(`<div class="task-actions">`)
@@ -297,8 +316,9 @@ const tasksPageCSS = `<style>
 .task-title{font-weight:var(--font-weight-medium)}
 .task-done .task-title{text-decoration:line-through;color:var(--text-muted)}
 .task-meta{font-size:12px;color:var(--text-muted);margin-top:2px}
-.task-detail{font-size:14px;margin-top:6px;color:var(--text-secondary)}
-.task-result{font-size:14px;margin-top:8px;padding:2px 12px;background:var(--hover-background);border-radius:6px}
+.task-context{margin-top:8px}.task-context summary{cursor:pointer;color:var(--text-muted)}
+.task-detail{overflow-wrap:anywhere;font-size:14px;margin-top:6px;color:var(--text-secondary)}
+.task-result{overflow-wrap:anywhere;font-size:14px;margin-top:8px;padding:2px 12px;background:var(--hover-background);border-radius:6px}
 .task-result > :first-child{margin-top:10px}
 .task-result > :last-child{margin-bottom:10px}
 .task-result pre{overflow-x:auto}

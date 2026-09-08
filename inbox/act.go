@@ -124,7 +124,7 @@ func hand(accountID string, t *thread.Thread, ask, agentID string) error {
 		for _, m := range msgs {
 			who := "They"
 			if m.Role == thread.RoleAgent {
-				who = "The agent"
+				who = messageAgentName(accountID, t, m)
 			} else if strings.TrimSpace(m.From) == "" || m.From == accountID {
 				who = "The owner"
 			}
@@ -132,7 +132,7 @@ func hand(accountID string, t *thread.Thread, ask, agentID string) error {
 			// them is the same conversation three times over in one prompt, and
 			// the agent is being handed all six anyway. See quoted.go.
 			text, _ := unquoted(m.Text)
-			detail.WriteString(who + ": " + strings.TrimSpace(text) + "\n\n")
+			detail.WriteString("**" + who + ":**\n\n" + strings.TrimSpace(text) + "\n\n")
 		}
 	}
 	detail.WriteString("What they have asked for: " + ask)

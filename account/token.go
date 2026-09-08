@@ -120,20 +120,6 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	var sb strings.Builder
 
-	// Mobile-friendly table styles
-	sb.WriteString(`<style>
-.token-table { width:100%; border-collapse:collapse; font-size:14px; }
-.token-table th { text-align:left; padding:8px; border-bottom:2px solid #eee; font-size:13px; color:#555; }
-.token-table td { padding:8px; border-bottom:1px solid #f5f5f5; vertical-align:top; }
-.token-table code { font-size:11px; word-break:break-all; }
-@media (max-width: 640px) {
-  .token-table thead { display:none; }
-  .token-table tr { display:block; padding:12px 0; border-bottom:1px solid #eee; }
-  .token-table td { display:block; padding:4px 0; border:none; }
-  .token-table td:before { content:attr(data-label); font-weight:600; font-size:12px; color:#888; display:block; margin-bottom:2px; }
-}
-</style>`)
-
 	// === OAuth Clients ===
 	// Yours, and only yours.
 	//
@@ -182,7 +168,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// in mu.css — it was a class name invented at the call site, so both tables
 	// on this page were unstyled browser defaults, and on a phone six columns
 	// squashed to a few characters each.
-	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>May reach</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
+	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>Services</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
 	tokens := auth.ListTokens(accountID)
 	if len(tokens) == 0 {
 		sb.WriteString(`<tr><td colspan="6" class="p-5 text-center text-secondary">No tokens yet.</td></tr>`)
@@ -200,7 +186,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		if !token.Created.IsZero() {
 			created = app.TimeAgo(token.Created)
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="May reach">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
+		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Services">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
 			<form method="POST" action="/token?id=%s" class="d-inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			token.Name, tokenScope(token), created, lastUsed, expires, token.ID))
@@ -236,15 +222,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// wallet. The scoped path existed on /agents and the README pointed here —
 	// so the documented road was the unsafe one and the safe one was
 	// undocumented. Same control, same meaning, on both pages now.
-	sb.WriteString(`<div id="tok-scope"><p class="tok-scope-head">What may it reach?</p>`)
-	sb.WriteString(`<p class="tok-scope-sub">Choose nothing and it reaches everything you can — ` +
-		`which is rarely what you meant for a credential you are about to paste somewhere.</p>`)
-	sb.WriteString(`<div class="tok-chips">`)
+	sb.WriteString(`<div id="tok-scope"><label class="field-label">Services<select class="field field-wide" name="scope_mode" onchange="document.getElementById('tok-service-list').hidden=this.value!=='select'"><option value="all">All</option><option value="select">Select</option></select></label>`)
+	sb.WriteString(`<div id="tok-service-list" hidden><div class="tok-chips">`)
+
 	for _, sp := range tokenScopeChoices() {
 		sb.WriteString(`<label class="tok-chip"><input type="checkbox" name="services" value="` +
 			htmlpkg.EscapeString(sp.Name) + `"><span>` + htmlpkg.EscapeString(sp.NavLabel()) + `</span></label>`)
 	}
-	sb.WriteString(`</div></div>`)
+	sb.WriteString(`</div></div></div>`)
 
 	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
 	sb.WriteString(tokenScopeCSS)
@@ -315,11 +300,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 async function createToken(e) {
 	e.preventDefault();
 	var form = e.target;
+ var mode=form.scope_mode.value;
+ var services=mode==='select'?Array.from(form.querySelectorAll('input[name="services"]:checked')).map(function(c){return c.value}):[];
+ if(mode==='select' && !services.length){alert('Select at least one service');return;}
 	var res = await fetch('/token', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
 		body: JSON.stringify({name: form.name.value, expires_in: parseInt(form.expires_in.value),
-			services: Array.from(form.querySelectorAll('input[name="services"]:checked')).map(function(c){return c.value})})
+			scope_mode: mode, services: services})
 	});
 	var result = await res.json();
 	if (result.success) {
@@ -410,10 +398,12 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	var name string
 	var permissions []string
 	var scope []string
+	var scopeMode string
 	var expiresIn int // days
 
 	if app.SendsJSON(r) {
 		var req struct {
+			ScopeMode   string   `json:"scope_mode"`
 			Name        string   `json:"name"`
 			Services    []string `json:"services"`
 			Permissions []string `json:"permissions"`
@@ -427,6 +417,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		permissions = req.Permissions
 		expiresIn = req.ExpiresIn
 		scope = req.Services
+		scopeMode = req.ScopeMode
 	} else {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -436,11 +427,25 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		permissions = parseTokenPermissions(r.FormValue("permissions"))
 		expiresIn = parseTokenExpiresIn(r.FormValue("expires_in"))
 		scope = r.Form["services"]
+		scopeMode = r.FormValue("scope_mode")
 	}
 
 	// Validate
 	if name == "" {
 		http.Error(w, "Token name is required", http.StatusBadRequest)
+		return
+	}
+
+	if scopeMode != "" && scopeMode != "all" && scopeMode != "select" {
+		app.RespondError(w, http.StatusBadRequest, "Choose All or Select")
+		return
+	}
+	if scopeMode == "all" {
+		scope = nil
+	}
+	validScope := validScopeNames(scope)
+	if (scopeMode == "select" || len(scope) > 0) && len(validScope) == 0 {
+		app.RespondError(w, http.StatusBadRequest, "Select at least one valid service")
 		return
 	}
 
@@ -453,7 +458,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	// service:<name>, which is the one form the MCP boundary enforces — so a
 	// token made here is confined exactly as one made on /agents is, and the
 	// tools/list it reads is its own rather than the whole instance.
-	if named := auth.ScopeFor(validScopeNames(scope)); len(named) > 0 {
+	if named := auth.ScopeFor(validScope); len(named) > 0 {
 		permissions = append(permissions, named...)
 	}
 
@@ -561,7 +566,7 @@ const tokenScopeCSS = `<style>
 func tokenScope(t *auth.Token) string {
 	names := t.Services()
 	if len(names) == 0 {
-		return "Everything"
+		return "All"
 	}
 	out := make([]string, 0, len(names))
 	for _, n := range names {

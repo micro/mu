@@ -46,6 +46,7 @@ import (
 	"sync"
 
 	"mu/agent"
+	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
@@ -176,10 +177,13 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 		steps = append(steps, tasks.Step{Tool: s.Tool, Detail: tasks.StepDetail(s.Args), OK: s.OK, Seconds: s.Took.Seconds()})
 	}
 	answer, err := query(r.Account, workPrompt(r), opts)
+	stepsMu.Lock()
+	completedSteps := append([]tasks.Step(nil), steps...)
+	stepsMu.Unlock()
 
 	switch r.Kind {
 	case tasks.Kind:
-		finishTask(r, answer, steps, err)
+		finishTask(r, answer, completedSteps, err)
 	case events.Kind:
 		deliver(r, answer, err)
 	default:
@@ -224,7 +228,7 @@ func answered(r request, answer string, err error) {
 	if err != nil {
 		// Said rather than swallowed, for the reason in the package comment:
 		// silence is indistinguishable from work nobody picked up.
-		text = "That did not work: " + err.Error()
+		text = "That did not work: " + ai.FailureMessage(err)
 	}
 	from := r.Agent
 	if from == "" {
@@ -240,7 +244,7 @@ func answered(r request, answer string, err error) {
 func finishTask(r request, answer string, steps []tasks.Step, err error) {
 	if err != nil {
 		app.Log("work", "task %q failed for %s: %v", r.Title, r.Account, err)
-		if _, saveErr := tasks.Update(r.Account, r.ID, "", "", tasks.StatusTodo, "", "Last run failed: "+err.Error(), steps); saveErr != nil {
+		if _, saveErr := tasks.Update(r.Account, r.ID, "", "", tasks.StatusTodo, "", "Last run failed: "+ai.FailureMessage(err), steps); saveErr != nil {
 			app.Log("work", "saving failed task %s: %v", r.ID, saveErr)
 		}
 		return
@@ -262,7 +266,7 @@ func deliver(r request, answer string, err error) {
 	body := strings.TrimSpace(answer)
 	if err != nil {
 		app.Log("work", "standing instruction %q failed for %s: %v", r.Title, r.Account, err)
-		body = "This scheduled task failed: " + err.Error()
+		body = "This scheduled task failed: " + ai.FailureMessage(err)
 	}
 	if body == "" {
 		return
