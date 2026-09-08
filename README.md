@@ -17,13 +17,6 @@ It includes:
 - **Services** - which act as building blocks for Micro.
 - **Protocols** - a way to self host SMTP, XMPP, SFTP, SSH.
 
-## Why it exists
-
-I'm tired of no easy option to self host and handing everything over to corporations.
-I'll never give up my Google account but I want more control over how I use the internet.
-
-I don't think I'm alone in saying that.
-
 ## How it works
 
 **Mu** is a monolothic codebase: the runtime, services, archive, inbox and agent system all in one host. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data gets archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
