@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
 )
 
@@ -172,6 +173,16 @@ func ParseDue(s string) (time.Time, error) {
 }
 
 func Load() {
+	// Synchronous and before registration: no live task may be mistaken for
+	// an interrupted run while startup recovery is in progress.
+	for _, acc := range auth.AllAccounts() {
+		if acc != nil {
+			if err := recoverInterrupted(acc.ID); err != nil {
+				app.Log("tasks", "recovering interrupted work for %s: %v", acc.ID, err)
+			}
+		}
+	}
+
 	if err := service.Register(Spec); err != nil {
 		app.Log("tasks", "service register failed: %v", err)
 	}
