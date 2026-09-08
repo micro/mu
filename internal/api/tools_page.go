@@ -165,11 +165,6 @@ func pinControl(r *http.Request, name string, pinned bool) string {
 // Each tile carries a pin, which is how a service gets into the sidebar. The
 // sidebar shows what you chose; this shows everything there is to choose.
 func serviceGrid(r *http.Request) string {
-	counts := map[string]int{}
-	for _, g := range groupTools() {
-		counts[strings.ToLower(g.Label)] += len(g.Tools)
-	}
-
 	isPinned := map[string]bool{}
 	if _, acc := auth.TrySession(r); acc != nil {
 		for _, n := range acc.PinnedServices() {
@@ -197,21 +192,6 @@ func serviceGrid(r *http.Request) string {
 
 		b.WriteString(close)
 
-		// The count was a dead line of text inside the tile: it told you a
-		// service had four tools and then took you to the service when you
-		// clicked, with no way from here to the four. It is a link now, to that
-		// service's group in the Tools lens — which is the only reason anybody
-		// reads a tool count in the first place.
-		if n := counts[strings.ToLower(s.NavLabel())]; n > 0 {
-			label := strconv.Itoa(n) + " tool"
-			if n != 1 {
-				label += "s"
-			}
-			b.WriteString(`<a class="service-tile-tools" href="/tools#svc-` +
-				html.EscapeString(groupAnchor(s.NavLabel())) + `">` + label + `</a>`)
-		}
-		b.WriteString(`<a class="service-tile-open" href="/api?service=` +
-			html.EscapeString(s.Name) + `">API &rarr;</a>`)
 		// Nothing to pin without a page — the sidebar is a list of places.
 		if s.Page != "" {
 			b.WriteString(pinControl(r, s.Name, isPinned[s.Name]))
@@ -500,16 +480,7 @@ const toolsPageCSS = `<style>
    The tile still fills the cell, so the whole card remains the hit target for
    opening the service. */
 .service-tile-wrap{position:relative;display:flex}
-.service-tile-wrap>.tool-tile{flex:1;padding-right:34px;padding-bottom:28px}
-/* The tool count, over the bottom of the tile it counts. It cannot sit inside
-   the tile: the tile is a link to the service, and this is a link to the
-   tools. */
-.service-tile-tools{position:absolute;left:14px;bottom:10px;font-size:12px;color:#6b7280;
-  text-decoration:none;font-variant-numeric:tabular-nums}
-.service-tile-tools:hover{color:#111;text-decoration:underline}
-.service-tile-open{position:absolute;right:14px;bottom:10px;font-size:12px;color:#6b7280;
-  text-decoration:none}
-.service-tile-open:hover{color:#111;text-decoration:underline}
+.service-tile-wrap>.tool-tile{flex:1;gap:var(--spacing-sm,8px);padding:16px 34px 16px 16px}
 /* The pin sits on the tile here; .pin-btn itself is in mu.css, because /apps
    pins an app to home with the same control and a shared control cannot live
    in one page's style block. */
@@ -523,7 +494,7 @@ const toolsPageCSS = `<style>
 /* No :hover here. A tile is a card and .card-hover in mu.css is what a card
    does on hover — this had a grey border of its own, which was a third answer
    beside the row on /agents and the cards on home. */
-.tool-tile-name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;color:#111}
+.tool-tile-name{font-family:inherit;font-size:13px;font-weight:600;color:#111}
 .tool-tile-desc{font-weight:var(--font-weight-normal,400);font-size:13px;color:#666;line-height:1.4}
 .tool-tile-price{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums;margin-top:2px}
 .tool-tile-price .free{color:#9ca3af}

@@ -564,7 +564,7 @@ td {
 
 #nav a {
   color: var(--text-primary);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-normal) !important;
   text-decoration: none;
   padding: 10px 14px;
   border-radius: var(--border-radius);
@@ -589,7 +589,7 @@ td {
    identical or "selected" and "under the cursor" become the same signal. */
 #nav a.active {
   background: var(--active-background, var(--hover-background));
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-normal) !important;
   box-shadow: inset 3px 0 0 var(--accent-color, currentColor);
 }
 
@@ -637,7 +637,7 @@ td {
 
 .nav-bottom a {
   color: var(--text-primary);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-normal) !important;
   text-decoration: none;
   padding: 6px 14px;
   border-radius: 8px;
