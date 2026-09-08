@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -318,28 +319,7 @@ func buildExternalTo(displayName, from, replyTo, to string, cc []string, subject
 // must be signed and relayed the same way — a second copy of this would be a
 // second place for DKIM to be forgotten.
 func finishExternal(message []byte, from, to string, cc []string, messageID string) (string, error) {
-	// Apply DKIM signing if configured
-	if dkimConfig != nil {
-		options := &dkim.SignOptions{
-			Domain:                 dkimConfig.Domain,
-			Selector:               dkimConfig.Selector,
-			Signer:                 dkimConfig.PrivateKey,
-			HeaderCanonicalization: dkim.CanonicalizationRelaxed,
-			BodyCanonicalization:   dkim.CanonicalizationRelaxed,
-			// Cc is signed too. A recipient list that is not covered by the
-			// signature can be rewritten in transit, which on a reply-all is
-			// the header that says who else is in the room.
-			HeaderKeys: []string{"from", "to", "cc", "subject", "date", "message-id", "mime-version", "content-type"},
-		}
-
-		var signedBuf bytes.Buffer
-		if err := dkim.Sign(&signedBuf, bytes.NewReader(message), options); err != nil {
-			app.Log("dkim", "WARNING: DKIM signing failed: %v", err)
-		} else {
-			message = signedBuf.Bytes()
-			app.Log("dkim", "Signed with DKIM (d=%s s=%s relaxed/relaxed)", dkimConfig.Domain, dkimConfig.Selector)
-		}
-	}
+	message = signExternal(message)
 
 	// Auto-whitelist: record outbound message ID + recipient so replies
 	// and future mail from this address are allowed through.
@@ -369,6 +349,33 @@ func finishExternal(message []byte, from, to string, cc []string, messageID stri
 
 	app.Log("mail", "✓ Email relayed successfully")
 	return messageID, nil
+}
+
+func signExternal(message []byte) []byte {
+	// Apply DKIM signing if configured
+	if dkimConfig != nil {
+		options := &dkim.SignOptions{
+			Domain:                 dkimConfig.Domain,
+			Selector:               dkimConfig.Selector,
+			Signer:                 dkimConfig.PrivateKey,
+			HeaderCanonicalization: dkim.CanonicalizationRelaxed,
+			BodyCanonicalization:   dkim.CanonicalizationRelaxed,
+			// Cc is signed too. A recipient list that is not covered by the
+			// signature can be rewritten in transit, which on a reply-all is
+			// the header that says who else is in the room.
+			HeaderKeys: []string{"from", "to", "cc", "subject", "date", "message-id", "mime-version", "content-type"},
+		}
+
+		var signedBuf bytes.Buffer
+		if err := dkim.Sign(&signedBuf, bytes.NewReader(message), options); err != nil {
+			app.Log("dkim", "WARNING: DKIM signing failed: %v", err)
+		} else {
+			message = signedBuf.Bytes()
+			app.Log("dkim", "Signed with DKIM (d=%s s=%s relaxed/relaxed)", dkimConfig.Domain, dkimConfig.Selector)
+		}
+	}
+
+	return message
 }
 
 // SendCalendarInvite sends an email carrying an iCalendar (.ics) invite so the
@@ -508,7 +515,8 @@ func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bo
 		}
 	}
 
-	// Everybody outside, in one message, so a thread stays one thread for them.
+	// Everybody outside, in one durable message. Each recipient has independent
+	// transport retries, so an unavailable server cannot lose somebody's copy.
 	//
 	// A failure here is remembered rather than returned, because the people on
 	// this instance are still owed their copy — the relay being down is not
@@ -517,7 +525,7 @@ func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bo
 	var messageID string
 	var relayErr error
 	if len(outside) > 0 {
-		id, err := SendExternalReplyAll(displayName, from, outside[0], outside[1:], subject,
+		id, err := queueReply(fromID, displayName, from, outside[0], outside[1:], subject,
 			bodyPlain, bodyHTML, inReplyTo, references)
 		if err != nil {
 			relayErr = err
@@ -557,6 +565,7 @@ func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bo
 			References: references,
 		}); err != nil {
 			app.Log("mail", "could not deliver the answer to %s: %v", addr, err)
+			relayErr = errors.Join(relayErr, err)
 		}
 	}
 	return messageID, relayErr

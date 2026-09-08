@@ -185,7 +185,9 @@ type SendRequest struct {
 }
 
 type SendResponse struct {
-	Result string `json:"result" description:"Confirmation, saying whether it went out over SMTP or stayed on this instance"`
+	MessageID string `json:"message_id,omitempty" description:"Stable identifier for the accepted message"`
+	State     string `json:"state,omitempty" description:"queued for external delivery, or delivered locally"`
+	Result    string `json:"result" description:"Confirmation: accepted into the external outbox, or delivered locally"`
 }
 
 // Send writes to somebody, wherever they are.
@@ -215,12 +217,14 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	// had its own copy, and the copy dropped the tag on the way to DeliverHere,
 	// so mail to asim+research@ was filed and woke nothing.
 	if !IsExternalEmail(to) {
-		if _, err := Deliver(Outgoing{
+		messageID, err := Deliver(Outgoing{
 			FromID: acc.ID, Display: acc.Name, To: to,
 			Subject: req.Subject, Body: req.Body,
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
+		rsp.MessageID, rsp.State = messageID, "delivered"
 		rsp.Result = "Sent to " + to + " on this instance."
 		return nil
 	}
@@ -229,11 +233,12 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	if err != nil {
 		return err
 	}
-	// Kept in Sent whether or not the copy succeeds: the mail has gone.
+	// The accepted message is durable in the outbox even if this sent copy fails.
 	if err := SendMessage(acc.Name, acc.ID, to, to, req.Subject, req.Body, "", messageID); err != nil {
 		app.Log("mail", "sent copy not stored: %v", err)
 	}
-	rsp.Result = "Sent to " + to + "."
+	rsp.MessageID, rsp.State = messageID, "queued"
+	rsp.Result = "Queued for delivery to " + to + ". Transport retries are automatic; do not send it again. Check /mail?view=outbox for pending or failed delivery."
 	return nil
 }
 
