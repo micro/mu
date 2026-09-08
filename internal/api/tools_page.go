@@ -494,7 +494,7 @@ const toolsPageCSS = `<style>
 /* No :hover here. A tile is a card and .card-hover in mu.css is what a card
    does on hover — this had a grey border of its own, which was a third answer
    beside the row on /agents and the cards on home. */
-.tool-tile-name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;color:#111}
+.tool-tile-name{font-family:inherit;font-size:13px;font-weight:600;color:#111}
 .tool-tile-desc{font-weight:var(--font-weight-normal,400);font-size:13px;color:#666;line-height:1.4}
 .tool-tile-price{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums;margin-top:2px}
 .tool-tile-price .free{color:#9ca3af}
