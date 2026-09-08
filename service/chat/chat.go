@@ -934,7 +934,7 @@ func (room *Room) run() {
 			announceMessage(room.ID, message)
 
 			// Broadcast to all clients
-			room.mutex.RLock()
+			room.mutex.Lock()
 			for conn := range room.Clients {
 				err := conn.WriteJSON(message)
 				if err != nil {
@@ -942,7 +942,7 @@ func (room *Room) run() {
 					delete(room.Clients, conn)
 				}
 			}
-			room.mutex.RUnlock()
+			room.mutex.Unlock()
 		}
 	}
 }
