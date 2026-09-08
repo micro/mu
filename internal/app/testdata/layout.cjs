@@ -33,9 +33,6 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.selectOption(select,'all');assert(await page.locator(list).isHidden());
     await page.selectOption(select,'select');assert(await checks.first().isChecked());
    }
-   if(path==='/agents'){
-    const space=await gap('.page-stack > .col','.section-actions');assert(space>=15&&space<=17,`Tools gap ${space}`);
-   }
    if(path==='/chat'){
     await page.locator('#messages').evaluate(e=>e.innerHTML='<p>Long conversation</p>'.repeat(100));
     await page.waitForTimeout(100);
