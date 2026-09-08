@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/service/markets"
 	"mu/service/news"
+	"mu/service/video"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,8 +15,10 @@ import (
 )
 
 func TestHomeNewsShortcutReturnsFinalAnswerWithoutCardOrModelWork(t *testing.T) {
-	if err := service.Register(news.Spec); err != nil {
-		t.Fatal(err)
+	for _, sp := range []service.Spec{news.Spec, markets.Spec, video.Spec} {
+		if err := service.Register(sp); err != nil {
+			t.Fatal(err)
+		}
 	}
 	const who = "home_command"
 	if err := auth.Create(&auth.Account{ID: who, Approved: true}); err != nil {
@@ -30,7 +34,7 @@ func TestHomeNewsShortcutReturnsFinalAnswerWithoutCardOrModelWork(t *testing.T) 
 		t.Fatal("shortcut assembled ambient cards instead of returning directly")
 		return ""
 	}
-	for _, prompt := range []string{"News", "news", " NEWS "} {
+	for _, prompt := range []string{"News", "news", " NEWS ", "markets", "MARKETS", "video", "latest videos", `"latest videos"`, "‘latest videos’"} {
 		body, _ := json.Marshal(map[string]any{"prompt": prompt, "cards": true})
 		req := httptest.NewRequest("POST", "/agent", strings.NewReader(string(body)))
 		req.Header.Set("Content-Type", "application/json")

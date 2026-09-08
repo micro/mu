@@ -529,7 +529,7 @@ func ChatComponent(cfg ChatConfig) string {
    fitConv, which replaces it with the exact figure and keeps it right on
    resize, so there is no constant to be wrong on somebody's screen. */
 .mu-chat-transcript{display:flex;flex-direction:column}
-.mu-chat-transcript #mu-chat-form{position:static;flex:none}
+.mu-chat-transcript #mu-chat-form{position:static;flex:none;margin:0}
 .mu-chat-transcript #mu-chat-opts{margin:6px 0 0;flex:none}
 /* Margin only when there is something to separate.
    An empty conversation and an empty suggestion row are two zero-height
@@ -674,10 +674,11 @@ function toBottom(force,smooth){
 // visualViewport.height is what is left. Falling back to innerHeight where
 // there is no visualViewport is what every desktop browser wants anyway.
 function screenH(){
-  return (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  return window.visualViewport ? window.visualViewport.height+window.visualViewport.offsetTop : window.innerHeight;
 }
 function fitConv(){
   if(!transcript||!conv) return;
+  if(document.body.classList.contains("chat-page")){conv.style.maxHeight="none";return;}
   var top=conv.getBoundingClientRect().top;
   var below=0;
   var form=document.getElementById('mu-chat-form');
@@ -693,7 +694,7 @@ function fitConv(){
   if(tabs&&window.getComputedStyle(tabs).display!=='none'){
     below+=tabs.getBoundingClientRect().height;
   }
-  var h=Math.max(minConv, screenH()-top-below-convGap);
+  var h=Math.max(document.body.classList.contains("typing")?0:minConv, screenH()-top-below-convGap);
   conv.style.maxHeight=h+'px';
 }
 // minConv keeps the region usable on a short window rather than collapsing it

@@ -144,7 +144,7 @@ html, body {
   width: 100%;
   margin: 0;
   padding: 0;
-  font-family: "Nunito Sans", serif;
+  font-family: "Nunito Sans", sans-serif;
   font-size: 14px;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -358,7 +358,7 @@ a.btn:hover {
 .search-bar {
   display: flex;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-field);
 }
 .search-bar input {
   flex: 1;
@@ -1406,6 +1406,7 @@ body.page-home #page-title ~ #customize-link {
    * and anything that tries to hold the bar above a keyboard is doing
    * arithmetic on numbers the browser will not give it honestly. The class is
    * set on focus by the shell — see the keyboard block in Template. */
+  body.typing { --tabbar: 0px; }
   body.typing #tabs {
     display: none;
   }
@@ -4402,7 +4403,7 @@ a.btn-primary:hover, .btn-primary:hover {
 }
 
 .blog-form textarea {
-  font-family: 'Nunito Sans', serif;
+  font-family: 'Nunito Sans', sans-serif;
   resize: vertical;
   min-height: 150px;
 }
@@ -4470,7 +4471,7 @@ a.btn-primary:hover, .btn-primary:hover {
 }
 
 .mail-form textarea {
-  font-family: 'Nunito Sans', serif;
+  font-family: 'Nunito Sans', sans-serif;
   resize: vertical;
   min-height: 200px;
 }
@@ -4479,7 +4480,7 @@ a.btn-primary:hover, .btn-primary:hover {
   padding: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-family: 'Nunito Sans', serif;
+  font-family: 'Nunito Sans', sans-serif;
   font-size: inherit;
   min-height: 100px;
   outline: none;
@@ -4763,28 +4764,6 @@ a.card-hover:hover {
   margin-bottom: 15px;
 }
 
-/* Form groups */
-.form-group {
-  margin-bottom: 15px;
-}
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-.form-group input[type="text"],
-.form-group textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: 16px;
-}
-.form-group textarea {
-  min-height: 120px;
-}
 .hint {
   font-size: 13px;
   color: #666;
@@ -7447,10 +7426,15 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .notice-ok { background: #f2faf4; border-color: #cfe8d6; color: var(--btn-success, #1a7f37) }
 .notice-bad { background: #fdf4f4; border-color: #e8cfcf; color: var(--btn-danger, #c00) }
 
-.form { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 0 }
+.form { display: flex; flex-direction: column; gap: var(--space-field); margin: 0; min-width: 0 }
+.form > * { min-width: 0; margin-block: 0; }
+.form > input[type=hidden] { display: none; }
+.form > .form-actions { align-self: stretch; }
+.form-group { display: flex; flex-direction: column; gap: var(--space-control); min-width: 0; }
+.form-group > * { margin-block: 0; }
+.form-group > [hidden] { display: none; }
 .form-inline { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px }
 .form-inline .form-actions { margin: 0 }
-.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
 
 .field {
   font: inherit;
@@ -7466,52 +7450,14 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .field-wide { max-width: 100%; width: 100% }
 textarea.field { resize: vertical; line-height: var(--line-height, 1.6); width: 100%; max-width: 100% }
 select.field { max-width: 220px }
+select.field-wide { max-width: 100%; width: 100%; }
 
 .field-label {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--text-muted, #888);
-}
-
-/* One button, three volumes. The product drew 232 <button> elements against 26
-   uses of .btn, so most of them arrived with the browser's own face on. */
-.btn {
-  display: inline-block;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 7px 18px;
-  border-radius:6px;
-  border: var(--border-width, 1px) solid var(--btn-primary, #000);
-  background: var(--btn-primary, #000);
-  color: #fff;
-  text-decoration: none;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--transition-fast, .15s ease), border-color var(--transition-fast, .15s ease);
-}
-
-.btn:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333); color: #fff }
-
-.btn-quiet {
-  background: none;
-  border-color: var(--card-border, #e8e8e8);
+  gap: var(--space-control);
+  font-size: var(--control-font, 13px);
   color: var(--text-secondary, #555);
-}
-
-.btn-quiet:hover { background: none; border-color: #ddd; color: var(--text-primary, #1a1a1a) }
-
-.btn-danger {
-  background: none;
-  border-color: var(--card-border, #e8e8e8);
-  color: var(--text-secondary, #555);
-}
-.btn-danger:hover {
-  background: none;
-  border-color: #e6b3b3;
-  color: var(--btn-danger, #c00);
 }
 
 .links { display: flex; flex-direction: column; gap: 7px; font-size: 14px }
@@ -7813,24 +7759,6 @@ a.pill {
   margin: 0;
 }
 
-/* The quiet button, after .btn rather than before it.
-   It was declared 2,800 lines above .btn, and both are one class, so .btn won
-   on order alone: background went to var(--btn-primary, #000) while the colour
-   stayed dark, because only the colour here was marked important. The result
-   was dark text on a black fill everywhere the pair was used — the top-up
-   presets, the wallet's sign-up button, two on the blog.
-   Marking the background important as well would have hidden the cause and
-   left the next property to do the same thing. Order is the cause. */
-a.btn-secondary, .btn-secondary {
-  background: var(--hover-background, #eee);
-  color: var(--text-primary, #333);
-  border-color: var(--border-color, #ddd);
-}
-a.btn-secondary:hover, .btn-secondary:hover {
-  background: var(--border-color, #ddd);
-  text-decoration: none;
-}
-
 /* What a room is about, above what has been said in it.
    Quiet: it is context for the messages, read once on the way in, and it must
    not compete with them. */
@@ -8027,7 +7955,7 @@ a:hover, a:hover * { text-decoration: none !important; }
 
 /* Shared collection and editor contract: Docs and Notes supply fields and
    actions, never their own width, wrapping or mobile spacing. */
-.collection-head { display:flex; flex-direction:column; align-items:flex-start; gap:12px; margin:0 0 16px; min-width:0; }
+.collection-head { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-field); margin:0 0 var(--space-field); min-width:0; }
 .collection-list { display:flex; flex-direction:column; border:1px solid var(--border-color,#eee); border-radius:8px; overflow:hidden; }
 .collection-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:5px 12px; padding:14px; border-bottom:1px solid var(--divider,#eee); min-width:0; }
 .collection-item:last-child { border-bottom:0; }
@@ -8063,24 +7991,17 @@ a:hover, a:hover * { text-decoration: none !important; }
  .page-action:first-child, #page-title + .page-action { justify-content:center; }
 }
 
-/* Scheduled brief controls use the same plus/minus convention as room details. */
-.brief-schedule { padding: 20px 0; }
-.brief-schedule > h3 { margin: 0 0 12px; }
-.brief-schedule > p { margin: 0 0 16px; }
-.brief-schedule-status { margin: 0 0 16px; }
-.brief-schedule-manage > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 8px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+
+/* A full-page conversation scrolls its messages, never the composer away. */
+@media(max-width:900px) {
+ body.chat-page { height:var(--visible-height,100dvh); overflow:hidden; }
+ body.chat-page #container { height:var(--visible-height,100dvh); min-height:0; overflow:hidden; }
+ body.chat-page #content { flex:none; min-height:0; overflow:hidden; display:flex; flex-direction:column; padding-bottom:calc(8px + var(--tabbar)); }
+ body.chat-page #footer { display:none; }
+ body.chat-page .chat-layout { flex:1 1 0; height:auto; min-height:0; overflow:hidden; }
+ body.chat-page .chat-main { display:flex; flex-direction:column; flex:1 1 0; min-height:0; overflow:hidden; }
+ body.chat-page .mu-chat-transcript { flex:1 1 0; min-height:0; overflow:hidden; }
+ body.chat-page .mu-chat-transcript #mu-chat-conv { flex:1 1 0; max-height:none; min-height:0; }
+ body.chat-page #chat-form { padding-bottom:0; }
+ body.chat-page.typing .mu-chat-transcript #mu-chat-opts { display:none; }
 }
-.brief-schedule-manage > summary::-webkit-details-marker { display: none; }
-.brief-schedule-manage > summary::after { content: '+'; }
-.brief-schedule-manage[open] > summary::after { content: '\2212'; }
-.brief-schedule-form { display: flex; flex-direction: column; gap: 16px; margin: 16px 0 0; }
-.brief-schedule-form > label { display: flex; flex-direction: column; gap: 8px; }
-.brief-schedule-form .form-input { box-sizing: border-box; width: 100%; min-width: 0; }
-.brief-schedule-form > p { margin: 0; }

@@ -966,7 +966,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			<div id="posts-list">
 				%s
 			</div>
-		</div>`, actions, list)
+		</div>`, `<div class="page-stack">`+actions+`</div>`, list)
 	}
 
 	app.Respond(w, r, app.Response{Title: "Blog", Description: "Share your thoughts", HTML: content})

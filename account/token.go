@@ -201,11 +201,11 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// it disappears the moment you type, and "e.g. CI/CD" over an empty box is
 	// the only thing that ever said what the box was for.
 	sb.WriteString(`<h4 class="mt-5">Create a token</h4>`)
-	sb.WriteString(`<form id="create-token-form" onsubmit="createToken(event)">`)
-	sb.WriteString(`<div class="mb-3">` + app.Field{
+	sb.WriteString(`<form id="create-token-form" class="form" onsubmit="createToken(event)">`)
+	sb.WriteString(app.Field{
 		Name: "name", Label: "Name", Placeholder: "e.g. CI/CD", Required: true, Wide: true,
-	}.HTML() + `</div>`)
-	sb.WriteString(`<div class="mb-3">` + app.Field{
+	}.HTML())
+	sb.WriteString(app.Field{
 		Name: "expires_in", Label: "Expires", Options: []app.Option{
 			{Value: "0", Label: "Never"},
 			{Value: "7", Label: "7 days"},
@@ -213,7 +213,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 			{Value: "90", Label: "90 days", On: true},
 			{Value: "365", Label: "1 year"},
 		},
-	}.HTML() + `</div>`)
+	}.HTML())
 
 	// What it may reach, on the page that hands out the credential.
 	//
@@ -222,17 +222,13 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// wallet. The scoped path existed on /agents and the README pointed here —
 	// so the documented road was the unsafe one and the safe one was
 	// undocumented. Same control, same meaning, on both pages now.
-	sb.WriteString(`<div id="tok-scope"><label class="field-label">Services<select class="field field-wide" name="scope_mode" onchange="document.getElementById('tok-service-list').hidden=this.value!=='select'"><option value="all">All</option><option value="select">Select</option></select></label>`)
-	sb.WriteString(`<div id="tok-service-list" hidden><div class="tok-chips">`)
-
+	var scopeChoices []app.Option
 	for _, sp := range tokenScopeChoices() {
-		sb.WriteString(`<label class="tok-chip"><input type="checkbox" name="services" value="` +
-			htmlpkg.EscapeString(sp.Name) + `"><span>` + htmlpkg.EscapeString(sp.NavLabel()) + `</span></label>`)
+		scopeChoices = append(scopeChoices, app.Option{Value: sp.Name, Label: sp.NavLabel()})
 	}
-	sb.WriteString(`</div></div></div>`)
+	sb.WriteString(app.ServiceSelect("tok-scope", "tok-service-list", "services", scopeChoices))
+	sb.WriteString(`<div class="form-actions"><button type="submit">Generate Token</button></div></form>`)
 
-	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
-	sb.WriteString(tokenScopeCSS)
 	sb.WriteString(`<hr class="hr-soft">`)
 
 	// This asked for every client on the instance. Anyone signed in saw the
@@ -269,9 +265,9 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	sb.WriteString(`<h4 class="mt-5">Create an OAuth client</h4>`)
 	sb.WriteString(`<form method="POST" action="/token?create_client=1">`)
-	sb.WriteString(`<div class="mb-3">` + app.Field{
+	sb.WriteString(app.Field{
 		Name: "client_name", Label: "Name", Placeholder: "e.g. Claude", Required: true, Wide: true,
-	}.HTML() + `</div>`)
+	}.HTML())
 	// The address is half of what a client is. Without it there is nowhere a
 	// code may be sent, and a client registered without one can never complete
 	// a sign-in — which is what every client made on this form used to be.
@@ -544,19 +540,6 @@ func validScopeNames(in []string) []string {
 	}
 	return out
 }
-
-const tokenScopeCSS = `<style>
-#tok-scope{border-top:1px solid #eee;padding-top:12px;margin:14px 0}
-.tok-scope-head{font-size:13px;font-weight:600;margin:0 0 2px}
-.tok-scope-sub{font-size:12px;color:#999;margin:0 0 8px;max-width:520px}
-.tok-chips{display:flex;flex-wrap:wrap;gap:6px}
-.tok-chip input{position:absolute;opacity:0;width:0;height:0}
-.tok-chip span{display:block;border:1px solid #ddd;border-radius:6px;padding:5px 12px;
-  cursor:pointer;font-size:13px;color:#444;white-space:nowrap}
-.tok-chip span:hover{border-color:#bbb}
-.tok-chip input:checked+span{background:#111;border-color:#111;color:#fff}
-.tok-chip input:focus-visible+span{outline:2px solid #111;outline-offset:2px}
-</style>`
 
 // tokenScope is what a token may reach, for the list.
 //

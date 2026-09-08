@@ -35,7 +35,7 @@ func TestTheChatFitsWhatIsActuallyOnScreen(t *testing.T) {
 	}
 	// And it still works where there is no visualViewport, which is what every
 	// desktop browser wants anyway.
-	if !strings.Contains(js, "|| window.innerHeight") {
+	if !strings.Contains(js, ": window.innerHeight") {
 		t.Error("there is no fallback for a browser with no visualViewport")
 	}
 	// The mobile tab bar is fixed, so it occupies no layout space. fitConv sets
@@ -55,7 +55,7 @@ func TestTheChatFitsWhatIsActuallyOnScreen(t *testing.T) {
 func TestAChatRecoversTheAnswerAfterItsStreamDrops(t *testing.T) {
 	js := ChatComponent(ChatConfig{Ask: true, Transcript: true, StorageNS: "probe"})
 
-	if !strings.Contains(js, "Connection lost. Reconnecting...") {
+	if !strings.Contains(js, "Reconnecting...") {
 		t.Error("a dropped stream is still presented as a failed run")
 	}
 	if strings.Count(js, "'/agent/pending?thread='") < 2 {

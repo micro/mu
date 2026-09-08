@@ -54,7 +54,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// 3pm regardless of the server's timezone.
 	b.WriteString(`<div class="page-col">`)
 	b.WriteString(briefScheduleHTML(owner, csrf))
-	b.WriteString(`<form method="POST" action="/events" onsubmit="var d=this.whenlocal.value;if(d){this.when.value=new Date(d).toISOString()}" class="col m-0 mb-6">`)
+	b.WriteString(`<form method="POST" action="/events" onsubmit="var d=this.whenlocal.value;if(d){this.when.value=new Date(d).toISOString()}" class="form page-section">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">`)
 	b.WriteString(`<input type="hidden" name="action" value="create">`)
 	b.WriteString(`<input type="hidden" name="when" value="">`)

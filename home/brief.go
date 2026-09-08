@@ -272,7 +272,7 @@ func onToday(accountID string) string {
 	now := account.LocalNow(accountID)
 	var ahead []*events.Event
 	for _, e := range events.List(accountID) {
-		if e == nil || e.Paused || e.When.IsZero() {
+		if e == nil || e.Paused || e.Kind == "brief" || e.Prompt != "" || e.When.IsZero() {
 			continue
 		}
 		if sameDay(e.When.In(now.Location()), now) && e.When.After(now) {

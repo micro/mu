@@ -30,6 +30,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 			loc = time.UTC
 		}
 		clock = e.When.In(loc).Format("15:04")
+		period = "evening"
 		if strings.Contains(e.Prompt, "today") {
 			period = "morning"
 		}
@@ -39,10 +40,14 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 			status = "Disabled"
 		}
 	}
+	title := "Morning brief"
+	if period == "evening" {
+		title = "Evening brief"
+	}
 	var b strings.Builder
-	b.WriteString(`<section id="morning-brief" class="brief-schedule mb-6"><h3>Morning brief</h3><p>Your daily email brief, with today’s calendar, weather and relevant updates.</p><div class="brief-schedule-controls"><p class="brief-schedule-status text-muted">` + html.EscapeString(status) + `</p><details class="brief-schedule-manage"><summary>` + label + `</summary><form method="POST" action="/events" class="brief-schedule-form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
+	b.WriteString(`<section id="morning-brief" class="page-section"><h3>` + title + `</h3><p>Your email brief, with calendar, weather and relevant updates.</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><details class="disclosure"><summary>` + label + `</summary><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {
-		b.WriteString(`<label>` + title + `<select class="form-input" name="` + name + `">`)
+		b.WriteString(`<label class="field-label">` + title + `<select class="form-input" name="` + name + `">`)
 		for _, v := range values {
 			selected := ""
 			if v == value {
@@ -53,9 +58,9 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		b.WriteString(`</select></label>`)
 	}
 	selectField("period", "Brief", period, "evening", "morning")
-	b.WriteString(`<label>Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label>Timezone<input class="form-input" name="zone" required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label>`)
+	b.WriteString(`<label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label>`)
 	selectField("repeat", "Frequency", repeat, "daily", "weekdays")
-	b.WriteString(`<p class="text-muted">Evening looks ahead to tomorrow; morning covers today. The brief is delivered to your Mu mail, using your connected calendar, email and saved location where available. Normal usage charges apply. <a href="/account">Manage connections and email delivery</a>.</p><div class="d-flex gap-2 flex-wrap"><button name="state" value="active">`)
+	b.WriteString(`<p class="text-muted">Evening looks ahead to tomorrow; morning covers today. The brief is delivered to your Mu mail, using your connected calendar, email and saved location where available. Normal usage charges apply. <a href="/account">Manage connections and email delivery</a>.</p><div class="form-actions"><button name="state" value="active">`)
 	if e == nil {
 		b.WriteString("Schedule")
 	} else if e.Paused {

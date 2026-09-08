@@ -215,7 +215,11 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 		if t.Thread != "" {
 			b.WriteString(`<details class="task-context"><summary>Conversation context</summary>`)
 		}
-		fmt.Fprintf(&b, `<div class="task-detail">%s</div>`, app.RenderNoImages([]byte(t.Detail)))
+		render := app.Render
+		if t.Thread != "" {
+			render = app.RenderNoImages
+		}
+		fmt.Fprintf(&b, `<div class="task-detail">%s</div>`, render([]byte(t.Detail)))
 		if t.Thread != "" {
 			b.WriteString(`</details>`)
 		}
@@ -252,7 +256,7 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 		fmt.Fprintf(&b, `<div class="task-result">%s</div>`, app.Render([]byte(t.Outcome())))
 	}
 
-	b.WriteString(`<div class="task-actions">`)
+	b.WriteString(`<div class="form-actions">`)
 	if t.Open() {
 		button(&b, t.ID, "done", csrf, "Done", "")
 		if t.Assignee == Agent {
@@ -266,7 +270,7 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 	}
 	fmt.Fprintf(&b, `<form method="POST" action="/tasks/%s/delete" onsubmit="return confirm('Delete %s?')">
   <input type="hidden" name="_csrf" value="%s">
-  <button type="submit" class="link-button danger">Delete</button>
+  <button type="submit" class="btn btn-danger">Delete</button>
 </form>`, html.EscapeString(t.ID),
 		html.EscapeString(strings.ReplaceAll(t.Title, "'", "\\'")), html.EscapeString(csrf))
 	b.WriteString(`</div></div>`)
@@ -276,7 +280,7 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 func button(b *strings.Builder, id, action, csrf, label, extra string) {
 	fmt.Fprintf(b, `<form method="POST" action="/tasks/%s/%s">
   <input type="hidden" name="_csrf" value="%s">%s
-  <button type="submit" class="link-button">%s</button>
+  <button type="submit" class="btn btn-quiet">%s</button>
 </form>`, html.EscapeString(id), action, html.EscapeString(csrf), extra, html.EscapeString(label))
 }
 
@@ -311,18 +315,18 @@ const tasksPageCSS = `<style>
 .task-tabs{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
 .task-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
 .task-tab.active{color:var(--text-primary);font-weight:600}
-.task{padding:12px 0;border-bottom:1px solid var(--divider)}
+.task{display:flex;flex-direction:column;gap:var(--space-control);padding:12px 0;border-bottom:1px solid var(--divider)}
 .task:last-child{border-bottom:none}
 .task-title{font-weight:var(--font-weight-medium)}
 .task-done .task-title{text-decoration:line-through;color:var(--text-muted)}
-.task-meta{font-size:12px;color:var(--text-muted);margin-top:2px}
-.task-context{margin-top:8px}.task-context summary{cursor:pointer;color:var(--text-muted)}
+.task-meta{font-size:12px;color:var(--text-muted);margin:0}
+.task-context{margin:0}.task-context summary{cursor:pointer;color:var(--text-muted)}
 .task-detail{overflow-wrap:anywhere;font-size:14px;margin-top:6px;color:var(--text-secondary)}
 .task-result{overflow-wrap:anywhere;font-size:14px;margin-top:8px;padding:2px 12px;background:var(--hover-background);border-radius:6px}
 .task-result > :first-child{margin-top:10px}
 .task-result > :last-child{margin-bottom:10px}
 .task-result pre{overflow-x:auto}
-.task-steps{margin-top:8px;font-size:13px}
+.task-steps{margin:0;font-size:13px}
 .task-steps summary{cursor:pointer;color:var(--text-muted)}
 .task-steps ol{margin:6px 0 0;padding-left:20px}
 .task-step{margin:2px 0;font-variant-numeric:tabular-nums}
@@ -332,12 +336,9 @@ const tasksPageCSS = `<style>
 .task-running{color:#a86400;font-weight:600}
 .task-running::after{content:"";animation:taskdots 1.2s steps(4,end) infinite}
 @keyframes taskdots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
-.task-actions{margin-top:8px}
-.task-actions form{display:inline}
 @media only screen and (max-width:600px){
   .task-add{grid-template-columns:1fr}
   .task-add button{width:100%}
-  .task-actions .link-button{padding:6px 14px 6px 0;font-size:14px}
 }
 </style>`
 

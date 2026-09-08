@@ -201,3 +201,16 @@ func TestAnEmptyDiaryIsSilent(t *testing.T) {
 		t.Errorf("an account with no events gets a line about it: %s", got)
 	}
 }
+
+func TestBriefDoesNotAnnounceItsOwnDelivery(t *testing.T) {
+	const owner = "brief_not_calendar"
+	auth.Create(&auth.Account{ID: owner, Zone: "UTC"})
+	defer events.DeleteAll(owner)
+	clock := time.Now().UTC().Add(time.Minute).Format("15:04")
+	if err := events.ScheduleBrief(owner, clock, "UTC", "daily", "morning", false); err != nil {
+		t.Fatal(err)
+	}
+	if got := onToday(owner); got != "" {
+		t.Fatalf("schedule appeared in brief: %s", got)
+	}
+}

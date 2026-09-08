@@ -508,3 +508,20 @@ cost; rate limits stop bots.
   is wrong rather than being read when it is not. Install survives because it
   holds what the code cannot: ports, DNS records, decisions about a machine this
   repository never sees
+
+## UI composition
+
+Use the shared components in `internal/app/form.go`, `internal/app/html/mu.css` and
+`internal/app/html/composition.css` (also loaded by the landing page).
+Forms use `.form`, labelled fields use `app.Field` or `.field-label`, and related
+controls use `.form-group`. Services All/Select uses `app.ServiceSelect` on every
+page. Actions use `.form-actions`, `.page-action`, or `.section-actions`; searches
+use `.search-bar`. A `.page-stack` owns the gap between adjacent blocks and a
+`.page-section` separates sections. Use `.disclosure` for Manage/expand controls.
+
+Containers own spacing: do not add child margins, `<br>` spacers, or page-specific
+CSS for ordinary fields, select lists, buttons, and action rows. Use the shared
+8/16/24px spacing tokens. Keep content-specific layouts (editors, media, tables)
+in their existing components. Check narrow mobile and desktop, with the sidebar
+open and closed, including revealed and collapsed controls when changing these
+shared rules.

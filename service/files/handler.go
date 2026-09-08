@@ -191,7 +191,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	// Upload. A plain multipart form: the browser's own file picker beats
 	// anything worth building here, and the page keeps working without
 	// JavaScript.
-	fmt.Fprintf(&b, `<form method="POST" action="/files" enctype="multipart/form-data" class="file-upload">
+	fmt.Fprintf(&b, `<form method="POST" action="/files" enctype="multipart/form-data" class="form form-inline">
   <input type="hidden" name="_csrf" value="%s">
   <input type="file" name="file" required>
   <button type="submit">Upload</button>
