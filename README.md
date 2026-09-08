@@ -1,10 +1,10 @@
 # Mu
 
-A personal home assistant 
+A personal assistant 
 
 ## Overview
 
-Mu is a personal home assistant. It's a full stack solution to the question, how do I de-platform myself.
+Mu is a personal assistant. It's a full stack solution to the question, how do I de-platform myself.
 
 ## Features 
 
