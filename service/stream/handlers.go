@@ -88,6 +88,9 @@ func RenderList(items []*Entry) string {
 // because an entry outliving the service that announced it should still say
 // where it came from.
 func source(name string) (label, icon, page string) {
+	if name == "brief" {
+		return "Brief", "home.png", "/home"
+	}
 	for _, s := range service.Specs() {
 		if s.Name == name {
 			return s.NavLabel(), s.NavIcon(), s.Page

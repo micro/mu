@@ -57,6 +57,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 )
 
 // sources are what the line is written from.
@@ -255,6 +256,7 @@ func write() {
 		app.Log("brief", "nothing worth saying about today")
 		return
 	}
+	event.Announce("brief", text, "/home", "")
 	app.Log("brief", "wrote: %s", text)
 }
 

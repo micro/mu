@@ -266,6 +266,10 @@ func ForceRefresh() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.FormValue("action") == "status" {
+		statusHandler(w, r)
+		return
+	}
 	// An installed app opens on the app, not on a pitch.
 	//
 	// The manifest's start_url was "/", so tapping the icon on a home screen
@@ -531,6 +535,7 @@ function fetchW(la,lo){
 		// screen is already talking to the agent; the address is for reaching it
 		// when you are not here, which is exactly the moment this line is not on
 		// the screen.
+		b.WriteString(statusForm(r, viewerID))
 		b.WriteString(`</div>`)
 
 		// No Online strip here, and no chat panel below.

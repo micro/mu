@@ -125,18 +125,22 @@ func TileHandler(w http.ResponseWriter, r *http.Request) {
 // move around it. Rule 2 in that file, and the argument is the same as the one
 // that kept /flights.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	style := styleName(r.URL.Query().Get("style"))
+	style := "world"
+	if raw := r.URL.Query().Get("style"); raw != "" && raw != "world" {
+		style = styleName(raw)
+	}
 
 	var b strings.Builder
 	b.WriteString(`<div class="maps-page">`)
 
-	if !Configured() {
+	if style != "world" && !Configured() {
 		b.WriteString(app.Problem("This instance has no Ordnance Survey key, so it can only " +
 			"serve tiles it already holds. An admin can set OS_MAPS_KEY under Maps in " +
 			"Settings — the free tier at osdatahub.os.uk is enough."))
 	}
 
 	b.WriteString(`<div class="maps-styles">`)
+	b.WriteString(app.PillLink("World", "/maps", style == "world"))
 	for _, s := range StyleNames() {
 		b.WriteString(app.PillLink(s, "/maps?style="+s, s == style))
 	}
@@ -185,14 +189,20 @@ const (
 // came into view; zooming recomputes the lot. No library, no canvas, no
 // WebGL — a hundred lines and it is the same interaction anybody expects.
 func mapPane(style string) string {
+	min, max := minZoom, maxZoom
+	if style == "world" {
+		min, max = 1, 19
+	} else {
+		style = styleName(style)
+	}
 	var b strings.Builder
 	b.WriteString(`<div class="map-wrap">`)
-	b.WriteString(`<div id="map" class="map" data-style="` + html.EscapeString(styleName(style)) +
+	b.WriteString(`<div id="map" class="map" data-style="` + html.EscapeString(style) +
 		`" data-lat="` + strconv.FormatFloat(homeLat, 'f', -1, 64) +
 		`" data-lon="` + strconv.FormatFloat(homeLon, 'f', -1, 64) +
 		`" data-zoom="` + strconv.Itoa(homeZoom) +
-		`" data-min="` + strconv.Itoa(minZoom) +
-		`" data-max="` + strconv.Itoa(maxZoom) + `">`)
+		`" data-min="` + strconv.Itoa(min) +
+		`" data-max="` + strconv.Itoa(max) + `">`)
 	b.WriteString(`<div id="map-layer" class="map-layer"></div>`)
 	b.WriteString(`</div>`)
 	b.WriteString(`<div class="map-controls">` +
@@ -200,6 +210,9 @@ func mapPane(style string) string {
 		`<button type="button" id="map-out" aria-label="Zoom out">&minus;</button>` +
 		`<button type="button" id="map-here" aria-label="Go to my location">Locate</button>` +
 		`</div>`)
+	if style == "world" {
+		b.WriteString(`<p class="map-note">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors</p>`)
+	}
 	b.WriteString(`<p class="map-note" id="map-where"></p>`)
 	b.WriteString(`</div>`)
 	b.WriteString(mapJS)
@@ -211,12 +224,7 @@ func mapPane(style string) string {
 // Impersonal — a tile is the same tile for everybody, and what this card says
 // is a fact about the instance rather than about the reader.
 func Card() string {
-	if !Configured() {
-		return `<p class="note">No Ordnance Survey key set, so only tiles already held ` +
-			`can be served. <a href="/maps">Maps →</a></p>`
-	}
-	return `<p class="note">Ordnance Survey raster tiles for Britain — road, outdoor and ` +
-		`light. Fetched once, then free. <a href="/maps">Maps →</a></p>`
+	return `<p class="note"><a href="/maps">Explore the world map</a></p>`
 }
 
 // mapJS moves the map.
@@ -271,7 +279,8 @@ const mapJS = `<script>
           img=new Image();
           img.className='map-tile';
           img.alt='';
-          img.src='/maps/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png';
+          img.referrerPolicy='strict-origin-when-cross-origin';
+          img.src=style==='world'?'https://tile.openstreetmap.org/'+z+'/'+wx+'/'+y+'.png':'/maps/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png';
           // A tile outside Britain is a 404 and that is normal here, so it
           // fades out rather than showing a broken image.
           img.onerror=function(){ this.classList.add('map-gap'); missing++; done(); };
@@ -300,8 +309,7 @@ const mapJS = `<script>
     if(!where) return;
     var at=latOf(cy,z).toFixed(4)+', '+lonOf(cx,z).toFixed(4)+'  ·  zoom '+z;
     if(asked>0 && arrived===0 && missing>=asked){
-      where.textContent=at+'  ·  no tiles came back. Ordnance Survey covers Britain only, '+
-        'so this may be outside it — or this instance has no OS_MAPS_KEY and holds none of these yet.';
+      where.textContent=at+(style==='world'?' · Map tiles could not be loaded.':' · No tiles loaded. This layer covers Britain and requires an Ordnance Survey key.');
       return;
     }
     where.textContent=at;

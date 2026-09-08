@@ -85,6 +85,11 @@ func converterHTML(r *http.Request) string {
 	}
 
 	var sb strings.Builder
+	open := ""
+	if q.Has("amount") {
+		open = " open"
+	}
+	sb.WriteString(`<details class="disclosure page-section"` + open + `><summary class="btn">Convert</summary><div>`)
 	sb.WriteString(`<form class="fx-form" method="get" action="/markets">`)
 	fmt.Fprintf(&sb, `<input type="hidden" name="category" value="%s">`,
 		html.EscapeString(category))
@@ -101,17 +106,17 @@ func converterHTML(r *http.Request) string {
 	// Only answer when somebody asked. Landing on /markets should not fire a
 	// request at the ECB on the reader's behalf.
 	if q.Get("from") == "" && q.Get("to") == "" && q.Get("amount") == "" {
-		return sb.String()
+		return sb.String() + `</div></details>`
 	}
 
 	amount, err := strconv.ParseFloat(strings.ReplaceAll(amountStr, ",", ""), 64)
 	if err != nil {
-		return sb.String() + fxError("That amount is not a number.")
+		return sb.String() + fxError("That amount is not a number.") + `</div></details>`
 	}
 
 	c, err := convert(amount, from, to, date)
 	if err != nil {
-		return sb.String() + fxError(err.Error())
+		return sb.String() + fxError(err.Error()) + `</div></details>`
 	}
 
 	var out strings.Builder
@@ -134,7 +139,7 @@ func converterHTML(r *http.Request) string {
 	}
 	out.WriteString(`</div>`)
 
-	return sb.String() + out.String()
+	return sb.String() + out.String() + `</div></details>`
 }
 
 func fxError(msg string) string {

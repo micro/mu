@@ -148,11 +148,8 @@ func add(e *Entry) {
 	if e == nil || e.Service == "" || e.Text == "" {
 		return
 	}
-	if repeat(e) {
-		return
-	}
-	if len(e.Text) > MaxTextLength {
-		e.Text = e.Text[:MaxTextLength-1] + "…"
+	if text := []rune(e.Text); len(text) > MaxTextLength {
+		e.Text = string(text[:MaxTextLength-1]) + "…"
 	}
 	if e.ID == "" {
 		e.ID = fmt.Sprintf("%d", time.Now().UnixNano())
@@ -162,6 +159,10 @@ func add(e *Entry) {
 	}
 
 	mu.Lock()
+	if repeat(e) {
+		mu.Unlock()
+		return
+	}
 	entries = append([]*Entry{e}, entries...)
 	if len(entries) > MaxEntries {
 		entries = entries[:MaxEntries]
@@ -170,7 +171,7 @@ func add(e *Entry) {
 	mu.Unlock()
 }
 
-// repeat reports whether the timeline already carries this entry.
+// repeat reports whether the timeline already carries this entry. Callers hold mu.
 //
 // Keyed on the service and the link, because the link is what identifies a
 // story; on the text when there is no link, which is what a personal entry has.
@@ -182,13 +183,14 @@ func repeat(e *Entry) bool {
 	if key == "" {
 		key = e.Text
 	}
-	mu.RLock()
-	defer mu.RUnlock()
 	for _, x := range entries {
 		if x.Service != e.Service || x.Account != e.Account {
 			continue
 		}
 		if x.URL == key || (x.URL == "" && x.Text == key) {
+			if e.Service == "brief" || e.Service == "markets" || e.Service == "users" {
+				return x.Text == e.Text
+			}
 			return true
 		}
 	}
@@ -203,6 +205,9 @@ func save() {
 // visible reports whether viewer may see this entry. An entry with no account
 // is public; one with an account is that account's alone.
 func visible(e *Entry, viewer string) bool {
+	if e.Service == "users" && viewer == "" {
+		return false
+	}
 	return e.Account == "" || e.Account == viewer
 }
 

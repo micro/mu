@@ -69,8 +69,22 @@ func getUserSavedSearches(userID string) []SavedSearch {
 	savedMu.RLock()
 	defer savedMu.RUnlock()
 	src := savedData[userID]
-	out := make([]SavedSearch, len(src))
-	copy(out, src)
+	var out []SavedSearch
+	for _, item := range src {
+		duplicate := false
+		for _, old := range out {
+			if sameSearch(old, item) {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			out = append(out, item)
+		}
+		if len(out) == maxRecentSearches {
+			break
+		}
+	}
 	return out
 }
 
@@ -110,11 +124,31 @@ func addUserSavedSearch(userID string, s SavedSearch) {
 // is exactly what this has to see past. The label is derived from the rest, so
 // comparing it as well would only find disagreements between it and them.
 func sameSearch(a, b SavedSearch) bool {
+	a, b = normalizedSearch(a), normalizedSearch(b)
 	return a.Type == b.Type &&
 		strings.EqualFold(strings.TrimSpace(a.Query), strings.TrimSpace(b.Query)) &&
 		strings.EqualFold(strings.TrimSpace(a.Location), strings.TrimSpace(b.Location)) &&
 		a.Lat == b.Lat && a.Lon == b.Lon &&
 		a.Radius == b.Radius && a.SortBy == b.SortBy
+}
+
+func normalizedSearch(s SavedSearch) SavedSearch {
+	s.Query = strings.ToLower(strings.Join(strings.Fields(s.Query), " "))
+	s.Location = strings.ToLower(strings.Join(strings.Fields(s.Location), " "))
+	if s.Radius == 0 {
+		s.Radius = defaultRadiusM
+	}
+	if s.SortBy == "" {
+		s.SortBy = "distance"
+	}
+	if s.Type == "" {
+		s.Type = "search"
+	}
+	// Named locations are replayed by name; geocoding them again can shift coordinates.
+	if s.Location != "" && !strings.ContainsAny(s.Location, "0123456789") {
+		s.Lat, s.Lon = 0, 0
+	}
+	return s
 }
 
 // Remember records a search that just ran.
@@ -162,11 +196,21 @@ func searchLabel(query, location string) string {
 func deleteUserSavedSearch(userID, id string) {
 	savedMu.Lock()
 	searches := savedData[userID]
-	for i, s := range searches {
-		if s.ID == id {
-			savedData[userID] = append(searches[:i], searches[i+1:]...)
+	var target *SavedSearch
+	for i := range searches {
+		if searches[i].ID == id {
+			target = &searches[i]
 			break
 		}
+	}
+	if target != nil {
+		var kept []SavedSearch
+		for _, s := range searches {
+			if !sameSearch(s, *target) {
+				kept = append(kept, s)
+			}
+		}
+		savedData[userID] = kept
 	}
 	savedMu.Unlock()
 	go persistSavedSearches()

@@ -128,3 +128,19 @@ func TestCitiesAreLinks(t *testing.T) {
 		t.Errorf("a city does not link to a nearby search: %.200s", html)
 	}
 }
+
+func TestRecentSearchesCleanLegacyDuplicates(t *testing.T) {
+	reset(t)
+	a := SavedSearch{ID: "a", Type: "search", Query: "coffee  shop", Location: "London", Lat: 51.5, Lon: -0.1}
+	b := SavedSearch{ID: "b", Type: "search", Query: "Coffee Shop", Location: "london", Lat: 51.51, Lon: -0.11, Radius: defaultRadiusM, SortBy: "distance"}
+	savedMu.Lock()
+	savedData["reader"] = []SavedSearch{a, b}
+	savedMu.Unlock()
+	if got := getUserSavedSearches("reader"); len(got) != 1 {
+		t.Fatalf("duplicate searches remain: %v", got)
+	}
+	b.Radius = 500
+	if sameSearch(a, b) {
+		t.Fatal("different search radii collapsed")
+	}
+}

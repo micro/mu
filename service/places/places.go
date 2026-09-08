@@ -729,22 +729,22 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
 	if sortBy == "name" {
 		sortDistSel, sortNameSel = "", " selected"
 	}
-	return fmt.Sprintf(`<form id="places-form" action="/places/search" method="POST">
-    <input type="text" name="q" id="places-q" placeholder="What are you looking for? (leave empty for whatever is nearby)" value="%s">
-    <div class="places-location-row">
-      <input type="text" name="near" id="places-near" placeholder="Location (optional)" value="%s">
+	return fmt.Sprintf(`<form id="places-form" class="form" action="/places/search" method="POST">
+    <input type="text" class="field field-wide" name="q" id="places-q" placeholder="What are you looking for? (leave empty for whatever is nearby)" value="%s">
+    <div class="form-group">
+      <input type="text" class="field field-wide" name="near" id="places-near" placeholder="Location (optional)" value="%s">
       <input type="hidden" name="near_lat" id="places-near-lat" value="%s">
       <input type="hidden" name="near_lon" id="places-near-lon" value="%s">
-      <a href="#" onclick="usePlacesLocation(this);return false;" class="btn-link">&#128205; Use my location</a>
+      <div class="form-actions"><button type="button" onclick="usePlacesLocation(this)" class="btn btn-quiet">Use my location</button></div>
     </div>
-    <div class="places-options-row">
-      <select name="radius" id="places-radius">%s</select>
-      <select name="sort" id="places-sort">
+    <div class="form-group">
+      <select class="field field-wide" name="radius" id="places-radius">%s</select>
+      <select class="field field-wide" name="sort" id="places-sort">
         <option value="distance"%s>Sort by distance</option>
         <option value="name"%s>Sort by name</option>
       </select>
     </div>
-    <div class="places-actions-row">
+    <div class="form-actions">
       <button type="submit">Search</button>
       <button type="submit" formaction="/places/nearby" class="btn-secondary">What is nearby</button>
     </div>
@@ -760,7 +760,7 @@ func renderSavedSearchesSection(userID string) string {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(`<div class="card places-saved-card"><h4>Recent searches</h4><ul class="saved-search-list">`)
+	sb.WriteString(`<div class="recent-searches"><h3>Recent searches</h3><div class="recent-searches-scroll">`)
 	for _, s := range searches {
 		latStr := fmt.Sprintf("%f", s.Lat)
 		lonStr := fmt.Sprintf("%f", s.Lon)
@@ -771,17 +771,17 @@ func renderSavedSearchesSection(userID string) string {
 			lonStr = ""
 		}
 		sb.WriteString(fmt.Sprintf(
-			`<li><a href="#" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);return false;">%s</a> `+
+			`<span class="recent-search-item"><button type="button" class="recent-search-label" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);">%s</button> `+
 				`<form class="d-inline" action="/places/save/delete" method="POST">`+
 				`<input type="hidden" name="id" value="%s">`+
-				`<button type="submit" class="btn-link text-muted" title="Remove">&#x2715;</button></form></li>`,
+				`<button type="submit" class="btn-link recent-search-close" aria-label="Remove search" title="Remove">&times;</button></form></span>`,
 			escapeHTML(jsonStr(s.Type)), escapeHTML(jsonStr(s.Query)), escapeHTML(jsonStr(s.Location)),
 			escapeHTML(jsonStr(latStr)), escapeHTML(jsonStr(lonStr)),
 			escapeHTML(jsonStr(fmt.Sprintf("%d", s.Radius))), escapeHTML(jsonStr(s.SortBy)),
 			escapeHTML(s.Label), escapeHTML(s.ID),
 		))
 	}
-	sb.WriteString(`</ul></div>`)
+	sb.WriteString(`</div></div>`)
 	return sb.String()
 }
 
@@ -872,15 +872,15 @@ func renderPlacesPageJS() string {
 	return `<script>
 function usePlacesLocation(btn) {
   if (!navigator.geolocation) { showToast('Geolocation is not supported by your browser', 'error'); return; }
-  if (btn) { btn.textContent = '⏳ Getting location...'; btn.style.pointerEvents = 'none'; }
+  if (btn) { btn.textContent = 'Getting location…'; btn.disabled = true; }
   navigator.geolocation.getCurrentPosition(function(pos) {
     var lat = pos.coords.latitude, lon = pos.coords.longitude;
     document.getElementById('places-near-lat').value = lat;
     document.getElementById('places-near-lon').value = lon;
     document.getElementById('places-near').value = lat.toFixed(4) + ', ' + lon.toFixed(4);
-    if (btn) { btn.innerHTML = '&#128205; Use my location'; btn.style.pointerEvents = ''; }
+    if (btn) { btn.textContent = 'Use my location'; btn.disabled = false; }
   }, function(err) {
-    if (btn) { btn.innerHTML = '&#128205; Use my location'; btn.style.pointerEvents = ''; }
+    if (btn) { btn.textContent = 'Use my location'; btn.disabled = false; }
     showToast('Could not get your location: ' + err.message, 'error');
   }, {timeout: 10000, maximumAge: 60000});
 }
