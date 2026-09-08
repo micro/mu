@@ -106,7 +106,7 @@ func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 
 	b.WriteString(`<p class="svc-doors">The same methods are tools over ` +
 		`<a href="/mcp">MCP</a>, and every service on this instance is in ` +
-		`<a href="/api">one reference</a>. Same method, same answer, same price.</p>`)
+		`<a href="/api">one reference</a>.</p>`)
 
 	b.WriteString(`</div>`)
 	b.WriteString(tryScript)
