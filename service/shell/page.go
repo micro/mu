@@ -77,7 +77,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	b.WriteString(`<form class="sbx-form" method="post" action="/shell">`)
+	b.WriteString(`<form id="shell-command" class="sbx-form" method="post" action="/shell">`)
 	b.WriteString(`<input type="hidden" name="csrf_token" value="` +
 		html.EscapeString(auth.CSRFToken(r)) + `">`)
 	b.WriteString(`<div class="sbx-line"><span class="sbx-prompt">/work $</span>` +
@@ -86,6 +86,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<button type="submit">Run</button>`)
 	b.WriteString(`</form>`)
 
+	b.WriteString(`<div id="shell-result" aria-live="polite">`)
 	if command != "" {
 		b.WriteString(running(r, acc.ID, command))
 	} else {
@@ -121,6 +122,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(app.NoteHTML(note))
 	}
 
+	b.WriteString(`</div>`)
+	b.WriteString(shellScript)
 	b.WriteString(sshaccess.Card(r, acc.ID, "/shell", "Shell access",
 		"Register a public key and you can open a shell in your machine from a terminal. The same box, the same files, the same limits — a person at the prompt instead of a command at a time.",
 		"ssh"))
@@ -161,3 +164,27 @@ func credits(n int) string {
 	}
 	return strconv.Itoa(n) + " credits"
 }
+
+const shellScript = `<script>
+(function(){
+ const form=document.getElementById('shell-command'),out=document.getElementById('shell-result');
+ if(!form||!out)return;
+ let busy=false;
+ form.addEventListener('submit',async function(e){
+  e.preventDefault();
+  if(busy||!form.elements.command.value.trim())return;
+  const body=new URLSearchParams(new FormData(form));
+  busy=true;
+  const button=form.querySelector('button[type=submit]');
+  button.disabled=true;button.textContent='Running…';out.setAttribute('aria-busy','true');
+  try{
+   const response=await fetch(form.action,{method:'POST',body,credentials:'same-origin',headers:{Accept:'text/html'}});
+   const doc=new DOMParser().parseFromString(await response.text(),'text/html');
+   const result=doc.getElementById('shell-result');
+   if(!response.ok||!result)throw new Error(doc.querySelector('.sbx-problem')?.textContent||'Could not retrieve the command result. Check your session before running it again.');
+   out.innerHTML=result.innerHTML;
+  }catch(err){out.textContent=err.message||'Connection lost. The command may have run; it has not been retried.';}
+  finally{busy=false;button.disabled=false;button.textContent='Run';out.removeAttribute('aria-busy');}
+ });
+})();
+</script>`
