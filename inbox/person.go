@@ -60,8 +60,8 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/user"
 	"mu/internal/thread"
+	"mu/internal/user"
 )
 
 // PersonHandler serves /@name.
