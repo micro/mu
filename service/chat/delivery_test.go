@@ -10,12 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"mu/internal/service"
 )
 
 func deliveryRoom(t *testing.T, id string) *Room {
 	t.Helper()
-	room := &Room{ID: id, Broadcast: make(chan RoomMessage, 32), Shutdown: make(chan bool)}
+	room := &Room{ID: id, Clients: make(map[*websocket.Conn]*Client), Register: make(chan *Client), Unregister: make(chan *Client), Broadcast: make(chan RoomMessage, 32), Shutdown: make(chan bool)}
 	roomsMutex.Lock()
 	old := rooms[id]
 	rooms[id] = room

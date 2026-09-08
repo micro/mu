@@ -890,7 +890,26 @@ func (room *Room) run() {
 			return
 
 		case client := <-room.Register:
+			if !Member(room.ID, client.UserID) {
+				client.Conn.Close()
+				continue
+			}
 			room.mutex.Lock()
+			// The room loop is the only data-frame writer. Send history before
+			// registration so live broadcasts cannot race or overtake the replay.
+			failed := false
+			for _, msg := range room.Messages {
+				client.Conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+				if err := client.Conn.WriteJSON(msg); err != nil {
+					failed = true
+					break
+				}
+			}
+			if failed {
+				room.mutex.Unlock()
+				client.Conn.Close()
+				continue
+			}
 			// Already here on another tab, so nobody arrived. Without this a
 			// second window announces you to a room you are standing in, and
 			// closing it announces that you left while you are still talking.
@@ -933,16 +952,23 @@ func (room *Room) run() {
 			}
 			announceMessage(room.ID, message)
 
-			// Broadcast to all clients
-			room.mutex.Lock()
+			// Snapshot under the lock; a failed or deleted connection can then be
+			// removed safely without keeping readers behind network IO.
+			room.mutex.RLock()
+			var clients []*websocket.Conn
 			for conn := range room.Clients {
-				err := conn.WriteJSON(message)
-				if err != nil {
+				clients = append(clients, conn)
+			}
+			room.mutex.RUnlock()
+			for _, conn := range clients {
+				_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+				if err := conn.WriteJSON(message); err != nil {
 					conn.Close()
+					room.mutex.Lock()
 					delete(room.Clients, conn)
+					room.mutex.Unlock()
 				}
 			}
-			room.mutex.Unlock()
 		}
 	}
 }
@@ -1059,17 +1085,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 	room.Register <- client
 
-	// Send room history to new client
-	room.mutex.RLock()
-	for _, msg := range room.Messages {
-		conn.WriteJSON(msg)
-	}
-	room.mutex.RUnlock()
-
 	// Read messages from client
 	go func() {
 		defer func() {
-			room.Unregister <- client
+			select {
+			case room.Unregister <- client:
+			case <-room.Shutdown:
+			}
 		}()
 
 		for {
@@ -1087,7 +1109,16 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 					Timestamp: time.Now(),
 					IsLLM:     false,
 				}
-				room.Broadcast <- userMsg
+				if !Member(room.ID, client.UserID) {
+					conn.Close()
+					return
+				}
+				if err := post(context.Background(), room, userMsg); err != nil {
+					// Control frames may be written concurrently with the room writer.
+					_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "Your message was not saved. Please retry."), time.Now().Add(time.Second))
+					conn.Close()
+					return
+				}
 
 				// Check if micro should respond:
 				// For item-specific rooms (news_, video_, post_), ALWAYS respond - these are AI discussions
@@ -1467,8 +1498,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// /chat?with=henrik — the conversation between you and one person.
 	//
-	// A door rather than an id, because the id is derived: PairRoom sorts the
-	// two names so both of you reach the same room, and nobody should have to
+	// A door rather than an id: PairRoom reserves the shared private room,
+	// so both people reach the same conversation without needing to
 	// know that to link to it. This is the one place a private room comes into
 	// being from a request, and it can, because the request names the person
 	// asking as one of its two members.

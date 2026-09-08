@@ -33,6 +33,9 @@ func post(ctx context.Context, room *Room, message RoomMessage) error {
 func (room *Room) keepMessage(message RoomMessage) error {
 	room.mutex.Lock()
 	defer room.mutex.Unlock()
+	if !message.System && !message.IsLLM && !Member(room.ID, message.UserID) {
+		return fmt.Errorf("no access to this chat room")
+	}
 	next := append(append([]RoomMessage(nil), room.Messages...), message)
 	if len(next) > 20 {
 		next = next[len(next)-20:]

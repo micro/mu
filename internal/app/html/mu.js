@@ -885,8 +885,11 @@ function connectRoomWebSocket(roomId) {
     }
   };
   
-  roomWs.onclose = function() {
+  roomWs.onclose = function(event) {
     console.log('Disconnected from room');
+    if (event.code === 1013 && event.reason) {
+      showToast(event.reason, 'error');
+    }
     // Only reconnect if authenticated and still on same room
     if (isAuthenticated && currentRoomId === roomId) {
       setTimeout(() => connectRoomWebSocket(roomId), 3000);

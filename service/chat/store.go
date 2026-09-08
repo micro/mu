@@ -175,6 +175,7 @@ func filtered(account string, limit int, keep func(*Said) bool) []Said {
 // person and cannot be told to stop is the thing every deletion hook exists to
 // prevent — see TestEveryScopedServiceCleansUpWhenAnAccountIsDeleted.
 func Forget(account string) {
+	forgetPrivate(account)
 	saidMu.Lock()
 	defer saidMu.Unlock()
 	delete(said, account)
