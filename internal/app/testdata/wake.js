@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const source=fs.readFileSync('html/wake.js','utf8');
 function target(){return {events:{},addEventListener(k,f){this.events[k]=f},removeEventListener(k,f){if(this.events[k]===f)delete this.events[k]},dispatchEvent(e){if(this.events[e.type])this.events[e.type](e)},setAttribute(k,v){this[k]=v}}}
 function setup(supported=true){
- const panel=Object.assign(target(),{hidden:true,isConnected:true}),button=target(),status=target(),box=Object.assign(target(),{value:'',maxLength:1024});
+ const panel=Object.assign(target(),{hidden:true,isConnected:true,open:true}),button=target(),status=target(),box=Object.assign(target(),{value:'',maxLength:1024});
  let updates=0;box.events.input=()=>updates++;
  const nodes={'mu-chat-wake':panel,'mu-chat-wake-toggle':button,'mu-chat-wake-status':status,'mu-chat-input':box};
  const document=Object.assign(target(),{hidden:false,documentElement:{lang:'en-GB'},getElementById:id=>nodes[id]});
@@ -32,4 +32,12 @@ s=setup();s.click();r=s.instances[0];s.panel.isConnected=false;s.document.events
 s=setup();s.click();r=s.instances[0];s.window.speechSynthesis.speaking=true;r.result('Hey Micro repeat');assert.equal(s.box.value,'');s.monitor();assert(r.aborted);s.tick(1000);assert.equal(s.instances.length,1,'do not listen to spoken output');s.window.speechSynthesis.speaking=false;s.tick(1000);assert.equal(s.instances.length,2);
 s=setup();s.click();r=s.instances[0];s.box.maxLength=8;r.result('Hey Micro a very long request');assert.equal(s.box.value,'');assert.match(s.status.textContent,/too long/);
 s=setup();s.click();r=s.instances[0];s.window.events.pagehide();assert(r.aborted);assert.equal(s.timers.size,0);
+// BFCache restores the same DOM and does not rerun scripts. Keep controls bound.
+s=setup();s.click();r=s.instances[0];s.window.events.pagehide();assert(r.aborted);s.click();assert.equal(s.instances.length,2,'Start must still work after restoring the page');
+// Providers can end after the wake phrase, before the next utterance.
+s=setup();s.click();r=s.instances[0];r.result('Hey Micro');r.onend();s.tick(1000);r=s.instances.at(-1);r.result('weather tomorrow');assert.equal(s.box.value,'weather tomorrow');
+// The capture deadline survives repeated end/restart cycles.
+s=setup();s.click();r=s.instances[0];r.result('Hey Micro');r.onend();s.tick(1000);s.tick(10000);s.tick(1000);s.instances.at(-1).result('weather tomorrow');assert.equal(s.box.value,'');
+// No hidden listening after closing the disclosure.
+s=setup();s.click();r=s.instances[0];s.panel.open=false;s.panel.events.toggle();assert(r.aborted);assert.equal(s.button['aria-pressed'],'false');assert.equal(s.timers.size,0);assert.equal(s.intervals.size,0);
 console.log('wake dictation lifecycle passed');

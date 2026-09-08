@@ -30,12 +30,12 @@
   }
   function start(){
     if(!enabled||rec)return;
-    if(document.hidden||!panel.isConnected){stop();return;}
+    if(document.hidden||!panel.isConnected||!panel.open){stop();return;}
     if(speaking()){later();return;}
     var current=new SR();rec=current;
     current.lang=document.documentElement.lang||'en-GB';
     current.continuous=true;current.interimResults=true;
-    current.onstart=function(){if(rec===current)report('Listening for “Hey Micro”.');};
+    current.onstart=function(){if(rec===current)report(dictating?'Listening. Say your request.':'Listening for “Hey Micro”.');};
     current.onresult=function(e){
       if(!enabled||rec!==current||document.hidden||!panel.isConnected||speaking())return;
       for(var i=e.resultIndex;i<e.results.length;i++){
@@ -56,12 +56,12 @@
     };
     current.onerror=function(e){
       if(rec!==current)return;
-      if(e.error==='no-speech'){if(dictating)finish();return;}
+      if(e.error==='no-speech')return;
       stop(e.error==='not-allowed'||e.error==='service-not-allowed'?'Microphone access was denied. You can still type.':'Voice recognition stopped. Try starting again or use the text box.');
     };
     current.onend=function(){
       if(rec!==current)return;rec=null;
-      if(dictating){finish();return;}
+      if(dictating){later();return;}
       if(++failures>20){stop('Voice recognition stopped. Start listening to try again.');return;}
       later();
     };
@@ -77,10 +77,13 @@
   }
   function hidden(){if(document.hidden)stop('Listening stopped because you left this page.');}
   function navigated(){if(!panel.isConnected)destroy();}
-  function destroy(){stop();button.removeEventListener('click',toggle);document.removeEventListener('visibilitychange',hidden);document.removeEventListener('mu:navigated',navigated);window.removeEventListener('pagehide',destroy);}
+  function collapsed(){if(!panel.open)stop();}
+  function leave(){stop();}
+  function destroy(){stop();panel.removeEventListener('toggle',collapsed);button.removeEventListener('click',toggle);document.removeEventListener('visibilitychange',hidden);document.removeEventListener('mu:navigated',navigated);window.removeEventListener('pagehide',leave);}
   button.addEventListener('click',toggle);
   document.addEventListener('visibilitychange',hidden);
   document.addEventListener('mu:navigated',navigated);
-  window.addEventListener('pagehide',destroy);
+  window.addEventListener('pagehide',leave);
+  panel.addEventListener('toggle',collapsed);
   window.muWake={stop:stop,destroy:destroy};
 })();
