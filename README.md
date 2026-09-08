@@ -4,7 +4,7 @@ A personal assistant
 
 ## Overview
 
-Mu is a personal assistant. It's a full stack solution to the question, how do I de-platform myself.
+Mu is a personal assistant. It's a full stack solution to the question, how do I run it myself.
 
 ## Features 
 
