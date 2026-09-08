@@ -22,24 +22,14 @@ func TestGuestsSignInThroughTheSidebar(t *testing.T) {
 	}
 }
 
-// Signed in, the corner says which account this browser is.
-//
-// It held only Admin and the balance, both conditional, so an ordinary account
-// on an unmetered instance got an empty corner — signed out it said "Sign up ·
-// Log in" and signed in it said nothing at all, which is the one question the
-// corner exists to answer going unanswered in exactly the state you would check
-// it in. That was invisible while the front door drew a corner of its own.
-func TestSignedInTheCornerSaysWhoYouAre(t *testing.T) {
-	got := headCorner(&auth.Account{ID: "tester"}, "")
-	if !strings.Contains(got, "@tester") {
-		t.Errorf("the corner does not name the account: %q", got)
+// Account identity stays in the sidebar even when the sidebar is collapsed.
+func TestAccountIdentityStaysInTheSidebar(t *testing.T) {
+	account := &auth.Account{ID: "tester"}
+	if got := headCorner(account, ""); strings.Contains(got, "@tester") || strings.Contains(got, `id="head-me"`) {
+		t.Fatalf("duplicate header identity: %s", got)
 	}
-	if !strings.Contains(got, `href="/account"`) {
-		t.Errorf("the name does not lead anywhere: %q", got)
-	}
-	// And it is not the signed-out pair.
-	if strings.Contains(got, `href="/login"`) || strings.Contains(got, `href="/signup"`) {
-		t.Errorf("signed in, the corner still offers a way in: %q", got)
+	if got := navBottom(account, ""); !strings.Contains(got, "@tester") {
+		t.Fatalf("sidebar lost identity: %s", got)
 	}
 }
 

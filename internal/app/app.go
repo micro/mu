@@ -1410,29 +1410,12 @@ func navPinned(acc *auth.Account) string {
 //
 // nav-username is a label mu.js corrects from the session: a page cached for
 // one viewer and served to another would otherwise greet them by the wrong name.
-// headCorner shows the signed-in account. Guests sign in through the sidebar.
+// headCorner keeps the balance in the header. Account identity lives in the sidebar.
 func headCorner(acc *auth.Account, here string) string {
 	if acc == nil {
 		return ""
 	}
-
-	// And who you are, which is the other half of the same answer.
-	//
-	// The corner held only Admin and the balance, and both are conditional —
-	// an ordinary account on an unmetered instance got an empty corner. That
-	// was survivable while the front door drew its own "Home · Log out" and the
-	// sidebar was always open; with one corner on every page and the rail
-	// collapsed, it meant signed out said "Sign up · Log in" and signed in said
-	// nothing at all. The one thing this corner exists to answer went
-	// unanswered in exactly the state you would check it in.
-	//
-	// The name, not Log out. Log out is in the rail under "Signed in as", which
-	// is where somebody goes to leave; the corner's job is to say which account
-	// this browser is, and on a shared or long-lived one that is a real
-	// question. It links to /account, which is where the answer leads.
-	return headBalance(acc) +
-		`<a id="head-me" href="/account" title="Your account"><span class="label">@` +
-		htmlpkg.EscapeString(acc.ID) + `</span></a>`
+	return headBalance(acc)
 }
 
 func loginBack(here string) string {
