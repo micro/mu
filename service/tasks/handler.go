@@ -206,6 +206,9 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 	if !t.Due.IsZero() {
 		meta = append(meta, "due "+html.EscapeString(t.Due.Local().Format("2 Jan 15:04")))
 	}
+	if t.Delivery != nil {
+		meta = append(meta, "result delivery pending")
+	}
 	if Running(t) {
 		meta = append(meta, `<span class="task-running">working…</span>`)
 	}

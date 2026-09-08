@@ -102,7 +102,9 @@ func Create(ns, owner, collection string, dataObj map[string]interface{}, public
 	now := time.Now()
 	rec := Record{ID: uuid.New().String(), Owner: owner, Public: public, Data: dataObj, Created: now, Updated: now}
 	recs = append(recs, rec)
-	data.SaveJSON(k, recs)
+	if err := data.SaveJSON(k, recs); err != nil {
+		return nil, err
+	}
 	return &rec, nil
 }
 
@@ -183,7 +185,9 @@ func Update(ns, caller, collection, id string, dataObj map[string]interface{}, p
 		}
 		recs[i].Public = public
 		recs[i].Updated = time.Now()
-		data.SaveJSON(k, recs)
+		if err := data.SaveJSON(k, recs); err != nil {
+			return nil, err
+		}
 		r := recs[i]
 		return &r, nil
 	}

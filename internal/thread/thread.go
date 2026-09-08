@@ -659,7 +659,12 @@ func flusher() {
 //
 // Exported for the two callers that cannot wait for the tick: a test that wants
 // to know the file is on disk, and anything shutting down.
-func Flush() {
+func Flush() error {
+	// Serialize the dirty check, snapshot and write, not just the write. A
+	// caller awaiting durability must wait for an in-flight flush, and older
+	// snapshots must never overwrite newer ones.
+	writeMu.Lock()
+	defer writeMu.Unlock()
 	// Only back to the home it was read from. A tick that falls due after a
 	// test has restored HOME would otherwise write that test's fixtures into
 	// the real store, which is how 37 of them got there.
@@ -667,10 +672,10 @@ func Flush() {
 	ours := loaded && loadedFrom == os.Getenv("HOME")
 	mu.RUnlock()
 	if !ours {
-		return
+		return nil
 	}
 	if !dirty.Swap(false) {
-		return
+		return nil
 	}
 	var stored struct {
 		Threads  []Thread  `json:"threads"`
@@ -699,9 +704,11 @@ func Flush() {
 	}
 	mu.RUnlock()
 
-	writeMu.Lock()
-	defer writeMu.Unlock()
-	data.SaveJSON("threads.json", stored) //nolint:errcheck
+	if err := data.SaveJSON("threads.json", stored); err != nil {
+		dirty.Store(true)
+		return err
+	}
+	return nil
 }
 
 func sortByTime(m []*Message) {

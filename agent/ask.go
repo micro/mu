@@ -444,6 +444,18 @@ func AnsweredAs(account, threadID, text, workflow, from string) {
 	})
 }
 
+// AnsweredOnce records a recoverable reply using a stable delivery reference.
+// Repeating it after a crash returns the existing message and waits for disk.
+func AnsweredOnce(account, threadID, text, from, ref string) error {
+	if ref == "" || thread.Add(thread.Message{
+		Thread: threadID, Account: account, Role: thread.RoleAgent,
+		Text: text, From: from, Ref: ref,
+	}) == "" {
+		return fmt.Errorf("could not record the answer in its source conversation")
+	}
+	return thread.Flush()
+}
+
 // History is a conversation's prior messages, as the model wants them.
 func History(account, threadID string, max int) []QueryMessage {
 	if threadID == "" || max <= 0 {

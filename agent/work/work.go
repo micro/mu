@@ -44,6 +44,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"mu/agent"
 	"mu/internal/ai"
@@ -60,6 +61,7 @@ import (
 // Load subscribes to the work agents are asked to do.
 func Load() {
 	sub := event.Subscribe(event.WorkForAgent)
+	go retryDeliveries()
 	go func() {
 		for e := range sub.Chan {
 			r, ok := requestFrom(e.Data)
@@ -116,6 +118,23 @@ func run(r request) {
 }
 
 func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string, error)) {
+	if r.Kind == tasks.Kind {
+		t, err := tasks.Get(r.Account, r.ID)
+		if err != nil {
+			app.Log("work", "task %s is unavailable: %v", r.ID, err)
+			return
+		}
+		if t.Delivery != nil {
+			if err := deliverTask(t); err != nil {
+				app.Log("work", "task %s result delivery pending: %v", r.ID, err)
+			}
+			return
+		}
+		if t.Status == tasks.StatusDone {
+			return
+		}
+	}
+
 	var steps []tasks.Step
 	var stepsMu sync.Mutex
 	defer func() {
@@ -124,8 +143,9 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 			app.Log("work", "running %s %s panicked: %v", r.Kind, r.ID, rec)
 			if r.Kind == tasks.Kind {
 				finishTask(r, "", nil, failure)
+			} else {
+				answered(r, "", failure)
 			}
-			answered(r, "", failure)
 		}
 	}()
 
@@ -184,6 +204,7 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 	switch r.Kind {
 	case tasks.Kind:
 		finishTask(r, answer, completedSteps, err)
+		return
 	case events.Kind:
 		deliver(r, answer, err)
 	default:
@@ -242,15 +263,65 @@ func answered(r request, answer string, err error) {
 // A failed run leaves the task open: work that failed is work still to do, not
 // work finished badly, and the reason belongs where somebody will see it.
 func finishTask(r request, answer string, steps []tasks.Step, err error) {
+	status, result := tasks.StatusDone, strings.TrimSpace(answer)
+	if result == "" && err == nil {
+		err = fmt.Errorf("the agent returned no outcome")
+	}
+	reply := result
 	if err != nil {
 		app.Log("work", "task %q failed for %s: %v", r.Title, r.Account, err)
-		if _, saveErr := tasks.Update(r.Account, r.ID, "", "", tasks.StatusTodo, "", "Last run failed: "+ai.FailureMessage(err), steps); saveErr != nil {
-			app.Log("work", "saving failed task %s: %v", r.ID, saveErr)
-		}
+		status = tasks.StatusTodo
+		result = "Last run failed: " + ai.FailureMessage(err)
+		reply = "That did not work: " + ai.FailureMessage(err)
+	}
+	from := r.Agent
+	if from == "" {
+		from = agent.DefaultName()
+	}
+	t, saveErr := tasks.RecordOutcome(r.Account, r.ID, status, result, reply, from, steps)
+	if saveErr != nil {
+		app.Log("work", "saving task outcome %s: %v", r.ID, saveErr)
 		return
 	}
-	if _, saveErr := tasks.Update(r.Account, r.ID, "", "", tasks.StatusDone, "", strings.TrimSpace(answer), steps); saveErr != nil {
-		app.Log("work", "saving completed task %s: %v", r.ID, saveErr)
+	if err := deliverTask(t); err != nil {
+		app.Log("work", "task %s result delivery pending: %v", r.ID, err)
+	}
+}
+
+// deliverTask never invokes the agent. The stable reference makes retrying
+// after the message was written but before acknowledgement safe.
+func deliverTask(t *tasks.Task) error {
+	if t == nil || t.Delivery == nil {
+		return nil
+	}
+	d := t.Delivery
+	if err := agent.AnsweredOnce(t.Owner, t.Thread, d.Text, d.From, "task-result:"+d.ID); err != nil {
+		return err
+	}
+	return tasks.AcknowledgeDelivery(t.Owner, t.ID, d.ID)
+}
+
+func retryDeliveries() {
+	for {
+		for _, acc := range auth.AllAccounts() {
+			if acc == nil {
+				continue
+			}
+			after := ""
+			for {
+				batch := tasks.PendingDeliveries(acc.ID, after)
+				if len(batch) == 0 {
+					break
+				}
+				for _, t := range batch {
+					after = t.Delivery.ID
+					if err := deliverTask(t); err != nil {
+						app.Log("work", "task %s result delivery pending: %v", t.ID, err)
+					}
+				}
+			}
+		}
+		time.Sleep(time.Minute)
 	}
 }
 

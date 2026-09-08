@@ -52,6 +52,9 @@ func Run(owner, id string) error {
 	if err != nil {
 		return err
 	}
+	if t.Delivery != nil {
+		return fmt.Errorf("the previous result is still being delivered")
+	}
 	if t.Status == StatusDone {
 		return fmt.Errorf("that task is already done")
 	}
@@ -64,7 +67,7 @@ func Run(owner, id string) error {
 	// was an in-memory map beside it doing the same job, which meant two
 	// answers to "is this running" and only one of them survived a restart —
 	// a task left "doing" by a crash could never be run again.
-	if _, err := Update(owner, t.ID, "", "", StatusDoing, Agent, ""); err != nil {
+	if _, err := update(owner, t.ID, "", "", StatusDoing, Agent, "", nil); err != nil {
 		return err
 	}
 
