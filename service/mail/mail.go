@@ -174,6 +174,7 @@ func Load() {
 	// background because it is a boot-time cost proportional to the mailbox and
 	// nothing needs it before the first search.
 	go Reindex()
+	go retryOutbox()
 }
 
 // fixThreading repairs broken threading relationships and computes ThreadID after loading
@@ -570,6 +571,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
+		return
+	}
+
+	if r.URL.Query().Get("view") == "outbox" {
+		outboxPage(w, r, acc.ID)
 		return
 	}
 
@@ -1427,7 +1433,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(spamMsgs) > 0 {
 		filteredLabel = fmt.Sprintf("Filtered (%d)", len(spamMsgs))
 	}
-	tabs := fmt.Sprintf(`<div class="mail-tabs"><a href="/mail" class="%s">%s</a><a href="/mail?view=sent" class="%s">Sent</a><a href="/mail?view=filtered" class="%s">%s</a></div>`,
+	tabs := fmt.Sprintf(`<div class="mail-tabs"><a href="/mail" class="%s">%s</a><a href="/mail?view=sent" class="%s">Sent</a><a href="/mail?view=outbox" class="mail-tab">Outbox</a><a href="/mail?view=filtered" class="%s">%s</a></div>`,
 		inboxClass, inboxLabel, sentClass, filteredClass, filteredLabel)
 
 	// Search bar
@@ -2281,6 +2287,7 @@ func RecentMessages(limit int) []*Message {
 // The same shape of bug as the one internal/thread had: a record written by the
 // machinery rather than owned by a service, so nothing deleted it.
 func DeleteInbox(userID string) {
+	deleteOutbox(userID)
 	mutex.Lock()
 	kept := messages[:0]
 	var gone []*Message

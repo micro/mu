@@ -2,6 +2,7 @@ package mail
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -309,6 +310,10 @@ func relayToExternal(from, to string, data []byte) error {
 		return relayViaSubmission(host, from, to, data)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	deadline, _ := ctx.Deadline()
+
 	// Extract domain from recipient address
 	parts := strings.Split(to, "@")
 	if len(parts) != 2 {
@@ -317,7 +322,7 @@ func relayToExternal(from, to string, data []byte) error {
 	domain := parts[1]
 
 	// Look up MX records for the domain
-	mxRecords, err := net.LookupMX(domain)
+	mxRecords, err := net.DefaultResolver.LookupMX(ctx, domain)
 	if err != nil || len(mxRecords) == 0 {
 		app.Log("mail", "No MX records found for %s, trying domain directly", domain)
 		// Fallback to domain directly if no MX records
@@ -339,13 +344,17 @@ func relayToExternal(from, to string, data []byte) error {
 		addr := net.JoinHostPort(host, "25")
 
 		// Connect with timeout
-		conn, err := net.DialTimeout("tcp", addr, 30*time.Second)
+		conn, err := (&net.Dialer{Timeout: 30 * time.Second}).DialContext(ctx, "tcp", addr)
 		if err != nil {
 			app.Log("mail", "Failed to connect to %s: %v", addr, err)
 			lastErr = err
 			continue
 		}
 		defer conn.Close()
+		if err := conn.SetDeadline(deadline); err != nil {
+			lastErr = err
+			continue
+		}
 
 		// Create SMTP client
 		client, err := smtp.NewClient(conn, host)

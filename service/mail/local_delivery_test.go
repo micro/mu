@@ -139,18 +139,22 @@ func TestAnsweringSomebodyHereDeliversRatherThanRelaying(t *testing.T) {
 	}
 }
 
-// And somebody outside still goes out. A router that delivered everything
-// locally would pass the test above and break every real reply.
-func TestAnsweringSomebodyOutsideStillRelays(t *testing.T) {
+// External replies are accepted durably; transport failure no longer requires
+// running the agent again. The worker, rather than this request, owns retries.
+func TestAnsweringSomebodyOutsideQueuesTheReply(t *testing.T) {
 	withDomain(t, "mu.test")
-
-	// Nothing can relay in a test, so the proof that it tried is that it
-	// failed. Silence would mean the message was quietly dropped.
-	_, err := SendReplyAll("someone", "Agent", "agent@mu.test", "someone@example.com", nil,
-		"Re: hello", "hi", "<p>hi</p>", "", "")
-	if err == nil {
-		t.Error("an external reply reported success with no relay configured, so it " +
-			"went nowhere and said nothing")
+	id, err := SendReplyAll("someone", "Agent", "agent@mu.test", "someone@example.com", nil,
+		"Re: hello", "hi", "<p>hi</p>", "<parent@example.com>", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := queuedForTest(t, "someone")
+	if len(rows) != 1 {
+		t.Fatalf("reply was not durably queued: %d", len(rows))
+	}
+	m, err := readQueued(&rows[0])
+	if err != nil || m.MessageID != id || m.Recipients[0] != "someone@example.com" {
+		t.Fatalf("wrong queued reply: %+v, %v", m, err)
 	}
 }
 
@@ -167,8 +171,7 @@ func TestAThreadWithBothKindsOfRecipientReachesBoth(t *testing.T) {
 
 	before := len(ListMessages("ccasim", 100))
 
-	// To is outside, so the relay is attempted and fails — but the local
-	// recipient in Cc must still be delivered to.
+	// To is outside and queued; the local recipient still gets its copy now.
 	_, _ = SendReplyAll("ccasim", "Agent", "agent@mu.test", "someone@example.com",
 		[]string{"ccasim@mu.test"}, "Re: both", "hi", "<p>hi</p>", "", "")
 

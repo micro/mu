@@ -4704,7 +4704,8 @@ a.card-hover:hover {
   font-size: 13px;
 }
 
-.page-filters .tag.active {
+.page-filters .tag.active,
+.page-filters .tag.active:visited {
   background: var(--accent-color, #000);
   color: white;
 }

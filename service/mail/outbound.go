@@ -103,7 +103,7 @@ func WroteToUs(owner, addr string) bool {
 	return false
 }
 
-// SendOut delivers one message off this instance and files a copy.
+// SendOut accepts one external message into the durable outbox.
 //
 // The order is the order everything else here charges in: everything that can
 // refuse does so before the provider is called, because after that the mail has
@@ -115,7 +115,7 @@ func SendOut(owner, displayName, to, subject, bodyPlain, bodyHTML, replyTo strin
 
 // ReplyOut is SendOut for a message that continues a thread.
 //
-// Same gate, same charge, same provider — the difference is two headers.
+// Same gate, same charge, same outbox — the difference is two headers.
 // In-Reply-To names the message being answered and References carries the whole
 // chain, and a receiving client needs both: Gmail threads on References, and one
 // that sees only In-Reply-To files a long conversation as a run of unrelated
@@ -128,6 +128,9 @@ func SendOut(owner, displayName, to, subject, bodyPlain, bodyHTML, replyTo strin
 // this instance's own record and wrong in everybody else's.
 func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, references string) (string, error) {
 	to = strings.TrimSpace(to)
+	if len(bodyPlain)+len(bodyHTML) > maxOutgoingBytes {
+		return "", fmt.Errorf("outgoing message is too large")
+	}
 	if !IsExternalEmail(to) {
 		return "", fmt.Errorf("%s is on this instance — that is not mail leaving it", to)
 	}
@@ -146,7 +149,7 @@ func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, r
 		bodyHTML = convertPlainTextToHTML(bodyPlain)
 	}
 	from := EmailForUser(owner, ConfiguredDomain())
-	messageID, err := SendExternalReply(displayName, from, to, subject, bodyPlain, bodyHTML,
+	messageID, err := queueReply(owner, displayName, from, to, nil, subject, bodyPlain, bodyHTML,
 		inReplyTo, references)
 	if err != nil {
 		return "", err

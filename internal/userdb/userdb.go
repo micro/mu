@@ -212,8 +212,7 @@ func Delete(ns, caller, collection, id string) error {
 				return ErrForbidden
 			}
 			recs = append(recs[:i], recs[i+1:]...)
-			data.SaveJSON(k, recs)
-			return nil
+			return data.SaveJSON(k, recs)
 		}
 	}
 	return ErrNotFound
@@ -495,7 +494,9 @@ func DeleteOwner(ns, owner string) (int, error) {
 			kept = append(kept, rec)
 		}
 		if len(kept) != len(recs) {
-			data.SaveJSON(k, kept)
+			if err := data.SaveJSON(k, kept); err != nil {
+				return removed, err
+			}
 		}
 	}
 	return removed, nil

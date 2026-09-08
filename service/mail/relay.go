@@ -70,11 +70,15 @@ func relayViaSubmission(host, from, to string, data []byte) error {
 		return fmt.Errorf("SMTP_RELAY_HOST is not a host and port: %v", err)
 	}
 
+	deadline := time.Now().Add(time.Minute)
 	conn, err := net.DialTimeout("tcp", host, 30*time.Second)
 	if err != nil {
 		return fmt.Errorf("could not reach the relay at %s: %v", host, err)
 	}
 	defer conn.Close()
+	if err := conn.SetDeadline(deadline); err != nil {
+		return err
+	}
 
 	c, err := smtp.NewClient(conn, name)
 	if err != nil {
