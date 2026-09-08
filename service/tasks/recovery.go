@@ -9,7 +9,7 @@ import (
 // recoverInterrupted runs during startup, before the task service accepts work.
 // An old doing state cannot represent a live agent after a process restart.
 // Do not replay it: a tool may have completed an external action before the
-// process stopped. Leave the task open for the owner to inspect and retry.
+// process stopped. Leave the task blocked for the owner to inspect and retry.
 func recoverInterrupted(owner string) error {
 	if owner == "" {
 		return nil
@@ -32,7 +32,7 @@ func recoverInterrupted(owner string) error {
 			if task.Result != "" {
 				result += "\n\nPrevious result:\n" + task.Result
 			}
-			if _, err := Update(owner, task.ID, "", "", StatusTodo, "", result); err != nil {
+			if _, err := Update(owner, task.ID, "", "", StatusBlocked, "", result); err != nil {
 				return fmt.Errorf("recover task %s: %w", task.ID, err)
 			}
 		}

@@ -43,8 +43,8 @@ var runMu sync.Mutex
 //
 // It returns immediately because an agent run takes seconds to a minute, and a
 // request held open for that is a page that looks broken. The task moves to
-// "doing" now and to "done" with its result when the work finishes, so the list
-// is the progress indicator.
+// "doing" now, then to "done" or "failed" with its result when the work
+// finishes, so the list is the progress indicator.
 func Run(owner, id string) error {
 	runMu.Lock()
 	defer runMu.Unlock()

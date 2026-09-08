@@ -34,13 +34,14 @@ const (
 	collection = "tasks"
 )
 
-// The states a task moves through. Three, because a fourth would be a
-// judgement nobody has to make: it is waiting, it is being worked on, or it is
-// finished.
+// Failed and blocked work needs attention before another attempt. Keeping it
+// separate from todo prevents ordinary pickup from replaying uncertain actions.
 const (
-	StatusTodo  = "todo"
-	StatusDoing = "doing"
-	StatusDone  = "done"
+	StatusTodo    = "todo"
+	StatusDoing   = "doing"
+	StatusDone    = "done"
+	StatusFailed  = "failed"
+	StatusBlocked = "blocked"
 )
 
 // Assignee values. A task is yours unless you hand it over.
@@ -163,18 +164,18 @@ func List(owner, status string) []*Task {
 	if owner == "" {
 		return nil
 	}
-	recs, err := userdb.List(ns, owner, collection, "mine", nil, "", "", 0)
+	var where map[string]any
+	if status != "" {
+		where = map[string]any{"status": status}
+	}
+	recs, err := userdb.List(ns, owner, collection, "mine", where, "", "", 0)
 	if err != nil {
 		return nil
 	}
 
 	out := make([]*Task, 0, len(recs))
 	for _, r := range recs {
-		t := toTask(r.ID, r.Owner, r.Data)
-		if status != "" && t.Status != status {
-			continue
-		}
-		out = append(out, t)
+		out = append(out, toTask(r.ID, r.Owner, r.Data))
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Open() != out[j].Open() {
@@ -200,16 +201,23 @@ func Get(owner, id string) (*Task, error) {
 	return toTask(rec.ID, rec.Owner, rec.Data), nil
 }
 
-// Next returns the task an agent should pick up: the oldest open one assigned
+// Next returns the task an agent should pick up: the oldest ready task assigned
 // to it. This is the whole point of the assignee field — an agent asking "what
 // should I be doing?" gets an answer without a person having to say it again.
 func Next(owner string) *Task {
-	for _, t := range List(owner, "") {
-		if t.Open() && t.Assignee == Agent {
-			return t
-		}
+	if owner == "" {
+		return nil
 	}
-	return nil
+	// Filter before the storage limit, so recent personal or finished work
+	// cannot hide the oldest ready task.
+	recs, err := userdb.List(ns, owner, collection, "mine", map[string]any{
+		"status": StatusTodo, "assignee": Agent,
+		"delivery_pending": map[string]any{"ne": true},
+	}, "created", "asc", 1)
+	if err != nil || len(recs) == 0 {
+		return nil
+	}
+	return toTask(recs[0].ID, recs[0].Owner, recs[0].Data)
 }
 
 // Update changes a task. Empty strings leave a field as it was, so an agent
@@ -232,7 +240,7 @@ func update(owner, id, title, detail, status, assignee, result string, extra map
 	}
 
 	if status != "" && !validStatus(status) {
-		return nil, fmt.Errorf("status must be %s, %s or %s", StatusTodo, StatusDoing, StatusDone)
+		return nil, fmt.Errorf("status must be %s, %s, %s, %s or %s", StatusTodo, StatusDoing, StatusDone, StatusFailed, StatusBlocked)
 	}
 
 	fields := map[string]any{
@@ -343,7 +351,7 @@ func Render(ts []*Task) string {
 }
 
 func validStatus(s string) bool {
-	return s == StatusTodo || s == StatusDoing || s == StatusDone
+	return s == StatusTodo || s == StatusDoing || s == StatusDone || s == StatusFailed || s == StatusBlocked
 }
 
 // normaliseAssignee accepts the words a person or a model would use and lands

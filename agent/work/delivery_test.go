@@ -85,3 +85,34 @@ func TestReplayedWorkDeliversTheSavedResultWithoutCallingTheModel(t *testing.T) 
 		t.Fatal("replayed work repeated execution or lost the delivery")
 	}
 }
+
+func TestFailedAndBlockedWorkWaitsForExplicitRetry(t *testing.T) {
+	for _, state := range []string{tasks.StatusFailed, tasks.StatusBlocked} {
+		who := "review-" + state
+		task, err := tasks.Create(who, "Do work", "", tasks.Agent, time.Time{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tasks.Update(who, task.ID, "", "", state, "", "Review first"); err != nil {
+			t.Fatal(err)
+		}
+		calls := 0
+		query := func(string, string, agent.QueryOpts) (string, error) {
+			calls++
+			return "Completed after review", nil
+		}
+		r := request{Account: who, ID: task.ID, Kind: tasks.Kind, Prompt: "Do work"}
+		runWithQuery(r, query)
+		if calls != 0 {
+			t.Fatal("stale request reran work requiring review")
+		}
+		if err := tasks.Run(who, task.ID); err != nil {
+			t.Fatal(err)
+		}
+		runWithQuery(r, query)
+		got, _ := tasks.Get(who, task.ID)
+		if calls != 1 || got.Status != tasks.StatusDone {
+			t.Fatalf("explicit retry did not finish: calls=%d, task=%+v", calls, got)
+		}
+	}
+}

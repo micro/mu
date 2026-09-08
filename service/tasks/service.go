@@ -32,7 +32,7 @@ type TaskResponse struct {
 type ListRequest struct {
 	Offset int    `json:"offset" description:"Tasks to skip"`
 	Limit  int    `json:"limit" description:"Maximum tasks, default 20, max 100"`
-	Status string `json:"status" description:"Optional filter: todo, doing or done"`
+	Status string `json:"status" description:"Optional filter: todo, doing, done, failed or blocked"`
 }
 
 // ListResponse is a model-ready list.
@@ -52,7 +52,7 @@ type UpdateRequest struct {
 	ID     string `json:"id" description:"The task's id" required:"true"`
 	Title  string `json:"title" description:"New title"`
 	Detail string `json:"detail" description:"New detail"`
-	Status string `json:"status" description:"todo, doing or done"`
+	Status string `json:"status" description:"todo, doing, done, failed or blocked"`
 	Result string `json:"result" description:"What came of it — the answer, the outcome, what was found"`
 }
 
@@ -128,7 +128,7 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 func (Server) Next(ctx context.Context, _ *NextRequest, rsp *TaskResponse) error {
 	t := Next(service.AccountFrom(ctx))
 	if t == nil {
-		rsp.Text = "Nothing assigned to the agent."
+		rsp.Text = "No task is ready for the agent."
 		return nil
 	}
 	rsp.Item = t

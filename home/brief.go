@@ -142,6 +142,9 @@ func briefParts(accountID string) []string {
 		if s := working(accountID); s != "" {
 			parts = append(parts, s)
 		}
+		if s := taskAttention(accountID); s != "" {
+			parts = append(parts, s)
+		}
 		if s := owed(accountID); s != "" {
 			parts = append(parts, s)
 		}
@@ -204,6 +207,20 @@ func working(accountID string) string {
 		out += ", the longest since " + html.EscapeString(app.TimeAgo(oldest.Updated))
 	}
 	return out + "."
+}
+
+// taskAttention points to work that needs a decision, not another automatic run.
+func taskAttention(accountID string) string {
+	var parts []string
+	for _, status := range []string{tasks.StatusFailed, tasks.StatusBlocked} {
+		if n := len(tasks.List(accountID, status)); n > 0 {
+			parts = append(parts, app.TextLink(count(n, "task", "tasks")+" "+status, "/tasks?status="+status))
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, " and ") + "; review before retrying."
 }
 
 // owed is what is waiting on you: due today, then everything else open.

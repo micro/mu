@@ -125,7 +125,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	// Filters. Counted, because "3 open" is the thing you want to know before
 	// you decide whether to look.
 	all := List(sess.Account, "")
-	open, doing := 0, 0
+	open, doing, failed, blocked := 0, 0, 0, 0
 	for _, t := range all {
 		if t.Status == StatusTodo {
 			open++
@@ -133,11 +133,19 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 		if t.Status == StatusDoing {
 			doing++
 		}
+		if t.Status == StatusFailed {
+			failed++
+		}
+		if t.Status == StatusBlocked {
+			blocked++
+		}
 	}
 	b.WriteString(`<div class="page-stack"><div class="task-tabs">`)
 	tab(&b, "", filter, fmt.Sprintf("All (%d)", len(all)))
 	tab(&b, StatusTodo, filter, fmt.Sprintf("To do (%d)", open))
 	tab(&b, StatusDoing, filter, fmt.Sprintf("Doing (%d)", doing))
+	tab(&b, StatusFailed, filter, fmt.Sprintf("Failed (%d)", failed))
+	tab(&b, StatusBlocked, filter, fmt.Sprintf("Blocked (%d)", blocked))
 	tab(&b, StatusDone, filter, "Done")
 	b.WriteString(`</div>`)
 
@@ -263,7 +271,13 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 	if t.Open() {
 		button(&b, t.ID, "done", csrf, "Done", "")
 		if t.Assignee == Agent {
-			button(&b, t.ID, "run", csrf, "Run now", "")
+			if !Running(t) && t.Delivery == nil {
+				runLabel := "Run now"
+				if t.Status == StatusFailed || t.Status == StatusBlocked {
+					runLabel = "Retry"
+				}
+				button(&b, t.ID, "run", csrf, runLabel, "")
+			}
 			button(&b, t.ID, "unassign", csrf, "Take back", "")
 		} else {
 			button(&b, t.ID, "assign", csrf, "Give to agent", "")

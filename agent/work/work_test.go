@@ -65,9 +65,8 @@ func TestAFinishedTaskKeepsItsResult(t *testing.T) {
 	}
 }
 
-// A failed run leaves the work to be done rather than marking it finished
-// badly, and says why where somebody will see it.
-func TestAFailedRunReopensTheTask(t *testing.T) {
+// A failed run is explicitly failed, with its reason preserved.
+func TestAFailedRunMarksTheTaskFailed(t *testing.T) {
 	const who = "work-failed"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 
@@ -83,8 +82,8 @@ func TestAFailedRunReopensTheTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != tasks.StatusTodo {
-		t.Errorf("a failed run left the task %q, want todo", got.Status)
+	if got.Status != tasks.StatusFailed {
+		t.Errorf("a failed run left the task %q, want failed", got.Status)
 	}
 	if !strings.Contains(got.Result, "unavailable") {
 		t.Errorf("the reason is not on the task: %q", got.Result)
