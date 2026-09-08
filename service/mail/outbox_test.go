@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/data"
 	"mu/internal/userdb"
 )
 
@@ -51,10 +52,14 @@ func TestOutboxRetriesOnlyFailedRecipientsUsingTheOriginalMessage(t *testing.T) 
 	if len(m.Recipients) != 2 {
 		t.Fatal("duplicate recipient was not removed")
 	}
+	original, err := queuedBytes(m)
+	if err != nil {
+		t.Fatal(err)
+	}
 	calls := map[string]int{}
 	relay := func(from, to string, raw []byte) error {
 		calls[to]++
-		if from != m.From || !bytes.Equal(raw, m.Message) || !bytes.Contains(raw, []byte(m.MessageID)) || !bytes.Contains(raw, []byte("<root@example.com> <parent@example.com>")) {
+		if from != m.From || !bytes.Equal(raw, original) || !bytes.Contains(raw, []byte(m.MessageID)) || !bytes.Contains(raw, []byte("<root@example.com> <parent@example.com>")) {
 			t.Fatal("retry changed sender, message or threading")
 		}
 		if to == "second@example.com" && calls[to] == 1 {
@@ -142,9 +147,11 @@ func TestOutboxPersistsBeforeAcceptanceAndEncryptsThePayload(t *testing.T) {
 		t.Fatal("outbox leaked plaintext")
 	}
 	m, err := readQueued(&rec)
-	if err != nil || !bytes.Contains(m.Message, []byte("A private answer")) {
+	raw, readErr := queuedBytes(m)
+	if err != nil || readErr != nil || !bytes.Contains(raw, []byte("A private answer")) {
 		t.Fatalf("could not recover encrypted message: %v", err)
 	}
+	m.Message = raw
 	// A store that cannot be written must never report acceptance.
 	t.Setenv("HOME", t.TempDir())
 	if err := os.MkdirAll(filepath.Join(os.Getenv("HOME"), ".mu", "data", "mail", "db", "outbox.json"), 0700); err != nil {
@@ -214,5 +221,42 @@ func TestReplyAllReportsLocalDeliveryFailure(t *testing.T) {
 	withDomain(t, "mu.test")
 	if _, err := SendReplyAll("outbox-local", "Agent", "agent@mu.test", "missing-local-recipient@mu.test", nil, "Reply", "Answer", "", "", ""); err == nil {
 		t.Fatal("missing local mailbox was reported as delivered")
+	}
+}
+
+func TestLargeMailUsesEncryptedBodyStorageAndCanBeDiscarded(t *testing.T) {
+	owner := t.Name()
+	withDomain(t, "mu.test")
+	oldKey, oldEnabled := encKey, encEnabled
+	encKey, encEnabled = bytes.Repeat([]byte{3}, 32), true
+	t.Cleanup(func() { encKey, encEnabled = oldKey, oldEnabled })
+	body := strings.Repeat("private body ", maxOutgoingBytes/len("private body "))
+	id, err := queueReply(owner, "Agent", "agent@mu.test", "one@example.com", nil, "Large answer", body, "", "", "")
+	if err != nil || id == "" {
+		t.Fatalf("mail-size body was rejected: %v", err)
+	}
+	rows := queuedForTest(t, owner)
+	m, err := readQueued(&rows[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := data.LoadFile(m.File)
+	if err != nil || bytes.Contains(raw, []byte("private body")) {
+		t.Fatal("body missing or stored unencrypted")
+	}
+	if err := saveQueued(owner, rows[0].ID, m, false, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := discardQueued("stranger", rows[0].ID); err == nil {
+		t.Fatal("cross-owner discard")
+	}
+	if err := discardQueued(owner, rows[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if len(queuedForTest(t, owner)) != 0 {
+		t.Fatal("discard did not release record capacity")
+	}
+	if _, err := data.LoadFile(m.File); !os.IsNotExist(err) {
+		t.Fatal("discard retained the body")
 	}
 }

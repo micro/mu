@@ -128,6 +128,9 @@ func SendOut(owner, displayName, to, subject, bodyPlain, bodyHTML, replyTo strin
 // this instance's own record and wrong in everybody else's.
 func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, references string) (string, error) {
 	to = strings.TrimSpace(to)
+	if len(bodyPlain)+len(bodyHTML) > maxOutgoingBytes {
+		return "", fmt.Errorf("outgoing message is too large")
+	}
 	if !IsExternalEmail(to) {
 		return "", fmt.Errorf("%s is on this instance — that is not mail leaving it", to)
 	}

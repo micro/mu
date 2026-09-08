@@ -6,14 +6,18 @@ package mail
 // at the far end, but retries retain the same Message-ID and MIME content.
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/data"
 	"mu/internal/userdb"
 )
 
@@ -26,7 +30,8 @@ type queuedMail struct {
 	From       string          `json:"from"`
 	Subject    string          `json:"subject"`
 	MessageID  string          `json:"message_id"`
-	Message    []byte          `json:"message"`
+	Message    []byte          `json:"-"`
+	File       string          `json:"file"`
 	Recipients []string        `json:"recipients"`
 	Delivered  map[string]bool `json:"delivered"`
 	Attempts   int             `json:"attempts"`
@@ -44,7 +49,7 @@ func enqueueMail(owner string, m queuedMail) (string, error) {
 	if owner == "" || m.From == "" || m.MessageID == "" || len(m.Message) == 0 {
 		return "", fmt.Errorf("outgoing mail needs an owner, sender and message")
 	}
-	if len(m.Message) > maxOutgoingBytes*2 {
+	if len(m.Message) > maxOutgoingBytes*8+(64<<10) {
 		return "", fmt.Errorf("outgoing message is too large")
 	}
 	seen := map[string]bool{}
@@ -64,6 +69,24 @@ func enqueueMail(owner string, m queuedMail) (string, error) {
 		return "", fmt.Errorf("no recipients")
 	}
 	m.Recipients, m.Delivered, m.Created = recipients, map[string]bool{}, time.Now().UTC()
+	m.File = outboxDirectory(owner) + "/" + uuid.NewString() + ".eml"
+	encrypted, err := encrypt(string(m.Message))
+	if err != nil {
+		return "", err
+	}
+	if err := data.SaveFile(m.File, encrypted); err != nil {
+		return "", err
+	}
+	// The generic record carries only encrypted envelope/progress metadata.
+	// MIME bodies can be megabytes and do not belong in its 64 KiB records.
+	m.Message = nil
+	keepFile := false
+	defer func() {
+		if !keepFile {
+			_ = data.DeleteFile(m.File)
+		}
+	}()
+
 	fields, err := outboxFields(m, true, time.Now())
 	if err != nil {
 		return "", err
@@ -71,6 +94,7 @@ func enqueueMail(owner string, m queuedMail) (string, error) {
 	if _, err := userdb.Create("mail", owner, outboxCollection, fields, false); err != nil {
 		return "", err
 	}
+	keepFile = true
 	select {
 	case outboxWake <- struct{}{}:
 	default:
@@ -129,6 +153,9 @@ func processQueued(owner, id string, relay func(string, string, []byte) error) e
 	if m.Delivered == nil {
 		m.Delivered = map[string]bool{}
 	}
+	if len(m.Delivered) == len(m.Recipients) {
+		return removeQueued(owner, id, m)
+	}
 	if time.Since(m.Created) >= 48*time.Hour {
 		m.LastError = "Delivery stopped after 48 hours. Review the recipients before retrying."
 		return saveQueued(owner, id, m, false, time.Now())
@@ -141,12 +168,17 @@ func processQueued(owner, id string, relay func(string, string, []byte) error) e
 		return err
 	}
 	m.LastError = ""
+	raw, err := queuedBytes(m)
+	if err != nil {
+		m.LastError = "The saved message could not be read. Restore it or discard this delivery."
+		return saveQueued(owner, id, m, false, next)
+	}
 	for _, addr := range m.Recipients {
 		if m.Delivered[addr] {
 			continue
 		}
 		RecordOutbound(m.MessageID, addr)
-		if err := relay(m.From, addr, m.Message); err != nil {
+		if err := relay(m.From, addr, raw); err != nil {
 			m.LastError = err.Error()
 		} else {
 			m.Delivered[addr] = true
@@ -158,7 +190,7 @@ func processQueued(owner, id string, relay func(string, string, []byte) error) e
 		}
 	}
 	if len(m.Delivered) == len(m.Recipients) {
-		return userdb.Delete("mail", owner, outboxCollection, id)
+		return removeQueued(owner, id, m)
 	}
 	return nil
 }
@@ -202,5 +234,39 @@ func deleteOutbox(owner string) {
 	defer outboxRunMu.Unlock()
 	if _, err := userdb.DeleteOwner("mail", owner); err != nil {
 		app.Log("mail", "deleting outbox for %s: %v", owner, err)
+		return
 	}
+	prefix := outboxDirectory(owner)
+	files, err := data.ListKeys(prefix)
+	if err != nil {
+		app.Log("mail", "listing outbox bodies: %v", err)
+		return
+	}
+	for _, name := range files {
+		if err := data.DeleteFile(prefix + "/" + name); err != nil {
+			app.Log("mail", "deleting outbox body: %v", err)
+		}
+	}
+}
+
+func outboxDirectory(owner string) string {
+	return fmt.Sprintf("mail/outbox/%x", sha256.Sum256([]byte(owner)))
+}
+
+func queuedBytes(m queuedMail) ([]byte, error) {
+	b, err := data.LoadFile(m.File)
+	if err != nil {
+		return nil, err
+	}
+	plain, err := decrypt(string(b))
+	return []byte(plain), err
+}
+
+// Progress is already durable. Removing the body before the receipt means a
+// crash during cleanup is retried without needing the body or sending again.
+func removeQueued(owner, id string, m queuedMail) error {
+	if err := data.DeleteFile(m.File); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return userdb.Delete("mail", owner, outboxCollection, id)
 }

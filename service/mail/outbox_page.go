@@ -18,7 +18,13 @@ func outboxPage(w http.ResponseWriter, r *http.Request, owner string) {
 			app.Forbidden(w, r, "Invalid CSRF token")
 			return
 		}
-		if err := retryQueued(owner, r.FormValue("id")); err != nil {
+		var err error
+		if r.FormValue("action") == "discard" {
+			err = discardQueued(owner, r.FormValue("id"))
+		} else {
+			err = retryQueued(owner, r.FormValue("id"))
+		}
+		if err != nil {
 			app.Respond(w, r, app.Response{Title: "Outbox", HTML: `<p>` + html.EscapeString(err.Error()) + `</p>`})
 			return
 		}
@@ -56,7 +62,7 @@ func outboxPage(w http.ResponseWriter, r *http.Request, owner string) {
 			b.WriteString(`<p>` + html.EscapeString(m.LastError) + `</p>`)
 		}
 		if !pending {
-			fmt.Fprintf(&b, `<form method="post" action="/mail?view=outbox" class="form-actions"><input type="hidden" name="_csrf" value="%s"><input type="hidden" name="id" value="%s"><button type="submit">Retry</button></form>`, html.EscapeString(auth.CSRFToken(r)), html.EscapeString(rec.ID))
+			fmt.Fprintf(&b, `<form method="post" action="/mail?view=outbox" class="form-actions"><input type="hidden" name="_csrf" value="%s"><input type="hidden" name="id" value="%s"><button type="submit" name="action" value="retry">Retry</button><button type="submit" name="action" value="discard">Discard</button></form>`, html.EscapeString(auth.CSRFToken(r)), html.EscapeString(rec.ID))
 		}
 		b.WriteString(`</div>`)
 	}
@@ -88,4 +94,21 @@ func retryQueued(owner, id string) error {
 	default:
 	}
 	return nil
+}
+
+func discardQueued(owner, id string) error {
+	outboxRunMu.Lock()
+	defer outboxRunMu.Unlock()
+	rec, err := userdb.Get("mail", owner, outboxCollection, id)
+	if err != nil {
+		return fmt.Errorf("no outgoing message here with that id")
+	}
+	if rec.Data["pending"] == true {
+		return fmt.Errorf("this message is still being delivered")
+	}
+	m, err := readQueued(rec)
+	if err != nil {
+		return err
+	}
+	return removeQueued(owner, id, m)
 }
