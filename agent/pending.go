@@ -29,6 +29,8 @@ package agent
 // appears on this page the same way.
 
 import (
+	"errors"
+	"mu/internal/ai"
 	"net/http"
 	"strings"
 
@@ -78,6 +80,32 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.URL.Query().Get("thread"))
 	if id == "" {
 		app.RespondJSON(w, map[string]any{"waiting": false})
+		return
+	}
+
+	if runID := strings.TrimSpace(r.URL.Query().Get("flow")); runID != "" {
+		flowMu.RLock()
+		f := flowStore[runID]
+		var run Flow
+		owned := f != nil && f.AccountID == acc.ID && f.ThreadID == id
+		if owned {
+			run = *f
+		}
+		flowMu.RUnlock()
+		if !owned {
+			app.RespondJSON(w, map[string]any{"waiting": false})
+			return
+		}
+		result := map[string]any{"waiting": run.Status != "done" && run.Status != "error"}
+		if run.Status == "done" {
+			result["html"] = `<div class="mu-agent">` + run.HTML + `</div>`
+			result["answer_html"] = run.HTML
+			result["text"] = run.Answer
+		}
+		if run.Status == "error" {
+			result["error"] = ai.FailureMessage(errors.New(run.Error))
+		}
+		app.RespondJSON(w, result)
 		return
 	}
 

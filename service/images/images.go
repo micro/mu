@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	_ "time/tzdata"
 
 	"mu/internal/ai"
 	"mu/internal/app"
@@ -137,8 +138,20 @@ func Load() {
 	go scheduler()
 }
 
+// imageLocation uses an explicit IANA timezone even in minimal containers.
+// UTC is the default for the shared site image, independent of reader timezones.
+func imageLocation() *time.Location {
+	zone := strings.TrimSpace(settings.Get("TZ"))
+	if zone != "" && zone != "Local" {
+		if loc, err := time.LoadLocation(zone); err == nil {
+			return loc
+		}
+	}
+	return time.UTC
+}
+
 // today returns the current site-local date as YYYY-MM-DD.
-func today() string { return time.Now().Format("2006-01-02") }
+func today() string { return time.Now().In(imageLocation()).Format("2006-01-02") }
 
 // themeStride is how far along the list one day moves.
 //
@@ -163,7 +176,7 @@ func scheduler() {
 	// Small delay so AI settings/env are wired before the first attempt.
 	time.Sleep(5 * time.Second)
 	for {
-		now := time.Now()
+		now := time.Now().In(imageLocation())
 		target := imageTime(now)
 		if now.Before(target) {
 			time.Sleep(time.Until(target))
@@ -182,7 +195,7 @@ func scheduler() {
 			time.Sleep(time.Hour)
 			continue
 		}
-		time.Sleep(time.Until(imageTime(time.Now()).AddDate(0, 0, 1)))
+		time.Sleep(time.Until(imageTime(time.Now().In(imageLocation())).AddDate(0, 0, 1)))
 	}
 }
 
@@ -192,7 +205,7 @@ func generateDaily() {
 	if !aiReady() {
 		return // no provider configured — try again next cycle
 	}
-	theme := themeFor(time.Now().YearDay())
+	theme := themeFor(time.Now().In(imageLocation()).YearDay())
 	url, err := ai.GenerateImage(theme.prompt)
 	if err != nil {
 		app.Log("images", "daily image generation failed: %v", err)

@@ -154,17 +154,17 @@ html, body {
   box-sizing: inherit;
 }
 
-/* Links - minimalist style with hover underline */
+/* Links share one bold, un-underlined treatment. */
 a {
   color: #000;
-  text-decoration: none;
+  text-decoration: none !important;
   font-size: 0.9em;
-  font-weight: bold;
+  font-weight: bold !important;
   transition: opacity var(--transition-fast);
 }
 
 a:hover {
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 /* Except the ones that are buttons.

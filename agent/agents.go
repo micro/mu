@@ -42,21 +42,17 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodPost {
-		switch r.FormValue("action") {
-		case "generate":
-			spec, err := generateAgentSpec(strings.TrimSpace(r.FormValue("brief")))
-			if err != nil {
-				w.WriteHeader(http.StatusServiceUnavailable)
-				_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
-				return
-			}
-			_ = json.NewEncoder(w).Encode(spec)
+		if action := r.FormValue("action"); action != "" && action != "save" && action != "delete" {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "Unknown action"})
 			return
+		}
+		switch r.FormValue("action") {
 		case "delete":
 			_ = RemoveAgent(acc.ID, r.FormValue("id"))
 			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 			return
-		default: // save
+		case "save", "":
 			name := strings.TrimSpace(r.FormValue("name"))
 			// The body only. This is the agent's system prompt — what it is for,
 			// in the owner's words — and FormValue would take it from ?prompt=
@@ -69,17 +65,28 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			// Into the roster, the one store — and this is now the only place
 			// an agent is made.
+
+			mode := r.FormValue("scope_mode")
+			selected := r.Form["tools"]
+			if mode == "all" {
+				selected = nil
+			}
+			if (mode != "" && mode != "all" && mode != "select") || (mode == "select" && len(validServices(selected)) == 0) {
+				w.WriteHeader(http.StatusBadRequest)
+				_ = json.NewEncoder(w).Encode(map[string]any{"error": "Select at least one valid service"})
+				return
+			}
 			desc := strings.TrimSpace(r.FormValue("description"))
 			var saved *Agent
 			var secret string
 			var err error
 			if id := r.FormValue("id"); id != "" && For(acc.ID, id) != nil {
-				saved, err = UpdateAgent(acc.ID, id, name, prompt, desc, r.Form["tools"])
+				saved, err = UpdateAgent(acc.ID, id, name, prompt, desc, selected)
 			} else {
 				// No token at creation. An agent is something you talk to; a
 				// token is what you additionally hand to a program outside, and
 				// the Connect page is where you ask for one.
-				saved, secret, err = CreateAgent(acc.ID, name, Hosted, prompt, desc, r.Form["tools"], false)
+				saved, secret, err = CreateAgent(acc.ID, name, Hosted, prompt, desc, selected, false)
 			}
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -199,68 +206,6 @@ func firstLine(stored, fallback string) string {
 	}
 	return s
 }
-
-// generateAgentSpec turns a one-line brief into a full agent spec (name,
-// description, system prompt) using the LLM — the "describe it and it becomes an
-// agent" flow.
-func generateAgentSpec(brief string) (map[string]string, error) {
-	if brief == "" {
-		return nil, errBadBrief
-	}
-	if !ai.Configured() {
-		return nil, errNoAI
-	}
-	// The tool list comes from the registry, so a generated agent can only be
-	// scoped to services that exist. Naming them in the prompt by hand is how
-	// you get an agent told to "lean on social" on an instance where social is
-	// not registered — which then reports that source unavailable on every
-	// answer.
-	available := strings.Join(AllAgentTools(), ", ")
-	sys := `You design AI agent personas for Mu, a personal assistant whose tools are grouped by service. The services available on this instance are: ` + available + `.
-
-Given a brief, output ONLY minified JSON with exactly these keys:
-"name": a short label, <=40 chars, no emoji;
-"description": one line, <=120 chars, saying what it does for the user — not a list of the data it reads;
-"prompt": a system prompt of 2-4 sentences in second person ("You are ...") defining the persona, tone and priorities. Say what to do with the data, not which tools to call: the tools are chosen for it and naming them adds nothing. Never instruct it to "lean on" a source;
-"tools": an array of service names taken ONLY from the list above — the smallest set the brief actually needs. Omit anything it would not use. An empty array means every tool, so avoid it unless the brief is genuinely general.
-No markdown, no code fences, no commentary — just the JSON object.`
-	out, err := ai.Ask(&ai.Prompt{System: sys, Question: "Brief: " + brief, Caller: "agent_builder", MaxTokens: 500})
-	if err != nil {
-		return nil, err
-	}
-	out = strings.TrimSpace(out)
-	out = strings.TrimPrefix(out, "```json")
-	out = strings.TrimPrefix(out, "```")
-	out = strings.TrimSuffix(out, "```")
-	out = strings.TrimSpace(out)
-	var raw struct {
-		Name        string   `json:"name"`
-		Description string   `json:"description"`
-		Prompt      string   `json:"prompt"`
-		Tools       []string `json:"tools"`
-	}
-	if err := json.Unmarshal([]byte(out), &raw); err != nil || strings.TrimSpace(raw.Prompt) == "" {
-		// Model didn't return clean JSON — fall back to using the text as the prompt.
-		return map[string]string{"name": "", "description": "", "prompt": out}, nil
-	}
-	// validServices drops anything the model invented, so a hallucinated
-	// service name cannot end up as a scope that matches nothing.
-	return map[string]string{
-		"name":        raw.Name,
-		"description": raw.Description,
-		"prompt":      raw.Prompt,
-		"tools":       strings.Join(validServices(raw.Tools), ","),
-	}, nil
-}
-
-var (
-	errBadBrief = &agentErr{"describe the agent in a sentence first"}
-	errNoAI     = &agentErr{"AI is not configured on this instance"}
-)
-
-type agentErr struct{ s string }
-
-func (e *agentErr) Error() string { return e.s }
 
 // renderAgentsPanel renders the lean "Agents" card for the rail: pick the
 // default or one of your agents. Creating/editing happens on /agent/new.
@@ -476,24 +421,24 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	// "is this scope right" with a list of prompts, which is the question but
 	// not an answer to it — and what an answer actually called is now beside
 	// the answer in the conversation, where somebody looking at an odd one is.
+	scopeOptions, scopeHidden := `<option value="all">All</option><option value="select">Select</option>`, ` hidden`
+	if len(selTools) > 0 {
+		scopeOptions = `<option value="all">All</option><option value="select" selected>Select</option>`
+		scopeHidden = ""
+	}
 	b := `<div class="builder">
-  <p class="builder-sub">Describe an agent and Mu will draft it, or write the system prompt yourself. Pick what it may reach — it will be refused everything else, even though it is your account behind it.</p>
   <form id="bform" onsubmit="return bSave(event)">
     <input type="hidden" id="b-id" value="` + html.EscapeString(editID) + `">
     <input type="hidden" id="b-fork" value="` + html.EscapeString(forkFrom) + `">
-    <label class="b-label">Describe it (optional)</label>
-    <div class="b-gen">
-      <input id="b-brief" placeholder="e.g. a meticulous crypto research analyst that always cites sources">
-      <button type="button" id="b-genbtn" onclick="bGen()">✨ Generate</button>
-    </div>
     <label class="b-label">Name</label>
     <input id="b-name" maxlength="60" required value="` + html.EscapeString(name) + `">
     <label class="b-label">Description</label>
     <input id="b-desc" maxlength="140" value="` + html.EscapeString(desc) + `">
     <label class="b-label">System prompt</label>
     <textarea id="b-prompt" rows="9" required>` + html.EscapeString(prompt) + `</textarea>
-    <label class="b-label">What may it reach? <span class="b-hint">— none selected means everything you can</span></label>
-    <div class="b-tools">` + toolsHTML.String() + `</div>
+    <label class="b-label" for="b-scope">Services</label>
+    <select id="b-scope" onchange="document.getElementById('b-service-list').hidden=this.value!=='select'">` + scopeOptions + `</select>
+    <div id="b-service-list"` + scopeHidden + `><div class="b-tools">` + toolsHTML.String() + `</div></div>
     ` + modelHTML + `
     
     <div class="b-actions">
@@ -511,10 +456,6 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 .b-hint{font-weight:400;color:#9ca3af}
 #bform input,#bform textarea,#bform select{width:100%;box-sizing:border-box;padding:9px 11px;font-size:14px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;background:#fff;color:inherit}
 #bform textarea{line-height:1.5;resize:vertical}
-.b-gen{display:flex;gap:8px}
-.b-gen input{flex:1}
-.b-gen button{white-space:nowrap;padding:9px 14px;font-size:14px;border:1px solid var(--border-color,#ddd);border-radius:var(--border-radius,6px);cursor:pointer;background:#fff;color:var(--text-primary,#111);font-weight:500}
-.b-gen button[disabled]{opacity:.6;cursor:default}
 .b-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .b-actions{display:flex;align-items:center;gap:12px;margin-top:22px}
 .b-save{padding:10px 22px;font-size:14px;font-weight:600;border:0;border-radius:var(--border-radius,6px);background:var(--btn-primary,#000);color:#fff;cursor:pointer}
@@ -524,23 +465,6 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 </style>` + chipCSS + `
 <script>
 function bCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
-function bGen(){var brief=document.getElementById('b-brief').value.trim();if(!brief)return;
-  var btn=document.getElementById('b-genbtn');btn.disabled=true;btn.textContent='Generating…';
-  var b=new URLSearchParams();b.append('action','generate');b.append('brief',brief);
-  fetch('/agents/data',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
-    .then(function(r){return r.json();}).then(function(d){btn.disabled=false;btn.textContent='✨ Generate';
-      if(d.error){alert(d.error);return;}
-      if(d.name)document.getElementById('b-name').value=d.name;
-      if(d.description)document.getElementById('b-desc').value=d.description;
-      if(d.prompt)document.getElementById('b-prompt').value=d.prompt;
-      // Tick the scope it chose. Picking the tools by hand was the one step the
-      // generator left to you, and it is the step you have least information
-      // for: you have not read the prompt it just wrote.
-      if(typeof d.tools==='string'){
-        var want={};d.tools.split(',').forEach(function(t){if(t)want[t]=true;});
-        document.querySelectorAll('.b-tools input[name="tool"]').forEach(function(c){c.checked=!!want[c.value];});
-      }
-    }).catch(function(){btn.disabled=false;btn.textContent='✨ Generate';});}
 function bSave(e){e.preventDefault();
   var b=new URLSearchParams();b.append('action','save');
   b.append('id',document.getElementById('b-id').value);
@@ -548,7 +472,11 @@ function bSave(e){e.preventDefault();
   b.append('name',document.getElementById('b-name').value);
   b.append('description',document.getElementById('b-desc').value);
   b.append('prompt',document.getElementById('b-prompt').value);
-  document.querySelectorAll('.b-tools input:checked').forEach(function(el){b.append('tools',el.value);});
+  var mode=document.getElementById('b-scope').value;
+  var selected=Array.from(document.querySelectorAll('.b-tools input:checked'));
+  if(mode==='select'&&!selected.length){alert('Select at least one service');return false;}
+  b.append('scope_mode',mode);
+  if(mode==='select')selected.forEach(function(el){b.append('tools',el.value);});
   // Only when the select is on the page. One provider means no menu, and
   // sending an empty model then would be sending a choice nobody made — which
   // is the same value it already has, but says so on every save.

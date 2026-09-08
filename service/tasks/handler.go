@@ -215,7 +215,7 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 		if t.Thread != "" {
 			b.WriteString(`<details class="task-context"><summary>Conversation context</summary>`)
 		}
-		fmt.Fprintf(&b, `<div class="task-detail">%s</div>`, app.Render([]byte(t.Detail)))
+		fmt.Fprintf(&b, `<div class="task-detail">%s</div>`, app.RenderNoImages([]byte(t.Detail)))
 		if t.Thread != "" {
 			b.WriteString(`</details>`)
 		}

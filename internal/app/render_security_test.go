@@ -157,3 +157,10 @@ func TestRenderHTMLEscapesTitleAndDescription(t *testing.T) {
 		t.Error("body should not be escaped — handlers pass HTML")
 	}
 }
+
+func TestConversationContextDoesNotLoadImages(t *testing.T) {
+	out := string(RenderNoImages([]byte("**Sender**\n\n![pixel](https://sender.example/pixel) <img src=\"https://sender.example/raw\">\n\n[Source](https://example.com)")))
+	if strings.Contains(out, "<img") || !strings.Contains(out, "<strong>Sender</strong>") || !strings.Contains(out, "href=") {
+		t.Fatal(out)
+	}
+}

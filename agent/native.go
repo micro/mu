@@ -348,6 +348,9 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// instructions and this is context, not instruction, so there is no branch
 	// here that could silently drop it — which is what the old placement, after
 	// a line that replaced sys outright, had to be careful about.
+	if strings.TrimSpace(opts.CardContext) != "" {
+		facts = append(facts, strings.TrimSpace(opts.CardContext))
+	}
 	if strings.TrimSpace(opts.Extra) != "" {
 		facts = append(facts, strings.TrimSpace(opts.Extra))
 	}
@@ -724,7 +727,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 	defer cancel()
 
 	final := ""
-	if opts.Stream.wants() {
+	if opts.Stream.Token != nil || opts.Stream.Start != nil {
 		liveCtx, live := ai.LiveTokens(ctx, run.provider, run.baseURL, opts.Stream.Start, func(tok string) {
 			if !shouldBufferNativeToken(recorder) && opts.Stream.Token != nil {
 				opts.Stream.Token(tok)

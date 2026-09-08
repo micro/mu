@@ -193,7 +193,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// is the page where that is decided. So the way in is from here — but below
 	// what the page is about, because somebody arrives to see their agents and
 	// not to browse tools, and the link was above both the list and the button.
-	b.WriteString(`<p class="lens-go">` + app.TextLink("See the tools", "/tools") + `</p>`)
+	b.WriteString(`<p class="lens-go">` + app.TextLink("Tools", "/tools") + `</p>`)
 
 	// The instance's own agents are listed here, at the top, by the loop over
 	// PlatformNames above.
