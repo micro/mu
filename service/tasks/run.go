@@ -25,6 +25,7 @@ package tasks
 
 import (
 	"fmt"
+	"sync"
 
 	"mu/internal/event"
 )
@@ -33,6 +34,11 @@ import (
 // from a standing instruction and put the answer in the right place.
 const Kind = "task"
 
+// runMu serializes the read-and-transition in Run. The durable status rejects
+// later starts; the mutex prevents simultaneous callers both observing todo.
+// It is held only while claiming and publishing, never during agent execution.
+var runMu sync.Mutex
+
 // Run hands a task to the agent and returns immediately.
 //
 // It returns immediately because an agent run takes seconds to a minute, and a
@@ -40,6 +46,8 @@ const Kind = "task"
 // "doing" now and to "done" with its result when the work finishes, so the list
 // is the progress indicator.
 func Run(owner, id string) error {
+	runMu.Lock()
+	defer runMu.Unlock()
 	t, err := Get(owner, id)
 	if err != nil {
 		return err
