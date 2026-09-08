@@ -74,6 +74,10 @@ func TileHandler(w http.ResponseWriter, r *http.Request) {
 		Handler(w, r)
 		return
 	}
+	if parts[0] == "world" {
+		worldTile(w, r, parts[1:])
+		return
+	}
 	layer, err := styleOf(parts[0])
 	if err != nil {
 		app.NotFound(w, r, err.Error())
@@ -279,8 +283,7 @@ const mapJS = `<script>
           img=new Image();
           img.className='map-tile';
           img.alt='';
-          img.referrerPolicy='strict-origin-when-cross-origin';
-          img.src=style==='world'?'https://tile.openstreetmap.org/'+z+'/'+wx+'/'+y+'.png':'/maps/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png';
+          img.src='/maps/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png';
           // A tile outside Britain is a 404 and that is normal here, so it
           // fades out rather than showing a broken image.
           img.onerror=function(){ this.classList.add('map-gap'); missing++; done(); };

@@ -41,7 +41,7 @@ func statusForm(r *http.Request, id string) string {
 	return `<details class="disclosure page-section"><summary>Your status</summary>` +
 		`<form class="form" method="post" action="/home">` +
 		`<input type="hidden" name="action" value="status">` +
-		`<input type="hidden" name="csrf_token" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
+		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<label class="field-label">Shown on your profile<input class="field field-wide" name="status" maxlength="160" placeholder="What are you up to?" value="` + html.EscapeString(user.Status(id)) + `"></label>` +
 		`<div class="form-actions"><button type="submit">Save</button><button type="submit" name="clear" value="1">Clear</button></div></form></details>`
 }
