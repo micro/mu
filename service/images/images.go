@@ -37,7 +37,7 @@ type Daily struct {
 	URL    string `json:"url"`
 	Prompt string `json:"prompt"`
 	Theme  string `json:"theme"`
-	Date   string `json:"date"` // YYYY-MM-DD (UTC)
+	Date   string `json:"date"` // YYYY-MM-DD (site timezone)
 	// File is the local storage key for the downloaded image, empty if the
 	// download failed and we are still relying on the provider URL.
 	File string `json:"file,omitempty"`
@@ -137,8 +137,8 @@ func Load() {
 	go scheduler()
 }
 
-// today returns the current UTC date as YYYY-MM-DD.
-func today() string { return time.Now().UTC().Format("2006-01-02") }
+// today returns the current site-local date as YYYY-MM-DD.
+func today() string { return time.Now().Format("2006-01-02") }
 
 // themeStride is how far along the list one day moves.
 //
@@ -158,20 +158,23 @@ func themeFor(day int) struct{ name, prompt string } {
 	return dailyThemes[(day*themeStride)%len(dailyThemes)]
 }
 
-// scheduler generates today's image if missing, then wakes each day at 06:00 UTC.
+// scheduler generates today's image if missing, then wakes each day at 06:00 in the site timezone.
 func scheduler() {
 	// Small delay so AI settings/env are wired before the first attempt.
 	time.Sleep(5 * time.Second)
 	for {
+		now := time.Now()
+		target := imageTime(now)
+		if now.Before(target) {
+			time.Sleep(time.Until(target))
+			continue
+		}
 		dailyMu.RLock()
-		have := daily.Date == today() && daily.URL != ""
+		due := imageDue(now, daily)
 		dailyMu.RUnlock()
-		if !have {
+		if due {
 			generateDaily()
 		}
-		// If we still don't have today's image (no provider yet, a transient
-		// model error), retry within the hour so it self-heals once the Atlas
-		// key is set — don't wait a whole day. Otherwise sleep until 06:00 UTC.
 		dailyMu.RLock()
 		ok := daily.Date == today() && daily.URL != ""
 		dailyMu.RUnlock()
@@ -179,12 +182,7 @@ func scheduler() {
 			time.Sleep(time.Hour)
 			continue
 		}
-		now := time.Now().UTC()
-		next := time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, time.UTC)
-		if !next.After(now) {
-			next = next.Add(24 * time.Hour)
-		}
-		time.Sleep(time.Until(next))
+		time.Sleep(time.Until(imageTime(time.Now()).AddDate(0, 0, 1)))
 	}
 }
 
@@ -194,7 +192,7 @@ func generateDaily() {
 	if !aiReady() {
 		return // no provider configured — try again next cycle
 	}
-	theme := themeFor(time.Now().UTC().YearDay())
+	theme := themeFor(time.Now().YearDay())
 	url, err := ai.GenerateImage(theme.prompt)
 	if err != nil {
 		app.Log("images", "daily image generation failed: %v", err)
@@ -690,4 +688,13 @@ func DeleteAll(owner string) {
 	} else if n > 0 {
 		app.Log("images", "deleted %d records for %s", n, owner)
 	}
+}
+
+// imageTime uses civil time so daylight-saving changes keep the six o'clock job.
+func imageTime(now time.Time) time.Time {
+	return time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, now.Location())
+}
+
+func imageDue(now time.Time, d Daily) bool {
+	return !now.Before(imageTime(now)) && (d.Date != now.Format("2006-01-02") || d.URL == "")
 }

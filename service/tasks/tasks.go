@@ -18,7 +18,9 @@ package tasks
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"mu/internal/ai"
 	"sort"
 	"strings"
 	"time"
@@ -448,4 +450,13 @@ func DeleteAll(owner string) {
 	for _, id := range ids {
 		unindex(owner, id)
 	}
+}
+
+// Outcome also translates legacy stored failures when they are displayed.
+func (t *Task) Outcome() string {
+	const prefix = "Last run failed: "
+	if strings.HasPrefix(t.Result, prefix) {
+		return prefix + ai.FailureMessage(errors.New(strings.TrimPrefix(t.Result, prefix)))
+	}
+	return t.Result
 }

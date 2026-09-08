@@ -76,22 +76,13 @@ func TestTheAdminLinkIsFoundByTheIdItHas(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	js := string(b)
-	if strings.Contains(js, `getElementById("nav-admin")`) {
-		t.Error("mu.js still looks for nav-admin; the link is head-admin now, so " +
-			"the lookup returns nothing and the check it guards never runs")
+	if !strings.Contains(string(b), `getElementById("nav-admin")`) || strings.Contains(string(b), `getElementById("head-admin")`) {
+		t.Fatal("admin identity guard targets wrong element")
 	}
-	if !strings.Contains(js, `getElementById("head-admin")`) {
-		t.Error("nothing in mu.js finds the admin link, so a page cached for an " +
-			"admin keeps offering the door to whoever it is served to next")
+	if !strings.Contains(navAdmin(adminAccount()), `id="nav-admin"`) {
+		t.Fatal("sidebar link has wrong id")
 	}
-	// And the id really is what the shell renders.
-	page := renderWithLang("t", "d", "", "en", nil)
-	_ = page
-	if !strings.Contains(headAdmin(adminAccount()), `id="head-admin"`) {
-		t.Error("headAdmin does not render id=head-admin, so mu.js is looking for " +
-			"something that is not there")
-	}
+
 }
 
 // The loading dim waits, so quick navigations never show one.

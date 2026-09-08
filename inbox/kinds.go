@@ -147,7 +147,7 @@ func taskRow(t *tasks.Task) string {
 
 	// The result when there is one, because a finished task's answer is the
 	// thing worth previewing; the detail is what you asked for and you know it.
-	snippet := strings.TrimSpace(t.Result)
+	snippet := strings.TrimSpace(t.Outcome())
 	if snippet == "" {
 		snippet = strings.TrimSpace(t.Detail)
 	}

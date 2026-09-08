@@ -3052,7 +3052,7 @@ a.highlight {
     margin-top: 8px;
     font-size: small;
   }
-  #blog > div:first-child {
+  #blog > div:first-child:not(.post-tags) {
     text-align: left;
   }
   
@@ -4242,14 +4242,17 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
     background: none;
   }
   .data-table.stacked td {
-    display: flex;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: minmax(72px, 30%) minmax(0, 1fr);
+    gap: 12px;
     align-items: baseline;
-    justify-content: space-between;
-    text-align: right;
+    text-align: left;
+    overflow-wrap: anywhere;
     border: 0;
-    padding: 3px 0;
+    padding: 6px 0;
   }
+  .data-table.stacked td > * { min-width: 0; white-space: normal; }
+
   /* The label is the column header, said per row. A cell with no data-label
      is an action — the Delete button — and gets the row to itself. */
   .data-table.stacked td[data-label]::before {
@@ -4259,7 +4262,7 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
     font-size: 12px;
     text-align: left;
   }
-  .data-table.stacked td:not([data-label]) { justify-content: flex-start; padding-top: 8px; }
+  .data-table.stacked td:not([data-label]) { display: block; padding-top: 8px; }
   /* The empty-state row spans the table and has no labels to lay out. */
   .data-table.stacked td[colspan] { display: table-cell; text-align: center; }
 }
@@ -8059,3 +8062,25 @@ a:hover, a:hover * { text-decoration: none !important; }
  .record-controls { top:44px; }
  .page-action:first-child, #page-title + .page-action { justify-content:center; }
 }
+
+/* Scheduled brief controls use the same plus/minus convention as room details. */
+.brief-schedule { padding: 20px 0; }
+.brief-schedule > h3 { margin: 0 0 12px; }
+.brief-schedule > p { margin: 0 0 16px; }
+.brief-schedule-status { margin: 0 0 16px; }
+.brief-schedule-manage > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.brief-schedule-manage > summary::-webkit-details-marker { display: none; }
+.brief-schedule-manage > summary::after { content: '+'; }
+.brief-schedule-manage[open] > summary::after { content: '\2212'; }
+.brief-schedule-form { display: flex; flex-direction: column; gap: 16px; margin: 16px 0 0; }
+.brief-schedule-form > label { display: flex; flex-direction: column; gap: 8px; }
+.brief-schedule-form .form-input { box-sizing: border-box; width: 100%; min-width: 0; }
+.brief-schedule-form > p { margin: 0; }

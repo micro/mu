@@ -526,8 +526,16 @@ func registerRoutes() {
 	// credential, the same as the inbound webhook beside it.
 	http.HandleFunc("/sms/status", sms.StatusHandler)
 	http.HandleFunc("/contacts/", contacts.Handler)
-	http.HandleFunc("/tasks", tasks.Handler)
-	http.HandleFunc("/tasks/", tasks.Handler)
+	taskPage := func(w http.ResponseWriter, r *http.Request) {
+		tasks.NamedHandler(w, r, func(owner, id string) string {
+			if id == "" {
+				return agent.DefaultName()
+			}
+			return agent.NameOf(owner, id)
+		})
+	}
+	http.HandleFunc("/tasks", taskPage)
+	http.HandleFunc("/tasks/", taskPage)
 	http.HandleFunc("/images", images.Handler)
 	http.HandleFunc("/images/daily/", images.DailyImageHandler)
 	http.HandleFunc("/images/file/", images.GeneratedImageHandler)

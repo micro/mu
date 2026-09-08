@@ -40,7 +40,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		}
 	}
 	var b strings.Builder
-	b.WriteString(`<section id="morning-brief" class="mb-6"><h3>Morning brief</h3><p>Your daily email brief, with today’s calendar, weather and relevant updates.</p><div class="mt-3"><span class="text-muted">` + html.EscapeString(status) + `</span><details><summary>` + label + `</summary><form method="POST" action="/events" class="col gap-2 mt-3">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
+	b.WriteString(`<section id="morning-brief" class="brief-schedule mb-6"><h3>Morning brief</h3><p>Your daily email brief, with today’s calendar, weather and relevant updates.</p><div class="brief-schedule-controls"><p class="brief-schedule-status text-muted">` + html.EscapeString(status) + `</p><details class="brief-schedule-manage"><summary>` + label + `</summary><form method="POST" action="/events" class="brief-schedule-form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {
 		b.WriteString(`<label>` + title + `<select class="form-input" name="` + name + `">`)
 		for _, v := range values {
