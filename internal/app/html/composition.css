@@ -90,3 +90,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   text-decoration: none;
 }
 
+
+/* Inline controls retain their hidden state inside action rows. */
+.form-actions > [hidden] { display: none; }
