@@ -117,7 +117,7 @@ func (Server) Read(_ context.Context, req *AppReadRequest, rsp *AppReadResponse)
 var Spec = service.Spec{
 	Name:        "apps",
 	Handler:     new(Server),
-	Description: "Small self-contained web tools, built and run in place",
+	Description: "Build and run web apps",
 	Page:        "/apps",
 	Icon:        "apps.svg",
 	Card:        service.Glance(Preview),

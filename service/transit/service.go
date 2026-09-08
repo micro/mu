@@ -355,7 +355,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "transit",
 	Handler:     new(Server),
-	Description: "Public transport: stops near you, what is due, and which lines are down",
+	Description: "Check public transport arrivals",
 	Page:        "/transit",
 	Icon:        "transit.svg",
 	Card:        service.Glance(Card),

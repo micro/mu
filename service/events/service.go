@@ -255,7 +255,7 @@ func parseWhen(s string) (time.Time, error) {
 var Spec = service.Spec{
 	Name:        "events",
 	Handler:     new(Server),
-	Description: "Calendar: what is scheduled, and when you are free",
+	Description: "Schedule events and reminders",
 	Page:        "/events",
 	Scoped:      true,
 	Icon:        "events.svg",

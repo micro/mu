@@ -94,7 +94,7 @@ func (Server) Convert(_ context.Context, req *ConvertRequest, rsp *ConvertRespon
 var Spec = service.Spec{
 	Name:        "markets",
 	Handler:     new(Server),
-	Description: "Live crypto, stock, futures, commodity and currency prices, and conversion between them",
+	Description: "Track prices and convert currencies",
 	Page:        "/markets",
 	Icon:        "markets.svg",
 	Card:        service.Glance(HTML),

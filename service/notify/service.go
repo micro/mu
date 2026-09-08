@@ -110,7 +110,7 @@ func LoadService() {
 var Spec = service.Spec{
 	Name:        "notify",
 	Handler:     new(Server),
-	Description: "Reach yourself when you are not looking at the page",
+	Description: "Receive push notifications",
 	Page:        "/notify",
 	Icon:        "notify.svg",
 	Scoped:      true,

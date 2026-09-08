@@ -183,7 +183,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "files",
 	Handler:     new(Server),
-	Description: "Per-user file storage: keep a file, get a URL, read it back",
+	Description: "Store and share files",
 	Page:        "/files",
 	Icon:        "files.svg",
 	Scoped:      true,

@@ -208,7 +208,7 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "archive",
 	Handler:     new(Server),
-	Description: "Everything this instance has collected — news, video, markets, posts — searchable as one thing",
+	Description: "Search collected content",
 	Page:        "/archive",
 	Icon:        "archive.svg",
 	Endpoints: map[string]service.Endpoint{

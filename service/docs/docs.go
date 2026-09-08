@@ -353,7 +353,7 @@ var Spec = service.Spec{
 	// for a kind of thing somebody makes — a document, a note, a spreadsheet —
 	// never for how it is stored.
 	Label:       "Docs",
-	Description: "Your own documents — write, keep and come back to them",
+	Description: "Write and edit documents",
 	Page:        "/docs",
 	Icon:        "docs.svg",
 	Scoped:      true,

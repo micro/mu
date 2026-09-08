@@ -173,7 +173,7 @@ var Spec = service.Spec{
 	Name:        "notes",
 	Icon:        "notes.svg",
 	Handler:     new(Server),
-	Description: "What you wrote down, and what an agent wrote down for you",
+	Description: "Write and save notes",
 	Page:        "/notes",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{

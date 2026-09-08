@@ -283,7 +283,7 @@ func formatDistance(m float64) string {
 var Spec = service.Spec{
 	Name:        "places",
 	Handler:     new(Server),
-	Description: "Places, points of interest and geocoding",
+	Description: "Find places nearby",
 	Page:        "/places",
 	Icon:        "places.svg",
 	Endpoints: map[string]service.Endpoint{

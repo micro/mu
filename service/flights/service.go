@@ -282,7 +282,7 @@ func trim(b *strings.Builder) string {
 var Spec = service.Spec{
 	Name:        "flights",
 	Handler:     new(Server),
-	Description: "Where aircraft are, live from ADS-B",
+	Description: "Track live aircraft",
 	Page:        "/flights",
 	Icon:        "flights.svg",
 	Card:        service.Personal(CardHTML),

@@ -29,7 +29,7 @@ type Server struct{}
 var Spec = service.Spec{
 	Name:        "users",
 	Handler:     new(Server),
-	Description: "Who is on this instance: the people and the agents, and whether they are here now",
+	Description: "Find people and agents",
 	Page:        "/users",
 	Icon:        "account.png",
 	// Needs an account, all three, and the page needs a session for the same

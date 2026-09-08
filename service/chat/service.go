@@ -268,7 +268,7 @@ func Card() string {
 var Spec = service.Spec{
 	Name:        "chat",
 	Handler:     new(Server),
-	Description: "Live discussion rooms attached to an item",
+	Description: "Chat in live rooms",
 	Page:        "/chat",
 	Icon:        "chat.png",
 	Card:        service.Glance(Card),

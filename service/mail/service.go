@@ -117,7 +117,7 @@ var Spec = service.Spec{
 	// need to know about to use the thing. An SMTP server is how one capability
 	// is delivered, not what the service is — that belongs in the install guide,
 	// where an operator goes looking for it.
-	Description: "Private messages, and an inbox each of your agents can be reached at",
+	Description: "Send and receive email",
 	Page:        "/mail",
 	Scoped:      true,
 	Icon:        "mail.png",

@@ -31,7 +31,7 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 var Spec = service.Spec{
 	Name:        "blog",
 	Handler:     new(Server),
-	Description: "Microblogging with AI-generated daily digests, federated over ActivityPub",
+	Description: "Publish posts and daily digests",
 	Page:        "/blog",
 	Icon:        "post.png",
 	Card:        service.Timed(func() (string, time.Time) { return Preview(), CardAt() }),
