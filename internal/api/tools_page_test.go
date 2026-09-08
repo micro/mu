@@ -36,7 +36,7 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 
 	svc := serviceGrid(httptest.NewRequest("GET", "/services", nil))
 
-	// The main tile opens the service UI; API documentation is secondary.
+	// The tile opens the service UI.
 	if !strings.Contains(svc, `class="tool-tile service-tile card-hover" href="/catpaged"`) {
 		t.Errorf("the services lens is missing a paged service:\n%s", svc)
 	}
@@ -60,20 +60,6 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 	}
 	if strings.Contains(svc, `href=""`) {
 		t.Error("a service was rendered as a link to nowhere")
-	}
-
-	// The API link opens a reference under the existing API door.
-	if !strings.Contains(svc, `class="service-tile-open" href="/api?service=catpaged"`) {
-		t.Errorf("a paged service has no way from its tile to its own page:\n%s", svc)
-	}
-	// A headless service has nothing to open, so it offers nothing.
-	if strings.Contains(svc, `class="service-tile-open" href="/cathidden"`) {
-		t.Error("a headless service offers a way to a page it does not have")
-	}
-	// And a service whose page is its reference — weather, hazards — must not
-	// offer a way to where the tile already goes.
-	if strings.Contains(svc, `class="service-tile-open" href="/services/`) {
-		t.Error("a tile offers Open pointing back at the reference it already links to")
 	}
 
 	// The two lenses are reached from the sidebar, so neither renders a switch
