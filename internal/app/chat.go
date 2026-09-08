@@ -841,6 +841,7 @@ function ask(q){
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
   input.value='';saveDraft();input.style.height='auto';input.focus();
 
+  var terminal=false,flowID='',recoveryThread='',completionTimer=null;
   var workLabel='Working';
   var t0=Date.now();
   var timer=null;
@@ -853,6 +854,7 @@ function ask(q){
   // the record is the run.
   var done=[];
   function renderWork(){
+    if(terminal)return;
     var dots=['.','..','...'][Math.floor((Date.now()-t0)/450)%3];
     var secs=Math.round((Date.now()-t0)/1000);
     var past='';
@@ -866,6 +868,7 @@ function ask(q){
   // startWork moves the current label into the list behind it, so each step
   // stays on screen once the next one starts.
   function startWork(label){
+    if(terminal)return;
     if(label&&label!==workLabel){
       if(workLabel&&workLabel!=='Working'&&done[done.length-1]!==workLabel)done.push(workLabel);
       workLabel=label;
@@ -891,17 +894,41 @@ function ask(q){
   // Home wants: you typed at the top and the answer appears under it.
   if(transcript){ toBottom(true,true); } else { u.scrollIntoView({behavior:'smooth',block:'start'}); }
   var streamText='';
-  var streaming=false;
   var body=JSON.stringify({prompt:q,attachment:(!contextId?attachment:""),history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
   // Accept says which of the two doors at /agent this is.
   //
   // The same path answers a program with JSON and this box with an event
   // stream, and what separates them is what they ask for — not the shape of
   // what they send, which is how it was told apart for one commit and which
-  // made a naming inconsistency load-bearing. This wants tokens as they
-  // arrive, so it says so.
+  // made a naming inconsistency load-bearing. This receives tool progress
+  // followed by one complete answer.
+  var recoveryUntil=Date.now()+600000;
+  function checkCompletion(){
+    if(terminal||epoch!==viewEpoch)return;
+    fetch('/agent/pending?thread='+encodeURIComponent(recoveryThread)+'&flow='+encodeURIComponent(flowID),
+      {headers:{'Accept':'application/json'},credentials:'same-origin'})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(d){
+        if(terminal||epoch!==viewEpoch)return;
+        if(d&&d.html){
+          terminal=true;stopWork();clearTimeout(completionTimer);
+          if(d.answer_html)a.innerHTML=d.answer_html;else a.outerHTML=d.html;
+          if(typeof d.text==='string')history.push({prompt:q,answer:d.text});
+          save();toBottom(false);streamController.abort();return;
+        }
+        if(d&&!d.waiting){
+          terminal=true;stopWork();a.innerHTML='<div class="mu-err">'+esc(d.error||'The run stopped without returning an answer.')+'</div>';save();streamController.abort();return;
+        }
+        retryCompletion();
+      }).catch(retryCompletion);
+  }
+  function retryCompletion(){
+    if(terminal||epoch!==viewEpoch)return;
+    if(Date.now()>recoveryUntil){terminal=true;stopWork();a.innerHTML='<div class="mu-err">No answer came back. Please try again.</div>';save();streamController.abort();return;}
+    completionTimer=setTimeout(checkCompletion,3000);
+  }
   var streamController=new AbortController();
-  detachActive=function(){stopWork();streamController.abort();};
+  detachActive=function(){terminal=true;clearTimeout(completionTimer);stopWork();streamController.abort();};
   fetch('/agent',{signal:streamController.signal,method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},body:body,credentials:'same-origin'})
   .then(function(resp){
     if(epoch!==viewEpoch)throw 'handled';
@@ -937,7 +964,7 @@ function ask(q){
     function read(){
       return reader.read().then(function(chunk){
         if(epoch!==viewEpoch){stopWork();reader.cancel();return;}
-        if(chunk.done){stopWork();save();return;}
+        if(chunk.done){stopWork();if(!terminal)throw Error('Response connection closed before the answer arrived');save();return;}
         buf+=decoder.decode(chunk.value,{stream:true});
         var lines=buf.split('\n');
         buf=lines.pop();
@@ -945,7 +972,10 @@ function ask(q){
           if(line.indexOf('data: ')!==0)return;
           try{
             var ev=JSON.parse(line.slice(6));
+            if(terminal)return;
             if(ev.type==='flow_id'){
+              flowID=ev.flow_id||'';recoveryThread=ev.thread||'';
+              if(ev.thread&&!completionTimer)completionTimer=setTimeout(checkCompletion,4000);
               // Continue this server session on the next message. Persist it now
               // (it arrives before the answer) so a reload mid-stream still
               // threads the follow-up onto this same conversation.
@@ -993,20 +1023,12 @@ function ask(q){
               if(running>0)running--;
               if(running===0)startWork('Working');
             }else if(ev.type==='stream_start'){
-              streamText='';streaming=false;startWork('Composing');
+              streamText='';
             }else if(ev.type==='stream_token'){
+              // Compatibility with older servers: buffer, never paint partial prose.
               streamText+=ev.token;
-              if(!streaming){
-                streaming=true;stopWork();
-                a.innerHTML='<div class="whitespace-pre-wrap"><span id="mu-stream-out"></span><span class="mu-cursor"></span></div>';
-              }
-              var el=document.getElementById('mu-stream-out');
-              if(el)el.textContent=protectCurrencyDollars(streamText);
-              // Follow the answer down, unless the reader has scrolled away to
-              // look at something else.
-              toBottom(false);
             }else if(ev.type==='response'){
-              stopWork();
+              terminal=true;clearTimeout(completionTimer);stopWork();
               a.innerHTML=ev.html;
               if(typeof ev.text==='string')streamText=ev.text;
               history.push({prompt:q,answer:streamText});
@@ -1016,7 +1038,7 @@ function ask(q){
               // a voice reading markup says "less than div" at you.
               if(window.muSay)window.muSay(streamText);
             }else if(ev.type==='error'){
-              stopWork();
+              terminal=true;clearTimeout(completionTimer);stopWork();
               a.innerHTML='<div class="mu-err">'+esc(ev.message)+'</div>';
               save();
             }
@@ -1029,45 +1051,10 @@ function ask(q){
   })
   .catch(function(err){
     stopWork();
-    if(err==='handled'||epoch!==viewEpoch)return;
-    // Losing the stream is not the same as losing the run. The server uses a
-    // run context independent of this request and records the eventual answer
-    // in the conversation. Stay attached to that record instead of replacing
-    // a still-running answer with the browser's unhelpful "network error".
-    if(contextId){
-      var reconnectUntil=Date.now()+600000;
-      a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>Connection lost. Reconnecting...</span></div>';
-      save();
-      (function recover(){
-        if(epoch!==viewEpoch)return;
-        fetch('/agent/pending?thread='+encodeURIComponent(contextId),
-          {headers:{'Accept':'application/json'},credentials:'same-origin'})
-          .then(function(r){return r.ok?r.json():null})
-          .then(function(d){
-            if(epoch!==viewEpoch)return;
-            if(d&&d.html){a.outerHTML=d.html;save();toBottom(false);return;}
-            if(d&&Array.isArray(d.steps)&&d.steps.length){
-              done=[];workLabel='Working';
-              d.steps.forEach(function(s){if(s.status==='running')workLabel=s.label;else done.push(s.label);});
-              renderWork();save();
-            }
-            if(d&&!d.waiting){
-              a.innerHTML='<div class="mu-err">'+esc(d.error||'The run stopped without returning an answer.')+'</div>';save();return;
-            }
-            if(Date.now()>reconnectUntil){
-              a.innerHTML='<div class="mu-err">The connection was lost and no answer came back. Please try again.</div>';save();return;
-            }
-            setTimeout(recover,3000);
-          })
-          .catch(function(){
-            if(epoch!==viewEpoch)return;
-            if(Date.now()>reconnectUntil){
-              a.innerHTML='<div class="mu-err">The connection was lost and no answer came back. Please try again.</div>';save();return;
-            }
-            setTimeout(recover,3000);
-          });
-      })();
-      return;
+    if(terminal||err==='handled'||epoch!==viewEpoch)return;
+    if(recoveryThread&&flowID){
+      a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>Reconnecting...</span></div>';
+      clearTimeout(completionTimer);checkCompletion();return;
     }
     a.innerHTML='<div class="mu-err">Error: '+esc(err&&err.message||err)+'</div>';save();
   });

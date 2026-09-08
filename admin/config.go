@@ -279,10 +279,11 @@ var settingGroups = []settingGroup{
 	// service/video/searchlimit.go, where the numbers can be read next to what
 	// they bound.
 	{Name: "Platform",
-		Does:  "This instance itself: what it is called.",
+		Does:  "This instance itself: its domain and IANA timezone (TZ, such as Europe/London).",
 		Needs: nil,
 		Vars: []string{
 			"MU_DOMAIN",
+			"TZ",
 		}},
 	// "The agent" was a group of three and is now a group of none. AGENT_NATIVE
 	// and AGENT_NATIVE_STREAM chose between two agent loops, and there is one.

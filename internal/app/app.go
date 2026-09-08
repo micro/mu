@@ -961,17 +961,22 @@ func CardWithIcon(id, title, icon, content string) string {
 //
 // For repo-shipped markdown that deliberately embeds HTML, use RenderTrusted.
 func Render(md []byte) []byte {
-	return render(md, false)
+	return render(md, false, false)
 }
 
 // RenderTrusted converts markdown to HTML with raw HTML passed through. Only
 // for content that ships in the binary (the docs) — never for anything
 // that arrived over the network.
 func RenderTrusted(md []byte) []byte {
-	return render(md, true)
+	return render(md, true, false)
 }
 
-func render(md []byte, trusted bool) []byte {
+// RenderNoImages formats private conversation context without loading sender images.
+func RenderNoImages(md []byte) []byte {
+	return render(md, false, true)
+}
+
+func render(md []byte, trusted, noImages bool) []byte {
 	// Strip LaTeX dollar sign escapes and protect plain currency before
 	// parsing markdown so downstream MathJax scanners do not treat blog cards
 	// or other rendered content as inline math.
@@ -986,6 +991,9 @@ func render(md []byte, trusted bool) []byte {
 
 	// create HTML renderer with extensions
 	htmlFlags := html.CommonFlags | html.HrefTargetBlank
+	if noImages {
+		htmlFlags |= html.SkipImages
+	}
 	if !trusted {
 		// SkipHTML drops raw HTML blocks and inline tags; Safelink limits link
 		// destinations to http/https/mailto and friends. Safelink does not cover

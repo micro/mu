@@ -106,12 +106,11 @@ type QueryOpts struct {
 	History []QueryMessage
 	Public  bool   // if true, skip private context (mail, wallet, etc.)
 	System  string // optional custom system prompt (user-defined agent)
-	// Extra is context for this call only — today, the summary of the cards
-	// the reader watches, passed when they ask for it. Per-call rather than a
-	// package hook because it is a choice made per message: context costs
-	// tokens on every turn and most questions have nothing to do with it.
+	// Extra is explicit source material attached to this conversation.
 	Extra string
-	Tools []string // optional tool allow-list (user-defined agent); empty = all
+	// CardContext is ambient Home data, not an explicit reading attachment.
+	CardContext string
+	Tools       []string // optional tool allow-list (user-defined agent); empty = all
 	// Model is which model to answer with, when this caller has a preference.
 	//
 	// Per-agent rather than per-instance because the jobs differ in what they
@@ -1244,7 +1243,7 @@ func sse(w http.ResponseWriter, event map[string]any) {
 }
 
 // streamNativeSSE drives the agent and translates its stream into the SSE
-// events the chat UI expects (tool_start/tool_done, stream_start/stream_token,
+// events the chat UI expects (tool_start/tool_done,
 // response, done).
 //
 // It used to return a bool saying whether it had handled the request, so the
@@ -1291,9 +1290,7 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 		}
 	}()
 
-	streaming := false
 	emitted := false
-	var captured strings.Builder
 	var nativeTools []string
 	// Pairing a start with its end, by the provider's call id.
 	//
@@ -1318,12 +1315,6 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	// frames and owns nothing else about the run.
 	sopts := opts
 	sopts.Stream = StreamHooks{
-		Start: func() {
-			wmu.Lock()
-			defer wmu.Unlock()
-			streaming = false
-			captured.Reset()
-		},
 		ToolStart: func(run ToolRun) {
 			wmu.Lock()
 			key := keyOf(run)
@@ -1367,20 +1358,6 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			}
 			send(map[string]any{"type": "tool_done", "name": run.Label, "message": run.Label + " — done"})
 		},
-		Token: func(tok string) {
-			wmu.Lock()
-			defer wmu.Unlock()
-			captured.WriteString(tok)
-			if shouldHoldNativeNewsStreamTokens(prompt, nativeTools) {
-				return
-			}
-			if !streaming {
-				streaming = true
-				emitted = true
-				sse(w, map[string]any{"type": "stream_start"})
-			}
-			sse(w, map[string]any{"type": "stream_token", "token": tok})
-		},
 	}
 	answer, err := runNative(accountID, prompt, sopts)
 	if err != nil {
@@ -1407,17 +1384,8 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 		return
 	}
 
-	if answer == "" {
-		answer = app.StripLatexDollars(captured.String())
-	}
 	answer = completeNativeToolAnswer(answer, nativeTools)
 	answer = app.NormalizeAnswerMarkdown(answer)
-	if !streaming && shouldReplayFinalNativeAnswer(prompt, nativeTools, captured.Len()) {
-		streaming = true
-		emitted = true
-		send(map[string]any{"type": "stream_start"})
-		send(map[string]any{"type": "stream_token", "token": answer})
-	}
 	// What was said, in the record. The workflow record below is how it was
 	// produced; this is the answer itself, and it is what the next message in
 	// this conversation will be given as history.
@@ -1651,7 +1619,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	nopts := QueryOpts{Public: guest}
 	nopts.Extra = reading
 	if !guest && req.Cards && CardContextFunc != nil {
-		nopts.Extra += "\n\n" + CardContextFunc(accountID)
+		if _, direct := promptCommand(req.Prompt, nopts); !direct {
+			nopts.CardContext = CardContextFunc(accountID)
+		}
 	}
 	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
 		nopts.System = ua.SystemPrompt
