@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/data"
 	"mu/internal/event"
 )
 
@@ -16,6 +17,10 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Setenv("HOME", dir)
+	// Keep the process-wide index alive across individual test HOME changes.
+	if _, err := data.SearchSQLite("initialise", 1); err != nil {
+		panic(err)
+	}
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)

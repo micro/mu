@@ -101,7 +101,8 @@ type Task struct {
 	// bus, and the agent layer is what resolves a name to an instruction and a
 	// tool scope. A service that looked one up would be a service calling an
 	// agent.
-	Agent string `json:"agent,omitempty"`
+	Agent    string    `json:"agent,omitempty"`
+	Delivery *Delivery `json:"delivery,omitempty"`
 }
 
 // Open reports whether the task is still to be done.
@@ -218,6 +219,13 @@ func Next(owner string) *Task {
 // did without every other caller having to pass an empty slice for something
 // only a run produces.
 func Update(owner, id, title, detail, status, assignee, result string, runSteps ...[]Step) (*Task, error) {
+	runMu.Lock()
+	defer runMu.Unlock()
+	return update(owner, id, title, detail, status, assignee, result, nil, runSteps...)
+}
+
+// update is called with runMu held, so edits cannot overwrite a claim or receipt.
+func update(owner, id, title, detail, status, assignee, result string, extra map[string]any, runSteps ...[]Step) (*Task, error) {
 	existing, err := Get(owner, id)
 	if err != nil {
 		return nil, err
@@ -268,6 +276,18 @@ func Update(owner, id, title, detail, status, assignee, result string, runSteps 
 		fields["steps"] = encodeSteps(runSteps[0])
 	}
 
+	if existing.Delivery != nil {
+		fields["delivery"] = encodeDelivery(existing.Delivery)
+		fields["delivery_pending"] = true
+		fields["delivery_id"] = existing.Delivery.ID
+	}
+	for key, value := range extra {
+		if value == nil {
+			delete(fields, key)
+		} else {
+			fields[key] = value
+		}
+	}
 	rec, err := userdb.Update(ns, owner, collection, existing.ID, fields, false)
 	if err != nil {
 		return nil, err
@@ -281,6 +301,8 @@ func Update(owner, id, title, detail, status, assignee, result string, runSteps 
 
 // Remove deletes a task the caller owns.
 func Remove(owner, id string) error {
+	runMu.Lock()
+	defer runMu.Unlock()
 	if owner == "" {
 		return fmt.Errorf("sign in to use tasks")
 	}
@@ -369,7 +391,7 @@ func toTask(id, owner string, d map[string]any) *Task {
 		Result: str("result"), Due: when("due"),
 		Created: when("created"), Updated: when("updated"), Owner: owner,
 		Steps: decodeSteps(str("steps")), Thread: str("thread"),
-		Agent: str("agent"),
+		Agent: str("agent"), Delivery: decodeDelivery(str("delivery")),
 	}
 }
 
