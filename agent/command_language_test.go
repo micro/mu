@@ -102,8 +102,9 @@ func TestComposedCommandsExecuteConcurrentlyAndRenderInOrder(t *testing.T) {
 	defer cancel()
 	result := make(chan string, 1)
 	var starts, ends, steps int
+	ids := map[string]bool{}
 	go func() {
-		text, err := executeCommands(ctx, "", []service.CommandCall{{Service: "parallelreads", Method: "Read", Args: map[string]any{"value": "First result"}}, {Service: "parallelreads", Method: "Read", Args: map[string]any{"value": "Second result"}}}, QueryOpts{Stream: StreamHooks{ToolStart: func(ToolRun) { starts++ }, ToolEnd: func(ToolRun) { ends++ }}, OnStep: func(Step) { steps++ }})
+		text, err := executeCommands(ctx, "", []service.CommandCall{{Service: "parallelreads", Method: "Read", Args: map[string]any{"value": "First result"}}, {Service: "parallelreads", Method: "Read", Args: map[string]any{"value": "Second result"}}}, QueryOpts{Stream: StreamHooks{ToolStart: func(r ToolRun) { starts++; ids[r.ID] = true }, ToolEnd: func(ToolRun) { ends++ }}, OnStep: func(Step) { steps++ }})
 		if err != nil {
 			text = err.Error()
 		}
@@ -118,7 +119,7 @@ func TestComposedCommandsExecuteConcurrentlyAndRenderInOrder(t *testing.T) {
 	}
 	close(p.release)
 	text := <-result
-	if !strings.Contains(text, "First result") || strings.Index(text, "First result") > strings.Index(text, "Second result") || starts != 2 || ends != 2 || steps != 2 {
+	if !strings.Contains(text, "First result") || strings.Index(text, "First result") > strings.Index(text, "Second result") || starts != 2 || ends != 2 || steps != 2 || len(ids) != 2 {
 		t.Fatalf("%q lifecycle=%d/%d/%d", text, starts, ends, steps)
 	}
 }
@@ -139,6 +140,24 @@ func TestComposedCommandFailureIsNotASecondModelAttempt(t *testing.T) {
 			}
 		} else if err != nil || !strings.Contains(text, "provider unavailable") || !strings.Contains(text, "Ready for owner") {
 			t.Fatalf("lost partial outcome: %q %v", text, err)
+		}
+	}
+}
+
+func TestDirectListsRenderTheirRegisteredResponseShapes(t *testing.T) {
+	for _, tc := range []struct {
+		result map[string]any
+		want   string
+	}{
+		{map[string]any{"notes": []any{map[string]any{"title": "School run", "text": "Leave at eight"}}}, "School run — Leave at eight"},
+		{map[string]any{"notes": nil}, "No results."},
+		{map[string]any{"entries": []any{map[string]any{"text": "Alice is home", "at": "2026-09-09T08:00:00Z"}}}, "Alice is home"},
+		{map[string]any{"entries": []any{}}, "No results."},
+		{map[string]any{"events": "Tomorrow at eight: school run"}, "Tomorrow at eight"},
+		{map[string]any{"files": []any{map[string]any{"name": "Family photo"}}}, "Family photo"},
+	} {
+		if got := commandText(tc.result); !strings.Contains(got, tc.want) {
+			t.Fatalf("%v rendered as %q", tc.result, got)
 		}
 	}
 }

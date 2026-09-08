@@ -2,6 +2,7 @@ package news
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -14,6 +15,10 @@ func TestNewsTodayUsesLocalDateAndExcludesFuture(t *testing.T) {
 	got := newsForDay([]*Post{nil, yesterday, today, future, {Title: "Undated"}}, at)
 	if len(got) != 1 || got[0] != today {
 		t.Fatalf("wrong calendar day: %+v", got)
+	}
+	text := headlinesText(got, "", 5, at)
+	if !strings.Contains(text, "2026-09-09") || strings.Contains(text, "2026-09-08") {
+		t.Fatalf("contradictory date: %s", text)
 	}
 	var rsp ListResponse
 	if err := (Server{}).List(context.Background(), &ListRequest{Day: "tomorrow"}, &rsp); err == nil {

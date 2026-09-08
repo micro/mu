@@ -71,11 +71,11 @@ type ListResponse struct {
 // @example {"topic": "tech"}
 func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) error {
 	posts := GetFeed()
+	at := time.Now().UTC()
 	if req.Day != "" {
 		if req.Day != "today" {
 			return fmt.Errorf("day must be today or empty")
 		}
-		at := time.Now().UTC()
 		if account, err := auth.GetAccount(service.AccountFrom(ctx)); err == nil && account != nil {
 			if zone, err := time.LoadLocation(account.Zone); err == nil {
 				at = at.In(zone)
@@ -83,7 +83,7 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 		}
 		posts = newsForDay(posts, at)
 	}
-	rsp.Text = headlinesText(posts, req.Topic, req.Limit)
+	rsp.Text = headlinesText(posts, req.Topic, req.Limit, at)
 	rsp.Items = headlineItems(posts, req.Topic, req.Limit)
 	if req.Day != "" && len(rsp.Items) == 0 {
 		rsp.Text = "No headlines available for today yet."

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -64,7 +65,7 @@ func executeCommands(ctx context.Context, account string, calls []service.Comman
 		wg.Add(1)
 		go func(i int, call service.CommandCall) {
 			defer wg.Done()
-			text, err := executeCommand(ctx, account, call, child)
+			text, err := executeCommandRun(ctx, account, call, child, fmt.Sprintf("command-%d", i))
 			if err != nil {
 				errs[i] = err
 				text = "Could not complete this request: " + err.Error()
@@ -107,8 +108,12 @@ func explicitCommand(prompt string) bool {
 }
 
 func executeCommand(ctx context.Context, account string, call service.CommandCall, opts QueryOpts) (string, error) {
+	return executeCommandRun(ctx, account, call, opts, "command")
+}
+
+func executeCommandRun(ctx context.Context, account string, call service.CommandCall, opts QueryOpts, id string) (string, error) {
 	name := call.Service + "_" + strings.ToLower(call.Method)
-	run := ToolRun{ID: "command-" + name, Name: name, Label: toolLabel(name)}
+	run := ToolRun{ID: id, Name: name, Label: toolLabel(name)}
 	if opts.Stream.ToolStart != nil {
 		opts.Stream.ToolStart(run)
 	}
@@ -161,11 +166,68 @@ func commandText(result map[string]any) string {
 			return b.String()
 		}
 	}
-	for _, key := range []string{"summary", "text"} {
+	for _, key := range []string{"summary", "text", "events"} {
 		if s, ok := result[key].(string); ok && s != "" {
 			return s
 		}
 	}
 
+	for _, key := range []string{"notes", "entries"} {
+		if raw, exists := result[key]; exists {
+			rows, _ := raw.([]any)
+			if len(rows) == 0 {
+				return "No results."
+			}
+			var lines []string
+			escape := strings.NewReplacer("\\", "\\\\", "*", "\\*", "_", "\\_", "[", "\\[", "]", "\\]", "<", "&lt;", ">", "&gt;", "`", "\\`", "\n", " ")
+			for _, raw := range rows {
+				row, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				title, _ := row["title"].(string)
+				text, _ := row["text"].(string)
+				if title != "" && text != "" {
+					text = title + " — " + text
+				} else if title != "" {
+					text = title
+				}
+				if text != "" {
+					lines = append(lines, "- "+escape.Replace(text))
+				}
+			}
+			if len(lines) > 0 {
+				return strings.Join(lines, "\n")
+			}
+		}
+	}
+	if len(result) == 1 {
+		for _, key := range []string{"text", "summary"} {
+			if _, exists := result[key]; exists {
+				return ""
+			}
+		}
+	}
+	if items, ok := result["items"].([]any); ok {
+		for _, raw := range items {
+			if item, ok := raw.(map[string]any); ok {
+				if link, ok := item["url"].(string); ok {
+					u, err := url.Parse(link)
+					if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+						return ""
+					}
+				}
+			}
+		}
+	}
+	// Other registered read responses still have a useful exact representation.
+	// Do not execute a service successfully and then claim it returned nothing
+	// merely because its field names differ from news and weather.
+	if len(result) > 0 {
+		b, err := json.MarshalIndent(result, "", "  ")
+		if err == nil {
+			return "```json\n" + string(b) + "\n```"
+		}
+	}
 	return ""
 }
