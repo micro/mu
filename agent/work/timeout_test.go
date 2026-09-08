@@ -24,7 +24,7 @@ func TestTimeoutPreservesCompletedSteps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != tasks.StatusTodo || len(got.Steps) != 1 || got.Steps[0].Tool != "web_search" || !strings.Contains(got.Result, "too long") {
+	if got.Status != tasks.StatusFailed || len(got.Steps) != 1 || got.Steps[0].Tool != "web_search" || !strings.Contains(got.Result, "too long") {
 		t.Fatalf("failure lost work: %+v", got)
 	}
 }

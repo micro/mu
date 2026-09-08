@@ -130,7 +130,7 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 			}
 			return
 		}
-		if t.Status == tasks.StatusDone {
+		if t.Status == tasks.StatusDone || t.Status == tasks.StatusFailed || t.Status == tasks.StatusBlocked {
 			return
 		}
 	}
@@ -260,8 +260,8 @@ func answered(r request, answer string, err error) {
 
 // finishTask writes the result back onto the task.
 //
-// A failed run leaves the task open: work that failed is work still to do, not
-// work finished badly, and the reason belongs where somebody will see it.
+// A failed run remains open with an explicit failed state. It is not picked
+// up automatically; the owner can review its steps before retrying.
 func finishTask(r request, answer string, steps []tasks.Step, err error) {
 	status, result := tasks.StatusDone, strings.TrimSpace(answer)
 	if result == "" && err == nil {
@@ -270,7 +270,7 @@ func finishTask(r request, answer string, steps []tasks.Step, err error) {
 	reply := result
 	if err != nil {
 		app.Log("work", "task %q failed for %s: %v", r.Title, r.Account, err)
-		status = tasks.StatusTodo
+		status = tasks.StatusFailed
 		result = "Last run failed: " + ai.FailureMessage(err)
 		reply = "That did not work: " + ai.FailureMessage(err)
 	}

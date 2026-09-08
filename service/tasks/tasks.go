@@ -34,13 +34,14 @@ const (
 	collection = "tasks"
 )
 
-// The states a task moves through. Three, because a fourth would be a
-// judgement nobody has to make: it is waiting, it is being worked on, or it is
-// finished.
+// Failed and blocked work needs attention before another attempt. Keeping it
+// separate from todo prevents ordinary pickup from replaying uncertain actions.
 const (
-	StatusTodo  = "todo"
-	StatusDoing = "doing"
-	StatusDone  = "done"
+	StatusTodo    = "todo"
+	StatusDoing   = "doing"
+	StatusDone    = "done"
+	StatusFailed  = "failed"
+	StatusBlocked = "blocked"
 )
 
 // Assignee values. A task is yours unless you hand it over.
@@ -200,12 +201,12 @@ func Get(owner, id string) (*Task, error) {
 	return toTask(rec.ID, rec.Owner, rec.Data), nil
 }
 
-// Next returns the task an agent should pick up: the oldest open one assigned
+// Next returns the task an agent should pick up: the oldest ready task assigned
 // to it. This is the whole point of the assignee field — an agent asking "what
 // should I be doing?" gets an answer without a person having to say it again.
 func Next(owner string) *Task {
 	for _, t := range List(owner, "") {
-		if t.Open() && t.Assignee == Agent {
+		if t.Status == StatusTodo && t.Assignee == Agent && t.Delivery == nil {
 			return t
 		}
 	}
@@ -232,7 +233,7 @@ func update(owner, id, title, detail, status, assignee, result string, extra map
 	}
 
 	if status != "" && !validStatus(status) {
-		return nil, fmt.Errorf("status must be %s, %s or %s", StatusTodo, StatusDoing, StatusDone)
+		return nil, fmt.Errorf("status must be %s, %s, %s, %s or %s", StatusTodo, StatusDoing, StatusDone, StatusFailed, StatusBlocked)
 	}
 
 	fields := map[string]any{
@@ -343,7 +344,7 @@ func Render(ts []*Task) string {
 }
 
 func validStatus(s string) bool {
-	return s == StatusTodo || s == StatusDoing || s == StatusDone
+	return s == StatusTodo || s == StatusDoing || s == StatusDone || s == StatusFailed || s == StatusBlocked
 }
 
 // normaliseAssignee accepts the words a person or a model would use and lands

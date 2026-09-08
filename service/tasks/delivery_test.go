@@ -55,7 +55,7 @@ func TestFailedOutcomeCanRunAgainOnlyAfterDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	failed, err := RecordOutcome("alice", task.ID, StatusTodo, "Failed", "Could not finish", "specialist", nil)
+	failed, err := RecordOutcome("alice", task.ID, StatusFailed, "Failed", "Could not finish", "specialist", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

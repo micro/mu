@@ -32,7 +32,7 @@ func TestRecoveryPreservesWorkWithoutReplayingIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := Get("alice", task.ID)
-	if err != nil || got.Status != StatusTodo || got.Thread != "source" || got.Agent != "specialist" || len(got.Steps) != 1 || !strings.Contains(got.Result, "A reply was sent") || !strings.Contains(got.Result, "interrupted") {
+	if err != nil || got.Status != StatusBlocked || got.Thread != "source" || got.Agent != "specialist" || len(got.Steps) != 1 || !strings.Contains(got.Result, "A reply was sent") || !strings.Contains(got.Result, "interrupted") {
 		t.Fatalf("recovery lost the work record: %+v, %v", got, err)
 	}
 	if err := recoverInterrupted("alice"); err != nil {
