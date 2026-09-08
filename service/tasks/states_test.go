@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"mu/internal/service"
+	"mu/internal/userdb"
 )
 
 func TestNextSkipsWorkThatIsNotReady(t *testing.T) {
@@ -36,6 +37,40 @@ func TestNextSkipsWorkThatIsNotReady(t *testing.T) {
 	}
 	if got := Next("alice"); got == nil || got.ID != ready.ID {
 		t.Fatalf("ready work was not picked: %+v", got)
+	}
+}
+
+func TestReadyWorkAndOutcomeFiltersSurviveALongTaskHistory(t *testing.T) {
+	setupTasks(t)
+	ready, err := Create("alice", "Ready", "", Agent, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, state := range []string{StatusFailed, StatusBlocked} {
+		if _, err := userdb.Create(ns, "alice", collection, map[string]any{
+			"title": state, "status": state, "assignee": Agent,
+		}, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// More recent personal tasks must not crowd owned state filters or pickup.
+	for i := 0; i < userdb.MaxListLimit+1; i++ {
+		if _, err := userdb.Create(ns, "alice", collection, map[string]any{
+			"title": "Personal", "status": StatusTodo, "assignee": Me,
+		}, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := Next("alice"); got == nil || got.ID != ready.ID {
+		t.Errorf("task history hid ready work: %+v", got)
+	}
+	for _, state := range []string{StatusFailed, StatusBlocked} {
+		if got := List("alice", state); len(got) != 1 || got[0].Status != state {
+			t.Errorf("task history hid %s work: %+v", state, got)
+		}
+	}
+	if Next("") != nil || Next("bob") != nil {
+		t.Fatal("ready work crossed ownership")
 	}
 }
 

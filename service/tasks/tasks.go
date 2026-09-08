@@ -164,18 +164,18 @@ func List(owner, status string) []*Task {
 	if owner == "" {
 		return nil
 	}
-	recs, err := userdb.List(ns, owner, collection, "mine", nil, "", "", 0)
+	var where map[string]any
+	if status != "" {
+		where = map[string]any{"status": status}
+	}
+	recs, err := userdb.List(ns, owner, collection, "mine", where, "", "", 0)
 	if err != nil {
 		return nil
 	}
 
 	out := make([]*Task, 0, len(recs))
 	for _, r := range recs {
-		t := toTask(r.ID, r.Owner, r.Data)
-		if status != "" && t.Status != status {
-			continue
-		}
-		out = append(out, t)
+		out = append(out, toTask(r.ID, r.Owner, r.Data))
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Open() != out[j].Open() {
@@ -205,12 +205,19 @@ func Get(owner, id string) (*Task, error) {
 // to it. This is the whole point of the assignee field — an agent asking "what
 // should I be doing?" gets an answer without a person having to say it again.
 func Next(owner string) *Task {
-	for _, t := range List(owner, "") {
-		if t.Status == StatusTodo && t.Assignee == Agent && t.Delivery == nil {
-			return t
-		}
+	if owner == "" {
+		return nil
 	}
-	return nil
+	// Filter before the storage limit, so recent personal or finished work
+	// cannot hide the oldest ready task.
+	recs, err := userdb.List(ns, owner, collection, "mine", map[string]any{
+		"status": StatusTodo, "assignee": Agent,
+		"delivery_pending": map[string]any{"ne": true},
+	}, "created", "asc", 1)
+	if err != nil || len(recs) == 0 {
+		return nil
+	}
+	return toTask(recs[0].ID, recs[0].Owner, recs[0].Data)
 }
 
 // Update changes a task. Empty strings leave a field as it was, so an agent
