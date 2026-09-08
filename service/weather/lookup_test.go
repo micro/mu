@@ -189,3 +189,20 @@ func (l localWeatherTransport) RoundTrip(r *http.Request) (*http.Response, error
 	}
 	return l.base.RoundTrip(r)
 }
+
+func TestLookupRainUsesLocalCalendarDate(t *testing.T) {
+	for _, offset := range []int{-7 * 3600, 14 * 3600} {
+		at := time.Date(2026, 9, 8, 0, 30, 0, 0, time.FixedZone("local", offset))
+		if offset < 0 {
+			at = time.Date(2026, 9, 8, 23, 30, 0, 0, at.Location())
+		}
+		f := &WeatherForecast{DailyItems: []DailyItem{
+			{Date: time.Date(2026, 9, 8, 0, 0, 0, 0, time.UTC)},
+			{Date: time.Date(2026, 9, 9, 0, 0, 0, 0, time.UTC), RainMM: 12},
+		}}
+		text := lookupForecastText(f, "Home", "rain", at)
+		if !strings.Contains(text, "No rain is indicated in today’s forecast.") {
+			t.Fatalf("offset %d: %s", offset, text)
+		}
+	}
+}

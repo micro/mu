@@ -11,11 +11,15 @@ import (
 )
 
 func promptCommand(prompt string, opts QueryOpts) (service.CommandCall, bool) {
-	// A specialist or attached source can change what even a short prompt means.
-	if opts.System != "" || strings.TrimSpace(opts.Extra) != "" {
+	// Explicit commands ignore attached prose; inferred phrases retain its context.
+	if !explicitCommand(prompt) && strings.TrimSpace(opts.Extra) != "" {
 		return service.CommandCall{}, false
 	}
-	return service.MatchCommandFor(prompt, filterServices(nativeServices(opts.Public), opts.Tools), !opts.Public)
+	return service.MatchCommandFor(strings.TrimPrefix(strings.TrimSpace(prompt), "/"), filterServices(nativeServices(opts.Public), opts.Tools), !opts.Public)
+}
+
+func explicitCommand(prompt string) bool {
+	return strings.HasPrefix(strings.TrimSpace(prompt), "/")
 }
 
 func executeCommand(ctx context.Context, account string, call service.CommandCall, opts QueryOpts) (string, error) {

@@ -101,9 +101,9 @@ func formatForecastText(wf *WeatherForecast, now time.Time) string {
 }
 
 func dailyItemForDate(items []DailyItem, date time.Time) (DailyItem, bool) {
-	want := date.UTC().Format("2006-01-02")
+	want := date.Format("2006-01-02")
 	for _, item := range items {
-		if item.Date.UTC().Format("2006-01-02") == want {
+		if item.Date.Format("2006-01-02") == want {
 			return item, true
 		}
 	}

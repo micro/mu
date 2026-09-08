@@ -677,6 +677,10 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 		return executeCommand(ctx, accountID, command, opts)
 	}
 
+	if explicitCommand(prompt) {
+		return "", fmt.Errorf("unknown or unavailable command: %s", strings.Fields(prompt)[0])
+	}
+
 	recorder := newNativeToolRecorder()
 	wrappers := []gmai.ToolWrapper{recorder.wrap}
 	if opts.OnStep != nil {

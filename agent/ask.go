@@ -330,6 +330,7 @@ func Ask(r AskRequest) (Answer, error) {
 	// question on their phone should read why nothing happened in the place
 	// they asked, not find out by opening a wallet page.
 	_, directCommand := promptCommand(r.Text, opts)
+	directCommand = directCommand || explicitCommand(r.Text)
 	if reason, ok := affordable(r.Account); !ok && !directCommand {
 		Answered(r.Account, threadID(th), reason, "")
 		return Answer{Text: reason, Thread: threadID(th)}, nil
@@ -369,7 +370,7 @@ func Ask(r AskRequest) (Answer, error) {
 	// Notice anything worth remembering, from every client rather than one.
 	// Off the response path: it is a background model call and the answer is
 	// already written.
-	if err == nil {
+	if err == nil && !directCommand {
 		go extractMemory(r.Account, r.Text, scopeOf(r.Agent))
 	}
 

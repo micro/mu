@@ -304,9 +304,8 @@ func ChatComponent(cfg ChatConfig) string {
 	// cannot see and the benefit is an answer they have not read yet. On Home
 	// the cards are on the screen, so an answer that ignores them is the wrong
 	// answer, and there is nothing to decide.
-	// The same sessionStorage key the rail on /agent uses, so a choice made in
-	// one place holds in the other. Two pickers disagreeing about who is
-	// answering would be worse than one picker.
+	// Agent choice is local to this page; visiting a named agent does not
+	// change the default on Home.
 	agentPicker := ""
 	if cfg.OfferAgentPicker {
 		// The word is a field label, and is set like one.
@@ -1114,12 +1113,11 @@ window.muChatNew=function(){
 // was the rail on /agent, so an agent created on /agents could not be reached
 // from the input on Home.
 //
-// Same sessionStorage key as that rail, so the choice holds across both.
+// The selection belongs to this page; Home starts with Micro.
 (function(){
   var sel=document.getElementById('mu-chat-agent-pick');
   if(!sel) return;
-  var KEY='mu_active_agent';
-  try{ window.muActiveAgent=window.muActiveAgent||sessionStorage.getItem(KEY)||''; }catch(e){}
+  window.muActiveAgent='';
 
   // Where to write to whichever agent is answering.
   //
@@ -1138,13 +1136,13 @@ window.muChatNew=function(){
 
   sel.addEventListener('change',function(){
     window.muActiveAgent=sel.value;
-    try{ sessionStorage.setItem(KEY, sel.value); }catch(e){}
     showAddr();
   });
 
   fetch('/agents/data',{headers:{'Accept':'application/json'}})
     .then(function(r){return r.json();})
     .then(function(d){
+      if(!sel.isConnected)return;
       // Every agent. There used to be a filter here for ones declared
       // "external" — a credential and a scope for something calling in from
       // outside, which nothing here could hand a question to, so "answering as"

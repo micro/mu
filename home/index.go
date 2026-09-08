@@ -277,7 +277,7 @@ func indexBody() string {
 			// furniture in front of somebody who has not asked anything yet.
 			Speak: false,
 		}) +
-		shortcutsHTML(false) + today("") + `
+		today("") + `
 </div>
 
 <style>

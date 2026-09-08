@@ -6,6 +6,7 @@ import (
 	"mu/internal/service"
 	"mu/service/markets"
 	"mu/service/news"
+	"mu/service/users"
 	"mu/service/video"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +16,7 @@ import (
 )
 
 func TestHomeNewsShortcutReturnsFinalAnswerWithoutCardOrModelWork(t *testing.T) {
-	for _, sp := range []service.Spec{news.Spec, markets.Spec, video.Spec} {
+	for _, sp := range []service.Spec{news.Spec, markets.Spec, video.Spec, users.Spec} {
 		if err := service.Register(sp); err != nil {
 			t.Fatal(err)
 		}
@@ -34,8 +35,8 @@ func TestHomeNewsShortcutReturnsFinalAnswerWithoutCardOrModelWork(t *testing.T) 
 		t.Fatal("shortcut assembled ambient cards instead of returning directly")
 		return ""
 	}
-	for _, prompt := range []string{"News", "news", " NEWS ", "markets", "MARKETS", "video", "latest videos", `"latest videos"`, "‘latest videos’"} {
-		body, _ := json.Marshal(map[string]any{"prompt": prompt, "cards": true})
+	for _, prompt := range []string{"users", "/users", "News", "news", " NEWS ", "markets", "MARKETS", "video", "latest videos", `"latest videos"`, "‘latest videos’"} {
+		body, _ := json.Marshal(map[string]any{"prompt": prompt, "cards": true, "agent": "micro"})
 		req := httptest.NewRequest("POST", "/agent", strings.NewReader(string(body)))
 		req.Header.Set("Content-Type", "application/json")
 		req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
