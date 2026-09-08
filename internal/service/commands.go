@@ -12,6 +12,7 @@ import (
 // ending in one {argument}. Endpoints opt in; writes cannot be prompt commands.
 type Command struct {
 	Pattern  string
+	Suffix   string // optional fixed words after the final argument
 	Defaults map[string]any
 }
 
@@ -62,9 +63,9 @@ func MatchCommandFor(input string, allowed []string, private bool) (CommandCall,
 				if !ok {
 					continue
 				}
-				score := len(command.Pattern)
+				score := len(command.Pattern) + len(command.Suffix)
 				if i := strings.Index(command.Pattern, "{"); i >= 0 {
-					score = i
+					score = i + len(command.Suffix)
 				} else {
 					score += 10000
 				}
@@ -97,6 +98,14 @@ func (c Command) match(input string) (map[string]any, bool) {
 		if unicode.IsControl(r) && r != '\t' {
 			return nil, false
 		}
+	}
+	if c.Suffix != "" {
+		value := strings.TrimSpace(strings.TrimRight(input, "?!."))
+		end := len(value) - len(c.Suffix)
+		if end <= 0 || !strings.EqualFold(value[end:], c.Suffix) || !unicode.IsSpace(rune(value[end-1])) {
+			return nil, false
+		}
+		input = strings.TrimSpace(value[:end])
 	}
 	words := strings.Fields(c.Pattern)
 	if len(words) == 0 {
@@ -194,6 +203,7 @@ func commandsFor(spec Spec, method string, ep Endpoint) []Command {
 		}
 	}
 	names := append([]string{spec.Name, strings.ToLower(spec.NavLabel())}, ep.Aliases...)
+	out = append(out, Command{Pattern: spec.Name + " list", Defaults: defaults})
 	seen := map[string]bool{}
 	for _, c := range out {
 		seen[strings.ToLower(c.Pattern)] = true

@@ -1611,7 +1611,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		nopts.System = ua.SystemPrompt
 		nopts.Tools = ua.Tools
 	}
-	_, directCommand := promptCommand(req.Prompt, nopts)
+	_, directCommand := promptCommands(req.Prompt, nopts)
+	directCommand = directCommand || commandDenied(req.Prompt, nopts)
 	if !guest && !directCommand && !explicitCommand(req.Prompt) {
 		go extractMemory(accountID, req.Prompt, scopeOf(req.Agent))
 	}

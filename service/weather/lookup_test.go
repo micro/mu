@@ -206,3 +206,23 @@ func TestLookupRainUsesLocalCalendarDate(t *testing.T) {
 		}
 	}
 }
+
+func TestLookupTomorrowSelectsRequestedDate(t *testing.T) {
+	at := time.Date(2026, 9, 9, 0, 30, 0, 0, time.FixedZone("home", 14*3600))
+	f := &WeatherForecast{Current: &CurrentConditions{TempC: 99}, DailyItems: []DailyItem{
+		{Date: at.AddDate(0, 0, -1), Description: "old"},
+		{Date: at, MinTempC: 11, MaxTempC: 18, Description: "Rain", RainMM: 4, RainChance: 80},
+		{Date: at.AddDate(0, 0, 1), Description: "later"},
+	}}
+	text := lookupDayText(f, "Hampton", at)
+	if !strings.Contains(text, "Wednesday 9 September") || !strings.Contains(text, "11–18°C") || !strings.Contains(text, "80%") || strings.Contains(text, "old") || strings.Contains(text, "later") || strings.Contains(text, "99") {
+		t.Fatal(text)
+	}
+	if text = lookupDayText(f, "Hampton", at.AddDate(0, 0, 5)); !strings.Contains(text, "unavailable") {
+		t.Fatal(text)
+	}
+	var rsp ForecastResponse
+	if err := (Server{}).Lookup(context.Background(), &LookupRequest{Day: "next week"}, &rsp); err == nil {
+		t.Fatal("ignored unsupported date")
+	}
+}
