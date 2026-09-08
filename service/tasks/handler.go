@@ -134,7 +134,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 			doing++
 		}
 	}
-	b.WriteString(`<div class="card"><div class="task-tabs">`)
+	b.WriteString(`<div class="page-stack"><div class="task-tabs">`)
 	tab(&b, "", filter, fmt.Sprintf("All (%d)", len(all)))
 	tab(&b, StatusTodo, filter, fmt.Sprintf("To do (%d)", open))
 	tab(&b, StatusDoing, filter, fmt.Sprintf("Doing (%d)", doing))
@@ -190,7 +190,7 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 	if len(labels) > 0 && strings.TrimSpace(labels[0]) != "" {
 		label = labels[0]
 	}
-	class := "task"
+	class := "task card"
 	if !t.Open() {
 		class += " task-done"
 	}
@@ -312,11 +312,10 @@ const tasksPageCSS = `<style>
 .task-due{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex:1;min-width:200px}
 .task-due input{flex:1;min-width:0;font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px}
 .task-assign{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:8px;cursor:pointer}
-.task-tabs{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.task-tabs{display:flex;gap:14px;flex-wrap:wrap}
 .task-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
 .task-tab.active{color:var(--text-primary);font-weight:600}
-.task{display:flex;flex-direction:column;gap:var(--space-control);padding:12px 0;border-bottom:1px solid var(--divider)}
-.task:last-child{border-bottom:none}
+.task{display:flex;flex-direction:column;gap:var(--space-control)}
 .task-title{font-weight:var(--font-weight-medium)}
 .task-done .task-title{text-decoration:line-through;color:var(--text-muted)}
 .task-meta{font-size:12px;color:var(--text-muted);margin:0}
