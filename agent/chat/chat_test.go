@@ -126,10 +126,8 @@ func TestAnAnswerToAnEmptyRoomIsDropped(t *testing.T) {
 		t.Error("Say creates the room it is answering into, so a reply to a " +
 			"conversation nobody is in conjures the conversation")
 	}
-	if !strings.Contains(body, "default:") {
-		t.Error("Say blocks when a room has stopped reading, which stalls the " +
-			"whole subscriber rather than one message")
-	}
+	// Bounded acknowledgement and stopped-room behaviour are exercised with
+	// real channels in service/chat/delivery_test.go.
 }
 
 func read(t *testing.T, path string) string {

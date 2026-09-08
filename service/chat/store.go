@@ -31,6 +31,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -98,42 +99,22 @@ func LoadStore() {
 	}
 }
 
-// saveStore writes the record out.
-//
-// The marshal is under the lock and the disk write is not.
-//
-// It used to be neither. Keep and Forget each took the lock, changed the map,
-// released it, and then called this — so the encoder walked a map that another
-// goroutine was free to be writing to. Two people talking at once is enough:
-// one Keep appending while this marshals is a concurrent map read and write,
-// which Go does not make recoverable. It kills the process.
-//
-// Found by the race detector, which was worth turning on the moment the suite
-// stopped flaking — the report came from a test, and nothing about the fault
-// was the test's. Every XMPP message goes through Keep.
-//
-// The disk write stays outside, because that is the slow half and no caller
-// should wait behind somebody else's fsync to say a sentence.
-func saveStore() {
-	saidMu.RLock()
-	b, err := json.Marshal(said)
-	saidMu.RUnlock()
+// Keep writes a message to the archive. Callers needing an acknowledgement use
+// KeepSaved so a failed disk write cannot be mistaken for durable delivery.
+func Keep(account string, m Said) string {
+	id, err := KeepSaved(account, m)
 	if err != nil {
-		app.Log("chat", "could not marshal the chat record: %v", err)
-		return
+		app.Log("chat", "could not save message: %v", err)
 	}
-	if err := data.SaveFile("chat.json", string(b)); err != nil {
-		app.Log("chat", "could not write the chat record: %v", err)
-	}
+	return id
 }
 
-// Keep writes one message down, for one account.
-//
-// Returns the id it was stored under, which is what MAM hands a client as the
-// archive id and what a client pages backwards from.
-func Keep(account string, m Said) string {
+// KeepSaved saves before publishing the new archive state. Serializing the
+// complete write with mutations also prevents an old snapshot overwriting a
+// newer one when two messages arrive together.
+func KeepSaved(account string, m Said) (string, error) {
 	if account == "" || strings.TrimSpace(m.Text) == "" || m.Conv == "" {
-		return ""
+		return "", fmt.Errorf("a chat message needs an account, conversation and text")
 	}
 	if m.ID == "" {
 		m.ID = newID()
@@ -141,16 +122,19 @@ func Keep(account string, m Said) string {
 	if m.At.IsZero() {
 		m.At = time.Now().UTC()
 	}
-
 	saidMu.Lock()
-	said[account] = append(said[account], &m)
-	if n := len(said[account]); n > heldPerAccount {
-		said[account] = said[account][n-heldPerAccount:]
+	defer saidMu.Unlock()
+	previous := said[account]
+	next := append(append([]*Said(nil), previous...), &m)
+	if len(next) > heldPerAccount {
+		next = next[len(next)-heldPerAccount:]
 	}
-	saidMu.Unlock()
-
-	saveStore()
-	return m.ID
+	said[account] = next
+	if err := data.SaveJSON("chat.json", said); err != nil {
+		said[account] = previous
+		return "", err
+	}
+	return m.ID, nil
 }
 
 // Conversation is what was said on one conversation, oldest first.
@@ -192,7 +176,9 @@ func filtered(account string, limit int, keep func(*Said) bool) []Said {
 // prevent — see TestEveryScopedServiceCleansUpWhenAnAccountIsDeleted.
 func Forget(account string) {
 	saidMu.Lock()
+	defer saidMu.Unlock()
 	delete(said, account)
-	saidMu.Unlock()
-	saveStore()
+	if err := data.SaveJSON("chat.json", said); err != nil {
+		app.Log("chat", "could not delete chat archive: %v", err)
+	}
 }
