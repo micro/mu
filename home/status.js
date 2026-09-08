@@ -4,7 +4,12 @@
   var label = root.querySelector('[data-status-label]');
   var input = root.querySelector('[data-status-input]');
   var feedback = root.querySelector('[data-status-feedback]');
-  var saved = input.value, editing = false, saving = false;
+  if (root.dataset.statusSaved === undefined) root.dataset.statusSaved = input.value;
+  var saved = root.dataset.statusSaved, editing = !input.hidden, saving = false;
+  // Soft navigation serializes this DOM, including an in-flight editor.
+  if (input.readOnly) feedback.textContent = 'Save interrupted. Press Enter or tap away to retry.';
+  input.readOnly = false;
+  input.addEventListener('input', function () { input.defaultValue = input.value; });
   function close() {
     editing = false;
     input.hidden = true;
@@ -13,7 +18,7 @@
   }
   label.addEventListener('click', function () {
     if (saving) return;
-    input.value = saved;
+    input.value = input.defaultValue = saved;
     label.hidden = true;
     input.hidden = false;
     editing = true;
@@ -38,6 +43,8 @@
       var result = await response.json();
       if (typeof result.status !== 'string') throw new Error('invalid response');
       saved = result.status;
+      root.dataset.statusSaved = saved;
+      input.value = input.defaultValue = saved;
       var hadFocus = document.activeElement === input;
       close();
       feedback.textContent = '';
@@ -56,7 +63,7 @@
     if (event.key === 'Enter') { event.preventDefault(); save(); }
     if (event.key === 'Escape') {
       event.preventDefault();
-      input.value = saved;
+      input.value = input.defaultValue = saved;
       feedback.textContent = '';
       close();
       label.focus();

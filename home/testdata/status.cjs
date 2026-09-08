@@ -2,12 +2,19 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const code = fs.readFileSync('status.js', 'utf8');
-function setup() {
+function setup(restored) {
  const document = {activeElement: null};
  function element(value) { return {value, hidden: false, textContent: '', listeners: {}, addEventListener(k, fn) {this.listeners[k] = fn;}, focus() {document.activeElement = this;}}; }
  const label = element(''), input = element('Working'), feedback = element('');
  input.hidden = true;
  const root = {dataset: {csrf: 'token'}, querySelector(s) {return s.includes('label') ? label : s.includes('input') ? input : feedback;}};
+ if (restored) {
+ root.dataset.statusSaved = restored.saved;
+ input.value = restored.draft;
+ input.hidden = false;
+ input.readOnly = true;
+ label.hidden = true;
+ }
  document.getElementById = () => root;
  const calls = [];
  let resolve;
@@ -35,5 +42,17 @@ function setup() {
  assert.match(s.feedback.textContent, /Could not save/);
  const retry = s.input.listeners.blur(); s.reply({ok:true,json:async()=>({status:'Keep my draft'})}); await retry;
  assert.equal(s.label.textContent, 'Keep my draft');
+ assert.equal(s.input.defaultValue, 'Keep my draft');
+ s = setup({saved:'Previous', draft:'Pending draft'});
+ assert.equal(s.input.readOnly, false);
+ assert.match(s.feedback.textContent, /interrupted/);
+ const resumed = s.input.listeners.blur();
+ assert.equal(s.calls.length, 1);
+ s.reply({ok:true,json:async()=>({status:'Pending draft'})}); await resumed;
+ assert.equal(s.input.defaultValue, 'Pending draft');
+ s.label.listeners.click(); assert.equal(s.input.value, 'Pending draft');
+ s.input.value = 'Another draft'; s.input.listeners.input();
+ assert.equal(s.input.defaultValue, 'Another draft');
+ s.key('Escape'); assert.equal(s.input.defaultValue, 'Pending draft');
  console.log('Status lifecycle passed');
 })().catch(e => {console.error(e); process.exitCode = 1;});
