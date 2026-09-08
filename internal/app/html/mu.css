@@ -1537,7 +1537,7 @@ body:has(#messages) #content {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 70px - var(--tabbar));
-  padding-bottom: 20px;
+  padding-bottom: calc(8px + var(--tabbar));
   overflow: hidden;
 }
 

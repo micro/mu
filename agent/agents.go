@@ -227,10 +227,7 @@ func renderAgentsPanel() string {
 .agents-actions a,.agents-actions button{border:0;background:none;cursor:pointer;font-size:12px;padding:0 2px;color:inherit;text-decoration:none}
 </style>
 <script>
-var MUAKEY='mu_active_agent';
-// Restore the in-tab agent selection so a reload keeps answering as the same
-// agent. A reopened session or ?agent= link overrides this via muSeedAgent.
-window.muActiveAgent=window.muActiveAgent||(function(){try{return sessionStorage.getItem(MUAKEY)||'';}catch(e){return '';}})();
+window.muActiveAgent='';
 function muAgentCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
 // Resolve an agent id to its display name from the loaded list ('' = default).
 function muAgentName(id){if(!id)return 'Micro';var d=document.querySelector('#agents-list>div[data-id="'+id+'"]');if(d){var s=d.querySelector('span');if(s&&s.textContent)return s.textContent;}return 'Micro';}
@@ -265,9 +262,8 @@ function muAgentPick(id){
 function muAgentOpen(id,external){
   muAgentPick(id);
 }
-// Set the active agent from the server (session reopen / deep link) and persist
-// it; the list highlight + chip refresh once the agents finish loading.
-window.muSeedAgent=function(id){window.muActiveAgent=id||'';try{sessionStorage.setItem(MUAKEY,window.muActiveAgent);}catch(e){}document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===window.muActiveAgent);});muAgentChip();};
+// Set the page agent from the server (session reopen / deep link); the list highlight + chip refresh once the agents finish loading.
+window.muSeedAgent=function(id){window.muActiveAgent=id||'';document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===window.muActiveAgent);});muAgentChip();};
 function muAgentEsc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function muAgentDelete(id,ev){ev.stopPropagation();ev.preventDefault();if(!confirm('Delete this agent?'))return;
   var b=new URLSearchParams();b.append('action','delete');b.append('id',id);

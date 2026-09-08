@@ -19,7 +19,7 @@ func TestCommandLinksExcludeToolInstructions(t *testing.T) {
 	}
 }
 func TestCommandsRespectAgentAndAttachment(t *testing.T) {
-	for _, opts := range []QueryOpts{{System: "You are a specialist"}, {Extra: "Selected article"}} {
+	for _, opts := range []QueryOpts{{Extra: "Selected article"}} {
 		if _, ok := promptCommand("headlines", opts); ok {
 			t.Fatal("bypassed explicit context")
 		}
@@ -86,7 +86,7 @@ func TestCommandCatalogueAndNativeFastPath(t *testing.T) {
 			t.Errorf("overmatched %q", input)
 		}
 	}
-	for _, opts := range []QueryOpts{{System: "Specialist"}, {Extra: "Selected source"}, {Tools: []string{"weather"}}} {
+	for _, opts := range []QueryOpts{{Extra: "Selected source"}, {Tools: []string{"weather"}}} {
 		if _, ok := promptCommand("headlines", opts); ok {
 			t.Errorf("escaped options: %+v", opts)
 		}
@@ -110,5 +110,32 @@ func TestCommandCatalogueAndNativeFastPath(t *testing.T) {
 	text, err := runNative("", "what's the weather today?", QueryOpts{Public: true})
 	if err != nil || !strings.Contains(text, "Which town or city") {
 		t.Fatalf("fast path failed: %q %v", text, err)
+	}
+}
+
+func TestExplicitCommandsNeverUseModel(t *testing.T) {
+	for _, spec := range []service.Spec{news.Spec, weather.Spec} {
+		if err := service.Register(spec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, input := range []string{"weather in London", "/weather London", "/weather in London"} {
+		call, ok := promptCommand(input, QueryOpts{System: "Selected agent", Tools: []string{"weather"}})
+		if !ok || call.Service != "weather" || call.Method != "Lookup" || call.Args["place"] != "London" {
+			t.Fatalf("%q: %+v %v", input, call, ok)
+		}
+	}
+	if _, ok := promptCommand("/weather London", QueryOpts{Extra: "attached prose"}); !ok {
+		t.Fatal("explicit command blocked by attachment")
+	}
+	for _, input := range []string{"/unknown-command", "/news"} {
+		answer, err := runNative("", input, QueryOpts{System: "Selected agent", Tools: []string{"weather"}})
+		if err == nil || !strings.Contains(err.Error(), "unknown or unavailable command") || answer != "" {
+			t.Fatalf("%s: %q %v", input, answer, err)
+		}
+	}
+	answer, err := QueryWithOpts("", "/weather", QueryOpts{Public: true, System: "Selected agent", Extra: "attached prose"})
+	if err != nil || !strings.Contains(answer, "Which town or city") {
+		t.Fatalf("direct query: %q %v", answer, err)
 	}
 }

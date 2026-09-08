@@ -914,14 +914,10 @@ document.addEventListener('click',function(e){
 // richer one wins; where only this is, the page still works.
 const chatPageJS = `<script>
 (function(){
-  var K='mu_active_agent';
-  if(typeof window.muActiveAgent==='undefined'){
-    try{window.muActiveAgent=sessionStorage.getItem(K)||'';}catch(e){window.muActiveAgent='';}
-  }
+  window.muActiveAgent='';
   if(typeof window.muSeedAgent!=='function'){
     window.muSeedAgent=function(id){
       window.muActiveAgent=id||'';
-      try{sessionStorage.setItem(K,window.muActiveAgent);}catch(e){}
     };
   }
   if(typeof window.muAgentCsrf!=='function'){
@@ -1582,13 +1578,6 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 		Said(accountID, threadID, req.Prompt, "", "")
 
-		// Notice anything worth remembering. This ran only on /agent/run — the
-		// REST and MCP path — so an agent remembered what a program told it and
-		// forgot everything a person did, which is backwards: the chat is where
-		// somebody says "I'm in London, keep it short". Cheap: one background
-		// model call, off the response path, and it stores nothing when the
-		// message holds no fact.
-		go extractMemory(accountID, req.Prompt, scopeOf(req.Agent))
 	}
 
 	// Start SSE stream
@@ -1622,8 +1611,12 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		nopts.System = ua.SystemPrompt
 		nopts.Tools = ua.Tools
 	}
+	_, directCommand := promptCommand(req.Prompt, nopts)
+	if !guest && !directCommand && !explicitCommand(req.Prompt) {
+		go extractMemory(accountID, req.Prompt, scopeOf(req.Agent))
+	}
 	if !guest && req.Cards && CardContextFunc != nil {
-		if _, direct := promptCommand(req.Prompt, nopts); !direct {
+		if !directCommand && !explicitCommand(req.Prompt) {
 			nopts.CardContext = CardContextFunc(accountID)
 		}
 	}

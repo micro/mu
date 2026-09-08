@@ -20,6 +20,8 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    await page.goto('https://mu.test'+path);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${path} overflows at ${width}`);
+   if(path==='/home')assert(await page.evaluate(()=>!window.muActiveAgent),'Home inherited another page agent');
+   if(path==='/'||path==='/home')assert(await page.locator('.shortcuts,[data-shortcut]').count()===0,'shortcut panels remain');
    if(path==='/agent/new'||path==='/token'){
     const select=path==='/token'?'#tok-scope':'#b-scope',list=path==='/token'?'#tok-service-list':'#b-service-list';
     assert(await page.locator(list).isHidden());
@@ -33,6 +35,12 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
    if(path==='/agents'){
     const space=await gap('.page-stack > .col','.section-actions');assert(space>=15&&space<=17,`Tools gap ${space}`);
+   }
+   if(path==='/chat'){
+    await page.locator('#messages').evaluate(e=>e.innerHTML='<p>Long conversation</p>'.repeat(100));
+    await page.waitForTimeout(100);
+    const bounds=await page.evaluate(()=>{const form=document.getElementById('chat-form').getBoundingClientRect();const tabs=document.getElementById('tabs');const end=tabs&&getComputedStyle(tabs).display!=='none'?tabs.getBoundingClientRect().top:innerHeight;return {bottom:form.bottom,end,scroll:scrollY,height:document.documentElement.scrollHeight};});
+    assert(bounds.bottom<=bounds.end-4,`room closed keyboard width=${width}: ${JSON.stringify(bounds)}`);
    }
    if(width<900&&(path==='/chat'||path==='/agent/micro')){
     const input=path==='/chat'?'#prompt':'#mu-chat-input';
@@ -61,6 +69,12 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(process.env.MU_LAYOUT_SHOTS){fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true});await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/'+(path.replaceAll('/','-')||'landing')+'-'+width+'-'+collapsed+'.png',fullPage:true});}
   }
  }
+ // Agent deep links must not change Home, including soft navigation.
+ await page.goto('https://mu.test/agent/micro');
+ await page.evaluate(()=>{window.muSeedAgent('another-agent');sessionStorage.setItem('mu_active_agent','another-agent');const a=document.createElement('a');a.href='/home';document.getElementById('content').appendChild(a);a.click();});
+ await page.waitForURL('**/home');
+ await page.waitForTimeout(100);
+ assert(await page.evaluate(()=>window.muActiveAgent===''),'Home retained the named agent after navigation');
  // A stale guest conversation from an older deployment must not reappear.
  await page.goto('https://mu.test/');
  await page.evaluate(()=>sessionStorage.setItem('mu_chat_conv:landing','<div class="mu-user">stale question</div>'));

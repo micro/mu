@@ -264,7 +264,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`</tbody></table>`)
 
 	sb.WriteString(`<h4 class="mt-5">Create an OAuth client</h4>`)
-	sb.WriteString(`<form method="POST" action="/token?create_client=1">`)
+	sb.WriteString(`<form class="form" method="POST" action="/token?create_client=1">`)
 	sb.WriteString(app.Field{
 		Name: "client_name", Label: "Name", Placeholder: "e.g. Claude", Required: true, Wide: true,
 	}.HTML())
@@ -279,7 +279,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// naming the old one would have been confidently wrong for months. What
 	// helps is showing the shape and saving the typing for the two that are
 	// actually common.
-	sb.WriteString(`<div class="mb-3"><label class="field-label">Redirect URL` +
+	sb.WriteString(`<div class="form-group"><label class="field-label">Redirect URL` +
 		`<input type="text" name="redirect_uri" ` +
 		`list="redirect-suggestions" placeholder="https://example.com/callback" ` +
 		`class="field field-wide"></label>` +
@@ -287,10 +287,10 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		`<option value="http://localhost:0/callback">Command-line or desktop client</option>` +
 		`<option value="https://claude.ai/api/mcp/auth_callback">Claude custom connector</option>` +
 		`</datalist></div>`)
-	sb.WriteString(`<p class="text-secondary text-xs m-0 mb-3">Where the client receives ` +
+	sb.WriteString(`<p class="text-secondary text-xs m-0">Where the client receives ` +
 		`its code. Must be https, or http on localhost. Left empty it is ` +
 		`<code>http://localhost:0/callback</code>, which suits a command-line or desktop client.</p>`)
-	sb.WriteString(`<button type="submit">Create Client</button></form>`)
+	sb.WriteString(`<div class="form-actions"><button type="submit">Create</button></div></form>`)
 
 	sb.WriteString(`<script>
 async function createToken(e) {

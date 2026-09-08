@@ -573,7 +573,6 @@ function fetchW(la,lo){
 		// the brief further down the page. You are told, or you ask. See
 		// hideBrief in app.ChatComponent.
 		if viewerID != "" {
-			b.WriteString(shortcutsHTML(true))
 			if brief := briefHTML(viewerID); brief != "" {
 				b.WriteString(`<div id="home-brief" data-brief>` + brief + `</div>`)
 			}
