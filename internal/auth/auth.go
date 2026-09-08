@@ -677,6 +677,13 @@ func UpdatePresence(username string) {
 	userPresence[username] = time.Now()
 }
 
+// LastSeen returns the latest recorded activity, or zero when none is known.
+func LastSeen(username string) time.Time {
+	presenceMutex.RLock()
+	defer presenceMutex.RUnlock()
+	return userPresence[username]
+}
+
 // OnlineUsers returns a list of currently online usernames
 func OnlineUsers() []string {
 	presenceMutex.RLock()

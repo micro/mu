@@ -119,12 +119,10 @@ func TestSomebodyYouHaveNeverWrittenToStillHasAPage(t *testing.T) {
 			w.Header().Get("Location"))
 	}
 	body := w.Body.String()
-	// "Send mail", not "Send a message" and not "Start a conversation". The
-	// first two name neither door: mail and chat are different promises — one
-	// answered when they get to it, the other answered now — and the label has
-	// to say which this is. It is also a button, not a sentence.
-	if !strings.Contains(body, "Send mail") {
-		t.Errorf("no way to write to them, or it does not say which door:\n%s", body)
+	for _, action := range []string{">Chat</a>", ">Mail</a>"} {
+		if !strings.Contains(body, action) {
+			t.Errorf("missing action %s", action)
+		}
 	}
 	// And it is still their page: it says whose, and where the button goes.
 	//

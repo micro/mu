@@ -204,31 +204,14 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// sendMailTo is the way to write to somebody, as an icon with a word.
-//
-// Mail and chat are different promises — one is answered when they get to it,
-// the other is answered now — and "Send a message" named neither. It also read
-// as a sentence where a button belongs. So the label says which door it is:
-// Send mail, because mail is what /inbox/new writes.
-//
-// The envelope and the bubble carry the distinction faster than the words do,
-// which is the point of having both: the icon separates the two at a glance and
-// the word says which is which for anybody who does not read icons.
-//
-// Chat is beside it now and was not, for a reason worth keeping: service/chat
-// had topic rooms and no concept of a room that is these two people, so the
-// only thing this could have linked to was an id assembled from two account
-// names that anybody could guess and open. A private conversation with a
-// guessable address is not private, and a button that lies about that is worse
-// than one that is not there. chat.Open and the membership check are what make
-// it honest — see service/chat/private.go.
+// reachTo opens private chat or a mail draft for this person.
 func reachTo(handle string) string {
 	to := html.EscapeString(url.QueryEscape(handle))
 	who := html.EscapeString(url.QueryEscape(strings.TrimPrefix(handle, "@")))
 	return `<a class="btn ib-act" href="/chat?with=` + who + `">` +
 		iconChat + `Chat</a>` +
 		`<a class="btn btn-quiet ib-act" href="/inbox/new?to=` + to + `">` +
-		iconMail + `Send mail</a>`
+		iconMail + `Mail</a>`
 }
 
 // iconChat is a speech bubble.
