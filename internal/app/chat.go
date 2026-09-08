@@ -428,7 +428,12 @@ func ChatComponent(cfg ChatConfig) string {
 			`<input type="checkbox" id="mu-chat-say-on">` +
 			`<span class="mu-chat-agent-label">Speak</span></label>`
 	}
-	opts := `<div id="mu-chat-opts">` + agentPicker + sayToggle + `</div>`
+	wake := ""
+	if cfg.Speak {
+		wake = `<details id="mu-chat-wake" class="disclosure" hidden><summary>Hey Micro</summary><div class="page-stack"><p>Say “Hey Micro” to dictate into the message box, then check the words and press Send. Listening works while this page is open and stops when you leave. Your browser may send audio to its speech provider.</p><div class="form-actions"><button type="button" id="mu-chat-wake-toggle" aria-pressed="false">Start listening</button></div><p id="mu-chat-wake-status" role="status" aria-live="polite">Listening is off.</p></div></details>`
+	}
+	wakeJS, _ := htmlFiles.ReadFile("html/wake.js")
+	opts := `<div id="mu-chat-opts">` + agentPicker + sayToggle + `</div>` + wake
 	suggest := `<div id="mu-chat-suggest"></div>`
 	conv := `<div id="mu-chat-conv">` + initialConv + `</div>`
 
@@ -1203,7 +1208,9 @@ window.muChatAsk=ask;
   if(box&&mic&&SR){
     mic.hidden=false;
     var rec=null,on=false,settled='';
+    window.muStopDictation=function(){if(rec){try{rec.abort();}catch(e){}}};
     mic.addEventListener('click',function(){
+      if(window.muWake)window.muWake.stop();
       if(on&&rec){rec.stop();return;}
       rec=new SR();
       rec.lang=document.documentElement.lang||'en-GB';
@@ -1308,6 +1315,8 @@ window.muChatAsk=ask;
     };
   }
 })();
+
+` + string(wakeJS) + `
 
 // An answer that landed while the page was gone.
 //
