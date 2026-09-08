@@ -58,7 +58,6 @@ func TestTheAtRouteServesTheConversation(t *testing.T) {
 func TestThereIsNoProfilePageLeft(t *testing.T) {
 	for _, gone := range []string{
 		filepath.Join("internal", "user", "profile.go") + ":ProfileHandler",
-		filepath.Join("internal", "user", "status.go") + ":",
 		filepath.Join("internal", "user", "post.go") + ":",
 	} {
 		parts := strings.SplitN(gone, ":", 2)

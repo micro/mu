@@ -60,6 +60,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/user"
 	"mu/internal/thread"
 )
 
@@ -124,6 +125,9 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="ib-person">`)
 	b.WriteString(`<p class="ib-person-sub">` + html.EscapeString(handle) + `</p>`)
 	b.WriteString(personFacts(them))
+	if status := user.Status(them.ID); status != "" {
+		b.WriteString(`<p class="text-secondary">` + html.EscapeString(status) + `</p>`)
+	}
 	// New message belongs on a page that already has one.
 	//
 	// On an empty page it was the fourth thing saying the same thing: the name,

@@ -186,3 +186,25 @@ func TestTheSameTextForTwoAccountsIsTwoEntries(t *testing.T) {
 		t.Fatalf("bob's entry was dropped as a repeat of alice's")
 	}
 }
+
+func TestChangingUpdatesAtOneURLRemainVisible(t *testing.T) {
+	for _, source := range []string{"brief", "markets", "users"} {
+		reset(t)
+		for _, text := range []string{"first", "second", "second", "first"} {
+			add(&Entry{Service: source, Text: text, URL: "/same"})
+		}
+		if got := Recent(10, "reader"); len(got) != 3 {
+			t.Fatalf("%s: expected three changes, got %d", source, len(got))
+		}
+	}
+}
+
+func TestBriefAndChatEntriesStayWithTheirAccounts(t *testing.T) {
+	reset(t)
+	for _, source := range []string{"brief", "chat"} {
+		add(&Entry{Service: source, Text: "private", URL: "/same", Account: "alice"})
+	}
+	if len(Recent(10, "")) != 0 || len(Recent(10, "bob")) != 0 || len(Recent(10, "alice")) != 2 {
+		t.Fatal("private activity escaped its owner")
+	}
+}

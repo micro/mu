@@ -276,6 +276,9 @@ func deliver(r request, answer string, err error) {
 		return
 	}
 	if e := events.Brief(r.Account); e != nil && e.ID == r.ID {
+		if err == nil {
+			event.Announce("brief", body, "/inbox", r.Account)
+		}
 		body += "\n\n---\n[Disable or manage your morning brief](" + origin.Self() + "/events#morning-brief)."
 	}
 	mail.SendMessageTo(mail.Delivery{ //nolint:errcheck

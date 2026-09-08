@@ -948,6 +948,8 @@ func (room *Room) run() {
 			copy(messagesToSave, room.Messages)
 			room.mutex.Unlock()
 
+			announceMessage(room.ID, message)
+
 			// Persist messages for topic chat rooms
 			if strings.HasPrefix(room.ID, "chat_") {
 				go saveRoomMessages(room.ID, messagesToSave)

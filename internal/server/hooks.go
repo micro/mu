@@ -49,6 +49,7 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/thread"
+	"mu/internal/user"
 	"mu/internal/world"
 	"mu/internal/x402"
 	"mu/service/apps"
@@ -495,9 +496,6 @@ func wireHooks() {
 	// load docs
 	help.Load()
 
-	// Load the stream (platform event timeline).
-	stream.Load()
-
 	// Keep copies of the data directory. It takes one at startup, because the
 	// most useful snapshot is the one from before whatever is about to go
 	// wrong, and the search index goes in through VACUUM rather than a file
@@ -548,6 +546,7 @@ func wireHooks() {
 		social.DeleteByAuthor,
 		apps.DeleteAppsByAuthor,
 		stream.DeleteByAccount,
+		user.DeleteProfile,
 		mail.DeleteInbox,
 		chat.Forget,
 		func(id string) { account.DeleteCredits(id) },

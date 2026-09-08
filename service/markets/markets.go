@@ -14,6 +14,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/service"
 	"mu/internal/snapshot"
 
@@ -287,6 +288,7 @@ func refreshMarkets() {
 	// So a failure retries soon and backs off, rather than waiting out the
 	// interval as though nothing had happened.
 	fail := 0
+	var announced time.Time
 	for {
 		prices, priceData := fetchPrices()
 		if prices != nil {
@@ -307,6 +309,18 @@ func refreshMarkets() {
 			// prices in two renderings and a second schedule would let them
 			// disagree.
 			snapshot.Channel(Spec.Name, "now").Publish(Now())
+			if time.Since(announced) >= time.Hour {
+				var lines []string
+				for _, symbol := range []string{"BTC", "ETH", "SOL"} {
+					if pd, ok := priceData[symbol]; ok && pd.Price > 0 {
+						lines = append(lines, fmt.Sprintf("%s $%s (%+.2f%%)", symbol, marketsPriceStr(pd.Price), pd.Change24h))
+					}
+				}
+				if len(lines) > 0 {
+					event.Announce("markets", strings.Join(lines, " · "), "/markets", "")
+					announced = time.Now()
+				}
+			}
 
 			indexMarketPrices(prices)
 			data.SaveFile("markets.html", html)

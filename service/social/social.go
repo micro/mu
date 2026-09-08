@@ -74,6 +74,7 @@ func addMessage(p *Message) {
 	indexMessages([]*Message{p})
 	save()
 
+	event.Announce("social", p.Author+": "+p.Content, "/social/thread?id="+p.ID, "")
 	event.Published("social", p.ID, "", p.Content)
 	event.Publish(event.Event{Type: "social_updated"})
 }

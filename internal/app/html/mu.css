@@ -4830,7 +4830,8 @@ a.card-hover:hover {
   color: #ccc;
 }
 .recent-search-item.active .recent-search-close:hover,
-.recent-search-item.active:visited .recent-search-close:hover {
+.recent-search-item.active:visited .recent-search-item button { background: transparent; border: 0; padding: 0 6px; font: inherit; color: inherit; }
+.recent-search-close:hover {
   color: white;
 }
 .recent-search-label {
@@ -4843,6 +4844,7 @@ a.card-hover:hover {
   cursor: pointer;
   font-weight: bold;
 }
+.recent-search-item button { background: transparent; border: 0; padding: 0 6px; font: inherit; color: inherit; }
 .recent-search-close:hover {
   color: #000;
 }

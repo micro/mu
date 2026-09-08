@@ -62,6 +62,9 @@ func boot() {
 	// load the data index
 	data.Load()
 
+	// Subscribe before services start publishing their first refresh.
+	stream.Load()
+
 	// load admin/flags
 	admin.Load()
 
