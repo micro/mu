@@ -49,6 +49,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/internal/origin"
 	"mu/internal/thread"
 	"mu/service/events"
 	"mu/service/mail"
@@ -269,6 +270,9 @@ func deliver(r request, answer string, err error) {
 	acc, accErr := auth.GetAccount(r.Account)
 	if accErr != nil {
 		return
+	}
+	if e := events.Brief(r.Account); e != nil && e.ID == r.ID {
+		body += "\n\n---\n[Disable or manage your morning brief](" + origin.Self() + "/events#morning-brief)."
 	}
 	mail.SendMessageTo(mail.Delivery{ //nolint:errcheck
 		From: "Mu", FromID: "agent@" + mail.ConfiguredDomain(),

@@ -3,6 +3,8 @@ package events
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/data"
 	"time"
 	_ "time/tzdata"
@@ -21,6 +23,10 @@ func Brief(owner string) *Event {
 // ScheduleBrief updates one standing instruction atomically, without creating
 // calendar invitations. Repeated form submissions cannot duplicate the job.
 func ScheduleBrief(owner, clock, zone, repeat, period string, paused bool) error {
+	return scheduleBrief(owner, clock, zone, repeat, period, paused, false)
+}
+
+func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bool) error {
 	if owner == "" {
 		return fmt.Errorf("sign in to schedule a brief")
 	}
@@ -55,12 +61,19 @@ func ScheduleBrief(owner, clock, zone, repeat, period string, paused bool) error
 			break
 		}
 	}
+	if builtin && old != nil {
+		return nil
+	}
 	e := &Event{ID: uuid.New().String(), Owner: owner, Created: time.Now().UTC()}
 	if old != nil {
 		*e = *old
 	}
 	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Prompt, e.Paused = "brief", "Daily brief", next, zone, repeat, prompt, paused
 	e.Fired, e.FiredAt = false, time.Time{}
+	e.Builtin = builtin
+	if period == "morning" {
+		e.Title = "Morning brief"
+	}
 	e.Sequence++
 	events[e.ID] = e
 	list := make([]*Event, 0, len(events))
@@ -76,4 +89,24 @@ func ScheduleBrief(owner, clock, zone, repeat, period string, paused bool) error
 		return err
 	}
 	return nil
+}
+
+// Reconcile defaults for existing and newly created human accounts. Unknown
+// timezones wait rather than sending at the server's six o'clock. An existing
+// record, including a disabled one, is the durable choice and is never replaced.
+func ensureDefaultBriefs() {
+	for _, acc := range auth.AllAccounts() {
+		if acc.Agent || acc.Banned || acc.Unclaimed || acc.Zone == "" || acc.Zone == "Local" {
+			continue
+		}
+		if _, err := time.LoadLocation(acc.Zone); err != nil {
+			continue
+		}
+		if Brief(acc.ID) != nil {
+			continue
+		}
+		if err := scheduleBrief(acc.ID, "06:00", acc.Zone, "daily", "morning", false, true); err != nil {
+			app.Log("events", "default brief: %v", err)
+		}
+	}
 }

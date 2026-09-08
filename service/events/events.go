@@ -21,6 +21,7 @@ import (
 
 // Event is a scheduled reminder owned by a single user.
 type Event struct {
+	Builtin  bool      `json:"builtin,omitempty"`
 	Kind     string    `json:"kind,omitempty"`
 	Zone     string    `json:"zone,omitempty"`
 	Paused   bool      `json:"paused,omitempty"`
@@ -181,7 +182,11 @@ func Cancel(owner, id string) error {
 	if e == nil || e.Owner != owner {
 		return fmt.Errorf("event not found")
 	}
-	delete(events, id)
+	if e.Kind == "brief" {
+		e.Paused = true
+	} else {
+		delete(events, id)
+	}
 	saveLocked()
 	return nil
 }
@@ -200,6 +205,7 @@ func scheduler() {
 // fireDue marks every due event fired (under lock, persisting once) then
 // delivers them outside the lock so a slow channel can't block the store.
 func fireDue() {
+	ensureDefaultBriefs()
 	now := time.Now().UTC()
 	var due []*Event
 
@@ -228,7 +234,7 @@ func fireDue() {
 	mu.Unlock()
 
 	for _, e := range due {
-		if OnFire != nil {
+		if OnFire != nil && e.Kind != "brief" {
 			OnFire(e.Owner, e.Title, e.Note)
 		}
 		// And the work, where the event carries an instruction. Announced
@@ -263,7 +269,11 @@ func Remove(owner, id string) error {
 	if !ok || e.Owner != owner {
 		return fmt.Errorf("no such event")
 	}
-	delete(events, id)
+	if e.Kind == "brief" {
+		e.Paused = true
+	} else {
+		delete(events, id)
+	}
 	saveLocked()
 	return nil
 }

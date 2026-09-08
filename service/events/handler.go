@@ -16,6 +16,10 @@ import (
 // and cancel. GET with an Accept: application/json header returns the caller's
 // upcoming events as JSON.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.FormValue("action") == "brief-schedule" {
+		briefScheduleHandler(w, r)
+		return
+	}
 	sess, _ := auth.TrySession(r)
 	if sess == nil {
 		http.Redirect(w, r, "/login?next=/events", http.StatusSeeOther)
@@ -49,6 +53,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// converts it to an RFC3339 UTC instant on submit so 3pm means the user's
 	// 3pm regardless of the server's timezone.
 	b.WriteString(`<div class="page-col">`)
+	b.WriteString(briefScheduleHTML(owner, csrf))
 	b.WriteString(`<form method="POST" action="/events" onsubmit="var d=this.whenlocal.value;if(d){this.when.value=new Date(d).toISOString()}" class="col m-0 mb-6">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">`)
 	b.WriteString(`<input type="hidden" name="action" value="create">`)
@@ -72,7 +77,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div class="d-flex flex-column gap-2">`)
 		for _, row := range mergedRows(up, ext) {
 			if row.Event != nil {
-				b.WriteString(eventRow(row.Event, csrf))
+				if row.Event.Kind != "brief" {
+					b.WriteString(eventRow(row.Event, csrf))
+				}
 			} else {
 				b.WriteString(externalRow(row.External))
 			}

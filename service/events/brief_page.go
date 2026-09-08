@@ -1,10 +1,9 @@
-package home
+package events
 
 import (
 	"html"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/service/events"
 	"net/http"
 	"strings"
 	"time"
@@ -18,12 +17,12 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if len(csrf) > 0 {
 		token = csrf[0]
 	}
-	clock, zone, repeat, period := "20:00", "", "daily", "evening"
-	label, status := "Schedule", ""
+	clock, zone, repeat, period := "06:00", "", "daily", "morning"
+	label, status := "Manage", "Daily at 06:00 once your timezone is set"
 	if acc, err := auth.GetAccount(owner); err == nil && acc != nil {
 		zone = acc.Zone
 	}
-	e := events.Brief(owner)
+	e := Brief(owner)
 	if e != nil {
 		zone, repeat = e.Zone, e.Repeat
 		loc, err := time.LoadLocation(zone)
@@ -37,11 +36,11 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		label = "Manage"
 		status = strings.Title(repeat) + " at " + clock + " (" + zone + ")"
 		if e.Paused {
-			status = "Paused"
+			status = "Disabled"
 		}
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="mt-3"><span class="text-muted">` + html.EscapeString(status) + `</span><details><summary>` + label + `</summary><form method="POST" action="/home" class="col gap-2 mt-3">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
+	b.WriteString(`<section id="morning-brief" class="mb-6"><h3>Morning brief</h3><p>Your daily email brief, with today’s calendar, weather and relevant updates.</p><div class="mt-3"><span class="text-muted">` + html.EscapeString(status) + `</span><details><summary>` + label + `</summary><form method="POST" action="/events" class="col gap-2 mt-3">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {
 		b.WriteString(`<label>` + title + `<select class="form-input" name="` + name + `">`)
 		for _, v := range values {
@@ -60,15 +59,15 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if e == nil {
 		b.WriteString("Schedule")
 	} else if e.Paused {
-		b.WriteString("Resume")
+		b.WriteString("Enable")
 	} else {
 		b.WriteString("Save")
 	}
 	b.WriteString(`</button>`)
 	if e != nil && !e.Paused {
-		b.WriteString(`<button name="state" value="paused" class="btn-secondary">Pause</button>`)
+		b.WriteString(`<button name="state" value="paused" class="btn-secondary">Disable</button>`)
 	}
-	b.WriteString(`</div></form></details></div><script>(function(){var f=document.querySelector('form input[name="action"][value="brief-schedule"]');if(f){var z=f.form.elements.zone;if(!z.value){try{z.value=Intl.DateTimeFormat().resolvedOptions().timeZone}catch(e){}}}})();</script>`)
+	b.WriteString(`</div></form></details></div><script>(function(){var f=document.querySelector('form input[name="action"][value="brief-schedule"]');if(f){var z=f.form.elements.zone;if(!z.value){try{z.value=Intl.DateTimeFormat().resolvedOptions().timeZone}catch(e){}}}})();</script></section>`)
 	return b.String()
 }
 
@@ -79,7 +78,7 @@ func briefScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !auth.StrictCSRF(r) {
-		http.Error(w, "Reload Home and try again", http.StatusForbidden)
+		http.Error(w, "Reload Events and try again", http.StatusForbidden)
 		return
 	}
 	state := r.FormValue("state")
@@ -87,10 +86,10 @@ func briefScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid schedule action", http.StatusBadRequest)
 		return
 	}
-	err := events.ScheduleBrief(sess.Account, r.FormValue("clock"), r.FormValue("zone"), r.FormValue("repeat"), r.FormValue("period"), state == "paused")
+	err := ScheduleBrief(sess.Account, r.FormValue("clock"), r.FormValue("zone"), r.FormValue("repeat"), r.FormValue("period"), state == "paused")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
+	http.Redirect(w, r, "/events", http.StatusSeeOther)
 }
