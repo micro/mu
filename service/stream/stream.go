@@ -115,7 +115,7 @@ func Load() {
 // Dropped on load rather than left to age out, because 500 entries is however
 // many months on a quiet instance, and no operator should have to be told to
 // delete a file.
-func theirsAlone(e *Entry) bool { return e.Service == "mail" }
+func theirsAlone(e *Entry) bool { return e.Service == "mail" || e.Service == "social" }
 
 func valid(e *Entry) bool {
 	return e != nil && e.Service != "" && e.Text != "" && !e.At.IsZero()
