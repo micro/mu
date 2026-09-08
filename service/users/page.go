@@ -22,6 +22,7 @@ package users
 import (
 	"html"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -88,7 +89,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // rows is the list itself.
 func rows(list []User, me string) string {
 	var b strings.Builder
-	b.WriteString(`<table class="admin-table"><tbody>`)
+	b.WriteString(`<div class="page-stack">`)
 	for _, u := range list {
 		name := html.EscapeString(u.Display())
 		badge := ""
@@ -113,16 +114,22 @@ func rows(list []User, me string) string {
 		// bug rather than a feature.
 		act := ""
 		if u.ID != me {
-			act = `<a class="mini-btn" href="/inbox/new?to=` +
-				html.EscapeString(u.ID) + `">Send message</a>`
+			to := html.EscapeString(url.QueryEscape(u.ID))
+			act = `<div class="form-actions"><a class="mini-btn" href="/chat?with=` + to + `">Chat</a>` +
+				`<a class="mini-btn" href="/inbox/new?to=` + to + `">Mail</a></div>`
 		}
 
-		b.WriteString(`<tr>` +
-			`<td data-label="Name">` + who + `</td>` +
-			`<td data-label="" class="actions-cell">` + act + `</td>` +
-			`</tr>`)
+		seen := ""
+		if u.Profile.Online {
+			seen = "Here now"
+		} else if at := auth.LastSeen(u.ID); !at.IsZero() {
+			seen = "Last seen " + app.TimeAgo(at)
+		}
+		b.WriteString(`<div class="card page-stack"><div class="row-top">` +
+			`<div>` + who + `</div><span class="push-right text-muted text-xs">` +
+			html.EscapeString(seen) + `</span></div>` + act + `</div>`)
 	}
-	b.WriteString(`</tbody></table>`)
+	b.WriteString(`</div>`)
 	return b.String()
 }
 
