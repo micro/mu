@@ -7,10 +7,39 @@ package server
 // on this host while saying the form violated 'self'.
 
 import (
+	"mu/service/video"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func TestWatchPageAllowsPlayerScriptsWithoutRelaxingOtherPages(t *testing.T) {
+	for _, path := range []string{"/video", "/video?id=abc123"} {
+		rr := httptest.NewRecorder()
+		setSecurityHeaders(rr)
+		video.Handler(rr, httptest.NewRequest("GET", path, nil))
+		policy := rr.Header().Get("Content-Security-Policy")
+		for _, part := range strings.Split(policy, ";") {
+			if strings.HasPrefix(strings.TrimSpace(part), "script-src ") {
+				allowed := strings.Contains(part, "https://www.youtube.com") && strings.Contains(part, "https://s.ytimg.com")
+				if allowed != strings.Contains(path, "?id=") {
+					t.Fatalf("%s: incorrect player script policy: %s", path, part)
+				}
+			}
+		}
+		if strings.Contains(path, "?id=") {
+			body := rr.Body.String()
+			for _, want := range []string{`<body class="video-player-body">`, `referrerpolicy="strict-origin"`, `content="no-referrer"`, `allowfullscreen`} {
+				if !strings.Contains(body, want) {
+					t.Errorf("watch page missing %s", want)
+				}
+			}
+			if strings.Contains(body, `id="content"`) {
+				t.Fatal("watch page returned the app shell")
+			}
+		}
+	}
+}
 
 func csp(t *testing.T) string {
 	t.Helper()

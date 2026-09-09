@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>%s | Mu</title>
+  <link rel="stylesheet" href="/mu.css?%s">
+  <link rel="stylesheet" href="/composition.css?%[2]s">
+</head>
+<body class="video-player-body">
+  <div class="video-embed">
+    %s
+    <div class="audio-vis" id="audioVis" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+  <footer class="video-bar">
+    <a href="/video">← Video</a>
+    <button id="audioBtn" type="button" aria-pressed="false">♫ Audio only</button>
+    <button id="playBtn" type="button" class="d-none" aria-label="Play">▶</button>
+    <span id="audioTime"></span>
+    <details class="disclosure video-info">
+      <summary>More</summary>
+      <div class="video-info-panel">
+        <strong>%s</strong>
+        <p>%s</p>
+        <div class="reading-actions">%s</div>
+      </div>
+    </details>
+  </footer>
+  %s
+  <script>
+  (function(){
+    var player, timer;
+    var embed=document.querySelector('.video-embed');
+    var audio=document.getElementById('audioBtn');
+    var play=document.getElementById('playBtn');
+    var time=document.getElementById('audioTime');
+    function updateState(){
+      if(!player||!player.getPlayerState)return;
+      var playing=player.getPlayerState()===1;
+      play.textContent=playing?'⏸':'▶';
+      play.setAttribute('aria-label',playing?'Pause':'Play');
+    }
+    function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60),r=s%%60;return m+':'+(r<10?'0':'')+r;}
+    audio.addEventListener('click',function(){
+      var on=embed.classList.toggle('audio-only');
+      document.getElementById('audioVis').style.display=on?'flex':'none';
+      audio.textContent=on?'▶ Show video':'♫ Audio only';
+      audio.setAttribute('aria-pressed',String(on));
+      play.classList.toggle('d-none',!on);
+      clearInterval(timer);
+      updateState();
+      if(on){
+        timer=setInterval(function(){
+          if(!player||!player.getCurrentTime)return;
+          time.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
+          updateState();
+        },500);
+      }else{time.textContent='';}
+    });
+    play.addEventListener('click',function(){
+      if(!player||!player.getPlayerState)return;
+      player.getPlayerState()===1?player.pauseVideo():player.playVideo();
+    });
+    window.onYouTubeIframeAPIReady=function(){
+      player=new YT.Player('ytplayer',{events:{onStateChange:updateState}});
+    };
+  })();
+  </script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

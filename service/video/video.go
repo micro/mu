@@ -35,6 +35,9 @@ var cardSnap *snapshot.Snapshot
 //go:embed channels.json
 var f embed.FS
 
+//go:embed watch.html
+var watchPage string
+
 var mutex sync.RWMutex
 
 // category to channel mapping
@@ -702,8 +705,9 @@ func embedVideoWithAutoplay(id string, autoplay bool) string {
 	if autoplay {
 		u += "&autoplay=1"
 	}
+	// YouTube requires a Referer; disclose only the origin, never the watch URL.
 	style := `class="fill-abs"`
-	return `<iframe id="ytplayer" width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" playsinline allowfullscreen></iframe>`
+	return `<iframe id="ytplayer" width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" referrerpolicy="strict-origin" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" playsinline allowfullscreen></iframe>`
 }
 
 func getChannel(category, handle string) (string, []*Result, error) {
@@ -1246,83 +1250,24 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
-		// A watch page in the app shell; fullscreen remains a player control.
-		tmpl := `<div class="watch-page"><p><a href="/video">← Back to video</a></p>
-    <div class="video-embed">
-      %s
-      <div class="audio-vis" id="audioVis">
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-    </div>
-    <div class="video-bar">
-      <button id="audioBtn" onclick="toggleAudio()">♫ Audio only</button>
-      <span id="audioTime"></span>
-      <button id="playBtn" onclick="togglePlay()" class="d-none">▶</button>
-    </div>
-    <script>
-    (function(){
-      if(window.muVideoCleanup)window.muVideoCleanup();
-      var root=document.querySelector('.watch-page'),player,tInt;
-      function ready(){
-        if(!root.isConnected||player)return;
-        player=new YT.Player('ytplayer',{events:{'onStateChange':onState}});
-      }
-      function onState(e){
-        var b=root.querySelector('#playBtn');
-        if(b&&b.style.display!=='none')b.textContent=(e.data===1)?'⏸':'▶';
-      }
-      function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60);var r=s%%60;return m+':'+(r<10?'0':'')+r;}
-      function toggleAudio(){
-        var em=root.querySelector('.video-embed'),vis=root.querySelector('#audioVis');
-        var btn=root.querySelector('#audioBtn'),pb=root.querySelector('#playBtn'),t=root.querySelector('#audioTime');
-        var on=em.classList.toggle('audio-only');
-        vis.style.display=on?'flex':'none';btn.textContent=on?'▶ Show video':'♫ Audio only';pb.style.display=on?'inline-flex':'none';
-        clearInterval(tInt);
-        if(on){
-          tInt=setInterval(function(){
-            if(!player||!player.getCurrentTime)return;
-            t.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
-            pb.textContent=(player.getPlayerState()===1)?'⏸':'▶';
-          },500);
-        }else{t.textContent='';}
-      }
-      function togglePlay(){
-        if(!player||!player.getPlayerState)return;
-        player.getPlayerState()===1?player.pauseVideo():player.playVideo();
-      }
-      window.toggleAudio=toggleAudio;window.togglePlay=togglePlay;
-      function cleanup(){
-        if(root.isConnected)return;
-        clearInterval(tInt);
-        if(player){try{player.destroy();}catch(e){}}
-        if(window.toggleAudio===toggleAudio)delete window.toggleAudio;
-        if(window.togglePlay===togglePlay)delete window.togglePlay;
-        if(window.muVideoCleanup===cleanup)delete window.muVideoCleanup;
-        document.removeEventListener('mu:navigated',cleanup);
-      }
-      window.muVideoCleanup=cleanup;
-      document.addEventListener('mu:navigated',cleanup);
-      // Soft navigation keeps the API alive between watch pages. Initialise
-      // immediately if it is loaded, and release the previous page's player.
-      if(window.YT&&window.YT.Player){ready();}else{
-        var previous=window.onYouTubeIframeAPIReady;
-        window.onYouTubeIframeAPIReady=function(){if(previous)previous();ready();};
-        if(!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')){
-          var script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';document.head.appendChild(script);
-        }
-      }
-    })();
-    </script>
-</div><style>.watch-page{max-width:var(--page-width)}.watch-page .video-embed{position:relative;width:100%%;height:auto;aspect-ratio:16/9;background:#000}.watch-page .video-embed iframe{position:absolute;inset:0;width:100%%;height:100%%}.watch-page .video-bar{position:static;background:#111;padding:8px}</style>
-`
 		title, channel := watchTitle(id)
-		body := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay))
-		body += `<p>` + htmlpkg.EscapeString(channel) + `</p><div class="reading-actions"><a href="https://www.youtube.com/watch?v=` + url.QueryEscape(id) + `" rel="noopener noreferrer">Original ↗</a></div>`
+		actions := `<a href="https://www.youtube.com/watch?v=` + url.QueryEscape(id) + `" rel="noopener noreferrer">Original ↗</a>`
 		if e := data.ByID("video_" + id); e != nil && e.Owner == "" && e.Type == data.KindVideo {
-			body += app.ReadingActions(r, "video_"+id)
+			actions += app.ReadingActionItems(r, "video_"+id)
 		}
-		body += app.ReadingCSS
-		app.Respond(w, r, app.Response{Title: title, Description: title, HTML: body})
+		// Watch pages own the viewport and player lifecycle, outside the app shell.
+		// The iframe API controls audio-only mode. Permit its scripts only on
+		// watch pages, keeping the rest of the site's policy intact.
+		policy := w.Header().Get("Content-Security-Policy")
+		if policy != "" {
+			w.Header().Set("Content-Security-Policy", strings.Replace(policy,
+				"script-src 'self' 'unsafe-inline'",
+				"script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com", 1))
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, watchPage, htmlpkg.EscapeString(title), app.Version,
+			embedVideoWithAutoplay(id, autoplay), htmlpkg.EscapeString(title),
+			htmlpkg.EscapeString(channel), actions, app.ReadingCSS)
 
 		return
 	}
