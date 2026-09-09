@@ -85,12 +85,6 @@ type ServiceHealth struct {
 	Path   string `json:"path,omitempty"`
 }
 
-// PublicStatusResponse is the public status page response
-type PublicStatusResponse struct {
-	Healthy  bool            `json:"healthy"`
-	Services []ServiceHealth `json:"services"`
-}
-
 // HealthCheckFunc is set by main to run service health checks (avoids import cycles)
 var HealthCheckFunc func() []ServiceHealth
 
@@ -104,89 +98,8 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RespondPublic(w, r, Response{Title: "Status", Description: "Service status",
+	RespondPublic(w, r, Response{Title: "Status", Description: "Micro availability",
 		HTML: renderPublicStatusHTML(status)})
-}
-
-func checkPublicStatus() PublicStatusResponse {
-	var services []ServiceHealth
-	if HealthCheckFunc != nil {
-		services = HealthCheckFunc()
-	}
-	healthy := true
-	for _, s := range services {
-		if !s.Status {
-			healthy = false
-			break
-		}
-	}
-	return PublicStatusResponse{
-		Healthy:  healthy,
-		Services: services,
-	}
-}
-
-func renderPublicStatusHTML(status PublicStatusResponse) string {
-	var sb strings.Builder
-
-	statusText := "All systems operational"
-	statusClass := "status-ok"
-	if !status.Healthy {
-		statusText = "Some services are experiencing issues"
-		statusClass = "status-error"
-	}
-
-	// In the column the other public pages use. It had a 600px cap of its own,
-	// which made it the fourth width among four pages a stranger reads in one
-	// sitting. See Column.
-	sb.WriteString(Column())
-	sb.WriteString(`<div class="status-page">`)
-
-	// Header
-	sb.WriteString(fmt.Sprintf(`<div class="status-header">
-<span class="status-icon %s text-24">●</span>
-<span class="text-18">%s</span>
-</div>`, statusClass, statusText))
-
-	// Services
-	sb.WriteString(`<div class="status-section">`)
-	for _, svc := range status.Services {
-		icon := "●"
-		class := "status-ok"
-		if !svc.Status {
-			class = "status-error"
-		}
-		pathAttr := ""
-		if svc.Path != "" {
-			pathAttr = fmt.Sprintf(` data-path="%s"`, svc.Path)
-		}
-		sb.WriteString(fmt.Sprintf(`<div class="status-item"%s>
-<span class="status-name">%s</span>
-<span class="status-value"><span class="status-latency"></span><span class="status-icon %s">%s</span></span>
-</div>`, pathAttr, svc.Name, class, icon))
-	}
-	sb.WriteString(`</div>`)
-
-	// Client-side latency checks
-	sb.WriteString(`<script>
-document.querySelectorAll('.status-item[data-path]').forEach(function(el) {
-  var path = el.getAttribute('data-path');
-  var span = el.querySelector('.status-latency');
-  var start = performance.now();
-  fetch(path, {method:'HEAD',cache:'no-store'}).then(function() {
-    var ms = Math.round(performance.now() - start);
-    span.textContent = ms + 'ms';
-    span.className = 'status-latency status-details';
-  }).catch(function() {
-    span.textContent = 'error';
-    span.className = 'status-latency status-details';
-  });
-});
-</script>`)
-
-	sb.WriteString(`</div>`)
-	sb.WriteString(Close())
-	return sb.String()
 }
 
 // RenderInternalStatusHTML returns the internal status HTML for embedding in the admin server page

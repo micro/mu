@@ -34,7 +34,8 @@ func TestEveryServiceIsLoadedAtBoot(t *testing.T) {
 		// Either name: some register with Load, some with LoadService, and
 		// which one is not the point being made here.
 		loaded := regexp.MustCompile(`\b` + regexp.QuoteMeta(pkg) + `\.Load(Service)?\(\)`)
-		if !loaded.Match(boot) {
+		timed := regexp.MustCompile(`startupStep\("[^"]+",\s*` + regexp.QuoteMeta(pkg) + `\.Load(Service)?\)`)
+		if !loaded.Match(boot) && !timed.Match(boot) {
 			t.Errorf("service/%s declares a Spec and nothing calls %s.Load() — "+
 				"it has a page, tools and a price, and is in no catalogue", pkg, pkg)
 		}

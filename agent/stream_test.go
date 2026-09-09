@@ -67,7 +67,7 @@ func TestTheSSEHandlerOnlyTranslates(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := string(b)
-	if !strings.Contains(src, "runNative(accountID, prompt, sopts)") {
+	if !strings.Contains(src, "queryWithFallback(accountID, prompt, sopts)") {
 		t.Error("the SSE handler no longer goes through the shared runner")
 	}
 	// Hooks travel in the options, so a client cannot be handed a different

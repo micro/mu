@@ -100,7 +100,7 @@ func Load() {
 			messages = cached
 			updateCacheLocked()
 			mutex.Unlock()
-			indexMessages(cached)
+			// Existing archive entries are already on disk. New messages index on write.
 		}
 	}
 

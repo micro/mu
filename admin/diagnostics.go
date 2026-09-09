@@ -24,7 +24,7 @@ type healthCheck struct {
 	Fix    string // actionable suggestion
 }
 
-func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
+func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	_, _, err := auth.RequireAdmin(r)
 	if err != nil {
 		app.Forbidden(w, r, "Admin access required")
@@ -70,7 +70,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(fmt.Sprintf(`<div class="text-base">%s</div>`, app.RenderString(diagnosis)))
 			b.WriteString(`</div>`)
 		} else {
-			b.WriteString(`<div class="my-3"><a href="/admin/diagnostics?diagnose=1" class="btn">Run AI Diagnosis</a></div>`)
+			b.WriteString(`<div class="my-3"><a href="/admin/status?diagnose=1" class="btn">Run AI Diagnosis</a></div>`)
 		}
 	}
 
@@ -171,7 +171,7 @@ func checkFederation(test bool) healthCheck {
 			Status: "ok",
 			Detail: "Listening on 5269. Whether the handshake works is a different question",
 			Fix: "Not checked. " + app.Link("Dial "+federationPeer+" now",
-				"/admin/diagnostics?test=federation"),
+				"/admin/status?test=federation"),
 		}
 	}
 
@@ -391,7 +391,7 @@ func checkMarkets() healthCheck {
 // saying "if requested", which nothing did. That is a whole model generation on
 // the render path, and the one condition that triggers it is exactly the
 // condition an operator opens this page under. A page that costs a digest to
-// look at, and takes as long as one, is how /admin/diagnostics came to be
+// look at, and takes as long as one, is how /admin/status came to be
 // something you avoided loading.
 func checkDigest(test bool) healthCheck {
 	ok, details := digest.Status()
@@ -403,7 +403,7 @@ func checkDigest(test bool) healthCheck {
 		}
 	}
 
-	fix := "Check AI provider status. " + app.Link("Test the generator", "/admin/diagnostics?test=digest")
+	fix := "Check AI provider status. " + app.Link("Test the generator", "/admin/status?test=digest")
 	if test {
 		out, err := digest.TestGenerate()
 		switch {
@@ -471,4 +471,13 @@ Keep it to 3-5 sentences. Be specific and actionable.`,
 		return "Could not run AI diagnosis: " + err.Error()
 	}
 	return result
+}
+
+// DiagnosticsHandler preserves old bookmarks and diagnostic query parameters.
+func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
+	target := "/admin/status"
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	http.Redirect(w, r, target, http.StatusPermanentRedirect)
 }
