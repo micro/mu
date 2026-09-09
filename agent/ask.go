@@ -368,13 +368,6 @@ func Ask(r AskRequest) (Answer, error) {
 
 	AnsweredAs(r.Account, threadID(th), answer, id, r.As)
 
-	// Notice anything worth remembering, from every client rather than one.
-	// Off the response path: it is a background model call and the answer is
-	// already written.
-	if err == nil && !directCommand {
-		go extractMemory(r.Account, r.Text, scopeOf(r.Agent), threadID(th))
-	}
-
 	return Answer{Text: answer, Flow: id, Thread: threadID(th)}, err
 }
 

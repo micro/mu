@@ -54,3 +54,17 @@ func TestFollowupRetrievalKeepsTopic(t *testing.T) {
 		t.Fatal("borrowed unrelated previous topic")
 	}
 }
+
+func TestStandaloneQuestionsDoNotBorrowPreviousTopic(t *testing.T) {
+	h := []QueryMessage{{Role: "user", Text: "vegetarian recipes"}, {Role: "assistant", Text: "Here are recipes"}}
+	for _, prompt := range []string{"What is the second law of thermodynamics?", "Explain the second amendment", "What happened in the second world war?", "Read those links and explain nuclear fusion", "How do I read links in HTML?"} {
+		if got := retrievalQuery(prompt, h); got != prompt {
+			t.Errorf("%q borrowed %q", prompt, got)
+		}
+	}
+	for _, prompt := range []string{"What about the second one?", "Read those links and summarise", "read the links", "summarise them"} {
+		if got := retrievalQuery(prompt, h); got != h[0].Text {
+			t.Errorf("%q lost antecedent: %q", prompt, got)
+		}
+	}
+}

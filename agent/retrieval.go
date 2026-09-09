@@ -19,7 +19,16 @@ You may use notes_add to retain useful explicit personal facts, preferences, dec
 
 func retrievalQuery(prompt string, turns []QueryMessage) string {
 	q := strings.ToLower(strings.TrimSpace(prompt))
-	follow := (strings.Contains(q, "read") && strings.Contains(q, "links")) || strings.Contains(q, "those links") || strings.Contains(q, "these links") || strings.Contains(q, "the second") || strings.Contains(q, "summarise them") || strings.Contains(q, "summarize them")
+	follow := strings.Contains(q, "those links") || strings.Contains(q, "these links") || strings.Contains(q, "the second") || strings.Contains(q, "second one") || strings.Contains(q, "read the links") || strings.Contains(q, "summarise them") || strings.Contains(q, "summarize them")
+	// Only borrow a topic when there is no new subject in the question.
+	referential := map[string]bool{"second": true, "one": true, "links": true, "link": true, "them": true, "more": true, "detail": true, "details": true, "results": true, "result": true}
+	for _, term := range data.QueryTerms(prompt) {
+		if !referential[term] {
+			follow = false
+			break
+		}
+	}
+
 	if follow {
 		for i := len(turns) - 1; i >= 0; i-- {
 			if turns[i].Role == "user" && len(data.QueryTerms(turns[i].Text)) > 0 {

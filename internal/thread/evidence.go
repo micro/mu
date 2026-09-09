@@ -4,11 +4,13 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 )
 
-// Evidence keeps bounded tool observations separate from spoken messages.
+// Evidence is a temporary observation cache between turns, never persisted.
+// It is discarded on restart; durable source material belongs in the archive.
 type Evidence struct {
 	Tool      string    `json:"tool"`
 	Service   string    `json:"service"`
@@ -24,6 +26,13 @@ func KeepEvidence(account, id string, e Evidence) {
 		return
 	}
 	ensure()
+	evidenceJanitor.Do(func() {
+		go func() {
+			for now := range time.Tick(time.Minute) {
+				pruneEvidence(now)
+			}
+		}()
+	})
 	mu.Lock()
 	defer mu.Unlock()
 	t := threads[id]
@@ -53,7 +62,6 @@ func KeepEvidence(account, id string, e Evidence) {
 		next = next[len(next)-12:]
 	}
 	t.Evidence = next
-	save()
 }
 
 func EvidenceFor(account, id string, allowed []string, now time.Time) []Evidence {
@@ -143,4 +151,21 @@ func Recall(ctx context.Context, account, current string, terms []string) []Hit 
 		out = append(out, b.hit)
 	}
 	return out
+}
+
+var evidenceJanitor sync.Once
+
+// Remove expired payloads even when their conversation never receives a new turn.
+func pruneEvidence(now time.Time) {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, t := range threads {
+		var kept []Evidence
+		for _, e := range t.Evidence {
+			if e.Expires.After(now) {
+				kept = append(kept, e)
+			}
+		}
+		t.Evidence = kept
+	}
 }

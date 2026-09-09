@@ -73,7 +73,7 @@ const (
 // client knows what a conversation is on its own service, and this stores
 // whatever it says without interpreting it.
 type Thread struct {
-	Evidence []Evidence `json:"evidence,omitempty"`
+	Evidence []Evidence `json:"-"`
 	ID       string     `json:"id"`
 	Account  string     `json:"account"`
 	Client   string     `json:"client"`

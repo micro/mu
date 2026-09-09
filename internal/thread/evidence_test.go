@@ -2,6 +2,7 @@ package thread
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -56,5 +57,34 @@ func TestRecallOnlyOwnDialogue(t *testing.T) {
 	}
 	if len(Recall(context.Background(), "alice", got[0].Thread, []string{"project"})) != 0 {
 		t.Fatal("current thread duplicated")
+	}
+}
+
+func TestEvidenceNeverPersistsAndIdleExpiryRemovesPayload(t *testing.T) {
+	reset(t)
+	th := Open("alice", "web", "ephemeral")
+	now := time.Now()
+	dirty.Store(false)
+	KeepEvidence("alice", th.ID, Evidence{Tool: "web_fetch", Service: "web", Result: "temporary-secret", At: now, Expires: now.Add(time.Minute)})
+	if dirty.Load() {
+		t.Fatal("tool observation scheduled a disk write")
+	}
+	b, err := json.Marshal(Get("alice", th.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "temporary-secret") || strings.Contains(string(b), "evidence") {
+		t.Fatalf("observation persisted: %s", b)
+	}
+	var restored Thread
+	if err = json.Unmarshal(b, &restored); err != nil {
+		t.Fatal(err)
+	}
+	if len(restored.Evidence) != 0 {
+		t.Fatal("observation survived restart")
+	}
+	pruneEvidence(now.Add(2 * time.Minute))
+	if len(Get("alice", th.ID).Evidence) != 0 {
+		t.Fatal("idle expired payload retained")
 	}
 }

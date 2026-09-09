@@ -1614,9 +1614,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	_, directCommand := promptCommands(req.Prompt, nopts)
 	directCommand = directCommand || commandDenied(req.Prompt, nopts)
-	if !guest && !directCommand && !explicitCommand(req.Prompt) {
-		go extractMemory(accountID, req.Prompt, scopeOf(req.Agent), threadID)
-	}
+
 	if !guest && req.Cards && CardContextFunc != nil {
 		if !directCommand && !explicitCommand(req.Prompt) {
 			nopts.CardContext = CardContextFunc(accountID)
