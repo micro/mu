@@ -56,6 +56,8 @@ var settingGroups = []settingGroup{
 			"AGENT_MODEL",
 			"ATLASCLOUD_API_KEY",
 			"ATLAS_MODEL",
+			"GEMINI_API_KEY",
+			"GEMINI_MODEL",
 			"OPENROUTER_API_KEY",
 			"OPENROUTER_MODEL",
 			"OPENAI_BASE_URL",
