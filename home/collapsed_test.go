@@ -43,17 +43,14 @@ func TestClosingTheSidebarDoesNotNarrowThePage(t *testing.T) {
 	}
 }
 
-// And a column of prose centres when there is no rail to align to.
-//
-// This is what the cap was for, and it is the only thing that actually needed
-// fixing: a page that sets .page-col has said its content is one 760px column,
-// and with the rail gone that column sat against the left of a wide window.
-// Nothing else is narrowed to solve it.
-func TestProseCentresWhenTheRailIsGone(t *testing.T) {
+// A page column inherits the shell width whether the sidebar is open or closed.
+func TestPageColumnsUseTheSharedFrame(t *testing.T) {
 	css := styles(t)
-	if !regexp.MustCompile(`body\.nav-collapsed\s+\.page-col\s*\{[^}]*margin-inline:\s*auto`).MatchString(css) {
-		t.Error("a one-column page does not centre with the sidebar closed, so it " +
-			"is left hanging off the edge it was aligned to")
+	if !regexp.MustCompile(`\.page-col\s*\{[^}]*max-width:\s*var\(--page-width\)`).MatchString(css) {
+		t.Error("page columns do not use the shared page width")
+	}
+	if strings.Contains(css, "#content:has(.page-col) #page-title") {
+		t.Error("a page type independently moves its title")
 	}
 }
 

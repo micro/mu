@@ -198,7 +198,7 @@ func kindChips(kinds []data.Kind, query, active string) string {
 }
 
 const pageCSS = `<style>
-.ar{max-width:var(--measure,760px)}
+.ar{max-width:var(--page-width)}
 .ar-empty{font-size:14px;color:#888;line-height:1.6}
 .ar-row{padding:12px 0;border-bottom:1px solid #f4f4f4}
 /* A kind and a time are two facts, and this had nothing between them — the pill
