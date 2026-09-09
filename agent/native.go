@@ -944,6 +944,16 @@ func (r *nativeToolRecorder) wrap(next gmai.ToolHandler) gmai.ToolHandler {
 		res := next(ctx, call)
 		title := nativeToolTitle(call.Name)
 
+		if message := toolResultError(res); message != "" {
+			r.add("### " + title + "\n" + unavailableToolMessage(NativeToolName(call.Name)))
+			if NativeToolName(call.Name) == "web_fetch" {
+				payload := map[string]string{"error": message, "guidance": "This page was not read. Try another relevant accessible source using the available read/search tools. Do not bypass access restrictions or claim to have read this page. If only search snippets are available, label them as snippets; if no sources are readable, explain the limitation."}
+				encoded, _ := json.Marshal(payload)
+				res.Value, res.Content = payload, string(encoded)
+			}
+			return res
+		}
+
 		// A source that could not answer is recorded as unavailable rather than
 		// skipped. The answer guard collects these and names them — "Unavailable
 		// right now: news" — which is the difference between an answer that is
@@ -1193,4 +1203,26 @@ func Status() (string, bool) {
 		return "Not configured — the agent cannot answer until a provider key is set", false
 	}
 	return provider + "/" + model, true
+}
+
+// RPC failures are error envelopes, not successful source text. Providers consume
+// either Value or Content, so recognise both representations.
+func toolResultError(res gmai.ToolResult) string {
+	switch v := res.Value.(type) {
+	case map[string]string:
+		if v["error"] != "" {
+			return v["error"]
+		}
+	case map[string]any:
+		if e, ok := v["error"].(string); ok && e != "" {
+			return e
+		}
+	}
+	var payload struct {
+		Error string `json:"error"`
+	}
+	if json.Unmarshal([]byte(res.Content), &payload) == nil {
+		return payload.Error
+	}
+	return ""
 }

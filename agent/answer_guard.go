@@ -1269,7 +1269,12 @@ func isProgressOnlyAnswer(answer string) bool {
 	return false
 }
 
+var rawHTTPFailure = regexp.MustCompile(`(?i)^HTTP\s+[45][0-9]{2}(?:\s+[45][0-9]{2})?(?:\s+[a-z ]+)?[.!]?$`)
+
 func isRawToolPayloadAnswer(answer string) bool {
+	if rawHTTPFailure.MatchString(strings.TrimSpace(answer)) {
+		return true
+	}
 	if answer == "" {
 		return false
 	}
