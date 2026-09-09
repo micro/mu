@@ -5163,7 +5163,7 @@ a.card-hover:hover {
   background: #111;
   color: #fff;
 }
-.video-info-panel a { color: #fff; }
+.video-info-panel a:not(.mini-btn) { color: #fff; }
 .video-bar button {
   background: rgba(255,255,255,0.1);
   color: #fff;
