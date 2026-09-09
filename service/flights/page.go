@@ -102,7 +102,7 @@ func forms(q, near string, radius int, csrf string) string {
 	return `<div class="card fl-forms">
 <form method="GET" action="/flights" class="fl-form">
 <label class="fl-label" for="fl-near">What's overhead</label>
-<div class="fl-row">
+<div class="form-row">
 <input id="fl-near" type="text" name="near" value="` + html.EscapeString(near) + `" placeholder="A place or airport — Camden, London or LHR" autocomplete="off">
 <select name="radius" aria-label="Range in nautical miles" class="fl-range">` + ranges(radius) + `</select>
 <button type="submit">Look</button>
@@ -111,7 +111,7 @@ func forms(q, near string, radius int, csrf string) string {
 </form>
 <form method="POST" action="/flights" class="fl-form">` + app.CSRFField(csrf) + `
 <label class="fl-label" for="fl-q">Where's a flight</label>
-<div class="fl-row">
+<div class="form-row">
 <input id="fl-q" type="text" name="q" value="` + html.EscapeString(q) + `" placeholder="BA117, BAW117 or G-ZBKL" autocomplete="off">
 <button type="submit">Find</button>
 </div>
@@ -225,11 +225,8 @@ func notice(msg string) string {
 
 const pageCSS = `<style>
 .fl-forms{display:flex;gap:24px;flex-wrap:wrap}
-.fl-form{flex:1;min-width:260px}
+.fl-form{flex:1 1 260px;min-width:0;max-width:100%}
 .fl-label{display:block;font-size:12px;color:#888;margin-bottom:6px}
-.fl-row{display:flex;gap:8px}
-.fl-row input{flex:1;min-width:0}
-.fl-range{flex:0 0 auto}
 .fl-here{font-size:12px;color:#888;display:inline-block;margin-top:6px}
 .fl-table{width:100%;border-collapse:collapse;font-size:13px}
 .fl-table th{text-align:left;font-weight:normal;color:#888;padding:6px 8px;border-bottom:1px solid #eee}

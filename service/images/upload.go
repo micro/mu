@@ -89,5 +89,5 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/images", http.StatusSeeOther)
 }
 func uploadForm(r *http.Request) string {
-	return `<details class="card"><summary>Upload an image</summary><form class="d-flex gap-2 mt-3" style="flex-wrap:wrap" method="POST" action="/images?upload=1" enctype="multipart/form-data">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="file" name="file" accept="image/png,image/jpeg,image/gif" required><input name="caption" placeholder="Caption" maxlength="1000"><button>Upload</button></form><p class="text-sm text-muted">Private. PNG, JPEG or GIF, up to 8 MB and 8 megapixels. ` + html.EscapeString("GIF uploads keep the first frame.") + `</p></details>`
+	return `<details class="card"><summary>Upload an image</summary><form class="form form-inline mt-3" method="POST" action="/images?upload=1" enctype="multipart/form-data">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="file" name="file" accept="image/png,image/jpeg,image/gif" required><input name="caption" placeholder="Caption" maxlength="1000"><button>Upload</button></form><p class="text-sm text-muted">Private. PNG, JPEG or GIF, up to 8 MB and 8 megapixels. ` + html.EscapeString("GIF uploads keep the first frame.") + `</p></details>`
 }

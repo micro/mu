@@ -131,7 +131,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	// Add. Only the name is required — a contact with just a name is still
 	// worth having, and the rest can be filled in later by saying so.
-	fmt.Fprintf(&b, `<form method="POST" action="/contacts" class="contact-add">
+	fmt.Fprintf(&b, `<form method="POST" action="/contacts" class="form form-inline page-section">
   <input type="hidden" name="_csrf" value="%s">
   <input name="name" placeholder="Name" required>
   <input name="email" type="email" placeholder="Email">
@@ -139,7 +139,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
   <input name="note" placeholder="Note">
   <button type="submit">Add</button>
 </form>`, html.EscapeString(csrf))
-	b.WriteString(`<details class="mt-3"><summary>Import contacts</summary><form method="POST" action="/contacts/import" enctype="multipart/form-data" class="contact-search">` + app.CSRFField(csrf) + `<input type="file" name="file" accept=".csv,text/csv" required><button>Import CSV</button></form><p class="text-sm">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p></details></div>`)
+	b.WriteString(`<details class="mt-3"><summary>Import contacts</summary><form method="POST" action="/contacts/import" enctype="multipart/form-data" class="form form-inline mt-3">` + app.CSRFField(csrf) + `<input type="file" name="file" accept=".csv,text/csv" required><button>Import CSV</button></form><p class="text-sm">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p></details></div>`)
 
 	if len(people) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">`)
@@ -193,18 +193,12 @@ func orDash(s string) string {
 // same treatment the files list gets, for the same reason: five columns on a
 // phone either scroll sideways or crush the name.
 const contactsPageCSS = `<style>
-.contact-search{display:flex;gap:8px;margin:10px 0}
-.contact-search input{flex:1;min-width:0}
-.contact-add{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:12px 0 4px}
-.contact-add input{min-width:0}
 .contacts-table{margin-bottom:0}
 .contacts-table .contact-name{font-weight:var(--font-weight-medium)}
 .contact-actions{white-space:nowrap}
 .contact-actions form{display:inline}
 
 @media only screen and (max-width:600px){
-  .contact-add{grid-template-columns:1fr}
-  .contact-add button{width:100%}
   .contacts-table,.contacts-table tbody,.contacts-table tr,.contacts-table td{display:block;width:auto}
   .contacts-table thead{display:none}
   .contacts-table tr{padding:12px 0;border-bottom:1px solid var(--divider)}

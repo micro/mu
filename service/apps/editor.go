@@ -43,7 +43,7 @@ func editPageHTML(a *App) string {
 	// instruction does not mention; regenerating from a description would not.
 	aiPanel := fmt.Sprintf(`<form method="POST" action="/apps/%s/ai-edit" class="ai-edit">
   <label for="instruction">Change it with AI</label>
-  <div class="ai-edit-row">
+  <div class="form-row">
     <input type="text" id="instruction" name="instruction" required
            placeholder="e.g. add a Notes field, or change the total to average">
     <button type="submit">Apply</button>
@@ -85,9 +85,6 @@ func editPageHTML(a *App) string {
 .status-msg { font-size: 13px; color: #999; margin-left: 8px; }
 .ai-edit { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa; }
 .ai-edit label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-.ai-edit-row { display: flex; gap: 8px; }
-.ai-edit-row input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; }
-.ai-edit-row button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .ai-edit-note { font-size: 12px; color: #888; margin: 8px 0 0; }
 /* The shapes the markup below was writing inline, next to the ones it was
    already using. A field is .ed-field wherever it appears; the widths are the
@@ -99,17 +96,14 @@ func editPageHTML(a *App) string {
 .ed-w-130 { width: 130px; }
 .ed-w-140 { width: 140px; }
 .ed-tall { min-height: 50vh; }
-.ed-grow { flex: 1; min-width: 300px; }
+.ed-grow { flex: 1 1 300px; min-width: 0; max-width: 100%%; }
 .ed-grow-150 { flex: 1; min-width: 150px; }
 .ed-grow-120 { flex: 1; min-width: 120px; }
-.ed-grid { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: end; }
 .ed-row-end { display: flex; gap: 8px; align-items: end; }
-.ed-row-wrap { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
 .ed-row-12 { display: flex; gap: 12px; flex-wrap: wrap; }
 .ed-check { display: flex; align-items: center; gap: 4px; font-size: 13px; white-space: nowrap; padding: 8px 0; }
 .ed-link-btn { color: #333; text-decoration: none; padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; }
 .ed-danger { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #c00; cursor: pointer; font-size: 13px; font-family: inherit; }
-@media (max-width: 600px) { .ai-edit-row { flex-direction: column; } }
 @media (max-width: 768px) {
   .save-bar { flex-direction: column; align-items: stretch; }
   .save-bar input.name { width: 100%%; min-width: auto; }
@@ -147,8 +141,8 @@ func editPageHTML(a *App) string {
     </div>
   </div>
 
-  <div class="save-bar ed-grid">
-    <div class="ed-row-wrap">
+  <div class="form-row">
+    <div class="form-row">
       <div class="ed-grow-150">
         <label for="appName" class="ed-label">Name</label>
         <input class="name ed-field" type="text" id="appName" placeholder="App name">

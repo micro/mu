@@ -115,7 +115,7 @@ func statusForm(r *http.Request) string {
 	if settings.Get("AVIATIONSTACK_API_KEY") == "" {
 		return b + `<p class="text-sm text-muted">Timetable and estimated times are unavailable on this instance. Live aircraft positions remain available below.</p></section>`
 	}
-	b += `<form method="POST" action="/flights" class="fl-form">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="status_lookup" value="1"><div class="fl-row"><input name="flight" placeholder="Flight number, e.g. BA117" aria-label="Flight number"><input name="airport" placeholder="Airport, e.g. LHR" aria-label="Airport"><select name="direction" aria-label="Flight direction"><option value="arrivals">Arrivals</option><option value="departures">Departures</option></select><button>Check times</button></div><div class="d-flex gap-2 mt-3">`
+	b += `<form method="POST" action="/flights" class="fl-form">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="status_lookup" value="1"><div class="form-row"><input name="flight" placeholder="Flight number, e.g. BA117" aria-label="Flight number"><input name="airport" placeholder="Airport, e.g. LHR" aria-label="Airport"><select name="direction" aria-label="Flight direction"><option value="arrivals">Arrivals</option><option value="departures">Departures</option></select><button>Check times</button></div><div class="form-row mt-3">`
 	for _, code := range []string{"LHR", "LGW", "MAN", "JFK", "CDG", "DXB"} {
 		b += `<button name="preset" value="` + code + `">` + code + `</button>`
 	}

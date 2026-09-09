@@ -175,7 +175,7 @@ func TestThePageOffersBothThings(t *testing.T) {
 	}
 
 	// The checkbox is inside the form it modifies, or it submits nothing.
-	form := body[strings.Index(body, `class="browser-form"`):]
+	form := body[strings.Index(body, `class="form form-inline page-section"`):]
 	form = form[:strings.Index(form, "</form>")]
 	if !strings.Contains(form, `name="full"`) {
 		t.Error("the whole-page checkbox is outside the form, so it is never sent")

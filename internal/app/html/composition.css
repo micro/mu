@@ -67,10 +67,26 @@
 .disclosure > summary::after { content: '+'; }
 .disclosure[open] > summary::after { content: '\2212'; }
 .disclosure > :not(summary) { margin-top: var(--space-field); }
+/* Rows wrap according to their available space, including inside a card or
+   beside the sidebar. A nonzero basis moves fields to the next line before
+   buttons and selects can squeeze them away. It is a preferred size, not a
+   fixed minimum: a field still fits a container narrower than that size. */
+.form-row, .form-inline, .search-bar {
+ display: flex; flex-direction: row; flex-wrap: wrap;
+ align-items: center; gap: var(--space-control); min-width: 0;
+}
+:is(.form-row, .form-inline, .search-bar) > * { max-width: 100%; box-sizing: border-box; margin-block: 0; }
+:is(.form-row, .form-inline, .search-bar) > :is(input:not(:where([type=hidden], [type=checkbox], [type=radio], [type=submit], [type=button])), textarea, .field-label, .form-group) {
+ flex: 1 1 12rem; min-width: 0; width: 100%; max-width: 100%;
+}
+:is(.form-row, .form-inline, .search-bar) > select { flex: 0 1 auto; min-width: 0; width: auto; max-width: 100%; }
+:is(.form-row, .form-inline, .search-bar) > :is(button, .btn, .form-actions) { flex: 0 0 auto; }
+:is(.form-row, .form-inline, .search-bar) > [hidden],
+:is(.form-row, .form-inline, .search-bar) > input[type=hidden] { display: none; }
+:is(.form, .form-row, .form-group, .field-label) :is(input, select, textarea) { box-sizing: border-box; max-width: 100%; }
+:is(.form-row, .form-inline) > :is(.field-label, .form-group) > :is(input, select, textarea) { width: 100%; max-width: 100%; min-width: 0; }
 @media(max-width:900px) {
  .form:not(.form-inline) .field { width: 100%; max-width: 100%; }
- .form-inline { align-items: stretch; }
- .form-inline > input:not([type=hidden]) { flex: 1 1 180px; min-width: 0; }
 }
 /* The quiet button, after .btn rather than before it.
    It was declared 2,800 lines above .btn, and both are one class, so .btn won

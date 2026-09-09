@@ -99,7 +99,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // form is the two ends and the mode.
 func form(from, to, mode string) string {
 	var b strings.Builder
-	b.WriteString(`<form method="GET" action="/routes" class="card rt-form">`)
+	b.WriteString(`<form method="GET" action="/routes" class="card form form-inline">`)
 	b.WriteString(`<input name="from" value="` + html.EscapeString(from) +
 		`" placeholder="From — e.g. King's Cross, London" autocomplete="off" aria-label="Starting point">`)
 	b.WriteString(`<input name="to" value="` + html.EscapeString(to) +
@@ -244,11 +244,6 @@ func cosDeg(deg float64) float64 {
 }
 
 const pageCSS = `<style>
-.rt-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.rt-form input{flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--border-color,#d1d5db);
-  border-radius:8px;font-size:14px;font-family:inherit}
-.rt-form select{padding:8px 10px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;
-  font-size:14px;font-family:inherit}
 .rt-head{margin:0 0 6px;font-size:15px}
 .rt-summary{margin:0 0 12px;font-size:14px;color:var(--text-muted,#666)}
 .rt-traffic{color:#b45309}
