@@ -4111,6 +4111,7 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
   font-size: 14px;
 }
 
+.stats-table th:last-child,
 .stats-table td:last-child {
   text-align: right;
 }
@@ -5051,7 +5052,7 @@ a.card-hover:hover {
    ============================================= */
 
 .status-page {
-  max-width: 600px;
+  width: 100%;
 }
 .status-header {
   display: flex;

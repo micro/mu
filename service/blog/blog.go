@@ -316,12 +316,15 @@ func Load() {
 	// Update cached HTML
 	updateCache()
 
-	// Reconcile visibility before serving. Read current posts under the lock,
-	// never snapshots that a later background write could republish.
+	// The archive is maintained when posts change, not rebuilt on every boot.
+	// Only withdraw explicitly private sources here, including records from
+	// older versions that may have indexed them publicly.
 	mutex.RLock()
 	for _, post := range posts {
-		if err := indexPost(*post); err != nil {
-			app.Log("blog", "Indexing existing post: %v", err)
+		if post.Private {
+			if err := data.Unindex(post.ID); err != nil {
+				app.Log("blog", "Withdrawing private post: %v", err)
+			}
 		}
 	}
 	mutex.RUnlock()
