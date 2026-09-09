@@ -134,3 +134,19 @@ func clip(s string) string {
 	}
 	return s
 }
+
+func TestOlderBriefWithoutMailReferenceRendersMarkdown(t *testing.T) {
+	body := "## Tomorrow\n\n**School run** at 08:00.\n\n- Take a coat\n\n[Manage brief](https://example.com/events)"
+	th := &thread.Thread{Client: "mail"}
+	out := messageBlock("brief_owner", th, thread.Message{Text: body, From: "agent@example.com"}, "")
+	for _, want := range []string{"<h2", "<strong>School run</strong>", "<li>Take a coat", `href="https://example.com/events"`} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %s: %s", want, out)
+		}
+	}
+	// Ordinary chat continues to show exactly what the person typed.
+	th.Client = "chat"
+	if out := messageBlock("brief_owner", th, thread.Message{Text: "**literal**"}, ""); strings.Contains(out, "<strong>") {
+		t.Fatal("changed chat formatting")
+	}
+}

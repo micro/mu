@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -1644,6 +1646,10 @@ type Delivery struct {
 // it: inbound SMTP, submission from a mail client, the web compose, the
 // mail_send tool and the agent's own replies.
 func SendMessageTo(d Delivery) error {
+	// Local deliveries need the same mailbox-to-Inbox reference as SMTP mail.
+	if d.MessageID == "" {
+		d.MessageID = fmt.Sprintf("<%s@%s>", uuid.NewString(), ConfiguredDomain())
+	}
 	msg := &Message{
 		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
 		From:        d.From,

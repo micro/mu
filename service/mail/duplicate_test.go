@@ -81,8 +81,21 @@ func TestMailWithNoIdIsAlwaysNew(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if n := countFor(who, ""); n != 2 {
-		t.Errorf("%d messages stored, want 2 — mail with no id was deduped against itself", n)
+	mutex.RLock()
+	defer mutex.RUnlock()
+	ids := map[string]bool{}
+	count := 0
+	for _, m := range messages {
+		if m.ToID == who {
+			count++
+			if m.MessageID == "" || ids[m.MessageID] {
+				t.Fatal("missing or repeated generated Message-ID")
+			}
+			ids[m.MessageID] = true
+		}
+	}
+	if count != 2 {
+		t.Fatalf("stored %d deliveries, want 2", count)
 	}
 }
 
