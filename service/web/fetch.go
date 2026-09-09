@@ -166,7 +166,7 @@ func FetchAndExtract(rawURL string) (string, string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		app.RecordAPICall("fetch", "GET", rawURL, resp.StatusCode, duration, fmt.Errorf("HTTP %d", resp.StatusCode), "", "")
-		return "", "", fmt.Errorf("HTTP %d %s", resp.StatusCode, resp.Status)
+		return "", "", fetchStatusError(resp.StatusCode)
 	}
 
 	// Limit read to 2MB to prevent abuse
@@ -233,7 +233,7 @@ func fetchAndSanitize(rawURL string, proxy bool) (string, string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		app.RecordAPICall("fetch", "GET", rawURL, resp.StatusCode, duration, fmt.Errorf("HTTP %d", resp.StatusCode), "", "")
-		return "", "", fmt.Errorf("HTTP %d %s", resp.StatusCode, resp.Status)
+		return "", "", fetchStatusError(resp.StatusCode)
 	}
 
 	limited := io.LimitReader(resp.Body, 2*1024*1024)
@@ -556,3 +556,10 @@ func validateFetchURL(parsed *url.URL) error { return hosts.Fetchable(parsed) }
 func isPrivateHost(host string) bool { return hosts.Private(host) }
 
 func isPrivateIP(ip net.IP) bool { return hosts.PrivateIP(ip) }
+
+func fetchStatusError(code int) error {
+	if code == http.StatusForbidden {
+		return fmt.Errorf("the website refused access (HTTP 403 Forbidden); its page content could not be read")
+	}
+	return fmt.Errorf("the website returned HTTP %d %s; its page content could not be read", code, http.StatusText(code))
+}
