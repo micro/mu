@@ -760,44 +760,6 @@ td {
    would lose to the one it is meant to override. */
 #head-out a#head-signup { color: #111; font-weight: 700; }
 
-/* Who this browser is signed in as. The same face as the signed-out pair
-   opposite it, because they are the two answers to one question. */
-#head-me {
-  color: #555;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-  white-space: nowrap;
-  max-width: 14ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#head-me:hover { color: #111; }
-/* At phone width #head-right is beside a centred brand and the two fight for
-   the middle, which is why Admin drops its label here too. The rail says
-   "Signed in as @you" a tap away. */
-@media only screen and (max-width: 600px) {
-  #head-me { display: none; }
-}
-
-/* And on a desktop with the rail open, because the rail is already saying it.
-   
-   The corner answers "which account is this browser", and it was added because
-   the rail is collapsed by default: signed out the corner offered a way in and
-   signed in it said nothing at all, which is the one question it exists for
-   going unanswered in the state you would check it in. Open, the foot of the
-   rail says "Signed in as @you" with Account under it — so the name was on
-   screen twice, in two styles, both linking to /account.
-   
-   Only here. Below 901px the rail is an overlay rather than a column, so it is
-   not on screen beside the corner and there is nothing to duplicate. And only
-   the name: Admin has no other home — see the note above headAdmin, which is
-   why it is in the corner rather than in the rail. */
-@media only screen and (min-width: 901px) {
-  body:not(.nav-collapsed) #head-me { display: none; }
-}
-
 /* Credit balance in the top bar, beside Tools. The only place it appears: it
    was in the sidebar too for a moment, and the same number twice on one screen
    reads as a mistake. The top bar is fixed, always visible, and the same on

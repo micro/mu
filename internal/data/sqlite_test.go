@@ -244,3 +244,36 @@ func TestFTS5Search(t *testing.T) {
 		t.Error("Expected FTS results for 'ethereum upgrade'")
 	}
 }
+
+func TestEnsureFTS(t *testing.T) {
+	resetSQLiteTestDB(t)
+	d, err := getDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	EnsureFTS() // An empty database is valid.
+	if err := IndexSQLite("one", "news", "Original", "Content", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`UPDATE index_fts SET title = 'Existing'`); err != nil {
+		t.Fatal(err)
+	}
+	EnsureFTS()
+	var count int
+	if err := d.QueryRow(`SELECT count(*) FROM index_fts WHERE index_fts MATCH 'Existing'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatal("populated FTS was rebuilt")
+	}
+	if _, err := d.Exec(`INSERT INTO index_fts(index_fts) VALUES('delete-all')`); err != nil {
+		t.Fatal(err)
+	}
+	EnsureFTS()
+	if err := d.QueryRow(`SELECT count(*) FROM index_fts WHERE index_fts MATCH 'Original'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatal("empty FTS was not restored")
+	}
+}

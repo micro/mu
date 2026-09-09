@@ -88,7 +88,7 @@ func wireHooks() {
 	// knows nothing about Google; this is the only place the two meet, and it
 	// stays unset on an instance with no Google credentials — one calendar
 	// instead of two, rather than a broken second one.
-	google.Load()
+	startupStep("google.Load", google.Load)
 	if google.Configured() {
 		events.ExternalConnected = func(owner string) bool {
 			return google.HasScope(owner, google.CalendarScope)
@@ -171,11 +171,11 @@ func wireHooks() {
 	// that stays up can do where a stdio MCP process cannot: "every morning,
 	// brief me and mail it" has nowhere to live in a process that only exists
 	// while a client is attached.
-	work.Load()
+	startupStep("work.Load", work.Load)
 
 	// Mail is a client like another client: it speaks its own protocol and
 	// hands what arrives to the agent. See agent/mail.
-	mailagent.Load()
+	startupStep("mailagent.Load", mailagent.Load)
 
 	// And IMAP is a client of the record rather than of the mail store.
 	//
@@ -194,24 +194,24 @@ func wireHooks() {
 	// whether the agent was named; this is what answers when it was. It used to
 	// be a hundred and ninety lines inside the service composing replies with
 	// its own RAG and its own web search — see agent/chat.
-	chatagent.Load()
+	startupStep("chatagent.Load", chatagent.Load)
 
 	// And a phone number is a client too. A text from a number the account has
 	// verified wakes the agent the same way mail does; service/sms decides
 	// whose it is and whether it proved that, and this is what answers.
-	smsagent.Load()
+	startupStep("smsagent.Load", smsagent.Load)
 
 	// And every text goes in the record, whoever sent it — which is a separate
 	// job from answering one, the way agent/mail splits recording from
 	// answering. Without it a text from a number nobody here knows was dropped
 	// with a log line, because the only path into the record was the side
 	// effect of an agent replying.
-	smsagent.LoadRecord()
+	startupStep("smsagent.LoadRecord", smsagent.LoadRecord)
 
 	// Whether an arrival from a stranger should be let in at all. One judge for
 	// every channel, because a text from an unknown number and a federated chat
 	// from an unknown address are one question. See agent/gate.
-	gate.Load()
+	startupStep("gate.Load", gate.Load)
 
 	// And the agent introduces itself to a new account, in that account's
 	// inbox. Onboarding as a message rather than a page: the claim is that you
@@ -223,7 +223,7 @@ func wireHooks() {
 	// agent — it was a function variable inside internal/flag that service/chat
 	// filled in, which put content moderation for the whole instance behind an
 	// unrelated service loading. See agent/moderate.
-	moderate.Load()
+	startupStep("moderate.Load", moderate.Load)
 
 	// Telling the operator when something is worth knowing. After the mail
 	// agent, because it delivers to an inbox here. See admin/alert.go.
@@ -407,10 +407,10 @@ func wireHooks() {
 		return agent.Path("", a.ID), a.Examples
 	}
 
-	home.Load()
+	startupStep("home.Load", home.Load)
 
 	// load agent
-	agent.Load()
+	startupStep("agent.Load", agent.Load)
 
 	// Wire user context into the agent — personalises responses.
 	// What an agent knows about you before you have said anything.
@@ -483,18 +483,18 @@ func wireHooks() {
 	// restart. See agent.ForgetConversation.
 	thread.Deleted = agent.ForgetConversation
 
-	digest.Load()
+	startupStep("digest.Load", digest.Load)
 
 	// The line at the top of Home. Same shape as the digest and a tenth of the
 	// output: one cheap call an hour, so the front page can say what happened
 	// without every page load paying for a model.
-	brief.Load()
+	startupStep("brief.Load", brief.Load)
 
 	// load search
-	web.Load()
+	startupStep("web.Load", web.Load)
 
 	// load docs
-	help.Load()
+	startupStep("help.Load", help.Load)
 
 	// Keep copies of the data directory. It takes one at startup, because the
 	// most useful snapshot is the one from before whatever is about to go
@@ -502,7 +502,7 @@ func wireHooks() {
 	// copy — nothing reindexes what is already there, so losing it is not a
 	// rebuild, it is a loss.
 	backup.IndexSnapshot = data.SnapshotInto
-	backup.Load()
+	startupStep("backup.Load", backup.Load)
 
 	// Optionally run go-micro's MCP gateway alongside mu's existing /mcp, on a
 	// separate port. It auto-exposes every registered service as an MCP tool.
