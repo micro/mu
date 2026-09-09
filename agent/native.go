@@ -693,8 +693,29 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 		return "", fmt.Errorf("unknown or unavailable command: %s", strings.Fields(prompt)[0])
 	}
 
+	var startedWork atomic.Bool
+	originalToken := opts.Stream.Token
+	if originalToken != nil {
+		opts.Stream.Token = func(text string) {
+			if text != "" {
+				startedWork.Store(true)
+			}
+			originalToken(text)
+		}
+	}
+	defer func() {
+		if runErr != nil && !startedWork.Load() {
+			runErr = retryableModelFailure{runErr}
+		}
+	}()
+	guard := func(next gmai.ToolHandler) gmai.ToolHandler {
+		return func(ctx context.Context, c gmai.ToolCall) gmai.ToolResult {
+			startedWork.Store(true)
+			return next(ctx, c)
+		}
+	}
 	recorder := newNativeToolRecorder()
-	wrappers := []gmai.ToolWrapper{recorder.wrap}
+	wrappers := []gmai.ToolWrapper{guard, recorder.wrap}
 	if opts.OnStep != nil {
 		wrappers = append(wrappers, stepReporter(opts.OnStep))
 	}
