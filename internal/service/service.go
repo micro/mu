@@ -143,6 +143,7 @@ func Init() {
 	_ = br.Connect()
 	cl = client.NewClient(
 		client.Registry(reg),
+		client.Wrap(timingClientWrapper),
 		client.Selector(selector.NewSelector(selector.Registry(reg))),
 		client.Broker(br),
 		client.Transport(tr),

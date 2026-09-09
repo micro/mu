@@ -395,6 +395,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	runs := store.NewMemoryStore()
 	agentOpts := []gmagent.Option{
 		gmagent.Model(model),
+		gmagent.OnRunEvent(logRunTiming),
 		gmagent.WithStore(runs),
 		// What was said before, as turns. Read-only, which is what stops the
 		// question being counted twice — go-micro adds it to memory and then
@@ -670,7 +671,11 @@ type StreamHooks struct {
 //
 // This is the agent. There is no second one — see the note on ErrNoProvider,
 // and AGENTS.md for the rule that says so.
-func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
+func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr error) {
+	started := time.Now()
+	defer func() {
+		app.Log("timing", "phase=agent_total caller=%s duration_ms=%.3f failed=%t", costCaller(opts), float64(time.Since(started))/float64(time.Millisecond), runErr != nil)
+	}()
 	if commands, ok := promptCommands(prompt, opts); ok {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
@@ -693,7 +698,9 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 	if opts.OnStep != nil {
 		wrappers = append(wrappers, stepReporter(opts.OnStep))
 	}
+	prepareStart := time.Now()
 	run, ok := buildNativeAgent(accountID, prompt, opts, wrappers...)
+	app.Log("timing", "phase=agent_prepare run=%s duration_ms=%.3f", run.name, float64(time.Since(prepareStart))/float64(time.Millisecond))
 	if !ok {
 		return "", ErrNoProvider
 	}
@@ -767,7 +774,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 		final = resp.Reply
 	}
 
-	answer := app.StripLatexDollars(final)
+	answer = app.StripLatexDollars(final)
 	// Told whether a named agent wrote this. The freshness guard replaces a
 	// whole answer with a list of the raw tool results when the news looks
 	// stale, which is right for the generalist and destroys a user-defined

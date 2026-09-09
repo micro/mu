@@ -207,15 +207,19 @@ func providerName(model string) string {
 // Cache tokens are not a field: go-micro's ai.Usage has input, output and
 // total, so what is not reported cannot be recorded. It reads as a slightly
 // high bill on a provider that caches, which is the safe direction.
-func RecordAgentUsage(caller, model string, inputTokens, outputTokens, calls int) {
-	app.RecordUsage(providerName(model), caller,
-		estimateCostCents(model, inputTokens, outputTokens, 0, 0),
-		map[string]any{
-			"model":         model,
-			"input_tokens":  inputTokens,
-			"output_tokens": outputTokens,
-			"model_calls":   calls,
-		})
+// UsageTiming connects a cost entry to the model timeline.
+type UsageTiming struct {
+	RunID   string
+	ModelMS int64
+}
+
+func RecordAgentUsage(caller, model string, inputTokens, outputTokens, calls int, timing ...UsageTiming) {
+	details := map[string]any{"model": model, "input_tokens": inputTokens, "output_tokens": outputTokens, "model_calls": calls}
+	if len(timing) > 0 {
+		details["run_id"] = timing[0].RunID
+		details["model_duration_ms"] = timing[0].ModelMS
+	}
+	app.RecordUsage(providerName(model), caller, estimateCostCents(model, inputTokens, outputTokens, 0, 0), details)
 }
 
 func recordUsage(caller, model string, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens int) {

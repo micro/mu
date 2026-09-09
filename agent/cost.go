@@ -96,7 +96,7 @@ func recordRunCost(st store.Store, agentName, caller string) {
 				})
 				continue
 			}
-			ai.RecordAgentUsage(caller, m.model, m.input, m.output, m.calls)
+			ai.RecordAgentUsage(caller, m.model, m.input, m.output, m.calls, ai.UsageTiming{RunID: s.RunID, ModelMS: m.latency})
 		}
 	}
 }
@@ -107,10 +107,11 @@ var noUsageReported sync.Once
 
 // modelSpend is one model's share of one run.
 type modelSpend struct {
-	model  string
-	input  int
-	output int
-	calls  int
+	model   string
+	input   int
+	output  int
+	calls   int
+	latency int64
 }
 
 // spendByModel sums a run's model calls, one entry per model, in a fixed order.
@@ -133,6 +134,7 @@ func spendByModel(events []gmagent.RunEvent) []modelSpend {
 		m.input += e.Tokens.InputTokens
 		m.output += e.Tokens.OutputTokens
 		m.calls++
+		m.latency += e.LatencyMS
 	}
 
 	names := make([]string, 0, len(byModel))

@@ -102,3 +102,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .inline-edit > .inline-edit-action { flex: 0 0 auto; font-size: var(--font-size-sm, 12px); text-decoration: none; }
 
 .inline-edit-feedback:empty { display: none; }
+
+/* Tables need the available page width, rather than a prose measure. */
+.log-tables .card { max-width: none; width: 100%; }
+#content:has(.log-tables) { max-width: none; }

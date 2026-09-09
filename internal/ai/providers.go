@@ -249,9 +249,12 @@ func generate(prompt *Prompt) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), llmTimeout+5*time.Second)
 	defer cancel()
 
+	queueStart := time.Now()
 	if err := llmSemaphore.Acquire(ctx, 1); err != nil {
+		app.Log("timing", "phase=model_queue caller=%s duration_ms=%.3f status=error", prompt.Caller, float64(time.Since(queueStart))/float64(time.Millisecond))
 		return "", fmt.Errorf("LLM request queue full, please try again later")
 	}
+	app.Log("timing", "phase=model_queue caller=%s duration_ms=%.3f status=done", prompt.Caller, float64(time.Since(queueStart))/float64(time.Millisecond))
 	defer llmSemaphore.Release(1)
 
 	systemPromptText, err := BuildSystemPrompt(prompt)
@@ -295,9 +298,12 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), llmTimeout+5*time.Second)
 	defer cancel()
 
+	queueStart := time.Now()
 	if err := llmSemaphore.Acquire(ctx, 1); err != nil {
+		app.Log("timing", "phase=model_queue caller=%s duration_ms=%.3f status=error", prompt.Caller, float64(time.Since(queueStart))/float64(time.Millisecond))
 		return "", fmt.Errorf("LLM request queue full, please try again later")
 	}
+	app.Log("timing", "phase=model_queue caller=%s duration_ms=%.3f status=done", prompt.Caller, float64(time.Since(queueStart))/float64(time.Millisecond))
 	defer llmSemaphore.Release(1)
 
 	systemPromptText, err := BuildSystemPrompt(prompt)
