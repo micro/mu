@@ -84,7 +84,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	target := strings.TrimSpace(q.Get("url"))
 	full := q.Get("full") != ""
-	b.WriteString(`<form class="form-row page-section" method="get" action="/browser">`)
+	b.WriteString(`<form class="form form-inline page-section" method="get" action="/browser">`)
 	b.WriteString(`<input class="browser-url" type="text" name="url" placeholder="https://example.com" ` +
 		`value="` + html.EscapeString(target) + `">`)
 	b.WriteString(`<button type="submit">Read</button>`)

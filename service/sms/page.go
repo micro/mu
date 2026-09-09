@@ -234,7 +234,7 @@ func verifier(r *http.Request, who, csrf string) string {
 	if waiting {
 		b.WriteString(`<p class="text-sm">A code went to <strong>` + html.EscapeString(number) +
 			`</strong>. It is good for ten minutes.</p>` +
-			`<form method="POST" action="/sms" class="form-row mt-3">` +
+			`<form method="POST" action="/sms" class="form form-inline mt-3">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 			`<input type="hidden" name="confirm" value="` + html.EscapeString(number) + `">` +
 			`<input name="code" inputmode="numeric" autocomplete="one-time-code" required ` +
@@ -266,7 +266,7 @@ func verifier(r *http.Request, who, csrf string) string {
 					`<input type="hidden" name="forget" value="` + html.EscapeString(n) + `"></form>`)
 			}
 		}
-		b.WriteString(`<form method="POST" action="/sms" class="form-row mt-3">` +
+		b.WriteString(`<form method="POST" action="/sms" class="form form-inline mt-3">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 			`<input name="start" required placeholder="+447700900123" class="sms-in" ` +
 			`autocomplete="tel" aria-label="Your number">` +
@@ -359,7 +359,7 @@ func threads(r *http.Request, who string, history []Message) string {
 			// way it came. Without it this replied by text to a WhatsApp
 			// conversation: a second thread on the other person's phone, from a
 			// number they do not recognise, with nothing on it to say why.
-			b.WriteString(`<form method="POST" action="/sms" class="form-row mt-3">` +
+			b.WriteString(`<form method="POST" action="/sms" class="form form-inline mt-3">` +
 				`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 				`<input type="hidden" name="send" value="1">` +
 				`<input type="hidden" name="to" value="` + html.EscapeString(number) + `">` +

@@ -139,7 +139,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
   <input name="note" placeholder="Note">
   <button type="submit">Add</button>
 </form>`, html.EscapeString(csrf))
-	b.WriteString(`<details class="mt-3"><summary>Import contacts</summary><form method="POST" action="/contacts/import" enctype="multipart/form-data" class="form-row mt-3">` + app.CSRFField(csrf) + `<input type="file" name="file" accept=".csv,text/csv" required><button>Import CSV</button></form><p class="text-sm">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p></details></div>`)
+	b.WriteString(`<details class="mt-3"><summary>Import contacts</summary><form method="POST" action="/contacts/import" enctype="multipart/form-data" class="form form-inline mt-3">` + app.CSRFField(csrf) + `<input type="file" name="file" accept=".csv,text/csv" required><button>Import CSV</button></form><p class="text-sm">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p></details></div>`)
 
 	if len(people) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">`)
