@@ -7598,7 +7598,7 @@ select.field-wide { max-width: 100%; width: 100%; }
 .ib-addr-sep { margin: 0 8px; opacity: .5 }
 
 /* A sender you can read, with the whole address on hover. */
-.ib-row[title] { cursor: help }
+.ib-row[title] { cursor: pointer }
 
 /* The two addresses at the top of the inbox: yours, and the agent's. It showed
    one and composed as the other. See inbox/page.go. */
