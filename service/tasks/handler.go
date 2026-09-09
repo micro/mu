@@ -286,6 +286,7 @@ func taskCard(t *Task, csrf, label string, actionURL func(string) string) string
 		button(&b, actionURL, "reopen", csrf, "Reopen", "")
 	}
 	fmt.Fprintf(&b, `<form method="POST" action="%s" onsubmit="return confirm('Delete %s?')">
+  <input type="hidden" name="action" value="delete">
   <input type="hidden" name="_csrf" value="%s">
   <button type="submit" class="btn btn-danger">Delete</button>
 </form>`, html.EscapeString(actionURL("delete")),
@@ -296,9 +297,10 @@ func taskCard(t *Task, csrf, label string, actionURL func(string) string) string
 
 func button(b *strings.Builder, actionURL func(string) string, action, csrf, label, extra string) {
 	fmt.Fprintf(b, `<form method="POST" action="%s">
+  <input type="hidden" name="action" value="%s">
   <input type="hidden" name="_csrf" value="%s">%s
   <button type="submit" class="btn btn-quiet">%s</button>
-</form>`, html.EscapeString(actionURL(action)), html.EscapeString(csrf), extra, html.EscapeString(label))
+</form>`, html.EscapeString(actionURL(action)), html.EscapeString(action), html.EscapeString(csrf), extra, html.EscapeString(label))
 }
 
 // taskPollJS reloads the page when the agent finishes something.

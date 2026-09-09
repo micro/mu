@@ -93,7 +93,7 @@ func TestInboxTaskControlsAndOwnership(t *testing.T) {
 	}
 	path := "/inbox?kind=task&id=" + task.ID
 	w := call(path, nil, false)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "Test work") || strings.Contains(w.Body.String(), `action="/tasks/`) {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Test work") || (strings.Contains(w.Body.String(), `action="/tasks/`) || strings.Contains(w.Body.String(), "&amp;action=")) {
 		t.Fatal("task controls leave inbox")
 	}
 	if strings.Contains(taskRow(task), `href="/tasks`) {
@@ -102,14 +102,14 @@ func TestInboxTaskControlsAndOwnership(t *testing.T) {
 	if w = other(path, nil, false); w.Code != 404 {
 		t.Fatal("other account can read task")
 	}
-	if w = other(path+"&action=done", url.Values{}, true); w.Code != 404 {
+	if w = other(path, url.Values{"action": {"done"}}, true); w.Code != 404 {
 		t.Fatal("other account can change task")
 	}
-	if w = call(path+"&action=done", url.Values{}, false); w.Code != 403 {
+	if w = call(path, url.Values{"action": {"done"}}, false); w.Code != 403 {
 		t.Fatal("task action needs CSRF")
 	}
 	for _, action := range []string{"done", "reopen"} {
-		w = call(path+"&action="+action, url.Values{}, true)
+		w = call(path, url.Values{"action": {action}}, true)
 		if w.Code != 303 || w.Header().Get("Location") != path {
 			t.Fatal("task action leaves inbox")
 		}
@@ -124,7 +124,7 @@ func TestInboxTaskControlsAndOwnership(t *testing.T) {
 	if result := call(path, nil, false); !strings.Contains(result.Body.String(), "<strong>Finished work</strong>") {
 		t.Fatal("task result not rendered in inbox")
 	}
-	w = call(path+"&action=delete", url.Values{}, true)
+	w = call(path, url.Values{"action": {"delete"}}, true)
 	if w.Header().Get("Location") != "/inbox" {
 		t.Fatal("delete leaves inbox")
 	}

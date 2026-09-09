@@ -34,7 +34,7 @@ func itemPage(w http.ResponseWriter, r *http.Request, owner, kind, id string) {
 			return
 		}
 		if r.Method == http.MethodPost {
-			action := r.URL.Query().Get("action")
+			action := r.FormValue("action")
 			if err := tasks.ApplyAction(owner, id, action); err != nil {
 				app.BadRequest(w, r, err.Error())
 				return
@@ -49,7 +49,7 @@ func itemPage(w http.ResponseWriter, r *http.Request, owner, kind, id string) {
 		if label == "" {
 			label = defaultAgentName()
 		}
-		body = tasks.DetailHTML(task, csrf, label, func(action string) string { return dest + "&action=" + url.QueryEscape(action) })
+		body = tasks.DetailHTML(task, csrf, label, func(action string) string { return dest })
 	} else {
 		var note *notes.Entry
 		for _, n := range notes.All(owner) {
