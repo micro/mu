@@ -1,10 +1,10 @@
 # Mu
 
-A personal assistant 
+A personal AI assistant 
 
 ## Overview
 
-Mu is a personal assistant. It's a full stack solution to the question, how do I run it myself.
+Mu is a personal AI assistant. It's a full stack solution to the question, how do I run it myself.
 
 ## Features 
 
