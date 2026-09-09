@@ -19,3 +19,11 @@ func TestModelTimingIncludesAttemptsAndFailures(t *testing.T) {
 		}
 	}
 }
+
+func TestModelTimingRetainsProviderError(t *testing.T) {
+	logRunTiming(gmagent.RunEvent{Kind: "model", ErrorKind: "rate_limited", Error: "HTTP 429 quota=RequestsPerDay limit=0 retryDelay=60s"})
+	got := app.APILog()[0]
+	if got.Outcome != "rate_limited" || got.Error != "HTTP 429 quota=RequestsPerDay limit=0 retryDelay=60s" {
+		t.Fatalf("lost provider diagnostic: %+v", got)
+	}
+}

@@ -195,6 +195,9 @@ func apiLogCard() string {
 			html.EscapeString(e.Error), html.EscapeString(errStr),
 		))
 
+		if e.Error != "" {
+			fmt.Fprintf(&content, `<tr><td colspan="7"><details class="disclosure"><summary>Error details</summary><pre class="raw-sm">%s</pre></details></td></tr>`, html.EscapeString(e.Error))
+		}
 		if e.Kind == "model" {
 			fmt.Fprintf(&content, `<tr><td colspan="7">Model: %s · Run: %s · Attempt: %d · Tokens: %d in / %d out</td></tr>`, html.EscapeString(e.Model), html.EscapeString(e.RunID), e.Attempt, e.InputTokens, e.OutputTokens)
 		}
