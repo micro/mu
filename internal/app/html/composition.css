@@ -97,3 +97,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
 /* A text value edited in its own row, without a separate form panel. */
 .inline-edit > input { flex: 1; width: 0; min-width: 0; }
 .inline-edit > button { flex: 1; min-width: 0; padding: 0; display: block; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.inline-edit > .inline-edit-value { flex: 0 1 auto; color: var(--text-secondary, #666); font-style: italic; text-decoration: none; }
+.inline-edit > .inline-edit-action { flex: 0 0 auto; font-size: var(--font-size-sm, 12px); text-decoration: none; }
