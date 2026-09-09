@@ -163,3 +163,26 @@ func TestLinkGainsArchiveMetadataWithoutLosingPrivateState(t *testing.T) {
 		t.Fatal("enrichment was not persisted")
 	}
 }
+
+func TestPrayerSourceCarriesReflectionButRejectsPrivateData(t *testing.T) {
+	for _, owner := range []string{"", "someone"} {
+		id := "test-prayer-reading-" + owner
+		if err := data.IndexSQLite(id, data.KindReminder, "A verse", "Verse: source text\n\nReflection: retained message", owner, map[string]any{"url": "https://reminder.dev"}); err != nil {
+			t.Fatal(err)
+		}
+		defer data.Unindex(id)
+		item, err := Source(id)
+		if owner != "" {
+			if err == nil {
+				t.Fatal("private reflection was exposed")
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if item.Kind != "reflection" || !strings.Contains(Context(item), "retained message") {
+			t.Fatal("Ask lost the reflection")
+		}
+	}
+}

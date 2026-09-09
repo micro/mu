@@ -81,7 +81,7 @@ func publicEntry(ref string) (*data.IndexEntry, error) {
 		return nil, ErrNotFound
 	}
 	switch e.Type {
-	case data.KindNews, data.KindVideo:
+	case data.KindNews, data.KindVideo, data.KindReminder:
 	case data.KindPost:
 		if public, ok := e.Metadata["public"].(bool); !ok || !public {
 			return nil, ErrNotFound
@@ -107,6 +107,9 @@ func Source(ref string) (*Item, error) {
 	case data.KindVideo:
 		item.Kind = "video"
 		item.URL = "https://www.youtube.com/watch?v=" + url.QueryEscape(strings.TrimPrefix(e.ID, "video_"))
+	case data.KindReminder:
+		item.Kind = "reflection"
+		item.URL = s("url")
 	case data.KindPost:
 		item.Kind = "post"
 		item.URL = "/blog/post?id=" + url.QueryEscape(e.ID)
