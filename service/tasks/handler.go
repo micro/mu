@@ -76,21 +76,8 @@ func handleAction(w http.ResponseWriter, r *http.Request, id, action string) {
 		}
 		_, actErr = Create(sess.Account, r.FormValue("title"), r.FormValue("detail"), assignee, due)
 
-	case action == "done":
-		_, actErr = Update(sess.Account, id, "", "", StatusDone, "", "")
-	case action == "reopen":
-		_, actErr = Update(sess.Account, id, "", "", StatusTodo, "", "")
-	case action == "assign":
-		_, actErr = Update(sess.Account, id, "", "", "", Agent, "")
-	case action == "unassign":
-		_, actErr = Update(sess.Account, id, "", "", "", Me, "")
-	case action == "run":
-		actErr = Run(sess.Account, id)
-	case action == "delete":
-		actErr = Remove(sess.Account, id)
 	default:
-		app.NotFound(w, r, "Unknown action")
-		return
+		actErr = ApplyAction(sess.Account, id, action)
 	}
 
 	dest := "/tasks"
@@ -193,11 +180,24 @@ func tab(b *strings.Builder, status, active, label string) {
 }
 
 func taskRow(t *Task, csrf string, labels ...string) string {
-	var b strings.Builder
 	label := "Agent"
 	if len(labels) > 0 && strings.TrimSpace(labels[0]) != "" {
 		label = labels[0]
 	}
+	return taskCard(t, csrf, label, func(action string) string { return "/tasks/" + neturl.PathEscape(t.ID) + "/" + action })
+}
+
+// DetailHTML reuses the task controls and result renderer inside a composing page.
+func DetailHTML(t *Task, csrf, label string, actionURL func(string) string) string {
+	body := taskCard(t, csrf, label, actionURL) + tasksPageCSS
+	if Running(t) {
+		body += taskPollJS
+	}
+	return body
+}
+
+func taskCard(t *Task, csrf, label string, actionURL func(string) string) string {
+	var b strings.Builder
 	class := "task card"
 	if !t.Open() {
 		class += " task-done"
@@ -269,36 +269,36 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 
 	b.WriteString(`<div class="form-actions">`)
 	if t.Open() {
-		button(&b, t.ID, "done", csrf, "Done", "")
+		button(&b, actionURL, "done", csrf, "Done", "")
 		if t.Assignee == Agent {
 			if !Running(t) && t.Delivery == nil {
 				runLabel := "Run now"
 				if t.Status == StatusFailed || t.Status == StatusBlocked {
 					runLabel = "Retry"
 				}
-				button(&b, t.ID, "run", csrf, runLabel, "")
+				button(&b, actionURL, "run", csrf, runLabel, "")
 			}
-			button(&b, t.ID, "unassign", csrf, "Take back", "")
+			button(&b, actionURL, "unassign", csrf, "Take back", "")
 		} else {
-			button(&b, t.ID, "assign", csrf, "Give to agent", "")
+			button(&b, actionURL, "assign", csrf, "Give to agent", "")
 		}
 	} else {
-		button(&b, t.ID, "reopen", csrf, "Reopen", "")
+		button(&b, actionURL, "reopen", csrf, "Reopen", "")
 	}
-	fmt.Fprintf(&b, `<form method="POST" action="/tasks/%s/delete" onsubmit="return confirm('Delete %s?')">
+	fmt.Fprintf(&b, `<form method="POST" action="%s" onsubmit="return confirm('Delete %s?')">
   <input type="hidden" name="_csrf" value="%s">
   <button type="submit" class="btn btn-danger">Delete</button>
-</form>`, html.EscapeString(t.ID),
+</form>`, html.EscapeString(actionURL("delete")),
 		html.EscapeString(strings.ReplaceAll(t.Title, "'", "\\'")), html.EscapeString(csrf))
 	b.WriteString(`</div></div>`)
 	return b.String()
 }
 
-func button(b *strings.Builder, id, action, csrf, label, extra string) {
-	fmt.Fprintf(b, `<form method="POST" action="/tasks/%s/%s">
+func button(b *strings.Builder, actionURL func(string) string, action, csrf, label, extra string) {
+	fmt.Fprintf(b, `<form method="POST" action="%s">
   <input type="hidden" name="_csrf" value="%s">%s
   <button type="submit" class="btn btn-quiet">%s</button>
-</form>`, html.EscapeString(id), action, html.EscapeString(csrf), extra, html.EscapeString(label))
+</form>`, html.EscapeString(actionURL(action)), html.EscapeString(csrf), extra, html.EscapeString(label))
 }
 
 // taskPollJS reloads the page when the agent finishes something.
@@ -399,4 +399,27 @@ func addForm(csrf string) string {
   </div>
   <label class="task-assign"><input type="checkbox" name="assign" value="agent"> <span>Give it to the agent — it starts working on this now</span></label>
 </form>`, html.EscapeString(csrf))
+}
+
+// ApplyAction changes the original task, with ownership enforced by each operation.
+func ApplyAction(owner, id, action string) error {
+	var actErr error
+	switch {
+	case action == "done":
+		_, actErr = Update(owner, id, "", "", StatusDone, "", "")
+	case action == "reopen":
+		_, actErr = Update(owner, id, "", "", StatusTodo, "", "")
+	case action == "assign":
+		_, actErr = Update(owner, id, "", "", "", Agent, "")
+	case action == "unassign":
+		_, actErr = Update(owner, id, "", "", "", Me, "")
+	case action == "run":
+		actErr = Run(owner, id)
+	case action == "delete":
+		actErr = Remove(owner, id)
+	default:
+		return fmt.Errorf("unknown action")
+	}
+
+	return actErr
 }

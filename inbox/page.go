@@ -100,6 +100,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RedirectToLogin(w, r)
 		return
 	}
+	if id := r.URL.Query().Get("id"); id != "" {
+		kind := kindOf(r.URL.Query().Get("kind"))
+		if kind == kindNote || kind == kindTask {
+			itemPage(w, r, acc.ID, kind, id)
+			return
+		}
+	}
 	// An instruction about the conversation being read. POST here rather than at
 	// a path of its own, because /inbox/<box> is a mailbox name and /inbox/act
 	// would be one an account could have.

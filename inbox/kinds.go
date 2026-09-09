@@ -113,15 +113,11 @@ func everything(r *http.Request, accountID, box, only string) []item {
 	return out
 }
 
-// noteRow is a note, in the row a conversation uses.
-//
-// It links to /notes rather than reading the note here. The note has a page
-// that edits it, and a second reader in the inbox would be a second place the
-// same text is rendered — see the profile, which had exactly that and lost it.
+// noteRow opens the original note inside Inbox.
 func noteRow(n *notes.Entry) string {
 	text := strings.TrimSpace(n.Text)
 	return `<div class="ib-item">` +
-		`<a class="ib-row" href="/notes">` +
+		`<a class="ib-row" href="/inbox?kind=note&amp;id=` + url.QueryEscape(n.ID) + `">` +
 		`<span class="ib-meta"><span class="ib-who">Note</span>` +
 		`<span class="ib-tags">` + html.EscapeString(app.TimeAgo(n.UpdatedAt)) + `</span></span>` +
 		`<span class="ib-subject">` + html.EscapeString(trimTo(n.Title, 90)) + `</span>` +
@@ -157,7 +153,7 @@ func taskRow(t *tasks.Task) string {
 		cls += " unseen"
 	}
 	return `<div class="ib-item">` +
-		`<a class="` + cls + `" href="/tasks?id=` + url.QueryEscape(t.ID) + `">` +
+		`<a class="` + cls + `" href="/inbox?kind=task&amp;id=` + url.QueryEscape(t.ID) + `">` +
 		`<span class="ib-meta"><span class="ib-who">Task</span>` +
 		`<span class="ib-tags">` + strings.Join(tags, `<span class="ib-dot">·</span>`) + `</span></span>` +
 		`<span class="ib-subject">` + html.EscapeString(trimTo(t.Title, 90)) + `</span>` +

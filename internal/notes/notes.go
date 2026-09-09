@@ -12,6 +12,7 @@
 package notes
 
 import (
+	"crypto/rand"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,7 @@ import (
 
 // Entry is one note.
 type Entry struct {
+	ID           string    `json:"id,omitempty"`
 	SourceThread string    `json:"source_thread,omitempty"`
 	Title        string    `json:"key"`
 	Text         string    `json:"value"`
@@ -38,6 +40,23 @@ var (
 
 func init() {
 	data.LoadJSON("memory.json", &store)
+	if ensureIDs(store) {
+		save()
+	}
+}
+
+// Existing notes receive an opaque address once; later edits retain it.
+func ensureIDs(owned map[string][]*Entry) bool {
+	changed := false
+	for _, entries := range owned {
+		for _, e := range entries {
+			if e.ID == "" {
+				e.ID = rand.Text()
+				changed = true
+			}
+		}
+	}
+	return changed
 }
 
 func save() {
@@ -75,6 +94,7 @@ func AddFrom(userID, title, text, source string) {
 	}
 
 	added := &Entry{
+		ID:           rand.Text(),
 		Title:        title,
 		SourceThread: source,
 		Text:         text,
