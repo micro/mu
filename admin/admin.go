@@ -29,7 +29,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/alerts">Alerts</a>
 		<a href="/admin/backup">Backup</a>
 		<a href="/admin/config">Config</a>
-		<a href="/admin/diagnostics">Status</a>
+		<a href="/admin/status">Status</a>
 		<a href="/admin/log">Logs` + alertBadge() + `</a>
 		<a href="/admin/oauth">OAuth Clients</a>
 		<a href="/admin/moderate">Moderation</a>
