@@ -103,6 +103,7 @@ type QueryMessage struct {
 
 // QueryOpts controls what context is included in agent queries.
 type QueryOpts struct {
+	Thread  string // server-resolved conversation; ownership checked before retrieval
 	History []QueryMessage
 	Public  bool   // if true, skip private context (mail, wallet, etc.)
 	System  string // optional custom system prompt (user-defined agent)
@@ -1614,7 +1615,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	_, directCommand := promptCommands(req.Prompt, nopts)
 	directCommand = directCommand || commandDenied(req.Prompt, nopts)
 	if !guest && !directCommand && !explicitCommand(req.Prompt) {
-		go extractMemory(accountID, req.Prompt, scopeOf(req.Agent))
+		go extractMemory(accountID, req.Prompt, scopeOf(req.Agent), threadID)
 	}
 	if !guest && req.Cards && CardContextFunc != nil {
 		if !directCommand && !explicitCommand(req.Prompt) {
@@ -1641,6 +1642,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// mail got a specialist — and because routing now sets the
 	// options rather than diverting into a pipeline of its own, a routed
 	// question still streams.
+	nopts.Thread = threadID
 	routedPrompt, nopts := Routed(req.Prompt, nopts)
 	streamNativeSSE(w, accountID, routedPrompt, nopts, flow, threadID)
 }

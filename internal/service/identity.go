@@ -109,3 +109,15 @@ func InAgentRun(ctx context.Context) bool {
 	v, ok := metadata.Get(ctx, agentKey)
 	return ok && v == "1"
 }
+
+// WithSourceThread carries server-resolved note provenance across a tool call.
+func WithSourceThread(ctx context.Context, id string) context.Context {
+	if id == "" {
+		return metadata.Delete(ctx, "Mu-Source-Thread")
+	}
+	return metadata.Set(ctx, "Mu-Source-Thread", id)
+}
+func SourceThreadFrom(ctx context.Context) string {
+	value, _ := metadata.Get(ctx, "Mu-Source-Thread")
+	return value
+}

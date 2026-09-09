@@ -21,10 +21,11 @@ import (
 
 // Entry is one note.
 type Entry struct {
-	Title     string    `json:"key"`
-	Text      string    `json:"value"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	SourceThread string    `json:"source_thread,omitempty"`
+	Title        string    `json:"key"`
+	Text         string    `json:"value"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // MaxPerUser caps the store to prevent unbounded growth.
@@ -46,10 +47,13 @@ func save() {
 // Add writes a note. A title that already exists is rewritten rather than
 // duplicated — a note is addressed by its title, which is what makes "remember
 // that I'm in London" idempotent however many times it is said.
-func Add(userID, title, text string) {
+func Add(userID, title, text string) { AddFrom(userID, title, text, "") }
+
+// AddFrom preserves server-verified conversation provenance.
+func AddFrom(userID, title, text, source string) {
 	title = strings.TrimSpace(title)
 	text = strings.TrimSpace(text)
-	if title == "" || text == "" {
+	if userID == "" || title == "" || text == "" {
 		return
 	}
 
@@ -62,6 +66,7 @@ func Add(userID, title, text string) {
 	for _, e := range entries {
 		if strings.EqualFold(e.Title, title) {
 			e.Text = text
+			e.SourceThread = source
 			e.UpdatedAt = now
 			save()
 			index(userID, e)
@@ -70,10 +75,11 @@ func Add(userID, title, text string) {
 	}
 
 	added := &Entry{
-		Title:     title,
-		Text:      text,
-		CreatedAt: now,
-		UpdatedAt: now,
+		Title:        title,
+		SourceThread: source,
+		Text:         text,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 	entries = append(entries, added)
 

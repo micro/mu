@@ -268,6 +268,7 @@ func Ask(r AskRequest) (Answer, error) {
 	}
 
 	opts := QueryOpts{
+		Thread:  threadID(th),
 		Public:  r.Public,
 		History: History(r.Account, threadID(th), historyTurns),
 		Stream:  r.Stream,
@@ -371,7 +372,7 @@ func Ask(r AskRequest) (Answer, error) {
 	// Off the response path: it is a background model call and the answer is
 	// already written.
 	if err == nil && !directCommand {
-		go extractMemory(r.Account, r.Text, scopeOf(r.Agent))
+		go extractMemory(r.Account, r.Text, scopeOf(r.Agent), threadID(th))
 	}
 
 	return Answer{Text: answer, Flow: id, Thread: threadID(th)}, err

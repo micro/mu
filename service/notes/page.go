@@ -56,7 +56,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if title := strings.TrimSpace(q.Get("note")); title != "" {
 		if text := notes.Get(who, title); text != "" {
-			render(w, r, "Notes", editor(r, title, text))
+			source := ""
+			for _, e := range entries {
+				if strings.EqualFold(e.Title, title) && e.SourceThread != "" {
+					source = `<p class="text-sm text-muted">Remembered from <a href="/inbox?id=` + html.EscapeString(urlArg(e.SourceThread)) + `">a conversation</a> · ` + html.EscapeString(e.UpdatedAt.Format("2 Jan 2006")) + `</p>`
+					break
+				}
+			}
+			render(w, r, "Notes", source+editor(r, title, text))
 			return
 		}
 		// A note that is not there any more — deleted in another tab, or a

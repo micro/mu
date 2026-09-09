@@ -32,7 +32,10 @@ import (
 // it to find a cafe. "I only care about the 5am forecast" is nobody else's
 // business, and putting it in the shared pool is how every agent's context
 // silently fills with the last ten conversations you had with a different one.
-func extractMemory(accountID, prompt, scope string) {
+func extractMemory(accountID, prompt, scope string, sources ...string) {
+	if accountID == "" {
+		return
+	}
 	lower := strings.ToLower(prompt)
 	// Quick check — only run the LLM if the prompt looks like it
 	// contains a memory-worthy statement.
@@ -94,8 +97,12 @@ when it is a fact about the person that anything should know.
 		// internal/notes. ForScopedContext reads it back and strips it.
 		title = scope + ":" + extracted.Key
 	}
-	notes.Add(accountID, title, extracted.Value)
-	app.Log("memory", "Saved for %s: %s = %s", accountID, title, extracted.Value)
+	source := ""
+	if len(sources) > 0 {
+		source = sources[0]
+	}
+	notes.AddFrom(accountID, title, extracted.Value, source)
+	app.Log("memory", "Saved a personal note")
 }
 
 // scopeOf is the memory namespace of the agent that answered, empty for the
