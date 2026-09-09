@@ -24,7 +24,6 @@ func TestTheVoiceControlsAreHiddenUntilTheBrowserHasAVoice(t *testing.T) {
 	got := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe", Speak: true})
 
 	for _, want := range []struct{ id, feature string }{
-		{"mu-chat-mic", "SpeechRecognition"},
 		{"mu-chat-say", "speechSynthesis"},
 	} {
 		open := strings.Index(got, `id="`+want.id+`"`)
@@ -112,9 +111,8 @@ func TestSpeakIsOnlyWhereAnAnswerCanArrive(t *testing.T) {
 		t.Errorf("the signed-out landing offers to read an answer out loud, and "+
 			"cannot produce one:\n%s", front)
 	}
-	if !strings.Contains(front, `id="mu-chat-mic"`) {
-		t.Error("the microphone went with it — dictating into the box still works, " +
-			"and what it types is carried to the archive or through a sign-in")
+	if strings.Contains(front, `id="mu-chat-mic"`) || strings.Contains(front, "SpeechRecognition") || strings.Contains(front, "mu-chat-wake") {
+		t.Error("removed voice input is still present")
 	}
 
 	// And where somebody can have a conversation, it is there.
