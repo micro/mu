@@ -12,6 +12,7 @@ const apiLogMaxEntries = 500
 
 // APILogEntry records a single external API call.
 type APILogEntry struct {
+	ErrorKind    string        `json:"error_kind,omitempty"`
 	Kind         string        `json:"kind,omitempty"`
 	Model        string        `json:"model,omitempty"`
 	RunID        string        `json:"run_id,omitempty"`

@@ -300,7 +300,11 @@ func logModelCall(provider, model, caller, method string, started time.Time, err
 	if err != nil {
 		outcome = "error"
 	}
+	detail := ""
+	if err != nil {
+		detail = ProviderErrorDetail(err.Error())
+	}
 	duration := time.Since(started)
-	app.RecordExternalCall(app.APILogEntry{Kind: "model", Time: started, Service: provider, Method: method, Model: model, Outcome: outcome, Duration: duration, InputTokens: used.InputTokens, OutputTokens: used.OutputTokens})
+	app.RecordExternalCall(app.APILogEntry{Kind: "model", Time: started, Service: provider, Method: method, Model: model, Outcome: outcome, Error: detail, ErrorKind: string(gmai.ClassifyError(err)), Duration: duration, InputTokens: used.InputTokens, OutputTokens: used.OutputTokens})
 	app.Log("timing", "phase=model caller=%s provider=%s model=%s status=%s duration_ms=%.3f", caller, provider, model, outcome, float64(duration)/float64(time.Millisecond))
 }
