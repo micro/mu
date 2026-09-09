@@ -29,6 +29,7 @@ package app
 import (
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"mu/internal/dir"
 	"os"
@@ -89,6 +90,7 @@ func OpenLog() {
 		logToStdio = true
 		return
 	}
+	log.SetOutput(f)
 	logWriter = f
 	logPath = path
 

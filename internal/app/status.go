@@ -104,7 +104,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Respond(w, r, Response{Title: "Status", Description: "Service status",
+	RespondPublic(w, r, Response{Title: "Status", Description: "Service status",
 		HTML: renderPublicStatusHTML(status)})
 }
 

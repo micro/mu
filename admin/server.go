@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"sort"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -36,7 +38,7 @@ func ServerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := back() + app.RenderInternalStatusHTML() + storesTable()
+	content := back() + app.RenderInternalStatusHTML() + startupTable() + storesTable()
 
 	app.Respond(w, r, app.Response{Title: "Server", Description: "What this process is doing and what it is sitting on", HTML: content})
 }
@@ -89,5 +91,21 @@ func storesTable() string {
 	b.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%s in the data directory. `+
 		`Each of these is rewritten whole when it changes, except where marked. `+
 		`Search index: %s.</p>`, app.Bytes(total), html.EscapeString(data.SearchBackend())))
+	return b.String()
+}
+
+// Keep these on the authenticated server page: component names are internal.
+func startupTable() string {
+	steps, total := app.StartupTimings()
+	if len(steps) == 0 {
+		return `<section class="page-section"><h3>Startup</h3><p>No startup timings recorded for this process.</p></section>`
+	}
+	sort.SliceStable(steps, func(i, j int) bool { return steps[i].Duration > steps[j].Duration })
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf(`<section class="page-section"><h3>Startup</h3><p>Initialization: <strong>%s</strong>. Current process, slowest loaders first. Timings cover service loading through route registration.</p><table class="stats-table"><thead><tr><th>Component</th><th>Time</th></tr></thead><tbody>`, total.Round(time.Millisecond)))
+	for _, step := range steps {
+		b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%.1f ms</td></tr>`, html.EscapeString(step.Component), float64(step.Duration)/float64(time.Millisecond)))
+	}
+	b.WriteString(`</tbody></table><p class="text-muted text-sm">Loader start and completion events are also recorded in the server log.</p></section>`)
 	return b.String()
 }

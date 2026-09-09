@@ -23,6 +23,7 @@ package home
 // numbers that will never be applied to anybody. It says so instead.
 
 import (
+	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -48,7 +49,8 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 			`makes.</p>` +
 			`<p class="text-sm"><a href="/install">Run your own &rarr;</a> · ` +
 			`<a href="/about">What this is</a></p></div>`)
-		app.Respond(w, r, app.Response{
+		b.WriteString(app.Close())
+		app.RespondPublic(w, r, app.Response{
 			Title:       "Pricing",
 			Description: "This instance does not charge for anything.",
 			HTML:        b.String(),
@@ -70,6 +72,8 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		`model call, a search is a search company's, a text message is a carrier's. ` +
 		`Anything that only touches this server — reading the news, your mail, your ` +
 		`notes, the archive — is free, because serving it costs nothing.</p>` +
+		`<p>Paid tools used to answer a question are charged separately at the rates below. ` +
+		`Cached results that do not call a paid provider are not charged.</p>` +
 		account.PricingTableHTML() +
 		`</div>`)
 
@@ -78,14 +82,14 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// credit is. The table above answers neither.
 	start := `<div class="card"><h3>Starting</h3>` +
 		`<p>A new account gets ` + creditsInWords() + ` to find out whether this is ` +
-		`useful — about thirty questions. Nothing is asked for up front and there is ` +
-		`no card to leave.</p>`
+		`useful. This is a one-time welcome balance of ` + strconv.Itoa(account.WelcomeCredits) +
+		` credits, not a daily allowance. No card is required to start.</p>`
 	if account.TopUpConfigured() {
 		start += `<p>After that you top up: $5, $10, $25 or $50, or any amount you type. ` +
 			`A credit is a cent, and it is spent on what you use rather than on a plan — ` +
 			`there is no subscription, and an account that sits idle is charged nothing.</p>` +
-			`<p class="text-sm"><a href="/signup" class="btn">Sign up</a> ` +
-			`<a href="/account/topup" class="btn btn-secondary">Top up</a></p>`
+			`<div class="form-actions"><a href="/signup" class="btn">Sign up</a> ` +
+			`<a href="/account/topup" class="btn btn-secondary">Top up</a></div>`
 	} else {
 		// Metered but with no card route configured — x402 only. Real, and the
 		// page must not offer a top-up form that is not there.
@@ -96,13 +100,16 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(start)
 
 	b.WriteString(`<div class="card"><h3>Running it yourself</h3>` +
-		`<p>The software is the same either way, and an instance you run has no meter ` +
-		`in it: you hold the API keys and pay the providers directly.</p>` +
+		`<p>Run your own instance with your API keys and pay the providers directly. ` +
+		`Without payments configured, the instance does not charge its users.</p>` +
 		`<p class="text-sm"><a href="/install">How to run it</a> · ` +
 		`<a href="/about">What this is</a> · ` +
 		`<a href="https://github.com/micro/mu">The source</a></p></div>`)
 
-	app.Respond(w, r, app.Response{
+	b.WriteString(dailyLimitsHTML())
+	b.WriteString(app.Close())
+
+	app.RespondPublic(w, r, app.Response{
 		Title:       "Pricing",
 		Description: "What this instance costs: a dollar of credit to start, then a credit is a cent.",
 		HTML:        b.String(),
@@ -121,4 +128,19 @@ func creditsInWords() string {
 		return "$" + strconv.Itoa(c/100) + " of credit"
 	}
 	return strconv.Itoa(c) + " credits"
+}
+
+func dailyLimitsHTML() string {
+	var b strings.Builder
+	for _, p := range quota.Prices() {
+		limit := quota.DailyLimit(p.Op)
+		if limit == quota.NoLimit {
+			continue
+		}
+		b.WriteString("<tr><td>" + html.EscapeString(p.Label) + "</td><td>" + strconv.Itoa(limit) + "</td></tr>")
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+	return `<section class="card"><h3>Daily limits</h3><p>These are limits on calls, separate from your credit balance. They reset at midnight UTC. Account-specific limits may differ.</p><table><thead><tr><th>Operation</th><th>Calls per day</th></tr></thead><tbody>` + b.String() + `</tbody></table></section>`
 }

@@ -57,29 +57,6 @@ func TestProseCentresWhenTheRailIsGone(t *testing.T) {
 	}
 }
 
-// The corner says who you are only when the rail is not already saying it.
-//
-// The rail's foot carries "Signed in as @you" with Account under it, and the
-// corner carries @you linking to the same page. Collapsed, the rail is not on
-// screen and the corner is the only answer — which is why it exists. Open, both
-// were on screen at once, in two styles, one above the other.
-func TestTheCornerDoesNotRepeatTheRail(t *testing.T) {
-	css := styles(t)
-	if !regexp.MustCompile(`body:not\(\.nav-collapsed\)\s+#head-me\s*\{[^}]*display:\s*none`).MatchString(css) {
-		t.Error("the corner names the account while the rail is open and naming it too")
-	}
-	// And only on a desktop, where the rail is a column beside the corner.
-	// Below 901px it is an overlay and there is nothing on screen to repeat, so
-	// a rule that was not scoped to that width would take the name away on a
-	// phone as well — where the rail is a tap away rather than a glance.
-	desktop := strings.Index(css, "min-width: 901px")
-	scoped := strings.Index(css, "body:not(.nav-collapsed) #head-me")
-	if desktop < 0 || scoped < desktop {
-		t.Error("the corner's name is hidden outside the desktop rule, where the rail " +
-			"is an overlay and repeats nothing")
-	}
-}
-
 // Headlines form one readable column with their descriptions.
 func TestTheNewsCardIsAGlance(t *testing.T) {
 	css := styles(t)

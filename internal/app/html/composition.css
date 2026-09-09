@@ -80,7 +80,7 @@
    presets, the wallet's sign-up button, two on the blog.
    Marking the background important as well would have hidden the cause and
    left the next property to do the same thing. Order is the cause. */
-a.btn-secondary, .btn-secondary {
+a.btn-secondary, a.btn-secondary:visited, .btn-secondary {
   background: var(--hover-background, #eee);
   color: var(--text-primary, #333);
   border-color: var(--border-color, #ddd);

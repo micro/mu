@@ -86,6 +86,7 @@ func Run(addr string) {
 	app.Log("main", "boot: routes in %s, ready in %s",
 		time.Since(phase).Round(time.Millisecond), time.Since(started).Round(time.Millisecond))
 
+	app.CompleteStartup(time.Since(started))
 	serve(addr)
 }
 
