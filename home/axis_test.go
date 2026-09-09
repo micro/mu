@@ -122,12 +122,12 @@ func TestTheNameIsTheSameOnEverySurface(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(src)
-	if !strings.Contains(body, `<div class="lbrand">Mu</div>`) {
+	if !strings.Contains(body, `<div class="lbrand">Micro</div>`) {
 		t.Error("the wordmark is not the instance's one name — if it is derived\n" +
 			"from something, the title and the manifest have to be derived from\n" +
 			"the same thing or the product has two names and explains neither")
 	}
-	if !strings.Contains(body, `Title:       "Mu",`) {
+	if !strings.Contains(body, `Title:       "Micro",`) {
 		t.Error("the page title and the wordmark disagree")
 	}
 	// And the manifest, which is what an installed app is called on a home
@@ -136,7 +136,7 @@ func TestTheNameIsTheSameOnEverySurface(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(man), `"name": "Mu"`) {
+	if !strings.Contains(string(man), `"name": "Micro"`) {
 		t.Error("the installed app is called something other than the wordmark")
 	}
 }

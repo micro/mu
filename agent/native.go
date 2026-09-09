@@ -368,12 +368,14 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// The question, on its own. What was said before it goes to the model as
 	// turns rather than as prose — see memory.go, which is also where the
 	// reason the whole conversation used to be sent twice is written down.
+	retrieved := retrievedContext(accountID, prompt, opts, services)
+	sys += "\n\n" + retrievalInstructions
 	question := prompt
 
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
-	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls(), retainEvidence(accountID, opts)}, wrappers...)
 	if opts.Stream.wants() {
 		toolWrappers = append([]gmai.ToolWrapper{streamToolReporter(opts.Stream)}, toolWrappers...)
 	}
@@ -400,7 +402,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		// What was said before, as turns. Read-only, which is what stops the
 		// question being counted twice — go-micro adds it to memory and then
 		// reads memory back alongside it. See memory.go.
-		gmagent.WithMemory(history(briefing(facts), opts.History)),
+		gmagent.WithMemory(memoryWithRetrieval(briefing(facts), opts.History, retrieved)),
 		gmagent.MaxSteps(maxSteps),
 		// A no-progress guard instead of a low step cap.
 		//

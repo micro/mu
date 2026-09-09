@@ -1033,13 +1033,10 @@ func cleanAndTruncateDescription(desc string) string {
 
 // indexArticle indexes an article for search/RAG
 func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
-	// Use LLM summary if available, otherwise combine description + content
-	fullContent := item.Description + " " + item.Content
-	if md.Summary != "" {
-		fullContent = md.Summary
-	}
-	if len(md.Comments) > 0 {
-		fullContent += " " + md.Comments
+	// Preserve source material separately from generated summaries and comments.
+	fullContent := htmlToText(item.Description + " " + item.Content)
+	if strings.TrimSpace(md.Content) != "" {
+		fullContent = htmlToText(md.Content)
 	}
 
 	data.Index(
@@ -1048,12 +1045,13 @@ func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
 		post.Title,
 		fullContent,
 		map[string]interface{}{
-			"url":         post.URL,
-			"category":    post.Category,
-			"posted_at":   post.PostedAt,
-			"image":       post.Image,
-			"description": item.Description,
-			"summary":     md.Summary,
+			"url":          post.URL,
+			"category":     post.Category,
+			"posted_at":    post.PostedAt,
+			"image":        post.Image,
+			"description":  item.Description,
+			"content_kind": "source excerpt",
+			"summary":      md.Summary,
 		},
 	)
 }
@@ -1411,12 +1409,20 @@ func Load() {
 					// Update metadata with summary
 					metadata["summary"] = summary
 
-					// Re-index with summary as content
+					// A summary must never overwrite the source text.
+					content := htmlToText(md.Content)
+					if existing != nil {
+						content = existing.Content
+					}
+					if strings.TrimSpace(content) == "" {
+						content = summary
+						metadata["content_kind"] = "generated summary"
+					}
 					data.Index(
 						itemID,
 						data.KindNews,
 						title,
-						summary, // Use summary as content for chat context
+						content,
 						metadata,
 					)
 

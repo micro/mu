@@ -797,6 +797,7 @@ exist. Any of them can also be set at `/admin/config` in the browser.
 |---|---|---|
 | `ADMIN` / `MU_ADMIN` | first account | Who is admin — comma-separated ids, usernames or emails |
 | `MU_OPERATOR_ENABLED` | `false` | Enable operator-only endpoints; human admin account and explicit token permission required. Does not grant OS privileges |
+| `TZ` | UTC | IANA timezone for the shared daily image schedule (06:00), such as `Europe/London`. Invalid values fall back to UTC |
 | `MU_DOMAIN` | `localhost` | Public domain. Used for the OAuth issuer an MCP client discovers, Stripe returns, ActivityPub actor URLs and mail. Set this if you run behind a proxy |
 | `MU_ENV_FILE` | `~/.env`, then `~/.mu/.env` | A dotenv file read at startup; the first that exists wins. Settings saved at `/admin/config` go to `~/.mu/data/settings.json` instead |
 | `MCP_REGISTRY_PROOF` | — | Domain-ownership proof served at `/.well-known/mcp-registry-auth` when publishing to the MCP registry — see the MCP registry listing notes in the repository |

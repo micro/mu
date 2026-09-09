@@ -73,11 +73,12 @@ const (
 // client knows what a conversation is on its own service, and this stores
 // whatever it says without interpreting it.
 type Thread struct {
-	ID      string `json:"id"`
-	Account string `json:"account"`
-	Client  string `json:"client"`
-	Key     string `json:"key"`
-	Subject string `json:"subject,omitempty"`
+	Evidence []Evidence `json:"-"`
+	ID       string     `json:"id"`
+	Account  string     `json:"account"`
+	Client   string     `json:"client"`
+	Key      string     `json:"key"`
+	Subject  string     `json:"subject,omitempty"`
 	// Attachment is an opaque reference supplied by the client. The client
 	// resolves its contents afresh; the record holds neither generated context
 	// nor source text attributed to the person who attached it.

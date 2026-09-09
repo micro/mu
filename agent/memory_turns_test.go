@@ -226,7 +226,7 @@ func TestTheNativePathDoesNotFlattenHistory(t *testing.T) {
 		t.Error("native.go builds the conversation as prose again; history goes to " +
 			"the model as turns — see memory.go")
 	}
-	if !strings.Contains(src, `gmagent.WithMemory(history(briefing(facts), opts.History))`) {
+	if !strings.Contains(src, `gmagent.WithMemory(memoryWithRetrieval(briefing(facts), opts.History, retrieved))`) {
 		t.Error("the native agent is not given the conversation at all, so every " +
 			"question arrives with no context")
 	}

@@ -24,13 +24,14 @@ import (
 // menu entry for one would be a link to a page that does not exist, or a link
 // that performs an action on arrival, and both are worse than the absence.
 var notAPage = map[string]string{
-	"/admin":           "the menu itself",
-	"/admin/flag":      "an action posted from a moderation row",
-	"/admin/delete":    "an action posted from a user row",
-	"/admin/invite":    "reached from /admin/users, where invites are",
-	"/admin/blocklist": "a stub that redirects somewhere it moved to",
-	"/admin/email":     "a stub that redirects somewhere it moved to",
-	"/admin/usage":     "a stub that redirects to /admin/traffic",
+	"/admin/diagnostics": "legacy redirect to /admin/status",
+	"/admin":             "the menu itself",
+	"/admin/flag":        "an action posted from a moderation row",
+	"/admin/delete":      "an action posted from a user row",
+	"/admin/invite":      "reached from /admin/users, where invites are",
+	"/admin/blocklist":   "a stub that redirects somewhere it moved to",
+	"/admin/email":       "a stub that redirects somewhere it moved to",
+	"/admin/usage":       "a stub that redirects to /admin/traffic",
 }
 
 func TestEveryAdminPageIsInTheAdminMenu(t *testing.T) {

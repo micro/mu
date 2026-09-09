@@ -23,6 +23,8 @@ import (
 	"mu/internal/app"
 	"mu/internal/notes"
 	"mu/internal/service"
+	"mu/internal/thread"
+	"time"
 )
 
 // Server is the go-micro handler. Its exported methods become the notes_* tools.
@@ -61,7 +63,11 @@ func (Server) Add(ctx context.Context, req *AddRequest, rsp *AddResponse) error 
 	if title == "" || text == "" {
 		return fmt.Errorf("a note needs a title and some text")
 	}
-	notes.Add(owner, title, text)
+	source := service.SourceThreadFrom(ctx)
+	if thread.Get(owner, source) == nil {
+		source = ""
+	}
+	notes.AddFrom(owner, title, text, source)
 	rsp.Result = "saved"
 	return nil
 }
@@ -104,8 +110,10 @@ func (Server) Get(ctx context.Context, req *GetRequest, rsp *GetResponse) error 
 type ListRequest struct{}
 
 type Note struct {
-	Title string `json:"title" description:"What the note is called"`
-	Text  string `json:"text" description:"What it says"`
+	SourceThread string    `json:"source_thread,omitempty"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Title        string    `json:"title" description:"What the note is called"`
+	Text         string    `json:"text" description:"What it says"`
 }
 
 type ListResponse struct {
@@ -120,7 +128,7 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 		return err
 	}
 	for _, e := range notes.All(owner) {
-		rsp.Notes = append(rsp.Notes, Note{Title: e.Title, Text: e.Text})
+		rsp.Notes = append(rsp.Notes, Note{Title: e.Title, Text: e.Text, SourceThread: e.SourceThread, UpdatedAt: e.UpdatedAt})
 	}
 	return nil
 }

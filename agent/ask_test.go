@@ -42,15 +42,16 @@ func TestNoClientKeepsItsOwnHistory(t *testing.T) {
 	}
 }
 
-// Every client teaches memory, not just the web.
-func TestEveryClientTeachesMemory(t *testing.T) {
-	b, err := os.ReadFile("ask.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(b), "extractMemory") {
-		t.Error("Ask does not extract memory, so an agent still only learns from " +
-			"whichever client happens to call it — which was the web, and nowhere else")
+// Memory writes share the native tool path, with no competing extractor.
+func TestMemoryHasOneWriter(t *testing.T) {
+	for _, path := range []string{"ask.go", "agent.go", "run.go"} {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "extractMemory(") {
+			t.Errorf("%s starts a competing memory writer", path)
+		}
 	}
 }
 

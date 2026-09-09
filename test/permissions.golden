@@ -127,6 +127,7 @@ wallet_balance               needsAccount=true  destructive=false bound accountO
 weather_air                  needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 weather_forecast             needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 weather_history              needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+weather_lookup               needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 weather_marine               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 web_fetch                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 web_search                   needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
