@@ -38,6 +38,8 @@ func Load() {
 		reminderMutex.Unlock()
 	}
 
+	restoreReading(GetReminderData())
+
 	// Start background refresh
 	go refreshReminder()
 }
@@ -360,14 +362,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, GetReminderData())
 		return
 	}
-	// Prayer times beside the reminder rather than above it: the times are a
-	// short table that does not need the full width, and the verse is what
-	// most readers came for. The aside is first in the DOM so the stacked
-	// phone layout leads with the times.
-	body := `<div class="prayer-layout">` +
-		`<aside class="prayer-side">` + prayerTimesHTML() + `</aside>` +
-		`<div class="prayer-main">` + renderReflectionPage(GetReminderData()) + `</div>` +
-		`</div>`
+	body := renderPrayerPage(GetReminderData(), r.URL.Query().Get("view"))
+
 	app.Respond(w, r, app.Response{
 		Title:       "Prayer",
 		Description: "Islamic prayer times, the qibla, and a daily verse, saying, name and reflection",
@@ -632,35 +628,78 @@ func splitTitleBody(s string) (string, string) {
 // reader who knows the tradition loses nothing, and one who does not is not
 // asked to know it before they can read a line.
 func renderReflectionPage(rd *ReminderData) string {
-	if rd == nil {
-		return `<div class="card"><p class="text-muted">Today's reminder is loading — check back shortly.</p></div>`
+	return renderPrayerPage(rd, "verse")
+}
+
+func renderPrayerPage(rd *ReminderData, view string) string {
+	switch view {
+	case "verse", "saying", "name", "reflection", "times":
+	default:
+		view = "verse"
 	}
 	var b strings.Builder
+	b.WriteString(app.Column() + `<nav class="app-filters" aria-label="Prayer sections">`)
+	for _, tab := range []struct{ id, label string }{{"verse", "Verse"}, {"saying", "Saying"}, {"name", "Name"}, {"reflection", "Reflection"}, {"times", "Times & Qibla"}} {
+		b.WriteString(app.PillLink(tab.label, "/prayer?view="+tab.id, view == tab.id))
+	}
+	b.WriteString(`</nav>`)
+	if view == "times" {
+		b.WriteString(prayerTimesHTML())
+		b.WriteString(app.Close())
+		return b.String()
+	}
+	if rd == nil {
+		b.WriteString(`<p class="text-muted">The reminder is not available yet. Please try again shortly.</p>` + app.Close())
+		return b.String()
+	}
 	section := func(title, content, linkKey, linkLabel string) {
 		if strings.TrimSpace(content) == "" {
+			b.WriteString(`<p class="text-muted">` + title + ` is not available for this reminder.</p>`)
 			return
 		}
 		head, body := splitTitleBody(content)
-		b.WriteString(`<div class="card"><h3>` + title + `</h3>`)
+		b.WriteString(`<section class="card"><h3>` + title + `</h3>`)
 		if head != "" {
-			b.WriteString(`<p class="semibold m-0 mb-2">` + html.EscapeString(head) + `</p>`)
+			b.WriteString(`<p class="semibold">` + html.EscapeString(head) + `</p>`)
 		}
-		b.WriteString(`<p class="pre-line m-0">` + html.EscapeString(body) + `</p>`)
-		if linkKey != "" && rd.Links != nil {
-			if p, ok := rd.Links[linkKey].(string); ok && p != "" {
-				b.WriteString(`<p class="mt-3 m-0"><a href="https://reminder.dev` + html.EscapeString(p) + `" target="_blank">` + linkLabel + ` &rarr;</a></p>`)
-			}
+		b.WriteString(`<p class="pre-line">` + html.EscapeString(body) + `</p>`)
+		if p, ok := rd.Links[linkKey].(string); ok && strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//") {
+			b.WriteString(`<p><a href="https://reminder.dev` + html.EscapeString(p) + `" target="_blank" rel="noopener noreferrer">` + linkLabel + ` &rarr;</a></p>`)
 		}
-		b.WriteString(`</div>`)
+		b.WriteString(`</section>`)
 	}
-	section("Verse", rd.Verse, "verse", "Read in the Quran")
-	section("Saying", rd.Hadith, "hadith", "Read the hadith")
-	section("Name", rd.Name, "name", "The 99 names of Allah")
-	if strings.TrimSpace(rd.Message) != "" {
-		b.WriteString(`<div class="card"><h3>Reflection</h3><p class="m-0">` + html.EscapeString(rd.Message) + `</p></div>`)
+	switch view {
+	case "verse":
+		section("Verse", deduplicateVerseName(rd.Verse), "verse", "Read in the Quran")
+	case "saying":
+		section("Saying", rd.Hadith, "hadith", "Read the hadith")
+	case "name":
+		section("Name", rd.Name, "name", "The 99 names of Allah")
 	}
-	b.WriteString(`<p class="text-xs text-muted">A daily verse of the Quran, a hadith and a name of Allah, via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any verse or hadith.</p>`)
+	if view == "verse" || view == "reflection" {
+		section("Reflection", rd.Message, "", "")
+	}
+	ref := "reminder-" + reflectionKey(rd.Updated)
+	if entry := data.ByID(ref); entry != nil && entry.Type == data.KindReminder && entry.Owner == "" {
+		b.WriteString(`<div class="section-actions">` + app.AskControl(ref) + `</div>`)
+	}
+	b.WriteString(`<p class="text-xs text-muted">From <a href="https://reminder.dev">reminder.dev</a>. Ask Micro about this reminder using its Quran and hadith tools.</p>`)
+	b.WriteString(app.Close())
 	return b.String()
+}
+
+// Restore the reading attachment for a cached reminder on an older instance.
+// The normal refresh already indexes each publication under this same key.
+func restoreReading(rd *ReminderData) {
+	if rd == nil {
+		return
+	}
+	ref := "reminder-" + reflectionKey(rd.Updated)
+	if data.ByID(ref) != nil {
+		return
+	}
+	val := map[string]interface{}{"verse": rd.Verse, "hadith": rd.Hadith, "name": rd.Name, "message": rd.Message, "links": rd.Links}
+	data.Index(ref, data.KindReminder, reflectionTitle(val, rd.Updated), reflectionText(val), reflectionMeta(val, rd.Updated))
 }
 
 // GetReminderData loads the cached reminder data (from api/latest, rotates hourly)
