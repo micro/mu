@@ -100,3 +100,5 @@ a.btn-secondary:hover, .btn-secondary:hover {
 
 .inline-edit > .inline-edit-value { flex: 0 1 auto; color: var(--text-secondary, #666); font-style: italic; text-decoration: none; }
 .inline-edit > .inline-edit-action { flex: 0 0 auto; font-size: var(--font-size-sm, 12px); text-decoration: none; }
+
+.inline-edit-feedback:empty { display: none; }

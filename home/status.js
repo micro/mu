@@ -51,10 +51,8 @@
       saved = result.status;
       root.dataset.statusSaved = saved;
       input.value = input.defaultValue = saved;
-      var hadFocus = document.activeElement === input;
       close();
       feedback.textContent = '';
-      if (hadFocus) label.focus();
     } catch (err) {
       feedback.textContent = 'Could not save. Your text is kept here; press Enter or tap away to retry.';
     } finally {
