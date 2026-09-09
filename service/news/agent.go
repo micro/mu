@@ -24,6 +24,10 @@ import (
 // and ordered by recency, so every topic is represented near the top
 // regardless of its name. An optional topic filters to matching categories.
 func HeadlinesText(topic string, limit int) string {
+	return headlinesText(GetFeed(), topic, limit, time.Now().UTC())
+}
+
+func headlinesText(posts []*Post, topic string, limit int, at time.Time) string {
 	if limit <= 0 || limit > 100 {
 		limit = 30
 	}
@@ -31,7 +35,7 @@ func HeadlinesText(topic string, limit int) string {
 
 	byCat := map[string][]*Post{}
 	var catOrder []string
-	for _, p := range GetFeed() {
+	for _, p := range posts {
 		if p == nil || strings.TrimSpace(p.Title) == "" {
 			continue
 		}
@@ -82,7 +86,7 @@ func HeadlinesText(topic string, limit int) string {
 	}
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "Current request date: %s.\n", time.Now().UTC().Format("Monday, 2 January 2006 (2006-01-02, UTC)"))
+	fmt.Fprintf(&sb, "Current request date: %s.\n", at.Format("Monday, 2 January 2006 (2006-01-02, MST)"))
 	if topic != "" {
 		fmt.Fprintf(&sb, "Latest %q headlines (%d). Use news_read with an id to read one in full.\n\n", topic, len(picked))
 	} else {
@@ -273,14 +277,16 @@ func metaTime(v interface{}) time.Time {
 // agent/blog researches the top few of a category, and getting the titles back
 // out of the formatted text it had just been handed is what made it import this
 // package instead of calling it.
-func HeadlineItems(topic string, limit int) []Headline {
+func HeadlineItems(topic string, limit int) []Headline { return headlineItems(GetFeed(), topic, limit) }
+
+func headlineItems(posts []*Post, topic string, limit int) []Headline {
 	if limit <= 0 || limit > 100 {
 		limit = 30
 	}
 	topic = strings.TrimSpace(strings.ToLower(topic))
 
 	var out []Headline
-	for _, p := range GetFeed() {
+	for _, p := range posts {
 		if p == nil || strings.TrimSpace(p.Title) == "" {
 			continue
 		}

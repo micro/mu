@@ -64,7 +64,7 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 	case mailTab:
 		title = "Mail Log"
 	}
-	app.Respond(w, r, app.Response{Title: title, Description: "Logs", HTML: content.String()})
+	app.Respond(w, r, app.Response{Title: title, Description: "Logs", HTML: `<div class="log-tables">` + content.String() + `</div>`})
 }
 
 // MailLogMoved sends the old mail-log address to its tab.
@@ -165,6 +165,13 @@ func apiLogCard() string {
 			statusClass = "dir-out"
 		}
 
+		if e.Kind == "model" {
+			statusLabel = html.EscapeString(e.Outcome)
+			if statusLabel == "done" {
+				statusClass = "dir-in"
+			}
+		}
+
 		errStr := ""
 		if e.Error != "" {
 			errStr = truncate(e.Error, 60)
@@ -180,14 +187,20 @@ func apiLogCard() string {
 			<td class="subject" title="%s">%s</td>
 		</tr>`,
 			e.Time.Format("Jan 2 15:04:05"),
-			e.Service,
-			e.Method,
-			e.URL, truncate(e.URL, 50),
+			html.EscapeString(e.Service),
+			html.EscapeString(e.Method),
+			html.EscapeString(e.URL), html.EscapeString(truncate(e.URL, 50)),
 			statusClass, statusLabel,
 			e.Duration.Milliseconds(),
-			e.Error, errStr,
+			html.EscapeString(e.Error), html.EscapeString(errStr),
 		))
 
+		if e.Error != "" {
+			fmt.Fprintf(&content, `<tr><td colspan="7"><details class="disclosure"><summary>Error details</summary><pre class="raw-sm">%s</pre></details></td></tr>`, html.EscapeString(e.Error))
+		}
+		if e.Kind == "model" {
+			fmt.Fprintf(&content, `<tr><td colspan="7">Model: %s · Run: %s · Attempt: %d · Tokens: %d in / %d out</td></tr>`, html.EscapeString(e.Model), html.EscapeString(e.RunID), e.Attempt, e.InputTokens, e.OutputTokens)
+		}
 		if e.RequestBody != "" || e.ResponseBody != "" {
 			content.WriteString(`<tr><td colspan="7">`)
 			if e.RequestBody != "" {

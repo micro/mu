@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -240,9 +241,8 @@ const agentName = "micro"
 const AgentName = agentName
 
 // Room represents a discussion room for a specific item.
-// Room state is ephemeral - messages exist only in memory while the server runs.
-// The last 20 messages are kept in memory for new joiners.
-// Client-side sessionStorage is used so participants see their conversation until they leave.
+// The recent transcript is persisted before acknowledging a message.
+// The last 20 messages are kept for reconnecting clients.
 type Room struct {
 	ID           string                      // e.g., "post_123", "news_456", "video_789"
 	Type         string                      // "post", "news", "video"
@@ -253,7 +253,7 @@ type Room struct {
 	LastRefresh  time.Time                   // Last time external content was refreshed
 	LastActivity time.Time                   // Last time room had any activity (for cleanup)
 	LastAIMsg    time.Time                   // Last time AI sent an auto-message
-	Messages     []RoomMessage               // Last 20 messages (in-memory only)
+	Messages     []RoomMessage               // Last 20 persisted messages
 	Clients      map[*websocket.Conn]*Client // Connected clients
 	Broadcast    chan RoomMessage            // Broadcast channel
 	Register     chan *Client                // Register client
@@ -264,10 +264,11 @@ type Room struct {
 
 // RoomMessage represents a message in a chat room
 type RoomMessage struct {
-	UserID    string    `json:"username"`
-	Content   string    `json:"content"`
-	Timestamp time.Time `json:"timestamp"`
-	IsLLM     bool      `json:"is_llm"`
+	ack       chan error // optional acknowledgement after durable room storage
+	UserID    string     `json:"username"`
+	Content   string     `json:"content"`
+	Timestamp time.Time  `json:"timestamp"`
+	IsLLM     bool       `json:"is_llm"`
 
 	// System marks a line the room is saying about itself — somebody arriving
 	// or leaving — rather than a line somebody said.
@@ -297,20 +298,17 @@ var rooms = make(map[string]*Room)
 var roomsMutex sync.RWMutex
 
 // saveRoomMessages persists room messages to disk
-func saveRoomMessages(roomID string, messages []RoomMessage) {
+func saveRoomMessages(roomID string, messages []RoomMessage) error {
 	filename := "room_" + strings.ReplaceAll(roomID, "/", "_") + ".json"
 	b, err := json.Marshal(messages)
 	if err != nil {
-		app.Log("chat", "Error marshaling room messages: %v", err)
-		return
+		return err
 	}
-	if err := data.SaveFile(filename, string(b)); err != nil {
-		app.Log("chat", "Error saving room messages: %v", err)
-	}
+	return data.SaveFile(filename, string(b))
 }
 
 // loadRoomMessages loads persisted room messages from disk
-// Messages older than 24 hours are pruned
+// Keep the recent transcript across restarts, even when the room is quiet.
 func loadRoomMessages(roomID string) []RoomMessage {
 	filename := "room_" + strings.ReplaceAll(roomID, "/", "_") + ".json"
 	b, err := data.LoadFile(filename)
@@ -323,21 +321,11 @@ func loadRoomMessages(roomID string) []RoomMessage {
 		return nil
 	}
 
-	// Prune messages older than 24 hours
-	cutoff := time.Now().Add(-24 * time.Hour)
-	var recent []RoomMessage
-	for _, msg := range messages {
-		if msg.Timestamp.After(cutoff) {
-			recent = append(recent, msg)
-		}
+	if len(messages) > 20 {
+		messages = messages[len(messages)-20:]
 	}
-
-	if len(recent) < len(messages) {
-		app.Log("chat", "Pruned %d old messages for room %s", len(messages)-len(recent), roomID)
-	}
-
-	app.Log("chat", "Loaded %d messages for room %s", len(recent), roomID)
-	return recent
+	app.Log("chat", "Loaded %d messages for room %s", len(messages), roomID)
+	return messages
 }
 
 // handlePatternMatch handles predictable queries with direct lookups, skipping LLM
@@ -478,21 +466,13 @@ func Say(roomID, from, text string) bool {
 	if !ok {
 		return false
 	}
-	// Non-blocking. Broadcast is consumed by the room's own goroutine, and a
-	// room whose reader has stopped would otherwise hold this one forever —
-	// which for a subscriber means the whole event loop, not one message.
-	select {
-	case room.Broadcast <- RoomMessage{
-		UserID:    from,
-		Content:   text,
-		Timestamp: time.Now(),
-		IsLLM:     from == agentName,
-	}:
-		return true
-	default:
-		app.Log("chat", "room %s is not reading, dropped a message from %s", roomID, from)
+	if err := post(context.Background(), room, RoomMessage{
+		UserID: from, Content: text, Timestamp: time.Now(), IsLLM: from == agentName,
+	}); err != nil {
+		app.Log("chat", "room %s: %v", roomID, err)
 		return false
 	}
+	return true
 }
 
 func getOrCreateRoom(id string) *Room {
@@ -739,6 +719,12 @@ func getOrCreateRoom(id string) *Room {
 		}
 	}
 
+	if itemType != "chat" && itemType != "reminder" {
+		if saved := loadRoomMessages(id); saved != nil {
+			room.Messages = saved
+		}
+	}
+
 	// Now acquire write lock only for the map update
 	roomsMutex.Lock()
 	// Check again if another goroutine created it while we were fetching data
@@ -904,7 +890,26 @@ func (room *Room) run() {
 			return
 
 		case client := <-room.Register:
+			if !Member(room.ID, client.UserID) {
+				client.Conn.Close()
+				continue
+			}
 			room.mutex.Lock()
+			// The room loop is the only data-frame writer. Send history before
+			// registration so live broadcasts cannot race or overtake the replay.
+			failed := false
+			for _, msg := range room.Messages {
+				client.Conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+				if err := client.Conn.WriteJSON(msg); err != nil {
+					failed = true
+					break
+				}
+			}
+			if failed {
+				room.mutex.Unlock()
+				client.Conn.Close()
+				continue
+			}
 			// Already here on another tab, so nobody arrived. Without this a
 			// second window announces you to a room you are standing in, and
 			// closing it announces that you left while you are still talking.
@@ -937,34 +942,33 @@ func (room *Room) run() {
 			room.broadcastUserList()
 
 		case message := <-room.Broadcast:
-			// Add message to history (keep last 20)
-			room.mutex.Lock()
-			room.Messages = append(room.Messages, message)
-			if len(room.Messages) > 20 {
-				room.Messages = room.Messages[len(room.Messages)-20:]
+			err := room.keepMessage(message)
+			if message.ack != nil {
+				message.ack <- err
 			}
-			room.LastActivity = time.Now()
-			messagesToSave := make([]RoomMessage, len(room.Messages))
-			copy(messagesToSave, room.Messages)
-			room.mutex.Unlock()
-
+			if err != nil {
+				app.Log("chat", "room %s: %v", room.ID, err)
+				continue
+			}
 			announceMessage(room.ID, message)
 
-			// Persist messages for topic chat rooms
-			if strings.HasPrefix(room.ID, "chat_") {
-				go saveRoomMessages(room.ID, messagesToSave)
-			}
-
-			// Broadcast to all clients
+			// Snapshot under the lock; a failed or deleted connection can then be
+			// removed safely without keeping readers behind network IO.
 			room.mutex.RLock()
+			var clients []*websocket.Conn
 			for conn := range room.Clients {
-				err := conn.WriteJSON(message)
-				if err != nil {
-					conn.Close()
-					delete(room.Clients, conn)
-				}
+				clients = append(clients, conn)
 			}
 			room.mutex.RUnlock()
+			for _, conn := range clients {
+				_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+				if err := conn.WriteJSON(message); err != nil {
+					conn.Close()
+					room.mutex.Lock()
+					delete(room.Clients, conn)
+					room.mutex.Unlock()
+				}
+			}
 		}
 	}
 }
@@ -1081,17 +1085,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 	room.Register <- client
 
-	// Send room history to new client
-	room.mutex.RLock()
-	for _, msg := range room.Messages {
-		conn.WriteJSON(msg)
-	}
-	room.mutex.RUnlock()
-
 	// Read messages from client
 	go func() {
 		defer func() {
-			room.Unregister <- client
+			select {
+			case room.Unregister <- client:
+			case <-room.Shutdown:
+			}
 		}()
 
 		for {
@@ -1109,7 +1109,16 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 					Timestamp: time.Now(),
 					IsLLM:     false,
 				}
-				room.Broadcast <- userMsg
+				if !Member(room.ID, client.UserID) {
+					conn.Close()
+					return
+				}
+				if err := post(context.Background(), room, userMsg); err != nil {
+					// Control frames may be written concurrently with the room writer.
+					_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "Your message was not saved. Please retry."), time.Now().Add(time.Second))
+					conn.Close()
+					return
+				}
 
 				// Check if micro should respond:
 				// For item-specific rooms (news_, video_, post_), ALWAYS respond - these are AI discussions
@@ -1489,8 +1498,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// /chat?with=henrik — the conversation between you and one person.
 	//
-	// A door rather than an id, because the id is derived: PairRoom sorts the
-	// two names so both of you reach the same room, and nobody should have to
+	// A door rather than an id: PairRoom reserves the shared private room,
+	// so both people reach the same conversation without needing to
 	// know that to link to it. This is the one place a private room comes into
 	// being from a request, and it can, because the request names the person
 	// asking as one of its two members.

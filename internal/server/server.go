@@ -49,6 +49,9 @@ func Run(addr string) {
 		}
 	})
 	app.OpenLog()
+	service.OnCallTiming = func(name, method string, elapsed time.Duration, err error) {
+		app.Log("timing", "phase=service service=%s method=%s duration_ms=%.3f failed=%t", name, method, float64(elapsed)/float64(time.Millisecond), err != nil)
+	}
 
 	// Timed, per phase, because "the restart takes ages" is not answerable
 	// without it. Boot is a tenth of a second on an empty data directory and
@@ -83,6 +86,7 @@ func Run(addr string) {
 	app.Log("main", "boot: routes in %s, ready in %s",
 		time.Since(phase).Round(time.Millisecond), time.Since(started).Round(time.Millisecond))
 
+	app.CompleteStartup(time.Since(started))
 	serve(addr)
 }
 

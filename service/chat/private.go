@@ -30,11 +30,13 @@ package chat
 // standing: for them, there is not.
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"mu/internal/app"
 	"mu/internal/data"
 )
 
@@ -54,18 +56,42 @@ const privatePrefix = "dm_"
 var (
 	memberMu sync.RWMutex
 	members  = map[string][]string{}
+	pairIDs  = map[string]string{}
 )
 
 // loadPrivate reads the membership record. Called once at Load.
+type privateState struct {
+	Members map[string][]string `json:"members"`
+	Pairs   map[string]string   `json:"pairs"`
+}
+
 func loadPrivate() {
 	memberMu.Lock()
 	defer memberMu.Unlock()
-	data.LoadJSON("chat_private.json", &members) //nolint:errcheck
+	b, err := data.LoadFile("chat_private.json")
+	if err != nil {
+		return
+	}
+	var state privateState
+	if err := json.Unmarshal(b, &state); err == nil && state.Members != nil {
+		members, pairIDs = state.Members, state.Pairs
+		if pairIDs == nil {
+			pairIDs = map[string]string{}
+		}
+		return
+	}
+	// Existing installations stored just the room-to-members map.
+	var legacy map[string][]string
+	if err := json.Unmarshal(b, &legacy); err != nil {
+		app.Log("chat", "loading private rooms: %v", err)
+		return
+	}
+	members, pairIDs = legacy, map[string]string{}
 }
 
-// savePrivate writes it. Caller holds memberMu.
-func savePrivate() {
-	data.SaveJSON("chat_private.json", members) //nolint:errcheck
+// savePrivate writes membership and pair allocation together. Caller holds memberMu.
+func savePrivate() error {
+	return data.SaveJSON("chat_private.json", privateState{Members: members, Pairs: pairIDs})
 }
 
 // Private reports whether an id names a room that is never public.
@@ -143,7 +169,9 @@ func Open(roomID string, accounts ...string) {
 			have[a] = true
 		}
 	}
-	savePrivate()
+	if err := savePrivate(); err != nil {
+		app.Log("chat", "saving private rooms: %v", err)
+	}
 }
 
 // Members is who is in a private room, for a caller that may see it.
@@ -190,15 +218,10 @@ func Mine(account string) []string {
 	return out
 }
 
-// PairRoom is the id of the room two people share.
-//
-// Sorted, so the room asim opens with henrik is the room henrik opens with
-// asim. Deterministic rather than stored, because two people have exactly one
-// conversation between them and a lookup table would be a second place for that
-// fact to be wrong.
-//
-// Guessable by construction, which is the whole reason for the membership check
-// above: knowing the name of a private room gets you nothing.
+// PairRoom finds or reserves the room two accounts share. Allocation is stable
+// but opaque, and does not grant membership until Open. Existing rooms retain
+// their IDs; a deleted participant's allocation is revoked so a reused account
+// name cannot reopen the previous person's transcript.
 func PairRoom(a, b string) string {
 	a, b = strings.TrimSpace(a), strings.TrimSpace(b)
 	if a == "" || b == "" || a == b {
@@ -207,7 +230,86 @@ func PairRoom(a, b string) string {
 	if a > b {
 		a, b = b, a
 	}
-	return privatePrefix + a + "_" + b
+	key := a + "\x00" + b
+	memberMu.Lock()
+	defer memberMu.Unlock()
+	if id := pairIDs[key]; id != "" {
+		return id
+	}
+	// Preserve pre-allocation rooms whose two members are still present.
+	var existing []string
+	for id, list := range members {
+		if len(list) == 2 && ((list[0] == a && list[1] == b) || (list[0] == b && list[1] == a)) {
+			existing = append(existing, id)
+		}
+	}
+	sort.Strings(existing)
+	id := privatePrefix + newID()
+	if len(existing) > 0 {
+		id = existing[0]
+	}
+	pairIDs[key] = id
+	if err := savePrivate(); err != nil {
+		delete(pairIDs, key)
+		app.Log("chat", "allocating private room: %v", err)
+		return ""
+	}
+	return id
+}
+
+// forgetPrivate revokes the deleted account while retaining the other members'
+// correspondence. Empty rooms have nobody left to retain their transcript for.
+func forgetPrivate(account string) {
+	memberMu.Lock()
+	var empty []string
+	for id, list := range members {
+		var keep []string
+		for _, who := range list {
+			if who != account {
+				keep = append(keep, who)
+			}
+		}
+		if len(keep) == len(list) {
+			continue
+		}
+		if len(keep) == 0 {
+			delete(members, id)
+			empty = append(empty, id)
+		} else {
+			members[id] = keep
+		}
+	}
+	for key := range pairIDs {
+		pair := strings.SplitN(key, "\x00", 2)
+		if len(pair) == 2 && (pair[0] == account || pair[1] == account) {
+			delete(pairIDs, key)
+		}
+	}
+	if err := savePrivate(); err != nil {
+		app.Log("chat", "revoking private rooms: %v", err)
+	}
+	memberMu.Unlock()
+	for _, id := range empty {
+		_ = data.DeleteFile("room_" + strings.ReplaceAll(id, "/", "_") + ".json")
+	}
+	roomsMutex.RLock()
+	var live []*Room
+	for _, room := range rooms {
+		live = append(live, room)
+	}
+	roomsMutex.RUnlock()
+	for _, room := range live {
+		room.mutex.Lock()
+		for conn, client := range room.Clients {
+			if client != nil && client.UserID == account {
+				delete(room.Clients, conn)
+				if conn != nil {
+					conn.Close()
+				}
+			}
+		}
+		room.mutex.Unlock()
+	}
 }
 
 // pairTitle names a room after the person you are not.

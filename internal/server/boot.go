@@ -54,98 +54,98 @@ import (
 
 // boot starts the runtime core and loads every service.
 func boot() {
-	service.Init()
+	startupStep("service.Init", service.Init)
 
 	// load settings first so other packages can use them
-	settings.Load()
+	startupStep("settings.Load", settings.Load)
 
 	// load the data index
-	data.Load()
+	startupStep("data.Load", data.Load)
 
 	// Subscribe before services start publishing their first refresh.
-	stream.Load()
+	startupStep("stream.Load", stream.Load)
 
 	// load admin/flags
-	admin.Load()
+	startupStep("admin.Load", admin.Load)
 
 	// load the chat
-	chat.Load()
+	startupStep("chat.Load", chat.Load)
 
 	// load the news
-	news.Load()
-	news.StartSentimentLoop()
+	startupStep("news.Load", news.Load)
+	startupStep("news.StartSentimentLoop", news.StartSentimentLoop)
 
 	// load the videos
-	video.Load()
+	startupStep("video.Load", video.Load)
 
 	// load the blog
-	blog.Load()
+	startupStep("blog.Load", blog.Load)
 
 	// load the mail (also configures SMTP and DKIM)
-	mail.Load()
+	startupStep("mail.Load", mail.Load)
 
 	// load places
-	places.Load()
+	startupStep("places.Load", places.Load)
 
 	// load weather
-	weather.Load()
+	startupStep("weather.Load", weather.Load)
 
 	// load markets, reminder, wallet
-	markets.Load()
-	prayer.Load()
+	startupStep("markets.Load", markets.Load)
+	startupStep("prayer.Load", prayer.Load)
 	// Going looking in your own past on purpose — the read over internal/thread
 	// that every client writes to. See service/recall.
-	recall.Load()
-	bookmarks.Load()
+	startupStep("recall.Load", recall.Load)
+	startupStep("bookmarks.Load", bookmarks.Load)
 	// One search across everything this instance has collected. Six services
 	// write to that index and every reader over it was filtered to one type.
-	archive.Load()
-	browser.Load()
-	shell.Load()
+	startupStep("archive.Load", archive.Load)
+	startupStep("browser.Load", browser.Load)
+	startupStep("shell.Load", shell.Load)
 
 	// And the SSH door onto it, when an operator has named a port. Off
 	// otherwise — see service/sandbox/ssh.go for why the port is a decision
 	// rather than a default.
-	shell.LoadSSH()
-	web.Load()
-	text.Load()
-	food.Load()
-	transit.Load()
-	hazards.Load()
-	maps.Load()
-	wallet.Load()
-	stream.LoadService()
-	chat.LoadService()
-	docs.LoadService()
-	notes.LoadService()
-	notify.LoadService()
-	sms.LoadService()
-	images.Load()
+	startupStep("shell.LoadSSH", shell.LoadSSH)
+	startupStep("web.Load", web.Load)
+	startupStep("text.Load", text.Load)
+	startupStep("food.Load", food.Load)
+	startupStep("transit.Load", transit.Load)
+	startupStep("hazards.Load", hazards.Load)
+	startupStep("maps.Load", maps.Load)
+	startupStep("wallet.Load", wallet.Load)
+	startupStep("stream.LoadService", stream.LoadService)
+	startupStep("chat.LoadService", chat.LoadService)
+	startupStep("docs.LoadService", docs.LoadService)
+	startupStep("notes.LoadService", notes.LoadService)
+	startupStep("notify.LoadService", notify.LoadService)
+	startupStep("sms.LoadService", sms.LoadService)
+	startupStep("images.Load", images.Load)
 	// The cache behind /img, which serves article images from here instead of
 	// from four publisher CDNs. See internal/imageproxy.
-	imageproxy.Load()
+	startupStep("imageproxy.Load", imageproxy.Load)
 	// Counters behind /admin/traffic: what this instance is being asked to do.
-	usage.Load()
-	files.Load()
+	startupStep("usage.Load", usage.Load)
+	startupStep("files.Load", files.Load)
 
 	// load flights
-	flights.Load()
-	routes.Load()
-	contacts.Load()
-	users.Load()
+	startupStep("flights.Load", flights.Load)
+	startupStep("routes.Load", routes.Load)
+	startupStep("contacts.Load", contacts.Load)
+	startupStep("users.Load", users.Load)
 	// Who is here: the presence broadcaster behind /presence. It was started
 	// from wireHooks, which is for breaking cycles rather than standing things
 	// up, and it never needed one.
-	user.Load()
+	startupStep("user.Load", user.Load)
 
 	// These three loaded from wireHooks, which is for breaking cycles rather
 	// than for standing services up. Nothing about them needed a hook first —
 	// they were simply written where somebody was working — and the cost was
 	// invisible until a test asked which Specs exist after boot and got an
 	// answer three short. Loading is boot's job.
-	apps.Load()
-	social.Load()
-	account.Load()
-	tasks.Load()
-	events.Load()
+	startupStep("apps.Load", apps.Load)
+	startupStep("social.Load", social.Load)
+	startupStep("account.Load", account.Load)
+	startupStep("tasks.Load", tasks.Load)
+	startupStep("events.Load", events.Load)
 }

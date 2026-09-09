@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -95,7 +96,7 @@ func initDB() error {
 			return
 		}
 
-		fmt.Println("[data] SQLite database initialized at", dbPath)
+		log.Println("[data] SQLite database initialized at", dbPath)
 	})
 	return initErr
 }
@@ -437,7 +438,7 @@ func scoreMatch(entry *IndexEntry, words []string) float64 {
 		// Exact word boundary match in title (highest value)
 		if matchesWordBoundary(titleLower, word) {
 			score += 10.0
-			fmt.Printf("[SCORE] Title word-boundary match '%s' in '%s' -> +10\n", word, entry.Title[:min(50, len(entry.Title))])
+			log.Printf("[SCORE] Title word-boundary match '%s' in '%s' -> +10\n", word, entry.Title[:min(50, len(entry.Title))])
 		} else if strings.Contains(titleLower, word) {
 			// Substring match in title
 			score += 3.0
@@ -601,14 +602,14 @@ func MigrateFromJSON() error {
 	var indexCount int
 	db.QueryRow(`SELECT COUNT(*) FROM index_entries`).Scan(&indexCount)
 	if indexCount > 0 {
-		fmt.Printf("[data] SQLite already has %d entries, skipping migration\n", indexCount)
+		log.Printf("[data] SQLite already has %d entries, skipping migration\n", indexCount)
 		return nil
 	}
 
 	// Load existing index.json
 	b, err := LoadFile("index.json")
 	if err != nil {
-		fmt.Println("[data] No index.json to migrate")
+		log.Println("[data] No index.json to migrate")
 		return nil
 	}
 
@@ -635,7 +636,7 @@ func MigrateFromJSON() error {
 		return fmt.Errorf("failed to parse index.json: %w", err)
 	}
 
-	fmt.Printf("[data] Migrating %d index entries...\n", len(oldIndex))
+	log.Printf("[data] Migrating %d index entries...\n", len(oldIndex))
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -663,13 +664,13 @@ func MigrateFromJSON() error {
 		// an empty string means here and everywhere else.
 		_, err := stmt.Exec(id, entry.Type, entry.Title, entry.Content, entry.Owner, string(metadataJSON), entry.IndexedAt)
 		if err != nil {
-			fmt.Printf("[data] Failed to migrate entry %s: %v\n", id, err)
+			log.Printf("[data] Failed to migrate entry %s: %v\n", id, err)
 			continue
 		}
 		migrated++
 
 		if migrated%1000 == 0 {
-			fmt.Printf("[data] Migrated %d entries...\n", migrated)
+			log.Printf("[data] Migrated %d entries...\n", migrated)
 		}
 	}
 
@@ -677,10 +678,10 @@ func MigrateFromJSON() error {
 		return fmt.Errorf("failed to commit migration: %w", err)
 	}
 
-	fmt.Printf("[data] Migrated %d index entries\n", migrated)
+	log.Printf("[data] Migrated %d index entries\n", migrated)
 
 	rebuildFTS()
-	fmt.Println("[data] Migration complete!")
+	log.Println("[data] Migration complete!")
 
 	return nil
 }
@@ -706,15 +707,13 @@ func rebuildFTS() {
 	if err != nil {
 		return
 	}
-	fmt.Println("[data] Rebuilding FTS index...")
-	db.Exec(`DELETE FROM index_fts`)
-	result, err := db.Exec(`INSERT INTO index_fts(rowid, title, content) SELECT rowid, title, content FROM index_entries`)
+	log.Println("[data] Rebuilding FTS index...")
+	_, err = db.Exec(`INSERT INTO index_fts(index_fts) VALUES('rebuild')`)
 	if err != nil {
-		fmt.Printf("[data] FTS rebuild error: %v\n", err)
+		log.Printf("[data] FTS rebuild error: %v\n", err)
 		return
 	}
-	count, _ := result.RowsAffected()
-	fmt.Printf("[data] FTS index rebuilt with %d entries\n", count)
+	log.Println("[data] FTS index rebuilt")
 }
 
 // EnsureFTS checks if FTS index needs rebuilding on startup
@@ -723,10 +722,22 @@ func EnsureFTS() {
 	if err != nil {
 		return
 	}
-	var ftsCount, entryCount int
-	db.QueryRow(`SELECT COUNT(*) FROM index_fts`).Scan(&ftsCount)
-	db.QueryRow(`SELECT COUNT(*) FROM index_entries`).Scan(&entryCount)
-	if entryCount > 0 && ftsCount == 0 {
+	// A scan of this external-content virtual table reads index_entries,
+	// even when the search index is empty. Its default docsize backing table
+	// records the documents actually indexed. Only read it; FTS owns writes.
+	var hasFTS, hasEntries bool
+	if err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM index_fts_docsize LIMIT 1)`).Scan(&hasFTS); err != nil {
+		log.Printf("[data] FTS startup check: %v", err)
+		return
+	}
+	if hasFTS {
+		return
+	}
+	if err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM index_entries LIMIT 1)`).Scan(&hasEntries); err != nil {
+		log.Printf("[data] Index startup check: %v", err)
+		return
+	}
+	if hasEntries {
 		rebuildFTS()
 	}
 }

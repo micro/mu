@@ -474,7 +474,13 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 	// like, and this asks the second for the mail it already has. mail.Rendered
 	// is the same function /mail renders through — there is exactly one, and a
 	// test holds that — so the two pages cannot drift.
-	if rendered := mailBody(accountID, m); rendered != "" {
+	rendered := mailBody(accountID, m)
+	if rendered == "" && t.Client == "mail" {
+		// Older local mail has no Message-ID to join to its stored body.
+		// Render the owned transcript with the same mail renderer instead.
+		rendered = mail.Rendered(&mail.Message{Body: m.Text, FromID: m.From})
+	}
+	if rendered != "" {
 		return `<div class="ib-msg ib-person">` + fromLine(who, m.At) + addressLine(m) +
 			`<div class="ib-body">` + rendered + `</div></div>`
 	}

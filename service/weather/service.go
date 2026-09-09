@@ -180,7 +180,7 @@ var Spec = service.Spec{
 	Icon:        "weather.svg",
 	Card:        service.Personal(CardHTML),
 	Endpoints: map[string]service.Endpoint{
-		"Lookup": {Doc: "Look up the weather by town or city name", Cost: quota.OpWeatherForecast, Commands: []service.Command{
+		"Lookup": {Doc: "Look up the weather by town or city name", Cost: quota.OpWeatherForecast, Commands: lookupCommands([]service.Command{
 			{Pattern: "what's the weather like in {place}"}, {Pattern: "what is the weather in {place}"}, {Pattern: "is it going to rain in {place}", Defaults: map[string]any{"focus": "rain"}}, {Pattern: "weather in {place}"}, {Pattern: "weather {place}"},
 			{Pattern: "what's the weather like"}, {Pattern: "what’s the weather like"},
 			{Pattern: "what's the weather today"}, {Pattern: "what’s the weather today"},
@@ -189,7 +189,7 @@ var Spec = service.Spec{
 			{Pattern: "is it going to rain", Defaults: map[string]any{"focus": "rain"}},
 			{Pattern: "will it rain", Defaults: map[string]any{"focus": "rain"}},
 			{Pattern: "will it rain in {place}", Defaults: map[string]any{"focus": "rain"}},
-		}},
+		})},
 		"Forecast": {Doc: "Get the weather forecast for a location — current conditions, the days " +
 			"ahead, and today's sunrise, sunset and how much daylight is left, which is the fact " +
 			"that decides an afternoon outdoors",

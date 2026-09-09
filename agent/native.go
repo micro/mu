@@ -395,6 +395,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	runs := store.NewMemoryStore()
 	agentOpts := []gmagent.Option{
 		gmagent.Model(model),
+		gmagent.OnRunEvent(logRunTiming),
 		gmagent.WithStore(runs),
 		// What was said before, as turns. Read-only, which is what stops the
 		// question being counted twice — go-micro adds it to memory and then
@@ -670,23 +671,57 @@ type StreamHooks struct {
 //
 // This is the agent. There is no second one — see the note on ErrNoProvider,
 // and AGENTS.md for the rule that says so.
-func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
-	if command, ok := promptCommand(prompt, opts); ok {
+func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr error) {
+	started := time.Now()
+	defer func() {
+		app.Log("timing", "phase=agent_total caller=%s duration_ms=%.3f failed=%t", costCaller(opts), float64(time.Since(started))/float64(time.Millisecond), runErr != nil)
+	}()
+	if commands, ok := promptCommands(prompt, opts); ok {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		return executeCommand(ctx, accountID, command, opts)
+		return executeCommands(ctx, accountID, commands, opts)
 	}
 
+	if commandDenied(prompt, opts) {
+		return "", fmt.Errorf("command unavailable in this context")
+	}
+	if strings.EqualFold(strings.TrimSpace(prompt), "/help") {
+		examples := service.CommandExamples(filterServices(nativeServices(opts.Public), opts.Tools), !opts.Public)
+		return "Type a command directly, with or without /. Combine independent reads with ‘and’.\n\n" + strings.Join(examples, " · "), nil
+	}
 	if explicitCommand(prompt) {
 		return "", fmt.Errorf("unknown or unavailable command: %s", strings.Fields(prompt)[0])
 	}
 
+	var startedWork atomic.Bool
+	originalToken := opts.Stream.Token
+	if originalToken != nil {
+		opts.Stream.Token = func(text string) {
+			if text != "" {
+				startedWork.Store(true)
+			}
+			originalToken(text)
+		}
+	}
+	defer func() {
+		if runErr != nil && !startedWork.Load() {
+			runErr = retryableModelFailure{runErr}
+		}
+	}()
+	guard := func(next gmai.ToolHandler) gmai.ToolHandler {
+		return func(ctx context.Context, c gmai.ToolCall) gmai.ToolResult {
+			startedWork.Store(true)
+			return next(ctx, c)
+		}
+	}
 	recorder := newNativeToolRecorder()
-	wrappers := []gmai.ToolWrapper{recorder.wrap}
+	wrappers := []gmai.ToolWrapper{guard, recorder.wrap}
 	if opts.OnStep != nil {
 		wrappers = append(wrappers, stepReporter(opts.OnStep))
 	}
+	prepareStart := time.Now()
 	run, ok := buildNativeAgent(accountID, prompt, opts, wrappers...)
+	app.Log("timing", "phase=agent_prepare run=%s duration_ms=%.3f", run.name, float64(time.Since(prepareStart))/float64(time.Millisecond))
 	if !ok {
 		return "", ErrNoProvider
 	}
@@ -760,7 +795,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 		final = resp.Reply
 	}
 
-	answer := app.StripLatexDollars(final)
+	answer = app.StripLatexDollars(final)
 	// Told whether a named agent wrote this. The freshness guard replaces a
 	// whole answer with a list of the raw tool results when the news looks
 	// stale, which is right for the generalist and destroys a user-defined

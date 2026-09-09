@@ -48,6 +48,8 @@ func serve(addr string) {
 	server := &http.Server{
 		Addr: addr,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w, finishTiming := app.TimeRequest(w, r)
+			defer finishTiming()
 			// Block known bot paths silently
 			if strings.HasPrefix(r.URL.Path, "/audio/") {
 				http.NotFound(w, r)
@@ -60,19 +62,6 @@ func serve(addr string) {
 			if onion := os.Getenv("TOR_ONION"); onion != "" {
 				w.Header().Set("Onion-Location", "http://"+onion+r.URL.RequestURI())
 			}
-
-			// Request logging (Apache-style)
-			start := time.Now()
-			defer func() {
-				// Skip logging for static assets and frequent endpoints
-				if !strings.HasSuffix(r.URL.Path, ".css") &&
-					!strings.HasSuffix(r.URL.Path, ".js") &&
-					!strings.HasSuffix(r.URL.Path, ".png") &&
-					!strings.HasSuffix(r.URL.Path, ".ico") &&
-					!strings.HasPrefix(r.URL.Path, "/chat/ws") {
-					app.Log("http", "%s %s %s %v", r.Method, r.URL.Path, r.RemoteAddr, time.Since(start))
-				}
-			}()
 
 			if Env == "dev" {
 				w.Header().Set("Access-Control-Allow-Origin", "*")

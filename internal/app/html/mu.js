@@ -505,7 +505,7 @@ function setSession() {
       if (navLogin) navLogin.style.display = 'none';
       if (navUsername && sess.account) {
         navUsername.textContent = '@' + sess.account;
-        navUsername.style.display = 'block';
+        navUsername.style.display = 'inline-block';
         var navMeAv = document.getElementById("nav-me-av");
         if (navMeAv) navMeAv.textContent = sess.account.charAt(0).toUpperCase();
       }
@@ -885,8 +885,11 @@ function connectRoomWebSocket(roomId) {
     }
   };
   
-  roomWs.onclose = function() {
+  roomWs.onclose = function(event) {
     console.log('Disconnected from room');
+    if (event.code === 1013 && event.reason) {
+      showToast(event.reason, 'error');
+    }
     // Only reconnect if authenticated and still on same room
     if (isAuthenticated && currentRoomId === roomId) {
       setTimeout(() => connectRoomWebSocket(roomId), 3000);

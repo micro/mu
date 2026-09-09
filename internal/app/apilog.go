@@ -12,6 +12,14 @@ const apiLogMaxEntries = 500
 
 // APILogEntry records a single external API call.
 type APILogEntry struct {
+	ErrorKind    string        `json:"error_kind,omitempty"`
+	Kind         string        `json:"kind,omitempty"`
+	Model        string        `json:"model,omitempty"`
+	RunID        string        `json:"run_id,omitempty"`
+	Outcome      string        `json:"outcome,omitempty"`
+	Attempt      int           `json:"attempt,omitempty"`
+	InputTokens  int           `json:"input_tokens,omitempty"`
+	OutputTokens int           `json:"output_tokens,omitempty"`
 	Time         time.Time     `json:"time"`
 	Service      string        `json:"service"`
 	Method       string        `json:"method"`
@@ -63,6 +71,15 @@ func RecordAPICall(service, method, url string, status int, duration time.Durati
 	}
 	if callErr != nil {
 		entry.Error = callErr.Error()
+	}
+	RecordExternalCall(*entry)
+}
+
+// RecordExternalCall records metadata without retaining prompts or credentials.
+func RecordExternalCall(value APILogEntry) {
+	entry := &value
+	if entry.Time.IsZero() {
+		entry.Time = time.Now()
 	}
 	apiLogMu.Lock()
 	apiLogEntries = append(apiLogEntries, entry)

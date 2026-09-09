@@ -1,6 +1,8 @@
 package home
 
 import (
+	_ "embed"
+	"encoding/json"
 	"html"
 	"net/http"
 
@@ -12,10 +14,14 @@ import (
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		app.RedirectToLogin(w, r)
+		if app.WantsJSON(r) {
+			http.Error(w, "Sign in again to save your status.", http.StatusUnauthorized)
+		} else {
+			app.RedirectToLogin(w, r)
+		}
 		return
 	}
-	if !auth.ValidCSRF(r) || !auth.CanPost(acc.ID) {
+	if !auth.StrictCSRF(r) || !auth.CanPost(acc.ID) {
 		http.Error(w, "You cannot update your status with this session.", http.StatusForbidden)
 		return
 	}
@@ -31,17 +37,26 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if app.WantsJSON(r) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		json.NewEncoder(w).Encode(map[string]string{"status": user.Status(acc.ID)})
+		return
+	}
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
 }
+
+//go:embed status.js
+var statusJS string
 
 func statusForm(r *http.Request, id string) string {
 	if id == "" {
 		return ""
 	}
-	return `<details class="disclosure page-section"><summary>Your status</summary>` +
-		`<form class="form" method="post" action="/home">` +
-		`<input type="hidden" name="action" value="status">` +
-		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`<label class="field-label">Shown on your profile<input class="field field-wide" name="status" maxlength="160" placeholder="What are you up to?" value="` + html.EscapeString(user.Status(id)) + `"></label>` +
-		`<div class="form-actions"><button type="submit">Save</button><button type="submit" name="clear" value="1">Clear</button></div></form></details>`
+	text := user.Status(id)
+	label := "“" + text + "”"
+	if text == "" {
+		label = "What are you up to?"
+	}
+	return `<div id="home-status" class="page-stack" data-csrf="` + html.EscapeString(auth.CSRFToken(r)) + `">` + sectionRule("Status") + `<div class="form-actions inline-edit"><button type="button" class="link-button inline-edit-value" data-status-label aria-label="Change your public profile status">` + html.EscapeString(label) + `</button><button type="button" class="link-button inline-edit-action" data-status-edit>Edit</button><input data-status-input hidden maxlength="160" aria-label="Your public profile status" value="` + html.EscapeString(text) + `"></div><small class="inline-edit-feedback" data-status-feedback role="status" aria-live="polite"></small></div><script>` + statusJS + `</script>`
 }

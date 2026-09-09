@@ -249,7 +249,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	//
 	// So the error is the answer now. See ErrNoProvider in native.go for the
 	// same argument about an unconfigured instance.
-	answer, err := runNative(accountID, prompt, opts)
+	answer, err := queryWithFallback(accountID, prompt, opts)
 	if err != nil {
 		return "", err
 	}
@@ -1355,7 +1355,7 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			send(map[string]any{"type": "tool_done", "name": run.Label, "message": run.Label + " — done"})
 		},
 	}
-	answer, err := runNative(accountID, prompt, sopts)
+	answer, err := queryWithFallback(accountID, prompt, sopts)
 	if err != nil {
 		// Whether anything was on screen already decides how it reads, not
 		// whether it is reported. Mid-answer the error follows the tokens the
@@ -1611,7 +1611,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		nopts.System = ua.SystemPrompt
 		nopts.Tools = ua.Tools
 	}
-	_, directCommand := promptCommand(req.Prompt, nopts)
+	_, directCommand := promptCommands(req.Prompt, nopts)
+	directCommand = directCommand || commandDenied(req.Prompt, nopts)
 	if !guest && !directCommand && !explicitCommand(req.Prompt) {
 		go extractMemory(accountID, req.Prompt, scopeOf(req.Agent))
 	}

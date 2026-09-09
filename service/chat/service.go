@@ -61,7 +61,7 @@ func (Server) Rooms(_ context.Context, req *RoomsRequest, rsp *RoomsResponse) er
 		limit = 20
 	}
 
-	mutex.RLock()
+	roomsMutex.RLock()
 	out := make([]RoomInfo, 0, len(rooms))
 	for _, r := range rooms {
 		// Not somebody's conversation. This is the list a tool call gets and the
@@ -77,7 +77,7 @@ func (Server) Rooms(_ context.Context, req *RoomsRequest, rsp *RoomsResponse) er
 		})
 		r.mutex.RUnlock()
 	}
-	mutex.RUnlock()
+	roomsMutex.RUnlock()
 
 	sort.Slice(out, func(i, j int) bool { return out[i].LastActivity.After(out[j].LastActivity) })
 	if len(out) > limit {
@@ -116,9 +116,9 @@ func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesR
 		return fmt.Errorf("no room here called %q", id)
 	}
 
-	mutex.RLock()
+	roomsMutex.RLock()
 	room, ok := rooms[id]
-	mutex.RUnlock()
+	roomsMutex.RUnlock()
 
 	var msgs []RoomMessage
 	if ok {
@@ -175,7 +175,7 @@ type SendResponse struct {
 // somebody opens the discussion on it, so conjuring one from a tool call would
 // invent a conversation about nothing. chat_rooms is how you find the id.
 //
-// It goes through the room's broadcast channel rather than appending directly,
+// It goes through the room's broadcast channel and waits for durable storage,
 // which is what everyone connected sees, what gets persisted, and what moves
 // LastActivity — three things that would otherwise each need doing by hand and
 // drift apart the first time one of them changed.
@@ -200,14 +200,16 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 		return fmt.Errorf("no room here called %q", id)
 	}
 
-	mutex.RLock()
+	roomsMutex.RLock()
 	room, ok := rooms[id]
-	mutex.RUnlock()
+	roomsMutex.RUnlock()
 	if !ok {
 		return fmt.Errorf("no live discussion called %q — chat_rooms lists the ones there are", id)
 	}
 
-	room.Broadcast <- RoomMessage{UserID: who, Content: text, Timestamp: time.Now()}
+	if err := post(ctx, room, RoomMessage{UserID: who, Content: text, Timestamp: time.Now()}); err != nil {
+		return err
+	}
 	rsp.Result = "sent"
 	return nil
 }

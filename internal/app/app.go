@@ -1410,7 +1410,7 @@ func navPinned(acc *auth.Account) string {
 //
 // nav-username is a label mu.js corrects from the session: a page cached for
 // one viewer and served to another would otherwise greet them by the wrong name.
-// headCorner keeps the balance in the header. Account identity lives in the sidebar.
+// headCorner holds the balance; account identity belongs in the sidebar.
 func headCorner(acc *auth.Account, here string) string {
 	if acc == nil {
 		return ""

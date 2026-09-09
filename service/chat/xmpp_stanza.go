@@ -264,23 +264,36 @@ func (s *session) stanzaError(to, kind, condition string) {
 
 // deliverXMPP hands a message to every resource a local account has open, and
 // reports whether anybody was there.
-func deliverXMPP(from, to, text string) bool {
+func deliverXMPP(from, to, text string, ids ...string) bool {
 	sessions := sessionsFor(to)
 	if len(sessions) == 0 {
 		return false
 	}
-	for _, other := range sessions {
-		other.send(`<message type='chat' from='%s' to='%s'><body>%s</body></message>`,
-			xmlAttr(from), xmlAttr(other.jid()), xmlText(text)) //nolint:errcheck
+	idAttr := ""
+	if len(ids) > 0 && ids[0] != "" {
+		idAttr = " id='" + xmlAttr(ids[0]) + "'"
 	}
-	return true
+	delivered := false
+	for _, other := range sessions {
+		if err := other.send(`<message type='chat'%s from='%s' to='%s'><body>%s</body></message>`,
+			idAttr, xmlAttr(from), xmlAttr(other.jid()), xmlText(text)); err == nil {
+			delivered = true
+		}
+	}
+	return delivered
 }
 
 // SayTo delivers a message to an account's connected clients, from an address.
 //
 // The door agent/chat answers through, the same shape Say is for the websocket
-// rooms. Reports whether anybody was connected, so a caller can fall back to
-// leaving it somewhere rather than assume it landed.
+// rooms. The answer is saved for archive retrieval even when nobody is online.
+// Reports live delivery separately so an offline answer is not marked seen.
 func SayTo(accountID, from, text string) bool {
-	return deliverXMPP(from, strings.ToLower(accountID)+"@"+Domain(), text)
+	to := strings.ToLower(accountID) + "@" + Domain()
+	id, err := KeepSaved(accountID, Said{Conv: xmppRoom(from, to), From: from, To: to, Text: text})
+	if err != nil {
+		app.Log("chat", "could not save XMPP answer: %v", err)
+		return false
+	}
+	return deliverXMPP(from, to, text, id)
 }

@@ -329,8 +329,8 @@ func Ask(r AskRequest) (Answer, error) {
 	// lands in the conversation like any other reply — somebody who asked a
 	// question on their phone should read why nothing happened in the place
 	// they asked, not find out by opening a wallet page.
-	_, directCommand := promptCommand(r.Text, opts)
-	directCommand = directCommand || explicitCommand(r.Text)
+	_, directCommand := promptCommands(r.Text, opts)
+	directCommand = directCommand || explicitCommand(r.Text) || commandDenied(r.Text, opts)
 	if reason, ok := affordable(r.Account); !ok && !directCommand {
 		Answered(r.Account, threadID(th), reason, "")
 		return Answer{Text: reason, Thread: threadID(th)}, nil

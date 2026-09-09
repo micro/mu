@@ -1,10 +1,10 @@
 # Mu
 
-A personal home assistant 
+A personal assistant 
 
 ## Overview
 
-Mu is a personal home assistant. It's a full stack solution to the question, how do I de-platform myself.
+Mu is a personal assistant. It's a full stack solution to the question, how do I run it myself.
 
 ## Features 
 
@@ -16,13 +16,6 @@ It includes:
 - **Clients** - Use Micro via Web, SMS, email, etc.
 - **Services** - which act as building blocks for Micro.
 - **Protocols** - a way to self host SMTP, XMPP, SFTP, SSH.
-
-## Why it exists
-
-I'm tired of no easy option to self host and handing everything over to corporations.
-I'll never give up my Google account but I want more control over how I use the internet.
-
-I don't think I'm alone in saying that.
 
 ## How it works
 

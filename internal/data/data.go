@@ -3,6 +3,7 @@ package data
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -420,7 +421,7 @@ func IndexOwned(id, entryType, title, content, owner string, metadata map[string
 	// Use SQLite backend if enabled
 	if UseSQLite {
 		if err := IndexSQLite(id, entryType, title, content, owner, metadata); err != nil {
-			fmt.Printf("[data] SQLite index error: %v\n", err)
+			log.Printf("[data] SQLite index error: %v\n", err)
 		}
 		return
 	}
@@ -539,7 +540,7 @@ func ByID(id string) *IndexEntry {
 	if UseSQLite {
 		entry, err := ByIDSQLite(id)
 		if err != nil {
-			fmt.Printf("[data] SQLite ByID error: %v\n", err)
+			log.Printf("[data] SQLite ByID error: %v\n", err)
 			return nil
 		}
 		return entry
@@ -581,7 +582,7 @@ func UnindexOwned(owner string) {
 		return
 	}
 	if err := UnindexOwnedSQLite(owner); err != nil {
-		fmt.Printf("unindex owner %s: %v\n", owner, err)
+		log.Printf("unindex owner %s: %v\n", owner, err)
 	}
 }
 
@@ -589,7 +590,7 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 	if UseSQLite {
 		results, err := SearchSQLite(query, limit, opts...)
 		if err != nil {
-			fmt.Printf("[data] SQLite Search error: %v\n", err)
+			log.Printf("[data] SQLite Search error: %v\n", err)
 			return nil
 		}
 		return results
@@ -662,7 +663,7 @@ func ByType(entryType string, limit int) []*IndexEntry {
 	if UseSQLite {
 		results, err := ByTypeSQLite(entryType, limit)
 		if err != nil {
-			fmt.Printf("[data] SQLite ByType error: %v\n", err)
+			log.Printf("[data] SQLite ByType error: %v\n", err)
 			return nil
 		}
 		return results
@@ -762,7 +763,7 @@ func saveIndex() {
 
 	if err == nil {
 		if err := persistIndex(file); err != nil {
-			fmt.Printf("[data] Saving index: %v\n", err)
+			log.Printf("[data] Saving index: %v\n", err)
 		}
 	}
 
@@ -789,9 +790,9 @@ func persistIndex(file string) error {
 func Load() {
 	// If SQLite is enabled, migrate from JSON and use SQLite
 	if UseSQLite {
-		fmt.Println("[data] SQLite backend enabled")
+		log.Println("[data] SQLite backend enabled")
 		if err := MigrateFromJSON(); err != nil {
-			fmt.Printf("[data] Migration error: %v\n", err)
+			log.Printf("[data] Migration error: %v\n", err)
 		}
 		EnsureFTS()
 
@@ -810,16 +811,16 @@ func Load() {
 		// is true it is true at boot, and a fact that safe does not need a
 		// person to confirm it.
 		if removed, freed, err := RemoveSuperseded(); err != nil {
-			fmt.Printf("[data] Could not remove migrated stores: %v\n", err)
+			log.Printf("[data] Could not remove migrated stores: %v\n", err)
 		} else if len(removed) > 0 {
-			fmt.Printf("[data] Removed %s left by the migration, freeing %d bytes\n",
+			log.Printf("[data] Removed %s left by the migration, freeing %d bytes\n",
 				strings.Join(removed, " and "), freed)
 		}
 
 		// Get stats
 		entries, embCount, err := IndexStats()
 		if err == nil {
-			fmt.Printf("[data] SQLite index: %d entries, %d embeddings\n", entries, embCount)
+			log.Printf("[data] SQLite index: %d entries, %d embeddings\n", entries, embCount)
 		}
 		return
 	}
@@ -830,7 +831,7 @@ func Load() {
 		indexMutex.Lock()
 		json.Unmarshal(b, &index)
 		indexMutex.Unlock()
-		fmt.Printf("[data] Loaded %d index entries from disk\n", len(index))
+		log.Printf("[data] Loaded %d index entries from disk\n", len(index))
 	}
 }
 

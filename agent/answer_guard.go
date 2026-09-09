@@ -69,7 +69,7 @@ func completeToolAnswerFor(answer string, ragParts []string, custom bool) string
 		return answer
 	}
 	// A custom agent with something substantive to say keeps it.
-	if custom && trimmed != "" && !isProgressOnlyAnswer(trimmed) && !isRawToolPayloadAnswer(trimmed) {
+	if custom && trimmed != "" && !isProgressOnlyAnswer(trimmed) && !isRawToolPayloadAnswer(trimmed) && !hasOperationalFallbackLead(trimmed) {
 		if caveat := staleNewsFreshnessCaveat(ragParts); caveat != "" {
 			guarded := labelStaleNewsAnswerStories(trimmed)
 			if guarded == "" {
@@ -724,6 +724,19 @@ func meaningfulLines(body string, limit int) []string {
 			// answer to save the reader from the braces around it. Unwrap what
 			// can be unwrapped; drop what cannot.
 			line = readableFromPayload(line)
+			if line != "" {
+				// Decode before splitting and filtering: a text field can hold
+				// a whole search response, including model-only instructions.
+				decoded := meaningfulLines(line, limit)
+				for _, item := range decoded {
+					if isFallbackSecondaryContextLine(item) {
+						context = append(context, item)
+					} else {
+						primary = append(primary, item)
+					}
+				}
+			}
+			continue
 		}
 		if line == "" {
 			continue

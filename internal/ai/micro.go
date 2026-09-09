@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	gmai "go-micro.dev/v6/ai"
 	_ "go-micro.dev/v6/ai/anthropic"
@@ -170,6 +171,9 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 	}
 
 	app.Log("ai", "[LLM] via go-micro %s/%s", provider, useModel)
+	started := time.Now()
+	var used gmai.Usage
+	defer func() { logModelCall(provider, useModel, caller, "generate", started, err, used) }()
 	resp, err := m.Generate(context.Background(), &gmai.Request{
 		SystemPrompt: systemPrompt,
 		Messages:     history,
@@ -179,6 +183,7 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 		return "", fmt.Errorf("%s: %w", provider, err)
 	}
 
+	used = resp.Usage
 	recordUsage(caller, useModel, resp.Usage.InputTokens, resp.Usage.OutputTokens, 0, 0)
 	app.Log("ai", "[LLM] Usage [%s]: input=%d output=%d (go-micro %s)",
 		caller, resp.Usage.InputTokens, resp.Usage.OutputTokens, provider)
@@ -236,10 +241,19 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 	}
 	req := &gmai.Request{SystemPrompt: systemPrompt, Messages: history, Prompt: question}
 
+	started := time.Now()
+	var used gmai.Usage
+	logStream := true
+	defer func() {
+		if logStream {
+			logModelCall(provider, useModel, caller, "stream", started, err, used)
+		}
+	}()
 	stream, err := m.Stream(context.Background(), req)
 	if err != nil {
 		// Provider can't stream — fall back to a single Generate.
 		if errors.Is(err, gmai.ErrStreamingUnsupported) {
+			logStream = false
 			out, gerr := generateViaMicro(model, systemPrompt, messages, caller, maxTok)
 			if gerr != nil {
 				return "", gerr
@@ -255,7 +269,7 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 
 	app.Log("ai", "[LLM] streaming via go-micro %s/%s", provider, useModel)
 	var sb strings.Builder
-	var usage gmai.Usage
+
 	for {
 		resp, rerr := stream.Recv()
 		if rerr == io.EOF {
@@ -272,11 +286,25 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 		}
 		// The final chunk carries token usage (no content).
 		if resp.Usage.TotalTokens > 0 || resp.Usage.InputTokens > 0 || resp.Usage.OutputTokens > 0 {
-			usage = resp.Usage
+			used = resp.Usage
 		}
 	}
-	recordUsage(caller, useModel, usage.InputTokens, usage.OutputTokens, 0, 0)
+	recordUsage(caller, useModel, used.InputTokens, used.OutputTokens, 0, 0)
 	app.Log("ai", "[LLM] Usage [%s]: input=%d output=%d (go-micro %s stream)",
-		caller, usage.InputTokens, usage.OutputTokens, provider)
+		caller, used.InputTokens, used.OutputTokens, provider)
 	return sb.String(), nil
+}
+
+func logModelCall(provider, model, caller, method string, started time.Time, err error, used gmai.Usage) {
+	outcome := "done"
+	if err != nil {
+		outcome = "error"
+	}
+	detail := ""
+	if err != nil {
+		detail = ProviderErrorDetail(err.Error())
+	}
+	duration := time.Since(started)
+	app.RecordExternalCall(app.APILogEntry{Kind: "model", Time: started, Service: provider, Method: method, Model: model, Outcome: outcome, Error: detail, ErrorKind: string(gmai.ClassifyError(err)), Duration: duration, InputTokens: used.InputTokens, OutputTokens: used.OutputTokens})
+	app.Log("timing", "phase=model caller=%s provider=%s model=%s status=%s duration_ms=%.3f", caller, provider, model, outcome, float64(duration)/float64(time.Millisecond))
 }

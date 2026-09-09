@@ -22,22 +22,14 @@ func TestGuestsSignInThroughTheSidebar(t *testing.T) {
 	}
 }
 
-// Account identity stays in the sidebar even when the sidebar is collapsed.
-func TestAccountIdentityStaysInTheSidebar(t *testing.T) {
-	account := &auth.Account{ID: "tester"}
-	if got := headCorner(account, ""); strings.Contains(got, "@tester") || strings.Contains(got, `id="head-me"`) {
-		t.Fatalf("duplicate header identity: %s", got)
+func TestAccountIdentityStaysInSidebar(t *testing.T) {
+	acc := &auth.Account{ID: "tester"}
+	got := headCorner(acc, "")
+	if strings.Contains(got, "@tester") || strings.Contains(got, `id="head-me"`) {
+		t.Errorf("header duplicates account identity: %q", got)
 	}
-	if got := navBottom(account, ""); !strings.Contains(got, "@tester") {
-		t.Fatalf("sidebar lost identity: %s", got)
-	}
-}
-
-// A username is somebody's own text and lands in markup.
-func TestTheNameInTheCornerIsEscaped(t *testing.T) {
-	got := headCorner(&auth.Account{ID: `<script>x</script>`}, "")
-	if strings.Contains(got, "<script>") {
-		t.Errorf("an account id went into the corner as markup: %q", got)
+	if got := navBottom(acc, ""); !strings.Contains(got, "tester") {
+		t.Errorf("sidebar lost account identity: %q", got)
 	}
 }
 

@@ -53,7 +53,7 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 	if _, a := auth.TrySession(r); a != nil {
 		acc = a
 	}
-	app.Respond(w, r, app.Response{
+	app.RespondPublic(w, r, app.Response{
 		Title:       "Contact",
 		Description: "Every way to reach this instance's assistant — the web, a text, WhatsApp, mail, or a program.",
 		HTML:        contactBody(acc),

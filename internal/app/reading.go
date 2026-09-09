@@ -36,7 +36,7 @@ func ReadingActionItems(r *http.Request, ref string) string {
 	} else if strings.HasPrefix(r.URL.Path, "/blog") {
 		path = "/blog/post?id=" + url.QueryEscape(ref)
 	}
-	return SaveControl(r, ref) + `<button class="mini-btn" type="button" data-url="` + html.EscapeString(path) + `" onclick="const u=new URL(this.dataset.url,location.href).href;if(navigator.share){navigator.share({url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).catch(()=>{})}">Share</button>` + `<a class="mini-btn" href="/agent/micro?item=` + url.QueryEscape(ref) + `">Discuss</a>`
+	return SaveControl(r, ref) + `<button class="mini-btn" type="button" data-url="` + html.EscapeString(path) + `" onclick="const u=new URL(this.dataset.url,location.href).href;if(navigator.share){navigator.share({url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).catch(()=>{})}">Share</button>` + AskControl(ref)
 }
 func ReadingFilters(path, active string, categories []string) string {
 	sort.Strings(categories)
@@ -80,3 +80,9 @@ func ReadingPages(path, category string, page, total, size int) string {
 const ReadingCSS = `<style>
 .reading-row{padding:18px 0;border-bottom:1px solid var(--border,#eee)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0;font-size:14px}.reading-actions form,.reading-save{display:inline-flex;flex:0 0 auto;width:auto;margin:0;padding:0}.reading-actions>a,.reading-save button{white-space:nowrap}.reading-actions .mini-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
 </style>`
+
+// AskControl opens a private conversation with public reading material attached.
+// Only its opaque reference travels in the URL; questions stay in the chat body.
+func AskControl(ref string) string {
+	return `<a class="mini-btn" href="/agent/micro?item=` + url.QueryEscape(ref) + `">Ask</a>`
+}

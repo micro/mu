@@ -673,7 +673,7 @@ td {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.nav-me-who span { color: var(--text-primary, #333) }
+.nav-me-who span { display: inline-block; color: var(--text-primary, #333) }
 
 /* Credit balance, pinned above the account links so the number is in view on
    every page. Empty and low are coloured because "0 credits" in the same grey
@@ -6414,9 +6414,9 @@ button.pill:hover {
    the thread including your own. A thread is a stack of messages and what
    separates them is a line across, the way every mail client draws it: the
    eye needs to know where one ends, not that all of them are quotations. */
-.ib-msg { padding: 16px 0; border-top: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
-.ib-msg:first-child { border-top: none; padding-top: 0 }
-.ib-msg:last-child { padding-bottom: 0 }
+.ib-msg { padding: 16px 0; border-bottom: var(--border-width, 1px) solid color-mix(in srgb, var(--divider, #f0f0f0) 55%, transparent) }
+.ib-msg:first-child { padding-top: 0 }
+.ib-msg:last-child { border-bottom: none; padding-bottom: 0 }
 .ib-from { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px }
 .ib-who-l { font-size: 13px; font-weight: var(--font-weight-medium, 500); color: var(--text-primary, #1a1a1a) }
 .ib-at { margin-left: auto; flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
@@ -7560,7 +7560,7 @@ select.field-wide { max-width: 100%; width: 100%; }
 .ib-addr-sep { margin: 0 8px; opacity: .5 }
 
 /* A sender you can read, with the whole address on hover. */
-.ib-row[title] { cursor: help }
+.ib-row[title] { cursor: pointer }
 
 /* The two addresses at the top of the inbox: yours, and the agent's. It showed
    one and composed as the other. See inbox/page.go. */
