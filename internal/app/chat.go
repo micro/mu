@@ -646,6 +646,10 @@ function nearBottom(){
   return (conv.scrollTop+conv.clientHeight)>=(conv.scrollHeight-nearEnough);
 }
 var nearEnough=120;
+function revealAnswer(node){
+  if(transcript){toBottom(false);return;}
+  requestAnimationFrame(function(){if(node&&node.isConnected)node.scrollIntoView({behavior:"smooth",block:"start"});});
+}
 function toBottom(force,smooth){
   if(!transcript) return;
   if(!force && !nearBottom()) return;
@@ -912,9 +916,9 @@ function ask(q){
         if(terminal||epoch!==viewEpoch)return;
         if(d&&d.html){
           terminal=true;stopWork();clearTimeout(completionTimer);
-          if(d.answer_html)a.innerHTML=d.answer_html;else a.outerHTML=d.html;
+          if(d.answer_html)a.innerHTML=d.answer_html;else a.innerHTML=d.html;
           if(typeof d.text==='string')history.push({prompt:q,answer:d.text});
-          save();toBottom(false);streamController.abort();return;
+          save();revealAnswer(a);streamController.abort();return;
         }
         if(d&&!d.waiting){
           terminal=true;stopWork();a.innerHTML='<div class="mu-err">'+esc(d.error||'The run stopped without returning an answer.')+'</div>';save();streamController.abort();return;
@@ -1033,7 +1037,7 @@ function ask(q){
               if(typeof ev.text==='string')streamText=ev.text;
               history.push({prompt:q,answer:streamText});
               save();
-              toBottom(false);
+              revealAnswer(a);
               // Out loud, when that was asked for. streamText and not ev.html:
               // a voice reading markup says "less than div" at you.
               if(window.muSay)window.muSay(streamText);
