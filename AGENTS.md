@@ -514,7 +514,10 @@ cost; rate limits stop bots.
 Use the shared components in `internal/app/form.go`, `internal/app/html/mu.css` and
 `internal/app/html/composition.css` (also loaded by the landing page).
 Forms use `.form`, labelled fields use `app.Field` or `.field-label`, and related
-controls use `.form-group`. Services All/Select uses `app.ServiceSelect` on every
+controls use `.form-group`. Use `.form-row` for related controls side by side
+(or `.form.form-inline` for a whole inline form); its fields wrap based on the
+container width before they can be squeezed by buttons. Do not replace its
+field basis with `flex: 1` or add service-specific row breakpoints. Services All/Select uses `app.ServiceSelect` on every
 page. Actions use `.form-actions`, `.page-action`, or `.section-actions`; searches
 use `.search-bar`. A `.page-stack` owns the gap between adjacent blocks and a
 `.page-section` separates sections. Use `.disclosure` for Manage/expand controls.

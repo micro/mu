@@ -326,10 +326,6 @@ const taskPollJS = `<script>
 const tasksPageCSS = `<style>
 .task-add{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
 .task-add input[type=text],.task-add input:not([type]){min-width:0}
-.task-add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.task-add-row button{flex:0 0 auto}
-.task-due{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex:1;min-width:200px}
-.task-due input{flex:1;min-width:0;font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px}
 .task-assign{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:8px;cursor:pointer}
 .task-tabs{display:flex;gap:14px;flex-wrap:wrap}
 .task-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
@@ -395,8 +391,8 @@ func addForm(csrf string) string {
   <input type="hidden" name="due" value="">
   <input name="title" placeholder="What needs doing?" required>
   <input name="detail" placeholder="Detail (optional)">
-  <div class="task-add-row">
-    <label class="task-due">Due <input type="datetime-local" name="duelocal"></label>
+  <div class="form-row">
+    <label class="field-label">Due <input type="datetime-local" name="duelocal"></label>
     <button type="submit">Add</button>
   </div>
   <label class="task-assign"><input type="checkbox" name="assign" value="agent"> <span>Give it to the agent — it starts working on this now</span></label>

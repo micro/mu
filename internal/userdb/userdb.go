@@ -158,6 +158,58 @@ func List(ns, caller, collection, scope string, where map[string]interface{}, so
 	return out, nil
 }
 
+// LatestBy returns the newest private record per group, applying the limit
+// after grouping. A busy conversation must not crowd every other one out of
+// a conversation list. Missing grouping fields have their string zero value.
+func LatestBy(ns, caller, collection string, fields []string, sortField string, limit int) ([]Record, error) {
+	if caller == "" {
+		return nil, ErrAuth
+	}
+	k, err := key(ns, collection)
+	if err != nil {
+		return nil, err
+	}
+	mu.Lock()
+	recs := load(k)
+	mu.Unlock()
+	recs = filter(recs, "mine", caller, nil)
+	sort.SliceStable(recs, func(i, j int) bool {
+		comparison := cmpValue(recs[i].Data[sortField], recs[j].Data[sortField])
+		if comparison == 0 {
+			return recs[i].Created.After(recs[j].Created)
+		}
+		return comparison > 0
+	})
+	if limit <= 0 || limit > MaxListLimit {
+		limit = MaxListLimit
+	}
+	seen := map[string]bool{}
+	var out []Record
+	for _, rec := range recs {
+		values := make([]interface{}, len(fields))
+		for i, field := range fields {
+			values[i] = rec.Data[field]
+			if values[i] == nil {
+				values[i] = ""
+			}
+		}
+		encoded, err := json.Marshal(values)
+		if err != nil {
+			return nil, err
+		}
+		group := string(encoded)
+		if seen[group] {
+			continue
+		}
+		seen[group] = true
+		out = append(out, rec)
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
+
 // Update replaces a record's data (and public flag). Owner only.
 func Update(ns, caller, collection, id string, dataObj map[string]interface{}, public bool) (*Record, error) {
 	if caller == "" {

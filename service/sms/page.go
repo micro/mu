@@ -10,6 +10,7 @@ package sms
 import (
 	"html"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/contacts"
 	"mu/internal/quota"
+	"mu/internal/userdb"
 )
 
 // Handler serves /sms.
@@ -79,9 +81,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`<p class="text-sm text-muted">Sent from <strong>` + html.EscapeString(from) +
 		`</strong>. ` + html.EscapeString(allowance(who)+yours) + `</p>`)
-	b.WriteString(composer(r, who))
-	b.WriteString(threads(r, who, history))
-	b.WriteString(pageCSS)
+	b.WriteString(`<div class="page-stack">`)
+	if r.URL.Query().Get("view") == "new" {
+		b.WriteString(`<div class="section-actions"><a href="/sms">← Conversations</a></div>`)
+		b.WriteString(composer(r, who))
+	} else if id := r.URL.Query().Get("id"); id != "" {
+		// The opaque message ID locates a conversation only within this account.
+		rec, err := userdb.Get(ns, who, msgs, id)
+		if err != nil || rec.Owner != who {
+			app.NotFound(w, r, "Conversation not found")
+			return
+		}
+		number, _ := rec.Data["number"].(string)
+		channel, _ := rec.Data["channel"].(string)
+		b.WriteString(`<div class="section-actions"><a href="/sms">← Conversations</a><a href="/sms?view=new">New</a></div>`)
+		b.WriteString(threads(r, who, conversationHistory(who, number, Channel(channel))))
+	} else {
+		b.WriteString(`<div class="page-action"><a class="btn" href="/sms?view=new">New</a></div>`)
+		latest, err := recentConversations(who)
+		if err != nil {
+			app.Error(w, r, http.StatusInternalServerError, "Could not load conversations")
+			return
+		}
+		b.WriteString(conversationList(who, latest))
+		b.WriteString(verifier(r, who, html.EscapeString(auth.CSRFToken(r))))
+	}
+	b.WriteString(`</div>`)
+	b.WriteString(pageCSS + conversationsCSS)
 
 	app.Respond(w, r, app.Response{Title: "SMS", Description: "Text somebody, and read what they text back", HTML: b.String()})
 }
@@ -208,7 +234,7 @@ func verifier(r *http.Request, who, csrf string) string {
 	if waiting {
 		b.WriteString(`<p class="text-sm">A code went to <strong>` + html.EscapeString(number) +
 			`</strong>. It is good for ten minutes.</p>` +
-			`<form method="POST" action="/sms" class="sms-verify-form">` +
+			`<form method="POST" action="/sms" class="form-row mt-3">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 			`<input type="hidden" name="confirm" value="` + html.EscapeString(number) + `">` +
 			`<input name="code" inputmode="numeric" autocomplete="one-time-code" required ` +
@@ -240,7 +266,7 @@ func verifier(r *http.Request, who, csrf string) string {
 					`<input type="hidden" name="forget" value="` + html.EscapeString(n) + `"></form>`)
 			}
 		}
-		b.WriteString(`<form method="POST" action="/sms" class="sms-verify-form">` +
+		b.WriteString(`<form method="POST" action="/sms" class="form-row mt-3">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 			`<input name="start" required placeholder="+447700900123" class="sms-in" ` +
 			`autocomplete="tel" aria-label="Your number">` +
@@ -302,12 +328,7 @@ func threads(r *http.Request, who string, history []Message) string {
 	for _, k := range order {
 		number, channel := k.number, k.channel
 		b.WriteString(`<div class="card"><h3 class="sms-who">` + html.EscapeString(number))
-		// Which channel, but only where there is a choice. An instance with no
-		// WhatsApp sender has one kind of conversation and does not need every
-		// heading labelled with it.
-		if ConfiguredFor(ChannelWhatsApp) {
-			b.WriteString(app.Pill(channel.Label()))
-		}
+		b.WriteString(app.Pill(channel.Label()))
 		b.WriteString(`</h3>`)
 		msgs := byWhom[k]
 		// Oldest first inside a conversation, which is how a conversation reads.
@@ -338,7 +359,7 @@ func threads(r *http.Request, who string, history []Message) string {
 			// way it came. Without it this replied by text to a WhatsApp
 			// conversation: a second thread on the other person's phone, from a
 			// number they do not recognise, with nothing on it to say why.
-			b.WriteString(`<form method="POST" action="/sms" class="sms-reply">` +
+			b.WriteString(`<form method="POST" action="/sms" class="form-row mt-3">` +
 				`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 				`<input type="hidden" name="send" value="1">` +
 				`<input type="hidden" name="to" value="` + html.EscapeString(number) + `">` +
@@ -366,10 +387,15 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 
 	var err error
 	done := ""
+	location := "/sms"
 	switch {
 	case r.Form.Get("send") != "":
 		channel := Channel(strings.TrimSpace(r.Form.Get("channel")))
-		_, err = SendOn(channel, who, r.Form.Get("to"), r.Form.Get("text"))
+		var sent *Message
+		sent, err = SendOn(channel, who, r.Form.Get("to"), r.Form.Get("text"))
+		if err == nil && sent != nil && sent.ID != "" {
+			location += "?id=" + url.QueryEscape(sent.ID)
+		}
 		done = "sent"
 	case strings.TrimSpace(r.Form.Get("start")) != "":
 		err = StartVerify(who, r.Form.Get("start"))
@@ -385,7 +411,11 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 		app.Error(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
-	http.Redirect(w, r, "/sms?ok="+done, http.StatusSeeOther)
+	separator := "?"
+	if strings.Contains(location, "?") {
+		separator = "&"
+	}
+	http.Redirect(w, r, location+separator+"ok="+done, http.StatusSeeOther)
 }
 
 func itoa(n int) string {
@@ -415,15 +445,13 @@ const pageCSS = `<style>
   font-family:inherit;line-height:1.5;resize:vertical}
 .sms-verify{margin-top:14px}
 .sms-verify summary{font-size:13px;color:var(--text-muted,#666);cursor:pointer}
-.sms-verify-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 0}
-.sms-who{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;margin:0 0 10px}
+.sms-who{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-control);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;margin:0 0 10px}
 .sms-msg{display:flex;flex-direction:column;gap:2px;max-width:min(80%,460px);padding:8px 12px;
   border-radius:12px;margin:0 0 8px}
 .sms-out-msg{background:#111;color:#fff;margin-left:auto;border-bottom-right-radius:4px}
 .sms-in-msg{background:var(--surface-alt,#f2f2f2);border-bottom-left-radius:4px}
 .sms-body{font-size:14px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
 .sms-when{font-size:11px;opacity:.65}
-.sms-reply{display:flex;gap:8px;margin:10px 0 0}
 .sms-reply-box{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border-color,#d1d5db);
   border-radius:8px;font-size:14px;font-family:inherit}
 .sms-closed{font-size:12px;color:var(--text-muted,#999);margin:8px 0 0}

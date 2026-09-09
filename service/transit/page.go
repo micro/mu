@@ -102,7 +102,7 @@ func stopsJSON(stops []stop) []map[string]any {
 func page() string {
 	var b strings.Builder
 	b.WriteString(app.Column())
-	b.WriteString(`<div class="card"><form id="xsearch" class="xsearch"><label for="xquery">Find a London stop or station</label><div class="xsearch-row"><input id="xquery" name="q" type="search" placeholder="Stop, station or area" required maxlength="200"><button type="submit" class="btn">Search</button><button type="button" id="xnear" class="btn">Use my location</button></div></form><div id="xstops" aria-live="polite" class="xmuted">Search for a stop or use your location.</div></div>`)
+	b.WriteString(`<div class="card"><form id="xsearch" class="xsearch"><label for="xquery">Find a London stop or station</label><div class="form-row page-section"><input id="xquery" name="q" type="search" placeholder="Stop, station or area" required maxlength="200"><button type="submit" class="btn">Search</button><button type="button" id="xnear" class="btn">Use my location</button></div></form><div id="xstops" aria-live="polite" class="xmuted">Search for a stop or use your location.</div></div>`)
 
 	b.WriteString(statusCard())
 	b.WriteString(`</div>` + pageStyle + pageScript)
@@ -175,9 +175,6 @@ func Card() string {
 
 const pageStyle = `<style>
 .xsearch label{display:block;margin-bottom:8px}
-.xsearch-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.xsearch-row input{flex:1;min-width:150px}
-.xsearch-row button{white-space:nowrap}
 .xmuted{color:#888;font-size:14px;margin:0}
 .xgood{color:#0f7a52;font-size:15px;margin:0;font-weight:600}
 .xline{padding:8px 0;border-bottom:1px solid var(--border-color,#eee);font-size:15px}

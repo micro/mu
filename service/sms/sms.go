@@ -641,10 +641,27 @@ func History(owner string, limit int) []Message {
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	recs, err := userdb.List(ns, owner, msgs, "mine", nil, "", "", limit)
+	return messageHistory(owner, nil, limit)
+}
+
+func conversationHistory(owner, number string, channel Channel) []Message {
+	where := map[string]interface{}{"number": number, "channel": string(channel)}
+	if channel == ChannelSMS {
+		// Missing channel is a legacy SMS; neither form may absorb WhatsApp.
+		where["channel"] = map[string]interface{}{"ne": string(ChannelWhatsApp)}
+	}
+	return messageHistory(owner, where, 200)
+}
+
+func messageHistory(owner string, where map[string]interface{}, limit int) []Message {
+	recs, err := userdb.List(ns, owner, msgs, "mine", where, "at", "desc", limit)
 	if err != nil {
 		return nil
 	}
+	return messagesFrom(recs)
+}
+
+func messagesFrom(recs []userdb.Record) []Message {
 	out := make([]Message, 0, len(recs))
 	for _, r := range recs {
 		m := Message{ID: r.ID}

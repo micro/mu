@@ -25,7 +25,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	b.WriteString(`<div class="card"><h3>Products</h3><form class="food-form" method="get" action="/food">`)
+	b.WriteString(`<div class="card"><h3>Products</h3><form class="form form-inline" method="get" action="/food">`)
 	fmt.Fprintf(&b, `<input class="food-input" type="text" name="q" value="%s" placeholder="Find a product — oat milk" aria-label="Product name">`,
 		html.EscapeString(find))
 	fmt.Fprintf(&b, `<input class="food-input food-code" type="text" name="barcode" value="%s" placeholder="or a barcode" aria-label="Barcode">`,
@@ -37,7 +37,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</div></div>`)
 
-	b.WriteString(`<div class="card"><h3>Hygiene ratings</h3><form class="food-form" method="get" action="/food">`)
+	b.WriteString(`<div class="card"><h3>Hygiene ratings</h3><form class="form form-inline" method="get" action="/food">`)
 	fmt.Fprintf(&b, `<input class="food-input" type="text" name="rating" value="%s" placeholder="Hygiene rating — a business name" aria-label="Business name">`,
 		html.EscapeString(rating))
 	fmt.Fprintf(&b, `<input class="food-input" type="text" name="where" value="%s" placeholder="town or postcode" aria-label="Where">`,
@@ -103,9 +103,6 @@ func Card() string {
 }
 
 const foodCSS = `<style>
-.food-form{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0}
-.food-form .food-input{flex:1 1 180px;min-width:0;margin:0}
-.food-form button{flex:0 0 auto;margin:0}
 .food-presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .food-result{white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;background:var(--card-background);border:1px solid var(--border-color);border-radius:8px}
 </style>`
