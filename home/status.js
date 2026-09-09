@@ -2,6 +2,7 @@
   var root = document.getElementById('home-status');
   if (!root) return;
   var label = root.querySelector('[data-status-label]');
+  var edit = root.querySelector('[data-status-edit]');
   var input = root.querySelector('[data-status-input]');
   var feedback = root.querySelector('[data-status-feedback]');
   if (root.dataset.statusSaved === undefined) root.dataset.statusSaved = input.value;
@@ -9,22 +10,27 @@
   // Soft navigation serializes this DOM, including an in-flight editor.
   if (input.readOnly) feedback.textContent = 'Save interrupted. Press Enter or tap away to retry.';
   input.readOnly = false;
+  edit.hidden = editing;
   input.addEventListener('input', function () { input.defaultValue = input.value; });
   function close() {
     editing = false;
     input.hidden = true;
     label.hidden = false;
-    label.textContent = saved || 'What are you up to?';
+    edit.hidden = false;
+    label.textContent = saved ? '“' + saved + '”' : 'What are you up to?';
   }
-  label.addEventListener('click', function () {
+  function open() {
     if (saving) return;
     input.value = input.defaultValue = saved;
     label.hidden = true;
+    edit.hidden = true;
     input.hidden = false;
     editing = true;
     feedback.textContent = '';
     input.focus();
-  });
+  }
+  label.addEventListener('click', open);
+  edit.addEventListener('click', open);
   async function save() {
     if (!editing || saving) return;
     if (input.value === saved) { close(); return; }

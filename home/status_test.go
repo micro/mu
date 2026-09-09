@@ -17,7 +17,7 @@ func TestStatusInlineEditor(t *testing.T) {
 		t.Fatal("guest status editor")
 	}
 	markup := statusForm(httptest.NewRequest("GET", "/home", nil), "status-test")
-	for _, unwanted := range []string{"<details", "<form", ">Save<", ">Clear<", ">Edit<"} {
+	for _, unwanted := range []string{"<details", "<form", ">Save<", ">Clear<"} {
 		if strings.Contains(markup, unwanted) {
 			t.Fatalf("unexpected control %s", unwanted)
 		}

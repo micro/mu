@@ -54,9 +54,9 @@ func statusForm(r *http.Request, id string) string {
 		return ""
 	}
 	text := user.Status(id)
-	label := text
-	if label == "" {
+	label := "“" + text + "”"
+	if text == "" {
 		label = "What are you up to?"
 	}
-	return `<div id="home-status" class="page-section" data-csrf="` + html.EscapeString(auth.CSRFToken(r)) + `"><div class="form-actions inline-edit"><span class="muted">Status ·</span><button type="button" class="link-button" data-status-label aria-label="Change your public profile status">` + html.EscapeString(label) + `</button><input data-status-input hidden maxlength="160" aria-label="Your public profile status" value="` + html.EscapeString(text) + `"></div><small data-status-feedback role="status" aria-live="polite"></small></div><script>` + statusJS + `</script>`
+	return `<div id="home-status" class="page-section" data-csrf="` + html.EscapeString(auth.CSRFToken(r)) + `">` + sectionRule("Status") + `<div class="form-actions inline-edit"><button type="button" class="link-button inline-edit-value" data-status-label aria-label="Change your public profile status">` + html.EscapeString(label) + `</button><button type="button" class="link-button inline-edit-action" data-status-edit>Edit</button><input data-status-input hidden maxlength="160" aria-label="Your public profile status" value="` + html.EscapeString(text) + `"></div><small data-status-feedback role="status" aria-live="polite"></small></div><script>` + statusJS + `</script>`
 }
