@@ -516,10 +516,7 @@ function setSession() {
       // Show the wallet link and badge its credit balance for logged-in users.
       document.body.classList.add('signed-in');
       // How many conversations are waiting, for the envelope in the header.
-      // Initialize card customization for home page
-      if (window.location.pathname === '/home') {
-        initCardCustomization();
-      }
+
     } else {
       isAuthenticated = false;
       if (navAdmin) navAdmin.style.display = 'none';
@@ -1313,105 +1310,8 @@ if (window.location.pathname === '/home' || window.location.pathname === '/') {
     // Small delay to let session check complete first
     setTimeout(connectPresence, 500);
     
-    // Apply hidden cards immediately (from localStorage)
-    applyHiddenCards();
+
   });
-}
-
-// ============================================
-// CARD CUSTOMIZATION
-// ============================================
-
-function applyHiddenCards() {
-  // Apply hidden cards from localStorage
-  const hidden = JSON.parse(localStorage.getItem('mu_hidden_cards') || '[]');
-  hidden.forEach(id => {
-    const card = document.getElementById(id);
-    if (card) card.style.display = 'none';
-  });
-}
-
-// Available cards that can be shown/hidden
-const availableCards = [
-  { id: 'news', title: 'News' },
-  { id: 'reminder', title: 'Reminder' },
-  { id: 'markets', title: 'Markets' },
-  { id: 'blog', title: 'Blog' },
-  { id: 'video', title: 'Video' }
-];
-
-function initCardCustomization() {
-  if (document.getElementById('customize-link')) return;
-  
-  const pageTitle = document.getElementById('page-title');
-  if (!pageTitle || pageTitle.textContent !== 'Home') return;
-  
-  const link = document.createElement('a');
-  link.id = 'customize-link';
-  link.href = '#';
-  link.textContent = 'Customize';
-  link.style.cssText = 'font-size: 12px; color: var(--text-muted); position: absolute; right: 0; top: 50%; transform: translateY(-50%);';
-  link.onclick = (e) => { e.preventDefault(); showCardModal(); };
-  
-  // Wrap title in relative container for absolute positioning
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'position: relative;';
-  pageTitle.parentNode.insertBefore(wrapper, pageTitle);
-  wrapper.appendChild(pageTitle);
-  wrapper.appendChild(link);
-}
-
-function showCardModal() {
-  const hidden = JSON.parse(localStorage.getItem('mu_hidden_cards') || '[]');
-  
-  // Build checkbox list from available cards
-  let checkboxes = '';
-  availableCards.forEach(card => {
-    const checked = !hidden.includes(card.id) ? 'checked' : '';
-    checkboxes += `<label style="display: block; margin: 12px 0; cursor: pointer;"><input type="checkbox" ${checked} data-card-id="${card.id}" style="width: auto; margin-right: 8px;"> ${card.title}</label>`;
-  });
-  
-  // Create modal
-  const modal = document.createElement('div');
-  modal.id = 'card-customize-modal';
-  modal.innerHTML = `
-    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-      <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto;">
-        <h3 style="margin-top: 0;">Customize Home Cards</h3>
-        <p style="color: var(--text-muted); font-size: 14px;">Choose which cards to show:</p>
-        <div id="card-checkboxes">${checkboxes}</div>
-        <div style="margin-top: 20px; display: flex; gap: 10px;">
-          <button onclick="saveCardPrefs()" style="flex: 1;">Save</button>
-          <button onclick="closeCardModal()" style="flex: 1; background: #666;">Cancel</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-}
-
-function closeCardModal() {
-  const modal = document.getElementById('card-customize-modal');
-  if (modal) modal.remove();
-}
-
-function saveCardPrefs() {
-  const checkboxes = document.querySelectorAll('#card-checkboxes input[type="checkbox"]');
-  const hidden = [];
-  
-  checkboxes.forEach(cb => {
-    const cardId = cb.dataset.cardId;
-    const card = document.getElementById(cardId);
-    if (!cb.checked) {
-      hidden.push(cardId);
-      if (card) card.style.display = 'none';
-    } else {
-      if (card) card.style.display = '';
-    }
-  });
-  
-  localStorage.setItem('mu_hidden_cards', JSON.stringify(hidden));
-  closeCardModal();
 }
 
 // ============================================

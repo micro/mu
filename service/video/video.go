@@ -1313,7 +1313,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
       }
     })();
     </script>
-</div><style>.watch-page{max-width:1000px}.watch-page .video-embed{position:relative;width:100%%;height:auto;aspect-ratio:16/9;background:#000}.watch-page .video-embed iframe{position:absolute;inset:0;width:100%%;height:100%%}.watch-page .video-bar{position:static;background:#111;padding:8px}</style>
+</div><style>.watch-page{max-width:var(--page-width)}.watch-page .video-embed{position:relative;width:100%%;height:auto;aspect-ratio:16/9;background:#000}.watch-page .video-embed iframe{position:absolute;inset:0;width:100%%;height:100%%}.watch-page .video-bar{position:static;background:#111;padding:8px}</style>
 `
 		title, channel := watchTitle(id)
 		body := fmt.Sprintf(tmpl, embedVideoWithAutoplay(id, autoplay))

@@ -141,17 +141,9 @@ func Page(opts PageOpts) string {
 
 // Column opens the page's text column.
 //
-// One width, everywhere. Pages picked their own — 600, 640, 680, 700, 720, 760,
-// 820 — so the text changed width as you walked between them, and /privacy also
-// centred itself, which moved it sideways as well. None of that was decided;
-// each page picked a number the day it was written.
-//
-// 720 because it is what the two widest text pages already used and it is about
-// 90 characters at the body size, which is the top of the readable range.
-//
-// A function rather than a class, because the pages that need it are building
-// strings and a helper is one call rather than a div somebody has to remember
-// to close in the right place — Close is its pair.
+// Column groups page content within the shared shell width.
+// It does not choose a separate reading width or alignment.
+// Close is its pair.
 func Column() string { return `<div class="page-col">` }
 
 // Close closes what Column opened.

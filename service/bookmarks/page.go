@@ -163,7 +163,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</div><details><summary>Add a link</summary><form method="POST" action="/bookmarks" class="bookmarks-add">` + token(r) + hidden("action", "add") + `<input name="url" type="url" required maxlength="4096" placeholder="https://…" aria-label="Link"><input name="title" maxlength="1000" placeholder="Title" aria-label="Title"><button>Save link</button></form></details>`)
 	}
-	b.WriteString(`</div>` + app.ReadingCSS + `<style>.bookmarks-page{max-width:800px}.bookmarks-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.bookmarks-page textarea{display:block;width:100%;box-sizing:border-box;margin:8px 0}.bookmarks-add{margin-top:12px}</style>`)
+	b.WriteString(`</div>` + app.ReadingCSS + `<style>.bookmarks-page{max-width:var(--page-width)}.bookmarks-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.bookmarks-page textarea{display:block;width:100%;box-sizing:border-box;margin:8px 0}.bookmarks-add{margin-top:12px}</style>`)
 	app.Respond(w, r, app.Response{Title: "Bookmarks", Description: "Your private saved reading", HTML: b.String()})
 }
 func hidden(name, value string) string {
