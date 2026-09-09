@@ -80,7 +80,7 @@ func GeminiModel() string {
 	if m := settings.Get("GEMINI_MODEL"); m != "" {
 		return m
 	}
-	return ModelGeminiPro
+	return ModelGeminiFlash
 }
 
 // Configured reports whether at least one AI provider is available — a key or
