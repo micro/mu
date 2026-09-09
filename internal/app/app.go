@@ -731,6 +731,8 @@ var Template = `
           // happened. Let the browser do the whole page: rebuilding the chrome
           // is the point, not a side effect.
           if (u.pathname === '/logout') return;
+          // The video watch page is a standalone document that owns the viewport.
+          if (u.pathname === '/video' && u.searchParams.get('id')) return;
           // Agent pages own live streams and per-thread draft/scroll state.
           // Use document navigation so pagehide saves it and listeners retire.
           if (u.pathname === '/' || location.pathname === '/' || /^\/agent(?:\/|$)/.test(u.pathname) || /^\/agent(?:\/|$)/.test(location.pathname)) return;

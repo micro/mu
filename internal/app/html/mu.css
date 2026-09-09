@@ -5134,14 +5134,36 @@ a.card-hover:hover {
   pointer-events: none;
 }
 .video-bar {
-  height: 48px;
+  min-height: 48px;
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 8px;
+  padding: 8px max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   background: #111;
 }
+.video-bar > a, .video-info summary {
+  color: #fff;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.video-info { margin-left: auto; }
+.video-info-panel {
+  position: fixed;
+  z-index: 20;
+  right: 8px;
+  bottom: 112px;
+  width: min(360px, calc(100vw - 16px));
+  max-height: 50dvh;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 16px;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+}
+.video-info-panel a { color: #fff; }
 .video-bar button {
   background: rgba(255,255,255,0.1);
   color: #fff;

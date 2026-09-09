@@ -89,18 +89,23 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	sms.Record(who, "out", "+447700900111", "Latest SMS message", 1)
 	smsThread := sms.RecordOn(sms.ChannelWhatsApp, who, "in", "+447700900111", "A separate WhatsApp conversation", 1)
 	pages := map[string]string{}
-	for path, handler := range map[string]http.HandlerFunc{"/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/home": home.Handler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler} {
+	policies := map[string]string{}
+	for path, handler := range map[string]http.HandlerFunc{"/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/home": home.Handler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler} {
 		t.Log("render", path)
 		req := httptest.NewRequest("GET", path, nil)
 		if path != "/" {
 			req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		}
 		rec := httptest.NewRecorder()
+		if strings.HasPrefix(path, "/video?id=") {
+			rec.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src https://www.youtube.com")
+		}
 		handler(rec, req)
 		if rec.Code != 200 {
 			t.Fatalf("%s: %d", path, rec.Code)
 		}
 		pages[path] = rec.Body.String()
+		policies[path] = rec.Header().Get("Content-Security-Policy")
 	}
 	for name := range keptItsPage {
 		if _, ok := pages["/"+name]; !ok {
@@ -115,7 +120,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, _ := json.Marshal(map[string]any{"pages": pages, "css": string(css), "composition": string(composition)})
+	input, _ := json.Marshal(map[string]any{"pages": pages, "policies": policies, "css": string(css), "composition": string(composition)})
 	cmd := exec.Command("node", "../internal/app/testdata/layout.cjs")
 	cmd.Stdin = strings.NewReader(string(input))
 	out, err := cmd.CombinedOutput()

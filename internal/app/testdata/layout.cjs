@@ -4,12 +4,22 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  const input=JSON.parse(fs.readFileSync(0,'utf8'));
  const browser=await chromium.launch({executablePath:process.env.MU_LAYOUT_BROWSER,headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-zygote','--single-process']});
  const page=await browser.newPage();
+ let playerReferer;
+ await page.addInitScript(()=>{window.testDocument=Date.now()+Math.random()});
  await page.route('**/*',route=>{
   const u=new URL(route.request().url());
+  if(u.hostname==='www.youtube.com'&&u.pathname.startsWith('/embed/')){
+   playerReferer=route.request().headers().referer;
+   return route.fulfill({body:'<!doctype html><body style="background:black;color:white">Player fixture</body>',contentType:'text/html'});
+  }
+  if(u.hostname==='www.youtube.com'&&u.pathname==='/iframe_api')return route.fulfill({contentType:'application/javascript',body:`
+   window.YT={Player:function(){let state=1;this.getPlayerState=()=>state;this.pauseVideo=()=>state=2;this.playVideo=()=>state=1;this.getCurrentTime=()=>42;this.getDuration=()=>3600;}};
+   window.onYouTubeIframeAPIReady();
+  `});
   if(u.pathname==='/composition.css')return route.fulfill({contentType:'text/css',body:input.composition});
   if(u.pathname==='/mu.css')return route.fulfill({contentType:'text/css',body:input.css});
   const html=input.pages[u.pathname+u.search]||input.pages[u.pathname];
-  if(html)return route.fulfill({contentType:'text/html; charset=utf-8',body:html});
+  if(html)return route.fulfill({contentType:'text/html; charset=utf-8',body:html,headers:input.policies[u.pathname+u.search]?{'Content-Security-Policy':input.policies[u.pathname+u.search]}:{}});
   if(u.pathname==='/viewport.js')return route.fulfill({body:fs.readFileSync('../internal/app/html/viewport.js'),contentType:'application/javascript'});
   if(/\.(png|svg)$/.test(u.pathname)){const p='../internal/app/html'+u.pathname;if(fs.existsSync(p))return route.fulfill({body:fs.readFileSync(p),contentType:u.pathname.endsWith('.svg')?'image/svg+xml':'image/png'});}
   return route.fulfill({status:200,body:'',contentType:'text/plain'});
@@ -35,6 +45,34 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
    // Reset disclosures before the interaction-specific checks below.
    await page.locator('details').evaluateAll(es=>es.forEach(e=>e.open=false));
+   if(path.startsWith('/video?id=')) {
+    assert(await page.locator('body.video-player-body').count()===1,'watch page lost standalone document');
+    assert(await page.locator('#content,#sidebar').count()===0,'watch page inherited app shell');
+    assert(playerReferer==='https://mu.test/',`wrong player referer: ${playerReferer}`);
+    const fits=()=>page.evaluate(()=>{
+     const frame=document.getElementById('ytplayer').getBoundingClientRect(),bar=document.querySelector('.video-bar').getBoundingClientRect();
+     return frame.x===0&&frame.y===0&&Math.abs(frame.width-innerWidth)<1&&Math.abs(frame.bottom-bar.top)<1&&bar.bottom<=innerHeight+1&&frame.height>200;
+    });
+    assert(await fits(),`watch player does not fill viewport at ${width}`);
+    assert(await page.locator('#playBtn').isHidden());
+    await page.locator('#audioBtn').click();
+    assert(await page.locator('#playBtn').isVisible(),'audio play control is hidden');
+    await page.waitForFunction(()=>document.getElementById('audioTime').textContent==='0:42 / 60:00');
+    await page.locator('#playBtn').click();
+    await page.waitForFunction(()=>document.getElementById('playBtn').getAttribute('aria-label')==='Play');
+    assert(await fits(),`audio toolbar pushes player offscreen at ${width}`);
+    await page.locator('#audioBtn').click();
+    assert(await page.locator('#playBtn').isHidden());
+    assert(!await page.locator('.video-embed').evaluate(e=>e.classList.contains('audio-only')));
+   }
+   if(path==='/signup') {
+    await page.locator('#id').fill('signup_reader');
+    await page.locator('#secret').fill('test-password-only');
+    const numbers=(await page.locator('label[for=captcha]').textContent()).match(/\d+/g).map(Number);
+    await page.locator('#captcha').fill(String(numbers[0]+numbers[1]));
+    assert(await page.locator('#signup').evaluate(e=>e.checkValidity()),'signup cannot submit valid fields');
+    assert(await page.locator('#signup button').isVisible(),'signup button is hidden');
+   }
    if(path==='/sms') {
     assert(await page.locator('.sms-conversation').count()===2,'SMS and WhatsApp merged in list');
     assert(await page.locator('input[name=text]').count()===0,'reply boxes leaked onto list');
@@ -90,6 +128,19 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(process.env.MU_LAYOUT_SHOTS){fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true});await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/'+(path.replace(/[^a-zA-Z0-9_-]/g,'-')||'landing')+'-'+width+'-'+collapsed+'.png',fullPage:true});}
   }
  }
+ // A watch link must perform one document navigation, not a shell fetch/swap.
+ await page.goto('https://mu.test/video');
+ const documentID=await page.evaluate(()=>window.testDocument);
+ let softWatchRequests=0;
+ page.on('request',r=>{if(r.url().includes('/video?id=')&&r.headers()['x-mu-nav'])softWatchRequests++;});
+ await page.evaluate(()=>{const a=document.createElement('a');a.href='/video?id=layout-video&autoplay=1';a.textContent='Watch fixture';a.id='watch-fixture';document.getElementById('content').appendChild(a);});
+ await page.locator('#watch-fixture').click();
+ await page.waitForURL('**/video?id=*');
+ assert(await page.evaluate(()=>window.testDocument)!==documentID,'watch link soft-navigated');
+ assert(softWatchRequests===0,'watch link fetched the player twice');
+ await page.getByRole('link',{name:'← Video',exact:true}).click();
+ await page.waitForURL('**/video');
+ assert(await page.locator('#content').count()===1,'back link did not restore feed');
  // Agent deep links must not change Home, including soft navigation.
  await page.goto('https://mu.test/agent/micro');
  await page.evaluate(()=>{window.muSeedAgent('another-agent');sessionStorage.setItem('mu_active_agent','another-agent');const a=document.createElement('a');a.href='/home';document.getElementById('content').appendChild(a);a.click();});
