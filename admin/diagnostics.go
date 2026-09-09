@@ -76,7 +76,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(back())
 
-	app.Respond(w, r, app.Response{Title: "Diagnostics", Description: "System health", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Status", Description: "System health", HTML: b.String()})
 }
 
 // renderChecks is one card per check.
