@@ -161,6 +161,7 @@ func authRequired() map[string]bool {
 		"/admin/usage":       true,
 		"/admin/delete":      true,
 		"/admin/diagnostics": true,
+		"/admin/status":      true,
 		"/admin/alerts":      true,
 		"/admin/backup":      true,
 		"/admin/invite":      true,
@@ -284,6 +285,7 @@ func registerRoutes() {
 	http.HandleFunc("/admin/delete", admin.DeleteHandler)
 
 	// admin console
+	http.HandleFunc("/admin/status", admin.StatusHandler)
 	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
 	// What this instance will wake you for. See admin/alert.go.
 	http.HandleFunc("/admin/alerts", admin.AlertsHandler)
