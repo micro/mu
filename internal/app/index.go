@@ -152,8 +152,28 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
 /* No extra margin: FooterLinks already spaces the links with separators,
    so adding margin here made the same six links wrap where the app shell fits
    them on one line. */
-.footer a{color:#555;text-decoration:none}
+.footer a{color:#555;text-decoration:none;font-weight:400}
 .footer a:hover{text-decoration:underline}
+.index-body:has(>.public-page){justify-content:flex-start;padding:32px 0 0}
+.public-page{width:100%;max-width:760px;margin:40px auto 0;line-height:1.65}
+.public-page h1{text-align:center;font-size:28px;margin-bottom:32px}
+.public-page .page-col{width:100%;max-width:none}
+.public-page .card{margin-bottom:24px}
+.public-page h3{font-size:18px;margin-bottom:8px}
+.public-page p{margin-bottom:16px}
+.public-page a:not(.btn){color:#555;text-decoration:none;font-weight:700}
+.public-page table{width:100%;border-collapse:collapse;margin-bottom:16px;text-align:left;font-size:14px}
+.public-page td,.public-page th{padding:8px;border-bottom:1px solid #eee;vertical-align:top}
+.public-page td:last-child{white-space:nowrap}
+.public-page .text-sm{font-size:13px}
+.public-page .text-muted{color:#777}
+.public-page .status-header,.public-page .status-value{display:flex;align-items:center;gap:8px}
+.public-page .status-header{margin-bottom:24px}
+.public-page .status-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}
+.public-page .status-ok{color:#238636}
+.public-page .status-error{color:#c62828}
+.public-page .status-details{color:#777;font-size:13px}
+
 /* 14vh of air above the wordmark is right on a tall window and is a fifth of a
    short one — a 1280x600 laptop spent 84px on padding and then scrolled by 23.
    Height is the axis that decides here, so the query is on height. */
