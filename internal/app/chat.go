@@ -513,9 +513,10 @@ func ChatComponent(cfg ChatConfig) string {
   overscroll-behavior-y: contain;
   scrollbar-gutter: stable;
 }
-#mu-chat.mu-chat-overlay #mu-chat-conv { margin-top:12px; }
+#mu-chat.mu-chat-overlay #mu-chat-conv { margin-top:var(--space-control,8px); }
 #mu-chat.mu-chat-overlay:not(.mu-console-open) #mu-chat-conv { display:none; }
 .mu-console { box-sizing:border-box; width:min(880px,calc(100% - 32px)); height:min(800px,calc(100dvh - 48px)); max-height:none; max-width:none; padding:16px; border:1px solid var(--card-border,#ddd); border-radius:12px; background:var(--background-color,#fff); color:var(--text-primary,#222); }
+html:has(.mu-chat-overlay) { scrollbar-gutter:stable; }
 body:has(.mu-console[open]) { overflow:hidden; }
 .mu-console::backdrop { background:rgba(0,0,0,.28); }
 .mu-console[open] { display:flex; flex-direction:column; }
@@ -679,7 +680,7 @@ if(overlay && input && form){
  dialog.addEventListener('close',function(){
   closing=true;shell.classList.remove('mu-console-open');slot.insertBefore(shell,dialog);
   slot.style.minHeight='';
-  input.focus({preventScroll:true});setTimeout(function(){closing=false;},0);
+  if(window.matchMedia('(pointer:coarse)').matches){input.blur();}else{input.focus({preventScroll:true});}setTimeout(function(){closing=false;},0);
  });
  input.addEventListener('focus',openConsole);
  input.addEventListener('click',openConsole);
@@ -880,6 +881,7 @@ function agentName(){
 
 var viewEpoch=0,detachActive=null;
 function ask(q){
+ if(overlay)openConsole();
   q=String(q||'').trim();
   if(!q)return;
   var epoch=viewEpoch;

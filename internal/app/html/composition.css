@@ -148,5 +148,10 @@ a.btn-secondary:hover, .btn-secondary:hover {
 @container (min-width: 632px) { .home-apps-grid > a:nth-child(9) { display: flex; } }
 @container (min-width: 704px) { .home-apps-grid > a:nth-child(10) { display: flex; } }
 
-/* Date and view tabs form one compact Home header. */
-#home-cards > #home-date { margin-block-end: var(--space-control); }
+/* Shared compact header and preview navigation. */
+.page-stack.compact-stack { gap: var(--space-control); }
+.page-stack.compact-stack > * { margin-block: 0; }
+.section-link { display:block; margin:0; font-size:13px; font-weight:400; color:var(--text-primary,#111); text-decoration:none; }
+.section-link:hover { text-decoration:underline; }
+
+@media(max-width:640px){#home-cards .view-switch{justify-content:center;}}

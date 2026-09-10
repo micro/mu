@@ -431,12 +431,12 @@ function fetchW(la,lo){
 	b.WriteString(`<div id="home-cards">`)
 
 	// Date + invite/settings above the input
-	b.WriteString(dateHTML)
+	b.WriteString(`<div class="page-section compact-stack page-stack">` + dateHTML)
 	feed := r.URL.Query().Get("view") == "feed" || r.URL.Query().Get("mode") == "display"
 	if r.URL.Query().Get("q") != "" || r.URL.Query().Get("prompt") != "" {
 		feed = false
 	}
-	b.WriteString(homeViews(feed))
+	b.WriteString(homeViews(feed) + `</div>`)
 	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
 
 	// Each column flows independently as a conversation grows.

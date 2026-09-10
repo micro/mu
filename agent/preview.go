@@ -147,17 +147,8 @@ func Preview(accountID string) string {
 		}
 		b.WriteString(`</a>`)
 	}
-	// Where the rest of them are, said the same way the inbox block says it.
-	// Home shows five; an account with six had no way on from here except the
-	// sidebar, and a block that lists some of a thing should say where all of it
-	// is. Same class as the inbox's, because it is the same affordance — two
-	// blocks that end in a link out should not end differently.
-	//
-	// In the card rather than under it, and that is the whole reason this moved
-	// when the inbox's did: they are the same affordance, so they are in the
-	// same place. See inbox.Preview for the argument.
-	b.WriteString(app.Link("Go to agents", "/agents"))
 	b.WriteString(`</div>`)
+	b.WriteString(app.SectionLink("Go to agents", "/agents"))
 	return b.String()
 }
 
