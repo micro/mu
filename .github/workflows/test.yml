@@ -59,8 +59,31 @@ jobs:
       # failed build and a silent hole in the install path.
       - name: Build every release target
         run: |
+          mkdir -p "$RUNNER_TEMP/mu-build"
           for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
             os="${target%/*}"; arch="${target#*/}"
             echo "Building ${os}/${arch}"
-            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -o /dev/null .
+            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -trimpath -o "$RUNNER_TEMP/mu-build/mu-${os}-${arch}" .
           done
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: mu-linux-amd64
+          path: ${{ runner.temp }}/mu-build/mu-linux-amd64
+          retention-days: 7
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: mu-linux-arm64
+          path: ${{ runner.temp }}/mu-build/mu-linux-arm64
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: [test, build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
