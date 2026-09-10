@@ -16,7 +16,7 @@ import (
 func AboutHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(app.Column())
-	b.WriteString(`<div class="card"><h3>What Micro is</h3>` +
+	b.WriteString(`<div class="card">` +
 		`<p>Micro is a personal assistant. You write to it the way you would write to a ` +
 		`person — from the web, by email, by text, on WhatsApp, or from a program — and it ` +
 		`answers, remembers, and does things on your behalf. It reads your mail, searches ` +
@@ -27,7 +27,6 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 		`archive, inbox and agent system that make those capabilities available. You can ` +
 		`run Mu yourself and Micro remains the default agent and front door.</p>` +
 		`</div>`)
-	b.WriteString(`<div class="page-action"><a class="btn" href="/signup">Sign up</a> · <a href="https://github.com/micro/mu">Source</a></div>`)
 
 	b.WriteString(app.Close())
 

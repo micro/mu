@@ -44,6 +44,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/notes"
+	"mu/internal/thread"
 	"mu/service/tasks"
 )
 
@@ -83,9 +84,12 @@ type item struct {
 func everything(r *http.Request, accountID, box, only string) []item {
 	var out []item
 
-	if only == "" || only == kindMessage {
+	if only != kindNote && only != kindTask {
 		all := arrivals(accountID)
 		for _, t := range all {
+			if only != "" && only != kindMessage && t.Client != only {
+				continue
+			}
 			// The mailbox narrows conversations only. A note has no agent and no
 			// alias, so a mailbox is not a question that can be asked of it —
 			// and a box filter that silently dropped every note would look like
@@ -163,13 +167,8 @@ func taskRow(t *tasks.Task) string {
 // what sort of thing it is — and a row that mixed the two would let somebody
 // pick a combination that is always empty.
 //
-// Drawn only when there is a second kind to filter to. On an instance where
-// nobody has written a note or made a task, three chips offering to show none of
-// them is furniture that teaches the page is broken.
-func kinds(accountID, current string) string {
-	if len(notes.All(accountID)) == 0 && len(tasks.List(accountID, "")) == 0 {
-		return ""
-	}
+// Keep service names visible even before the first item arrives.
+func kinds(current string) string {
 	var b strings.Builder
 	// "Type", not "Kind". Kind is this repository's own word — data.Vocabulary
 	// calls them kinds and the URL still says kind=, because that vocabulary
@@ -182,7 +181,10 @@ func kinds(accountID, current string) string {
 	b.WriteString(`<div class="ib-boxes ib-kinds"><span class="ib-axis">Type</span>`)
 	for _, k := range []struct{ label, val string }{
 		{"Everything", ""},
-		{"Messages", kindMessage},
+		{"Mail", mailClient},
+		{"Chat", thread.ChatClient},
+		{"SMS", thread.SMSClient},
+		{"WhatsApp", thread.WhatsAppClient},
 		{"Notes", kindNote},
 		{"Tasks", kindTask},
 	} {
@@ -202,6 +204,8 @@ func kinds(accountID, current string) string {
 // typo in a view name should show you the page rather than a refusal.
 func kindOf(v string) string {
 	switch strings.ToLower(strings.TrimSpace(v)) {
+	case mailClient, thread.ChatClient, thread.SMSClient, thread.WhatsAppClient:
+		return strings.ToLower(strings.TrimSpace(v))
 	case kindMessage:
 		return kindMessage
 	case kindNote:

@@ -83,6 +83,9 @@ func NewHandler(w http.ResponseWriter, r *http.Request) {
 		// gets typed into the boxes is not, and does not travel that way.
 		Kind: kindOf(r.FormValue("kind")),
 	}
+	if f.Kind != kindNote && f.Kind != kindTask {
+		f.Kind = kindMessage
+	}
 	// A reply is always a message. The kind picker is for something you are
 	// starting; answering a conversation has already decided what it is, and
 	// offering to turn the reply into a note would be a control that throws the
@@ -547,12 +550,15 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 
 	// Named for what is being written. "New message" over a note form is the
 	// page telling you it is doing something other than what it is doing.
-	title, desc := "New message", "Write one"
+	title, desc := "New mail", "Write an email"
 	switch writing {
 	case kindNote:
 		title, desc = "New note", "Write something down"
 	case kindTask:
 		title, desc = "New task", "Something that needs doing"
+	}
+	if texting {
+		title, desc = "Reply on "+channel.Label(), "Send a text"
 	}
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: b.String()})
 }
@@ -651,7 +657,7 @@ func newKinds(current string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="ib-boxes ib-new-kinds">`)
 	for _, k := range []struct{ label, val string }{
-		{"Message", kindMessage},
+		{"Mail", kindMessage},
 		{"Note", kindNote},
 		{"Task", kindTask},
 	} {

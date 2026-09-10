@@ -1622,18 +1622,18 @@ body:has(#messages) #chat-back-link {
   white-space: nowrap;
 }
 
-#messages p {
+:is(#messages, .chat-transcript) p {
   margin-top: 8px;
   margin-bottom: 12px;
   line-height: 1.5;
 }
 
-#messages ul, #messages ol {
+:is(#messages, .chat-transcript) ul, :is(#messages, .chat-transcript) ol {
   margin: 10px 0;
   padding-left: 25px;
 }
 
-#messages li {
+:is(#messages, .chat-transcript) li {
   margin-bottom: 8px;
   line-height: 1.5;
 }
@@ -1642,13 +1642,13 @@ body:has(#messages) #chat-back-link {
    the top of a page: it marks a section of an answer and should not be bigger
    than the room's own furniture. h4 is here because the renderer caps at it —
    see renderMarkdown in mu.js. */
-#messages h1, #messages h2, #messages h3, #messages h4 {
+:is(#messages, .chat-transcript) h1, :is(#messages, .chat-transcript) h2, :is(#messages, .chat-transcript) h3, :is(#messages, .chat-transcript) h4 {
   margin-top: 20px;
   margin-bottom: 12px;
   font-size: 15px;
 }
 
-#messages code {
+:is(#messages, .chat-transcript) code {
   margin: 10px 0;
 }
 
@@ -1656,7 +1656,7 @@ body:has(#messages) #chat-back-link {
    what it was asked about and rules off between sections, and none of the three
    had a rule — so they arrived as unstyled browser defaults in the middle of a
    conversation. */
-#messages pre {
+:is(#messages, .chat-transcript) pre {
   margin: 10px 0;
   padding: 10px 12px;
   background: var(--hover-background, #f5f5f5);
@@ -1664,16 +1664,16 @@ body:has(#messages) #chat-back-link {
   overflow-x: auto;
 }
 
-#messages pre code { margin: 0; background: none; padding: 0 }
+:is(#messages, .chat-transcript) pre code { margin: 0; background: none; padding: 0 }
 
-#messages blockquote {
+:is(#messages, .chat-transcript) blockquote {
   margin: 10px 0;
   padding-left: 12px;
   border-left: 2px solid var(--border-color, #f0f0f0);
   color: var(--text-secondary, #555);
 }
 
-#messages hr {
+:is(#messages, .chat-transcript) hr {
   border: 0;
   border-top: 1px solid var(--border-color, #f0f0f0);
   margin: 14px 0;
@@ -3556,6 +3556,36 @@ a.highlight {
   line-height: 1.5;
   word-wrap: break-word;
   overflow-wrap: anywhere;
+}
+
+/* Text transcripts share spacing and wrapping. Chat keeps the room's open
+   message layout, SMS is compact plain text, and WhatsApp uses bubbles. */
+.message-list { display: flex; flex-direction: column; gap: var(--space-section, 24px); min-width: 0; }
+.message-list > .message { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.sms-transcript { gap: var(--space-field, 16px); }
+.chat-transcript .ib-body { font-size: inherit; }
+
+.bubble-list { display: flex; flex-direction: column; gap: var(--space-control, 8px); min-width: 0; }
+.bubble-list > .bubble {
+  box-sizing: border-box;
+  align-self: flex-start;
+  min-width: 0;
+  width: fit-content;
+  max-width: min(90%, 40rem);
+  margin: 0;
+  padding: var(--space-control, 8px) var(--space-field, 16px);
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  background: var(--card-background, #fff);
+}
+.bubble-list > .bubble-outgoing {
+  align-self: flex-end;
+  border-radius: 12px 0 12px 12px;
+  background: var(--surface-alt, #f2f2f2);
+}
+.bubble-list .ib-from, .sms-transcript .ib-from { flex-wrap: wrap; }
+.whatsapp-transcript > .bubble-outgoing {
+  background: var(--whatsapp-outgoing-background, #d9fdd3);
+  border-color: var(--whatsapp-outgoing-border, #c5e8c0);
 }
 
 /* A cell that must not grow: truncate rather than push the table wide. */

@@ -127,7 +127,16 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 			app.Link("Search the whole conversation", "/recall") + `</p>`)
 	}
 
-	b.WriteString(`<div class="card-list">`)
+	switch t.Client {
+	case "whatsapp":
+		b.WriteString(`<div class="bubble-list whatsapp-transcript">`)
+	case "sms":
+		b.WriteString(`<div class="message-list sms-transcript">`)
+	case thread.ChatClient:
+		b.WriteString(`<div class="message-list chat-transcript">`)
+	default:
+		b.WriteString(`<div class="card-list">`)
+	}
 	for _, m := range msgs {
 		b.WriteString(messageBlock(accountID, t, m, subject))
 	}
@@ -440,20 +449,22 @@ func messageAgentName(accountID string, t *thread.Thread, m thread.Message) stri
 // through the untrusted renderer, because model output is exactly what that
 // renderer is for.
 func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject string) string {
-	m.Text = withoutSubject(m.Text, subject)
+	if !textConversation(t) {
+		m.Text = withoutSubject(m.Text, subject)
+	}
 	if m.Role == thread.RoleAgent {
 		ran := ""
 		if m.Workflow != "" {
 			ran = runTools(m.Workflow)
 		}
-		return `<div class="ib-msg card ib-agent">` + fromLine(messageAgentName(accountID, t, m), m.At) +
+		return messageOpen(t, m, accountID, "ib-agent") + messageFrom(t, messageAgentName(accountID, t, m), m.At) +
 			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
 	}
 	// The author, by the name the conversation knows them under rather than the
 	// address on the message. A thread where three people have written is three
 	// names; one where the display name arrived later says it on every line.
 	who := "You"
-	if m.From != "" {
+	if m.From != "" && m.From != accountID {
 		who = m.From
 		for _, p := range thread.Parties(accountID, t.ID) {
 			if p.Kind == thread.RolePerson && p.Key == m.From && p.Name != "" {
@@ -461,6 +472,10 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 				break
 			}
 		}
+	}
+	if textConversation(t) {
+		return messageOpen(t, m, accountID, "ib-person") + messageFrom(t, who, m.At) +
+			`<div class="ib-body ib-typed">` + app.Linkify(html.EscapeString(m.Text)) + `</div></div>`
 	}
 	// Mail is rendered by the mail service, not by this page.
 	//
@@ -496,6 +511,35 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 	return `<div class="ib-msg card ib-person">` + fromLine(who, m.At) + addressLine(m) +
 		`<div class="ib-body ib-typed">` + app.Linkify(html.EscapeString(body)) + `</div>` +
 		quotedBlock(quote) + `</div>`
+}
+
+// Text conversations keep every typed line, without email subject/quote handling.
+func textConversation(t *thread.Thread) bool {
+	return t.Client == thread.ChatClient || onAPhone(t.Client)
+}
+
+func messageOpen(t *thread.Thread, m thread.Message, accountID, role string) string {
+	classes := "ib-msg card " + role
+	if textConversation(t) {
+		classes = "ib-msg message " + role
+	}
+	if t.Client == "whatsapp" {
+		classes = "ib-msg bubble " + role
+		if m.Role != thread.RoleAgent && (m.From == "" || m.From == accountID) {
+			classes += " bubble-outgoing"
+		}
+	}
+	return `<div class="` + classes + `">`
+}
+
+// Chat uses the room's byline and adjacent, updating timestamp.
+func messageFrom(t *thread.Thread, who string, at time.Time) string {
+	if t.Client != thread.ChatClient {
+		return fromLine(who, at)
+	}
+	return `<div class="you"><span class="ib-who-l">` + html.EscapeString(who) +
+		`</span> <span class="msg-when" data-timestamp="` + strconv.FormatInt(at.Unix(), 10) + `">` +
+		html.EscapeString(app.TimeAgo(at)) + `</span></div>`
 }
 
 // quotedBlock is the fold: a control that says there is more and shows it.

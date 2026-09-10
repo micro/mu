@@ -212,7 +212,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	// is enough to say they are two things.
 	b.WriteString(`<div class="ib-filters">`)
 	b.WriteString(boxes(accountID, all, box))
-	b.WriteString(kinds(accountID, kind))
+	b.WriteString(kinds(kind))
 	b.WriteString(`</div>`)
 
 	// What is waiting to be let in, above the mailbox and only when there is

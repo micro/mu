@@ -88,7 +88,7 @@ func itemPage(w http.ResponseWriter, r *http.Request, owner, kind, id string) {
 				`<input type="hidden" name="action" value="save"><textarea name="text" class="record-body" rows="14" maxlength="2000" required aria-label="Note">` + html.EscapeString(note.Text) +
 				`</textarea><div class="form-actions"><button type="submit">Save</button><a class="btn btn-quiet" href="` + html.EscapeString(dest) + `">Cancel</a></div></form>`
 		} else {
-			body += `<div class="markdown-content">` + string(app.Render([]byte(note.Text))) + `</div><div class="form-actions"><a class="btn btn-quiet" href="` + html.EscapeString(dest+"&edit=1") + `">Edit</a>` +
+			body += `<div class="markdown-content">` + string(app.RenderLines([]byte(note.Text))) + `</div><div class="form-actions"><a class="btn btn-quiet" href="` + html.EscapeString(dest+"&edit=1") + `">Edit</a>` +
 				`<form method="POST" action="` + html.EscapeString(dest) + `" onsubmit="return confirm('Delete this note?')">` + app.CSRFField(csrf) +
 				`<input type="hidden" name="action" value="delete"><button class="btn btn-danger" type="submit">Delete</button></form></div>`
 		}
