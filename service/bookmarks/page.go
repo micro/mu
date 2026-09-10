@@ -115,7 +115,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		b.WriteString(`<p><a href="/bookmarks">← Bookmarks</a></p><h2>` + html.EscapeString(item.Title) + `</h2><p>` + html.EscapeString(item.Excerpt) + `</p>`)
-		b.WriteString(`<div class="reading-actions"><a href="` + html.EscapeString(item.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/agent/micro?bookmark=` + url.QueryEscape(item.ID) + `">Ask</a></div>`)
+		b.WriteString(`<div class="reading-actions"><a href="` + html.EscapeString(item.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/agent/micro?bookmark=` + url.QueryEscape(item.ID) + `">Discuss</a></div>`)
 		b.WriteString(`<form method="POST" action="/bookmarks">` + token(r) + hidden("action", "note") + hidden("id", item.ID) + `<label for="saved-note">Private note</label><textarea id="saved-note" name="note" rows="4" maxlength="4000">` + html.EscapeString(item.Note) + `</textarea><button>Save note</button></form>`)
 		b.WriteString(`<form method="POST" action="/bookmarks" class="reading-actions">` + token(r) + hidden("action", "delete") + hidden("id", item.ID) + `<button>Remove bookmark</button></form>`)
 	} else {
@@ -149,7 +149,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for _, i := range items {
-			b.WriteString(`<article class="reading-row"><div class="reading-meta">` + app.Pill(i.Kind) + " · " + html.EscapeString(i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p>` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/agent/micro?bookmark=` + url.QueryEscape(i.ID) + `">Ask</a></div></article>`)
+			b.WriteString(`<article class="reading-row"><div class="reading-meta">` + app.Pill(i.Kind) + " · " + html.EscapeString(i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p>` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/agent/micro?bookmark=` + url.QueryEscape(i.ID) + `">Discuss</a></div></article>`)
 		}
 		b.WriteString(`<div class="reading-actions">`)
 		for _, p := range []struct {

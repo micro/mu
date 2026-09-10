@@ -84,5 +84,5 @@ const ReadingCSS = `<style>
 // AskControl opens a private conversation with public reading material attached.
 // Only its opaque reference travels in the URL; questions stay in the chat body.
 func AskControl(ref string) string {
-	return `<a class="mini-btn" href="/agent/micro?item=` + url.QueryEscape(ref) + `">Ask</a>`
+	return `<a class="mini-btn" href="/agent/micro?item=` + url.QueryEscape(ref) + `">Discuss</a>`
 }

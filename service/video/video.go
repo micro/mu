@@ -423,10 +423,7 @@ func Load() {
 // derived from stored fields can be regenerated whenever the code changes,
 // where markup that is itself stored goes stale and needs rewriting in place.
 func renderItem(res *Result) string {
-	channel := res.Channel
-	if res.ChannelID != "" {
-		channel = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
-	}
+	channel := channelLink(res.Channel, res.ChannelID)
 	category := ""
 	if res.Category != "" {
 		category = fmt.Sprintf(` · <a href="/video?category=%s" class="highlight">%s</a>`, url.QueryEscape(res.Category), htmlpkg.EscapeString(res.Category))
@@ -506,11 +503,8 @@ func regenerateHTML() {
 		// Build info section with channel and category
 		var info string
 		if res.Channel != "" {
-			channelLink := res.Channel
-			if res.ChannelID != "" {
-				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
-			}
-			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
+			link := channelLink(res.Channel, res.ChannelID)
+			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, link, res.Published.Unix(), app.TimeAgo(res.Published))
 		} else {
 			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
 		}
@@ -650,11 +644,8 @@ func loadVideos() {
 
 		var info string
 		if res.Channel != "" {
-			channelLink := res.Channel
-			if res.ChannelID != "" {
-				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
-			}
-			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
+			link := channelLink(res.Channel, res.ChannelID)
+			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, link, res.Published.Unix(), app.TimeAgo(res.Published))
 		} else {
 			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
 		}
@@ -894,10 +885,10 @@ func getResults(query, channel string) (string, []*Result, error) {
 			results = append(results, res)
 		}
 
-		// All links are now internal
+		// Results open in Mu; the channel name opens its YouTube page.
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
-			url, thumbSrc(id, thumbnailURL), item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
+			<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a>%s · %s</div>`,
+			url, thumbSrc(id, thumbnailURL), item.Snippet.Title, channelLink(item.Snippet.ChannelTitle, item.Snippet.ChannelId), desc)
 		sb.WriteString(html)
 		res.Html = html
 	}
@@ -1138,7 +1129,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> · <small>%s</small>`, app.TimeAgo(t))
-			channel := fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+			channel := channelLink(item.Snippet.ChannelTitle, item.Snippet.ChannelId)
 
 			thumbnailURL := ""
 			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
@@ -1215,7 +1206,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			desc := fmt.Sprintf(`<span class="highlight">video</span> · <small>%s</small>`, app.TimeAgo(t))
-			channel := fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+			channel := channelLink(item.Snippet.ChannelTitle, item.Snippet.ChannelId)
 
 			thumbnailURL := ""
 			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
@@ -1250,7 +1241,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Check if autoplay is requested
 		autoplay := r.Form.Get("autoplay") == "1"
 
-		title, channel := watchTitle(id)
+		title, channel, channelID := watchInfo(id)
 		actions := `<a href="https://www.youtube.com/watch?v=` + url.QueryEscape(id) + `" rel="noopener noreferrer">Original ↗</a>`
 		if e := data.ByID("video_" + id); e != nil && e.Owner == "" && e.Type == data.KindVideo {
 			actions += app.ReadingActionItems(r, "video_"+id)
@@ -1267,7 +1258,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, watchPage, htmlpkg.EscapeString(title), app.Version,
 			embedVideoWithAutoplay(id, autoplay), htmlpkg.EscapeString(title),
-			htmlpkg.EscapeString(channel), actions, app.ReadingCSS)
+			channelLink(channel, channelID), actions, app.ReadingCSS)
 
 		return
 	}

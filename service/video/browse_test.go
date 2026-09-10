@@ -13,13 +13,16 @@ func TestBrowseIsBoundedAndHasReadingActions(t *testing.T) {
 	all := map[string]Channel{}
 	ch := Channel{}
 	for i := 0; i < 14; i++ {
-		ch.Videos = append(ch.Videos, &Result{ID: fmt.Sprintf("v%d", i), Title: fmt.Sprintf("Video %d", i), Category: "Tech", Published: time.Now().Add(-time.Duration(i) * time.Minute)})
+		ch.Videos = append(ch.Videos, &Result{ID: fmt.Sprintf("v%d", i), Title: fmt.Sprintf("Video %d", i), Category: "Tech", Channel: "The channel", ChannelID: "UCexample", Published: time.Now().Add(-time.Duration(i) * time.Minute)})
 	}
 	all["Tech"] = ch
 	all["World"] = ch
 	body := browse(httptest.NewRequest("GET", "/video?category=Tech&page=2", nil), all)
 	if !strings.Contains(body, `id="video-search"`) || !strings.Contains(body, `id="recent-searches-container"`) {
 		t.Fatal("missing search controls")
+	}
+	if !strings.Contains(body, `href="https://www.youtube.com/channel/UCexample"`) {
+		t.Fatal("channel name is no longer linked to YouTube")
 	}
 	if strings.Count(body, `<article `) != 5 || !strings.Contains(body, `video-grid`) {
 		t.Fatal("wrong video page")
@@ -29,11 +32,11 @@ func TestBrowseIsBoundedAndHasReadingActions(t *testing.T) {
 	}
 }
 func TestWatchPageKeepsNavigationAndPlayerControls(t *testing.T) {
-	indexVideo(&Result{ID: "example", Title: "A fetched video", Description: "The description", Channel: "The channel"})
+	indexVideo(&Result{ID: "example", Title: "A fetched video", Description: "The description", Channel: "The channel", ChannelID: "UCexample"})
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest("GET", "/video?id=example", nil))
 	body := w.Body.String()
-	for _, want := range []string{`href="/video">← Video</a>`, `/agent/micro?item=video_example`, "Save", "Original", `id="audioBtn"`, `<body class="video-player-body">`, "allowfullscreen"} {
+	for _, want := range []string{`href="/video">← Video</a>`, `/agent/micro?item=video_example`, `href="https://www.youtube.com/channel/UCexample"`, "Save", "Original", `id="audioBtn"`, `<body class="video-player-body">`, "allowfullscreen"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)
 		}
