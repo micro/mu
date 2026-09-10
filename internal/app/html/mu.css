@@ -960,8 +960,7 @@ a.btn-plain:hover {
 }
 
 /* Home and Feed share the page width, but never compete for it. */
-#home-personal { max-width: 840px; margin-inline: auto; min-width: 0; }
-#home-feed, .home-rail, .home-main { min-width: 0; }
+#home-personal, #home-feed, .home-rail, .home-main { min-width: 0; }
 #home-personal[hidden], #home-feed[hidden] { display: none !important; }
 
 
