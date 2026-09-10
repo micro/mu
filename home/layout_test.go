@@ -13,10 +13,14 @@ import (
 )
 
 // homeFor renders the signed-in Home for an account, as the browser gets it.
-func homeFor(t *testing.T, accountID string) string {
+func homeFor(t *testing.T, accountID string, names ...string) string {
 	t.Helper()
 
-	auth.Create(&auth.Account{ID: accountID, Name: accountID}) //nolint:errcheck
+	name := accountID
+	if len(names) > 0 {
+		name = names[0]
+	}
+	auth.Create(&auth.Account{ID: accountID, Name: name}) //nolint:errcheck
 	sess, err := auth.CreateSession(accountID)
 	if err != nil {
 		t.Fatalf("no session: %v", err)
@@ -38,6 +42,9 @@ func TestHomeAndFeedKeepTheirOwnContent(t *testing.T) {
 	}
 	thread.Add(thread.Message{Thread: th.ID, Account: who, From: "sender@example.com", Text: "An inbox message"})
 	body := homeFor(t, who)
+	if !strings.Contains(body, "Welcome back, "+who) {
+		t.Error("missing personal greeting")
+	}
 	personalAt := strings.Index(body, `<section id="home-personal"`)
 	feedAt := strings.Index(body, `<section id="home-feed"`)
 	if personalAt < 0 || feedAt <= personalAt {
@@ -157,5 +164,16 @@ func TestTheAccountBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
 	if !strings.Contains(got, `href="/account" class="link"`) {
 		t.Error("no `Go to account` link — every other rail block ends with one, " +
 			"and it is the only route to /wallet from Home")
+	}
+}
+
+func TestGreetingTreatsDisplayNamesAsText(t *testing.T) {
+	body := homeFor(t, "greetingmarkup", `<img src=x onerror=alert(1)> & friends`)
+	want := `Welcome back, &lt;img src=x onerror=alert(1)&gt; &amp; friends`
+	if !strings.Contains(body, `<h1 id="page-title">`+want+`</h1>`) {
+		t.Error("greeting does not render the display name as text")
+	}
+	if strings.Contains(body, `<img src=x onerror=alert(1)>`) {
+		t.Error("display name became executable markup")
 	}
 }

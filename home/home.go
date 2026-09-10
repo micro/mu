@@ -419,23 +419,6 @@ function fetchW(la,lo){
 		viewerID = sess.Account
 	}
 
-	// The rail is built before it is placed, because whether there is a second
-	// column at all depends on whether anything goes in it.
-	//
-	// Everything in the rail belongs to an account. Signed out there is no
-	// brief, no inbox and no roster, so the rail was an empty div — and an empty
-	// grid track is still 320px wide. A logged-out visitor got a third of the
-	// screen of nothing on the left and the services pushed right, with nothing
-	// on the page to say a column was missing rather than broken. Signed in it
-	// happens too: each of the three decides its own silence, so on a new
-	// account all three are empty at once, which is the first thing anybody
-	// sees.
-	//
-	// Written as "is there anything in it" rather than "is somebody signed in",
-	// because the empty column looks the same either way and a viewer check
-	// would leave the new-account version of it standing.
-	var rail strings.Builder
-
 	// ── Cards ──
 	b.WriteString(`<div id="home-cards">`)
 
@@ -448,20 +431,8 @@ function fetchW(la,lo){
 	b.WriteString(homeViews(feed))
 	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
 
-	// The personal view keeps the prompt, brief and account previews together.
-	// The box asks, the same as the signed-out page does.
-	//
-	// It searched, and the reason search won was that it is the half that works
-	// with no model — which is a constraint about a fresh install, and it got
-	// treated as a statement about the product. Every instance that has a model
-	// had its front control pointed at its own memory instead of at the thing
-	// the memory is for. The README never said that: "services and the archive
-	// become tools for agents to use".
-	//
-	// Still one control doing one thing on both pages, which was the property
-	// worth keeping from the previous answer. Where there is no model it
-	// renders the search box and says why — a degrade, not a second product.
-	//
+	// Reading order is prompt, inbox, brief, then agents.
+	b.WriteString(`<div class="home-workspace"><div class="home-primary page-stack">`)
 	{
 		b.WriteString(`<div id="home-agent">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{
@@ -491,102 +462,31 @@ function fetchW(la,lo){
 			Speak: viewerID != "",
 		}))
 
-		// The address, under the box. Quiet, because it is a fact about the
-		// agent rather than a call to action: the thing that makes this more
-		// than a chat on a page is that it answers whether or not anybody has
-		// the page open, and there was nowhere on the screen you arrive at
-		// saying so.
-		//
-		// There were suggestion chips here and they have gone. The machinery
-		// was a data attribute, a listener with a forty-try retry loop, a flex
-		// container and a class defined twice in the stylesheet — to render at
-		// most one button, only when there was unread mail, saying "read my
-		// unread email". One centred pill under a chat box, and an inbox fact
-		// sitting above the inbox section. It is a line in that section now.
-		//
-		// The other three chips had already gone for a related reason: they
-		// asked the agent to fetch things the cards below already show.
-		// No address under the box.
-		//
-		// It said "Or write to it at agent@… — from your mail, your phone,
-		// anywhere", directly beneath the thing you type into. Somebody on this
-		// screen is already talking to the agent; the address is for reaching it
-		// when you are not here, which is exactly the moment this line is not on
-		// the screen.
-		b.WriteString(statusForm(r, viewerID))
 		b.WriteString(`</div>`)
-
-		// No Online strip here, and no chat panel below.
-		//
-		// Home carried who else was on the instance, a count you could open to
-		// see the names, a bubble that slid a chat over the page, and the last
-		// thing anybody had said in it. Each piece answered the objection to
-		// the one before it and the whole was still wrong: nobody is on the
-		// other end.
-		//
-		// The argument for it was that a place ought to show you it is a place.
-		// What it actually put on the screen a person opens every day was a
-		// room with strangers in it, or nobody, which is the Discord failure —
-		// people join, see that others joined, and say nothing. The go-micro
-		// Slack worked the other way round: three people who already had a
-		// reason to talk, and it grew from there. A chat is the second thing.
-		//
-		// So the front screen is one person's: the brief, what arrived, the
-		// agents, the world. /chat is still there for somebody who goes looking
-		// for it, which is the difference between offering a room and putting
-		// one in front of you.
-
-		// data-brief, so it steps aside when somebody asks. The brief and the
-		// answer are the same shape — a paragraph of prose — and stacking them
-		// makes the reader work out where one stops; worse, every turn pushes
-		// the brief further down the page. You are told, or you ask. See
-		// hideBrief in app.ChatComponent.
-		if viewerID != "" {
-			if brief := briefHTML(viewerID); brief != "" {
-				b.WriteString(`<div id="home-brief" data-brief>` + brief + `</div>`)
-			}
-		}
-
-		// What arrived, under a heading that looks like one.
-		//
-		// Both halves of this screen are labelled the same way and each label
-		// carries a rule across the page, because two words in small caps over
-		// a list read as a caption rather than as a section — which is how the
-		// conversations came to look like loose links under the address line.
 		if viewerID != "" {
 			if peek := inbox.Preview(viewerID); peek != "" {
-				rail.WriteString(sectionRule("Inbox") + peek)
+				b.WriteString(`<div id="home-inbox">` + sectionRule("Inbox") + peek + `</div>`)
 			}
 		}
 	}
-
-	// Your agents, between what arrived and what the instance knows.
-	//
-	// Which is the order the three read in: something came in, here is who you
-	// have working on it, here is what they can reach. Without this the page
-	// was a mailbox above a content grid and the agents were somewhere else
-	// entirely — on a roster you had to go and find, on the one screen whose
-	// job is to say how things are.
-	//
-	// Not the runs block that was removed below. A run is an event and ages
-	// out; an agent is a standing thing, and this is the roster with a sign of
-	// life against each. See agent.Preview.
+	b.WriteString(`</div>`)
+	var context strings.Builder
 	if viewerID != "" {
+		if brief := briefHTML(viewerID); brief != "" {
+			context.WriteString(`<div id="home-brief" data-brief>` + brief + `</div>`)
+		}
 		if who := agent.Preview(viewerID); who != "" {
-			rail.WriteString(sectionRule("Agents") + who)
+			context.WriteString(`<div id="home-agents">` + sectionRule("Agents") + who + `</div>`)
 		}
 	}
-
-	// And what it is being paid for, last. See wallet.go for why it is at the
-	// foot and why the header's chip goes quiet on this page.
+	if context.Len() > 0 {
+		b.WriteString(`<aside class="home-context page-stack" aria-label="Daily context">` + context.String() + `</aside>`)
+	}
+	b.WriteString(`</div>`)
 	if viewerID != "" {
-		rail.WriteString(walletHTML(viewerID))
+		b.WriteString(`<details class="disclosure"><summary>Account and status</summary><div class="page-stack">` + statusForm(r, viewerID) + walletHTML(viewerID) + `</div></details>`)
 	}
 
-	// Home holds the personal workspace. Feed reuses the existing service cards.
-	if rail.Len() > 0 {
-		b.WriteString(`<div class="home-rail">` + rail.String() + `</div>`)
-	}
 	b.WriteString(`</section><section id="home-feed" role="tabpanel" aria-labelledby="home-view-feed"` + panelHidden(!feed) + `><div class="home-main full">`)
 	cards := CardsHTML(r, viewerAcc)
 	if cards == "" {
@@ -666,7 +566,7 @@ function fetchW(la,lo){
 	// That is what a banner moving from one page into the chrome looks like
 	// when the call site it left behind is not removed. See app.renderForRequest,
 	// which is the only place any of the three banners is added.
-	app.Respond(w, r, app.Response{Title: "Home", Description: "The home screen",
+	app.Respond(w, r, app.Response{Title: greeting(viewerAcc), Description: "The home screen",
 		HTML: b.String(), BodyClass: bodyClass})
 }
 
