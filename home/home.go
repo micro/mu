@@ -277,8 +277,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Sign in to see upcoming events", http.StatusUnauthorized)
 			return
 		}
-		now := time.Now()
-		external := events.ExternalEvents(sess.Account, now, now.Add(30*24*time.Hour), events.PreviewLimit)
+		external := events.Overview(sess.Account, events.PreviewLimit)
 		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...)})
 		return
 	}
@@ -452,7 +451,7 @@ function fetchW(la,lo){
 	}))
 	b.WriteString(`</div>`)
 	if viewerID != "" {
-		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID) + `</div>`)
+		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
 	}
 	b.WriteString(appsHTML(viewerAcc))
 	if viewerID != "" {
@@ -463,7 +462,7 @@ function fetchW(la,lo){
 	b.WriteString(`</div>`)
 	if viewerID != "" {
 		b.WriteString(`<div class="home-column page-stack">`)
-		b.WriteString(`<div id="home-upcoming" class="page-stack">` + sectionRule("Upcoming") + `<div data-home-upcoming aria-live="polite" class="page-stack"><p class="text-muted">Loading events…</p></div>` + `</div>`)
+		b.WriteString(`<div id="home-upcoming" class="page-stack">` + sectionRule("Upcoming") + `<div data-home-upcoming aria-live="polite" class="page-stack">` + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
 		if who := agent.Preview(viewerID); who != "" {
 			b.WriteString(`<div id="home-agents" class="page-stack">` + sectionRule("Agents") + who + `</div>`)
 		}
