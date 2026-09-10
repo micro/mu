@@ -962,6 +962,12 @@ a.btn-plain:hover {
 /* Home and Feed share the page width, but never compete for it. */
 #home-personal, #home-feed, .home-rail, .home-main { min-width: 0; }
 #home-personal[hidden], #home-feed[hidden] { display: none !important; }
+#home-personal { display: grid; gap: var(--space-section, 24px); }
+.home-workspace { display: grid; gap: var(--space-section, 24px); }
+.home-primary, .home-context { min-width: 0; }
+@media (min-width: 1100px) {
+  .home-workspace:has(.home-context) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+}
 
 
 

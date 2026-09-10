@@ -148,6 +148,21 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(path==='/home') {
     assert(await page.locator('#home-personal').isVisible(),'Home is not default');
     assert(await page.locator('#home-feed').isHidden(),'Feed leaks into Home');
+    assert((await page.locator('#page-title').textContent()).includes('Welcome back'),'Home title is not a greeting');
+    const layout=await page.evaluate(()=>{
+      const rect=s=>document.querySelector(s).getBoundingClientRect();
+      return {tabs:rect('.view-switch'),personal:rect('#home-personal'),primary:rect('.home-primary'),context:rect('.home-context')};
+    });
+    assert(Math.abs(layout.tabs.x-layout.personal.x)<1,'Home is inset from tabs');
+    if(width>=1100) assert(layout.context.x>layout.primary.x+layout.primary.width,'context is not alongside primary');
+    else assert(layout.context.y>=layout.primary.y+layout.primary.height,'mobile context precedes primary');
+    const account=page.locator('#home-personal > details');
+    assert(!await account.evaluate(el=>el.open),'account controls compete with primary content');
+    await account.locator('summary').click();
+    assert(await page.locator('#home-status').isVisible(),'profile status is inaccessible');
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'expanded Home overflows');
+    await account.locator('summary').click();
+
     const input=page.locator('#mu-chat-input');
     await input.fill('Keep this draft');
     const marker=await page.evaluate(()=>window.testDocument);

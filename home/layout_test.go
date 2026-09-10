@@ -38,6 +38,9 @@ func TestHomeAndFeedKeepTheirOwnContent(t *testing.T) {
 	}
 	thread.Add(thread.Message{Thread: th.ID, Account: who, From: "sender@example.com", Text: "An inbox message"})
 	body := homeFor(t, who)
+	if !strings.Contains(body, "Welcome back, "+who) {
+		t.Error("missing personal greeting")
+	}
 	personalAt := strings.Index(body, `<section id="home-personal"`)
 	feedAt := strings.Index(body, `<section id="home-feed"`)
 	if personalAt < 0 || feedAt <= personalAt {
