@@ -71,8 +71,8 @@ func externalBusy(owner string, from, to time.Time) []Slot {
 	return ExternalBusy(owner, from, to)
 }
 
-// externalEntries is the guarded call for what is scheduled.
-func externalEntries(owner string, from, to time.Time) []External {
+// ExternalEvents reads the owner's connected calendars within a window.
+func ExternalEvents(owner string, from, to time.Time) []External {
 	if ExternalEntries == nil || owner == "" {
 		return nil
 	}

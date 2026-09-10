@@ -111,7 +111,7 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 	// from. Both facts are the same fact: Mu did not schedule these and cannot
 	// cancel them, so offering an id would be offering something that fails.
 	now := time.Now()
-	external := externalEntries(owner, now, now.Add(14*24*time.Hour))
+	external := ExternalEvents(owner, now, now.Add(14*24*time.Hour))
 	xs, xe := service.PageRange(len(external), req.Offset, req.Limit)
 	rsp.External, rsp.ExternalTotal = external[xs:xe], len(external)
 	if xe < len(external) {

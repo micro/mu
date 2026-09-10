@@ -10,6 +10,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/google"
 )
 
 // Handler serves the /events page: schedule a reminder, see what's upcoming,
@@ -29,6 +30,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		switch r.FormValue("action") {
+		case "calendars":
+			if !auth.StrictCSRF(r) {
+				http.Error(w, "Invalid form token", http.StatusForbidden)
+				return
+			}
+			if err := google.SetCalendars(owner, r.PostForm["calendars"]); err != nil {
+				http.Redirect(w, r, "/events?calendar=failed", http.StatusSeeOther)
+				return
+			}
+			http.Redirect(w, r, "/events?calendar=saved", http.StatusSeeOther)
+			return
 		case "cancel":
 			Cancel(owner, r.FormValue("id"))
 		case "create":
@@ -68,7 +80,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	up := Upcoming(owner)
 	now := time.Now()
-	ext := externalEntries(owner, now, now.Add(30*24*time.Hour))
+	ext := ExternalEvents(owner, now, now.Add(30*24*time.Hour))
 
 	if len(up) == 0 && len(ext) == 0 {
 		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Add a reminder above, or just ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
@@ -181,6 +193,8 @@ func calendarCard(owner, status, csrf string) string {
 
 	note := ""
 	switch status {
+	case "saved":
+		note = `<p class="notice ok">Calendar selection saved.</p>`
 	case "connected":
 		note = `<p class="notice ok">Connected. Your calendar is now included in what's scheduled and when you're free.</p>`
 	case "disconnected":
@@ -204,6 +218,7 @@ func calendarCard(owner, status, csrf string) string {
 		}
 		b.WriteString(`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(ExternalName) + who + `</h4>`)
 		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Read-only. Mu can see what's on it, and cannot change it.</p>`)
+		b.WriteString(calendarsHTML(owner, csrf))
 		// No disconnect here. Withdrawing access is one action covering
 		// everything granted — Google revokes the whole grant at once — so it
 		// belongs with the rest of the inventory rather than repeated on every
@@ -212,7 +227,7 @@ func calendarCard(owner, status, csrf string) string {
 			`<a href="/account">your account</a>.</p>`)
 	} else {
 		b.WriteString(`<h4 class="m-0 mb-2 text-base">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
-		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now "when am I free" only counts what you scheduled here. Connect your calendar and it counts everything. Read-only — Mu can see what's on it, and cannot change it.</p>`)
+		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now "when am I free" only counts what you scheduled here. Connect Google Calendar and choose which calendars to include. Read-only — Mu can see what's on it, and cannot change it.</p>`)
 		b.WriteString(`<a href="/oauth2/google/calendar" class="btn">Connect ` + html.EscapeString(ExternalName) + `</a>`)
 	}
 	b.WriteString(`</div>`)

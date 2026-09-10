@@ -177,3 +177,11 @@ func TestGreetingTreatsDisplayNamesAsText(t *testing.T) {
 		t.Error("display name became executable markup")
 	}
 }
+
+func TestUpcomingEndpointRequiresSession(t *testing.T) {
+	rec := httptest.NewRecorder()
+	Handler(rec, httptest.NewRequest("GET", "/home?section=upcoming", nil))
+	if rec.Code != http.StatusUnauthorized || rec.Header().Get("Cache-Control") != "private, no-store" {
+		t.Fatalf("upcoming endpoint: %d, cache %q", rec.Code, rec.Header().Get("Cache-Control"))
+	}
+}

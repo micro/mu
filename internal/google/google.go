@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -54,6 +55,8 @@ type Connection struct {
 	RefreshToken string    `json:"refresh_token"`
 	Scopes       []string  `json:"scopes,omitempty"`
 	Connected    time.Time `json:"connected"`
+	// Nil preserves the primary-calendar default; an empty list selects none.
+	Calendars []string `json:"calendars"`
 }
 
 var (
@@ -85,12 +88,12 @@ func Load() {
 }
 
 // save persists connections. Callers hold mu.
-func save() {
+func save() error {
 	list := make([]*Connection, 0, len(conns))
 	for _, c := range conns {
 		list = append(list, c)
 	}
-	_ = data.SaveJSON(storeKey, list)
+	return data.SaveJSON(storeKey, list)
 }
 
 // Connected reports whether an account has granted anything at all.
@@ -207,7 +210,12 @@ func Store(accountID, email, refreshToken string, scopes []string) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
+	var calendars []string
+	if old := conns[accountID]; old != nil && old.Email == email {
+		calendars = old.Calendars
+	}
 	conns[accountID] = &Connection{
+		Calendars:    calendars,
 		AccountID:    accountID,
 		Email:        email,
 		RefreshToken: refreshToken,
@@ -366,27 +374,26 @@ type Period struct {
 	End   time.Time
 }
 
-// Busy returns the account's booked periods in a window, from their primary
-// calendar.
-//
-// Primary only, which is a real limit worth naming: somebody keeping work and
-// personal calendars separate will get an answer computed from one of them, and
-// "you are free" is exactly the answer that must not be over-confident. Widening
-// this means listing calendarList and passing every id here.
-//
-// freeBusy rather than events.list, because "when am I free" needs only the
-// shape of the week. It returns times and no titles, so the narrower question
-// is answered with the narrower data.
+// Busy returns booked periods from the selected calendars, using the same
+// selection as Events. Free/busy reads times without fetching event titles.
 func Busy(accountID string, from, to time.Time) ([]Period, error) {
 	token, err := accessToken(accountID)
 	if err != nil {
 		return nil, err
 	}
 
+	ids := SelectedCalendars(accountID)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	items := make([]map[string]string, 0, len(ids))
+	for _, id := range ids {
+		items = append(items, map[string]string{"id": id})
+	}
 	body, _ := json.Marshal(map[string]any{
 		"timeMin": from.Format(time.RFC3339),
 		"timeMax": to.Format(time.RFC3339),
-		"items":   []map[string]string{{"id": "primary"}},
+		"items":   items,
 	})
 	req, _ := http.NewRequest(http.MethodPost,
 		"https://www.googleapis.com/calendar/v3/freeBusy", bytes.NewReader(body))
@@ -404,7 +411,8 @@ func Busy(accountID string, from, to time.Time) ([]Period, error) {
 
 	var out struct {
 		Calendars map[string]struct {
-			Busy []struct {
+			Errors []json.RawMessage `json:"errors"`
+			Busy   []struct {
 				Start string `json:"start"`
 				End   string `json:"end"`
 			} `json:"busy"`
@@ -416,6 +424,9 @@ func Busy(accountID string, from, to time.Time) ([]Period, error) {
 
 	var periods []Period
 	for _, cal := range out.Calendars {
+		if len(cal.Errors) > 0 {
+			return nil, fmt.Errorf("google calendar could not read availability for a selected calendar")
+		}
 		for _, b := range cal.Busy {
 			start, err1 := time.Parse(time.RFC3339, b.Start)
 			end, err2 := time.Parse(time.RFC3339, b.End)
@@ -430,6 +441,8 @@ func Busy(accountID string, from, to time.Time) ([]Period, error) {
 
 // Entry is one event on the person's real calendar.
 type Entry struct {
+	// UID identifies the same invitation appearing on several selected calendars.
+	UID      string `json:"-"`
 	Title    string
 	Start    time.Time
 	End      time.Time
@@ -448,6 +461,50 @@ func Events(accountID string, from, to time.Time, limit int) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
+	ids := SelectedCalendars(accountID)
+	// Bound concurrency so several calendars do not serialize provider latency.
+	type result struct {
+		entries []Entry
+		err     error
+	}
+	results := make([]result, len(ids))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 4)
+	for i, id := range ids {
+		wg.Add(1)
+		go func(i int, id string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			results[i].entries, results[i].err = calendarEvents(token, id, from, to, limit)
+		}(i, id)
+	}
+	wg.Wait()
+	var entries []Entry
+	seen := map[string]bool{}
+	for _, result := range results {
+		if result.err != nil {
+			return nil, result.err
+		}
+		for _, e := range result.entries {
+			if e.UID != "" {
+				key := e.UID + "/" + e.Start.UTC().Format(time.RFC3339)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+			}
+			entries = append(entries, e)
+		}
+	}
+	sort.SliceStable(entries, func(i, j int) bool { return entries[i].Start.Before(entries[j].Start) })
+	if limit > 0 && len(entries) > limit {
+		entries = entries[:limit]
+	}
+	return entries, nil
+}
+
+func calendarEvents(token, calendarID string, from, to time.Time, limit int) ([]Entry, error) {
 	pageSize := 250
 	if limit > 0 {
 		pageSize = min(limit, pageSize)
@@ -464,7 +521,7 @@ func Events(accountID string, from, to time.Time, limit int) ([]Entry, error) {
 	seen := map[string]bool{}
 	for {
 		req, _ := http.NewRequest(http.MethodGet,
-			"https://www.googleapis.com/calendar/v3/calendars/primary/events?"+q.Encode(), nil)
+			"https://www.googleapis.com/calendar/v3/calendars/"+url.PathEscape(calendarID)+"/events?"+q.Encode(), nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		resp, err := httpClient.Do(req)
@@ -480,6 +537,7 @@ func Events(accountID string, from, to time.Time, limit int) ([]Entry, error) {
 		var out struct {
 			NextPageToken string `json:"nextPageToken"`
 			Items         []struct {
+				UID      string `json:"iCalUID"`
 				Summary  string `json:"summary"`
 				Location string `json:"location"`
 				Status   string `json:"status"`
@@ -503,7 +561,7 @@ func Events(accountID string, from, to time.Time, limit int) ([]Entry, error) {
 			if it.Status == "cancelled" {
 				continue
 			}
-			e := Entry{Title: strings.TrimSpace(it.Summary), Location: strings.TrimSpace(it.Location)}
+			e := Entry{UID: it.UID, Title: strings.TrimSpace(it.Summary), Location: strings.TrimSpace(it.Location)}
 			if e.Title == "" {
 				e.Title = "(no title)"
 			}

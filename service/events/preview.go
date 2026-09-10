@@ -1,0 +1,44 @@
+package events
+
+import (
+	"html"
+	"strings"
+	"time"
+)
+
+// Preview is a compact, read-only overview of the owner's next events.
+func Preview(owner string, external []External) string {
+	if owner == "" {
+		return ""
+	}
+	now := time.Now()
+	rows := mergedRows(Upcoming(owner), external)
+	var b strings.Builder
+	b.WriteString(`<div class="page-stack">`)
+	count := 0
+	for _, row := range rows {
+		title, when, allDay := row.External.Title, row.When, row.External.AllDay
+		if row.Event != nil {
+			if row.Event.Kind == "brief" || row.When.Before(now) {
+				continue
+			}
+			title = row.Event.Title
+		}
+		label := when.Format("Mon 2 Jan, 15:04")
+		stamp := ` data-event-time`
+		if allDay {
+			label = when.Format("Mon 2 Jan") + ", all day"
+			stamp = ""
+		}
+		b.WriteString(`<a href="/events" class="link page-stack gap-2"><span>` + html.EscapeString(title) + `</span><small class="text-muted"><time datetime="` + when.Format(time.RFC3339) + `"` + stamp + `>` + html.EscapeString(label) + `</time></small></a>`)
+		count++
+		if count == 3 {
+			break
+		}
+	}
+	if count == 0 {
+		b.WriteString(`<p class="text-muted">No upcoming events to show.</p>`)
+	}
+	b.WriteString(`</div><a href="/events" class="link">Go to events →</a>`)
+	return b.String()
+}
