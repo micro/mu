@@ -576,6 +576,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == http.MethodPost && r.FormValue("action") == "mark_read" {
+		if !auth.StrictCSRF(r) {
+			http.Error(w, "Invalid form token", http.StatusForbidden)
+			return
+		}
+		if _, err := markRead(acc.ID, r.PostForm["ids"], r.PostFormValue("all") == "true"); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Redirect(w, r, "/mail", http.StatusSeeOther)
+		return
+	}
 	if r.URL.Query().Get("view") == "outbox" {
 		outboxPage(w, r, acc.ID)
 		return
@@ -1438,6 +1450,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	tabs := fmt.Sprintf(`<div class="mail-tabs"><a href="/mail" class="%s">%s</a><a href="/mail?view=sent" class="%s">Sent</a><a href="/mail?view=outbox" class="mail-tab">Outbox</a><a href="/mail?view=filtered" class="%s">%s</a></div>`,
 		inboxClass, inboxLabel, sentClass, filteredClass, filteredLabel)
 
+	readAction := ""
+	if unreadCount > 0 && view != "sent" && view != "filtered" {
+		readAction = `<form method="POST" action="/mail" class="section-actions page-section">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="mark_read"><input type="hidden" name="all" value="true"><button type="submit" class="btn btn-quiet">Mark all as read</button></form>`
+	}
 	// Search bar
 	searchBar := mailSearchBar(searchTerm(r), auth.CSRFToken(r))
 
@@ -1445,7 +1461,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Action:  "/mail?compose=true",
 		Label:   "New",
 		Filters: tabs,
-		Content: addressPanel(acc.ID) + tagFilter(userInbox, acc.ID, viewTag) + searchBar +
+		Content: addressPanel(acc.ID) + tagFilter(userInbox, acc.ID, viewTag) + searchBar + readAction +
 			`<div id="mailbox">` + content + `</div>`,
 	})
 
