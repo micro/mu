@@ -964,7 +964,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			</div>`
 		}
 		actions += `<form method="GET" action="/blog" class="search-bar"><input type="search" name="q" class="grow" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
-		content = fmt.Sprintf(`<div id="blog">
+		content = fmt.Sprintf(`<div id="blog" class="page-stack">
 			%s
 			<div id="posts-list">
 				%s
