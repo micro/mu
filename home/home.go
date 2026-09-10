@@ -431,10 +431,10 @@ function fetchW(la,lo){
 	b.WriteString(homeViews(feed))
 	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
 
-	// Reading order is prompt, inbox, brief, then agents.
+	// Desktop keeps the prompt and inbox beside the brief and agents.
 	b.WriteString(`<div class="home-workspace"><div class="home-primary page-stack">`)
 	{
-		b.WriteString(`<div id="home-agent">`)
+		b.WriteString(`<div id="home-agent" class="page-stack">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{
 			Ask:             true,
 			HideSuggestions: true,
@@ -462,6 +462,7 @@ function fetchW(la,lo){
 			Speak: viewerID != "",
 		}))
 
+		b.WriteString(statusForm(r, viewerID))
 		b.WriteString(`</div>`)
 		if viewerID != "" {
 			if peek := inbox.Preview(viewerID); peek != "" {
@@ -483,9 +484,6 @@ function fetchW(la,lo){
 		b.WriteString(`<aside class="home-context page-stack" aria-label="Daily context">` + context.String() + `</aside>`)
 	}
 	b.WriteString(`</div>`)
-	if viewerID != "" {
-		b.WriteString(`<details class="disclosure"><summary>Account and status</summary><div class="page-stack">` + statusForm(r, viewerID) + walletHTML(viewerID) + `</div></details>`)
-	}
 
 	b.WriteString(`</section><section id="home-feed" role="tabpanel" aria-labelledby="home-view-feed"` + panelHidden(!feed) + `><div class="home-main full">`)
 	cards := CardsHTML(r, viewerAcc)

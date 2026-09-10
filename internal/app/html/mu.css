@@ -965,6 +965,15 @@ a.btn-plain:hover {
 #home-personal { display: grid; gap: var(--space-section, 24px); }
 .home-workspace { display: grid; gap: var(--space-section, 24px); }
 .home-primary, .home-context { min-width: 0; }
+.home-workspace .home-section { margin-block: 0 12px; }
+@media (max-width: 1099px) {
+  .home-workspace > .home-primary, .home-workspace > .home-context { display: contents; }
+  #home-agent { order: 1; }
+  #home-brief { order: 2; }
+  #home-inbox { order: 3; }
+  #home-agents { order: 4; }
+}
+
 @media (min-width: 1100px) {
   .home-workspace:has(.home-context) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
 }
