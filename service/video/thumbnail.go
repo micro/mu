@@ -3,7 +3,9 @@ package video
 import (
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -134,11 +136,22 @@ func thumbSrc(id, apiURL string) string {
 	if u := ThumbURL(id); u != "" {
 		return u
 	}
+	// Playlist artwork is usually a thumbnail of one of its videos. Resolve
+	// that video ID, never the playlist ID or the CDN's signed query string.
+	u, err := url.Parse(apiURL)
+	if err == nil && u.Hostname() == "i.ytimg.com" {
+		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+		if len(parts) == 3 && (parts[0] == "vi" || parts[0] == "vi_webp") {
+			if local := ThumbURL(parts[1]); local != "" {
+				return local
+			}
+		}
+	}
 	return apiURL
 }
 
 // remoteThumb matches a YouTube thumbnail URL of any size.
-var remoteThumb = regexp.MustCompile(`https?://i\.ytimg\.com/vi/([A-Za-z0-9_-]{11})/[a-zA-Z0-9_]+\.jpg`)
+var remoteThumb = regexp.MustCompile(`https?://i\.ytimg\.com/(?:vi|vi_webp)/([A-Za-z0-9_-]{11})/[a-zA-Z0-9_]+\.(?:jpg|webp)(?:\?[^"\s<>]*)?`)
 
 // ProxyThumbnails rewrites Google's thumbnail URLs to Mu's own path.
 //

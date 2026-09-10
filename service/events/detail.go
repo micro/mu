@@ -45,5 +45,6 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 		body += `<p>Repeats: ` + html.EscapeString(e.Repeat) + `</p>`
 	}
 	body += `<a class="link" href="` + html.EscapeString(GoogleCalendarURL(e.Title, e.When, e.Note)) + `" target="_blank" rel="noopener">Add to calendar</a></article><a class="link" href="/events">Back to events →</a></div>`
+	body += `<script>document.querySelectorAll('time[data-event-time]').forEach(function(el){var d=new Date(el.dateTime);if(!isNaN(d.getTime()))el.textContent=d.toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});});</script>`
 	app.Respond(w, r, app.Response{Title: e.Title, HTML: body})
 }
