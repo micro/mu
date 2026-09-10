@@ -164,6 +164,11 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
       assert(layout.agents.y>=layout.inbox.y+layout.inbox.height,'agents precede inbox');
     }
     assert(await page.locator('#home-status').isVisible(),'profile status is inaccessible');
+    assert(await page.evaluate(()=>Boolean(document.querySelector('#home-brief').compareDocumentPosition(document.querySelector('#home-inbox'))&Node.DOCUMENT_POSITION_FOLLOWING)),'DOM order differs from mobile order');
+    await page.locator('#mu-chat-conv').evaluate(el=>{el.innerHTML='<p style="height:800px">A long answer</p>';});
+    assert(await page.evaluate(()=>document.querySelector('#home-status').getBoundingClientRect().bottom<=document.querySelector('#mu-chat-conv').getBoundingClientRect().top),'status moved below the conversation');
+    await page.locator('#mu-chat-conv').evaluate(el=>{el.innerHTML='';});
+
     assert(await page.locator('#home-personal > details').count()===0,'account disclosure remains');
     await page.locator('[data-status-edit]').click();
     assert(await page.locator('[data-status-input]').isVisible(),'status editor cannot open');
