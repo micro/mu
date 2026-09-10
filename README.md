@@ -1,16 +1,16 @@
 # Mu
 
-A personal AI assistant 
+A runtime for agents and services
 
 ## Overview
 
-Mu is a personal AI assistant. It's a full stack solution to the question, how do I run it myself.
+Mu is a runtime for agents and services. It's a full stack solution to the question, how do I run everything myself.
 
 ## Features 
 
 It includes:
 
-- **Micro** - an agent that answers all queries.
+- **Micro** - default agent that answers queries.
 - **Home** - a dashboard to see things at a glance.
 - **Inbox** - A place to keep track of everything.
 - **Clients** - Use Micro via Web, SMS, email, etc.
@@ -29,7 +29,7 @@ Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and ag
 
 Mu is the runtime. Micro is the first agent and the one people meet first.
 
-- **Micro** is the default personal assistant. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
+- **Micro** is the default agent. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
 
 Your own agents are the same shape: a name, an instruction, and the tools they may reach. Each has an address, so `agent+yours@` reaches it from anywhere that can send mail, the same way `agent@` reaches Micro.
 
