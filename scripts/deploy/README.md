@@ -30,8 +30,8 @@ Point nginx at the same address the socket listens on (`127.0.0.1:8080`).
 
 ## Redeploy
 
-The main-branch CI build retains its Linux binaries as artifacts. After the
-same run passes tests (including the race detector), it calls the deployment
+Pull requests run tests, including the race detector. The main-branch build
+retains its Linux binaries as artifacts and then calls the deployment
 workflow. That workflow selects the server's architecture and transfers the
 existing artifact; neither the deploy job nor the server recompiles it.
 

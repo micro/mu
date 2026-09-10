@@ -5,9 +5,6 @@ import (
 	"testing"
 )
 
-// These tests use the suite home from TestMain: background data writes may
-// outlive an individual test, so a per-test home can race TempDir cleanup.
-//
 // An agent's model reaches the run.
 //
 // This is the wiring that was missing, and it was missing in the quietest
@@ -18,6 +15,7 @@ import (
 // used the instance default anyway, with nothing on screen to say which had
 // happened.
 func TestYourOwnAgentsModelReachesTheRun(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("ATLAS_API_KEY", "atlas-test")
 
 	const owner = "picker"
@@ -25,11 +23,6 @@ func TestYourOwnAgentsModelReachesTheRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := RemoveAgent(owner, a.ID); err != nil {
-			t.Error(err)
-		}
-	})
 	if err := SetModel(owner, a.ID, "deepseek-ai/deepseek-v4-flash"); err != nil {
 		t.Fatal(err)
 	}
@@ -53,6 +46,7 @@ func TestYourOwnAgentsModelReachesTheRun(t *testing.T) {
 // Not at the model call, which happens minutes later on a run somebody is
 // waiting for, by which time the person who chose it has gone.
 func TestAModelWeCannotRunIsRefused(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("ATLAS_API_KEY", "atlas-test")
 
@@ -61,11 +55,6 @@ func TestAModelWeCannotRunIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := RemoveAgent(owner, a.ID); err != nil {
-			t.Error(err)
-		}
-	})
 
 	// No Anthropic key here, so a Claude id is a run that cannot happen.
 	if err := SetModel(owner, a.ID, "claude-sonnet-5"); err == nil {
@@ -80,6 +69,7 @@ func TestAModelWeCannotRunIsRefused(t *testing.T) {
 // Clearing it goes back to the instance default, which is what an agent has
 // before anybody chooses and what it must return to when a provider is removed.
 func TestClearingTheModelIsAllowed(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("ATLAS_API_KEY", "atlas-test")
 
 	const owner = "picker3"
@@ -87,11 +77,6 @@ func TestClearingTheModelIsAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := RemoveAgent(owner, a.ID); err != nil {
-			t.Error(err)
-		}
-	})
 	if err := SetModel(owner, a.ID, "deepseek-ai/deepseek-v4-flash"); err != nil {
 		t.Fatal(err)
 	}
@@ -107,6 +92,7 @@ func TestClearingTheModelIsAllowed(t *testing.T) {
 // description and the scope, and a field it does not know about must survive
 // that — otherwise renaming an agent silently resets what it thinks with.
 func TestEditingDoesNotClearTheModel(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("ATLAS_API_KEY", "atlas-test")
 
 	const owner = "picker4"
@@ -114,11 +100,6 @@ func TestEditingDoesNotClearTheModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := RemoveAgent(owner, a.ID); err != nil {
-			t.Error(err)
-		}
-	})
 	if err := SetModel(owner, a.ID, "deepseek-ai/deepseek-v4-flash"); err != nil {
 		t.Fatal(err)
 	}

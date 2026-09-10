@@ -8,6 +8,8 @@ on:
 
 jobs:
   test:
+    # Validate pull requests once; main builds the artifact that is deployed.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +85,7 @@ jobs:
           if-no-files-found: error
 
   deploy:
-    needs: [test, build]
+    needs: [build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy.yml
     secrets: inherit

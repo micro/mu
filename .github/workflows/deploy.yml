@@ -1,6 +1,6 @@
 name: Deploy
 
-# Called only after the main-branch test and build jobs succeed.
+# Called after the main-branch build succeeds; tests run on pull requests.
 on:
   workflow_call:
 
