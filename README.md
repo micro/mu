@@ -10,16 +10,16 @@ Mu is a runtime for agents and services. It's a full stack solution to the quest
 
 It includes:
 
-- **Micro** - default agent that answers queries.
-- **Home** - a dashboard to see things at a glance.
+- **Micro** - your personal assistant and the default agent.
+- **Home** - a launch pad for your assistant, apps and daily work.
 - **Inbox** - A place to keep track of everything.
 - **Clients** - Use Micro via Web, SMS, email, etc.
-- **Services** - which act as building blocks for Micro.
+- **Services** - building blocks for agents.
 - **Protocols** - a way to self host SMTP, XMPP, SFTP, SSH.
 
 ## How it works
 
-**Mu** is a monolothic codebase: the runtime, services, archive, inbox and agent system all in one host. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data gets archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
+**Mu** is a single binary: the runtime, services, archive, inbox and agent system all in one host. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data gets archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
 
 **Micro** is the first agent and the one you use for everything. It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
 
@@ -29,7 +29,7 @@ Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and ag
 
 Mu is the runtime. Micro is the first agent and the one people meet first.
 
-- **Micro** is the default agent. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
+- **Micro** is your personal assistant and the default agent. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
 
 Your own agents are the same shape: a name, an instruction, and the tools they may reach. Each has an address, so `agent+yours@` reaches it from anywhere that can send mail, the same way `agent@` reaches Micro.
 
@@ -139,7 +139,7 @@ For Tools via MCP use `/mcp`. See [/tools](https://micro.mu/tools) for more info
 ## Web
 
 - `/` - talk to Micro
-- `/home` — an overview of everything going on.
+- `/home` — a launch pad for your assistant, apps and daily work.
 - `/inbox` — the place to see chats, mail, tasks, etc.
 - `/agents` — your agents, and where you make a new one.
 - `/services` — `/news`, `/weather`, `/markets`, etc.
