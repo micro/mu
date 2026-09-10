@@ -164,6 +164,8 @@ type ChatConfig struct {
 
 	// Contained limits the height of a conversation beneath its composer.
 	Contained bool
+	// Overlay opens the composer and conversation above the host page on focus.
+	Overlay bool
 }
 
 // ChatComponent returns the single, shared chat UI used everywhere Mu talks to
@@ -447,6 +449,9 @@ func ChatComponent(cfg ChatConfig) string {
 	if cfg.Contained {
 		shell = `<div id="mu-chat" class="mu-chat-contained">`
 	}
+	if cfg.Overlay {
+		shell = `<div id="mu-chat" class="mu-chat-contained mu-chat-overlay">`
+	}
 	if cfg.Transcript {
 		body = conv + suggest + composer
 		shell = `<div id="mu-chat" class="mu-chat-transcript">`
@@ -508,6 +513,18 @@ func ChatComponent(cfg ChatConfig) string {
   overscroll-behavior-y: contain;
   scrollbar-gutter: stable;
 }
+#mu-chat.mu-chat-overlay #mu-chat-conv { margin-top:12px; }
+#mu-chat.mu-chat-overlay:not(.mu-console-open) #mu-chat-conv { display:none; }
+.mu-console { box-sizing:border-box; width:min(880px,calc(100% - 32px)); height:min(800px,calc(100dvh - 48px)); max-height:none; max-width:none; padding:16px; border:1px solid var(--card-border,#ddd); border-radius:12px; background:var(--background-color,#fff); color:var(--text-primary,#222); }
+body:has(.mu-console[open]) { overflow:hidden; }
+.mu-console::backdrop { background:rgba(0,0,0,.28); }
+.mu-console[open] { display:flex; flex-direction:column; }
+.mu-console-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:14px; }
+.mu-console-close { font:inherit; font-weight:400; cursor:pointer; }
+.mu-console #mu-chat { display:flex; flex-direction:column; min-height:0; flex:1; max-width:none; }
+.mu-console #mu-chat-form { flex-shrink:0; position:static; }
+.mu-console #mu-chat #mu-chat-conv { flex:1; min-height:0; max-height:none; overflow:auto; overflow-anchor:none; }
+@media(max-width:600px){.mu-console{width:100%;height:100dvh;margin:0;border:0;border-radius:0;padding:12px;}}
 /* A conversation, not a box.
 
    The turns scroll in their own region and the input sits under them, which is
@@ -615,6 +632,7 @@ var conv=document.getElementById('mu-chat-conv');
 // A transcript keeps its input at the bottom and its newest turn above it.
 // See ChatConfig.Transcript.
 var transcript=!!document.querySelector('#mu-chat.mu-chat-transcript');
+var overlay=!!document.querySelector("#mu-chat.mu-chat-overlay");
 var contained=!!document.querySelector('#mu-chat.mu-chat-contained');
 
 // The brief steps aside when you ask.
@@ -640,6 +658,34 @@ function nearBottom(){
   return (conv.scrollTop+conv.clientHeight)>=(conv.scrollHeight-nearEnough);
 }
 var nearEnough=120;
+if(overlay && input && form){
+ var shell=document.getElementById('mu-chat');
+ var slot=document.createElement('div');
+ shell.before(slot); slot.appendChild(shell);
+ var dialog=document.createElement('dialog'); dialog.className='mu-console';
+ dialog.setAttribute('aria-label','Assistant');
+ dialog.innerHTML='<div class="mu-console-head"><span>Assistant</span><button type="button" class="mu-console-close">Close</button></div>';
+ slot.appendChild(dialog);
+ var closing=false;
+ function openConsole(){
+  if(closing || dialog.open || !shell.isConnected)return;
+  slot.style.minHeight=shell.getBoundingClientRect().height+'px';
+  dialog.appendChild(shell);shell.classList.add('mu-console-open');
+  dialog.showModal();fitConv();input.focus({preventScroll:true});
+ }
+ function closeConsole(){if(dialog.open)dialog.close();}
+ dialog.querySelector('button').addEventListener('click',closeConsole);
+ dialog.addEventListener('click',function(e){if(e.target===dialog){var r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeConsole();}});
+ dialog.addEventListener('close',function(){
+  closing=true;shell.classList.remove('mu-console-open');slot.insertBefore(shell,dialog);
+  slot.style.minHeight='';
+  input.focus({preventScroll:true});setTimeout(function(){closing=false;},0);
+ });
+ input.addEventListener('focus',openConsole);
+ input.addEventListener('click',openConsole);
+ form.addEventListener('submit',openConsole,true);
+}
+
 function revealQuestion(node){
   if(transcript){toBottom(false);return;}
   requestAnimationFrame(function(){
@@ -650,7 +696,7 @@ function revealQuestion(node){
   });
 }
 function toBottom(force,smooth){
-  if(!transcript&&!contained) return;
+  if(overlay||(!transcript&&!contained)) return;
   if(!force && !nearBottom()) return;
   requestAnimationFrame(function(){
     conv.scrollTo({top:conv.scrollHeight,behavior:smooth?'smooth':'auto'});
@@ -679,6 +725,11 @@ function screenH(){
   return window.visualViewport ? window.visualViewport.height+window.visualViewport.offsetTop : window.innerHeight;
 }
 function fitConv(){
+  if(overlay){
+    var panel=document.querySelector('.mu-console[open]');
+    if(panel){var view=window.visualViewport;var h=view?view.height:window.innerHeight;var mobile=window.innerWidth<=600;panel.style.height=Math.min(mobile?h:h-48, mobile?h:800)+'px';panel.style.top=(view?view.offsetTop:0)+'px';}
+    return;
+  }
   if(!transcript||!conv) return;
   if(document.body.classList.contains("chat-page")){conv.style.maxHeight="none";return;}
   var top=conv.getBoundingClientRect().top;

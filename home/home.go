@@ -448,6 +448,7 @@ function fetchW(la,lo){
 		Placeholder:     "What do you need?",
 		AgentName:       agent.DefaultName(),
 		Contained:       true,
+		Overlay:         true,
 	}))
 	b.WriteString(`</div>`)
 	if viewerID != "" {

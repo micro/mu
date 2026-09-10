@@ -147,3 +147,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
 @container (min-width: 560px) { .home-apps-grid > a:nth-child(8) { display: flex; } }
 @container (min-width: 632px) { .home-apps-grid > a:nth-child(9) { display: flex; } }
 @container (min-width: 704px) { .home-apps-grid > a:nth-child(10) { display: flex; } }
+
+/* Date and view tabs form one compact Home header. */
+#home-cards > #home-date { margin-block-end: var(--space-control); }
