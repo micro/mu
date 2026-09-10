@@ -460,7 +460,7 @@ func ChatComponent(cfg ChatConfig) string {
 /* Reading back, beside who is answering — the same kind of decision. */
 #mu-chat-say{display:flex;align-items:center;gap:6px;cursor:pointer}
 #mu-chat-say input{margin:0}
-#mu-chat-opts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:6px 0 0}
+#mu-chat-opts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0}
 #mu-chat-opts:empty{margin:0}
 #mu-chat-agent{display:flex;align-items:center;gap:8px;font-size:12px;color:#999;cursor:pointer;user-select:none}
 .mu-chat-agent-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:#aaa}
@@ -507,7 +507,7 @@ func ChatComponent(cfg ChatConfig) string {
    resize, so there is no constant to be wrong on somebody's screen. */
 .mu-chat-transcript{display:flex;flex-direction:column}
 .mu-chat-transcript #mu-chat-form{position:static;flex:none;margin:0}
-.mu-chat-transcript #mu-chat-opts{margin:6px 0 0;flex:none}
+.mu-chat-transcript #mu-chat-opts{margin:0;flex:none}
 /* Margin only when there is something to separate.
    An empty conversation and an empty suggestion row are two zero-height
    divs, and their bottom margins still stack: 24px of nothing above the box,

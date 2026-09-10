@@ -1,4 +1,4 @@
-package home
+package inbox
 
 import (
 	_ "embed"
@@ -43,7 +43,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"status": user.Status(acc.ID)})
 		return
 	}
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
+	http.Redirect(w, r, "/@"+acc.ID, http.StatusSeeOther)
 }
 
 //go:embed status.js
@@ -56,7 +56,14 @@ func statusForm(r *http.Request, id string) string {
 	text := user.Status(id)
 	label := "“" + text + "”"
 	if text == "" {
-		label = "What are you up to?"
+		label = "Set status"
 	}
-	return `<div id="home-status" class="page-stack" data-csrf="` + html.EscapeString(auth.CSRFToken(r)) + `">` + `<div class="form-actions inline-edit"><button type="button" class="link-button inline-edit-value" data-status-label aria-label="Change your public profile status">` + html.EscapeString(label) + `</button><button type="button" class="link-button inline-edit-action" data-status-edit>Edit</button><input data-status-input hidden maxlength="160" aria-label="Your public profile status" value="` + html.EscapeString(text) + `"></div><small class="inline-edit-feedback" data-status-feedback role="status" aria-live="polite"></small></div><script>` + statusJS + `</script>`
+	return `<div id="profile-status" class="page-stack" data-url="/@` + html.EscapeString(id) + `" data-csrf="` + html.EscapeString(auth.CSRFToken(r)) + `">` + `<div class="form-actions inline-edit"><button type="button" class="link-button inline-edit-value" data-status-label aria-label="Change your public profile status">` + html.EscapeString(label) + `</button><button type="button" class="link-button inline-edit-action" data-status-edit` + editHidden(text) + `>Edit</button><input data-status-input hidden maxlength="160" aria-label="Your public profile status" value="` + html.EscapeString(text) + `"></div><small class="inline-edit-feedback" data-status-feedback role="status" aria-live="polite"></small></div><script>` + statusJS + `</script>`
+}
+
+func editHidden(text string) string {
+	if text == "" {
+		return " hidden"
+	}
+	return ""
 }

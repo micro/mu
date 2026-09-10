@@ -1460,7 +1460,7 @@ func navBottom(acc *auth.Account, here string) string {
 	// Profile was under it and is gone with the page. /@you is not a page about
 	// you any more, it is the conversation with somebody — and your own resolves
 	// to your inbox, which is already the first thing in the nav.
-	return `<div class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span></div>
+	return `<div class="nav-me-who">Signed in as <a id="nav-username" href="/@` + username + `">@` + username + `</a></div>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>` + navAdmin(acc) + `
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`

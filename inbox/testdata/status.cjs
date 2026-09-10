@@ -35,7 +35,7 @@ function setup(restored) {
  assert.equal(s.label.textContent, '“New status”'); assert.equal(s.input.hidden, true);
  s.label.listeners.click(); s.input.value = ''; const cleared = s.input.listeners.blur();
  s.reply({ok:true,json:async()=>({status:''})}); await cleared;
- assert.equal(s.label.textContent, 'What are you up to?');
+ assert.equal(s.label.textContent, 'Set status');
  s.label.listeners.click(); s.input.value = 'Keep my draft'; const failed = s.input.listeners.blur();
  s.reply({ok:false}); await failed;
  assert.equal(s.input.value, 'Keep my draft'); assert.equal(s.input.hidden, false);
