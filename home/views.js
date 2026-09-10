@@ -14,6 +14,9 @@
       document.getElementById(item.getAttribute('aria-controls')).hidden = !active;
     });
     selected = tab;
+    if (tab.id === 'home-view-feed') {
+      document.getElementById('home-feed').dispatchEvent(new Event('home-feed-shown'));
+    }
     const url = new URL(location.href);
     if (tab.id === 'home-view-feed') url.searchParams.set('view', 'feed');
     else url.searchParams.delete('view');

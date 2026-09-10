@@ -614,12 +614,15 @@ function fetchW(la,lo){
 	b.WriteString(fmt.Sprintf(`<script>
 (function(){
   var interval = %d;
-  setInterval(function(){
-    var feed = document.getElementById('home-feed');
-    if(!feed || !feed.isConnected || feed.hidden || document.hidden) return;
+  var updating = false;
+  var feed = document.getElementById('home-feed');
+  function refreshFeed(){
+    if(!feed || !feed.isConnected || feed.hidden || document.hidden || updating) return;
+    updating = true;
     fetch('/', {headers:{Accept:'application/json'}})
     .then(function(r){return r.json()})
     .then(function(cards){
+      if(!feed.isConnected) return;
       cards.forEach(function(c){
         var el = document.getElementById(c.id);
         if(el){
@@ -631,8 +634,10 @@ function fetchW(la,lo){
           if(head) head.innerHTML = c.title;
         }
       });
-    }).catch(function(){});
-  }, interval);%s
+    }).catch(function(){}).finally(function(){updating = false;});
+  }
+  feed.addEventListener('home-feed-shown', refreshFeed);
+  setInterval(refreshFeed, interval);%s
 })();
 </script>`, refreshInterval, wakeLockJS))
 

@@ -8,6 +8,9 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  await page.addInitScript(()=>{window.testDocument=Date.now()+Math.random()});
  await page.route('**/*',route=>{
   const u=new URL(route.request().url());
+  if(u.pathname==='/'&&route.request().headers().accept?.includes('application/json')) {
+   return route.fulfill({contentType:'application/json',body:JSON.stringify([{id:'layout-feed',html:'Fresh feed content',title:'A feed card'}])});
+  }
   if(u.hostname==='www.youtube.com'&&u.pathname.startsWith('/embed/')){
    playerReferer=route.request().headers().referer;
    return route.fulfill({body:'<!doctype html><body style="background:black;color:white">Player fixture</body>',contentType:'text/html'});
@@ -152,6 +155,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(await page.locator('#home-personal').isHidden(),'Home still visible on Feed');
     assert(await page.locator('#home-feed').isVisible(),'Feed missing');
     assert(await page.locator('#layout-feed').isVisible(),'existing cards missing from Feed');
+    await page.waitForFunction(()=>document.querySelector('#layout-feed .card-body')?.textContent==='Fresh feed content');
     if(process.env.MU_LAYOUT_SHOTS) { fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true}); await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+`/feed-${width}-${collapsed}.png`,fullPage:true}); }
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Feed overflows');
     await page.locator('#home-view-personal').click();
