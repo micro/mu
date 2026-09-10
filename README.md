@@ -4,7 +4,10 @@ A runtime for agents and services
 
 ## Overview
 
-Mu is a runtime for agents and services. It's a full stack solution to the question, how do I run everything myself.
+Mu is a runtime for agents and services. It's a full stack solution to the question, how do I run everything myself. More and more 
+we're becoming reliant on the ecosystem of hosted things. The question is, how much of the system can you run yourself. The services, 
+the tools, the APIs, maybe not the models but everything else. From the personal assistant answering the front door to the smtp server 
+handling the inbound mail on the backend. Mu attempts to do it all in a single binary on one machine in one place in one system.
 
 ## Features 
 
