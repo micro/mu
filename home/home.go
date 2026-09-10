@@ -460,7 +460,7 @@ function fetchW(la,lo){
 	b.WriteString(`</div>`)
 	if viewerID != "" {
 		b.WriteString(`<div class="home-column page-stack">`)
-		b.WriteString(`<div id="home-upcoming" class="page-stack">` + sectionRule("Upcoming events") + `<div data-home-upcoming aria-live="polite" class="page-stack"><p class="text-muted">Loading events…</p></div>` + `</div>`)
+		b.WriteString(`<div id="home-upcoming" class="page-stack">` + sectionRule("Upcoming") + `<div data-home-upcoming aria-live="polite" class="page-stack"><p class="text-muted">Loading events…</p></div>` + `</div>`)
 		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID) + `</div>`)
 		if who := agent.Preview(viewerID); who != "" {
 			b.WriteString(`<div id="home-agents" class="page-stack">` + sectionRule("Agents") + who + `</div>`)
