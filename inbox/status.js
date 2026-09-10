@@ -1,5 +1,5 @@
 (function () {
-  var root = document.getElementById('home-status');
+  var root = document.getElementById('profile-status');
   if (!root) return;
   var label = root.querySelector('[data-status-label]');
   var edit = root.querySelector('[data-status-edit]');
@@ -10,14 +10,14 @@
   // Soft navigation serializes this DOM, including an in-flight editor.
   if (input.readOnly) feedback.textContent = 'Save interrupted. Press Enter or tap away to retry.';
   input.readOnly = false;
-  edit.hidden = editing;
+  edit.hidden = editing || !saved;
   input.addEventListener('input', function () { input.defaultValue = input.value; });
   function close() {
     editing = false;
     input.hidden = true;
     label.hidden = false;
-    edit.hidden = false;
-    label.textContent = saved ? '“' + saved + '”' : 'What are you up to?';
+    edit.hidden = !saved;
+    label.textContent = saved ? '“' + saved + '”' : 'Set status';
   }
   function open() {
     if (saving) return;
@@ -40,7 +40,7 @@
     var controller = new AbortController();
     var timeout = setTimeout(function () { controller.abort(); }, 15000);
     try {
-      var response = await fetch('/home', {
+      var response = await fetch(root.dataset.url, {
         method: 'POST', credentials: 'same-origin', signal: controller.signal,
         headers: {'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded'},
         body: new URLSearchParams({action: 'status', status: input.value, _csrf: root.dataset.csrf})

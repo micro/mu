@@ -66,8 +66,8 @@ func TestTheBottomIsWhoYouAreAndTheWayOut(t *testing.T) {
 			t.Errorf("%s is not under the name, where what is yours belongs", mine)
 		}
 	}
-	if strings.Contains(bottom, `href="/@someone"`) {
-		t.Error("the rail still links a profile page that no longer exists")
+	if !strings.Contains(bottom, `id="nav-username" href="/@someone"`) {
+		t.Error("the signed-in username does not link to the profile")
 	}
 	// The rest stay in the rail. They are the instance's services, not your
 	// account's pages, and a wallet under your name is the disclosure menu

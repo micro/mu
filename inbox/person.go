@@ -96,6 +96,18 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	// cannot currently look at. Clicking your own name in /users and landing in
 	// your inbox is the report that found it.
 	you := them.ID == acc.ID
+	if r.Method == http.MethodPost {
+		if !you {
+			http.Error(w, "You can only edit your own status.", http.StatusForbidden)
+			return
+		}
+		if r.FormValue("action") != "status" {
+			http.Error(w, "Unknown action", http.StatusBadRequest)
+			return
+		}
+		statusHandler(w, r)
+		return
+	}
 
 	var convs []thread.Thread
 	if !you {
@@ -125,7 +137,9 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="ib-person">`)
 	b.WriteString(`<p class="ib-person-sub">` + html.EscapeString(handle) + `</p>`)
 	b.WriteString(personFacts(them))
-	if status := user.Status(them.ID); status != "" {
+	if you {
+		b.WriteString(statusForm(r, acc.ID))
+	} else if status := user.Status(them.ID); status != "" {
 		b.WriteString(`<p class="text-secondary">` + html.EscapeString(status) + `</p>`)
 	}
 	// New message belongs on a page that already has one.

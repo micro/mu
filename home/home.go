@@ -269,10 +269,6 @@ func ForceRefresh() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost && r.FormValue("action") == "status" {
-		statusHandler(w, r)
-		return
-	}
 	// An installed app opens on the app, not on a pitch.
 	//
 	// The manifest's start_url was "/", so tapping the icon on a home screen
@@ -436,25 +432,13 @@ function fetchW(la,lo){
 	{
 		b.WriteString(`<div id="home-agent" class="page-stack">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{
-			ComposerFooterHTML: statusForm(r, viewerID),
+			ComposerFooterHTML: appsHTML(viewerAcc),
 			Ask:                true,
 			HideSuggestions:    true,
 			Placeholder:        "What do you need?",
 			// Who answers, for the byline over the reply. The default agent,
 			// which is what an unpicked box reaches — see agent.DefaultName.
-			AgentName: agent.DefaultName(),
-			// No doors row here, and the front door keeps it.
-			//
-			// It was on both for a while, on the argument that the box is the one
-			// control the two pages share and it read as a different product on
-			// each. That is consistency of the component and not of the page: the
-			// row is a way to reach the services, the front door has no other
-			// one, and this page has two — Services in the rail, and a grid of
-			// those same services below the fold.
-			//
-			// So on the front door it is navigation and here it was a third row
-			// of furniture stacked under one input, above the agent picker and
-			// the read-aloud toggle, duplicating a rail six inches to the left.
+			AgentName:        agent.DefaultName(),
 			OfferAgentPicker: viewerID != "",
 			// Read-back needs an answer to read, and a signed-out reader
 			// cannot get one — see ChatConfig.Speak. Same condition as the

@@ -505,6 +505,7 @@ function setSession() {
       if (navLogin) navLogin.style.display = 'none';
       if (navUsername && sess.account) {
         navUsername.textContent = '@' + sess.account;
+        navUsername.setAttribute('href', '/@' + encodeURIComponent(sess.account));
         navUsername.style.display = 'inline-block';
         var navMeAv = document.getElementById("nav-me-av");
         if (navMeAv) navMeAv.textContent = sess.account.charAt(0).toUpperCase();

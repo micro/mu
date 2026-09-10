@@ -64,6 +64,9 @@ func TestEveryAccountMenuEntryHasAnIcon(t *testing.T) {
 			id = row[i+4:]
 			id = id[:strings.Index(id, `"`)]
 		}
+		if id == "nav-username" {
+			continue
+		} // Inline identity link, not a menu row.
 		if !strings.Contains(row[:strings.Index(row, "</a>")], "<img ") {
 			t.Errorf("the %s entry has no icon", id)
 		}

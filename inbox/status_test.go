@@ -1,4 +1,4 @@
-package home
+package inbox
 
 import (
 	"mu/internal/auth"
