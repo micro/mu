@@ -36,6 +36,12 @@ func TestHeadlinesReturnsOneStoryPerTopic(t *testing.T) {
 	}
 	// The response and rendered card select the same stories, in the same order.
 	html := generateHeadlinesHTML(cardPosts(GetFeed()))
+	if strings.Contains(html, ">Read</a>") {
+		t.Fatal("headlines duplicate their title links with Read actions")
+	}
+	if strings.Count(html, `href="/news?id=`) != len(rsp.Items) {
+		t.Fatal("each headline should retain one clickable article title")
+	}
 	last := -1
 	for _, h := range rsp.Items {
 		pos := strings.Index(html, h.Title)

@@ -140,12 +140,12 @@ html, body {
   box-sizing: inherit;
 }
 
-/* Links share one bold, un-underlined treatment. */
+/* Links default to bold; action components set their own font weight. */
 a {
   color: #000;
   text-decoration: none !important;
   font-size: 0.9em;
-  font-weight: bold !important;
+  font-weight: bold;
   transition: opacity var(--transition-fast);
 }
 
@@ -1863,7 +1863,7 @@ body:has(#messages) #chat-back-link {
   display: inline-block;
   color: var(--accent-color) !important;
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   background: transparent;
@@ -1881,7 +1881,7 @@ body:has(#messages) #chat-back-link {
   display: inline-block;
   color: var(--text-primary, #1a1a1a) !important;
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-right: 8px;
@@ -2630,7 +2630,7 @@ a.highlight {
   display: inline-block;
   color: var(--text-secondary) !important;
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: transparent;
@@ -3383,6 +3383,7 @@ a.highlight {
 }
 
 .mini-btn {
+  font-weight: var(--font-weight-normal, 400);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5342,7 +5343,7 @@ a.card-hover:hover {
   display: inline-block;
   color: var(--accent-color) !important;
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   background: transparent;
@@ -6338,17 +6339,10 @@ button.pill:hover {
   color: var(--text-muted, #888);
 }
 
-/* A rule between messages, not a quote bar beside them.
-   Each message carried a 2px left border and 16px of margin, which reads as a
-   blockquote — the mark for "somebody else said this" — on every message in
-   the thread including your own. A thread is a stack of messages and what
-   separates them is a line across, the way every mail client draws it: the
-   eye needs to know where one ends, not that all of them are quotations. */
-.ib-msg { padding: 16px 0; border-bottom: var(--border-width, 1px) solid var(--card-border, #e8e8e8) }
-.ib-msg:first-child { padding-top: 0 }
-.ib-msg:last-child { border-bottom: none; padding-bottom: 0 }
-.ib-from { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px }
-.ib-who-l { font-size: 13px; font-weight: var(--font-weight-medium, 500); color: var(--text-primary, #1a1a1a) }
+/* Messages use the shared card and card-list components. The sender is the
+   visual anchor of each card; dates stay secondary. */
+.ib-from { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px }
+.ib-who-l { font-size: 14px; font-weight: var(--font-weight-bold, 700); color: var(--text-primary, #1a1a1a); min-width: 0; overflow-wrap: anywhere }
 .ib-at { margin-left: auto; flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
 .ib-body { font-size: 14px; line-height: var(--line-height, 1.6) }
 .ib-body p:first-child { margin-top: 0 }
@@ -6381,9 +6375,7 @@ button.pill:hover {
 .ib-quoted > summary::-webkit-details-marker { display: none }
 .ib-quoted > summary:hover { border-color: #bbb }
 
-/* The quote itself reads as a quote: indented behind a rule, muted, and in the
-   whitespace it arrived with. This is the one place .ib-msg's own rule about
-   not drawing quote bars does not apply — here it is genuinely a quotation. */
+/* Quoted content keeps its indentation inside the message card. */
 .ib-quoted-text {
   margin-top: 10px;
   padding-left: 12px;

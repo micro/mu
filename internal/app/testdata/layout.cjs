@@ -58,6 +58,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await more.locator('summary').click();
     assert(await more.getByRole('button',{name:'Save',exact:true}).isVisible(),'saved-video controls are missing');
     assert(await more.getByRole('link',{name:'Discuss',exact:true}).isVisible());
+    assert(await more.getByRole('link',{name:'Discuss',exact:true}).evaluate(e=>getComputedStyle(e).fontWeight==='400'),'Discuss still inherits bold link weight');
     assert(await more.getByRole('link',{name:'Discuss',exact:true}).evaluate(e=>getComputedStyle(e).color!==getComputedStyle(e).backgroundColor),'More control text is unreadable');
     await more.locator('summary').click();
     assert(await page.locator('#playBtn').isHidden());
@@ -78,6 +79,21 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.locator('#captcha').fill(String(numbers[0]+numbers[1]));
     assert(await page.locator('#signup').evaluate(e=>e.checkValidity()),'signup cannot submit valid fields');
     assert(await page.locator('#signup button').isVisible(),'signup button is hidden');
+   }
+   if(path==='/news?id=layout-news') {
+    for(const name of ['Read Original','Discuss']) {
+     const link=page.getByRole('link',{name,exact:true});
+     assert(await link.isVisible(),`missing ${name} action`);
+     assert(await link.evaluate(e=>getComputedStyle(e).fontWeight==='400'),`${name} still bold`);
+    }
+   }
+   if(path.startsWith('/inbox?id=')) {
+    const cards=page.locator('.ib-msg');
+    assert(await cards.count()===3,'conversation fixture is incomplete');
+    await cards.first().locator('.ib-who-l').evaluate(e=>e.textContent='a-long-sender-address-that-must-wrap-without-hiding-the-date@example.com');
+    const metrics=await cards.evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {top:r.top,bottom:r.bottom,width:r.width,scroll:e.scrollWidth,client:e.clientWidth,border:s.borderTopStyle,weight:getComputedStyle(e.querySelector('.ib-who-l')).fontWeight};}));
+    assert(metrics.every(m=>m.border!=='none'&&Number(m.weight)>=700&&m.scroll<=m.client+1),`message card/sender regression at ${width}: ${JSON.stringify(metrics)}`);
+    for(let i=1;i<metrics.length;i++)assert(metrics[i].top-metrics[i-1].bottom>=8,'message cards run together');
    }
    if(path==='/inbox') {
     const rows=page.locator('.ib-item');
