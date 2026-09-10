@@ -59,7 +59,7 @@ import (
 	"fmt"
 	"strings"
 
-	gmai "go-micro.dev/v6/ai"
+	gmai "go-micro.dev/v6/model"
 )
 
 // historyBudget is how much conversation one question may carry, in characters.

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	gmai "go-micro.dev/v6/ai"
+	gmai "go-micro.dev/v6/model"
 )
 
 // A run that does the same kind of thing twice says so twice.

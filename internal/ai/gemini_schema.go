@@ -2,8 +2,8 @@ package ai
 
 import (
 	"context"
-	gmai "go-micro.dev/v6/ai"
-	"go-micro.dev/v6/ai/gemini"
+	gmai "go-micro.dev/v6/model"
+	"go-micro.dev/v6/model/gemini"
 )
 
 // The pinned framework's built-in plan tool omits the schema of its steps.

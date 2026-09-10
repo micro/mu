@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	gmai "go-micro.dev/v6/ai"
+	gmai "go-micro.dev/v6/model"
 )
 
 func TestLiveTokensBeforeCompletionWithTools(t *testing.T) {

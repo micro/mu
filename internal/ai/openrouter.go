@@ -3,8 +3,8 @@ package ai
 import (
 	"strings"
 
-	gmai "go-micro.dev/v6/ai"
-	"go-micro.dev/v6/ai/openai"
+	gmai "go-micro.dev/v6/model"
+	"go-micro.dev/v6/model/openai"
 
 	"mu/internal/settings"
 )

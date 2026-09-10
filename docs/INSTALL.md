@@ -1194,3 +1194,63 @@ cached tools. Reconnect the client to refresh discovery after a deployment.
 ### Flight schedules and estimates
 
 Set `AVIATIONSTACK_API_KEY` in `/admin/config` to enable scheduled, estimated and actual flight times on `/flights`. Without it, the existing aircraft tracking still works. Lookups return up to 20 provider records; missing estimates are shown as unavailable. Set the `flights_status` price in `quota.json` to cover your provider plan (the shipped price is 3 credits per lookup).
+
+## Extending a running instance
+
+Mu uses go-micro to run its built-in services and agent loops. There are three
+ways to build on an instance; they have different deployment requirements.
+
+### Agents hosted by Mu
+
+Open `/agents` while signed in and create an agent with a name, instructions,
+and the services it may use. This is stored configuration: you do not fork,
+recompile or restart Mu to create an agent. Mu runs its loop using the instance's
+configured model providers. Talk to it from its agent page or use:
+
+```sh
+mu ask --agent research "Summarise the latest news"
+```
+
+The CLI must be logged into the intended instance. Creating an agent does not
+install arbitrary executable code or start a separate operating-system process.
+
+### Programs using Mu
+
+An independently running agent or application can call Mu's authenticated HTTP
+API at `/api/v1/<service>/<method>` or use its tools through `/mcp`. Point the
+client at your instance and give it a token with the access it needs. The client
+owns its execution and, for an external agent, its model and reasoning loop.
+Mu supplies capabilities. No Mu rebuild is needed, and the default in-memory
+registry can stay enabled.
+
+### Services running outside Mu
+
+Mu can discover separately running go-micro services through mDNS. The external
+service must register its RPC handlers with a go-micro mDNS registry and use a
+compatible HTTP transport. Its advertised address must be reachable from Mu.
+Use a unique service name that does not collide with a built-in service.
+
+Start Mu in the corresponding discovery mode:
+
+```sh
+MU_REGISTRY=mdns mu --serve
+```
+
+Run the external service separately on the same discovery network. Mu reads
+service names and endpoints from the registry and can invoke them dynamically;
+adding another compatible service does not require rebuilding Mu. Discovery
+of RPC methods does not supply a custom service web page.
+
+This mode is for an isolated, trusted network. Registry entries and RPC calls
+are not authenticated by this mechanism. Mu also advertises its own services,
+and switching to mDNS switches its internal calls from in-memory transport to
+HTTP. Do not expose these RPC listeners to an untrusted network. The event
+broker remains in memory; service discovery does not establish a shared event
+bus. Configure `MU_REGISTRY` in the process environment and restart Mu when
+changing discovery mode.
+
+Use your process manager, such as systemd or Docker, to start, supervise and
+stop the external service. Mu currently discovers and calls it; Mu does not
+install or manage its process. A separately written Go module linked into Mu
+is different again: importing that module requires a rebuild. Forking is only
+necessary when you want to maintain changes to Mu itself.

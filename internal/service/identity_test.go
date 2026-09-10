@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"go-micro.dev/v6/ai"
+	ai "go-micro.dev/v6/model"
 )
 
 func TestAccountRoundTrip(t *testing.T) {
