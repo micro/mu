@@ -142,6 +142,28 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(await page.locator('input[name=text]').count()===1,'expected one conversation composer');
     assert(!await page.locator('#content').textContent().then(t=>t.includes('Latest SMS message')),'other channel appeared in thread');
    }
+   if(path==='/home') {
+    assert(await page.locator('#home-personal').isVisible(),'Home is not default');
+    assert(await page.locator('#home-feed').isHidden(),'Feed leaks into Home');
+    const input=page.locator('#mu-chat-input');
+    await input.fill('Keep this draft');
+    const marker=await page.evaluate(()=>window.testDocument);
+    await page.locator('#home-view-feed').click();
+    assert(await page.locator('#home-personal').isHidden(),'Home still visible on Feed');
+    assert(await page.locator('#home-feed').isVisible(),'Feed missing');
+    assert(await page.locator('#layout-feed').isVisible(),'existing cards missing from Feed');
+    if(process.env.MU_LAYOUT_SHOTS) { fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true}); await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+`/feed-${width}-${collapsed}.png`,fullPage:true}); }
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Feed overflows');
+    await page.locator('#home-view-personal').click();
+    assert(await input.inputValue()==='Keep this draft','switch discarded the draft');
+    assert(await page.evaluate(()=>window.testDocument)===marker,'switch navigated away');
+    await page.locator('#home-view-personal').focus();
+    await page.keyboard.press('ArrowRight');
+    assert(await page.locator('#home-view-feed').getAttribute('aria-selected')==='true','keyboard cannot select Feed');
+    await page.keyboard.press('ArrowLeft');
+    assert(await page.locator('#home-personal').isVisible(),'keyboard cannot return Home');
+    await input.fill('');
+   }
    if(path==='/home')assert(await page.evaluate(()=>!window.muActiveAgent),'Home inherited another page agent');
    if(path==='/'||path==='/home')assert(await page.locator('.shortcuts,[data-shortcut]').count()===0,'shortcut panels remain');
    if(path==='/agent/new'||path==='/token'){

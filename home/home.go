@@ -24,6 +24,9 @@ import (
 //go:embed cards.json
 var f embed.FS
 
+//go:embed views.js
+var viewsJS string
+
 // Template is the home cards container: two columns on desktop, one stack on a
 // phone.
 //
@@ -438,30 +441,14 @@ function fetchW(la,lo){
 
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
+	feed := r.URL.Query().Get("view") == "feed" || r.URL.Query().Get("mode") == "display"
+	if r.URL.Query().Get("q") != "" || r.URL.Query().Get("prompt") != "" {
+		feed = false
+	}
+	b.WriteString(homeViews(feed))
+	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
 
-	// Yours on the left, the world's on the right, under a header that spans.
-	//
-	// Two wrappers and nothing else — the blocks inside are in the order they
-	// were, and on a phone and a tablet these are plain divs that stack, so this
-	// is the same page it was. Above 1024px they become the two tracks of a
-	// grid, which is the whole change: see #home-cards in mu.css.
-	//
-	// The reason is that Home was one column at every width. On a wide screen
-	// the brief, three inbox rows and a short agent roster each ran the full
-	// 1120px — a line of text and a metre of nothing beside it — and the
-	// services, which are the part that is actually moving, started below the
-	// fold. Closing the sidebar made every one of those lines longer and moved
-	// the cards no further up.
-	//
-	// What separates the two sides is whose they are. Everything in the rail is
-	// about this account and is short by nature: how things are, what arrived,
-	// who is working. Everything in the main column is the instance reading the
-	// world, and is a grid of cards that wants width. They have different
-	// shapes, so giving them the same width was always going to waste one.
-	//
-	// The date and the input are in neither. Both are about the whole page — one
-	// says what day it is and how warm, the other is where you type — so they
-	// run across the top of both columns. See #home-agent in mu.css.
+	// The personal view keeps the prompt, brief and account previews together.
 	// The box asks, the same as the signed-out page does.
 	//
 	// It searched, and the reason search won was that it is the half that works
@@ -475,15 +462,6 @@ function fetchW(la,lo){
 	// worth keeping from the previous answer. Where there is no model it
 	// renders the search box and says why — a degrade, not a second product.
 	//
-	// Across the top, above both columns, and not the first thing in the rail.
-	// It spent one commit in there, on the argument that the input is yours in
-	// the same sense the brief and the inbox are. It is, and it still looked
-	// wrong: everything else in the rail is a list, and a control is not — a
-	// text field indented to a third of the page with a grid of cards starting
-	// beside it reads as a widget in a sidebar rather than as the thing the
-	// page is for. It is also the one element here that is a place to put
-	// something rather than something to read, which is the other reason it
-	// wants the full measure.
 	{
 		b.WriteString(`<div id="home-agent">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{
@@ -558,20 +536,6 @@ function fetchW(la,lo){
 		// for it, which is the difference between offering a room and putting
 		// one in front of you.
 
-		// How things are, under the box and across both columns.
-		//
-		// It was the first block in the rail, on the argument that the brief is
-		// yours in the same sense the inbox is. True, and it read wrong there:
-		// the rail is three lists of things — what arrived, who is working, what
-		// is left — and the brief is not a list, it is a sentence about all of
-		// them. A paragraph indented to a third of the page under a full-width
-		// input, with a grid of cards starting beside it, reads as a caption on
-		// the box rather than as the answer to "is there anything I need to
-		// know".
-		//
-		// So it sits with the box, which is the other thing here that spans:
-		// you ask, or you are told. Everything below is a place to look.
-		//
 		// data-brief, so it steps aside when somebody asks. The brief and the
 		// answer are the same shape — a paragraph of prose — and stacking them
 		// makes the reader work out where one stops; worse, every turn pushes
@@ -619,79 +583,17 @@ function fetchW(la,lo){
 		rail.WriteString(walletHTML(viewerID))
 	}
 
-	// The rail, if there is one, and then the world.
-	//
-	// With nothing to put in it the wrapper is not written at all and the main
-	// column takes both tracks — see .home-main.full in mu.css. Otherwise the
-	// services start a third of the way across the page, beside a column that
-	// is not there.
-	main := `<div class="home-main">`
+	// Home holds the personal workspace. Feed reuses the existing service cards.
 	if rail.Len() > 0 {
 		b.WriteString(`<div class="home-rail">` + rail.String() + `</div>`)
-	} else {
-		// Both tracks, since there is no rail to sit beside. On the main column
-		// rather than as a modifier on the grid above, because the grid is
-		// opened before this is known and a class there would mean building the
-		// rail somewhere else than where it reads.
-		main = `<div class="home-main full">`
 	}
-	b.WriteString(main)
-
-	// No counts strip. Four tiles reading Agents 0, Unread 0, Apps 0, Credits
-	// 100 is a dashboard of numbers rather than a thing you can act on, and
-	// every one of them duplicates a sidebar row that is already one click
-	// away. What actually belongs above the world's content is what your agents
-	// did — which is the next block, and which says something a count cannot.
-
-	// No runs block and no mail card here. Both were what-is-yours placed above
-	// the world's content, and both said less than the space they cost: one run
-	// is a receipt for something you just watched happen, and an inbox preview
-	// is three subject lines beside a Mail page one click away. /runs and /mail
-	// are the pages for them, and the header already carries an unread badge.
-
-	// The cards, on Home, where they were.
-	//
-	// They were moved to a /context page on the argument that Home is a console
-	// and the cards are context. That gave the product two home screens, a
-	// sidebar entry for a page nobody asked for, and a card picker to justify
-	// the page — and it left /account describing a home screen that no longer
-	// had any cards on it. Home shows what this instance knows right now, which
-	// is the whole demonstration that the tools are real.
-	//
-	// Labelled, because that demonstration only lands if somebody can tell what
-	// they are looking at. Unlabelled, the cards read as a dashboard somebody
-	// configured — headlines, prices, weather, arranged on a page. What they
-	// actually are is the tools answering, live, right now: the same calls an
-	// agent makes, rendered. Two words say so.
-	// "Live context" was two claims where one was needed: everything on this
-	// screen is live, so the word did no work here that the inbox above did not
-	// also deserve.
-	//
-	// And then "Context" was a word from inside the machine. It names what these
-	// cards are *for* — the material a run is assembled from — which is a fact
-	// about the agent, not about what somebody is looking at. What they are
-	// looking at is the services, answering: news, markets, weather, each card
-	// one service's own view of itself. That word is already the nav label, the
-	// route and the tool prefix, so using it here costs nothing and says where
-	// to go next. Naming the parts after the parts is the rule everywhere else
-	// in this repo; the cards were the exception.
-	// No "Go to services" under the grid.
-	//
-	// It was there on the argument that the cards are a handful of services
-	// answering rather than the catalogue, so the block should say where the
-	// rest are — the same reasoning that puts a link at the end of the inbox
-	// and agent blocks. The difference is where it lands. Those two are one
-	// card each and the link sits inside it; this is a grid of up to seven, so
-	// the link could only go under the whole grid, which on a wide screen is a
-	// long way below the last card in the shorter column and reads as a stray
-	// line rather than as that block's way out. The cards each carry their own
-	// More, the heading says what they are, and Services is in the nav and in
-	// the phone tab bar.
-	b.WriteString(sectionRule("Services"))
-	b.WriteString(CardsHTML(r, viewerAcc))
-
-	b.WriteString(`</div>`) // close .home-main
-	b.WriteString(`</div>`) // close #home-cards
+	b.WriteString(`</section><section id="home-feed" role="tabpanel" aria-labelledby="home-view-feed"` + panelHidden(!feed) + `><div class="home-main full">`)
+	cards := CardsHTML(r, viewerAcc)
+	if cards == "" {
+		cards = `<p class="text-muted">No feed items yet.</p>`
+	}
+	b.WriteString(cards)
+	b.WriteString(`</div></section></div><script>` + viewsJS + `</script>`)
 
 	// Auto-refresh: poll every 2 minutes, update card content in-place
 	displayMode := r.URL.Query().Get("mode") == "display"
@@ -713,6 +615,8 @@ function fetchW(la,lo){
 (function(){
   var interval = %d;
   setInterval(function(){
+    var feed = document.getElementById('home-feed');
+    if(!feed || !feed.isConnected || feed.hidden || document.hidden) return;
     fetch('/', {headers:{Accept:'application/json'}})
     .then(function(r){return r.json()})
     .then(function(cards){
