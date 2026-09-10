@@ -6,9 +6,12 @@ import (
 	"mu/account"
 	"mu/agent"
 	"mu/home"
+	"mu/inbox"
 	"mu/internal/auth"
 	"mu/internal/data"
+	recordnotes "mu/internal/notes"
 	"mu/internal/service"
+	"mu/internal/thread"
 	"mu/service/apps"
 	"mu/service/archive"
 	"mu/service/blog"
@@ -92,9 +95,26 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	if err := data.IndexSync("video_layout-video", data.KindVideo, "A layout video", "Video description", map[string]any{"channel": "Publisher"}); err != nil {
 		t.Fatal(err)
 	}
+	recordnotes.Add(who, "A note in the inbox", "Remember to book the appointment")
+	if err := data.IndexSync("layout-news", data.KindNews, "A news article", "Article text", map[string]any{"url": "https://example.com/article", "description": "A short article", "posted_at": time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	inboxThread := ""
+	for _, client := range []string{"mail", "chat", "whatsapp"} {
+		th := thread.Open(who, client, "a-long-sender-name-for-mobile@example.com")
+		if th == nil {
+			t.Fatal("could not create inbox fixture")
+		}
+		thread.Add(thread.Message{Thread: th.ID, Account: who, From: "sender@example.com", Text: "An inbox conversation on " + client})
+		if client == "mail" {
+			inboxThread = th.ID
+			thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RoleAgent, From: "Micro", Text: "I found the details. Here is the summary."})
+			thread.Add(thread.Message{Thread: th.ID, Account: who, From: who, Text: "Thanks, please follow up tomorrow."})
+		}
+	}
 	pages := map[string]string{}
 	policies := map[string]string{}
-	for path, handler := range map[string]http.HandlerFunc{"/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/home": home.Handler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler} {
+	for path, handler := range map[string]http.HandlerFunc{"/inbox": inbox.Handler, "/inbox?id=" + inboxThread: inbox.Handler, "/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/news?id=layout-news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/home": home.Handler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler} {
 		t.Log("render", path)
 		req := httptest.NewRequest("GET", path, nil)
 		if path != "/" {

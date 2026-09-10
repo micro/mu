@@ -127,9 +127,11 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 			app.Link("Search the whole conversation", "/recall") + `</p>`)
 	}
 
+	b.WriteString(`<div class="card-list">`)
 	for _, m := range msgs {
 		b.WriteString(messageBlock(accountID, t, m, subject))
 	}
+	b.WriteString(`</div>`)
 
 	// The two things you can do with a conversation, on one line.
 	//
@@ -444,7 +446,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 		if m.Workflow != "" {
 			ran = runTools(m.Workflow)
 		}
-		return `<div class="ib-msg ib-agent">` + fromLine(messageAgentName(accountID, t, m), m.At) +
+		return `<div class="ib-msg card ib-agent">` + fromLine(messageAgentName(accountID, t, m), m.At) +
 			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
 	}
 	// The author, by the name the conversation knows them under rather than the
@@ -481,7 +483,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 		rendered = mail.Rendered(&mail.Message{Body: m.Text, FromID: m.From})
 	}
 	if rendered != "" {
-		return `<div class="ib-msg ib-person">` + fromLine(who, m.At) + addressLine(m) +
+		return `<div class="ib-msg card ib-person">` + fromLine(who, m.At) + addressLine(m) +
 			`<div class="ib-body">` + rendered + `</div></div>`
 	}
 	// What they wrote, and — folded away — the part of it that is this
@@ -491,7 +493,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 	// renderer above and come out with working links, and what a person wrote
 	// came out as text — so the same URL in the same conversation was clickable
 	// on one line and not on the next. See app.Linkify for the ordering.
-	return `<div class="ib-msg ib-person">` + fromLine(who, m.At) + addressLine(m) +
+	return `<div class="ib-msg card ib-person">` + fromLine(who, m.At) + addressLine(m) +
 		`<div class="ib-body ib-typed">` + app.Linkify(html.EscapeString(body)) + `</div>` +
 		quotedBlock(quote) + `</div>`
 }

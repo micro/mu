@@ -140,12 +140,12 @@ html, body {
   box-sizing: inherit;
 }
 
-/* Links share one bold, un-underlined treatment. */
+/* Links default to bold; action components set their own font weight. */
 a {
   color: #000;
   text-decoration: none !important;
   font-size: 0.9em;
-  font-weight: bold !important;
+  font-weight: bold;
   transition: opacity var(--transition-fast);
 }
 
@@ -1863,7 +1863,7 @@ body:has(#messages) #chat-back-link {
   display: inline-block;
   color: var(--accent-color) !important;
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   background: transparent;
@@ -1881,7 +1881,7 @@ body:has(#messages) #chat-back-link {
   display: inline-block;
   color: var(--text-primary, #1a1a1a) !important;
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-right: 8px;
@@ -2630,7 +2630,7 @@ a.highlight {
   display: inline-block;
   color: var(--text-secondary) !important;
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: transparent;
@@ -3383,6 +3383,7 @@ a.highlight {
 }
 
 .mini-btn {
+  font-weight: var(--font-weight-normal, 400);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5342,7 +5343,7 @@ a.card-hover:hover {
   display: inline-block;
   color: var(--accent-color) !important;
   font-size: 10px !important;
-  font-weight: bold !important;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   background: transparent;
@@ -6140,8 +6141,10 @@ button.pill:hover {
    The bleed is padding plus a matching negative margin, so the highlight
    reaches past the text without moving anything. */
 .ib-item {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  /* Reserve the same action column for mail, notes, tasks and chats. */
+  grid-template-columns: minmax(0, 1fr) var(--control-h-sm);
+  align-items: start;
   gap: 8px;
   padding: 0 10px;
   margin: 0 -10px;
@@ -6224,11 +6227,9 @@ button.pill:hover {
 /* No pointer to hover with, so the cross is simply there. */
 @media (hover: none) { .ib-del-go { opacity: 1 } }
 
-/* The cross sits on the first line of the row at every width, which is what
-   flex-start on .ib-item gives it — the baseline alignment it used to have was
-   right for a one-line row and drifted down the card once the row had three.
-   The nudge keeps it on the sender's line rather than above it. */
-.ib-del { padding-top: 12px }
+/* Align the delete control with the metadata line in its reserved column. */
+.ib-del { padding-top: 11px; min-height: var(--control-h-sm); }
+.ib-del-go { min-height: var(--control-h-sm); }
 /* Unread marks the two lines that say what the message is. Not the snippet:
    it is the body, and a bold body is a row shouting. */
 .ib-row.unseen .ib-meta,
@@ -6258,52 +6259,42 @@ button.pill:hover {
   flex: 1;
 }
 
-/* Who, where from, and when. Small and muted, because it is how you decide
-   whether to read the two lines under it rather than something to read. */
-/* Who wrote, and everything qualifying it, on one line at opposite ends.
-
-   All four ran together on the left for a commit, which put the date — the one
-   thing on this row somebody scans a column of — at the end of a sentence whose
-   length depends on the sender's name, so it landed somewhere different on
-   every row. A date column is read down and cannot be when it moves.
-
-   No wrap. The whole row is three fixed lines and a fourth appearing when a
-   name is long would make the list uneven; the sender truncates instead, and
-   the tags are short by construction. */
+/* Context may wrap, but the date stays aligned independently of labels,
+   sender length and the presence of a delete control. */
 .ib-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 0 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: 8px;
   font-size: 12px;
   font-weight: var(--font-weight-medium, 500);
   color: var(--text-secondary, #555);
   min-width: 0;
 }
-
-/* Who. Takes the slack and truncates, because it is the one part of this line
-   whose length is somebody else's to decide. */
-.ib-who {
+.ib-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   min-width: 0;
+}
+.ib-who, .ib-tags {
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* The channel, the box and how long ago, at the end where the eye finishes.
-   margin-left:auto rather than justify-content on the parent, so it holds when
-   the sender is missing and .ib-who renders empty. */
-.ib-tags {
-  display: flex;
-  align-items: baseline;
-  gap: 0 6px;
-  margin-left: auto;
-  flex: none;
+.ib-tags, .ib-when {
   color: var(--text-muted, #888);
   font-weight: var(--font-weight-normal, 400);
+}
+.ib-when {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h-sm);
   white-space: nowrap;
 }
-
-.ib-dot { color: var(--text-faint, #ccc); font-weight: var(--font-weight-normal, 400) }
 
 /* An explicit weight, because the row is a link and `a` is bold app-wide.
    Anything inside a link that does not declare a weight inherits that, so the
@@ -6348,17 +6339,10 @@ button.pill:hover {
   color: var(--text-muted, #888);
 }
 
-/* A rule between messages, not a quote bar beside them.
-   Each message carried a 2px left border and 16px of margin, which reads as a
-   blockquote — the mark for "somebody else said this" — on every message in
-   the thread including your own. A thread is a stack of messages and what
-   separates them is a line across, the way every mail client draws it: the
-   eye needs to know where one ends, not that all of them are quotations. */
-.ib-msg { padding: 16px 0; border-bottom: var(--border-width, 1px) solid var(--card-border, #e8e8e8) }
-.ib-msg:first-child { padding-top: 0 }
-.ib-msg:last-child { border-bottom: none; padding-bottom: 0 }
-.ib-from { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px }
-.ib-who-l { font-size: 13px; font-weight: var(--font-weight-medium, 500); color: var(--text-primary, #1a1a1a) }
+/* Messages use the shared card and card-list components. The sender is the
+   visual anchor of each card; dates stay secondary. */
+.ib-from { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px }
+.ib-who-l { font-size: 14px; font-weight: var(--font-weight-bold, 700); color: var(--text-primary, #1a1a1a); min-width: 0; overflow-wrap: anywhere }
 .ib-at { margin-left: auto; flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
 .ib-body { font-size: 14px; line-height: var(--line-height, 1.6) }
 .ib-body p:first-child { margin-top: 0 }
@@ -6391,9 +6375,7 @@ button.pill:hover {
 .ib-quoted > summary::-webkit-details-marker { display: none }
 .ib-quoted > summary:hover { border-color: #bbb }
 
-/* The quote itself reads as a quote: indented behind a rule, muted, and in the
-   whitespace it arrived with. This is the one place .ib-msg's own rule about
-   not drawing quote bars does not apply — here it is genuinely a quotation. */
+/* Quoted content keeps its indentation inside the message card. */
 .ib-quoted-text {
   margin-top: 10px;
   padding-left: 12px;

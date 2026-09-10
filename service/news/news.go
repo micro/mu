@@ -1234,12 +1234,6 @@ func generateHeadlinesHTML(headlines []*Post) string {
 		}
 		summary := getSummary(h)
 
-		// Add Read Summary link on the right side of source
-		summaryLink := ""
-		if h.ID != "" {
-			summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, h.ID)
-		}
-
 		fmt.Fprintf(&sb, `
 			<div class="headline">
 			   %s
@@ -1247,8 +1241,8 @@ func generateHeadlinesHTML(headlines []*Post) string {
 			   <span class="title">%s</span>
 			  </a>
 			 <span class="description">%s</span>
-			 <div class="summary">%s%s</div>
-			`, categoryBadge, link, h.Title, h.Description, summary, summaryLink)
+			 <div class="summary">%s</div>
+			`, categoryBadge, link, h.Title, h.Description, summary)
 		sb.WriteString(`</div>`)
 	}
 
