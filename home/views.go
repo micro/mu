@@ -2,6 +2,7 @@ package home
 
 import (
 	"fmt"
+	"html"
 	"strings"
 
 	"mu/internal/auth"
@@ -29,7 +30,7 @@ func homeViews(feed bool) string {
 func greeting(acc *auth.Account) string {
 	if acc != nil {
 		if name := strings.TrimSpace(acc.Name); name != "" {
-			return "Welcome back, " + name
+			return "Welcome back, " + html.EscapeString(name)
 		}
 	}
 	return "Welcome back"
