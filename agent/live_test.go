@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	gmai "go-micro.dev/v6/ai"
+	gmai "go-micro.dev/v6/model"
 )
 
 func TestLiveToolHooksIncludeRefusedCalls(t *testing.T) {

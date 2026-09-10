@@ -2,7 +2,7 @@ package ai
 
 import (
 	gmagent "go-micro.dev/v6/agent"
-	gmai "go-micro.dev/v6/ai"
+	gmai "go-micro.dev/v6/model"
 	"testing"
 )
 

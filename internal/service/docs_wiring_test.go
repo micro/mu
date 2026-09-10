@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"go-micro.dev/v6/ai"
+	ai "go-micro.dev/v6/model"
 )
 
 // DocsProbe is a handler used to prove the Docs wiring end to end.

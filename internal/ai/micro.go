@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	gmai "go-micro.dev/v6/ai"
-	_ "go-micro.dev/v6/ai/anthropic"
-	_ "go-micro.dev/v6/ai/atlascloud"
-	_ "go-micro.dev/v6/ai/gemini"
-	_ "go-micro.dev/v6/ai/openai"
+	gmai "go-micro.dev/v6/model"
+	_ "go-micro.dev/v6/model/anthropic"
+	_ "go-micro.dev/v6/model/atlascloud"
+	_ "go-micro.dev/v6/model/gemini"
+	_ "go-micro.dev/v6/model/openai"
 
 	"mu/internal/app"
 	"mu/internal/settings"

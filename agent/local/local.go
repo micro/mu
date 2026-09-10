@@ -29,10 +29,10 @@ import (
 	"strings"
 	"time"
 
-	gmai "go-micro.dev/v6/ai"
-	"go-micro.dev/v6/ai/anthropic"
-	"go-micro.dev/v6/ai/atlascloud"
-	"go-micro.dev/v6/ai/openai"
+	gmai "go-micro.dev/v6/model"
+	"go-micro.dev/v6/model/anthropic"
+	"go-micro.dev/v6/model/atlascloud"
+	"go-micro.dev/v6/model/openai"
 
 	"mu/internal/ai"
 	"mu/internal/settings"

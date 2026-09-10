@@ -6,7 +6,7 @@ import (
 
 	"mu/internal/service"
 
-	gmai "go-micro.dev/v6/ai"
+	gmai "go-micro.dev/v6/model"
 )
 
 // TestInjectAccountBindsCallerToContext is a security regression test. The

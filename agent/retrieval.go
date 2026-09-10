@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	gmai "go-micro.dev/v6/ai"
+	gmai "go-micro.dev/v6/model"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"

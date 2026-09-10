@@ -168,8 +168,8 @@ github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcY
 github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 h1:gEOO8jv9F4OT7lGCjxCBTO/36wtF6j2nSip77qHd4x4=
 github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1/go.mod h1:Ohn+xnUBiLI6FVj/9LpzZWtj1/D6lUovWYBkxHVV3aM=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
-go-micro.dev/v6 v6.13.1-0.20260903114747-7be9734354a8 h1:ZcAKTYmGnBB+m7QhF1DGbZt4a4rmnimqQCiJiaYiSXs=
-go-micro.dev/v6 v6.13.1-0.20260903114747-7be9734354a8/go.mod h1:HHDv8c+yRqE8Q9dRJtUM9MJTkHyKgPVxaxidsrhnM+c=
+go-micro.dev/v6 v6.13.1-0.20260910093304-a43bfe1d2c6e h1:7AuM6e4pzndu7pGT28lnJMuBSi+uMECqWLZgCJzGwxc=
+go-micro.dev/v6 v6.13.1-0.20260910093304-a43bfe1d2c6e/go.mod h1:HHDv8c+yRqE8Q9dRJtUM9MJTkHyKgPVxaxidsrhnM+c=
 go.etcd.io/bbolt v1.4.0 h1:TU77id3TnN/zKr7CO/uk+fBCwF2jGcMuw2B/FMAzYIk=
 go.etcd.io/bbolt v1.4.0/go.mod h1:AsD+OCi/qPN1giOX1aiLAha3o1U8rAz65bvN4j0sRuk=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=

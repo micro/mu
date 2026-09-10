@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	gmagent "go-micro.dev/v6/agent"
+	"go-micro.dev/v6/registry"
 	"go-micro.dev/v6/store"
 )
 
@@ -26,6 +27,7 @@ func TestARunsShapeIsRecorded(t *testing.T) {
 		gmagent.Provider("costtest"),
 		gmagent.Model("claude-sonnet-5"),
 		gmagent.WithStore(runs),
+		gmagent.WithRegistry(registry.NewMemoryRegistry()),
 	)
 	defer a.Stop()
 	if _, err := a.Ask(context.Background(), "how did this go"); err != nil {

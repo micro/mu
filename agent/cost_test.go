@@ -10,7 +10,8 @@ import (
 	"testing"
 
 	gmagent "go-micro.dev/v6/agent"
-	gmai "go-micro.dev/v6/ai"
+	gmai "go-micro.dev/v6/model"
+	"go-micro.dev/v6/registry"
 	"go-micro.dev/v6/store"
 
 	"mu/internal/app"
@@ -62,6 +63,7 @@ func TestARunIsPricedFromItsOwnTimeline(t *testing.T) {
 		// 100 input at $2/M is 0.02c, 50 output at $10/M is 0.05c.
 		gmagent.Model("claude-sonnet-5"),
 		gmagent.WithStore(runs),
+		gmagent.WithRegistry(registry.NewMemoryRegistry()),
 	)
 	defer a.Stop()
 	if _, err := a.Ask(context.Background(), "what did this cost"); err != nil {
