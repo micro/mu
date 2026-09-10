@@ -42,9 +42,9 @@ func JSAttr(s string) string {
 
 // ChatConfig configures the shared chat component.
 type ChatConfig struct {
-	// ComposerFooterHTML is trusted, pre-rendered content kept below the composer
-	// controls and above the conversation. Callers must escape user text.
-	ComposerFooterHTML string
+	// FooterHTML is trusted, pre-rendered content below the conversation and
+	// composer. Callers must escape user text.
+	FooterHTML string
 	// Ask makes this box talk to the agent. Without it, it searches.
 	//
 	// A default of search rather than of asking, because the pages that want a
@@ -439,14 +439,15 @@ func ChatComponent(cfg ChatConfig) string {
 
 	// Two orders, one component. See ChatConfig.Transcript.
 	composer := form + doors + opts
-	if cfg.ComposerFooterHTML != "" {
-		composer = `<div class="page-stack">` + composer + cfg.ComposerFooterHTML + `</div>`
-	}
 	body := composer + suggest + conv
 	shell := `<div id="mu-chat">`
 	if cfg.Transcript {
 		body = conv + suggest + composer
 		shell = `<div id="mu-chat" class="mu-chat-transcript">`
+	}
+
+	if cfg.FooterHTML != "" {
+		body += `<div class="mu-chat-footer">` + cfg.FooterHTML + `</div>`
 	}
 
 	html := shell + `
@@ -493,6 +494,7 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-doors a:hover{text-decoration:underline}
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}
 #mu-chat-conv:empty{margin-top:0}
+.mu-chat-footer{margin-top:16px}
 /* A conversation, not a box.
 
    The turns scroll in their own region and the input sits under them, which is
@@ -825,7 +827,9 @@ function ask(q){
   var byName=agentName();
   if(byName){var by=document.createElement('div');by.className='mu-by';by.textContent=byName;conv.appendChild(by);}
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
-  input.value='';saveDraft();input.style.height='auto';input.focus();
+  input.value='';saveDraft();input.style.height='auto';
+  var touchInput=window.matchMedia('(pointer: coarse)').matches;
+  if(touchInput){input.blur();}else{input.focus();}
 
   var terminal=false,flowID='',recoveryThread='',completionTimer=null;
   var workLabel='Working';
@@ -878,7 +882,11 @@ function ask(q){
   //
   // In a box the exchange is anchored under the input instead, which is what
   // Home wants: you typed at the top and the answer appears under it.
-  if(transcript){ toBottom(true,true); } else { u.scrollIntoView({behavior:'smooth',block:'start'}); }
+  if(transcript){ toBottom(true,true); } else {
+    revealQuestion(u);
+    // Re-align after the mobile keyboard has finished shrinking the viewport.
+    if(touchInput)setTimeout(function(){if(epoch===viewEpoch)revealQuestion(u);},350);
+  }
   var streamText='';
   var body=JSON.stringify({prompt:q,attachment:(!contextId?attachment:""),history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
   // Accept says which of the two doors at /agent this is.

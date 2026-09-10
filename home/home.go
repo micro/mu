@@ -432,10 +432,10 @@ function fetchW(la,lo){
 	{
 		b.WriteString(`<div id="home-agent" class="page-stack">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{
-			ComposerFooterHTML: appsHTML(viewerAcc),
-			Ask:                true,
-			HideSuggestions:    true,
-			Placeholder:        "What do you need?",
+			FooterHTML:      appsHTML(viewerAcc),
+			Ask:             true,
+			HideSuggestions: true,
+			Placeholder:     "What do you need?",
 			// Who answers, for the byline over the reply. The default agent,
 			// which is what an unpicked box reaches — see agent.DefaultName.
 			AgentName:        agent.DefaultName(),

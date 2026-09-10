@@ -1,11 +1,11 @@
 const fs=require('fs'),assert=require('assert');
 const source=JSON.parse(fs.readFileSync(0,'utf8'));
 const frame=e=>'data: '+JSON.stringify(e)+'\n\n';
-async function scenario(frames,stall=false){
+async function scenario(frames,stall=false,touch=false){
  const paints=[],children=[],timeouts=[];
- const element=()=>({className:'',style:{},isConnected:true,focus(){},scrollIntoView(){},set innerHTML(v){this.html=v;paints.push(v)},get innerHTML(){return this.html||''}});
+ const element=()=>({className:'',style:{},isConnected:true,focus(){this.focused=true},blur(){this.focused=false;this.blurred=true},scrollIntoView(){},set innerHTML(v){this.html=v;paints.push(v)},get innerHTML(){return this.html||''}});
  let idx=0,polls=0,scrolls=0;
- const env={viewEpoch:0,detachActive:null,hideBrief(){},sugDiv:element(),conv:{appendChild(e){children.push(e)}},document:{createElement:element},input:element(),saveDraft(){},save(){},esc:String,agentName(){return 'Micro'},toBottom(){},revealQuestion(node){assert(node.isConnected);assert.equal(node.className,"mu-user");scrolls++},transcript:false,history:[],contextId:'',attachment:'',window:{dispatchEvent(){}},CustomEvent:class{},TextDecoder,AbortController,
+ const env={viewEpoch:0,detachActive:null,hideBrief(){},sugDiv:element(),conv:{appendChild(e){children.push(e)}},document:{createElement:element},input:element(),saveDraft(){},save(){},esc:String,agentName(){return 'Micro'},toBottom(){},revealQuestion(node){assert(node.isConnected);assert.equal(node.className,"mu-user");scrolls++},transcript:false,history:[],contextId:'',attachment:'',window:{dispatchEvent(){},matchMedia(){return {matches:touch}}},CustomEvent:class{},TextDecoder,AbortController,
  setInterval(){return 1},clearInterval(){},setTimeout(fn,ms){timeouts.push({fn,ms});return timeouts.length},clearTimeout(){},
  fetch(url){
   if(url.startsWith('/agent/pending')){polls++;return Promise.resolve({ok:true,json:()=>Promise.resolve({waiting:false,html:'<div>Recovered</div>',answer_html:'Recovered',text:'Recovered'})})}
@@ -15,6 +15,9 @@ async function scenario(frames,stall=false){
  for(let i=0;i<100;i++)await Promise.resolve();
  if(stall){const timer=timeouts.find(t=>t.ms===4000);assert(timer,'missing live completion watchdog');timer.fn();for(let i=0;i<100;i++)await Promise.resolve();}
  if(env.history.length)assert(scrolls>0,"completed landing answer was not revealed");
+ assert(scrolls>0,"submitted question was not revealed");
+ if(touch){assert(env.input.blurred,"touch keyboard was not dismissed");const timer=timeouts.find(t=>t.ms===350);assert(timer);timer.fn();}
+ else assert(env.input.focused,"desktop input lost focus");
  return {paints,answer:children[children.length-1],polls,history:env.history};
 }
 (async()=>{
@@ -25,5 +28,6 @@ async function scenario(frames,stall=false){
  r=await scenario([id],true);assert.equal(r.answer.innerHTML,'Recovered');assert.equal(r.history.length,1);
  r=await scenario([id,'data: {"type":"response"']);assert.equal(r.answer.innerHTML,'Recovered');
  r=await scenario([id,frame({type:'error',message:'Failed'}),frame({type:'tool_done'})]);assert(r.answer.innerHTML.includes('Failed'));assert.equal(r.polls,0);
+ await scenario([id,frame({type:'response',html:'Touch answer',text:'Touch answer'})],false,true);
  console.log('completion scenarios passed');
 })().catch(e=>{console.error(e);process.exitCode=1});
