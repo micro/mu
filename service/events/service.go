@@ -111,7 +111,7 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 	// from. Both facts are the same fact: Mu did not schedule these and cannot
 	// cancel them, so offering an id would be offering something that fails.
 	now := time.Now()
-	external := externalEntries(owner, now, now.Add(14*24*time.Hour))
+	external := ExternalEvents(owner, now, now.Add(14*24*time.Hour), 0)
 	xs, xe := service.PageRange(len(external), req.Offset, req.Limit)
 	rsp.External, rsp.ExternalTotal = external[xs:xe], len(external)
 	if xe < len(external) {
@@ -204,7 +204,11 @@ func (Server) Free(ctx context.Context, req *FreeRequest, rsp *FreeResponse) err
 	if req.DayEnd == 0 && req.DayStart == 0 {
 		q.DayStart, q.DayEnd = 9, 18
 	}
-	rsp.Slots = Free(owner, q)
+	slots, err := Free(owner, q)
+	if err != nil {
+		return err
+	}
+	rsp.Slots = slots
 	want := req.Minutes
 	if want <= 0 {
 		want = 30

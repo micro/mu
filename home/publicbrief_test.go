@@ -118,19 +118,11 @@ func TestAskingTakesTheBriefOffThePage(t *testing.T) {
 	}
 }
 
-// And Home's brief takes part, so the two pages behave the same way.
-//
-// Home puts the answer directly above it — the conversation is inside
-// #home-agent and the brief is the block after it — so without the attribute
-// every turn walks the brief down the page.
-func TestHomesBriefIsMarkedToo(t *testing.T) {
-	src, err := os.ReadFile("home.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(src), `id="home-brief" data-brief`) {
-		t.Error("Home's brief is not marked data-brief, so it stays on the page\n" +
-			"under the answer while the landing page's steps aside")
+// Home's separate brief stays available while the person talks to Micro.
+func TestHomesBriefStaysAvailable(t *testing.T) {
+	body := homeFor(t, "homebriefvisible")
+	if !strings.Contains(body, `id="home-brief" class="page-stack"`) || strings.Contains(body, `id="home-brief" data-brief`) {
+		t.Error("Home brief still steps aside during a conversation")
 	}
 }
 

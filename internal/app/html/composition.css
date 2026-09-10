@@ -59,6 +59,10 @@
 .page-stack > *, .page-section > * { margin-block: 0; min-width: 0; }
 .section-actions, .check-label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-control); }
 .section-actions { font-size: 14px; }
+.check-label { flex-wrap: nowrap; align-items: flex-start; }
+.check-label > span { min-width: 0; overflow-wrap: anywhere; }
+fieldset.form-group { border: 0; padding: 0; min-inline-size: 0; }
+fieldset.form-group > legend { padding: 0; }
 .check-label input { width: auto; margin: 0; }
 .choices { display: flex; flex-wrap: wrap; gap: var(--space-control); }
 .choice { position: relative; max-width: 100%; }

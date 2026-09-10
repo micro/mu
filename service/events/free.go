@@ -41,7 +41,7 @@ type FreeQuery struct {
 
 // Free returns the stretches inside the window where nothing is booked and the
 // slot is at least Minutes long.
-func Free(owner string, q FreeQuery) []Slot {
+func Free(owner string, q FreeQuery) ([]Slot, error) {
 	if q.Minutes <= 0 {
 		q.Minutes = 30
 	}
@@ -53,7 +53,10 @@ func Free(owner string, q FreeQuery) []Slot {
 	}
 	want := time.Duration(q.Minutes) * time.Minute
 
-	busy := booked(owner, q.From, q.To)
+	busy, err := booked(owner, q.From, q.To)
+	if err != nil {
+		return nil, err
+	}
 
 	var out []Slot
 	// Walk a day at a time so working hours can be applied per day rather than
@@ -73,7 +76,7 @@ func Free(owner string, q FreeQuery) []Slot {
 		}
 		out = append(out, freeWithin(open, close, busy, want)...)
 	}
-	return out
+	return out, nil
 }
 
 // freeWithin subtracts the busy periods from one open stretch.
@@ -104,7 +107,11 @@ func freeWithin(open, close time.Time, busy []Slot, want time.Duration) []Slot {
 // answer usable: a meeting that exists in Google and a reminder that exists
 // here overlap in the person's actual day, and two lists would have made the
 // caller reconcile them.
-func booked(owner string, from, to time.Time) []Slot {
+func booked(owner string, from, to time.Time) ([]Slot, error) {
+	external, err := externalBusy(owner, from, to)
+	if err != nil {
+		return nil, err
+	}
 	var busy []Slot
 	for _, e := range List(owner) {
 		start := e.When
@@ -114,7 +121,7 @@ func booked(owner string, from, to time.Time) []Slot {
 		}
 		busy = append(busy, Slot{Start: start, End: end})
 	}
-	for _, s := range externalBusy(owner, from, to) {
+	for _, s := range external {
 		if !s.End.After(from) || !s.Start.Before(to) {
 			continue
 		}
@@ -132,7 +139,7 @@ func booked(owner string, from, to time.Time) []Slot {
 		}
 		merged = append(merged, b)
 	}
-	return merged
+	return merged, nil
 }
 
 // Length is how long an event lasts, defaulting to the same half hour the .ics

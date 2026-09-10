@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"mu/internal/auth"
-	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
@@ -1355,13 +1354,12 @@ func navAdmin(acc *auth.Account) string {
 // group scrolls if it grows; the account group below it does not move, because
 // signing out is not something to scroll for.
 //
-// Nothing is drawn at all when nothing is pinned. An empty heading over an
-// empty list is a worse answer than no heading.
+// Home and the sidebar use the same shortcuts, including defaults for new accounts.
 func navPinned(acc *auth.Account) string {
 	if acc == nil {
 		return ""
 	}
-	pinned := service.Pinned(acc.PinnedServices())
+	pinned := ServiceShortcuts(acc)
 	if len(pinned) == 0 {
 		return ""
 	}

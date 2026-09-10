@@ -17,7 +17,6 @@ package home
 //     in redirects to /home. See Index.
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -37,15 +36,15 @@ func TestAStrangerIsNotOfferedReadAloud(t *testing.T) {
 	}
 }
 
-// And Home keeps both: it is where a person configures how they work.
-func TestHomeKeepsThePicker(t *testing.T) {
-	b, err := os.ReadFile("home.go")
-	if err != nil {
-		t.Fatal(err)
+// Home starts with Micro; specialist conversations remain on Agents.
+func TestHomeStartsWithMicro(t *testing.T) {
+	body := homeFor(t, "homesimplecomposer")
+	for _, control := range []string{`id="mu-chat-agent"`, `id="mu-chat-say"`} {
+		if strings.Contains(body, control) {
+			t.Errorf("Home still offers %s", control)
+		}
 	}
-	src := string(b)
-	if !strings.Contains(src, "OfferAgentPicker: viewerID != \"\"") {
-		t.Error("Home no longer offers the agent picker, so an agent somebody made\n" +
-			"can be reached from nowhere they would naturally talk to it")
+	if !strings.Contains(body, `class="mu-chat-contained"`) {
+		t.Error("Home conversation is not contained")
 	}
 }

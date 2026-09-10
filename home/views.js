@@ -1,6 +1,20 @@
 (() => {
   const home = document.getElementById('home-cards');
   if (!home) return;
+  const upcoming = home.querySelector('[data-home-upcoming]');
+  if (upcoming) {
+    fetch('/home?section=upcoming', {credentials: 'same-origin'})
+      .then(response => { if (!response.ok) throw new Error('events'); return response.json(); })
+      .then(data => {
+        upcoming.innerHTML = data.upcoming;
+        const brief = home.querySelector("#home-brief");
+        if (brief) brief.innerHTML = data.brief;
+        upcoming.querySelectorAll('[data-event-time]').forEach(node => {
+          node.textContent = new Date(node.dateTime).toLocaleString(undefined, {weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+        });
+      })
+      .catch(() => { upcoming.innerHTML = '<p class="text-muted">Could not load events. <a href="/events">Open events</a></p>'; });
+  }
   const tabs = [...home.querySelectorAll('.view-switch [role="tab"]')];
   const positions = new Map();
   let selected = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');

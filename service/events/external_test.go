@@ -1,6 +1,9 @@
 package events
 
 import (
+	"context"
+	"fmt"
+	"mu/internal/service"
 	"strings"
 	"testing"
 	"time"
@@ -11,8 +14,8 @@ func withExternal(t *testing.T, connected bool, busy []Slot, entries []External)
 	t.Helper()
 	pc, pb, pe, pa := ExternalConnected, ExternalBusy, ExternalEntries, ExternalAccount
 	ExternalConnected = func(string) bool { return connected }
-	ExternalBusy = func(string, time.Time, time.Time) []Slot { return busy }
-	ExternalEntries = func(string, time.Time, time.Time) []External { return entries }
+	ExternalBusy = func(string, time.Time, time.Time) ([]Slot, error) { return busy, nil }
+	ExternalEntries = func(string, time.Time, time.Time, int) []External { return entries }
 	ExternalAccount = func(string) string { return "someone@example.com" }
 	t.Cleanup(func() {
 		ExternalConnected, ExternalBusy, ExternalEntries, ExternalAccount = pc, pb, pe, pa
@@ -28,7 +31,7 @@ func TestFreeCountsTheCalendarYouAlreadyKeep(t *testing.T) {
 
 	// Nothing attached: the whole working day is open.
 	withExternal(t, false, nil, nil)
-	if got := Free("nobody", q); len(got) != 1 || got[0].Duration() != 8*time.Hour {
+	if got := freeSlots(t, "nobody", q); len(got) != 1 || got[0].Duration() != 8*time.Hour {
 		t.Fatalf("an empty calendar was not free all day: %+v", got)
 	}
 
@@ -37,7 +40,7 @@ func TestFreeCountsTheCalendarYouAlreadyKeep(t *testing.T) {
 		Start: day.Add(12 * time.Hour), End: day.Add(13 * time.Hour),
 	}}, nil)
 
-	slots := Free("nobody", q)
+	slots := freeSlots(t, "nobody", q)
 	if len(slots) != 2 {
 		t.Fatalf("an outside meeting did not split the day: %+v", slots)
 	}
@@ -69,7 +72,10 @@ func TestBusyPeriodsFromBothCalendarsMerge(t *testing.T) {
 		Start: day.Add(12*time.Hour + 30*time.Minute), End: day.Add(14 * time.Hour),
 	}}, nil)
 
-	busy := booked(owner, day, day.AddDate(0, 0, 1))
+	busy, err := booked(owner, day, day.AddDate(0, 0, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(busy) != 1 {
 		t.Fatalf("overlapping busy periods did not merge: %+v", busy)
 	}
@@ -167,5 +173,21 @@ func TestTheCalendarCardOnlyAppearsWhenItCanWork(t *testing.T) {
 	}
 	if !strings.Contains(connected, `href="/account"`) {
 		t.Errorf("the card does not say where to manage it:\n%s", connected)
+	}
+}
+
+func TestUnavailableCalendarCannotProduceFreeSlots(t *testing.T) {
+	old := ExternalBusy
+	defer func() { ExternalBusy = old }()
+	unavailable := fmt.Errorf("calendar unavailable")
+	ExternalBusy = func(string, time.Time, time.Time) ([]Slot, error) { return nil, unavailable }
+	now := time.Now()
+	if slots, err := Free("alice", FreeQuery{From: now, To: now.Add(24 * time.Hour)}); err != unavailable || len(slots) != 0 {
+		t.Fatalf("unavailable calendar produced free slots: %v, %v", slots, err)
+	}
+	var rsp FreeResponse
+	err := (Server{}).Free(service.WithAccount(context.Background(), "alice"), &FreeRequest{}, &rsp)
+	if err != unavailable || len(rsp.Slots) != 0 || rsp.Text != "" {
+		t.Fatalf("service concealed unavailable calendar: %+v, %v", rsp, err)
 	}
 }

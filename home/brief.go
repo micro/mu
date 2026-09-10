@@ -90,8 +90,8 @@ import (
 // true on the quietest day. True and useless as a sentence — who is here is its
 // own block under the box now, and it names people rather than telling you
 // there are none.
-func briefHTML(accountID string) string {
-	parts := briefParts(accountID)
+func briefHTML(accountID string, external ...events.External) string {
+	parts := briefParts(accountID, external...)
 	if len(parts) == 0 {
 		return ""
 	}
@@ -133,7 +133,7 @@ func briefHTML(accountID string) string {
 // The last clause is the world's and is the only one an account is not needed
 // for, so a signed-out reader gets it alone. That is the whole of the public
 // brief: everyone's day is the same, yours is not.
-func briefParts(accountID string) []string {
+func briefParts(accountID string, external ...events.External) []string {
 	var parts []string
 	if accountID != "" {
 		if s := waiting(accountID); s != "" {
@@ -155,7 +155,7 @@ func briefParts(accountID string) []string {
 		// day. So somebody with a dentist at four and a school pickup at three
 		// read a line about their inbox and went to look at a calendar, which
 		// is the one thing a brief is supposed to save.
-		if s := onToday(accountID); s != "" {
+		if s := onToday(accountID, external...); s != "" {
 			parts = append(parts, s)
 		}
 	}
@@ -285,7 +285,7 @@ func owed(accountID string) string {
 //
 // The next one is named, with its time, because that is the fact somebody
 // actually wants: not how many, but what and when. The count carries the rest.
-func onToday(accountID string) string {
+func onToday(accountID string, external ...events.External) string {
 	now := account.LocalNow(accountID)
 	var ahead []*events.Event
 	for _, e := range events.List(accountID) {
@@ -294,6 +294,14 @@ func onToday(accountID string) string {
 		}
 		if sameDay(e.When.In(now.Location()), now) && e.When.After(now) {
 			ahead = append(ahead, e)
+		}
+	}
+	allDay := map[*events.Event]bool{}
+	for _, e := range external {
+		if (e.AllDay && e.Start.Format("2006-01-02") <= now.Format("2006-01-02") && e.End.Format("2006-01-02") > now.Format("2006-01-02")) || (sameDay(e.Start.In(now.Location()), now) && e.Start.After(now)) {
+			item := &events.Event{Title: e.Title, When: e.Start}
+			ahead = append(ahead, item)
+			allDay[item] = e.AllDay
 		}
 	}
 	if len(ahead) == 0 {
@@ -305,10 +313,19 @@ func onToday(accountID string) string {
 	sort.Slice(ahead, func(i, j int) bool { return ahead[i].When.Before(ahead[j].When) })
 
 	next := ahead[0]
-	out := app.TextLink(next.Title, "/events") + " at " +
-		html.EscapeString(next.When.In(now.Location()).Format("15:04"))
+	out := app.TextLink(html.EscapeString(next.Title), "/events")
+	if allDay[next] {
+		out += " today"
+	} else {
+		out += " at " + html.EscapeString(next.When.In(now.Location()).Format("15:04"))
+	}
 	if rest := len(ahead) - 1; rest > 0 {
-		out += ", and " + strconv.Itoa(rest) + " more today"
+		// The Home fetch is bounded. Do not present a partial count as the total.
+		if len(external) >= events.PreviewLimit {
+			out += ", with more today"
+		} else {
+			out += ", and " + strconv.Itoa(rest) + " more today"
+		}
 	}
 	return out + "."
 }

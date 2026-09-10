@@ -214,3 +214,21 @@ func TestBriefDoesNotAnnounceItsOwnDelivery(t *testing.T) {
 		t.Fatalf("schedule appeared in brief: %s", got)
 	}
 }
+
+func TestTheBriefIncludesSelectedCalendarEvents(t *testing.T) {
+	const who = "briefexternal"
+	now := time.Now()
+	next := now.Add(time.Minute)
+	if !sameDay(now, next) {
+		t.Skip("day boundary")
+	}
+	got := onToday(who, events.External{Title: "Google <meeting>", Start: next})
+	if !strings.Contains(got, "Google &lt;meeting&gt;") {
+		t.Fatalf("missing selected calendar event: %s", got)
+	}
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	got = onToday(who, events.External{Title: "All-day visit", Start: start, End: start.AddDate(0, 0, 1), AllDay: true})
+	if !strings.Contains(got, "All-day visit</a> today") || strings.Contains(got, " at ") {
+		t.Fatalf("all-day event treated as a timed meeting: %s", got)
+	}
+}

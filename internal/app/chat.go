@@ -161,6 +161,9 @@ type ChatConfig struct {
 	// conversation is: it left the newest turn at the top, the input above it,
 	// and everything older stretching away below.
 	Transcript bool
+
+	// Contained limits the height of a conversation beneath its composer.
+	Contained bool
 }
 
 // ChatComponent returns the single, shared chat UI used everywhere Mu talks to
@@ -441,6 +444,9 @@ func ChatComponent(cfg ChatConfig) string {
 	composer := form + doors + opts
 	body := composer + suggest + conv
 	shell := `<div id="mu-chat">`
+	if cfg.Contained {
+		shell = `<div id="mu-chat" class="mu-chat-contained">`
+	}
 	if cfg.Transcript {
 		body = conv + suggest + composer
 		shell = `<div id="mu-chat" class="mu-chat-transcript">`
@@ -477,6 +483,7 @@ func ChatComponent(cfg ChatConfig) string {
    the box moved to a page the token does not reach. 30px is what mu.css sets. */
 #mu-chat-form button{flex-shrink:0;width:var(--control-h,30px);height:var(--control-h,30px);min-width:var(--control-h,30px);padding:0;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
 #mu-chat-suggest{margin-top:16px}
+#mu-chat-suggest:empty{display:none}
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .mu-pills a{padding:8px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#555;text-decoration:none;cursor:pointer}
 .mu-pills a:hover{background:#f5f5f5}
@@ -495,6 +502,12 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}
 #mu-chat-conv:empty{margin-top:0}
 .mu-chat-footer{margin-top:16px}
+#mu-chat.mu-chat-contained #mu-chat-conv {
+  max-height: min(48dvh, 420px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
 /* A conversation, not a box.
 
    The turns scroll in their own region and the input sits under them, which is
@@ -602,6 +615,7 @@ var conv=document.getElementById('mu-chat-conv');
 // A transcript keeps its input at the bottom and its newest turn above it.
 // See ChatConfig.Transcript.
 var transcript=!!document.querySelector('#mu-chat.mu-chat-transcript');
+var contained=!!document.querySelector('#mu-chat.mu-chat-contained');
 
 // The brief steps aside when you ask.
 //
@@ -613,8 +627,8 @@ var transcript=!!document.querySelector('#mu-chat.mu-chat-transcript');
 // of the page ends up below a conversation.
 //
 // So asking replaces it, and starting a fresh session brings it back. Anything
-// marked data-brief takes part; the landing page and Home both mark theirs, and
-// nothing else has to know this exists.
+// marked data-brief takes part. Home keeps its brief in a separate column,
+// so it remains available during a conversation.
 function briefs(){return document.querySelectorAll('[data-brief]');}
 function hideBrief(){var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=true;}}
 function showBrief(){var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=false;}}
@@ -630,12 +644,13 @@ function revealQuestion(node){
   if(transcript){toBottom(false);return;}
   requestAnimationFrame(function(){
     if(!node||!node.isConnected)return;
+    if(contained){conv.scrollTo({top:node.getBoundingClientRect().top-conv.getBoundingClientRect().top+conv.scrollTop,behavior:"smooth"});return;}
     node.style.scrollMarginTop=Math.max(64,(form?form.getBoundingClientRect().height:0)+24)+"px";
     node.scrollIntoView({behavior:"smooth",block:"start"});
   });
 }
 function toBottom(force,smooth){
-  if(!transcript) return;
+  if(!transcript&&!contained) return;
   if(!force && !nearBottom()) return;
   requestAnimationFrame(function(){
     conv.scrollTo({top:conv.scrollHeight,behavior:smooth?'smooth':'auto'});

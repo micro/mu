@@ -18,6 +18,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/event"
 	"mu/internal/service"
+	"mu/service/events"
 	"mu/service/news"
 )
 
@@ -269,6 +270,18 @@ func ForceRefresh() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("section") == "upcoming" {
+		sess, _ := auth.TrySession(r)
+		w.Header().Set("Cache-Control", "private, no-store")
+		if sess == nil {
+			http.Error(w, "Sign in to see upcoming events", http.StatusUnauthorized)
+			return
+		}
+		now := time.Now()
+		external := events.ExternalEvents(sess.Account, now, now.Add(30*24*time.Hour), events.PreviewLimit)
+		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...)})
+		return
+	}
 	// An installed app opens on the app, not on a pitch.
 	//
 	// The manifest's start_url was "/", so tapping the icon on a home screen
@@ -427,38 +440,32 @@ function fetchW(la,lo){
 	b.WriteString(homeViews(feed))
 	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
 
-	// Desktop keeps the prompt and inbox beside the brief and agents.
-	b.WriteString(`<div class="home-workspace">`)
-	{
-		b.WriteString(`<div id="home-agent" class="page-stack">`)
-		b.WriteString(app.ChatComponent(app.ChatConfig{
-			FooterHTML:      appsHTML(viewerAcc),
-			Ask:             true,
-			HideSuggestions: true,
-			Placeholder:     "What do you need?",
-			// Who answers, for the byline over the reply. The default agent,
-			// which is what an unpicked box reaches — see agent.DefaultName.
-			AgentName:        agent.DefaultName(),
-			OfferAgentPicker: viewerID != "",
-			// Read-back needs an answer to read, and a signed-out reader
-			// cannot get one — see ChatConfig.Speak. Same condition as the
-			// picker, and for the same reason: both are decisions about a
-			// conversation somebody is able to have.
-			Speak: viewerID != "",
-		}))
-
-		b.WriteString(`</div>`)
-	}
+	// Each column flows independently as a conversation grows.
+	b.WriteString(`<div class="home-workspace"><div class="home-column page-stack">`)
+	b.WriteString(`<div id="home-agent" class="page-stack"><script>window.muActiveAgent="";</script>`)
+	b.WriteString(app.ChatComponent(app.ChatConfig{
+		FooterHTML:      appsHTML(viewerAcc),
+		Ask:             true,
+		HideSuggestions: true,
+		Placeholder:     "What do you need?",
+		AgentName:       agent.DefaultName(),
+		Contained:       true,
+	}))
+	b.WriteString(`</div>`)
 	if viewerID != "" {
-		if brief := briefHTML(viewerID); brief != "" {
-			b.WriteString(`<div id="home-brief" data-brief class="page-stack">` + brief + `</div>`)
-		}
 		if peek := inbox.Preview(viewerID); peek != "" {
 			b.WriteString(`<div id="home-inbox" class="page-stack">` + sectionRule("Inbox") + peek + `</div>`)
 		}
+	}
+	b.WriteString(`</div>`)
+	if viewerID != "" {
+		b.WriteString(`<div class="home-column page-stack">`)
+		b.WriteString(`<div id="home-upcoming" class="page-stack">` + sectionRule("Upcoming events") + `<div data-home-upcoming aria-live="polite" class="page-stack"><p class="text-muted">Loading events…</p></div>` + `</div>`)
+		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID) + `</div>`)
 		if who := agent.Preview(viewerID); who != "" {
 			b.WriteString(`<div id="home-agents" class="page-stack">` + sectionRule("Agents") + who + `</div>`)
 		}
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
 
