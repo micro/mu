@@ -21,11 +21,11 @@ mv -f "$next" "$binary"
 
 # Preserve the existing idempotent socket-activation migration.
 sh "$stage/enable-zero-downtime.sh" || true
-if sudo -n systemctl restart mu.service && systemctl is-active --quiet mu.service; then
+if sudo -n systemctl restart mu && systemctl is-active --quiet mu.service; then
   echo 'Deploy complete'
 else
   echo 'Restart failed; restoring the previous binary' >&2
   mv -f "${binary}.previous" "$binary"
-  sudo -n systemctl restart mu.service
+  sudo -n systemctl restart mu
   exit 1
 fi
