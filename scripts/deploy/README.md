@@ -30,14 +30,21 @@ Point nginx at the same address the socket listens on (`127.0.0.1:8080`).
 
 ## Redeploy
 
-Unchanged from before — the deploy workflow's `systemctl restart mu` still works
-(restart `mu.service`, not the socket):
+The main-branch CI build retains its Linux binaries as artifacts. After the
+same run passes tests (including the race detector), it calls the deployment
+workflow. That workflow selects the server's architecture and transfers the
+existing artifact; neither the deploy job nor the server recompiles it.
 
-```bash
-git pull origin main
-go install
-sudo systemctl restart mu.service   # socket stays up → connections queue, no 502
-```
+The server verifies the transfer checksum, checks that the binary runs, and
+atomically replaces the executable configured in `mu.service`. The previous
+binary is kept alongside it as `mu.previous` and restored if restarting fails or the new process exits/restarts during a ten-second
+stability check.
+The socket stays up during the restart. Deployment runs are serialized, and
+superseded commits are skipped before transfer.
+
+The server needs SSH, standard Linux file utilities and permission for user
+`mu` to restart the service. Go and a source checkout are no longer used by
+deployment; keep the service's existing working directory and environment file.
 
 ## Notes
 
