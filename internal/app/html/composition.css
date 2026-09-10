@@ -134,7 +134,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 
 /* Compact previews keep metadata close and separate adjacent entries. */
 .compact-list { display: flex; flex-direction: column; }
-.compact-list-item { display: flex; flex-direction: column; gap: 2px; padding-block: 12px; }
+.compact-list > .compact-list-item { display: flex; flex-direction: column; gap: 2px; padding-block: var(--space-control); margin: 0; font-size: 14px; font-weight: 400; }
 .compact-list-item:first-child { padding-block-start: 0; }
 .compact-list-item:last-child { padding-block-end: 0; }
 .compact-list-item + .compact-list-item { border-top: 1px solid var(--card-border, #e8e8e8); }

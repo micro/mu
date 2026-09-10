@@ -441,6 +441,7 @@ func Busy(accountID string, from, to time.Time) ([]Period, error) {
 
 // Entry is one event on the person's real calendar.
 type Entry struct {
+	URL string `json:"url,omitempty"`
 	// UID identifies the same invitation appearing on several selected calendars.
 	UID      string `json:"-"`
 	Title    string
@@ -537,6 +538,7 @@ func calendarEvents(token, calendarID string, from, to time.Time, limit int) ([]
 		var out struct {
 			NextPageToken string `json:"nextPageToken"`
 			Items         []struct {
+				URL      string `json:"htmlLink"`
 				UID      string `json:"iCalUID"`
 				Summary  string `json:"summary"`
 				Location string `json:"location"`
@@ -561,7 +563,7 @@ func calendarEvents(token, calendarID string, from, to time.Time, limit int) ([]
 			if it.Status == "cancelled" {
 				continue
 			}
-			e := Entry{UID: it.UID, Title: strings.TrimSpace(it.Summary), Location: strings.TrimSpace(it.Location)}
+			e := Entry{URL: it.URL, UID: it.UID, Title: strings.TrimSpace(it.Summary), Location: strings.TrimSpace(it.Location)}
 			if e.Title == "" {
 				e.Title = "(no title)"
 			}

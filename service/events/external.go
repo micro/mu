@@ -21,6 +21,7 @@ import "time"
 // External is one entry on a calendar Mu does not own. Read-only by
 // construction: there is no id here to cancel by, because Mu cannot cancel it.
 type External struct {
+	URL      string    `json:"url,omitempty"`
 	Title    string    `json:"title"`
 	Start    time.Time `json:"start"`
 	End      time.Time `json:"end"`

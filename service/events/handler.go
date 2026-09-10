@@ -58,6 +58,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if id := r.URL.Query().Get("id"); id != "" {
+		detailHandler(w, r, owner, id)
+		return
+	}
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
 
@@ -102,7 +106,7 @@ func eventRow(e *Event, csrf string) string {
 	}
 	return fmt.Sprintf(`<div class="pick-row-box">
 <div class="grow">
-  <div class="semibold text-base">%s</div>
+  <a class="text-base no-underline" href="%s">%s</a>
   <div class="text-sm link-colour">%s</div>
   %s
 </div>
@@ -114,6 +118,7 @@ func eventRow(e *Event, csrf string) string {
   <button type="submit" title="Cancel" class="plain-btn faint">&times;</button>
 </form>
 </div>`,
+		html.EscapeString(eventURL(e.ID)),
 		html.EscapeString(e.Title),
 		e.When.Local().Format("Mon 2 Jan, 15:04"),
 		note,
@@ -163,12 +168,12 @@ func externalRow(x External) string {
 	}
 	return fmt.Sprintf(`<div class="pick-row-box soft">
 <div class="grow">
-  <div class="semibold text-base">%s</div>
+  <a class="text-base no-underline" href="%s">%s</a>
   <div class="text-sm link-colour">%s</div>
   %s
 </div>
 <span class="text-2xs text-muted nowrap">%s</span>
-</div>`, html.EscapeString(x.Title), html.EscapeString(when), where, html.EscapeString(source))
+</div>`, html.EscapeString(externalURL(x)), html.EscapeString(x.Title), html.EscapeString(when), where, html.EscapeString(source))
 }
 
 // calendarCard is the ask, and afterwards the receipt.

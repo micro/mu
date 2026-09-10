@@ -444,7 +444,6 @@ function fetchW(la,lo){
 	b.WriteString(`<div class="home-workspace"><div class="home-column page-stack">`)
 	b.WriteString(`<div id="home-agent" class="page-stack"><script>window.muActiveAgent="";</script>`)
 	b.WriteString(app.ChatComponent(app.ChatConfig{
-		FooterHTML:      appsHTML(viewerAcc),
 		Ask:             true,
 		HideSuggestions: true,
 		Placeholder:     "What do you need?",
@@ -452,6 +451,10 @@ function fetchW(la,lo){
 		Contained:       true,
 	}))
 	b.WriteString(`</div>`)
+	if viewerID != "" {
+		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID) + `</div>`)
+	}
+	b.WriteString(appsHTML(viewerAcc))
 	if viewerID != "" {
 		if peek := inbox.Preview(viewerID); peek != "" {
 			b.WriteString(`<div id="home-inbox" class="page-stack">` + sectionRule("Inbox") + peek + `</div>`)
@@ -461,7 +464,6 @@ function fetchW(la,lo){
 	if viewerID != "" {
 		b.WriteString(`<div class="home-column page-stack">`)
 		b.WriteString(`<div id="home-upcoming" class="page-stack">` + sectionRule("Upcoming") + `<div data-home-upcoming aria-live="polite" class="page-stack"><p class="text-muted">Loading events…</p></div>` + `</div>`)
-		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID) + `</div>`)
 		if who := agent.Preview(viewerID); who != "" {
 			b.WriteString(`<div id="home-agents" class="page-stack">` + sectionRule("Agents") + who + `</div>`)
 		}

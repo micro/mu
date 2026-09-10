@@ -862,7 +862,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request, category string) {
 	priceData := AllPriceData()
 
 	// Generate HTML for the selected category
-	body := generateMarketsPage(priceData, category, converterHTML(r))
+	body := generateMarketsPage(priceData, category, "")
 
 	app.Respond(w, r, app.Response{
 		Title:       "Markets",
