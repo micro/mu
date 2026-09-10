@@ -55,7 +55,7 @@
 .form.page-section { margin-block-end: var(--space-section); }
 /* An in-page view switch. Panels keep their own content and state. */
 .view-switch { display: flex; gap: var(--space-field); border-bottom: 1px solid var(--card-border, #e8e8e8); margin-block: 0 var(--space-section); }
-.view-switch [role=tab] { display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-control); border-bottom: 2px solid transparent; color: var(--text-muted, #707070); font-weight: 400; text-decoration: none; }
+.view-switch [role=tab] { box-sizing: border-box; display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-control); border-bottom: 2px solid transparent; color: var(--text-muted, #707070); font-weight: 400; text-decoration: none; }
 .view-switch [role=tab][aria-selected=true] { color: var(--text-primary, #3c3c3c); border-bottom-color: currentColor; }
 .page-stack > *, .page-section > * { margin-block: 0; min-width: 0; }
 .section-actions, .check-label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-control); }
