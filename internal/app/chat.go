@@ -42,6 +42,9 @@ func JSAttr(s string) string {
 
 // ChatConfig configures the shared chat component.
 type ChatConfig struct {
+	// ComposerFooterHTML is trusted, pre-rendered content kept below the composer
+	// controls and above the conversation. Callers must escape user text.
+	ComposerFooterHTML string
 	// Ask makes this box talk to the agent. Without it, it searches.
 	//
 	// A default of search rather than of asking, because the pages that want a
@@ -435,10 +438,14 @@ func ChatComponent(cfg ChatConfig) string {
 	}
 
 	// Two orders, one component. See ChatConfig.Transcript.
-	body := form + doors + opts + suggest + conv
+	composer := form + doors + opts
+	if cfg.ComposerFooterHTML != "" {
+		composer = `<div class="page-stack">` + composer + cfg.ComposerFooterHTML + `</div>`
+	}
+	body := composer + suggest + conv
 	shell := `<div id="mu-chat">`
 	if cfg.Transcript {
-		body = conv + suggest + form + doors + opts
+		body = conv + suggest + composer
 		shell = `<div id="mu-chat" class="mu-chat-transcript">`
 	}
 

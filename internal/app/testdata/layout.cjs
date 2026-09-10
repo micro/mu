@@ -151,17 +151,29 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert((await page.locator('#page-title').textContent()).includes('Welcome back'),'Home title is not a greeting');
     const layout=await page.evaluate(()=>{
       const rect=s=>document.querySelector(s).getBoundingClientRect();
-      return {tabs:rect('.view-switch'),personal:rect('#home-personal'),primary:rect('.home-primary'),context:rect('.home-context')};
+      return {tabs:rect('.view-switch'),personal:rect('#home-personal'),prompt:rect('#home-agent'),brief:rect('#home-brief'),heading:rect('#home-brief .home-section'),inbox:rect('#home-inbox'),agents:rect('#home-agents'),status:rect('#home-status')};
     });
     assert(Math.abs(layout.tabs.x-layout.personal.x)<1,'Home is inset from tabs');
-    if(width>=1100) assert(layout.context.x>layout.primary.x+layout.primary.width,'context is not alongside primary');
-    else assert(layout.context.y>=layout.primary.y+layout.primary.height,'mobile context precedes primary');
-    const account=page.locator('#home-personal > details');
-    assert(!await account.evaluate(el=>el.open),'account controls compete with primary content');
-    await account.locator('summary').click();
+    if(width>=1100) {
+      assert(layout.brief.x>layout.prompt.x+layout.prompt.width,'brief is not on the right');
+      assert(Math.abs(layout.heading.y-layout.prompt.y)<1,'brief heading is not aligned with prompt');
+      assert(layout.inbox.y>=layout.prompt.y+layout.prompt.height,'inbox precedes prompt');
+    } else {
+      assert(layout.brief.y>=layout.prompt.y+layout.prompt.height,'brief precedes prompt/status');
+      assert(layout.inbox.y>=layout.brief.y+layout.brief.height,'inbox precedes brief');
+      assert(layout.agents.y>=layout.inbox.y+layout.inbox.height,'agents precede inbox');
+    }
     assert(await page.locator('#home-status').isVisible(),'profile status is inaccessible');
-    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'expanded Home overflows');
-    await account.locator('summary').click();
+    assert(await page.evaluate(()=>Boolean(document.querySelector('#home-brief').compareDocumentPosition(document.querySelector('#home-inbox'))&Node.DOCUMENT_POSITION_FOLLOWING)),'DOM order differs from mobile order');
+    await page.locator('#mu-chat-conv').evaluate(el=>{el.innerHTML='<p style="height:800px">A long answer</p>';});
+    assert(await page.evaluate(()=>document.querySelector('#home-status').getBoundingClientRect().bottom<=document.querySelector('#mu-chat-conv').getBoundingClientRect().top),'status moved below the conversation');
+    await page.locator('#mu-chat-conv').evaluate(el=>{el.innerHTML='';});
+
+    assert(await page.locator('#home-personal > details').count()===0,'account disclosure remains');
+    await page.locator('[data-status-edit]').click();
+    assert(await page.locator('[data-status-input]').isVisible(),'status editor cannot open');
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'status editor overflows');
+    await page.locator('[data-status-input]').press('Escape');
 
     const input=page.locator('#mu-chat-input');
     await input.fill('Keep this draft');

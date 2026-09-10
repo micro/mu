@@ -431,14 +431,15 @@ function fetchW(la,lo){
 	b.WriteString(homeViews(feed))
 	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
 
-	// Reading order is prompt, inbox, brief, then agents.
-	b.WriteString(`<div class="home-workspace"><div class="home-primary page-stack">`)
+	// Desktop keeps the prompt and inbox beside the brief and agents.
+	b.WriteString(`<div class="home-workspace">`)
 	{
-		b.WriteString(`<div id="home-agent">`)
+		b.WriteString(`<div id="home-agent" class="page-stack">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{
-			Ask:             true,
-			HideSuggestions: true,
-			Placeholder:     "What do you need?",
+			ComposerFooterHTML: statusForm(r, viewerID),
+			Ask:                true,
+			HideSuggestions:    true,
+			Placeholder:        "What do you need?",
 			// Who answers, for the byline over the reply. The default agent,
 			// which is what an unpicked box reaches — see agent.DefaultName.
 			AgentName: agent.DefaultName(),
@@ -463,29 +464,19 @@ function fetchW(la,lo){
 		}))
 
 		b.WriteString(`</div>`)
-		if viewerID != "" {
-			if peek := inbox.Preview(viewerID); peek != "" {
-				b.WriteString(`<div id="home-inbox">` + sectionRule("Inbox") + peek + `</div>`)
-			}
-		}
 	}
-	b.WriteString(`</div>`)
-	var context strings.Builder
 	if viewerID != "" {
 		if brief := briefHTML(viewerID); brief != "" {
-			context.WriteString(`<div id="home-brief" data-brief>` + brief + `</div>`)
+			b.WriteString(`<div id="home-brief" data-brief class="page-stack">` + brief + `</div>`)
+		}
+		if peek := inbox.Preview(viewerID); peek != "" {
+			b.WriteString(`<div id="home-inbox" class="page-stack">` + sectionRule("Inbox") + peek + `</div>`)
 		}
 		if who := agent.Preview(viewerID); who != "" {
-			context.WriteString(`<div id="home-agents">` + sectionRule("Agents") + who + `</div>`)
+			b.WriteString(`<div id="home-agents" class="page-stack">` + sectionRule("Agents") + who + `</div>`)
 		}
 	}
-	if context.Len() > 0 {
-		b.WriteString(`<aside class="home-context page-stack" aria-label="Daily context">` + context.String() + `</aside>`)
-	}
 	b.WriteString(`</div>`)
-	if viewerID != "" {
-		b.WriteString(`<details class="disclosure"><summary>Account and status</summary><div class="page-stack">` + statusForm(r, viewerID) + walletHTML(viewerID) + `</div></details>`)
-	}
 
 	b.WriteString(`</section><section id="home-feed" role="tabpanel" aria-labelledby="home-view-feed"` + panelHidden(!feed) + `><div class="home-main full">`)
 	cards := CardsHTML(r, viewerAcc)
