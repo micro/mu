@@ -19,7 +19,12 @@ func TestChatCompletionAndRecovery(t *testing.T) {
 	}
 	text := string(src)
 	start := strings.Index(text, "function ask(q){")
-	end := strings.Index(text, "form.addEventListener('submit',")
+	end := -1
+	if start >= 0 {
+		if offset := strings.Index(text[start:], "form.addEventListener('submit',"); offset >= 0 {
+			end = start + offset
+		}
+	}
 	if start < 0 || end <= start {
 		t.Fatal("chat function not found")
 	}

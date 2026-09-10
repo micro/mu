@@ -1,3 +1,4 @@
+globalThis.overlay=false;
 const fs=require('fs'),assert=require('assert');
 const source=JSON.parse(fs.readFileSync(0,'utf8'));
 const frame=e=>'data: '+JSON.stringify(e)+'\n\n';
