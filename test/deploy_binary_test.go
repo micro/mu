@@ -11,7 +11,7 @@ import (
 )
 
 func TestInstallCIBinary(t *testing.T) {
-	for _, scenario := range []string{"success", "corrupt", "cannot-run", "restart-fails"} {
+	for _, scenario := range []string{"success", "corrupt", "cannot-run", "restart-fails", "late-exit", "restart-loop"} {
 		t.Run(scenario, func(t *testing.T) {
 			root := t.TempDir()
 			stage, bin, mocks := filepath.Join(root, "stage"), filepath.Join(root, "bin"), filepath.Join(root, "mocks")
@@ -42,17 +42,27 @@ func TestInstallCIBinary(t *testing.T) {
 			write(filepath.Join(stage, "enable-zero-downtime.sh"), "#!/bin/sh\nexit 0\n")
 			write(filepath.Join(mocks, "systemctl"), `#!/bin/sh
 case "$1" in
- show) printf '{ path=%s ; argv[]=%s --serve ; }\n' "$TEST_BINARY" "$TEST_BINARY" ;;
+ show)
+  if [ "$2" = --property=MainPID ]; then
+   if [ "$TEST_SCENARIO" = restart-loop ] && test -e "$TEST_LOG.pid"; then echo 456; else echo 123; fi
+   touch "$TEST_LOG.pid"
+   exit 0
+  fi
+  printf '{ path=%s ; argv[]=%s --serve ; }\n' "$TEST_BINARY" "$TEST_BINARY" ;;
  restart)
   echo restart >> "$TEST_LOG"
   if [ "$TEST_SCENARIO" = restart-fails ] && ! test -e "$TEST_LOG.failed"; then
    touch "$TEST_LOG.failed"
    exit 1
   fi ;;
- is-active) exit 0 ;;
+ is-active)
+  if [ "$TEST_SCENARIO" = late-exit ] && test -e "$TEST_LOG.active"; then exit 1; fi
+  touch "$TEST_LOG.active"
+  exit 0 ;;
  *) exit 99 ;;
 esac
 `)
+			write(filepath.Join(mocks, "sleep"), "#!/bin/sh\nexit 0\n")
 			write(filepath.Join(mocks, "sudo"), "#!/bin/sh\n[ \"$1\" = -n ] && shift\nexec \"$@\"\n")
 			// Keep an open handle to verify atomic replacement preserves the old inode.
 			handle, err := os.Open(installed)
@@ -91,11 +101,49 @@ esac
 			if scenario == "success" {
 				expected = 1
 			}
-			if scenario == "restart-fails" {
+			if scenario == "restart-fails" || scenario == "late-exit" || scenario == "restart-loop" {
 				expected = 2
 			}
 			if count != expected {
 				t.Fatalf("restart count %d, want %d", count, expected)
+			}
+		})
+	}
+}
+
+func TestDeployArchitectureOutput(t *testing.T) {
+	workflow, err := os.ReadFile(at(".github/workflows/deploy.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(workflow)
+	start := strings.Index(text, "          architecture=$(printf")
+	if start < 0 {
+		t.Fatal("missing architecture parser")
+	}
+	end := strings.Index(text[start:], "\n\n")
+	if end < 0 {
+		t.Fatal("missing parser end")
+	}
+	script := "set -e\n" + text[start:start+end]
+	for _, tt := range []struct{ name, input, want string }{
+		{"bare", "MU_DEPLOY_ARCH=amd64\n", "arch=amd64\n"},
+		{"formatted", "======CMD======\nprintf 'MU_DEPLOY_ARCH=%s\\n' \"$architecture\"\n======END======\nout: MU_DEPLOY_ARCH=arm64\r\nSuccessfully executed commands\n", "arch=arm64\n"},
+		{"unknown", "MU_DEPLOY_ARCH=unknown\n", ""},
+		{"duplicate", "MU_DEPLOY_ARCH=amd64\nMU_DEPLOY_ARCH=arm64\n", ""},
+		{"noise", "amd64\n", ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			output := filepath.Join(t.TempDir(), "output")
+			cmd := exec.Command("sh", "-c", script)
+			cmd.Env = append(os.Environ(), "SSH_OUTPUT="+tt.input, "GITHUB_OUTPUT="+output)
+			log, err := cmd.CombinedOutput()
+			if (err == nil) != (tt.want != "") {
+				t.Fatalf("unexpected result %v: %s", err, log)
+			}
+			got, _ := os.ReadFile(output)
+			if string(got) != tt.want {
+				t.Fatalf("got %q, want %q", got, tt.want)
 			}
 		})
 	}

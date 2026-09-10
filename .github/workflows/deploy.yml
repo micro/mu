@@ -39,22 +39,33 @@ jobs:
             set -e
             test "$(uname -s)" = Linux
             case "$(uname -m)" in
-              x86_64) echo amd64 ;;
-              aarch64|arm64) echo arm64 ;;
+              x86_64) architecture=amd64 ;;
+              aarch64|arm64) architecture=arm64 ;;
               *) echo 'Unsupported server architecture' >&2; exit 1 ;;
             esac
+            printf 'MU_DEPLOY_ARCH=%s\n' "$architecture"
+
+      - name: Parse server architecture
+        if: steps.current.outputs.deploy == 'true'
+        id: architecture
+        env:
+          SSH_OUTPUT: ${{ steps.server.outputs.stdout }}
+        run: |
+          architecture=$(printf '%s\n' "$SSH_OUTPUT" | tr -d '\r' | sed -n 's/^\(out: *\)\{0,1\}MU_DEPLOY_ARCH=\(amd64\|arm64\)$/\2/p')
+          case "$architecture" in amd64|arm64) ;; *) echo "Invalid server architecture response" >&2; exit 1 ;; esac
+          echo "arch=$architecture" >> "$GITHUB_OUTPUT"
 
       - name: Download the verified build
         if: steps.current.outputs.deploy == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: mu-linux-${{ steps.server.outputs.stdout }}
+          name: mu-linux-${{ steps.architecture.outputs.arch }}
           path: dist
 
       - name: Prepare transfer
         if: steps.current.outputs.deploy == 'true'
         env:
-          SERVER_ARCH: ${{ steps.server.outputs.stdout }}
+          SERVER_ARCH: ${{ steps.architecture.outputs.arch }}
         run: |
           case "$SERVER_ARCH" in amd64|arm64) ;; *) exit 1 ;; esac
           mv "dist/mu-linux-${SERVER_ARCH}" dist/mu

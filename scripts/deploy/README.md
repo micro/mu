@@ -37,7 +37,8 @@ existing artifact; neither the deploy job nor the server recompiles it.
 
 The server verifies the transfer checksum, checks that the binary runs, and
 atomically replaces the executable configured in `mu.service`. The previous
-binary is kept alongside it as `mu.previous` and restored if restarting fails.
+binary is kept alongside it as `mu.previous` and restored if restarting fails or the new process exits/restarts during a ten-second
+stability check.
 The socket stays up during the restart. Deployment runs are serialized, and
 superseded commits are skipped before transfer.
 

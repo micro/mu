@@ -21,7 +21,18 @@ mv -f "$next" "$binary"
 
 # Preserve the existing idempotent socket-activation migration.
 sh "$stage/enable-zero-downtime.sh" || true
-if sudo -n systemctl restart mu && systemctl is-active --quiet mu.service; then
+# Type=simple becomes active before initialization finishes. Require the same
+# process to remain active for ten seconds, including across automatic restarts.
+stable() {
+  pid=$(systemctl show --property=MainPID --value mu.service)
+  case "$pid" in ''|0|*[!0-9]*) return 1 ;; esac
+  for check in 1 2 3 4 5; do
+    sleep 2
+    systemctl is-active --quiet mu.service || return 1
+    test "$(systemctl show --property=MainPID --value mu.service)" = "$pid" || return 1
+  done
+}
+if sudo -n systemctl restart mu && stable; then
   echo 'Deploy complete'
 else
   echo 'Restart failed; restoring the previous binary' >&2
