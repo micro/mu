@@ -30,7 +30,7 @@ func TestAppsAlwaysOfferUsefulDefaults(t *testing.T) {
 		}
 	}
 	body := appsHTML(&auth.Account{Pinned: []string{"video"}})
-	if !strings.Contains(body, `href="/video"`) || strings.Contains(body, `href="/news"`) {
-		t.Error("explicit pins were not used")
+	if strings.Index(body, `href="/video"`) < 0 || strings.Index(body, `href="/video"`) > strings.Index(body, `href="/news"`) {
+		t.Error("explicit pins were not placed first")
 	}
 }

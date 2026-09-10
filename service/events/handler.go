@@ -61,29 +61,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
 
-	// Add form. The datetime-local value is local to the browser; a tiny script
-	// converts it to an RFC3339 UTC instant on submit so 3pm means the user's
-	// 3pm regardless of the server's timezone.
-	b.WriteString(`<div class="page-col">`)
+	if r.URL.Query().Get("new") == "1" {
+		app.Respond(w, r, app.Response{Title: "New event", HTML: eventForm(csrf)})
+		return
+	}
+	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
 	b.WriteString(briefScheduleHTML(owner, csrf))
-	b.WriteString(`<form method="POST" action="/events" onsubmit="var d=this.whenlocal.value;if(d){this.when.value=new Date(d).toISOString()}" class="form page-section">`)
-	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">`)
-	b.WriteString(`<input type="hidden" name="action" value="create">`)
-	b.WriteString(`<input type="hidden" name="when" value="">`)
-	b.WriteString(`<input type="text" name="title" placeholder="Remind me to…" required maxlength="140" class="form-input text-base">`)
-	b.WriteString(`<div class="d-flex gap-2 flex-wrap">`)
-	b.WriteString(`<input type="datetime-local" name="whenlocal" required class="form-input text-base grow">`)
-	b.WriteString(`<button type="submit">Schedule</button>`)
-	b.WriteString(`</div>`)
-	b.WriteString(`<input type="text" name="note" placeholder="Note (optional)" maxlength="280" class="form-input text-base">`)
-	b.WriteString(`</form>`)
 
 	up := Upcoming(owner)
 	now := time.Now()
 	ext := ExternalEvents(owner, now, now.Add(30*24*time.Hour), 0)
 
 	if len(up) == 0 && len(ext) == 0 {
-		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Add a reminder above, or just ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
+		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Choose New to add an event, or ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
 	} else {
 		b.WriteString(`<h3 class="lead-15 m-0 mb-3">Upcoming</h3>`)
 		b.WriteString(`<div class="d-flex flex-column gap-2">`)
@@ -206,7 +196,7 @@ func calendarCard(owner, status, csrf string) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card mt-6">`)
+	b.WriteString(`<div class="card">`)
 	b.WriteString(note)
 
 	if HasExternal(owner) {

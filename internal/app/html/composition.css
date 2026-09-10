@@ -131,3 +131,19 @@ a.btn-secondary:hover, .btn-secondary:hover {
 /* Tables need the available page width, rather than a prose measure. */
 .log-tables .card { max-width: none; width: 100%; }
 #content:has(.log-tables) { max-width: none; }
+
+/* Compact previews keep metadata close and separate adjacent entries. */
+.compact-list { display: flex; flex-direction: column; }
+.compact-list-item { display: flex; flex-direction: column; gap: 2px; padding-block: 12px; }
+.compact-list-item:first-child { padding-block-start: 0; }
+.compact-list-item:last-child { padding-block-end: 0; }
+.compact-list-item + .compact-list-item { border-top: 1px solid var(--card-border, #e8e8e8); }
+/* The launcher fits its column, including when the sidebar changes width. */
+.home-apps { container-type: inline-size; }
+.home-apps-grid > a:nth-child(n+5) { display: none; }
+@container (min-width: 344px) { .home-apps-grid > a:nth-child(5) { display: flex; } }
+@container (min-width: 416px) { .home-apps-grid > a:nth-child(6) { display: flex; } }
+@container (min-width: 488px) { .home-apps-grid > a:nth-child(7) { display: flex; } }
+@container (min-width: 560px) { .home-apps-grid > a:nth-child(8) { display: flex; } }
+@container (min-width: 632px) { .home-apps-grid > a:nth-child(9) { display: flex; } }
+@container (min-width: 704px) { .home-apps-grid > a:nth-child(10) { display: flex; } }

@@ -17,7 +17,7 @@ func Preview(owner string, external []External) string {
 	now := time.Now()
 	rows := mergedRows(Upcoming(owner), external)
 	var b strings.Builder
-	b.WriteString(`<div class="page-stack">`)
+	b.WriteString(`<div class="card compact-list">`)
 	count := 0
 	for _, row := range rows {
 		title, when, allDay := row.External.Title, row.When, row.External.AllDay
@@ -33,7 +33,7 @@ func Preview(owner string, external []External) string {
 			label = when.Format("Mon 2 Jan") + ", all day"
 			stamp = ""
 		}
-		b.WriteString(`<a href="/events" class="link page-stack gap-2"><span>` + html.EscapeString(title) + `</span><small class="text-muted"><time datetime="` + when.Format(time.RFC3339) + `"` + stamp + `>` + html.EscapeString(label) + `</time></small></a>`)
+		b.WriteString(`<a href="/events" class="link compact-list-item"><span>` + html.EscapeString(title) + `</span><small class="text-muted"><time datetime="` + when.Format(time.RFC3339) + `"` + stamp + `>` + html.EscapeString(label) + `</time></small></a>`)
 		count++
 		if count == PreviewLimit {
 			break
