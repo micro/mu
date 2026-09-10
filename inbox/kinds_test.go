@@ -195,3 +195,21 @@ func TestAReplyIsAlwaysAMessage(t *testing.T) {
 		t.Errorf("a reply with ?kind=note is not forced back to a message:\n%s", body)
 	}
 }
+
+func TestServiceFiltersSelectTheirOwnConversations(t *testing.T) {
+	const who = "servicefilters"
+	for _, client := range []string{"mail", "chat", "sms", "whatsapp"} {
+		said(t, who, client, "sender-"+client, "", "Only the "+client+" thread")
+	}
+	for _, client := range []string{"mail", "chat", "sms", "whatsapp"} {
+		body := inboxOf(t, who, "?kind="+client)
+		for _, other := range []string{"mail", "chat", "sms", "whatsapp"} {
+			if strings.Contains(body, "Only the "+other+" thread") != (client == other) {
+				t.Errorf("%s filter includes wrong conversations: %s", client, body)
+			}
+		}
+	}
+	if got := newKinds(""); !strings.Contains(got, ">Mail</a>") || strings.Contains(got, ">Message</a>") {
+		t.Errorf("compose picker does not call email Mail: %s", got)
+	}
+}

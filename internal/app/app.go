@@ -965,22 +965,27 @@ func CardWithIcon(id, title, icon, content string) string {
 //
 // For repo-shipped markdown that deliberately embeds HTML, use RenderTrusted.
 func Render(md []byte) []byte {
-	return render(md, false, false)
+	return render(md, false, false, 0)
 }
 
 // RenderTrusted converts markdown to HTML with raw HTML passed through. Only
 // for content that ships in the binary (the docs) — never for anything
 // that arrived over the network.
 func RenderTrusted(md []byte) []byte {
-	return render(md, true, false)
+	return render(md, true, false, 0)
 }
 
 // RenderNoImages formats private conversation context without loading sender images.
 func RenderNoImages(md []byte) []byte {
-	return render(md, false, true)
+	return render(md, false, true, 0)
 }
 
-func render(md []byte, trusted, noImages bool) []byte {
+// RenderLines renders untrusted Markdown while preserving typed line breaks.
+func RenderLines(md []byte) []byte {
+	return render(md, false, false, parser.HardLineBreak)
+}
+
+func render(md []byte, trusted, noImages bool, extra parser.Extensions) []byte {
 	// Strip LaTeX dollar sign escapes and protect plain currency before
 	// parsing markdown so downstream MathJax scanners do not treat blog cards
 	// or other rendered content as inline math.
@@ -989,7 +994,7 @@ func render(md []byte, trusted, noImages bool) []byte {
 	// create markdown parser with extensions. MathJax is intentionally disabled:
 	// Mu renders everyday prose more often than formulas, and paired currency
 	// amounts such as "$1 billion ... $94,000" must remain readable text.
-	extensions := (parser.CommonExtensions &^ parser.MathJax) | parser.AutoHeadingIDs | parser.NoEmptyLineBeforeBlock
+	extensions := (parser.CommonExtensions &^ parser.MathJax) | parser.AutoHeadingIDs | parser.NoEmptyLineBeforeBlock | extra
 	p := parser.NewWithExtensions(extensions)
 	doc := p.Parse(md)
 

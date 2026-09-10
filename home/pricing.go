@@ -99,13 +99,6 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	start += `</div>`
 	b.WriteString(start)
 
-	b.WriteString(`<div class="card"><h3>Running it yourself</h3>` +
-		`<p>Run your own instance with your API keys and pay the providers directly. ` +
-		`Without payments configured, the instance does not charge its users.</p>` +
-		`<p class="text-sm"><a href="/install">How to run it</a> · ` +
-		`<a href="/about">What this is</a> · ` +
-		`<a href="https://github.com/micro/mu">The source</a></p></div>`)
-
 	b.WriteString(dailyLimitsHTML())
 	b.WriteString(app.Close())
 

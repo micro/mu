@@ -150,3 +150,21 @@ func TestOlderBriefWithoutMailReferenceRendersMarkdown(t *testing.T) {
 		t.Fatal("changed chat formatting")
 	}
 }
+
+func TestTextConversationsKeepTheirWholeMessage(t *testing.T) {
+	for _, client := range []string{thread.ChatClient, "sms", "whatsapp"} {
+		t.Run(client, func(t *testing.T) {
+			const text = "Meet tomorrow\n\n> Bring the paperwork\n<b>literal</b>\nhttps://example.com"
+			th := &thread.Thread{Client: client, Subject: "Meet tomorrow"}
+			got := messageBlock("owner", th, thread.Message{From: "sender", Text: text}, th.Subject)
+			for _, want := range []string{"Meet tomorrow\n\n&gt; Bring", "&lt;b&gt;literal&lt;/b&gt;", `href="https://example.com"`} {
+				if !strings.Contains(got, want) {
+					t.Errorf("text changed: %s", got)
+				}
+			}
+			if strings.Contains(got, "ib-addrs") || strings.Contains(got, "ib-quoted") {
+				t.Errorf("email formatting in text: %s", got)
+			}
+		})
+	}
+}

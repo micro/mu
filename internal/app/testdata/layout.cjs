@@ -89,11 +89,33 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
    if(path.startsWith('/inbox?id=')) {
     const cards=page.locator('.ib-msg');
+    const bubbles=await page.locator('.bubble-list').count()>0;
+    const texts=bubbles||await page.locator('.message-list').count()>0;
+    const chat=await page.locator('.chat-transcript').count()>0;
     assert(await cards.count()===3,'conversation fixture is incomplete');
     await cards.first().locator('.ib-who-l').evaluate(e=>e.textContent='a-long-sender-address-that-must-wrap-without-hiding-the-date@example.com');
     const metrics=await cards.evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {top:r.top,bottom:r.bottom,width:r.width,scroll:e.scrollWidth,client:e.clientWidth,border:s.borderTopStyle,weight:getComputedStyle(e.querySelector('.ib-who-l')).fontWeight};}));
-    assert(metrics.every(m=>m.border!=='none'&&Number(m.weight)>=700&&m.scroll<=m.client+1),`message card/sender regression at ${width}: ${JSON.stringify(metrics)}`);
-    for(let i=1;i<metrics.length;i++)assert(metrics[i].top-metrics[i-1].bottom>=8,'message cards run together');
+    assert(metrics.every(m=>(texts&&!bubbles||m.border!=='none')&&Number(m.weight)>=700&&m.scroll<=m.client+1),`message card/sender regression at ${width}: ${JSON.stringify(metrics)}`);
+    for(let i=1;i<metrics.length;i++)assert(metrics[i].top-metrics[i-1].bottom>=8,'messages run together');
+    if(texts) {
+     assert(await cards.first().locator('.ib-typed').innerText().then(t=>t.includes('Second line\n> Keep this typed line')),'text message lost typed lines');
+     assert(await page.locator('.ib-addrs,.ib-quoted').count()===0,'email formatting leaked into texts');
+     if(chat)assert(await cards.first().locator('.you .msg-when').count()===1,'chat lost its room byline');
+    }
+    if(bubbles) {
+     assert(await cards.last().evaluate(e=>getComputedStyle(e).backgroundColor==='rgb(217, 253, 211)'),'WhatsApp reply lost its light green background');
+     const outgoing=page.locator('.bubble-outgoing');
+     assert(await outgoing.count()===1,'own reply not distinguished');
+     assert(await outgoing.locator('.ib-who-l').innerText()==='You','own reply mislabeled');
+     const sides=await page.locator('.bubble-list').evaluate(e=>{const r=e.getBoundingClientRect(),first=e.firstElementChild.getBoundingClientRect(),last=e.lastElementChild.getBoundingClientRect();return {left:first.left-r.left,right:r.right-last.right,inset:last.left-r.left};});
+     assert(Math.abs(sides.left)<1&&Math.abs(sides.right)<1&&sides.inset>0,`bubble alignment at ${width}: ${JSON.stringify(sides)}`);
+    }
+   }
+   if(path.startsWith('/inbox?kind=note&')) {
+    const note=page.locator('.record-card .markdown-content');
+    assert(await note.locator('p').first().locator('br').count()===2,`note lost typed line breaks: ${await note.innerHTML()}`);
+    assert(await note.locator('strong').innerText()==='Call before leaving','note lost Markdown formatting');
+    assert(await note.locator('li').count()===2,'note lost its list');
    }
    if(path==='/inbox') {
     const rows=page.locator('.ib-item');

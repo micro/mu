@@ -105,9 +105,7 @@ func contactBody(acc *auth.Account) string {
 	// under a collapsed rail. Four pages a stranger reads in one sitting, at
 	// three different widths and two different left edges. See app.Column.
 	b.WriteString(app.Column())
-	b.WriteString(`<div class="card"><h3>How to reach Micro</h3>`)
-	b.WriteString(`<p class="ccap">The same assistant, the same memory, whichever way you write. ` +
-		`A conversation you start by text is one you can carry on here.</p>`)
+	b.WriteString(`<div class="card">`)
 	b.WriteString(`<div class="clist">`)
 	// The ways a person writes to it, and not the ways a program calls it.
 	//
@@ -145,32 +143,10 @@ func contactBody(acc *auth.Account) string {
 	// number and no mail domain the card would be a name and a URL, which is a
 	// bookmark, and the button would be a promise of more than it does.
 	if client.Savable() {
-		b.WriteString(`<p class="mt-4">` + app.ActionLink("/contact.vcf", "Add to contacts") +
-			`</p><p class="ccap">Saves ` + html.EscapeString(agent.DefaultName()) +
-			` to your phone with every number and address on it.</p>`)
+		b.WriteString(`<div class="section-actions">` + app.ActionLink("/contact.vcf", "Add to contacts") + `</div>`)
 	}
 
-	// What it needs from you before any of these answer.
-	//
-	// This said texting needs an account and left mail alone, so the Email row
-	// above it — "write to it and it writes back" — was a promise this instance
-	// does not keep for the reader it was written for. A stranger who mails
-	// agent@ is dropped without a reply and without a record: see
-	// service/mail/smtp.go, where AccountForVerifiedEmail returns nothing and
-	// the message is discarded. A stranger who texts the number is filed and
-	// not answered, because service/sms only wakes an agent for a sender the
-	// account knows.
-	//
-	// So the caveat covers every row except the web, which is the one door a
-	// guest really can walk through — the box on the front page answers without
-	// an account, bounded. Naming the exception is what keeps this a fact rather
-	// than a wall: there is something you can try right now, and the rest is
-	// what an account is for.
-	if acc == nil {
-		b.WriteString(`<p class="cnext">These answer once it knows who you are. ` +
-			`The box on the <a href="/">front page</a> works without an account — ` +
-			`for the rest, <a href="/signup">make one</a> and verify your number.</p>`)
-	} else if !numberVerified(acc.ID) {
+	if acc != nil && !numberVerified(acc.ID) {
 		b.WriteString(`<p class="cnext">It will not recognise you by phone until you have ` +
 			`<a href="/sms">verified a number</a> as yours. Mail and the web already know you.</p>`)
 	}
@@ -200,7 +176,6 @@ const contactCSS = `<style>
 a.caddr{color:#0645ad}
 a.caddr:hover{text-decoration:underline}
 .cnote{grid-column:2;font-size:13px;color:#888}
-.ccap{color:#666;font-size:14px;line-height:1.5;margin:0}
 .cnext{margin:16px 0 0;font-size:14px;color:#666}
 @media (max-width:520px){
   .crow{grid-template-columns:1fr}

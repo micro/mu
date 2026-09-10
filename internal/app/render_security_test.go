@@ -164,3 +164,21 @@ func TestConversationContextDoesNotLoadImages(t *testing.T) {
 		t.Fatal(out)
 	}
 }
+
+func TestRenderLinesPreservesNotesAndSafety(t *testing.T) {
+	text := "First line\n**Second line**\n\n- one\n- two\n\n```\na\nb\n```\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))"
+	got := string(RenderLines([]byte(text)))
+	for _, want := range []string{"First line<br", "<strong>Second line</strong>", "<ul>", "<code>a\nb\n</code>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in %s", want, got)
+		}
+	}
+	for _, unsafe := range []string{"<script", `href="javascript:`} {
+		if strings.Contains(got, unsafe) {
+			t.Errorf("unsafe note HTML: %s", got)
+		}
+	}
+	if strings.Contains(string(Render([]byte("First\nSecond"))), "<br") {
+		t.Error("note line breaks changed the default Markdown renderer")
+	}
+}
