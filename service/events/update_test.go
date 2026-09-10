@@ -36,7 +36,7 @@ func TestUpdatePreservesIdentityAndChecksOwner(t *testing.T) {
 
 func TestExternalCalendarPagesAreStructured(t *testing.T) {
 	old := ExternalEntries
-	ExternalEntries = func(owner string, from, to time.Time) []External {
+	ExternalEntries = func(owner string, from, to time.Time, limit int) []External {
 		return []External{{Title: "First", Start: from}, {Title: "Second", Start: from.Add(time.Hour)}}
 	}
 	defer func() { ExternalEntries = old }()

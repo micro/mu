@@ -278,7 +278,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		now := time.Now()
-		external := events.ExternalEvents(sess.Account, now, now.Add(30*24*time.Hour))
+		external := events.ExternalEvents(sess.Account, now, now.Add(30*24*time.Hour), events.PreviewLimit)
 		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...)})
 		return
 	}

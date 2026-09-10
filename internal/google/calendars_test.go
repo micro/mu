@@ -59,6 +59,14 @@ func TestCalendarSelectionIsPrivateValidatedAndPersistent(t *testing.T) {
 	if !reflect.DeepEqual(SelectedCalendars("alice"), want) {
 		t.Fatal("reauthorization lost selection")
 	}
+	Store("alice", "", "refresh-without-profile", []string{CalendarScope})
+	if !reflect.DeepEqual(SelectedCalendars("alice"), want) {
+		t.Fatal("unavailable account lookup reset selection")
+	}
+	Store("alice", "ALICE@example.com", "refresh-with-profile", []string{CalendarScope})
+	if !reflect.DeepEqual(SelectedCalendars("alice"), want) {
+		t.Fatal("recovering account lookup reset selection")
+	}
 	reset()
 	Load()
 	if !reflect.DeepEqual(SelectedCalendars("alice"), want) {
@@ -69,6 +77,11 @@ func TestCalendarSelectionIsPrivateValidatedAndPersistent(t *testing.T) {
 	if !reflect.DeepEqual(SelectedCalendars("alice"), want) {
 		t.Fatal("selection aliases stored state")
 	}
+	Store("alice", "different@example.com", "other-account-refresh", []string{CalendarScope})
+	if !reflect.DeepEqual(SelectedCalendars("alice"), []string{"primary"}) {
+		t.Fatal("different Google account inherited old calendar selection")
+	}
+
 }
 
 func TestSelectedCalendarsMergeEventsBeforeLimitingAndShareBusySelection(t *testing.T) {
@@ -150,5 +163,19 @@ func TestSharedInvitationsAppearOnceButRecurrencesRemain(t *testing.T) {
 	got, err := Events("alice", time.Now(), time.Now().Add(48*time.Hour), 0)
 	if err != nil || len(got) != 2 {
 		t.Fatalf("shared recurring invitation: %+v, %v", got, err)
+	}
+}
+
+func TestCalendarPreviewDoesNotReadUnneededProviderPages(t *testing.T) {
+	calendarFixture(t, func(r *http.Request) (*http.Response, error) {
+		if r.URL.Query().Get("maxResults") != "3" || r.URL.Query().Get("pageToken") != "" {
+			t.Error("preview read beyond its limit")
+		}
+		return calendarResponse(`{"nextPageToken":"unneeded","items":[{"summary":"One","start":{"dateTime":"2026-09-10T08:00:00Z"}},{"summary":"Two","start":{"dateTime":"2026-09-10T09:00:00Z"}},{"summary":"Three","start":{"dateTime":"2026-09-10T10:00:00Z"}}]}`), nil
+	})
+	conns["alice"].Calendars = []string{"personal", "work"}
+	got, err := Events("alice", time.Now(), time.Now().Add(30*24*time.Hour), 3)
+	if err != nil || len(got) != 3 {
+		t.Fatalf("preview %v, %v", got, err)
 	}
 }

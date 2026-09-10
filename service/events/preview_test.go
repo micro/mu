@@ -20,7 +20,7 @@ func TestPreviewCombinesOwnedAndExternalEventsAndLimitsRows(t *testing.T) {
 	Create("previewother", "Someone else's reminder", now.Add(time.Hour), "")
 	old := ExternalEntries
 	defer func() { ExternalEntries = old }()
-	ExternalEntries = func(got string, from, to time.Time) []External {
+	ExternalEntries = func(got string, from, to time.Time, limit int) []External {
 		if got != owner {
 			t.Errorf("wrong calendar owner %q", got)
 		}
@@ -30,7 +30,7 @@ func TestPreviewCombinesOwnedAndExternalEventsAndLimitsRows(t *testing.T) {
 			{Title: "Not in preview", Start: now.Add(4 * time.Hour)},
 		}
 	}
-	body := Preview(owner, ExternalEvents(owner, now, now.Add(30*24*time.Hour)))
+	body := Preview(owner, ExternalEvents(owner, now, now.Add(30*24*time.Hour), PreviewLimit))
 	for _, want := range []string{"Earlier &lt;meeting&gt;", "Local reminder", "Later meeting", "Go to events"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)

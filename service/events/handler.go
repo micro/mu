@@ -80,7 +80,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	up := Upcoming(owner)
 	now := time.Now()
-	ext := ExternalEvents(owner, now, now.Add(30*24*time.Hour))
+	ext := ExternalEvents(owner, now, now.Add(30*24*time.Hour), 0)
 
 	if len(up) == 0 && len(ext) == 0 {
 		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Add a reminder above, or just ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)

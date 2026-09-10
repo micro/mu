@@ -43,10 +43,10 @@ func (e External) Length() time.Duration {
 var (
 	// ExternalBusy returns booked periods from an attached calendar. Set by
 	// main.go when Google is configured.
-	ExternalBusy func(owner string, from, to time.Time) []Slot
+	ExternalBusy func(owner string, from, to time.Time) ([]Slot, error)
 
 	// ExternalEntries returns what is scheduled on an attached calendar.
-	ExternalEntries func(owner string, from, to time.Time) []External
+	ExternalEntries func(owner string, from, to time.Time, limit int) []External
 
 	// ExternalConnected reports whether this owner has attached one. Kept
 	// separate from the two above so the UI can tell "nothing booked" apart
@@ -64,19 +64,20 @@ var (
 
 // externalBusy is the guarded call: a hook that is unset, or an owner who never
 // connected anything, contributes nothing rather than failing.
-func externalBusy(owner string, from, to time.Time) []Slot {
+func externalBusy(owner string, from, to time.Time) ([]Slot, error) {
 	if ExternalBusy == nil || owner == "" {
-		return nil
+		return nil, nil
 	}
 	return ExternalBusy(owner, from, to)
 }
 
 // ExternalEvents reads the owner's connected calendars within a window.
-func ExternalEvents(owner string, from, to time.Time) []External {
+// A positive limit bounds the result; zero reads the full window.
+func ExternalEvents(owner string, from, to time.Time, limit int) []External {
 	if ExternalEntries == nil || owner == "" {
 		return nil
 	}
-	return ExternalEntries(owner, from, to)
+	return ExternalEntries(owner, from, to, limit)
 }
 
 // HasExternal reports whether this owner has an outside calendar attached.

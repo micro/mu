@@ -211,7 +211,7 @@ func Store(accountID, email, refreshToken string, scopes []string) {
 	mu.Lock()
 	defer mu.Unlock()
 	var calendars []string
-	if old := conns[accountID]; old != nil && old.Email == email {
+	if old := conns[accountID]; old != nil && (old.Email == "" || email == "" || strings.EqualFold(old.Email, email)) {
 		calendars = old.Calendars
 	}
 	conns[accountID] = &Connection{

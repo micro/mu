@@ -320,7 +320,12 @@ func onToday(accountID string, external ...events.External) string {
 		out += " at " + html.EscapeString(next.When.In(now.Location()).Format("15:04"))
 	}
 	if rest := len(ahead) - 1; rest > 0 {
-		out += ", and " + strconv.Itoa(rest) + " more today"
+		// The Home fetch is bounded. Do not present a partial count as the total.
+		if len(external) >= events.PreviewLimit {
+			out += ", with more today"
+		} else {
+			out += ", and " + strconv.Itoa(rest) + " more today"
+		}
 	}
 	return out + "."
 }

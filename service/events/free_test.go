@@ -32,7 +32,7 @@ func clear(owner string) {
 // offering 3am is not an answer anybody wants.
 func TestFreeRespectsWorkingHours(t *testing.T) {
 	clear("alice")
-	slots := Free("alice", FreeQuery{
+	slots := freeSlots(t, "alice", FreeQuery{
 		From: day(0, 0), To: day(23, 59), Minutes: 30, DayStart: 9, DayEnd: 18,
 	})
 	if len(slots) != 1 {
@@ -51,7 +51,7 @@ func TestFreeSubtractsWhatIsBooked(t *testing.T) {
 	}
 	defer clear("alice")
 
-	slots := Free("alice", FreeQuery{From: day(0, 0), To: day(23, 59), Minutes: 30, DayStart: 9, DayEnd: 18})
+	slots := freeSlots(t, "alice", FreeQuery{From: day(0, 0), To: day(23, 59), Minutes: 30, DayStart: 9, DayEnd: 18})
 	if len(slots) != 2 {
 		t.Fatalf("expected the day either side of the meeting, got %v", slots)
 	}
@@ -75,10 +75,10 @@ func TestFreeOnlyOffersSlotsLongEnough(t *testing.T) {
 	}
 	defer clear("alice")
 
-	if got := Free("alice", FreeQuery{From: day(0, 0), To: day(23, 59), Minutes: 30, DayStart: 9, DayEnd: 18}); len(got) != 1 {
+	if got := freeSlots(t, "alice", FreeQuery{From: day(0, 0), To: day(23, 59), Minutes: 30, DayStart: 9, DayEnd: 18}); len(got) != 1 {
 		t.Errorf("the 30-minute gap was not offered for a 30-minute slot: %v", got)
 	}
-	if got := Free("alice", FreeQuery{From: day(0, 0), To: day(23, 59), Minutes: 60, DayStart: 9, DayEnd: 18}); len(got) != 0 {
+	if got := freeSlots(t, "alice", FreeQuery{From: day(0, 0), To: day(23, 59), Minutes: 60, DayStart: 9, DayEnd: 18}); len(got) != 0 {
 		t.Errorf("a 30-minute gap was offered for an hour: %v", got)
 	}
 }
@@ -95,7 +95,7 @@ func TestOverlappingEventsAreMerged(t *testing.T) {
 	}
 	defer clear("alice")
 
-	slots := Free("alice", FreeQuery{From: day(0, 0), To: day(23, 59), Minutes: 30, DayStart: 9, DayEnd: 18})
+	slots := freeSlots(t, "alice", FreeQuery{From: day(0, 0), To: day(23, 59), Minutes: 30, DayStart: 9, DayEnd: 18})
 	for _, s := range slots {
 		if s.Start.Before(day(13, 0)) && s.End.After(day(10, 0)) {
 			t.Errorf("a slot was offered inside a booked stretch: %s–%s", s.Start, s.End)
@@ -112,10 +112,10 @@ func TestFreeIsPerOwner(t *testing.T) {
 	}
 	defer clear("alice")
 
-	if got := Free("alice", FreeQuery{From: day(0, 0), To: day(23, 59), DayStart: 9, DayEnd: 18}); len(got) != 0 {
+	if got := freeSlots(t, "alice", FreeQuery{From: day(0, 0), To: day(23, 59), DayStart: 9, DayEnd: 18}); len(got) != 0 {
 		t.Errorf("alice's day is full but she was offered %v", got)
 	}
-	if got := Free("bob", FreeQuery{From: day(0, 0), To: day(23, 59), DayStart: 9, DayEnd: 18}); len(got) == 0 {
+	if got := freeSlots(t, "bob", FreeQuery{From: day(0, 0), To: day(23, 59), DayStart: 9, DayEnd: 18}); len(got) == 0 {
 		t.Error("bob was blocked by alice's calendar")
 	}
 }
@@ -157,4 +157,13 @@ func indexOf(h, n string) int {
 		}
 	}
 	return -1
+}
+
+func freeSlots(t *testing.T, owner string, q FreeQuery) []Slot {
+	t.Helper()
+	slots, err := Free(owner, q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return slots
 }

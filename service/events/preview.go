@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// PreviewLimit bounds the Home overview and its provider reads.
+const PreviewLimit = 3
+
 // Preview is a compact, read-only overview of the owner's next events.
 func Preview(owner string, external []External) string {
 	if owner == "" {
@@ -32,7 +35,7 @@ func Preview(owner string, external []External) string {
 		}
 		b.WriteString(`<a href="/events" class="link page-stack gap-2"><span>` + html.EscapeString(title) + `</span><small class="text-muted"><time datetime="` + when.Format(time.RFC3339) + `"` + stamp + `>` + html.EscapeString(label) + `</time></small></a>`)
 		count++
-		if count == 3 {
+		if count == PreviewLimit {
 			break
 		}
 	}

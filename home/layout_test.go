@@ -1,11 +1,13 @@
 package home
 
 import (
+	"mu/service/events"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"mu/internal/auth"
 	"mu/internal/quota"
@@ -183,5 +185,34 @@ func TestUpcomingEndpointRequiresSession(t *testing.T) {
 	Handler(rec, httptest.NewRequest("GET", "/home?section=upcoming", nil))
 	if rec.Code != http.StatusUnauthorized || rec.Header().Get("Cache-Control") != "private, no-store" {
 		t.Fatalf("upcoming endpoint: %d, cache %q", rec.Code, rec.Header().Get("Cache-Control"))
+	}
+}
+
+func TestHomeBoundsItsExternalCalendarRead(t *testing.T) {
+	const owner = "boundedcalendar"
+	old := events.ExternalEntries
+	defer func() { events.ExternalEntries = old }()
+	calls := 0
+	events.ExternalEntries = func(got string, from, to time.Time, limit int) []events.External {
+		calls++
+		if got != owner || limit != events.PreviewLimit {
+			t.Fatalf("calendar request owner=%q limit=%d", got, limit)
+		}
+		return []events.External{{Title: "External meeting", Start: time.Now().Add(time.Hour)}}
+	}
+	homeFor(t, owner)
+	if calls != 0 {
+		t.Fatal("Home blocked on a provider request")
+	}
+	sess, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest("GET", "/home?section=upcoming&owner=someoneelse", nil)
+	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	rec := httptest.NewRecorder()
+	Handler(rec, req)
+	if rec.Code != 200 || calls != 1 || !strings.Contains(rec.Body.String(), "External meeting") {
+		t.Fatalf("preview %d, calls %d", rec.Code, calls)
 	}
 }

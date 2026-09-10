@@ -94,22 +94,20 @@ func wireHooks() {
 			return google.HasScope(owner, google.CalendarScope)
 		}
 		events.ExternalAccount = google.ConnectedEmail
-		events.ExternalBusy = func(owner string, from, to time.Time) []events.Slot {
+		events.ExternalBusy = func(owner string, from, to time.Time) ([]events.Slot, error) {
+			if !google.HasScope(owner, google.CalendarScope) {
+				return nil, nil
+			}
 			periods, err := google.Busy(owner, from, to)
 			if err != nil {
-				// A calendar that cannot be read must not make "when am I
-				// free" fail. The answer narrows to what Mu knows, which is
-				// what it was before this was wired at all.
-				if err != google.ErrNotConnected {
-					app.Log("events", "google busy for %s: %v", owner, err)
-				}
-				return nil
+				app.Log("events", "google busy for %s: %v", owner, err)
+				return nil, fmt.Errorf("Google Calendar availability is unavailable; try again or check your calendar selection at /events")
 			}
 			slots := make([]events.Slot, 0, len(periods))
 			for _, p := range periods {
 				slots = append(slots, events.Slot{Start: p.Start, End: p.End})
 			}
-			return slots
+			return slots, nil
 		}
 		contacts.ExternalConnected = func(owner string) bool {
 			return google.HasScope(owner, google.ContactsScope)
@@ -128,8 +126,8 @@ func wireHooks() {
 			}
 			return out
 		}
-		events.ExternalEntries = func(owner string, from, to time.Time) []events.External {
-			entries, err := google.Events(owner, from, to, 0)
+		events.ExternalEntries = func(owner string, from, to time.Time, limit int) []events.External {
+			entries, err := google.Events(owner, from, to, limit)
 			if err != nil {
 				if err != google.ErrNotConnected {
 					app.Log("events", "google events for %s: %v", owner, err)
