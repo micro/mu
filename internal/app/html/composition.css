@@ -52,6 +52,7 @@
 }
 .page-stack, .page-section { display: flex; flex-direction: column; gap: var(--space-field); min-width: 0; }
 .page-section { margin-block: 0 var(--space-section); }
+.form.page-section { margin-block-end: var(--space-section); }
 /* An in-page view switch. Panels keep their own content and state. */
 .view-switch { display: flex; gap: var(--space-field); border-bottom: 1px solid var(--card-border, #e8e8e8); margin-block: 0 var(--space-section); }
 .view-switch [role=tab] { display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-control); border-bottom: 2px solid transparent; color: var(--text-muted, #707070); font-weight: 400; text-decoration: none; }
