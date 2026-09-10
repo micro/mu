@@ -12,7 +12,7 @@ import (
 // give a new account useful starting points without displaying the catalogue.
 func appsHTML(acc *auth.Account) string {
 	names := []string{"notes", "tasks", "events", "mail", "chat", "web", "video"}
-	if acc != nil && len(acc.PinnedServices()) > 0 {
+	if acc != nil {
 		names = acc.PinnedServices()
 	}
 	apps := service.Pinned(names)
