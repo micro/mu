@@ -55,8 +55,12 @@ func TestFetchedVideosCanBeSavedOutsideThePresetFeed(t *testing.T) {
 	for _, sqlite := range []bool{true, false} {
 		data.UseSQLite = sqlite
 		t.Run(fmt.Sprintf("sqlite=%v", sqlite), func(t *testing.T) {
-			if _, _, err := getResults("topic", ""); err != nil {
+			html, _, err := getResults("topic", "")
+			if err != nil {
 				t.Fatal(err)
+			}
+			if !strings.Contains(html, `href="https://www.youtube.com/channel/publisher"`) {
+				t.Fatal("search result channel does not link to YouTube")
 			}
 			for _, target := range []string{"/video?playlist=playlist", "/video?channel=publisher"} {
 				w := httptest.NewRecorder()

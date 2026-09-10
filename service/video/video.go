@@ -885,10 +885,10 @@ func getResults(query, channel string) (string, []*Result, error) {
 			results = append(results, res)
 		}
 
-		// All links are now internal
+		// Results open in Mu; the channel name opens its YouTube page.
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
-			url, thumbSrc(id, thumbnailURL), item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
+			<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a>%s · %s</div>`,
+			url, thumbSrc(id, thumbnailURL), item.Snippet.Title, channelLink(item.Snippet.ChannelTitle, item.Snippet.ChannelId), desc)
 		sb.WriteString(html)
 		res.Html = html
 	}
