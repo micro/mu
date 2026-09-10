@@ -6140,8 +6140,10 @@ button.pill:hover {
    The bleed is padding plus a matching negative margin, so the highlight
    reaches past the text without moving anything. */
 .ib-item {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  /* Reserve the same action column for mail, notes, tasks and chats. */
+  grid-template-columns: minmax(0, 1fr) var(--control-h-sm);
+  align-items: start;
   gap: 8px;
   padding: 0 10px;
   margin: 0 -10px;
@@ -6224,11 +6226,9 @@ button.pill:hover {
 /* No pointer to hover with, so the cross is simply there. */
 @media (hover: none) { .ib-del-go { opacity: 1 } }
 
-/* The cross sits on the first line of the row at every width, which is what
-   flex-start on .ib-item gives it — the baseline alignment it used to have was
-   right for a one-line row and drifted down the card once the row had three.
-   The nudge keeps it on the sender's line rather than above it. */
-.ib-del { padding-top: 12px }
+/* Align the delete control with the metadata line in its reserved column. */
+.ib-del { padding-top: 11px; min-height: var(--control-h-sm); }
+.ib-del-go { min-height: var(--control-h-sm); }
 /* Unread marks the two lines that say what the message is. Not the snippet:
    it is the body, and a bold body is a row shouting. */
 .ib-row.unseen .ib-meta,
@@ -6258,52 +6258,42 @@ button.pill:hover {
   flex: 1;
 }
 
-/* Who, where from, and when. Small and muted, because it is how you decide
-   whether to read the two lines under it rather than something to read. */
-/* Who wrote, and everything qualifying it, on one line at opposite ends.
-
-   All four ran together on the left for a commit, which put the date — the one
-   thing on this row somebody scans a column of — at the end of a sentence whose
-   length depends on the sender's name, so it landed somewhere different on
-   every row. A date column is read down and cannot be when it moves.
-
-   No wrap. The whole row is three fixed lines and a fourth appearing when a
-   name is long would make the list uneven; the sender truncates instead, and
-   the tags are short by construction. */
+/* Context may wrap, but the date stays aligned independently of labels,
+   sender length and the presence of a delete control. */
 .ib-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 0 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: 8px;
   font-size: 12px;
   font-weight: var(--font-weight-medium, 500);
   color: var(--text-secondary, #555);
   min-width: 0;
 }
-
-/* Who. Takes the slack and truncates, because it is the one part of this line
-   whose length is somebody else's to decide. */
-.ib-who {
+.ib-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   min-width: 0;
+}
+.ib-who, .ib-tags {
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* The channel, the box and how long ago, at the end where the eye finishes.
-   margin-left:auto rather than justify-content on the parent, so it holds when
-   the sender is missing and .ib-who renders empty. */
-.ib-tags {
-  display: flex;
-  align-items: baseline;
-  gap: 0 6px;
-  margin-left: auto;
-  flex: none;
+.ib-tags, .ib-when {
   color: var(--text-muted, #888);
   font-weight: var(--font-weight-normal, 400);
+}
+.ib-when {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h-sm);
   white-space: nowrap;
 }
-
-.ib-dot { color: var(--text-faint, #ccc); font-weight: var(--font-weight-normal, 400) }
 
 /* An explicit weight, because the row is a link and `a` is bold app-wide.
    Anything inside a link that does not declare a weight inherits that, so the

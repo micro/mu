@@ -79,6 +79,22 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(await page.locator('#signup').evaluate(e=>e.checkValidity()),'signup cannot submit valid fields');
     assert(await page.locator('#signup button').isVisible(),'signup button is hidden');
    }
+   if(path==='/inbox') {
+    const rows=page.locator('.ib-item');
+    assert(await rows.count()>=5,'mixed inbox fixture is incomplete');
+    const labels=await rows.locator('.ib-meta .pill').allTextContents();
+    for(const kind of ['Mail','Chat','Note','Task','WhatsApp'])assert(labels.includes(kind),`missing bordered ${kind} label`);
+    await rows.first().locator('.ib-who').evaluate(e=>e.textContent='A very long sender name that needs room on a narrow phone');
+    await rows.last().locator('.ib-when').evaluate(e=>e.textContent='3 weeks ago');
+    const positions=await rows.evaluateAll(rows=>rows.map(row=>{
+     const date=row.querySelector('.ib-when').getBoundingClientRect(),meta=row.querySelector('.ib-meta').getBoundingClientRect(),badge=row.querySelector('.pill');
+     return {date:date.right,top:date.top-meta.top,border:getComputedStyle(badge).borderTopStyle,delete:!!row.querySelector('.ib-del')};
+    }));
+    assert(positions.some(r=>r.delete)&&positions.some(r=>!r.delete),'must check rows with and without delete');
+    assert(Math.max(...positions.map(r=>r.date))-Math.min(...positions.map(r=>r.date))<1,`inbox dates misaligned at ${width}: ${JSON.stringify(positions)}`);
+    assert(positions.every(r=>Math.abs(r.top)<1&&r.border!=='none'),'inbox dates moved or labels lost their border');
+    assert(await rows.evaluateAll(rows=>rows.every(r=>r.scrollWidth<=r.clientWidth+1)),`inbox rows overflow at ${width}`);
+   }
    if(path==='/sms') {
     assert(await page.locator('.sms-conversation').count()===2,'SMS and WhatsApp merged in list');
     assert(await page.locator('input[name=text]').count()===0,'reply boxes leaked onto list');

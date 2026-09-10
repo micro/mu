@@ -118,28 +118,25 @@ func noteRow(n *notes.Entry) string {
 	text := strings.TrimSpace(n.Text)
 	return `<div class="ib-item">` +
 		`<a class="ib-row" href="/inbox?kind=note&amp;id=` + url.QueryEscape(n.ID) + `">` +
-		`<span class="ib-meta"><span class="ib-who">Note</span>` +
-		`<span class="ib-tags">` + html.EscapeString(app.TimeAgo(n.UpdatedAt)) + `</span></span>` +
+		rowMeta("", "Note", nil, n.UpdatedAt) +
 		`<span class="ib-subject">` + html.EscapeString(trimTo(n.Title, 90)) + `</span>` +
 		`<span class="ib-snip">` + html.EscapeString(trimTo(text, 110)) + `</span></a></div>`
 }
 
 // taskRow is a task, in the same row.
 //
-// The status is a tag rather than a pill: it is a fact about the task, like the
-// channel on a conversation, and a pill in a list reads as something to press.
+// The bordered type label identifies the task; status and assignee are context.
 // What is done says so and stays on the list — a list that quietly drops
 // finished work cannot be used to check what was done.
 func taskRow(t *tasks.Task) string {
-	tags := []string{html.EscapeString(t.Status)}
+	tags := []string{t.Status}
 	if t.Assignee == tasks.Agent {
 		name := agentLabel(t.Owner, t.Agent)
 		if name == "" {
 			name = defaultAgentName()
 		}
-		tags = append(tags, html.EscapeString(name))
+		tags = append(tags, name)
 	}
-	tags = append(tags, html.EscapeString(app.TimeAgo(t.Updated)))
 
 	// The result when there is one, because a finished task's answer is the
 	// thing worth previewing; the detail is what you asked for and you know it.
@@ -154,8 +151,7 @@ func taskRow(t *tasks.Task) string {
 	}
 	return `<div class="ib-item">` +
 		`<a class="` + cls + `" href="/inbox?kind=task&amp;id=` + url.QueryEscape(t.ID) + `">` +
-		`<span class="ib-meta"><span class="ib-who">Task</span>` +
-		`<span class="ib-tags">` + strings.Join(tags, `<span class="ib-dot">·</span>`) + `</span></span>` +
+		rowMeta("", "Task", tags, t.Updated) +
 		`<span class="ib-subject">` + html.EscapeString(trimTo(t.Title, 90)) + `</span>` +
 		`<span class="ib-snip">` + html.EscapeString(trimTo(snippet, 110)) + `</span></a></div>`
 }

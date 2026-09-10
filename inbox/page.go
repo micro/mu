@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -314,41 +315,10 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 		snippet = trimTo(text, 110)
 	}
 
-	// Who, where from, and when — on their own line above the subject.
-	//
-	// These have been three arrangements and each broke for the same reason:
-	// they were competing with the subject for one line. Beside it they pushed
-	// the subject off; in a fixed column they left a ragged gap on every row
-	// that had one label instead of two; as pills they were two boxes of
-	// chrome in the middle of a sentence. On a phone there was never room for
-	// any of it.
-	//
-	// A row is three lines now, which is what a mail client on a phone has
-	// always been: who it is from and when, then what it is about, then the
-	// first of what it says. Nothing competes, because nothing shares a line.
-	//
-	// Plain text separated by middots rather than pills. A pill is for a thing
-	// you can act on; the channel a message arrived by is a fact about it, and
-	// two facts in boxes read as two buttons.
-	// Who on the left, everything qualifying it on the right.
-	//
-	// All four ran together on the left for a commit, which put the date — the
-	// one thing on this row somebody scans a column of — at the end of a
-	// sentence whose length depends on how long the sender's name is, so it
-	// landed in a different place on every row. A date column is read down; it
-	// cannot be read down when it moves.
-	//
-	// The split is by kind. Who wrote is what the row is about; the channel, the
-	// agent whose box it is and how long ago are all facts *about* that, and
-	// they belong together at the end where the eye finishes.
 	var tags []string
-	if c := app.ClientName(t.Client); c != "" {
-		tags = append(tags, html.EscapeString(c))
-	}
 	if name := agentLabel(accountID, t.Agent); name != "" {
-		tags = append(tags, html.EscapeString(trimTo(name, labelChars)))
+		tags = append(tags, trimTo(name, labelChars))
 	}
-	tags = append(tags, html.EscapeString(app.TimeAgo(t.Updated)))
 
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every
@@ -367,14 +337,31 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	//
 	// Beside the link rather than inside it: a form cannot live in an <a>, and
 	// nesting a submit inside a navigation target means a click has two
-	// meanings. So the row is a flex pair — the link, which fills it, and this.
+	// meanings. The row reserves an action column even when there is no form.
 	return `<div class="ib-item">` +
 		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `"` + titleAttr(full) + `>` +
-		`<span class="ib-meta"><span class="ib-who">` + html.EscapeString(who) + `</span>` +
-		`<span class="ib-tags">` + strings.Join(tags, `<span class="ib-dot">·</span>`) + `</span></span>` +
+		rowMeta(who, app.ClientName(t.Client), tags, t.Updated) +
 		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 90)) + `</span>` +
 		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></a>` +
 		rowDelete(r, t.ID) + `</div>`
+}
+
+// rowMeta gives every inbox kind the same label and date positions. The
+// context can wrap on narrow screens; the date keeps its own column.
+func rowMeta(who, kind string, tags []string, at time.Time) string {
+	context := ""
+	if who != "" {
+		context = `<span class="ib-who">` + html.EscapeString(who) + `</span>`
+	}
+	if kind != "" {
+		context += app.Pill(kind)
+	}
+	if len(tags) > 0 {
+		context += `<span class="ib-tags">` + html.EscapeString(strings.Join(tags, " · ")) + `</span>`
+	}
+	return `<span class="ib-meta"><span class="ib-context">` + context +
+		`</span><time class="ib-when" datetime="` + at.Format(time.RFC3339) + `">` +
+		html.EscapeString(app.TimeAgo(at)) + `</time></span>`
 }
 
 // rowDelete is the cross at the end of a row.
