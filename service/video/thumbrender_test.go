@@ -93,11 +93,20 @@ func TestThumbSrcPrefersTheLocalPath(t *testing.T) {
 		t.Errorf("thumbSrc(%q, remote) = %q, want the local path", id, got)
 	}
 
-	// A channel or playlist id is not a video id, so there is no local
-	// thumbnail to serve and the API's own URL is all there is. Falling back is
-	// right; silently emitting an empty src would not be.
+	// Playlist and channel results can use artwork belonging to a video.
 	const channel = "UCXuqSBlHAE6Xw-yeJA0Tunw"
-	if got := thumbSrc(channel, remote); got != remote {
-		t.Errorf("thumbSrc(channelID, remote) = %q, want the API URL", got)
+	if got := thumbSrc(channel, remote); got != "/video/thumb?id="+id {
+		t.Errorf("thumbSrc(channelID, remote) = %q, want the artwork video’s local URL", got)
+	}
+}
+
+func TestPlaylistThumbnailDiscardsCDNQuery(t *testing.T) {
+	const remote = "https://i.ytimg.com/vi/hE2HEj1JBcI/hqdefault.jpg?sqp=abc&rs=xyz"
+	const want = "/video/thumb?id=hE2HEj1JBcI"
+	if got := thumbSrc("PL_playlist_long_identifier", remote); got != want {
+		t.Fatal(got)
+	}
+	if got := ProxyThumbnails(`<img src="` + remote + `">`); got != `<img src="`+want+`">` {
+		t.Fatal(got)
 	}
 }
