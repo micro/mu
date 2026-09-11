@@ -27,10 +27,10 @@ func appsHTML(acc *auth.Account) string {
 		apps = apps[:10]
 	}
 	var b strings.Builder
-	b.WriteString(`<nav class="home-apps page-stack" aria-label="Services">` + sectionRule("Services") + `<div class="home-apps-grid">`)
+	b.WriteString(`<div class="home-apps-grid">`)
 	for _, s := range apps {
 		b.WriteString(`<a href="` + html.EscapeString(s.Page) + `"><span class="home-app-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" alt=""></span><span>` + html.EscapeString(s.NavLabel()) + `</span></a>`)
 	}
-	b.WriteString(`</div></nav>`)
-	return b.String()
+	b.WriteString(`</div>`)
+	return `<nav class="home-apps page-stack" aria-label="Services">` + app.PreviewCard("home-services-card", "Services", "/services", b.String()) + `</nav>`
 }

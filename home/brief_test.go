@@ -106,7 +106,7 @@ func TestTheBriefSeparatesWorkInHandFromWorkOwed(t *testing.T) {
 // sentence now, sitting immediately under a box you type into, and an
 // unlabelled line there reads as output from the box rather than as a block of
 // its own.
-func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
+func TestTheBriefIsAnUnlabelledSummary(t *testing.T) {
 	const who = "brief-shape"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 	task, err := tasks.Create(who, "Something", "", tasks.Agent, time.Time{})
@@ -118,8 +118,8 @@ func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
 	}
 
 	got := briefHTML(who)
-	if !strings.HasPrefix(got, sectionRule("Brief")) {
-		t.Errorf("the brief is not labelled: %q", got)
+	if strings.Contains(got, "<h4>") || strings.Contains(got, "home-section") || strings.Contains(got, "brief-peek") {
+		t.Errorf("the brief has a card or heading: %q", got)
 	}
 	if !strings.Contains(got, `<p class="home-brief">`) {
 		t.Errorf("the brief is not a paragraph: %q", got)

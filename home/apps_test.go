@@ -25,7 +25,7 @@ func TestAppsAlwaysOfferUsefulDefaults(t *testing.T) {
 				t.Errorf("missing default %s for %#v", name, acc)
 			}
 		}
-		if !strings.Contains(body, sectionRule("Services")) || strings.Contains(body, "Go to services") {
+		if !strings.Contains(body, `<a class="card-head-link" href="/services">Services</a>`) || strings.Contains(body, "Go to services") {
 			t.Error("launcher heading or catalogue link misplaced")
 		}
 	}

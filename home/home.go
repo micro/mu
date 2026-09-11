@@ -278,7 +278,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		external := events.Overview(sess.Account, events.PreviewLimit)
-		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": todoHTML(sess.Account) + briefHTML(sess.Account, external...)})
+		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...) + todoHTML(sess.Account)})
 		return
 	}
 	// An installed app opens on the app, not on a pitch.
@@ -452,20 +452,20 @@ function fetchW(la,lo){
 	}))
 	b.WriteString(`</div>`)
 	if viewerID != "" {
-		b.WriteString(`<div id="home-brief" class="page-stack">` + todoHTML(viewerID) + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
+		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + todoHTML(viewerID) + `</div>`)
 	}
 	b.WriteString(appsHTML(viewerAcc))
 	if viewerID != "" {
 		if peek := inbox.Preview(viewerID); peek != "" {
-			b.WriteString(`<div id="home-inbox" class="page-stack">` + sectionRule("Inbox") + peek + `</div>`)
+			b.WriteString(`<div id="home-inbox" class="page-stack">` + peek + `</div>`)
 		}
 	}
 	b.WriteString(`</div>`)
 	if viewerID != "" {
 		b.WriteString(`<div class="home-column page-stack">`)
-		b.WriteString(`<div id="home-upcoming" class="page-stack">` + sectionRule("Upcoming") + `<div data-home-upcoming aria-live="polite" class="page-stack">` + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
+		b.WriteString(`<div id="home-upcoming" class="page-stack">` + `<div data-home-upcoming aria-live="polite" class="page-stack">` + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
 		if who := agent.Preview(viewerID); who != "" {
-			b.WriteString(`<div id="home-agents" class="page-stack">` + sectionRule("Agents") + who + `</div>`)
+			b.WriteString(`<div id="home-agents" class="page-stack">` + who + `</div>`)
 		}
 		b.WriteString(`</div>`)
 	}
@@ -564,21 +564,6 @@ function fetchW(la,lo){
 // the escaper was weaker than it looked.
 func htmlEsc(s string) string { return html.EscapeString(s) }
 
-// sectionRule is a heading that delimits: the label, then a hairline across the
-// rest of the width.
-//
-// Home is a stack of unrelated blocks — a chat, what arrived, what the tools
-// know — and it carried two words in small caps to tell them apart. That reads
-// as a caption on the thing below it rather than as a break between two things,
-// which is why the sections did not look like sections.
-func sectionRule(label string) string {
-	text := htmlEsc(label)
-	if href := map[string]string{"Todo": "/tasks", "Inbox": "/inbox", "Agents": "/agents", "Upcoming": "/events", "Services": "/services", "Account": "/account"}[label]; href != "" {
-		text = app.TextLink(text, href)
-	}
-	return `<p class="home-section"><small>` + text + `</small></p>`
-}
-
 // cardTips is the one-line explanation behind the "?" on a card.
 //
 // Package-level because both the page and the refresh build a card's title now,
@@ -593,22 +578,12 @@ var cardTips = map[string]string{
 	"images":  "A picture a day, generated here",
 }
 
-// cardBody is a card's contents as a reader sees them: what the service
-// rendered, and the way through to the whole of it.
-//
-// One builder, because there were two. The page appended the More link to
-// CachedHTML; the JSON the page polls itself with sent CachedHTML alone, and
-// the script replaces .card-body with it wholesale. So every card lost its More
-// link on the first refresh and got it back on the next full page load, which
-// is exactly what "sometimes the More buttons disappear" looks like from the
-// outside.
+// cardBody supplies the same contents to initial renders and refreshes.
+// Navigation belongs to the linked card heading.
 func cardBody(c Card, who service.Viewer) string {
 	body := strings.TrimSpace(cardRender(c, who))
 	if body == "" {
 		return ""
-	}
-	if c.Link != "" {
-		body += app.Link("More", c.Link)
 	}
 	return body
 }

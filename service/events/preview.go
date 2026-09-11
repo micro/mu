@@ -2,6 +2,7 @@ package events
 
 import (
 	"html"
+	"mu/internal/app"
 	"strings"
 	"time"
 )
@@ -17,7 +18,7 @@ func Preview(owner string, external []External) string {
 	now := time.Now()
 	rows := mergedRows(Upcoming(owner), external)
 	var b strings.Builder
-	b.WriteString(`<div class="card compact-list">`)
+	b.WriteString(`<div class="compact-list">`)
 	count := 0
 	for _, row := range rows {
 		href := externalURL(row.External)
@@ -45,5 +46,5 @@ func Preview(owner string, external []External) string {
 		b.WriteString(`<p class="text-muted">No upcoming events to show.</p>`)
 	}
 	b.WriteString(`</div>`)
-	return b.String()
+	return app.PreviewCard("home-events-card", "Upcoming", "/events", b.String())
 }

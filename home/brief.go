@@ -96,29 +96,8 @@ func briefHTML(accountID string, external ...events.External) string {
 		return ""
 	}
 
-	// In a card, like the two blocks under it.
-	//
-	// It was a bare paragraph under a heading, which was right when Home was
-	// one column: the brief ran the width of the page and the border would have
-	// been a box around a single sentence. In the rail it sits directly above
-	// the inbox and the agents, both of them bordered, and the odd one out was
-	// the one at the top — three blocks under matching headings, the first
-	// looking like a caption that had escaped.
-	//
-	// brief-peek, and the class is in the same rule as inbox-peek and
-	// agent-peek in mu.css rather than beside them. Three names for one shape,
-	// kept in one place, because the whole complaint was that they had drifted.
-	//
-	// No presence line in here any more.
-	//
-	// Who else was online drew above the clauses for a while, on the argument
-	// that it is the only thing on this page that changes because somebody else
-	// did something. That was right about the fact and wrong about the place: it
-	// is exactly why it does not belong buried in the rail under a heading
-	// saying Brief. It is its own block under the box now, and it names people
-	// rather than counting them.
-	return sectionRule("Brief") + `<div class="brief-peek">` +
-		`<p class="home-brief">` + strings.Join(parts, " ") + `</p></div>`
+	// Home is a live summary, not an archived or separately navigable card.
+	return `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
 }
 
 // briefParts is the clauses, without deciding how they are set.

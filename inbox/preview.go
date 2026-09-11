@@ -19,7 +19,6 @@ import (
 	"html"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -56,7 +55,6 @@ func Preview(accountID string) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="inbox-peek">`)
 	for _, t := range threads {
 		title := t.Subject
 		if title == "" {
@@ -105,11 +103,7 @@ func Preview(accountID string) string {
 			`</span><span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
 			`<span class="peek-line">` + line + where + `</span></a>`)
 	}
-	b.WriteString(`</div>`)
-	if n := len(all) - len(threads); n > 0 {
-		b.WriteString(app.SectionLink(strconv.Itoa(n)+" more", "/inbox"))
-	}
-	return b.String()
+	return app.PreviewCard("home-inbox-card", "Inbox", "/inbox", b.String())
 }
 
 // trimTo shortens text to fit a line, on a word where it can.

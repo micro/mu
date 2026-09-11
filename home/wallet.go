@@ -39,6 +39,7 @@ import (
 	"strings"
 
 	"mu/account"
+	"mu/internal/app"
 	"mu/internal/quota"
 )
 
@@ -66,11 +67,9 @@ func walletHTML(accountID string) string {
 	// foot of it. "Go to account" keeps the credit ledger reachable from
 	// Home, which is the same job "Go to inbox" does above.
 	var b strings.Builder
-	b.WriteString(sectionRule("Account"))
-	b.WriteString(`<div class="wallet-peek"><h4>Balance</h4>`)
+	b.WriteString(`<h4>Balance</h4>`)
 	for _, part := range account.BalanceBody(accountID, false) {
 		b.WriteString(part)
 	}
-	b.WriteString(`</div>`)
-	return b.String()
+	return app.PreviewCard("home-account-card", "Account", "/account", b.String())
 }

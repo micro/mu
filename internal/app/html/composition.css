@@ -169,3 +169,9 @@ a.link-text {
 .access-notice { flex: none; padding: var(--space-control) var(--space-field); font: 14px system-ui; background: Canvas; color: CanvasText; border-bottom: 1px solid GrayText; }
 .access-notice[hidden] { display: none; }
 .access-notice .btn-quiet { color: CanvasText; border-color: GrayText; }
+
+/* The card supplies the outside inset; preview rows supply only inner gaps. */
+.preview-rows > .peek-row:first-child,
+.preview-rows > .agent-peek-row:first-child { padding-top: 0; }
+.preview-rows > .peek-row:last-child,
+.preview-rows > .agent-peek-row:last-child { padding-bottom: 0; }
