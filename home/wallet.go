@@ -71,7 +71,6 @@ func walletHTML(accountID string) string {
 	for _, part := range account.BalanceBody(accountID, false) {
 		b.WriteString(part)
 	}
-	b.WriteString(`<a href="/account" class="link">Go to account &rarr;</a>`)
 	b.WriteString(`</div>`)
 	return b.String()
 }

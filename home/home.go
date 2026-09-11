@@ -572,7 +572,11 @@ func htmlEsc(s string) string { return html.EscapeString(s) }
 // as a caption on the thing below it rather than as a break between two things,
 // which is why the sections did not look like sections.
 func sectionRule(label string) string {
-	return `<p class="home-section"><small>` + htmlEsc(label) + `</small></p>`
+	text := htmlEsc(label)
+	if href := map[string]string{"Todo": "/tasks", "Inbox": "/inbox", "Agents": "/agents", "Upcoming": "/events", "Services": "/services", "Account": "/account"}[label]; href != "" {
+		text = app.TextLink(text, href)
+	}
+	return `<p class="home-section"><small>` + text + `</small></p>`
 }
 
 // cardTips is the one-line explanation behind the "?" on a card.

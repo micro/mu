@@ -19,6 +19,7 @@ import (
 	"html"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -105,7 +106,9 @@ func Preview(accountID string) string {
 			`<span class="peek-line">` + line + where + `</span></a>`)
 	}
 	b.WriteString(`</div>`)
-	b.WriteString(app.SectionLink("Go to inbox", "/inbox"))
+	if n := len(all) - len(threads); n > 0 {
+		b.WriteString(app.SectionLink(strconv.Itoa(n)+" more", "/inbox"))
+	}
 	return b.String()
 }
 

@@ -2,7 +2,6 @@ package events
 
 import (
 	"html"
-	"mu/internal/app"
 	"strings"
 	"time"
 )
@@ -45,6 +44,6 @@ func Preview(owner string, external []External) string {
 	if count == 0 {
 		b.WriteString(`<p class="text-muted">No upcoming events to show.</p>`)
 	}
-	b.WriteString(`</div>` + app.SectionLink("Go to events", "/events"))
+	b.WriteString(`</div>`)
 	return b.String()
 }

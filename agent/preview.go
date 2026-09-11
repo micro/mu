@@ -30,6 +30,7 @@ package agent
 
 import (
 	"html"
+	"strconv"
 	"strings"
 	"time"
 
@@ -121,6 +122,7 @@ func Preview(accountID string) string {
 		rows = append(rows, entryOf{ID: a.ID, Name: name, Path: Path(accountID, a.ID)})
 	}
 
+	total := len(rows)
 	if len(rows) > previewShown {
 		rows = rows[:previewShown]
 	}
@@ -148,7 +150,9 @@ func Preview(accountID string) string {
 		b.WriteString(`</a>`)
 	}
 	b.WriteString(`</div>`)
-	b.WriteString(app.SectionLink("Go to agents", "/agents"))
+	if n := total - len(rows); n > 0 {
+		b.WriteString(app.SectionLink(strconv.Itoa(n)+" more", "/agents"))
+	}
 	return b.String()
 }
 

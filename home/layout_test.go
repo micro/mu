@@ -153,7 +153,7 @@ func TestTheAccountBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
 		t.Fatal("account card has wrong label or destination")
 	}
 
-	// The heading is the same plain one the others use, not a link.
+	// The heading links to the full section, like the other previews.
 	if !strings.Contains(got, sectionRule("Account")) {
 		t.Error("the Account heading is not sectionRule's, so it does not match " +
 			"Inbox and Agents above it")
@@ -162,11 +162,10 @@ func TestTheAccountBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
 	if !strings.Contains(got, `class="wallet-peek"`) {
 		t.Error("the balance is not in a card, and both blocks above it are")
 	}
-	// And the way to the page, where the others put it.
-	if !strings.Contains(got, `href="/account" class="link"`) {
-		t.Error("no `Go to account` link — every other rail block ends with one, " +
-			"and it is the only route to /wallet from Home")
+	if strings.Contains(got, "Go to account") {
+		t.Error("redundant account footer")
 	}
+
 }
 
 func TestGreetingTreatsDisplayNamesAsText(t *testing.T) {

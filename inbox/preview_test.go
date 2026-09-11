@@ -42,8 +42,8 @@ func TestHomeShowsWhatIsInTheInbox(t *testing.T) {
 	if !strings.Contains(out, "the total is 420") {
 		t.Errorf("the latest message is missing:\n%s", out)
 	}
-	if !strings.Contains(out, `href="/inbox"`) {
-		t.Error("no way through to the inbox itself")
+	if strings.Contains(out, `href="/inbox"`) {
+		t.Error("a complete preview has a redundant footer")
 	}
 }
 
@@ -75,6 +75,9 @@ func TestHomeCarriesOnlyTheMostRecentFew(t *testing.T) {
 	}
 
 	// Prefix, not the whole attribute: an unread row carries a second class.
+	if !strings.Contains(Preview(who), "6 more") {
+		t.Error("missing hidden conversation count")
+	}
 	if got := strings.Count(Preview(who), `class="peek-row`); got != previewShown {
 		t.Fatalf("Home shows %d conversations, want %d", got, previewShown)
 	}

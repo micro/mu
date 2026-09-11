@@ -31,6 +31,6 @@ func appsHTML(acc *auth.Account) string {
 	for _, s := range apps {
 		b.WriteString(`<a href="` + html.EscapeString(s.Page) + `"><span class="home-app-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" alt=""></span><span>` + html.EscapeString(s.NavLabel()) + `</span></a>`)
 	}
-	b.WriteString(`</div>` + app.SectionLink("Go to services", "/services") + `</nav>`)
+	b.WriteString(`</div></nav>`)
 	return b.String()
 }
