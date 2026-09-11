@@ -137,7 +137,7 @@ func wireHooks() {
 			out := make([]events.External, 0, len(entries))
 			for _, e := range entries {
 				out = append(out, events.External{
-					URL: e.URL, Title: e.Title, Start: e.Start, End: e.End,
+					UID: e.UID, URL: e.URL, Title: e.Title, Start: e.Start, End: e.End,
 					Location: e.Location, AllDay: e.AllDay, Source: events.ExternalName,
 				})
 			}

@@ -21,6 +21,7 @@ import "time"
 // External is one entry on a calendar Mu does not own. Read-only by
 // construction: there is no id here to cancel by, because Mu cannot cancel it.
 type External struct {
+	UID      string    `json:"-"` // iCalendar identity, never an authorization grant.
 	URL      string    `json:"url,omitempty"`
 	Title    string    `json:"title"`
 	Start    time.Time `json:"start"`
@@ -75,10 +76,37 @@ func externalBusy(owner string, from, to time.Time) ([]Slot, error) {
 // ExternalEvents reads the owner's connected calendars within a window.
 // A positive limit bounds the result; zero reads the full window.
 func ExternalEvents(owner string, from, to time.Time, limit int) []External {
+	return withoutLocalCopies(Upcoming(owner), externalEvents(owner, from, to, limit))
+}
+
+func externalEvents(owner string, from, to time.Time, limit int) []External {
 	if ExternalEntries == nil || owner == "" {
 		return nil
 	}
 	return ExternalEntries(owner, from, to, limit)
+}
+
+// An exported ICS retains ID@mu when imported by another calendar. Collapse
+// only an unchanged occurrence with that identity; a template link, matching
+// title alone, moved occurrence or edited duration is not proof of a copy.
+// Caller supplies only this owner's local events. No provider writes occur.
+func withoutLocalCopies(local []*Event, external []External) []External {
+	byUID := make(map[string]*Event, len(local))
+	for _, e := range local {
+		if e.ID != "" && e.Kind != "brief" && e.Prompt == "" {
+			byUID[e.ID+"@mu"] = e
+		}
+	}
+	result := make([]External, 0, len(external))
+	for _, x := range external {
+		e := byUID[x.UID]
+		if e != nil && !x.AllDay && x.Title == e.Title && x.Location == "" &&
+			x.Start.Equal(e.When) && x.End.Equal(e.When.Add(e.Length())) {
+			continue
+		}
+		result = append(result, x)
+	}
+	return result
 }
 
 // HasExternal reports whether this owner has an outside calendar attached.
