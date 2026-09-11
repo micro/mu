@@ -37,7 +37,7 @@ func CachedOverview(owner string) []External {
 	key := overviewKey(owner, PreviewLimit)
 	overviewCache.Lock()
 	defer overviewCache.Unlock()
-	return futureEntries(overviewCache.values[key].entries)
+	return withoutLocalCopies(Upcoming(owner), futureEntries(overviewCache.values[key].entries))
 }
 
 func futureEntries(entries []External) []External {
@@ -62,7 +62,7 @@ func Overview(owner string, limit int) []External {
 	snapshot, ok := overviewCache.values[key]
 	if ok && time.Now().Before(snapshot.expires) {
 		overviewCache.Unlock()
-		return futureEntries(snapshot.entries)
+		return withoutLocalCopies(Upcoming(owner), futureEntries(snapshot.entries))
 	}
 	if ready := overviewCache.pending[key]; ready != nil {
 		overviewCache.Unlock()
@@ -74,12 +74,14 @@ func Overview(owner string, limit int) []External {
 	overviewCache.Unlock()
 	defer func() { overviewCache.Lock(); delete(overviewCache.pending, key); close(ready); overviewCache.Unlock() }()
 	now := time.Now()
-	entries := ExternalEvents(owner, now, now.Add(30*24*time.Hour), limit)
+	// Cache provider entries, not the merge: cancelling or editing a local
+	// reminder must reveal its independent calendar copy immediately.
+	entries := externalEvents(owner, now, now.Add(30*24*time.Hour), limit)
 	overviewCache.Lock()
 	if len(overviewCache.values) >= 512 {
 		overviewCache.values = make(map[string]overviewSnapshot)
 	}
 	overviewCache.values[key] = overviewSnapshot{entries: append([]External(nil), entries...), expires: time.Now().Add(2 * time.Minute)}
 	overviewCache.Unlock()
-	return entries
+	return withoutLocalCopies(Upcoming(owner), entries)
 }
