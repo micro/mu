@@ -38,6 +38,7 @@ package mail
 import (
 	"encoding/base64"
 	"fmt"
+	"mu/internal/app"
 	"sort"
 	"strings"
 	"sync"
@@ -429,10 +430,10 @@ func imapRender(m *Message) []byte {
 	header("In-Reply-To", m.ReplyTo)
 	b.WriteString("MIME-Version: 1.0\r\n")
 
-	body := strings.ReplaceAll(m.Body, "\r\n", "\n")
+	body := strings.ReplaceAll(clientBody(m), "\r\n", "\n")
 	body = strings.ReplaceAll(body, "\n", "\r\n")
 	bodyType := "text/plain; charset=utf-8"
-	if imapLooksHTML(m.Body) {
+	if imapLooksHTML(clientBody(m)) {
 		bodyType = "text/html; charset=utf-8"
 	}
 
@@ -632,10 +633,10 @@ func imapQuoted(s string) string {
 // about a part that is not there will ask for it and get nothing back.
 func imapBodyStructure(m *Message) string {
 	sub := "PLAIN"
-	if imapLooksHTML(m.Body) {
+	if imapLooksHTML(clientBody(m)) {
 		sub = "HTML"
 	}
-	body := strings.ReplaceAll(m.Body, "\n", "\r\n")
+	body := strings.ReplaceAll(clientBody(m), "\n", "\r\n")
 	text := fmt.Sprintf(`("TEXT" %q ("CHARSET" "UTF-8") NIL NIL "8BIT" %d %d)`,
 		sub, len(body), strings.Count(body, "\r\n")+1)
 	if m.Attachment == "" {
@@ -650,4 +651,12 @@ func imapBodyStructure(m *Message) string {
 	att := fmt.Sprintf(`(%q %q ("NAME" %s) NIL NIL "BASE64" %d)`,
 		kind, subtype, imapQuoted(m.AttachmentName), size)
 	return "(" + text + att + ` "MIXED")`
+}
+
+// clientBody formats generated scheduled mail for ordinary email clients.
+func clientBody(m *Message) string {
+	if (m.Tag == "brief" || m.Tag == "scheduled") && m.FromID == "agent@"+ConfiguredDomain() && !imapLooksHTML(m.Body) {
+		return app.RenderString(m.Body)
+	}
+	return m.Body
 }

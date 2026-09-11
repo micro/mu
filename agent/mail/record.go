@@ -24,6 +24,7 @@ package mail
 // of this that is special enough to reach past it.
 
 import (
+	"net/url"
 	"strings"
 
 	"mu/agent"
@@ -79,4 +80,14 @@ func recordDelivery(m mail.InboundMail) {
 		thread.Join(m.Owner, th.ID, thread.Party{
 			Kind: thread.RolePerson, Key: m.From, Name: name})
 	}
+}
+
+// InboxURL records a delivery before returning its owner-scoped conversation link.
+// Recording is idempotent by Message-ID, including when the subscriber runs first.
+func InboxURL(m mail.InboundMail) string {
+	recordDelivery(m)
+	if th := thread.Find(m.Owner, Client, chainKey(m)); th != nil {
+		return "/inbox?id=" + url.QueryEscape(th.ID)
+	}
+	return "/inbox"
 }
