@@ -51,3 +51,15 @@ func TestAnswerDeltasAreOptIn(t *testing.T) {
 		})
 	}
 }
+
+func TestCalendarFallbackKeepsReadableEvents(t *testing.T) {
+	payload := `{"items":[],"external":[],"total":1,"events":"- Fri 11 Sep 09:00 BST — Planning meeting (id: event-1)"}`
+	answer := completeToolAnswerFor("Let me check your calendar.", []string{"### events\n" + formatToolResult("events_list", payload, nil)}, false)
+	if !strings.Contains(answer, "Planning meeting") || strings.Contains(answer, "data is unavailable") {
+		t.Fatalf("discarded calendar result: %s", answer)
+	}
+	empty := completeToolAnswerFor("Let me check your calendar.", []string{"### events\n" + formatToolResult("events_list", `{"items":[],"events":"No upcoming events."}`, nil)}, false)
+	if !strings.Contains(empty, "No upcoming events") {
+		t.Fatalf("empty calendar treated as failure: %s", empty)
+	}
+}

@@ -665,7 +665,7 @@ if(overlay && input && form){
  shell.before(slot); slot.appendChild(shell);
  var dialog=document.createElement('dialog'); dialog.className='mu-console';
  dialog.setAttribute('aria-label','Micro');
- dialog.innerHTML='<div class="mu-console-head"><span>Micro</span><button type="button" class="mu-console-close">Close</button></div>';
+ dialog.innerHTML='<div class="mu-console-head"><strong>Micro</strong><button type="button" class="mu-console-close">Close</button></div>';
  slot.appendChild(dialog);
  var closing=false;
  function openConsole(){
