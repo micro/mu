@@ -2,6 +2,7 @@ package home
 
 import (
 	"html"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,5 +48,9 @@ func todoHTML(accountID string) string {
 	if total == 0 {
 		return ""
 	}
-	return sectionRule("Todo") + `<div class="todo-peek">` + strings.Join(rows, "") + `</div>` + app.SectionLink("Go to tasks", "/tasks")
+	more := ""
+	if n := total - len(rows); n > 0 {
+		more = app.SectionLink(strconv.Itoa(n)+" more", "/tasks")
+	}
+	return sectionRule("Todo") + `<div class="todo-peek">` + strings.Join(rows, "") + `</div>` + more
 }

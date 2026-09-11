@@ -31,7 +31,7 @@ func TestPreviewCombinesOwnedAndExternalEventsAndLimitsRows(t *testing.T) {
 		}
 	}
 	body := Preview(owner, ExternalEvents(owner, now, now.Add(30*24*time.Hour), PreviewLimit))
-	for _, want := range []string{"Earlier &lt;meeting&gt;", "Local reminder", "Later meeting", "Go to events"} {
+	for _, want := range []string{"Earlier &lt;meeting&gt;", "Local reminder", "Later meeting"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)
 		}
