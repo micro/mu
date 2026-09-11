@@ -366,7 +366,7 @@ func deliver(r request, answer string, err error) {
 		return
 	}
 	if isBrief && err == nil {
-		link := mailagent.InboxURL(mail.InboundMail{Owner: acc.ID, From: delivery.FromID, FromName: delivery.From, To: acc.Name + "+" + tag + "@" + mail.ConfiguredDomain(), Subject: r.Title, Body: delivery.Body, MessageID: messageID, Tag: tag})
+		link := mailagent.InboxURL(mail.InboundMail{Owner: acc.ID, From: delivery.FromID, FromName: delivery.From, To: acc.ID + "+" + tag + "@" + mail.ConfiguredDomain(), Subject: r.Title, Body: delivery.Body, MessageID: messageID, Tag: tag})
 		event.Announce("brief", strings.TrimSpace(answer), link, r.Account)
 	}
 }
