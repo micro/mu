@@ -26,7 +26,7 @@ func TestTaskOutcomeDoesNotCompleteFromInspectionOrUnverifiedClaims(t *testing.T
 			}
 			defer tasks.Remove(who, task.ID)
 			runWithQuery(request{Account: who, Kind: tasks.Kind, ID: task.ID, Prompt: "Do work"}, func(_, prompt string, opts agent.QueryOpts) (string, error) {
-				if !opts.RawReply || !strings.Contains(opts.System, outcomeInstruction) {
+				if !opts.RawReply || opts.OutputInstruction != outcomeInstruction || opts.System != "" {
 					t.Fatal("task outcome can be replaced by a tool summary")
 				}
 				if strings.Contains(prompt, "completes this task automatically") {

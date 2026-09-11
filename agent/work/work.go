@@ -196,7 +196,7 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 	opts.System = system
 	if r.Kind == tasks.Kind {
 		opts.RawReply = true
-		opts.System += "\n\n" + outcomeInstruction
+		opts.OutputInstruction = outcomeInstruction
 	}
 	opts.OnStep = func(s agent.Step) {
 		stepsMu.Lock()

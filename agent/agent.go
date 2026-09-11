@@ -106,10 +106,12 @@ type QueryOpts struct {
 	// RawReply preserves the model reply for callers that validate a structured outcome.
 	// Never substitute a synthesized tool summary for this reply.
 	RawReply bool
-	Thread   string // server-resolved conversation; ownership checked before retrieval
-	History  []QueryMessage
-	Public   bool   // if true, skip private context (mail, wallet, etc.)
-	System   string // optional custom system prompt (user-defined agent)
+	// OutputInstruction adds a caller-owned reporting contract without selecting a persona.
+	OutputInstruction string
+	Thread            string // server-resolved conversation; ownership checked before retrieval
+	History           []QueryMessage
+	Public            bool   // if true, skip private context (mail, wallet, etc.)
+	System            string // optional custom system prompt (user-defined agent)
 	// Extra is explicit source material attached to this conversation.
 	Extra string
 	// CardContext is ambient Home data, not an explicit reading attachment.
