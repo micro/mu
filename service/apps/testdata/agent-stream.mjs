@@ -8,12 +8,13 @@ function bridge(fetcher,confirm=()=>true){
   const messages=[],listeners={},frameListeners={},calls=[];
   const win={postMessage:m=>messages.push(m)};
   const frame={contentWindow:win,addEventListener:(name,fn)=>frameListeners[name]=fn};
+  const access={hidden:true},revoke={addEventListener:(name,fn)=>listeners.revoke=fn};
   const context={Map,Number,AbortController,TextDecoder,setTimeout,clearTimeout,
-    document:{getElementById:()=>frame,cookie:'csrf_token=secret'},
+    document:{getElementById:id=>id==='app-frame'?frame:id==='app-agent-access'?access:revoke,cookie:'csrf_token=secret'},
     window:{confirm,addEventListener:(name,fn)=>listeners[name]=fn},
     fetch:(path,init)=>{calls.push({path,init});return fetcher(path,init)}};
   vm.runInNewContext(script(sources.bridge),context);
-  return {messages,calls,frameListeners,listeners,win,
+  return {messages,calls,frameListeners,listeners,win,access,document:context.document,
     call:(id=1,op='agent.stream',source=win)=>listeners.message({source,data:{mu:'call',id,op,args:{body:{prompt:'Hello',context_id:'conversation'}}}})};
 }
 const wire=events=>events.map(e=>'data: '+JSON.stringify(e)+'\r\n\r\n').join('');
@@ -52,11 +53,12 @@ for(const [name,response,expected] of [
   assert.ok(b.messages.at(-1).error.includes(expected),name+': '+JSON.stringify(b.messages));
   assert.equal(b.calls.length,1,'a failed stream must never rerun the prompt');
 }
-for(const action of ['load','pagehide','cancel']){
+for(const action of ['load','pagehide','cancel','revoke']){
   const b=bridge((path,init)=>new Promise((resolve,reject)=>init.signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')))));
   b.call();b.call();assert.equal(b.calls.length,1,'duplicate request IDs must not start duplicate work');
   if(action==='load'){b.frameListeners.load();b.frameListeners.load();}
   if(action==='pagehide') b.listeners.pagehide();
+  if(action==='revoke') b.listeners.revoke();
   if(action==='cancel') b.listeners.message({source:b.win,data:{mu:'cancel',id:1}});
   await tick();
   assert.equal(b.calls[0].init.signal.aborted,true);
@@ -106,4 +108,32 @@ for (const op of ['agent', 'agent.stream', 'chat', 'blog.create', 'user', 'sdk:s
  const b=bridge(()=>Promise.resolve(new Response('{}')));
  b.call(1,'blog.list'); await tick();
  assert.equal(b.calls[0].init.credentials,'omit','public reads cannot borrow the viewer');
+}
+
+// A page grant covers only agent requests and remains under parent control.
+{
+ let prompts=0;
+ const b=bridge(()=>Promise.resolve(new Response('{}')),()=>{prompts++;return true});
+ b.call(1,'agent'); b.call(2,'agent'); await tick();
+ assert.equal(prompts,1);
+ assert.equal(b.access.hidden,false);
+ b.call(3,'sdk:service'); await tick(); assert.equal(prompts,2);
+ b.listeners.revoke(); assert.equal(b.access.hidden,true);
+ b.call(4,'agent'); await tick(); assert.equal(prompts,3);
+ b.frameListeners.load(); b.frameListeners.load();
+ b.call(5,'agent'); await tick(); assert.equal(prompts,4);
+ b.listeners.pagehide();
+ b.call(6,'agent'); await tick(); assert.equal(prompts,5);
+ const other=bridge(()=>Promise.resolve(new Response('{}')),()=>{prompts++;return true});
+ other.call(1,'agent'); await tick(); assert.equal(prompts,6);
+}
+
+{
+ const b=bridge(()=>Promise.resolve(new Response('{}')));
+ b.call(1,'agent'); await tick();
+ b.document.cookie='csrf_token=another-session';
+ b.call(2,'agent'); await tick();
+ assert.equal(b.calls.length,1,'page consent cannot follow an account switch');
+ assert.match(b.messages.at(-1).error,/sign-in changed/);
+ assert.equal(b.access.hidden,true);
 }

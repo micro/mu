@@ -142,12 +142,6 @@ func briefParts(accountID string, external ...events.External) []string {
 		if s := working(accountID); s != "" {
 			parts = append(parts, s)
 		}
-		if s := taskAttention(accountID); s != "" {
-			parts = append(parts, s)
-		}
-		if s := owed(accountID); s != "" {
-			parts = append(parts, s)
-		}
 		// What is actually on today, before the world's line.
 		//
 		// The brief said what was waiting, what the agent was doing and what
@@ -207,55 +201,6 @@ func working(accountID string) string {
 		out += ", the longest since " + html.EscapeString(app.TimeAgo(oldest.Updated))
 	}
 	return out + "."
-}
-
-// taskAttention points to work that needs a decision, not another automatic run.
-func taskAttention(accountID string) string {
-	var parts []string
-	for _, status := range []string{tasks.StatusFailed, tasks.StatusBlocked} {
-		if n := len(tasks.List(accountID, status)); n > 0 {
-			parts = append(parts, app.TextLink(count(n, "task", "tasks")+" "+status, "/tasks?status="+status))
-		}
-	}
-	if len(parts) == 0 {
-		return ""
-	}
-	return strings.Join(parts, " and ") + "; review before retrying."
-}
-
-// owed is what is waiting on you: due today, then everything else open.
-//
-// Overdue first and separately, because a task that has passed its date is the
-// one fact on this line somebody may need to act on today, and burying it in a
-// total is how it stops being one.
-func owed(accountID string) string {
-	todo := tasks.List(accountID, tasks.StatusTodo)
-	if len(todo) == 0 {
-		return ""
-	}
-
-	now := time.Now()
-	late, today := 0, 0
-	for _, t := range todo {
-		switch {
-		case t.Due.IsZero():
-		case t.Due.Before(now):
-			late++
-		case sameDay(t.Due, now):
-			today++
-		}
-	}
-
-	switch {
-	case late > 0 && today > 0:
-		return app.TextLink(count(late, "task", "tasks"), "/tasks") + " overdue and " +
-			strconv.Itoa(today) + " due today."
-	case late > 0:
-		return app.TextLink(count(late, "task", "tasks"), "/tasks") + " overdue."
-	case today > 0:
-		return app.TextLink(count(today, "task", "tasks"), "/tasks") + " due today."
-	}
-	return app.TextLink(count(len(todo), "task", "tasks"), "/tasks") + " open."
 }
 
 // happening is what the world did today, in agent/brief's words.

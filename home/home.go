@@ -278,7 +278,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		external := events.Overview(sess.Account, events.PreviewLimit)
-		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...)})
+		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": todoHTML(sess.Account) + briefHTML(sess.Account, external...)})
 		return
 	}
 	// An installed app opens on the app, not on a pitch.
@@ -452,7 +452,7 @@ function fetchW(la,lo){
 	}))
 	b.WriteString(`</div>`)
 	if viewerID != "" {
-		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
+		b.WriteString(`<div id="home-brief" class="page-stack">` + todoHTML(viewerID) + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
 	}
 	b.WriteString(appsHTML(viewerAcc))
 	if viewerID != "" {

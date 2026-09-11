@@ -202,7 +202,7 @@ func taskCard(t *Task, csrf, label string, actionURL func(string) string) string
 	if !t.Open() {
 		class += " task-done"
 	}
-	fmt.Fprintf(&b, `<div class="%s" data-task-id="%s" data-task-status="%s">`, class, html.EscapeString(t.ID), html.EscapeString(t.Status))
+	fmt.Fprintf(&b, `<div class="%s" id="task-%s" data-task-id="%s" data-task-status="%s">`, class, html.EscapeString(t.ID), html.EscapeString(t.ID), html.EscapeString(t.Status))
 
 	fmt.Fprintf(&b, `<div class="task-title">%s</div>`, html.EscapeString(t.Title))
 

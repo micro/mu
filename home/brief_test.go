@@ -90,7 +90,7 @@ func TestTheBriefSeparatesWorkInHandFromWorkOwed(t *testing.T) {
 	if !strings.Contains(got, "The agent is on") || !strings.Contains(got, "1 thing") {
 		t.Errorf("work in hand is not reported:\n%s", got)
 	}
-	if !strings.Contains(got, "1 task") || !strings.Contains(got, "overdue") {
+	if strings.Contains(got, "overdue") || !strings.Contains(todoHTML(who), "Overdue") {
 		t.Errorf("an overdue task is not called out:\n%s", got)
 	}
 	if !strings.Contains(got, `href="/tasks"`) {
@@ -109,7 +109,11 @@ func TestTheBriefSeparatesWorkInHandFromWorkOwed(t *testing.T) {
 func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
 	const who = "brief-shape"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
-	if _, err := tasks.Create(who, "Something", "", tasks.Me, time.Time{}); err != nil {
+	task, err := tasks.Create(who, "Something", "", tasks.Agent, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tasks.Update(who, task.ID, "", "", tasks.StatusDoing, "", ""); err != nil {
 		t.Fatal(err)
 	}
 

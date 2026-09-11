@@ -367,6 +367,17 @@ func appBridgeJS(slug string) string {
   var SLUG=` + jsString(slug) + `;
   var frame=document.getElementById('app-frame');
   var j='application/json';
+  var agentAllowed=false;
+  var pageCSRF=csrf();
+  var access=document.getElementById('app-agent-access');
+  var revoke=document.getElementById('app-agent-revoke');
+  function revokeAgent(){
+    agentAllowed=false;
+    if(access) access.hidden=true;
+    cancelStreams();
+  }
+  if(revoke) revoke.addEventListener('click',revokeAgent);
+
   ` + appAgentStreamJS + `
 
   function csrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
@@ -393,16 +404,22 @@ func appBridgeJS(slug string) string {
     if(m.mu==='cancel'){cancelStream(m.id);return;}
 
     var op=String(m.op||''), args=m.args||{};
-    // The iframe cannot authorize use of the viewer's account. This prompt
-    // belongs to the trusted parent and is deliberately per request: an app
-    // can change after publication, and its own Send button is untrusted code.
+    // Only the trusted parent can grant account access. Agent access lasts
+    // for this open page, never localStorage or a grant shared with other apps.
+    // All other account operations still require their own approval.
+    var agentOp=op==='agent'||op==='agent.stream';
+    if(agentOp&&csrf()!==pageCSRF){revokeAgent();reply(e.source,m.id,null,'Your sign-in changed. Reload this app before continuing.');return;}
     var personal=op==='user'||(OPS[op]&&OPS[op].m==='POST')||op==='sdk:service'||op==='sdk:ai'||op==='sdk:fetch';
-    if(personal){
+    if(personal&&!(agentOp&&agentAllowed)){
       var detail=JSON.stringify(args);
       if(detail.length>16000){reply(e.source,m.id,null,'Request too large to review');return;}
-      if(!window.confirm('Allow '+SLUG+' to use your account for '+op+'?\n\nThe result will be visible to this app. Agent requests may send private data to the configured AI provider and take actions using your tools.\n\n'+detail)){
+      var question=agentOp
+        ? 'Allow '+SLUG+' to use your agent while this page is open?\n\nThis app can send requests, receive answers, use your credits, and ask the agent to access private data or take actions with its tools. Data may go to the configured AI provider. Only allow an app you trust. You can revoke access at the top of this page.\n\nFirst request: '+detail
+        : 'Allow '+SLUG+' to use your account for '+op+'?\n\nThe result will be visible to this app. Requests may send private data to the configured AI provider and take actions using your tools.\n\n'+detail;
+      if(!window.confirm(question)){
         reply(e.source,m.id,null,'Request declined');return;
       }
+      if(agentOp){agentAllowed=true;if(access) access.hidden=false;}
     }
 
     // The server-side proxy: caller bound from the session, app named in the
@@ -431,7 +448,7 @@ func appBridgeJS(slug string) string {
     if(spec.m==='POST'){
       init.method='POST';
       init.headers['Content-Type']=j;
-      init.headers['X-CSRF-Token']=csrf();
+      init.headers['X-CSRF-Token']=agentOp?pageCSRF:csrf();
       init.body=JSON.stringify(args.body||{});
     }
     if(op==='agent.stream'){
@@ -472,8 +489,13 @@ func sandboxPage(slug, title string) string {
 	// browser which one to use. Two words, no media query, and it follows the
 	// reader rather than a guess made here.
 	b.WriteString(`<style>html,body{margin:0;padding:0;height:100%;background:Canvas;color-scheme:light dark}
-#app-frame{display:block;width:100%;height:100%;border:0;background:Canvas}</style>`)
+body{display:flex;flex-direction:column}
+#app-agent-access{flex:none;padding:8px 12px;font:14px system-ui;background:Canvas;color:CanvasText;border-bottom:1px solid GrayText}
+#app-agent-access[hidden]{display:none}
+#app-agent-revoke{margin-left:8px;font:inherit}
+#app-frame{display:block;width:100%;flex:1;min-height:0;border:0;background:Canvas}</style>`)
 	b.WriteString(`</head><body>`)
+	b.WriteString(`<div id="app-agent-access" hidden>Agent access allowed for this page. <button id="app-agent-revoke" type="button">Revoke access</button></div>`)
 	// The app itself, not /run. That word is retired — see embed.go — and the
 	// document is at the app's own address with raw=1.
 	b.WriteString(`<iframe id="app-frame" src="/apps/` + html.EscapeString(slug) +
