@@ -368,11 +368,15 @@ func appBridgeJS(slug string) string {
   var frame=document.getElementById('app-frame');
   var j='application/json';
   var agentAllowed=false;
+  var agentRequests=new Set();
+  var accessGeneration=0;
   var pageCSRF=csrf();
   var access=document.getElementById('app-agent-access');
   var revoke=document.getElementById('app-agent-revoke');
   function revokeAgent(){
     agentAllowed=false;
+    accessGeneration++;
+    agentRequests.forEach(function(c){c.abort()});agentRequests.clear();
     if(access) access.hidden=true;
     cancelStreams();
   }
@@ -455,10 +459,14 @@ func appBridgeJS(slug string) string {
       streamAgent(e.source,m.id,path,args.body||{},init);
       return;
     }
+    var generation=accessGeneration, controller;
+    if(agentOp){controller=new AbortController();agentRequests.add(controller);init.signal=controller.signal;}
+    function current(){return !agentOp||generation===accessGeneration;}
     fetch(path,init)
       .then(function(r){return r.json().catch(function(){return {}})})
-      .then(function(d){reply(e.source,m.id,d,null)})
-      .catch(function(err){reply(e.source,m.id,null,String(err))});
+      .then(function(d){if(current()) reply(e.source,m.id,d,null)})
+      .catch(function(err){if(current()) reply(e.source,m.id,null,String(err))})
+      .finally(function(){if(controller) agentRequests.delete(controller)});
   });
 })();
 </script>`

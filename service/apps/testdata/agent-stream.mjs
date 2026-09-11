@@ -9,7 +9,7 @@ function bridge(fetcher,confirm=()=>true){
   const win={postMessage:m=>messages.push(m)};
   const frame={contentWindow:win,addEventListener:(name,fn)=>frameListeners[name]=fn};
   const access={hidden:true},revoke={addEventListener:(name,fn)=>listeners.revoke=fn};
-  const context={Map,Number,AbortController,TextDecoder,setTimeout,clearTimeout,
+  const context={Map,Set,Number,AbortController,TextDecoder,setTimeout,clearTimeout,
     document:{getElementById:id=>id==='app-frame'?frame:id==='app-agent-access'?access:revoke,cookie:'csrf_token=secret'},
     window:{confirm,addEventListener:(name,fn)=>listeners[name]=fn},
     fetch:(path,init)=>{calls.push({path,init});return fetcher(path,init)}};
@@ -136,4 +136,14 @@ for (const op of ['agent', 'agent.stream', 'chat', 'blog.create', 'user', 'sdk:s
  assert.equal(b.calls.length,1,'page consent cannot follow an account switch');
  assert.match(b.messages.at(-1).error,/sign-in changed/);
  assert.equal(b.access.hidden,true);
+}
+
+{
+ let finish;
+ const b=bridge(()=>new Promise(resolve=>finish=resolve));
+ b.call(1,'agent');
+ b.listeners.revoke();
+ assert.equal(b.calls[0].init.signal.aborted,true,'revocation aborts legacy agent requests too');
+ finish(new Response('{}')); await tick();await tick();
+ assert.equal(b.messages.length,0,'late answers are not delivered after revocation');
 }
