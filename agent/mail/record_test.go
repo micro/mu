@@ -123,3 +123,20 @@ func TestAReplyLandsOnTheSameConversation(t *testing.T) {
 		t.Fatalf("%d messages on the chain, want 2", len(msgs))
 	}
 }
+
+func TestNotificationOpensDeliveredThread(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := mail.InboundMail{Owner: "notification-owner", From: "agent@example.test", To: "user+brief@example.test", Subject: "Morning brief", Text: "Your day", MessageID: "<notification-brief@example.test>"}
+	link := InboxURL(m)
+	recordDelivery(m)
+	th := thread.Find(m.Owner, Client, chainKey(m))
+	if th == nil || link != "/inbox?id="+th.ID {
+		t.Fatalf("wrong notification link: %s", link)
+	}
+	if len(thread.Messages(m.Owner, th.ID, 10)) != 1 {
+		t.Fatal("duplicate delivery")
+	}
+	if thread.Get("another-owner", th.ID) != nil {
+		t.Fatal("thread leaked across owners")
+	}
+}

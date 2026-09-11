@@ -296,7 +296,7 @@ func wireHooks() {
 			push.Send(accountID, push.Notification{
 				Title: title,
 				Body:  "From " + from,
-				URL:   "/inbox",
+				URL:   mailagent.InboxURL(m),
 				Tag:   "mail-" + from,
 			})
 		}

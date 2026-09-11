@@ -46,7 +46,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"mu/agent"
+	mailagent "mu/agent/mail"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -346,15 +348,25 @@ func deliver(r request, answer string, err error) {
 	if accErr != nil {
 		return
 	}
+	tag := "scheduled"
+	isBrief := false
 	if e := events.Brief(r.Account); e != nil && e.ID == r.ID {
-		if err == nil {
-			event.Announce("brief", body, "/inbox", r.Account)
-		}
+		isBrief = true
+		tag = "brief"
 		body += "\n\n---\n[Disable or manage your morning brief](" + origin.Self() + "/events#morning-brief)."
 	}
-	mail.SendMessageTo(mail.Delivery{ //nolint:errcheck
+	messageID := "<" + uuid.NewString() + "@" + mail.ConfiguredDomain() + ">"
+	delivery := mail.Delivery{
 		From: "Mu", FromID: "agent@" + mail.ConfiguredDomain(),
-		To: acc.Name, ToID: acc.ID, Tag: "scheduled",
-		Subject: r.Title, Body: body,
-	})
+		To: acc.Name, ToID: acc.ID, Tag: tag,
+		Subject: r.Title, Body: body, MessageID: messageID,
+	}
+	if sendErr := mail.SendMessageTo(delivery); sendErr != nil {
+		app.Log("work", "delivering scheduled result for %s: %v", r.Account, sendErr)
+		return
+	}
+	if isBrief && err == nil {
+		link := mailagent.InboxURL(mail.InboundMail{Owner: acc.ID, From: delivery.FromID, FromName: delivery.From, To: acc.ID + "+" + tag + "@" + mail.ConfiguredDomain(), Subject: r.Title, Body: delivery.Body, MessageID: messageID, Tag: tag})
+		event.Announce("brief", strings.TrimSpace(answer), link, r.Account)
+	}
 }

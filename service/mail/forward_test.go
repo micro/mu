@@ -139,3 +139,16 @@ func TestAReplyToAForwardedMessageReachesTheSender(t *testing.T) {
 			"Reply-To is an address a mail client cannot deliver to", got.replyTo)
 	}
 }
+
+func TestScheduledForwardRendersFormatting(t *testing.T) {
+	m := InboundMail{From: "agent@" + ConfiguredDomain(), Tag: "brief", Text: "**Today**\n\n- Meeting", Body: "**Today**\n\n- Meeting"}
+	_, rendered := forwardBody(m, "brief-render-owner")
+	if !strings.Contains(rendered, "<strong>Today</strong>") || strings.Contains(rendered, "**Today**") {
+		t.Fatal("markdown leaked into HTML email")
+	}
+	m.Text = "**Today** <script>alert(1)</script>"
+	_, rendered = forwardBody(m, "brief-render-owner")
+	if !strings.Contains(rendered, "<strong>Today</strong>") || strings.Contains(rendered, "<script>") {
+		t.Fatal("HTML formatting was lost or unsafe")
+	}
+}

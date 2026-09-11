@@ -162,6 +162,10 @@ From %s · read and reply at %s/inbox
 You are getting this because mail sent to your Mu address is copied to you here.
 Stop these emails: %s`, text, from, base, stop)
 
+	rendered := html.EscapeString(text)
+	if (m.Tag == "brief" || m.Tag == "scheduled") && m.From == "agent@"+ConfiguredDomain() {
+		rendered = app.RenderString(text)
+	}
 	htmlBody = fmt.Sprintf(`<div style="font:14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222">
 <div style="white-space:pre-wrap">%s</div>
 <hr style="border:0;border-top:1px solid #e5e5e5;margin:24px 0 12px">
@@ -169,7 +173,7 @@ Stop these emails: %s`, text, from, base, stop)
 <p style="color:#999;font-size:12px;margin:0">You are getting this because mail sent to your Mu address is copied to you here.
 <a href="%s" style="color:#999">Stop these emails</a>.</p>
 </div>`,
-		html.EscapeString(text), html.EscapeString(from),
+		rendered, html.EscapeString(from),
 		html.EscapeString(base), html.EscapeString(stop))
 
 	return plain, htmlBody
