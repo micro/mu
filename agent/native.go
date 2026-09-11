@@ -797,7 +797,14 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 		final = resp.Reply
 	}
 
-	answer = app.StripLatexDollars(final)
+	return nativeAnswer(final, recorder, opts)
+}
+
+func nativeAnswer(final string, recorder *nativeToolRecorder, opts QueryOpts) (string, error) {
+	if opts.RawReply {
+		return final, nil
+	}
+	answer := app.StripLatexDollars(final)
 	// Told whether a named agent wrote this. The freshness guard replaces a
 	// whole answer with a list of the raw tool results when the news looks
 	// stale, which is right for the generalist and destroys a user-defined
@@ -839,12 +846,7 @@ func stepReporter(onStep func(Step)) gmai.ToolWrapper {
 			onStep(Step{
 				Tool: NativeToolName(call.Name),
 				Args: call.Input,
-				// Refused is the guardrail's own word for a call that never
-				// ran — max_steps, loop, approval, and the destructive-tool
-				// block above. A call that ran and failed reports its failure
-				// in Content, as JSON the model reads, and there is no field
-				// here to tell that apart from a call that ran and worked.
-				OK:   res.Refused == "",
+				OK:   toolStepSucceeded(call.Name, res),
 				Took: time.Since(started),
 			})
 			return res

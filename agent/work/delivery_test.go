@@ -99,7 +99,7 @@ func TestFailedAndBlockedWorkWaitsForExplicitRetry(t *testing.T) {
 		calls := 0
 		query := func(string, string, agent.QueryOpts) (string, error) {
 			calls++
-			return "Completed after review", nil
+			return `{"status":"done","summary":"Completed after review","evidence":["Checked saved result"]}`, nil
 		}
 		r := request{Account: who, ID: task.ID, Kind: tasks.Kind, Prompt: "Do work"}
 		runWithQuery(r, query)

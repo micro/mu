@@ -41,6 +41,7 @@
 package work
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -193,6 +194,10 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 	}
 
 	opts.System = system
+	if r.Kind == tasks.Kind {
+		opts.RawReply = true
+		opts.System += "\n\n" + outcomeInstruction
+	}
 	opts.OnStep = func(s agent.Step) {
 		stepsMu.Lock()
 		defer stepsMu.Unlock()
@@ -205,6 +210,9 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 
 	switch r.Kind {
 	case tasks.Kind:
+		if err == nil {
+			answer, err = readOutcome(answer)
+		}
 		finishTask(r, answer, completedSteps, err)
 		return
 	case events.Kind:
@@ -229,7 +237,7 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 func workPrompt(r request) string {
 	var context strings.Builder
 	if r.Kind == tasks.Kind {
-		fmt.Fprintf(&context, "You are already executing task %q. Do the requested work now; do not create or reassign another task for this same work. Return the outcome; the runner saves it and completes this task automatically.\n\n", r.ID)
+		fmt.Fprintf(&context, "You are already executing task %q. Do the requested work now; do not create or reassign another task for this same work. Verify the requested outcome and return the structured report required by your instructions; the runner records its status. Do not claim completion from inspection or successful tool transport alone. Read shell exit codes; missing interpreters are not successful edits. Use available tools such as shell Write rather than repeatedly invoking unavailable programs.\n\n", r.ID)
 	}
 	if th := thread.Get(r.Account, r.Thread); th != nil && th.Client == thread.ChatClient && !strings.HasPrefix(th.Key, "xmpp_") {
 		fmt.Fprintf(&context, "The source conversation is chat room %q. If the owner asks you to send or reply in this conversation, use the chat Send tool with that exact room id. A draft or summary is not a request to send. Never claim a reply was sent unless the tool confirms it; if the tool is unavailable, say so. Your final answer is a private report to the owner.\n\n", th.Key)
@@ -275,6 +283,10 @@ func finishTask(r request, answer string, steps []tasks.Step, err error) {
 		status = tasks.StatusFailed
 		result = "Last run failed: " + ai.FailureMessage(err)
 		reply = "That did not work: " + ai.FailureMessage(err)
+	}
+	var blocked *blockedOutcome
+	if errors.As(err, &blocked) {
+		status, result, reply = tasks.StatusBlocked, blocked.summary, blocked.summary
 	}
 	from := r.Agent
 	if from == "" {
