@@ -3,7 +3,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"mu/internal/app"
@@ -69,12 +68,16 @@ type DeleteResponse struct {
 // Create adds a task to the caller's list.
 // @example {"title": "Summarise the week's AI news", "assignee": "agent"}
 func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse) error {
+	assignee := normaliseAssignee(req.Assignee)
+	if service.RestrictedCaller(ctx) && assignee == Agent {
+		return fmt.Errorf("a restricted caller cannot start background agent work")
+	}
 	owner := service.AccountFrom(ctx)
 	due, err := ParseDue(req.Due)
 	if err != nil {
 		return err
 	}
-	t, err := Create(owner, req.Title, req.Detail, req.Assignee, due)
+	t, err := Create(owner, req.Title, req.Detail, assignee, due)
 	if err != nil {
 		return err
 	}
@@ -97,7 +100,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse)
 	// In the background, because this call should return the task rather than
 	// wait for the work: Run marks it doing and announces, and /tasks is the
 	// progress indicator.
-	if strings.EqualFold(strings.TrimSpace(req.Assignee), Agent) && !service.InAgentRun(ctx) {
+	if assignee == Agent && !service.InAgentRun(ctx) {
 		go func() {
 			if err := Run(owner, t.ID); err != nil {
 				app.Log("tasks", "starting %s for %s: %v", t.ID, owner, err)
@@ -139,6 +142,15 @@ func (Server) Next(ctx context.Context, _ *NextRequest, rsp *TaskResponse) error
 // Update changes a task — its state, or what came of it.
 // @example {"id": "abc123", "status": "done", "result": "Mailed the summary"}
 func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *TaskResponse) error {
+	if service.RestrictedCaller(ctx) {
+		t, err := Get(service.AccountFrom(ctx), req.ID)
+		if err != nil {
+			return err
+		}
+		if t.Assignee == Agent {
+			return fmt.Errorf("a restricted caller cannot change background agent work")
+		}
+	}
 	t, err := Update(service.AccountFrom(ctx), req.ID, req.Title, req.Detail, req.Status, "", req.Result)
 	if err != nil {
 		return err

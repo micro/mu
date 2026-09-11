@@ -118,6 +118,9 @@ func executeCommandRun(ctx context.Context, account string, call service.Command
 		opts.Stream.ToolStart(run)
 	}
 	start := time.Now()
+	if len(opts.Tools) > 0 || opts.Public {
+		ctx = service.WithRestrictedCaller(ctx)
+	}
 	result, err := service.CallDynamic(service.WithAccount(ctx, account), call.Service, call.Method, call.Args)
 	text := ""
 	if err == nil {

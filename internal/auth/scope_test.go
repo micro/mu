@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+func TestEmptyScopeMarkerDoesNotGrantEverything(t *testing.T) {
+	tok := &Token{Permissions: []string{ScopePrefix}}
+	if !tok.Scoped() || tok.AllowsService("mail") || tok.AllowsService("") {
+		t.Fatal("an empty restriction became an unrestricted credential")
+	}
+}
+
 // Every token ever issued before scopes existed has no scope, and must go on
 // reaching everything. A confinement that silently applied to old credentials
 // would break every working integration on upgrade.

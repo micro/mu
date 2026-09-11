@@ -351,6 +351,9 @@ func callContext(r *http.Request) context.Context {
 		return context.Background()
 	}
 	ctx := r.Context()
+	if token := auth.TokenFromRequest(r); token != nil && token.Scoped() {
+		ctx = service.WithRestrictedCaller(ctx)
+	}
 	for _, h := range idempotencyHeaders {
 		if v := strings.TrimSpace(r.Header.Get(h)); v != "" {
 			return service.WithRequest(ctx, v)

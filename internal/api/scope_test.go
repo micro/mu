@@ -55,6 +55,9 @@ func TestAScopedTokenIsRefusedToolsOutsideItsScope(t *testing.T) {
 
 	r, _ := http.NewRequest("POST", "/mcp", nil)
 	r.Header.Set("Authorization", "Bearer "+secret)
+	if !service.RestrictedCaller(callContext(r)) {
+		t.Fatal("token restriction lost before service dispatch")
+	}
 
 	if err := checkTokenScope(r, "scopeallowed_list"); err != nil {
 		t.Errorf("a token was refused the service it names: %v", err)

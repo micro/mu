@@ -41,6 +41,9 @@ type CreateResponse struct {
 // whenever the user asks to be reminded of something or to schedule an event.
 // @example {"title": "Call the dentist", "when": "2026-07-22T15:00:00+01:00"}
 func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateResponse) error {
+	if service.RestrictedCaller(ctx) && strings.TrimSpace(req.Prompt) != "" {
+		return fmt.Errorf("a restricted caller cannot schedule background agent work")
+	}
 	when, err := parseWhen(req.When)
 	if err != nil {
 		return err

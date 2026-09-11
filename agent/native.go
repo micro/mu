@@ -119,7 +119,7 @@ func filterServices(all, allow []string) []string {
 // because it means nothing now and so a handler can never start trusting it.
 // For a run with no account the identity is empty, which clears any inherited account instead
 // of borrowing the previous caller's.
-func injectAccount(accountID string) gmai.ToolWrapper {
+func injectAccount(accountID string, restricted ...bool) gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
 			delete(call.Input, "account_id")
@@ -129,6 +129,9 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 			// the account is: a handler that needs to know cannot be given a
 			// field the caller could set. See service.InAgentRun.
 			ctx = service.WithAgentRun(service.WithAccount(ctx, accountID))
+			if len(restricted) > 0 && restricted[0] {
+				ctx = service.WithRestrictedCaller(ctx)
+			}
 			return next(ctx, call)
 		}
 	}
@@ -353,7 +356,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
-	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls(), retainEvidence(accountID, opts)}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID, len(opts.Tools) > 0 || opts.Public), dedupeNativeToolCalls(), retainEvidence(accountID, opts)}, wrappers...)
 	if opts.Stream.wants() {
 		toolWrappers = append([]gmai.ToolWrapper{streamToolReporter(opts.Stream)}, toolWrappers...)
 	}

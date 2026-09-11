@@ -393,6 +393,17 @@ func appBridgeJS(slug string) string {
     if(m.mu==='cancel'){cancelStream(m.id);return;}
 
     var op=String(m.op||''), args=m.args||{};
+    // The iframe cannot authorize use of the viewer's account. This prompt
+    // belongs to the trusted parent and is deliberately per request: an app
+    // can change after publication, and its own Send button is untrusted code.
+    var personal=op==='user'||(OPS[op]&&OPS[op].m==='POST')||op==='sdk:service'||op==='sdk:ai'||op==='sdk:fetch';
+    if(personal){
+      var detail=JSON.stringify(args);
+      if(detail.length>16000){reply(e.source,m.id,null,'Request too large to review');return;}
+      if(!window.confirm('Allow '+SLUG+' to use your account for '+op+'?\n\nThe result will be visible to this app. Agent requests may send private data to the configured AI provider and take actions using your tools.\n\n'+detail)){
+        reply(e.source,m.id,null,'Request declined');return;
+      }
+    }
 
     // The server-side proxy: caller bound from the session, app named in the
     // path. These were never the problem.
@@ -416,6 +427,7 @@ func appBridgeJS(slug string) string {
     if(spec.q){ path=path+query(args.query); }
 
     var init={headers:{'Accept':j}};
+    if(spec.m==='GET'&&op!=='user') init.credentials='omit';
     if(spec.m==='POST'){
       init.method='POST';
       init.headers['Content-Type']=j;
