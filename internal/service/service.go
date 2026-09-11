@@ -27,7 +27,6 @@ import (
 	"go-micro.dev/v6/client"
 	gwmcp "go-micro.dev/v6/gateway/mcp"
 	"go-micro.dev/v6/registry"
-	"go-micro.dev/v6/selector"
 	"go-micro.dev/v6/server"
 	gomicro "go-micro.dev/v6/service"
 	"go-micro.dev/v6/store"
@@ -144,7 +143,7 @@ func Init() {
 	cl = client.NewClient(
 		client.Registry(reg),
 		client.Wrap(timingClientWrapper),
-		client.Selector(selector.NewSelector(selector.Registry(reg))),
+		client.Selector(serviceSelector(reg)),
 		client.Broker(br),
 		client.Transport(tr),
 	)

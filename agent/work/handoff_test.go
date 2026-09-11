@@ -57,12 +57,14 @@ func TestSuccessfulWorkCompletesAndNamesReply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runWithQuery(request{Account: who, Thread: th.ID, Kind: tasks.Kind, ID: task.ID, Agent: "malten", Prompt: "reply"}, func(string, string, agent.QueryOpts) (string, error) { return "The reply was sent.", nil })
+	runWithQuery(request{Account: who, Thread: th.ID, Kind: tasks.Kind, ID: task.ID, Agent: "malten", Prompt: "reply"}, func(string, string, agent.QueryOpts) (string, error) {
+		return `{"status":"done","summary":"The reply was sent.","evidence":["chat Send confirmed delivery"]}`, nil
+	})
 	got, err := tasks.Get(who, task.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != tasks.StatusDone || got.Result != "The reply was sent." {
+	if got.Status != tasks.StatusDone || !strings.HasPrefix(got.Result, "The reply was sent.") {
 		t.Fatalf("incomplete: %+v", got)
 	}
 	msgs := thread.Messages(who, th.ID, 10)

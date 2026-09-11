@@ -103,10 +103,15 @@ type QueryMessage struct {
 
 // QueryOpts controls what context is included in agent queries.
 type QueryOpts struct {
-	Thread  string // server-resolved conversation; ownership checked before retrieval
-	History []QueryMessage
-	Public  bool   // if true, skip private context (mail, wallet, etc.)
-	System  string // optional custom system prompt (user-defined agent)
+	// RawReply preserves the model reply for callers that validate a structured outcome.
+	// Never substitute a synthesized tool summary for this reply.
+	RawReply bool
+	// OutputInstruction adds a caller-owned reporting contract without selecting a persona.
+	OutputInstruction string
+	Thread            string // server-resolved conversation; ownership checked before retrieval
+	History           []QueryMessage
+	Public            bool   // if true, skip private context (mail, wallet, etc.)
+	System            string // optional custom system prompt (user-defined agent)
 	// Extra is explicit source material attached to this conversation.
 	Extra string
 	// CardContext is ambient Home data, not an explicit reading attachment.
@@ -253,6 +258,9 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	answer, err := queryWithFallback(accountID, prompt, opts)
 	if err != nil {
 		return "", err
+	}
+	if opts.RawReply {
+		return answer, nil
 	}
 	return app.NormalizeAnswerMarkdown(answer), nil
 }
