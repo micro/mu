@@ -28,6 +28,7 @@ func TestChatHandoffCarriesDestinationAndTask(t *testing.T) {
 
 func TestPanickedWorkClearsWorkingAndReportsFailure(t *testing.T) {
 	who := t.Name()
+	namedAgent(t, who)
 	th := thread.Open(who, thread.ChatClient, "test-room")
 	task, err := tasks.CreateOn(who, th.ID, "malten", "reply", "", tasks.Agent, time.Time{})
 	if err != nil {
@@ -52,6 +53,7 @@ func TestPanickedWorkClearsWorkingAndReportsFailure(t *testing.T) {
 
 func TestSuccessfulWorkCompletesAndNamesReply(t *testing.T) {
 	who := t.Name()
+	namedAgent(t, who)
 	th := thread.Open(who, thread.ChatClient, "test-room")
 	task, err := tasks.CreateOn(who, th.ID, "malten", "reply", "", tasks.Agent, time.Time{})
 	if err != nil {
@@ -70,5 +72,12 @@ func TestSuccessfulWorkCompletesAndNamesReply(t *testing.T) {
 	msgs := thread.Messages(who, th.ID, 10)
 	if len(msgs) != 1 || msgs[0].From != "malten" {
 		t.Fatalf("missing author: %+v", msgs)
+	}
+}
+
+func namedAgent(t *testing.T, who string) {
+	t.Helper()
+	if _, _, err := agent.CreateAgent(who, "malten", agent.Hosted, "", "", nil, false); err != nil {
+		t.Fatal(err)
 	}
 }

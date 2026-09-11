@@ -11,6 +11,7 @@ import (
 
 func TestTimeoutPreservesCompletedSteps(t *testing.T) {
 	const who = "timeout_steps"
+	namedAgent(t, who)
 	task, err := tasks.CreateOn(who, "", "malten", "Reply", "Context", tasks.Agent, time.Time{})
 	if err != nil {
 		t.Fatal(err)

@@ -172,15 +172,22 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 	// on the box. That made having more than one agent pointless exactly where
 	// it should have mattered most.
 	//
-	// An unknown name falls through to the default rather than failing, which
-	// is what agent.Ask does with one for the same reason: an agent deleted
-	// between the hand-over and the run should still get the work done.
+	// A deleted or unavailable specialist cannot be replaced by a broader
+	// default. Resolve again when queued work starts, and refuse if missing.
 	var opts agent.QueryOpts
 	if r.Agent != "" {
 		if plat := agent.Platform(r.Agent); plat != nil {
 			opts = agent.PlatformOpts(plat)
 		} else if o, err := agent.AskAs(r.Account, r.Agent); err == nil {
 			opts = o
+		} else {
+			if r.Kind == tasks.Kind {
+				finishTask(r, "", nil, &blockedOutcome{summary: err.Error()})
+			} else {
+				deliver(r, "", err)
+				answered(r, "", err)
+			}
+			return
 		}
 	}
 
