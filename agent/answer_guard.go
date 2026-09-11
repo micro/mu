@@ -685,7 +685,7 @@ func readableFromPayload(line string) string {
 	}
 	// The fields a tool puts prose in. Ordered, so a payload carrying more than
 	// one is read the same way every time.
-	for _, key := range []string{"summary", "answer", "text", "message", "content", "result", "description"} {
+	for _, key := range []string{"summary", "answer", "text", "events", "message", "content", "result", "description"} {
 		if raw, ok := any[key]; ok {
 			var text string
 			if json.Unmarshal(raw, &text) == nil && strings.TrimSpace(text) != "" {

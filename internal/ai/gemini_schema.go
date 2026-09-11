@@ -9,7 +9,7 @@ import (
 // The pinned framework's built-in plan tool omits the schema of its steps.
 // Repair that declaration at the Gemini boundary without mutating shared tools.
 func init() {
-	gmai.Register("gemini", func(opts ...gmai.Option) gmai.Model { return &geminiSchema{gemini.NewProvider(opts...)} })
+	gmai.Register("gemini", func(opts ...gmai.Option) gmai.Model { return &geminiSchema{&geminiTools{gemini.NewProvider(opts...)}} })
 }
 
 type geminiSchema struct{ gmai.Model }
