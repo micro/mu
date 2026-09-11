@@ -5,7 +5,13 @@ function cancelStream(id){
   if(s){streams.delete(id);s.abort();}
 }
 function cancelStreams(){streams.forEach(function(s){s.abort()});streams.clear();}
-if(frame) frame.addEventListener('load',cancelStreams);
+var frameLoaded=false;
+if(frame) frame.addEventListener('load',function(){
+  // An inline app script can start work before its first load event. That
+  // event finishes initialization; only subsequent loads leave a document.
+  if(frameLoaded) cancelStreams();
+  frameLoaded=true;
+});
 window.addEventListener('pagehide',cancelStreams);
 
 async function streamAgent(win,id,path,body,init){

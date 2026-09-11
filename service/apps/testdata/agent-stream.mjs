@@ -26,6 +26,8 @@ const done={type:'done'};
   b.call(9,'agent.stream',{});
   assert.equal(b.calls.length,0,'unrelated window must not start work');
   b.call();await tick();
+  b.frameListeners.load();
+  assert.equal(b.calls[0].init.signal.aborted,false,'initial load must preserve a startup request');
   const bytes=new TextEncoder().encode(': heartbeat\r\n\r\n'+wire([identity,{type:'stream_token',text:'Hello 🌍'}]));
   for(const byte of bytes) enqueue(Uint8Array.of(byte));
   await tick();await tick();
@@ -53,7 +55,7 @@ for(const [name,response,expected] of [
 for(const action of ['load','pagehide','cancel']){
   const b=bridge((path,init)=>new Promise((resolve,reject)=>init.signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')))));
   b.call();b.call();assert.equal(b.calls.length,1,'duplicate request IDs must not start duplicate work');
-  if(action==='load') b.frameListeners.load();
+  if(action==='load'){b.frameListeners.load();b.frameListeners.load();}
   if(action==='pagehide') b.listeners.pagehide();
   if(action==='cancel') b.listeners.message({source:b.win,data:{mu:'cancel',id:1}});
   await tick();
