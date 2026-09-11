@@ -191,6 +191,14 @@ func Ask(r AskRequest) (Answer, error) {
 	if strings.TrimSpace(r.Account) == "" || strings.TrimSpace(r.Text) == "" {
 		return Answer{}, nil
 	}
+	var chosen QueryOpts
+	if r.Agent != "" && Platform(r.Agent) == nil {
+		var err error
+		chosen, err = AskAs(r.Account, r.Agent)
+		if err != nil {
+			return Answer{}, err
+		}
+	}
 
 	// The conversation this belongs to, in the system of record. A client that
 	// knows better says so — mail resolves a reply from its headers, which
@@ -295,13 +303,9 @@ func Ask(r AskRequest) (Answer, error) {
 			}
 		}
 	} else if r.Agent != "" {
-		// One of the account's own. Unknown names fall through to the default
-		// rather than failing: a client naming an agent that no longer exists
-		// should still get an answer.
-		if o, err := AskAs(r.Account, r.Agent); err == nil {
-			opts.System = o.System
-			opts.Tools = o.Tools
-		}
+		// Resolve before opening a conversation. A missing specialist must
+		// never be replaced by the unrestricted default.
+		opts.System, opts.Tools, opts.Model = chosen.System, chosen.Tools, chosen.Model
 	}
 	if strings.TrimSpace(r.System) != "" {
 		opts.System = strings.TrimSpace(r.System) + "\n\n" + opts.System
