@@ -133,27 +133,30 @@ const sandboxCSP = "sandbox allow-scripts allow-forms allow-popups allow-modals;
 const appShimJS = `<script>
 (function(){
   var seq=0, waiting={};
-  window.addEventListener('message', function(e){
+  var channel=new MessageChannel(), connection=channel.port1;
+  connection.onmessage=function(e){
     var m=e.data;
-    if(e.source!==parent||!m||!waiting[m.id]) return;
+    if(!m||!waiting[m.id]) return;
     var w=waiting[m.id];
     if(m.mu==='event'){
       if(w.onEvent){try{w.onEvent(m.event)}catch(err){
         delete waiting[m.id]; clearTimeout(w.timer);
-        parent.postMessage({mu:'cancel',id:m.id},'*'); w.reject(err);
+        connection.postMessage({mu:'cancel',id:m.id}); w.reject(err);
       }}
       return;
     }
     if(m.mu!=='reply') return;
     delete waiting[m.id]; clearTimeout(w.timer);
     if(m.error){ w.reject(new Error(m.error)); } else { w.resolve(m.result); }
-  });
+  };
+  connection.start();
+  parent.postMessage({mu:'connect'},'*',[channel.port2]);
   function ask(op, args, onEvent){
     return new Promise(function(resolve,reject){
       var id=++seq; waiting[id]={resolve:resolve,reject:reject,onEvent:onEvent};
-      parent.postMessage({mu:'call', id:id, op:op, args:args||{}}, '*');
+      connection.postMessage({mu:'call', id:id, op:op, args:args||{}});
       waiting[id].timer=setTimeout(function(){ if(waiting[id]){
-        delete waiting[id]; parent.postMessage({mu:'cancel',id:id},'*');
+        delete waiting[id]; connection.postMessage({mu:'cancel',id:id});
         reject(new Error('Connection timed out. The request may still be running; check your conversation before trying again.'));
       } }, op==='agent.stream'?360000:60000);
     });
@@ -399,12 +402,25 @@ func appBridgeJS(slug string) string {
     return parts.length?('?'+parts.join('&')):'';
   }
 
+  var connection;
   window.addEventListener('message', function(e){
-    var m=e.data;
-    if(!m||(m.mu!=='call'&&m.mu!=='cancel')) return;
-    // Only the frame we created. A sandboxed frame has a null origin, so the
-    // window identity is the check that means anything.
+    // A WindowProxy survives navigation. A MessagePort belongs to one
+    // document, so its replacement must connect and revoke before any call.
     if(!frame||e.source!==frame.contentWindow) return;
+    if(!e.data||e.data.mu!=='connect'||!e.ports||e.ports.length!==1) return;
+    revokeAgent();
+    if(connection) connection.close();
+    var port=e.ports[0];connection=port;
+    var target={postMessage:function(message){port.postMessage(message)}};
+    port.onmessage=function(event){
+      if(connection!==port) return;
+      handle(event.data,target);
+    };
+    port.start();
+  });
+
+  function handle(m,target){
+    if(!m||(m.mu!=='call'&&m.mu!=='cancel')) return;
     if(m.mu==='cancel'){cancelStream(m.id);return;}
 
     var op=String(m.op||''), args=m.args||{};
@@ -412,16 +428,16 @@ func appBridgeJS(slug string) string {
     // for this open page, never localStorage or a grant shared with other apps.
     // All other account operations still require their own approval.
     var agentOp=op==='agent'||op==='agent.stream';
-    if(agentOp&&csrf()!==pageCSRF){revokeAgent();reply(e.source,m.id,null,'Your sign-in changed. Reload this app before continuing.');return;}
+    if(agentOp&&csrf()!==pageCSRF){revokeAgent();reply(target,m.id,null,'Your sign-in changed. Reload this app before continuing.');return;}
     var personal=op==='user'||(OPS[op]&&OPS[op].m==='POST')||op==='sdk:service'||op==='sdk:ai'||op==='sdk:fetch';
     if(personal&&!(agentOp&&agentAllowed)){
       var detail=JSON.stringify(args);
-      if(detail.length>16000){reply(e.source,m.id,null,'Request too large to review');return;}
+      if(detail.length>16000){reply(target,m.id,null,'Request too large to review');return;}
       var question=agentOp
         ? 'Allow '+SLUG+' to use your agent while this page is open?\n\nThis app can send requests, receive answers, use your credits, and ask the agent to access private data or take actions with its tools. Data may go to the configured AI provider. Only allow an app you trust. You can revoke access at the top of this page.\n\nFirst request: '+detail
         : 'Allow '+SLUG+' to use your account for '+op+'?\n\nThe result will be visible to this app. Requests may send private data to the configured AI provider and take actions using your tools.\n\n'+detail;
       if(!window.confirm(question)){
-        reply(e.source,m.id,null,'Request declined');return;
+        reply(target,m.id,null,'Request declined');return;
       }
       if(agentOp){agentAllowed=true;if(access) access.hidden=false;}
     }
@@ -430,18 +446,18 @@ func appBridgeJS(slug string) string {
     // path. These were never the problem.
     if(op.indexOf('sdk:')===0){
       var sub=op.slice(4);
-      if(PROXY.indexOf(sub)<0){ reply(e.source,m.id,null,'unknown operation'); return; }
+      if(PROXY.indexOf(sub)<0){ reply(target,m.id,null,'unknown operation'); return; }
       fetch('/apps/'+encodeURIComponent(SLUG)+'/sdk/'+sub,{
         method:'POST',headers:{'Content-Type':j,'Accept':j,'X-CSRF-Token':csrf()},
         body:JSON.stringify(args)})
         .then(function(r){return r.json()})
-        .then(function(d){reply(e.source,m.id,d,null)})
-        .catch(function(err){reply(e.source,m.id,null,String(err))});
+        .then(function(d){reply(target,m.id,d,null)})
+        .catch(function(err){reply(target,m.id,null,String(err))});
       return;
     }
 
     var spec=OPS[op];
-    if(!spec){ reply(e.source,m.id,null,'this app asked for something it is not allowed to do: '+op); return; }
+    if(!spec){ reply(target,m.id,null,'this app asked for something it is not allowed to do: '+op); return; }
 
     var path=spec.p;
     if(spec.s){ path=path+segment(args.suffix); }
@@ -456,7 +472,7 @@ func appBridgeJS(slug string) string {
       init.body=JSON.stringify(args.body||{});
     }
     if(op==='agent.stream'){
-      streamAgent(e.source,m.id,path,args.body||{},init);
+      streamAgent(target,m.id,path,args.body||{},init);
       return;
     }
     var generation=accessGeneration, controller;
@@ -464,10 +480,10 @@ func appBridgeJS(slug string) string {
     function current(){return !agentOp||generation===accessGeneration;}
     fetch(path,init)
       .then(function(r){return r.json().catch(function(){return {}})})
-      .then(function(d){if(current()) reply(e.source,m.id,d,null)})
-      .catch(function(err){if(current()) reply(e.source,m.id,null,String(err))})
+      .then(function(d){if(current()) reply(target,m.id,d,null)})
+      .catch(function(err){if(current()) reply(target,m.id,null,String(err))})
       .finally(function(){if(controller) agentRequests.delete(controller)});
-  });
+  }
 })();
 </script>`
 }
@@ -496,14 +512,12 @@ func sandboxPage(slug, title string) string {
 	// Canvas is the system background and color-scheme is what tells the
 	// browser which one to use. Two words, no media query, and it follows the
 	// reader rather than a guess made here.
+	b.WriteString(`<link rel="stylesheet" href="/composition.css">`)
 	b.WriteString(`<style>html,body{margin:0;padding:0;height:100%;background:Canvas;color-scheme:light dark}
 body{display:flex;flex-direction:column}
-#app-agent-access{flex:none;padding:8px 12px;font:14px system-ui;background:Canvas;color:CanvasText;border-bottom:1px solid GrayText}
-#app-agent-access[hidden]{display:none}
-#app-agent-revoke{margin-left:8px;font:inherit}
 #app-frame{display:block;width:100%;flex:1;min-height:0;border:0;background:Canvas}</style>`)
 	b.WriteString(`</head><body>`)
-	b.WriteString(`<div id="app-agent-access" hidden>Agent access allowed for this page. <button id="app-agent-revoke" type="button">Revoke access</button></div>`)
+	b.WriteString(`<div id="app-agent-access" class="access-notice section-actions" hidden><span>Agent access allowed for this page.</span><button id="app-agent-revoke" class="btn btn-quiet" type="button">Revoke access</button></div>`)
 	// The app itself, not /run. That word is retired — see embed.go — and the
 	// document is at the app's own address with raw=1.
 	b.WriteString(`<iframe id="app-frame" src="/apps/` + html.EscapeString(slug) +

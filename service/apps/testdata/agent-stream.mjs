@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {MessageChannel as NativeMessageChannel} from 'node:worker_threads';
 const sources=JSON.parse(readFileSync(process.argv[2],'utf8'));
 const script=s=>s.replace(/^<script>\s*/, '').replace(/<\/script>\s*$/, '');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
@@ -14,8 +15,16 @@ function bridge(fetcher,confirm=()=>true){
     window:{confirm,addEventListener:(name,fn)=>listeners[name]=fn},
     fetch:(path,init)=>{calls.push({path,init});return fetcher(path,init)}};
   vm.runInNewContext(script(sources.bridge),context);
-  return {messages,calls,frameListeners,listeners,win,access,document:context.document,
-    call:(id=1,op='agent.stream',source=win)=>listeners.message({source,data:{mu:'call',id,op,args:{body:{prompt:'Hello',context_id:'conversation'}}}})};
+  let port;
+  function connect(){
+    port={postMessage:m=>messages.push(m),start(){},close(){}};
+    listeners.message({source:win,data:{mu:'connect'},ports:[port]});
+    return port;
+  }
+  connect();
+  return {messages,calls,frameListeners,listeners,win,access,document:context.document,connect,
+    cancel:id=>port.onmessage({data:{mu:'cancel',id}}),
+    call:(id=1,op='agent.stream',source=win)=>source===win?port.onmessage({data:{mu:'call',id,op,args:{body:{prompt:'Hello',context_id:'conversation'}}}}):listeners.message({source,data:{mu:'call',id,op}})};
 }
 const wire=events=>events.map(e=>'data: '+JSON.stringify(e)+'\r\n\r\n').join('');
 const identity={type:'flow_id',flow_id:'run',thread:'conversation'};
@@ -59,7 +68,7 @@ for(const action of ['load','pagehide','cancel','revoke']){
   if(action==='load'){b.frameListeners.load();b.frameListeners.load();}
   if(action==='pagehide') b.listeners.pagehide();
   if(action==='revoke') b.listeners.revoke();
-  if(action==='cancel') b.listeners.message({source:b.win,data:{mu:'cancel',id:1}});
+  if(action==='cancel') b.cancel(1);
   await tick();
   assert.equal(b.calls[0].init.signal.aborted,true);
   assert.equal(b.messages.length,0,'a detached/cancelled frame must receive no late result');
@@ -67,7 +76,9 @@ for(const action of ['load','pagehide','cancel','revoke']){
 {
   const posted=[],listeners={};
   const parent={postMessage:m=>posted.push(m)};
-  const ctx={parent,Promise,Error,setTimeout,clearTimeout,addEventListener:(name,fn)=>listeners[name]=fn};
+  let receiver;
+  class MessageChannel {constructor(){this.port1={postMessage:m=>posted.push(m),start(){}};this.port2={};receiver=this.port1;}}
+  const ctx={MessageChannel,parent,Promise,Error,setTimeout,clearTimeout,addEventListener:(name,fn)=>listeners[name]=fn};
   ctx.window=ctx;
   vm.createContext(ctx);vm.runInContext(script(sources.shim),ctx);
   const events=[];
@@ -75,18 +86,18 @@ for(const action of ['load','pagehide','cancel','revoke']){
   const request=posted.at(-1);
   assert.equal(request.op,'agent.stream');
   assert.equal(request.args.body.context_id,'conversation');
-  listeners.message({source:{},data:{mu:'reply',id:request.id,result:'forged'}});
-  listeners.message({source:parent,data:{mu:'event',id:request.id,event:{type:'stream_token',text:'Hello'}}});
+  assert.equal(listeners.message,undefined,'the shim does not accept window messages as replies');
+  receiver.onmessage({data:{mu:'event',id:request.id,event:{type:'stream_token',text:'Hello'}}});
   assert.equal(events.length,1);
-  listeners.message({source:parent,data:{mu:'reply',id:request.id,result:{answer:'Hello',thread:'conversation'}}});
+  receiver.onmessage({data:{mu:'reply',id:request.id,result:{answer:'Hello',thread:'conversation'}}});
   assert.equal((await result).answer,'Hello');
   const old=ctx.mu.agent('Hello');const oldRequest=posted.at(-1);
   assert.equal(oldRequest.op,'agent');
-  listeners.message({source:parent,data:{mu:'reply',id:oldRequest.id,result:{answer:'Unchanged'}}});
+  receiver.onmessage({data:{mu:'reply',id:oldRequest.id,result:{answer:'Unchanged'}}});
   assert.equal(await old,'Unchanged');
   const failed=ctx.mu.agent.stream('Hello',{onEvent:()=>{throw new Error('callback failed')}});
   const bad=posted.at(-1);
-  listeners.message({source:parent,data:{mu:'event',id:bad.id,event:{type:'stream_token',text:'Hello'}}});
+  receiver.onmessage({data:{mu:'event',id:bad.id,event:{type:'stream_token',text:'Hello'}}});
   await assert.rejects(failed,/callback failed/);
   assert.equal(posted.at(-1).mu,'cancel');
 }
@@ -146,4 +157,35 @@ for (const op of ['agent', 'agent.stream', 'chat', 'blog.create', 'user', 'sdk:s
  assert.equal(b.calls[0].init.signal.aborted,true,'revocation aborts legacy agent requests too');
  finish(new Response('{}')); await tick();await tick();
  assert.equal(b.messages.length,0,'late answers are not delivered after revocation');
+}
+
+// A replacement document connects before load. It cannot inherit consent,
+// even though its WindowProxy is exactly the same object.
+{
+ let prompts=0;
+ const b=bridge(()=>Promise.resolve(new Response('{}')),()=>{prompts++;return true});
+ b.call(1,'agent'); await tick(); assert.equal(prompts,1);
+ const old=b.connect();
+ b.call(2,'agent'); await tick(); assert.equal(prompts,2);
+ b.connect();
+ old.onmessage({data:{mu:'call',id:3,op:'agent',args:{}}});
+ assert.equal(b.calls.length,2,'a superseded document port cannot send requests');
+ b.listeners.message({source:b.win,data:{mu:'call',id:4,op:'agent',args:{}}});
+ assert.equal(b.calls.length,2,'raw window calls cannot borrow a page grant');
+}
+
+// Exercise the full shim/parent path using real transferable message ports.
+{
+ const channels=[];
+ const b=bridge(()=>Promise.resolve(new Response(wire([identity,final,done]),{headers:{'Content-Type':'text/event-stream'}})));
+ class MessageChannel extends NativeMessageChannel {constructor(){super();channels.push(this)}}
+ const parent={postMessage:(data,origin,ports)=>b.listeners.message({source:b.win,data,ports})};
+ const ctx={MessageChannel,parent,Promise,Error,setTimeout,clearTimeout,addEventListener(){}};
+ ctx.window=ctx;
+ vm.runInNewContext(script(sources.shim),ctx);
+ try {
+  const result=await ctx.mu.agent.stream('Hello');
+  assert.equal(result.answer,'Hello 🌍');
+  assert.equal(result.thread,'conversation');
+ } finally {for(const c of channels){c.port1.close();c.port2.close()}}
 }
