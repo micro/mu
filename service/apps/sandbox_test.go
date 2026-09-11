@@ -133,7 +133,7 @@ func TestEveryOperationTheShimUsesIsGranted(t *testing.T) {
 		"weather", "news", "markets", "video", "social", "search", "chat",
 		"blog.list", "blog.read", "blog.create",
 		"places.search", "places.nearby", "apps.list", "apps.read",
-		"agent", "user",
+		"agent", "agent.stream", "user",
 	} {
 		if _, ok := bridgeOps[op]; !ok {
 			t.Errorf("the shim calls %q and the table does not grant it", op)

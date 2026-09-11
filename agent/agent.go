@@ -1247,7 +1247,7 @@ func sse(w http.ResponseWriter, event map[string]any) {
 // caller could fall back to a second pipeline when it had not. There is no
 // second pipeline, so there is nothing to report: a failure is reported to the
 // person who asked, on the stream they are already reading.
-func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, threadID string) {
+func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, threadID string, streamText bool) {
 	// One writer, and something on the wire while nothing is happening.
 	//
 	// The hooks below are called from whatever goroutine is running the tool,
@@ -1356,6 +1356,17 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			send(map[string]any{"type": "tool_done", "name": run.Label, "message": run.Label + " — done"})
 		},
 	}
+	// Text deltas are opt-in: existing Home and landing clients still receive
+	// one final, formatted answer. Fresh-news answers stay buffered until their
+	// recency checks have run. The final response always supersedes the deltas.
+	if streamText && !shouldHoldNativeNewsStreamTokens(prompt, nil) {
+		sopts.Stream.Token = func(text string) {
+			wmu.Lock()
+			defer wmu.Unlock()
+			emitted = true
+			sse(w, map[string]any{"type": "stream_token", "text": text})
+		}
+	}
 	answer, err := queryWithFallback(accountID, prompt, sopts)
 	if err != nil {
 		// Whether anything was on screen already decides how it reads, not
@@ -1427,8 +1438,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Prompt     string `json:"prompt"`
 		Attachment string `json:"attachment"`
 		Model      string `json:"model"`
-		Agent      string `json:"agent"`      // optional: user-defined agent id to answer as
-		ContextID  string `json:"context_id"` // optional: prior flow to continue from
+		Agent      string `json:"agent"`       // optional: user-defined agent id to answer as
+		ContextID  string `json:"context_id"`  // optional: prior flow to continue from
+		StreamText bool   `json:"stream_text"` // opt-in answer deltas, followed by the final response
 		// Cards asks for the reader's home cards to be included as context, so
 		// a question about what they watch is answered from what is already
 		// known rather than fetched again.
@@ -1642,7 +1654,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// question still streams.
 	nopts.Thread = threadID
 	routedPrompt, nopts := Routed(req.Prompt, nopts)
-	streamNativeSSE(w, accountID, routedPrompt, nopts, flow, threadID)
+	streamNativeSSE(w, accountID, routedPrompt, nopts, flow, threadID, req.StreamText)
 }
 
 func isLatestTechnologyNewsPrompt(lower string) bool {

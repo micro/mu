@@ -13,6 +13,9 @@ package agent
 // produced it, not by the code that was streaming it to somebody.
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,15 +67,27 @@ func TestTheAnswerIsRecordedByTheRunNotTheStream(t *testing.T) {
 	if i < 0 {
 		t.Fatal("nothing records the answer in the streaming path any more")
 	}
-	// The call sits after the streaming is done with — between it and the
-	// preceding stream_token there should be no loop.
-	before := src[:i]
-	if last := strings.LastIndex(before, "stream_token"); last >= 0 {
-		if strings.Contains(before[last:], "for ") {
-			t.Error("Answered is inside a token loop, so an interrupted stream would " +
-				"record a partial answer or none")
-		}
+	// Inspect nesting: an unrelated error-handling loop between the token
+	// callback and Answered does not put Answered inside that callback.
+	file, err := parser.ParseFile(token.NewFileSet(), "agent.go", b, 0)
+	if err != nil {
+		t.Fatal(err)
 	}
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch n.(type) {
+		case *ast.FuncLit, *ast.ForStmt, *ast.RangeStmt:
+			ast.Inspect(n, func(child ast.Node) bool {
+				if call, ok := child.(*ast.CallExpr); ok {
+					if name, ok := call.Fun.(*ast.Ident); ok && name.Name == "Answered" {
+						t.Error("Answered is inside a loop or callback, rather than recording the completed run")
+					}
+				}
+				return true
+			})
+			return false
+		}
+		return true
+	})
 }
 
 // And the record itself keeps it: an answer written down is readable by

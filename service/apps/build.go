@@ -295,6 +295,7 @@ Beyond those two there is a window.mu API, for the things the web has no name fo
   mu.user()                                      the signed-in user
   mu.ai(prompt)                                  a model call, returns text
   mu.agent(prompt)                               the agent, with tools, returns an answer
+  mu.agent.stream(prompt, {context_id, onEvent})   streamed answer; resolves {answer, flow_id, thread}. Continue with thread as context_id. onEvent receives stream_token.text and progress; final response replaces deltas
   mu.web.fetch(url,{method,headers,body})        fetch a page from the open web
   mu.services()                                  what services exist here
 
