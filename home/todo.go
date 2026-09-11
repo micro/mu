@@ -25,7 +25,7 @@ func todoHTML(accountID string) string {
 			if len(rows) == 5 {
 				continue
 			}
-			label := "To do"
+			label := "Todo"
 			switch status {
 			case tasks.StatusBlocked:
 				label = "Blocked · review what is needed"
@@ -40,12 +40,12 @@ func todoHTML(accountID string) string {
 					}
 				}
 			}
-			link := app.TextLink(html.EscapeString(task.Title), "/tasks?status="+status+"#task-"+task.ID)
-			rows = append(rows, "<li>"+link+` <span class="text-muted">`+html.EscapeString(label)+"</span></li>")
+			link := "/tasks?status=" + status + "#task-" + task.ID
+			rows = append(rows, `<a class="peek-row" href="`+html.EscapeString(link)+`"><span class="peek-head"><span class="peek-title">`+html.EscapeString(task.Title)+`</span></span><span class="peek-line">`+html.EscapeString(label)+`</span></a>`)
 		}
 	}
 	if total == 0 {
 		return ""
 	}
-	return sectionRule("To do") + `<div class="brief-peek"><ul>` + strings.Join(rows, "") + `</ul>` + app.TextLink("View all tasks", "/tasks") + `</div>`
+	return sectionRule("Todo") + `<div class="todo-peek">` + strings.Join(rows, "") + `</div>` + app.SectionLink("Go to tasks", "/tasks")
 }
