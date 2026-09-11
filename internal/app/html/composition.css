@@ -155,3 +155,12 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .section-link:hover { text-decoration:underline; }
 
 @media(max-width:640px){#home-cards .view-switch{justify-content:center;}}
+
+/* Inline actions remain recognizable without hover, including on touch screens. */
+a.link-text {
+  color: var(--link-color, #0066cc);
+  text-decoration: underline !important;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.link-text:hover, .link-text:focus-visible { text-decoration-thickness: 2px; }
