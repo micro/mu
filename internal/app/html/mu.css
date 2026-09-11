@@ -6432,6 +6432,10 @@ button.pill:hover {
   margin: 0;
 }
 
+/* Todo rows already supply their own vertical padding. Keep the outer
+   inset equal above the first row and below the last. */
+.todo-peek { padding-block: 4px; }
+
 /* The brief's own padding is even, unlike the two below it. Theirs is 4px at
    the top because their first child is a row carrying 11px of its own; this
    holds a paragraph, and 4px above a sentence with 12px under it sits it
