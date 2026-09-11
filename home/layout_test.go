@@ -53,7 +53,7 @@ func TestHomeAndFeedKeepTheirOwnContent(t *testing.T) {
 		t.Fatal("missing view panels")
 	}
 	personal, feed := body[personalAt:feedAt], body[feedAt:]
-	for _, want := range []string{`id="home-agent"`, `id="home-brief"`, sectionRule("Inbox")} {
+	for _, want := range []string{`id="home-agent"`, `id="home-brief"`, `<a class="card-head-link" href="/inbox">Inbox</a>`} {
 		if !strings.Contains(personal, want) || strings.Contains(feed, want) {
 			t.Errorf("%s is not exclusive to Home", want)
 		}
@@ -154,12 +154,12 @@ func TestTheAccountBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
 	}
 
 	// The heading links to the full section, like the other previews.
-	if !strings.Contains(got, sectionRule("Account")) {
+	if !strings.Contains(got, `<a class="card-head-link" href="/account">Account</a>`) {
 		t.Error("the Account heading is not sectionRule's, so it does not match " +
 			"Inbox and Agents above it")
 	}
 	// A card, sharing the class the other two are styled by.
-	if !strings.Contains(got, `class="wallet-peek"`) {
+	if !strings.Contains(got, `id="home-account-card" class="card"`) {
 		t.Error("the balance is not in a card, and both blocks above it are")
 	}
 	if strings.Contains(got, "Go to account") {

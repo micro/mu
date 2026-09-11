@@ -38,7 +38,7 @@ func TestTaskAttentionShowsFailedAndBlockedOwnedWork(t *testing.T) {
 			t.Fatal(part)
 		}
 	}
-	for _, want := range []string{"/tasks?status=failed", "/tasks?status=blocked", "review before retrying", sectionRule("Todo")} {
+	for _, want := range []string{"/tasks?status=failed", "/tasks?status=blocked", "review before retrying", `<a class="card-head-link" href="/tasks">Todo</a>`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("attention summary missing %q: %s", want, out)
 		}

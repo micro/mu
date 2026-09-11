@@ -30,7 +30,6 @@ package agent
 
 import (
 	"html"
-	"strconv"
 	"strings"
 	"time"
 
@@ -122,13 +121,11 @@ func Preview(accountID string) string {
 		rows = append(rows, entryOf{ID: a.ID, Name: name, Path: Path(accountID, a.ID)})
 	}
 
-	total := len(rows)
 	if len(rows) > previewShown {
 		rows = rows[:previewShown]
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="agent-peek">`)
 	for _, a := range rows {
 		b.WriteString(`<a class="agent-peek-row" href="` + html.EscapeString(a.Path) + `">`)
 		b.WriteString(`<span class="agent-peek-name">` + html.EscapeString(a.Name) + `</span>`)
@@ -149,11 +146,7 @@ func Preview(accountID string) string {
 		}
 		b.WriteString(`</a>`)
 	}
-	b.WriteString(`</div>`)
-	if n := total - len(rows); n > 0 {
-		b.WriteString(app.SectionLink(strconv.Itoa(n)+" more", "/agents"))
-	}
-	return b.String()
+	return app.PreviewCard("home-agents-card", "Agents", "/agents", b.String())
 }
 
 // latestByAgent is the last conversation each agent actually spoke on.
