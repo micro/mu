@@ -15,8 +15,9 @@ func scopedRequestAllowed(r *http.Request) bool {
 	if token == nil || !token.Scoped() {
 		return true
 	}
-	if path.Clean(r.URL.Path) != r.URL.Path {
+	p := strings.TrimSuffix(r.URL.Path, "/")
+	if path.Clean(p) != p {
 		return false
 	}
-	return r.URL.Path == "/mcp" || strings.HasPrefix(r.URL.Path, "/api/v1/")
+	return p == "/mcp" || p == "/api/v1" || strings.HasPrefix(p, "/api/v1/")
 }

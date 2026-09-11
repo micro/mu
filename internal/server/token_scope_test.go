@@ -25,7 +25,7 @@ func TestScopedCredentialCannotUseAccountDoors(t *testing.T) {
 				t.Errorf("%s reached %s", header, path)
 			}
 		}
-		for _, path := range []string{"/mcp", "/api/v1/news/list"} {
+		for _, path := range []string{"/mcp", "/mcp/", "/api/v1", "/api/v1/", "/api/v1/news/list", "/api/v1/news/list/"} {
 			r := httptest.NewRequest("POST", path, nil)
 			r.Header.Set(header, secret)
 			if !scopedRequestAllowed(r) {

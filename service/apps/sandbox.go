@@ -396,7 +396,7 @@ func appBridgeJS(slug string) string {
     // The iframe cannot authorize use of the viewer's account. This prompt
     // belongs to the trusted parent and is deliberately per request: an app
     // can change after publication, and its own Send button is untrusted code.
-    var personal=op==='agent'||op==='agent.stream'||op==='chat'||op==='blog.create'||op==='user'||op==='sdk:service';
+    var personal=op==='user'||(OPS[op]&&OPS[op].m==='POST')||op==='sdk:service'||op==='sdk:ai'||op==='sdk:fetch';
     if(personal){
       var detail=JSON.stringify(args);
       if(detail.length>16000){reply(e.source,m.id,null,'Request too large to review');return;}

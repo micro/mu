@@ -91,7 +91,7 @@ for(const action of ['load','pagehide','cancel']){
 
 // Untrusted app requests cannot authorize themselves, including the legacy
 // synchronous agent path and generic service dispatch.
-for (const op of ['agent', 'agent.stream', 'chat', 'blog.create', 'user', 'sdk:service']) {
+for (const op of ['agent', 'agent.stream', 'chat', 'blog.create', 'user', 'sdk:service', 'sdk:ai', 'sdk:fetch', 'places.search', 'places.nearby']) {
   const prompts=[];
   const b=bridge(()=>{throw new Error('unauthorized fetch')}, text=>{prompts.push(text);return false});
   b.call(1,op); await tick();
