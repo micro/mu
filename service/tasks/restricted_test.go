@@ -11,8 +11,10 @@ func TestRestrictedCallerCannotBorrowBackgroundAgent(t *testing.T) {
 	setupTasks(t)
 	ctx := service.WithRestrictedCaller(service.WithAccount(context.Background(), "someone"))
 	var rsp TaskResponse
-	if err := (Server{}).Create(ctx, &CreateRequest{Title: "Read private mail", Assignee: Agent}, &rsp); err == nil {
-		t.Fatal("restricted caller started work")
+	for _, assignee := range []string{Agent, "bot", "ai", "mu", " BOT "} {
+		if err := (Server{}).Create(ctx, &CreateRequest{Title: "Read private mail", Assignee: assignee}, &rsp); err == nil {
+			t.Fatalf("restricted caller started work with %q", assignee)
+		}
 	}
 	if len(List("someone", "")) != 0 {
 		t.Fatal("refused task persisted")

@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"strconv"
@@ -39,6 +40,9 @@ import (
 	"mu/internal/userdb"
 	"mu/service/mail"
 )
+
+// Serialize roster mutations with credential issuance and revocation.
+var rosterMutation sync.Mutex
 
 const (
 	ns         = "agents"
@@ -232,6 +236,8 @@ func plural(n int) string {
 // each call site. A caller that never reads this package still cannot escape
 // the scope, because the check lives at the MCP boundary.
 func CreateAgent(owner, name, kind, prompt, description string, services []string, withToken bool) (*Agent, string, error) {
+	rosterMutation.Lock()
+	defer rosterMutation.Unlock()
 	if owner == "" {
 		return nil, "", fmt.Errorf("sign in to create an agent")
 	}
@@ -356,6 +362,8 @@ func (a *Agent) save() error {
 // Tags are assigned oldest first so the shortest name wins the unadorned tag,
 // rather than whichever agent happened to be loaded first.
 func EnsureTags(owner string) {
+	rosterMutation.Lock()
+	defer rosterMutation.Unlock()
 	all := Agents(owner)
 	var missing []*Agent
 	for _, a := range all {
@@ -433,6 +441,8 @@ func NameOf(owner, id string) string {
 // working would be the worst of both: gone from the page that would have told
 // you it existed, and still able to call.
 func RemoveAgent(owner, id string) error {
+	rosterMutation.Lock()
+	defer rosterMutation.Unlock()
 	a := For(owner, id)
 	if a == nil {
 		return fmt.Errorf("no such agent")
@@ -576,6 +586,8 @@ func without(list []string, tag string) []string {
 
 // UpdateAgent rewrites an agent the owner owns, keeping its id and token.
 func UpdateAgent(owner, id, name, prompt, description string, services []string) (*Agent, error) {
+	rosterMutation.Lock()
+	defer rosterMutation.Unlock()
 	selected := validServices(services)
 	if len(services) > 0 && len(selected) == 0 {
 		return nil, fmt.Errorf("none of the selected services are available")
@@ -634,6 +646,8 @@ func UpdateAgent(owner, id, name, prompt, description string, services []string)
 // the person who could fix it is the one who chose it — at the moment they
 // chose it. See ai.Offered.
 func SetModel(owner, id, model string) error {
+	rosterMutation.Lock()
+	defer rosterMutation.Unlock()
 	a := For(owner, id)
 	if a == nil {
 		return fmt.Errorf("no such agent")
@@ -652,6 +666,8 @@ func SetModel(owner, id, model string) error {
 // run somewhere else, and because the secret can only be shown once — so it has
 // to be an action somebody takes deliberately rather than a side effect.
 func IssueToken(owner, id string) (string, error) {
+	rosterMutation.Lock()
+	defer rosterMutation.Unlock()
 	a := For(owner, id)
 	if a == nil {
 		return "", fmt.Errorf("no such agent")
@@ -665,6 +681,7 @@ func IssueToken(owner, id string) (string, error) {
 	}
 	a.TokenID = tok.ID
 	if err := a.save(); err != nil {
+		_ = auth.DeleteToken(tok.ID, owner)
 		return "", err
 	}
 	return secret, nil

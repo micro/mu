@@ -3,7 +3,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"mu/internal/app"
@@ -69,7 +68,8 @@ type DeleteResponse struct {
 // Create adds a task to the caller's list.
 // @example {"title": "Summarise the week's AI news", "assignee": "agent"}
 func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse) error {
-	if service.RestrictedCaller(ctx) && strings.EqualFold(strings.TrimSpace(req.Assignee), Agent) {
+	assignee := normaliseAssignee(req.Assignee)
+	if service.RestrictedCaller(ctx) && assignee == Agent {
 		return fmt.Errorf("a restricted caller cannot start background agent work")
 	}
 	owner := service.AccountFrom(ctx)
@@ -77,7 +77,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse)
 	if err != nil {
 		return err
 	}
-	t, err := Create(owner, req.Title, req.Detail, req.Assignee, due)
+	t, err := Create(owner, req.Title, req.Detail, assignee, due)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse)
 	// In the background, because this call should return the task rather than
 	// wait for the work: Run marks it doing and announces, and /tasks is the
 	// progress indicator.
-	if strings.EqualFold(strings.TrimSpace(req.Assignee), Agent) && !service.InAgentRun(ctx) {
+	if assignee == Agent && !service.InAgentRun(ctx) {
 		go func() {
 			if err := Run(owner, t.ID); err != nil {
 				app.Log("tasks", "starting %s for %s: %v", t.ID, owner, err)

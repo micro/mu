@@ -2,8 +2,47 @@ package agent
 
 import (
 	"mu/internal/auth"
+	"sync"
 	"testing"
 )
+
+func TestConcurrentScopeEditAndIssuanceCannotLeaveBroadToken(t *testing.T) {
+	probes(t)
+	id := owner(t, "scope_concurrent_owner")
+	a, _, err := CreateAgent(id, "Reader", External, "", "", []string{"probealpha", "probebeta"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 12; i++ {
+		if _, err := UpdateAgent(id, a.ID, "Reader", "", "", []string{"probealpha", "probebeta"}); err != nil {
+			t.Fatal(err)
+		}
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			if _, err := IssueToken(id, a.ID); err != nil {
+				t.Error(err)
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			if _, err := UpdateAgent(id, a.ID, "Reader", "", "", []string{"probealpha"}); err != nil {
+				t.Error(err)
+			}
+		}()
+		close(start)
+		wg.Wait()
+		for _, token := range auth.ListTokens(id) {
+			if token.AllowsService("probebeta") {
+				t.Fatal("concurrent edit left a live broad token")
+			}
+		}
+	}
+}
 
 func TestEditingScopeRevokesTheOldCredential(t *testing.T) {
 	probes(t)
