@@ -2,7 +2,7 @@
 
 **A personal server: one Go binary you can self-host that carries a web app, an
 HTTP API, a CLI, an MCP server and an installable PWA over the same 36 services
-and 133 tools.** `go build ./...` produces it; nothing else has to be running.
+and 134 tools.** `go build ./...` produces it; nothing else has to be running.
 
 It is not a framework or a set of libraries. It is a thing that runs, that you
 sign into, and that other programs can call.

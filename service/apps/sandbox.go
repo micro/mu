@@ -75,9 +75,10 @@ var bridgeOps = map[string]bridgeOp{
 	// Writing, and spending. Each of these already charges or rate-limits the
 	// viewer through the central write gate; the app cannot reach anything the
 	// person could not do themselves on the page.
-	"blog.create": {Method: "POST", Path: "/blog"},
-	"chat":        {Method: "POST", Path: "/chat"},
-	"agent":       {Method: "POST", Path: "/agent/run"},
+	"blog.create":  {Method: "POST", Path: "/blog"},
+	"chat":         {Method: "POST", Path: "/chat"},
+	"agent":        {Method: "POST", Path: "/agent/run"},
+	"agent.stream": {Method: "POST", Path: "/agent"},
 
 	// Who is looking. The session endpoint returns the account, not a
 	// credential — an app knowing whose data it is showing is the point.
@@ -134,15 +135,27 @@ const appShimJS = `<script>
   var seq=0, waiting={};
   window.addEventListener('message', function(e){
     var m=e.data;
-    if(!m||m.mu!=='reply'||!waiting[m.id]) return;
-    var w=waiting[m.id]; delete waiting[m.id];
+    if(e.source!==parent||!m||!waiting[m.id]) return;
+    var w=waiting[m.id];
+    if(m.mu==='event'){
+      if(w.onEvent){try{w.onEvent(m.event)}catch(err){
+        delete waiting[m.id]; clearTimeout(w.timer);
+        parent.postMessage({mu:'cancel',id:m.id},'*'); w.reject(err);
+      }}
+      return;
+    }
+    if(m.mu!=='reply') return;
+    delete waiting[m.id]; clearTimeout(w.timer);
     if(m.error){ w.reject(new Error(m.error)); } else { w.resolve(m.result); }
   });
-  function ask(op, args){
+  function ask(op, args, onEvent){
     return new Promise(function(resolve,reject){
-      var id=++seq; waiting[id]={resolve:resolve,reject:reject};
+      var id=++seq; waiting[id]={resolve:resolve,reject:reject,onEvent:onEvent};
       parent.postMessage({mu:'call', id:id, op:op, args:args||{}}, '*');
-      setTimeout(function(){ if(waiting[id]){ delete waiting[id]; reject(new Error('timed out')); } }, 60000);
+      waiting[id].timer=setTimeout(function(){ if(waiting[id]){
+        delete waiting[id]; parent.postMessage({mu:'cancel',id:id},'*');
+        reject(new Error('Connection timed out. The request may still be running; check your conversation before trying again.'));
+      } }, op==='agent.stream'?360000:60000);
     });
   }
   function proxy(op,body){ return ask('sdk:'+op, body); }
@@ -208,6 +221,12 @@ const appShimJS = `<script>
       try{var r=eval(code);return{ok:true,result:String(r)}}
       catch(e){return{ok:false,error:e.message}}
     },
+  };
+  // Opt-in streaming returns the final answer and conversation identifiers.
+  // onEvent receives progress and text deltas; response is authoritative.
+  mu.agent.stream=function(prompt,options){
+    options=options||{};
+    return ask('agent.stream',{body:{prompt:prompt,context_id:options.context_id||''}},options.onEvent);
   };
   // ── The web platform, over the same bridge ──────────────────────
   //
@@ -348,6 +367,7 @@ func appBridgeJS(slug string) string {
   var SLUG=` + jsString(slug) + `;
   var frame=document.getElementById('app-frame');
   var j='application/json';
+  ` + appAgentStreamJS + `
 
   function csrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
 
@@ -366,10 +386,11 @@ func appBridgeJS(slug string) string {
 
   window.addEventListener('message', function(e){
     var m=e.data;
-    if(!m||m.mu!=='call') return;
+    if(!m||(m.mu!=='call'&&m.mu!=='cancel')) return;
     // Only the frame we created. A sandboxed frame has a null origin, so the
     // window identity is the check that means anything.
     if(!frame||e.source!==frame.contentWindow) return;
+    if(m.mu==='cancel'){cancelStream(m.id);return;}
 
     var op=String(m.op||''), args=m.args||{};
 
@@ -400,6 +421,10 @@ func appBridgeJS(slug string) string {
       init.headers['Content-Type']=j;
       init.headers['X-CSRF-Token']=csrf();
       init.body=JSON.stringify(args.body||{});
+    }
+    if(op==='agent.stream'){
+      streamAgent(e.source,m.id,path,args.body||{},init);
+      return;
     }
     fetch(path,init)
       .then(function(r){return r.json().catch(function(){return {}})})
