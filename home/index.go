@@ -335,7 +335,6 @@ func indexBody() string {
    is two sentences, which is short enough to centre without the ragged edge
    that makes centred prose hard to track. */
 .lbrief{font-size:15px;color:#444;line-height:1.65}
-.lbrief a{color:#444;text-decoration:underline;text-underline-offset:2px}
 /* Numbers, so they are set as numbers: tabular, quiet, one line. */
 .lmarkets{font-size:13px;font-variant-numeric:tabular-nums}
 .lmarkets a{color:#777;text-decoration:none}
