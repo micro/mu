@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {MessageChannel as NativeMessageChannel} from 'node:worker_threads';
 const sources=JSON.parse(readFileSync(process.argv[2],'utf8'));
 const script=s=>s.replace(/^<script>\s*/, '').replace(/<\/script>\s*$/, '');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
@@ -8,13 +9,22 @@ function bridge(fetcher,confirm=()=>true){
   const messages=[],listeners={},frameListeners={},calls=[];
   const win={postMessage:m=>messages.push(m)};
   const frame={contentWindow:win,addEventListener:(name,fn)=>frameListeners[name]=fn};
-  const context={Map,Number,AbortController,TextDecoder,setTimeout,clearTimeout,
-    document:{getElementById:()=>frame,cookie:'csrf_token=secret'},
+  const access={hidden:true},revoke={addEventListener:(name,fn)=>listeners.revoke=fn};
+  const context={Map,Set,Number,AbortController,TextDecoder,setTimeout,clearTimeout,
+    document:{getElementById:id=>id==='app-frame'?frame:id==='app-agent-access'?access:revoke,cookie:'csrf_token=secret'},
     window:{confirm,addEventListener:(name,fn)=>listeners[name]=fn},
     fetch:(path,init)=>{calls.push({path,init});return fetcher(path,init)}};
   vm.runInNewContext(script(sources.bridge),context);
-  return {messages,calls,frameListeners,listeners,win,
-    call:(id=1,op='agent.stream',source=win)=>listeners.message({source,data:{mu:'call',id,op,args:{body:{prompt:'Hello',context_id:'conversation'}}}})};
+  let port;
+  function connect(){
+    port={postMessage:m=>messages.push(m),start(){},close(){}};
+    listeners.message({source:win,data:{mu:'connect'},ports:[port]});
+    return port;
+  }
+  connect();
+  return {messages,calls,frameListeners,listeners,win,access,document:context.document,connect,
+    cancel:id=>port.onmessage({data:{mu:'cancel',id}}),
+    call:(id=1,op='agent.stream',source=win)=>source===win?port.onmessage({data:{mu:'call',id,op,args:{body:{prompt:'Hello',context_id:'conversation'}}}}):listeners.message({source,data:{mu:'call',id,op}})};
 }
 const wire=events=>events.map(e=>'data: '+JSON.stringify(e)+'\r\n\r\n').join('');
 const identity={type:'flow_id',flow_id:'run',thread:'conversation'};
@@ -52,12 +62,13 @@ for(const [name,response,expected] of [
   assert.ok(b.messages.at(-1).error.includes(expected),name+': '+JSON.stringify(b.messages));
   assert.equal(b.calls.length,1,'a failed stream must never rerun the prompt');
 }
-for(const action of ['load','pagehide','cancel']){
+for(const action of ['load','pagehide','cancel','revoke']){
   const b=bridge((path,init)=>new Promise((resolve,reject)=>init.signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')))));
   b.call();b.call();assert.equal(b.calls.length,1,'duplicate request IDs must not start duplicate work');
   if(action==='load'){b.frameListeners.load();b.frameListeners.load();}
   if(action==='pagehide') b.listeners.pagehide();
-  if(action==='cancel') b.listeners.message({source:b.win,data:{mu:'cancel',id:1}});
+  if(action==='revoke') b.listeners.revoke();
+  if(action==='cancel') b.cancel(1);
   await tick();
   assert.equal(b.calls[0].init.signal.aborted,true);
   assert.equal(b.messages.length,0,'a detached/cancelled frame must receive no late result');
@@ -65,7 +76,9 @@ for(const action of ['load','pagehide','cancel']){
 {
   const posted=[],listeners={};
   const parent={postMessage:m=>posted.push(m)};
-  const ctx={parent,Promise,Error,setTimeout,clearTimeout,addEventListener:(name,fn)=>listeners[name]=fn};
+  let receiver;
+  class MessageChannel {constructor(){this.port1={postMessage:m=>posted.push(m),start(){}};this.port2={};receiver=this.port1;}}
+  const ctx={MessageChannel,parent,Promise,Error,setTimeout,clearTimeout,addEventListener:(name,fn)=>listeners[name]=fn};
   ctx.window=ctx;
   vm.createContext(ctx);vm.runInContext(script(sources.shim),ctx);
   const events=[];
@@ -73,18 +86,18 @@ for(const action of ['load','pagehide','cancel']){
   const request=posted.at(-1);
   assert.equal(request.op,'agent.stream');
   assert.equal(request.args.body.context_id,'conversation');
-  listeners.message({source:{},data:{mu:'reply',id:request.id,result:'forged'}});
-  listeners.message({source:parent,data:{mu:'event',id:request.id,event:{type:'stream_token',text:'Hello'}}});
+  assert.equal(listeners.message,undefined,'the shim does not accept window messages as replies');
+  receiver.onmessage({data:{mu:'event',id:request.id,event:{type:'stream_token',text:'Hello'}}});
   assert.equal(events.length,1);
-  listeners.message({source:parent,data:{mu:'reply',id:request.id,result:{answer:'Hello',thread:'conversation'}}});
+  receiver.onmessage({data:{mu:'reply',id:request.id,result:{answer:'Hello',thread:'conversation'}}});
   assert.equal((await result).answer,'Hello');
   const old=ctx.mu.agent('Hello');const oldRequest=posted.at(-1);
   assert.equal(oldRequest.op,'agent');
-  listeners.message({source:parent,data:{mu:'reply',id:oldRequest.id,result:{answer:'Unchanged'}}});
+  receiver.onmessage({data:{mu:'reply',id:oldRequest.id,result:{answer:'Unchanged'}}});
   assert.equal(await old,'Unchanged');
   const failed=ctx.mu.agent.stream('Hello',{onEvent:()=>{throw new Error('callback failed')}});
   const bad=posted.at(-1);
-  listeners.message({source:parent,data:{mu:'event',id:bad.id,event:{type:'stream_token',text:'Hello'}}});
+  receiver.onmessage({data:{mu:'event',id:bad.id,event:{type:'stream_token',text:'Hello'}}});
   await assert.rejects(failed,/callback failed/);
   assert.equal(posted.at(-1).mu,'cancel');
 }
@@ -106,4 +119,73 @@ for (const op of ['agent', 'agent.stream', 'chat', 'blog.create', 'user', 'sdk:s
  const b=bridge(()=>Promise.resolve(new Response('{}')));
  b.call(1,'blog.list'); await tick();
  assert.equal(b.calls[0].init.credentials,'omit','public reads cannot borrow the viewer');
+}
+
+// A page grant covers only agent requests and remains under parent control.
+{
+ let prompts=0;
+ const b=bridge(()=>Promise.resolve(new Response('{}')),()=>{prompts++;return true});
+ b.call(1,'agent'); b.call(2,'agent'); await tick();
+ assert.equal(prompts,1);
+ assert.equal(b.access.hidden,false);
+ b.call(3,'sdk:service'); await tick(); assert.equal(prompts,2);
+ b.listeners.revoke(); assert.equal(b.access.hidden,true);
+ b.call(4,'agent'); await tick(); assert.equal(prompts,3);
+ b.frameListeners.load(); b.frameListeners.load();
+ b.call(5,'agent'); await tick(); assert.equal(prompts,4);
+ b.listeners.pagehide();
+ b.call(6,'agent'); await tick(); assert.equal(prompts,5);
+ const other=bridge(()=>Promise.resolve(new Response('{}')),()=>{prompts++;return true});
+ other.call(1,'agent'); await tick(); assert.equal(prompts,6);
+}
+
+{
+ const b=bridge(()=>Promise.resolve(new Response('{}')));
+ b.call(1,'agent'); await tick();
+ b.document.cookie='csrf_token=another-session';
+ b.call(2,'agent'); await tick();
+ assert.equal(b.calls.length,1,'page consent cannot follow an account switch');
+ assert.match(b.messages.at(-1).error,/sign-in changed/);
+ assert.equal(b.access.hidden,true);
+}
+
+{
+ let finish;
+ const b=bridge(()=>new Promise(resolve=>finish=resolve));
+ b.call(1,'agent');
+ b.listeners.revoke();
+ assert.equal(b.calls[0].init.signal.aborted,true,'revocation aborts legacy agent requests too');
+ finish(new Response('{}')); await tick();await tick();
+ assert.equal(b.messages.length,0,'late answers are not delivered after revocation');
+}
+
+// A replacement document connects before load. It cannot inherit consent,
+// even though its WindowProxy is exactly the same object.
+{
+ let prompts=0;
+ const b=bridge(()=>Promise.resolve(new Response('{}')),()=>{prompts++;return true});
+ b.call(1,'agent'); await tick(); assert.equal(prompts,1);
+ const old=b.connect();
+ b.call(2,'agent'); await tick(); assert.equal(prompts,2);
+ b.connect();
+ old.onmessage({data:{mu:'call',id:3,op:'agent',args:{}}});
+ assert.equal(b.calls.length,2,'a superseded document port cannot send requests');
+ b.listeners.message({source:b.win,data:{mu:'call',id:4,op:'agent',args:{}}});
+ assert.equal(b.calls.length,2,'raw window calls cannot borrow a page grant');
+}
+
+// Exercise the full shim/parent path using real transferable message ports.
+{
+ const channels=[];
+ const b=bridge(()=>Promise.resolve(new Response(wire([identity,final,done]),{headers:{'Content-Type':'text/event-stream'}})));
+ class MessageChannel extends NativeMessageChannel {constructor(){super();channels.push(this)}}
+ const parent={postMessage:(data,origin,ports)=>b.listeners.message({source:b.win,data,ports})};
+ const ctx={MessageChannel,parent,Promise,Error,setTimeout,clearTimeout,addEventListener(){}};
+ ctx.window=ctx;
+ vm.runInNewContext(script(sources.shim),ctx);
+ try {
+  const result=await ctx.mu.agent.stream('Hello');
+  assert.equal(result.answer,'Hello 🌍');
+  assert.equal(result.thread,'conversation');
+ } finally {for(const c of channels){c.port1.close();c.port2.close()}}
 }

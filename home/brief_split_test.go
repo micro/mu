@@ -39,11 +39,11 @@ func TestTheBriefIsAboutYouAndNotTheWorld(t *testing.T) {
 	// A line about the world exists and is being published.
 	line := brief.Line()
 
-	got := briefHTML(who)
+	got := todoHTML(who)
 	if got == "" {
 		t.Fatal("an account with an overdue task gets no brief at all")
 	}
-	if !strings.Contains(got, "overdue") {
+	if !strings.Contains(got, "Overdue") {
 		t.Errorf("the brief does not say what is owed:\n%s", got)
 	}
 	if line != "" && strings.Contains(got, line) {

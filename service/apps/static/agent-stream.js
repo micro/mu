@@ -9,10 +9,10 @@ var frameLoaded=false;
 if(frame) frame.addEventListener('load',function(){
   // An inline app script can start work before its first load event. That
   // event finishes initialization; only subsequent loads leave a document.
-  if(frameLoaded) cancelStreams();
+  if(frameLoaded) revokeAgent();
   frameLoaded=true;
 });
-window.addEventListener('pagehide',cancelStreams);
+window.addEventListener('pagehide',revokeAgent);
 
 async function streamAgent(win,id,path,body,init){
   if(!Number.isSafeInteger(id)||streams.has(id)) return;

@@ -164,3 +164,8 @@ a.link-text {
   text-underline-offset: 3px;
 }
 .link-text:hover, .link-text:focus-visible { text-decoration-thickness: 2px; }
+
+/* Permission notices sit outside untrusted content and use ordinary actions. */
+.access-notice { flex: none; padding: var(--space-control) var(--space-field); font: 14px system-ui; background: Canvas; color: CanvasText; border-bottom: 1px solid GrayText; }
+.access-notice[hidden] { display: none; }
+.access-notice .btn-quiet { color: CanvasText; border-color: GrayText; }

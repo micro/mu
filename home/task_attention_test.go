@@ -20,13 +20,30 @@ func TestTaskAttentionShowsFailedAndBlockedOwnedWork(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	out := taskAttention(who)
-	for _, want := range []string{"/tasks?status=failed", "/tasks?status=blocked", "review before retrying"} {
+	if _, err := tasks.Create(who, "<script>personal</script>", "", tasks.Me, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tasks.Create(who, "Queued agent work", "", tasks.Agent, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	out := todoHTML(who)
+	if strings.Contains(out, "<script>") || strings.Contains(out, "Queued agent work") {
+		t.Fatal(out)
+	}
+	if !strings.Contains(out, "&lt;script&gt;personal") {
+		t.Fatal(out)
+	}
+	for _, part := range briefParts(who) {
+		if strings.Contains(part, "retry") || strings.Contains(part, "blocked") || strings.Contains(part, "open.") {
+			t.Fatal(part)
+		}
+	}
+	for _, want := range []string{"/tasks?status=failed", "/tasks?status=blocked", "review before retrying", sectionRule("To do")} {
 		if !strings.Contains(out, want) {
 			t.Errorf("attention summary missing %q: %s", want, out)
 		}
 	}
-	if taskAttention("unrelated-owner") != "" || taskAttention("") != "" {
+	if todoHTML("unrelated-owner") != "" || todoHTML("") != "" {
 		t.Fatal("task attention crossed ownership")
 	}
 }
