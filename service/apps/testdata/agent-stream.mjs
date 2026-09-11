@@ -4,13 +4,13 @@ import vm from 'node:vm';
 const sources=JSON.parse(readFileSync(process.argv[2],'utf8'));
 const script=s=>s.replace(/^<script>\s*/, '').replace(/<\/script>\s*$/, '');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function bridge(fetcher){
+function bridge(fetcher,confirm=()=>true){
   const messages=[],listeners={},frameListeners={},calls=[];
   const win={postMessage:m=>messages.push(m)};
   const frame={contentWindow:win,addEventListener:(name,fn)=>frameListeners[name]=fn};
   const context={Map,Number,AbortController,TextDecoder,setTimeout,clearTimeout,
     document:{getElementById:()=>frame,cookie:'csrf_token=secret'},
-    window:{addEventListener:(name,fn)=>listeners[name]=fn},
+    window:{confirm,addEventListener:(name,fn)=>listeners[name]=fn},
     fetch:(path,init)=>{calls.push({path,init});return fetcher(path,init)}};
   vm.runInNewContext(script(sources.bridge),context);
   return {messages,calls,frameListeners,listeners,win,
@@ -87,4 +87,23 @@ for(const action of ['load','pagehide','cancel']){
   listeners.message({source:parent,data:{mu:'event',id:bad.id,event:{type:'stream_token',text:'Hello'}}});
   await assert.rejects(failed,/callback failed/);
   assert.equal(posted.at(-1).mu,'cancel');
+}
+
+// Untrusted app requests cannot authorize themselves, including the legacy
+// synchronous agent path and generic service dispatch.
+for (const op of ['agent', 'agent.stream', 'chat', 'blog.create', 'user', 'sdk:service']) {
+  const prompts=[];
+  const b=bridge(()=>{throw new Error('unauthorized fetch')}, text=>{prompts.push(text);return false});
+  b.call(1,op); await tick();
+  assert.equal(b.calls.length,0,op);
+  assert.equal(prompts.length,1,op);
+  assert.match(prompts[0],/Hello/);
+  assert.match(b.messages.at(-1).error,/declined/);
+  b.call(2,op,{});
+  assert.equal(prompts.length,1,'unrelated frames cannot prompt');
+}
+{
+ const b=bridge(()=>Promise.resolve(new Response('{}')));
+ b.call(1,'blog.list'); await tick();
+ assert.equal(b.calls[0].init.credentials,'omit','public reads cannot borrow the viewer');
 }

@@ -69,6 +69,9 @@ type DeleteResponse struct {
 // Create adds a task to the caller's list.
 // @example {"title": "Summarise the week's AI news", "assignee": "agent"}
 func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse) error {
+	if service.RestrictedCaller(ctx) && strings.EqualFold(strings.TrimSpace(req.Assignee), Agent) {
+		return fmt.Errorf("a restricted caller cannot start background agent work")
+	}
 	owner := service.AccountFrom(ctx)
 	due, err := ParseDue(req.Due)
 	if err != nil {
@@ -139,6 +142,15 @@ func (Server) Next(ctx context.Context, _ *NextRequest, rsp *TaskResponse) error
 // Update changes a task — its state, or what came of it.
 // @example {"id": "abc123", "status": "done", "result": "Mailed the summary"}
 func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *TaskResponse) error {
+	if service.RestrictedCaller(ctx) {
+		t, err := Get(service.AccountFrom(ctx), req.ID)
+		if err != nil {
+			return err
+		}
+		if t.Assignee == Agent {
+			return fmt.Errorf("a restricted caller cannot change background agent work")
+		}
+	}
 	t, err := Update(service.AccountFrom(ctx), req.ID, req.Title, req.Detail, req.Status, "", req.Result)
 	if err != nil {
 		return err

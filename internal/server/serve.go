@@ -57,6 +57,14 @@ func serve(addr string) {
 			}
 
 			setSecurityHeaders(w)
+			if !browserWriteAllowed(r) {
+				http.Error(w, "Cross-origin account action refused", http.StatusForbidden)
+				return
+			}
+			if !scopedRequestAllowed(r) {
+				http.Error(w, "Scoped tokens must use the MCP or service API endpoint", http.StatusForbidden)
+				return
+			}
 
 			// Set Onion-Location header for Tor Browser discovery
 			if onion := os.Getenv("TOR_ONION"); onion != "" {

@@ -9,6 +9,21 @@ import (
 	gmai "go-micro.dev/v6/model"
 )
 
+func TestRestrictedAgentCannotLoseItsDelegationBoundary(t *testing.T) {
+	called := false
+	h := func(ctx context.Context, _ gmai.ToolCall) gmai.ToolResult {
+		called = true
+		if !service.RestrictedCaller(ctx) || service.AccountFrom(ctx) != "alice" {
+			t.Fatal("restricted identity lost")
+		}
+		return gmai.ToolResult{}
+	}
+	injectAccount("alice", true)(h)(context.Background(), gmai.ToolCall{Input: map[string]any{"restricted": false, "account_id": "bob"}})
+	if !called {
+		t.Fatal("handler not exercised")
+	}
+}
+
 // TestInjectAccountBindsCallerToContext is a security regression test. The
 // identity account-scoped tools act on must always be the authenticated
 // caller's, and it must travel on the call context — never in the arguments,

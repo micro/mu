@@ -61,13 +61,23 @@ func (t *Token) Services() []string {
 }
 
 // Scoped reports whether this token is confined at all.
-func (t *Token) Scoped() bool { return len(t.Services()) > 0 }
+func (t *Token) Scoped() bool {
+	if t == nil {
+		return false
+	}
+	for _, p := range t.Permissions {
+		if strings.HasPrefix(p, ScopePrefix) {
+			return true
+		}
+	}
+	return false
+}
 
 // AllowsService reports whether a token may reach a service. An unscoped token
 // allows everything; a scoped one allows only what it names.
 func (t *Token) AllowsService(name string) bool {
 	scope := t.Services()
-	if len(scope) == 0 {
+	if !t.Scoped() {
 		return true
 	}
 	name = service.CanonicalName(name)

@@ -261,7 +261,11 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 			max, plural(max), len(existing))
 	}
 
+	requestedScope := len(services) > 0
 	services = validServices(services)
+	if requestedScope && len(services) == 0 {
+		return nil, "", fmt.Errorf("none of the selected services are available")
+	}
 
 	a := &Agent{
 		Owner:       owner,
@@ -572,6 +576,10 @@ func without(list []string, tag string) []string {
 
 // UpdateAgent rewrites an agent the owner owns, keeping its id and token.
 func UpdateAgent(owner, id, name, prompt, description string, services []string) (*Agent, error) {
+	selected := validServices(services)
+	if len(services) > 0 && len(selected) == 0 {
+		return nil, fmt.Errorf("none of the selected services are available")
+	}
 	all := Agents(owner)
 	var a *Agent
 	for _, x := range all {
@@ -593,7 +601,17 @@ func UpdateAgent(owner, id, name, prompt, description string, services []string)
 	}
 	a.Prompt = strings.TrimSpace(prompt)
 	a.Description = strings.TrimSpace(description)
-	a.Services = validServices(services)
+	if a.TokenID != "" && strings.Join(a.Services, ",") != strings.Join(selected, ",") {
+		if _, err := auth.TokenByID(a.TokenID); err == nil {
+			if err := auth.DeleteToken(a.TokenID, owner); err != nil {
+				return nil, err
+			}
+		}
+		// Existing credentials cannot retain the old grant after a scope edit.
+		// The owner can issue a replacement with the new scope.
+		a.TokenID = ""
+	}
+	a.Services = selected
 	// a.save(), not a bare Update with public:false — editing an agent must not
 	// silently unpublish it.
 	if err := a.save(); err != nil {
