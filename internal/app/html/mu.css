@@ -6422,6 +6422,7 @@ button.pill:hover {
    caption that had escaped its card. */
 .brief-peek,
 .inbox-peek,
+.todo-peek,
 .agent-peek,
 .wallet-peek {
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
