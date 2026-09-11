@@ -17,10 +17,6 @@ import (
 
 type geminiTools struct{ *gemini.Provider }
 
-func init() {
-	model.Register("gemini", func(opts ...model.Option) model.Model { return &geminiTools{gemini.NewProvider(opts...)} })
-}
-
 type geminiFunctionCall struct {
 	ID   string         `json:"id"`
 	Name string         `json:"name"`
@@ -138,6 +134,9 @@ func (p *geminiTools) Generate(ctx context.Context, req *model.Request, opts ...
 			}
 			pending, raw = followUpResp.ToolCalls, followUpRaw
 			resp.ToolCalls = append(resp.ToolCalls, followUpResp.ToolCalls...)
+			resp.Usage.InputTokens += followUpResp.Usage.InputTokens
+			resp.Usage.OutputTokens += followUpResp.Usage.OutputTokens
+			resp.Usage.TotalTokens += followUpResp.Usage.TotalTokens
 		}
 		if len(pending) > 0 {
 			return nil, fmt.Errorf("gemini exceeded tool round limit")
@@ -147,7 +146,10 @@ func (p *geminiTools) Generate(ctx context.Context, req *model.Request, opts ...
 	return resp, nil
 }
 
-func (p *geminiTools) callAPI(ctx context.Context, req map[string]any) (*model.Response, []map[string]any, error) {
+func (p *geminiTools) callAPI(ctx context.Context, req map[string]any) (*model.Response, []json.RawMessage, error) {
+	if cap := p.Options().MaxTokens; cap > 0 {
+		req["generationConfig"] = map[string]any{"maxOutputTokens": cap}
+	}
 	reqBody, err := json.Marshal(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -176,6 +178,12 @@ func (p *geminiTools) callAPI(ctx context.Context, req map[string]any) (*model.R
 	}
 
 	var geminiResp struct {
+		Usage struct {
+			Prompt     int `json:"promptTokenCount"`
+			Candidates int `json:"candidatesTokenCount"`
+			Thoughts   int `json:"thoughtsTokenCount"`
+			Total      int `json:"totalTokenCount"`
+		} `json:"usageMetadata"`
 		Candidates []struct {
 			Content struct {
 				Parts []json.RawMessage `json:"parts"`
@@ -192,10 +200,10 @@ func (p *geminiTools) callAPI(ctx context.Context, req map[string]any) (*model.R
 	}
 
 	parts := geminiResp.Candidates[0].Content.Parts
-	response := &model.Response{}
+	response := &model.Response{Usage: model.Usage{InputTokens: geminiResp.Usage.Prompt, OutputTokens: geminiResp.Usage.Candidates + geminiResp.Usage.Thoughts, TotalTokens: geminiResp.Usage.Total}}
 
 	var replyParts []string
-	var rawParts []map[string]any
+	var rawParts []json.RawMessage
 
 	for _, raw := range parts {
 		var part struct {
@@ -206,12 +214,8 @@ func (p *geminiTools) callAPI(ctx context.Context, req map[string]any) (*model.R
 		if err := json.Unmarshal(raw, &part); err != nil {
 			return nil, nil, err
 		}
-		var original map[string]any
-		if err := json.Unmarshal(raw, &original); err != nil {
-			return nil, nil, err
-		}
 		// Return each signed part intact; thought text is never user output.
-		rawParts = append(rawParts, original)
+		rawParts = append(rawParts, raw)
 		if part.Text != "" && !part.Thought {
 			replyParts = append(replyParts, part.Text)
 		}
