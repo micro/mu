@@ -158,6 +158,45 @@ func List(ns, caller, collection, scope string, where map[string]interface{}, so
 	return out, nil
 }
 
+// Page returns a bounded page after applying the same ownership filters as List.
+func Page(ns, caller, collection, scope string, offset, limit int) ([]Record, bool, error) {
+	k, err := key(ns, collection)
+	if err != nil {
+		return nil, false, err
+	}
+	if offset < 0 {
+		return nil, false, errors.New("invalid offset")
+	}
+	if limit <= 0 || limit > MaxListLimit {
+		limit = MaxListLimit
+	}
+	if scope == "" {
+		scope = "mine"
+	}
+	if caller == "" {
+		scope = "public"
+	}
+	mu.Lock()
+	recs := load(k)
+	mu.Unlock()
+	out := filter(recs, scope, caller, nil)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Created.Equal(out[j].Created) {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].Created.After(out[j].Created)
+	})
+	if offset >= len(out) {
+		return []Record{}, false, nil
+	}
+	end := offset + limit
+	more := end < len(out)
+	if end > len(out) {
+		end = len(out)
+	}
+	return out[offset:end], more, nil
+}
+
 // LatestBy returns the newest private record per group, applying the limit
 // after grouping. A busy conversation must not crowd every other one out of
 // a conversation list. Missing grouping fields have their string zero value.

@@ -45,12 +45,7 @@ var resolvesCaller = regexp.MustCompile(
 //
 // Each of these was read. None is "it looked fine".
 var exemptFromScoping = map[string]string{
-	// Passes an empty caller on purpose. images.Search("") selects scope
-	// "public", which is the stock pool — the shared images, not everyone's.
-	// Handing it the real caller would widen the search to their own private
-	// images, which is a different tool.
-	"images.Search":    "empty caller selects the public pool by design",
-	"images.WebSearch": "searches public web images only; the service gateway authenticates and charges the caller",
+	"images.Daily": "reads only the instance public daily image archive",
 
 	// Resolves the caller through sender(ctx, req), which reads
 	// service.AccountFrom and never trusts a field in the request. Matched by

@@ -112,6 +112,7 @@ var Spec = service.Spec{
 	// icon stays search.svg; a file name is not a user-facing string.
 	Icon: "search.svg",
 	Endpoints: map[string]service.Endpoint{
+		"Images": {Doc: "Search the web for images, thumbnails and original source pages", Cost: quota.OpWebSearch},
 		"Fetch": {
 			Aliases: []string{"search_fetch"},
 			Doc: "Fetch a web page by URL and return its cleaned readable content, " +
