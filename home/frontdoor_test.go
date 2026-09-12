@@ -44,7 +44,7 @@ func TestHomeStartsWithMicro(t *testing.T) {
 			t.Errorf("Home still offers %s", control)
 		}
 	}
-	if strings.Contains(body, `class="mu-chat-contained mu-chat-overlay"`) || !strings.Contains(body, `<div id="mu-chat">`) {
-		t.Error("Home should keep conversation in page flow")
+	if !strings.Contains(body, `class="mu-chat-contained mu-chat-overlay"`) {
+		t.Error("Home should open a focused conversation")
 	}
 }

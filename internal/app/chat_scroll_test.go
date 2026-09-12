@@ -18,7 +18,7 @@ func TestInlineQuestionScrollClearsStickyInput(t *testing.T) {
 	}
 	script := `
 const assert=require('assert');
-const stationary=true,transcript=false,contained=false;
+const stationary=true,transcript=false,contained=false,overlay=false;
 const form={getBoundingClientRect(){return {height:42}}};
 const window={getComputedStyle(){return {top:'58px'}},matchMedia(){return {matches:false}}};
 const requestAnimationFrame=fn=>fn();

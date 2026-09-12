@@ -3,11 +3,11 @@
   if (!home) return;
   const actions=home.querySelector('#home-conversation-actions');
   function conversation(active){
-    if(actions)actions.hidden=!active;
+    if(actions)actions.hidden=false;
   }
   window.addEventListener('mu-chat-active',event=>conversation(event.detail===true));
   const close=home.querySelector('#home-conversation-close');
-  if(close)close.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();window.muChatNew();});
+  if(close)close.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();if(window.muChatClose)window.muChatClose();});
   const initial=home.querySelector('#mu-chat-conv');
   conversation(!!initial && !!initial.textContent.trim());
 

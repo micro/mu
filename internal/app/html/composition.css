@@ -249,7 +249,7 @@ a.link-text {
 @media (max-width: 1099px) {
   .home-workspace > .home-column { display: contents; }
   .home-workspace #home-agent { order: 0; }
-  .home-workspace #home-brief { order: 2; }
+  .home-workspace #home-recent { order: 2; }
   .home-workspace #home-todo { order: 3; }
   .home-workspace #home-upcoming { order: 4; }
   .home-workspace #home-inbox { order: 5; }
