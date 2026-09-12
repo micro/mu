@@ -277,10 +277,25 @@ func indexBody() string {
 			// furniture in front of somebody who has not asked anything yet.
 			Speak: false,
 		}) +
-		`<div class="ltoday" data-brief><p class="lrow lbrief">Ask a question, make a plan, or get something done.</p><p class="text-muted">Try “What’s happening in the news?”, “Help me plan a weekend in London”, or “What can I cook with chickpeas and spinach?”</p></div>` + `
+		`<div class="ltoday" data-brief><p class="lrow lbrief">Ask a question, make a plan, or get something done.</p><div class="landing-examples" aria-label="Example prompts"><button type="button" data-prompt="What’s happening in the news?">Latest news</button><span aria-hidden="true">·</span><button type="button" data-prompt="Help me plan a weekend in London">Plan a weekend</button><span aria-hidden="true">·</span><button type="button" data-prompt="What can I cook with chickpeas and spinach?">Dinner ideas</button></div></div>` + `
 </div>
-
+<script>
+document.querySelectorAll(".landing-examples button").forEach(function(button){
+  button.addEventListener("click",function(){
+    var input=document.getElementById("mu-chat-input");
+    if(!input)return;
+    input.value=button.dataset.prompt;
+    input.dispatchEvent(new Event("input",{bubbles:true}));
+    input.focus();
+  });
+});
+</script>
 <style>
+.landing-examples{display:flex;justify-content:center;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin-top:8px;color:#707070;font-size:13px}
+.landing-examples button{appearance:none;background:none;border:0;border-radius:0;box-shadow:none;padding:0;margin:0;width:auto;color:inherit;font:inherit;font-weight:400;cursor:pointer}
+.landing-examples button:hover{text-decoration:underline;text-underline-offset:3px}
+.landing-examples button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+
 /* One axis, and one measure.
  *
  * Everything on this page was centred in a 640px column on a 1280px screen —
