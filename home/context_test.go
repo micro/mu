@@ -221,10 +221,9 @@ func TestACardRendersInTheColumnItIsConfiguredInto(t *testing.T) {
 	if strings.Index(right, `id="video"`) > strings.Index(right, `id="markets"`) {
 		t.Error("the right column lost the file's order")
 	}
-	// A card that knows when its contents are from still says so, wherever it
-	// renders — that is what Streamed() is for now that it does not pick sides.
-	if !strings.Contains(right, "card-when") {
-		t.Error("video knows when it is from and was not stamped with it")
+	// Feed does not add a second timestamp around content that has its own.
+	if strings.Contains(right, "card-when") {
+		t.Error("feed added a duplicate card timestamp")
 	}
 	if strings.Contains(left[strings.Index(left, `id="prayer"`):], "card-when") {
 		t.Error("a card showing how things are was given a time")
