@@ -138,15 +138,19 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .compact-list-item:first-child { padding-block-start: 0; }
 .compact-list-item:last-child { padding-block-end: 0; }
 .compact-list-item + .compact-list-item { border-top: 1px solid var(--card-border, #e8e8e8); }
-/* The launcher fits its column, including when the sidebar changes width. */
-.home-apps { container-type: inline-size; }
-.home-apps-grid > a:nth-child(n+5) { display: none; }
-@container (min-width: 344px) { .home-apps-grid > a:nth-child(5) { display: flex; } }
-@container (min-width: 416px) { .home-apps-grid > a:nth-child(6) { display: flex; } }
-@container (min-width: 488px) { .home-apps-grid > a:nth-child(7) { display: flex; } }
-@container (min-width: 560px) { .home-apps-grid > a:nth-child(8) { display: flex; } }
-@container (min-width: 632px) { .home-apps-grid > a:nth-child(9) { display: flex; } }
-@container (min-width: 704px) { .home-apps-grid > a:nth-child(10) { display: flex; } }
+/* Count shortcuts against the grid's content width, after card padding.
+   Each icon uses 56px plus a 16px gap; hidden links leave the tab order. */
+.home-apps-grid { container: service-shortcuts / inline-size; }
+.home-apps-grid > a:nth-child(n+2) { display: none; }
+@container service-shortcuts (min-width: 128px) { .home-apps-grid > a:nth-child(2) { display: flex; } }
+@container service-shortcuts (min-width: 200px) { .home-apps-grid > a:nth-child(3) { display: flex; } }
+@container service-shortcuts (min-width: 272px) { .home-apps-grid > a:nth-child(4) { display: flex; } }
+@container service-shortcuts (min-width: 344px) { .home-apps-grid > a:nth-child(5) { display: flex; } }
+@container service-shortcuts (min-width: 416px) { .home-apps-grid > a:nth-child(6) { display: flex; } }
+@container service-shortcuts (min-width: 488px) { .home-apps-grid > a:nth-child(7) { display: flex; } }
+@container service-shortcuts (min-width: 560px) { .home-apps-grid > a:nth-child(8) { display: flex; } }
+@container service-shortcuts (min-width: 632px) { .home-apps-grid > a:nth-child(9) { display: flex; } }
+@container service-shortcuts (min-width: 704px) { .home-apps-grid > a:nth-child(10) { display: flex; } }
 
 /* Shared compact header and preview navigation. */
 .page-stack.compact-stack { gap: var(--space-control); }
