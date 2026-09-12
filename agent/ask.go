@@ -76,6 +76,7 @@ var errNoConversation = errors.New("no conversation with that id")
 
 // AskRequest is one message arriving from a client.
 type AskRequest struct {
+	Context ClientContext
 	Account string
 	// Client is which one: web, cli, mail. Named
 	// for the directory rather than for an abstraction, because that is the
@@ -276,6 +277,7 @@ func Ask(r AskRequest) (Answer, error) {
 	}
 
 	opts := QueryOpts{
+		Context: r.Context,
 		Thread:  threadID(th),
 		Public:  r.Public,
 		History: History(r.Account, threadID(th), historyTurns),

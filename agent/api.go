@@ -45,6 +45,7 @@ import (
 // difference between an agent and a completion endpoint. Leave it out and one
 // is opened.
 type apiAsk struct {
+	Context ClientContext `json:"context,omitempty"`
 	// Prompt is the question. It is what everything else in this codebase
 	// calls the thing you send an agent — the page posts a prompt, QueryOpts
 	// takes one, a task's Run builds one — and this door called it "text",
@@ -172,6 +173,7 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 	// failure the field exists to prevent, on the exact endpoint whose whole
 	// claim is that passing the id back continues the conversation.
 	res, err := Ask(AskRequest{
+		Context: req.Context,
 		Account: accountID,
 		Client:  thread.WebClient,
 		On:      req.Thread,

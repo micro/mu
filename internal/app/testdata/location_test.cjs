@@ -1,0 +1,15 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+let success,calls=0;const button={};const saved=new Map();
+const sandbox={Date,Math,Intl,document:{hidden:false,getElementById(){return button},addEventListener(){}},window:{addEventListener(){}},setInterval(){},sessionStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)},navigator:{geolocation:{getCurrentPosition(s,f){calls++;success=s;}}}};
+vm.createContext(sandbox);vm.runInContext(fs.readFileSync(require('path').join(__dirname,'../location.js'),'utf8'),sandbox);
+assert.equal(calls,0);
+button.onclick();
+success({coords:{latitude:51.412345,longitude:-0.312345,accuracy:10},timestamp:Date.now()});
+let context=sandbox.requestClientContext();
+assert.equal(context.location.latitude,51.41);
+assert.equal(context.location.accuracy_m,1600);
+assert(![...saved.values()].some(v=>String(v).includes('51.41')));
+button.onclick();assert(!sandbox.requestClientContext().location);
+button.onclick();const late=success;button.onclick();late({coords:{latitude:30,longitude:40,accuracy:10},timestamp:Date.now()});
+assert(!sandbox.requestClientContext().location);
+console.log('Location consent, rounding, transient storage and stop checks passed.');

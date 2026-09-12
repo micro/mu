@@ -1,10 +1,14 @@
 package app
 
 import (
+	_ "embed"
 	"encoding/json"
 	htmlpkg "html"
 	"strings"
 )
+
+//go:embed location.js
+var locationJS string
 
 // JSString returns s as a safely-quoted JavaScript string literal (with
 // surrounding quotes) for embedding in inline scripts.
@@ -402,7 +406,7 @@ func ChatComponent(cfg ChatConfig) string {
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('mu-chat-form').dispatchEvent(new Event('submit'))}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
     <button type="submit" aria-label="Send">&#x2192;</button>
-  </form>`
+  </form><button type="button" id="mu-chat-location" class="link-button text-sm" title="Share approximate location with Micro and its model for nearby answers.">Share location</button>`
 	// Read it back, beside who is answering.
 	//
 	// Next to the picker because they are the same kind of decision — how this
@@ -628,6 +632,7 @@ var SESSION=` + boolJS(cfg.InitialConvHTML != "" || cfg.ServerOwned) + `;
 var PENDING=` + boolJS(cfg.Pending) + `;
 var HIDE_SUGGEST=` + boolJS(cfg.HideSuggestions) + `;
 var AGENT_NAME=` + JSString(cfg.AgentName) + `;
+ ` + locationJS + `
 var form=document.getElementById('mu-chat-form');
 var input=document.getElementById('mu-chat-input');
 var conv=document.getElementById('mu-chat-conv');
@@ -957,7 +962,7 @@ function ask(q){
     if(touchInput)setTimeout(function(){if(epoch===viewEpoch)revealQuestion(u);},350);
   }
   var streamText='';
-  var body=JSON.stringify({prompt:q,attachment:(!contextId?attachment:""),history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
+  var body=JSON.stringify({context:requestClientContext(),prompt:q,attachment:(!contextId?attachment:""),history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
   // Accept says which of the two doors at /agent this is.
   //
   // The same path answers a program with JSON and this box with an event

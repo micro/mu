@@ -435,7 +435,7 @@ func wireHooks() {
 		// Where they are, and what time it is there. Together, because either
 		// alone still leaves "today" ambiguous — see account/place.go.
 		if place := account.PlaceLine(accountID); place != "" {
-			parts = append(parts, "- They are in "+place)
+			parts = append(parts, "- Saved profile location (not live device location; fallback only): "+place)
 		}
 		parts = append(parts, "- It is "+localNow(accountID))
 		// Unread mail count.
