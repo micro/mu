@@ -1,6 +1,12 @@
 (() => {
   const home = document.getElementById('home-cards');
   if (!home) return;
+  const personal=home.querySelector('#home-personal');
+  function conversation(active){if(personal)personal.classList.toggle('is-conversing',active);}
+  window.addEventListener('mu-chat-active',event=>conversation(event.detail===true));
+  const initial=home.querySelector('#mu-chat-conv');
+  conversation(!!initial && !!initial.textContent.trim());
+
   const upcoming = home.querySelector('[data-home-upcoming]');
   if (upcoming) {
     fetch('/home?section=upcoming', {credentials: 'same-origin'})
@@ -21,7 +27,10 @@
   const positions = new Map();
   let selected = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
   function select(tab) {
-    if (tab === selected) return;
+    if (tab === selected) {
+      if(tab.id==='home-view-personal' && personal.classList.contains('is-conversing') && window.muChatNew)window.muChatNew();
+      return;
+    }
     positions.set(selected.id, window.scrollY);
     tabs.forEach(item => {
       const active = item === tab;

@@ -193,3 +193,19 @@ a.link-text {
   .home-workspace #home-agents { order: 5; }
   .home-workspace .home-apps { order: 6; }
 }
+
+/* Home becomes a page-flow conversation without moving its composer to a modal. */
+#home-personal.is-conversing #home-brief,
+#home-personal.is-conversing #home-inbox,
+#home-personal.is-conversing .home-apps,
+#home-personal.is-conversing #home-todo,
+#home-personal.is-conversing #home-upcoming,
+#home-personal.is-conversing #home-agents { display:none; }
+#home-personal.is-conversing #mu-chat-conv { animation:home-answer-in 180ms ease-out; }
+@keyframes home-answer-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@media(prefers-reduced-motion:reduce) {
+ #home-personal.is-conversing #mu-chat-conv { animation:none; }
+}
+@media(min-width:1100px) {
+ .home-workspace:not(:has(#home-todo,#home-agents,#home-upcoming)) { grid-template-columns:minmax(0,1fr); }
+}

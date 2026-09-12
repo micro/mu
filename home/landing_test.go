@@ -31,9 +31,9 @@ func TestTheWordmarkSaysWhatItIs(t *testing.T) {
 	}
 }
 
-func TestTheLandingOffersOneWayIn(t *testing.T) {
+func TestTheLandingOffersPublicHomeAndLogin(t *testing.T) {
 	got := topRight()
-	if got != `<a href="/login">Log in</a>` {
+	if got != `<a href="/home">Home</a> <a href="/login">Log in</a>` {
 		t.Errorf("unexpected landing navigation: %q", got)
 	}
 }

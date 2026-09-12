@@ -447,13 +447,10 @@ function fetchW(la,lo){
 		HideSuggestions: true,
 		Placeholder:     "What do you need?",
 		AgentName:       agent.DefaultName(),
-		Contained:       true,
-		Overlay:         true,
+		Location:        viewerID != "",
 	}))
 	b.WriteString(`</div>`)
-	if viewerID != "" {
-		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
-	}
+	b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
 	if viewerID != "" {
 		if peek := inbox.Preview(viewerID); peek != "" {
 			b.WriteString(`<div id="home-inbox" class="page-stack">` + peek + `</div>`)
