@@ -50,3 +50,34 @@ func TestCookieWritesRequireTokenOrFirstPartyOrigin(t *testing.T) {
 		t.Fatal("non-cookie client blocked")
 	}
 }
+
+func TestBrowserWriteBehindProxy(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "micro.test")
+	const owner = "proxy_write_owner"
+	if err := auth.Create(&auth.Account{ID: owner, Name: owner, Secret: "test"}); err != nil {
+		t.Fatal(err)
+	}
+	session, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		origin string
+		want   bool
+	}{
+		{"https://micro.test", true},
+		{"https://attacker.test", false},
+		{"https://sub.micro.test", false},
+		{"http://micro.test", false},
+		{"https://micro.test:8443", false},
+		{"null", false},
+	} {
+		r := httptest.NewRequest("POST", "http://127.0.0.1:8080/login", nil)
+		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
+		r.Header.Set("Origin", tc.origin)
+		r.Header.Set("X-Forwarded-Host", "attacker.test")
+		if got := browserWriteAllowed(r); got != tc.want {
+			t.Errorf("origin %s: got %v", tc.origin, got)
+		}
+	}
+}

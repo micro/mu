@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mu/internal/auth"
+	"mu/internal/origin"
 )
 
 // Browser cookies are ambient credentials. An Authorization header or an MCP
@@ -25,8 +26,8 @@ func browserWriteAllowed(r *http.Request) bool {
 	if auth.StrictCSRF(r) {
 		return true
 	}
-	if origin := r.Header.Get("Origin"); origin != "" {
-		u, err := url.Parse(origin)
+	if submitted := r.Header.Get("Origin"); submitted != "" {
+		u, err := url.Parse(submitted)
 		if err != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
 			return false
 		}
@@ -34,7 +35,17 @@ func browserWriteAllowed(r *http.Request) bool {
 		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 			scheme = "https"
 		}
-		return u.Scheme == scheme && strings.EqualFold(u.Host, r.Host)
+		// The proxy may replace Host with its loopback upstream. Only the
+		// operator-configured origin can override it, never a forwarded host.
+		host := r.Host
+		if public := origin.Self(); public != "" {
+			configured, err := url.Parse(public)
+			if err != nil || configured.Host == "" {
+				return false
+			}
+			scheme, host = configured.Scheme, configured.Host
+		}
+		return u.Scheme == scheme && strings.EqualFold(u.Host, host)
 	}
 	return r.Header.Get("Sec-Fetch-Site") == "same-origin"
 }
