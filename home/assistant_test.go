@@ -11,7 +11,7 @@ import (
 
 func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 	for _, who := range []string{"", "asstreadera", "asstreaderb"} {
-		for _, path := range []string{"/assistant", "/assistant?panel=1"} {
+		for _, path := range []string{"/assistant"} {
 			r := httptest.NewRequest(http.MethodGet, path, nil)
 			ns := "assistant:guest"
 			if who != "" {
@@ -38,9 +38,6 @@ func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 			if strings.Contains(body, `id="home-cards"`) {
 				t.Error("Assistant depends on Home")
 			}
-			if strings.Contains(path, "panel=1") && strings.Contains(body, `id="nav-container"`) {
-				t.Error("embedded view duplicates navigation")
-			}
 		}
 	}
 }
@@ -49,7 +46,7 @@ func TestHomeDisclosureFollowsAnswer(t *testing.T) {
 	body := homeFor(t, "homedisclose")
 	form := strings.Index(body, `id="mu-chat-form"`)
 	answer := strings.Index(body, `id="mu-chat-conv"`)
-	toggle := strings.Index(body, `id="home-conversation-toggle"`)
+	toggle := strings.Index(body, `id="home-conversation-actions"`)
 	if form < 0 || answer <= form || toggle <= answer {
 		t.Fatal("Home input, answers, disclosure must appear in that order")
 	}

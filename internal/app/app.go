@@ -353,9 +353,6 @@ func torFooterLink() string {
 // million times. See home/index.go, which learned the same lesson about a
 // comment inside a <style> block.
 
-//go:embed assistant.js
-var assistantJS string
-
 var Template = `
 <html lang="%s">
   <head>
@@ -892,7 +889,6 @@ var Template = `
       document.addEventListener('mu:navigated', markNav);
       markNav();
   </script>
-  <script>` + assistantJS + `</script>
   </body>
 </html>
 `
@@ -1322,6 +1318,7 @@ func navTabs(acc *auth.Account) string {
 	}
 	return `<nav id="tabs" aria-label="Main">` +
 		tab("/home", "/home.png", "Home") +
+		tab("/assistant", "/chat.png", "Ask") +
 		tab("/inbox", "/mail.png", "Inbox") +
 		tab("/agents", "/agent.svg", "Agents") +
 		tab("/services", "/services.svg", "Services") +

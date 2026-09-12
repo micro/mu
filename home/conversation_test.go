@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestCollapsePreservesConversation(t *testing.T) {
+func TestCloseEndsHomeExchange(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skip("Node required")
@@ -17,31 +17,25 @@ func TestCollapsePreservesConversation(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := string(raw)
-	start, end := strings.Index(src, "  const personal="), strings.Index(src, "  const upcoming")
+	start, end := strings.Index(src, "  const actions="), strings.Index(src, "  const upcoming")
 	if start < 0 || end <= start {
 		t.Fatal("conversation controller missing")
 	}
 	script := `
 const assert=require('assert');
-const events={},classes=new Set(),attrs={};
-const panel={classList:{toggle(k,on){on?classes.add(k):classes.delete(k)}}};
-const transcript={textContent:'Existing answer'};
-const button={addEventListener(k,fn){this[k]=fn},setAttribute(k,v){attrs[k]=v}};
-const home={querySelector(s){return s==='#home-personal'?panel:s==='#home-conversation-toggle'?button:transcript}};
-const window={addEventListener(k,fn){events[k]=fn}};
+const events={},actionBar={},transcript={textContent:'Existing answer'};
+const button={addEventListener(k,fn){this[k]=fn}};
+const home={querySelector(s){return s==='#home-conversation-actions'?actionBar:s==='#home-conversation-close'?button:transcript}};
+let resets=0;
+const window={addEventListener(k,fn){events[k]=fn},muChatNew(){resets++;transcript.textContent='';events['mu-chat-active']({detail:false})}};
 ` + src[start:end] + `
-assert(classes.has('is-conversing'));
+assert.equal(actionBar.hidden,false);
 button.click();
-assert(classes.has('conversation-collapsed'));
-assert.equal(transcript.textContent,'Existing answer');
-assert.equal(attrs['aria-label'],'Expand conversation');
-assert.equal(attrs['aria-expanded'],'false');
-button.click();
-assert(classes.has('is-conversing'));
-assert.equal(transcript.textContent,'Existing answer');
-events['mu-chat-active']({detail:false});
-assert(button.hidden);
-assert(classes.has('conversation-collapsed'));
+assert.equal(resets,1);
+assert.equal(transcript.textContent,'');
+assert.equal(actionBar.hidden,true);
+events['mu-chat-active']({detail:true});
+assert.equal(actionBar.hidden,false);
 `
 	if out, err := exec.Command(node, "-e", script).CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, out)
