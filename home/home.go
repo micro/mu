@@ -580,11 +580,14 @@ var cardTips = map[string]string{
 }
 
 // cardBody supplies the same contents to initial renders and refreshes.
-// Navigation belongs to the linked card heading.
+// Keep the explicit More link on both initial renders and live refreshes.
 func cardBody(c Card, who service.Viewer) string {
 	body := strings.TrimSpace(cardRender(c, who))
 	if body == "" {
 		return ""
+	}
+	if c.Link != "" {
+		body += app.Link("More", htmlEsc(c.Link))
 	}
 	return body
 }
