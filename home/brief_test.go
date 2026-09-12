@@ -118,7 +118,7 @@ func TestTheBriefHasAPlainCardTitle(t *testing.T) {
 	}
 
 	got := briefHTML(who)
-	if !strings.Contains(got, `<div id="home-brief-card" class="card">`) || !strings.Contains(got, "<h4>Brief</h4>") || strings.Contains(got, "card-head-link") || strings.Contains(got, "section-link") {
+	if !strings.Contains(got, `<section id="home-brief-card" class="section-card">`) || !strings.Contains(got, "<h4>Brief</h4>") || strings.Contains(got, "card-head-link") || strings.Contains(got, "section-link") {
 		t.Errorf("the brief must have a shared card and plain title without navigation: %q", got)
 	}
 	if !strings.Contains(got, `<p class="home-brief">`) {

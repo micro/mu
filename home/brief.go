@@ -97,7 +97,7 @@ func briefHTML(accountID string, external ...events.External) string {
 	}
 
 	// Match the surrounding cards, with a plain title for this live summary.
-	return app.Card("home-brief-card", "Brief", `<p class="home-brief">`+strings.Join(parts, " ")+`</p>`)
+	return app.SectionCard("home-brief-card", "Brief", "", `<p class="home-brief">`+strings.Join(parts, " ")+`</p>`)
 }
 
 // briefParts is the clauses, without deciding how they are set.

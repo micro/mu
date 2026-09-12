@@ -580,14 +580,11 @@ var cardTips = map[string]string{
 }
 
 // cardBody supplies the same contents to initial renders and refreshes.
-// Keep the explicit More link on both initial renders and live refreshes.
+// Navigation stays in the section header, outside the refreshed body.
 func cardBody(c Card, who service.Viewer) string {
 	body := strings.TrimSpace(cardRender(c, who))
 	if body == "" {
 		return ""
-	}
-	if c.Link != "" {
-		body += app.Link("More", htmlEsc(c.Link))
 	}
 	return body
 }
@@ -673,7 +670,13 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		if body == "" {
 			continue
 		}
-		rendered := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, cardHead(card), body)
+		// The section, including its heading, is now the mobile ordering unit.
+		order := len(leftHTML)*2 + 1
+		if card.column() != "left" {
+			order = len(rightHTML)*2 + 2
+		}
+		rendered := app.SectionCard(card.ID, cardHead(card), card.Link, body)
+		rendered = strings.Replace(rendered, `class="section-card"`, fmt.Sprintf(`class="section-card" style="--feed-order:%d"`, order), 1)
 		if card.column() == "left" {
 			leftHTML = append(leftHTML, rendered)
 		} else {
