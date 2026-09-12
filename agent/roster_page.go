@@ -567,7 +567,7 @@ const agentsCSS = `<style>
 /* The sign of life on a row. Quieter than the description above it, because
    what an agent is for is why you would pick it and when it last spoke is
    whether it is alive — the second is a check, not a heading. */
-.agent-seen{color:#999;font-size:12px;margin:2px 0 0}
+.agent-seen{color:var(--text-muted,#707070);font-size:12px;margin:8px 0 0}
 /* The name and how long ago it last spoke, on one line with the time out to
    the right — the same pair in the same places as a row in the inbox. */
 .agent-head{display:flex;align-items:baseline;gap:10px}
@@ -582,14 +582,15 @@ const agentsCSS = `<style>
    scope, 13px for the buttons beside them, and the name at 14px semibold. A
    row is one thing to read, so the parts that are the same rank look the
    same. */
-.agent-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:8px}
+.agent-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:16px;padding-top:8px;border-top:1px solid var(--divider,#e8e8e8)}
 .agent-links a{font-size:13px;font-weight:400;color:var(--text-secondary,#555);text-decoration:underline !important;text-underline-offset:3px}
 .agent-links a:hover{color:var(--text-primary,#111);text-decoration:underline}
 /* The form holding Remove is one item in the strip, not a block that breaks it. */
 .agent-links form{display:inline;margin:0}
 /* What it is for. One line, and it truncates rather than wrapping — a list you
    are scanning stops being a list the moment the rows are different heights. */
-.agent-for{font-size:13px;color:#666;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-row .activity-status{display:table;font-size:12px;font-weight:400;line-height:1.5;padding:2px 8px;margin-top:8px;border-radius:4px;background:var(--hover-background,#f5f5f5);color:var(--text-secondary,#555)}
+.agent-for{font-size:13px;color:var(--text-secondary,#555);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .agent-meta{font-size:13px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
 .agent-meta code{font-size:12px}
 .agent-mail{font-size:13px;margin-top:3px}
@@ -631,7 +632,7 @@ const agentsCSS = `<style>
   .agent-name{font-size:15px}
     .agent-meta{white-space:normal;overflow-wrap:anywhere}
   /* Links and buttons share a touch target and baseline. */
-  .agent-links{gap:8px 16px;margin-top:8px}
+  .agent-links{gap:8px 16px}
   .agent-links a,.agent-act,.agent-remove{
     display:inline-flex;align-items:center;min-height:32px;font-size:14px;padding:0}
 }
