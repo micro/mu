@@ -1,6 +1,10 @@
 package auth
 
-import "testing"
+import (
+	"testing"
+
+	"mu/internal/data"
+)
 
 // TestInternalSessionsLeaveNothingBehind is the leak this replaced.
 //
@@ -49,5 +53,59 @@ func TestInternalSessionsLeaveNothingBehind(t *testing.T) {
 
 	if _, err := InternalSession("nobody"); err == nil {
 		t.Error("minted a session for an account that does not exist")
+	}
+}
+
+func TestInternalSessionDoesNotSurviveAConcurrentLoginSave(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	mutex.Lock()
+	previousAccounts, previousSessions := accounts, sessions
+	accounts = map[string]*Account{"probe": {ID: "probe"}}
+	sessions = map[string]*Session{}
+	mutex.Unlock()
+	t.Cleanup(func() {
+		mutex.Lock()
+		accounts, sessions = previousAccounts, previousSessions
+		mutex.Unlock()
+	})
+
+	temporary, err := InternalSession("probe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer EndSession(temporary.Token)
+	login, err := CreateSession("probe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved map[string]*Session
+	if err := data.LoadJSON("sessions.json", &saved); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := saved[temporary.ID]; ok {
+		t.Fatal("an unrelated login persisted the in-flight internal session")
+	}
+	if _, ok := saved[login.ID]; !ok {
+		t.Fatal("ordinary login was not saved")
+	}
+	// The internal identity remains valid for the rest of its dispatch.
+	if _, err := ParseToken(temporary.Token); err != nil {
+		t.Fatalf("saving logins invalidated the in-flight call: %v", err)
+	}
+}
+
+func TestPersistedSessionsDiscardLegacyInternalCredentials(t *testing.T) {
+	stored := map[string]*Session{
+		"temporary": {ID: "temporary", Type: "internal"},
+		"login":     {ID: "login", Type: "account"},
+		"legacy":    {ID: "legacy"},
+		"null":      nil,
+	}
+	loaded := persistentSessions(stored)
+	if len(loaded) != 2 || loaded["login"] == nil || loaded["legacy"] == nil {
+		t.Fatal("loading sessions did not preserve only durable login credentials")
+	}
+	if stored["temporary"] == nil {
+		t.Fatal("filtering the disk representation mutated live internal sessions")
 	}
 }
