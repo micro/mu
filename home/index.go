@@ -363,7 +363,7 @@ func indexBody() string {
 
 // topRight offers one way in from the landing; signup is on the login page.
 func topRight() string {
-	return `<a href="/login">Log in</a>`
+	return `<a href="/home">Home</a> <a href="/login">Log in</a>`
 }
 
 // today is what you are given for arriving, before you ask anything.

@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
-let success,calls=0;const button={};const saved=new Map();
+let success,calls=0;const button={setAttribute(){}};const saved=new Map();
 const sandbox={Date,Math,Intl,document:{hidden:false,getElementById(){return button},addEventListener(){}},window:{addEventListener(){}},setInterval(){},sessionStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)},navigator:{geolocation:{getCurrentPosition(s,f){calls++;success=s;}}}};
 vm.createContext(sandbox);vm.runInContext(fs.readFileSync(require('path').join(__dirname,'../location.js'),'utf8'),sandbox);
 assert.equal(calls,0);

@@ -215,3 +215,17 @@ func TestHomeBoundsItsExternalCalendarRead(t *testing.T) {
 		t.Fatalf("preview %d, calls %d", rec.Code, calls)
 	}
 }
+
+func TestPublicHomeDoesNotExposePersonalCards(t *testing.T) {
+	rec := httptest.NewRecorder()
+	Handler(rec, httptest.NewRequest("GET", "/home", nil))
+	body := rec.Body.String()
+	for _, id := range []string{"home-inbox", "home-todo", "home-agents", "home-upcoming", "mu-chat-location"} {
+		if strings.Contains(body, `id="`+id+`"`) {
+			t.Errorf("public Home exposes %s", id)
+		}
+	}
+	if !strings.Contains(body, `id="home-brief"`) || !strings.Contains(body, `id="home-feed"`) {
+		t.Fatal("missing public content")
+	}
+}

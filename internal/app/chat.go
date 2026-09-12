@@ -46,6 +46,8 @@ func JSAttr(s string) string {
 
 // ChatConfig configures the shared chat component.
 type ChatConfig struct {
+	// Location offers approximate device sharing on authenticated surfaces.
+	Location bool
 	// FooterHTML is trusted, pre-rendered content below the conversation and
 	// composer. Callers must escape user text.
 	FooterHTML string
@@ -401,12 +403,16 @@ func ChatComponent(cfg ChatConfig) string {
 		suggestJS = []byte("[]")
 	}
 
+	locationControl := ""
+	if cfg.Location {
+		locationControl = `<button type="button" id="mu-chat-location" aria-label="Share approximate location" title="Share approximate location with Micro and its model"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>`
+	}
 	form := `<form id="mu-chat-form">
     <textarea id="mu-chat-input" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="1024" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('mu-chat-form').dispatchEvent(new Event('submit'))}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
-    <button type="submit" aria-label="Send">&#x2192;</button>
-  </form><button type="button" id="mu-chat-location" class="link-button text-sm" title="Share approximate location with Micro and its model for nearby answers.">Share location</button>`
+    ` + locationControl + `<button type="submit" aria-label="Send">&#x2192;</button>
+  </form>`
 	// Read it back, beside who is answering.
 	//
 	// Next to the picker because they are the same kind of decision — how this
@@ -491,6 +497,10 @@ func ChatComponent(cfg ChatConfig) string {
    fallback and these three did not, which is why the fault appeared the moment
    the box moved to a page the token does not reach. 30px is what mu.css sets. */
 #mu-chat-form button{flex-shrink:0;width:var(--control-h,30px);height:var(--control-h,30px);min-width:var(--control-h,30px);padding:0;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+#mu-chat-form #mu-chat-location{background:transparent;color:var(--text-muted,#777);border-radius:50%;width:30px;min-width:30px}
+#mu-chat-form #mu-chat-location[hidden]{display:none}
+#mu-chat-form #mu-chat-location:hover{background:var(--background-hover,#f3f3f3)}
+#mu-chat-form #mu-chat-location[aria-pressed="true"]{color:var(--text-primary,#222);background:var(--background-hover,#f3f3f3)}
 #mu-chat-suggest{margin-top:16px}
 #mu-chat-suggest:empty{display:none}
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
@@ -655,8 +665,8 @@ var contained=!!document.querySelector('#mu-chat.mu-chat-contained');
 // marked data-brief takes part. Home keeps its brief in a separate column,
 // so it remains available during a conversation.
 function briefs(){return document.querySelectorAll('[data-brief]');}
-function hideBrief(){var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=true;}}
-function showBrief(){var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=false;}}
+function hideBrief(){window.dispatchEvent(new CustomEvent("mu-chat-active",{detail:true}));var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=true;}}
+function showBrief(){window.dispatchEvent(new CustomEvent("mu-chat-active",{detail:false}));var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=false;}}
 // nearBottom is the difference between "following the answer" and "reading
 // something further up". Scrolling to the bottom in the second case is the
 // thing that makes a chat unusable while a long answer streams.
