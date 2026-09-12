@@ -30,7 +30,7 @@ let resets=0;
 const window={addEventListener(k,fn){events[k]=fn},muChatNew(){resets++;transcript.textContent='';events['mu-chat-active']({detail:false})}};
 ` + src[start:end] + `
 assert.equal(actionBar.hidden,false);
-button.click();
+button.click({preventDefault(){},stopPropagation(){}});
 assert.equal(resets,1);
 assert.equal(transcript.textContent,'');
 assert.equal(actionBar.hidden,true);

@@ -20,5 +20,5 @@ func SectionCard(id, heading, href, body string) string {
 	if href != "" {
 		more = `<a class="section-more" href="` + html.EscapeString(href) + `">More →</a>`
 	}
-	return `<section id="` + html.EscapeString(id) + `" class="section-card"><div class="section-card-head"><h4>` + heading + `</h4></div><div class="card"><div class="card-body">` + body + `</div>` + more + `</div></section>`
+	return `<section id="` + html.EscapeString(id) + `" class="section-card"><div class="section-card-head"><h4>` + heading + `</h4>` + more + `</div><div class="card"><div class="card-body">` + body + `</div></div></section>`
 }
