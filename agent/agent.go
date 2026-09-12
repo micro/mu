@@ -1013,8 +1013,8 @@ const chatLayoutCSS = `<style>
  * sheet sizes itself; it wants none of this.
  */
 @media(min-width:761px){
-  .chat-layout{height:calc(100vh - var(--chat-chrome, 120px));min-height:420px}
-  .chat-side{min-height:0;max-height:100%;overflow:hidden}
+  .chat-layout{height:calc(100dvh - var(--chat-chrome, 120px));min-height:0;align-items:stretch}
+  .chat-side{height:100%;min-height:0;max-height:100%;overflow:hidden}
   /* The link that was missing: a plain div between the column and the rail,
      which grew to its content and pushed the page down while the list below it
      carried an overflow rule that could never fire. */
@@ -1074,9 +1074,9 @@ const chatLayoutCSS = `<style>
 .chat-sess-row{display:flex;align-items:center;gap:6px;min-width:0}
 .chat-sess{display:block;flex:1;min-width:0;padding:8px 10px;border-radius:6px;
   background:var(--card-background,#fff);color:var(--text-secondary,#444);
-  text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  text-decoration:none;font-size:13px;font-weight:400;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-sess:hover{background:var(--hover-background,#f5f5f5)}
-.chat-sess.active{background:var(--active-background,#eef0ff);color:var(--text-primary,#111);font-weight:600}
+.chat-sess.active{background:var(--active-background,#eef0ff);color:var(--text-primary,#111)}
 /* Deleting a conversation is .row-del in mu.css — the same control the inbox
    draws, rather than a third private one. The row marks itself with
    .has-row-del so the generic hover rule finds it; nothing else is needed
