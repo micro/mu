@@ -30,8 +30,8 @@ func TestSignedOutHomeDoesNotOfferASecondWayIn(t *testing.T) {
 	if n := strings.Count(body, `href="/signup"`); n != 0 {
 		t.Errorf("the guest Home page offers redundant signup links: %d", n)
 	}
-	if n := strings.Count(body, `href="/login?redirect=%2Fhome"`); n != 1 {
-		t.Errorf("the guest Home page should offer Login once in the sidebar, got %d", n)
+	if rec.Header().Get("Location") != "/" {
+		t.Error("guest Home should redirect to landing")
 	}
 }
 
