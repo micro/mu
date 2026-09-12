@@ -243,7 +243,7 @@ a.link-text {
 }
 
 @media(max-width:900px) { #page-title { text-align:center; } }
-.section-card .card-meta { display:flex; justify-content:flex-end; margin:0 0 8px; }
+.section-card .card-meta { float:right; display:block; margin:0 0 8px 12px; }
 .section-card .card-meta .card-when { margin:0; font-size:12px; }
 .section-card .card-body > :last-child { margin-bottom:0; padding-bottom:0; }
 
@@ -251,3 +251,8 @@ a.link-text {
 #home-agent #mu-chat .mu-by { margin-bottom:8px; }
 #home-agent #mu-chat .mu-agent:last-child .card:last-child { margin-bottom:0; }
 #mu-chat-transfer-error { flex-basis:100%; }
+
+/* Contain floated timestamps without reserving a full row above the content. */
+.section-card .card-body { display:flow-root; }
+/* The information icon is gone; align prayer's mark with the card padding. */
+.section-card .card-corner { top:16px; right:16px; }
