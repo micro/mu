@@ -24,3 +24,15 @@ func logRunTiming(e gmagent.RunEvent) {
 	}
 	app.RecordExternalCall(app.APILogEntry{Kind: "model", Time: e.Time, Service: e.Provider, Method: e.Kind, Model: e.Model, RunID: e.RunID, Outcome: outcome, Attempt: e.Attempt, Duration: time.Duration(e.LatencyMS) * time.Millisecond, Error: ai.ProviderErrorDetail(e.Error), ErrorKind: e.ErrorKind, InputTokens: e.Tokens.InputTokens, OutputTokens: e.Tokens.OutputTokens})
 }
+
+// runTimingFor captures the selected route, rather than the adapter's String()
+// (OpenRouter uses the OpenAI-compatible adapter). Capture per run so a config
+// change cannot relabel an in-flight request.
+func runTimingFor(provider string) func(gmagent.RunEvent) {
+	return func(e gmagent.RunEvent) {
+		if e.Kind == "model" || e.Kind == "stream" {
+			e.Provider = provider
+		}
+		logRunTiming(e)
+	}
+}

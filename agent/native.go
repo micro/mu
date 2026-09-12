@@ -378,7 +378,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	runs := store.NewMemoryStore()
 	agentOpts := []gmagent.Option{
 		gmagent.Model(model),
-		gmagent.OnRunEvent(logRunTiming),
+		gmagent.OnRunEvent(runTimingFor(provider)),
 		gmagent.WithStore(runs),
 		// What was said before, as turns. Read-only, which is what stops the
 		// question being counted twice — go-micro adds it to memory and then
