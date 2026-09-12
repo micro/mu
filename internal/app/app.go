@@ -353,6 +353,9 @@ func torFooterLink() string {
 // million times. See home/index.go, which learned the same lesson about a
 // comment inside a <style> block.
 
+//go:embed assistant.js
+var assistantJS string
+
 var Template = `
 <html lang="%s">
   <head>
@@ -734,7 +737,7 @@ var Template = `
           if (u.pathname === '/video' && u.searchParams.get('id')) return;
           // Agent pages own live streams and per-thread draft/scroll state.
           // Use document navigation so pagehide saves it and listeners retire.
-          if (u.pathname === '/' || location.pathname === '/' || /^\/agent(?:\/|$)/.test(u.pathname) || /^\/agent(?:\/|$)/.test(location.pathname)) return;
+          if (u.pathname === '/assistant' || location.pathname === '/assistant' || u.pathname === '/' || location.pathname === '/' || /^\/agent(?:\/|$)/.test(u.pathname) || /^\/agent(?:\/|$)/.test(location.pathname)) return;
           e.preventDefault();
           if (u.href === location.href) return;
           go(u.href, true);
@@ -889,6 +892,7 @@ var Template = `
       document.addEventListener('mu:navigated', markNav);
       markNav();
   </script>
+  <script>` + assistantJS + `</script>
   </body>
 </html>
 `
@@ -1274,7 +1278,7 @@ func navMain(acc *auth.Account) string {
 			`"><span class="label">` + label + `</span></a>`
 	}
 
-	b := item("nav-assistant", "/home?assistant=1", "/agent.svg", "Assistant")
+	b := item("nav-assistant", "/assistant", "/chat.png", "Assistant")
 	b += item("nav-home", "/home", "/home.png", "Home")
 	// Account and Profile are not here. They are the two that are about *you*
 	// rather than about the instance, so they sit under your name at the foot
