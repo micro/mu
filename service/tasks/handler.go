@@ -129,7 +129,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	}
 	b.WriteString(`<div class="page-stack"><div class="task-tabs">`)
 	tab(&b, "", filter, fmt.Sprintf("All (%d)", len(all)))
-	tab(&b, StatusTodo, filter, fmt.Sprintf("To do (%d)", open))
+	tab(&b, StatusTodo, filter, fmt.Sprintf("Todo (%d)", open))
 	tab(&b, StatusDoing, filter, fmt.Sprintf("Doing (%d)", doing))
 	tab(&b, StatusFailed, filter, fmt.Sprintf("Failed (%d)", failed))
 	tab(&b, StatusBlocked, filter, fmt.Sprintf("Blocked (%d)", blocked))
@@ -164,7 +164,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	}
 
 	b.WriteString(tasksPageCSS)
-	app.Respond(w, r, app.Response{Title: "Tasks", Description: "What is to be done", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Todo", Description: "What is to be done", HTML: b.String()})
 }
 
 func tab(b *strings.Builder, status, active, label string) {

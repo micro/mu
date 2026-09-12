@@ -1263,7 +1263,7 @@ func navMain(acc *auth.Account) string {
 	b := item("nav-assistant", "/assistant", "/chat.png", "Assistant")
 	b += item("nav-home", "/home", "/home.png", "Home")
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
-	b += item("nav-tasks", "/tasks", "/tasks.svg", "Tasks")
+	b += item("nav-tasks", "/tasks", "/tasks.svg", "Todo")
 
 	return b
 }
@@ -1281,7 +1281,7 @@ func navTabs(acc *auth.Account) string {
 		tab("/assistant", "/chat.png", "Ask") +
 		tab("/home", "/home.png", "Home") +
 		tab("/inbox", "/mail.png", "Inbox") +
-		tab("/tasks", "/tasks.svg", "Tasks") +
+		tab("/tasks", "/tasks.svg", "Todo") +
 		`</nav>`
 }
 

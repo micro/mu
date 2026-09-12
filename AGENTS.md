@@ -67,7 +67,8 @@ we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
 **Keep capabilities and data intact while simplifying the app.** Everyday
-navigation is Assistant, Home, Inbox and Tasks. Retire redundant discovery
+navigation is Assistant, Home, Inbox and Todo. The service and API remain
+named tasks; Todo is the user-facing section label. Retire redundant discovery
 pages only with a working replacement; preserve protocols, API responses,
 authorisation, mutations and existing shared content links.
 

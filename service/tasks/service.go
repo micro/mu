@@ -209,6 +209,7 @@ func Load() {
 
 var Spec = service.Spec{
 	Name:        "tasks",
+	Label:       "Todo",
 	Handler:     new(Server),
 	Description: "Manage tasks and assign work",
 	Page:        "/tasks",
