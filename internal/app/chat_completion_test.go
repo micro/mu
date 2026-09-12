@@ -35,3 +35,13 @@ func TestChatCompletionAndRecovery(t *testing.T) {
 		t.Fatalf("completion test: %v\n%s", err, out)
 	}
 }
+
+func TestClientLocationSharing(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("Node is needed for client location checks")
+	}
+	if out, err := exec.Command(node, "testdata/location_test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+}

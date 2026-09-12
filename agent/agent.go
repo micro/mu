@@ -103,6 +103,7 @@ type QueryMessage struct {
 
 // QueryOpts controls what context is included in agent queries.
 type QueryOpts struct {
+	Context ClientContext
 	// RawReply preserves the model reply for callers that validate a structured outcome.
 	// Never substitute a synthesized tool summary for this reply.
 	RawReply bool
@@ -1443,12 +1444,13 @@ func agentErrorMessage(err error) string {
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Prompt     string `json:"prompt"`
-		Attachment string `json:"attachment"`
-		Model      string `json:"model"`
-		Agent      string `json:"agent"`       // optional: user-defined agent id to answer as
-		ContextID  string `json:"context_id"`  // optional: prior flow to continue from
-		StreamText bool   `json:"stream_text"` // opt-in answer deltas, followed by the final response
+		Context    ClientContext `json:"context"`
+		Prompt     string        `json:"prompt"`
+		Attachment string        `json:"attachment"`
+		Model      string        `json:"model"`
+		Agent      string        `json:"agent"`       // optional: user-defined agent id to answer as
+		ContextID  string        `json:"context_id"`  // optional: prior flow to continue from
+		StreamText bool          `json:"stream_text"` // opt-in answer deltas, followed by the final response
 		// Cards asks for the reader's home cards to be included as context, so
 		// a question about what they watch is answered from what is already
 		// known rather than fetched again.
@@ -1627,6 +1629,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	sse(w, map[string]any{"type": "working", "message": "Working"})
 
 	nopts := QueryOpts{Public: guest}
+	nopts.Context = req.Context
 	nopts.Extra = reading
 	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
 		nopts.System = ua.SystemPrompt
