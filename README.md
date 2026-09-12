@@ -28,10 +28,10 @@ It includes:
 
 Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and agent activity, bringing communication and agent work into one place.
 
-The everyday web navigation is **Assistant**, **Inbox** and **Todo**.
-Assistant opens with a concise overview of relevant information. Asking a
+The everyday web navigation is **Home**, **Inbox** and **Todo**.
+Home opens the assistant with a concise overview of relevant information. Asking a
 question reveals the conversation beneath the same input; returning to Today
-does not clear it. `/home` remains an alias of the same experience. Agents and
+does not clear it. `/assistant` opens the same experience. Agents and
 the service catalogue remain available as advanced tools.
 
 ## Agents
