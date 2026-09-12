@@ -520,8 +520,9 @@ html:has(.mu-chat-overlay) { scrollbar-gutter:stable; }
 body:has(.mu-console[open]) { overflow:hidden; }
 .mu-console::backdrop { background:rgba(0,0,0,.28); }
 .mu-console[open] { display:flex; flex-direction:column; }
-.mu-console-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:14px; }
-.mu-console-close { font:inherit; font-weight:400; cursor:pointer; }
+.mu-console-head { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:var(--space-control,8px); margin-bottom:var(--space-field,16px); font-size:14px; }
+.mu-console-head strong { grid-column:2; text-align:center; }
+.mu-console-close { grid-column:3; justify-self:end; font:inherit; font-weight:400; }
 .mu-console #mu-chat { display:flex; flex-direction:column; min-height:0; flex:1; max-width:none; }
 .mu-console #mu-chat-form { flex-shrink:0; position:static; }
 .mu-console #mu-chat #mu-chat-conv { flex:1; min-height:0; max-height:none; overflow:auto; overflow-anchor:none; }
@@ -665,7 +666,7 @@ if(overlay && input && form){
  shell.before(slot); slot.appendChild(shell);
  var dialog=document.createElement('dialog'); dialog.className='mu-console';
  dialog.setAttribute('aria-label','Micro');
- dialog.innerHTML='<div class="mu-console-head"><strong>Micro</strong><button type="button" class="mu-console-close">Close</button></div>';
+ dialog.innerHTML='<div class="mu-console-head"><strong>Micro</strong><button type="button" class="mu-console-close link-button">Close</button></div>';
  slot.appendChild(dialog);
  var closing=false;
  function openConsole(){

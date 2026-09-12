@@ -375,8 +375,15 @@ func deliver(r request, answer string, err error) {
 		body += "\n\n---\n[Disable or manage your morning brief](" + origin.Self() + "/events#morning-brief)."
 	}
 	messageID := "<" + uuid.NewString() + "@" + mail.ConfiguredDomain() + ">"
+	sender := agent.NameOf(r.Account, r.Agent)
+	if sender == "" {
+		sender = agent.DefaultName()
+	}
+	if sender == "" {
+		sender = "Micro"
+	}
 	delivery := mail.Delivery{
-		From: "Mu", FromID: "agent@" + mail.ConfiguredDomain(),
+		From: sender, FromID: "agent@" + mail.ConfiguredDomain(),
 		To: acc.Name, ToID: acc.ID, Tag: tag,
 		Subject: r.Title, Body: body, MessageID: messageID,
 	}
