@@ -449,7 +449,7 @@ function fetchW(la,lo){
 		AgentName:       agent.DefaultName(),
 		Location:        viewerID != "",
 		Stationary:      true,
-		ContinueNS:      assistantNamespace(viewerID),
+		ContinueNS:      assistantNamespace(viewerID) + ":home",
 		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><button type="button" id="home-conversation-close">Close</button><button type="button" id="mu-chat-continue" disabled>Continue in Assistant</button><span id="mu-chat-transfer-error" role="status"></span></div>`,
 	}))
 	b.WriteString(`</div>`)

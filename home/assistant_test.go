@@ -11,7 +11,7 @@ import (
 
 func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 	for _, who := range []string{"", "asstreadera", "asstreaderb"} {
-		for _, path := range []string{"/assistant"} {
+		for _, path := range []string{"/assistant", "/assistant?view=home"} {
 			r := httptest.NewRequest(http.MethodGet, path, nil)
 			ns := "assistant:guest"
 			if who != "" {
@@ -23,6 +23,10 @@ func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 				r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 				ns = "assistant:account:" + who
 			}
+			fromHome := strings.Contains(path, "view=home")
+			if fromHome {
+				ns += ":home"
+			}
 			w := httptest.NewRecorder()
 			AssistantHandler(w, r)
 			body := w.Body.String()
@@ -31,6 +35,12 @@ func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 			}
 			if !strings.Contains(body, `var NS="`+ns+`"`) {
 				t.Errorf("%s: missing isolated namespace %s", path, ns)
+			}
+			if strings.Contains(body, `href="/assistant">Back to main conversation</a>`) != fromHome {
+				t.Error("return link must appear on the separate Home conversation")
+			}
+			if strings.Contains(body, "var handoff=true?") != fromHome {
+				t.Error("main conversation must not consume handoffs")
 			}
 			if strings.Contains(body, `id="mu-chat-location"`) != (who != "") {
 				t.Errorf("%s: location control does not match authentication", path)
@@ -49,6 +59,9 @@ func TestHomeDisclosureFollowsAnswer(t *testing.T) {
 	toggle := strings.Index(body, `id="home-conversation-actions"`)
 	if form < 0 || answer <= form || toggle <= answer {
 		t.Fatal("Home input, answers, disclosure must appear in that order")
+	}
+	if !strings.Contains(body, `var CONTINUE_NS="assistant:account:homedisclose:home";`) {
+		t.Error("Home handoff must target its separate conversation")
 	}
 	if !strings.Contains(body, "var stationary=true;") {
 		t.Error("Home must preserve its surrounding content")

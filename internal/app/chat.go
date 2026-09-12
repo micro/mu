@@ -48,6 +48,8 @@ func JSAttr(s string) string {
 type ChatConfig struct {
 	// ContinueNS is the account-scoped Assistant destination for a Home exchange.
 	ContinueNS string
+	// AcceptHandoff allows this surface to consume an explicitly transferred exchange.
+	AcceptHandoff bool
 	// Stationary keeps an embedded composer in place and surrounding content visible.
 	Stationary bool
 	// Location offers approximate device sharing on authenticated surfaces.
@@ -801,7 +803,7 @@ var history=[];
 // conversation instead of starting a new one.
 if(!SESSION && PERSIST){
   try{
-    var handoff=sessionStorage.getItem('mu_chat_handoff:'+NS);
+    var handoff=` + boolJS(cfg.AcceptHandoff) + `?sessionStorage.getItem('mu_chat_handoff:'+NS):null;
     if(handoff){
       var exchange=JSON.parse(handoff);
       sessionStorage.setItem(CKEY,exchange.html);
@@ -1200,7 +1202,7 @@ if(transfer && CONTINUE_NS)transfer.addEventListener('click',function(){
   if(transfer.disabled)return;
   try{
     sessionStorage.setItem('mu_chat_handoff:'+CONTINUE_NS,JSON.stringify({html:conv.innerHTML,history:history,context:contextId||'',draft:input.value||''}));
-    window.location.assign('/assistant');
+    window.location.assign('/assistant?view=home');
   }catch(e){document.getElementById('mu-chat-transfer-error').textContent='Could not move this conversation. Please try again.';}
 });
 
