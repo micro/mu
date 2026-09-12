@@ -724,7 +724,9 @@ if(overlay && input && form){
  form.addEventListener('submit',openConsole,true);
 }
 
+var questionAnchor=null;
 function revealQuestion(node){
+  if(stationary&&(conv.hidden||questionAnchor!==node))return;
   if(overlay){toBottom(false);return;}
   if(transcript){toBottom(false);return;}
   requestAnimationFrame(function(){
@@ -734,6 +736,13 @@ function revealQuestion(node){
     node.style.scrollMarginTop=Math.max(64,stickyTop+(form?form.getBoundingClientRect().height:0)+8)+"px";
     node.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth",block:"start"});
   });
+}
+// Keep Home aligned to the question as the answer grows, until the reader scrolls.
+if(stationary&&conv&&window.ResizeObserver){
+  new ResizeObserver(function(){if(questionAnchor&&questionAnchor.isConnected)revealQuestion(questionAnchor);}).observe(conv);
+  window.addEventListener('wheel',function(){questionAnchor=null;},{passive:true});
+  window.addEventListener('touchmove',function(){questionAnchor=null;},{passive:true});
+  window.addEventListener('keydown',function(e){if(e.target!==input&&['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].indexOf(e.key)>=0)questionAnchor=null;});
 }
 function toBottom(force,smooth){
   if(!overlay&&!transcript&&!contained) return;
@@ -872,7 +881,7 @@ if(!SESSION && PERSIST){
   }catch(e){}
 }
 
-if(SESSION&&PERSIST){try{var savedDraft=sessionStorage.getItem(draftKey());if(savedDraft)input.value=savedDraft;}catch(e){}}
+if(SESSION&&PERSIST){try{var savedDraft=sessionStorage.getItem('mu_chat_continue_draft:'+contextId)||sessionStorage.getItem(draftKey());if(savedDraft)input.value=savedDraft;sessionStorage.removeItem('mu_chat_continue_draft:'+contextId);}catch(e){}}
 
 // A conversation already on the page means the asking has happened, whether it
 // came back from sessionStorage or was rendered by the server. Without this a
@@ -901,7 +910,7 @@ function showSuggestions(){
 
 function save(){
   var transfer=document.getElementById('mu-chat-continue');
-  if(transfer)transfer.setAttribute('aria-disabled',String(!history.length || !!conv.querySelector('.mu-think,.mu-cursor')));
+  if(transfer)transfer.setAttribute('aria-disabled',String(!contextId && !history.length));
   if(SESSION||!PERSIST)return; // server owns reopened sessions; ephemeral surfaces don't save
   try{
     sessionStorage.setItem(CKEY,conv.innerHTML);
@@ -939,7 +948,7 @@ function ask(q){
   var epoch=viewEpoch;
   hideBrief();
   sugDiv.innerHTML='';
-  var u=document.createElement('div');u.className='mu-user';u.textContent=q;conv.appendChild(u);
+  var u=document.createElement('div');u.className='mu-user';u.textContent=q;conv.appendChild(u);if(stationary)questionAnchor=u;
   // Who is about to answer, above the answer, the same as the transcript draws
   // it on reload — see agent.renderTurn. Written before the reply arrives
   // because the name is known before the reply is, and a label that appears
@@ -1046,27 +1055,22 @@ function ask(q){
   fetch('/agent',{signal:streamController.signal,method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},body:body,credentials:'same-origin'})
   .then(function(resp){
     if(epoch!==viewEpoch)throw 'handled';
+    if(resp.status===402||resp.status===429){
+      return resp.json().catch(function(){return {};}).then(function(j){
+        stopWork();var message=resp.status===402?'You need more credits to continue.':'Please wait a moment before trying again.';
+        a.innerHTML='<div class="mu-err" role="status">'+esc(message)+(resp.status===402?' <a href="/wallet">View credits →</a>':'')+'</div>';input.value=q;saveDraft();save();throw 'handled';
+      });
+    }
     if(resp.status===401){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();
-        // A refusal has to leave somebody able to do something.
-        //
-        // It said "Sign in to ask the agent" with two links, on the front page,
-        // which is the page a stranger sees and the only page this branch ever
-        // renders on. So the main control of the signed-out product answered
-        // every question with a sign-up form — worse than the search box it
-        // replaced, which at least worked.
-        //
-        // Two ways on, and the first one works this second. The archive is
-        // public by construction, so searching what was just typed needs no
-        // account and no permission; signing in carries the question through
-        // and asks it on arrival, which is the same trip /agent?q= already
-        // makes. Neither is a form standing between somebody and an answer.
-        var msg=esc(j.error||'Nobody can ask the agent here without an account.');
-        var qq=encodeURIComponent(q);
-        a.innerHTML='<div class="mu-cta">'+msg+
-          ' <a href="/archive?q='+qq+'">Search the archive for this →</a>'+
-          ' <a href="/login?redirect='+encodeURIComponent('/agent?q='+q)+'" class="ml-3">Sign in and ask it</a></div>';
+        // Preserve the draft and conversation identity through sign-in.
+        // The question itself must never travel in a URL.
+        var msg=esc(j.error||'Sign in to continue this conversation.');
+        input.value=q;saveDraft();
+        var returnTo=contextId?'/assistant?session='+encodeURIComponent(contextId):'/home';
+        try{sessionStorage.setItem(contextId?'mu_chat_continue_draft:'+contextId:'mu_chat_draft:landing',q);}catch(e){}
+        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/login?redirect='+encodeURIComponent(returnTo)+'">Sign in to continue →</a></div>';
         save();
         throw 'handled';
       });
@@ -1210,15 +1214,16 @@ window.addEventListener('popstate',function(e){
   else window.muChatNew();
 });
 
-// Move a completed exchange as one bundle; never put its words in a URL.
+// Open the saved conversation itself; no transcript copy and no words in a URL.
 var transfer=document.getElementById('mu-chat-continue');
 if(transfer && CONTINUE_NS)transfer.addEventListener('click',function(event){
   event.preventDefault();event.stopPropagation();
-  if(transfer.getAttribute('aria-disabled')==='true')return;
+  var error=document.getElementById('mu-chat-transfer-error');
+  if(!contextId){if(error)error.textContent='Send a question first, then continue here once it is saved.';return;}
   try{
-    sessionStorage.setItem('mu_chat_handoff:'+CONTINUE_NS,JSON.stringify({html:conv.innerHTML,history:history,context:contextId||'',draft:input.value||''}));
-    window.location.assign('/assistant?view=home');
-  }catch(e){document.getElementById('mu-chat-transfer-error').textContent='Could not move this conversation. Please try again.';}
+    sessionStorage.setItem('mu_chat_continue_draft:'+contextId,input.value||'');
+  }catch(e){} // A blocked browser store must not prevent opening a saved chat.
+  window.location.assign('/assistant?session='+encodeURIComponent(contextId));
 });
 
 // Start a fresh session (clears the log + thread id).

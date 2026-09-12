@@ -212,7 +212,7 @@ func TestRenderString(t *testing.T) {
 
 func TestRenderHTML(t *testing.T) {
 	result := RenderHTML("Test", "A test page", "<p>content</p>", nil)
-	if !strings.Contains(result, "<title>Test | Mu</title>") {
+	if !strings.Contains(result, "<title>Test | Micro</title>") {
 		t.Error("expected title")
 	}
 	if !strings.Contains(result, `lang="en"`) {
@@ -469,7 +469,7 @@ func TestRenderTemplate(t *testing.T) {
 	if !strings.Contains(result, "<strong>bold</strong>") {
 		t.Error("expected rendered markdown")
 	}
-	if !strings.Contains(result, "<title>Test | Mu</title>") {
+	if !strings.Contains(result, "<title>Test | Micro</title>") {
 		t.Error("expected page title")
 	}
 }

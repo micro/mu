@@ -51,7 +51,7 @@ func TestAnExpiredSessionIsOfferedTheWayBackIn(t *testing.T) {
 	// answered outright — see agent.Handler — and this branch is what is left
 	// for an instance that has turned strangers off, or one whose session
 	// expired mid-conversation. Both ways on carry the question.
-	for _, want := range []string{"/archive?q=", "/agent?q="} {
+	for _, want := range []string{"/login?redirect=", "mu_chat_continue_draft:"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("the chat has no %s for a caller whose session has gone", want)
 		}

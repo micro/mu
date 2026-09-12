@@ -193,13 +193,13 @@ a.link-text {
 .assistant-page { max-width:800px; margin:0; }
 @media(max-width:900px) { #tabs { grid-template-columns:repeat(5,minmax(0,1fr)); } }
 
-/* Keep the Assistant composer below the fixed app header while reading. */
-.assistant-page #mu-chat-form { --mu-composer-top:58px; }
-@media(max-width:900px) { .assistant-page #mu-chat-form { --mu-composer-top:52px; } }
+/* Keep the in-page command composer below the fixed app header. */
+#home-agent #mu-chat-form, .assistant-page #mu-chat-form { --mu-composer-top:58px; }
+@media(max-width:900px) { #home-agent #mu-chat-form, .assistant-page #mu-chat-form { --mu-composer-top:52px; } }
 
 /* Quiet orientation, shared across desktop and mobile page shells. */
 #page-title { font-size:16px; font-weight:500; line-height:1.4; text-align:left; color:var(--text-secondary,#555); margin:0 0 8px; }
-/* Subtle rules distinguish unboxed sections without adding card chrome. */
+/* One card boundary encloses the heading, actions and content. */
 .section-card { min-width:0; margin:0 0 24px; border:1px solid var(--divider,#e8e8e8); border-radius:6px; padding:16px; background:var(--bg-primary,#fff); }
 .section-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:16px; }
 .section-card-head h4 { margin:0; min-width:0; font-size:14px; font-weight:500; line-height:1.5; color:var(--text-secondary,#555); }
@@ -249,7 +249,7 @@ a.link-text {
 @media (max-width: 1099px) {
   .home-workspace > .home-column { display: contents; }
   .home-workspace #home-agent { order: 0; }
-  .home-workspace #home-recent { order: 2; }
+  .home-workspace #home-recent, .home-workspace #home-start { order: 2; }
   .home-workspace #home-todo { order: 3; }
   .home-workspace #home-upcoming { order: 4; }
   .home-workspace #home-inbox { order: 5; }
@@ -286,3 +286,29 @@ a.link-text {
 /* Set quoted scripture apart from the reflection without another heavy border. */
 .section-card .verse { background:#f5f5f5; padding:16px; border-radius:4px; max-height:none; overflow:visible; }
 .section-card .verse + p { margin-top:16px; }
+
+/* One stable command area above both Home views. */
+#home-agent { max-width:800px; margin-bottom:16px; }
+#home-agent #mu-chat-conv[hidden], #home-conversation-actions[hidden] { display:none !important; }
+#home-agent #mu-chat-conv { overflow-anchor:none; }
+.preview-rows .peek-main { display:flex; flex-direction:column; min-width:0; gap:4px; }
+.peek-snippet { display:block; color:var(--text-muted,#707070); font-size:13px; font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.activity-status { display:block; font-size:12px; font-weight:500; color:var(--text-secondary,#555); }
+.agent-peek-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; }
+.agent-peek-row .agent-peek-name { grid-column:1; grid-row:1; }
+.agent-peek-row .activity-status { grid-column:2; grid-row:1; text-align:right; }
+.agent-peek-row .agent-peek-last { grid-column:1; grid-row:2; }
+.agent-peek-row .agent-peek-when { grid-column:2; grid-row:2; text-align:right; }
+
+/* Account entry uses the same typography, fields and spacing as application forms. */
+.auth-page #login, .auth-page #signup, .auth-page .auth-help, .auth-page #auth-status { width:100%; max-width:400px; margin:0 auto 16px; }
+.auth-page #login h1, .auth-page #signup h1 { font-size:16px; font-weight:500; margin:0; }
+.auth-page #login input, .auth-page #signup input { margin:0; }
+.auth-page .field-label { text-align:left; }
+.auth-page .auth-help { font-size:13px; }
+.auth-page #auth-status:empty { display:none; }
+.form-check { display:flex; flex-direction:row; align-items:center; gap:8px; }
+
+/* Static content cards use the same quiet boundary on every service page. */
+.card, .card:hover { box-shadow:none; }

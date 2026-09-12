@@ -322,8 +322,9 @@ type entry struct {
 	// everywhere else. It was one string reading "Last: Tuesday · 2 hours ago",
 	// which put a label nobody needs in front of the only interesting word and
 	// buried the timestamp mid-sentence.
-	Seen string
-	When string
+	Seen   string
+	When   string
+	Status string
 }
 
 // entryRow draws one.
@@ -343,6 +344,9 @@ func entryRow(e entry) string {
 		b.WriteString(`<span class="agent-when">` + html.EscapeString(e.When) + `</span>`)
 	}
 	b.WriteString(`</div>`)
+	if e.Status != "" {
+		b.WriteString(`<div class="activity-status">` + html.EscapeString(e.Status) + `</div>`)
+	}
 	if e.For != "" {
 		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
 	}
@@ -422,15 +426,16 @@ func agentRow(a *Agent, csrf, base string) string {
 	open, chat := Path(a.Owner, a.ID), Path(a.Owner, a.ID)
 
 	return entryRow(entry{
-		Name:  a.Name,
-		Path:  open,
-		Chat:  chat,
-		For:   for_,
-		Seen:  seenLine(a.Owner, a.ID),
-		When:  seenWhen(a.Owner, a.ID),
-		ID:    a.ID,
-		Admin: true,
-		Extra: extra,
+		Name:   a.Name,
+		Status: activity(a.Owner, a.ID),
+		Path:   open,
+		Chat:   chat,
+		For:    for_,
+		Seen:   seenLine(a.Owner, a.ID),
+		When:   seenWhen(a.Owner, a.ID),
+		ID:     a.ID,
+		Admin:  true,
+		Extra:  extra,
 	})
 }
 
@@ -442,6 +447,7 @@ func agentRow(a *Agent, csrf, base string) string {
 // in, where "last used 2 hours ago" would be a fact about a stranger.
 func platformSeenRow(name, accountID string) string {
 	row := platformRow(name)
+	row = strings.Replace(row, `</div>`, `</div>`+activityHTML(accountID, name), 1)
 
 	// How long ago, beside the name.
 	if when := seenWhen(accountID, name); when != "" {

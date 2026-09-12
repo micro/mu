@@ -254,7 +254,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 				`address from anywhere — your own mail, your phone — and it turns up here. ` +
 				`The agent reads what arrives and answers in the thread.</p>` +
 				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
-				`the agent, on ` + app.TextLink("Agents", "/agents") + `. Or ` +
+				`the agent, on ` + app.TextLink("Assistant", "/assistant") + `. Or ` +
 				app.TextLink("write one yourself", "/inbox/new") + `.</p>`)
 		}
 		b.WriteString(`</div>`)

@@ -69,28 +69,30 @@ func SignupRateLimit(ip string) bool {
 
 var LoginTemplate = `<html lang="en">
   <head>
-    <title>Login | Mu</title>
+    <title>Login | Micro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer"/>
     <link rel="stylesheet" href="/mu.css?` + app.Version + `">
+    <link rel="stylesheet" href="/composition.css?` + app.Version + `">
   </head>
-  <body>
+  <body class="auth-page">
     <div id="head">
       <div id="brand">
-        <a href="/">Mu</a>
+        <a href="/">Micro</a>
       </div>
     </div>
     <div id="container">
       <div id="content">
-	<form id="login" action="/login%s" method="POST">
+	<p id="auth-status" role="status"></p><form id="login" action="/login%s" method="POST" class="form page-stack">
 	  <h1>Log in</h1>
 	  %s
 	  %s
-	  <input id="id" name="id" placeholder="Username" required>
-	  <input id="secret" name="secret" type="password" placeholder="Password" required>
-	  <br>
-	  <button>Login</button>
+	  <label class="field-label">Username<input id="id" name="id" autocomplete="username" required></label>
+	  <label class="field-label">Password<input id="secret" name="secret" type="password" autocomplete="current-password" required></label>
+
+	  <button>Log in</button>
 	</form>
+	<details class="disclosure auth-help"><summary>Having trouble signing in?</summary><p>If you joined with Google, use Continue with Google. If you still have a signed-in device, you can set a password in Account. Otherwise, <a href="/contact">contact the server operator</a> for help. Automatic password reset is not available.</p></details>
 	<div id="passkey-login" class="d-none text-center mt-5">
 	  <p class="text-muted">or</p>
 	  <button onclick="loginWithPasskey()">Login with Passkey</button>
@@ -159,10 +161,10 @@ var LoginTemplate = `<html lang="en">
 	    if (result.success) {
 	      window.location.href = result.redirect || '/home';
 	    } else {
-	      alert('Login failed');
+	      document.getElementById('auth-status').textContent='Sign-in failed. Please try another sign-in method.';
 	    }
 	  } catch (e) {
-	    if (e.name !== 'NotAllowedError') alert('Error: ' + e.message);
+	    if (e.name !== 'NotAllowedError') document.getElementById('auth-status').textContent='Unable to sign in. Please try again.';
 	  }
 	}
 	</script>
@@ -174,30 +176,31 @@ var LoginTemplate = `<html lang="en">
 
 var SignupTemplate = `<html lang="en">
   <head>
-    <title>Signup | Mu</title>
+    <title>Signup | Micro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer"/>
     <link rel="stylesheet" href="/mu.css?` + app.Version + `">
+    <link rel="stylesheet" href="/composition.css?` + app.Version + `">
   </head>
-  <body>
+  <body class="auth-page">
     <div id="head">
       <div id="brand">
-        <a href="/">Mu</a>
+        <a href="/">Micro</a>
       </div>
     </div>
     <div id="container">
       <div id="content">
-	<form id="signup" action="/signup%s" method="POST">
+	<form id="signup" action="/signup%s" method="POST" class="form page-stack">
 	  <h1>Create your account</h1>
 	  %s
 	  %s
-	  <input id="id" name="id" placeholder="Username (4-24 chars, lowercase)" required>
-	  <input id="name" name="name" placeholder="Name (optional)">
-  	  <input id="secret" name="secret" type="password" placeholder="Password (min 6 chars)" required>
+	  <label class="field-label">Username<input id="id" name="id" autocomplete="username" minlength="4" maxlength="24" pattern="[a-z][a-z0-9_]{3,23}" aria-describedby="username-help" required></label><small id="username-help" class="text-muted">4–24 characters. Start with a letter; use lowercase letters, numbers or underscores.</small>
+	  <label class="field-label">Name (optional)<input id="name" name="name" autocomplete="name"></label>
+	  <label class="field-label">Password<input id="secret" name="secret" type="password" autocomplete="new-password" minlength="6" aria-describedby="password-help" required></label><small id="password-help" class="text-muted">At least 6 characters.</small>
 	  %s
 	  %s
-	  <br>
-	  <button>Signup</button>
+
+	  <button>Create account</button>
 	</form>
 	<p class="text-center mt-5"><a href="/login">Log in</a> if you have an account</p>
       </div>
@@ -355,13 +358,15 @@ func RequestInvite(w http.ResponseWriter, r *http.Request) {
 
 // Login handler
 func Login(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
+	renderLogin := func(to, msg string) string { return accountFormValues(loginPage(to, msg), r) }
 	if r.Method == "GET" {
 		// Preserve redirect parameter in form action
 		redirectParam := ""
 		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
 			redirectParam = "?redirect=" + url.QueryEscape(redirect)
 		}
-		w.Write([]byte(loginPage(redirectParam, "")))
+		w.Write([]byte(renderLogin(redirectParam, "")))
 		return
 	}
 
@@ -378,17 +383,17 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(id) == 0 {
-			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Username is required</p>`)))
+			w.Write([]byte(renderLogin(redirectParam, `<p class="text-error">Username is required</p>`)))
 			return
 		}
 		if len(secret) == 0 {
-			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Password is required</p>`)))
+			w.Write([]byte(renderLogin(redirectParam, `<p class="text-error">Password is required</p>`)))
 			return
 		}
 
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Invalid username or password</p>`)))
+			w.Write([]byte(renderLogin(redirectParam, `<p class="text-error">Invalid username or password</p>`)))
 			return
 		}
 
@@ -427,7 +432,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	// Keep referral state on this request, never shared between visitors.
 	render := func(errHTML, redirectParam string) string {
-		return renderSignupInvite(errHTML, redirectParam, invCode)
+		return accountFormValues(renderSignupInvite(errHTML, redirectParam, invCode), r)
 	}
 
 	// Carried through every render so the POST keeps it — see renderSignupTo.
@@ -1268,4 +1273,20 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 	}
 	app.Log("auth", "Sent verification email to %s for account %s", email, acc.ID)
 	http.Redirect(w, r, "/account", http.StatusSeeOther)
+}
+
+// Preserve non-secret form fields on errors and the destination between auth pages.
+func accountFormValues(page string, r *http.Request) string {
+	if r.Method == "POST" {
+		for _, name := range []string{"id", "name"} {
+			marker := `id="` + name + `" name="` + name + `"`
+			page = strings.Replace(page, marker, marker+` value="`+htmlpkg.EscapeString(r.FormValue(name))+`"`, 1)
+		}
+	}
+	if to := r.URL.Query().Get("redirect"); to != "" {
+		for _, route := range []string{"/login", "/signup", "/oauth2/google"} {
+			page = strings.ReplaceAll(page, `href="`+route+`"`, `href="`+route+`?redirect=`+htmlpkg.EscapeString(url.QueryEscape(SafeRedirectTo(to)))+`"`)
+		}
+	}
+	return page
 }

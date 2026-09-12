@@ -12,7 +12,7 @@ func TestContinueTransfersExchangeWithoutWordsInURL(t *testing.T) {
 		t.Skip("Node required")
 	}
 	body := ChatComponent(ChatConfig{Ask: true, ContinueNS: "assistant:account:alice:home"})
-	start, end := strings.Index(body, "// Move a completed exchange"), strings.Index(body, "// Start a fresh session")
+	start, end := strings.Index(body, "// Open the saved conversation itself"), strings.Index(body, "// Start a fresh session")
 	if start < 0 || end <= start {
 		t.Fatal("missing transfer controller")
 	}
@@ -25,10 +25,8 @@ const CONTINUE_NS='assistant:account:alice:home',conv={innerHTML:'<div>Private a
 const sessionStorage={setItem(key,value){stored={key,value}}};
 const window={location:{assign(value){url=value}}};
 ` + body[start:end] + `
-click({preventDefault(){},stopPropagation(){}});assert.equal(url,'/assistant?view=home');assert.equal(stored.key,'mu_chat_handoff:assistant:account:alice:home');
-const exchange=JSON.parse(stored.value);assert.equal(exchange.context,'original-thread');assert.deepEqual(exchange.history,history);assert.equal(exchange.html,conv.innerHTML);assert.equal(exchange.draft,'Follow up');
-url=undefined;button.disabled=true;click({preventDefault(){},stopPropagation(){}});assert.equal(url,undefined);
-button.disabled=false;sessionStorage.setItem=()=>{throw Error('storage unavailable')};click({preventDefault(){},stopPropagation(){}});assert.equal(url,undefined);assert(status.textContent.includes('Could not move'));
+click({preventDefault(){},stopPropagation(){}});assert.equal(url,'/assistant?session=original-thread');assert.equal(stored.key,'mu_chat_continue_draft:original-thread');assert.equal(stored.value,'Follow up');
+url=undefined;sessionStorage.setItem=()=>{throw Error('storage unavailable')};click({preventDefault(){},stopPropagation(){}});assert.equal(url,'/assistant?session=original-thread');
 `
 	if out, err := exec.Command(node, "-e", script).CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, out)
