@@ -709,13 +709,13 @@ if(overlay && input && form){
 }
 
 function revealQuestion(node){
-  if(stationary)return;
   if(transcript){toBottom(false);return;}
   requestAnimationFrame(function(){
     if(!node||!node.isConnected)return;
     if(contained){conv.scrollTo({top:node.getBoundingClientRect().top-conv.getBoundingClientRect().top+conv.scrollTop,behavior:"smooth"});return;}
-    node.style.scrollMarginTop=Math.max(64,(form?form.getBoundingClientRect().height:0)+24)+"px";
-    node.scrollIntoView({behavior:"smooth",block:"start"});
+    var stickyTop=form?parseFloat(window.getComputedStyle(form).top)||0:0;
+    node.style.scrollMarginTop=Math.max(64,stickyTop+(form?form.getBoundingClientRect().height:0)+8)+"px";
+    node.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth",block:"start"});
   });
 }
 function toBottom(force,smooth){

@@ -12,7 +12,7 @@
     }
     if(conversationToggle){
       conversationToggle.hidden=!hasConversation && !active;
-      conversationToggle.textContent=active?'⌃ Collapse conversation':'⌄ Resume conversation';
+      conversationToggle.setAttribute('aria-label',active?'Collapse conversation':'Expand conversation');
       conversationToggle.setAttribute('aria-expanded',String(active));
     }
   }

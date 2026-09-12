@@ -449,7 +449,7 @@ function fetchW(la,lo){
 		AgentName:       agent.DefaultName(),
 		Location:        viewerID != "",
 		Stationary:      true,
-		FooterHTML:      `<button type="button" id="home-conversation-toggle" class="link-button text-sm" aria-controls="mu-chat-conv" hidden>Collapse conversation</button>`,
+		FooterHTML:      `<button type="button" id="home-conversation-toggle" class="conversation-disclosure" aria-controls="mu-chat-conv" aria-label="Collapse conversation" aria-expanded="true" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>`,
 	}))
 	b.WriteString(`</div>`)
 	b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
