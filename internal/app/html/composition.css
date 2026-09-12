@@ -273,7 +273,16 @@ a.link-text {
 .collection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); gap:16px; align-items:stretch; max-width:960px; }
 .home-workspace { column-gap:48px; row-gap:24px; }
 .home-column.page-stack { gap:24px; }
+/* The workspace owns spacing; card margins must not add a second gap. */
+.home-workspace .section-card { margin:0; }
 #home { column-gap:48px; }
 .home-apps { border:0; padding-top:0; }
-@media(max-width:1099px) { .home-workspace { gap:24px; } }
-@media(max-width:900px) { #home { gap:24px; } }
+@media(max-width:1099px) { .home-workspace { gap:16px; } }
+@media(max-width:900px) {
+ #home { gap:16px; }
+ #feed-brief { margin-bottom:16px; }
+}
+
+/* Set quoted scripture apart from the reflection without another heavy border. */
+.section-card .verse { background:#f5f5f5; padding:16px; border-radius:4px; max-height:none; overflow:visible; }
+.section-card .verse + p { margin-top:16px; }
