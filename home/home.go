@@ -579,9 +579,7 @@ func cardBody(c Card, who service.Viewer) string {
 	if body == "" {
 		return ""
 	}
-	if c.Streamed() {
-		body = `<div class="card-meta"><span class="card-when">` + htmlEsc(app.TimeAgo(c.At)) + `</span></div>` + body
-	}
+
 	return body
 }
 

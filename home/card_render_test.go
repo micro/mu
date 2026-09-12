@@ -64,16 +64,14 @@ func TestACardTitleLinksToItsService(t *testing.T) {
 	}
 }
 
-// The age moves when the contents do. It is built into the title, the title was
-// sent in the JSON and never used by the script, so a card refreshed its
-// headlines and went on claiming they were an hour old.
-func TestACardSaysHowOldItIs(t *testing.T) {
+// Feed keeps source timestamps without adding another age for the whole card.
+func TestFeedCardDoesNotAddADuplicateTimestamp(t *testing.T) {
 	head := cardBody(Card{
 		ID: "news", Title: "News", Link: "/news",
-		At: time.Now().Add(-2 * time.Hour), CachedHTML: "<p>News</p>",
+		At: time.Now().Add(-2 * time.Hour), CachedHTML: "<p>News <time>2 hours ago</time></p>",
 	}, service.Anyone())
-	if !strings.Contains(head, "card-when") {
-		t.Errorf("a card that happened at a time does not say when:\n%s", head)
+	if strings.Contains(head, "card-when") || !strings.Contains(head, "<time>2 hours ago</time>") {
+		t.Errorf("feed must retain source times without adding a card timestamp: %s", head)
 	}
 
 	// A standing view has no age — markets is how things are, not something

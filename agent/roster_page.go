@@ -161,7 +161,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// Remove, because neither is a thing you can do to it.
 	EnsureTags(owner)
 	roster := Agents(owner)
-	b.WriteString(`<div class="col">`)
+	b.WriteString(`<div class="collection-grid">`)
 	// The default carries the same sign of life as the rest. It is the one most
 	// accounts have actually used, so a roster where every row but that one says
 	// when it last spoke is a roster missing the row that would say the most.
@@ -334,7 +334,7 @@ type entry struct {
 // the feature rather than offering it.
 func entryRow(e entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="agent-row card-hover"><div class="grow min-w-0">`)
+	b.WriteString(`<div class="agent-row"><div class="grow min-w-0">`)
 	// The name, and how long ago it last spoke out to the right of it — the
 	// same pair, in the same places, as a row in the inbox.
 	b.WriteString(`<div class="agent-head">`)
@@ -569,18 +569,15 @@ const agentsCSS = `<style>
 .agent-row .agent-seen{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Top-aligned, not centred. A row is three or four lines tall now, and
    centring left Remove floating in the middle of the card beside nothing. */
-.agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px}
-/* No :hover here either. This filled its background grey, which is a row's
-   answer — .thread-preview in the inbox — and these are not rows, they are
-   bordered cards in a column, the same object as a tile on /services and a
-   card on home. They lift now, from .card-hover in mu.css. */
+.agent-row{display:flex;align-items:flex-start;gap:16px;min-width:0;border:1px solid var(--divider,#e8e8e8);border-radius:4px;padding:16px}
+/* Only the links are interactive; the card itself does not lift on hover. */
 /* One size, one colour, one weight for every link on a row.
    They were three: 12px grey in the link strip, 13px green or amber for the
    scope, 13px for the buttons beside them, and the name at 14px semibold. A
    row is one thing to read, so the parts that are the same rank look the
    same. */
-.agent-links{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:8px}
-.agent-links a{font-size:13px;color:#666;text-decoration:none}
+.agent-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:8px}
+.agent-links a{font-size:13px;font-weight:400;color:var(--text-secondary,#555);text-decoration:underline !important;text-underline-offset:3px}
 .agent-links a:hover{color:var(--text-primary,#111);text-decoration:underline}
 /* The form holding Remove is one item in the strip, not a block that breaks it. */
 .agent-links form{display:inline;margin:0}
@@ -593,7 +590,7 @@ const agentsCSS = `<style>
 .agent-mail code{font-size:12px;color:#666;background:#f5f5f5;border-radius:3px;padding:1px 5px}
 /* The agent's name is the way into it, and it looks like body text rather
    than one more small grey control. */
-.agent-name{display:inline-block;font-weight:600;font-size:14px;color:var(--text-primary,#111);text-decoration:none}
+.agent-name{display:inline-block;font-weight:500;font-size:14px;color:var(--text-primary,#111);text-decoration:none;min-width:0;overflow-wrap:anywhere}
 /* No underline: the row behind it is the affordance now, and two of them at
    once is one too many.
    Stated on :hover rather than left to the rule above, which is the whole
@@ -623,23 +620,12 @@ const agentsCSS = `<style>
    where they are reachable with a thumb, and the endpoint scrolls inside its own
    line rather than pushing the page sideways. */
 @media(max-width:600px){
-  /* The strip's tap targets stand taller than their labels, so the card gives
-     back the space below them — see .agent-links. */
-  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px 4px}
+  /* Preserve the same outside inset at phone width. */
+  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:16px}
   .agent-name{font-size:15px}
     .agent-meta{white-space:normal;overflow-wrap:anywhere}
-  /* Every action in the strip is a tap target, so they are all one height.
-     Buttons take min-height from the mobile rule in mu.css and links did not,
-     so Remove stood 16px taller than Chat beside it and the strip grew to fit
-     it.
-
-     A 14px label centred in a 32px target carries 9px of its own space above
-     and below. That is the spacing, not an addition to it: with a margin on
-     top of it the description sat 21px clear of Chat where the desktop row
-     sits 8px clear, which is the gap you can see before the buttons. The
-     margin and the card's bottom padding give theirs back and the target
-     keeps its height. */
-  .agent-links{gap:16px;margin-top:0}
+  /* Links and buttons share a touch target and baseline. */
+  .agent-links{gap:8px 16px;margin-top:8px}
   .agent-links a,.agent-act,.agent-remove{
     display:inline-flex;align-items:center;min-height:32px;font-size:14px;padding:0}
 }

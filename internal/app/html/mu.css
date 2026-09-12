@@ -553,7 +553,7 @@ td {
   font-weight: var(--font-weight-normal) !important;
   text-decoration: none;
   padding: 10px 14px;
-  border-radius: var(--border-radius);
+  border-radius: 0;
   display: flex;
   align-items: center;
   transition: all var(--transition-fast);
@@ -576,7 +576,7 @@ td {
 #nav a.active {
   background: var(--active-background, var(--hover-background));
   font-weight: var(--font-weight-normal) !important;
-  box-shadow: inset 3px 0 0 var(--accent-color, currentColor);
+  box-shadow: none;
 }
 
 #nav img {
@@ -5847,7 +5847,7 @@ button.pill:hover {
    subject and its snippet clearing the timestamp instead of wrapping under it.
    The reading measure that 760 was reaching for belongs on the message, which
    has one — see .ib-msg — not on the list of them. */
-.ib { max-width: none }
+.ib { width:100%; max-width:960px; }
 
 /* The top of the mailbox: what this list is, and what you do from here.
  *
@@ -5900,7 +5900,7 @@ button.pill:hover {
    It wraps on a phone, where the two sets stack and the rule turns into the
    space above the second one — a vertical rule on a wrapped flex row draws in
    the wrong place, so there is not one. */
-.ib-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 14px }
+.ib-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 16px; padding-bottom:16px; border-bottom:1px solid var(--divider,#eee); }
 /* The axis each set of chips filters on, in front of them rather than over
    them. Two headings stacked over two one-line rows was the thing that was too
    heavy; the words were not. */
@@ -5923,7 +5923,7 @@ button.pill:hover {
   border-left: 1px solid var(--border, #e5e5e5);
 }
 @media only screen and (max-width: 600px) {
-  .ib-filters .ib-kinds { padding-left: 0 }
+  .ib-filters .ib-kinds { padding-left: 0; flex-basis:100%; }
   .ib-filters .ib-kinds::before { display: none }
 }
 /* What is being written, above the compose form. See inbox.newKinds.
