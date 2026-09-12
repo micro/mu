@@ -130,7 +130,7 @@ html, body {
   width: 100%;
   margin: 0;
   padding: 0;
-  font-family: "Nunito Sans", sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -959,9 +959,8 @@ a.btn-plain:hover {
   height: 100%;
 }
 
-/* Home and Feed share the page width, but never compete for it. */
-#home-personal, #home-feed, .home-rail, .home-main { min-width: 0; }
-#home-personal[hidden], #home-feed[hidden] { display: none !important; }
+/* Keep personal content within its column. */
+#home-personal, .home-rail, .home-main { min-width: 0; }
 #home-personal { display: grid; gap: var(--space-section, 24px); }
 .home-workspace { display: grid; gap: var(--space-section, 24px); align-items: start; }
 .home-column { min-width: 0; gap: var(--space-section, 24px); }
@@ -4174,7 +4173,7 @@ a.btn-primary:hover, .btn-primary:hover {
 }
 
 .blog-form textarea {
-  font-family: 'Nunito Sans', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   resize: vertical;
   min-height: 150px;
 }
@@ -4242,7 +4241,7 @@ a.btn-primary:hover, .btn-primary:hover {
 }
 
 .mail-form textarea {
-  font-family: 'Nunito Sans', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   resize: vertical;
   min-height: 200px;
 }
@@ -4251,7 +4250,7 @@ a.btn-primary:hover, .btn-primary:hover {
   padding: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-family: 'Nunito Sans', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: inherit;
   min-height: 100px;
   outline: none;
@@ -5612,44 +5611,6 @@ a.card-hover:hover {
   }
 }
 
-/* ============================================
-   DISPLAY / KIOSK MODE
-   Activated via ?mode=display on /home
-   Hides nav, header, footer for wall-mounted displays
-   ============================================ */
-body.display-mode #head,
-body.display-mode #nav-container,
-body.display-mode #nav-overlay,
-body.display-mode #footer,
-body.display-mode #menu-toggle,
-body.display-mode #page-title,
-body.display-mode #tabs {
-  display: none !important;
-}
-
-body.display-mode #container {
-  margin: 0;
-  padding: 0;
-  max-width: 100%;
-}
-
-body.display-mode #content {
-  margin: 0;
-  padding: 16px;
-  max-width: 100%;
-}
-
-body.display-mode #home {
-  gap: 16px;
-}
-
-body.display-mode .card {
-  font-size: 15px;
-}
-
-body.display-mode .card h4 {
-  font-size: 16px;
-}
 @keyframes typingBounce {
   0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-4px); }

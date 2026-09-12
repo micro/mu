@@ -394,7 +394,7 @@ func authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMet
 <html><head><title>Authorize</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{font-family:'Nunito Sans',sans-serif;max-width:400px;margin:50px auto;padding:0 20px}
+body{font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;max-width:400px;margin:50px auto;padding:0 20px}
 h2{margin-bottom:4px}
 p{color:#666;font-size:14px}
 input{width:100%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit}

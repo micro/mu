@@ -17,7 +17,7 @@ func appsHTML(acc *auth.Account) string {
 	for _, s := range apps {
 		seen[s.Name] = true
 	}
-	for _, s := range service.Pinned([]string{"news", "video", "web", "mail", "notes", "tasks", "events", "maps", "weather", "markets"}) {
+	for _, s := range service.Pinned([]string{"events", "notes", "docs", "files", "contacts", "maps", "apps"}) {
 		if !seen[s.Name] {
 			apps = append(apps, s)
 			seen[s.Name] = true

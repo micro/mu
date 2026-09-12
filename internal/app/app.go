@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
@@ -375,9 +376,6 @@ var Template = `
     <link rel="preload" href="/account.png?` + Version + `" as="image">
     <link rel="preload" href="/weather.png?` + Version + `" as="image">
     <link rel="preload" href="/prayer.svg?` + Version + `" as="image">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/mu.css?` + Version + `">
  <link rel="stylesheet" href="/composition.css?` + Version + `">
@@ -1252,19 +1250,7 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// navMain is the menu: every destination, in one flat list.
-//
-// It was two lists. Four links here — Home, Inbox, Agents, Services — and five
-// more behind a disclosure triangle under your own name: Account, Profile,
-// Wallet, Tokens, Admin. The split was by ownership, "what is yours" under your
-// name, which is a true distinction and the wrong one to hide behind a click.
-// Your wallet and your tokens are not less reachable than the services
-// catalogue; they were one interaction further away than a list of nineteen
-// things you do not own.
-//
-// A menu is a list of destinations and this is the list. The account's own —
-// Account, Profile, Tokens, Wallet — appear only when there is an account, and
-// Admin only for an admin, and the main destinations require a signed-in account.
+// navMain holds the four everyday destinations, matching the mobile tabs.
 func navMain(acc *auth.Account) string {
 	if acc == nil {
 		return ""
@@ -1276,38 +1262,13 @@ func navMain(acc *auth.Account) string {
 
 	b := item("nav-assistant", "/assistant", "/chat.png", "Assistant")
 	b += item("nav-home", "/home", "/home.png", "Home")
-	// Account and Profile are not here. They are the two that are about *you*
-	// rather than about the instance, so they sit under your name at the foot
-	// beside Log out — which is where somebody looks when the question is "who
-	// am I signed in as and what is mine".
-	//
-	// Admin belongs below Account in navBottom.
-
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
-	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
-	b += item("nav-services", "/services", "/services.svg", "Services")
+	b += item("nav-tasks", "/tasks", "/tasks.svg", "Tasks")
 
 	return b
 }
 
-// navTabs is the four hubs along the bottom of a phone.
-//
-// The rail is behind a hamburger at phone width, which puts every destination
-// two taps away and none of them in reach of a thumb. The workaround was an
-// envelope in the top bar — one of the seven, promoted because it was the one
-// people missed most, at the far corner from where a hand holds a phone. This
-// is the general answer to what that patch was a special case of.
-//
-// Four, and they are the four navMain shows a signed-out visitor: Home, Inbox,
-// Agents, Services. A tab bar holds four or five before the labels stop being
-// readable, and these are the four this product is — where you land, what
-// arrived, who works for you, what they can reach. The rest of the rail stays
-// behind the hamburger, which is the right place for Tokens, Wallet and Admin:
-// things somebody touches monthly, and the reason not to spend a tab on them.
-//
-// Signed in only. Signed out, the shell is a landing page whose job is one
-// button, and a fixed bar across the bottom of it competes with that button
-// while offering the same four links its footer already carries.
+// navTabs keeps everyday destinations in thumb reach on phones.
 func navTabs(acc *auth.Account) string {
 	if acc == nil {
 		return ""
@@ -1320,9 +1281,18 @@ func navTabs(acc *auth.Account) string {
 		tab("/assistant", "/chat.png", "Ask") +
 		tab("/home", "/home.png", "Home") +
 		tab("/inbox", "/mail.png", "Inbox") +
-		tab("/agents", "/agent.svg", "Agents") +
-		tab("/services", "/services.svg", "Services") +
+		tab("/tasks", "/tasks.svg", "Tasks") +
 		`</nav>`
+}
+
+// navAdvanced separates runtime management from everyday assistant use.
+func navAdvanced(acc *auth.Account) string {
+	if acc == nil {
+		return ""
+	}
+	return `<div class="nav-group"><div class="nav-heading">Advanced</div>
+<a id="nav-agents" href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
+<a id="nav-services" href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a></div>`
 }
 
 // TopUpConfigured reports whether this instance can take a payment, filled in
@@ -1342,26 +1312,12 @@ func navAdmin(acc *auth.Account) string {
 	return `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
 }
 
-// navPinned is the reader's own services, under a heading of their own.
-//
-// The sidebar went from nineteen alphabetical services — which put Wallet
-// eighteenth, between Video and Weather — to none of them, because the three
-// levels are what the product is and a list of nineteen buried them. That was
-// right for arriving and wrong for using: somebody who wanted Video reached for
-// the sidebar, found nothing, and had to go to the catalogue and hunt.
-//
-// The way back is not the old list. This one is chosen, so it is short, it is
-// ordered by the person who made it, and it is empty until somebody pins
-// something — which means the view a developer arrives at is unchanged. The
-// group scrolls if it grows; the account group below it does not move, because
-// signing out is not something to scroll for.
-//
-// Home and the sidebar use the same shortcuts, including defaults for new accounts.
+// navPinned contains only services the reader explicitly pinned.
 func navPinned(acc *auth.Account) string {
 	if acc == nil {
 		return ""
 	}
-	pinned := ServiceShortcuts(acc)
+	pinned := service.Pinned(acc.Pinned)
 	if len(pinned) == 0 {
 		return ""
 	}
@@ -1811,7 +1767,7 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		lang, title, desc, bodyAttr,
 		headCorner(acc, here),
 		navMain(acc),
-		navPinned(acc),
+		navPinned(acc)+navAdvanced(acc),
 		navBottom(acc, here),
 		title, body, footerFor(acc), navTabs(acc))
 }
