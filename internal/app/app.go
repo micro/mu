@@ -1317,8 +1317,8 @@ func navTabs(acc *auth.Account) string {
 			`" alt=""><span>` + label + `</span></a>`
 	}
 	return `<nav id="tabs" aria-label="Main">` +
-		tab("/home", "/home.png", "Home") +
 		tab("/assistant", "/chat.png", "Ask") +
+		tab("/home", "/home.png", "Home") +
 		tab("/inbox", "/mail.png", "Inbox") +
 		tab("/agents", "/agent.svg", "Agents") +
 		tab("/services", "/services.svg", "Services") +
