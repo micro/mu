@@ -166,6 +166,9 @@ func init() {
 	json.Unmarshal(b, &accounts)
 	b, _ = data.LoadFile("sessions.json")
 	json.Unmarshal(b, &sessions)
+	// Older versions could serialize an in-flight internal dispatch when a
+	// login happened concurrently. Such credentials must never resume at boot.
+	sessions = persistentSessions(sessions)
 	b, _ = data.LoadFile("tokens.json")
 	json.Unmarshal(b, &tokens)
 	for _, t := range tokens {
@@ -381,7 +384,7 @@ func DeleteAccount(id string) error {
 	}
 
 	data.SaveJSON("accounts.json", accounts)
-	data.SaveJSON("sessions.json", sessions)
+	data.SaveJSON("sessions.json", persistentSessions(sessions))
 	data.SaveJSON("tokens.json", tokens)
 
 	// And the SSH keys, which are the same kind of thing as a token: a
@@ -453,7 +456,7 @@ func Login(id, secret string) (*Session, error) {
 
 	// store the session
 	sessions[guid] = sess
-	data.SaveJSON("sessions.json", sessions)
+	data.SaveJSON("sessions.json", persistentSessions(sessions))
 
 	return sess, nil
 }
@@ -480,7 +483,7 @@ func CreateSession(id string) (*Session, error) {
 	}
 
 	sessions[guid] = sess
-	data.SaveJSON("sessions.json", sessions)
+	data.SaveJSON("sessions.json", persistentSessions(sessions))
 
 	return sess, nil
 }
@@ -493,7 +496,7 @@ func Logout(tk string) error {
 
 	mutex.Lock()
 	delete(sessions, sess.ID)
-	data.SaveJSON("sessions.json", sessions)
+	data.SaveJSON("sessions.json", persistentSessions(sessions))
 	mutex.Unlock()
 
 	return nil

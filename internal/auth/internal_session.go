@@ -63,3 +63,17 @@ func EndSession(tk string) {
 	delete(sessions, id.String())
 	mutex.Unlock()
 }
+
+// persistentSessions is the disk representation, both on save and on load.
+// Internal sessions share the lookup map with logins, but never their lifetime:
+// another goroutine logging in or out must not persist a temporary credential.
+// The caller holds mutex when reading the live sessions map.
+func persistentSessions(all map[string]*Session) map[string]*Session {
+	out := make(map[string]*Session, len(all))
+	for id, sess := range all {
+		if sess != nil && sess.Type != "internal" {
+			out[id] = sess
+		}
+	}
+	return out
+}

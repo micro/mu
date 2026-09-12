@@ -148,11 +148,12 @@ func extractSDKCalls(html string) []sdkCall {
 func executeSDKCall(sc sdkCall, authorID string) APITestResult {
 	tr := APITestResult{Call: sc.call, Path: sc.path}
 
-	sess, err := auth.CreateSession(authorID)
+	sess, err := auth.InternalSession(authorID)
 	if err != nil {
 		tr.Error = "auth failed"
 		return tr
 	}
+	defer auth.EndSession(sess.Token)
 
 	req, _ := http.NewRequest("GET", sc.path, nil)
 	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
