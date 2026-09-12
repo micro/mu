@@ -25,8 +25,8 @@ func TestACardKeepsItsWayThroughOnRefresh(t *testing.T) {
 	if !strings.Contains(body, "<p>A headline</p>") {
 		t.Fatalf("the card lost its contents:\n%s", body)
 	}
-	if strings.Contains(body, `href="/news"`) || !strings.Contains(cardHead(c), `href="/news"`) {
-		t.Errorf("navigation must live in the heading only:\n%s", body)
+	if !strings.Contains(body, `href="/news"`) || !strings.Contains(body, "More →") || !strings.Contains(cardHead(c), `href="/news"`) {
+		t.Errorf("the heading and More link must both reach the service:\n%s", body)
 	}
 }
 
