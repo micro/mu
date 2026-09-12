@@ -57,9 +57,18 @@ func TestHomeKeepsPersonalContext(t *testing.T) {
 }
 
 func TestOldFeedAndDisplayLinksStillShowHome(t *testing.T) {
+	const owner = "legacyhomelinks"
+	auth.Create(&auth.Account{ID: owner})
+	sess, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, path := range []string{"/home?view=feed", "/home?mode=display"} {
 		rec := httptest.NewRecorder()
-		Handler(rec, httptest.NewRequest("GET", path, nil))
+		req := httptest.NewRequest("GET", path, nil)
+		req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		Handler(rec, req)
 		body := rec.Body.String()
 		if rec.Code != http.StatusOK || !strings.Contains(body, `<section id="home-personal">`) {
 			t.Errorf("%s no longer opens Home", path)
@@ -203,16 +212,19 @@ func TestHomeBoundsItsExternalCalendarRead(t *testing.T) {
 	}
 }
 
-func TestPublicHomeDoesNotExposePersonalCards(t *testing.T) {
-	rec := httptest.NewRecorder()
-	Handler(rec, httptest.NewRequest("GET", "/home", nil))
-	body := rec.Body.String()
-	for _, id := range []string{"home-inbox", "home-todo", "home-agents", "home-upcoming", "mu-chat-location"} {
-		if strings.Contains(body, `id="`+id+`"`) {
-			t.Errorf("public Home exposes %s", id)
+func TestLoggedOutHomeRedirectsToLanding(t *testing.T) {
+	for _, path := range []string{"/home", "/home?from=app", "/home?view=feed", "/home?prompt=private"} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(method, path, nil)
+			req.AddCookie(&http.Cookie{Name: "session", Value: "expired-session"})
+			Handler(rec, req)
+			if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" || rec.Header().Get("Cache-Control") != "private, no-store" {
+				t.Fatalf("%s %s: %d %v", method, path, rec.Code, rec.Header())
+			}
+			if strings.Contains(rec.Body.String(), `id="home-overview"`) {
+				t.Fatal("rendered guest Home")
+			}
 		}
-	}
-	if !strings.Contains(body, `id="home-overview"`) {
-		t.Fatal("missing public content")
 	}
 }

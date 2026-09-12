@@ -866,7 +866,7 @@ var Template = `
       // in the document — so the tab bar was never marked.
       function markNav() {
         var here = location.pathname.replace(/\/+$/, '') || '/';
-        if(here === '/home') here = '/assistant';
+        if(here === '/assistant') here = '/home';
         if(here === '/agent' || here.indexOf('/agent/') === 0) here = '/agents';
         var groups = ['#nav a, .nav-bottom a', '#tabs a'];
         for (var g = 0; g < groups.length; g++) {
@@ -1261,7 +1261,7 @@ func navMain(acc *auth.Account) string {
 			`"><span class="label">` + label + `</span></a>`
 	}
 
-	b := item("nav-assistant", "/assistant", "/chat.png", "Assistant")
+	b := item("nav-home", "/home", "/home.png", "Home")
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
 	b += item("nav-tasks", "/tasks", "/tasks.svg", "Todo")
 
@@ -1278,7 +1278,7 @@ func navTabs(acc *auth.Account) string {
 			`" alt=""><span>` + label + `</span></a>`
 	}
 	return `<nav id="tabs" aria-label="Main">` +
-		tab("/assistant", "/chat.png", "Assistant") +
+		tab("/home", "/home.png", "Home") +
 		tab("/inbox", "/mail.png", "Inbox") +
 		tab("/tasks", "/tasks.svg", "Todo") +
 		`</nav>`

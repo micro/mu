@@ -12,6 +12,9 @@ import (
 func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 	for _, who := range []string{"", "asstreadera", "asstreaderb"} {
 		for _, path := range []string{"/assistant", "/home", "/assistant?view=home"} {
+			if who == "" && path == "/home" {
+				continue
+			}
 			r := httptest.NewRequest(http.MethodGet, path, nil)
 			ns := "assistant:guest"
 			if who != "" {

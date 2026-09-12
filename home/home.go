@@ -283,6 +283,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...), "todo": todoHTML(sess.Account), "overview": overviewHTML(sess.Account, external...)})
 		return
 	}
+	// Home is an authenticated entry point. Keep machine responses separate.
+	if r.URL.Path == "/home" && (r.Method == http.MethodGet || r.Method == http.MethodHead) && !app.WantsJSON(r) {
+		if _, acc := auth.TrySession(r); acc == nil {
+			w.Header().Set("Cache-Control", "private, no-store")
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+	}
 	// An installed app opens on the app, not on a pitch.
 	//
 	// The manifest's start_url was "/", so tapping the icon on a home screen

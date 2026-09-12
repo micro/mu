@@ -487,7 +487,7 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-form:focus-within{border-color:#999}
 /* Opaque above the sticky composer, fading below it into the transcript. */
 #mu-chat-form::before,#mu-chat-form::after{content:"";position:absolute;left:-8px;right:-8px;pointer-events:none;z-index:-1}
-#mu-chat-form::before{bottom:100%;height:calc(var(--mu-composer-top,8px) + 1px);background:#fff}
+#mu-chat-form::before{bottom:100%;height:8px;background:#fff}
 #mu-chat-form::after{top:100%;height:24px;background:linear-gradient(to bottom,#fff,rgba(255,255,255,0))}
 .mu-chat-transcript #mu-chat-form::before,.mu-chat-transcript #mu-chat-form::after,.mu-console #mu-chat-form::before,.mu-console #mu-chat-form::after{display:none}
 
