@@ -461,7 +461,6 @@ function fetchW(la,lo){
 	}))
 	b.WriteString(`</div>`)
 	b.WriteString(appsHTML(viewerAcc))
-	b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
 	if viewerID != "" {
 		if peek := inbox.Preview(viewerID); peek != "" {
 			b.WriteString(`<div id="home-inbox" class="page-stack">` + peek + `</div>`)
@@ -480,6 +479,9 @@ function fetchW(la,lo){
 	b.WriteString(`</div>`)
 
 	b.WriteString(`</section><section id="home-feed" role="tabpanel" aria-labelledby="home-view-feed"` + panelHidden(!feed) + `><div class="home-main full">`)
+	if summary := happening(); summary != "" {
+		b.WriteString(app.SectionCard("feed-brief", "Brief", "", `<p class="home-brief">`+summary+`</p>`))
+	}
 	cards := CardsHTML(r, viewerAcc)
 	if cards == "" {
 		cards = `<p class="text-muted">No feed items yet.</p>`

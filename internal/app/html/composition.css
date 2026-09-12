@@ -200,8 +200,8 @@ a.link-text {
 /* Quiet orientation, shared across desktop and mobile page shells. */
 #page-title { font-size:16px; font-weight:500; line-height:1.4; text-align:left; color:var(--text-secondary,#555); margin:0 0 8px; }
 /* Subtle rules distinguish unboxed sections without adding card chrome. */
-.section-card { min-width:0; margin:0 0 24px; border-top:1px solid var(--divider,#e8e8e8); padding-top:16px; }
-.section-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:8px; }
+.section-card { min-width:0; margin:0 0 24px; border:1px solid var(--divider,#e8e8e8); border-radius:6px; padding:16px; background:var(--bg-primary,#fff); }
+.section-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:16px; }
 .section-card-head h4 { margin:0; min-width:0; font-size:14px; font-weight:500; line-height:1.5; color:var(--text-secondary,#555); }
 .section-card-head .card-head-link, .section-card-head .card-head-link:visited { color:inherit; font-weight:inherit; text-decoration:none; }
 .section-card-head .card-head-link:hover { text-decoration:underline; }
@@ -274,6 +274,6 @@ a.link-text {
 .home-workspace { column-gap:48px; row-gap:24px; }
 .home-column.page-stack { gap:24px; }
 #home { column-gap:48px; }
-.home-apps { border-top:1px solid var(--divider,#e8e8e8); padding-top:16px; }
+.home-apps { border:0; padding-top:0; }
 @media(max-width:1099px) { .home-workspace { gap:24px; } }
 @media(max-width:900px) { #home { gap:24px; } }

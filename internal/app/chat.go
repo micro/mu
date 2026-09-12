@@ -589,7 +589,7 @@ body:has(.mu-console[open]) { overflow:hidden; }
   overflow-y:auto;overscroll-behavior:contain;
   margin:0 0 12px;padding-right:4px
 }
-.mu-user{margin:0 0 16px;padding:16px;border:1px solid var(--border-color,#ddd);border-radius:6px;background:var(--bg-primary,#fff);font-size:16px;font-weight:400;color:#111;white-space:pre-wrap;scroll-margin-top:64px}
+.mu-user{margin:0 0 16px;padding:8px 12px;border:0;border-radius:4px;background:#f5f5f5;font-size:16px;font-weight:400;color:#111;white-space:pre-wrap;scroll-margin-top:64px}
 .mu-agent{margin-bottom:24px;scroll-margin-top:64px}
 /* Who answered. The same shape as the rail's section headings, because it is
    the same kind of thing — a label over a block, not a line of the block. */
