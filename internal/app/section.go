@@ -10,5 +10,15 @@ func SectionLink(label, href string) string {
 // PreviewCard uses the same heading and container as Feed cards.
 func PreviewCard(id, title, href, body string) string {
 	heading := `<a class="card-head-link" href="` + html.EscapeString(href) + `">` + html.EscapeString(title) + `</a>`
-	return Card(id, heading, `<div class="preview-rows">`+body+`</div>`)
+	return SectionCard(id, heading, href, `<div class="preview-rows">`+body+`</div>`)
+}
+
+// SectionCard places a trusted heading and navigation above the content card.
+// Heading and body are pre-rendered HTML; id and href are escaped here.
+func SectionCard(id, heading, href, body string) string {
+	more := ""
+	if href != "" {
+		more = `<a class="section-more" href="` + html.EscapeString(href) + `">More →</a>`
+	}
+	return `<section id="` + html.EscapeString(id) + `" class="section-card"><div class="section-card-head"><h4>` + heading + `</h4>` + more + `</div><div class="card"><div class="card-body">` + body + `</div></div></section>`
 }

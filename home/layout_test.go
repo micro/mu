@@ -159,7 +159,7 @@ func TestTheAccountBlockLooksLikeTheOtherRailBlocks(t *testing.T) {
 			"Inbox and Agents above it")
 	}
 	// A card, sharing the class the other two are styled by.
-	if !strings.Contains(got, `id="home-account-card" class="card"`) {
+	if !strings.Contains(got, `id="home-account-card" class="section-card"`) {
 		t.Error("the balance is not in a card, and both blocks above it are")
 	}
 	if strings.Contains(got, "Go to account") {

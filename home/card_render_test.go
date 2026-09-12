@@ -6,6 +6,7 @@ package home
 // that vanished a minute after the page loaded.
 
 import (
+	"mu/internal/app"
 	"mu/internal/service"
 	"strings"
 	"testing"
@@ -25,9 +26,14 @@ func TestACardKeepsItsWayThroughOnRefresh(t *testing.T) {
 	if !strings.Contains(body, "<p>A headline</p>") {
 		t.Fatalf("the card lost its contents:\n%s", body)
 	}
-	if !strings.Contains(body, `href="/news"`) || !strings.Contains(body, "More →") || !strings.Contains(cardHead(c), `href="/news"`) {
-		t.Errorf("the heading and More link must both reach the service:\n%s", body)
+	section := app.SectionCard(c.ID, cardHead(c), c.Link, body)
+	if !strings.Contains(section, `class="section-more" href="/news">More →</a>`) || strings.Contains(body, "More →") {
+		t.Error("More must stay above the independently refreshed body")
 	}
+	if strings.Index(section, "More →") > strings.Index(section, `class="card-body"`) {
+		t.Error("navigation belongs above the card")
+	}
+
 }
 
 // A card with nothing to show is not a card. Both renders have to agree about
