@@ -7753,3 +7753,42 @@ a:hover, a:hover * { text-decoration: none !important; }
 @media (max-width: 700px) {
   #home-cards > .view-switch { justify-content: center; }
 }
+
+/* ============================================
+   DISPLAY / KIOSK MODE
+   Activated via ?mode=display on /home
+   Hides nav, header, footer for wall-mounted displays
+   ============================================ */
+body.display-mode #head,
+body.display-mode #nav-container,
+body.display-mode #nav-overlay,
+body.display-mode #footer,
+body.display-mode #menu-toggle,
+body.display-mode #page-title,
+body.display-mode #tabs {
+  display: none !important;
+}
+
+body.display-mode #container {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+}
+
+body.display-mode #content {
+  margin: 0;
+  padding: 16px;
+  max-width: 100%;
+}
+
+body.display-mode #home {
+  gap: 16px;
+}
+
+body.display-mode .card {
+  font-size: 15px;
+}
+
+body.display-mode .card h4 {
+  font-size: 16px;
+}

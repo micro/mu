@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestOverviewTogglePreservesConversation(t *testing.T) {
+func TestCloseEndsHomeExchange(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skip("Node required")
@@ -17,41 +17,26 @@ func TestOverviewTogglePreservesConversation(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := string(raw)
-	start, end := strings.Index(src, "  const actions="), strings.Index(src, "  function refreshOverview")
+	start, end := strings.Index(src, "  const actions="), strings.Index(src, "  const upcoming")
 	if start < 0 || end <= start {
 		t.Fatal("conversation controller missing")
 	}
 	script := `
 const assert=require('assert');
-let refreshes=0;
-function refreshOverview(){refreshes++;}
-const events={},actionBar={},transcript={textContent:'Existing answer'},overview={};
-const button={addEventListener(k,fn){this[k]=fn},setAttribute(k,v){this[k]=v}};
-const home={querySelector(s){return {'#home-conversation-actions':actionBar,'#home-conversation-toggle':button,'#mu-chat-conv':transcript,'#home-overview':overview}[s]}};
-const window={addEventListener(k,fn){events[k]=fn},muChatNew(){throw Error('must not reset conversation')}};
-` + "{\n" + src[start:end] + `
-assert.equal(transcript.hidden,true);
-assert.equal(overview.hidden,false);
+const events={},actionBar={},transcript={textContent:'Existing answer'};
+const button={addEventListener(k,fn){this[k]=fn}};
+const home={querySelector(s){return s==='#home-conversation-actions'?actionBar:s==='#home-conversation-close'?button:transcript}};
+let resets=0;
+const window={addEventListener(k,fn){events[k]=fn},muChatNew(){resets++;transcript.textContent='';events['mu-chat-active']({detail:false})}};
+` + src[start:end] + `
 assert.equal(actionBar.hidden,false);
-assert.equal(button.textContent,'Resume conversation');
-button.click();
-assert.equal(transcript.hidden,false);
-assert.equal(overview.hidden,true);
-assert.equal(button['aria-expanded'],'true');
-button.click();
-assert.equal(transcript.textContent,'Existing answer');
-assert.equal(refreshes,1);
-assert.equal(overview.hidden,false);
-events['mu-chat-active']({detail:true});
-assert.equal(transcript.hidden,false);
-assert.equal(overview.hidden,true);
-transcript.textContent='';
-events['mu-chat-active']({detail:false});
+button.click({preventDefault(){},stopPropagation(){}});
+assert.equal(resets,1);
+assert.equal(transcript.textContent,'');
 assert.equal(actionBar.hidden,true);
-assert.equal(overview.hidden,false);
-}
+events['mu-chat-active']({detail:true});
+assert.equal(actionBar.hidden,false);
 `
-
 	if out, err := exec.Command(node, "-e", script).CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, out)
 	}

@@ -253,7 +253,7 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 func TestTheSignedInRailCarriesEveryDestination(t *testing.T) {
 	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice", Pinned: []string{}})
 	for _, want := range []string{
-		`id="nav-home"`, `id="nav-account"`, `id="nav-inbox"`, `id="nav-tasks"`,
+		`id="nav-home"`, `id="nav-account"`, `id="nav-inbox"`, `id="nav-assistant"`,
 		`id="nav-agents"`, `id="nav-services"`,
 		`id="nav-logout"`, `@alice`,
 	} {
@@ -358,7 +358,7 @@ func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 		nav = nav[:j]
 	}
 
-	want := []string{`href="/home"`, `href="/inbox"`, `href="/tasks"`, `href="/agents"`, `href="/services"`}
+	want := []string{`href="/assistant"`, `href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`}
 	at := -1
 	for _, w := range want {
 		i := strings.Index(nav, w)
@@ -436,11 +436,11 @@ func TestPinningNothingDrawsNoGroup(t *testing.T) {
 func TestEverydayNavigationMatchesAcrossDevices(t *testing.T) {
 	acc := &auth.Account{ID: "alice"}
 	for _, nav := range []string{navMain(acc), navTabs(acc)} {
-		if strings.Count(nav, `<a `) != 3 {
-			t.Fatal("everyday navigation must have three destinations")
+		if strings.Count(nav, `<a `) != 5 {
+			t.Fatal("everyday navigation must have five destinations")
 		}
 		at := -1
-		for _, path := range []string{"/home", "/inbox", "/tasks"} {
+		for _, path := range []string{"/assistant", "/home", "/inbox", "/agents", "/services"} {
 			i := strings.Index(nav, `href="`+path+`"`)
 			if i <= at {
 				t.Fatalf("missing or misplaced destination %s", path)

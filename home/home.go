@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"mu/agent"
+	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
@@ -269,18 +270,15 @@ func ForceRefresh() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	if section := r.URL.Query().Get("section"); section == "upcoming" || section == "overview" {
+	if r.URL.Query().Get("section") == "upcoming" {
 		sess, _ := auth.TrySession(r)
 		w.Header().Set("Cache-Control", "private, no-store")
 		if sess == nil {
 			http.Error(w, "Sign in to see upcoming events", http.StatusUnauthorized)
 			return
 		}
-		external := events.CachedOverview(sess.Account)
-		if section == "upcoming" {
-			external = events.Overview(sess.Account, events.PreviewLimit)
-		}
-		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...), "todo": todoHTML(sess.Account), "overview": overviewHTML(sess.Account, external...)})
+		external := events.Overview(sess.Account, events.PreviewLimit)
+		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...), "todo": todoHTML(sess.Account)})
 		return
 	}
 	// Home is an authenticated entry point. Keep machine responses separate.
@@ -441,29 +439,98 @@ function fetchW(la,lo){
 
 	// Date + invite/settings above the input
 	b.WriteString(`<div class="page-section compact-stack page-stack">` + dateHTML)
-	b.WriteString(`</div><section id="home-personal">`)
-
-	// Both entry URLs use one conversation and one resting overview.
-	ns := assistantNamespace(viewerID)
-	legacy := r.URL.Query().Get("view") == "home"
-	if legacy {
-		ns += ":home"
+	feed := r.URL.Query().Get("view") == "feed" || r.URL.Query().Get("mode") == "display"
+	if r.URL.Query().Get("q") != "" || r.URL.Query().Get("prompt") != "" {
+		feed = false
 	}
-	b.WriteString(`<div class="assistant-page page-stack"><div id="home-agent"><script>window.muActiveAgent="";</script>`)
+	b.WriteString(homeViews(feed) + `</div>`)
+	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
+
+	// Each column flows independently as a conversation grows.
+	b.WriteString(`<div class="home-workspace"><div class="home-column page-stack">`)
+	b.WriteString(`<div id="home-agent" class="page-stack"><script>window.muActiveAgent="";</script>`)
 	b.WriteString(app.ChatComponent(app.ChatConfig{
-		Ask: true, HideSuggestions: true, Placeholder: "What do you need?",
-		AgentName: agent.DefaultName(), Location: viewerID != "", Stationary: true,
-		StorageNS: ns, AcceptHandoff: legacy,
-		FooterHTML: `<div id="home-conversation-actions" class="conversation-actions" hidden><button type="button" class="link-text" id="home-conversation-toggle" aria-controls="mu-chat-conv home-overview" aria-expanded="false">Resume conversation</button></div>`,
+		Ask:             true,
+		HideSuggestions: true,
+		Placeholder:     "What do you need?",
+		AgentName:       agent.DefaultName(),
+		Location:        viewerID != "",
+		Stationary:      true,
+		ContinueNS:      assistantNamespace(viewerID) + ":home",
+		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><a href="/home" id="home-conversation-close">Close</a><a href="/assistant?view=home" id="mu-chat-continue" aria-disabled="true">Continue in Assistant →</a><span id="mu-chat-transfer-error" role="status"></span></div>`,
 	}))
 	b.WriteString(`</div>`)
-	b.WriteString(fmt.Sprintf(`<div id="home-overview" data-fresh="%t" data-guest="%t">`, viewerID == "" || events.OverviewFresh(viewerID), viewerID == "") + overviewHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
-	if legacy {
-		b.WriteString(`<a href="/assistant">Back to main conversation</a>`)
+	b.WriteString(appsHTML(viewerAcc))
+	b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
+	if viewerID != "" {
+		if peek := inbox.Preview(viewerID); peek != "" {
+			b.WriteString(`<div id="home-inbox" class="page-stack">` + peek + `</div>`)
+		}
+	}
+	b.WriteString(`</div>`)
+	if viewerID != "" {
+		b.WriteString(`<div class="home-column page-stack">`)
+		b.WriteString(`<div id="home-todo" class="page-stack">` + todoHTML(viewerID) + `</div>`)
+		b.WriteString(`<div id="home-upcoming" class="page-stack">` + fmt.Sprintf(`<div data-home-upcoming data-fresh="%t" aria-live="polite" class="page-stack">`, events.OverviewFresh(viewerID)) + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
+		if who := agent.Preview(viewerID); who != "" {
+			b.WriteString(`<div id="home-agents" class="page-stack">` + who + `</div>`)
+		}
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
 
-	b.WriteString(`</section></div><script>` + viewsJS + `</script>`)
+	b.WriteString(`</section><section id="home-feed" role="tabpanel" aria-labelledby="home-view-feed"` + panelHidden(!feed) + `><div class="home-main full">`)
+	cards := CardsHTML(r, viewerAcc)
+	if cards == "" {
+		cards = `<p class="text-muted">No feed items yet.</p>`
+	}
+	b.WriteString(cards)
+	b.WriteString(`</div></section></div><script>` + viewsJS + `</script>`)
+
+	// Auto-refresh: poll every 2 minutes, update card content in-place
+	displayMode := r.URL.Query().Get("mode") == "display"
+	refreshInterval := 120000 // 2 minutes
+	if displayMode {
+		refreshInterval = 60000 // 1 minute in display mode
+	}
+	wakeLockJS := ""
+	if displayMode {
+		wakeLockJS = `
+  // Screen Wake Lock — keep display on in kiosk mode
+  if('wakeLock' in navigator){
+    var wl=null;
+    function reqWake(){navigator.wakeLock.request('screen').then(function(l){wl=l;l.addEventListener('release',function(){setTimeout(reqWake,1000)})}).catch(function(){})}
+    reqWake();document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reqWake()});
+  }`
+	}
+	b.WriteString(fmt.Sprintf(`<script>
+(function(){
+  var interval = %d;
+  var updating = false;
+  var feed = document.getElementById('home-feed');
+  function refreshFeed(){
+    if(!feed || !feed.isConnected || feed.hidden || document.hidden || updating) return;
+    updating = true;
+    fetch('/', {headers:{Accept:'application/json'}})
+    .then(function(r){return r.json()})
+    .then(function(cards){
+      if(!feed.isConnected) return;
+      cards.forEach(function(c){
+        var el = document.getElementById(c.id);
+        if(el){
+          var content = el.querySelector('.card-body');
+          if(content) content.innerHTML = c.html;
+          // Refresh the section title independently of the body and its timestamp.
+          var head = el.querySelector('h4');
+          if(head) head.innerHTML = c.title;
+        }
+      });
+    }).catch(function(){}).finally(function(){updating = false;});
+  }
+  feed.addEventListener('home-feed-shown', refreshFeed);
+  setInterval(refreshFeed, interval);%s
+})();
+</script>`, refreshInterval, wakeLockJS))
 
 	// Deep-link prefill: /?q=... or /home?prompt=... seeds the agent and submits
 	// it, so a shared link lands on the home screen with the answer already coming.
@@ -475,7 +542,11 @@ function fetchW(la,lo){
 		b.WriteString(`<script>(function(){var v=` + app.JSString(prefill) + `;var f=function(){if(window.muChatAsk){window.muChatAsk(v);history.replaceState(null,'','` + r.URL.Path + `');}else{setTimeout(f,60);}};f();})()</script>`)
 	}
 
+	// Display mode: hide nav, header, footer for kiosk/wall display
 	bodyClass := ` class="page-home"`
+	if displayMode {
+		bodyClass = ` class="page-home display-mode"`
+	}
 
 	// No ConnectBanner here. This page prepended one itself, from when it was
 	// the only page that carried the invitation — and the shell prepends it to
@@ -487,7 +558,7 @@ function fetchW(la,lo){
 	// when the call site it left behind is not removed. See app.renderForRequest,
 	// which is the only place any of the three banners is added.
 	w.Header().Set("Cache-Control", "private, no-store")
-	app.Respond(w, r, app.Response{Title: greeting(viewerAcc), Description: "Your personal assistant",
+	app.Respond(w, r, app.Response{Title: greeting(viewerAcc), Description: "The home screen",
 		HTML: b.String(), BodyClass: bodyClass})
 }
 

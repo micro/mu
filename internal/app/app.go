@@ -866,7 +866,6 @@ var Template = `
       // in the document — so the tab bar was never marked.
       function markNav() {
         var here = location.pathname.replace(/\/+$/, '') || '/';
-        if(here === '/assistant') here = '/home';
         if(here === '/agent' || here.indexOf('/agent/') === 0) here = '/agents';
         var groups = ['#nav a, .nav-bottom a', '#tabs a'];
         for (var g = 0; g < groups.length; g++) {
@@ -1251,7 +1250,7 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// navMain holds the three everyday destinations, matching the mobile tabs.
+// navMain holds the app destinations in the same order as the mobile tabs.
 func navMain(acc *auth.Account) string {
 	if acc == nil {
 		return ""
@@ -1261,9 +1260,11 @@ func navMain(acc *auth.Account) string {
 			`"><span class="label">` + label + `</span></a>`
 	}
 
-	b := item("nav-home", "/home", "/home.png", "Home")
+	b := item("nav-assistant", "/assistant", "/chat.png", "Assistant")
+	b += item("nav-home", "/home", "/home.png", "Home")
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
-	b += item("nav-tasks", "/tasks", "/tasks.svg", "Todo")
+	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
+	b += item("nav-services", "/services", "/services.svg", "Services")
 
 	return b
 }
@@ -1278,20 +1279,11 @@ func navTabs(acc *auth.Account) string {
 			`" alt=""><span>` + label + `</span></a>`
 	}
 	return `<nav id="tabs" aria-label="Main">` +
+		tab("/assistant", "/chat.png", "Ask") +
 		tab("/home", "/home.png", "Home") +
 		tab("/inbox", "/mail.png", "Inbox") +
-		tab("/tasks", "/tasks.svg", "Todo") +
-		`</nav>`
-}
-
-// navAdvanced separates runtime management from everyday assistant use.
-func navAdvanced(acc *auth.Account) string {
-	if acc == nil {
-		return ""
-	}
-	return `<div class="nav-group"><div class="nav-heading">Advanced</div>
-<a id="nav-agents" href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
-<a id="nav-services" href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a></div>`
+		tab("/agents", "/agent.svg", "Agents") +
+		tab("/services", "/services.svg", "Services") + `</nav>`
 }
 
 // TopUpConfigured reports whether this instance can take a payment, filled in
@@ -1766,7 +1758,7 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		lang, title, desc, bodyAttr,
 		headCorner(acc, here),
 		navMain(acc),
-		navPinned(acc)+navAdvanced(acc),
+		navPinned(acc),
 		navBottom(acc, here),
 		title, body, footerFor(acc), navTabs(acc))
 }
