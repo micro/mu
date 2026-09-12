@@ -2,29 +2,39 @@
   const home = document.getElementById('home-cards');
   if (!home) return;
   const actions=home.querySelector('#home-conversation-actions');
-  function conversation(active){
-    if(actions)actions.hidden=!active;
+  const transcript=home.querySelector('#mu-chat-conv');
+  const overview=home.querySelector('#home-overview');
+  const toggle=home.querySelector('#home-conversation-toggle');
+  let active=false;
+  function conversation(show){
+    active=show;
+    transcript.hidden=!show;
+    overview.hidden=show;
+    actions.hidden=!show && !transcript.textContent.trim();
+    toggle.textContent=show?'Today':'Resume conversation';
+    toggle.setAttribute('aria-expanded',String(show));
   }
   window.addEventListener('mu-chat-active',event=>conversation(event.detail===true));
-  const close=home.querySelector('#home-conversation-close');
-  if(close)close.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();window.muChatNew();});
-  const initial=home.querySelector('#mu-chat-conv');
-  conversation(!!initial && !!initial.textContent.trim());
+  toggle.addEventListener('click',()=>{
+    conversation(!active);
+    if(!active)refreshOverview('overview');
+  });
+  conversation(false);
 
-  const upcoming = home.querySelector('[data-home-upcoming]');
-  if (upcoming && upcoming.dataset.fresh !== 'true') {
-    fetch('/home?section=upcoming', {credentials: 'same-origin'})
-      .then(response => { if (!response.ok) throw new Error('events'); return response.json(); })
-      .then(data => {
-        upcoming.innerHTML = data.upcoming;
-        const brief = home.querySelector("#home-brief");
-        if (brief) brief.innerHTML = data.brief;
-        const todo = home.querySelector("#home-todo");
-        if (todo) todo.innerHTML = data.todo;
-        upcoming.querySelectorAll('[data-event-time]').forEach(node => {
-          node.textContent = new Date(node.dateTime).toLocaleString(undefined, {weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
-        });
-      })
-      .catch(() => { upcoming.innerHTML = '<p class="text-muted">Could not load events. <a href="/events">Open events</a></p>'; });
+  function refreshOverview(section) {
+    // Guests have no private counts or calendars to refresh.
+    if (overview.dataset.guest === 'true') return;
+    fetch('/home?section='+section, {credentials: 'same-origin'})
+      .then(response => { if (!response.ok) throw new Error('overview'); return response.json(); })
+      .then(data => { overview.innerHTML=data.overview; })
+      .catch(() => {
+        if(overview.querySelector('[data-overview-error]'))return;
+        const note=document.createElement('p');
+        note.dataset.overviewError='';
+        note.className='text-muted';
+        note.textContent='The overview could not be refreshed and may be out of date.';
+        overview.appendChild(note);
+      });
   }
+  if (overview.dataset.fresh !== 'true') refreshOverview('upcoming');
 })();

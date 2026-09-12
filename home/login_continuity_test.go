@@ -19,12 +19,12 @@ func TestLandingRefreshAndLoginStartClean(t *testing.T) {
 	}
 }
 
-func TestHomeStartsWithAFreshPrompt(t *testing.T) {
+func TestHomeKeepsAssistantConversation(t *testing.T) {
 	b, err := os.ReadFile("home.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(b), "StorageNS:") {
-		t.Fatal("Home restores browser chat instead of a fresh prompt")
+	if !strings.Contains(string(b), "StorageNS:") {
+		t.Fatal("Home must retain the assistant conversation")
 	}
 }

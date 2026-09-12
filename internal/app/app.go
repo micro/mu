@@ -732,7 +732,7 @@ var Template = `
           if (u.pathname === '/video' && u.searchParams.get('id')) return;
           // Agent pages own live streams and per-thread draft/scroll state.
           // Use document navigation so pagehide saves it and listeners retire.
-          if (u.pathname === '/assistant' || location.pathname === '/assistant' || u.pathname === '/' || location.pathname === '/' || /^\/agent(?:\/|$)/.test(u.pathname) || /^\/agent(?:\/|$)/.test(location.pathname)) return;
+          if (u.pathname === '/home' || location.pathname === '/home' || u.pathname === '/assistant' || location.pathname === '/assistant' || u.pathname === '/' || location.pathname === '/' || /^\/agent(?:\/|$)/.test(u.pathname) || /^\/agent(?:\/|$)/.test(location.pathname)) return;
           e.preventDefault();
           if (u.href === location.href) return;
           go(u.href, true);
@@ -866,6 +866,7 @@ var Template = `
       // in the document — so the tab bar was never marked.
       function markNav() {
         var here = location.pathname.replace(/\/+$/, '') || '/';
+        if(here === '/home') here = '/assistant';
         if(here === '/agent' || here.indexOf('/agent/') === 0) here = '/agents';
         var groups = ['#nav a, .nav-bottom a', '#tabs a'];
         for (var g = 0; g < groups.length; g++) {
@@ -1250,7 +1251,7 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// navMain holds the four everyday destinations, matching the mobile tabs.
+// navMain holds the three everyday destinations, matching the mobile tabs.
 func navMain(acc *auth.Account) string {
 	if acc == nil {
 		return ""
@@ -1261,7 +1262,6 @@ func navMain(acc *auth.Account) string {
 	}
 
 	b := item("nav-assistant", "/assistant", "/chat.png", "Assistant")
-	b += item("nav-home", "/home", "/home.png", "Home")
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
 	b += item("nav-tasks", "/tasks", "/tasks.svg", "Todo")
 
@@ -1278,8 +1278,7 @@ func navTabs(acc *auth.Account) string {
 			`" alt=""><span>` + label + `</span></a>`
 	}
 	return `<nav id="tabs" aria-label="Main">` +
-		tab("/assistant", "/chat.png", "Ask") +
-		tab("/home", "/home.png", "Home") +
+		tab("/assistant", "/chat.png", "Assistant") +
 		tab("/inbox", "/mail.png", "Inbox") +
 		tab("/tasks", "/tasks.svg", "Todo") +
 		`</nav>`

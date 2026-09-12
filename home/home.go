@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"mu/agent"
-	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
@@ -270,15 +269,18 @@ func ForceRefresh() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Query().Get("section") == "upcoming" {
+	if section := r.URL.Query().Get("section"); section == "upcoming" || section == "overview" {
 		sess, _ := auth.TrySession(r)
 		w.Header().Set("Cache-Control", "private, no-store")
 		if sess == nil {
 			http.Error(w, "Sign in to see upcoming events", http.StatusUnauthorized)
 			return
 		}
-		external := events.Overview(sess.Account, events.PreviewLimit)
-		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...), "todo": todoHTML(sess.Account)})
+		external := events.CachedOverview(sess.Account)
+		if section == "upcoming" {
+			external = events.Overview(sess.Account, events.PreviewLimit)
+		}
+		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...), "todo": todoHTML(sess.Account), "overview": overviewHTML(sess.Account, external...)})
 		return
 	}
 	// An installed app opens on the app, not on a pitch.
@@ -433,33 +435,23 @@ function fetchW(la,lo){
 	b.WriteString(`<div class="page-section compact-stack page-stack">` + dateHTML)
 	b.WriteString(`</div><section id="home-personal">`)
 
-	// Each column flows independently as a conversation grows.
-	b.WriteString(`<div class="home-workspace"><div class="home-column page-stack">`)
-	b.WriteString(`<div id="home-agent" class="page-stack"><script>window.muActiveAgent="";</script>`)
+	// Both entry URLs use one conversation and one resting overview.
+	ns := assistantNamespace(viewerID)
+	legacy := r.URL.Query().Get("view") == "home"
+	if legacy {
+		ns += ":home"
+	}
+	b.WriteString(`<div class="assistant-page page-stack"><div id="home-agent"><script>window.muActiveAgent="";</script>`)
 	b.WriteString(app.ChatComponent(app.ChatConfig{
-		Ask:             true,
-		HideSuggestions: true,
-		Placeholder:     "What do you need?",
-		AgentName:       agent.DefaultName(),
-		Location:        viewerID != "",
-		Stationary:      true,
-		ContinueNS:      assistantNamespace(viewerID) + ":home",
-		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><a href="/home" id="home-conversation-close">Close</a><a href="/assistant?view=home" id="mu-chat-continue" aria-disabled="true">Continue in Assistant →</a><span id="mu-chat-transfer-error" role="status"></span></div>`,
+		Ask: true, HideSuggestions: true, Placeholder: "What do you need?",
+		AgentName: agent.DefaultName(), Location: viewerID != "", Stationary: true,
+		StorageNS: ns, AcceptHandoff: legacy,
+		FooterHTML: `<div id="home-conversation-actions" class="conversation-actions" hidden><button type="button" class="link-text" id="home-conversation-toggle" aria-controls="mu-chat-conv home-overview" aria-expanded="false">Resume conversation</button></div>`,
 	}))
 	b.WriteString(`</div>`)
-	b.WriteString(appsHTML(viewerAcc))
-	b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
-	if viewerID != "" {
-		if peek := inbox.Preview(viewerID); peek != "" {
-			b.WriteString(`<div id="home-inbox" class="page-stack">` + peek + `</div>`)
-		}
-	}
-	b.WriteString(`</div>`)
-	if viewerID != "" {
-		b.WriteString(`<div class="home-column page-stack">`)
-		b.WriteString(`<div id="home-todo" class="page-stack">` + todoHTML(viewerID) + `</div>`)
-		b.WriteString(`<div id="home-upcoming" class="page-stack">` + fmt.Sprintf(`<div data-home-upcoming data-fresh="%t" aria-live="polite" class="page-stack">`, events.OverviewFresh(viewerID)) + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
-		b.WriteString(`</div>`)
+	b.WriteString(fmt.Sprintf(`<div id="home-overview" data-fresh="%t" data-guest="%t">`, viewerID == "" || events.OverviewFresh(viewerID), viewerID == "") + overviewHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
+	if legacy {
+		b.WriteString(`<a href="/assistant">Back to main conversation</a>`)
 	}
 	b.WriteString(`</div>`)
 
@@ -486,7 +478,8 @@ function fetchW(la,lo){
 	// That is what a banner moving from one page into the chrome looks like
 	// when the call site it left behind is not removed. See app.renderForRequest,
 	// which is the only place any of the three banners is added.
-	app.Respond(w, r, app.Response{Title: greeting(viewerAcc), Description: "The home screen",
+	w.Header().Set("Cache-Control", "private, no-store")
+	app.Respond(w, r, app.Response{Title: greeting(viewerAcc), Description: "Your personal assistant",
 		HTML: b.String(), BodyClass: bodyClass})
 }
 
