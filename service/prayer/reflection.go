@@ -2,7 +2,6 @@ package prayer
 
 import (
 	"encoding/json"
-	"fmt"
 	"html"
 	"io/ioutil"
 	"math"
@@ -13,7 +12,6 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/service"
@@ -30,11 +28,10 @@ func Load() {
 		app.Log("reminder", "service register failed: %v", err)
 	}
 
-	// Load cached HTML
-	b, err := data.LoadFile("reminder.html")
-	if err == nil {
+	// Render cached source data with the current card format at startup.
+	if rd := GetReminderData(); rd != nil {
 		reminderMutex.Lock()
-		reminderHTML = string(b)
+		reminderHTML = renderReminderCard(rd)
 		reminderMutex.Unlock()
 	}
 
@@ -72,17 +69,13 @@ func fetchReminder() {
 	// Save full JSON data
 	data.SaveFile("reminder.json", string(b))
 
-	verseText := fmt.Sprintf("%v", val["verse"])
-	// Deduplicate header when Arabic and English names match
-	// e.g. "Muhammad - Muhammad - 47:1" → "Muhammad - 47:1"
-	verseText = deduplicateVerseName(verseText)
-	// Card body is just the verse; the home card framework appends its own
-	// "More" link to /prayer, so a second link here would be redundant.
-	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, verseText)
+	cardHTML := renderReminderCard(&ReminderData{
+		Verse: stringField(val, "verse"), Message: stringField(val, "message"),
+	})
 
 	reminderMutex.Lock()
-	reminderHTML = html
-	data.SaveFile("reminder.html", html)
+	reminderHTML = cardHTML
+	data.SaveFile("reminder.html", cardHTML)
 	reminderMutex.Unlock()
 	event.Publish(event.Event{Type: "reminder_updated"})
 
@@ -239,80 +232,25 @@ func stringField(val map[string]interface{}, key string) string {
 	return ""
 }
 
-// ReminderHTML returns the rendered reminder card HTML
-func ReminderHTML(who service.Viewer) string {
+// ReminderHTML returns the verse and reflection without personal prayer times.
+func ReminderHTML(_ service.Viewer) string {
 	reminderMutex.RLock()
-	body := reminderHTML
-	reminderMutex.RUnlock()
-	return nextMark(who.Account) + body
+	defer reminderMutex.RUnlock()
+	return reminderHTML
 }
 
-// nextMark is the next prayer, in the corner of the card.
-//
-// Computed here when this instance knows where the reader is, which it does now
-// for anybody who has set a place — see account/place.go. That is the whole
-// difference between a card that answers and one that waits: the mark used to
-// come from coordinates a browser had cached, so it was empty on a first visit,
-// empty on a second device, and empty in anything that is not a browser at all.
-//
-// A prayer time is the case that makes this worth doing rather than merely
-// tidy. It is not a convenience — it is the reason somebody opens the page, it
-// is wrong everywhere but one latitude, and it cannot be guessed.
-func nextMark(accountID string) string {
-	lat, lon, ok := auth.Located(accountID)
-	if !ok {
-		return browserMark
+func renderReminderCard(rd *ReminderData) string {
+	var b strings.Builder
+	b.WriteString(`<div class="item">`)
+	if verse := strings.TrimSpace(deduplicateVerseName(rd.Verse)); verse != "" {
+		b.WriteString(`<div class="verse pre-line">` + html.EscapeString(verse) + `</div>`)
 	}
-	zone := ""
-	if acc, err := auth.GetAccount(accountID); err == nil && acc != nil {
-		zone = acc.Zone
+	if message := strings.TrimSpace(rd.Message); message != "" {
+		b.WriteString(`<p class="pre-line">` + html.EscapeString(message) + `</p>`)
 	}
-	times, err := GetPrayerTimes(lat, lon, zone, "")
-	if err != nil || times == nil {
-		return browserMark
-	}
-	loc := time.UTC
-	if zone != "" {
-		if z, err := time.LoadLocation(zone); err == nil {
-			loc = z
-		}
-	}
-	name, at := times.Next(time.Now().In(loc))
-	if name == "" {
-		return ""
-	}
-	return `<span class="card-corner">` + html.EscapeString(name+" "+at) + `</span>`
+	b.WriteString(`</div>`)
+	return b.String()
 }
-
-// browserMark is the fallback for a reader this instance does not have a place
-// for: it fills itself in from coordinates a browser cached, and stays empty
-// when there are none.
-//
-// It puts the next prayer in the corner of the home card — "Asr
-// 14:25" — so the card answers the time-sensitive question at a glance and the
-// verse stays the body of it.
-//
-// It fills itself in from coordinates the reader has already granted elsewhere
-// (the weather and prayer cards share these keys). It never asks for location
-// itself: the home screen is not the place to prompt, and with nothing cached
-// the mark simply stays empty.
-const browserMark = `<span id="prayer-next" class="card-corner"></span>
-<script>
-(function(){
-  var el=document.getElementById('prayer-next');
-  if(!el)return;
-  var la=null,lo=null,m=null;
-  try{la=localStorage.getItem('mu_weather_lat');lo=localStorage.getItem('mu_weather_lon');
-      m=localStorage.getItem('mu_prayer_method');}catch(e){}
-  if(!la||!lo)return;
-  var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
-  var u='/prayer?lat='+encodeURIComponent(la)+'&lon='+encodeURIComponent(lo)+
-        '&tz='+encodeURIComponent(tz)+(m?'&method='+encodeURIComponent(m):'');
-  fetch(u,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
-    if(d&&d.next&&d.next_at){el.textContent=d.next+' '+d.next_at;}
-  }).catch(function(){});
-})();
-</script>`
 
 // ReminderData represents the cached reminder data
 type ReminderData struct {

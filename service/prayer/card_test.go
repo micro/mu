@@ -7,33 +7,18 @@ import (
 	"mu/internal/service"
 )
 
-// The home card answers the time-sensitive question in its corner — "Asr
-// 14:25" — while the verse stays the body. Before this you had to open the
-// page and scroll to find out when the next prayer was.
-//
-// This is the reader we know nothing about, which is the browser fallback. For
-// somebody who has set a place the mark is computed here instead — see
-// nextMark, and account/place.go for why that matters more for a prayer time
-// than for anything else on the screen.
-func TestHomeCardCarriesTheNextPrayer(t *testing.T) {
-	html := ReminderHTML(service.Anyone())
-	if !strings.Contains(html, `id="prayer-next"`) {
-		t.Error("home card has no slot for the next prayer")
+func TestReminderCardShowsVerseAndReflection(t *testing.T) {
+	body := renderReminderCard(&ReminderData{Verse: "Verse & reference", Message: "Reflection <script>"})
+	if !strings.Contains(body, "Verse &amp; reference") || !strings.Contains(body, "Reflection &lt;script&gt;") {
+		t.Fatal("card must retain and escape both verse and reflection")
 	}
-	if !strings.Contains(html, "card-corner") {
-		t.Error("the mark is not using the corner style")
-	}
-}
-
-// The home screen must not prompt for location. The mark fills itself in only
-// from coordinates already granted to the weather or prayer cards, and stays
-// empty otherwise — .card-corner:empty is display:none.
-func TestHomeCardNeverAsksForLocation(t *testing.T) {
-	html := ReminderHTML(service.Anyone())
-	if strings.Contains(html, "geolocation") {
-		t.Error("the home card asks for geolocation; it must only reuse cached coordinates")
-	}
-	if !strings.Contains(html, "mu_weather_lat") {
-		t.Error("the mark is not reading the shared cached coordinates")
+	reminderMutex.Lock()
+	previous := reminderHTML
+	reminderHTML = body
+	reminderMutex.Unlock()
+	defer func() { reminderMutex.Lock(); reminderHTML = previous; reminderMutex.Unlock() }()
+	got := ReminderHTML(service.Anyone())
+	if got != body {
+		t.Fatal("card must not append prayer times or location scripts")
 	}
 }
