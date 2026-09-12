@@ -96,8 +96,8 @@ func briefHTML(accountID string, external ...events.External) string {
 		return ""
 	}
 
-	// Home is a live summary, not an archived or separately navigable card.
-	return `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
+	// Match the surrounding cards, with a plain title for this live summary.
+	return app.Card("home-brief-card", "Brief", `<p class="home-brief">`+strings.Join(parts, " ")+`</p>`)
 }
 
 // briefParts is the clauses, without deciding how they are set.

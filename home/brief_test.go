@@ -106,7 +106,7 @@ func TestTheBriefSeparatesWorkInHandFromWorkOwed(t *testing.T) {
 // sentence now, sitting immediately under a box you type into, and an
 // unlabelled line there reads as output from the box rather than as a block of
 // its own.
-func TestTheBriefIsAnUnlabelledSummary(t *testing.T) {
+func TestTheBriefHasAPlainCardTitle(t *testing.T) {
 	const who = "brief-shape"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 	task, err := tasks.Create(who, "Something", "", tasks.Agent, time.Time{})
@@ -118,8 +118,8 @@ func TestTheBriefIsAnUnlabelledSummary(t *testing.T) {
 	}
 
 	got := briefHTML(who)
-	if strings.Contains(got, "<h4>") || strings.Contains(got, "home-section") || strings.Contains(got, "brief-peek") {
-		t.Errorf("the brief has a card or heading: %q", got)
+	if !strings.Contains(got, `<div id="home-brief-card" class="card">`) || !strings.Contains(got, "<h4>Brief</h4>") || strings.Contains(got, "card-head-link") || strings.Contains(got, "section-link") {
+		t.Errorf("the brief must have a shared card and plain title without navigation: %q", got)
 	}
 	if !strings.Contains(got, `<p class="home-brief">`) {
 		t.Errorf("the brief is not a paragraph: %q", got)
