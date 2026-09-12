@@ -485,12 +485,6 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat{max-width:760px;margin:0 auto;width:100%}
 #mu-chat-form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;background:#fff;padding:4px 4px 4px 12px;transition:border-color .2s;position:sticky;top:var(--mu-composer-top,8px);z-index:5}
 #mu-chat-form:focus-within{border-color:#999}
-/* Opaque above the sticky composer, fading below it into the transcript. */
-#mu-chat-form::before,#mu-chat-form::after{content:"";position:absolute;left:-8px;right:-8px;pointer-events:none;z-index:-1}
-#mu-chat-form::before{bottom:100%;height:8px;background:#fff}
-#mu-chat-form::after{top:100%;height:24px;background:linear-gradient(to bottom,#fff,rgba(255,255,255,0))}
-.mu-chat-transcript #mu-chat-form::before,.mu-chat-transcript #mu-chat-form::after,.mu-console #mu-chat-form::before,.mu-console #mu-chat-form::after{display:none}
-
 /* Reading back, beside who is answering — the same kind of decision. */
 #mu-chat-say{display:flex;align-items:center;gap:6px;cursor:pointer}
 #mu-chat-say input{margin:0}
