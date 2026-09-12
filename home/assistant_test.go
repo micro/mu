@@ -11,10 +11,7 @@ import (
 
 func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 	for _, who := range []string{"", "asstreadera", "asstreaderb"} {
-		for _, path := range []string{"/assistant", "/home", "/assistant?view=home"} {
-			if who == "" && path == "/home" {
-				continue
-			}
+		for _, path := range []string{"/assistant", "/assistant?view=home"} {
 			r := httptest.NewRequest(http.MethodGet, path, nil)
 			ns := "assistant:guest"
 			if who != "" {
@@ -48,8 +45,8 @@ func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 			if strings.Contains(body, `id="mu-chat-location"`) != (who != "") {
 				t.Errorf("%s: location control does not match authentication", path)
 			}
-			if !strings.Contains(body, `id="home-overview"`) {
-				t.Error("Assistant must include its resting overview")
+			if strings.Contains(body, `id="home-cards"`) {
+				t.Error("Assistant depends on Home")
 			}
 		}
 	}
@@ -63,8 +60,8 @@ func TestHomeDisclosureFollowsAnswer(t *testing.T) {
 	if form < 0 || answer <= form || toggle <= answer {
 		t.Fatal("Home input, answers, disclosure must appear in that order")
 	}
-	if !strings.Contains(body, `var NS="assistant:account:homedisclose";`) {
-		t.Error("Home must share the main assistant namespace")
+	if !strings.Contains(body, `var CONTINUE_NS="assistant:account:homedisclose:home";`) {
+		t.Error("Home handoff must target its separate conversation")
 	}
 	if !strings.Contains(body, "var stationary=true;") {
 		t.Error("Home must preserve its surrounding content")

@@ -191,7 +191,7 @@ a.link-text {
 .assistant-page #mu-chat-opts:empty, .assistant-page #mu-chat-conv:empty { display:none; }
 #home-agent #mu-chat-conv > :last-child, .assistant-page #mu-chat-conv > :last-child { margin-bottom:0; }
 .assistant-page { max-width:800px; margin:0; }
-@media(max-width:900px) { #tabs { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:900px) { #tabs { grid-template-columns:repeat(5,minmax(0,1fr)); } }
 
 /* Keep the Assistant composer below the fixed app header while reading. */
 .assistant-page #mu-chat-form { --mu-composer-top:58px; }
@@ -238,12 +238,33 @@ a.link-text {
 .ledger-values { text-align:right; font-variant-numeric:tabular-nums; }
 .ledger-detail { display:block; font-size:12px; color:var(--text-muted,#707070); }
 
-/* The overview and conversation share one reading column and one fixed input position. */
-.page-home #home-cards, .page-home #page-title { max-width:760px; margin-inline:auto; }
-.page-home .assistant-page { width:100%; max-width:760px; margin-inline:auto; }
-#home-overview h2 { font-size:16px; font-weight:500; margin:0 0 8px; }
-#home-overview p { margin:0 0 16px; }
-#home-overview p:last-child { margin-bottom:0; }
-#home-overview a { font-weight:400; text-decoration:underline !important; text-underline-offset:3px; }
-#home-conversation-toggle { font:inherit; font-size:13px; font-weight:400; border:0; background:none; padding:0; cursor:pointer; }
-#home-agent #mu-chat-conv[hidden], #home-overview[hidden] { display:none; }
+
+/* An in-page view switch. Panels keep their own content and state. */
+.view-switch { display: flex; gap: var(--space-field); border-bottom: 1px solid var(--card-border, #e8e8e8); margin-block: 0 var(--space-section); }
+.view-switch [role=tab] { box-sizing: border-box; display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-control); border-bottom: 2px solid transparent; color: var(--text-muted, #707070); font-weight: 400; text-decoration: none; }
+.view-switch [role=tab][aria-selected=true] { color: var(--text-primary, #3c3c3c); border-bottom-color: currentColor; }
+
+/* Flatten the columns on small screens so daily actions precede messages. */
+#home-todo:empty { display: none; }
+@media (max-width: 1099px) {
+  .home-workspace > .home-column { display: contents; }
+  .home-workspace #home-agent { order: 0; }
+  .home-workspace #home-brief { order: 2; }
+  .home-workspace #home-todo { order: 3; }
+  .home-workspace #home-upcoming { order: 4; }
+  .home-workspace #home-inbox { order: 5; }
+  .home-workspace #home-agents { order: 6; }
+  .home-workspace .home-apps { order: 1; }
+}
+
+#home-personal.is-conversing #mu-chat-conv { animation:home-answer-in 180ms ease-out; }
+@keyframes home-answer-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@media(prefers-reduced-motion:reduce) {
+ #home-personal.is-conversing #mu-chat-conv { animation:none; }
+}
+@media(min-width:1100px) {
+ .home-workspace:not(:has(#home-todo,#home-agents,#home-upcoming)) { grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
+}
+
+
+#home-personal[hidden], #home-feed[hidden] { display:none !important; }

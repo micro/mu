@@ -35,8 +35,8 @@ func homeFor(t *testing.T, accountID string, names ...string) string {
 	return rec.Body.String()
 }
 
-// Home renders personal context without a second discovery feed.
-func TestHomeKeepsPersonalContext(t *testing.T) {
+// Home is the personal workspace; Feed holds the existing service cards.
+func TestHomeAndFeedKeepTheirOwnContent(t *testing.T) {
 	const who = "homefeedreader"
 	th := thread.Open(who, "mail", "sender@example.com")
 	if th == nil {
@@ -44,21 +44,36 @@ func TestHomeKeepsPersonalContext(t *testing.T) {
 	}
 	thread.Add(thread.Message{Thread: th.ID, Account: who, From: "sender@example.com", Text: "An inbox message"})
 	body := homeFor(t, who)
-	for _, want := range []string{"Welcome back, " + who, `id="home-agent"`, `id="home-overview"`, `href="/inbox"`} {
-		if !strings.Contains(body, want) {
-			t.Errorf("missing %s", want)
+	if !strings.Contains(body, "Welcome back, "+who) {
+		t.Error("missing personal greeting")
+	}
+	personalAt := strings.Index(body, `<section id="home-personal"`)
+	feedAt := strings.Index(body, `<section id="home-feed"`)
+	if personalAt < 0 || feedAt <= personalAt {
+		t.Fatal("missing view panels")
+	}
+	personal, feed := body[personalAt:feedAt], body[feedAt:]
+	for _, want := range []string{`id="home-agent"`, `id="home-brief"`, `<a class="card-head-link" href="/inbox">Inbox</a>`} {
+		if !strings.Contains(personal, want) || strings.Contains(feed, want) {
+			t.Errorf("%s is not exclusive to Home", want)
 		}
 	}
-	for _, gone := range []string{`id="home-feed"`, `role="tabpanel"`, `id="home-agents"`, "refreshFeed", "wakeLock"} {
-		if strings.Contains(body, gone) {
-			t.Errorf("Home still includes %s", gone)
-		}
+	if strings.Contains(personal, `class="home-main`) || !strings.Contains(feed, `class="home-main full"`) {
+		t.Error("service cards are not exclusive to Feed")
+	}
+	if !strings.Contains(body, `id="home-view-personal" href="/home" role="tab" aria-controls="home-personal" aria-selected="true"`) {
+		t.Error("Home is not the default")
+	}
+	if !strings.Contains(body, `id="home-feed" role="tabpanel" aria-labelledby="home-view-feed" hidden`) {
+		t.Error("Feed is initially visible")
 	}
 }
 
-func TestOldFeedAndDisplayLinksStillShowHome(t *testing.T) {
-	const owner = "legacyhomelinks"
-	auth.Create(&auth.Account{ID: owner})
+func TestFeedLinksAndDisplayMode(t *testing.T) {
+	const owner = "feedlinksreader"
+	if err := auth.Create(&auth.Account{ID: owner}); err != nil {
+		t.Fatal(err)
+	}
 	sess, err := auth.CreateSession(owner)
 	if err != nil {
 		t.Fatal(err)
@@ -70,11 +85,11 @@ func TestOldFeedAndDisplayLinksStillShowHome(t *testing.T) {
 		req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		Handler(rec, req)
 		body := rec.Body.String()
-		if rec.Code != http.StatusOK || !strings.Contains(body, `<section id="home-personal">`) {
-			t.Errorf("%s no longer opens Home", path)
+		if !strings.Contains(body, `id="home-personal" role="tabpanel" aria-labelledby="home-view-personal" hidden`) {
+			t.Errorf("%s did not hide Home", path)
 		}
-		if strings.Contains(body, `class="page-home display-mode"`) || strings.Contains(body, `id="home-feed"`) {
-			t.Errorf("%s revived a retired view", path)
+		if strings.Contains(body, `id="home-feed" role="tabpanel" aria-labelledby="home-view-feed" hidden`) {
+			t.Errorf("%s hid Feed", path)
 		}
 	}
 }

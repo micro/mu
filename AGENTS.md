@@ -66,12 +66,20 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Keep capabilities and data intact while simplifying the app.** Everyday
-navigation is Home, Inbox and Todo. Home and Assistant are one screen:
-a resting overview and a conversation beneath the same input. The service and API remain
-named tasks; Todo is the user-facing section label. Retire redundant discovery
-pages only with a working replacement; preserve protocols, API responses,
-authorisation, mutations and existing shared content links.
+**Keep capabilities and data intact while simplifying the app.** Home is the
+personal dashboard, with Feed as a tab. Assistant opens the dedicated
+conversation. Navigation offers Assistant (Ask on mobile), Home, Inbox, Agents
+and Services without an Advanced grouping. Todo remains a Home section over
+the tasks service, not another primary destination. Preserve the useful Home
+structure while applying shared typography, spacing, links and controls.
+Retire redundant pages only with a working replacement; preserve protocols,
+API responses, authorisation, mutations and existing shared content links.
+
+**Extend through stable patterns.** Services, agents and inbox records should
+scale through their existing registries and shared components. Use apps to
+build and test different experiences on the runtime. Adding a capability does
+not imply redesigning Home or adding a primary navigation item. Home is a
+stable overview and launch screen, not a growing catalogue of every experiment.
 
 ## What is true today, and what is not
 

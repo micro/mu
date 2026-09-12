@@ -14,7 +14,7 @@ handling the inbound mail on the backend. Mu attempts to do it all in a single b
 It includes:
 
 - **Micro** - your personal assistant and the default agent.
-- **Assistant** - your overview and conversation in one place.
+- **Home** - your personal dashboard and Feed, with a prompt for quick questions.
 - **Inbox** - A place to keep track of everything.
 - **Clients** - Use Micro via Web, SMS, email, etc.
 - **Services** - building blocks for agents.
@@ -28,11 +28,10 @@ It includes:
 
 Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and agent activity, bringing communication and agent work into one place.
 
-The everyday web navigation is **Home**, **Inbox** and **Todo**.
-Home opens the assistant with a concise overview of relevant information. Asking a
-question reveals the conversation beneath the same input; returning to Today
-does not clear it. `/assistant` opens the same experience. Agents and
-the service catalogue remain available as advanced tools.
+Home keeps the prompt, brief, service shortcuts, Inbox, Todo and Upcoming
+in a personal dashboard, with Feed as a separate tab. Assistant opens the
+dedicated conversation. Navigation offers Assistant (Ask on mobile), Home,
+Inbox, Agents and Services together. Logged-out Home visits return to landing.
 
 ## Agents
 
