@@ -23,19 +23,19 @@ func RecentConversations(accountID string) string {
 		if title == "" {
 			title = "Conversation"
 		}
-		b.WriteString(`<a class="peek-row" href="/agent?session=` + url.QueryEscape(t.ID) + `"><span class="peek-main"><span class="peek-title">` + html.EscapeString(title) + `</span>`)
+		b.WriteString(`<a class="peek-row" href="/assistant?session=` + url.QueryEscape(t.ID) + `"><span class="peek-main"><span class="peek-title">` + html.EscapeString(title) + `</span>`)
 		messages := thread.Messages(accountID, t.ID, 1)
 		if len(messages) > 0 {
 			text := []rune(messages[len(messages)-1].Text)
 			if len(text) > 140 {
 				text = append(text[:140], '…')
 			}
-			b.WriteString(`<span class="text-muted">` + html.EscapeString(string(text)) + `</span>`)
+			b.WriteString(`<span class="peek-snippet">` + html.EscapeString(string(text)) + `</span>`)
 		}
 		b.WriteString(`</span></a>`)
 	}
 	if b.Len() == 0 {
 		return ""
 	}
-	return app.PreviewCard("home-recent", "Recent conversations", "/agent", b.String())
+	return app.PreviewCard("home-recent", "Recent conversations", "/assistant", b.String())
 }

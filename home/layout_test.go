@@ -53,7 +53,10 @@ func TestHomeAndFeedKeepTheirOwnContent(t *testing.T) {
 		t.Fatal("missing view panels")
 	}
 	personal, feed := body[personalAt:feedAt], body[feedAt:]
-	for _, want := range []string{`id="home-agent"`, `<a class="card-head-link" href="/inbox">Inbox</a>`} {
+	if at := strings.Index(body, `id="home-agent"`); at < 0 || at >= personalAt || strings.Count(body, `id="home-agent"`) != 1 {
+		t.Error("one shared prompt must precede both view panels")
+	}
+	for _, want := range []string{`<a class="card-head-link" href="/inbox">Inbox</a>`} {
 		if !strings.Contains(personal, want) || strings.Contains(feed, want) {
 			t.Errorf("%s is not exclusive to Home", want)
 		}

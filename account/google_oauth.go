@@ -90,6 +90,10 @@ func startGoogle(w http.ResponseWriter, r *http.Request, link bool) {
 		Name: "g_link", Value: linkVal, Path: "/", MaxAge: linkAge,
 		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
+	http.SetCookie(w, &http.Cookie{
+		Name: "g_return", Value: url.QueryEscape(safeRedirect(r)), Path: "/", MaxAge: 600,
+		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
+	})
 	q := url.Values{}
 	q.Set("client_id", googleClientID())
 	q.Set("redirect_uri", googleRedirectURI(r))
@@ -180,7 +184,14 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		Name: "session", Value: sess.Token, Path: "/", MaxAge: 2592000,
 		HttpOnly: true, Secure: requestSecure(r), SameSite: http.SameSiteLaxMode,
 	})
-	http.Redirect(w, r, "/home", http.StatusFound)
+	destination := "/home"
+	if c, err := r.Cookie("g_return"); err == nil {
+		if decoded, err := url.QueryUnescape(c.Value); err == nil {
+			destination = SafeRedirectTo(decoded)
+		}
+	}
+	http.SetCookie(w, &http.Cookie{Name: "g_return", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: requestSecure(r), SameSite: http.SameSiteLaxMode})
+	http.Redirect(w, r, destination, http.StatusFound)
 }
 
 // googleExchange trades an authorization code for an access token.

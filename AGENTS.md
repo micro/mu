@@ -546,3 +546,10 @@ CSS for ordinary fields, select lists, buttons, and action rows. Use the shared
 in their existing components. Check narrow mobile and desktop, with the sidebar
 open and closed, including revealed and collapsed controls when changing these
 shared rules.
+
+Home and Feed share one stationary prompt above their view panels. Focusing it
+must not relocate it or open a modal. Replies grow beneath it; Close preserves
+the exchange. Continue in Assistant reopens the same account-owned saved thread.
+Assistant uses the shared saved-chat renderer and history, while Agents manages
+agent identities, scopes and activity. Do not create separate transcript stores
+for these entry points. Recent conversations are shortcuts to saved threads.

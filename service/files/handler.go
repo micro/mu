@@ -255,8 +255,6 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 // block — name, then size · visibility · date on one muted line, then the
 // actions — and the buttons grow to something a thumb can hit.
 const filesPageCSS = `<style>
-.file-upload{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
-.file-upload input[type=file]{font-size:14px;max-width:100%;flex:1 1 auto;min-width:0}
 /* The card already provides the spacing data-table adds for a bare page. */
 .files-table{margin-bottom:0}
 .files-table .file-name{word-break:break-word}
@@ -264,8 +262,6 @@ const filesPageCSS = `<style>
 .file-actions form{display:inline}
 
 @media only screen and (max-width:600px){
-  .file-upload{flex-direction:column;align-items:stretch}
-  .file-upload button{width:100%}
 
   .files-table,.files-table tbody,.files-table tr,.files-table td{display:block;width:auto}
   .files-table thead{display:none}

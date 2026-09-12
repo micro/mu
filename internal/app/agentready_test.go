@@ -148,19 +148,18 @@ func TestAskingStillNeedsAModel(t *testing.T) {
 func TestARefusedQuestionStillGoesSomewhere(t *testing.T) {
 	AgentReady = func() bool { return true }
 	t.Cleanup(func() { AgentReady = nil })
-
 	got := ChatComponent(ChatConfig{Ask: true})
-
-	if !strings.Contains(got, "/archive?q=") {
-		t.Error("a refused question is not offered to the archive, which needs no " +
-			"account and would have answered it")
+	start := strings.Index(got, "if(resp.status===401)")
+	end := strings.Index(got[start:], "if(!resp.ok") + start
+	refusal := got[start:end]
+	for _, want := range []string{"/login?redirect=", "mu_chat_continue_draft:", "input.value=q;saveDraft();"} {
+		if !strings.Contains(refusal, want) {
+			t.Errorf("missing sign-in recovery: %s", want)
+		}
 	}
-	if !strings.Contains(got, "/agent?q=") {
-		t.Error("signing in does not carry the question, so somebody arrives at an " +
-			"empty box having already typed their question once")
-	}
-	// And the question itself has to travel, or both links are decoration.
-	if !strings.Contains(got, "encodeURIComponent(q)") {
-		t.Error("what was typed is not carried into either link")
+	for _, bad := range []string{"/archive?q=", "/agent?q=", "encodeURIComponent(q)"} {
+		if strings.Contains(refusal, bad) {
+			t.Errorf("private question put in a URL: %s", bad)
+		}
 	}
 }

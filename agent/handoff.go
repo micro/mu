@@ -88,7 +88,8 @@ function finish(id){
  if(draft)sessionStorage.setItem('mu_chat_draft:'+ns+':'+id,draft);
  ['hist','conv','ctx','draft'].forEach(function(k){sessionStorage.removeItem('mu_chat_'+k+':landing');});
  }catch(e){return;}
- // Keep the person on Home; the imported conversation is in chat history.
+ if(id){if(draft)sessionStorage.setItem('mu_chat_continue_draft:'+id,draft);window.location.replace('/assistant?session='+encodeURIComponent(id));}
+ else if(draft){sessionStorage.setItem('mu_chat_draft:'+ns+':',draft);window.location.replace('/assistant?new=1');}
 }
 if(!turns.length){finish('');return;}
 fetch('/agent/handoff',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':` + app.JSString(auth.CSRFToken(r)) + `},body:JSON.stringify({turns:turns})})

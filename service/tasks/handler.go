@@ -127,7 +127,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 			blocked++
 		}
 	}
-	b.WriteString(`<div class="page-stack"><div class="task-tabs">`)
+	b.WriteString(`<div class="page-stack"><div class="app-filters">`)
 	tab(&b, "", filter, fmt.Sprintf("All (%d)", len(all)))
 	tab(&b, StatusTodo, filter, fmt.Sprintf("Todo (%d)", open))
 	tab(&b, StatusDoing, filter, fmt.Sprintf("Doing (%d)", doing))
@@ -137,8 +137,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	b.WriteString(`</div>`)
 
 	if len(list) == 0 {
-		b.WriteString(`<p class="text-sm text-muted">Nothing here. Add something above, ` +
-			`or an agent connected over <a href="/mcp">MCP</a> can with <code>tasks_create</code>.</p>`)
+		b.WriteString(`<p class="text-sm text-muted">Nothing here yet. Add something you want to do, or ask your assistant to help.</p>`)
 	}
 
 	running := 0
@@ -172,11 +171,7 @@ func tab(b *strings.Builder, status, active, label string) {
 	if status != "" {
 		href += "?status=" + status
 	}
-	class := "task-tab"
-	if status == active {
-		class += " active"
-	}
-	fmt.Fprintf(b, `<a href="%s" class="%s">%s</a>`, href, class, html.EscapeString(label))
+	b.WriteString(app.PillLink(label, href, status == active))
 }
 
 func taskRow(t *Task, csrf string, labels ...string) string {
@@ -324,12 +319,6 @@ const taskPollJS = `<script>
 </script>`
 
 const tasksPageCSS = `<style>
-.task-add{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
-.task-add input[type=text],.task-add input:not([type]){min-width:0}
-.task-assign{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:8px;cursor:pointer}
-.task-tabs{display:flex;gap:14px;flex-wrap:wrap}
-.task-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
-.task-tab.active{color:var(--text-primary);font-weight:600}
 .task{display:flex;flex-direction:column;gap:var(--space-control)}
 .task-title{font-weight:var(--font-weight-normal,400)}
 .task-done .task-title{text-decoration:line-through;color:var(--text-muted)}
@@ -351,8 +340,6 @@ const tasksPageCSS = `<style>
 .task-running::after{content:"";animation:taskdots 1.2s steps(4,end) infinite}
 @keyframes taskdots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
 @media only screen and (max-width:600px){
-  .task-add{grid-template-columns:1fr}
-  .task-add button{width:100%}
 }
 </style>`
 
@@ -386,16 +373,16 @@ func plural(n int) string {
 // long way from the words it belonged to. Giving each its own line costs
 // nothing and removes both problems.
 func addForm(csrf string) string {
-	return fmt.Sprintf(`<form method="POST" action="/tasks" class="task-add" onsubmit="var d=this.duelocal.value;this.due.value=d?new Date(d).toISOString():''">
+	return fmt.Sprintf(`<form method="POST" action="/tasks" class="form page-stack" onsubmit="var d=this.duelocal.value;this.due.value=d?new Date(d).toISOString():''">
   <input type="hidden" name="_csrf" value="%s">
   <input type="hidden" name="due" value="">
-  <input name="title" placeholder="What needs doing?" required>
-  <input name="detail" placeholder="Detail (optional)">
+  <label class="field-label">What needs doing?<input name="title" required></label>
+  <label class="field-label">Detail (optional)<input name="detail"></label>
   <div class="form-row">
     <label class="field-label">Due <input type="datetime-local" name="duelocal"></label>
     <button type="submit">Add</button>
   </div>
-  <label class="task-assign"><input type="checkbox" name="assign" value="agent"> <span>Give it to the agent — it starts working on this now</span></label>
+  <label class="field-label form-check"><input type="checkbox" name="assign" value="agent"> <span>Give it to the agent — it starts working on this now</span></label>
 </form>`, html.EscapeString(csrf))
 }
 

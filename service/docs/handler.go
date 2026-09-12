@@ -139,8 +139,8 @@ func list(r *http.Request, docs []*Doc, query string) string {
 // view is one document, read.
 func view(r *http.Request, d *Doc) string {
 	var b strings.Builder
-	b.WriteString(`<div class="collection-head"><a class="doc-back" href="/docs">← Documents</a>`)
-	b.WriteString(`<a class="doc-new" href="/docs?id=` + html.EscapeString(d.ID) + `&amp;edit=1">Edit</a></div>`)
+	b.WriteString(`<div class="collection-head"><a class="section-link" href="/docs">← Documents</a>`)
+	b.WriteString(`<a class="btn btn-quiet" href="/docs?id=` + html.EscapeString(d.ID) + `&amp;edit=1">Edit</a></div>`)
 	b.WriteString(`<article class="card record-card doc-view">`)
 	b.WriteString(`<h2>` + html.EscapeString(d.Title) + `</h2>`)
 	// Untrusted: this is one account's content and may be published to others.
@@ -164,9 +164,9 @@ func editor(r *http.Request, d *Doc) string {
 	if d.Public {
 		checked = " checked"
 	}
-	back := `<a class="doc-back" href="/docs">← Documents</a>`
+	back := `<a class="section-link" href="/docs">← Documents</a>`
 	if d.ID != "" {
-		back = `<a class="doc-back" href="/docs?id=` + html.EscapeString(d.ID) + `">← Back</a>`
+		back = `<a class="section-link" href="/docs?id=` + html.EscapeString(d.ID) + `">← Back</a>`
 	}
 	return `<form method="POST" action="/docs" class="record-editor">
 <input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
@@ -187,8 +187,6 @@ func notice(msg string) string {
 }
 
 const pageCSS = `<style>
-.doc-back{font-size:14px;color:#888;text-decoration:none}
-.doc-new{font-size:14px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;color:#111;text-decoration:none}
 .doc-toolbar{display:flex;flex-wrap:wrap;gap:6px}
 .doc-toolbar button{flex:0 0 auto;margin:0}
 .doc-view{overflow-wrap:anywhere}

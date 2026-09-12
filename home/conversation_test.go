@@ -24,16 +24,18 @@ func TestClosePreservesHomeExchange(t *testing.T) {
 	script := `
 const assert=require('assert');
 const events={},actionBar={},transcript={textContent:'Existing answer'};
-const button={addEventListener(k,fn){this[k]=fn}};
-const home={querySelector(s){return s==='#home-conversation-actions'?actionBar:s==='#home-conversation-close'?button:transcript}};
+const button={addEventListener(k,fn){this[k]=fn}},prompt={addEventListener(k,fn){this[k]=fn}};
+const home={querySelector(s){return s==='#home-conversation-actions'?actionBar:s==='#home-conversation-close'?button:s==='#mu-chat-input'?prompt:transcript}};
 let resets=0;
 const window={addEventListener(k,fn){events[k]=fn},muChatClose(){resets++}};
 ` + src[start:end] + `
 assert.equal(actionBar.hidden,false);
 button.click({preventDefault(){},stopPropagation(){}});
-assert.equal(resets,1);
+assert.equal(resets,0);
+assert.equal(transcript.hidden,true);
 assert.equal(transcript.textContent,'Existing answer');
-assert.equal(actionBar.hidden,false);
+assert.equal(actionBar.hidden,true);
+prompt.focus();assert.equal(transcript.hidden,false);
 events['mu-chat-active']({detail:true});
 assert.equal(actionBar.hidden,false);
 `

@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestLandingRefreshAndLoginStartClean(t *testing.T) {
-	if strings.Contains(indexBody(), `var NS="landing"`) {
-		t.Fatal("landing retains the guest conversation")
+func TestLandingConversationSurvivesAccountEntry(t *testing.T) {
+	if !strings.Contains(indexBody(), `var NS="landing"`) {
+		t.Fatal("landing must retain the guest conversation")
 	}
 	home, err := os.ReadFile("home.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(home), "agent.HandoffHTML(r)") {
-		t.Fatal("login imports the old landing conversation")
+	if !strings.Contains(string(home), "agent.HandoffHTML(r)") {
+		t.Fatal("login must carry the landing conversation")
 	}
 }
 

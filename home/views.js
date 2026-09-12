@@ -2,13 +2,20 @@
   const home = document.getElementById('home-cards');
   if (!home) return;
   const actions=home.querySelector('#home-conversation-actions');
+  const initial=home.querySelector('#mu-chat-conv');
+  const input=home.querySelector('#mu-chat-input');
   function conversation(active){
-    if(actions)actions.hidden=false;
+    if(actions)actions.hidden=!active;
+    if(initial)initial.hidden=!active;
   }
   window.addEventListener('mu-chat-active',event=>conversation(event.detail===true));
   const close=home.querySelector('#home-conversation-close');
-  if(close)close.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();if(window.muChatClose)window.muChatClose();});
-  const initial=home.querySelector('#mu-chat-conv');
+  if(close)close.addEventListener('click',event=>{
+    event.preventDefault();event.stopPropagation();conversation(false);
+  });
+  if(input)input.addEventListener('focus',()=>{
+    if(initial&&initial.textContent.trim())conversation(true);
+  });
   conversation(!!initial && !!initial.textContent.trim());
 
   const upcoming = home.querySelector('[data-home-upcoming]');

@@ -344,6 +344,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	accountID := acc.ID
+	assistant := r.URL.Path == "/assistant"
+	w.Header().Set("Cache-Control", "private, no-store")
 
 	// Reopen a saved session (?session=, or legacy ?continue=).
 	sessionID := r.URL.Query().Get("session")
@@ -414,6 +416,11 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if sessionID != "" && !reopened {
+		app.NotFound(w, r, "Conversation not found")
+		return
+	}
+
 	// The chat switcher requests only its account-owned transcript.
 	if r.Header.Get("X-Mu-Transcript") == "1" {
 		w.Header().Set("Cache-Control", "no-store")
@@ -472,13 +479,16 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if reopened {
 		// A reopened conversation decides its own agent; the rail filters to it.
 		selAgent = reopenAgent
-	} else if (selAgent != "" || named) && prefill == "" && cfg.Attachment == "" && r.URL.Query().Get("new") != "1" {
+	} else if (selAgent != "" || named || assistant) && prefill == "" && cfg.Attachment == "" && r.URL.Query().Get("new") != "1" {
 		// Land in the last conversation with this agent, if there is one.
 		if last := latestThreadFor(accountID, selAgent, named); last != "" {
 			cfg.ContextID = last
 			cfg.InitialConvHTML = renderThreadTurns(accountID, last)
 			cfg.Pending = Pending(accountID, last)
 			activeRoot = last
+			if th := thread.Get(accountID, last); th != nil {
+				selAgent = th.Agent
+			}
 		}
 	}
 
@@ -492,6 +502,12 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// title uses, so the page and the answer cannot disagree about which agent
 	// this is.
 	cfg.AgentName = agentTitle(accountID, selAgent)
+	chatBase := chatPath(accountID, selAgent)
+	if assistant {
+		chatBase = "/assistant"
+		cfg.HideSuggestions = true
+		cfg.Location = true
+	}
 
 	// One panel beside the conversation: the conversations. On a phone it folds
 	// away behind the bar below and the chat is the first thing on the page —
@@ -513,7 +529,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	rail := `<div class="chat-side">` +
 		`<div class="chat-pane" id="pane-chats">` +
 		renderSessionsRail(accountID, activeRoot, selAgent, named,
-			"") + `</div></div>`
+			"", chatBase) + `</div></div>`
 
 	// The bar above the conversation: how you got here, and how to see the
 	// other conversations on a phone. Nothing else.
@@ -537,7 +553,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// only exists here put a row of chrome above the conversation to say
 	// something the nav already says.
 	chip := `<div class="agent-bar">` +
-		`<a class="btn chat-open-list" href="` + chatPath(accountID, selAgent) + `?new=1">New</a>` +
+		`<a class="btn chat-open-list" href="` + chatBase + `?new=1">New</a>` +
 		`<button type="button" class="btn chat-open-list" onclick="muPane('chats')">Chats</button>` +
 		`</div>` + paneJS
 
@@ -581,14 +597,14 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// non-empty left the tab's remembered selection in charge on a bare /agent:
 	// the rail listed every agent's conversations while the next message went to
 	// whichever agent the tab remembered. The URL is the state.
-	content += `<script>window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(chatPath(accountID, selAgent)) + `+'?session='+encodeURIComponent(e.detail));});</script>`
+	content += `<script>window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(chatBase) + `+'?session='+encodeURIComponent(e.detail));});</script>`
 	content += resumeMicroJS(accountID, selAgent, cfg.ContextID)
 	if r.URL.Path == "/" {
 		content += HandoffHTML(r)
 	}
 	content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	if prefill != "" {
-		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(chatPath(accountID, selAgent)) + `);})()</script>`
+		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(chatBase) + `);})()</script>`
 	}
 
 	// The agent's own name, because this page is about one agent.
@@ -598,6 +614,9 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// you talk to an agent — so the title was the clearest possible statement
 	// that the two had not been told apart.
 	title := agentTitle(accountID, selAgent)
+	if assistant {
+		title = "Assistant"
+	}
 	desc := "Talk to " + title + ", and the address it answers on"
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: content})
 }
@@ -732,7 +751,7 @@ func inboxAddress(accountID, agentID string) string {
 // and whatever else that agent has. extra is appended inside the one scroll
 // region — see the note on .chat-sess-scroll, which exists because two lists
 // with their own overflow in a fixed-height column draw over each other.
-func renderSessionsRail(accountID, currentID, agentID string, named bool, extra string) string {
+func renderSessionsRail(accountID, currentID, agentID string, named bool, extra string, routes ...string) string {
 	sessions := chatThreads(accountID, agentID, named)
 	// A new chat with the agent whose rail this is. It used to rewrite the URL
 	// to a bare /agent, which dropped the agent out of the address bar while
@@ -743,6 +762,9 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 	// holds what arrived, so a link from one to the other lands somewhere that
 	// does not have the conversation in it.
 	base := chatPath(accountID, agentID)
+	if len(routes) > 0 && routes[0] != "" {
+		base = routes[0]
+	}
 	newURL := base + "?new=1"
 	if agentID != "" && base == "/agent/"+DefaultSlug {
 		// An id that resolves to nothing in the roster. Keep it in the URL
@@ -845,7 +867,7 @@ function muSessionDelete(id,ev){
 window.muSessionStarted=function(id,title){
   var list=document.querySelector('.chat-sess-list');if(!list)return;
   var empty=list.querySelector('.chat-sess-empty');if(empty)empty.remove();
-  var href='/agent?session='+id;
+  var href=(location.pathname==='/assistant'?'/assistant':'/agent')+'?session='+encodeURIComponent(id);
   if(list.querySelector('a[href="'+href+'"]'))return;
   title=(title||'Untitled').trim();
   if(title.length>60)title=title.slice(0,60)+'…';

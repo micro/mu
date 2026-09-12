@@ -130,6 +130,7 @@ func Preview(accountID string) string {
 		b.WriteString(`<a class="agent-peek-row" href="` + html.EscapeString(a.Path) + `">`)
 		b.WriteString(`<span class="agent-peek-name">` + html.EscapeString(a.Name) + `</span>`)
 
+		b.WriteString(activityHTML(accountID, a.ID))
 		if s, ok := latest[a.ID]; ok {
 			what := s.subject
 			if what == "" {

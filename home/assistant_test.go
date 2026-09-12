@@ -21,11 +21,7 @@ func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 					t.Fatal(err)
 				}
 				r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
-				ns = "assistant:account:" + who
-			}
-			fromHome := strings.Contains(path, "view=home")
-			if fromHome {
-				ns += ":home"
+				ns = "agent-" + who + "-"
 			}
 			w := httptest.NewRecorder()
 			AssistantHandler(w, r)
@@ -36,11 +32,8 @@ func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 			if !strings.Contains(body, `var NS="`+ns+`"`) {
 				t.Errorf("%s: missing isolated namespace %s", path, ns)
 			}
-			if strings.Contains(body, `href="/assistant">Back to main conversation</a>`) != fromHome {
-				t.Error("return link must appear on the separate Home conversation")
-			}
-			if strings.Contains(body, "var handoff=true?") != fromHome {
-				t.Error("main conversation must not consume handoffs")
+			if who != "" && (!strings.Contains(body, `class="chat-sess-list"`) || !strings.Contains(body, `mu-chat-transcript`)) {
+				t.Error("Assistant must show saved conversations and a transcript")
 			}
 			if strings.Contains(body, `id="mu-chat-location"`) != (who != "") {
 				t.Errorf("%s: location control does not match authentication", path)

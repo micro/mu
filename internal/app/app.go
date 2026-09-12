@@ -357,14 +357,14 @@ func torFooterLink() string {
 var Template = `
 <html lang="%s">
   <head>
-    <title>%s | Mu</title>
+    <title>%s | Micro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="description" content="%s">
     <meta name="referrer" content="no-referrer"/>
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Mu">
+    <meta name="apple-mobile-web-app-title" content="Micro">
     <meta name="application-name" content="Mu">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="preload" href="/home.png?` + Version + `" as="image">
@@ -397,7 +397,7 @@ var Template = `
     <div id="head">
       <button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
       <div id="brand">
-        <a href="/">Mu</a>
+        <a href="/">Micro</a>
       </div>
       <!-- One flex cluster, so the items sit next to each other by measuring
            themselves. They used to be three absolutely positioned elements

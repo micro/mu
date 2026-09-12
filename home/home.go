@@ -352,6 +352,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Feed refreshes through its JSON endpoint when selected; do not block Home on it.
 
+	auth.SetCSRFCookie(w, r)
 	_, viewerAcc := auth.TrySession(r)
 
 	var b strings.Builder
@@ -443,11 +444,7 @@ function fetchW(la,lo){
 	if r.URL.Query().Get("q") != "" || r.URL.Query().Get("prompt") != "" {
 		feed = false
 	}
-	b.WriteString(homeViews(feed) + `</div>`)
-	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
-
-	// Each column flows independently as a conversation grows.
-	b.WriteString(`<div class="home-workspace"><div class="home-column page-stack">`)
+	b.WriteString(`</div>`)
 	b.WriteString(`<div id="home-agent" class="page-stack"><script>window.muActiveAgent="";</script>`)
 	b.WriteString(app.ChatComponent(app.ChatConfig{
 		Ask:             true,
@@ -456,13 +453,18 @@ function fetchW(la,lo){
 		AgentName:       agent.DefaultName(),
 		Location:        viewerID != "",
 		Stationary:      true,
-		Overlay:         true,
 		ContinueNS:      assistantNamespace(viewerID) + ":home",
-		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><a href="/home" id="home-conversation-close">Close</a><a href="/assistant?view=home" id="mu-chat-continue" aria-disabled="true">Continue in Assistant →</a><span id="mu-chat-transfer-error" role="status"></span></div>`,
+		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><a href="/home" id="home-conversation-close">Close</a><a href="/assistant" id="mu-chat-continue" aria-disabled="true">Continue in Assistant →</a><span id="mu-chat-transfer-error" role="status"></span></div>`,
 	}))
 	b.WriteString(`</div>`)
+	b.WriteString(homeViews(feed))
+	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `><div class="home-workspace"><div class="home-column page-stack">`)
 	b.WriteString(appsHTML(viewerAcc))
-	b.WriteString(agent.RecentConversations(viewerID))
+	recent := agent.RecentConversations(viewerID)
+	b.WriteString(recent)
+	if recent == "" && inbox.Preview(viewerID) == "" && todoHTML(viewerID) == "" {
+		b.WriteString(app.SectionCard("home-start", "Get started", "", `<p>Ask Micro a question above, add something to <a href="/tasks">Todo</a>, or see your <a href="/events">upcoming events</a>. Your recent conversations will appear here.</p>`))
+	}
 	if viewerID != "" {
 		if peek := inbox.Preview(viewerID); peek != "" {
 			b.WriteString(`<div id="home-inbox" class="page-stack">` + peek + `</div>`)
@@ -489,7 +491,7 @@ function fetchW(la,lo){
 		cards = `<p class="text-muted">No feed items yet.</p>`
 	}
 	b.WriteString(cards)
-	b.WriteString(`</div></section></div><script>` + viewsJS + `</script>`)
+	b.WriteString(`</div></section></div><script>` + viewsJS + `</script>` + agent.HandoffHTML(r))
 
 	// Auto-refresh: poll every 2 minutes, update card content in-place
 	displayMode := r.URL.Query().Get("mode") == "display"
