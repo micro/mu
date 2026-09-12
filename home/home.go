@@ -436,7 +436,7 @@ function fetchW(la,lo){
 	if r.URL.Query().Get("q") != "" || r.URL.Query().Get("prompt") != "" {
 		feed = false
 	}
-	b.WriteString(homeViews(feed) + `</div>`)
+	b.WriteString(homeViews(feed) + `<button type="button" id="home-conversation-toggle" class="link-button text-sm" aria-controls="mu-chat-conv" hidden>Collapse conversation</button></div>`)
 	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
 
 	// Each column flows independently as a conversation grows.

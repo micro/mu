@@ -207,5 +207,8 @@ a.link-text {
  #home-personal.is-conversing #mu-chat-conv { animation:none; }
 }
 @media(min-width:1100px) {
- .home-workspace:not(:has(#home-todo,#home-agents,#home-upcoming)) { grid-template-columns:minmax(0,1fr); }
+ .home-workspace:not(:has(#home-todo,#home-agents,#home-upcoming)) { grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
 }
+
+#home-personal.conversation-collapsed #mu-chat-conv { display:none; }
+#home-conversation-toggle[hidden] { display:none; }

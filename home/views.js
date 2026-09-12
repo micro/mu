@@ -2,10 +2,29 @@
   const home = document.getElementById('home-cards');
   if (!home) return;
   const personal=home.querySelector('#home-personal');
-  function conversation(active){if(personal)personal.classList.toggle('is-conversing',active);}
-  window.addEventListener('mu-chat-active',event=>conversation(event.detail===true));
+  const conversationToggle=home.querySelector('#home-conversation-toggle');
+  let hasConversation=false, expanded=false;
+  function conversation(active){
+    expanded=active;
+    if(personal) {
+      personal.classList.toggle('is-conversing',active);
+      personal.classList.toggle('conversation-collapsed',hasConversation && !active);
+    }
+    if(conversationToggle){
+      conversationToggle.hidden=!hasConversation;
+      conversationToggle.textContent=active?'Collapse conversation':'Resume conversation';
+      conversationToggle.setAttribute('aria-expanded',String(active));
+    }
+  }
+  window.addEventListener('mu-chat-active',event=>{
+    if(event.detail===true)hasConversation=true;
+    else hasConversation=false;
+    conversation(event.detail===true);
+  });
+  if(conversationToggle)conversationToggle.addEventListener('click',()=>conversation(!expanded));
   const initial=home.querySelector('#mu-chat-conv');
-  conversation(!!initial && !!initial.textContent.trim());
+  hasConversation=!!initial && !!initial.textContent.trim();
+  conversation(hasConversation);
 
   const upcoming = home.querySelector('[data-home-upcoming]');
   if (upcoming) {
@@ -28,7 +47,7 @@
   let selected = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
   function select(tab) {
     if (tab === selected) {
-      if(tab.id==='home-view-personal' && personal.classList.contains('is-conversing') && window.muChatNew)window.muChatNew();
+      if(tab.id==='home-view-personal' && expanded)conversation(false);
       return;
     }
     positions.set(selected.id, window.scrollY);
