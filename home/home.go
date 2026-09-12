@@ -449,16 +449,17 @@ function fetchW(la,lo){
 		AgentName:       agent.DefaultName(),
 		Location:        viewerID != "",
 		Stationary:      true,
-		FooterHTML:      `<button type="button" id="home-conversation-toggle" class="conversation-disclosure" aria-controls="mu-chat-conv" aria-label="Collapse conversation" aria-expanded="true" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>`,
+		ContinueNS:      assistantNamespace(viewerID),
+		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><button type="button" id="home-conversation-close">Close</button><button type="button" id="mu-chat-continue" disabled>Continue in Assistant</button><span id="mu-chat-transfer-error" role="status"></span></div>`,
 	}))
 	b.WriteString(`</div>`)
+	b.WriteString(appsHTML(viewerAcc))
 	b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
 	if viewerID != "" {
 		if peek := inbox.Preview(viewerID); peek != "" {
 			b.WriteString(`<div id="home-inbox" class="page-stack">` + peek + `</div>`)
 		}
 	}
-	b.WriteString(appsHTML(viewerAcc))
 	b.WriteString(`</div>`)
 	if viewerID != "" {
 		b.WriteString(`<div class="home-column page-stack">`)

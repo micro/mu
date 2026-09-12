@@ -46,6 +46,8 @@ func JSAttr(s string) string {
 
 // ChatConfig configures the shared chat component.
 type ChatConfig struct {
+	// ContinueNS is the account-scoped Assistant destination for a Home exchange.
+	ContinueNS string
 	// Stationary keeps an embedded composer in place and surrounding content visible.
 	Stationary bool
 	// Location offers approximate device sharing on authenticated surfaces.
@@ -779,6 +781,7 @@ var minConv=220, convGap=28;
 var sugDiv=document.getElementById('mu-chat-suggest');
 if(!form)return;
 var NS=` + JSString(cfg.StorageNS) + `;
+var CONTINUE_NS=` + JSString(cfg.ContinueNS) + `;
 var IMPORT_NS=` + JSString(cfg.ImportNS) + `;
 // Persistence is per-surface and opt-in. With no namespace the component is
 // ephemeral (Home's quick-ask box) so it never restores or leaks a
@@ -798,6 +801,15 @@ var history=[];
 // conversation instead of starting a new one.
 if(!SESSION && PERSIST){
   try{
+    var handoff=sessionStorage.getItem('mu_chat_handoff:'+NS);
+    if(handoff){
+      var exchange=JSON.parse(handoff);
+      sessionStorage.setItem(CKEY,exchange.html);
+      sessionStorage.setItem(HKEY,JSON.stringify(exchange.history));
+      sessionStorage.setItem(TKEY,exchange.context);
+      sessionStorage.setItem(DKEY,exchange.draft);
+      sessionStorage.removeItem('mu_chat_handoff:'+NS);
+    }
     var savedConv=sessionStorage.getItem(CKEY);
     // A login turns the public entry into Home. Adopt that tab's conversation
     // once, then remove the public copy so a later signed-out landing does not
@@ -872,6 +884,8 @@ function showSuggestions(){
 }
 
 function save(){
+  var transfer=document.getElementById('mu-chat-continue');
+  if(transfer)transfer.disabled=!history.length || !!conv.querySelector('.mu-think,.mu-cursor');
   if(SESSION||!PERSIST)return; // server owns reopened sessions; ephemeral surfaces don't save
   try{
     sessionStorage.setItem(CKEY,conv.innerHTML);
@@ -1180,6 +1194,16 @@ window.addEventListener('popstate',function(e){
   else window.muChatNew();
 });
 
+// Move a completed exchange as one bundle; never put its words in a URL.
+var transfer=document.getElementById('mu-chat-continue');
+if(transfer && CONTINUE_NS)transfer.addEventListener('click',function(){
+  if(transfer.disabled)return;
+  try{
+    sessionStorage.setItem('mu_chat_handoff:'+CONTINUE_NS,JSON.stringify({html:conv.innerHTML,history:history,context:contextId||'',draft:input.value||''}));
+    window.location.assign('/assistant');
+  }catch(e){document.getElementById('mu-chat-transfer-error').textContent='Could not move this conversation. Please try again.';}
+});
+
 // Start a fresh session (clears the log + thread id).
 window.muChatNew=function(){
   viewEpoch++;switchSequence++;if(detachActive){detachActive();detachActive=null;}
@@ -1188,7 +1212,7 @@ window.muChatNew=function(){
   window.dispatchEvent(new CustomEvent('mu-chat-new'));
   try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);sessionStorage.removeItem(TKEY);sessionStorage.removeItem(DKEY);}catch(e){}
   showBrief();
-  showSuggestions();input.focus();
+  showSuggestions();input.focus({preventScroll:true});
 };
 // Exposed so server-rendered prefill (?q= / ?prompt=) can auto-submit.
 

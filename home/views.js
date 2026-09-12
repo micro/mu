@@ -1,30 +1,15 @@
 (() => {
   const home = document.getElementById('home-cards');
   if (!home) return;
-  const personal=home.querySelector('#home-personal');
-  const conversationToggle=home.querySelector('#home-conversation-toggle');
-  let hasConversation=false, expanded=false;
+  const actions=home.querySelector('#home-conversation-actions');
   function conversation(active){
-    expanded=active;
-    if(personal) {
-      personal.classList.toggle('is-conversing',active);
-      personal.classList.toggle('conversation-collapsed',!active);
-    }
-    if(conversationToggle){
-      conversationToggle.hidden=!hasConversation && !active;
-      conversationToggle.setAttribute('aria-label',active?'Collapse conversation':'Expand conversation');
-      conversationToggle.setAttribute('aria-expanded',String(active));
-    }
+    if(actions)actions.hidden=!active;
   }
-  window.addEventListener('mu-chat-active',event=>{
-    if(event.detail===true)hasConversation=true;
-    else hasConversation=false;
-    conversation(event.detail===true);
-  });
-  if(conversationToggle)conversationToggle.addEventListener('click',()=>conversation(!expanded));
+  window.addEventListener('mu-chat-active',event=>conversation(event.detail===true));
+  const close=home.querySelector('#home-conversation-close');
+  if(close)close.addEventListener('click',()=>window.muChatNew());
   const initial=home.querySelector('#mu-chat-conv');
-  hasConversation=!!initial && !!initial.textContent.trim();
-  conversation(hasConversation);
+  conversation(!!initial && !!initial.textContent.trim());
 
   const upcoming = home.querySelector('[data-home-upcoming]');
   if (upcoming) {
@@ -47,7 +32,6 @@
   let selected = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
   function select(tab) {
     if (tab === selected) {
-      if(tab.id==='home-view-personal' && expanded)conversation(false);
       return;
     }
     positions.set(selected.id, window.scrollY);
