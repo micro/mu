@@ -26,8 +26,8 @@ func browserWriteAllowed(r *http.Request) bool {
 	if auth.StrictCSRF(r) {
 		return true
 	}
-	if origin := r.Header.Get("Origin"); origin != "" {
-		u, err := url.Parse(origin)
+	if submitted := r.Header.Get("Origin"); submitted != "" {
+		u, err := url.Parse(submitted)
 		if err != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
 			return false
 		}
