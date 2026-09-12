@@ -9,6 +9,8 @@
         upcoming.innerHTML = data.upcoming;
         const brief = home.querySelector("#home-brief");
         if (brief) brief.innerHTML = data.brief;
+        const todo = home.querySelector("#home-todo");
+        if (todo) todo.innerHTML = data.todo;
         upcoming.querySelectorAll('[data-event-time]').forEach(node => {
           node.textContent = new Date(node.dateTime).toLocaleString(undefined, {weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
         });

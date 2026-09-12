@@ -31,6 +31,6 @@ func appsHTML(acc *auth.Account) string {
 	for _, s := range apps {
 		b.WriteString(`<a href="` + html.EscapeString(s.Page) + `"><span class="home-app-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" alt=""></span><span>` + html.EscapeString(s.NavLabel()) + `</span></a>`)
 	}
-	b.WriteString(`</div>`)
+	b.WriteString(`<a class="home-apps-all" href="/services" aria-label="All services"><span class="home-app-icon" aria-hidden="true">→</span><span>All services</span></a></div>`)
 	return `<nav class="home-apps page-stack" aria-label="Services">` + app.PreviewCard("home-services-card", "Services", "/services", b.String()) + `</nav>`
 }
