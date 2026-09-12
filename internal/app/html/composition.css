@@ -221,3 +221,7 @@ a.link-text {
 .home-workspace > .home-column { gap:var(--space-field,16px); }
 .assistant-page { max-width:800px; margin:0; }
 @media(max-width:900px) { #tabs { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+
+/* Keep the Assistant composer below the fixed app header while reading. */
+.assistant-page #mu-chat-form { top:58px; }
+@media(max-width:900px) { .assistant-page #mu-chat-form { top:52px; } }
