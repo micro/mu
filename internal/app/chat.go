@@ -497,10 +497,12 @@ func ChatComponent(cfg ChatConfig) string {
    fallback and these three did not, which is why the fault appeared the moment
    the box moved to a page the token does not reach. 30px is what mu.css sets. */
 #mu-chat-form button{flex-shrink:0;width:var(--control-h,30px);height:var(--control-h,30px);min-width:var(--control-h,30px);padding:0;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
-#mu-chat-form #mu-chat-location{background:transparent;color:var(--text-muted,#777);border-radius:50%;width:30px;min-width:30px}
+#mu-chat-form:has(#mu-chat-location){gap:var(--space-field,16px)}
+#mu-chat-form #mu-chat-location{background:transparent;color:var(--text-muted,#777);border-radius:50%;width:30px;min-width:30px;position:relative}
 #mu-chat-form #mu-chat-location[hidden]{display:none}
 #mu-chat-form #mu-chat-location:hover{background:var(--background-hover,#f3f3f3)}
-#mu-chat-form #mu-chat-location[aria-pressed="true"]{color:var(--text-primary,#222);background:var(--background-hover,#f3f3f3)}
+#mu-chat-form #mu-chat-location[aria-pressed="true"]{color:#166534;background:#dcfce7;box-shadow:inset 0 0 0 1px #86efac}
+#mu-chat-form #mu-chat-location[aria-pressed="true"]::after{content:"";position:absolute;right:2px;top:2px;width:6px;height:6px;border-radius:50%;background:#15803d}
 #mu-chat-suggest{margin-top:16px}
 #mu-chat-suggest:empty{display:none}
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
