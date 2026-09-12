@@ -30,7 +30,8 @@ cron job can all reach the same account.
 ## The three things the app is
 
 **Services** are the building blocks: 36 of them, one directory each, each with
-a page, an API surface and a set of tools derived from the same Spec. Some run a
+an API surface and a set of tools derived from the same Spec. A dedicated
+page is optional: services are capabilities, not a requirement for more screens. Some run a
 protocol here — mail, chat, files, shell. Others hold an account with an upstream
 provider so the caller does not have to: news, markets, video, weather, places,
 maps, web search. Both are legitimate and the test is the same — whether the
@@ -65,9 +66,10 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Keep the signed-in app intact.** It is not legacy, it is the proof the tools
-work: every capability had to render a page, which is why the services are
-coherent enough for tools to be derived from them.
+**Keep capabilities and data intact while simplifying the app.** Everyday
+navigation is Assistant, Home, Inbox and Tasks. Retire redundant discovery
+pages only with a working replacement; preserve protocols, API responses,
+authorisation, mutations and existing shared content links.
 
 ## What is true today, and what is not
 
@@ -510,6 +512,12 @@ cost; rate limits stop bots.
   repository never sees
 
 ## UI composition
+
+The UI is being reduced before adopting a maintained component library. Prefer
+plain conversation flow and unboxed sections; use cards only when a distinct
+embedded object needs a boundary. Share typography across landing, account and
+application shells. Do not add new page-specific styling or a second chat
+implementation during this migration.
 
 Use the shared components in `internal/app/form.go`, `internal/app/html/mu.css` and
 `internal/app/html/composition.css` (also loaded by the landing page).

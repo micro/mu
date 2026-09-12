@@ -60,7 +60,7 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	h.Set("Content-Security-Policy", strings.Join([]string{
 		"default-src 'self'",
 		"script-src 'self' 'unsafe-inline'",
-		// The page template pulls Nunito Sans from Google Fonts.
+		// Retained for existing embedded app themes that use Google Fonts.
 		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 		"font-src 'self' data: https://fonts.gstatic.com",
 		"img-src 'self' data: blob: https:",

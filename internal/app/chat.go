@@ -589,7 +589,7 @@ body:has(.mu-console[open]) { overflow:hidden; }
   overflow-y:auto;overscroll-behavior:contain;
   margin:0 0 12px;padding-right:4px
 }
-.mu-user{margin:0 0 12px;padding:10px 14px;background:#f5f5f5;border-radius:8px;font-size:14px;color:#333;scroll-margin-top:64px}
+.mu-user{margin:0 0 16px;padding:0;font-size:16px;font-weight:500;color:#111;scroll-margin-top:64px}
 .mu-agent{margin-bottom:24px;scroll-margin-top:64px}
 /* Who answered. The same shape as the rail's section headings, because it is
    the same kind of thing — a label over a block, not a line of the block. */
@@ -622,7 +622,7 @@ body:has(.mu-console[open]) { overflow:hidden; }
 #mu-chat-conv pre{overflow-x:auto;max-width:100%}
 #mu-chat-conv table{display:block;overflow-x:auto;max-width:100%}
 #mu-chat-conv img{max-width:100%;height:auto}
-#mu-chat .card{max-width:100%;border:1px solid #e0e0e0;border-radius:8px;padding:16px 18px;margin-bottom:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+#mu-chat .card{max-width:100%;border:0;border-radius:0;padding:0;margin-bottom:16px;background:transparent;box-shadow:none}
 #mu-chat .card h4{margin:0 0 8px;font-size:1em;font-weight:600}
 #mu-chat .card a,#mu-chat .link,#mu-chat a.link{color:#111}
 /* Self-contained typography so rendered answers look right anywhere. */

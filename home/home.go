@@ -431,12 +431,7 @@ function fetchW(la,lo){
 
 	// Date + invite/settings above the input
 	b.WriteString(`<div class="page-section compact-stack page-stack">` + dateHTML)
-	feed := r.URL.Query().Get("view") == "feed" || r.URL.Query().Get("mode") == "display"
-	if r.URL.Query().Get("q") != "" || r.URL.Query().Get("prompt") != "" {
-		feed = false
-	}
-	b.WriteString(homeViews(feed) + `</div>`)
-	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
+	b.WriteString(`</div><section id="home-personal">`)
 
 	// Each column flows independently as a conversation grows.
 	b.WriteString(`<div class="home-workspace"><div class="home-column page-stack">`)
@@ -464,65 +459,11 @@ function fetchW(la,lo){
 		b.WriteString(`<div class="home-column page-stack">`)
 		b.WriteString(`<div id="home-todo" class="page-stack">` + todoHTML(viewerID) + `</div>`)
 		b.WriteString(`<div id="home-upcoming" class="page-stack">` + fmt.Sprintf(`<div data-home-upcoming data-fresh="%t" aria-live="polite" class="page-stack">`, events.OverviewFresh(viewerID)) + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
-		if who := agent.Preview(viewerID); who != "" {
-			b.WriteString(`<div id="home-agents" class="page-stack">` + who + `</div>`)
-		}
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
 
-	b.WriteString(`</section><section id="home-feed" role="tabpanel" aria-labelledby="home-view-feed"` + panelHidden(!feed) + `><div class="home-main full">`)
-	cards := CardsHTML(r, viewerAcc)
-	if cards == "" {
-		cards = `<p class="text-muted">No feed items yet.</p>`
-	}
-	b.WriteString(cards)
-	b.WriteString(`</div></section></div><script>` + viewsJS + `</script>`)
-
-	// Auto-refresh: poll every 2 minutes, update card content in-place
-	displayMode := r.URL.Query().Get("mode") == "display"
-	refreshInterval := 120000 // 2 minutes
-	if displayMode {
-		refreshInterval = 60000 // 1 minute in display mode
-	}
-	wakeLockJS := ""
-	if displayMode {
-		wakeLockJS = `
-  // Screen Wake Lock — keep display on in kiosk mode
-  if('wakeLock' in navigator){
-    var wl=null;
-    function reqWake(){navigator.wakeLock.request('screen').then(function(l){wl=l;l.addEventListener('release',function(){setTimeout(reqWake,1000)})}).catch(function(){})}
-    reqWake();document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reqWake()});
-  }`
-	}
-	b.WriteString(fmt.Sprintf(`<script>
-(function(){
-  var interval = %d;
-  var updating = false;
-  var feed = document.getElementById('home-feed');
-  function refreshFeed(){
-    if(!feed || !feed.isConnected || feed.hidden || document.hidden || updating) return;
-    updating = true;
-    fetch('/', {headers:{Accept:'application/json'}})
-    .then(function(r){return r.json()})
-    .then(function(cards){
-      if(!feed.isConnected) return;
-      cards.forEach(function(c){
-        var el = document.getElementById(c.id);
-        if(el){
-          var content = el.querySelector('.card-body');
-          if(content) content.innerHTML = c.html;
-          // Refresh the section title independently of the body and its timestamp.
-          var head = el.querySelector('h4');
-          if(head) head.innerHTML = c.title;
-        }
-      });
-    }).catch(function(){}).finally(function(){updating = false;});
-  }
-  feed.addEventListener('home-feed-shown', refreshFeed);
-  setInterval(refreshFeed, interval);%s
-})();
-</script>`, refreshInterval, wakeLockJS))
+	b.WriteString(`</section></div><script>` + viewsJS + `</script>`)
 
 	// Deep-link prefill: /?q=... or /home?prompt=... seeds the agent and submits
 	// it, so a shared link lands on the home screen with the answer already coming.
@@ -534,11 +475,7 @@ function fetchW(la,lo){
 		b.WriteString(`<script>(function(){var v=` + app.JSString(prefill) + `;var f=function(){if(window.muChatAsk){window.muChatAsk(v);history.replaceState(null,'','` + r.URL.Path + `');}else{setTimeout(f,60);}};f();})()</script>`)
 	}
 
-	// Display mode: hide nav, header, footer for kiosk/wall display
 	bodyClass := ` class="page-home"`
-	if displayMode {
-		bodyClass = ` class="page-home display-mode"`
-	}
 
 	// No ConnectBanner here. This page prepended one itself, from when it was
 	// the only page that carried the invitation — and the shell prepends it to

@@ -6,21 +6,22 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/service/mail"
-	"mu/service/news"
+	"mu/service/docs"
+	"mu/service/events"
+	"mu/service/files"
+	"mu/service/notes"
 	"mu/service/video"
-	"mu/service/web"
 )
 
 func TestAppsAlwaysOfferUsefulDefaults(t *testing.T) {
-	for _, spec := range []service.Spec{news.Spec, video.Spec, web.Spec, mail.Spec} {
+	for _, spec := range []service.Spec{events.Spec, notes.Spec, docs.Spec, files.Spec, video.Spec} {
 		if err := service.Register(spec); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, acc := range []*auth.Account{nil, {}, {Pinned: []string{}}, {Pinned: []string{"removed-service"}}} {
 		body := appsHTML(acc)
-		for _, name := range []string{"news", "video", "web", "mail"} {
+		for _, name := range []string{"events", "notes", "docs", "files"} {
 			if !strings.Contains(body, `href="/`+name+`"`) {
 				t.Errorf("missing default %s for %#v", name, acc)
 			}
@@ -30,7 +31,7 @@ func TestAppsAlwaysOfferUsefulDefaults(t *testing.T) {
 		}
 	}
 	body := appsHTML(&auth.Account{Pinned: []string{"video"}})
-	if strings.Index(body, `href="/video"`) < 0 || strings.Index(body, `href="/video"`) > strings.Index(body, `href="/news"`) {
+	if strings.Index(body, `href="/video"`) < 0 || strings.Index(body, `href="/video"`) > strings.Index(body, `href="/events"`) {
 		t.Error("explicit pins were not placed first")
 	}
 }

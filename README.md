@@ -28,6 +28,12 @@ It includes:
 
 Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and agent activity, bringing communication and agent work into one place.
 
+The everyday web navigation is **Assistant**, **Home**, **Inbox** and **Tasks**.
+Home shows personal context and quick questions; Assistant is the dedicated
+conversation. Agents and the service catalogue remain available as advanced
+tools. A service does not need a separate discovery page to remain available
+to agents, the API, MCP or the CLI.
+
 ## Agents
 
 Mu is the runtime. Micro is the first agent and the one people meet first.

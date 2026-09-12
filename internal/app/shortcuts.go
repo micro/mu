@@ -13,5 +13,5 @@ func ServiceShortcuts(acc *auth.Account) []service.Spec {
 			return pinned
 		}
 	}
-	return service.Pinned([]string{"news", "video", "web", "mail"})
+	return service.Pinned([]string{"events", "notes", "docs", "files"})
 }
