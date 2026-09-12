@@ -208,7 +208,24 @@ a.link-text {
 
 /* Home disclosure belongs below the answer; never above the composer. */
 #home-agent .mu-chat-footer:has([hidden]) { display:none; }
-#home-conversation-toggle { width:100%; text-align:center; padding:8px; }
+#home-conversation-toggle {
+ display:flex; align-items:center; justify-content:center; width:100%; min-height:32px;
+ padding:4px 16px; border:1px solid var(--card-border,#e8e8e8); border-radius:6px;
+ background:var(--background-hover,#f5f5f5); color:var(--text-secondary,#555); cursor:pointer;
+}
+#home-conversation-toggle:hover { background:#ececec; color:#222; }
+#home-conversation-toggle:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
+#home-conversation-toggle svg { transition:transform 180ms ease; }
+#home-conversation-toggle[aria-expanded="true"] svg { transform:rotate(180deg); }
+@media(prefers-reduced-motion:reduce) { #home-conversation-toggle svg { transition:none; } }
+/* One gap owner for the composer, answers and disclosure; empty slots take no space. */
+#home-agent #mu-chat, .assistant-page #mu-chat { display:flex; flex-direction:column; gap:var(--space-control,8px); }
+#home-agent #mu-chat > *, .assistant-page #mu-chat > * { margin-block:0; }
+#home-agent #mu-chat-opts:empty, #home-agent #mu-chat-conv:empty,
+.assistant-page #mu-chat-opts:empty, .assistant-page #mu-chat-conv:empty { display:none; }
+#home-agent #mu-chat-conv > :last-child, .assistant-page #mu-chat-conv > :last-child { margin-bottom:0; }
+.home-workspace { row-gap:var(--space-field,16px); }
+.home-workspace > .home-column { gap:var(--space-field,16px); }
 #assistant-panel { padding:0; border:1px solid var(--border-color,#ddd); border-radius:12px; width:min(900px,calc(100vw - 32px)); height:calc(100dvh - 48px); max-height:none; background:white; }
 #assistant-panel[open] { display:flex; flex-direction:column; animation:home-answer-in 180ms ease-out; }
 #assistant-panel::backdrop { background:rgba(0,0,0,.15); }

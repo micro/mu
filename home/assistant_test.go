@@ -54,6 +54,6 @@ func TestHomeDisclosureFollowsAnswer(t *testing.T) {
 		t.Fatal("Home input, answers, disclosure must appear in that order")
 	}
 	if !strings.Contains(body, "var stationary=true;") {
-		t.Error("Home must not scroll away from its input on submit")
+		t.Error("Home must preserve its surrounding content")
 	}
 }
