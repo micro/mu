@@ -155,7 +155,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .section-link { display:block; margin:0; font-size:13px; font-weight:400; color:var(--text-primary,#111); text-decoration:none; }
 .section-link:hover { text-decoration:underline; }
 
-@media(max-width:640px){#home-cards .view-switch{justify-content:center;}}
+@media(max-width:640px){#home-cards .view-switch{justify-content:flex-start;}}
 
 /* Inline actions remain recognizable without hover, including on touch screens. */
 a.link-text {
