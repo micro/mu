@@ -146,18 +146,20 @@ func LedgerSection(userID string) string {
 	// same reason.
 	if len(transactions) > 0 {
 		var rows strings.Builder
-		rows.WriteString(`<table class="data-table">`)
-		rows.WriteString(`<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>`)
+		rows.WriteString(`<ul class="ledger-list" aria-label="Credit history">`)
 		for _, tx := range transactions {
-			rows.WriteString(fmt.Sprintf(`<tr>
-				<td>%s</td>
-				<td>%s</td>
-				<td>%s</td>
-				<td>%d</td>
-			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), htmlEsc(transactionLabel(tx)),
-				transactionAmount(tx), tx.Balance))
+			amount := transactionAmount(tx)
+			if tx.Amount != 0 {
+				amount += " credits"
+			}
+			rows.WriteString(fmt.Sprintf(`<li class="ledger-entry">
+				<div class="ledger-description">%s<time class="ledger-detail" datetime="%s">%s</time></div>
+				<div class="ledger-values">%s<span class="ledger-detail">Balance %d</span></div>
+			</li>`, htmlEsc(transactionLabel(tx)), tx.CreatedAt.Format(time.RFC3339), tx.CreatedAt.Format("2 Jan 15:04"),
+				amount, tx.Balance))
 		}
-		rows.WriteString(`</table>`)
+		rows.WriteString(`</ul>`)
+
 		sb.WriteString(app.SectionID("ledger", "History", rows.String()))
 	}
 
