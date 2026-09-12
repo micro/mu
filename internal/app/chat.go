@@ -1052,13 +1052,25 @@ function ask(q){
   }
   var streamController=new AbortController();
   detachActive=function(){terminal=true;clearTimeout(completionTimer);stopWork();streamController.abort();};
-  fetch('/agent',{signal:streamController.signal,method:'POST',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},body:body,credentials:'same-origin'})
+  var requestHeaders={'Content-Type':'application/json','Accept':'text/event-stream'};
+  var csrfCookie=(document.cookie||'').match(/(?:^|; )csrf_token=([^;]+)/);
+  if(csrfCookie){try{requestHeaders['X-CSRF-Token']=decodeURIComponent(csrfCookie[1]);}catch(e){}}
+  fetch('/agent',{signal:streamController.signal,method:'POST',headers:requestHeaders,body:body,credentials:'same-origin'})
   .then(function(resp){
     if(epoch!==viewEpoch)throw 'handled';
     if(resp.status===402||resp.status===429){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();var message=resp.status===402?'You need more credits to continue.':'Please wait a moment before trying again.';
         a.innerHTML='<div class="mu-err" role="status">'+esc(message)+(resp.status===402?' <a href="/wallet">View credits →</a>':'')+'</div>';input.value=q;saveDraft();save();throw 'handled';
+      });
+    }
+    if(resp.status===403){
+      return resp.text().then(function(raw){
+        stopWork();input.value=q;saveDraft();
+        var message='This request was refused. Refresh the page to update your sign-in state, then try again.';
+        try{var refusal=JSON.parse(raw);if(typeof refusal.error==='string'&&refusal.error)message=refusal.error;}catch(e){}
+        if(/csrf/i.test(message))message='Your sign-in security token has changed. Refresh the page, then try again.';
+        a.innerHTML='<div class="mu-err" role="status">'+esc(message)+'</div>';save();throw 'handled';
       });
     }
     if(resp.status===401){
