@@ -270,7 +270,7 @@ a.link-text {
 #home-personal[hidden], #home-feed[hidden] { display:none !important; }
 
 /* A shared directory layout keeps short entries from spanning the whole page. */
-.collection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); gap:16px; align-items:start; max-width:960px; }
+.collection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); gap:16px; align-items:stretch; max-width:960px; }
 .home-workspace { column-gap:48px; row-gap:24px; }
 .home-column.page-stack { gap:24px; }
 #home { column-gap:48px; }
