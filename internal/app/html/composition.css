@@ -205,7 +205,7 @@ a.link-text {
 
 /* Home actions finish an exchange or move it to Assistant. */
 #home-agent .mu-chat-footer:has([hidden]) { display:none; }
-.conversation-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:8px; border:1px solid var(--card-border,#e8e8e8); border-radius:6px; background:white; }
+.conversation-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .conversation-actions[hidden] { display:none; }
 .conversation-actions button { background:white; color:var(--text-secondary,#555); border:0; }
 .conversation-actions button:hover { background:#f5f5f5; }
