@@ -205,9 +205,9 @@ a.link-text {
 
 /* Home actions finish an exchange or move it to Assistant. */
 #home-agent .mu-chat-footer:has([hidden]) { display:none; }
-.conversation-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.conversation-actions { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; }
 .conversation-actions[hidden] { display:none; }
-.conversation-actions a { padding:0; font-size:13px; line-height:1.5; color:var(--text-secondary,#555); text-decoration:underline; text-underline-offset:3px; }
+.conversation-actions a { padding:0; font-weight:400; font-size:13px; line-height:1.5; color:var(--text-secondary,#555); text-decoration:underline; text-underline-offset:3px; }
 .conversation-actions a[aria-disabled="true"] { opacity:.5; cursor:default; }
 #mu-chat-transfer-error:empty { display:none; }
 /* One gap owner for the composer, answers and disclosure; empty slots take no space. */
@@ -246,3 +246,8 @@ a.link-text {
 .section-card .card-meta { display:flex; justify-content:flex-end; margin:0 0 8px; }
 .section-card .card-meta .card-when { margin:0; font-size:12px; }
 .section-card .card-body > :last-child { margin-bottom:0; padding-bottom:0; }
+
+/* Match the byline-to-answer gap below the final answer as well. */
+#home-agent #mu-chat .mu-by { margin-bottom:8px; }
+#home-agent #mu-chat .mu-agent:last-child .card:last-child { margin-bottom:0; }
+#mu-chat-transfer-error { flex-basis:100%; }
