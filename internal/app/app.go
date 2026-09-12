@@ -1538,6 +1538,11 @@ func Serve() http.Handler {
 		switch {
 		case r.URL.Path == "/mu.js" || strings.HasSuffix(r.URL.Path, "/mu.js"):
 			w.Header().Set("Cache-Control", "no-cache")
+			// Page scripts carry this build's version and can be reused without
+			// a blocking revalidation. Worker update requests stay uncached.
+			if r.URL.RawQuery == Version && r.Header.Get("Service-Worker") != "script" && r.Header.Get("Sec-Fetch-Dest") != "serviceworker" {
+				w.Header().Set("Cache-Control", "public, max-age=86400")
+			}
 		case strings.HasSuffix(r.URL.Path, ".css"),
 			strings.HasSuffix(r.URL.Path, ".js"),
 			strings.HasSuffix(r.URL.Path, ".png"),

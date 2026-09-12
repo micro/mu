@@ -85,3 +85,15 @@ func Overview(owner string, limit int) []External {
 	overviewCache.Unlock()
 	return withoutLocalCopies(Upcoming(owner), entries)
 }
+
+// OverviewFresh reports whether Home can use its snapshot without a provider refresh.
+func OverviewFresh(owner string) bool {
+	if owner == "" || (ExternalConnected != nil && !HasExternal(owner)) {
+		return true
+	}
+	key := overviewKey(owner, PreviewLimit)
+	overviewCache.Lock()
+	defer overviewCache.Unlock()
+	snapshot, ok := overviewCache.values[key]
+	return ok && time.Now().Before(snapshot.expires)
+}

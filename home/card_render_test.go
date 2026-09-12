@@ -28,10 +28,10 @@ func TestACardKeepsItsWayThroughOnRefresh(t *testing.T) {
 	}
 	section := app.SectionCard(c.ID, cardHead(c), c.Link, body)
 	if !strings.Contains(section, `class="section-more" href="/news">More →</a>`) || strings.Contains(body, "More →") {
-		t.Error("More must stay above the independently refreshed body")
+		t.Error("More must remain outside the independently refreshed body")
 	}
-	if strings.Index(section, "More →") > strings.Index(section, `class="card-body"`) {
-		t.Error("navigation belongs above the card")
+	if strings.Index(section, "More →") < strings.Index(section, `class="card-body"`) {
+		t.Error("navigation belongs below the content")
 	}
 
 }
@@ -68,10 +68,10 @@ func TestACardTitleLinksToItsService(t *testing.T) {
 // sent in the JSON and never used by the script, so a card refreshed its
 // headlines and went on claiming they were an hour old.
 func TestACardSaysHowOldItIs(t *testing.T) {
-	head := cardHead(Card{
+	head := cardBody(Card{
 		ID: "news", Title: "News", Link: "/news",
-		At: time.Now().Add(-2 * time.Hour),
-	})
+		At: time.Now().Add(-2 * time.Hour), CachedHTML: "<p>News</p>",
+	}, service.Anyone())
 	if !strings.Contains(head, "card-when") {
 		t.Errorf("a card that happened at a time does not say when:\n%s", head)
 	}

@@ -12,7 +12,7 @@
   conversation(!!initial && !!initial.textContent.trim());
 
   const upcoming = home.querySelector('[data-home-upcoming]');
-  if (upcoming) {
+  if (upcoming && upcoming.dataset.fresh !== 'true') {
     fetch('/home?section=upcoming', {credentials: 'same-origin'})
       .then(response => { if (!response.ok) throw new Error('events'); return response.json(); })
       .then(data => {

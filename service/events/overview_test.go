@@ -18,8 +18,14 @@ func TestOverviewCachesByOwner(t *testing.T) {
 		return []External{{Title: owner, Start: time.Now().Add(time.Hour)}}
 	}
 	a, b := "overview-test-a", "overview-test-b"
+	if OverviewFresh(a) {
+		t.Fatal("missing snapshot marked fresh")
+	}
 	Overview(a, PreviewLimit)
 	Overview(a, PreviewLimit)
+	if !OverviewFresh(a) || OverviewFresh(b) {
+		t.Fatal("freshness crossed accounts")
+	}
 	Overview(b, PreviewLimit)
 	if calls != 2 {
 		t.Fatalf("provider calls: %d", calls)
