@@ -537,17 +537,23 @@ func ChatComponent(cfg ChatConfig) string {
 }
 #mu-chat.mu-chat-overlay #mu-chat-conv { margin-top:var(--space-control,8px); }
 #mu-chat.mu-chat-overlay:not(.mu-console-open) #mu-chat-conv { display:none; }
-.mu-console { box-sizing:border-box; width:min(880px,calc(100% - 32px)); height:min(800px,calc(100dvh - 48px)); max-height:none; max-width:none; padding:16px; border:1px solid var(--card-border,#ddd); border-radius:12px; background:var(--background-color,#fff); color:var(--text-primary,#222); }
+.mu-console { box-sizing:border-box; width:min(880px,calc(100% - 32px)); height:min(800px,calc(100dvh - 48px)); max-height:none; max-width:none; padding:16px; border:1px solid var(--card-border,#ddd); border-radius:6px; background:var(--background-color,#fff); color:var(--text-primary,#222); }
 html:has(.mu-chat-overlay) { scrollbar-gutter:stable; }
 body:has(.mu-console[open]) { overflow:hidden; }
 .mu-console::backdrop { background:rgba(0,0,0,.28); }
 .mu-console[open] { display:flex; flex-direction:column; }
 .mu-console-head { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:var(--space-control,8px); margin-bottom:var(--space-field,16px); font-size:14px; }
+.mu-console-head[hidden] { display:none; }
 .mu-console-head strong { grid-column:2; text-align:center; }
 .mu-console-close { grid-column:3; justify-self:end; font:inherit; font-weight:400; }
 .mu-console #mu-chat { display:flex; flex-direction:column; min-height:0; flex:1; max-width:none; }
-.mu-console #mu-chat-form { flex-shrink:0; position:static; }
-.mu-console #mu-chat #mu-chat-conv { flex:1; min-height:0; max-height:none; overflow:auto; overflow-anchor:none; }
+.mu-console #mu-chat-form { flex-shrink:0; position:static; order:3; }
+.mu-console #mu-chat-opts { order:4; flex:none; }
+.mu-console #mu-chat-suggest { order:2; flex:none; }
+.mu-console .mu-chat-footer { flex:none; margin:0 0 16px; }
+.mu-console .conversation-actions { margin:0; padding:0; display:flex; justify-content:space-between; gap:16px; }
+.mu-chat-overlay:not(.mu-console-open) .mu-chat-footer { display:none; }
+.mu-console #mu-chat #mu-chat-conv { flex:1; min-height:0; max-height:none; overflow:auto; overflow-anchor:none; order:1; margin:0 0 16px; }
 @media(max-width:600px){.mu-console{width:100%;height:100dvh;margin:0;border:0;border-radius:0;padding:12px;}}
 /* A conversation, not a box.
 
@@ -684,6 +690,8 @@ function nearBottom(){
   return (conv.scrollTop+conv.clientHeight)>=(conv.scrollHeight-nearEnough);
 }
 var nearEnough=120;
+var followOverlay=true;
+if(overlay&&conv)conv.addEventListener("scroll",function(){followOverlay=nearBottom();});
 if(overlay && input && form){
  var shell=document.getElementById('mu-chat');
  var slot=document.createElement('div');
@@ -692,18 +700,22 @@ if(overlay && input && form){
  dialog.setAttribute('aria-label','Micro');
  dialog.innerHTML='<div class="mu-console-head"><strong>Micro</strong><button type="button" class="mu-console-close link-button">Close</button></div>';
  slot.appendChild(dialog);
+ var footer=shell.querySelector('.mu-chat-footer');
+ if(footer)dialog.querySelector('.mu-console-head').hidden=true;
  var closing=false;
  function openConsole(){
   if(closing || dialog.open || !shell.isConnected)return;
   slot.style.minHeight=shell.getBoundingClientRect().height+'px';
+  if(footer)dialog.appendChild(footer);
   dialog.appendChild(shell);shell.classList.add('mu-console-open');
-  dialog.showModal();fitConv();input.focus({preventScroll:true});
+  dialog.showModal();fitConv();input.focus({preventScroll:true});toBottom(true);
  }
  function closeConsole(){if(dialog.open)dialog.close();}
+ window.muChatClose=closeConsole;
  dialog.querySelector('button').addEventListener('click',closeConsole);
  dialog.addEventListener('click',function(e){if(e.target===dialog){var r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeConsole();}});
  dialog.addEventListener('close',function(){
-  closing=true;shell.classList.remove('mu-console-open');slot.insertBefore(shell,dialog);
+  closing=true;shell.classList.remove('mu-console-open');if(footer)shell.appendChild(footer);slot.insertBefore(shell,dialog);
   slot.style.minHeight='';
   if(window.matchMedia('(pointer:coarse)').matches){input.blur();}else{input.focus({preventScroll:true});}setTimeout(function(){closing=false;},0);
  });
@@ -713,6 +725,7 @@ if(overlay && input && form){
 }
 
 function revealQuestion(node){
+  if(overlay){toBottom(false);return;}
   if(transcript){toBottom(false);return;}
   requestAnimationFrame(function(){
     if(!node||!node.isConnected)return;
@@ -723,8 +736,9 @@ function revealQuestion(node){
   });
 }
 function toBottom(force,smooth){
-  if(overlay||(!transcript&&!contained)) return;
-  if(!force && !nearBottom()) return;
+  if(!overlay&&!transcript&&!contained) return;
+  if(overlay){if(force)followOverlay=true;if(!followOverlay)return;}
+  else if(!force && !nearBottom()) return;
   requestAnimationFrame(function(){
     conv.scrollTo({top:conv.scrollHeight,behavior:smooth?'smooth':'auto'});
   });
@@ -988,7 +1002,7 @@ function ask(q){
   //
   // In a box the exchange is anchored under the input instead, which is what
   // Home wants: you typed at the top and the answer appears under it.
-  if(transcript){ toBottom(true,true); } else {
+  if(transcript||overlay){ toBottom(true,true); } else {
     revealQuestion(u);
     // Re-align after the mobile keyboard has finished shrinking the viewport.
     if(touchInput)setTimeout(function(){if(epoch===viewEpoch)revealQuestion(u);},350);

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestCloseEndsHomeExchange(t *testing.T) {
+func TestClosePreservesHomeExchange(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skip("Node required")
@@ -27,13 +27,13 @@ const events={},actionBar={},transcript={textContent:'Existing answer'};
 const button={addEventListener(k,fn){this[k]=fn}};
 const home={querySelector(s){return s==='#home-conversation-actions'?actionBar:s==='#home-conversation-close'?button:transcript}};
 let resets=0;
-const window={addEventListener(k,fn){events[k]=fn},muChatNew(){resets++;transcript.textContent='';events['mu-chat-active']({detail:false})}};
+const window={addEventListener(k,fn){events[k]=fn},muChatClose(){resets++}};
 ` + src[start:end] + `
 assert.equal(actionBar.hidden,false);
 button.click({preventDefault(){},stopPropagation(){}});
 assert.equal(resets,1);
-assert.equal(transcript.textContent,'');
-assert.equal(actionBar.hidden,true);
+assert.equal(transcript.textContent,'Existing answer');
+assert.equal(actionBar.hidden,false);
 events['mu-chat-active']({detail:true});
 assert.equal(actionBar.hidden,false);
 `
