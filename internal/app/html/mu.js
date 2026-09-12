@@ -120,7 +120,7 @@ self.addEventListener('push', function (e) {
   try { n = e.data ? e.data.json() : {}; } catch (err) { why = 'the payload could not be read'; }
   if (!why && !n.title) why = 'the payload had no title';
 
-  var title = n.title || 'Notification unreadable';
+  var title = 'Micro \u2014 ' + (n.title || 'Notification unreadable');
   var body = why ? ('This device woke up but could not read it: ' + why + '.') : (n.body || '');
   var tag = n.tag || 'mu';
 
