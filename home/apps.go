@@ -32,5 +32,5 @@ func appsHTML(acc *auth.Account) string {
 		b.WriteString(`<a href="` + html.EscapeString(s.Page) + `"><span class="home-app-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" alt=""></span><span>` + html.EscapeString(s.NavLabel()) + `</span></a>`)
 	}
 	b.WriteString(`<a class="home-apps-all" href="/services" aria-label="All services"><span class="home-app-icon" aria-hidden="true">→</span><span>See all</span></a></div>`)
-	return `<nav class="home-apps" aria-label="Services"><div class="section-card-head"><h4><a class="card-head-link" href="/services">Services</a></h4><a class="section-more" href="/services">More →</a></div>` + b.String() + `</nav>`
+	return `<nav class="home-apps" aria-label="Services"><div class="section-card-head"><h4><a class="card-head-link" href="/services">Services</a></h4></div>` + b.String() + `</nav>`
 }

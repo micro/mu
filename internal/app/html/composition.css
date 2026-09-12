@@ -227,7 +227,7 @@ a.link-text {
 @media(max-width:900px) { .assistant-page #mu-chat-form { top:52px; } }
 
 /* Quiet orientation, shared across desktop and mobile page shells. */
-#page-title { font-size:20px; font-weight:500; line-height:1.4; text-align:left; color:var(--text-secondary,#555); margin:0 0 16px; }
+#page-title { font-size:16px; font-weight:500; line-height:1.4; text-align:left; color:var(--text-secondary,#555); margin:0 0 8px; }
 /* Section labels and navigation sit above the bordered content. */
 .section-card { min-width:0; margin:0 0 16px; }
 .section-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:8px; }
@@ -242,3 +242,10 @@ a.link-text {
  #home { gap:16px; }
  #home > .home-left > .section-card, #home > .home-right > .section-card { order:var(--feed-order); margin:0; }
 }
+
+@media(max-width:900px) { #page-title { text-align:center; } }
+.section-card > .card > .section-more { display:block; margin-top:8px; font-size:13px; color:var(--text-secondary,#555); text-decoration:none; }
+.section-card > .card > .section-more:hover { text-decoration:underline; }
+.section-card .card-meta { display:flex; justify-content:flex-end; margin:0 0 8px; }
+.section-card .card-meta .card-when { margin:0; font-size:12px; }
+.section-card .card-body > :last-child { margin-bottom:0; padding-bottom:0; }

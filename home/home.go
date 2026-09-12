@@ -342,8 +342,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Refresh cards if cache expired (2 minute TTL)
-	RefreshCards()
+	// Feed refreshes through its JSON endpoint when selected; do not block Home on it.
 
 	_, viewerAcc := auth.TrySession(r)
 
@@ -464,7 +463,7 @@ function fetchW(la,lo){
 	if viewerID != "" {
 		b.WriteString(`<div class="home-column page-stack">`)
 		b.WriteString(`<div id="home-todo" class="page-stack">` + todoHTML(viewerID) + `</div>`)
-		b.WriteString(`<div id="home-upcoming" class="page-stack">` + `<div data-home-upcoming aria-live="polite" class="page-stack">` + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
+		b.WriteString(`<div id="home-upcoming" class="page-stack">` + fmt.Sprintf(`<div data-home-upcoming data-fresh="%t" aria-live="polite" class="page-stack">`, events.OverviewFresh(viewerID)) + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
 		if who := agent.Preview(viewerID); who != "" {
 			b.WriteString(`<div id="home-agents" class="page-stack">` + who + `</div>`)
 		}
@@ -513,8 +512,7 @@ function fetchW(la,lo){
         if(el){
           var content = el.querySelector('.card-body');
           if(content) content.innerHTML = c.html;
-          // The head too, or the age on a card stands still while its
-          // contents move. c.title was sent and never used.
+          // Refresh the section title independently of the body and its timestamp.
           var head = el.querySelector('h4');
           if(head) head.innerHTML = c.title;
         }
@@ -565,26 +563,15 @@ function fetchW(la,lo){
 // the escaper was weaker than it looked.
 func htmlEsc(s string) string { return html.EscapeString(s) }
 
-// cardTips is the one-line explanation behind the "?" on a card.
-//
-// Package-level because both the page and the refresh build a card's title now,
-// and the two disagreeing about what a card is called is the bug below.
-var cardTips = map[string]string{
-	"blog":    "Microblog posts with daily AI-generated digests",
-	"news":    "Headlines from RSS feeds, sorted by time",
-	"markets": "Live crypto, futures, and commodity prices",
-	"prayer":  "Islamic prayer times, and a daily verse, saying and name",
-	"social":  "Public discussion threads",
-	"video":   "Latest videos from curated channels",
-	"images":  "A picture a day, generated here",
-}
-
 // cardBody supplies the same contents to initial renders and refreshes.
-// Navigation stays in the section header, outside the refreshed body.
+// Footer navigation stays outside the refreshed body.
 func cardBody(c Card, who service.Viewer) string {
 	body := strings.TrimSpace(cardRender(c, who))
 	if body == "" {
 		return ""
+	}
+	if c.Streamed() {
+		body = `<div class="card-meta"><span class="card-when">` + htmlEsc(app.TimeAgo(c.At)) + `</span></div>` + body
 	}
 	return body
 }
@@ -617,15 +604,6 @@ func cardHead(c Card) string {
 	title := htmlEsc(c.Title)
 	if c.Link != "" {
 		title = `<a class="card-head-link" href="` + htmlEsc(c.Link) + `">` + title + `</a>`
-	}
-	if tip, ok := cardTips[c.ID]; ok {
-		title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
-	}
-	// When it is from, on the card, which is the whole point of the stream:
-	// a row of headlines with no age on it reads as "now" whether it is an
-	// hour old or a week.
-	if c.Streamed() {
-		title += ` <span class="card-when">` + htmlEsc(app.TimeAgo(c.At)) + `</span>`
 	}
 	return title
 }
