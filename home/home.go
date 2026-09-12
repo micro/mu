@@ -278,7 +278,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		external := events.Overview(sess.Account, events.PreviewLimit)
-		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...) + todoHTML(sess.Account)})
+		app.RespondJSON(w, map[string]string{"upcoming": events.Preview(sess.Account, external), "brief": briefHTML(sess.Account, external...), "todo": todoHTML(sess.Account)})
 		return
 	}
 	// An installed app opens on the app, not on a pitch.
