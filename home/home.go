@@ -449,7 +449,7 @@ function fetchW(la,lo){
 		Location:        viewerID != "",
 		Stationary:      true,
 		ContinueNS:      assistantNamespace(viewerID) + ":home",
-		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><a href="/home" id="home-conversation-close">Close</a><a href="/assistant?view=home" id="mu-chat-continue" aria-disabled="true">Continue in Assistant</a><span id="mu-chat-transfer-error" role="status"></span></div>`,
+		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><a href="/home" id="home-conversation-close">Close</a><a href="/assistant?view=home" id="mu-chat-continue" aria-disabled="true">Continue in Assistant →</a><span id="mu-chat-transfer-error" role="status"></span></div>`,
 	}))
 	b.WriteString(`</div>`)
 	b.WriteString(appsHTML(viewerAcc))
