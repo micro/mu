@@ -118,11 +118,11 @@ func TestAskingTakesTheBriefOffThePage(t *testing.T) {
 	}
 }
 
-// Home's separate brief stays available while the person talks to Micro.
-func TestHomesBriefStaysAvailable(t *testing.T) {
+// The overview is available as the resting view of the assistant.
+func TestAssistantHasARestingOverview(t *testing.T) {
 	body := homeFor(t, "homebriefvisible")
-	if !strings.Contains(body, `id="home-brief" class="page-stack"`) || strings.Contains(body, `id="home-brief" data-brief`) {
-		t.Error("Home brief still steps aside during a conversation")
+	if !strings.Contains(body, `id="home-overview"`) || !strings.Contains(body, `id="home-conversation-toggle"`) {
+		t.Error("missing overview or conversation switch")
 	}
 }
 

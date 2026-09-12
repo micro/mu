@@ -44,7 +44,7 @@ func TestHomeKeepsPersonalContext(t *testing.T) {
 	}
 	thread.Add(thread.Message{Thread: th.ID, Account: who, From: "sender@example.com", Text: "An inbox message"})
 	body := homeFor(t, who)
-	for _, want := range []string{"Welcome back, " + who, `id="home-agent"`, `id="home-brief"`, `<a class="card-head-link" href="/inbox">Inbox</a>`} {
+	for _, want := range []string{"Welcome back, " + who, `id="home-agent"`, `id="home-overview"`, `href="/inbox"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)
 		}
@@ -212,7 +212,7 @@ func TestPublicHomeDoesNotExposePersonalCards(t *testing.T) {
 			t.Errorf("public Home exposes %s", id)
 		}
 	}
-	if !strings.Contains(body, `id="home-brief"`) {
+	if !strings.Contains(body, `id="home-overview"`) {
 		t.Fatal("missing public content")
 	}
 }
