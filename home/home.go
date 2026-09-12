@@ -436,7 +436,7 @@ function fetchW(la,lo){
 	if r.URL.Query().Get("q") != "" || r.URL.Query().Get("prompt") != "" {
 		feed = false
 	}
-	b.WriteString(homeViews(feed) + `<button type="button" id="home-conversation-toggle" class="link-button text-sm" aria-controls="mu-chat-conv" hidden>Collapse conversation</button></div>`)
+	b.WriteString(homeViews(feed) + `</div>`)
 	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `>`)
 
 	// Each column flows independently as a conversation grows.
@@ -448,6 +448,8 @@ function fetchW(la,lo){
 		Placeholder:     "What do you need?",
 		AgentName:       agent.DefaultName(),
 		Location:        viewerID != "",
+		Stationary:      true,
+		FooterHTML:      `<button type="button" id="home-conversation-toggle" class="link-button text-sm" aria-controls="mu-chat-conv" hidden>Collapse conversation</button>`,
 	}))
 	b.WriteString(`</div>`)
 	b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)

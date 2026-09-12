@@ -12,7 +12,7 @@
     }
     if(conversationToggle){
       conversationToggle.hidden=!hasConversation && !active;
-      conversationToggle.textContent=active?'Collapse conversation':'Resume conversation';
+      conversationToggle.textContent=active?'⌃ Collapse conversation':'⌄ Resume conversation';
       conversationToggle.setAttribute('aria-expanded',String(active));
     }
   }
@@ -25,32 +25,6 @@
   const initial=home.querySelector('#mu-chat-conv');
   hasConversation=!!initial && !!initial.textContent.trim();
   conversation(hasConversation);
-
-  function openAssistant(){
-    const tab=document.getElementById('home-view-personal');
-    if(tab)tab.click();
-    conversation(true);
-  }
-  const composer=home.querySelector('#mu-chat-input');
-  if(composer)composer.addEventListener('focus',openAssistant);
-  const assistantLink=document.getElementById('nav-assistant');
-  if(assistantLink)assistantLink.addEventListener('click',event=>{
-    if(event.button!==0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)return;
-    event.preventDefault();event.stopPropagation();
-    openAssistant();
-    if(composer)composer.focus({preventScroll:true});
-  });
-  const homeLink=document.getElementById('nav-home');
-  if(homeLink)homeLink.addEventListener('click',event=>{
-    if(event.button!==0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)return;
-    event.preventDefault();event.stopPropagation();
-    const tab=document.getElementById('home-view-personal');
-    if(tab)tab.click();
-    conversation(false);
-  });
-  if(new URL(window.location.href).searchParams.get('assistant')==='1'){
-    conversation(true);
-  }
 
   const upcoming = home.querySelector('[data-home-upcoming]');
   if (upcoming) {

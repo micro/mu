@@ -85,6 +85,7 @@ func authRequired() map[string]bool {
 		// required to open it and none would be honoured. See xmpp_ws.go.
 		"/xmpp-websocket":             false,
 		"/.well-known/host-meta.json": false, // How a browser finds the above
+		"/assistant":                  false,
 		"/home":                       false, // Public viewing
 		"/blog":                       false, // Public viewing, auth for posting
 		"/markets":                    false, // Public viewing
@@ -380,6 +381,7 @@ func registerRoutes() {
 	// home screen is the public face — real cards plus the agent — so a visitor
 	// sees the product rather than a separate marketing page.
 	http.HandleFunc("/home", home.Handler)
+	http.HandleFunc("/assistant", home.AssistantHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.

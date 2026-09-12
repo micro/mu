@@ -46,6 +46,8 @@ func JSAttr(s string) string {
 
 // ChatConfig configures the shared chat component.
 type ChatConfig struct {
+	// Stationary keeps an embedded composer in place and surrounding content visible.
+	Stationary bool
 	// Location offers approximate device sharing on authenticated surfaces.
 	Location bool
 	// FooterHTML is trusted, pre-rendered content below the conversation and
@@ -638,6 +640,7 @@ body:has(.mu-console[open]) { overflow:hidden; }
 
 <script>
 (function(){
+var stationary=` + boolJS(cfg.Stationary) + `;
 var contextId=` + JSString(cfg.ContextID) + `;
 var attachment=` + JSString(cfg.Attachment) + `;
 var SESSION=` + boolJS(cfg.InitialConvHTML != "" || cfg.ServerOwned) + `;
@@ -667,7 +670,7 @@ var contained=!!document.querySelector('#mu-chat.mu-chat-contained');
 // marked data-brief takes part. Home keeps its brief in a separate column,
 // so it remains available during a conversation.
 function briefs(){return document.querySelectorAll('[data-brief]');}
-function hideBrief(){window.dispatchEvent(new CustomEvent("mu-chat-active",{detail:true}));var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=true;}}
+function hideBrief(){window.dispatchEvent(new CustomEvent("mu-chat-active",{detail:true}));if(stationary)return;var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=true;}}
 function showBrief(){window.dispatchEvent(new CustomEvent("mu-chat-active",{detail:false}));var n=briefs();for(var i=0;i<n.length;i++){n[i].hidden=false;}}
 // nearBottom is the difference between "following the answer" and "reading
 // something further up". Scrolling to the bottom in the second case is the
@@ -706,6 +709,7 @@ if(overlay && input && form){
 }
 
 function revealQuestion(node){
+  if(stationary)return;
   if(transcript){toBottom(false);return;}
   requestAnimationFrame(function(){
     if(!node||!node.isConnected)return;
@@ -915,7 +919,7 @@ function ask(q){
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
   input.value='';saveDraft();input.style.height='auto';
   var touchInput=window.matchMedia('(pointer: coarse)').matches;
-  if(touchInput){input.blur();}else{input.focus();}
+  if(touchInput){input.blur();}else{input.focus({preventScroll:stationary});}
 
   var terminal=false,flowID='',recoveryThread='',completionTimer=null;
   var workLabel='Working';
