@@ -1274,7 +1274,8 @@ func navMain(acc *auth.Account) string {
 			`"><span class="label">` + label + `</span></a>`
 	}
 
-	b := item("nav-home", "/home", "/home.png", "Home")
+	b := item("nav-assistant", "/home?assistant=1", "/agent.svg", "Assistant")
+	b += item("nav-home", "/home", "/home.png", "Home")
 	// Account and Profile are not here. They are the two that are about *you*
 	// rather than about the instance, so they sit under your name at the foot
 	// beside Log out — which is where somebody looks when the question is "who

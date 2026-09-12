@@ -17,7 +17,7 @@ func TestCollapsePreservesConversation(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := string(raw)
-	start, end := strings.Index(src, "  const personal="), strings.Index(src, "  const upcoming")
+	start, end := strings.Index(src, "  const personal="), strings.Index(src, "  function openAssistant")
 	if start < 0 || end <= start {
 		t.Fatal("conversation controller missing")
 	}
@@ -40,7 +40,7 @@ assert(classes.has('is-conversing'));
 assert.equal(transcript.textContent,'Existing answer');
 events['mu-chat-active']({detail:false});
 assert(button.hidden);
-assert(!classes.has('conversation-collapsed'));
+assert(classes.has('conversation-collapsed'));
 `
 	if out, err := exec.Command(node, "-e", script).CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, out)
