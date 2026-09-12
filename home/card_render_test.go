@@ -30,8 +30,8 @@ func TestACardKeepsItsWayThroughOnRefresh(t *testing.T) {
 	if !strings.Contains(section, `class="section-more" href="/news">More →</a>`) || strings.Contains(body, "More →") {
 		t.Error("More must remain outside the independently refreshed body")
 	}
-	if strings.Index(section, "More →") < strings.Index(section, `class="card-body"`) {
-		t.Error("navigation belongs below the content")
+	if strings.Index(section, "More →") > strings.Index(section, `class="card-body"`) {
+		t.Error("navigation belongs above the card")
 	}
 
 }

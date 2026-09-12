@@ -7,7 +7,7 @@
   }
   window.addEventListener('mu-chat-active',event=>conversation(event.detail===true));
   const close=home.querySelector('#home-conversation-close');
-  if(close)close.addEventListener('click',()=>window.muChatNew());
+  if(close)close.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();window.muChatNew();});
   const initial=home.querySelector('#mu-chat-conv');
   conversation(!!initial && !!initial.textContent.trim());
 

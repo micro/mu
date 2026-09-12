@@ -887,7 +887,7 @@ function showSuggestions(){
 
 function save(){
   var transfer=document.getElementById('mu-chat-continue');
-  if(transfer)transfer.disabled=!history.length || !!conv.querySelector('.mu-think,.mu-cursor');
+  if(transfer)transfer.setAttribute('aria-disabled',String(!history.length || !!conv.querySelector('.mu-think,.mu-cursor')));
   if(SESSION||!PERSIST)return; // server owns reopened sessions; ephemeral surfaces don't save
   try{
     sessionStorage.setItem(CKEY,conv.innerHTML);
@@ -1198,8 +1198,9 @@ window.addEventListener('popstate',function(e){
 
 // Move a completed exchange as one bundle; never put its words in a URL.
 var transfer=document.getElementById('mu-chat-continue');
-if(transfer && CONTINUE_NS)transfer.addEventListener('click',function(){
-  if(transfer.disabled)return;
+if(transfer && CONTINUE_NS)transfer.addEventListener('click',function(event){
+  event.preventDefault();event.stopPropagation();
+  if(transfer.getAttribute('aria-disabled')==='true')return;
   try{
     sessionStorage.setItem('mu_chat_handoff:'+CONTINUE_NS,JSON.stringify({html:conv.innerHTML,history:history,context:contextId||'',draft:input.value||''}));
     window.location.assign('/assistant?view=home');
