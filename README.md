@@ -28,7 +28,7 @@ It includes:
 
 Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and agent activity, bringing communication and agent work into one place.
 
-The everyday web navigation is **Assistant**, **Home**, **Inbox** and **Tasks**.
+The everyday web navigation is **Assistant**, **Home**, **Inbox** and **Todo**.
 Home shows personal context and quick questions; Assistant is the dedicated
 conversation. Agents and the service catalogue remain available as advanced
 tools. A service does not need a separate discovery page to remain available
