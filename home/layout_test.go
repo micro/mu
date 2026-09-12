@@ -53,7 +53,7 @@ func TestHomeAndFeedKeepTheirOwnContent(t *testing.T) {
 		t.Fatal("missing view panels")
 	}
 	personal, feed := body[personalAt:feedAt], body[feedAt:]
-	for _, want := range []string{`id="home-agent"`, `id="home-brief"`, `<a class="card-head-link" href="/inbox">Inbox</a>`} {
+	for _, want := range []string{`id="home-agent"`, `<a class="card-head-link" href="/inbox">Inbox</a>`} {
 		if !strings.Contains(personal, want) || strings.Contains(feed, want) {
 			t.Errorf("%s is not exclusive to Home", want)
 		}

@@ -118,11 +118,21 @@ func TestAskingTakesTheBriefOffThePage(t *testing.T) {
 	}
 }
 
-// Home's separate brief stays available while the person talks to Micro.
-func TestHomesBriefStaysAvailable(t *testing.T) {
+// Personal summaries belong to Home's actionable sections, not a mixed brief.
+func TestHomeDoesNotCarryAMixedBrief(t *testing.T) {
 	body := homeFor(t, "homebriefvisible")
-	if !strings.Contains(body, `id="home-brief" class="page-stack"`) || strings.Contains(body, `id="home-brief" data-brief`) {
-		t.Error("Home brief still steps aside during a conversation")
+	if strings.Contains(body, `id="home-brief"`) {
+		t.Error("the mixed personal and public brief remains on Home")
+	}
+	feedAt := strings.Index(body, `<section id="home-feed"`)
+	if feedAt < 0 {
+		t.Fatal("missing Feed")
+	}
+	if strings.Contains(body[:feedAt], `id="feed-brief"`) {
+		t.Error("public brief is outside Feed")
+	}
+	if happening() != "" && !strings.Contains(body[feedAt:], `id="feed-brief"`) {
+		t.Error("Feed is missing the public brief")
 	}
 }
 

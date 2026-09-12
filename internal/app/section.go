@@ -13,7 +13,7 @@ func PreviewCard(id, title, href, body string) string {
 	return SectionCard(id, heading, href, `<div class="preview-rows">`+body+`</div>`)
 }
 
-// SectionCard places a trusted heading and navigation outside the content card.
+// SectionCard groups a trusted heading, navigation and body inside one bordered section.
 // Heading and body are pre-rendered HTML; id and href are escaped here.
 func SectionCard(id, heading, href, body string) string {
 	more := ""
