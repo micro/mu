@@ -344,11 +344,11 @@ func entryRow(e entry) string {
 		b.WriteString(`<span class="agent-when">` + html.EscapeString(e.When) + `</span>`)
 	}
 	b.WriteString(`</div>`)
-	if e.Status != "" {
-		b.WriteString(`<div class="activity-status">` + html.EscapeString(e.Status) + `</div>`)
-	}
 	if e.For != "" {
 		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
+	}
+	if e.Status != "" {
+		b.WriteString(`<div class="activity-status">` + html.EscapeString(e.Status) + `</div>`)
 	}
 	if e.Seen != "" {
 		b.WriteString(`<div class="agent-seen">` + html.EscapeString(e.Seen) + `</div>`)
@@ -447,7 +447,15 @@ func agentRow(a *Agent, csrf, base string) string {
 // in, where "last used 2 hours ago" would be a fact about a stranger.
 func platformSeenRow(name, accountID string) string {
 	row := platformRow(name)
-	row = strings.Replace(row, `</div>`, `</div>`+activityHTML(accountID, name), 1)
+	// Status follows the description, with the heading as a fallback.
+	start := strings.Index(row, `class="agent-for">`)
+	if start < 0 {
+		start = 0
+	}
+	if end := strings.Index(row[start:], `</div>`); end >= 0 {
+		cut := start + end + len(`</div>`)
+		row = row[:cut] + activityHTML(accountID, name) + row[cut:]
+	}
 
 	// How long ago, beside the name.
 	if when := seenWhen(accountID, name); when != "" {
