@@ -277,7 +277,7 @@ func indexBody() string {
 			// furniture in front of somebody who has not asked anything yet.
 			Speak: false,
 		}) +
-		today("") + `
+		`<div class="ltoday" data-brief><p class="lrow lbrief">Ask a question, make a plan, or get something done.</p><p class="text-muted">Try “What’s happening in the news?”, “Help me plan a weekend in London”, or “What can I cook with chickpeas and spinach?”</p></div>` + `
 </div>
 
 <style>
