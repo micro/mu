@@ -179,3 +179,16 @@ a.link-text {
 .preview-rows > .agent-peek-row:first-child { padding-top: 0; }
 .preview-rows > .peek-row:last-child,
 .preview-rows > .agent-peek-row:last-child { padding-bottom: 0; }
+
+/* Flatten the columns on small screens so daily actions precede messages. */
+#home-todo:empty { display: none; }
+@media (max-width: 1099px) {
+  .home-workspace > .home-column { display: contents; }
+  .home-workspace #home-agent { order: 0; }
+  .home-workspace #home-brief { order: 1; }
+  .home-workspace #home-todo { order: 2; }
+  .home-workspace #home-upcoming { order: 3; }
+  .home-workspace #home-inbox { order: 4; }
+  .home-workspace #home-agents { order: 5; }
+  .home-workspace .home-apps { order: 6; }
+}

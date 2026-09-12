@@ -452,17 +452,18 @@ function fetchW(la,lo){
 	}))
 	b.WriteString(`</div>`)
 	if viewerID != "" {
-		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + todoHTML(viewerID) + `</div>`)
+		b.WriteString(`<div id="home-brief" class="page-stack">` + briefHTML(viewerID, events.CachedOverview(viewerID)...) + `</div>`)
 	}
-	b.WriteString(appsHTML(viewerAcc))
 	if viewerID != "" {
 		if peek := inbox.Preview(viewerID); peek != "" {
 			b.WriteString(`<div id="home-inbox" class="page-stack">` + peek + `</div>`)
 		}
 	}
+	b.WriteString(appsHTML(viewerAcc))
 	b.WriteString(`</div>`)
 	if viewerID != "" {
 		b.WriteString(`<div class="home-column page-stack">`)
+		b.WriteString(`<div id="home-todo" class="page-stack">` + todoHTML(viewerID) + `</div>`)
 		b.WriteString(`<div id="home-upcoming" class="page-stack">` + `<div data-home-upcoming aria-live="polite" class="page-stack">` + events.Preview(viewerID, events.CachedOverview(viewerID)) + `</div>` + `</div>`)
 		if who := agent.Preview(viewerID); who != "" {
 			b.WriteString(`<div id="home-agents" class="page-stack">` + who + `</div>`)
