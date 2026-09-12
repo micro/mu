@@ -6011,6 +6011,7 @@ button.pill:hover {
 .ib-row:hover { text-decoration: none }
 
 .ib-row {
+  font-weight: var(--font-weight-normal, 400);
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -6093,6 +6094,7 @@ button.pill:hover {
    left a ragged gap on every row with only one, and on a phone there was never
    room for any of it. Nothing competes when nothing shares a line. */
 .ib-row {
+  font-weight: var(--font-weight-normal, 400);
   display: flex;
   flex-direction: column;
   /* Stretch, and stated rather than left to the default. The rule above sets
@@ -6114,7 +6116,7 @@ button.pill:hover {
   align-items: start;
   gap: 8px;
   font-size: 12px;
-  font-weight: var(--font-weight-medium, 500);
+  font-weight: var(--font-weight-normal, 400);
   color: var(--text-secondary, #555);
   min-width: 0;
 }
@@ -6465,6 +6467,7 @@ button.pill:hover {
 }
 
 .peek-row {
+  font-weight: var(--font-weight-normal, 400);
   display: block;
   padding: 11px 0;
   text-decoration: none;
@@ -6474,7 +6477,8 @@ button.pill:hover {
 
 .peek-row:last-of-type { border-bottom: 0 }
 /* The row, not the title — see .ib-item. */
-.peek-row { padding-left: 10px; padding-right: 10px; margin: 0 -10px;
+.peek-row {
+  font-weight: var(--font-weight-normal, 400); padding-left: 10px; padding-right: 10px; margin: 0 -10px;
   border-radius: var(--border-radius, 6px) }
 .peek-row:hover { background: var(--hover-background, #fafafa); text-decoration: none }
 .peek-row.unseen .peek-title { font-weight: var(--font-weight-bold, 700) }
@@ -6483,7 +6487,7 @@ button.pill:hover {
 
 .peek-title {
   font-size: 14px;
-  font-weight: var(--font-weight-medium, 500);
+  font-weight: var(--font-weight-normal, 400);
   color: var(--text-primary, #1a1a1a);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6492,7 +6496,7 @@ button.pill:hover {
 
 .peek-when { font-size: 11px; color: var(--text-muted, #888); margin-left: auto; white-space: nowrap; flex: none }
 .peek-line { display: block; font-size: 13px; color: var(--text-muted, #888); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.peek-who { color: var(--text-secondary, #555); font-weight: var(--font-weight-medium, 500) }
+.peek-who { color: var(--text-secondary, #555); font-weight: var(--font-weight-normal, 400) }
 
 /* The channel, last on the line the eye reads last. It was a pill, which made
    it the loudest thing in the block and usually said "Mail" three times. */

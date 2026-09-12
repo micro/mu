@@ -331,7 +331,7 @@ const tasksPageCSS = `<style>
 .task-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
 .task-tab.active{color:var(--text-primary);font-weight:600}
 .task{display:flex;flex-direction:column;gap:var(--space-control)}
-.task-title{font-weight:var(--font-weight-medium)}
+.task-title{font-weight:var(--font-weight-normal,400)}
 .task-done .task-title{text-decoration:line-through;color:var(--text-muted)}
 .task-meta{font-size:12px;color:var(--text-muted);margin:0}
 .task-context{margin:0}.task-context summary{cursor:pointer;color:var(--text-muted)}
