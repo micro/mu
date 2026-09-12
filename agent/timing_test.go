@@ -27,3 +27,18 @@ func TestModelTimingRetainsProviderError(t *testing.T) {
 		t.Fatalf("lost provider diagnostic: %+v", got)
 	}
 }
+
+func TestModelLogUsesSelectedRoute(t *testing.T) {
+	router := runTimingFor("openrouter")
+	direct := runTimingFor("openai")
+	for _, kind := range []string{"model", "stream"} {
+		router(gmagent.RunEvent{Kind: kind, Provider: "openai", Model: "poolside/laguna", Status: "done"})
+		if got := app.APILog()[0]; got.Service != "openrouter" || got.Model != "poolside/laguna" {
+			t.Fatalf("wrong route: %+v", got)
+		}
+		direct(gmagent.RunEvent{Kind: kind, Provider: "openai", Status: "done"})
+		if got := app.APILog()[0]; got.Service != "openai" {
+			t.Fatalf("direct route relabeled: %+v", got)
+		}
+	}
+}
