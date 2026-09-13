@@ -270,6 +270,10 @@ func ForceRefresh() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.FormValue("attention_action") != "" {
+		attentionAction(w, r)
+		return
+	}
 	if r.URL.Query().Get("section") == "upcoming" {
 		sess, _ := auth.TrySession(r)
 		w.Header().Set("Cache-Control", "private, no-store")
@@ -439,7 +443,7 @@ function fetchW(la,lo){
 	b.WriteString(`<div id="home-cards">`)
 
 	// Date + invite/settings above the input
-	b.WriteString(`<div class="page-section compact-stack page-stack">` + dateHTML)
+	b.WriteString(`<div class="home-intro"><div class="home-command"><div class="page-section compact-stack page-stack">` + dateHTML)
 	feed := r.URL.Query().Get("view") == "feed" || r.URL.Query().Get("mode") == "display"
 	if r.URL.Query().Get("q") != "" || r.URL.Query().Get("prompt") != "" {
 		feed = false
@@ -457,6 +461,7 @@ function fetchW(la,lo){
 		FooterHTML:      `<div id="home-conversation-actions" class="conversation-actions" hidden><a href="/home" id="home-conversation-close">Close</a><a href="/assistant" id="mu-chat-continue" aria-disabled="true">Continue in Assistant →</a><span id="mu-chat-transfer-error" role="status"></span></div>`,
 	}))
 	b.WriteString(`</div>`)
+	b.WriteString(`</div>` + attentionHTML(r, viewerID) + `</div>`)
 	b.WriteString(homeViews(feed))
 	b.WriteString(`<section id="home-personal" role="tabpanel" aria-labelledby="home-view-personal"` + panelHidden(feed) + `><div class="home-workspace"><div class="home-column page-stack">`)
 	b.WriteString(appsHTML(viewerAcc))

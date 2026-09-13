@@ -335,15 +335,7 @@ type entry struct {
 // the feature rather than offering it.
 func entryRow(e entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="agent-row"><div class="grow min-w-0">`)
-	// The name, and how long ago it last spoke out to the right of it — the
-	// same pair, in the same places, as a row in the inbox.
-	b.WriteString(`<div class="agent-head">`)
-	b.WriteString(`<a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a>`)
-	if e.When != "" {
-		b.WriteString(`<span class="agent-when">` + html.EscapeString(e.When) + `</span>`)
-	}
-	b.WriteString(`</div>`)
+	b.WriteString(`<div class="agent-row"><div class="agent-card-content"><div class="agent-head"><a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a></div>`)
 	if e.For != "" {
 		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
 	}
@@ -351,33 +343,21 @@ func entryRow(e entry) string {
 		b.WriteString(`<div class="activity-status">` + html.EscapeString(e.Status) + `</div>`)
 	}
 	if e.Seen != "" {
-		b.WriteString(`<div class="agent-seen">` + html.EscapeString(e.Seen) + `</div>`)
+		b.WriteString(`<div class="agent-recent"><span class="agent-seen">Recent chat: ` + html.EscapeString(e.Seen) + `</span>`)
+		if e.When != "" {
+			b.WriteString(`<span class="agent-when">` + html.EscapeString(e.When) + `</span>`)
+		}
+		b.WriteString(`</div>`)
 	}
-	// No address on the row, and no Email link.
-	//
-	// Both were here on the argument that writing to the thing is what it is
-	// for. They made every row two lines longer and neither is what somebody
-	// does from a list: an address is something you copy once, from the page
-	// about that agent, and a mailto opens a client with an empty message in
-	// it. The list is for picking which agent; Connect is where its address is.
-	// Every action on the row is in one strip, Remove included.
-	//
-	// Remove used to be a second child of the row, beside the block holding
-	// everything else. On a wide screen that put it out to the right, which was
-	// fine; on a phone the row stacks, so it became a block under the card with
-	// a 36px mobile touch target around a 14px word — a hand's width of nothing
-	// between the last link and the button. It is a link like its neighbours and
-	// it now sits with them.
-	b.WriteString(`<div class="agent-links">`)
+	b.WriteString(`<div class="agent-links"><div class="agent-open-actions">`)
 	if e.Chat != "" {
-		b.WriteString(`<a href="` + e.Chat + `">Chat</a>`)
+		b.WriteString(`<a href="` + e.Chat + `" aria-label="Chat with ` + html.EscapeString(e.Name) + `" title="Chat"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4h16v12H9l-5 4z"/></svg></a>`)
 	}
-	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `">Connect</a>`)
+	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `" aria-label="Connect to ` + html.EscapeString(e.Name) + `" title="Connect"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m9 15 6-6M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 10a4 4 0 0 0 6 0l4-4a4 4 0 0 0-6-6l-1 1"/></svg></a></div><div class="agent-manage-actions">`)
 	if e.Admin {
 		b.WriteString(`<a href="/agent/new?id=` + html.EscapeString(e.ID) + `">Edit</a>`)
 	}
-	b.WriteString(e.Extra)
-	b.WriteString(`</div></div></div>`)
+	b.WriteString(e.Extra + `</div></div></div></div>`)
 	return b.String()
 }
 
@@ -442,46 +422,12 @@ func agentRow(a *Agent, csrf, base string) string {
 // platformRow is one of this instance's own agents.
 // platformSeenRow is platformRow with the account's own history against it.
 //
-// A second function rather than a parameter on platformRow, because /tools uses
-// that one to describe the instance's agents to somebody who may not be signed
-// in, where "last used 2 hours ago" would be a fact about a stranger.
+// Public callers omit the viewer so private activity is never included.
 func platformSeenRow(name, accountID string) string {
-	row := platformRow(name)
-	// Status follows the description, with the heading as a fallback.
-	start := strings.Index(row, `class="agent-for">`)
-	if start < 0 {
-		start = 0
-	}
-	if end := strings.Index(row[start:], `</div>`); end >= 0 {
-		cut := start + end + len(`</div>`)
-		row = row[:cut] + activityHTML(accountID, name) + row[cut:]
-	}
-
-	// How long ago, beside the name.
-	if when := seenWhen(accountID, name); when != "" {
-		if i := strings.Index(row, `</a>`); i >= 0 {
-			cut := i + len(`</a>`)
-			row = row[:cut] + `<span class="agent-when">` + html.EscapeString(when) + `</span>` + row[cut:]
-		}
-	}
-
-	// And what it was about, under the description where every other row puts
-	// it.
-	line := seenLine(accountID, name)
-	if line == "" {
-		return row
-	}
-	const at = `</div>`
-	if i := strings.Index(row, `class="agent-for">`); i >= 0 {
-		if j := strings.Index(row[i:], at); j >= 0 {
-			cut := i + j + len(at)
-			return row[:cut] + `<div class="agent-seen">` + html.EscapeString(line) + `</div>` + row[cut:]
-		}
-	}
-	return row
+	return platformRow(name, accountID)
 }
 
-func platformRow(name string) string {
+func platformRow(name string, viewers ...string) string {
 	a := Platform(name)
 	if a == nil {
 		return ""
@@ -505,13 +451,19 @@ func platformRow(name string) string {
 	// No Edit and no Remove: this one is the instance's, not yours. Making one
 	// of your own starts from the builder rather than from this row.
 	path := "/agent/" + strings.ToLower(name)
-	return entryRow(entry{
+	e := entry{
 		Name: a.Name,
 		Path: path,
 		Chat: path,
 		For:  for_,
 		ID:   strings.ToLower(name),
-	})
+	}
+	if len(viewers) > 0 {
+		e.Status = activity(viewers[0], name)
+		e.Seen = seenLine(viewers[0], name)
+		e.When = seenWhen(viewers[0], name)
+	}
+	return entryRow(e)
 }
 
 // seenLine is what an agent last dealt with, and seenWhen is how long ago.
@@ -583,21 +535,27 @@ const agentsCSS = `<style>
 .agent-row .agent-seen{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Top-aligned, not centred. A row is three or four lines tall now, and
    centring left Remove floating in the middle of the card beside nothing. */
-.agent-row{display:flex;align-items:flex-start;gap:16px;min-width:0;border:1px solid var(--divider,#e8e8e8);border-radius:4px;padding:16px}
+.agent-row{display:flex;align-items:flex-start;gap:16px;min-width:0;border:1px solid var(--divider,#e8e8e8);border-radius:4px;padding:16px 16px 8px}
 /* Only the links are interactive; the card itself does not lift on hover. */
 /* One size, one colour, one weight for every link on a row.
    They were three: 12px grey in the link strip, 13px green or amber for the
    scope, 13px for the buttons beside them, and the name at 14px semibold. A
    row is one thing to read, so the parts that are the same rank look the
    same. */
-.agent-links{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:16px;padding-top:8px;border-top:1px solid var(--divider,#e8e8e8)}
+.agent-links{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:auto;padding-top:8px;border-top:1px solid var(--divider,#e8e8e8)}
+.agent-card-content{display:flex;flex-direction:column;gap:8px;width:100%;min-width:0;align-self:stretch}
+.agent-open-actions,.agent-manage-actions{display:flex;align-items:center;gap:16px}
+.agent-open-actions a{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px}
+.agent-recent{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;min-width:0}
+.agent-recent .agent-seen{margin:0;flex:1}
+.agent-row .agent-for,.agent-row .activity-status{margin-top:0}
 .agent-links a{font-size:13px;font-weight:400;color:var(--text-secondary,#555);text-decoration:underline !important;text-underline-offset:3px}
 .agent-links a:hover{color:var(--text-primary,#111);text-decoration:underline}
 /* The form holding Remove is one item in the strip, not a block that breaks it. */
 .agent-links form{display:inline;margin:0}
 /* What it is for. One line, and it truncates rather than wrapping — a list you
    are scanning stops being a list the moment the rows are different heights. */
-.agent-row .activity-status{display:table;font-size:12px;font-weight:400;line-height:1.5;padding:2px 8px;margin-top:8px;border-radius:4px;background:var(--hover-background,#f5f5f5);color:var(--text-secondary,#555)}
+.agent-row .activity-status{display:table;font-size:12px;font-weight:400;line-height:1.5;padding:2px 8px;margin-top:0;align-self:flex-start;border-radius:4px;background:var(--hover-background,#f5f5f5);color:var(--text-secondary,#555)}
 .agent-for{font-size:13px;color:var(--text-secondary,#555);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .agent-meta{font-size:13px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
 .agent-meta code{font-size:12px}
@@ -636,7 +594,7 @@ const agentsCSS = `<style>
    line rather than pushing the page sideways. */
 @media(max-width:600px){
   /* Preserve the same outside inset at phone width. */
-  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:16px}
+  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:16px 16px 8px}
   .agent-name{font-size:15px}
     .agent-meta{white-space:normal;overflow-wrap:anywhere}
   /* Links and buttons share a touch target and baseline. */

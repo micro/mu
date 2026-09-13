@@ -554,7 +554,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// something the nav already says.
 	chip := `<div class="agent-bar">` +
 		`<a class="btn chat-open-list" href="` + chatBase + `?new=1">New</a>` +
-		`<button type="button" class="btn chat-open-list chat-panel-toggle" aria-controls="pane-chats" aria-expanded="false" onclick="muPane('chats')">Chats</button>` +
+		`<button type="button" class="btn btn-secondary chat-open-list chat-panel-toggle" aria-controls="pane-chats" aria-expanded="false" onclick="muPane('chats')">Chats ▾</button>` +
 		`</div>` + paneJS
 
 	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
@@ -765,17 +765,8 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool, extra 
 	if len(routes) > 0 && routes[0] != "" {
 		base = routes[0]
 	}
-	newURL := base + "?new=1"
-	if agentID != "" && base == "/agent/"+DefaultSlug {
-		// An id that resolves to nothing in the roster. Keep it in the URL
-		// rather than silently rewriting to the default, which is what widened
-		// the rail to the whole account.
-		newURL = "/agent?id=" + url.QueryEscape(agentID)
-	}
 	var b strings.Builder
-	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
-		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">New</button>` +
-		`<div class="chat-sess-scroll">` +
+	b.WriteString(`<aside class="chat-rail"><div class="chat-sess-scroll">` +
 		// Chats, which is what the store has always called them in every way
 		// but this one. The record is threads.json, the package is
 		// internal/thread, the types are thread.Thread and thread.Message —
@@ -883,33 +874,18 @@ window.muSessionStarted=function(id,title){
 </script>`
 }
 
-// paneJS opens one of the side panels as a sheet on a phone.
-//
-// Nothing here runs on a desktop: the buttons that call it are hidden and the
-// panels are always visible, so the class it toggles matches nothing.
+// paneJS opens history as a desktop picker or a phone sheet.
 const paneJS = `<script>
-function muDesktopChats(hidden){
-  var layout=document.querySelector('.chat-layout');
-  if(!layout)return;
-  layout.classList.toggle('chats-hidden',hidden);
-  var toggle=layout.querySelector('.chat-panel-toggle');
-  if(toggle)toggle.setAttribute('aria-expanded',String(!hidden));
-}
 function muPane(which){
   var el=document.getElementById('pane-'+which),side=document.querySelector('.chat-side');
   if(!el||!side)return;
-  if(window.matchMedia('(min-width:761px)').matches){
-    var hidden=!side.closest('.chat-layout').classList.contains('chats-hidden');
-    muDesktopChats(hidden);
-    try{localStorage.setItem('mu_chats_hidden',hidden?'1':'0');}catch(e){}
-    return;
-  }
   var wasOpen=el.classList.contains('open');
   document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
   if(!wasOpen)el.classList.add('open');
   var any=!!document.querySelector('.chat-pane.open');
   side.classList.toggle('up',any);
   var toggle=document.querySelector('.chat-panel-toggle');if(toggle)toggle.setAttribute('aria-expanded',String(any));
+  if(window.matchMedia('(min-width:761px)').matches)return;
   var scrim=document.querySelector('.chat-scrim');
   if(!scrim){
     scrim=document.createElement('div');scrim.className='chat-scrim';
@@ -921,7 +897,7 @@ function muPane(which){
 function muPaneClose(){
   document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
   var side=document.querySelector('.chat-side');if(side)side.classList.remove('up');
-  if(window.matchMedia('(max-width:760px)').matches){var toggle=document.querySelector('.chat-panel-toggle');if(toggle)toggle.setAttribute('aria-expanded','false');}
+  var toggle=document.querySelector('.chat-panel-toggle');if(toggle)toggle.setAttribute('aria-expanded','false');
   // Removed, not un-classed.
   //
   // The scrim is appended to document.body, which outlives the page: this site
@@ -932,22 +908,13 @@ function muPaneClose(){
   // the screen stays grey". Taking it out of the DOM cannot leave it behind.
   var scrim=document.querySelector('.chat-scrim');if(scrim)scrim.remove();
 }
-(function(){
-  var desktop=window.matchMedia('(min-width:761px)');
-  function sync(){
-    muPaneClose();
-    var hidden=false;try{hidden=localStorage.getItem('mu_chats_hidden')==='1';}catch(e){}
-    if(desktop.matches)muDesktopChats(hidden);
-  }
-  sync();
-  desktop.addEventListener('change',function(){if(document.querySelector('.chat-layout'))sync();});
-})();
-document.addEventListener('keydown',function(e){if(e.key==='Escape')muPaneClose()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){var open=document.querySelector('.chat-side.up');muPaneClose();if(open){var button=document.querySelector('.chat-panel-toggle');if(button)button.focus();}}});
 // Picking anything inside a sheet closes it. A conversation is a link, and a
 // link that navigates while the sheet is still up leaves both behind.
 document.addEventListener('click',function(e){
   var a=e.target.closest&&e.target.closest('.chat-pane a');
   if(a)muPaneClose();
+  if(window.matchMedia('(min-width:761px)').matches&&!e.target.closest('.chat-side,.chat-panel-toggle'))muPaneClose();
 },true);
 </script>`
 
@@ -1137,7 +1104,7 @@ const chatLayoutCSS = `<style>
     background:var(--card-background,#fff);color:var(--text-primary,#111);
     border-radius:6px;padding:3px 12px;font-size:12px;font-weight:600;
     font-family:inherit;cursor:pointer}
-  button.chat-open-list::after{content:" ▾";color:#999}
+  button.chat-open-list::after{content:none}
   /* The sheet. Off-screen rather than display:none, so opening it animates and
      so the panels inside keep their state. */
   /* The sheet ends above the tab bar. It is fixed to bottom:0 with a lower
@@ -1168,6 +1135,19 @@ const chatLayoutCSS = `<style>
   .agents-actions{opacity:1}
   .agents-actions a,.agents-actions button{padding:4px 6px;font-size:14px}
 }
+/* Conversation history is a picker, not a second permanent navigation rail. */
+@media(min-width:761px){
+ .chat-layout{position:relative;display:block}
+ .chat-main{height:100%}
+ .agent-bar{display:flex;gap:8px;margin-bottom:8px}
+ .chat-open-list{display:inline-flex}
+ .chat-side{display:none;position:absolute;top:44px;left:0;width:min(340px,100%);height:auto;max-height:min(65dvh,520px);z-index:45;padding:8px;background:var(--card-background,#fff);border:1px solid var(--border-color,#ddd);border-radius:6px;box-shadow:0 6px 20px #0001;overflow:auto}
+ .chat-side.up{display:block}
+ .chat-side>.chat-pane{display:block}
+ .chat-side .chat-rail{display:block}
+ .chat-sess-scroll{overflow:visible}
+}
+
 </style>`
 
 // FormatAge returns a human-friendly string for an elapsed duration.

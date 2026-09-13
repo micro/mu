@@ -45,13 +45,8 @@ func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
 	if !strings.Contains(rail, "Nothing here yet. Ask this agent something.") {
 		t.Errorf("a fresh agent's inbox does not read as empty:\n%s", rail)
 	}
-	// New chat keeps the agent, rather than rewriting the address bar back to
-	// the default and quietly widening the rail to the whole account.
-	// An id that names no agent in the roster keeps its id in the URL, since
-	// there is no slug to name it by — the alternative is rewriting to the
-	// default, which is what silently widened the rail to the whole account.
-	if !strings.Contains(rail, "/agent?id=agent-with-no-history") {
-		t.Errorf("+ New chat drops the agent out of the URL:\n%s", rail)
+	if strings.Contains(rail, `>New</a>`) {
+		t.Error("history picker duplicates the toolbar New action")
 	}
 
 	// The account-wide rail is a different sentence, because it means
