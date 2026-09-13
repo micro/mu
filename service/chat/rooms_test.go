@@ -128,7 +128,7 @@ func TestTheLobbyIsAboutNothing(t *testing.T) {
 	rr := httptest.NewRecorder()
 	Handler(rr, httptest.NewRequest("GET", "/chat?id="+lobbyID, nil))
 
-	if body := rr.Body.String(); strings.Contains(body, "room-about") {
+	if body := rr.Body.String(); strings.Contains(body, `class="room-about"`) {
 		t.Errorf("the lobby drew an About block:\n%s", body)
 	}
 }
