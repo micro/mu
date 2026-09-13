@@ -52,17 +52,9 @@ func TestARosterRowSaysWhenItLastSpoke(t *testing.T) {
 		t.Errorf("the time reads %q", got)
 	}
 
-	// Both on the row: the subject under the name, the time out to the right.
+	// Cards describe the agent; conversation history stays on its page.
 	row := agentRow(made, "csrf", "https://example.test")
-	if !strings.Contains(row, `class="agent-seen"`) {
-		t.Errorf("the row carries no sign of life:\n%s", row)
-	}
-	if !strings.Contains(row, `class="agent-when"`) {
-		t.Errorf("the row does not say when:\n%s", row)
-	}
-	head := row[strings.Index(row, `class="agent-recent"`):]
-	head = head[:strings.Index(head, `class="agent-links"`)]
-	if !strings.Contains(head, `class="agent-when"`) {
-		t.Error("the time is not on the recent conversation line")
+	if strings.Contains(row, `class="agent-seen"`) || strings.Contains(row, `class="agent-when"`) {
+		t.Fatal("agent card still contains recent chat or timestamp")
 	}
 }
