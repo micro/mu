@@ -119,6 +119,19 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(searchForm(q, auth.CSRFToken(r)))
 
 	switch {
+	case r.PostFormValue("lat") != "" || r.PostFormValue("lon") != "":
+		lat, e1 := strconv.ParseFloat(r.PostFormValue("lat"), 64)
+		lon, e2 := strconv.ParseFloat(r.PostFormValue("lon"), 64)
+		if e1 != nil || e2 != nil || !validCoordinates(lat, lon) {
+			b.WriteString(`<p role="alert">Invalid location. Try again or enter a town.</p>`)
+		} else {
+			f, err := FetchWeather(r.Context(), lat, lon)
+			if err != nil || f == nil || f.Current == nil {
+				b.WriteString(`<p role="status">Weather is unavailable for your current location. Please try again.</p>`)
+			} else {
+				b.WriteString(forecastHTML(f, airFor(lat, lon), "Your current location"))
+			}
+		}
 	case q != "":
 		b.WriteString(forPlace(r.Context(), q))
 	default:
@@ -138,7 +151,20 @@ func searchForm(q, csrf string) string {
   <input type="search" name="q" placeholder="Anywhere — a town, a city" ` +
 		`value="` + html.EscapeString(q) + `" maxlength="120">
   <button type="submit">Search</button>
-</form>`
+  <button type="button" class="btn-secondary" onclick="weatherUseLocation(this)">Use location</button>
+</form><p id="weather-location-status" role="status"></p>
+<script>
+function weatherUseLocation(button){
+ var status=document.getElementById('weather-location-status');
+ if(!navigator.geolocation){status.textContent='Location is unavailable. Enter a town instead.';return;}
+ button.disabled=true;status.textContent='Finding your location…';
+ navigator.geolocation.getCurrentPosition(function(pos){
+  var form=button.form;
+  ['lat','lon'].forEach(function(name,i){var field=document.createElement('input');field.type='hidden';field.name=name;field.value=i?pos.coords.longitude:pos.coords.latitude;form.appendChild(field);});
+  form.requestSubmit();
+ },function(){button.disabled=false;status.textContent='Could not get your location. Allow location access or enter a town.';},{timeout:10000,maximumAge:60000});
+}
+</script>`
 }
 
 // forYou is the forecast where the account says it is.

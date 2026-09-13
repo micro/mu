@@ -285,7 +285,7 @@ func taskCard(t *Task, csrf, label string, actionURL func(string) string) string
   <input type="hidden" name="_csrf" value="%s">
   <button type="submit" class="btn btn-danger">Delete</button>
 </form>`, html.EscapeString(actionURL("delete")),
-		html.EscapeString(strings.ReplaceAll(t.Title, "'", "\'")), html.EscapeString(csrf))
+		html.EscapeString(strings.ReplaceAll(t.Title, "'", "\\'")), html.EscapeString(csrf))
 	b.WriteString(`</div></div>`)
 	return b.String()
 }

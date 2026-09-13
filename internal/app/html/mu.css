@@ -7585,7 +7585,7 @@ a.pill {
   color: var(--text-primary, #222);
   cursor: pointer;
 }
-.cw-addr:hover { background: var(--hover-background, #f5f5f5); border-color: var(--border-color, #ddd) }
+.cw-addr:hover, .cw-addr:focus-visible { color:var(--text-primary,#222); background: var(--hover-background, #f5f5f5); border-color: var(--border-color, #ddd) }
 .cw-copied { font-size: 12px; color: #1a7f37; margin-top: 6px }
 .cw-net {
   font-size: 13px; color: #8a5a00;
