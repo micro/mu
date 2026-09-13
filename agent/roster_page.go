@@ -342,13 +342,6 @@ func entryRow(e entry) string {
 	if e.Status != "" {
 		b.WriteString(`<div class="activity-status">` + html.EscapeString(e.Status) + `</div>`)
 	}
-	if e.Seen != "" {
-		b.WriteString(`<div class="agent-recent"><span class="agent-seen">Recent chat: ` + html.EscapeString(e.Seen) + `</span>`)
-		if e.When != "" {
-			b.WriteString(`<span class="agent-when">` + html.EscapeString(e.When) + `</span>`)
-		}
-		b.WriteString(`</div>`)
-	}
 	b.WriteString(`<div class="agent-links"><div class="agent-open-actions">`)
 	if e.Chat != "" {
 		b.WriteString(`<a href="` + e.Chat + `" aria-label="Chat with ` + html.EscapeString(e.Name) + `" title="Chat"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4h16v12H9l-5 4z"/></svg></a>`)

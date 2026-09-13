@@ -10,6 +10,7 @@ package browser
 
 import (
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -175,9 +176,10 @@ func TestThePageOffersBothThings(t *testing.T) {
 	}
 
 	// The checkbox is inside the form it modifies, or it submits nothing.
-	form := body[strings.Index(body, `class="form form-inline page-section"`):]
-	form = form[:strings.Index(form, "</form>")]
-	if !strings.Contains(form, `name="full"`) {
-		t.Error("the whole-page checkbox is outside the form, so it is never sent")
+	for _, form := range regexp.MustCompile(`(?s)<form\b[^>]*>.*?</form>`).FindAllString(body, -1) {
+		if strings.Contains(form, `>Read</button>`) && strings.Contains(form, `name="shot" value="1"`) && strings.Contains(form, `name="full" value="1"`) {
+			return
+		}
 	}
+	t.Error("Read, Screenshot and whole-page controls must share one form")
 }
