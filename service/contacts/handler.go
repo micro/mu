@@ -114,7 +114,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card">`)
+	b.WriteString(`<div class="page-stack page-section">`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
@@ -131,15 +131,16 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	// Add. Only the name is required — a contact with just a name is still
 	// worth having, and the rest can be filled in later by saying so.
-	fmt.Fprintf(&b, `<form method="POST" action="/contacts" class="form form-inline page-section">
+	b.WriteString(`<div class="form-actions"><button type="button" aria-expanded="false" aria-controls="contact-new" onclick="var f=document.getElementById('contact-new');f.hidden=!f.hidden;this.setAttribute('aria-expanded',String(!f.hidden));if(!f.hidden)f.querySelector('input[name=name]').focus()">New</button><button type="button" class="btn-secondary" aria-expanded="false" aria-controls="contact-import" onclick="var f=document.getElementById('contact-import');f.hidden=!f.hidden;this.setAttribute('aria-expanded',String(!f.hidden))">Import</button></div>`)
+	fmt.Fprintf(&b, `<div id="contact-new" hidden><form method="POST" action="/contacts" class="form page-stack">
   <input type="hidden" name="_csrf" value="%s">
-  <input name="name" placeholder="Name" required>
-  <input name="email" type="email" placeholder="Email">
-  <input name="phone" placeholder="Phone">
-  <input name="note" placeholder="Note">
-  <button type="submit">Add</button>
-</form>`, html.EscapeString(csrf))
-	b.WriteString(`<details class="mt-3"><summary>Import contacts</summary><form method="POST" action="/contacts/import" enctype="multipart/form-data" class="form form-inline mt-3">` + app.CSRFField(csrf) + `<input type="file" name="file" accept=".csv,text/csv" required><button>Import CSV</button></form><p class="text-sm">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p></details></div>`)
+  <label class="field-label">Name<input name="name" autocomplete="name" required></label>
+  <label class="field-label">Email<input name="email" type="email" autocomplete="email"></label>
+  <label class="field-label">Phone<input name="phone" type="tel" autocomplete="tel"></label>
+  <label class="field-label">Note<input name="note"></label>
+  <div class="form-actions"><button type="submit">Add</button></div>
+</form></div>`, html.EscapeString(csrf))
+	b.WriteString(`<div id="contact-import" hidden><form method="POST" action="/contacts/import" enctype="multipart/form-data" class="form page-stack">` + app.CSRFField(csrf) + `<label class="field-label">CSV file<input type="file" name="file" accept=".csv,text/csv" required></label><div class="form-actions"><button>Import CSV</button></div></form><p class="text-sm">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p></div></div>`)
 
 	if len(people) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">`)

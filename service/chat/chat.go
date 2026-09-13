@@ -38,7 +38,7 @@ var f embed.FS
 // other, /agent is where you talk to something that acts.
 var Template = `
 %s
-<div class="room-layout"><aside class="room-roster"><h3>Here</h3><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></aside><div class="room-main"><div id="messages"></div>
+<div class="room-layout"><div class="room-main"><header class="room-toolbar"><div class="room-roster"><span>Here</span><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></div>%s</header><div id="messages"></div>
 <form id="chat-form" onsubmit="return false;">
 <input id="topic" name="topic" type="hidden">
 <textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
@@ -46,25 +46,22 @@ var Template = `
 </form></div></div><style>
 /* Keep the scroll viewport connected to the page's bounded flex column. */
 body:has(#messages):has(.room-layout) #content { height:calc(100dvh - 70px - var(--tabbar)); }
-.room-layout { display:grid; grid-template-columns:160px minmax(0,1fr); grid-template-rows:minmax(0,1fr); gap:20px; flex:1 1 0; min-height:0; min-width:0; }
-.room-roster { padding:0; min-width:0; overflow-y:auto; overflow-wrap:anywhere; }
-.room-roster h3 { font-size:12px; font-weight:500; letter-spacing:.04em; color:var(--text-secondary,#888); margin:0 0 8px; }
-.room-roster #chat-users { display:flex; flex-direction:column; gap:8px; margin:0 0 12px; padding:0; border:0; }
-.room-roster #chat-users a { color:inherit; font-weight:600; }
-.room-main { display:flex; flex-direction:column; min-width:0; min-height:0; }
+.room-layout { display:flex; flex:1 1 0; min-height:0; min-width:0; }
+.room-toolbar { flex:0 0 auto; padding:8px 12px; border:1px solid var(--border-color,#e5e5e5); border-bottom:0; border-radius:4px 4px 0 0; background:var(--card-background,#fff); font-size:13px; }
+.room-roster { display:flex; align-items:center; gap:12px; min-width:0; }
+.room-roster > span { color:var(--text-muted,#707070); }
+.room-roster #chat-users { display:flex; flex:1; gap:10px; min-width:0; overflow-x:auto; white-space:nowrap; margin:0; padding:0; border:0; }
+.room-roster #chat-users a { flex-shrink:0; color:inherit; font-weight:400; }
+.room-roster > a { flex-shrink:0; font-weight:400; }
+.room-toolbar .room-about { margin:8px 0 0; padding:8px 0 0; border-bottom:0; border-top:1px solid var(--border-color,#eee); max-height:25dvh; overflow-y:auto; }
+.room-toolbar .room-about > summary { text-transform:none; letter-spacing:normal; font-size:13px; }
+.room-main { display:flex; flex:1; flex-direction:column; min-width:0; min-height:0; }
 .room-main #messages { min-height:0; max-height:none; overflow-wrap:anywhere; }
 .room-main #messages img, .room-main #messages video { max-width:100%%; height:auto; }
 .room-main #messages pre { max-width:100%%; overflow-x:auto; }
 .room-main #chat-form { flex:0 0 auto; min-width:0; }
 .room-main #prompt { width:0; min-width:0; max-width:none; flex:1 1 0; }
-@media(max-width:760px) {
-  .room-layout { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); gap:8px; }
-  .room-roster { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; padding:8px 0; overflow:hidden; font-size:13px; }
-  .room-roster h3 { font-size:inherit; margin:0; flex-shrink:0; }
-  .room-roster #chat-users { flex-direction:row; gap:10px; min-width:0; white-space:nowrap; overflow-x:auto; margin:0; padding:0; }
-  .room-roster #chat-users a { flex-shrink:0; }
-  .room-roster > a { flex-shrink:0; }
-}
+
 </style>`
 
 var mutex sync.RWMutex
@@ -1665,7 +1662,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	// escapes < as <, so a room title cannot close the tag.
 	about := aboutRoom(roomData)
 
-	content := fmt.Sprintf(Template, channels(roomID)+guestNotice+about) +
+	content := fmt.Sprintf(Template, channels(roomID)+guestNotice, about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})
