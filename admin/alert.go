@@ -285,7 +285,7 @@ func raise(a alert) {
 	}
 	for _, id := range admins {
 		if err := mail.DeliverHere(mail.Local{
-			Display: "Mu",
+			Display: "Micro",
 			From:    "no-reply@" + mail.ConfiguredDomain(),
 			To:      id,
 			Subject: a.What,

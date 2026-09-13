@@ -246,7 +246,7 @@ func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message str
 	c := app.NewCaptchaChallenge()
 	msg := message
 	if msg == "" {
-		msg = `<p>Mu is currently invite-only. Leave your email and we'll send you an invite when we open up more seats.</p>`
+		msg = `<p>Micro is currently invite-only. Leave your email and we'll send you an invite when we open up more seats.</p>`
 	}
 	body := fmt.Sprintf(`<div class="card w-440 centered">
 <h3>Request an invite</h3>
@@ -259,7 +259,7 @@ func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message str
 </form>
 <p class="text-muted text-sm mt-3">Already have an invite? <a href="/login">Log in</a> or paste your link.</p>
 </div>`, msg, app.CaptchaHTML(c))
-	app.Respond(w, r, app.Response{Title: "Request an Invite", Description: "Request an invite to Mu", HTML: body})
+	app.Respond(w, r, app.Response{Title: "Request an Invite", Description: "Request an invite to Micro", HTML: body})
 }
 
 // InviteHandler lets any logged-in user invite someone by email.
@@ -284,9 +284,9 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		link := app.PublicURL() + "/signup?invite=" + code
 		if app.EmailSender != nil {
-			plain := fmt.Sprintf("%s invited you to join Mu.\n\nSign up here: %s", acc.Name, link)
-			html := fmt.Sprintf(`<p>%s invited you to join Mu.</p><p><a href="%s">Sign up here</a></p>`, htmlpkg.EscapeString(acc.Name), link)
-			app.EmailSender(email, acc.Name+" invited you to Mu", plain, html, "")
+			plain := fmt.Sprintf("%s invited you to join Micro.\n\nSign up here: %s", acc.Name, link)
+			html := fmt.Sprintf(`<p>%s invited you to join Micro.</p><p><a href="%s">Sign up here</a></p>`, htmlpkg.EscapeString(acc.Name), link)
+			app.EmailSender(email, acc.Name+" invited you to Micro", plain, html, "")
 		}
 		body := fmt.Sprintf(`<div class="card">
 <h4>Invite sent</h4>
@@ -299,14 +299,14 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 
 	body := `<p><a href="/home">← Home</a></p>
 <div class="card">
-<h4>Invite someone to Mu</h4>
+<h4>Invite someone to Micro</h4>
 <p class="text-sm">Enter their email — they'll get a signup link.</p>
 <form method="POST" action="/invite" class="mt-2">
 	<input type="email" name="email" placeholder="friend@example.com" required class="form-input w-full">
 	<button type="submit" class="mt-2">Send invite</button>
 </form>
 </div>`
-	app.Respond(w, r, app.Response{Title: "Invite", Description: "Invite someone to Mu", HTML: body})
+	app.Respond(w, r, app.Response{Title: "Invite", Description: "Invite someone to Micro", HTML: body})
 }
 
 // RequestInvite handles POST /request-invite — someone is asking to
@@ -995,10 +995,10 @@ func renderPhoneCard(accountID string) string {
 func forwardingToggle(acc *auth.Account) string {
 	on := MailForwardingOn(acc.ID)
 	state, submit := "off", "Turn off"
-	note := "Mail sent to your Mu address is also copied to you here."
+	note := "Mail sent to your Micro address is also copied to you here."
 	if !on {
 		state, submit = "on", "Turn on"
-		note = "Mail sent to your Mu address is not copied to you here."
+		note = "Mail sent to your Micro address is not copied to you here."
 	}
 	// Posted to /account with a named field, the same as every other control on
 	// this page — submit, land back here, see the result.
@@ -1291,10 +1291,10 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 	}
 
 	link := app.PublicURL() + "/verify?token=" + tok
-	plain := fmt.Sprintf("Hi %s,\n\nClick the link below to verify your email and unlock posting on Mu:\n\n%s\n\nThis link expires in 24 hours. If you didn't request this, you can ignore this email.\n\n— Mu", acc.Name, link)
-	html := fmt.Sprintf(`<p>Hi %s,</p><p>Click the link below to verify your email and unlock posting on Mu:</p><p><a href="%s">%s</a></p><p>This link expires in 24 hours. If you didn't request this, you can ignore this email.</p><p>— Mu</p>`, htmlpkg.EscapeString(acc.Name), link, link)
+	plain := fmt.Sprintf("Hi %s,\n\nClick the link below to verify your email and unlock posting on Micro:\n\n%s\n\nThis link expires in 24 hours. If you didn't request this, you can ignore this email.\n\n— Micro", acc.Name, link)
+	html := fmt.Sprintf(`<p>Hi %s,</p><p>Click the link below to verify your email and unlock posting on Micro:</p><p><a href="%s">%s</a></p><p>This link expires in 24 hours. If you didn't request this, you can ignore this email.</p><p>— Micro</p>`, htmlpkg.EscapeString(acc.Name), link, link)
 
-	if err := app.EmailSender(email, "Verify your Mu account", plain, html, ""); err != nil {
+	if err := app.EmailSender(email, "Verify your Micro account", plain, html, ""); err != nil {
 		app.Log("auth", "Failed to send verification email to %s: %v", email, err)
 		app.ServerError(w, r, "Failed to send verification email. Please try again.")
 		return

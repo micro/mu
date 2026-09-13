@@ -240,7 +240,7 @@ func TestEndpointNames(t *testing.T) {
 }
 
 func TestSkipsNoise(t *testing.T) {
-	for _, p := range []string{"/img?u=x", "/favicon.ico", "/updates", "/chat/ws"} {
+	for _, p := range []string{"/img?u=x", "/favicon.ico", "/chat/ws"} {
 		if !Skipped(p) {
 			t.Errorf("%s should not be counted as usage", p)
 		}

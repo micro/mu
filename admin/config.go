@@ -319,8 +319,8 @@ var settingGroups = []settingGroup{
 	// things are called notes in this repository — internal/notes is what you
 	// and your agents write down, at /notes — and the label had picked the
 	// wrong one.
-	{Name: "The blog Mu writes about itself",
-		Does:  "Mu posts about its own work to its own blog, occasionally. This is the off switch.",
+	{Name: "The blog Micro writes about itself",
+		Does:  "Micro posts about its own work to its own blog, occasionally. This is the off switch.",
 		Needs: nil,
 		Vars: []string{
 			"NOTES",

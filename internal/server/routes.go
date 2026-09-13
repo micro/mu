@@ -8,7 +8,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -160,7 +159,6 @@ func authRequired() map[string]bool {
 		"/admin/config":      true,
 		"/admin/server":      true,
 		"/admin/usage":       true,
-		"/admin/delete":      true,
 		"/admin/diagnostics": true,
 		"/admin/status":      true,
 		"/admin/alerts":      true,
@@ -282,9 +280,6 @@ func registerRoutes() {
 	http.HandleFunc("/admin/usage", admin.SpendMoved)
 	http.HandleFunc("/admin/traffic", admin.TrafficHandler)
 
-	// admin delete (any content type)
-	http.HandleFunc("/admin/delete", admin.DeleteHandler)
-
 	// admin console
 	http.HandleFunc("/admin/status", admin.StatusHandler)
 	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
@@ -361,7 +356,6 @@ func registerRoutes() {
 		}
 		http.Redirect(w, r, to, http.StatusPermanentRedirect)
 	})
-	http.HandleFunc("/web/preview", web.PreviewHandler)
 
 	// serve web fetch page (fetch and clean a URL)
 	http.HandleFunc("/web/fetch", web.FetchHandler)
@@ -400,7 +394,6 @@ func registerRoutes() {
 	// The Code agent, at the address two pages of /apps have been linking to
 	// since before there was a handler for it. See agent/code.
 	http.HandleFunc("/code", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/agent/micro", http.StatusSeeOther) })
-	http.HandleFunc("/code/file", http.NotFound)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)
@@ -464,7 +457,6 @@ func registerRoutes() {
 	http.HandleFunc("/agent/run", agent.RunHandler)
 	// Has the answer landed yet — see agent/pending.go.
 	http.HandleFunc("/agent/pending", agent.PendingHandler)
-	http.HandleFunc("/agent/exec", agent.ExecResultHandler)
 
 	// serve mail inbox
 	http.HandleFunc("/mail", mail.Handler)
@@ -605,7 +597,7 @@ func registerRoutes() {
 	http.HandleFunc("/account/connections", account.Account)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)
-	http.HandleFunc("/updates", updatesHandler)
+
 	http.HandleFunc("/token", account.TokenHandler)
 	http.HandleFunc("/passkey/", account.PasskeyHandler)
 
@@ -703,21 +695,6 @@ func registerRoutes() {
 
 	// presence WebSocket endpoint
 	http.HandleFunc("/presence", user.PresenceHandler)
-
-	// presence ping endpoint
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		_, acc, err := auth.RequireSession(r)
-		if err != nil {
-			app.Unauthorized(w, r)
-			return
-		}
-
-		auth.UpdatePresence(acc.ID)
-
-		w.Header().Set("Content-Type", "application/json")
-		onlineCount := auth.OnlineCount()
-		w.Write([]byte(fmt.Sprintf(`{"status":"ok","online":%d}`, onlineCount)))
-	})
 
 	// /version — what's deployed and how it's wired, for verifying releases.
 	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {

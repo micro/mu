@@ -134,13 +134,13 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	// handle is what belongs under a display name, because the display name is
 	// the changeable one and the handle is the address.
 	var b strings.Builder
-	b.WriteString(`<div class="ib-person">`)
+	b.WriteString(`<div class="ib-person page-stack">`)
 	b.WriteString(`<p class="ib-person-sub">` + html.EscapeString(handle) + `</p>`)
 	b.WriteString(personFacts(them))
 	if you {
-		b.WriteString(statusForm(r, acc.ID))
+		b.WriteString(app.Section("Status", statusForm(r, acc.ID), app.Note("A short update other people can see on your profile.")))
 	} else if status := user.Status(them.ID); status != "" {
-		b.WriteString(`<p class="text-secondary">` + html.EscapeString(status) + `</p>`)
+		b.WriteString(app.Section("Status", `<p>`+html.EscapeString(status)+`</p>`))
 	}
 	// New message belongs on a page that already has one.
 	//
@@ -170,8 +170,8 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 		// not a second one. What is left is what a profile is: who you are on
 		// this instance, where people reach you, and the way to change it.
 		b.WriteString(yourAddresses(acc.ID))
-		b.WriteString(`<div class="ib-person-empty">` +
-			app.Link("Edit profile", "/account/profile") + ` · ` + app.Link("Account settings", "/account") + `</div></div>`)
+		b.WriteString(`<div class="section-actions">` +
+			app.Link("Edit profile", "/account/profile") + app.Link("Account settings", "/account") + `</div></div>`)
 		app.Respond(w, r, app.Response{
 			Title:       title,
 			Description: handle + " on this instance",

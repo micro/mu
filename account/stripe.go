@@ -235,7 +235,7 @@ func CreateCheckoutSession(userID string, amount int, successURL, cancelURL stri
 					"unit_amount": amount,
 					"product_data": map[string]interface{}{
 						"name":        fmt.Sprintf("%d Credits", credits),
-						"description": fmt.Sprintf("Mu credits top-up (%s)", label),
+						"description": fmt.Sprintf("Micro credits top-up (%s)", label),
 					},
 				},
 				"quantity": 1,

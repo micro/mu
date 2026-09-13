@@ -88,7 +88,6 @@ type braveCacheEntry struct {
 }
 
 const braveCacheTTL = 5 * time.Minute
-const bravePreviewCacheTTL = 24 * time.Hour
 
 func init() {
 	braveCache.entries = make(map[string]braveCacheEntry)
@@ -433,18 +432,6 @@ func rememberScript(query string) string {
 		if(a.length>MAX)a=a.slice(0,MAX);localStorage.setItem(KEY,JSON.stringify(a));}catch(e){}
 	})();
 	</script>`
-}
-
-// PreviewHandler returns cached Brave results as JSON for the landing page.
-// It uses a fixed "trending" query so the landing page can show web results
-// without requiring auth. Results are cached for 24 hours.
-func PreviewHandler(w http.ResponseWriter, r *http.Request) {
-	results, err := searchBraveCachedWithTTL("what are AI agents", 5, bravePreviewCacheTTL)
-	if err != nil {
-		app.RespondJSON(w, map[string]interface{}{"results": []BraveResult{}})
-		return
-	}
-	app.RespondJSON(w, map[string]interface{}{"results": results})
 }
 
 // htmlTagRe matches any HTML tag.

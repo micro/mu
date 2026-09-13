@@ -332,7 +332,7 @@ func linkGoogleToCurrentAccount(w http.ResponseWriter, r *http.Request, info *go
 	}
 	email := strings.ToLower(strings.TrimSpace(info.Email))
 	if other, e := auth.AccountByEmail(email); e == nil && other != nil && other.ID != acc.ID {
-		http.Error(w, "That Google account ("+email+") is already linked to another Mu account (@"+other.ID+"). Delete or unlink that account first, then connect.", http.StatusConflict)
+		http.Error(w, "That Google account ("+email+") is already linked to another Micro account (@"+other.ID+"). Delete or unlink that account first, then connect.", http.StatusConflict)
 		return
 	}
 	acc.Email = email

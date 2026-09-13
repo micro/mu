@@ -34,10 +34,11 @@ func Section(title string, body ...string) string {
 	if title != "" {
 		b.WriteString(`<h4>` + htmlpkg.EscapeString(title) + `</h4>`)
 	}
+	b.WriteString(`<div class="page-stack">`)
 	for _, s := range body {
 		b.WriteString(s)
 	}
-	b.WriteString(`</div>`)
+	b.WriteString(`</div></div>`)
 	return b.String()
 }
 

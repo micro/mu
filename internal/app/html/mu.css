@@ -4642,31 +4642,6 @@ a.card-hover:hover {
    Admin Styles
    ============================================= */
 
-.admin-links {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 400px;
-}
-.admin-links a {
-  padding: 12px 16px;
-  background: var(--card-background, #fff);
-  border: 1px solid var(--card-border, #e8e8e8);
-  border-radius: var(--border-radius, 6px);
-  text-decoration: none;
-  color: var(--text-primary, #333);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.admin-links a:hover {
-  background: var(--hover-background, #fafafa);
-}
-.admin-links .count {
-  color: var(--text-muted, #888);
-  font-size: 14px;
-}
-
 .admin-table {
   width: 100%;
   border-collapse: collapse;

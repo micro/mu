@@ -27,7 +27,6 @@ var notAPage = map[string]string{
 	"/admin/diagnostics": "legacy redirect to /admin/status",
 	"/admin":             "the menu itself",
 	"/admin/flag":        "an action posted from a moderation row",
-	"/admin/delete":      "an action posted from a user row",
 	"/admin/invite":      "reached from /admin/users, where invites are",
 	"/admin/blocklist":   "a stub that redirects somewhere it moved to",
 	"/admin/email":       "a stub that redirects somewhere it moved to",

@@ -250,7 +250,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 
 	list := google.Grants(acc.ID)
 	if len(list) == 0 {
-		b.WriteString(`<p class="text-sm text-muted mt-2">Mu has no access to anything else in ` +
+		b.WriteString(`<p class="text-sm text-muted mt-2">Micro has no access to anything else in ` +
 			`your Google account. You can attach your calendar from <a href="/events">events</a> ` +
 			`or your contacts from <a href="/contacts">contacts</a>, and it will be listed ` +
 			`here.</p></div>`)

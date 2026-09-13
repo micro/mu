@@ -1,22 +1,7 @@
 package test
 
-// /@username is the conversation with them, and there is no profile.
-//
-// It served a profile page — a name, a tick, a join date, a status box, an apps
-// grid and their posts. That is a social network's page, and this is not one:
-// internal/app/content.go deleted Save, Hide and Block on the grounds that
-// "those three are the controls of a feed… Mu has no feed", and a profile is
-// downstream of the same thing.
-//
-// What the address is for survives the page. "Everything has an address —
-// people, agents, services, conversations" is one of four commitments, and an
-// address is worth what it lets you do. So /@somebody is what the two of you
-// have said to each other, with the way to say the next thing.
-//
-// The wiring is held here because the hazard that made this file necessary is
-// still live: the dispatch for /@ sits in a chain of prefix checks in serve.go,
-// several handlers with identical signatures are in scope, and swapping one for
-// another breaks nothing a compiler can see.
+// /@username uses the account-scoped person view. Profile settings live under
+// /account/profile; the retired social-profile handler must not return.
 
 import (
 	"os"
@@ -25,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestTheAtRouteServesTheConversation(t *testing.T) {
+func TestTheAtRouteServesThePerson(t *testing.T) {
 	src, err := os.ReadFile(at("internal", "server", "serve.go"))
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +40,7 @@ func TestTheAtRouteServesTheConversation(t *testing.T) {
 // An unrouted page is a page somebody re-routes in six months without knowing
 // why it was taken out. The handler, the status it carried and the two hooks
 // that fed it their posts and apps all went with it.
-func TestThereIsNoProfilePageLeft(t *testing.T) {
+func TestLegacyProfileIsRetiredAndSettingsAreReachable(t *testing.T) {
 	for _, gone := range []string{
 		filepath.Join("internal", "user", "profile.go") + ":ProfileHandler",
 		filepath.Join("internal", "user", "post.go") + ":",
@@ -76,15 +61,15 @@ func TestThereIsNoProfilePageLeft(t *testing.T) {
 		}
 	}
 
-	// The nav offered it, and a link to a page that no longer exists is worse
-	// than no link.
+	// The menu opens the authenticated profile settings, not the retired page.
 	shell, err := os.ReadFile(at("internal", "app", "app.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(shell), `id="nav-profile"`) {
-		t.Error("the sidebar still offers Profile")
+	if !strings.Contains(string(shell), `id="nav-profile" href="/account/profile"`) {
+		t.Error("Profile must open account profile settings")
 	}
+
 }
 
 func min(a, b int) int {
