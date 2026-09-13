@@ -392,7 +392,7 @@ const pageCSS = `<style>
 .wx-also-head{font-size:12px;color:var(--text-muted,#999);text-transform:uppercase;letter-spacing:.04em}
 .wx-place{margin:0 0 4px;font-size:18px}
 .wx-now-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 var(--spacing-md,16px)}
-.wx-big{font-size:44px;line-height:1;font-weight:600;color:var(--text-primary,#111)}
+.wx-big{font-size:44px;line-height:1;font-weight: 550;color:var(--text-primary,#111)}
 .wx-said{font-size:16px;color:var(--text-secondary,#555)}
 .wx-facts{display:flex;gap:22px;flex-wrap:wrap;margin:0 0 var(--spacing-lg,24px);
   padding:0 0 var(--spacing-md,16px);border-bottom:1px solid var(--card-border,#eee)}

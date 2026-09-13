@@ -11,8 +11,8 @@ h1 { font-size: 1.5em; margin-bottom: 16px; }
 .item button { background: none; border: none; color: #999; cursor: pointer; font-size: 18px; }
 .empty { color: var(--mu-text-muted, #888); text-align: center; padding: 20px; }
 .meta { font-size: 0.85em; color: var(--mu-text-muted, #888); }
-.count { font-size: 3em; text-align: center; margin: 20px 0; font-weight: bold; }
+.count { font-size: 3em; text-align: center; margin: 20px 0; font-weight: 600; }
 .stats { display: flex; gap: 16px; justify-content: center; margin-bottom: 16px; }
 .stat { text-align: center; }
-.stat-value { font-size: 1.5em; font-weight: bold; }
+.stat-value { font-size: 1.5em; font-weight: 600; }
 .stat-label { font-size: 0.85em; color: var(--mu-text-muted, #888); }

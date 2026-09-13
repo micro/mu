@@ -68,12 +68,12 @@ func editPageHTML(a *App) string {
 .builder { display: flex; flex-direction: column; gap: 12px; }
 .preview-area { display: flex; flex-direction: column; min-height: 60vh; }
 .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.preview-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.preview-header h3 { font-size: 14px; font-weight: 550; margin: 0; }
 .preview-frame { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; min-height: 50vh; }
 .code-toggle { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
 .code-toggle:hover { background: #f5f5f5; color: #111; }
 .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.code-header h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.code-header h3 { font-size: 14px; font-weight: 550; margin: 0; }
 .code-header .actions { display: flex; gap: 6px; }
 .code-header .actions button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
 .code-header .actions button:hover { background: #f5f5f5; color: #111; }
@@ -84,7 +84,7 @@ func editPageHTML(a *App) string {
 .save-bar button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .status-msg { font-size: 13px; color: #999; margin-left: 8px; }
 .ai-edit { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa; }
-.ai-edit label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.ai-edit label { display: block; font-size: 13px; font-weight: 550; margin-bottom: 6px; }
 .ai-edit-note { font-size: 12px; color: #888; margin: 8px 0 0; }
 /* The shapes the markup below was writing inline, next to the ones it was
    already using. A field is .ed-field wherever it appears; the widths are the

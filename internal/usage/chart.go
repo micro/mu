@@ -252,11 +252,11 @@ func Since(t time.Time) string {
 const CSS = `<style>
 .traffic-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px}
 .traffic-stat{display:flex;flex-direction:column;gap:2px}
-.traffic-stat-n{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.traffic-stat-n{font-size:24px;font-weight: 550;font-variant-numeric:tabular-nums}
 .traffic-stat-l{font-size:12px;color:var(--text-muted)}
 .traffic-tabs{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
 .traffic-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
-.traffic-tab.active{color:var(--text-primary);font-weight:600}
+.traffic-tab.active{color:var(--text-primary);font-weight: 550}
 .traffic-chart svg{width:100%;height:160px;display:block}
 .traffic-bar{fill:var(--accent-color,#000);opacity:.75}
 .traffic-bar:hover{opacity:1}
@@ -272,7 +272,7 @@ a.traffic-row{cursor:pointer}
 a.traffic-row:hover .traffic-rowbar,a.traffic-row:focus-visible .traffic-rowbar{background:var(--card-border)}
 a.traffic-row:hover .traffic-label{text-decoration:underline}
 a.traffic-row:focus-visible{outline:2px solid var(--text-primary);outline-offset:-2px}
-.traffic-row.selected{font-weight:600}
+.traffic-row.selected{font-weight: 550}
 .traffic-row.selected .traffic-rowbar{background:var(--card-border)}
 .traffic-rest{color:var(--text-muted)}
 .traffic-rest .traffic-rowbar{opacity:.45}

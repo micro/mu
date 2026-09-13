@@ -227,7 +227,7 @@ const pageCSS = `<style>
 .notify-item{padding:10px 0;border-bottom:1px solid var(--card-border,#eee)}
 .notify-item:last-child{border-bottom:0}
 .notify-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
-.notify-title{font-size:14px;font-weight:600;color:var(--text-primary,#111)}
+.notify-title{font-size:14px;font-weight: 550;color:var(--text-primary,#111)}
 .notify-from{font-size:12px;color:#888}
 /* Out to the right, the way the time sits on a row in the inbox and on /agents. */
 .notify-when{margin-left:auto;flex:none;font-size:12px;color:#aaa;white-space:nowrap}

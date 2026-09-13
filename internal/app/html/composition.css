@@ -361,3 +361,9 @@ a.link-text {
  background:var(--hover-background,#f5f5f5);
  color:var(--text-primary,#333);
 }
+
+/* Keep emphasis distinct without the browser's heavy default bold. */
+b, strong { font-weight:var(--font-weight-bold,600); }
+h1, h2, h3, h4, h5, h6, th { font-weight:var(--font-weight-bold,600); }
+/* Home section headings need a stronger anchor than surrounding preview text. */
+#home-cards .section-card-head h4 { font-weight:var(--font-weight-bold,600); }

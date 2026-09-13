@@ -494,21 +494,21 @@ const toolsPageCSS = `<style>
 /* No :hover here. A tile is a card and .card-hover in mu.css is what a card
    does on hover — this had a grey border of its own, which was a third answer
    beside the row on /agents and the cards on home. */
-.tool-tile-name{font-family:inherit;font-size:13px;font-weight:600;color:#111}
+.tool-tile-name{font-family:inherit;font-size:13px;font-weight: 550;color:#111}
 .tool-tile-desc{font-weight:var(--font-weight-normal,400);font-size:13px;color:#666;line-height:1.4}
 .tool-tile-price{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums;margin-top:2px}
 .tool-tile-price .free{color:#9ca3af}
 /* .card a sets a dark colour and won on specificity, so the label went black on
    a black button. Scope the rule the same way to outrank it. */
 .card a.connect-cta,.card a.connect-cta:visited{display:inline-block;background:#111;color:#fff;
-  text-decoration:none;padding:9px 18px;border-radius:8px;font-weight:700;font-size:14px}
+  text-decoration:none;padding:9px 18px;border-radius:8px;font-weight: 600;font-size:14px}
 .card a.connect-cta:hover,.card a.connect-cta:visited:hover{background:#333;color:#fff}
 .connect-note{font-size:13px;color:#888;margin-left:8px}
 .connect-cfg{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:12px 0}
 .connect-way{border-top:1px solid #eee;padding-top:12px;margin-top:14px}
 .connect-way h4{margin:0 0 6px;font-size:14px}
 .scope{margin-top:12px;border-top:1px solid #eee;padding-top:10px}
-.scope summary{cursor:pointer;font-size:13px;font-weight:600;color:#555}
+.scope summary{cursor:pointer;font-size:13px;font-weight: 550;color:#555}
 .scope-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 12px;margin:10px 0}
 .scope-item{font-size:13px;color:#444;display:flex;align-items:center;gap:6px}
 @media only screen and (max-width:600px){.tool-grid{grid-template-columns:1fr}}

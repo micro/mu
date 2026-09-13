@@ -324,7 +324,7 @@ document.querySelectorAll(".landing-examples button").forEach(function(button){
 .lwrap{padding:0;max-width:560px;margin:0 auto;width:100%;text-align:center}
 /* Slightly larger than the box's own text, so the pair reads as one object —
    this is the thing, that is where you talk to it. */
-.lbrand{font-size:2rem;font-weight:800;letter-spacing:-1px;margin:0 0 6px;line-height:1}
+.lbrand{font-size:2rem;font-weight: 600;letter-spacing:-1px;margin:0 0 6px;line-height:1}
 /* What it is, under what it is called. Grey and small: it is a caption on the
    name, not a tagline arguing for anything — the moment it is dark enough to
    read as a pitch this page is a landing again.

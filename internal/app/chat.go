@@ -491,7 +491,7 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-opts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0}
 #mu-chat-opts:empty{margin:0}
 #mu-chat-agent{display:flex;align-items:center;gap:8px;font-size:12px;color:#999;cursor:pointer;user-select:none}
-.mu-chat-agent-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:#aaa}
+.mu-chat-agent-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight: 550;color:#aaa}
 #mu-chat-agent select{width:auto;padding:2px 4px;font-size:12px;font-family:inherit;color:#555;border:1px solid #e0e0e0;border-radius:4px;background:#fff}
 #mu-chat-input{flex:1;padding:6px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 /* A square icon button, sized from the control scale rather than from two
@@ -524,7 +524,7 @@ func ChatComponent(cfg ChatConfig) string {
    an opinion. It had one for a while — a Centred flag, because the front door
    centred everything and the dashboard did not — and the front door is left
    now, so both surfaces want the same thing and the flag had no callers. */
-#mu-chat-doors a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
+#mu-chat-doors a{color:#555;font-weight: 550;text-decoration:none;white-space:nowrap}
 #mu-chat-doors a:hover{text-decoration:underline}
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}
 #mu-chat-conv:empty{margin-top:0}
@@ -599,7 +599,7 @@ body:has(.mu-console[open]) { overflow:hidden; }
 .mu-agent{margin-bottom:24px;scroll-margin-top:64px}
 /* Who answered. The same shape as the rail's section headings, because it is
    the same kind of thing — a label over a block, not a line of the block. */
-.mu-by{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+.mu-by{font-size:11px;font-weight: 550;letter-spacing:.04em;text-transform:uppercase;
   color:#999;margin:0 0 6px}
 .mu-think{color:#888;font-size:14px}
 /* A step that has finished: the same voice as the one running, one shade back,
@@ -607,7 +607,7 @@ body:has(.mu-console[open]) { overflow:hidden; }
 .mu-step{color:#aaa;font-size:13px;line-height:1.6}
 .mu-err{color:#c00}
 .mu-cta{padding:12px 14px;border:1px solid #e0e0e0;border-radius:8px;background:#fafafa;font-size:14px}
-.mu-cta a{color:#111;font-weight:600;text-decoration:none}
+.mu-cta a{color:#111;font-weight: 550;text-decoration:none}
 .mu-cursor{display:inline-block;width:2px;height:1em;background:#000;vertical-align:text-bottom;animation:mublink .8s step-end infinite;margin-left:2px}
 @keyframes mublink{0%,100%{opacity:1}50%{opacity:0}}
 /* Answer content must never widen the chat column. Without this a long code
@@ -629,10 +629,10 @@ body:has(.mu-console[open]) { overflow:hidden; }
 #mu-chat-conv table{display:block;overflow-x:auto;max-width:100%}
 #mu-chat-conv img{max-width:100%;height:auto}
 #mu-chat .card{max-width:100%;border:0;border-radius:0;padding:0;margin-bottom:16px;background:transparent;box-shadow:none}
-#mu-chat .card h4{margin:0 0 8px;font-size:1em;font-weight:600}
+#mu-chat .card h4{margin:0 0 8px;font-size:1em;font-weight: 550}
 #mu-chat .card a,#mu-chat .link,#mu-chat a.link{color:#111}
 /* Self-contained typography so rendered answers look right anywhere. */
-#mu-chat .card h1,#mu-chat .card h2,#mu-chat .card h3{margin:16px 0 8px;line-height:1.3;font-weight:700}
+#mu-chat .card h1,#mu-chat .card h2,#mu-chat .card h3{margin:16px 0 8px;line-height:1.3;font-weight: 600}
 #mu-chat .card h1{font-size:1.3em}
 #mu-chat .card h2{font-size:1.15em}
 #mu-chat .card h3{font-size:1.02em}
