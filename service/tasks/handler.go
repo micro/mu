@@ -106,7 +106,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
 	}
 
-	b.WriteString(`<div class="form-actions"><button type="button" aria-controls="task-new" aria-expanded="false" onclick="var p=document.getElementById(\'task-new\');p.hidden=!p.hidden;this.setAttribute(\'aria-expanded\',String(!p.hidden));if(!p.hidden)p.querySelector(\'input[name=title]\').focus()">New</button></div><div id="task-new" hidden>` + addForm(csrf) + `</div>`)
+	b.WriteString(`<div class="form-actions"><button type="button" aria-controls="task-new" aria-expanded="false" onclick="var p=document.getElementById('task-new');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden)p.querySelector('input[name=title]').focus()">New</button></div><div id="task-new" hidden>` + addForm(csrf) + `</div>`)
 	b.WriteString(`</div>`)
 
 	// Filters. Counted, because "3 open" is the thing you want to know before
@@ -285,7 +285,7 @@ func taskCard(t *Task, csrf, label string, actionURL func(string) string) string
   <input type="hidden" name="_csrf" value="%s">
   <button type="submit" class="btn btn-danger">Delete</button>
 </form>`, html.EscapeString(actionURL("delete")),
-		html.EscapeString(strings.ReplaceAll(t.Title, "'", "\\'")), html.EscapeString(csrf))
+		html.EscapeString(strings.ReplaceAll(t.Title, "'", "\'")), html.EscapeString(csrf))
 	b.WriteString(`</div></div>`)
 	return b.String()
 }
