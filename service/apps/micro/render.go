@@ -35,7 +35,7 @@ const pageTemplate = `<!DOCTYPE html>
 <style>
 *{box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#111;margin:0;padding:20px;max-width:560px;margin:0 auto}
-h1{font-size:22px;font-weight:800;margin:0 0 16px;display:flex;align-items:center;gap:8px}
+h1{font-size:22px;font-weight: 600;margin:0 0 16px;display:flex;align-items:center;gap:8px}
 .row{display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap}
 input,select{padding:9px 11px;border:1px solid #ddd;border-radius:8px;font-size:15px;font-family:inherit;background:#fff}
 input[type=text],input[type=number],input[type=date]{flex:1;min-width:90px}
@@ -46,11 +46,11 @@ ul{list-style:none;padding:0;margin:0}
 li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:15px}
 li:last-child{border-bottom:none}
 .muted{color:#888;font-size:13px}
-.total{margin-top:14px;padding:12px 14px;background:#f7f7f7;border-radius:8px;font-weight:700;display:flex;justify-content:space-between}
+.total{margin-top:14px;padding:12px 14px;background:#f7f7f7;border-radius:8px;font-weight: 600;display:flex;justify-content:space-between}
 .check{display:flex;align-items:center;gap:10px;cursor:pointer}
 .check input{width:18px;height:18px}
 .done{color:#aaa;text-decoration:line-through}
-.cval{font-size:24px;font-weight:800;min-width:48px;text-align:center}
+.cval{font-size:24px;font-weight: 600;min-width:48px;text-align:center}
 .empty{color:#aaa;padding:14px 0;font-size:14px}
 </style>
 </head>

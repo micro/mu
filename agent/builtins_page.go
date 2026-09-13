@@ -142,7 +142,7 @@ const builtinsCSS = `<style>
 .bi-row{display:grid;grid-template-columns:minmax(90px,auto) minmax(0,1fr);
   gap:2px 14px;padding:10px 0;border-top:1px solid #f0f0f0}
 .bi-row:first-child{border-top:0}
-.bi-name{font-weight:700;font-size:14px;color:#111;text-decoration:none}
+.bi-name{font-weight: 600;font-size:14px;color:#111;text-decoration:none}
 .bi-name:hover{text-decoration:underline}
 .bi-what{font-size:14px;color:#333}
 .bi-addr{grid-column:2;font-size:13px;color:#0645ad;text-decoration:none;word-break:break-all}

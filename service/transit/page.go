@@ -176,7 +176,7 @@ func Card() string {
 const pageStyle = `<style>
 .xsearch label{display:block;margin-bottom:8px}
 .xmuted{color:#888;font-size:14px;margin:0}
-.xgood{color:#0f7a52;font-size:15px;margin:0;font-weight:600}
+.xgood{color:#0f7a52;font-size:15px;margin:0;font-weight: 550}
 .xline{padding:8px 0;border-bottom:1px solid var(--border-color,#eee);font-size:15px}
 .xline:last-of-type{border-bottom:0}
 .xwhy{color:#666;font-size:13px;margin-top:4px}

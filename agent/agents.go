@@ -216,12 +216,12 @@ func renderAgentsPanel() string {
 </div>
 <style>
 .agents-panel{border:1px solid var(--card-border,#e8e8e8);border-radius:8px;margin-bottom:12px;background:var(--card-background,#fff);overflow:hidden}
-.agents-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;font-weight:600;border-bottom:1px solid var(--card-border,#eee)}
-.agents-new{color:var(--btn-primary,#000);text-decoration:none;font-size:13px;font-weight:600}
+.agents-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;font-weight: 550;border-bottom:1px solid var(--card-border,#eee)}
+.agents-new{color:var(--btn-primary,#000);text-decoration:none;font-size:13px;font-weight: 550}
 .agents-list{padding:6px}
 .agents-list>div{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#333}
 .agents-list>div:hover{background:#f4f4f5}
-.agents-list>div.on{background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-weight:600}
+.agents-list>div.on{background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-weight: 550}
 .agents-def{color:#aaa;font-size:11px;font-weight:400}
 .agents-actions{display:flex;gap:2px;opacity:.55}
 .agents-actions a,.agents-actions button{border:0;background:none;cursor:pointer;font-size:12px;padding:0 2px;color:inherit;text-decoration:none}

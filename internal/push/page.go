@@ -479,7 +479,7 @@ const cardCSS = `<style>
 .push-note{font-size:13px;color:#888;line-height:1.55;margin:6px 0 10px}
 .push-bad{color:var(--danger,#c33)}
 .push-log{margin:10px 0 12px;border-top:1px solid var(--card-border,#eee);padding-top:8px}
-.push-log-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+.push-log-head{font-size:11px;font-weight: 550;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);margin:0 0 6px}
 .push-log-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12px;
   color:var(--text-secondary,#555);padding:3px 0}
@@ -494,7 +494,7 @@ const cardCSS = `<style>
 .push-devices{margin:10px 0 12px;border-top:1px solid #f0f0f0}
 .push-device{display:flex;align-items:baseline;gap:10px;padding:8px 0;
   border-bottom:1px solid #f5f5f5}
-.push-dev-name{font-size:13px;font-weight:600;color:#333;
+.push-dev-name{font-size:13px;font-weight: 550;color:#333;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:22ch}
 .push-dev-when{font-size:12px;color:#999;flex:1;min-width:0}
 .push-device.is-here .push-dev-name::after{content:" — this one";font-weight:400;color:#999}

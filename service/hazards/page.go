@@ -276,9 +276,9 @@ const pageCSS = `<style>
 .hz-row:last-child{border-bottom:0}
 .hz-what{flex:1;min-width:0}
 .hz-when{color:var(--text-muted,#999);font-size:12px;white-space:nowrap}
-.hz-mag{font-variant-numeric:tabular-nums;font-weight:600;min-width:48px}
+.hz-mag{font-variant-numeric:tabular-nums;font-weight: 550;min-width:48px}
 .hz-level{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
-  font-weight:600;min-width:76px}
+  font-weight: 550;min-width:76px}
 .hz-ok{color:var(--text-secondary,#666)}
 .hz-warn{color:#a86400}
 .hz-sev{color:#b3261e}

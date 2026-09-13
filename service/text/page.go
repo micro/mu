@@ -158,7 +158,7 @@ const pageStyle = `<style>
 .tjobs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .tjob{display:flex;align-items:center;gap:6px;border:1px solid var(--border-color,#e3e3e3);
   border-radius:var(--border-radius,8px);padding:8px 12px;cursor:pointer;font-size:15px}
-.tjob:has(input:checked){border-color:#111;font-weight:600}
+.tjob:has(input:checked){border-color:#111;font-weight: 550}
 .tnote{color:#666;font-size:14px;margin:0 0 10px}
 .tform textarea,.tform input[type=text]{width:100%;margin-bottom:10px;font-family:inherit}
 .tform button{width:100%}

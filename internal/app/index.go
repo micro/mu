@@ -90,7 +90,7 @@ body{font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-
  * centred stack. */
 .index-head{width:100%;max-width:760px;margin:0 auto;
   display:flex;align-items:center;justify-content:center;padding:20px 0 0}
-.brand{font-size:1.05rem;font-weight:800;letter-spacing:-.2px;line-height:1.25}
+.brand{font-size:1.05rem;font-weight: 600;letter-spacing:-.2px;line-height:1.25}
 /* The body sits in the middle of what is left, not at the top of it.
  *
  * It was a fixed 12vh above the box, which put the block high and left the
@@ -110,7 +110,7 @@ body{font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-
  * space scrolls from its top instead of having its head cut off. */
 .index-body{flex:1;display:flex;flex-direction:column;justify-content:center;
   width:100%;padding:6vh 0}
-.tagline{color:#111;font-size:18px;font-weight:700;margin-bottom:6px}
+.tagline{color:#111;font-size:18px;font-weight: 600;margin-bottom:6px}
 .subtag{color:#666;font-size:15px;margin-bottom:32px;max-width:520px;text-align:center;line-height:1.5}
 /* The corner: the page's top right, the same place the app shell puts it.
    Anchored to .index-page rather than to the header row above, so it is in the
@@ -131,14 +131,14 @@ body{font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-
    unless both are told the same. */
 .login-link{position:absolute;right:20px;top:20px;
   display:flex;align-items:center;gap:14px}
-.login-link a,.login-link button{color:#555;text-decoration:none;font-size:14px;font-weight:600;
+.login-link a,.login-link button{color:#555;text-decoration:none;font-size:14px;font-weight: 550;
   background:none;border:0;padding:0;font-family:inherit;line-height:20px;cursor:pointer}
 .login-link a:hover,.login-link button:hover{color:#111}
 /* Sign up is the decision this page exists to put in front of somebody, so it
    is the darker of the two. Weight and colour only — a filled button here
    competes with the box in the middle of the page, which is the actual thing
    to do. */
-.login-link a.primary{color:#111;font-weight:700}
+.login-link a.primary{color:#111;font-weight: 600}
 /* An author rule beats the browser's own [hidden]{display:none} whatever its
    specificity, and the rule above sets a display on buttons via the flex row.
    Without this the install control is on the page in every browser that cannot
@@ -158,7 +158,7 @@ body{font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-
 .public-page .card{margin-bottom:24px}
 .public-page h3{font-size:18px;margin-bottom:8px}
 .public-page p{margin-bottom:16px}
-.public-page a:not(.btn){color:#555;text-decoration:none;font-weight:700}
+.public-page a:not(.btn){color:#555;text-decoration:none;font-weight: 600}
 .public-page table{width:100%;border-collapse:collapse;margin-bottom:16px;text-align:left;font-size:14px}
 .public-page td,.public-page th{padding:8px;border-bottom:1px solid #eee;vertical-align:top}
 .public-page td:last-child{white-space:nowrap}

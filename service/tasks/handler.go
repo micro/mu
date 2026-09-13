@@ -336,7 +336,7 @@ const tasksPageCSS = `<style>
 .task-step.failed{color:#b3261e;text-decoration:line-through}
 .task-step-detail{color:var(--text-secondary)}
 .task-step-took{color:var(--text-muted);font-size:12px}
-.task-running{color:#a86400;font-weight:600}
+.task-running{color:#a86400;font-weight: 550}
 .task-running::after{content:"";animation:taskdots 1.2s steps(4,end) infinite}
 @keyframes taskdots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
 @media only screen and (max-width:600px){

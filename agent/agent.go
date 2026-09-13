@@ -1054,7 +1054,7 @@ const chatLayoutCSS = `<style>
    out around a child that is not there. */
 .agent-bar{display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
 .chat-sess-date{display:block;font-size:11px;font-weight:normal;color:var(--text-muted,#999);margin-top:3px}
-.chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+.chat-sess-head{font-size:11px;font-weight: 550;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);padding:0 10px 6px}
 /* Tokens, not hex.
    Every colour in this rail was a literal — #444 on no background at all for a
@@ -1105,7 +1105,7 @@ const chatLayoutCSS = `<style>
   .chat-main{width:100%;min-width:0;max-width:100%}
   .chat-open-list{display:inline-block;border:1px solid var(--border-color,#e5e5e5);
     background:var(--card-background,#fff);color:var(--text-primary,#111);
-    border-radius:6px;padding:3px 12px;font-size:12px;font-weight:600;
+    border-radius:6px;padding:3px 12px;font-size:12px;font-weight: 550;
     font-family:inherit;cursor:pointer}
   button.chat-open-list::after{content:none}
   /* The sheet. Off-screen rather than display:none, so opening it animates and

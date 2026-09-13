@@ -171,7 +171,7 @@ const contactCSS = `<style>
 .crow{display:grid;grid-template-columns:90px minmax(0,1fr);gap:2px 14px;
   align-items:baseline;padding:10px 0;border-top:1px solid #f0f0f0}
 .crow:first-child{border-top:0}
-.clabel{font-weight:700;font-size:14px}
+.clabel{font-weight: 600;font-size:14px}
 .caddr{font-size:15px;color:#111;text-decoration:none;word-break:break-all}
 a.caddr{color:#0645ad}
 a.caddr:hover{text-decoration:underline}
