@@ -731,13 +731,13 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
 	}
 	return fmt.Sprintf(`<form id="places-form" class="form" action="/places/search" method="POST">
     <input type="text" class="field field-wide" name="q" id="places-q" placeholder="What are you looking for? (leave empty for whatever is nearby)" value="%s">
-    <div class="form-group">
+    <div class="form-row">
       <input type="text" class="field field-wide" name="near" id="places-near" placeholder="Location (optional)" value="%s">
       <input type="hidden" name="near_lat" id="places-near-lat" value="%s">
       <input type="hidden" name="near_lon" id="places-near-lon" value="%s">
-      <div class="form-actions"><button type="button" onclick="usePlacesLocation(this)" class="btn btn-quiet">Use my location</button></div>
+      <button type="button" onclick="usePlacesLocation(this)" class="btn btn-quiet">Use my location</button>
     </div>
-    <div class="form-group">
+    <div class="form-row">
       <select class="field field-wide" name="radius" id="places-radius">%s</select>
       <select class="field field-wide" name="sort" id="places-sort">
         <option value="distance"%s>Sort by distance</option>

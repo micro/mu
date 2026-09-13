@@ -20,6 +20,7 @@ package places
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -145,7 +146,14 @@ func normalizedSearch(s SavedSearch) SavedSearch {
 		s.Type = "search"
 	}
 	// Named locations are replayed by name; geocoding them again can shift coordinates.
-	if s.Location != "" && !strings.ContainsAny(s.Location, "0123456789") {
+	parts := strings.Split(s.Location, ",")
+	coordinates := false
+	if len(parts) == 2 {
+		_, e1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+		_, e2 := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+		coordinates = e1 == nil && e2 == nil
+	}
+	if s.Location != "" && !coordinates {
 		s.Lat, s.Lon = 0, 0
 	}
 	return s

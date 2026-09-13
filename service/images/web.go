@@ -26,7 +26,11 @@ func webSearchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	results, err := imagesearch.Search(r.Context(), r.PostFormValue("query"))
+	query := r.PostFormValue("query")
+	if query == "" {
+		query = r.PostFormValue("q")
+	}
+	results, err := imagesearch.Search(r.Context(), query)
 	if err == nil && owner != "" {
 		err = quota.Charge(owner, quota.OpWebSearch, nil)
 	}

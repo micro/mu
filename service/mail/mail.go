@@ -1544,14 +1544,14 @@ func addressPanel(accountID string) string {
 	addr := AliasFor(accountID, "")
 	agentAddr := AliasFor(accountID, "research")
 
-	return `<div class="mail-addr">` +
+	return `<details class="disclosure page-section"><summary>Mail settings</summary><div class="mail-addr">` +
 		`<div class="mail-addr-line">Your address <code>` + html.EscapeString(addr) + `</code></div>` +
 		`<p>Give an agent its own by adding a tag: <code>` + html.EscapeString(agentAddr) + `</code> ` +
 		`lands in this inbox, marked so that agent can ask for only its own mail. No second account needed.</p>` +
 		`<p><strong>What gets delivered.</strong> Replies to mail you sent, anything from an address you have ` +
 		`written to, and known product domains. Everything else is refused at the door — so a newsletter you ` +
 		`never signed up for will not arrive, and neither will a first message from someone you have not mailed.</p>` +
-		`</div>
+		`</div></details>
 <style>
 .mail-addr{border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;margin-bottom:12px;background:#fafafa}
 .mail-addr-line{font-size:14px;margin-bottom:6px}

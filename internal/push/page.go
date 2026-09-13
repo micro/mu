@@ -194,7 +194,11 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Absent when the instance cannot send — no key, no button — because an offer
 // that cannot be honoured is worse than no offer.
-func Card(r *http.Request, accountID string) string {
+func Card(r *http.Request, accountID string, titles ...string) string {
+	title := "Notifications"
+	if len(titles) > 0 {
+		title = titles[0]
+	}
 	key := PublicKey()
 	if key == "" || accountID == "" {
 		return ""
@@ -215,7 +219,7 @@ func Card(r *http.Request, accountID string) string {
 	// border and padding, so it inherited no width at all and ran the full
 	// width of the page beside cards that did not.
 	return `<div class="card push-card">` +
-		`<div class="push-head"><strong>Notifications</strong>` +
+		`<div class="push-head"><strong>` + html.EscapeString(title) + `</strong>` +
 		`<span class="push-state" id="push-state">` + html.EscapeString(state) + `</span></div>` +
 		// One line, and a true one.
 		//

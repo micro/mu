@@ -2405,7 +2405,7 @@ a.btn-plain:hover {
 
 .market-price {
   font-size: 0.75em;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-normal);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
@@ -4281,8 +4281,9 @@ a.btn-primary:hover, .btn-primary:hover {
 
 .mail-thread-subject {
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 400;
 }
+.mail-unread .mail-thread-subject, .mail-unread .mail-thread-meta { font-weight: 600; }
 
 .mail-thread-meta {
   color: #666;
@@ -5261,7 +5262,7 @@ a.card-hover:hover {
 }
 .market-card .market-price {
   font-size: 0.9em;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-normal);
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
@@ -5310,7 +5311,7 @@ a.card-hover:hover {
 }
 
 .markets-price {
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-normal);
 }
 
 .markets-change {
