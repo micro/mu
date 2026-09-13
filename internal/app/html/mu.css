@@ -2565,8 +2565,12 @@ a.highlight {
    ======================================== */
 /* Desktop: account for sidebar */
 @media only screen and (min-width: 901px) {
+  /* Reserve navigation outside the page measure, so content keeps its width. */
   #nav-container ~ #content {
-    padding-left: 240px; /* Account for fixed sidebar */
+    width: calc(100% - 220px);
+    margin-left: 220px;
+    margin-right: auto;
+    padding-left: var(--page-gutter);
   }
 
   /* The hamburger is a mobile-only control by default; on desktop it becomes
@@ -2580,7 +2584,7 @@ a.highlight {
     transition: transform 0.18s ease;
   }
   #nav-container ~ #content {
-    transition: padding-left 0.18s ease;
+    transition: margin-left 0.18s ease, width 0.18s ease;
   }
 
   /* Collapsed: slide the sidebar off-canvas and reclaim its gutter. The
@@ -2590,6 +2594,9 @@ a.highlight {
     transform: translateX(-100%);
   }
   body.nav-collapsed #nav-container ~ #content {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
     padding-left: var(--page-gutter);
   }
 
