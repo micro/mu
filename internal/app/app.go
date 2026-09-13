@@ -1408,10 +1408,11 @@ func navBottom(acc *auth.Account, here string) string {
 	// you any more, it is the conversation with somebody — and your own resolves
 	// to your inbox, which is already the first thing in the nav.
 	return `<details class="nav-account-disclosure"><summary class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span><span aria-hidden="true">⌃</span></summary><div class="nav-account-menu">
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-profile" href="/account/profile"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
-          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a><a id="nav-account-billing" href="/account/billing"><img src="/wallet.png?` + Version + `"><span class="label">Billing</span></a>
+          <a id="nav-account-billing" href="/account/billing"><img src="/wallet.png?` + Version + `"><span class="label">Billing</span></a>
 ` + navAdmin(acc) + `
-          <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a></div></details>
+          <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a></div></details>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }
 
