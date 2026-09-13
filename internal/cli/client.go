@@ -248,12 +248,22 @@ func (e *UnknownToolError) Error() string { return e.Message }
 // JSON-RPC layer sees it.
 func httpErrorMessage(body []byte) string {
 	var out struct {
-		Error string `json:"error"`
+		Error json.RawMessage `json:"error"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		return ""
 	}
-	return strings.TrimSpace(out.Error)
+	var message string
+	if json.Unmarshal(out.Error, &message) == nil {
+		return strings.TrimSpace(message)
+	}
+	var structured struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(out.Error, &structured) == nil {
+		return strings.TrimSpace(structured.Message)
+	}
+	return ""
 }
 
 func trunc(s string, n int) string {

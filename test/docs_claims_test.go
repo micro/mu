@@ -17,7 +17,10 @@ import (
 	"strings"
 	"testing"
 
+	"mu/agent"
+	"mu/inbox"
 	"mu/internal/tool"
+	"mu/work"
 
 	"mu/internal/api"
 	"mu/internal/service"
@@ -89,6 +92,11 @@ func TestTheReadmesCommandExamplesNameToolsThatExist(t *testing.T) {
 	tool.DeriveTools()
 
 	real := map[string]bool{}
+	for _, ops := range [][]api.Operation{agent.PublicOperations(), work.PublicOperations(), inbox.PublicOperations()} {
+		for _, op := range ops {
+			real[op.Name] = true
+		}
+	}
 	for _, c := range api.Commands() {
 		real[c.Name] = true
 	}
@@ -114,7 +122,7 @@ func TestTheReadmesCommandExamplesNameToolsThatExist(t *testing.T) {
 	checked := 0
 	for _, m := range found {
 		svc, method := m[1], m[2]
-		if _, registered := service.SpecFor(svc); !registered {
+		if _, registered := service.SpecFor(svc); !registered && svc != "work" && svc != "inbox" {
 			continue // a CLI verb, not a service: login, config, ask, help
 		}
 		checked++
@@ -124,7 +132,7 @@ func TestTheReadmesCommandExamplesNameToolsThatExist(t *testing.T) {
 		}
 	}
 	if checked == 0 {
-		t.Error("not one README example named a registered service, so this test " +
+		t.Error("not one README example named a public operation or registered service, so this test " +
 			"passed without checking anything")
 	}
 }

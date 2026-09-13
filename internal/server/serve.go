@@ -368,14 +368,18 @@ func serve(addr string) {
 			//
 			// Read the body once. It was read twice, restored twice, and parsed
 			// twice for two questions about the same tool.
-			if api.ToolDispatch(r.URL.Path) {
+			if api.ToolDispatch(r.URL.Path) && home.IsX402Host(r) {
 				host := strings.TrimPrefix(strings.TrimPrefix(app.BaseURL(r), "https://"), "http://")
 				r, _ = wallet.AuthenticateRequest(r, strings.TrimRight(host, "/"))
 
 				var body []byte
 				if r.Method == http.MethodPost {
-					body, _ = io.ReadAll(io.LimitReader(r.Body, 1<<20))
+					body, _ = io.ReadAll(io.LimitReader(r.Body, (1<<20)+1))
 					r.Body.Close()
+					if len(body) > 1<<20 {
+						app.RespondError(w, http.StatusRequestEntityTooLarge, "Request too large")
+						return
+					}
 					r.Body = io.NopCloser(bytes.NewReader(body))
 				}
 				tool := api.RequestTool(r.URL.Path, body)

@@ -60,17 +60,17 @@ func TestTheConnectPageCarriesTheScopeTheEndpointAndTheTokenState(t *testing.T) 
 	if strings.Contains(panel, "Everything") {
 		t.Errorf("a scoped agent's page says it reaches everything:\n%s", panel)
 	}
-	if !strings.Contains(panel, a.Endpoint("https://mu.example")) {
+	if !strings.Contains(panel, "https://mu.example/mcp") {
 		t.Errorf("the endpoint is missing, so the scope is not reachable:\n%s", panel)
 	}
 	// No token was issued, so the page says so and offers one rather than
 	// leaving the reader to find /agents.
-	if !strings.Contains(panel, "None yet") || !strings.Contains(panel, `name="action" value="token"`) {
+	if !strings.Contains(panel, `href="/token"`) || !strings.Contains(panel, "not only this agent") {
 		t.Errorf("an agent with no token cannot be given one from here:\n%s", panel)
 	}
 	// The client config block is this agent's, not the catalogue's example.
 	// It is escaped for display, so match what a reader would copy out of it.
-	if !strings.Contains(panel, html.EscapeString(`"url": "`+a.Endpoint("https://mu.example")+`"`)) {
+	if !strings.Contains(panel, html.EscapeString(`"url": "`+"https://mu.example/mcp"+`"`)) {
 		t.Errorf("the client config does not point at this agent:\n%s", panel)
 	}
 }

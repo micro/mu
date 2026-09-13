@@ -61,11 +61,11 @@ func TestAServiceReferenceIsDerivedFromItsSpec(t *testing.T) {
 	out := serviceRef(refSpec, service.Anyone(), "https://example.test")
 
 	for _, want := range []string{
-		"GET /api/v1/refprobe/list",    // a read
-		"POST /api/v1/refprobe/delete", // and one that changes something
-		"Read the things",              // the doc off the Endpoint
-		"query",                        // the declared argument
-		`href="/refprobe"`,             // the way out to the service itself
+		"/services/call/refprobe/list",   // a read
+		"/services/call/refprobe/delete", // and one that changes something
+		"Read the things",                // the doc off the Endpoint
+		"query",                          // the declared argument
+		`href="/refprobe"`,               // the way out to the service itself
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the reference does not carry %q", want)
@@ -90,10 +90,10 @@ func TestTheFormCallsTheRealDoor(t *testing.T) {
 	refFixture(t)
 	out := serviceRef(refSpec, service.Anyone(), "https://example.test")
 
-	if !strings.Contains(out, `data-path="/api/v1/refprobe/list" data-method="GET"`) {
+	if !strings.Contains(out, `data-path="/services/call/refprobe/list" data-method="POST"`) {
 		t.Error("a read's form does not GET the API door")
 	}
-	if !strings.Contains(out, `data-path="/api/v1/refprobe/delete" data-method="POST"`) {
+	if !strings.Contains(out, `data-path="/services/call/refprobe/delete" data-method="POST"`) {
 		t.Error("a destructive method's form does not POST the API door")
 	}
 }
@@ -111,7 +111,7 @@ func TestAServiceWhosePageIsItsReferenceOffersNoWayOut(t *testing.T) {
 	if strings.Contains(out, `class="svc-open"`) {
 		t.Error("a service whose page is this page offers a button to itself")
 	}
-	if !strings.Contains(out, "GET /api/v1/refprobe/list") {
+	if !strings.Contains(out, "/services/call/refprobe/list") {
 		t.Error("it lost the methods")
 	}
 }
@@ -140,7 +140,7 @@ func TestAPIServiceReferenceUsesTheExistingAPIDoor(t *testing.T) {
 	refFixture(t)
 	w := httptest.NewRecorder()
 	RESTPageHandler(w, httptest.NewRequest("GET", "/api?service=refprobe", nil))
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "GET /api/v1/refprobe/list") {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "/services/call/refprobe/list") {
 		t.Fatal("API service reference is missing")
 	}
 	w = httptest.NewRecorder()

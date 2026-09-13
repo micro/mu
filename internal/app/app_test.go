@@ -436,11 +436,11 @@ func TestPinningNothingDrawsNoGroup(t *testing.T) {
 func TestEverydayNavigationMatchesAcrossDevices(t *testing.T) {
 	acc := &auth.Account{ID: "alice"}
 	for _, nav := range []string{navMain(acc), navTabs(acc)} {
-		if strings.Count(nav, `<a `) != 5 {
-			t.Fatal("everyday navigation must have five destinations")
+		if strings.Count(nav, `<a `) != 6 {
+			t.Fatal("everyday navigation must have six destinations")
 		}
 		at := -1
-		for _, path := range []string{"/assistant", "/home", "/inbox", "/agents", "/services"} {
+		for _, path := range []string{"/assistant", "/home", "/inbox", "/work", "/agents", "/services"} {
 			i := strings.Index(nav, `href="`+path+`"`)
 			if i <= at {
 				t.Fatalf("missing or misplaced destination %s", path)

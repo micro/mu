@@ -14,14 +14,14 @@ const shortHelp = `mu — command line for the Mu platform
 
 USAGE
   mu <command> [flags]
-  mu <service> <method> [--arg value ...]
+  mu <capability> <operation> [--arg value ...]
 
 START HERE
   mu login [url]                 Sign in to an instance (default: https://micro.mu)
   mu tools                       Everything this instance can do
   mu ask "what is on my calendar?"
                                  Ask the agent on the instance — it has your
-                                 mail, your notes and the tools below
+                                 mail, notes and internal service tools
 
 TALKING TO AN AGENT
   Two commands, and the difference is worth a sentence: "ask" talks to the
@@ -32,20 +32,20 @@ TALKING TO AN AGENT
   mu agent "what is the btc price?"
 
 COMMON COMMANDS
-  mu news                        Latest news feed
-  mu news search "ai safety"     Search news
-  mu blog list                   List blog posts
-  mu web search "claude code"    Search the web
-  mu weather forecast --lat 51.5 --lon -0.12
-  mu apps search "pomodoro"      Search the apps directory
-  mu wallet balance              What your wallet holds on the server
+  mu agent_list                  Agents you can ask
+  mu work submit --prompt "Research the options"
+                                 Delegate a goal to run in the background
+  mu work list                   Delegated jobs and their state
+  mu work get --id WORK_ID        Read the outcome
+  mu inbox list                  Recent conversations and updates
+  mu inbox read --id THREAD_ID    Read a conversation
 
 MANAGEMENT
   mu setup                       Configure a model and keys for "mu agent"
   mu logout                      Forget the saved token
   mu config get|set|path         Show which instance is being called, or change it
   mu x402                        Paying per call: config, and this machine's key
-  mu tools                       Every tool on the instance, grouped by service
+  mu tools                       Public operations, grouped by capability
   mu help <tool>                 Parameters for one tool
   mu version                     Which build this is
 
@@ -67,13 +67,16 @@ CONFIG
   "mu config get" says which one is in use and what decided that.
 
 EXAMPLES
-  mu markets list --category stocks
-  mu news search --query "bitcoin" --table
-  mu blog create --title "Hi" --content "..."
-  mu apps build --prompt "an expense tracker"
+  mu ask --agent research "What needs my attention?"
+  mu work submit --prompt "Compare these options and recommend one"
+  mu work get --id WORK_ID
+  mu inbox read --id THREAD_ID
 
-Tool names are two words: the service, then what to do with it. The
-underscore form works too, so mu news list and mu news_list are the same call.
+Operation names can be two words: mu work list and mu work_list are the
+same call. Agent operations use the underscore form, such as mu agent_list,
+because mu agent runs a local agent. Service commands require a separate
+tools host; they are not exposed by the primary Micro API.
+
 `
 
 // printShortHelp prints the summary help text.
@@ -107,6 +110,9 @@ func runHelp(args []string, rc *ResolvedConfig) int {
 // commandName is how a tool is typed: the service, a space, then the method.
 // news_list is an identifier; "news list" is how a person says it.
 func commandName(tool string) string {
+	if strings.HasPrefix(tool, "agent_") {
+		return tool
+	}
 	return strings.Replace(tool, "_", " ", 1)
 }
 
@@ -157,7 +163,7 @@ func runToolList(rc *ResolvedConfig) int {
 		fmt.Println()
 	}
 	fmt.Println("Run `mu help <tool>` for parameter details. The underscore form")
-	fmt.Println("works too: mu news list and mu news_list are the same call.")
+	fmt.Println("works too: mu work list and mu work_list are the same call.")
 	return 0
 }
 

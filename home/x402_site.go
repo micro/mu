@@ -74,6 +74,10 @@ func init() {
 		fmt.Fprintf(w, "- MCP: %s/mcp\n", base)
 		fmt.Fprintf(w, "- Tools: %s/tools\n", base)
 		fmt.Fprintf(w, "- API catalogue: %s/api/v1/\n", base)
-		fmt.Fprintf(w, "\nPriced calls use HTTP 402/x402. Discover the current tool names, descriptions and schemas with MCP tools/list.\n")
+		if IsX402Host(r) {
+			fmt.Fprintf(w, "\nPriced calls use HTTP 402/x402. Discover the current tool names, descriptions and schemas with MCP tools/list.\n")
+		} else {
+			fmt.Fprintf(w, "\nAgent, Work and Inbox share the same HTTP and MCP operations. Authenticate with an account API token; agent calls use account credits. Mu manages tool use. Discover names and schemas with MCP tools/list or GET /api/v1. Send operation arguments as JSON POST bodies.\n")
+		}
 	})
 }

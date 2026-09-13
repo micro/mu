@@ -95,20 +95,22 @@ See the [installation guide](docs/INSTALL.md).
 
 ## CLI
 
-Every service is a `mu` subcommand
+The CLI calls the same public capabilities as HTTP and MCP:
 
 ```bash
-mu news list                            # latest headlines
-mu news search "ai safety"              # search news
-mu web search "claude code"             # search the web
-mu markets list --category stocks       # live prices
-mu weather forecast --lat 51.5 --lon -0.12
-mu docs list --collection notes         # your own documents
-mu x402                                 # paying per call: config, and your key
-mu help                                 # full tool list
+mu agent_list
+mu work submit --prompt "Research the options and recommend one"
+mu work list
+mu work get --id WORK_ID
+mu inbox list
+mu help
 ```
 
-Every tool is a command: the service, then the method. The underscore form works too, so `mu news list` and `mu news_list` are the same call.
+Use `mu ask` for an interactive conversation. Operation names can be written as
+two words or with an underscore, such as `mu work list` or `mu work_list`.
+`mu agent` remains the local-agent command; use `mu agent_list` to list remote
+agents. Service-tool commands remain available against a separately configured tools
+host; they are not the primary host's public API.
 
 To authenticate
 
@@ -131,24 +133,39 @@ mu ask --agent research "anything new this week?"
 
 ## API
 
-Every service has a HTTP endpoint, at `/api/v1/<service>/<method>`.
+One public surface for **Agent, Work and Inbox**, available through JSON HTTP
+at `/api/v1` and MCP at `/mcp`. Mu runs the agent and manages its tool calls;
+your client supplies the goal and reads the outcome.
 
 ```bash
-curl https://micro.mu/api/v1/                      # the catalogue
-curl "https://micro.mu/api/v1/news/list?limit=5"   # arguments in the query
-curl -X POST https://micro.mu/api/v1/news/list \
-  -H 'Content-Type: application/json' -d '{"limit":5}'
+curl https://micro.mu/api/v1
+curl https://micro.mu/api/v1/agent/ask \
+  -H "Authorization: Bearer $MU_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"What needs my attention?"}'
 ```
 
-Authenticate with a token from `/token` as `Authorization: Bearer`, or with an OAuth client. A priced endpoint answers 402 without one, which an x402 client pays per call with no account at all.
+The response contains `data.text` and `data.thread`. Pass `thread` back to
+continue. For background execution, call `work/submit` and poll `work/get` with
+the returned `id`. Inbox lists and reads the same saved conversations as the UI.
+All operations use POST bodies; only the catalogue uses GET.
 
-For Tools via MCP use `/mcp`. See [/tools](https://micro.mu/tools) for more info.
+Create a token at `/token`. API scopes are `api:agent`, `api:work`, and
+`api:inbox`, with read/write permissions. These are account-wide capabilities,
+not stateless application sandboxes. Existing service-scoped tokens cannot
+acquire broader agent access. Agent calls use the existing credit balance.
+
+The [live API reference](https://micro.mu/api) describes each operation and its
+arguments. MCP exposes the same operations as `agent_ask`, `work_submit`, etc.
+Service tools remain internal to agent execution and the sandboxed app bridge.
+A separate host configured for x402 retains its existing service contract.
 
 ## Web
 
 - `/` - talk to Micro
 - `/home` — a launch pad for your assistant, apps and daily work.
-- `/inbox` — the place to see chats, mail, tasks, etc.
+- `/inbox` — messages, updates and conversations.
+- `/work` — delegated goals, progress and outcomes.
 - `/agents` — your agents, and where you make a new one.
 - `/services` — `/news`, `/weather`, `/markets`, etc.
 

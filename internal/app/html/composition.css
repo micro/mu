@@ -193,7 +193,7 @@ a.link-text {
 .assistant-page #mu-chat-opts:empty, .assistant-page #mu-chat-conv:empty { display:none; }
 #home-agent #mu-chat-conv > :last-child, .assistant-page #mu-chat-conv > :last-child { margin-bottom:0; }
 .assistant-page { width:100%; max-width:var(--page-width); margin:0; }
-@media(max-width:900px) { #tabs { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+@media(max-width:900px) { #tabs { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); } }
 
 /* Keep the in-page command composer below the fixed app header. */
 #home-agent #mu-chat-form, .assistant-page #mu-chat-form { --mu-composer-top:58px; }

@@ -63,7 +63,7 @@ func TestTokenAllAndSelect(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handleTokenPage(rec, httptest.NewRequest("GET", "/token", nil), owner, "fixture")
 	page := rec.Body.String()
-	for _, want := range []string{`name="scope_mode"`, `value="all">All`, `value="select">Select`, `id="tok-service-list" hidden`, `data-label="Services"`} {
+	for _, want := range []string{`name="scope_mode"`, `value="all">All`, `value="select">Select`, `id="tok-service-list" hidden`, `data-label="Access"`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("missing %q", want)
 		}
