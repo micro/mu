@@ -3,7 +3,6 @@ package server
 // Small things the server needs and nothing else does.
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,21 +12,17 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"mu/internal/ai"
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/version"
-	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/prayer"
 	"mu/service/social"
-	"mu/service/stream"
 	"mu/service/video"
 )
 
@@ -88,59 +83,6 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Frame-Options", "SAMEORIGIN")
 	h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
-}
-
-// updatesHandler serves GET /updates?since=<unix> — a single lightweight
-// endpoint the client polls for change counts. Returns JSON:
-//
-//	{"mail":3,"status":2,"social":1,"ts":1713254400}
-//
-// The client stores ts and sends it back on the next poll. If since is
-// omitted, returns current totals (unread mail, stream size, etc.).
-func updatesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var viewerID string
-	if sess, _ := auth.TrySession(r); sess != nil {
-		viewerID = sess.Account
-	}
-
-	now := time.Now()
-
-	// Parse the "since" parameter — unix timestamp.
-	var since time.Time
-	if s := r.URL.Query().Get("since"); s != "" {
-		var n int64
-		if _, err := fmt.Sscanf(s, "%d", &n); err == nil {
-			since = time.Unix(n, 0)
-		}
-	}
-
-	result := map[string]interface{}{
-		"ts": now.Unix(),
-	}
-
-	// Mail — always unread count (personal, independent of since).
-	if viewerID != "" {
-		result["mail"] = mail.GetUnreadCount(viewerID)
-	} else {
-		result["mail"] = 0
-	}
-
-	if since.IsZero() {
-		result["social"] = 0
-		result["stream"] = 0
-	} else {
-		result["social"] = social.CountSince(since)
-		result["stream"] = stream.CountSince(since, viewerID)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	json.NewEncoder(w).Encode(result)
 }
 
 // chargedWriteOp maps a request method + path to the wallet operation

@@ -246,11 +246,6 @@ func Since(since time.Time, viewer string) []*Entry {
 	return result
 }
 
-// CountSince returns how many entries are newer than since, for viewer.
-func CountSince(since time.Time, viewer string) int {
-	return len(Since(since, viewer))
-}
-
 // DeleteByAccount removes the entries that were somebody's own, when their
 // account goes. Public entries are unaffected: a post that was published still
 // was, and the blog service is what decides whether it survives.

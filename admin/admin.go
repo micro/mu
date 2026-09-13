@@ -25,18 +25,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Alphabetical. There is no ranking to express here, and a list that is
 	// sorted is one nobody has to scan twice.
-	content := `<div class="admin-links">
-		<a href="/admin/alerts">Alerts</a>
-		<a href="/admin/backup">Backup</a>
-		<a href="/admin/config">Config</a>
-		<a href="/admin/status">Status</a>
-		<a href="/admin/log">Logs` + alertBadge() + `</a>
-		<a href="/admin/oauth">OAuth Clients</a>
-		<a href="/admin/moderate">Moderation</a>
-		<a href="/admin/server">Server</a>
-		<a href="/admin/spam">Spam</a>
-		<a href="/admin/traffic">Usage</a>
-		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
+	content := `<div class="collection-grid">
+		<a class="card card-hover section-actions" href="/admin/alerts">Alerts</a>
+		<a class="card card-hover section-actions" href="/admin/backup">Backup</a>
+		<a class="card card-hover section-actions" href="/admin/config">Config</a>
+		<a class="card card-hover section-actions" href="/admin/log">Logs` + alertBadge() + `</a>
+		<a class="card card-hover section-actions" href="/admin/moderate">Moderation</a>
+		<a class="card card-hover section-actions" href="/admin/oauth">OAuth</a>
+		<a class="card card-hover section-actions" href="/admin/server">Server</a>
+		<a class="card card-hover section-actions" href="/admin/spam">Spam</a>
+		<a class="card card-hover section-actions" href="/admin/status">Status</a>
+		<a class="card card-hover section-actions" href="/admin/traffic">Usage</a>
+		<a class="card card-hover section-actions" href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 	</div>`
 
 	app.Respond(w, r, app.Response{Title: "Admin", Description: "Admin Dashboard", HTML: content})

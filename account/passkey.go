@@ -46,7 +46,7 @@ func getWebAuthn(r *http.Request) *webauthn.WebAuthn {
 
 		var err error
 		webAuthn, err = webauthn.New(&webauthn.Config{
-			RPDisplayName: "Mu",
+			RPDisplayName: "Micro",
 			RPID:          rpID,
 			RPOrigins:     origins,
 			AuthenticatorSelection: protocol.AuthenticatorSelection{

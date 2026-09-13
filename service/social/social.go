@@ -189,20 +189,6 @@ func CardHTML() string {
 	return cardHTML
 }
 
-// CountSince returns the number of messages (threads + replies) posted
-// after the given timestamp. Used by the /updates endpoint.
-func CountSince(since time.Time) int {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	count := 0
-	for _, p := range messages {
-		if p.PostedAt.After(since) {
-			count++
-		}
-	}
-	return count
-}
-
 // Threads returns all cached messages (most recent first)
 func Threads() []*Message {
 	mutex.RLock()
