@@ -106,8 +106,10 @@ a.btn-secondary, a.btn-secondary:visited, .btn-secondary {
   color: var(--text-primary, #333);
   border-color: var(--border-color, #ddd);
 }
-a.btn-secondary:hover, .btn-secondary:hover {
+a.btn-secondary:hover, .btn-secondary:hover,
+a.btn-secondary:focus-visible, .btn-secondary:focus-visible {
   background: var(--border-color, #ddd);
+  color: var(--text-primary, #333);
   text-decoration: none;
 }
 
@@ -341,4 +343,13 @@ a.link-text {
 .chat-main > .mu-chat-transcript #mu-chat-form { flex-shrink:0; }
 @media(min-width:901px) {
  .chat-layout .chat-main { overflow:hidden; }
+}
+
+/* Dropdown choices keep readable text on their light hover/focus surface. */
+.menu-item:hover, .menu-item:focus-visible {
+  background:var(--hover-background,#f5f5f5);
+  color:var(--text-secondary,#555);
+}
+.menu-item.danger:hover, .menu-item.danger:focus-visible {
+  color:var(--btn-danger,#c00);
 }
