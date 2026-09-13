@@ -537,45 +537,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// Tag filter
 	tag := r.URL.Query().Get("tag")
 
-	// Collect known tags from public apps for filter pills
-	tagSet := map[string]bool{}
-	for _, a := range list {
-		for _, t := range splitTags(a.Tags) {
-			tagSet[t] = true
-		}
-	}
-	if len(tagSet) > 0 {
-		sb.WriteString(`<div class="app-filters">`)
-		sb.WriteString(app.PillLink("All", "/apps", tag == ""))
-		var sortedTags []string
-		for t := range tagSet {
-			sortedTags = append(sortedTags, t)
-		}
-		sort.Strings(sortedTags)
-		for _, t := range sortedTags {
-			sb.WriteString(app.PillLink(t, "/apps?tag="+url.QueryEscape(t), strings.EqualFold(tag, t)))
-		}
-		sb.WriteString(`</div>`)
-	}
-
-	// Pricing filter pills
-	hasPaid := false
-	hasFree := false
-	for _, a := range list {
-		if a.Price > 0 {
-			hasPaid = true
-		} else {
-			hasFree = true
-		}
-	}
-	if hasPaid && hasFree {
-		sb.WriteString(`<div class="app-filters">`)
-		sb.WriteString(app.PillLink("All", "/apps", pricing == ""))
-		sb.WriteString(app.PillLink("Free", "/apps?pricing=free", pricing == "free"))
-		sb.WriteString(app.PillLink("Paid", "/apps?pricing=paid", pricing == "paid"))
-		sb.WriteString(`</div>`)
-	}
-
 	// Filter by tag
 	if tag != "" {
 		var filtered []*App
