@@ -14,6 +14,7 @@ import (
 	"html"
 	"strconv"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/service"
@@ -158,6 +159,7 @@ func (Server) Alerts(_ context.Context, req *AlertsRequest, rsp *AlertsResponse)
 
 // Load registers the service.
 func Load() {
+	startRefresh()
 	if err := service.Register(Spec); err != nil {
 		app.Log("hazards", "service register failed: %v", err)
 	}
@@ -200,9 +202,15 @@ var Spec = service.Spec{
 // card plus every method with its arguments and a form that calls them.
 
 func Card() string {
-	quakes, err := recent(4.5, "day", 0, 0, 0)
-	if err != nil {
+	all, at, failed := quakeCache.read()
+	if at.IsZero() || failed || time.Since(at) > 2*refreshEvery {
 		return ""
+	}
+	quakes := make([]quake, 0, len(all))
+	for _, q := range all {
+		if q.Magnitude >= 4.5 {
+			quakes = append(quakes, q)
+		}
 	}
 	if len(quakes) == 0 {
 		return `<p class="hmuted">Nothing above M4.5 in the past day.</p>` +

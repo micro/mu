@@ -89,8 +89,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b.WriteString(notice)
-	b.WriteString(push.Card(r, who))
-	b.WriteString(`<div class="card"><h3>Send a notification</h3><form method="post" action="/notify">` + app.CSRFField(auth.CSRFToken(r)) + `<label for="notify-title">Title</label><input id="notify-title" name="title" required maxlength="120"><label for="notify-body">Message</label><textarea id="notify-body" name="body" rows="3" maxlength="300"></textarea><button type="submit">Send to my devices</button></form><p class="text-sm text-muted">For phone numbers and text messages, use <a href="/sms">SMS</a>. Manage your verified number in <a href="/account">Account</a>.</p></div>`)
+	b.WriteString(push.Card(r, who, "Settings"))
+	b.WriteString(`<div class="page-section"><div class="form-actions"><button type="button" aria-controls="notify-new" aria-expanded="false" onclick="var p=document.getElementById('notify-new');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden)document.getElementById('notify-title').focus()">New</button></div><div id="notify-new" hidden><form method="post" action="/notify" class="form page-stack mt-3">` + app.CSRFField(auth.CSRFToken(r)) + `<label class="field-label" for="notify-title">Title<input id="notify-title" name="title" required maxlength="120"></label><label class="field-label" for="notify-body">Message<textarea id="notify-body" name="body" rows="3" maxlength="300"></textarea></label><div class="form-actions"><button type="submit">Send to my devices</button></div></form><p class="text-sm text-muted">For phone numbers and text messages, use <a href="/sms">SMS</a>. Manage your verified number in <a href="/account">Account</a>.</p></div></div>`)
 
 	b.WriteString(historyCard(sent))
 
@@ -152,7 +152,7 @@ func devicesCard(devices []push.Subscription) string {
 // historyCard is what has been sent, newest first.
 func historyCard(sent []push.Sent) string {
 	var b strings.Builder
-	b.WriteString(`<div class="card"><h3>What you were told</h3>`)
+	b.WriteString(`<div class="card"><h3>History</h3>`)
 
 	if len(sent) == 0 {
 		b.WriteString(`<p class="text-sm text-muted">Nothing yet. Mail arriving and a reminder ` +

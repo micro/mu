@@ -44,7 +44,6 @@ import (
 	"html"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"mu/internal/app"
@@ -70,17 +69,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quakes, alertsFound, floods := gather()
+	quakes, qat, qfailed := quakeCache.read()
+	alertsFound, aat, afailed := alertCache.read()
+	floods, fat, ffailed := floodCache.read()
 
 	var b strings.Builder
 	b.WriteString(`<div class="hz">`)
 	b.WriteString(`<p class="hz-lede">Earthquakes, disaster alerts and flood ` +
-		`warnings, from the USGS, GDACS and the Environment Agency. Live &mdash; ` +
-		`nothing here is stored.</p>`)
+		`warnings, from the USGS, GDACS and the Environment Agency. ` +
+		`Refreshed in the background every five minutes.</p>`)
 
-	b.WriteString(quakeSection(quakes))
-	b.WriteString(alertSection(alertsFound))
-	b.WriteString(floodSection(floods))
+	b.WriteString(quiet("Quake feed: " + freshness(qat, qfailed)))
+	if !qat.IsZero() {
+		b.WriteString(quakeSection(quakes))
+	}
+	b.WriteString(quiet("Alert feed: " + freshness(aat, afailed)))
+	if !aat.IsZero() {
+		b.WriteString(alertSection(alertsFound))
+	}
+	b.WriteString(quiet("Flood feed: " + freshness(fat, ffailed)))
+	if !fat.IsZero() {
+		b.WriteString(floodSection(floods))
+	}
 
 	// How to call it, at the foot, for the reader who has just seen the answer
 	// and wants it in their own program. That is the moment the reference is
@@ -96,32 +106,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// gather fetches the three feeds at once.
-//
-// A slow or dead feed costs its own section and not the page: each returns nil
-// on error and the section says so. Three sequential round trips to three third
-// parties is three timeouts in a row on a page whose whole point is a glance.
+// gather reads public snapshots without waiting for network requests.
 func gather() ([]quake, []alert, []flood) {
-	var (
-		wg  sync.WaitGroup
-		qs  []quake
-		als []alert
-		fls []flood
-	)
-	wg.Add(3)
-	go func() {
-		defer wg.Done()
-		qs, _ = recent(pageMinMagnitude, pagePeriod, 0, 0, 0)
-	}()
-	go func() {
-		defer wg.Done()
-		als, _ = alerts("orange", 0, 0, 0)
-	}()
-	go func() {
-		defer wg.Done()
-		fls, _ = floodsNow(0, 0, 0, false)
-	}()
-	wg.Wait()
+	qs, _, _ := quakeCache.read()
+	als, _, _ := alertCache.read()
+	fls, _, _ := floodCache.read()
 	return qs, als, fls
 }
 
@@ -271,6 +260,7 @@ func serveJSON(w http.ResponseWriter) {
 		"alerts": as,
 		"floods": fs,
 		"at":     time.Now().UTC(),
+		"feeds":  map[string]interface{}{"quakes": feedInfo(&quakeCache), "alerts": feedInfo(&alertCache), "floods": feedInfo(&floodCache)},
 	})
 }
 

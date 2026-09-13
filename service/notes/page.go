@@ -134,7 +134,7 @@ func editor(r *http.Request, title, text string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="collection-head">` +
 		`<a class="link" href="/notes">← All notes</a></div>`)
-	b.WriteString(`<div class="card record-card"><form method="POST" action="/notes" class="record-editor">` +
+	b.WriteString(`<div class="page-stack"><form method="POST" action="/notes" class="record-editor">` +
 		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 		`<input type="hidden" name="save" value="1">` +
 		titleField +

@@ -10,7 +10,9 @@ import (
 // renderThreadPreview renders a thread preview showing the latest message but linking to root
 func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, hasUnread bool) string {
 	unreadIndicator := ""
+	rowClass := "thread-preview card"
 	if hasUnread {
+		rowClass += " mail-unread"
 		unreadIndicator = `<span class="unread-dot">● </span>`
 	}
 
@@ -41,7 +43,7 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 
 	html := fmt.Sprintf(`
-		<div class="thread-preview card" onclick="window.location.href='/mail?id=%s'">
+		<div class="%s" onclick="window.location.href='/mail?id=%s'">
 			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" title="Delete conversation">×</a>
 			<div class="mail-thread-item">
 				<strong class="mail-thread-subject">%s%s</strong>
@@ -52,7 +54,7 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 				<span class="mail-thread-time">%s</span>
 			</div>
 		</div>
-	`, rootID, rootID, unreadIndicator, fromDisplay, decodeMIMEHeader(latestMsg.Subject), bodyPreview, relativeTime)
+	`, rowClass, rootID, rootID, unreadIndicator, fromDisplay, decodeMIMEHeader(latestMsg.Subject), bodyPreview, relativeTime)
 
 	return html
 }

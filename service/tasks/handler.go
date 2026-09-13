@@ -100,13 +100,13 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	list := List(sess.Account, filter)
 
 	var b strings.Builder
-	b.WriteString(`<div class="card">`)
+	b.WriteString(`<div class="page-section">`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
 	}
 
-	b.WriteString(addForm(csrf))
+	b.WriteString(`<div class="form-actions"><button type="button" aria-controls="task-new" aria-expanded="false" onclick="var p=document.getElementById('task-new');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden)p.querySelector('input[name=title]').focus()">New</button></div><div id="task-new" hidden>` + addForm(csrf) + `</div>`)
 	b.WriteString(`</div>`)
 
 	// Filters. Counted, because "3 open" is the thing you want to know before
@@ -163,7 +163,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	}
 
 	b.WriteString(tasksPageCSS)
-	app.Respond(w, r, app.Response{Title: "Todo", Description: "What is to be done", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Tasks", Description: "What is to be done", HTML: b.String()})
 }
 
 func tab(b *strings.Builder, status, active, label string) {

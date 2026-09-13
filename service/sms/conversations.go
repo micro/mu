@@ -39,7 +39,7 @@ func conversationList(who string, history []Message) string {
 		if m.Direction == "out" {
 			preview = "You: " + preview
 		}
-		b.WriteString(`<a class="sms-conversation" href="/sms?id=` + url.QueryEscape(m.ID) + `"><div class="sms-conversation-head"><strong>` + html.EscapeString(name) + `</strong>` + app.Pill(Channel(m.Channel).Label()) + `<span class="text-muted text-sm">` + html.EscapeString(app.TimeAgo(m.At)) + `</span></div>`)
+		b.WriteString(`<a class="sms-conversation" href="/sms?id=` + url.QueryEscape(m.ID) + `"><div class="sms-conversation-head"><span class="sms-name">` + html.EscapeString(name) + `</span>` + app.Pill(Channel(m.Channel).Label()) + `<span class="text-muted text-sm">` + html.EscapeString(app.TimeAgo(m.At)) + `</span></div>`)
 		if name != m.Number {
 			b.WriteString(`<span class="text-muted text-sm">` + html.EscapeString(m.Number) + `</span>`)
 		}
@@ -51,10 +51,10 @@ func conversationList(who string, history []Message) string {
 
 const conversationsCSS = `<style>
 .sms-conversations{display:flex;flex-direction:column;min-width:0}
-.sms-conversation{display:flex;flex-direction:column;gap:var(--space-control);padding:var(--space-field) 0;border-bottom:1px solid var(--border-color,#ddd);color:inherit;text-decoration:none;min-width:0}
+.sms-conversation{font-weight:400;display:flex;flex-direction:column;gap:var(--space-control);padding:var(--space-field) 0;border-bottom:1px solid var(--border-color,#ddd);color:inherit;text-decoration:none;min-width:0}
 .sms-conversation:hover{background:var(--hover-background,#f5f5f5);text-decoration:none}
 .sms-conversation-head{display:flex;align-items:center;gap:var(--space-control);flex-wrap:wrap;min-width:0}
-.sms-conversation-head strong{overflow-wrap:anywhere}
+.sms-conversation-head .sms-name{overflow-wrap:anywhere}
 .sms-preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary,#555)}
 </style>`
 

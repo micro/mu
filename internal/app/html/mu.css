@@ -2405,7 +2405,7 @@ a.btn-plain:hover {
 
 .market-price {
   font-size: 0.75em;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-normal);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
@@ -4281,8 +4281,9 @@ a.btn-primary:hover, .btn-primary:hover {
 
 .mail-thread-subject {
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 400;
 }
+.mail-unread .mail-thread-subject, .mail-unread .mail-thread-meta { font-weight: 600; }
 
 .mail-thread-meta {
   color: #666;
@@ -5261,7 +5262,7 @@ a.card-hover:hover {
 }
 .market-card .market-price {
   font-size: 0.9em;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-normal);
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
@@ -5310,7 +5311,7 @@ a.card-hover:hover {
 }
 
 .markets-price {
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-normal);
 }
 
 .markets-change {
@@ -7584,7 +7585,7 @@ a.pill {
   color: var(--text-primary, #222);
   cursor: pointer;
 }
-.cw-addr:hover { background: var(--hover-background, #f5f5f5); border-color: var(--border-color, #ddd) }
+.cw-addr:hover, .cw-addr:focus-visible { color:var(--text-primary,#222); background: var(--hover-background, #f5f5f5); border-color: var(--border-color, #ddd) }
 .cw-copied { font-size: 12px; color: #1a7f37; margin-top: 6px }
 .cw-net {
   font-size: 13px; color: #8a5a00;
