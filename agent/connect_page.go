@@ -13,7 +13,7 @@ package agent
 // agent surface had and what it was rightly called bizarre for.
 
 import (
-	"fmt"
+	"encoding/json"
 	"html"
 	"net/http"
 	"strings"
@@ -140,34 +140,15 @@ func connEndpoint(base, path string) string {
 	if path == "" {
 		return ""
 	}
-	url := strings.TrimSuffix(base, "/") + path
-	// "HTTP endpoint", not "API endpoint". The other block on this page is the
-	// MCP configuration, which is also an endpoint, so the bare word named one
-	// of two things and distinguished neither — but "API" was the wrong repair,
-	// because this instance has an API and this is not part of it.
-	//
-	// /api/v1/<service>/<method> is derived: it turns a path into a tool name
-	// and hands it to the same ExecuteTool that /mcp calls, so it has no route
-	// table of its own and nothing appears in it that is not a service. An
-	// agent is not a service — it reads the catalogue rather than sitting in
-	// it — so there is no /api/v1/agent and there should not be one.
-	//
-	// Calling this "API endpoint" set the opposite expectation, and the first
-	// thing anybody does with an expectation like that is go looking for the
-	// path that would satisfy it. This is the third door, beside /mcp and
-	// /api/v1/, and naming it for its protocol says so.
-	return `<h3 class="conn-head">HTTP endpoint</h3>` +
-		`<p class="conn-note">Ask it a question from a program. Same agent, same ` +
-		`instruction, same conversation as the chat above. This is the agent's own ` +
-		`door — the tools have their own at ` + app.TextLink("/api", "/api") + `.</p>` +
-		`<pre class="conn-pre">` + html.EscapeString(`curl -X POST `+url+` \
+
+	name := strings.TrimPrefix(path, "/agent/")
+	payload, _ := json.Marshal(map[string]string{"prompt": "What needs my attention?", "agent": name})
+	example := "curl -X POST " + strings.TrimRight(base, "/") + `/api/v1/agent/ask \
   -H "Authorization: Bearer $MU_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"text": "what is the weather in London?"}'`) + `</pre>` +
-		`<pre class="conn-pre">` + html.EscapeString(`{"text": "…", "thread": "t_a1b2c3", "agent": "`+
-		strings.TrimPrefix(path, "/agent/")+`"}`) + `</pre>` +
-		`<p class="conn-note">Send <code>thread</code> back on the next call and it ` +
-		`continues the same conversation.</p>`
+  -d '` + string(payload) + "'"
+	return `<h3 class="conn-head">HTTP endpoint</h3><p class="conn-note">Ask this agent through the <a href="/api">Agent API</a>. Create an API token at <a href="/token">Tokens</a>; service-scoped credentials cannot run an agent.</p><pre class="conn-pre">` + html.EscapeString(example) + `</pre><p class="conn-note">The response contains <code>data.text</code> and <code>data.thread</code>. Send <code>thread</code> back to continue.</p>`
+
 }
 
 // connChat is the row linking to an agent's own chat page.
@@ -221,7 +202,7 @@ func defaultPanel(base string) string {
 
 	b.WriteString(connChat(base, "/agent/"+DefaultPlatformAgent))
 
-	b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
+	b.WriteString(`<div class="conn-row"><span class="conn-k">Service token</span>` +
 		`<span class="conn-v">Your account's. ` + app.TextLink("Issue one", "/token") +
 		` and anything holding it reaches every tool you can — which is why an agent you ` +
 		`hand to somebody else should be ` + app.TextLink("its own", "/agent/new") +
@@ -239,8 +220,7 @@ func defaultPanel(base string) string {
 	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
-	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +
-		`use — Claude, Cursor, your own code. It calls the tools; it does not talk to the agent.</p>`)
+	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Use an API token from <a href="/token">Tokens</a>.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "mu": {
@@ -251,7 +231,7 @@ func defaultPanel(base string) string {
 }`) + `</pre>`)
 	b.WriteString(`<p class="conn-note">Claude Desktop takes the URL on its own — Settings → ` +
 		`Connectors → Add custom connector — and signs you in instead of using a token. ` +
-		app.Link("See the tools", "/tools") + `</p>`)
+		app.Link("API reference", "/api") + `</p>`)
 
 	return b.String()
 }
@@ -325,37 +305,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	// now, because every agent is something you can talk to.
 	b.WriteString(connChat(base, Path(a.Owner, a.ID)))
 
-	// The token. A secret is shown once and never again, so this reports state
-	// rather than pretending it can show you one.
-	if a.TokenID == "" {
-		b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
-			`<span class="conn-v">None yet. ` +
-			fmt.Sprintf(`<form method="POST" action="/agents" class="d-inline">`+
-				`<input type="hidden" name="_csrf" value="%s">`+
-				`<input type="hidden" name="action" value="token">`+
-				`<input type="hidden" name="id" value="%s">`+
-				`<input type="hidden" name="back" value="/agent/connect?id=%s">`+
-				`<button type="submit" class="link-button">Issue one</button></form>`,
-				html.EscapeString(csrf), html.EscapeString(a.ID), html.EscapeString(a.ID)) +
-			`</span></div>`)
-	} else {
-		used := "not called yet"
-		if !a.LastUsed.IsZero() {
-			used = "last called " + a.LastUsed.Local().Format("2 Jan 15:04")
-		}
-		b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
-			`<span class="conn-v">Issued · ` + html.EscapeString(used) +
-			`. The secret was shown once and is stored hashed — ` +
-			fmt.Sprintf(`<form method="POST" action="/agents" class="d-inline" `+
-				`onsubmit="return confirm('Replace this token? Anything using the old one stops working.')">`+
-				`<input type="hidden" name="_csrf" value="%s">`+
-				`<input type="hidden" name="action" value="token">`+
-				`<input type="hidden" name="id" value="%s">`+
-				`<input type="hidden" name="back" value="/agent/connect?id=%s">`+
-				`<button type="submit" class="link-button">replace it</button></form>`,
-				html.EscapeString(csrf), html.EscapeString(a.ID), html.EscapeString(a.ID)) +
-			` to get a new one.</span></div>`)
-	}
+	b.WriteString(`<div class="conn-row"><span class="conn-k">API token</span><span class="conn-v"><a href="/token">Create or manage tokens</a>. Select Agent access. This grants access to your account's agents, not only this agent. Existing service tokens are for the separate tools host.</span></div>`)
 
 	b.WriteString(connModel(a.Model))
 
@@ -372,19 +322,18 @@ func connectPanel(a *Agent, base, csrf string) string {
 	b.WriteString(connEndpoint(base, Path(a.Owner, a.ID)))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
-	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +
-		`use — Claude, Cursor, your own code. It calls the tools; it does not talk to the agent.</p>`)
+	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Use an API token from <a href="/token">Tokens</a>.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "`+strings.ToLower(a.Name)+`": {
-      "url": "`+a.Endpoint(base)+`",
+      "url": "`+strings.TrimRight(base, "/")+"/mcp"+`",
       "headers": { "Authorization": "Bearer YOUR_TOKEN" }
     }
   }
 }`) + `</pre>`)
 	b.WriteString(`<p class="conn-note">Claude Desktop takes the URL on its own — Settings → ` +
 		`Connectors → Add custom connector — and signs you in instead of using a token. ` +
-		app.Link("See the tools", "/tools") + `</p>`)
+		app.Link("API reference", "/api") + `</p>`)
 
 	return b.String()
 }

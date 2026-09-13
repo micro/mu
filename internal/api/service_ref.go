@@ -97,16 +97,17 @@ func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 		return b.String()
 	}
 
-	b.WriteString(refAuthCard(spec, base))
+	b.WriteString(`<p>These are internal service capabilities used by your agents. Sign in to try them here. For programmatic access, use the <a href="/api">Agent, Work and Inbox API</a>.</p>`)
 
 	b.WriteString(`<h2 class="svc-h">Methods</h2>`)
 	for _, m := range methods {
-		b.WriteString(refMethodCard(m, base))
+		m.Path = "/services/call/" + m.Service + "/" + strings.ToLower(m.Method)
+		b.WriteString(`<div class="card"><h3>` + html.EscapeString(m.Method) + `</h3><p>` + html.EscapeString(m.Doc) + `</p>`)
+		b.WriteString(tryForm(m))
+		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(`<p class="svc-doors">The same methods are tools over ` +
-		`<a href="/mcp">MCP</a>, and every service on this instance is in ` +
-		`<a href="/api">one reference</a>.</p>`)
+	b.WriteString(`<p class="svc-doors"><a href="/api">Ask an agent through HTTP or MCP &rarr;</a></p>`)
 
 	b.WriteString(`</div>`)
 	b.WriteString(tryScript)
@@ -232,7 +233,7 @@ func refMethodCard(m restMethod, base string) string {
 func tryForm(m restMethod) string {
 	var b strings.Builder
 	b.WriteString(`<form class="try" data-path="` + html.EscapeString(m.Path) +
-		`" data-method="` + map[bool]string{true: "POST", false: "GET"}[m.Changes] + `">`)
+		`" data-method="` + "POST" + `">`)
 
 	for _, p := range m.Params {
 		req := ""
@@ -294,20 +295,13 @@ const tryScript = `<script>
       ev.preventDefault();
       var out = form.querySelector('.try-out');
       var args = values(form);
-      var path = form.dataset.path;
+      var path = form.dataset.path.replace('/api/v1/', '/services/call/');
       var opts = { credentials: 'same-origin', cache: 'no-store', headers: {} };
-      if (form.dataset.method === 'POST') {
-        opts.method = 'POST';
-        opts.headers['Content-Type'] = 'application/json';
-        var t = csrf();
-        if (t) opts.headers['X-CSRF-Token'] = t;
-        opts.body = JSON.stringify(args);
-      } else {
-        var q = new URLSearchParams();
-        Object.keys(args).forEach(function(k){ q.set(k, args[k]); });
-        var s = q.toString();
-        if (s) path += '?' + s;
-      }
+      opts.method = 'POST';
+      opts.headers['Content-Type'] = 'application/json';
+      var t = csrf();
+      if (t) opts.headers['X-CSRF-Token'] = t;
+      opts.body = JSON.stringify(args);
       out.hidden = false;
       out.textContent = '…';
       fetch(path, opts)

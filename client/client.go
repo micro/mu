@@ -178,21 +178,13 @@ func All() []Client {
 	// one program that speaks IMAP — naming the way in after a tool somebody
 	// might use would be the only row here that does.
 	//
-	// The address is /agent and not /api/v1/…, and that is not a slip.
-	// /api/v1/<service>/<method> is the door onto services — the things the
-	// agent calls. The agent is not one of them; it is what does the calling,
-	// so it has a door of its own.
-	//
-	// And it is /agent, not /agent/micro. Naming the default agent is asking a
-	// caller to know which one that is, which is the one thing they should not
-	// have to: agent@<domain> has never needed a name either. The plain address
-	// means "whatever answers here" on both doors, and a specialist is
-	// agent+news@ or /agent/news. Same shape, same rule.
+	// The public agent API manages reasoning and tool use for the caller.
+
 	if host != "" {
 		out = append(out, Client{Label: "API", Dev: true,
-			Address: "https://" + host + "/agent",
+			Address: "https://" + host + "/api/v1/agent/ask",
 			Href:    "/token", Note: "for a program — needs a token",
-			Example: "curl -X POST https://" + host + "/agent \\\n" +
+			Example: "curl -X POST https://" + host + "/api/v1/agent/ask \\\n" +
 				`  -H "Authorization: Bearer $MU_TOKEN" \` + "\n" +
 				`  -d '{"prompt": "what is on my calendar?"}'`})
 	}

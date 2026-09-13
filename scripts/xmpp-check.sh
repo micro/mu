@@ -235,8 +235,8 @@ fi
 # put it, so it is at /inbox afterwards. Over HTTPS, because that is a
 # different door and this is checking they meet.
 if command -v curl >/dev/null 2>&1; then
-	REC=$(curl -fsS --max-time 20 -H "Authorization: Bearer $TOKEN" \
-		"${API:-https://$HOST}/api/v1/recall/list" 2>/dev/null)
+	REC=$(curl -fsS --max-time 20 -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"limit":100}' \
+		"${API:-https://$HOST}/api/v1/inbox/list" 2>/dev/null)
 	# recall renders its answer for a reader rather than returning rows, so the
 	# conversation shows as "(chat, <date>)". Matched loosely on purpose: this
 	# is checking that the record has the exchange, not what recall's output

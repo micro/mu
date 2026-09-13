@@ -168,7 +168,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// in mu.css — it was a class name invented at the call site, so both tables
 	// on this page were unstyled browser defaults, and on a phone six columns
 	// squashed to a few characters each.
-	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>Services</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
+	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>Access</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
 	tokens := auth.ListTokens(accountID)
 	if len(tokens) == 0 {
 		sb.WriteString(`<tr><td colspan="6" class="p-5 text-center text-secondary">No tokens yet.</td></tr>`)
@@ -186,7 +186,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		if !token.Created.IsZero() {
 			created = app.TimeAgo(token.Created)
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Services">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
+		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Access">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
 			<form method="POST" action="/token?id=%s" class="d-inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			token.Name, tokenScope(token), created, lastUsed, expires, token.ID))
@@ -222,11 +222,19 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// wallet. The scoped path existed on /agents and the README pointed here —
 	// so the documented road was the unsafe one and the safe one was
 	// undocumented. Same control, same meaning, on both pages now.
+	sb.WriteString(app.Field{Name: "access", Label: "Access", Options: []app.Option{
+		{Value: "api", Label: "Agent, Work and Inbox", On: true},
+		{Value: "agent", Label: "Agent"}, {Value: "work", Label: "Work"}, {Value: "inbox", Label: "Inbox"},
+		{Value: "services", Label: "Service tools (separate tools host)"},
+	}}.HTML())
+	sb.WriteString(`<p class="text-secondary text-sm">API access applies across your account. Agent and Work may use the selected agent's tools and private context.</p><div id="token-service-scopes" hidden>`)
+
 	var scopeChoices []app.Option
 	for _, sp := range tokenScopeChoices() {
 		scopeChoices = append(scopeChoices, app.Option{Value: sp.Name, Label: sp.NavLabel()})
 	}
 	sb.WriteString(app.ServiceSelect("tok-scope", "tok-service-list", "services", scopeChoices))
+	sb.WriteString(`</div>`)
 	sb.WriteString(`<div class="form-actions"><button type="submit">Generate Token</button></div></form>`)
 
 	sb.WriteString(`<hr class="hr-soft">`)
@@ -293,17 +301,22 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create</button></div></form>`)
 
 	sb.WriteString(`<script>
+document.querySelector('[name="access"]').addEventListener('change',function(){document.getElementById('token-service-scopes').hidden=this.value!=='services';});
 async function createToken(e) {
 	e.preventDefault();
 	var form = e.target;
- var mode=form.scope_mode.value;
+ var access=form.access.value;
+ var mode=access==='services'?form.scope_mode.value:'all';
+ var permissions=['read','write'];
+ if(access==='api') permissions=permissions.concat(['api:agent','api:work','api:inbox']);
+ else if(access!=='services') permissions.push('api:'+access);
  var services=mode==='select'?Array.from(form.querySelectorAll('input[name="services"]:checked')).map(function(c){return c.value}):[];
  if(mode==='select' && !services.length){alert('Select at least one service');return;}
 	var res = await fetch('/token', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
 		body: JSON.stringify({name: form.name.value, expires_in: parseInt(form.expires_in.value),
-			scope_mode: mode, services: services})
+			scope_mode: mode, services: services, permissions: permissions})
 	});
 	var result = await res.json();
 	if (result.success) {
@@ -548,6 +561,18 @@ func validScopeNames(in []string) []string {
 // saying out loud on the page that hands out credentials.
 func tokenScope(t *auth.Token) string {
 	names := t.Services()
+	if len(names) == 0 && t.Scoped() {
+		var capabilities []string
+		for _, p := range t.Permissions {
+			if strings.HasPrefix(p, "api:") {
+				capabilities = append(capabilities, strings.TrimPrefix(p, "api:"))
+			}
+		}
+		if len(capabilities) == 0 {
+			return "None"
+		}
+		return htmlpkg.EscapeString(strings.Join(capabilities, ", "))
+	}
 	if len(names) == 0 {
 		return "All"
 	}

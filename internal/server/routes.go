@@ -65,6 +65,7 @@ import (
 	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
+	"mu/work"
 )
 
 // authRequired reports, per path, whether a caller must be signed in.
@@ -172,7 +173,6 @@ func authRequired() map[string]bool {
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/code":      true,  // The Code agent's front door — see agent/code
 		"/code/":     true,  // and one file out of its workspace
-		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
 		"/web":       false, // Public - the open web: search it, read a page from it
 		"/search":    false, // Public - an old name for /web, redirected
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
@@ -196,6 +196,7 @@ func authRequired() map[string]bool {
 		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
 		"/push/":   true,  // Subscribing this device to notifications (old name)
 		"/notify/": true,  // The same, under the name the feature actually has
+		"/work":    true,
 		"/inbox":   true,  // The mailbox — yours, so it needs a session
 		"/inbox/":  true,  // One alias's mail
 		"/setup":   false, // First-run setup (open only until an admin exists)
@@ -213,6 +214,10 @@ func staticSuffixes() []string {
 
 // registerRoutes attaches every handler to the default mux.
 func registerRoutes() {
+	api.Operations = append(agent.PublicOperations(), work.PublicOperations()...)
+	api.Operations = append(api.Operations, inbox.PublicOperations()...)
+	http.HandleFunc("/services/call/", api.ServiceCallHandler)
+	http.HandleFunc("/work", work.Handler)
 	// serve video
 	http.HandleFunc("/video", video.Handler)
 	http.HandleFunc("/video/thumb", video.ThumbHandler)
@@ -578,7 +583,7 @@ func registerRoutes() {
 	// own: the output is an app, the store is apps, and a service named for an
 	// action would have to import that one to do anything at all.
 
-	// serve work (task bounties)
+	// Work is registered above as the delegated execution destination.
 
 	// content controls (flag, save, dismiss, block, share)
 
@@ -709,7 +714,7 @@ func registerRoutes() {
 	// choosing between two things, and being sent to a tool-calling protocol
 	// reads as "not for you". The two pages say different things and link to
 	// each other.
-	http.HandleFunc("/api", api.RESTPageHandler)
+	http.HandleFunc("/api", publicReferenceHandler)
 
 	// /api/v1/<service>/<method> — the door for a program that is not an agent.
 	//
@@ -719,16 +724,16 @@ func registerRoutes() {
 	// Both forms, because serve() strips a trailing slash before routing: with
 	// only the subtree pattern the bare root redirects to itself forever. Every
 	// other subtree route here does the same.
-	http.HandleFunc(api.RESTRoot, api.RESTHandler)
-	http.HandleFunc(api.RESTPrefix, api.RESTHandler)
+	http.HandleFunc(api.RESTRoot, publicRESTHandler)
+	http.HandleFunc(api.RESTPrefix, publicRESTHandler)
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	// One catalogue, two lenses — see internal/api/tools_page.go.
-	http.HandleFunc("/tools", api.ToolsPageHandler)
+	http.HandleFunc("/tools", api.PublicPageHandler)
 	// /tools/<name> — one tool. The smallest unit in the catalogue, and until
 	// now the only one with no page: clicking a tool jumped to a fragment on
 	// the playground. See internal/api/tool_page.go.
-	http.HandleFunc("/tools/", api.ToolPageHandler)
+	http.HandleFunc("/tools/", api.PublicPageHandler)
 	http.HandleFunc("/services", api.ToolsPageHandler)
 	// /services/<name> — one service as the thing you call: what it knows right
 	// now, every method with its arguments and its price, and a form that makes
@@ -797,7 +802,7 @@ func registerRoutes() {
 	http.HandleFunc("/card/", api.CardHandler)
 	// Your own usage — the caller-facing half of /admin/traffic.
 	http.HandleFunc("/usage", home.UsageHandler)
-	http.HandleFunc("/mcp", api.MCPHandler)
+	http.HandleFunc("/mcp", publicMCPHandler)
 
 	// serve the app
 	http.Handle("/", app.Serve())

@@ -1092,8 +1092,7 @@ An override of `0` is ignored, because an unset variable and one set to `"0"`
 look the same to a container and a price silently dropping to free is the wrong
 way to fail. Make something free in the file.
 
-The full list is on [/tools](https://micro.mu/tools), which renders from
-that same file, so this page does not repeat twenty-six rows.
+The full operation price list is in `quota.json`; account billing shows usage.
 
 | Variable | Default | What it does |
 |---|---|---|
@@ -1187,9 +1186,9 @@ tokens do not inherit it. Calls within Mu agent runs and x402 identities are
 refused. This policy does not install host-management capabilities or grant OS
 privileges. Mu's existing service user and sandbox permissions are unchanged.
 
-The MCP and REST catalogue responses include `X-Mu-Catalogue-Version` and
-`X-Mu-Tool-Count` headers. Compare these when diagnosing an external client's
-cached tools. Reconnect the client to refresh discovery after a deployment.
+The separately configured tools host includes `X-Mu-Catalogue-Version` and
+`X-Mu-Tool-Count` headers. Reconnect MCP clients to refresh discovery after a
+deployment; the primary host now lists Agent, Work and Inbox operations.
 
 ### Flight schedules and estimates
 
@@ -1216,12 +1215,17 @@ install arbitrary executable code or start a separate operating-system process.
 
 ### Programs using Mu
 
-An independently running agent or application can call Mu's authenticated HTTP
-API at `/api/v1/<service>/<method>` or use its tools through `/mcp`. Point the
-client at your instance and give it a token with the access it needs. The client
-owns its execution and, for an external agent, its model and reasoning loop.
-Mu supplies capabilities. No Mu rebuild is needed, and the default in-memory
-registry can stay enabled.
+Programs call Agent, Work and Inbox through JSON POST operations at `/api/v1`
+or the same operations as MCP tools at `/mcp`. `/api` documents the current
+contract and `/api/v1` lists its operations. Mu owns agent execution and tool
+use; clients submit goals and read results.
+
+Create a token at `/token`. Select the needed API capabilities; these apply
+across the token owner's account. They do not isolate an application's
+conversations or disable memory. Service-scoped tokens are refused at the
+outcome API. The first-party service playground and sandboxed app SDK continue
+to use internal service capabilities. A separately configured x402 host retains
+the service API for existing tool clients.
 
 ### Services running outside Mu
 

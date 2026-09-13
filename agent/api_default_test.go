@@ -51,8 +51,8 @@ func TestTheCardOffersThePlainAddress(t *testing.T) {
 	// comment there explains why it is not /agent/micro and so contains the
 	// string it is arguing against.
 	for _, want := range []string{
-		`Address: "https://" + host + "/agent"`,
-		`"curl -X POST https://" + host + "/agent \\\n"`,
+		`Address: "https://" + host + "/api/v1/agent/ask"`,
+		`"curl -X POST https://" + host + "/api/v1/agent/ask \\\n"`,
 	} {
 		if !strings.Contains(string(src), want) {
 			t.Errorf("the card does not offer the plain address (looked for %s)", want)

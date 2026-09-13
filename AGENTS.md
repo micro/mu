@@ -9,14 +9,16 @@ sign into, and that other programs can call.
 
 ## What is in the binary
 
-The same catalogue behind every door, which is the point — a door is a
-translation layer and nothing more.
+The public HTTP API and MCP share a curated outcome surface: Agent, Work and
+Inbox. Services and their derived tools are internal building blocks for agent
+execution, the CLI and sandboxed apps. They are not automatically public API
+operations. A separately configured x402 host retains its tools contract.
 
 | Door | Where | For |
 |---|---|---|
 | Web app | `/` | a person, signed in |
 | PWA | `manifest.webmanifest`, `mu.js` | the same app, installed on a phone |
-| API | `/api/v1/<service>/<method>` | a program somebody wrote |
+| API | `/api/v1/<capability>/<operation>` | a program somebody wrote |
 | MCP | `/mcp` | somebody else's agent, holding a token |
 | CLI | `mu <service> <method>`, `mu ask` | a terminal, a script, a cron job |
 
@@ -39,9 +41,9 @@ caller is spared a signup, not whether we wrote the backend.
 
 **Agents** are defined one way: a name, a prompt, and a scoped set of those
 tools. Talk to one interactively on the web, by mail, over XMPP or from the CLI;
-or take a token and point your own client at `/mcp`, where it holds the same
-catalogue. `agent/` also ships built-in ones that run without anybody present —
-the digest, the brief, moderation, work.
+or take an API token and call `agent_ask` through `/mcp`, where Mu runs the
+agent and manages its tools. Built-in agents also run without anybody present: the
+digest, the brief, moderation and work.
 
 **The inbox** is one record of everything said, on whichever channel it arrived:
 mail, chat, SMS, WhatsApp, the web. It is `internal/thread`, not an email
@@ -57,7 +59,10 @@ The services become the building blocks for infrastructure, tools and external
 services. MCP is how agents reach them. The agents are what turn reach into
 intelligence: summarising, contextualising and acting on what is there, rather
 than fetching it again each time somebody asks. The app becomes the focal
-point — the inbox as the place work happens, Home as one view onto it.
+point — the inbox as the place work happens, Home as one view onto it. Work owns delegated goals, execution and outcomes;
+Inbox owns the messages and updates about them. A conversation alone is not
+a work item. `/work` is a top-level destination over delegated task records,
+not a rename of the tasks service.
 
 **Removing the barrier is the product.** An agent wanting news, mail, search,
 weather, markets, places and somewhere to keep records otherwise needs six
@@ -68,7 +73,7 @@ Breadth behind one account is the value.
 
 **Keep capabilities and data intact while simplifying the app.** Home is the
 personal dashboard, with Feed as a tab. Assistant opens the dedicated
-conversation. Navigation offers Assistant (Ask on mobile), Home, Inbox, Agents
+conversation. Navigation offers Assistant (Ask on mobile), Home, Inbox, Work, Agents
 and Services without an Advanced grouping. Todo remains a Home section over
 the tasks service, not another primary destination. Preserve the useful Home
 structure while applying shared typography, spacing, links and controls.
@@ -96,9 +101,9 @@ all along, because SMTP is SMTP and `service/mail` looks up MX records like
 anything else; chat was the protocol that did not. The claim stands when a
 message from here lands on a Prosody account and one comes back.
 
-The fourth rung of the access model below is built and has no surface.
-`service/tasks`, `agent/work` and `event.WorkForAgent` run work nobody is
-present for, and nothing renders it. Outbound is the same gap from the other
+Background work now has a dedicated public surface.
+`service/tasks`, `work` and `event.WorkForAgent` run work nobody is
+present for; `/work` and the public Work operations expose its state and outcome. Outbound is the same gap from the other
 side — mail leaving, an x402 payment to another server — and `X402_SERVERS` is
 read by a client no tool exposes. Inbound has three good rungs; outbound has
 none.
@@ -117,16 +122,14 @@ how much we supply.
 | the occasion too | a policy, once | **initiative** | nobody — it acts |
 
 **A layer is what you reach. A carrier is how you get there, and it is a
-detail.** Services have one carrier (`/api/v1/<service>/<method>`), tools have
-one (`/mcp`), and the agent has several — the web app, `mu agent`, mail, XMPP,
-`POST /agent/<name>`. Listing carriers beside layers is what makes the model
+detail.** The public outcome API has two carriers (`/api/v1` and `/mcp`); the agent also
+answers through the web app, CLI, mail, XMPP and legacy `POST /agent/<name>`. Listing carriers beside layers is what makes the model
 read as inconsistent when it is a gradient with an uneven fan-out. Which
 protocol carries you is the caller's business, which is the only way "an address
 is the smallest interface" means anything.
 
-MCP is a real rung rather than the API in a different envelope: the same
-services underneath, plus self-description, because a model has to *choose* and
-choosing needs a menu.
+HTTP and MCP expose the same curated operations. Internal service tools do
+not become public merely because an agent can use them.
 
 ## What may travel in a URL
 
@@ -196,15 +199,20 @@ Agents use tools.**
 A service answers a question about state: request in, response out,
 deterministic given the data, callable by anything. That shape is exactly what
 makes a tool derivable from it. An agent takes a goal and decides which
-questions to ask — it consumes the catalogue, so it cannot be in it.
+questions to ask — it consumes service tools. It declares no service Spec; the public API may
+expose agent operations without turning the agent into a service.
 
 - Every `service.Spec` lives under `service/`. One exception would be one too
   many: the moment a Spec lives elsewhere, "what is a service" stops being
   checkable and starts being something you have to remember.
 - Nothing that consumes tools declares a Spec — not `agent/`, not `account/`,
   not `home/` or `admin/`.
-- Nothing registers a tool by hand. A tool with nowhere to come from is a
-  service that has not been written yet.
+- Internal service tools are derived from Specs. Public outcome operations are
+  assembled in internal/server from agent, work and inbox, and adapted
+  through one HTTP/MCP dispatcher in internal/api. Keep those registries separate.
+- Public capability scopes (`api:agent`, `api:work`, `api:inbox`) never grant raw
+  service access. Service scopes never grant broader agent execution. Account
+  identity comes from the credential, never request arguments.
 - One directory per service, named for the service. `internal/service` is the
   runtime that hosts them, not a service.
 - Every service has a page: service name == directory == route == nav label ==
@@ -383,7 +391,7 @@ Four things ask an agent for work: a chat message, an email arriving, a task
 assigned, a schedule firing. Three of the four used to reach upward through a
 function variable filled in at boot. They are one fact now —
 `event.WorkForAgent`, published by whichever service holds the record,
-subscribed by `agent/work`, which knows where the answer goes because a task
+subscribed by `work`, which knows where the answer goes because a task
 keeps its result and a standing instruction is mailed.
 
 **A function variable is an import the compiler cannot see.** Every rule above

@@ -17,7 +17,7 @@ import (
 func init() {
 	http.HandleFunc("GET /mcp", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
-			api.MCPHandler(w, r)
+			api.PublicMCPHandler(w, r)
 			return
 		}
 		base := strings.TrimRight(origin.URL(r), "/")
@@ -32,7 +32,7 @@ func init() {
 
 	http.HandleFunc("GET /tools", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
-			api.ToolsPageHandler(w, r)
+			api.PublicPageHandler(w, r)
 			return
 		}
 		base := strings.TrimRight(origin.URL(r), "/")
@@ -50,7 +50,7 @@ func init() {
 	// canonical schema-bearing catalogue instead.
 	http.HandleFunc("GET /tools/", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
-			api.ToolPageHandler(w, r)
+			api.PublicPageHandler(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -79,4 +79,29 @@ func x402HostName() string {
 		return strings.ToUpper(v)
 	}
 	return "Mu"
+}
+
+// The separately configured tools host retains its contract while Micro adopts
+// the outcome API. It is not part of the primary site's public catalogue.
+func publicRESTHandler(w http.ResponseWriter, r *http.Request) {
+	if origin.IsX402Host(r) {
+		api.RESTHandler(w, r)
+		return
+	}
+	api.PublicRESTHandler(w, r)
+}
+func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
+	if origin.IsX402Host(r) {
+		api.MCPHandler(w, r)
+		return
+	}
+	api.PublicMCPHandler(w, r)
+}
+
+func publicReferenceHandler(w http.ResponseWriter, r *http.Request) {
+	if origin.IsX402Host(r) {
+		api.RESTPageHandler(w, r)
+		return
+	}
+	api.PublicPageHandler(w, r)
 }
