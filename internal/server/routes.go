@@ -599,6 +599,9 @@ func registerRoutes() {
 	http.HandleFunc("/report", app.ReportHandler)
 	// What you are doing, set on your own profile. See internal/user/status.go.
 	http.HandleFunc("/account", account.Account)
+	http.HandleFunc("/account/profile", account.Account)
+	http.HandleFunc("/account/usage", account.Account)
+	http.HandleFunc("/account/connections", account.Account)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)
 	http.HandleFunc("/updates", updatesHandler)
