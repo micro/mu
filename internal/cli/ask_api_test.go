@@ -36,3 +36,12 @@ func TestAskUsesPublicAPIAndContinuesThread(t *testing.T) {
 		}
 	}
 }
+
+func TestAgentOperationHelpDoesNotInvokeLocalAgent(t *testing.T) {
+	if got := commandName("agent_ask"); got != "agent_ask" {
+		t.Fatalf("help invokes local agent: %s", got)
+	}
+	if got := commandName("work_submit"); got != "work submit" {
+		t.Fatalf("unexpected work command: %s", got)
+	}
+}
