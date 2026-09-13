@@ -195,7 +195,7 @@ func TestTheHeadBalanceSpeaksOnlyWhenItMatters(t *testing.T) {
 
 	// When it does speak, it leads where the money is.
 	withBalance(t, 0, true)
-	if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, `href="/account#balance"`) {
+	if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, `href="/account/usage#balance"`) {
 		t.Errorf("the warning is not a link to where the balance lives: %q", got)
 	}
 

@@ -27,7 +27,6 @@ import (
 	"mu/internal/app"
 
 	"mu/internal/auth"
-	"mu/internal/push"
 	"mu/internal/usage"
 	"mu/service/sms"
 )
@@ -598,6 +597,30 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == http.MethodGet && r.URL.Path == "/account" {
+		target := ""
+		if r.URL.Query().Get("linked") == "google" || r.URL.Query().Get("connection") != "" {
+			target = "/account/connections"
+		}
+		if r.URL.Query().Get("saved") == "converted" {
+			target = "/account/usage"
+		}
+		if target != "" {
+			http.Redirect(w, r, target+"?"+r.URL.RawQuery, http.StatusSeeOther)
+			return
+		}
+	}
+	// These authenticated views share mutation handling, not duplicated settings forms.
+	accountPath := "/account"
+	title := "Account"
+	switch r.URL.Path {
+	case "/account/profile":
+		accountPath, title = r.URL.Path, "Profile"
+	case "/account/usage":
+		accountPath, title = r.URL.Path, "Usage & billing"
+	case "/account/connections":
+		accountPath, title = r.URL.Path, "Connections"
+	}
 	// Handle POST to update language or request email verification
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -608,7 +631,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 				acc.Language = newLang
 				auth.UpdateAccount(acc)
 			}
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			http.Redirect(w, r, accountPath, http.StatusSeeOther)
 			return
 		}
 
@@ -618,7 +641,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		// way back on.
 		if state := strings.TrimSpace(r.Form.Get("forwarding")); state != "" {
 			SetMailForwarding(acc.ID, state == "on")
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			http.Redirect(w, r, accountPath, http.StatusSeeOther)
 			return
 		}
 
@@ -636,7 +659,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 				app.Error(w, r, http.StatusBadRequest, err.Error())
 				return
 			}
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			http.Redirect(w, r, accountPath, http.StatusSeeOther)
 			return
 		}
 		if number := strings.TrimSpace(r.Form.Get("confirm_number")); number != "" {
@@ -644,12 +667,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 				app.Error(w, r, http.StatusBadRequest, err.Error())
 				return
 			}
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			http.Redirect(w, r, accountPath, http.StatusSeeOther)
 			return
 		}
 		if number := strings.TrimSpace(r.Form.Get("forget_number")); number != "" {
 			sms.Forget(acc.ID, number)
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			http.Redirect(w, r, accountPath, http.StatusSeeOther)
 			return
 		}
 
@@ -675,7 +698,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			}
 			acc.Name = name
 			auth.UpdateAccount(acc) //nolint:errcheck
-			http.Redirect(w, r, "/account?saved=name", http.StatusSeeOther)
+			http.Redirect(w, r, accountPath+"?saved=name", http.StatusSeeOther)
 			return
 		}
 
@@ -687,14 +710,14 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		// a random string they were never shown.
 		if pw := r.Form.Get("new_secret"); pw != "" || r.Form.Get("save_secret") != "" {
 			if pw != r.Form.Get("confirm_secret") {
-				http.Redirect(w, r, "/account?error="+url.QueryEscape("Those two passwords are not the same."), http.StatusSeeOther)
+				http.Redirect(w, r, accountPath+"?error="+url.QueryEscape("Those two passwords are not the same."), http.StatusSeeOther)
 				return
 			}
 			if err := auth.SetSecret(acc.ID, pw); err != nil {
-				http.Redirect(w, r, "/account?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+				http.Redirect(w, r, accountPath+"?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 				return
 			}
-			http.Redirect(w, r, "/account?saved=password", http.StatusSeeOther)
+			http.Redirect(w, r, accountPath+"?saved=password", http.StatusSeeOther)
 			return
 		}
 
@@ -705,16 +728,16 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		// different operation. These are the extras.
 		if addr := strings.TrimSpace(r.Form.Get("forget_address")); addr != "" {
 			if err := auth.RemoveVerifiedAddress(acc.ID, addr); err != nil {
-				http.Redirect(w, r, "/account?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+				http.Redirect(w, r, accountPath+"?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 				return
 			}
-			http.Redirect(w, r, "/account?saved=address", http.StatusSeeOther)
+			http.Redirect(w, r, accountPath+"?saved=address", http.StatusSeeOther)
 			return
 		}
 
 		// Chat channel link code generation
 
-		http.Redirect(w, r, "/account", http.StatusSeeOther)
+		http.Redirect(w, r, accountPath, http.StatusSeeOther)
 		return
 	}
 
@@ -812,16 +835,24 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// closed. It used to render below the Settings section — which ended with
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
-	content := notice + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) +
-		app.Section("Clients", `<a href="/token">Tokens</a> · <a href="/inbox/imap">IMAP</a>`) + profile +
-		passwordCard(acc) +
-		PlaceCard(r, acc.ID) +
-		emailCard +
-		renderPhoneCard(acc.ID) +
-		googleCard +
-		language +
-		PasskeyListHTML(acc.ID) +
-		push.Card(r, acc.ID)
+
+	content := notice
+	switch accountPath {
+	case "/account/profile":
+		content += profile + PlaceCard(r, acc.ID)
+	case "/account/usage":
+		content += BalanceCard(acc.ID) + usage.Card(acc.ID) +
+			app.Section("Usage", `<a href="/usage">Detailed usage →</a>`) +
+			LedgerSection(acc.ID)
+	case "/account/connections":
+		content += googleCard + renderPhoneCard(acc.ID) +
+			app.Section("Clients", `<a href="/token">Tokens</a> · <a href="/inbox/imap">IMAP</a>`)
+	default:
+		content += passwordCard(acc) + emailCard + language + PasskeyListHTML(acc.ID) +
+			app.Section("Notifications", `<a href="/notify">Notification settings →</a>`)
+	}
+	// Forms return to the settings destination the user opened.
+	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
 
 	// About, Privacy, Status — a line, not a card.
 	//
@@ -841,7 +872,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
 	// missing on the one page you reach by being signed in.
-	app.Respond(w, r, app.Response{Title: "Account", Description: "Account", HTML: content})
+	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: content})
 }
 
 // otherAddresses lists the addresses this account proved by code, with a way to
