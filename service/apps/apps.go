@@ -5,7 +5,6 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"sort"
