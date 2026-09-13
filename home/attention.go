@@ -28,6 +28,10 @@ func attentionItems(owner string, now time.Time) []attentionItem {
 	var out []attentionItem
 	for _, status := range []string{tasks.StatusBlocked, tasks.StatusFailed, tasks.StatusTodo} {
 		for _, t := range tasks.List(owner, status) {
+			// Agent execution failures remain agent work, not a human decision.
+			if t.Assignee != tasks.Me {
+				continue
+			}
 			rank, reason := 1, "Needs your review"
 			if status == tasks.StatusFailed {
 				reason = "Failed · review before retrying"

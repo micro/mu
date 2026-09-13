@@ -526,7 +526,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// on /agent/<name> both threw ReferenceError, which is why the delete cross
 	// did nothing and why a named agent's page did not look like the default
 	// one. What this page needs it now defines itself, in chatPageJS.
-	rail := `<div class="chat-side">` +
+	rail := `<div class="chat-side" hidden style="display:none">` +
 		`<div class="chat-pane" id="pane-chats">` +
 		renderSessionsRail(accountID, activeRoot, selAgent, named,
 			"", chatBase) + `</div></div>`
@@ -883,6 +883,8 @@ function muPane(which){
   document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
   if(!wasOpen)el.classList.add('open');
   var any=!!document.querySelector('.chat-pane.open');
+  side.hidden=!any;
+  side.style.display=any?'block':'none';
   side.classList.toggle('up',any);
   var toggle=document.querySelector('.chat-panel-toggle');if(toggle)toggle.setAttribute('aria-expanded',String(any));
   if(window.matchMedia('(min-width:761px)').matches){if(any){var first=el.querySelector('a,button');if(first)first.focus();}return;}
@@ -896,7 +898,7 @@ function muPane(which){
 }
 function muPaneClose(){
   document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
-  var side=document.querySelector('.chat-side');if(side)side.classList.remove('up');
+  var side=document.querySelector('.chat-side');if(side){side.classList.remove('up');side.hidden=true;side.style.display='none';}
   var toggle=document.querySelector('.chat-panel-toggle');if(toggle)toggle.setAttribute('aria-expanded','false');
   // Removed, not un-classed.
   //
