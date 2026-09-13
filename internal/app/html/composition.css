@@ -328,3 +328,17 @@ a.link-text {
 .attention-actions{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:12px 0 0}
 .attention-actions button{font:inherit;font-size:13px;font-weight:400;padding:0;background:none;border:0;color:var(--text-secondary,#555);cursor:pointer}
 @media(min-width:1100px){.home-intro{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:40px}}
+
+/* Account control stays at the foot of the sidebar, including short menus. */
+#nav-container .nav-bottom { margin-top:auto; }
+@media(max-width:900px) {
+ #nav-container { padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); }
+}
+
+/* Empty and short conversations occupy the same frame as a full transcript. */
+.chat-main > .mu-chat-transcript { flex:1 1 0; min-height:0; overflow:hidden; }
+.chat-main > .mu-chat-transcript #mu-chat-conv { flex:1 1 0; min-height:0; max-height:none; }
+.chat-main > .mu-chat-transcript #mu-chat-form { flex-shrink:0; }
+@media(min-width:901px) {
+ .chat-layout .chat-main { overflow:hidden; }
+}
