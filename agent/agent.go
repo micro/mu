@@ -885,7 +885,7 @@ function muPane(which){
   var any=!!document.querySelector('.chat-pane.open');
   side.classList.toggle('up',any);
   var toggle=document.querySelector('.chat-panel-toggle');if(toggle)toggle.setAttribute('aria-expanded',String(any));
-  if(window.matchMedia('(min-width:761px)').matches)return;
+  if(window.matchMedia('(min-width:761px)').matches){if(any){var first=el.querySelector('a,button');if(first)first.focus();}return;}
   var scrim=document.querySelector('.chat-scrim');
   if(!scrim){
     scrim=document.createElement('div');scrim.className='chat-scrim';
@@ -908,6 +908,7 @@ function muPaneClose(){
   // the screen stays grey". Taking it out of the DOM cannot leave it behind.
   var scrim=document.querySelector('.chat-scrim');if(scrim)scrim.remove();
 }
+window.matchMedia('(min-width:761px)').addEventListener('change',function(){muPaneClose()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){var open=document.querySelector('.chat-side.up');muPaneClose();if(open){var button=document.querySelector('.chat-panel-toggle');if(button)button.focus();}}});
 // Picking anything inside a sheet closes it. A conversation is a link, and a
 // link that navigates while the sheet is still up leaves both behind.

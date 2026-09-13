@@ -44,7 +44,7 @@ func attentionItems(owner string, now time.Time) []attentionItem {
 					reason = "Overdue"
 				}
 			}
-			key := fmt.Sprintf("%x", sha256.Sum256([]byte(t.ID+"|"+t.Status+"|"+t.Updated.UTC().Format(time.RFC3339Nano))))
+			key := fmt.Sprintf("%x", sha256.Sum256([]byte(t.ID+"|"+t.Title+"|"+t.Detail+"|"+t.Result+"|"+t.Due.UTC().Format(time.RFC3339Nano)+"|"+t.Status+"|"+t.Updated.UTC().Format(time.RFC3339Nano))))
 			out = append(out, attentionItem{key, t.Title, reason, "/tasks?status=" + status + "#task-" + t.ID, rank, t.Due})
 		}
 	}
@@ -98,7 +98,7 @@ func attentionHTML(r *http.Request, owner string) string {
 			continue
 		}
 		esc := html.EscapeString
-		return `<aside class="home-attention" aria-label="Needs your attention" data-brief><p class="text-muted">Needs your attention</p><p>` + esc(a.Title) + `</p><p class="text-muted">` + esc(a.Reason) + `</p><a href="` + esc(a.Link) + `">Review →</a><form method="POST" action="/home" class="attention-actions"><input type="hidden" name="_csrf" value="` + esc(auth.CSRFToken(r)) + `"><input type="hidden" name="attention_key" value="` + a.Key + `"><button class="btn-link" name="attention_action" value="dismiss">Dismiss</button><button class="btn-link" name="attention_action" value="later">Remind me later</button></form><script>(function(){var form=document.querySelector('.attention-actions');if(!form)return;form.addEventListener('submit',async function(e){e.preventDefault();var body=new FormData(form);body.set('attention_action',e.submitter.value);try{var response=await fetch('/home',{method:'POST',body:body});if(!response.ok)throw new Error();form.closest('aside').remove()}catch(err){var message=form.querySelector('[role=status]');if(!message){message=document.createElement('span');message.setAttribute('role','status');form.appendChild(message)}message.textContent='Could not save. Please try again.'}})})()</script></aside>`
+		return `<aside class="home-attention" aria-label="Needs your attention" data-brief><p class="text-muted">Needs your attention</p><p>` + esc(a.Title) + `</p><p class="text-muted">` + esc(a.Reason) + `</p><a href="` + esc(a.Link) + `">Review →</a><form method="POST" action="/home" class="attention-actions"><input type="hidden" name="_csrf" value="` + esc(auth.CSRFToken(r)) + `"><input type="hidden" name="attention_key" value="` + a.Key + `"><button class="btn-link" name="attention_action" value="dismiss">Dismiss</button><button class="btn-link" name="attention_action" value="later" title="Show here again in one hour">Remind me later</button></form><script>(function(){var form=document.querySelector('.attention-actions');if(!form)return;form.addEventListener('submit',async function(e){e.preventDefault();var body=new FormData(form);body.set('attention_action',e.submitter.value);try{var response=await fetch('/home',{method:'POST',body:body});if(!response.ok)throw new Error();form.closest('aside').remove()}catch(err){var message=form.querySelector('[role=status]');if(!message){message=document.createElement('span');message.setAttribute('role','status');form.appendChild(message)}message.textContent='Could not save. Please try again.'}})})()</script></aside>`
 	}
 	return ""
 }

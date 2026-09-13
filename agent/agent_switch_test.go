@@ -45,7 +45,7 @@ func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
 	if !strings.Contains(rail, "Nothing here yet. Ask this agent something.") {
 		t.Errorf("a fresh agent's inbox does not read as empty:\n%s", rail)
 	}
-	if strings.Contains(rail, `>New</a>`) {
+	if strings.Contains(rail, `>New</a>`) || strings.Contains(rail, `>New</button>`) {
 		t.Error("history picker duplicates the toolbar New action")
 	}
 
