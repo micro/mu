@@ -140,12 +140,12 @@ html, body {
   box-sizing: inherit;
 }
 
-/* Links default to bold; action components set their own font weight. */
+/* Links use a quiet medium weight; components set their own emphasis. */
 a {
-  color: #000;
+  color: #444;
   text-decoration: none !important;
   font-size: 0.9em;
-  font-weight: bold;
+  font-weight: var(--font-weight-medium, 500);
   transition: opacity var(--transition-fast);
 }
 
@@ -187,7 +187,7 @@ a.btn-plain:hover {
    `color: #fff !important` and has since before this rule existed. The
    exclusion was belt over braces, and the belt was the thing catching. */
 a:visited {
-  color: #000;
+  color: #444;
 }
 
 /* External links - same color as other links for consistency */
