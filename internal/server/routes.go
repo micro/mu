@@ -600,7 +600,8 @@ func registerRoutes() {
 	// What you are doing, set on your own profile. See internal/user/status.go.
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/account/profile", account.Account)
-	http.HandleFunc("/account/usage", account.Account)
+	http.HandleFunc("/account/billing", account.Account)
+	http.HandleFunc("/account/usage", account.Account) // Previous billing URL.
 	http.HandleFunc("/account/connections", account.Account)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)

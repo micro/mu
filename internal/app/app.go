@@ -1238,7 +1238,7 @@ func VerifyBanner(r *http.Request) string {
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{
 		{"your Account", "/account"},
-		{"your Balance", "/account/usage#balance"},
+		{"your Balance", "/account/billing#balance"},
 	} {
 		said = strings.ReplaceAll(said, l.phrase,
 			`your <a href="`+l.href+`" >`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
@@ -1409,8 +1409,8 @@ func navBottom(acc *auth.Account, here string) string {
 	// to your inbox, which is already the first thing in the nav.
 	return `<details class="nav-account-disclosure"><summary class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span><span aria-hidden="true">⌃</span></summary><div class="nav-account-menu">
           <a id="nav-profile" href="/account/profile"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
-          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a><a id="nav-account-usage" href="/account/usage"><img src="/wallet.png?` + Version + `"><span class="label">Usage &amp; billing</span></a>
-          <a id="nav-connections" href="/account/connections"><img src="/services.svg?` + Version + `"><span class="label">Connections</span></a>` + navAdmin(acc) + `
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a><a id="nav-account-billing" href="/account/billing"><img src="/wallet.png?` + Version + `"><span class="label">Billing</span></a>
+` + navAdmin(acc) + `
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a></div></details>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }

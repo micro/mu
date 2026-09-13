@@ -13,8 +13,8 @@ func TestAccountDestinationsSeparateForms(t *testing.T) {
 	for _, tc := range []struct{ path, want, absent string }{
 		{"/account", "name=\"language\"", "name=\"display_name\""},
 		{"/account/profile", "name=\"display_name\"", "name=\"language\""},
-		{"/account/usage", "Detailed usage", "name=\"display_name\""},
-		{"/account/connections", "Clients", "name=\"display_name\""},
+		{"/account/billing", "Detailed usage", "name=\"display_name\""},
+		{"/account", "id=\"connections\"", "name=\"display_name\""},
 	} {
 		r := httptest.NewRequest("GET", tc.path, nil)
 		r.AddCookie(cookie)
@@ -37,5 +37,22 @@ func TestAccountDestinationsSeparateForms(t *testing.T) {
 	Account(w, r)
 	if w.Header().Get("Location") != "/account/profile?saved=name" {
 		t.Fatal("profile save leaves profile")
+	}
+}
+
+func TestPreviousAccountDestinationsRedirect(t *testing.T) {
+	cookie := holder(t, "account_alias", "Account Alias")
+	for _, tc := range []struct{ path, want string }{
+		{"/account/usage", "/account/billing"},
+		{"/account/connections?linked=google", "/account?linked=google#connections"},
+		{"/account?saved=converted", "/account/billing?saved=converted"},
+	} {
+		r := httptest.NewRequest("GET", tc.path, nil)
+		r.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		Account(w, r)
+		if w.Code != http.StatusSeeOther || w.Header().Get("Location") != tc.want {
+			t.Fatalf("%s: got %d %q", tc.path, w.Code, w.Header().Get("Location"))
+		}
 	}
 }

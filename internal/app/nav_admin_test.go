@@ -134,19 +134,8 @@ func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
 			"behind the Admin entry in the sidebar, not on the page you open to " +
 			"change your language")
 	}
-	// Not vacuous: the handler is still building the page it is supposed to.
-	//
-	// This used to anchor on "/token", which has left for the account menu along
-	// with Saved and About — so the anchor went with the thing it was anchoring
-	// to, and the guard reported the account page as missing rather than the
-	// test as needing repointing. Then it anchored on BalanceCard, "the last
-	// thing that would ever move off it", and the money moved to /wallet.
-	//
-	// Twice now, which says something about the anchor rather than the page: a
-	// card is a product decision and product decisions move. The profile is
-	// what /account cannot stop drawing without ceasing to be the account page.
-	if !strings.Contains(page, `app.Section("Profile"`) {
-		t.Error("the account page no longer draws the profile, so this scan " +
-			"is reading the wrong function")
+	// Anchor on authentication rather than a movable settings section.
+	if !strings.Contains(page, `auth.RequireSession(r)`) || !strings.Contains(page, `app.Respond(w, r,`) {
+		t.Error("the account handler no longer authenticates and renders a page")
 	}
 }
