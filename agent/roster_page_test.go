@@ -60,9 +60,9 @@ func TestARosterRowSaysWhenItLastSpoke(t *testing.T) {
 	if !strings.Contains(row, `class="agent-when"`) {
 		t.Errorf("the row does not say when:\n%s", row)
 	}
-	head := row[strings.Index(row, `class="agent-head"`):]
-	head = head[:strings.Index(head, `class="agent-for"`)]
+	head := row[strings.Index(row, `class="agent-recent"`):]
+	head = head[:strings.Index(head, `class="agent-links"`)]
 	if !strings.Contains(head, `class="agent-when"`) {
-		t.Error("the time is not on the name's line")
+		t.Error("the time is not on the recent conversation line")
 	}
 }

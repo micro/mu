@@ -32,7 +32,7 @@ func TestAnAgentsNameOpensAConversationWithIt(t *testing.T) {
 	if !strings.Contains(row, `class="agent-name" href="`+Path(id, a.ID)+`"`) {
 		t.Errorf("an agent's name no longer opens a conversation with it:\n%s", row)
 	}
-	if strings.Contains(row, "/agent/connect?id=") && !strings.Contains(row, ">Connect<") {
+	if strings.Contains(row, "/agent/connect?id=") && !strings.Contains(row, `aria-label="Connect to Homebody"`) {
 		t.Errorf("the name still points at the Connect page:\n%s", row)
 	}
 }

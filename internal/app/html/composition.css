@@ -312,3 +312,19 @@ a.link-text {
 
 /* Static content cards use the same quiet boundary on every service page. */
 .card, .card:hover { box-shadow:none; }
+
+/* Account actions open upward from the compact sidebar footer. */
+.nav-account-disclosure{position:relative;width:100%}
+.nav-account-disclosure summary{display:flex;align-items:center;gap:6px;cursor:pointer;list-style:none;margin:0;padding:8px 0}
+.nav-account-disclosure summary::-webkit-details-marker{display:none}
+.nav-account-disclosure summary>span:last-child{margin-left:auto}
+.nav-account-menu{position:absolute;bottom:calc(100% + 8px);left:0;right:0;padding:8px;background:var(--card-background,#fff);border:1px solid var(--border-color,#ddd);border-radius:4px;box-shadow:0 4px 16px #0001;z-index:60;max-height:60dvh;overflow:auto}
+.nav-account-disclosure:not([open])>.nav-account-menu{display:none}
+
+.home-intro{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.home-command{min-width:0}
+.home-attention{align-self:start;border-left:2px solid var(--divider,#ddd);padding:4px 0 4px 16px;min-width:0}
+.home-attention p{margin:0 0 8px}
+.attention-actions{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:12px 0 0}
+.attention-actions button{font:inherit;font-size:13px;font-weight:400;padding:0;background:none;border:0;color:var(--text-secondary,#555);cursor:pointer}
+@media(min-width:1100px){.home-intro{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:40px}}
