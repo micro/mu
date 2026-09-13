@@ -11,6 +11,11 @@ func TestApplicationPagesShareOneFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	composition, err := htmlFiles.ReadFile("html/composition.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b = append(b, composition...)
 	css := regexp.MustCompile(`(?s)/\*.*?\*/`).ReplaceAllString(string(b), "")
 	if strings.Count(css, "--page-width:") != 1 {
 		t.Fatal("page width must be defined once")
@@ -27,7 +32,7 @@ func TestApplicationPagesShareOneFrame(t *testing.T) {
 			}
 		}
 	}
-	for _, selector := range []string{".page-col", ".card", ".col-feed", ".markets-page", ".browser-page", ".maps-page"} {
+	for _, selector := range []string{".page-col", ".card", ".col-feed", ".markets-page", ".browser-page", ".maps-page", ".ib", ".assistant-page", ".collection-grid"} {
 		pattern := regexp.MustCompile(regexp.QuoteMeta(selector) + `\s*\{[^}]*max-width:\s*var\(--page-width\)`)
 		if !pattern.MatchString(css) {
 			t.Errorf("%s does not use the shared width", selector)

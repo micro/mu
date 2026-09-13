@@ -1384,3 +1384,14 @@ async function apiCall(url, options = {}) {
 }
 
 } // End of window context check
+
+/* Account menu follows the shared disclosure interaction on every page. */
+document.addEventListener('click', function(event) {
+  var menu=document.querySelector('.nav-account-disclosure[open]');
+  if(menu && !menu.contains(event.target)) menu.open=false;
+});
+document.addEventListener('keydown', function(event) {
+  if(event.key!=='Escape') return;
+  var menu=document.querySelector('.nav-account-disclosure[open]');
+  if(menu){menu.open=false;var summary=menu.querySelector('summary');if(summary)summary.focus();}
+});

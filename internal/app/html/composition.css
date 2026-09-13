@@ -128,7 +128,7 @@ a.btn-secondary:focus-visible, .btn-secondary:focus-visible {
 
 /* Tables need the available page width, rather than a prose measure. */
 .log-tables .card { max-width: none; width: 100%; }
-#content:has(.log-tables) { max-width: none; }
+
 
 /* Compact previews keep metadata close and separate adjacent entries. */
 .compact-list { display: flex; flex-direction: column; }
@@ -192,7 +192,7 @@ a.link-text {
 #home-agent #mu-chat-opts:empty, #home-agent #mu-chat-conv:empty,
 .assistant-page #mu-chat-opts:empty, .assistant-page #mu-chat-conv:empty { display:none; }
 #home-agent #mu-chat-conv > :last-child, .assistant-page #mu-chat-conv > :last-child { margin-bottom:0; }
-.assistant-page { max-width:800px; margin:0; }
+.assistant-page { width:100%; max-width:var(--page-width); margin:0; }
 @media(max-width:900px) { #tabs { grid-template-columns:repeat(5,minmax(0,1fr)); } }
 
 /* Keep the in-page command composer below the fixed app header. */
@@ -272,7 +272,7 @@ a.link-text {
 #home-personal[hidden], #home-feed[hidden] { display:none !important; }
 
 /* A shared directory layout keeps short entries from spanning the whole page. */
-.collection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); gap:16px; align-items:stretch; max-width:960px; }
+.collection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); gap:16px; align-items:stretch; max-width:var(--page-width); }
 .home-workspace { column-gap:48px; row-gap:24px; }
 .home-column.page-stack { gap:24px; }
 /* The workspace owns spacing; card margins must not add a second gap. */
@@ -290,7 +290,7 @@ a.link-text {
 .section-card .verse + p { margin-top:16px; }
 
 /* One stable command area above both Home views. */
-#home-agent { max-width:800px; margin-bottom:16px; }
+#home-agent { max-width:100%; margin-bottom:16px; }
 #home-agent #mu-chat-conv[hidden], #home-conversation-actions[hidden] { display:none !important; }
 #home-agent #mu-chat-conv { overflow-anchor:none; }
 .preview-rows .peek-main { display:flex; flex-direction:column; min-width:0; gap:4px; }
@@ -352,4 +352,12 @@ a.link-text {
 }
 .menu-item.danger:hover, .menu-item.danger:focus-visible {
   color:var(--btn-danger,#c00);
+}
+
+.nav-account-disclosure summary { padding:8px 12px; }
+.nav-account-disclosure summary:hover,
+.nav-account-disclosure summary:focus-visible,
+.nav-account-disclosure[open] summary {
+ background:var(--hover-background,#f5f5f5);
+ color:var(--text-primary,#333);
 }
