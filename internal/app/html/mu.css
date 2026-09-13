@@ -20,6 +20,7 @@
      their own controls or media, but must not narrow the page around them. */
   --page-width: 1400px;
   --page-gutter: 40px;
+  --page-inset-start: var(--page-gutter);
   /* This product is light. Say so, rather than letting a browser guess.
    *
    * Reported as "topup amounts have black text on black background", followed
@@ -822,6 +823,7 @@ td {
   max-width: var(--page-width);
   margin: 0 auto;
   padding: 20px var(--page-gutter);
+  padding-left: var(--page-inset-start);
   text-align: left;
   width: 100%;
   box-sizing: border-box;
@@ -2570,7 +2572,7 @@ a.highlight {
     width: calc(100% - 220px);
     margin-left: 220px;
     margin-right: auto;
-    padding-left: var(--page-gutter);
+    padding-left: var(--page-inset-start);
   }
 
   /* The hamburger is a mobile-only control by default; on desktop it becomes
@@ -2597,7 +2599,7 @@ a.highlight {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: var(--page-gutter);
+    padding-left: var(--page-inset-start);
   }
 
 
@@ -5855,7 +5857,7 @@ button.pill:hover {
    subject and its snippet clearing the timestamp instead of wrapping under it.
    The reading measure that 760 was reaching for belongs on the message, which
    has one — see .ib-msg — not on the list of them. */
-.ib { width:100%; max-width:960px; }
+.ib { width:100%; max-width: var(--page-width); }
 
 /* The top of the mailbox: what this list is, and what you do from here.
  *
@@ -7799,4 +7801,9 @@ body.display-mode .card {
 
 body.display-mode .card h4 {
   font-size: 16px;
+}
+
+/* One wide-screen inset for every page, with either sidebar state. */
+@media(min-width:1100px) {
+ :root { --page-inset-start:calc(var(--page-gutter) + 28px); }
 }
