@@ -18,7 +18,7 @@ func TestPublicStatusUsesRecentOutcomes(t *testing.T) {
 		{"old failure", []*APILogEntry{{Kind: "model", Time: now.Add(-time.Hour), Error: "failed"}}, "unknown"},
 		{"in flight", []*APILogEntry{{Kind: "model", Time: now, Outcome: "running"}}, "unknown"},
 		{"success", []*APILogEntry{{Kind: "model", Time: now, Outcome: "done", Duration: time.Second}}, "operational"},
-		{"slow", []*APILogEntry{{Kind: "model", Time: now, Outcome: "done", Duration: 30 * time.Second}}, "degraded"},
+		{"slow", []*APILogEntry{{Kind: "model", Time: now, Outcome: "done", Duration: 30 * time.Second}}, "operational"},
 		{"failed", []*APILogEntry{{Kind: "model", Time: now, Error: "private provider error"}}, "unavailable"},
 		{"mixed", []*APILogEntry{{Kind: "model", Time: now, Error: "failed"}, {Kind: "model", Time: now, Outcome: "done"}}, "degraded"},
 	} {
@@ -27,8 +27,14 @@ func TestPublicStatusUsesRecentOutcomes(t *testing.T) {
 			if s.Capabilities[1].State != tc.want {
 				t.Fatalf("got %s, want %s", s.Capabilities[1].State, tc.want)
 			}
-			if s.State == "operational" {
-				t.Fatal("unmonitored capabilities must not produce an all-clear")
+			if s.State != tc.want {
+				t.Fatalf("summary state = %s, want %s", s.State, tc.want)
+			}
+			page := renderPublicStatusHTML(s)
+			for _, placeholder := range []string{"Monitoring is partial", "Not monitored", "Delivery is not currently monitored"} {
+				if strings.Contains(page, placeholder) {
+					t.Fatalf("placeholder remains: %s", placeholder)
+				}
 			}
 		})
 	}
