@@ -28,6 +28,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/usage"
+	"mu/internal/user"
 	"mu/service/sms"
 )
 
@@ -597,16 +598,23 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == http.MethodGet && r.URL.Path == "/account" {
-		target := ""
-		if r.URL.Query().Get("linked") == "google" || r.URL.Query().Get("connection") != "" {
-			target = "/account/connections"
-		}
-		if r.URL.Query().Get("saved") == "converted" {
-			target = "/account/usage"
+	if r.Method == http.MethodGet {
+		target, fragment := "", ""
+		switch r.URL.Path {
+		case "/account/usage":
+			target = "/account/billing"
+		case "/account/connections":
+			target, fragment = "/account", "#connections"
+		case "/account":
+			if r.URL.Query().Get("saved") == "converted" {
+				target = "/account/billing"
+			}
 		}
 		if target != "" {
-			http.Redirect(w, r, target+"?"+r.URL.RawQuery, http.StatusSeeOther)
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, target+fragment, http.StatusSeeOther)
 			return
 		}
 	}
@@ -616,10 +624,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/account/profile":
 		accountPath, title = r.URL.Path, "Profile"
-	case "/account/usage":
-		accountPath, title = r.URL.Path, "Usage & billing"
-	case "/account/connections":
-		accountPath, title = r.URL.Path, "Connections"
+	case "/account/billing", "/account/usage":
+		accountPath, title = "/account/billing", "Billing"
 	}
 	// Handle POST to update language or request email verification
 	if r.Method == "POST" {
@@ -782,33 +788,23 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		notice = app.Problem(msg)
 	}
 
-	// The balance goes directly under the profile, and everything else after it.
-	//
-	// It is the one thing on this page with a deadline: a display name, a
-	// language or a passkey can wait, and an empty balance stops the agent
-	// mid-errand. It was a nav item of its own called Wallet, which put a
-	// person's money one click further away than their choice of language.
-	// The page, as a list of sections.
-	//
-	// It was one fmt.Sprintf with fourteen %s in it and a template above them,
-	// so reading it meant counting placeholders down one list and arguments up
-	// another to find out which card was which. Every block below says its own
-	// name, and the order on the screen is the order in the code.
-	//
-	// The balance goes directly under the profile because it is the one thing
-	// here with a deadline: a display name, a language or a passkey can wait,
-	// and an empty balance stops the agent mid-errand.
-	profile := app.Section("Profile",
-		`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
-			htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
-			` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
+	profileURL := "/@" + htmlpkg.EscapeString(acc.ID)
+	profile := app.Section("Identity",
+		`<p>@`+htmlpkg.EscapeString(acc.ID)+`</p>`,
+		`<div class="section-actions"><a href="`+profileURL+`">View profile →</a></div>`,
 		app.Form{Action: "/account", Inline: true,
 			Hidden: map[string]string{"save_name": "1"},
-			Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
+			Fields: []app.Field{{Name: "display_name", Label: "Display name", Value: acc.Name, Max: 60,
 				Placeholder: "Display name"}},
 			Submit: "Save"}.HTML(),
-		app.Note("Shown on your posts and your profile. Your username, @"+acc.ID+
-			", is the one in addresses and links and does not change."))
+		app.Note("Your display name appears on posts and your profile. Your username stays the same."))
+	status := user.Status(acc.ID)
+	if status == "" {
+		status = "No status set."
+	}
+	profile += app.Section("Status", `<p>`+htmlpkg.EscapeString(status)+`</p>`,
+		app.Note("A short update other people can see on your profile."),
+		`<div class="section-actions"><a href="`+profileURL+`#profile-status">Set status →</a></div>`)
 
 	language := app.Section("Language",
 		app.Form{Action: "/account", Inline: true,
@@ -840,15 +836,16 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	switch accountPath {
 	case "/account/profile":
 		content += profile + PlaceCard(r, acc.ID)
-	case "/account/usage":
+	case "/account/billing":
 		content += BalanceCard(acc.ID) + usage.Card(acc.ID) +
 			app.Section("Usage", `<a href="/usage">Detailed usage →</a>`) +
 			LedgerSection(acc.ID)
-	case "/account/connections":
-		content += googleCard + renderPhoneCard(acc.ID) +
-			app.Section("Clients", `<a href="/token">Tokens</a> · <a href="/inbox/imap">IMAP</a>`)
 	default:
-		content += passwordCard(acc) + emailCard + language + PasskeyListHTML(acc.ID) +
+		content += emailCard +
+			`<section id="connections" class="page-section"><h3>Connections</h3>` +
+			googleCard + renderPhoneCard(acc.ID) +
+			app.Section("Clients", `<a href="/token">Tokens</a> · <a href="/inbox/imap">IMAP</a>`) + `</section>` +
+			passwordCard(acc) + language + PasskeyListHTML(acc.ID) +
 			app.Section("Notifications", `<a href="/notify">Notification settings →</a>`)
 	}
 	// Forms return to the settings destination the user opened.
