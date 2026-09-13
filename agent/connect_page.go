@@ -305,7 +305,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	// now, because every agent is something you can talk to.
 	b.WriteString(connChat(base, Path(a.Owner, a.ID)))
 
-	b.WriteString(`<div class="conn-row"><span class="conn-k">API token</span><span class="conn-v"><a href="/token">Create or manage tokens</a>. Select Agent access. This grants access to your account's agents, not only this agent. Existing service tokens are for the separate tools host.</span></div>`)
+	b.WriteString(`<div class="conn-row"><span class="conn-k">API token</span><span class="conn-v"><a href="/token">Create or manage tokens</a>. Select Agent access. This grants access to your account's agents, not only this agent. Services tokens access selected services on this same host, without granting agent access.</span></div>`)
 
 	b.WriteString(connModel(a.Model))
 

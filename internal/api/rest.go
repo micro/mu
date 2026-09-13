@@ -348,6 +348,9 @@ func restCatalogue(w http.ResponseWriter, r *http.Request) {
 
 	var out []svc
 	for _, sp := range service.Specs() {
+		if tok := auth.TokenFromRequest(r); tok != nil && !tok.AllowsService(sp.Name) {
+			continue
+		}
 		s := svc{Service: sp.Name, Description: sp.Description, Scoped: sp.Scoped}
 		for name, ep := range sp.Endpoints {
 			if ep.Needs == service.Operator && !operatorAllowed(r) {

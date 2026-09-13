@@ -1,11 +1,16 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"mu/internal/api"
+	"mu/internal/auth"
+	"mu/internal/service"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPrimaryHostRoutesExposeOnlyOutcomeOperations(t *testing.T) {
@@ -48,3 +53,66 @@ func TestPrimaryHostRoutesExposeOnlyOutcomeOperations(t *testing.T) {
 		t.Fatalf("wrong MCP route: %s", w.Body)
 	}
 }
+
+func TestServicesTokenSelectsSameHostContract(t *testing.T) {
+	routesReady(t)
+	const owner = "same_host_services"
+	if err := service.Register(service.Spec{Name: "routeprobe", Handler: &RouteProbe{}, Endpoints: map[string]service.Endpoint{"List": {}}}); err != nil {
+		t.Fatal(err)
+	}
+	api.RegisterTool(api.Tool{Name: "routeprobe_list", Handle: func(map[string]any) (string, error) { return "service-ok", nil }})
+	if err := auth.Create(&auth.Account{ID: owner}); err != nil {
+		t.Fatal(err)
+	}
+	defer auth.DeleteAccount(owner)
+	_, key, err := auth.CreateToken(owner, "services", []string{"read", "write", "service:routeprobe"}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ path, body, want string }{
+		{"/api/v1", "", `"service":"routeprobe"`},
+		{"/mcp", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`, `routeprobe_list`},
+		{"/api/v1/routeprobe/list", `{}`, `service-ok`},
+		{"/mcp", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"routeprobe_list","arguments":{}}}`, `service-ok`},
+	} {
+		r := httptest.NewRequest("POST", "https://micro.example"+tc.path, strings.NewReader(tc.body))
+		if tc.body == "" {
+			r.Method = "GET"
+		}
+		r.Header.Set("Authorization", "bearer "+key)
+		r.Header.Set("Cookie", "session=unrelated")
+		w := httptest.NewRecorder()
+		http.DefaultServeMux.ServeHTTP(w, r)
+		if !strings.Contains(w.Body.String(), tc.want) || strings.Contains(w.Body.String(), `agent_ask`) || strings.Contains(w.Body.String(), `news_list`) {
+			t.Fatalf("%s: %d %s", tc.path, w.Code, w.Body)
+		}
+	}
+	r := httptest.NewRequest("POST", "/mcp", nil)
+	r.Header.Set("Authorization", "invalid")
+	r.Header.Set("X-Micro-Token", key)
+	if serviceAccess(r) {
+		t.Fatal("invalid primary credential used fallback")
+	}
+	_, mixed, err := auth.CreateToken(owner, "mixed", []string{"service:routeprobe", "api:agent"}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Header.Set("Authorization", mixed)
+	if serviceAccess(r) {
+		t.Fatal("mixed token selected services")
+	}
+	r.Header.Set("Authorization", key)
+	r.Header.Set("Cookie", "session=unrelated")
+	normalized := api.CredentialRequest(r)
+	if normalized.Header.Get("Cookie") != "" {
+		t.Fatal("cookie can override service credential")
+	}
+	_, acc, err := auth.RequireSession(normalized)
+	if err != nil || acc.ID != owner {
+		t.Fatal("service credential lost identity")
+	}
+}
+
+type RouteProbe struct{}
+
+func (*RouteProbe) List(context.Context, *struct{}, *struct{}) error { return nil }

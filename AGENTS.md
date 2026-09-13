@@ -12,7 +12,8 @@ sign into, and that other programs can call.
 The public HTTP API and MCP share a curated outcome surface: Agent, Work and
 Inbox. Services and their derived tools are internal building blocks for agent
 execution, the CLI and sandboxed apps. They are not automatically public API
-operations. A separately configured x402 host retains its tools contract.
+operations. Explicit Services tokens select the service contract on the same
+HTTP/MCP endpoints. A separately configured x402 host retains its tools contract.
 
 | Door | Where | For |
 |---|---|---|

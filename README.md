@@ -109,8 +109,7 @@ mu help
 Use `mu ask` for an interactive conversation. Operation names can be written as
 two words or with an underscore, such as `mu work list` or `mu work_list`.
 `mu agent` remains the local-agent command; use `mu agent_list` to list remote
-agents. Service-tool commands remain available against a separately configured tools
-host; they are not the primary host's public API.
+agents. Service commands use a Services token on the same host.
 
 To authenticate
 
@@ -157,7 +156,9 @@ acquire broader agent access. Agent calls use the existing credit balance.
 
 The [live API reference](https://micro.mu/api) describes each operation and its
 arguments. MCP exposes the same operations as `agent_ask`, `work_submit`, etc.
-Service tools remain internal to agent execution and the sandboxed app bridge.
+Select Services when creating a token to call selected services through the same
+HTTP and MCP endpoints. Discovery with that token shows services; default discovery
+shows Agent, Work and Inbox.
 A separate host configured for x402 retains its existing service contract.
 
 ## Web

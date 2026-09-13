@@ -72,3 +72,27 @@ func TestTokenAllAndSelect(t *testing.T) {
 		t.Fatal("old label")
 	}
 }
+
+func TestServicesAllCreatesExplicitServiceScopes(t *testing.T) {
+	const owner = "services_all_owner"
+	if err := auth.Create(&auth.Account{ID: owner}); err != nil {
+		t.Fatal(err)
+	}
+	defer auth.DeleteAccount(owner)
+	r := httptest.NewRequest("POST", "/token", strings.NewReader(`{"name":"services","access":"services","scope_mode":"all"}`))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	handleCreateToken(w, r, owner)
+	if w.Code != 200 {
+		t.Fatalf("%d: %s", w.Code, w.Body)
+	}
+	tokens := auth.ListTokens(owner)
+	if len(tokens) != 1 || len(tokens[0].Services()) == 0 {
+		t.Fatal("Services All created unrestricted token")
+	}
+	for _, sp := range service.Specs() {
+		if !tokens[0].AllowsService(sp.Name) {
+			t.Fatalf("missing %s", sp.Name)
+		}
+	}
+}
