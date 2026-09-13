@@ -554,7 +554,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// something the nav already says.
 	chip := `<div class="agent-bar">` +
 		`<a class="btn chat-open-list" href="` + chatBase + `?new=1">New</a>` +
-		`<button type="button" class="btn chat-open-list" onclick="muPane('chats')">Chats</button>` +
+		`<button type="button" class="btn chat-open-list chat-panel-toggle" aria-controls="pane-chats" aria-expanded="false" onclick="muPane('chats')">Chats</button>` +
 		`</div>` + paneJS
 
 	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
@@ -888,14 +888,28 @@ window.muSessionStarted=function(id,title){
 // Nothing here runs on a desktop: the buttons that call it are hidden and the
 // panels are always visible, so the class it toggles matches nothing.
 const paneJS = `<script>
+function muDesktopChats(hidden){
+  var layout=document.querySelector('.chat-layout');
+  if(!layout)return;
+  layout.classList.toggle('chats-hidden',hidden);
+  var toggle=layout.querySelector('.chat-panel-toggle');
+  if(toggle)toggle.setAttribute('aria-expanded',String(!hidden));
+}
 function muPane(which){
   var el=document.getElementById('pane-'+which),side=document.querySelector('.chat-side');
   if(!el||!side)return;
+  if(window.matchMedia('(min-width:761px)').matches){
+    var hidden=!side.closest('.chat-layout').classList.contains('chats-hidden');
+    muDesktopChats(hidden);
+    try{localStorage.setItem('mu_chats_hidden',hidden?'1':'0');}catch(e){}
+    return;
+  }
   var wasOpen=el.classList.contains('open');
   document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
   if(!wasOpen)el.classList.add('open');
   var any=!!document.querySelector('.chat-pane.open');
   side.classList.toggle('up',any);
+  var toggle=document.querySelector('.chat-panel-toggle');if(toggle)toggle.setAttribute('aria-expanded',String(any));
   var scrim=document.querySelector('.chat-scrim');
   if(!scrim){
     scrim=document.createElement('div');scrim.className='chat-scrim';
@@ -907,6 +921,7 @@ function muPane(which){
 function muPaneClose(){
   document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
   var side=document.querySelector('.chat-side');if(side)side.classList.remove('up');
+  if(window.matchMedia('(max-width:760px)').matches){var toggle=document.querySelector('.chat-panel-toggle');if(toggle)toggle.setAttribute('aria-expanded','false');}
   // Removed, not un-classed.
   //
   // The scrim is appended to document.body, which outlives the page: this site
@@ -917,6 +932,16 @@ function muPaneClose(){
   // the screen stays grey". Taking it out of the DOM cannot leave it behind.
   var scrim=document.querySelector('.chat-scrim');if(scrim)scrim.remove();
 }
+(function(){
+  var desktop=window.matchMedia('(min-width:761px)');
+  function sync(){
+    muPaneClose();
+    var hidden=false;try{hidden=localStorage.getItem('mu_chats_hidden')==='1';}catch(e){}
+    if(desktop.matches)muDesktopChats(hidden);
+  }
+  sync();
+  desktop.addEventListener('change',function(){if(document.querySelector('.chat-layout'))sync();});
+})();
 document.addEventListener('keydown',function(e){if(e.key==='Escape')muPaneClose()});
 // Picking anything inside a sheet closes it. A conversation is a link, and a
 // link that navigates while the sheet is still up leaves both behind.
@@ -1089,6 +1114,11 @@ const chatLayoutCSS = `<style>
    there, so a control that opens them is a second way to do nothing — and
    "Agent: Micro" beside a page whose title is Micro is the same word twice. */
 .chat-open-list{display:none}
+@media(min-width:761px){
+  .agent-bar{display:flex;margin-bottom:8px}
+  .chat-panel-toggle{display:inline-flex}
+  .chat-layout.chats-hidden>.chat-side{display:none}
+}
 
 /* On a phone the conversation is the page.
    It was a stacked column: the agent picker first, then every conversation as a
