@@ -322,7 +322,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if assistant && selAgent == "" {
 		title = "Home"
 	}
-	desc := "Talk to " + title + ", and the address it answers on"
+	desc := "Talk to " + agentTitle(accountID, selAgent)
+	if assistant && selAgent == "" {
+		desc = "A personal AI agent"
+	}
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: content})
 }
 
