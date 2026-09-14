@@ -10,7 +10,6 @@
   function reset() {
     active = false; accepting = false; mic.setAttribute('aria-pressed', 'false');
     mic.setAttribute('aria-label', 'Dictate');
-    if (status.textContent === 'Listening…') status.textContent = '';
   }
   mic.onclick = function () {
     if (active) { stop(); return; }
@@ -22,7 +21,7 @@
     recognition.interimResults = true;
     recognition.onstart = function () {
       active = true; mic.setAttribute('aria-pressed', 'true');
-      mic.setAttribute('aria-label', 'Stop dictation'); status.textContent = 'Listening…';
+      mic.setAttribute('aria-label', 'Stop dictation'); status.textContent = '';
     };
     recognition.onresult = function (event) {
       if (!accepting) return;

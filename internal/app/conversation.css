@@ -1,8 +1,8 @@
 /* A conversation has one transcript and one composer, on every entry path. */
-#mu-chat { display:flex; flex-direction:column; flex:1; min-height:0; min-width:0; width:100%; max-width:800px; margin-inline:auto; text-align:left; }
+#mu-chat { display:flex; flex-direction:column; flex:1; min-height:0; min-width:0; width:100%; max-width:100%; margin-inline:auto; text-align:left; }
 #mu-chat-conv { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; overflow-wrap:anywhere; padding-block:16px; scrollbar-gutter:stable; }
 #mu-chat-conv:empty { padding:0; }
-#mu-chat-form { display:flex; flex:none; align-items:flex-end; gap:4px; border:1px solid #d1d5db; border-radius:12px; background:#fff; padding:8px; }
+#mu-chat-form { position:relative; display:flex; flex:none; align-items:flex-end; gap:4px; border:1px solid #d1d5db; border-radius:12px; background:#fff; padding:8px; }
 #mu-chat-form:focus-within { border-color:#777; }
 #mu-chat-input { flex:1; min-width:0; width:100%; min-height:36px; max-height:140px; resize:none; margin:0; padding:7px; border:0; border-radius:0; box-shadow:none; font:16px/1.4 system-ui,sans-serif; }
 #mu-chat-input:focus { outline:0; }
@@ -11,7 +11,7 @@
 #mu-chat-form button:hover { background:#eee; color:#111; }
 #mu-chat-form button[aria-pressed=true] { background:#fde9e9; color:#9e2020; }
 #mu-chat-form button[hidden] { display:none; }
-#mu-chat-voice-status { flex:none; font-size:12px; padding-top:4px; }
+#mu-chat-voice-status { position:absolute; bottom:calc(100% + 8px); left:0; max-width:100%; font-size:13px; padding:8px 12px; background:white; border:1px solid var(--card-border); border-radius:6px; }
 #mu-chat-voice-status:empty { display:none; }
 .mu-user { white-space:pre-wrap; margin:0 0 16px auto; padding:10px 14px; border-radius:12px; background:#f3f4f5; width:fit-content; max-width:90%; }
 .mu-agent { margin-bottom:24px; min-width:0; }
@@ -21,7 +21,6 @@
 .mu-err { color:#9e2020; }
 .mu-cta { padding:12px; border:1px solid #ddd; border-radius:8px; }
 .mu-spin { display:inline-block; width:12px; height:12px; margin-right:8px; border:2px solid #ddd; border-top-color:#555; border-radius:50%; animation:mu-spin 1s linear infinite; }
-.mu-cursor { display:inline-block; width:2px; height:1em; background:#555; }
 @keyframes mu-spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { .mu-spin { animation:none; } }
 #mu-chat pre,#mu-chat table { max-width:100%; overflow:auto; }
@@ -29,7 +28,16 @@
 #mu-chat img { max-width:100%; height:auto; }
 #mu-chat .card { margin:0 0 16px; padding:0; border:0; background:none; }
 #mu-chat .card h1,#mu-chat .card h2,#mu-chat .card h3 { font-size:1.15em; margin:16px 0 8px; }
-#mu-chat a { color:#1655a0; text-decoration:underline; text-underline-offset:3px; }
-.conversation-entry { display:flex; flex-direction:column; width:100%; max-width:800px; height:calc(var(--visible-height,100dvh) - 180px); min-height:260px; margin:auto; }
+#mu-chat a:not(.btn):not(.mini-btn):not(.pill) { color:#1655a0; text-decoration:underline; text-underline-offset:3px; }
+.conversation-entry { display:flex; flex-direction:column; width:100%; max-width:calc(var(--page-width) - 2 * var(--page-gutter)); height:calc(var(--visible-height,100dvh) - 180px); min-height:260px; margin:auto; }
 .brand { font-size:32px; font-weight:600; text-align:center; }
 .conversation-entry > p { text-align:center; }
+
+/* The empty prompt is the starting point; a transcript becomes the console. */
+#mu-chat:has(#mu-chat-conv:empty) { justify-content:center }
+#mu-chat-conv:empty,.chat-main > .mu-chat-transcript #mu-chat-conv:empty { flex:0 0 auto }
+.conversation-entry:has(#mu-chat-conv:empty) { justify-content:center }
+.conversation-entry:has(#mu-chat-conv:empty) #mu-chat { flex:0 0 auto }
+.conversation-entry:has(#mu-chat-conv:not(:empty)) > .brand,.conversation-entry:has(#mu-chat-conv:not(:empty)) > p { display:none }
+.conversation-entry .brand { margin-bottom:8px }
+.conversation-entry > p { margin-bottom:24px }

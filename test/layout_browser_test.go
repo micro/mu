@@ -3,6 +3,7 @@ package test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"mu/account"
 	"mu/agent"
 	"mu/home"
@@ -13,6 +14,7 @@ import (
 	"mu/internal/data"
 	recordnotes "mu/internal/notes"
 	"mu/internal/service"
+	"mu/internal/settings"
 	"mu/internal/thread"
 	"mu/service/apps"
 	"mu/service/archive"
@@ -73,8 +75,11 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	t.Setenv("TWILIO_ACCOUNT_SID", "AC00000000000000000000000000000000")
 	t.Setenv("TWILIO_AUTH_TOKEN", "00000000000000000000000000000000")
 	t.Setenv("TWILIO_FROM", "+447700900123")
+	settings.Set("GOOGLE_CLIENT_ID", "layout-client")
+	settings.Set("GOOGLE_CLIENT_SECRET", "layout-secret")
+	t.Cleanup(func() { settings.Set("GOOGLE_CLIENT_ID", ""); settings.Set("GOOGLE_CLIENT_SECRET", "") })
 	const who = "layout_reader"
-	if err := auth.Create(&auth.Account{ID: who, Admin: true, Approved: true}); err != nil {
+	if err := auth.Create(&auth.Account{ID: who, Name: "Alex Example", Admin: true, Approved: true}); err != nil {
 		t.Fatal(err)
 	}
 	sess, err := auth.CreateSession(who)
@@ -89,7 +94,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	if _, err := tasks.Create(who, "Review the brief", "A task to verify action buttons", tasks.Me, time.Time{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := apps.CreateApp(who, "Layout app", "layout-app", "A browser layout fixture", "", "<!doctype html><html><body>Preview</body></html>", "", 0, false); err != nil {
+	if _, err := apps.CreateApp(who, "Layout app", "layout-app", "A browser layout fixture", "", "<!doctype html><html><body>Preview</body></html>", "", 0, true); err != nil {
 		t.Fatal(err)
 	}
 	sms.Record(who, "in", "+447700900111", "First SMS message", 1)
@@ -105,6 +110,11 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	webThread := thread.Open(who, thread.WebClient, "layout-conversation")
 	thread.Add(thread.Message{Thread: webThread.ID, Account: who, Role: thread.RolePerson, From: who, Text: "Find an Arabic fruits video"})
 	thread.Add(thread.Message{Thread: webThread.ID, Account: who, Role: thread.RoleAgent, From: "Micro", Text: "Here is a video to watch and save."})
+	for i := 0; i < 36; i++ {
+		h := thread.Open(who, thread.WebClient, fmt.Sprintf("history-%d", i))
+		thread.Add(thread.Message{Thread: h.ID, Account: who, Role: thread.RolePerson, Text: fmt.Sprintf("Saved conversation %d — plans and questions", i)})
+	}
+	auth.UpdatePresence(who)
 	inboxThread := ""
 	conversationPages := map[string]http.HandlerFunc{}
 	for _, client := range []string{"mail", "chat", "sms", "whatsapp"} {
@@ -132,6 +142,11 @@ func TestPageCompositionInBrowser(t *testing.T) {
 </div>`, &auth.Account{ID: who})
 	policies := map[string]string{}
 	handlers := map[string]http.HandlerFunc{"/about": home.AboutHandler, "/contact": home.ContactHandler, "/inbox/new": inbox.NewHandler, "/inbox": inbox.Handler, "/inbox?id=" + inboxThread: inbox.Handler, "/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/news?id=layout-news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/?new=1": home.Index, "/work": work.Handler, "/services": api.ToolsPageHandler, "/services?view=feed": api.ToolsPageHandler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler}
+	handlers["/login"] = account.Login
+	handlers["/privacy"] = home.PrivacyHandler
+	handlers["/pricing"] = home.PricingHandler
+	handlers["/@"+who] = inbox.PersonHandler
+	handlers["/?session="+webThread.ID] = home.Index
 	for path, handler := range conversationPages {
 		handlers[path] = handler
 	}
@@ -139,7 +154,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	for path, handler := range handlers {
 		t.Log("render", path)
 		req := httptest.NewRequest("GET", path, nil)
-		if path != "/" {
+		if path != "/" && path != "/login" && path != "/signup" {
 			req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		}
 		rec := httptest.NewRecorder()
@@ -166,7 +181,8 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, _ := json.Marshal(map[string]any{"pages": pages, "policies": policies, "css": string(css), "composition": string(composition)})
+	feed := app.SectionCard("", "News", "/news", `<article class="reading-row"><h3>A useful story for today</h3><p>A short summary of the news you asked to follow.</p><a class="mini-btn" href="/news">Read</a></article>`) + app.SectionCard("", "Markets", "/markets", `<table><tr><th>Symbol</th><th>Price</th></tr><tr><td>BTC</td><td>$61,250</td></tr><tr><td>ETH</td><td>$2,410</td></tr></table>`) + app.SectionCard("", "Image of the day", "/images", `<img src="/fixture.svg" alt="An orange"><p>A quiet moment.</p>`) + app.SectionCard("", "Video", "/video", `<h3>Arabic fruit names</h3><p>A video to watch together.</p>`)
+	input, _ := json.Marshal(map[string]any{"feed": feed, "pages": pages, "policies": policies, "css": string(css), "composition": string(composition)})
 	cmd := exec.Command("node", "../internal/app/testdata/layout.cjs")
 	cmd.Stdin = strings.NewReader(string(input))
 	out, err := cmd.CombinedOutput()

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestMicroEntryReopensHistoryAndNewStartsEmpty(t *testing.T) {
+func TestHomeStartsEmptyAndHistoryReopensExplicitly(t *testing.T) {
 	const who = "micro_entry_test"
 	if err := auth.Create(&auth.Account{ID: who}); err != nil {
 		t.Fatal(err)
@@ -26,7 +26,7 @@ func TestMicroEntryReopensHistoryAndNewStartsEmpty(t *testing.T) {
 		path string
 		want bool
 	}{
-		{"/", true},
+		{"/", false},
 		{"/?session=" + id, true},
 		{"/?new=1", false},
 		{"/agent/micro", true},

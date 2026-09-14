@@ -115,7 +115,6 @@ a.link-text { color: var(--link-color, #0066cc); text-decoration: underline !imp
 .nav-account-disclosure { position:relative;width:100% }
 .nav-account-disclosure summary { display:flex;align-items:center;gap:6px;cursor:pointer;list-style:none;margin:0;padding:8px 0 }
 .nav-account-disclosure summary::-webkit-details-marker { display:none }
-.nav-account-disclosure summary>span:last-child { margin-left:auto }
 .nav-account-menu { position:absolute;bottom:calc(100% + 8px);left:0;right:0;padding:8px;background:var(--card-background,#fff);border:1px solid var(--border-color,#ddd);border-radius:4px;box-shadow:0 4px 16px #0001;z-index:60;max-height:60dvh;overflow:auto }
 .nav-account-disclosure:not([open])>.nav-account-menu { display:none }
 .attention-actions { display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:12px 0 0 }

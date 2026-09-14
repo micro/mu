@@ -6,12 +6,26 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  try {
  const page=await browser.newPage();
  page.setDefaultTimeout(5000);
+ await page.addInitScript(()=>{
+  sessionStorage.clear();
+  window.SpeechRecognition=class { start(){window.__dictation=this;this.onstart?.()} stop(){this.onend?.()} };
+  const originalFetch=window.fetch.bind(window);
+  window.fetch=(url,opts)=>{
+   if(url==='/agent'&&opts?.method==='POST')return Promise.resolve(new Response(new ReadableStream({start(controller){
+    const send=e=>controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify(e)+'\n\n'));
+    send({type:'flow_id',thread:'stream-fixture',flow_id:'flow-fixture'});
+    send({type:'stream_token',text:'# Fruit names\n**Arabic** words'});
+    setTimeout(()=>{send({type:'response',html:'<div class="markdown-content"><h2>Fruit names</h2><p><strong>Arabic</strong> words</p></div>',text:'# Fruit names\n**Arabic** words'});controller.close()},350);
+   }}),{headers:{'Content-Type':'text/event-stream'}}));
+   return originalFetch(url,opts);
+  };
+ });
  const failures=[];
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{
   const u=new URL(route.request().url());
-  if(u.pathname==='/services'&&route.request().headers().accept?.includes('application/json'))return route.fulfill({contentType:'application/json',body:JSON.stringify({html:'<section class="section-card">Cached service feed</section>',loading:false})});
-  if(u.pathname==='/fixture.svg')return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#f2f5e9"/><circle cx="320" cy="180" r="90" fill="#d97a32"/></svg>'});
+  if(u.pathname==='/services'&&route.request().headers().accept?.includes('application/json'))return route.fulfill({contentType:'application/json',body:JSON.stringify({html:input.feed,loading:false})});
+  if(u.pathname==='/fixture.svg'||u.pathname.endsWith('/icon.svg'))return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#f2f5e9"/><circle cx="320" cy="180" r="90" fill="#d97a32"/></svg>'});
   if(u.hostname==='www.youtube.com')return route.fulfill({body:'<!doctype html><p>Video fixture</p>',contentType:'text/html'});
   if(u.pathname==='/composition.css')return route.fulfill({contentType:'text/css',body:input.composition});
   if(u.pathname==='/mu.css')return route.fulfill({contentType:'text/css',body:input.css});
@@ -44,6 +58,24 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(!bad.length,`${path} controls at ${width}, collapsed=${collapsed}, revealed=${revealed}: ${JSON.stringify(bad)}`);
    }
    await page.locator('#content details').evaluateAll(es=>es.forEach(e=>e.open=false));
+   if(path==='/chat')await page.locator('#messages').evaluate(e=>e.innerHTML='<div class="message"><span class="you">Sarah <span class="msg-when">Today, 10:30</span></span><p>Can we meet tomorrow afternoon?</p></div><div class="message"><span class="you">You <span class="msg-when">Today, 10:32</span></span><p>Yes, see you at two.</p></div>');
+   if(path==='/login'||path==='/signup') {
+    const box=await page.locator(path==='/login'?'#login':'#signup').boundingBox();assert(Math.abs(box.x+box.width/2-width/2)<2,'auth form off center');
+    assert.equal(await page.locator('.oauth-btn').count(),1,'Google sign-in fixture missing');
+    assert.equal(await page.locator('.oauth-btn').evaluate(e=>getComputedStyle(e).display),'flex','Google button unformatted');
+   }
+   if(path==='/?new=1'&&width>900&&!collapsed) {
+    assert(await page.locator('#nav .chat-sess').count()>=30,'long history fixture missing');
+    const bottom=await page.locator('#nav-services').boundingBox();assert(bottom.y+bottom.height<900,'history pushed destinations off screen');
+    assert(await page.locator('.nav-history .chat-sess-list').evaluate(e=>e.scrollHeight>e.clientHeight),'history must scroll independently');
+    assert((await page.locator('#nav .chat-sess').first().boundingBox()).height>=40,'history rows collapsed');
+   }
+   if(await page.locator('.conversation-toolbar').count()) {
+    const toolbar=await page.locator('.conversation-toolbar').boundingBox(),prompt=await page.locator('#mu-chat-form').boundingBox();
+    assert(Math.abs(toolbar.x-prompt.x)<2&&Math.abs(toolbar.width-prompt.width)<2,'toolbar and prompt differ in alignment');
+    const controls=await page.locator('.conversation-toolbar > *').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().y));
+    assert(Math.max(...controls)-Math.min(...controls)<2,'conversation toolbar wraps');
+   }
    if(process.env.MU_LAYOUT_SHOTS&&[390,1440].includes(width)&&!collapsed){
     fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true});await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/'+(path.replace(/[^a-zA-Z0-9_-]/g,'-')||'landing')+'-'+width+'-'+collapsed+'.png',fullPage:true});
    }
@@ -53,12 +85,25 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
      await page.locator('.conversation-switcher summary').click();
      assert(await page.locator('.conversation-menu .chat-sess').count()>0,'history lists conversations');
      assert(await page.locator('.conversation-menu').isVisible(),'history visible');
+     if(process.env.MU_LAYOUT_SHOTS&&width===390)await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/history-open.png'});
      await page.keyboard.press('Escape');
      assert(!await page.locator('.conversation-menu').isVisible(),'escape closes history');
     }
 
     assert.equal(await page.locator('#tabs,#home-personal,#home-feed').count(),0,'retired shell');
-    const form=page.locator('#mu-chat-form'),before=await form.boundingBox();
+    const form=page.locator('#mu-chat-form');
+    const empty=await form.boundingBox();assert(empty.y>220&&empty.y<620,'empty prompt is not centered');
+    await page.locator('#mu-chat-mic').click();const listening=await form.boundingBox();assert(Math.abs(empty.y-listening.y)<2,'dictation moved prompt');
+    assert.equal(await page.locator('#mu-chat-mic').getAttribute('aria-pressed'),'true');
+    if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/dictating.png'});
+    await page.locator('#mu-chat-mic').click();
+    await page.locator('#mu-chat-input').fill('Find fruit names');await page.locator('#mu-chat-form button[type=submit]').click();
+    await page.waitForTimeout(100);assert(!await page.locator('.mu-agent').textContent().then(s=>s.includes('**')||s.includes('# Fruit')),'raw Markdown flashed');
+    await page.waitForSelector('.mu-agent h2');
+    assert.equal(await page.locator('.mu-agent strong').textContent(),'Arabic');
+    if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/formatted-answer.png'});
+    if(path==='/?new=1')assert.equal(await page.locator('#conversation-delete').count(),1,'new conversation has no delete action');
+    const before=await form.boundingBox();
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
     await page.waitForTimeout(50);const after=await form.boundingBox();
     assert(Math.abs(before.y-after.y)<2,'composer moved as conversation grew');

@@ -631,6 +631,10 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			} else {
 				controls = app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "", "")
 			}
+			author := a.Author
+			if strings.TrimSpace(author) == "" {
+				author = a.AuthorID
+			}
 			sb.WriteString(fmt.Sprintf(`<div class="tile tile-row mb-3">
 <img src="/apps/%s/icon.svg" width="32" height="32" class="fixed-w mt-px">
 <div>
@@ -643,7 +647,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Name),
 				htmlpkg.EscapeString(a.Description),
-				htmlpkg.EscapeString(a.Author),
+				htmlpkg.EscapeString(author),
 				tagsHTML,
 				priceHTML,
 				a.Installs,
