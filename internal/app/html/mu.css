@@ -89,7 +89,7 @@ body:has(.chat-layout) #mu-chat-form { flex:none }
 .view-switch [aria-current] { font-weight:600; color:#222 }
 .message { padding:24px 0; max-width:760px; overflow-wrap:anywhere }
 .message .markdown-content { margin-block:20px }
-.toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; font-size:14px }
+.toolbar { margin-block:0 var(--space-field,16px); display:flex; justify-content:space-between; align-items:center; gap:16px; font-size:14px }
 .ib { width:100% }.ib-header,.ib-top,.ib-bar,.ib-actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center }
 .ib-row { display:flex; flex-wrap:wrap; gap:8px 16px; padding:16px 0; border-bottom:1px solid #eee; text-decoration:none; color:inherit }
 .ib-subject { font-weight:500 }.unseen .ib-subject,.unseen .ib-who { font-weight:600 }.ib-preview,.ib-time { color:#666; font-size:13px }
