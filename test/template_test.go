@@ -82,7 +82,7 @@ func TestNavigationHasOneConversationEntry(t *testing.T) {
 			t.Errorf("retired navigation: %s", old)
 		}
 	}
-	for _, link := range []string{`id="nav-home" href="/"`, `href="/bookmarks"`, `href="/services"`} {
+	for _, link := range []string{`id="nav-home" href="/"`, `href="/services"`} {
 		if !strings.Contains(out, link) {
 			t.Errorf("missing %s", link)
 		}

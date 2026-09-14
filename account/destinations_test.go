@@ -11,7 +11,7 @@ import (
 func TestAccountDestinationsSeparateForms(t *testing.T) {
 	cookie := holder(t, "account_split", "Account Split")
 	for _, tc := range []struct{ path, want, absent string }{
-		{"/account", "name=\"language\"", "name=\"display_name\""},
+		{"/account", "name=\"new_secret\"", "name=\"language\""},
 		{"/account/profile", "name=\"display_name\"", "name=\"language\""},
 		{"/account/billing", "Detailed usage", "name=\"display_name\""},
 		{"/account", "id=\"connections\"", "name=\"display_name\""},

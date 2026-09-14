@@ -71,7 +71,7 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is the saved conversation, not a dashboard. Inbox focuses on communication needing attention, Work is the actionable task list, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. The optional Feed belongs to Services. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
+**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is the saved conversation, not a dashboard. Inbox focuses on communication needing attention, Work is the actionable task list, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. Services opens directly to its grid; do not add a feed or view tabs. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
 
 **Extend through stable patterns.** Services, agents and inbox records should
 scale through their existing registries and shared components. Use apps to

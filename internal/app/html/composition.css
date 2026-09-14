@@ -1,11 +1,11 @@
 /* Base UI kit: neutral surfaces, shared controls and container-owned spacing. */
 :root { --control-h:40px; --control-h-sm:30px; --control-font-sm:13px; --control-pad-x-sm:10px; --control-pad-x:12px; --control-font:14px }
 button,input,textarea,select { font:inherit; color:var(--text-primary,#171717) }
-button,.btn,.mini-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--control-h,40px); padding:8px 14px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; font-size:14px; font-weight:500; line-height:1.4; text-decoration:none; cursor:pointer; transition:background .15s,border-color .15s; }
+button,.btn,.mini-btn { color:var(--text-primary,#171717); display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--control-h,40px); padding:8px 14px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; font-size:14px; font-weight:500; line-height:1.4; text-decoration:none; cursor:pointer; transition:background .15s,border-color .15s; }
 button:hover,.btn:hover,.mini-btn:hover { background:#f5f5f5; border-color:#cfcfcf; color:var(--text-primary,#171717); text-decoration:none }
 button:disabled,.btn[aria-disabled=true] { opacity:.45; cursor:default }
-.btn,.form > :where(button:not([type=button])),.form-actions > :where(button[type=submit]),.search-bar > :where(button[type=submit]) { background:var(--btn-primary,#171717); border-color:var(--btn-primary,#171717); color:#fff }
-.btn:hover,.form > :where(button:not([type=button])):hover,.form-actions > :where(button[type=submit]):hover,.search-bar > :where(button[type=submit]):hover { background:#333; border-color:#333; color:#fff }
+.btn,.form > :where(button:not([type=button]):not([type=reset])),.form-actions > :where(button:not([type=button]):not([type=reset])),.search-bar > :where(button:not([type=button]):not([type=reset])) { background:var(--btn-primary,#171717); border-color:var(--btn-primary,#171717); color:#fff }
+.btn:hover,.form > :where(button:not([type=button]):not([type=reset])):hover,.form-actions > :where(button:not([type=button]):not([type=reset])):hover,.search-bar > :where(button:not([type=button]):not([type=reset])):hover { background:#333; border-color:#333; color:#fff }
 .btn-quiet,.btn-secondary,.btn-danger { background:#fff; border-color:var(--border-color,#e5e5e5); color:var(--text-primary,#171717) }
 .btn-quiet:hover,.btn-secondary:hover { background:#f5f5f5; border-color:#cfcfcf; color:var(--text-primary,#171717) }
 .btn-danger:hover { background:#fff5f5; border-color:#e6b3b3; color:var(--btn-danger,#a12424) }
@@ -160,7 +160,7 @@ a.link-text { color: var(--link-color, #0066cc); text-decoration: underline !imp
 .nav-account-disclosure summary { padding:8px 12px; }
 .nav-account-disclosure summary:hover,
 .nav-account-disclosure summary:focus-visible,
-.nav-account-disclosure[open] summary { background:var(--hover-background,#f5f5f5); color:var(--text-primary,#333); }
+.nav-account-disclosure[open] summary { background:var(--nav-hover,#eceef0); color:var(--text-primary,#333); border-radius:6px; }
 b, strong { font-weight:var(--font-weight-bold,600); }
 h1, h2, h3, h4, h5, h6, th { font-weight:var(--font-weight-bold,600); }
 

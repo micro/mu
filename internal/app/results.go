@@ -51,7 +51,7 @@ func Results(items []result.Item) string {
 		}
 		u, err := url.Parse(item.URL)
 		if err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != "" {
-			b.WriteString(`<div class="form-actions"><a href="` + html.EscapeString(item.URL) + `" target="_blank" rel="noopener noreferrer">Open</a><button type="button" data-save-url="` + html.EscapeString(item.URL) + `" data-save-title="` + html.EscapeString(item.Title) + `">Save</button><span role="status"></span></div>`)
+			b.WriteString(`<div class="form-actions"><a class="mini-btn" href="` + html.EscapeString(item.URL) + `" target="_blank" rel="noopener noreferrer">Open</a><button class="mini-btn" type="button" data-save-url="` + html.EscapeString(item.URL) + `" data-save-title="` + html.EscapeString(item.Title) + `">Save</button><span role="status"></span></div>`)
 		}
 		b.WriteString(`</section>`)
 	}

@@ -816,7 +816,7 @@ func conversationRedirect(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	target := "/"
 	if r.URL.Query().Get("view") == "feed" || r.URL.Query().Get("mode") == "display" {
-		target = "/services?view=feed"
+		target = "/services"
 	} else if r.URL.RawQuery != "" {
 		target += "?" + r.URL.RawQuery
 	}

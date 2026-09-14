@@ -15,7 +15,7 @@ func TestAccountErrorsPreserveOnlyNonSecretFields(t *testing.T) {
 	if strings.Contains(page, "never-reflect-this-password") || strings.Contains(page, `<script>alert(1)</script>`) {
 		t.Fatal("unescaped field or password reflected")
 	}
-	if !strings.Contains(page, `value="A name"`) || !strings.Contains(page, `href="/login?redirect=%2Fassistant"`) {
+	if strings.Contains(page, `name="name"`) || !strings.Contains(page, `value="bad&#34;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"`) || !strings.Contains(page, `href="/login?redirect=%2Fassistant"`) {
 		t.Fatal("form values or destination lost")
 	}
 	for _, want := range []string{"/composition.css?", `autocomplete="new-password"`, `class="field-label"`, ">Micro</a>"} {

@@ -444,12 +444,10 @@ func navMain(acc *auth.Account) string {
 	}
 	var b strings.Builder
 	b.WriteString(navigationLink("nav-home", "/", "Home", "/home.png"))
-	b.WriteString(`<div class="nav-history"><span class="nav-label">History</span>` + ConversationList(acc.ID, "") + `</div>`)
 	b.WriteString(`<div class="nav-secondary">`)
 	for _, item := range []struct{ id, href, label, icon string }{
 		{"nav-inbox", "/inbox", "Inbox", "/email.svg"},
 		{"nav-work", "/work", "Work", "/tasks.svg"},
-		{"nav-bookmarks", "/bookmarks", "Bookmarks", "/bookmarks.svg"},
 		{"nav-agents", "/agents", "Agents", "/agent.svg"},
 		{"nav-services", "/services", "Services", "/services.svg"},
 	} {
