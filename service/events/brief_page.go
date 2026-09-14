@@ -60,7 +60,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	selectField("period", "Brief", period, "evening", "morning")
 	b.WriteString(`<label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label>`)
 	selectField("repeat", "Frequency", repeat, "daily", "weekdays")
-	b.WriteString(`<p class="text-muted">Evening looks ahead to tomorrow; morning covers today. The brief is delivered to your Mu mail, using your connected calendar, email and saved location where available. Normal usage charges apply. <a href="/account">Manage connections and email delivery</a>.</p><div class="form-actions"><button name="state" value="active">`)
+	b.WriteString(`<p class="text-muted">Evening looks ahead to tomorrow; morning covers today. The brief is delivered to your Mu mail, using your scheduled events, email and saved location where available. Normal usage charges apply. <a href="/account">Manage email delivery</a>.</p><div class="form-actions"><button name="state" value="active">`)
 	if e == nil {
 		b.WriteString("Schedule")
 	} else if e.Paused {

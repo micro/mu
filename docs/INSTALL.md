@@ -819,7 +819,7 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `GUEST_MODEL` | Optional. The model a **signed-out** visitor's question runs on. Unset, a guest gets the quick end of whichever provider this instance uses and a signed-in account gets the thorough one — a better model spends more tokens and more seconds, and somebody who arrived to find one thing out is waiting for it. Set this to put visitors on something specific, including the same model accounts get |
 | `MAIL_FORWARD_KEY` | Generated, not set. The key that signs the unsubscribe link in a forwarded message. Written on first use and kept, because that link may be opened a week later and "this link is no longer valid" is the worst thing to say to somebody trying to stop receiving mail. Listed here so it is recognised rather than deleted |
 | `ATLASCLOUD_API_KEY` | Atlas Cloud (DeepSeek, Qwen) — also image generation. `ATLAS_API_KEY` still works |
-| `GEMINI_API_KEY` | Google Gemini. Not `GOOGLE_API_KEY`, which this instance uses for Maps and Calendar |
+| `GEMINI_API_KEY` | Google Gemini. Not `GOOGLE_API_KEY`, which this instance uses for Maps |
 | `GEMINI_MODEL` | Pin a Gemini model. Unset follows `gemini-pro-latest`, which Google keeps pointed at the current generation |
 | `ATLAS_MODEL` | Override the Atlas model used when the caller did not name one (default `deepseek-ai/deepseek-v4-pro`) |
 | `OPENROUTER_API_KEY` | OpenRouter — one key for Claude, GPT, Gemini and the rest of their catalogue |
@@ -1008,19 +1008,8 @@ press release, and both look identical to it.
 
 | Variable | What it does |
 |---|---|
-| `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` | Google sign-in, and the calendar connection below |
+| `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` | Google sign-in |
 | `GOOGLE_REDIRECT_URI` | Defaults to `<your-origin>/oauth2/callback` |
-
-The same credentials let a signed-in person attach their Google Calendar, so
-`events_free` counts the week they actually have rather than only what Mu
-scheduled. Nobody is asked at signup — the ask appears on `/events`, and in the
-agent's reply when it had to answer from one calendar.
-
-Two things must be true in the Google Cloud project for it to work: the
-**Google Calendar API** enabled, and `.../auth/calendar.readonly` listed on the
-OAuth consent screen. That scope is *sensitive*, so a public app needs Google's
-verification before anyone outside your test users can grant it. Read-only is
-deliberate — Mu never writes to a calendar it does not own.
 | `PASSKEY_ORIGIN` · `PASSKEY_RP_ID` · `PASSKEY_EXTRA_ORIGINS` | WebAuthn — derived from the request when unset |
 
 ### Payments

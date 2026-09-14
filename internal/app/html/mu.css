@@ -92,7 +92,7 @@ body:has(.chat-layout) #mu-chat-form { flex:none }
 .toolbar { margin-block:0 var(--space-field,16px); display:flex; justify-content:space-between; align-items:center; gap:16px; font-size:14px }
 .ib { width:100% }.ib-header,.ib-top,.ib-bar,.ib-actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center }
 .ib-row { display:flex; flex-wrap:wrap; gap:8px 16px; padding:16px 0; border-bottom:1px solid #eee; text-decoration:none; color:inherit }
-.ib-subject { font-weight:500 }.unseen .ib-subject,.unseen .ib-who { font-weight:600 }.ib-preview,.ib-time { color:#666; font-size:13px }
+.ib-subject,.ib-who { font-weight:500 }.unseen .ib-subject,.unseen .ib-who { font-weight:600 }.ib-preview,.ib-time { color:#666; font-size:13px }
 .ib-layout,.ib-conversation,.ib-main { min-width:0 }.ib-msg { padding-block:16px; border-bottom:1px solid #eee; overflow-wrap:anywhere }
 .ib-assign { width:min(560px,calc(100% - 32px)); border:1px solid #ddd; border-radius:8px; padding:24px }
 .ib-assign::backdrop { background:#0004 }.ib-ask-note { color:#666;font-size:13px }

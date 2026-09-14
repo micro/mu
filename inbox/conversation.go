@@ -609,12 +609,12 @@ func addressLine(m thread.Message) string {
 	}
 	var parts []string
 	if from != "" {
-		parts = append(parts, `<span class="ib-addr-k">from</span> `+html.EscapeString(from))
+		parts = append(parts, `<span><span class="ib-addr-k">from</span> `+html.EscapeString(from)+`</span>`)
 	}
 	if to != "" {
-		parts = append(parts, `<span class="ib-addr-k">to</span> `+html.EscapeString(to))
+		parts = append(parts, `<span><span class="ib-addr-k">to</span> `+html.EscapeString(to)+`</span>`)
 	}
-	return `<div class="ib-addrs metadata-row">` + strings.Join(parts, `<span class="ib-addr-sep">·</span>`) + `</div>`
+	return `<div class="ib-addrs section-actions text-muted">` + strings.Join(parts, `<span class="ib-addr-sep">·</span>`) + `</div>`
 }
 
 // mailBody is the stored mail for a recorded message, rendered — or empty when
