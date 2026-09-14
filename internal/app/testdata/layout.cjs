@@ -23,6 +23,10 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    errors.length=0;
    await page.goto('https://mu.test'+path);await page.waitForTimeout(50);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
+   if(await page.locator('#mobile-nav').count()) {
+    assert.deepEqual(await page.locator('#mobile-nav a').allTextContents(),['Home','Inbox','Work','Services']);
+    assert.equal(await page.locator('#mobile-nav').isVisible(),width<=900);
+   }
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${path} overflows at ${width}`);
    for(const revealed of [false,true]) {
     if(revealed)await page.locator('#content details').evaluateAll(es=>es.forEach(e=>e.open=true));
@@ -41,7 +45,8 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
     await page.waitForTimeout(50);const after=await form.boundingBox();
     assert(Math.abs(before.y-after.y)<2,'composer moved as conversation grew');
-    assert(after.y+after.height<=900,'composer below viewport');
+    const nav=await page.locator('#mobile-nav').boundingBox();
+    assert(after.y+after.height<=(nav?nav.y:900),'navigation covers composer');
     const center=await page.locator('#mu-chat').evaluate(e=>{const r=e.getBoundingClientRect();const available=document.body.classList.contains('index-shell')||innerWidth<=900||document.body.classList.contains('nav-collapsed')?0:220;return Math.abs((r.left+r.right)/2-(available+innerWidth)/2)});
     assert(center<2,`conversation offset ${center}px at ${width}`);
     if(width<900){await page.evaluate(()=>{const v=new EventTarget();v.height=430;v.offsetTop=0;Object.defineProperty(window,'visualViewport',{configurable:true,value:v});window.dispatchEvent(new Event('resize'));});await page.waitForTimeout(70);const box=await form.boundingBox();assert(box.y+box.height<=430,`keyboard covers composer: ${JSON.stringify(box)}`);}
