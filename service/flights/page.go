@@ -48,7 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	auth.SetCSRFCookie(w, r)
 	b.WriteString(statusForm(r))
 	b.WriteString(forms(q, near, radius, auth.CSRFToken(r)))
-	b.WriteString(`<div class="d-flex gap-2 mb-3">`)
+	b.WriteString(`<div class="d-flex flex-wrap gap-2 mb-3">`)
 	for _, code := range []string{"LHR", "LGW", "MAN", "JFK", "CDG", "DXB"} {
 		b.WriteString(app.PillLink(code, "/flights?near="+code, false))
 	}
