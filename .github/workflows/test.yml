@@ -32,9 +32,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/go-build
-          key: go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard || 'all' }}-${{ github.sha }}
+          key: go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-${{ github.sha }}
           restore-keys: |
-            go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard || 'all' }}-
+            go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-
 
       - name: Format check
         run: |
@@ -73,9 +73,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/go-build
-          key: go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard || 'all' }}-${{ github.sha }}
+          key: go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard }}-${{ github.sha }}
           restore-keys: |
-            go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard || 'all' }}-
+            go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard }}-
       - name: Test (race detector)
         env:
           SHARD_INDEX: ${{ matrix.shard }}
@@ -119,9 +119,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/go-build
-          key: go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard || 'all' }}-${{ github.sha }}
+          key: go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-${{ github.sha }}
           restore-keys: |
-            go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard || 'all' }}-
+            go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -162,9 +162,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/go-build
-          key: go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard || 'all' }}-${{ github.sha }}
+          key: go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-${{ github.sha }}
           restore-keys: |
-            go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-${{ matrix.shard || 'all' }}-
+            go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-
 
       # PRs verify every release platform; main builds deployment artifacts only.
       - name: Build binaries
