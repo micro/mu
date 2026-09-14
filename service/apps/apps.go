@@ -1076,7 +1076,7 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 			}
 			restoreBtn := ""
 			if isAuthor && !isCurrent {
-				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" class="d-inline"><input type="hidden" name="version" value="%d"><button type="submit" class="link-button text-sm" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
+				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" class="form-action d-inline"><input type="hidden" name="version" value="%d"><button type="submit" class="link-button text-sm" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
 					htmlpkg.EscapeString(a.Slug), v.Number, v.Number)
 			}
 			// An id per version, so a link to a particular one lands on it. The

@@ -166,7 +166,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(&b, `<td class="contact-meta">%s</td><td class="contact-meta">%s</td><td class="contact-meta">%s</td>`,
 				mailLink, orDash(c.Phone), orDash(c.Note))
 
-			fmt.Fprintf(&b, `<td class="contact-actions"><form method="POST" action="/contacts/%s/delete" onsubmit="return confirm('Remove %s?')">
+			fmt.Fprintf(&b, `<td class="contact-actions"><form class="form-action" method="POST" action="/contacts/%s/delete" onsubmit="return confirm('Remove %s?')">
   <input type="hidden" name="_csrf" value="%s">
   <button type="submit" class="link-button danger">Remove</button>
 </form></td></tr>`,

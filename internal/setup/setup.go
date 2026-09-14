@@ -177,7 +177,7 @@ func render(errMsg string) string {
   <h1 class="m-0 mb-2">Welcome to Mu</h1>
   <p class="text-secondary m-0 mb-5">One thing and you're running your own instance.</p>
   ` + errHTML + `
-  <form method="POST" action="/setup">
+  <form class="form" method="POST" action="/setup">
     <h3 class="m-0 mb-2 text-1em">1 · Admin account</h3>
     <input name="username" placeholder="username" autocomplete="username" required
       class="form-input w-full lead-15 mb-2">

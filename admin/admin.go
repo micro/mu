@@ -221,15 +221,15 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		if u.Agent {
 			agentLabel, agentTitle = "Mark human", "Mark as a person: charged like any other account"
 		}
-		actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="toggle_agent"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" title="%s" class="mini-btn">%s</button></form>`,
+		actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action d-inline"><input type="hidden" name="action" value="toggle_agent"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" title="%s" class="mini-btn">%s</button></form>`,
 			u.ID, tab, agentTitle, agentLabel))
 		if u.ID != acc.ID {
 			if u.Banned {
-				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn good">Unban</button></form>`, u.ID, tab))
+				actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action d-inline"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn good">Unban</button></form>`, u.ID, tab))
 			} else {
-				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
+				actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
 			}
-			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger">Delete</button></form>`, u.ID, u.ID, tab))
+			actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger">Delete</button></form>`, u.ID, u.ID, tab))
 		}
 		// Credit, on the row, because that is where somebody wanting to comp an
 		// account is looking. An amount box rather than fixed buttons: the
@@ -237,7 +237,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		// is what you feel like giving — and three preset buttons would be
 		// wrong for most of them.
 		actions = append(actions, fmt.Sprintf(
-			`<form method="POST" class="d-inline inline-row">`+
+			`<form method="POST" class="form-action d-inline inline-row">`+
 				`<input type="hidden" name="action" value="credit">`+
 				`<input type="hidden" name="user_id" value="%s">`+
 				`<input type="hidden" name="tab" value="%s">`+

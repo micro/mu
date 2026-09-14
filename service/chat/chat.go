@@ -39,7 +39,7 @@ var f embed.FS
 var Template = `
 %s
 <div class="room-layout"><div class="room-main"><header class="room-toolbar"><div class="room-roster"><span>Here</span><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></div>%s</header><div id="messages"></div>
-<form id="chat-form" onsubmit="return false;">
+<form class="form form-inline" id="chat-form" onsubmit="return false;">
 <input id="topic" name="topic" type="hidden">
 <textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
 <button>Send</button>

@@ -185,13 +185,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		actionButtons := fmt.Sprintf(`
-				<form method="POST" action="/admin/moderate">
+				<form class="form-action" method="POST" action="/admin/moderate">
 					<input type="hidden" name="action" value="approve">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
 					<button type="submit" class="btn-approve">Approve</button>
 				</form>
-				<form method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Permanently delete this content?').then(function(ok){if(ok)event.target.submit()})">
+				<form class="form-action" method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Permanently delete this content?').then(function(ok){if(ok)event.target.submit()})">
 					<input type="hidden" name="action" value="delete">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
@@ -262,13 +262,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					%s by %s · New Account (&lt; 24h) · Hidden from homepage
 				</div>
 				<div class="actions">
-					<form method="POST" action="/admin/moderate">
+					<form class="form-action" method="POST" action="/admin/moderate">
 						<input type="hidden" name="action" value="approve_account">
 						<input type="hidden" name="type" value="post">
 						<input type="hidden" name="id" value="%s">
 						<button type="submit" class="btn-approve">Approve</button>
 					</form>
-					<form method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Flag this post?').then(function(ok){if(ok){fetch('/admin/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{if(d.success){location.reload()}else{alert(d.message||'Failed')}}).catch(()=>alert('Error'))}});return false;">
+					<form class="form-action" method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Flag this post?').then(function(ok){if(ok){fetch('/admin/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{if(d.success){location.reload()}else{alert(d.message||'Failed')}}).catch(()=>alert('Error'))}});return false;">
 						<button type="submit" class="btn-delete">Flag</button>
 					</form>
 					<a href="/blog/post?id=%s" target="_blank">view</a>

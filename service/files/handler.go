@@ -221,7 +221,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 				html.EscapeString(f.URL), html.EscapeString(f.Name),
 				human(f.Size), visibility, f.Created.Format("2 Jan 15:04"))
 
-			fmt.Fprintf(&b, `<form method="POST" action="/files/%s/share">
+			fmt.Fprintf(&b, `<form class="form-action" method="POST" action="/files/%s/share">
   <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="public" value="%s">
   <button type="submit" class="link-button">%s</button>
 </form>`, html.EscapeString(f.ID), html.EscapeString(csrf), shareTo, shareLabel)
@@ -229,7 +229,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 			// Deleting a file destroys its contents, so it asks first. The
 			// confirm is progressive: without JavaScript the form still posts,
 			// which is the right failure — the button is labelled Delete.
-			fmt.Fprintf(&b, `<form method="POST" action="/files/%s/delete" onsubmit="return confirm('Delete %s?')">
+			fmt.Fprintf(&b, `<form class="form-action" method="POST" action="/files/%s/delete" onsubmit="return confirm('Delete %s?')">
   <input type="hidden" name="_csrf" value="%s">
   <button type="submit" class="link-button danger">Delete</button>
 </form>`, html.EscapeString(f.ID), html.EscapeString(strings.ReplaceAll(f.Name, "'", "\\'")), html.EscapeString(csrf))

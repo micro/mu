@@ -1,11 +1,35 @@
+/* Base UI kit: neutral surfaces, shared controls and container-owned spacing. */
+:root { --control-h:40px; --control-h-sm:30px; --control-font-sm:13px; --control-pad-x-sm:10px; --control-pad-x:12px; --control-font:14px }
+button,input,textarea,select { font:inherit; color:var(--text-primary,#171717) }
+button,.btn,.mini-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--control-h,40px); padding:8px 14px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; font-size:14px; font-weight:500; line-height:1.4; text-decoration:none; cursor:pointer; transition:background .15s,border-color .15s; }
+button:hover,.btn:hover,.mini-btn:hover { background:#f5f5f5; border-color:#cfcfcf; color:var(--text-primary,#171717); text-decoration:none }
+button:disabled,.btn[aria-disabled=true] { opacity:.45; cursor:default }
+.btn,:where(.form > button:not([type=button]),.form-actions > button[type=submit],.search-bar > button[type=submit]) { background:var(--btn-primary,#171717); border-color:var(--btn-primary,#171717); color:#fff }
+.btn:hover,:where(.form > button:not([type=button]):hover,.form-actions > button[type=submit]:hover,.search-bar > button[type=submit]:hover) { background:#333; border-color:#333; color:#fff }
+.btn-quiet,.btn-secondary,.btn-danger { background:#fff; border-color:var(--border-color,#e5e5e5); color:var(--text-primary,#171717) }
+.btn-quiet:hover,.btn-secondary:hover { background:#f5f5f5; border-color:#cfcfcf; color:var(--text-primary,#171717) }
+.btn-danger:hover { background:#fff5f5; border-color:#e6b3b3; color:var(--btn-danger,#a12424) }
+input,textarea,select { min-width:0; max-width:100%; min-height:var(--control-h,40px); padding:8px 12px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; line-height:1.5 }
+input::placeholder,textarea::placeholder { color:var(--text-muted,#666); opacity:1 }
+input:disabled,textarea:disabled,select:disabled { background:#fafafa; color:#777 }
+input[type=checkbox],input[type=radio] { width:auto; min-height:0; padding:0; accent-color:#171717 }
+textarea { display:block; resize:vertical }
+.form { display:flex; flex-direction:column; gap:var(--space-field,16px); width:100%; min-width:0; margin:0 }
+.form > * { min-width:0; max-width:100%; margin-block:0 }
+.form :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=submit]):not([type=button]),textarea,select),.field-label :is(input,textarea,select) { width:100% }
+.form > :is(button,.btn) { align-self:flex-start }
+.auth-page .form > button { align-self:stretch }
+.field-label { display:flex; flex-direction:column; gap:var(--space-control,8px); font-size:14px; min-width:0 }
+.form-actions,.section-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-control,8px); margin:0 }
+.form-action { display:inline-flex; align-items:center; gap:var(--space-control,8px); margin:0; max-width:100% }
+.search-bar { margin-block:0 var(--space-section,24px) }
+:is(.page-stack,.page-section,.form) > .search-bar { margin:0 }
+.form-actions > *,.section-actions > *,.form-action > * { margin-block:0 }
+@media(max-width:900px) {
+ :root { --control-h:44px }
+ input,textarea,select { font-size:16px }
+}
 /* Shared controls and composition. */
-.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
-.btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--control-h,30px); font: inherit; font-size: 13px; line-height: 1.4; padding: 0 var(--control-pad-x,12px); border-radius:6px; border: var(--border-width, 1px) solid var(--btn-primary, #000); background: var(--btn-primary, #000); color: #fff; text-decoration: none; cursor: pointer; white-space: nowrap; transition: background var(--transition-fast, .15s ease), border-color var(--transition-fast, .15s ease); }
-.btn:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333); color: #fff }
-.btn-quiet { background: none; border-color: var(--card-border, #e8e8e8); color: var(--text-secondary, #555); }
-.btn-quiet:hover { background: none; border-color: #ddd; color: var(--text-primary, #1a1a1a) }
-.btn-danger { background: none; border-color: var(--card-border, #e8e8e8); color: var(--text-secondary, #555); }
-.btn-danger:hover { background: none; border-color: #e6b3b3; color: var(--btn-danger, #c00); }
 :root { --space-control: 8px; --space-field: 16px; --space-section: 24px; }
 .page-stack, .page-section { display: flex; flex-direction: column; gap: var(--space-field); min-width: 0; }
 .page-section { margin-block: 0 var(--space-section); }
@@ -137,3 +161,10 @@ a.link-text { color: var(--link-color, #0066cc); text-decoration: underline !imp
 .nav-account-disclosure[open] summary { background:var(--hover-background,#f5f5f5); color:var(--text-primary,#333); }
 b, strong { font-weight:var(--font-weight-bold,600); }
 h1, h2, h3, h4, h5, h6, th { font-weight:var(--font-weight-bold,600); }
+
+/* Explicit compact controls; ordinary forms keep the standard control size. */
+.mini-btn,.num-field,.pill,a.pill { font-size:var(--control-font-sm,13px); min-height:var(--control-h-sm,30px); padding:4px var(--control-pad-x-sm,10px) }
+.pill,a.pill { display:inline-flex; align-items:center }
+.field,.field-wide { max-width:100% }
+.form input[type=checkbox],.form input[type=radio] { width:auto }
+.form-actions > button[formmethod=dialog] { background:#fff; color:var(--text-primary); border-color:var(--border-color) }

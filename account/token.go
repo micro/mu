@@ -187,7 +187,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 			created = app.TimeAgo(token.Created)
 		}
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Access">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
-			<form method="POST" action="/token?id=%s" class="d-inline" onsubmit="return confirm('Delete?')">
+			<form method="POST" action="/token?id=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			token.Name, tokenScope(token), created, lastUsed, expires, token.ID))
 	}
@@ -265,7 +265,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	}
 	for _, c := range oauthClients {
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Client ID"><code>%s</code></td><td data-label="Created">%s</td><td>
-			<form method="POST" action="/token?delete_client=%s" class="d-inline" onsubmit="return confirm('Delete?')">
+			<form method="POST" action="/token?delete_client=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			c.Name, c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID))
 	}

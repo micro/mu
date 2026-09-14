@@ -271,7 +271,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	}
 	b.WriteString(`</ul>`)
 
-	b.WriteString(`<form method="POST" action="/oauth2/google/disconnect" class="m-0">` +
+	b.WriteString(`<form method="POST" action="/oauth2/google/disconnect" class="form-action m-0">` +
 		`<input type="hidden" name="_csrf" value="` + htmlpkg.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<input type="hidden" name="return" value="/account#connections">` +
 		`<button type="submit" class="btn-plain text-sm">Disconnect Google</button>` +

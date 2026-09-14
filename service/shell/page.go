@@ -77,7 +77,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	b.WriteString(`<form id="shell-command" class="sbx-form" method="post" action="/shell">`)
+	b.WriteString(`<form id="shell-command" class="form form-inline" method="post" action="/shell">`)
 	b.WriteString(`<input type="hidden" name="csrf_token" value="` +
 		html.EscapeString(auth.CSRFToken(r)) + `">`)
 	b.WriteString(`<div class="sbx-line"><span class="sbx-prompt">/work $</span>` +

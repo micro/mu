@@ -72,7 +72,7 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 		html.EscapeString(size(backup.MaxBytes)))
 	// The token from the cookie, in the form: a POST resting on the session
 	// needs it, because StrictCSRF refuses a request that simply omits one.
-	fmt.Fprintf(&sb, `<form method="POST" class="d-inline">`+
+	fmt.Fprintf(&sb, `<form method="POST" class="form-action d-inline">`+
 		`<input type="hidden" name="csrf_token" value="%s">`+
 		`<button type="submit" class="btn-sm">Back up now</button></form>`,
 		html.EscapeString(auth.CSRFToken(r)))

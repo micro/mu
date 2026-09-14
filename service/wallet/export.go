@@ -120,7 +120,7 @@ func exportForm(r *http.Request, errMsg string) string {
 		// one day carry somebody else's — so the way out is its own line.
 		b.WriteString(`<p class="text-sm"><a href="/account">Set a password on your account &rarr;</a></p>`)
 	}
-	b.WriteString(`<form method="POST" action="/wallet/export" autocomplete="off">`)
+	b.WriteString(`<form class="form" method="POST" action="/wallet/export" autocomplete="off">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	b.WriteString(`<p><label class="text-sm">Confirm your password</label><br>`)
 	b.WriteString(`<input type="password" name="password" required autocomplete="current-password" ` +

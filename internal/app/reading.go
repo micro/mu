@@ -21,7 +21,7 @@ func SaveControl(r *http.Request, ref string) string {
 	if _, acc := auth.TrySession(r); acc == nil {
 		return `<a class="mini-btn" href="/bookmarks?item=` + url.QueryEscape(ref) + `">Save</a>`
 	}
-	return `<form method="POST" action="/bookmarks" class="reading-save"><input type="hidden" name="action" value="add"><input type="hidden" name="ref" value="` + html.EscapeString(ref) + `"><input type="hidden" name="back" value="` + html.EscapeString(r.URL.RequestURI()) + `">` + CSRFField(auth.CSRFToken(r)) + `<button class="mini-btn" type="submit">Save</button></form>`
+	return `<form method="POST" action="/bookmarks" class="form-action reading-save"><input type="hidden" name="action" value="add"><input type="hidden" name="ref" value="` + html.EscapeString(ref) + `"><input type="hidden" name="back" value="` + html.EscapeString(r.URL.RequestURI()) + `">` + CSRFField(auth.CSRFToken(r)) + `<button class="mini-btn" type="submit">Save</button></form>`
 }
 func ReadingActions(r *http.Request, ref string) string {
 	return `<div class="reading-actions">` + ReadingActionItems(r, ref) + `</div>`

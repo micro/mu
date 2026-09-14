@@ -488,7 +488,7 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</ul></div>`)
 	}
 
-	b.WriteString(`<form method="POST" action="/admin/config">`)
+	b.WriteString(`<form class="form" method="POST" action="/admin/config">`)
 
 	for _, group := range settingGroups {
 		b.WriteString(`<div class="card">`)

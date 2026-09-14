@@ -401,7 +401,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 	sb.WriteString(`<hr class="hr-soft my-4">`)
 
 	sb.WriteString("<h4>One-time top-up</h4>")
-	sb.WriteString(`<form method="POST" action="/stripe/checkout">`)
+	sb.WriteString(`<form class="form" method="POST" action="/stripe/checkout">`)
 
 	// Preset quick-select buttons
 	sb.WriteString(`<div class="d-flex gap-2 mb-3 mt-2">`)
@@ -478,7 +478,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	}
 	sb.WriteString(`</datalist>`)
 
-	sb.WriteString(`<form method="POST" action="/account/transfer">`)
+	sb.WriteString(`<form class="form" method="POST" action="/account/transfer">`)
 	sb.WriteString(`<div>`)
 	sb.WriteString(`<label for="transfer-to" class="text-sm">Recipient</label>`)
 	sb.WriteString(`<input type="text" id="transfer-to" name="to" placeholder="username" required class="form-input w-full mt-1" list="user-list" autocomplete="off">`)

@@ -148,7 +148,7 @@ func view(r *http.Request, d *Doc) string {
 	b.WriteString(`</article>`)
 	fmt.Fprintf(&b, `<div class="doc-meta"><span>%s · %s</span>`, html.EscapeString(app.TimeAgo(d.Updated)),
 		map[bool]string{true: "public", false: "private"}[d.Public])
-	b.WriteString(`<form method="POST" action="/docs" onsubmit="return confirm('Delete this document?')">` +
+	b.WriteString(`<form class="form-action" method="POST" action="/docs" onsubmit="return confirm('Delete this document?')">` +
 		`<input type="hidden" name="delete" value="` + html.EscapeString(d.ID) + `">` +
 		`<input type="hidden" name="csrf_token" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<button type="submit" class="doc-delete">Delete</button></form></div>`)
@@ -168,13 +168,13 @@ func editor(r *http.Request, d *Doc) string {
 	if d.ID != "" {
 		back = `<a class="section-link" href="/docs?id=` + html.EscapeString(d.ID) + `">← Back</a>`
 	}
-	return `<form method="POST" action="/docs" class="record-editor">
+	return `<form method="POST" action="/docs" class="form record-editor">
 <input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
 <input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">
 <div class="record-controls">
 <div class="record-actions">` + back + `<button type="submit">Save</button></div>
 ` + editorTools + `</div>
-<div class="card record-card record-editor">
+<div class="form card record-card record-editor">
 <input id="doc-title" class="record-title" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
 <textarea id="doc-body" class="record-body" name="content" rows="24" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
 </div>

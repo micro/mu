@@ -381,7 +381,7 @@ func agentRow(a *Agent, csrf, base string) string {
 
 	// Remove stays on the row, because it is the one thing you do to an entry
 	// without opening it — and it is the reason the row has a right-hand side.
-	extra := fmt.Sprintf(`<form method="POST" action="/agents" class="m-0" onsubmit="return confirm('Remove this agent?')">
+	extra := fmt.Sprintf(`<form method="POST" action="/agents" class="form-action m-0" onsubmit="return confirm('Remove this agent?')">
     <input type="hidden" name="_csrf" value="%s">
     <input type="hidden" name="action" value="delete">
     <input type="hidden" name="id" value="%s">

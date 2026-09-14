@@ -132,7 +132,7 @@ func convertForm() string {
 	if x402.TopUpRequirement(100) == nil {
 		return ""
 	}
-	return `<form class="cw-convert" method="POST" action="/account/convert">
+	return `<form class="form cw-convert" method="POST" action="/account/convert">
   <label for="cw-amount">Turn into credits</label>
   <div class="cw-convert-row">
     <span class="cw-convert-unit">$</span>

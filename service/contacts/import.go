@@ -109,7 +109,7 @@ func googleCard(r *http.Request, owner, query string) string {
 		b += `<div class="thin-row"><strong>` + html.EscapeString(p.Name) + `</strong><div class="text-sm text-muted">` + html.EscapeString(strings.TrimSpace(p.Email+" "+p.Phone)) + `</div></div>`
 	}
 	if next != "" {
-		b += `<form method="POST" action="/contacts" class="mt-3">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="q" value=""><input type="hidden" name="google_page" value="` + html.EscapeString(next) + `"><button>More Google contacts</button> <a href="/contacts">First page</a></form>`
+		b += `<form method="POST" action="/contacts" class="form-action mt-3">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="q" value=""><input type="hidden" name="google_page" value="` + html.EscapeString(next) + `"><button>More Google contacts</button> <a href="/contacts">First page</a></form>`
 	}
 	return b + `</section>`
 }

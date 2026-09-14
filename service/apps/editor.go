@@ -41,7 +41,7 @@ func editPageHTML(a *App) string {
 
 	// Ask-for-a-change panel. Editing the stored spec keeps everything the
 	// instruction does not mention; regenerating from a description would not.
-	aiPanel := fmt.Sprintf(`<form method="POST" action="/apps/%s/ai-edit" class="ai-edit">
+	aiPanel := fmt.Sprintf(`<form method="POST" action="/apps/%s/ai-edit" class="form ai-edit">
   <label for="instruction">Change it with AI</label>
   <div class="form-row">
     <input type="text" id="instruction" name="instruction" required
@@ -52,7 +52,7 @@ func editPageHTML(a *App) string {
 </form>`, htmlpkg.EscapeString(a.Slug), quota.OperationCost(quota.OpAppEdit), htmlpkg.EscapeString(a.Slug))
 
 	if a.Spec == nil {
-		aiPanel = `<div class="ai-edit"><p class="ai-edit-note">This app was built before AI edits were supported, so there is no spec to change. Fork it to get an editable copy, or edit the code directly below.</p></div>`
+		aiPanel = `<div class="form ai-edit"><p class="ai-edit-note">This app was built before AI edits were supported, so there is no spec to change. Fork it to get an editable copy, or edit the code directly below.</p></div>`
 	}
 
 	savedAt := "Last saved " + a.UpdatedAt.Format("2 Jan 2006 15:04")

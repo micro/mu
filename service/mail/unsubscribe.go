@@ -157,7 +157,7 @@ func UnsubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		HTML: `<div class="w-760"><h2>Stop these emails?</h2>` +
 			`<p>Mail sent to your Mu address is currently copied to ` +
 			html.EscapeString(name) + `. Your inbox on this instance is not affected.</p>` +
-			`<form method="POST" action="/mail/unsubscribe">` +
+			`<form method="POST" class="form-action" action="/mail/unsubscribe">` +
 			`<input type="hidden" name="t" value="` + html.EscapeString(token) + `">` +
 			`<button type="submit">Stop sending them</button></form></div>`,
 	})

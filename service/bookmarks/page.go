@@ -124,8 +124,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`<p><a href="/bookmarks">← Bookmarks</a></p><h2>` + html.EscapeString(item.Title) + `</h2><p>` + html.EscapeString(item.Excerpt) + `</p>`)
 		b.WriteString(`<div class="reading-actions"><a href="` + html.EscapeString(item.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/?bookmark=` + url.QueryEscape(item.ID) + `">Discuss</a></div>`)
-		b.WriteString(`<form method="POST" action="/bookmarks">` + token(r) + hidden("action", "note") + hidden("id", item.ID) + `<label for="saved-note">Private note</label><textarea id="saved-note" name="note" rows="4" maxlength="4000">` + html.EscapeString(item.Note) + `</textarea><button>Save note</button></form>`)
-		b.WriteString(`<form method="POST" action="/bookmarks" class="reading-actions">` + token(r) + hidden("action", "delete") + hidden("id", item.ID) + `<button>Remove bookmark</button></form>`)
+		b.WriteString(`<form class="form" method="POST" action="/bookmarks">` + token(r) + hidden("action", "note") + hidden("id", item.ID) + `<label for="saved-note">Private note</label><textarea id="saved-note" name="note" rows="4" maxlength="4000">` + html.EscapeString(item.Note) + `</textarea><button>Save note</button></form>`)
+		b.WriteString(`<form method="POST" action="/bookmarks" class="form-action reading-actions">` + token(r) + hidden("action", "delete") + hidden("id", item.ID) + `<button>Remove bookmark</button></form>`)
 	} else {
 		items, total, e := store.List(sess.Account, query, kind, offset, 20)
 		if e != nil {
@@ -167,7 +167,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if p.off < 0 || p.off >= total {
 				continue
 			}
-			b.WriteString(`<form method="POST" action="/bookmarks/search">` + token(r) + hidden("query", query) + hidden("kind", kind) + hidden("offset", strconv.Itoa(p.off)) + `<button>` + p.label + `</button></form>`)
+			b.WriteString(`<form class="form-action" method="POST" action="/bookmarks/search">` + token(r) + hidden("query", query) + hidden("kind", kind) + hidden("offset", strconv.Itoa(p.off)) + `<button>` + p.label + `</button></form>`)
 		}
 		b.WriteString(`</div><details><summary>Add a link</summary><form method="POST" action="/bookmarks" class="form form-inline page-section">` + token(r) + hidden("action", "add") + `<input name="url" type="url" required maxlength="4096" placeholder="https://…" aria-label="Link"><input name="title" maxlength="1000" placeholder="Title" aria-label="Title"><button>Save link</button></form></details>`)
 	}

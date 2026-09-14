@@ -405,7 +405,7 @@ button{width:100%;padding:10px;background:#000;color:#fff;border:none;border-rad
 </style></head><body>
 <h2>Authorize</h2>
 <p>Sign in to grant access to your account.</p>` + errHTML + `
-<form method="POST" action="/oauth/authorize">
+<form class="form" method="POST" action="/oauth/authorize">
 <input type="hidden" name="client_id" value="` + e(clientID) + `">
 <input type="hidden" name="redirect_uri" value="` + e(redirectURI) + `">
 <input type="hidden" name="state" value="` + e(state) + `">

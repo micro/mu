@@ -143,7 +143,7 @@ func pinControl(r *http.Request, name string, pinned bool) string {
 	if pinned {
 		label, cls, field = "Unpin from sidebar", "pin-btn pinned", "unpin"
 	}
-	return `<form method="POST" action="/services" class="pin-form">` +
+	return `<form method="POST" action="/services" class="form-action pin-form">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<input type="hidden" name="return" value="` + html.EscapeString(r.URL.RequestURI()) + `">` +
 		`<input type="hidden" name="` + field + `" value="` + html.EscapeString(name) + `">` +

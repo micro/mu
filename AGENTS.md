@@ -548,3 +548,14 @@ open and closed, including revealed and collapsed controls when changing these
 shared rules.
 
 The root opens the shared saved-chat renderer, including guest-to-account continuity. The composer stays in a stable viewport position. Use mu.css for shared layout and visual types and composition.css for shared controls. Pages compose reusable cards, lists, tables, forms, messages, and status badges; do not create per-page stylesheets or route-based style registration. Specialized interactions such as maps and editors may own narrowly scoped component styles. Do not add layers of overrides to the old stylesheet to implement the core product.
+
+The base control kit is `internal/app/html/composition.css`; `mu.css` owns the
+page shell and content layouts. Keep control geometry in the kit, independent
+of stylesheet loading order. Every ordinary form uses `.form` (stacked),
+`.form.form-inline` (related controls), `.search-bar` (search section), or
+`.form-action` (one inline mutation). Buttons and button links share dimensions;
+use `.btn`, `.btn-secondary`, `.btn-quiet`, or `.btn-danger` for intent.
+Use `.form-actions` for an action row. A search section owns its trailing space;
+a stack or section parent owns spacing between its children. Text fields and
+comment textareas fill their form; checkboxes and radios keep intrinsic widths.
+Do not reintroduce service-specific form, field, search, or button styling.

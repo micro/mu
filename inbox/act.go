@@ -212,7 +212,7 @@ func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho 
 	// inherits that row's layout.
 	b.WriteString(`<dialog id="ib-assign" class="ib-assign">`)
 	b.WriteString(`<h3 class="ib-assign-head">Assign to agent</h3>`)
-	b.WriteString(`<form class="ib-ask" method="post" action="/inbox">`)
+	b.WriteString(`<form class="form" method="post" action="/inbox">`)
 	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	if problem := strings.TrimSpace(r.URL.Query().Get("problem")); problem != "" {
@@ -274,7 +274,7 @@ func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho 
 	// Cancel is inside the form and is formmethod=dialog, which closes without
 	// submitting — the one native way to have a button in a form that is not a
 	// submit and needs no script.
-	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` + press + `>Assign</button>` +
+	b.WriteString(`<div class="form-actions"><button type="submit" ` + press + `>Assign</button>` +
 		`<button type="submit" formmethod="dialog" class="ib-assign-cancel">Cancel</button></div>`)
 	b.WriteString(`</form></dialog>`)
 	b.WriteString(assignJS)

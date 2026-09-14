@@ -339,7 +339,7 @@ func PasskeyListHTML(accountID string) string {
 <td data-label="Name">%s</td>
 <td data-label="Created">%s</td>
 <td data-label="Last used">%s</td>
-<td><form method="POST" action="/passkey/delete" onsubmit="return confirm('Remove this passkey?')"><input type="hidden" name="id" value="%s"><button type="submit" class="mini-btn danger">Remove</button></form></td>
+<td><form class="form-action" method="POST" action="/passkey/delete" onsubmit="return confirm('Remove this passkey?')"><input type="hidden" name="id" value="%s"><button type="submit" class="mini-btn danger">Remove</button></form></td>
 </tr>`, pk.Name, created, lastUsed, pk.ID)
 	}
 
