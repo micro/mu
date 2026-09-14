@@ -32,8 +32,8 @@ func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 			if !strings.Contains(body, `"storageNS":"`+ns+`"`) {
 				t.Errorf("%s: missing isolated namespace %s", path, ns)
 			}
-			if who != "" && (!strings.Contains(body, `class="chat-sess-list"`) || !strings.Contains(body, `mu-chat-transcript`)) {
-				t.Error("Assistant must show saved conversations and a transcript")
+			if who != "" && (strings.Contains(body, `class="chat-sess-list"`) || !strings.Contains(body, `mu-chat-transcript`)) {
+				t.Error("Conversation must show its transcript without a history switcher")
 			}
 			if !strings.Contains(body, `id="mu-chat-location"`) {
 				t.Errorf("%s: location control does not match authentication", path)

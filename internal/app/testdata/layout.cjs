@@ -6,7 +6,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  try {
  const page=await browser.newPage();
  page.setDefaultTimeout(5000);
- await page.addInitScript(()=>{
+ await page.addInitScript(({resultHTML})=>{
   sessionStorage.clear();
   window.SpeechRecognition=class { start(){window.__dictation=this;this.onstart?.()} stop(){this.onend?.()} };
   const originalFetch=window.fetch.bind(window);
@@ -15,16 +15,15 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     const send=e=>controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify(e)+'\n\n'));
     send({type:'flow_id',thread:'stream-fixture',flow_id:'flow-fixture'});
     send({type:'stream_token',text:'# Fruit names\n**Arabic** words'});
-    setTimeout(()=>{send({type:'response',html:'<div class="markdown-content"><h2>Fruit names</h2><p><strong>Arabic</strong> words</p></div>',text:'# Fruit names\n**Arabic** words'});controller.close()},350);
+    setTimeout(()=>{send({type:'response',html:'<div class="markdown-content"><h2>Fruit names</h2><p><strong>Arabic</strong> words</p>'+('<p>A detailed explanation with more information.</p>'.repeat(JSON.parse(opts.body).prompt.includes('long')?45:0))+'</div>'+resultHTML,text:'# Fruit names\n**Arabic** words'});controller.close()},350);
    }}),{headers:{'Content-Type':'text/event-stream'}}));
    return originalFetch(url,opts);
   };
- });
+ },{resultHTML:input.resultHTML});
  const failures=[];
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{
   const u=new URL(route.request().url());
-  if(u.pathname==='/services'&&route.request().headers().accept?.includes('application/json'))return route.fulfill({contentType:'application/json',body:JSON.stringify({html:input.feed,loading:false})});
   if(u.pathname==='/fixture.svg'||u.pathname.endsWith('/icon.svg'))return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#f2f5e9"/><circle cx="320" cy="180" r="90" fill="#d97a32"/></svg>'});
   if(u.hostname==='www.youtube.com')return route.fulfill({body:'<!doctype html><p>Video fixture</p>',contentType:'text/html'});
   if(u.pathname==='/composition.css')return route.fulfill({contentType:'text/css',body:input.composition});
@@ -79,11 +78,18 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(rows.length<2||rows[1]>rows[0],'item actions run together');
     await page.keyboard.press('Escape');assert(!await items.isVisible(),'escape did not close item actions');
    }
+   if(path==='/signup')assert.equal(await page.locator('input[name=name]').count(),0,'signup still asks for a name');
    if(path==='/account') {
+    assert.equal(await page.locator('[name=language]').count(),0,'account still has language setting');
     const links=page.locator('[aria-label="Connection settings"]');
     assert.deepEqual(await links.locator('a').allTextContents(),['API credentials','Mail settings']);
-    const previous=await links.evaluate(e=>e.previousElementSibling.getBoundingClientRect().bottom),box=await links.boundingBox();
-    assert(box.y-previous<=24,'account connections have excessive spacing');
+    assert(await links.evaluate(e=>!!e.closest('.card')),'connection settings lack their shared card');
+   }
+   if(path.startsWith('/agent?id='))assert.equal(await page.locator('.agent-bar strong').textContent(),'Research','focused agent identity missing');
+   if(path==='/services')assert.equal(await page.locator('.view-switch,#service-feed').count(),0,'services has retired view tabs');
+   if(await page.locator('#reply-body').count()) {
+    const editor=await page.locator('#reply-body').boundingBox(),form=await page.locator('#reply-body').evaluate(e=>e.closest('form').getBoundingClientRect().width);
+    assert(editor.width>=form-2,'mail reply editor is not full width');
    }
    if(path==='/blog?write=true') {
     const colors=await page.locator('.form-actions > *').evaluateAll(es=>es.map(e=>getComputedStyle(e).backgroundColor));
@@ -94,13 +100,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert.equal(await page.locator('.oauth-btn').count(),1,'Google sign-in fixture missing');
     assert.equal(await page.locator('.oauth-btn').evaluate(e=>getComputedStyle(e).display),'flex','Google button unformatted');
    }
-   if(path==='/?new=1'&&width>900&&!collapsed) {
-    assert(await page.locator('#nav .chat-sess').count()>=30,'long history fixture missing');
-    const bottom=await page.locator('#nav-services').boundingBox();assert(bottom.y+bottom.height<900,'history pushed destinations off screen');
-    assert(await page.locator('.nav-history .chat-sess-list').evaluate(e=>e.scrollHeight>e.clientHeight),'history must scroll independently');
-    assert((await page.locator('#nav .chat-sess').first().boundingBox()).height>=40,'history rows collapsed');
-   }
-   if(await page.locator('.conversation-toolbar').count()) {
+   if(await page.locator('.conversation-toolbar').count()&&await page.locator('.conversation-toolbar').isVisible()) {
     const toolbar=await page.locator('.conversation-toolbar').boundingBox(),prompt=await page.locator('#mu-chat-form').boundingBox();
     assert(Math.abs(toolbar.x-prompt.x)<2&&Math.abs(toolbar.width-prompt.width)<2,'toolbar and prompt differ in alignment');
     const controls=await page.locator('.conversation-toolbar > *').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().y));
@@ -111,14 +111,8 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
    if(path==='/'||path==='/?new=1') {
     assert.equal(await page.locator('#mu-chat-input').count(),1,'one composer');
-    if(path==='/?new=1'&&(width<=900||collapsed)){
-     await page.locator('.conversation-switcher summary').click();
-     assert(await page.locator('.conversation-menu .chat-sess').count()>0,'history lists conversations');
-     assert(await page.locator('.conversation-menu').isVisible(),'history visible');
-     if(process.env.MU_LAYOUT_SHOTS&&width===390)await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/history-open.png'});
-     await page.keyboard.press('Escape');
-     assert(!await page.locator('.conversation-menu').isVisible(),'escape closes history');
-    }
+    assert.equal(await page.locator('.conversation-switcher,.conversation-menu').count(),0,'duplicate history controls');
+    assert.equal(await page.locator('#nav .chat-sess,#nav-bookmarks').count(),0,'retired sidebar collections');
 
     assert.equal(await page.locator('#tabs,#home-personal,#home-feed').count(),0,'retired shell');
     const form=page.locator('#mu-chat-form');
@@ -132,8 +126,25 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.locator('#mu-chat-input').fill('Find fruit names');await page.locator('#mu-chat-form button[type=submit]').click();
     await page.waitForTimeout(100);assert(!await page.locator('.mu-agent').textContent().then(s=>s.includes('**')||s.includes('# Fruit')),'raw Markdown flashed');
     await page.waitForSelector('.mu-agent h2');
-    assert.equal(await page.locator('.mu-agent strong').textContent(),'Arabic');
+    assert.equal(await page.locator('.mu-agent strong').first().textContent(),'Arabic');
     if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/formatted-answer.png'});
+    const assertQuestionAnchor=async()=>{
+     const offset=await page.evaluate(()=>{const c=document.getElementById('mu-chat-conv'),q=c.querySelector('.mu-user:last-of-type')||c.querySelectorAll('.mu-user')[c.querySelectorAll('.mu-user').length-1];return q.getBoundingClientRect().top-c.getBoundingClientRect().top;});
+     assert(Math.abs(offset-16)<3,`question is not anchored at transcript top: ${offset}`);
+    };
+    await page.waitForTimeout(50);await assertQuestionAnchor();
+    const actions=page.locator('.result-card .form-actions').first();
+    const actionStyle=await actions.locator('a,button').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {x:r.x,right:r.right,h:r.height,color:s.color,underline:s.textDecorationLine};}));
+    assert(actionStyle[1].x-actionStyle[0].right>=8,'result actions run together');
+    assert.equal(actionStyle[0].h,actionStyle[1].h,'result action heights differ');
+    assert.equal(actionStyle[0].color,actionStyle[1].color,'result action colors differ');
+    assert.equal(actionStyle[0].underline,'none','result action looks like a prose link');
+    await page.locator('#mu-chat-input').fill('Give me a long answer');await form.locator('button[type=submit]').click();
+    await page.waitForSelector('.mu-agent:last-child h2');await page.waitForTimeout(50);await assertQuestionAnchor();
+    await page.locator('#mu-chat-input').fill('Another long answer');await form.locator('button[type=submit]').click();
+    await page.waitForTimeout(100);await page.locator('#mu-chat-conv').evaluate(e=>e.scrollTop=0);
+    await page.waitForSelector('.mu-agent:last-child h2');await page.waitForTimeout(50);
+    assert(await page.locator('#mu-chat-conv').evaluate(e=>e.scrollTop<2),'response overrode manual scrolling');
     if(path==='/?new=1')assert.equal(await page.locator('#conversation-delete').count(),1,'new conversation has no delete action');
     const before=await form.boundingBox();
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
@@ -143,6 +154,17 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(after.y+after.height<=(nav?nav.y:900),'navigation covers composer');
     const center=await page.locator('#mu-chat').evaluate(e=>{const r=e.getBoundingClientRect();const available=document.body.classList.contains('index-shell')||innerWidth<=900||document.body.classList.contains('nav-collapsed')?0:220;return Math.abs((r.left+r.right)/2-(available+innerWidth)/2)});
     assert(center<2,`conversation offset ${center}px at ${width}`);
+    if(path==='/?new=1'&&width>900) {
+     for(let toggle=0;toggle<2;toggle++) {
+      await page.locator('#menu-toggle').click();await page.waitForTimeout(50);
+      const alignment=await page.evaluate(()=>{
+       const nav=document.getElementById('nav-container').getBoundingClientRect(),form=document.getElementById('mu-chat-form').getBoundingClientRect(),brand=document.getElementById('brand').getBoundingClientRect();
+       const left=document.body.classList.contains('nav-collapsed')?0:nav.right,target=(left+innerWidth)/2;
+       return {prompt:Math.abs((form.left+form.right)/2-target),brand:Math.abs((brand.left+brand.right)/2-target)};
+      });
+      assert(alignment.prompt<2&&alignment.brand<2,`sidebar toggle alignment: ${JSON.stringify(alignment)}`);
+     }
+    }
     if(width<900){await page.evaluate(()=>{const v=new EventTarget();v.height=430;v.offsetTop=0;Object.defineProperty(window,'visualViewport',{configurable:true,value:v});window.dispatchEvent(new Event('resize'));});await page.waitForTimeout(70);const box=await form.boundingBox();assert(box.y+box.height<=430,`keyboard covers composer: ${JSON.stringify(box)}`);}
     assert(!errors.length,`conversation errors: ${errors.join(', ')}`);
    }
@@ -151,7 +173,6 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert.equal(styles.border,'1px','cards have boundaries');assert.equal(styles.padding,'16px','cards have space');assert.equal(styles.preview,'none','collection previews are readable');assert.notEqual(styles.notice,'rgba(0, 0, 0, 0)','notice has a background');assert(styles.thumb<=320,'bounded thumbnails');
    }
    if(path==='/inbox')assert.equal(await page.locator('article.message').count(),1,'priority should show one communication');
-   if(path==='/services?view=feed'){await page.waitForSelector('#service-feed .section-card');assert.equal(await page.locator('#mu-chat-input').count(),0);}
    if(path==='/chat'){
     await page.locator('#messages').evaluate(e=>e.innerHTML='<p>Room message</p>'.repeat(100));await page.waitForTimeout(70);
     const box=await page.locator('#chat-form').boundingBox();assert(box.y+box.height<=900,`room composer below viewport at ${width}`);

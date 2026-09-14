@@ -14,7 +14,23 @@ function nearBottom(){
   return (conv.scrollTop+conv.clientHeight)>=(conv.scrollHeight-nearEnough);
 }
 var nearEnough=120;
-function revealQuestion(){toBottom(false);}
+var questionAnchor=null,answerAnchor=null,anchorTop=0,followQuestion=false;
+function revealQuestion(question,force){
+  if(force){
+    conv.querySelectorAll('.mu-answer-anchor').forEach(function(e){e.classList.remove('mu-answer-anchor');});
+    questionAnchor=question;answerAnchor=conv.lastElementChild;answerAnchor.classList.add('mu-answer-anchor');followQuestion=true;pinned=false;
+  }
+  if(!questionAnchor||!questionAnchor.isConnected)return;
+  requestAnimationFrame(function(){
+    if(!questionAnchor||!questionAnchor.isConnected)return;
+    var style=getComputedStyle(conv),top=parseFloat(style.paddingTop)||0,bottom=parseFloat(style.paddingBottom)||0;
+    var gap=answerAnchor.getBoundingClientRect().top-questionAnchor.getBoundingClientRect().top;
+    // Reserve room for even a short answer, so the question can reach the top.
+    conv.style.setProperty('--answer-space',Math.max(0,conv.clientHeight-gap-top-bottom)+'px');
+    anchorTop=conv.scrollTop+questionAnchor.getBoundingClientRect().top-conv.getBoundingClientRect().top-top;
+    if(followQuestion)conv.scrollTo({top:anchorTop,behavior:'auto'});
+  });
+}
 function toBottom(force,smooth){
   if(!force && !nearBottom()) return;
   requestAnimationFrame(function(){
@@ -121,7 +137,7 @@ function ask(q){
   startWork('Working');
 
   save();
-  toBottom(true);
+  revealQuestion(u,true);
   var streamText='';
   var body=JSON.stringify({context:requestClientContext(),prompt:q,attachment:(!contextId?attachment:""),history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),stream_text:true});
   var recoveryUntil=Date.now()+600000;
@@ -260,6 +276,7 @@ form.addEventListener('submit',function(e){e.preventDefault();ask(input.value);}
 window.muChatNew=function(){
   busy=false;viewEpoch++;if(detachActive){detachActive();detachActive=null;}
   try{sessionStorage.removeItem(draftKey());sessionStorage.removeItem(scrollKey());}catch(e){}
+  questionAnchor=null;answerAnchor=null;followQuestion=false;
   conv.innerHTML='';history=[];contextId='';input.value='';
   window.dispatchEvent(new CustomEvent('mu-chat-new'));
   try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);sessionStorage.removeItem(TKEY);sessionStorage.removeItem(DKEY);}catch(e){}
@@ -322,9 +339,9 @@ var restoredScroll=null;
 try{if(PERSIST)restoredScroll=JSON.parse(sessionStorage.getItem(scrollKey()));}catch(e){}
 var pinned=!restoredScroll||restoredScroll.bottom;
 if(conv){
-  conv.addEventListener('scroll',function(){ if(!nearBottom()) pinned=false; });
+  conv.addEventListener('scroll',function(){ if(!nearBottom()) pinned=false;if(questionAnchor)followQuestion=Math.abs(conv.scrollTop-anchorTop)<8; });
 }
-function pin(){ if(pinned) toBottom(true); }
+function pin(){ if(questionAnchor)revealQuestion(questionAnchor);else if(pinned)toBottom(true); }
 fitConv();
 if(restoredScroll&&!restoredScroll.bottom){
   requestAnimationFrame(function(){conv.scrollTop=restoredScroll.top;});
@@ -336,9 +353,9 @@ window.addEventListener("pagehide",function(){
 });
 window.addEventListener('load',function(){ fitConv(); pin(); });
 if(conv&&window.ResizeObserver){ new ResizeObserver(pin).observe(conv); }
-window.addEventListener('resize',function(){ fitConv(); toBottom(false); });
+window.addEventListener('resize',function(){ fitConv(); if(questionAnchor)revealQuestion(questionAnchor);else toBottom(false); });
 if(window.visualViewport){
-  var onView=function(){ fitConv(); toBottom(false); };
+  var onView=function(){ fitConv(); if(questionAnchor)revealQuestion(questionAnchor);else toBottom(false); };
   window.visualViewport.addEventListener('resize',onView);
   window.visualViewport.addEventListener('scroll',onView);
 }

@@ -33,8 +33,8 @@ func TestAssistantReopensOwnedConversation(t *testing.T) {
 			t.Fatalf("%s: got %d want %d", tc.id, w.Code, tc.want)
 		}
 		if tc.want == 200 {
-			if !strings.Contains(w.Body.String(), "My preserved question") || !strings.Contains(w.Body.String(), `href="/?session=`) {
-				t.Fatal("saved conversation/history not rendered in Assistant")
+			if !strings.Contains(w.Body.String(), "My preserved question") || strings.Contains(w.Body.String(), `href="/?session=`) {
+				t.Fatal("Saved transcript must reopen without history links")
 			}
 		}
 	}

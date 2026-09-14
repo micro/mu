@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -195,7 +194,6 @@ var SignupTemplate = `<html lang="en">
 	  %s
 	  %s
 	  <label class="field-label">Username<input id="id" name="id" autocomplete="username" minlength="4" maxlength="24" pattern="[a-z][a-z0-9_]{3,23}" aria-describedby="username-help" required></label><small id="username-help" class="text-muted">4–24 characters. Start with a letter; use lowercase letters, numbers or underscores.</small>
-	  <label class="field-label">Name (optional)<input id="name" name="name" autocomplete="name"></label>
 	  <label class="field-label">Password<input id="secret" name="secret" type="password" autocomplete="new-password" minlength="6" aria-describedby="password-help" required></label><small id="password-help" class="text-muted">At least 6 characters.</small>
 	  %s
 	  %s
@@ -479,7 +477,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		}
 
 		id := r.Form.Get("id")
-		name := r.Form.Get("name")
+		name := id
 		secret := r.Form.Get("secret")
 
 		const usernamePattern = "^[a-z][a-z0-9_]{3,23}$"
@@ -509,11 +507,6 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		if len(secret) < 6 {
 			w.Write([]byte(render(`<p class="text-error">Password must be at least 6 characters</p>`, redirectParam)))
 			return
-		}
-
-		// Use username as name if name is not provided
-		if len(name) == 0 {
-			name = id
 		}
 
 		// Claiming, where there is something to claim.
@@ -627,19 +620,9 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	case "/account/billing", "/account/usage":
 		accountPath, title = "/account/billing", "Billing"
 	}
-	// Handle POST to update language or request email verification
+	// Handle account settings and email verification.
 	if r.Method == "POST" {
 		r.ParseForm()
-
-		// Language update
-		if newLang := r.Form.Get("language"); newLang != "" {
-			if _, ok := app.SupportedLanguages[newLang]; ok {
-				acc.Language = newLang
-				auth.UpdateAccount(acc)
-			}
-			http.Redirect(w, r, accountPath, http.StatusSeeOther)
-			return
-		}
 
 		// Copies of arriving mail, on or off. The way out is also in every
 		// forwarded message — see service/mail/unsubscribe.go — because somebody
@@ -747,17 +730,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The languages this instance speaks, as options rather than as markup.
-	currentLang := acc.Language
-	if currentLang == "" {
-		currentLang = "en"
-	}
-	langs := make([]app.Option, 0, len(app.SupportedLanguages))
-	for code, name := range app.SupportedLanguages {
-		langs = append(langs, app.Option{Value: code, Label: name, On: code == currentLang})
-	}
-	sort.Slice(langs, func(i, j int) bool { return langs[i].Label < langs[j].Label })
-
 	emailCard := renderEmailCard(acc)
 
 	// One card for Google: signing in with it, and what of it this account has
@@ -806,11 +778,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		app.Note("A short update other people can see on your profile."),
 		`<div class="section-actions"><a href="`+profileURL+`#profile-status">Set status →</a></div>`)
 
-	language := app.Section("Language",
-		app.Form{Action: "/account", Inline: true,
-			Fields: []app.Field{{Name: "language", Options: langs}},
-			Submit: "Save"}.HTML())
-
 	// No Settings section, and no About card.
 	//
 	// "Settings" was a section named after the page it was on, which is a name
@@ -844,8 +811,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		content += emailCard +
 			`<section id="connections" class="page-section"><h3>Connections</h3>` +
 			googleCard + renderPhoneCard(acc.ID) +
-			`<nav class="section-actions" aria-label="Connection settings"><a href="/token">API credentials</a><a href="/inbox/imap">Mail settings</a></nav>` + `</section>` +
-			passwordCard(acc) + language + PasskeyListHTML(acc.ID) +
+			app.Section("", `<nav class="section-actions" aria-label="Connection settings"><a href="/token">API credentials</a><a href="/inbox/imap">Mail settings</a></nav>`) + `</section>` +
+			passwordCard(acc) + PasskeyListHTML(acc.ID) +
 			app.Section("Notifications", `<a href="/notify">Notification settings →</a>`)
 	}
 	// Forms return to the settings destination the user opened.
@@ -1306,7 +1273,7 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 // Preserve non-secret form fields on errors and the destination between auth pages.
 func accountFormValues(page string, r *http.Request) string {
 	if r.Method == "POST" {
-		for _, name := range []string{"id", "name"} {
+		for _, name := range []string{"id"} {
 			marker := `id="` + name + `" name="` + name + `"`
 			page = strings.Replace(page, marker, marker+` value="`+htmlpkg.EscapeString(r.FormValue(name))+`"`, 1)
 		}

@@ -262,7 +262,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if selAgent == "" {
 		selAgent = r.URL.Query().Get("agent")
 	}
-	named := r.URL.Path == "/"
+	named := r.URL.Path == "/" || selAgent != ""
 	if slug := strings.TrimPrefix(r.URL.Path, "/agent/"); strings.HasPrefix(r.URL.Path, "/agent/") &&
 		slug != "" && !strings.Contains(slug, "/") {
 		id, ok := agentSlugTarget(accountID, slug)
@@ -293,7 +293,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		cfg.Location = true
 	}
 
-	chip := "<div class=\"conversation-toolbar\"><details class=\"conversation-switcher\"><summary aria-label=\"Conversation history\">History</summary><div class=\"conversation-menu\">" + app.ConversationList(accountID, activeRoot) + "</div></details><a class=\"btn btn-quiet\" href=\"" + html.EscapeString(chatBase) + "?new=1\" aria-label=\"New conversation\">New</a>"
+	chip := `<div class="conversation-toolbar">`
 	if activeRoot != "" {
 		chip += "<button id=\"conversation-delete\" class=\"btn btn-quiet\" type=\"button\" onclick=\"muSessionDelete(" + app.JSAttr(activeRoot) + ",event)\" aria-label=\"Delete conversation\">Delete</button>"
 	}
@@ -319,10 +319,13 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	title := agentTitle(accountID, selAgent)
-	if assistant {
+	if assistant && selAgent == "" {
 		title = "Micro"
 	}
 	desc := "Talk to " + title + ", and the address it answers on"
+	if selAgent != "" {
+		content = strings.Replace(content, `<div class="chat-main">`, `<div class="chat-main"><div class="agent-bar"><strong>`+html.EscapeString(title)+`</strong></div>`, 1)
+	}
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: content})
 }
 
@@ -389,19 +392,7 @@ window.muSessionStarted=function(id,title){
     var del=document.createElement('button');del.id='conversation-delete';del.type='button';del.className='btn btn-quiet';del.textContent='Delete';del.setAttribute('aria-label','Delete conversation');
     del.onclick=function(e){muSessionDelete(id,e);};toolbar.appendChild(del);
   }
-  document.querySelectorAll('.chat-sess-list').forEach(function(list){
-  var empty=list.querySelector('.chat-sess-empty');if(empty)empty.remove();
-  var href='/?session='+encodeURIComponent(id);
-  if(list.querySelector('a[href="'+href+'"]'))return;
-  title=(title||'Untitled').trim();
-  if(title.length>60)title=title.slice(0,60)+'…';
-  list.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active');});
-  var a=document.createElement('a');a.className='chat-sess active';a.href=href;
-  var label=document.createElement('span');label.className='chat-sess-title';label.textContent=title;
-  var when=document.createElement('time');when.className='chat-sess-when';when.dateTime=new Date().toISOString();when.textContent='Today';
-  a.appendChild(label);a.appendChild(when);
-  list.insertBefore(a,list.firstChild);
-  });
+
 };
 </script>`
 }

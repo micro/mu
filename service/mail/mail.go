@@ -1080,14 +1080,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	<div class="text-muted text-sm mb-5">Thread with: %s</div>
 	%s
 	<div class="mt-6 border-t pt-5">
-		<form method="POST" action="/mail?id=%s" class="form-action d-flex flex-column gap-4" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}document.getElementById('reply-body-plain').value=replyText;var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML;return true;">
+		<form method="POST" action="/mail?id=%s" class="form" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}document.getElementById('reply-body-plain').value=replyText;var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML;return true;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
 			<input type="hidden" id="reply-body-plain" name="body_plain" value="">
 			<input type="hidden" id="reply-body-html" name="body_html" value="">
 			<div id="reply-body" contenteditable="true" class="mail-reply-box" placeholder="Write your reply..."></div>
-			<div class="d-flex gap-3 items-center">
+			<div class="form-actions">
 				<button type="submit">Send</button>
 				<a href="#" onclick="if(confirm('Delete this entire thread?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" class="text-error text-sm">Delete Thread</a>
 				%s
@@ -1139,7 +1139,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				%s
 				<input type="text" name="subject" placeholder="Subject" value="%s" required>
 				<textarea name="body" rows="10" placeholder="Write your message..." required></textarea>
-			<div class="d-flex gap-3 items-center">
+			<div class="form-actions">
 				<button type="submit">Send</button>
 				<a href="%s" class="text-muted text-sm">Cancel</a>
 			</div>
