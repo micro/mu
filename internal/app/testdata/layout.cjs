@@ -11,6 +11,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  await page.route('**/*',route=>{
   const u=new URL(route.request().url());
   if(u.pathname==='/services'&&route.request().headers().accept?.includes('application/json'))return route.fulfill({contentType:'application/json',body:JSON.stringify({html:'<section class="section-card">Cached service feed</section>',loading:false})});
+  if(u.pathname==='/fixture.svg')return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#f2f5e9"/><circle cx="320" cy="180" r="90" fill="#d97a32"/></svg>'});
   if(u.hostname==='www.youtube.com')return route.fulfill({body:'<!doctype html><p>Video fixture</p>',contentType:'text/html'});
   if(u.pathname==='/composition.css')return route.fulfill({contentType:'text/css',body:input.composition});
   if(u.pathname==='/mu.css')return route.fulfill({contentType:'text/css',body:input.css});
@@ -20,7 +21,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
   if(/\.(png|svg)$/.test(u.pathname)){const p='../internal/app/html'+u.pathname;if(fs.existsSync(p))return route.fulfill({body:fs.readFileSync(p),contentType:u.pathname.endsWith('.svg')?'image/svg+xml':'image/png'});}
   return route.fulfill({status:200,body:'',contentType:'text/plain'});
  });
- for(const width of [320,390,768,1024,1440])for(const collapsed of (width>900?[false,true]:[false])){
+ for(const width of (process.env.MU_LAYOUT_WIDTHS||'320,390,768,1024,1440').split(',').map(Number))for(const collapsed of (width>900?[false,true]:[false])){
   await page.setViewportSize({width,height:900});
   for(const path of Object.keys(input.pages).filter(p=>!process.env.MU_LAYOUT_PATHS||process.env.MU_LAYOUT_PATHS.split(',').includes(p.split('?')[0]))){
    console.log("Checking",path,width,collapsed);
@@ -43,8 +44,19 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(!bad.length,`${path} controls at ${width}, collapsed=${collapsed}, revealed=${revealed}: ${JSON.stringify(bad)}`);
    }
    await page.locator('#content details').evaluateAll(es=>es.forEach(e=>e.open=false));
+   if(process.env.MU_LAYOUT_SHOTS&&[390,1440].includes(width)&&!collapsed){
+    fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true});await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/'+(path.replace(/[^a-zA-Z0-9_-]/g,'-')||'landing')+'-'+width+'-'+collapsed+'.png',fullPage:true});
+   }
    if(path==='/'||path==='/?new=1') {
     assert.equal(await page.locator('#mu-chat-input').count(),1,'one composer');
+    if(path==='/?new=1'&&(width<=900||collapsed)){
+     await page.locator('.conversation-switcher summary').click();
+     assert(await page.locator('.conversation-menu .chat-sess').count()>0,'history lists conversations');
+     assert(await page.locator('.conversation-menu').isVisible(),'history visible');
+     await page.keyboard.press('Escape');
+     assert(!await page.locator('.conversation-menu').isVisible(),'escape closes history');
+    }
+
     assert.equal(await page.locator('#tabs,#home-personal,#home-feed').count(),0,'retired shell');
     const form=page.locator('#mu-chat-form'),before=await form.boundingBox();
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
@@ -57,14 +69,15 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     if(width<900){await page.evaluate(()=>{const v=new EventTarget();v.height=430;v.offsetTop=0;Object.defineProperty(window,'visualViewport',{configurable:true,value:v});window.dispatchEvent(new Event('resize'));});await page.waitForTimeout(70);const box=await form.boundingBox();assert(box.y+box.height<=430,`keyboard covers composer: ${JSON.stringify(box)}`);}
     assert(!errors.length,`conversation errors: ${errors.join(', ')}`);
    }
+   if(path==='/components') {
+    const styles=await page.evaluate(()=>{const s=e=>getComputedStyle(document.querySelector(e));return {border:s('.card').borderTopWidth,padding:s('.card').paddingLeft,preview:s('.collection-item').textDecorationLine,notice:s('.notice').backgroundColor,thumb:document.querySelector('.thumbnail img').getBoundingClientRect().width}});
+    assert.equal(styles.border,'1px','cards have boundaries');assert.equal(styles.padding,'16px','cards have space');assert.equal(styles.preview,'none','collection previews are readable');assert.notEqual(styles.notice,'rgba(0, 0, 0, 0)','notice has a background');assert(styles.thumb<=320,'bounded thumbnails');
+   }
    if(path==='/inbox')assert.equal(await page.locator('article.message').count(),1,'priority should show one communication');
    if(path==='/services?view=feed'){await page.waitForSelector('#service-feed .section-card');assert.equal(await page.locator('#mu-chat-input').count(),0);}
    if(path==='/chat'){
     await page.locator('#messages').evaluate(e=>e.innerHTML='<p>Room message</p>'.repeat(100));await page.waitForTimeout(70);
     const box=await page.locator('#chat-form').boundingBox();assert(box.y+box.height<=900,`room composer below viewport at ${width}`);
-   }
-   if(process.env.MU_LAYOUT_SHOTS&&['/','/?new=1','/services','/services?view=feed','/work','/inbox','/agents','/mail','/video'].includes(path)){
-    fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true});await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/'+(path.replace(/[^a-zA-Z0-9_-]/g,'-')||'landing')+'-'+width+'-'+collapsed+'.png',fullPage:true});
    }
    } catch(e) { failures.push(path+' at '+width+': '+e.message); }
   }

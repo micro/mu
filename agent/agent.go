@@ -293,10 +293,11 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		cfg.Location = true
 	}
 
-	chip := ""
+	chip := "<div class=\"conversation-toolbar\"><details class=\"conversation-switcher\"><summary>Conversations</summary><div class=\"conversation-menu\">" + app.ConversationList(accountID, activeRoot) + "</div></details><a class=\"btn btn-quiet\" href=\"" + html.EscapeString(chatBase) + "?new=1\">New conversation</a>"
 	if activeRoot != "" {
-		chip = `<div class="form-actions"><details><summary>Conversation</summary><button type="button" onclick="muSessionDelete(` + app.JSAttr(activeRoot) + `,event)">Delete conversation</button></details></div>`
+		chip += "<button class=\"btn btn-quiet\" type=\"button\" onclick=\"muSessionDelete(" + app.JSAttr(activeRoot) + ",event)\">Delete conversation</button>"
 	}
+	chip += "</div>"
 	cfg.Placeholder = "What do you need?"
 	cfg.StorageNS = "agent-" + accountID + "-" + selAgent
 	cfg.ServerOwned = true
@@ -384,20 +385,19 @@ function muSessionDelete(id,ev){
     .then(function(r){if(!r.ok)throw new Error('Could not delete conversation');window.location=` + app.JSString(back) + `;}).catch(function(e){alert(e.message)});
 }
 window.muSessionStarted=function(id,title){
-  var list=document.querySelector('.chat-sess-list');if(!list)return;
+  document.querySelectorAll('.chat-sess-list').forEach(function(list){
   var empty=list.querySelector('.chat-sess-empty');if(empty)empty.remove();
   var href='/?session='+encodeURIComponent(id);
   if(list.querySelector('a[href="'+href+'"]'))return;
   title=(title||'Untitled').trim();
   if(title.length>60)title=title.slice(0,60)+'…';
   list.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active');});
-  var row=document.createElement('div');row.className='chat-sess-row has-row-del';
-  var a=document.createElement('a');a.className='chat-sess active';a.href=href;a.textContent=title;
-  var b=document.createElement('button');b.className='row-del';b.type='button';
-  b.title='Delete conversation';b.textContent='×';
-  b.onclick=function(e){muSessionDelete(id,e);};
-  row.appendChild(a);row.appendChild(b);
-  list.insertBefore(row,list.firstChild);
+  var a=document.createElement('a');a.className='chat-sess active';a.href=href;
+  var label=document.createElement('span');label.className='chat-sess-title';label.textContent=title;
+  var when=document.createElement('time');when.className='chat-sess-when';when.dateTime=new Date().toISOString();when.textContent='Today';
+  a.appendChild(label);a.appendChild(when);
+  list.insertBefore(a,list.firstChild);
+  });
 };
 </script>`
 }
