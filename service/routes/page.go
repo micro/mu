@@ -91,7 +91,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`is traffic, the turns, and the shape of the road — which is the part that ` +
 			`tells you whether the route goes the way you expected.</p></div>`)
 	}
-	b.WriteString(pageCSS)
 	app.Respond(w, r, app.Response{Title: "Routes", Description: "How to get from one place to another", HTML: b.String()})
 }
 
@@ -177,14 +176,3 @@ const (
 // Britain comes out stretched sideways. Over the length of a journey somebody
 // might drive, flat is indistinguishable from correct.
 func draw(shape []point) string { return app.RouteMap(shape) }
-
-const pageCSS = `<style>
-.rt-head{margin:0 0 6px;font-size:15px}
-.rt-summary{margin:0 0 12px;font-size:14px;color:var(--text-muted,#666)}
-.rt-traffic{color:#b45309}
-.rt-map{display:block;width:100%;height:auto;margin:0 0 14px;color:#111}
-.rt-steps{margin:0;padding-left:20px;font-size:14px;line-height:1.7}
-.rt-steps li{margin:0 0 2px}
-.rt-dist{color:var(--text-muted,#999);font-size:12px}
-@media (prefers-color-scheme:dark){.rt-map{color:#eee}}
-</style>`

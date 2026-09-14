@@ -54,7 +54,6 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 	sb.WriteString(usage.CSS)
-	sb.WriteString(backupCSS)
 	sb.WriteString(notice)
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
@@ -250,9 +249,3 @@ func size(b int64) string {
 }
 
 var _ = time.Now
-
-const backupCSS = `<style>
-.backup-ok { border-left: 3px solid #1f6f5c; }
-.backup-bad { border-left: 3px solid #a8321b; }
-.backup-bad code { font-size: 12px; word-break: break-all; }
-</style>`

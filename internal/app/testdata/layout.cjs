@@ -21,7 +21,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    return originalFetch(url,opts);
   };
  },{resultHTML:input.resultHTML});
- const failures=[];
+ const failures=[],audit=[];
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{
   const u=new URL(route.request().url());
@@ -45,7 +45,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
    if(['/about','/privacy','/pricing','/contact','/status'].includes(path))assert(await page.locator('.footer').isVisible(),'public footer missing');
    if(await page.locator('#mobile-nav').count()) {
-    assert.deepEqual(await page.locator('#mobile-nav a').allTextContents(),['Home','Inbox','Work','Services']);
+    assert.deepEqual(await page.locator('#mobile-nav a').allTextContents(),['Home','Inbox','Agents','Services']);
     assert.equal(await page.locator('#mobile-nav').isVisible(),width<=900);
    }
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${path} overflows at ${width}`);
@@ -63,6 +63,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(path==='/chat')await page.locator('#messages').evaluate(e=>e.innerHTML='<div class="message"><span class="you">Sarah <span class="msg-when">Today, 10:30</span></span><p>Can we meet tomorrow afternoon?</p></div><div class="message"><span class="you">You <span class="msg-when">Today, 10:32</span></span><p>Yes, see you at two.</p></div>');
    const narrowTextareas=await page.locator('form.form:not(.form-inline) > textarea').evaluateAll(es=>es.filter(e=>e.getClientRects().length).filter(e=>{const f=e.parentElement,style=getComputedStyle(f);return e.getBoundingClientRect().width<f.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-2}).map(e=>e.name));
    assert(!narrowTextareas.length,`full-width form fields are narrow: ${narrowTextareas}`);
+   if(path==='/chat?view=rooms') { const rows=page.locator('.room-row');assert(await rows.count()>0,'room list missing');assert.equal(await rows.first().evaluate(e=>getComputedStyle(e).display),'grid','rooms bypass shared list styling'); }
    if(path==='/archive') {
     const search=await page.locator('.search-bar').boundingBox(),next=await page.locator('.search-bar + *').boundingBox();
     assert(next.y-search.y-search.height>=16,'search section has no spacing beneath it');
@@ -86,10 +87,10 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert.equal(await page.locator('[name=language]').count(),0,'account still has language setting');
     const links=page.locator('[aria-label="Connection settings"]');
     assert.deepEqual(await links.locator('a').allTextContents(),['API credentials','Mail settings']);
-    assert(await links.evaluate(e=>!!e.closest('.card')),'connection settings lack their shared card');
+    assert(await links.evaluate(e=>e.closest('.card')?.querySelector('h4')?.textContent==='API and mail'),'connection settings lack their labelled card');
    }
    if(path.startsWith('/agent?id='))assert.equal(await page.locator('.conversation-toolbar strong').textContent(),'Research','focused agent identity missing');
-   if(path==='/services')assert.equal(await page.locator('.view-switch,#service-feed').count(),0,'services has retired view tabs');
+   if(path==='/services'){assert.equal(await page.locator('.view-switch,#service-feed').count(),0,'services has retired view tabs');assert.equal(await page.locator('#content a[href="/agents"]').count(),0,'Agents is not a service');}
    if(await page.locator('#reply-body').count()) {
     const editor=await page.locator('#reply-body').boundingBox(),form=await page.locator('#reply-body').evaluate(e=>e.closest('form').getBoundingClientRect().width);
     assert(editor.width>=form-2,'mail reply editor is not full width');
@@ -104,6 +105,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert.equal(await page.locator('.oauth-btn').evaluate(e=>getComputedStyle(e).display),'flex','Google button unformatted');
    }
    if(await page.locator('.conversation-toolbar').count()&&await page.locator('.conversation-toolbar').isVisible()) {
+    assert.equal(await page.locator('.conversation-toolbar a[href="/users"],#conversation-delete').count(),0,'private chat has directory or delete controls');
     const toolbar=await page.locator('.conversation-toolbar').boundingBox(),prompt=await page.locator('#mu-chat-form').boundingBox();
     assert(Math.abs(toolbar.x-prompt.x)<2&&Math.abs(toolbar.width-prompt.width)<2,'toolbar and prompt differ in alignment');
     const controls=await page.locator('.conversation-toolbar > *').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>{const r=e.getBoundingClientRect();return r.y+r.height/2}));
@@ -150,7 +152,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.waitForTimeout(100);await page.locator('#mu-chat-conv').evaluate(e=>e.scrollTop=0);
     await page.waitForSelector('.mu-agent:last-child h2');await page.waitForTimeout(50);
     assert(await page.locator('#mu-chat-conv').evaluate(e=>e.scrollTop<2),'response overrode manual scrolling');
-    if(path==='/?new=1')assert.equal(await page.locator('#conversation-delete').count(),1,'new conversation has no delete action');
+    if(path==='/?new=1')assert.equal(await page.locator('#conversation-delete').count(),0,'sending recreated the deleted control');
     const before=await form.boundingBox();
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
     await page.waitForTimeout(50);const after=await form.boundingBox();
@@ -192,6 +194,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.keyboard.press('Escape');
    }
    if(path==='/admin/server') {
+    assert.equal(await page.locator('.detail-row').first().evaluate(e=>getComputedStyle(e).display),'grid','connect styling leaked into status rows');
     assert.equal(await page.locator('.metric-grid .metric').count(),5,'server metrics missing');
     const metrics=await page.locator('.metric').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().width));
     assert(metrics.every(w=>w>=140),'server metrics compressed');
@@ -214,6 +217,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.locator('#messages').evaluate(e=>e.innerHTML='<p>Room message</p>'.repeat(100));await page.waitForTimeout(70);
     const box=await page.locator('#chat-form').boundingBox();assert(box.y+box.height<=900,`room composer below viewport at ${width}`);
    }
+   audit.push({path,width,collapsed,controls:await page.locator('#content button,#content a.btn,#content a.mini-btn').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>{const s=getComputedStyle(e);return {text:e.textContent.trim().slice(0,40),class:e.className,h:e.getBoundingClientRect().height,pad:s.padding,font:s.fontSize}}))});
    } catch(e) { failures.push(path+' at '+width+': '+e.message); }
   }
  }
@@ -221,11 +225,13 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  // Reload an older selection even when the server initially renders a newer thread.
  await page.goto('https://mu.test/agent/micro');
  const selectedConfig=await page.locator('#conversation-config').textContent().then(JSON.parse);
- await page.route('**/agent/micro?session=older-fixture',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({id:'older-fixture',html:'<div class="mu-user">An older selected question</div><div class="mu-agent">Its original answer</div>',pending:false,agent:'',agentName:'Micro',storageNS:selectedConfig.storageNS})}));
+ await page.route('**/agent/micro?session=older-fixture',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({id:'older-fixture',html:'<div class="mu-user">An older selected question</div><div class="mu-agent">Its original answer</div>',pending:false,agent:'research',agentName:'Research',storageNS:selectedConfig.storageNS})}));
  await page.evaluate(scope=>history.replaceState({muConversation:{scope,id:'older-fixture'}},''),selectedConfig.selectionScope);
  await page.reload();
  await page.getByText('An older selected question',{exact:true}).waitFor();
  assert.equal(new URL(page.url()).search,'','selection leaked into URL');
+ assert.equal(await page.locator('.conversation-toolbar strong').textContent(),'Research','restored named agent identity missing');
+ assert(await page.locator('.conversation-toolbar').isVisible(),'restored identity hidden');
  await page.locator('#mu-chat-input').fill('Continue this discussion');
  await page.locator('#mu-chat-form button[type=submit]').click();
  assert.equal(await page.evaluate(()=>window.__lastAgentBody.context_id),'older-fixture','reply switched to newer conversation');
@@ -235,6 +241,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  await page.reload();
  assert.equal(await page.locator('#mu-chat-conv').textContent(),'','empty selection reopened latest thread');
  assert.equal(await page.locator('#mu-chat-form').evaluate(f=>f.inert),false);
+ if(process.env.MU_LAYOUT_AUDIT)fs.writeFileSync(process.env.MU_LAYOUT_AUDIT,JSON.stringify(audit));
  assert(!failures.length,failures.join('\n'));
  } finally {await browser.close();}
  console.log('All service pages fit; conversation composers remain centered and stable on mobile and desktop.');

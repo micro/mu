@@ -71,25 +71,7 @@ func searchBox(o SearchBoxOpts) string {
     <input id="mu-search-input" type="search" name="q" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="256"` + focus + `>
     <button type="submit" aria-label="Search">&#x2192;</button>
   </form>` + note + `</div>
-<style>
-/* Left, not centred. The rest of the page it sits on starts at the
-   left margin, and a box centred inside a left-aligned column reads as
-   misaligned rather than as centred. That includes the front page, which used
-   to be the exception and is not any more — everything on it hangs off one
-   edge. Nothing passes Centred today; it is kept because a page with a box and
-   nothing else is a shape somebody will want again. */
-#mu-search{max-width:760px;margin:0;width:100%}
-#mu-search.mu-search-mid{max-width:560px;margin:0 auto}
-#mu-search-form{display:flex;align-items:center;gap:0;border:1px solid var(--card-border,#ddd);
-  border-radius:6px;background:var(--card-background,#fff);padding:4px 4px 4px 12px;transition:border-color .2s}
-#mu-search-form:focus-within{border-color:#999}
-#mu-search-input{flex:1;border:0;outline:0;font:inherit;font-size:16px;padding:8px 0;background:transparent;
-  color:var(--text-primary,#111);min-width:0}
-#mu-search-form button{flex:none;border:0;border-radius:4px;background:#f0f1f2;color:var(--text-primary,#171717);
-  font:inherit;width:32px;height:32px;cursor:pointer}
-#mu-search-form button:hover{background:#e7e9eb}
-.mu-search-why{max-width:760px;margin:8px 0 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
-</style>`
+`
 }
 
 //go:embed conversation.js
@@ -118,5 +100,5 @@ func ChatComponent(cfg ChatConfig) string {
 	if cfg.Location {
 		location = `<button type="button" id="mu-chat-location" aria-label="Share approximate location" title="Share approximate location"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>`
 	}
-	return `<style>` + conversationCSS + `</style><div id="mu-chat" class="mu-chat-transcript"><div id="mu-chat-conv" role="log" aria-label="Conversation">` + cfg.InitialConvHTML + `</div><form id="mu-chat-form"><textarea id="mu-chat-input" aria-label="Message Micro" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="1024" rows="1"></textarea>` + location + `<button type="button" id="mu-chat-mic" aria-label="Dictate" title="Dictate using your browser's speech service" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg></button><button type="submit" aria-label="Send">↑</button><span id="mu-chat-voice-status" class="text-muted" role="status"></span></form></div><script type="application/json" id="conversation-config">` + string(config) + `</script><script>` + locationJS + conversationJS + dictationJS + `</script>`
+	return `<div id="mu-chat" class="mu-chat-transcript"><div id="mu-chat-conv" role="log" aria-label="Conversation">` + cfg.InitialConvHTML + `</div><form id="mu-chat-form"><textarea id="mu-chat-input" aria-label="Message Micro" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="1024" rows="1"></textarea>` + location + `<button type="button" id="mu-chat-mic" aria-label="Dictate" title="Dictate using your browser's speech service" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg></button><button type="submit" aria-label="Send">↑</button><span id="mu-chat-voice-status" class="text-muted" role="status"></span></form></div><script type="application/json" id="conversation-config">` + string(config) + `</script><script>` + locationJS + conversationJS + dictationJS + `</script>`
 }

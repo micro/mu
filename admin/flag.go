@@ -138,8 +138,15 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 
 	flaggedItems := flag.All()
 
+	filter := `<a class="btn" href="/admin/moderate?source=social">Include imported social content</a>`
+	if r.URL.Query().Get("source") == "social" {
+		filter = `<a class="btn" href="/admin/moderate">Hide imported social content</a>`
+	}
 	var itemsList []string
 	for _, item := range flaggedItems {
+		if item.ContentType == "social" && r.URL.Query().Get("source") != "social" {
+			continue
+		}
 		var contentHTML string
 		var title string
 		var author string
@@ -298,7 +305,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 	// above it. The shell draws the title; what is left here is the one thing a
 	// reader does not already know — the rule that hides something at three
 	// flags — said once, in a sentence.
-	content := fmt.Sprintf(back()+`<div id="moderation" class="page-stack">
+	content := fmt.Sprintf(back()+`<div class="page-action">`+filter+`</div><div id="moderation" class="page-stack">
 		<p class="text-sm text-muted">Flagged by other people. Three flags hides
 		something automatically; approving clears them, deleting is permanent.</p>
 		<div id="flagged-content" class="page-stack">

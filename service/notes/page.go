@@ -99,7 +99,7 @@ func list(entries []*notes.Entry) string {
 		// its own reads as broken, so say what makes one appear.
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">No notes yet. Say ` +
 			`"remember that I'm in London" to an agent and it will show up here, or write one ` +
-			`yourself.</p></div>` + pageCSS)
+			`yourself.</p></div>`)
 		return b.String()
 	}
 
@@ -120,7 +120,7 @@ func list(entries []*notes.Entry) string {
 		}
 		b.WriteString(app.CollectionItem("/notes?note="+urlArg(e.Title), e.Title, preview(e.Text), app.TimeAgo(when)))
 	}
-	b.WriteString(`</div>` + pageCSS)
+	b.WriteString(`</div>`)
 	return b.String()
 }
 
@@ -157,7 +157,7 @@ func editor(r *http.Request, title, text string) string {
 			`<input type="hidden" name="delete" value="` + html.EscapeString(title) + `">` +
 			`<button type="submit" class="link-button danger">Delete</button></form>`)
 	}
-	b.WriteString(`</div>` + pageCSS)
+	b.WriteString(`</div>`)
 	return b.String()
 }
 
@@ -206,5 +206,3 @@ func preview(text string) string {
 }
 
 func urlArg(s string) string { return url.QueryEscape(s) }
-
-const pageCSS = `<style>.note-delete{margin:12px 0 0}</style>`

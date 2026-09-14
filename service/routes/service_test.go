@@ -239,7 +239,7 @@ func TestThePageDrawsTheJourney(t *testing.T) {
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest(http.MethodGet, "/routes?from=51.5308,-0.1238&to=Gower+Street&mode=walk", nil))
 	body := w.Body.String()
-	if !strings.Contains(body, "rt-map") {
+	if !strings.Contains(body, `<figure class="route-map"><svg`) {
 		t.Error("the route was not drawn")
 	}
 	if !strings.Contains(body, "Head north on Euston Road") {

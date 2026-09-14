@@ -112,7 +112,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	b.WriteString(`</div>` + pageCSS)
+	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Archive", Description: "Everything this instance has collected, searchable as one thing", HTML: b.String()})
 }
 
@@ -196,19 +196,3 @@ func kindChips(kinds []data.Kind, query, active string) string {
 	b.WriteString(`</div>`)
 	return b.String()
 }
-
-const pageCSS = `<style>
-.ar{max-width:var(--page-width)}
-.ar-empty{font-size:14px;color:#888;line-height:1.6}
-.ar-row{padding:12px 0;border-bottom:1px solid #f4f4f4}
-/* A kind and a time are two facts, and this had nothing between them — the pill
-   and the text were adjacent nodes in a block, so the line read "news2 hours
-   ago". A gap on the row rather than a margin on .pill: that primitive is
-   shared with the inbox and the agent, it already declares flex:none for
-   exactly this, and every other place it is used sits in a flex row with a gap.
-   This was the one that did not. */
-.ar-meta{display:flex;align-items:center;gap:7px;font-size:11px;color:#bbb;margin-bottom:3px}
-.ar-title{font-size:15px;color:#111;font-weight:500;text-decoration:none;display:block}
-a.ar-title:hover{text-decoration:underline}
-.ar-body{font-size:13px;color:#888;line-height:1.55;margin-top:3px}
-</style>`

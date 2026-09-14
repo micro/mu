@@ -2,6 +2,7 @@ package account
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	htmlpkg "html"
 	"net/http"
@@ -55,6 +56,21 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Credential creation requires a verified or explicitly approved account.
+	if r.Method == http.MethodPost {
+		r.ParseForm()
+		creating := r.URL.Query().Get("create_client") == "1" || r.FormValue("_method") != "DELETE"
+		if creating {
+			if err := auth.CheckCredentialAccess(acc.ID); err != nil {
+				app.Forbidden(w, r, err.Error())
+				return
+			}
+			if err := auth.CheckPostRate(acc.ID); err != nil {
+				app.TooManyRequests(w, r, err.Error())
+				return
+			}
+		}
+	}
 	// Handle OAuth client actions
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -79,7 +95,11 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 				app.BadRequest(w, r, "The redirect URL must be https, or http on localhost: "+redirect)
 				return
 			}
-			client := auth.RegisterOAuthClient(acc.ID, name, []string{redirect})
+			client, err := auth.RegisterOwnedOAuthClient(acc.ID, name, []string{redirect})
+			if err != nil {
+				app.TooManyRequests(w, r, err.Error())
+				return
+			}
 			// Store credentials in session flash (not URL)
 			setFlash(sess.ID, "client_id", client.ClientID)
 			setFlash(sess.ID, "client_secret", client.ClientSecret)
@@ -469,6 +489,10 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 
 	// Create the token
 	token, rawToken, err := auth.CreateToken(accountID, name, permissions, expiresAt)
+	if errors.Is(err, auth.ErrCredentialLimit) {
+		app.TooManyRequests(w, r, err.Error())
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

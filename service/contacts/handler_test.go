@@ -1,6 +1,7 @@
 package contacts
 
 import (
+	"mu/internal/app"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -203,7 +204,7 @@ func TestMarkupSupportsTheMobileLayout(t *testing.T) {
 		`class="contact-name"`, `class="contact-meta"`, `class="contact-actions"`,
 		".contacts-table thead{display:none}",
 	} {
-		if !strings.Contains(body, want) {
+		if !strings.Contains(body+app.Styles(), want) {
 			t.Errorf("the page is missing %q, which the phone layout needs", want)
 		}
 	}

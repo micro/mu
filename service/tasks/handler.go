@@ -161,8 +161,6 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	if running > 0 {
 		b.WriteString(taskPollJS)
 	}
-
-	b.WriteString(tasksPageCSS)
 	app.Respond(w, r, app.Response{Title: "Tasks", Description: "What is to be done", HTML: b.String()})
 }
 
@@ -184,7 +182,7 @@ func taskRow(t *Task, csrf string, labels ...string) string {
 
 // DetailHTML reuses the task controls and result renderer inside a composing page.
 func DetailHTML(t *Task, csrf, label string, actionURL func(string) string) string {
-	body := taskCard(t, csrf, label, actionURL) + tasksPageCSS
+	body := taskCard(t, csrf, label, actionURL)
 	if Running(t) {
 		body += taskPollJS
 	}
@@ -317,31 +315,6 @@ const taskPollJS = `<script>
   setTimeout(check, 3000);
 })();
 </script>`
-
-const tasksPageCSS = `<style>
-.task{display:flex;flex-direction:column;gap:var(--space-control)}
-.task-title{font-weight:var(--font-weight-normal,400)}
-.task-done .task-title{text-decoration:line-through;color:var(--text-muted)}
-.task-meta{font-size:12px;color:var(--text-muted);margin:0}
-.task-context{margin:0}.task-context summary{cursor:pointer;color:var(--text-muted)}
-.task-detail{overflow-wrap:anywhere;font-size:14px;margin-top:6px;color:var(--text-secondary)}
-.task-result{overflow-wrap:anywhere;font-size:14px;margin-top:8px;padding:2px 12px;background:var(--hover-background);border-radius:6px}
-.task-result > :first-child{margin-top:10px}
-.task-result > :last-child{margin-bottom:10px}
-.task-result pre{overflow-x:auto}
-.task-steps{margin:0;font-size:13px}
-.task-steps summary{cursor:pointer;color:var(--text-muted)}
-.task-steps ol{margin:6px 0 0;padding-left:20px}
-.task-step{margin:2px 0;font-variant-numeric:tabular-nums}
-.task-step.failed{color:#b3261e;text-decoration:line-through}
-.task-step-detail{color:var(--text-secondary)}
-.task-step-took{color:var(--text-muted);font-size:12px}
-.task-running{color:#a86400;font-weight: 550}
-.task-running::after{content:"";animation:taskdots 1.2s steps(4,end) infinite}
-@keyframes taskdots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
-@media only screen and (max-width:600px){
-}
-</style>`
 
 func plural(n int) string {
 	if n == 1 {

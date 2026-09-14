@@ -138,7 +138,7 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(forYou(r.Context(), accountID))
 	}
 
-	b.WriteString(`</div>` + pageCSS)
+	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{
 		Title:       "Weather",
 		Description: "The forecast where you are, and anywhere else",
@@ -382,39 +382,3 @@ func airFor(lat, lon float64) *AirQuality {
 	}
 	return air
 }
-
-const pageCSS = `<style>
-.wx-page{max-width:var(--page-width)}
-.wx-find{display:flex;gap:8px;margin:0 0 var(--spacing-lg,24px);flex-wrap:wrap}
-.wx-find .field{flex:1;min-width:0}
-.wx-note{color:var(--text-secondary,#555);line-height:1.6;margin:0}
-.wx-also{margin:var(--spacing-lg,24px) 0 0;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
-.wx-also-head{font-size:12px;color:var(--text-muted,#999);text-transform:uppercase;letter-spacing:.04em}
-.wx-place{margin:0 0 4px;font-size:18px}
-.wx-now-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 var(--spacing-md,16px)}
-.wx-big{font-size:44px;line-height:1;font-weight: 550;color:var(--text-primary,#111)}
-.wx-said{font-size:16px;color:var(--text-secondary,#555)}
-.wx-facts{display:flex;gap:22px;flex-wrap:wrap;margin:0 0 var(--spacing-lg,24px);
-  padding:0 0 var(--spacing-md,16px);border-bottom:1px solid var(--card-border,#eee)}
-.wx-fact{display:flex;flex-direction:column;gap:2px}
-.wx-fact-n{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#999)}
-.wx-fact-v{font-size:15px;color:var(--text-primary,#111);font-variant-numeric:tabular-nums}
-.wx-strip{margin:0 0 var(--spacing-lg,24px)}
-.wx-strip-head{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
-  color:var(--text-muted,#999);margin:0 0 8px}
-/* The hours scroll rather than wrap: eight of them on a phone is two ragged
-   rows, and a row of times reads as a row. */
-.wx-strip-row{display:flex;gap:18px;overflow-x:auto;padding:0 0 4px}
-.wx-hour{display:flex;flex-direction:column;gap:2px;flex:none;text-align:center}
-.wx-hour-at{font-size:11px;color:var(--text-muted,#999)}
-.wx-hour-t{font-size:15px;font-variant-numeric:tabular-nums}
-.wx-list{display:flex;flex-direction:column}
-.wx-row{display:flex;align-items:baseline;gap:12px;padding:7px 0;
-  border-bottom:1px solid var(--card-border,#f0f0f0)}
-.wx-row:last-child{border-bottom:0}
-.wx-row-day{flex:none;min-width:104px;font-size:14px}
-.wx-row-said{flex:1;min-width:0;font-size:13px;color:var(--text-secondary,#555);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wx-row-t{flex:none;font-size:14px;font-variant-numeric:tabular-nums;color:var(--text-secondary,#555)}
-@media (max-width:600px){.wx-row-said{display:none}}
-</style>`

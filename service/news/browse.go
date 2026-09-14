@@ -76,16 +76,7 @@ func browse(r *http.Request, posts []*Post) string {
 		b.WriteString(app.ReadingActions(r, p.ID) + `</div></article>`)
 	}
 	b.WriteString(app.ReadingPages("/news", category, page, len(items), 20))
-	return b.String() + `</div>` + app.ReadingCSS + `<style>
-.news-reading-row{display:flex;gap:20px;align-items:flex-start}
-.news-reading-content{flex:1;min-width:0}
-.news-reading-image{flex:0 0 200px;display:block;aspect-ratio:4/3;background:var(--hover-background,#eee);border-radius:var(--border-radius,6px)}
-.news-reading-image img[hidden]{display:none}
-.news-reading-image img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--border-radius,6px)}
-.news-reading-row .category-header{margin-bottom:6px}
-.news-topic{display:inline-block;padding:3px 8px;border:1px solid var(--card-border,#ddd);border-radius:var(--border-radius,6px);background:var(--card-background,#fff);color:var(--text-secondary,#555);font-size:12px;font-weight: 550;text-decoration:none}
-@media(max-width:600px){.news-reading-row{flex-direction:column;gap:12px}.news-reading-content{width:100%}.news-reading-image{flex-basis:auto;width:100%;aspect-ratio:16/9}.news-reading-image img{aspect-ratio:16/9}}
-</style>`
+	return b.String() + `</div>` + ``
 }
 
 func feedBody(r *http.Request, posts []*Post) string {

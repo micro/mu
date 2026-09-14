@@ -49,15 +49,6 @@ func conversationList(who string, history []Message) string {
 	return b.String()
 }
 
-const conversationsCSS = `<style>
-.sms-conversations{display:flex;flex-direction:column;min-width:0}
-.sms-conversation{font-weight:400;display:flex;flex-direction:column;gap:var(--space-control);padding:var(--space-field) 0;border-bottom:1px solid var(--border-color,#ddd);color:inherit;text-decoration:none;min-width:0}
-.sms-conversation:hover{background:var(--hover-background,#f5f5f5);text-decoration:none}
-.sms-conversation-head{display:flex;align-items:center;gap:var(--space-control);flex-wrap:wrap;min-width:0}
-.sms-conversation-head .sms-name{overflow-wrap:anywhere}
-.sms-preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary,#555)}
-</style>`
-
 func recentConversations(who string) ([]Message, error) {
 	recs, err := userdb.LatestBy(ns, who, msgs, []string{"number", "channel"}, "at", 200)
 	if err != nil {

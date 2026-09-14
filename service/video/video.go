@@ -179,21 +179,21 @@ var recentSearchesScript = `
 
   function saveRecentSearch(query) {
     if (!query || !query.trim()) return;
-    
+
     try {
       let searches = loadRecentSearches();
-      
+
       // Remove if already exists
       searches = searches.filter(s => s !== query);
-      
+
       // Add to beginning
       searches.unshift(query);
-      
+
       // Keep only MAX_RECENT_SEARCHES
       if (searches.length > MAX_RECENT_SEARCHES) {
         searches = searches.slice(0, MAX_RECENT_SEARCHES);
       }
-      
+
       localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
     } catch (e) {
       console.error('Error saving recent search:', e);
@@ -203,18 +203,18 @@ var recentSearchesScript = `
   function displayRecentSearches() {
     const searches = loadRecentSearches();
     const container = document.getElementById('recent-searches-container');
-    
+
     if (!container) return;
-    
+
     if (searches.length === 0) {
       container.innerHTML = '';
       return;
     }
-    
+
 		// Get current query from input to highlight active search
 		const queryInput = document.getElementById('query');
 		const currentQuery = queryInput ? queryInput.value.trim() : '';
-    
+
 		let html = '<div class="recent-searches"><h3>Recent Searches</h3><div class="recent-searches-scroll">';
 		searches.forEach(search => {
 			const escaped = escapeHTML(search);
@@ -227,9 +227,9 @@ var recentSearchesScript = `
 					 + '</span>';
 		});
 		html += '</div></div>';
-    
+
     container.innerHTML = html;
-    
+
     // Add click handlers
 		// Clicking the label triggers a search, clicking the close removes it
 		container.querySelectorAll('.recent-search-item').forEach(item => {
@@ -241,10 +241,10 @@ var recentSearchesScript = `
 					e.preventDefault();
 					e.stopPropagation();
 					const query = item.getAttribute('data-query');
-					
+
 					// Move clicked search to front
 					saveRecentSearch(query);
-					
+
 					const queryInput = document.getElementById('query');
 					const form = document.getElementById('video-search');
 					if (queryInput && form) {
@@ -282,7 +282,7 @@ var recentSearchesScript = `
   // DOMContentLoaded has long since fired.
   function wireVideo() {
     displayRecentSearches();
-    
+
     const form = document.querySelector('form[action="/video"]');
     if (form) {
       form.addEventListener('submit', function() {
@@ -1249,7 +1249,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, watchPage, htmlpkg.EscapeString(title), app.Version,
 			embedVideoWithAutoplay(id, autoplay), htmlpkg.EscapeString(title),
-			channelLink(channel, channelID), actions, app.ReadingCSS)
+			channelLink(channel, channelID), actions, "")
 
 		return
 	}

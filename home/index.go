@@ -14,7 +14,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := app.RenderIndex(app.Index{
-		Title: "Micro", Description: "A personal AI agent",
+		Title: "Home | Micro", Description: "A personal AI agent",
 		TopRight: topRight(), Body: indexBody(), Footer: app.FooterLinks(), Tail: workerScript(),
 	})
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

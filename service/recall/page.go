@@ -97,7 +97,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(`</div>` + pageCSS)
+	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Recall", Description: "Search everything you have said to an agent and been told", HTML: b.String()})
 }
 
@@ -222,20 +222,3 @@ func sortStrings(s []string) {
 		}
 	}
 }
-
-const pageCSS = `<style>
-.rc-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
-.rc-chip{border:1px solid #eee;border-radius:6px;padding:3px 11px;font-size:12px;color:#666;text-decoration:none}
-.rc-chip:hover{border-color:#ccc}
-.rc-chip.on{background:var(--text-primary,#111);border-color:var(--text-primary,#111);color:#fff}
-.rc-count{font-size:13px;color:#888;margin:0 0 10px}
-.rc-hits{display:flex;flex-direction:column;gap:8px}
-.rc-hit{display:block;border:1px solid #eee;border-radius:8px;padding:10px 14px;text-decoration:none;color:inherit}
-.rc-hit:hover{border-color:#ddd;background:#fcfcfc}
-.rc-meta{font-size:12px;color:#999}
-.rc-where{border:1px solid #eee;border-radius:6px;padding:1px 8px;font-size:11px}
-.rc-text{font-size:14px;line-height:1.55;margin:5px 0 4px}
-.rc-text mark{background:#fdf3c3;color:inherit;padding:0 1px}
-.rc-subject{font-size:12px;color:#aaa}
-.rc-empty{color:#888;font-size:14px}
-</style>`

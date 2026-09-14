@@ -97,7 +97,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// wanted, which is why it is here and not instead of all this.
 	b.WriteString(`<p class="hz-ref"><a href="/services/hazards">` +
 		`Call this from your own code &rarr;</a></p>`)
-	b.WriteString(`</div>` + pageCSS)
+	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Hazards",
@@ -263,32 +263,3 @@ func serveJSON(w http.ResponseWriter) {
 		"feeds":  map[string]interface{}{"quakes": feedInfo(&quakeCache), "alerts": feedInfo(&alertCache), "floods": feedInfo(&floodCache)},
 	})
 }
-
-const pageCSS = `<style>
-.hz-lede{color:var(--text-secondary,#666);margin:0 0 24px;max-width:60ch}
-.hz-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
-  margin:28px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--divider,#f0f0f0)}
-.hz-head h2{margin:0;font-size:17px}
-.hz-note{font-size:12px;color:var(--text-muted,#999)}
-.hz-list{list-style:none;margin:0;padding:0}
-.hz-row{display:flex;align-items:baseline;gap:10px;padding:7px 0;
-  border-bottom:1px solid var(--divider,#f4f4f4)}
-.hz-row:last-child{border-bottom:0}
-.hz-what{flex:1;min-width:0}
-.hz-when{color:var(--text-muted,#999);font-size:12px;white-space:nowrap}
-.hz-mag{font-variant-numeric:tabular-nums;font-weight: 550;min-width:48px}
-.hz-level{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
-  font-weight: 550;min-width:76px}
-.hz-ok{color:var(--text-secondary,#666)}
-.hz-warn{color:#a86400}
-.hz-sev{color:#b3261e}
-.hz-tag{font-size:11px;margin-left:8px;padding:1px 6px;border-radius:3px;
-  background:#fdecea;color:#b3261e}
-.hz-quiet{color:var(--text-muted,#999);margin:8px 0 0}
-.hz-ref{margin-top:32px;padding-top:14px;
-  border-top:1px solid var(--divider,#f0f0f0);font-size:13px}
-@media (max-width:600px){
-  .hz-row{flex-wrap:wrap}
-  .hz-when{width:100%;margin-left:48px}
-}
-</style>`

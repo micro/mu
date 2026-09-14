@@ -24,8 +24,8 @@ if(SESSION&&selectionScope&&location.search===''&&selection&&selection.scope===s
       conv.innerHTML=restored.html;
     }catch(e){conv.textContent='This conversation could not be loaded. Reload to try again.';return;}
   }else{contextId='';PENDING=false;}
-  var identity=document.querySelector('.conversation-toolbar strong');if(identity)identity.textContent=AGENT_NAME;
-  var remove=document.getElementById('conversation-delete');if(remove){remove.hidden=!contextId;remove.onclick=function(e){window.muSessionDelete(contextId,e);};}
+  var identity=document.querySelector('.conversation-toolbar strong');
+  if(identity){identity.textContent=AGENT_NAME;identity.parentElement.hidden=!window.muActiveAgent;}
   form.inert=false;
 }
 function rememberSelection(){
@@ -245,10 +245,8 @@ function ask(q){
               if(ev.thread&&!completionTimer)completionTimer=setTimeout(checkCompletion,4000);
               var id=ev.thread||ev.flow_id;
               if(id){
-                var fresh=!contextId;
                 contextId=id;rememberSelection();save();
                 window.dispatchEvent(new CustomEvent('mu-chat-thread',{detail:id}));
-                if(fresh&&window.muSessionStarted)window.muSessionStarted(id,q);
               }
             }else if(ev.type==='working'){
               startWork(ev.message);

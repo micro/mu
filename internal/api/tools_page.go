@@ -69,7 +69,6 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		// once by somebody new and read past on every visit after that — and
 		// this is a catalogue somebody comes to in order to reach one of the
 		// things in it. The grid says what it is by being a grid of them.
-		b.WriteString(`<div class="section-actions"><a class="btn" href="/agents">Agents</a></div>`)
 		b.WriteString(serviceGrid(r))
 	} else {
 		b.WriteString(`<p class="lens-lead">What an agent can call. Your agents here reach all ` +
@@ -89,8 +88,6 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 			`<a href="/api">the HTTP API &rarr;</a></p>`)
 		b.WriteString(toolGrid())
 	}
-
-	b.WriteString(toolsPageCSS)
 
 	title, desc := "Tools", "Every tool an agent can call on this instance, with what each one costs"
 	if services {
@@ -281,7 +278,7 @@ func connectSection(r *http.Request) string {
 		// scale with no unit — "12 credits" is not a price until you know.
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
 			`and calls are charged to your credits. One credit is one cent.</p>`)
-		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> ` +
+		b.WriteString(`<p><a class="btn" href="/signup">Create an account →</a> ` +
 			`<span class="connect-note">it is the same account you sign into the app with</span></p>`)
 	} else {
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
@@ -296,7 +293,7 @@ func connectSection(r *http.Request) string {
 		`with your token in <code>MU_TOKEN</code>.</p>`)
 	b.WriteString(`<pre class="connect-cfg">` + html.EscapeString(cfg) + `</pre>`)
 	if acc != nil {
-		b.WriteString(`<p><a class="connect-cta" href="/token">Create a token →</a></p>`)
+		b.WriteString(`<p><a class="btn" href="/token">Create a token →</a></p>`)
 	}
 	b.WriteString(`</div>`)
 
@@ -472,46 +469,3 @@ func serviceOf(tool string) string {
 	}
 	return ""
 }
-
-const toolsPageCSS = `<style>
-.lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
-.service-tile-head{display:flex;align-items:center;gap:8px}
-.service-tile-head img{width:18px;height:18px}
-/* The wrapper exists so the pin can sit on the tile without sitting inside the
-   link — a button inside an anchor cannot be pressed without also following it.
-   The tile still fills the cell, so the whole card remains the hit target for
-   opening the service. */
-.service-tile-wrap{position:relative;display:flex}
-.service-tile-wrap>.tool-tile{flex:1;gap:var(--spacing-sm,8px);padding:16px 34px 16px 16px}
-/* The pin sits on the tile here; .pin-btn itself is in mu.css, because /apps
-   pins an app to home with the same control and a shared control cannot live
-   in one page's style block. */
-.pin-form{position:absolute;top:6px;right:6px;margin:0}
-
-.tool-group{margin:0 0 26px}
-.tool-group-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:0 0 10px}
-.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
-.tool-tile{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid #e5e5e5;
-  border-radius:8px;background:#fff;text-decoration:none;color:inherit}
-/* No :hover here. A tile is a card and .card-hover in mu.css is what a card
-   does on hover — this had a grey border of its own, which was a third answer
-   beside the row on /agents and the cards on home. */
-.tool-tile-name{font-family:inherit;font-size:13px;font-weight: 550;color:#111}
-.tool-tile-desc{font-weight:var(--font-weight-normal,400);font-size:13px;color:#666;line-height:1.4}
-.tool-tile-price{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums;margin-top:2px}
-.tool-tile-price .free{color:#9ca3af}
-/* .card a sets a dark colour and won on specificity, so the label went black on
-   a black button. Scope the rule the same way to outrank it. */
-.card a.connect-cta,.card a.connect-cta:visited{display:inline-block;background:#111;color:#fff;
-  text-decoration:none;padding:9px 18px;border-radius:8px;font-weight: 600;font-size:14px}
-.card a.connect-cta:hover,.card a.connect-cta:visited:hover{background:#333;color:#fff}
-.connect-note{font-size:13px;color:#888;margin-left:8px}
-.connect-cfg{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:12px 0}
-.connect-way{border-top:1px solid #eee;padding-top:12px;margin-top:14px}
-.connect-way h4{margin:0 0 6px;font-size:14px}
-.scope{margin-top:12px;border-top:1px solid #eee;padding-top:10px}
-.scope summary{cursor:pointer;font-size:13px;font-weight: 550;color:#555}
-.scope-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 12px;margin:10px 0}
-.scope-item{font-size:13px;color:#444;display:flex;align-items:center;gap:6px}
-@media only screen and (max-width:600px){.tool-grid{grid-template-columns:1fr}}
-</style>`

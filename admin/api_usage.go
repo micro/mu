@@ -18,15 +18,7 @@ func spendCard() string {
 	uptime := time.Since(summary.Since).Round(time.Minute)
 
 	var sb strings.Builder
-	sb.WriteString(`<style>
-.ai-usage-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
-.ai-usage-table th, .ai-usage-table td { padding:6px 8px; white-space:nowrap; }
-.ai-usage-table td:first-child { word-break:break-all; white-space:normal; }
-@media (max-width: 600px) {
-  .ai-usage-table { font-size:0.72rem; }
-  .ai-usage-table th, .ai-usage-table td { padding:4px 3px; }
-}
-</style>`)
+	sb.WriteString(``)
 	sb.WriteString(fmt.Sprintf(`<p>Tracking since %s (%s ago)</p>`, summary.Since.Format("2006-01-02 15:04"), uptime))
 	sb.WriteString(fmt.Sprintf(`<p><strong>Total: %d calls, est $%.4f</strong></p>`, summary.TotalCalls, summary.TotalCost/100))
 

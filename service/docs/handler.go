@@ -75,7 +75,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		body = list(r, docs, query)
 	}
 
-	app.Respond(w, r, app.Response{Title: title, Description: "Your own documents", HTML: body + pageCSS})
+	app.Respond(w, r, app.Response{Title: title, Description: "Your own documents", HTML: body})
 }
 
 // handlePost saves or deletes.
@@ -101,7 +101,7 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 			Content: r.Form.Get("content"),
 			Public:  r.Form.Get("public") == "on",
 		}
-		app.Respond(w, r, app.Response{Title: "Docs", Description: "Your own documents", HTML: notice(html.EscapeString(err.Error())) + editor(r, draft) + pageCSS})
+		app.Respond(w, r, app.Response{Title: "Docs", Description: "Your own documents", HTML: notice(html.EscapeString(err.Error())) + editor(r, draft)})
 		return
 	}
 	http.Redirect(w, r, "/docs?id="+doc.ID, http.StatusSeeOther)
@@ -185,17 +185,3 @@ func editor(r *http.Request, d *Doc) string {
 func notice(msg string) string {
 	return `<div class="card"><p class="text-sm text-muted">` + msg + `</p></div>`
 }
-
-const pageCSS = `<style>
-.doc-toolbar{display:flex;flex-wrap:wrap;gap:6px}
-.doc-toolbar button{flex:0 0 auto;margin:0}
-.doc-view{overflow-wrap:anywhere}
-.doc-view h2{margin:0 0 12px}
-.doc-view img{max-width:100%}
-.doc-view pre{overflow-x:auto}
-.doc-view table{display:block;max-width:100%;overflow-x:auto}
-.doc-meta{font-size:12px;color:#888;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 2px 0}
-.doc-meta form{display:inline;margin:0}
-.doc-delete{background:none;border:none;color:#c00;font-size:12px;padding:0;cursor:pointer}
-.doc-public{min-width:0;font-size:13px;color:#888;display:flex;align-items:center;gap:6px}
-</style>`

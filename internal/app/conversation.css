@@ -30,13 +30,13 @@
 #mu-chat img { max-width:100%; height:auto; }
 #mu-chat .card { margin:0 0 16px; padding:0; border:0; background:none; }
 #mu-chat .card h1,#mu-chat .card h2,#mu-chat .card h3 { font-size:1.15em; margin:16px 0 8px; }
-#mu-chat a:not(.btn):not(.mini-btn):not(.pill) { color:#1655a0; text-decoration:underline; text-underline-offset:3px; }
-.conversation-entry { display:flex; flex-direction:column; width:100%; max-width:calc(var(--page-width) - 2 * var(--page-gutter)); height:calc(var(--visible-height,100dvh) - 180px); min-height:260px; margin:auto; }
+#mu-chat a:not(.btn):not(.mini-btn):not(.pill) { color:var(--link-color); text-decoration:underline; text-underline-offset:3px; }
+.conversation-entry { display:flex; flex-direction:column; width:100%; max-width:var(--reading-width); height:calc(var(--visible-height,100dvh) - 180px); min-height:260px; margin:auto; }
 .brand { font-size:32px; font-weight:600; text-align:center; }
 .conversation-entry > p { text-align:center; }
 
 /* Center only the public empty entry. Signed-in conversations keep the composer below the transcript. */
-.conversation-entry #mu-chat:has(#mu-chat-conv:empty) { justify-content:center }
+.conversation-entry #mu-chat:has(#mu-chat-conv:empty) { justify-content:center; max-width:var(--prompt-width) }
 .conversation-entry #mu-chat-conv:empty { flex:0 0 auto }
 .conversation-entry:has(#mu-chat-conv:empty) { justify-content:center }
 .conversation-entry:has(#mu-chat-conv:empty) #mu-chat { flex:0 0 auto }

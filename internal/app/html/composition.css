@@ -1,13 +1,13 @@
 /* Base UI kit: neutral surfaces, shared controls and container-owned spacing. */
-:root { --control-h:40px; --control-h-sm:var(--control-h); --control-font-sm:14px; --control-pad-x-sm:14px; --control-pad-x:12px; --control-font:14px }
+:root { --control-h:32px; --control-h-sm:var(--control-h); --control-font-sm:14px; --control-pad-x-sm:10px; --control-pad-x:10px; --control-font:14px }
 button,input,textarea,select { font:inherit; color:var(--text-primary,#171717) }
-button,button[class],a.btn,a.mini-btn,.btn,.mini-btn { color:var(--text-primary,#171717); display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--control-h,40px); padding:8px 14px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; font-size:14px; font-weight:500; line-height:1.4; text-decoration:none; cursor:pointer; transition:background .15s,border-color .15s; }
+button,button[class],a.btn,a.mini-btn,.btn,.mini-btn,.oauth-btn { color:var(--text-primary,#171717); display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--control-h,32px); padding:5px 10px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; font-size:14px; font-weight:500; line-height:1.4; text-decoration:none; cursor:pointer; transition:background .15s,border-color .15s; }
 button:hover,.btn:hover,.mini-btn:hover { background:#f5f5f5; border-color:#cfcfcf; color:var(--text-primary,#171717); text-decoration:none }
 button:disabled,.btn[aria-disabled=true] { opacity:.45; cursor:default }
 .btn-quiet,.btn-secondary,.btn-danger { background:#fff; border-color:var(--border-color,#e5e5e5); color:var(--text-primary,#171717) }
 .btn-quiet:hover,.btn-secondary:hover { background:#f5f5f5; border-color:#cfcfcf; color:var(--text-primary,#171717) }
 .btn-danger:hover { background:#fff5f5; border-color:#e6b3b3; color:var(--btn-danger,#a12424) }
-input,textarea,select { min-width:0; max-width:100%; min-height:var(--control-h,40px); padding:8px 12px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; line-height:1.5 }
+input,textarea,select { min-width:0; max-width:100%; min-height:var(--control-h,32px); padding:5px 10px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; line-height:1.5 }
 input::placeholder,textarea::placeholder { color:var(--text-muted,#666); opacity:1 }
 input:disabled,textarea:disabled,select:disabled { background:#fafafa; color:#777 }
 input[type=checkbox],input[type=radio] { width:auto; min-height:0; padding:0; accent-color:#171717 }
@@ -24,7 +24,7 @@ textarea { display:block; resize:vertical }
 :is(.page-stack,.page-section,.form) > .search-bar { margin:0 }
 .form-actions > *,.section-actions > *,.form-action > * { margin-block:0 }
 @media(max-width:900px) {
- :root { --control-h:44px }
+ :root { --control-h:36px }
  input,textarea,select { font-size:16px }
 }
 /* Shared controls and composition. */
@@ -112,7 +112,7 @@ a.link-text { color: var(--link-color, #0066cc); text-decoration: underline !imp
 .ledger-values { text-align:right; font-variant-numeric:tabular-nums; }
 .ledger-detail { display:block; font-size:12px; color:var(--text-muted,#707070); }
 .view-switch { display: flex; gap: var(--space-field); border-bottom: 1px solid var(--card-border, #e8e8e8); margin-block: 0 var(--space-section); }
-.view-switch > a,.view-switch [role=tab] { box-sizing: border-box; display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-control); border-bottom: 2px solid transparent; color: var(--text-muted, #707070); font-weight: 400; text-decoration: none; }
+.view-switch > a,.view-switch [role=tab] { box-sizing: border-box; display: inline-flex; align-items: center; min-height: var(--control-h); padding: var(--space-control); border-bottom: 2px solid transparent; color: var(--text-muted, #707070); font-weight: 400; text-decoration: none; }
 .view-switch [aria-current=page],.view-switch [role=tab][aria-selected=true] { color: var(--text-primary, #3c3c3c); border-bottom-color: currentColor; }
 .collection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); gap:16px; align-items:stretch; max-width:var(--page-width); }
 @media(max-width:900px) {
@@ -151,10 +151,10 @@ a.link-text { color: var(--link-color, #0066cc); text-decoration: underline !imp
 .action-menu > summary { list-style:none; min-width:var(--control-h-sm); padding-inline:8px }
 .action-menu > summary::-webkit-details-marker { display:none }
 .action-menu-items { position:absolute; inset-block-start:calc(100% + 8px); inset-inline-start:0; min-width:140px; padding:4px; background:#fff; border:1px solid var(--border-color); border-radius:8px; box-shadow:0 8px 24px #0001; z-index:25 }
-.action-menu .menu-item { display:block; padding:8px 12px; border-radius:4px; color:var(--text-primary); font-size:14px; text-decoration:none; white-space:nowrap }
+.action-menu .menu-item { display:block; padding:5px 10px; border-radius:4px; color:var(--text-primary); font-size:14px; text-decoration:none; white-space:nowrap }
 .menu-item:hover, .menu-item:focus-visible { background:var(--hover-background,#f5f5f5); color:var(--text-secondary,#555); }
 .menu-item.danger:hover, .menu-item.danger:focus-visible { color:var(--btn-danger,#c00); }
-.nav-account-disclosure summary { padding:8px 12px; }
+.nav-account-disclosure summary { padding:5px 10px; }
 .nav-account-disclosure summary:hover,
 .nav-account-disclosure summary:focus-visible,
 .nav-account-disclosure[open] summary { background:var(--nav-hover,#eceef0); color:var(--text-primary,#333); border-radius:6px; }
@@ -162,7 +162,7 @@ b, strong { font-weight:var(--font-weight-bold,600); }
 h1, h2, h3, h4, h5, h6, th { font-weight:var(--font-weight-bold,600); }
 
 /* Legacy action classes use the same size as ordinary form controls. */
-.mini-btn,.num-field,button.pill,a.pill { font-size:var(--control-font-sm,13px); min-height:var(--control-h-sm,30px); padding:8px var(--control-pad-x-sm,14px) }
+.mini-btn,.num-field,button.pill,a.pill { font-size:var(--control-font-sm,13px); min-height:var(--control-h-sm,30px); padding:5px var(--control-pad-x-sm,10px) }
 .pill { display:inline-flex; align-items:center }
 span.pill { padding:2px 8px; font-size:12px; min-height:0 }
 .field,.field-wide { max-width:100% }
@@ -176,8 +176,8 @@ span.pill { padding:2px 8px; font-size:12px; min-height:0 }
 .metric { display:flex; flex-direction:column; gap:8px; min-width:0; padding:16px; border:1px solid var(--border-color); border-radius:8px }
 .metric-label { font-size:13px; color:var(--text-secondary) }
 .metric-value { font-size:18px; font-weight:500; overflow-wrap:anywhere }
-.detail-row { display:flex; justify-content:space-between; gap:16px; padding-block:12px; border-bottom:1px solid var(--border-color); overflow-wrap:anywhere }
-.detail-row > :last-child { display:flex; align-items:baseline; gap:8px; text-align:right; min-width:0 }
+.detail-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; padding-block:12px; border-bottom:1px solid var(--border-color); overflow-wrap:anywhere }
+.detail-row > :last-child { justify-self:end; display:flex; align-items:baseline; gap:8px; text-align:right; min-width:0 }
 .action-note { flex-basis:100%; font-size:13px; color:var(--text-secondary); overflow-wrap:anywhere }
 
 .table-scroll { width:100%; min-width:0; overflow-x:auto; border:1px solid var(--border-color); border-radius:8px }
@@ -186,3 +186,13 @@ span.pill { padding:2px 8px; font-size:12px; min-height:0 }
 .table-scroll :is(code,.form) { overflow-wrap:anywhere }
 .table-scroll .form { min-width:12rem }
 .table-scroll :is(button,.btn) { white-space:nowrap }
+
+/* Labelled record tables become readable field lists on narrow screens. */
+@media(max-width:640px) {
+ .data-table.stacked,.data-table.stacked tbody,.data-table.stacked tr { display:block; width:100% }
+ .data-table.stacked thead { display:none }
+ .data-table.stacked tr { padding-block:var(--space-control); border-bottom:1px solid var(--border-color) }
+ .data-table.stacked td { display:block; padding:4px 0; border:0; overflow-wrap:anywhere }
+ .data-table.stacked td[data-label] { display:grid; grid-template-columns:6rem minmax(0,1fr); gap:var(--space-control) }
+ .data-table.stacked td[data-label]::before { content:attr(data-label); color:var(--text-secondary); font-size:12px; font-weight:500 }
+}

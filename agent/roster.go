@@ -292,6 +292,9 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 	// ends up with live tokens its owner cannot account for.
 	secret := ""
 	if withToken {
+		if err := auth.CheckCredentialAccess(owner); err != nil {
+			return nil, "", err
+		}
 		tok, s, err := auth.CreateToken(owner, "agent: "+name, auth.ScopeFor(services), time.Time{})
 		if err != nil {
 			return nil, "", fmt.Errorf("could not issue a token for this agent: %w", err)
@@ -671,6 +674,9 @@ func IssueToken(owner, id string) (string, error) {
 	a := For(owner, id)
 	if a == nil {
 		return "", fmt.Errorf("no such agent")
+	}
+	if err := auth.CheckCredentialAccess(owner); err != nil {
+		return "", err
 	}
 	if a.TokenID != "" {
 		_ = auth.DeleteToken(a.TokenID, owner)

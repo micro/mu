@@ -858,24 +858,24 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 				var tagsInput = document.getElementById('post-tags');
 				var visibilitySelect = document.getElementById('post-visibility');
 				var charCount = document.getElementById('char-count');
-				
+
 				// Restore form values from localStorage
 				function restoreFormValues() {
 					const savedTitle = localStorage.getItem('blog-post-title');
 					const savedContent = localStorage.getItem('blog-post-content');
 					const savedTags = localStorage.getItem('blog-post-tags');
 					const savedVisibility = localStorage.getItem('blog-post-visibility');
-					
+
 					if (savedTitle) titleInput.value = savedTitle;
 					if (savedContent) textarea.value = savedContent;
 					if (savedTags) tagsInput.value = savedTags;
 					if (savedVisibility) visibilitySelect.value = savedVisibility;
-					
+
 					// Update character count and auto-grow
 					updateCharCount();
 					autoGrow();
 				}
-				
+
 				// Save form values to localStorage
 				function saveFormValues() {
 					localStorage.setItem('blog-post-title', titleInput.value);
@@ -883,7 +883,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 					localStorage.setItem('blog-post-tags', tagsInput.value);
 					localStorage.setItem('blog-post-visibility', visibilitySelect.value);
 				}
-				
+
 				// Clear form values from localStorage
 				function clearFormValues() {
 					localStorage.removeItem('blog-post-title');
@@ -891,21 +891,21 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 					localStorage.removeItem('blog-post-tags');
 					localStorage.removeItem('blog-post-visibility');
 				}
-				
+
 				// Calculate max height based on viewport
 				function getMaxHeight() {
 					// Reserve space for title input (60px), buttons (60px), header (100px), padding (80px)
 					const reserved = 300;
 					return Math.max(200, window.innerHeight - reserved);
 				}
-				
+
 				// Auto-grow textarea
 				function autoGrow() {
 					textarea.style.height = 'auto';
 					const maxHeight = getMaxHeight();
 					textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
 				}
-				
+
 				// Update character count
 				function updateCharCount() {
 					const len = textarea.value.length;
@@ -917,26 +917,26 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 						charCount.style.color = '#666';
 					}
 				}
-				
+
 				// Save on input
 				titleInput.addEventListener('input', saveFormValues);
 				tagsInput.addEventListener('input', saveFormValues);
 				visibilitySelect.addEventListener('change', saveFormValues);
-				
+
 				textarea.addEventListener('input', function() {
 					autoGrow();
 					updateCharCount();
 					saveFormValues();
 				});
-				
+
 				// Clear on successful submit
 				form.addEventListener('submit', function() {
 					clearFormValues();
 				});
-				
+
 				// Recalculate on window resize
 				window.addEventListener('resize', autoGrow);
-				
+
 				// Initial setup
 				restoreFormValues();
 			</script>
@@ -1611,7 +1611,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "private, no-store")
 		contentSB.WriteString(app.ReadingActionItems(r, post.ID))
 	}
-	contentSB.WriteString(`</div>` + app.ReadingCSS)
+	contentSB.WriteString(`</div>`)
 
 	contentSB.WriteString(`<hr class="my-5 border-t">`)
 	contentSB.WriteString(`<div class="mb-5">` + contentHTML + `</div>`)

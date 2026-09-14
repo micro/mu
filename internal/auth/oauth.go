@@ -74,6 +74,27 @@ func RegisterOAuthClient(account, name string, redirectURIs []string) *OAuthClie
 	oauthMu.Lock()
 	defer oauthMu.Unlock()
 
+	return registerOAuthClient(account, name, redirectURIs)
+}
+
+// RegisterOwnedOAuthClient atomically bounds clients created through account settings.
+func RegisterOwnedOAuthClient(account, name string, redirectURIs []string) (*OAuthClient, error) {
+	oauthMu.Lock()
+	defer oauthMu.Unlock()
+	count := 0
+	for _, client := range oauthClients {
+		if client.Account == account {
+			count++
+		}
+	}
+	if count >= 10 {
+		return nil, ErrCredentialLimit
+	}
+	return registerOAuthClient(account, name, redirectURIs), nil
+}
+
+// Caller holds oauthMu.
+func registerOAuthClient(account, name string, redirectURIs []string) *OAuthClient {
 	id := generateRandomString(24)
 	secret := generateRandomString(48)
 

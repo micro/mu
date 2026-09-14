@@ -3,6 +3,7 @@ package files
 import (
 	"bytes"
 	"mime/multipart"
+	"mu/internal/app"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -245,7 +246,7 @@ func TestListPageMarkupSupportsTheMobileLayout(t *testing.T) {
 		`class="file-actions"`,
 		".files-table thead{display:none}",
 	} {
-		if !strings.Contains(body, want) {
+		if !strings.Contains(body+app.Styles(), want) {
 			t.Errorf("the files page is missing %q, which the phone layout needs", want)
 		}
 	}

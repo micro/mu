@@ -192,21 +192,3 @@ func altitudeClass(feet int) string {
 		return "fl-high"
 	}
 }
-
-const scopeCSS = `
-.fl-scope{margin:12px 0}
-.fl-scope svg{width:100%;max-width:560px;height:auto;display:block;margin:0 auto}
-.fl-ring{fill:none;stroke:#ececec;stroke-width:1}
-.fl-spoke{stroke:#f2f2f2;stroke-width:1}
-.fl-centre{fill:#c00}
-.fl-cardinal{font-size:13px;fill:#bbb;text-anchor:middle;font-family:inherit}
-.fl-ringlabel{font-size:10px;fill:#ccc;font-family:inherit}
-.fl-tag{font-size:10px;fill:#888;font-family:inherit}
-.fl-ground{fill:#d8d8d8}
-.fl-low{fill:#1a1a1a}
-.fl-mid{fill:#777}
-.fl-high{fill:#b8b8b8}
-.fl-scope a{cursor:pointer}
-.fl-scope a:hover .fl-low,.fl-scope a:hover .fl-mid,.fl-scope a:hover .fl-high{fill:#007bff}
-.fl-legend{font-size:12px;color:#888;text-align:center;margin:8px 0 0}
-`

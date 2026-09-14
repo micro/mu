@@ -561,7 +561,7 @@ comment textareas fill their form; checkboxes and radios keep intrinsic widths.
 Do not reintroduce service-specific form, field, search, or button styling.
 
 Ordinary buttons and button links use one neutral outlined treatment and one
-control height (40px desktop, 44px mobile), including legacy `.mini-btn` actions.
+control height (32px desktop, 36px mobile), including legacy `.mini-btn` actions.
 Reserve compact pills for noninteractive metadata. Do not restore black-filled
 submit variants or give ordinary action buttons per-page sizes. Use
 `.metadata-row` for sender/date rows, `.metric-grid` and `.metric` for system
@@ -570,4 +570,6 @@ collapse to single-letter columns on mobile.
 
 ## Current product direction
 
-Keep Home, Inbox, Work and Services as the four primary destinations on mobile and desktop. Home is messaging with Micro and people; Inbox brings requests and updates needing attention; Work tracks commitments and outcomes; Services exposes useful standalone utilities and mini apps. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
+Keep Home, Inbox, Agents and Services as the four primary destinations on mobile and desktop. Home is the private conversation with Micro; Inbox brings communications needing attention; Agents contains focused agents; Services exposes useful standalone utilities and mini apps. Work remains available by direct link and API. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
+
+Agents are not services. Do not place agent management in the Services catalogue. Home is a private conversation, without a Delete control or a platform-wide People directory shortcut. Contacts must be explicitly chosen, not implicitly all registered users.

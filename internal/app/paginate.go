@@ -105,14 +105,8 @@ func (p Pager) Nav(path string) string {
 	}
 
 	return fmt.Sprintf(`<nav class="pager">%s<span class="pager-at">%d of %d</span>%s</nav>%s`,
-		newer, p.Page, p.Pages, older, PagerCSS)
+		newer, p.Page, p.Pages, older, "")
 }
 
-// PagerCSS is emitted with the nav rather than kept in the stylesheet, so a
+// "" is emitted with the nav rather than kept in the stylesheet, so a
 // page gains pagination by calling one function.
-const PagerCSS = `<style>
-.pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0 8px;padding-top:16px;border-top:1px solid #eee}
-.pager-link{font-size:14px;color:#555;text-decoration:none}
-.pager-link:hover{color:#000}
-.pager-at{font-size:12px;color:#aaa;margin:0 auto}
-</style>`

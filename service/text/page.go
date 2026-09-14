@@ -149,23 +149,9 @@ func page(answer string) string {
 	b.WriteString(`<p class="tcap">Up to ` + strconv.Itoa(maxInput/1000) + `,000 characters a call.</p>`)
 	b.WriteString(`</form></div>`)
 
-	b.WriteString(pageStyle + pageScript)
+	b.WriteString(pageScript)
 	return b.String()
 }
-
-const pageStyle = `<style>
-.tlede{color:#666;font-size:15px;margin:0}
-.tjobs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.tjob{display:flex;align-items:center;gap:6px;border:1px solid var(--border-color,#e3e3e3);
-  border-radius:var(--border-radius,8px);padding:8px 12px;cursor:pointer;font-size:15px}
-.tjob:has(input:checked){border-color:#111;font-weight: 550}
-.tnote{color:#666;font-size:14px;margin:0 0 10px}
-.tcap{color:#888;font-size:13px;margin:10px 0 0;text-align:center}
-.tresult h3{margin-top:0}
-.tout{white-space:pre-wrap;word-break:break-word;background:var(--hover-background,#f6f6f6);
-  padding:12px;border-radius:var(--border-radius,8px);font-size:14px;margin:0}
-.tcall{color:#666;font-size:13px;margin:10px 0 0;word-break:break-all}
-</style>`
 
 // The second field changes meaning with the job — a schema, some labels, a
 // language — so its placeholder and the note follow the choice. Re-wired on

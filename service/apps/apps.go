@@ -1,11 +1,11 @@
 package apps
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	htmlpkg "html"
 	"net/http"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -350,7 +350,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case path == "/sdk.js":
 		handleSDK(w, r)
 	case path == "/sdk.css":
-		handleStaticFile(w, "apps/static/sdk.css", "text/css")
+		handleStaticFile(w, "static/sdk.css", "text/css")
 	case strings.HasSuffix(path, "/ai-edit"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/ai-edit")
 		handleAIEdit(w, r, slug)
@@ -1612,11 +1612,14 @@ func cleanIcon(icon string) string {
 }
 
 func handleSDK(w http.ResponseWriter, r *http.Request) {
-	handleStaticFile(w, "apps/static/sdk.js", "application/javascript")
+	handleStaticFile(w, "static/sdk.js", "application/javascript")
 }
 
+//go:embed static/sdk.css static/sdk.js
+var sdkFiles embed.FS
+
 func handleStaticFile(w http.ResponseWriter, path, contentType string) {
-	data, err := os.ReadFile(path)
+	data, err := sdkFiles.ReadFile(path)
 	if err != nil {
 		http.Error(w, "Not found", 404)
 		return
@@ -2008,69 +2011,6 @@ func extractAppText(html string) string {
 }
 
 // SDK JavaScript served at /apps/sdk.js
-const sdkJS = `// Mu App SDK
-// Include this in your app: <script src="/apps/sdk.js"></script>
-(function() {
-  var id = 0;
-  var callbacks = {};
-
-  window.mu = {
-    // Ask AI a question
-    ai: function(prompt, options) {
-      return send('ai', { prompt: prompt, options: options || {} });
-    },
-
-    // Fetch a URL through Mu's proxy
-    fetch: function(url) {
-      return send('fetch', { url: url });
-    },
-
-    // Get current user info
-    user: function() {
-      return send('user', {});
-    },
-
-    // Send a result back to the parent (for agent code execution)
-    run: function(result) {
-      window.parent.postMessage({ type: 'mu:run', result: result }, '*');
-    },
-
-    // Platform API access
-    api: {
-      get: function(path) { return send('api', { method: 'GET', path: path }); },
-      post: function(path, body) { return send('api', { method: 'POST', path: path, body: body }); }
-    },
-
-    // Key-value storage
-    store: {
-      set: function(key, value) { return send('store', { op: 'set', key: key, value: value }); },
-      get: function(key) { return send('store', { op: 'get', key: key }).then(function(r) { return r.result; }); },
-      del: function(key) { return send('store', { op: 'del', key: key }); },
-      keys: function() { return send('store', { op: 'keys' }).then(function(r) { return r.result; }); }
-    }
-  };
-
-  function send(type, data) {
-    var reqId = ++id;
-    return new Promise(function(resolve, reject) {
-      callbacks[reqId] = { ok: resolve, fail: reject };
-      window.parent.postMessage({ type: 'mu:' + type, id: reqId, data: data }, '*');
-    });
-  }
-
-  window.addEventListener('message', function(e) {
-    var d = e.data;
-    if (d && d.id && callbacks[d.id]) {
-      if (d.error) {
-        callbacks[d.id].fail(new Error(d.error));
-      } else {
-        callbacks[d.id].ok(d.result);
-      }
-      delete callbacks[d.id];
-    }
-  });
-})();
-`
 
 // DeleteAppsByAuthor removes all apps by a user.
 func DeleteAppsByAuthor(authorID string) {

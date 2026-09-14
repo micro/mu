@@ -215,14 +215,12 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			selected = `<div class="card"><strong>` + html.EscapeString(item.Title) + `</strong><p>This material will accompany your question in this private conversation.</p></div>`
 		}
 	}
-	activeRoot := "" // the reopened conversation, for the rail highlight
 	reopened := false
 	reopenAgent := "" // agent the reopened conversation is with
 	elsewhere := ""
 	if sessionID != "" {
 		if id := openThread(accountID, sessionID); id != "" {
 			th := thread.Get(accountID, id)
-			activeRoot = id
 			reopened = true
 			if th != nil {
 				reopenAgent = th.Agent
@@ -279,7 +277,6 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			cfg.ContextID = last
 			cfg.InitialConvHTML = renderThreadTurns(accountID, last)
 			cfg.Pending = Pending(accountID, last)
-			activeRoot = last
 			if th := thread.Get(accountID, last); th != nil {
 				selAgent = th.Agent
 			}
@@ -297,11 +294,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		cfg.Location = true
 	}
 
-	chip := `<div class="conversation-toolbar"><strong>` + html.EscapeString(agentTitle(accountID, selAgent)) + `</strong><a class="btn btn-quiet push-right" href="/users">People</a>`
-	if activeRoot != "" {
-		chip += "<button id=\"conversation-delete\" class=\"btn btn-quiet\" type=\"button\" onclick=\"muSessionDelete(" + app.JSAttr(activeRoot) + ",event)\" aria-label=\"Delete conversation\">Delete</button>"
+	chip := `<div class="conversation-toolbar"><strong>` + html.EscapeString(agentTitle(accountID, selAgent)) + `</strong></div>`
+	if selAgent == "" {
+		chip = `<div class="conversation-toolbar" hidden><strong></strong></div>`
 	}
-	chip += "</div>"
 	cfg.Placeholder = "What do you need?"
 	cfg.StorageNS = "agent-" + accountID + "-" + selAgent
 	cfg.ServerOwned = true
@@ -311,7 +307,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		main = elsewhere
 	}
 	content := `<div class="chat-layout"><div class="chat-main">` + chip + main +
-		`</div></div>` + chatPageJS + sessionDeleteJS(chatBase)
+		`</div></div>` + chatPageJS
 
 	content += `<script>history.replaceState(window.history.state,'',` + app.JSString(chatBase) + `);window.addEventListener('mu-chat-thread',function(e){history.replaceState(window.history.state,'',` + app.JSString(chatBase) + `);});</script>`
 	if r.URL.Path == "/" {
@@ -324,9 +320,12 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	title := agentTitle(accountID, selAgent)
 	if assistant && selAgent == "" {
-		title = "Micro"
+		title = "Home"
 	}
-	desc := "Talk to " + title + ", and the address it answers on"
+	desc := "Talk to " + agentTitle(accountID, selAgent)
+	if assistant && selAgent == "" {
+		desc = "A personal AI agent"
+	}
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: content})
 }
 
@@ -377,25 +376,6 @@ func chatThreads(accountID, agentID string, named bool) []thread.Thread {
 		}
 	}
 	return out
-}
-
-func sessionDeleteJS(back string) string {
-	return `<script>
-function muSessionDelete(id,ev){
-  ev.preventDefault();ev.stopPropagation();
-  if(!confirm('Delete this conversation? What was said in it is gone.'))return;
-  fetch('/agent/session/'+encodeURIComponent(id),{method:'DELETE',headers:{'X-CSRF-Token':muAgentCsrf()}})
-    .then(function(r){if(!r.ok)throw new Error('Could not delete conversation');window.location=` + app.JSString(back) + `;}).catch(function(e){alert(e.message)});
-}
-window.muSessionStarted=function(id,title){
-  var toolbar=document.querySelector('.conversation-toolbar');
-  if(toolbar&&!document.getElementById('conversation-delete')){
-    var del=document.createElement('button');del.id='conversation-delete';del.type='button';del.className='btn btn-quiet';del.textContent='Delete';del.setAttribute('aria-label','Delete conversation');
-    del.onclick=function(e){muSessionDelete(id,e);};toolbar.appendChild(del);
-  }
-
-};
-</script>`
 }
 
 const chatPageJS = `<script>

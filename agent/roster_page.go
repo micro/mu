@@ -215,7 +215,6 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// child sized to hold the footer at the bottom, and an unclosed div puts
 	// the footer inside the content instead of after it.
 	b.WriteString(`</div>`)
-	b.WriteString(agentsCSS)
 	app.Respond(w, r, app.Response{Title: "Agents", Description: "The agents that act for you, and what each one may reach", HTML: b.String()})
 }
 
@@ -510,91 +509,3 @@ func toolWords(tools []string) string {
 	}
 	return strings.Join(out, ", ")
 }
-
-const agentsCSS = `<style>
-.lens-lead{color:#666;font-size:14px;margin:0 0 10px;max-width:640px}
-/* The way to the catalogue, on its own line. It trailed the paragraph above
-   and read as a footnote to the last clause, which is the wrong weight for the
-   one place /tools is reachable from since it left the sidebar. */
-.agent-note{color:#999;font-size:12px;margin:0 0 12px;max-width:640px}
-/* The sign of life on a row. Quieter than the description above it, because
-   what an agent is for is why you would pick it and when it last spoke is
-   whether it is alive — the second is a check, not a heading. */
-.agent-seen{color:var(--text-muted,#707070);font-size:12px;margin:8px 0 0}
-/* The name and how long ago it last spoke, on one line with the time out to
-   the right — the same pair in the same places as a row in the inbox. */
-.agent-head{display:flex;align-items:baseline;gap:10px}
-.agent-when{margin-left:auto;flex:none;color:#aaa;font-size:11px;white-space:nowrap}
-.agent-row .agent-seen{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Top-aligned, not centred. A row is three or four lines tall now, and
-   centring left Remove floating in the middle of the card beside nothing. */
-.agent-row{display:flex;align-items:flex-start;gap:16px;min-width:0;border:1px solid var(--divider,#e8e8e8);border-radius:4px;padding:16px 16px 8px}
-/* Only the links are interactive; the card itself does not lift on hover. */
-/* One size, one colour, one weight for every link on a row.
-   They were three: 12px grey in the link strip, 13px green or amber for the
-   scope, 13px for the buttons beside them, and the name at 14px semibold. A
-   row is one thing to read, so the parts that are the same rank look the
-   same. */
-.agent-links{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:auto;padding-top:8px;border-top:1px solid var(--divider,#e8e8e8)}
-.agent-card-content{display:flex;flex-direction:column;gap:8px;width:100%;min-width:0;align-self:stretch}
-.agent-open-actions,.agent-manage-actions{display:flex;align-items:center;gap:16px}
-.agent-open-actions a{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px}
-.agent-recent{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;min-width:0}
-.agent-recent .agent-seen{margin:0;flex:1}
-.agent-row .agent-for,.agent-row .activity-status{margin-top:0}
-.agent-links a{font-size:13px;font-weight:400;color:var(--text-secondary,#555);text-decoration:underline !important;text-underline-offset:3px}
-.agent-links a:hover{color:var(--text-primary,#111);text-decoration:underline}
-/* The form holding Remove is one item in the strip, not a block that breaks it. */
-.agent-links form{display:inline;margin:0}
-/* What it is for. One line, and it truncates rather than wrapping — a list you
-   are scanning stops being a list the moment the rows are different heights. */
-.agent-row .activity-status{display:table;font-size:12px;font-weight:400;line-height:1.5;padding:2px 8px;margin-top:0;align-self:flex-start;border-radius:4px;background:var(--hover-background,#f5f5f5);color:var(--text-secondary,#555)}
-.agent-for{font-size:13px;color:var(--text-secondary,#555);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.agent-meta{font-size:13px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
-.agent-meta code{font-size:12px}
-.agent-mail{font-size:13px;margin-top:3px}
-.agent-mail code{font-size:12px;color:#666;background:#f5f5f5;border-radius:3px;padding:1px 5px}
-/* The agent's name is the way into it, and it looks like body text rather
-   than one more small grey control. */
-.agent-name{display:inline-block;font-weight:500;font-size:14px;color:var(--text-primary,#111);text-decoration:none;min-width:0;overflow-wrap:anywhere}
-/* No underline: the row behind it is the affordance now, and two of them at
-   once is one too many.
-   Stated on :hover rather than left to the rule above, which is the whole
-   point. mu.css has a global a:hover rule setting underline, and that
-   selector is (0,1,1) against .agent-name's (0,1,0) — so deleting this line
-   does not remove the underline, it hands it to the global rule. It has to
-   outrank it, at (0,2,0). */
-.agent-name:hover{text-decoration:none}
-/* Two buttons that did the same thing to the eye and different things to the
-   account. Both were #bbb — barely visible — and both took the same red hover,
-   which said "destructive" about issuing a token. Now issuing reads as an
-   ordinary action and only Remove goes red, which is the one that is. */
-.agent-act{background:none;border:0;color:#666;font-size:13px;cursor:pointer;padding:0;font-family:inherit}
-.agent-act:hover{color:#111;text-decoration:underline}
-.agent-remove{background:none;border:0;color:#999;font-size:13px;cursor:pointer;padding:0;font-family:inherit}
-.agent-remove:hover{color:#b00;text-decoration:underline}
-.agent-by{font-size:12px;color:#999}
-.agent-mine{font-size:12px;color:#999}
-.agent-publish{display:flex;align-items:center;gap:8px;margin:6px 0 0}
-.agent-pub{display:flex;align-items:center;gap:6px;font-size:12px;color:#666;cursor:pointer}
-.agent-pub input{width:auto;flex:none;margin:0}
-.agent-secret{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:0;word-break:break-all}
-/* On a phone a row is a card, not a line.
-   It was a flex row with the name and its scope squeezed into whatever the
-   Remove button and the endpoint left over, so an agent's own address wrapped
-   to three lines and its name to two. Stacked, the controls go to the bottom
-   where they are reachable with a thumb, and the endpoint scrolls inside its own
-   line rather than pushing the page sideways. */
-@media(max-width:600px){
-  /* Preserve the same outside inset at phone width. */
-  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:16px 16px 8px}
-  .agent-name{font-size:15px}
-    .agent-meta{white-space:normal;overflow-wrap:anywhere}
-  /* Links and buttons share a touch target and baseline. */
-  .agent-links{gap:8px 16px}
-  .agent-links a,.agent-act,.agent-remove{
-    display:inline-flex;align-items:center;min-height:32px;font-size:14px;padding:0}
-}
-.agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
-.agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
-</style>`

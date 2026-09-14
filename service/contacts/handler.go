@@ -176,8 +176,6 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</tbody></table></div>`)
 	}
-
-	b.WriteString(contactsPageCSS)
 	app.Respond(w, r, app.Response{Title: "Contacts", Description: "Your address book", HTML: b.String()})
 }
 
@@ -188,26 +186,6 @@ func orDash(s string) string {
 	return html.EscapeString(s)
 }
 
-// contactsPageCSS styles the page and, below 600px, unmakes the table — the
+// "" styles the page and, below 600px, unmakes the table — the
 // same treatment the files list gets, for the same reason: five columns on a
 // phone either scroll sideways or crush the name.
-const contactsPageCSS = `<style>
-.contacts-table{margin-bottom:0}
-.contacts-table .contact-name{font-weight:var(--font-weight-medium)}
-.contact-actions{white-space:nowrap}
-.contact-actions form{display:inline}
-
-@media only screen and (max-width:600px){
-  .contacts-table,.contacts-table tbody,.contacts-table tr,.contacts-table td{display:block;width:auto}
-  .contacts-table thead{display:none}
-  .contacts-table tr{padding:12px 0;border-bottom:1px solid var(--divider)}
-  .contacts-table tbody tr:last-child{border-bottom:none}
-  .contacts-table td{padding:0;border:none;text-align:left}
-  .contacts-table .contact-name{margin-bottom:2px}
-  .contacts-table .contact-meta{display:inline;color:var(--text-muted);font-size:13px}
-  .contacts-table .contact-meta + .contact-meta::before{content:" · "}
-  .contacts-table td.contact-actions{margin-top:6px;text-align:left}
-  .contacts-table .contact-actions .link-button{padding:6px 14px 6px 0;font-size:14px}
-  .contacts-table tbody tr:nth-child(odd){background:none}
-}
-</style>`
