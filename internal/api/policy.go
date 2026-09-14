@@ -57,6 +57,7 @@ type Policy struct {
 // PolicyFor answers for one tool by name. Zero Policy for a name that is not a
 // tool.
 func PolicyFor(name string) Policy {
+	tools := Tools()
 	for i := range tools {
 		if !toolMatches(tools[i], name) {
 			continue
@@ -101,6 +102,7 @@ func policyOf(t Tool) Policy {
 
 // Policies returns every tool's policy, for the audit and for tests.
 func Policies() []Policy {
+	tools := Tools()
 	out := make([]Policy, 0, len(tools))
 	for i := range tools {
 		if tools[i].RESTOnly {
