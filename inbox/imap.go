@@ -81,7 +81,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(app.Problem("This instance is not serving IMAP. An admin turns it " +
 			"on with IMAP_PORT; it is on by default, so this means it was set to off."))
 		b.WriteString(`</div>`)
-		app.Respond(w, r, app.Response{Title: "IMAP", Description: "Read your inbox in a mail client", HTML: b.String()})
+		app.Respond(w, r, app.Response{Title: "Mail settings", Description: "Read your inbox in a mail client", HTML: b.String()})
 		return
 	}
 
@@ -125,7 +125,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</ul>`)
 
 	b.WriteString(`</div>`)
-	app.Respond(w, r, app.Response{Title: "IMAP", Description: "Read your inbox in a mail client", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Mail settings", Description: "Read your inbox in a mail client", HTML: b.String()})
 }
 
 // imapRow is one line of a client's settings form.

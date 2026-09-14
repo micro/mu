@@ -33,9 +33,9 @@
 .brand { font-size:32px; font-weight:600; text-align:center; }
 .conversation-entry > p { text-align:center; }
 
-/* The empty prompt is the starting point; a transcript becomes the console. */
-#mu-chat:has(#mu-chat-conv:empty) { justify-content:center }
-#mu-chat-conv:empty,.chat-main > .mu-chat-transcript #mu-chat-conv:empty { flex:0 0 auto }
+/* Center only the public empty entry. Signed-in conversations keep the composer below the transcript. */
+.conversation-entry #mu-chat:has(#mu-chat-conv:empty) { justify-content:center }
+.conversation-entry #mu-chat-conv:empty { flex:0 0 auto }
 .conversation-entry:has(#mu-chat-conv:empty) { justify-content:center }
 .conversation-entry:has(#mu-chat-conv:empty) #mu-chat { flex:0 0 auto }
 .conversation-entry:has(#mu-chat-conv:not(:empty)) > .brand,.conversation-entry:has(#mu-chat-conv:not(:empty)) > p { display:none }

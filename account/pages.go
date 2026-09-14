@@ -844,7 +844,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		content += emailCard +
 			`<section id="connections" class="page-section"><h3>Connections</h3>` +
 			googleCard + renderPhoneCard(acc.ID) +
-			app.Section("Clients", `<a href="/token">Tokens</a> · <a href="/inbox/imap">IMAP</a>`) + `</section>` +
+			`<nav class="section-actions" aria-label="Connection settings"><a href="/token">API credentials</a><a href="/inbox/imap">Mail settings</a></nav>` + `</section>` +
 			passwordCard(acc) + language + PasskeyListHTML(acc.ID) +
 			app.Section("Notifications", `<a href="/notify">Notification settings →</a>`)
 	}

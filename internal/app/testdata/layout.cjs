@@ -69,6 +69,26 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     const boxes=await page.locator('.form-actions > *').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().height));
     assert(Math.max(...boxes)-Math.min(...boxes)<2,'button links and submit controls differ in height');
    }
+   if(await page.locator('.action-menu').count()) {
+    const menu=page.locator('.action-menu').first(),items=menu.locator('.action-menu-items');
+    assert(!await items.isVisible(),'item actions should start collapsed');
+    await menu.locator('summary').click();
+    assert(await items.isVisible(),'item actions did not open');
+    const box=await items.boundingBox();assert(box.x>=0&&box.x+box.width<=width,'item actions overflow viewport');
+    const rows=await items.locator('a').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().y));
+    assert(rows.length<2||rows[1]>rows[0],'item actions run together');
+    await page.keyboard.press('Escape');assert(!await items.isVisible(),'escape did not close item actions');
+   }
+   if(path==='/account') {
+    const links=page.locator('[aria-label="Connection settings"]');
+    assert.deepEqual(await links.locator('a').allTextContents(),['API credentials','Mail settings']);
+    const previous=await links.evaluate(e=>e.previousElementSibling.getBoundingClientRect().bottom),box=await links.boundingBox();
+    assert(box.y-previous<=24,'account connections have excessive spacing');
+   }
+   if(path==='/blog?write=true') {
+    const colors=await page.locator('.form-actions > *').evaluateAll(es=>es.map(e=>getComputedStyle(e).backgroundColor));
+    assert.notEqual(colors[0],colors[1],'primary and secondary actions look identical');
+   }
    if(path==='/login'||path==='/signup') {
     const box=await page.locator(path==='/login'?'#login':'#signup').boundingBox();assert(Math.abs(box.x+box.width/2-width/2)<2,'auth form off center');
     assert.equal(await page.locator('.oauth-btn').count(),1,'Google sign-in fixture missing');
@@ -102,7 +122,9 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
 
     assert.equal(await page.locator('#tabs,#home-personal,#home-feed').count(),0,'retired shell');
     const form=page.locator('#mu-chat-form');
-    const empty=await form.boundingBox();assert(empty.y>220&&empty.y<620,'empty prompt is not centered');
+    const empty=await form.boundingBox();
+    if(path==='/')assert(empty.y>220&&empty.y<620,'public empty prompt is not centered');
+    else {const nav=await page.locator('#mobile-nav').isVisible()?await page.locator('#mobile-nav').boundingBox():null;const bottom=nav?nav.y:900;assert(bottom-empty.y-empty.height<=24,'signed-in prompt is not at the bottom');}
     await page.locator('#mu-chat-mic').click();const listening=await form.boundingBox();assert(Math.abs(empty.y-listening.y)<2,'dictation moved prompt');
     assert.equal(await page.locator('#mu-chat-mic').getAttribute('aria-pressed'),'true');
     if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/dictating.png'});

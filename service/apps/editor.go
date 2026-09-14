@@ -70,64 +70,34 @@ func editPageHTML(a *App) string {
 .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .preview-header h3 { font-size: 14px; font-weight: 550; margin: 0; }
 .preview-frame { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; min-height: 50vh; }
-.code-toggle { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
-.code-toggle:hover { background: #f5f5f5; color: #111; }
 .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .code-header h3 { font-size: 14px; font-weight: 550; margin: 0; }
-.code-header .actions { display: flex; gap: 6px; }
-.code-header .actions button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #333; cursor: pointer; font-size: 12px; font-family: inherit; }
-.code-header .actions button:hover { background: #f5f5f5; color: #111; }
 .code-editor { width: 100%%; min-height: 300px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; line-height: 1.5; resize: vertical; tab-size: 2; background: #fafafa; }
-.save-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.save-bar input { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; color: #333; box-sizing: border-box; }
-.save-bar input.name { flex: 1; min-width: 150px; }
-.save-bar button { padding: 8px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 .status-msg { font-size: 13px; color: #999; margin-left: 8px; }
 .ai-edit { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa; }
 .ai-edit label { display: block; font-size: 13px; font-weight: 550; margin-bottom: 6px; }
 .ai-edit-note { font-size: 12px; color: #888; margin: 8px 0 0; }
-/* The shapes the markup below was writing inline, next to the ones it was
-   already using. A field is .ed-field wherever it appears; the widths are the
-   only thing that differs between them. */
-.ed-label { font-size: 12px; color: #666; display: block; margin-bottom: 2px; }
-.ed-field { width: 100%%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; }
-.ed-field.muted { font-size: 13px; color: #888; }
-.ed-field.small { font-size: 13px; }
-.ed-w-130 { width: 130px; }
-.ed-w-140 { width: 140px; }
 .ed-tall { min-height: 50vh; }
 .ed-grow { flex: 1 1 300px; min-width: 0; max-width: 100%%; }
-.ed-grow-150 { flex: 1; min-width: 150px; }
-.ed-grow-120 { flex: 1; min-width: 120px; }
-.ed-row-end { display: flex; gap: 8px; align-items: end; }
-.ed-row-12 { display: flex; gap: 12px; flex-wrap: wrap; }
-.ed-check { display: flex; align-items: center; gap: 4px; font-size: 13px; white-space: nowrap; padding: 8px 0; }
-.ed-link-btn { color: #333; text-decoration: none; padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; }
-.ed-danger { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; color: #c00; cursor: pointer; font-size: 13px; font-family: inherit; }
-@media (max-width: 768px) {
-  .save-bar { flex-direction: column; align-items: stretch; }
-  .save-bar input.name { width: 100%%; min-width: auto; }
-  .save-bar input { width: 100%%; }
-}
 </style>
 
 <div class="builder">
   <div class="d-flex between items-center mb-1 flex-wrap gap-2">
     <p class="card-desc m-0">Edit your app</p>
     <div class="d-flex gap-2 items-center text-sm">
-      <a href="/apps/%s" class="ed-link-btn">Open App</a>
-      <button onclick="deleteApp()" class="ed-danger">Delete</button>
+      <a href="/apps/%s" class="mini-btn">Open App</a>
+      <button onclick="deleteApp()" class="mini-btn btn-danger">Delete</button>
     </div>
   </div>
 
   %s
 
-  <div class="ed-row-12">
+  <div class="form-row">
     <div class="ed-grow">
       <div class="code-header mb-2">
         <h3>Code</h3>
-        <div class="actions">
-          <button onclick="copyCode()">Copy</button>
+        <div class="form-actions">
+          <button class="mini-btn" onclick="copyCode()">Copy</button>
         </div>
       </div>
       <textarea class="code-editor ed-tall" id="code" spellcheck="false"></textarea>
@@ -135,38 +105,23 @@ func editPageHTML(a *App) string {
     <div class="ed-grow">
       <div class="preview-header mb-2">
         <h3>Preview</h3>
-        <button class="code-toggle" onclick="updatePreview()">Refresh</button>
+        <button class="mini-btn" onclick="updatePreview()">Refresh</button>
       </div>
       <iframe id="preview" class="preview-frame ed-tall" allow="geolocation"></iframe>
     </div>
   </div>
 
-  <div class="form-row">
+  <div class="page-stack">
     <div class="form-row">
-      <div class="ed-grow-150">
-        <label for="appName" class="ed-label">Name</label>
-        <input class="name ed-field" type="text" id="appName" placeholder="App name">
-      </div>
-      <div class="ed-w-140">
-        <label for="appSlugInput" class="ed-label">Slug</label>
-        <input type="text" id="appSlugInput" placeholder="slug" class="ed-field muted">
-      </div>
-      <div class="ed-grow-120">
-        <label for="appDesc" class="ed-label">Description</label>
-        <input type="text" id="appDesc" placeholder="What does this app do?" class="ed-field">
-      </div>
-      <div class="ed-w-140">
-        <label for="appTags" class="ed-label">Tags</label>
-        <input type="text" id="appTags" placeholder="e.g. productivity" class="ed-field">
-      </div>
-      <div class="ed-w-130">
-        <label for="appPrice" class="ed-label">Price (credits)</label>
-        <input type="number" id="appPrice" placeholder="0 = free" class="ed-field small" min="0" max="1000" title="Credits charged per use (0 = free)">
-      </div>
-      <label class="ed-check"><input type="checkbox" id="appPublic" class="w-auto m-0"> Public</label>
+      <label class="field-label">Name<input type="text" id="appName" placeholder="App name"></label>
+      <label class="field-label">Slug<input type="text" id="appSlugInput" placeholder="slug"></label>
+      <label class="field-label">Description<input type="text" id="appDesc" placeholder="What does this app do?"></label>
+      <label class="field-label">Tags<input type="text" id="appTags" placeholder="e.g. productivity"></label>
+      <label class="field-label">Price (credits)<input type="number" id="appPrice" placeholder="0 = free" min="0" max="1000" title="Credits charged per use (0 = free)"></label>
     </div>
-    <div class="ed-row-end">
-      <button onclick="saveApp()" class="btn nowrap">Save</button>
+    <div class="form-actions">
+      <button onclick="saveApp()" class="btn">Save</button>
+      <label class="check-label"><input type="checkbox" id="appPublic"> Public</label>
     </div>
   </div>
   <div class="d-flex between items-center">

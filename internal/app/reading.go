@@ -78,7 +78,7 @@ func ReadingPages(path, category string, page, total, size int) string {
 }
 
 const ReadingCSS = `<style>
-.reading-row{padding:18px 0;border-bottom:1px solid var(--border,#eee)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0;font-size:14px}.reading-actions form,.reading-save{display:inline-flex;flex:0 0 auto;width:auto;margin:0;padding:0}.reading-actions>a,.reading-save button{white-space:nowrap}.reading-actions .mini-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
+.reading-row{padding:18px 0;border-bottom:1px solid var(--border,#eee)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
 </style>`
 
 // AskControl opens a private conversation with public reading material attached.
