@@ -11,6 +11,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
   window.SpeechRecognition=class { start(){window.__dictation=this;this.onstart?.()} stop(){this.onend?.()} };
   const originalFetch=window.fetch.bind(window);
   window.fetch=(url,opts)=>{
+   if(url==='/agent'&&opts?.method==='POST')window.__lastAgentBody=JSON.parse(opts.body);
    if(url==='/agent'&&opts?.method==='POST')return Promise.resolve(new Response(new ReadableStream({start(controller){
     const send=e=>controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify(e)+'\n\n'));
     send({type:'flow_id',thread:'stream-fixture',flow_id:'flow-fixture'});
@@ -216,6 +217,24 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    } catch(e) { failures.push(path+' at '+width+': '+e.message); }
   }
  }
+
+ // Reload an older selection even when the server initially renders a newer thread.
+ await page.goto('https://mu.test/agent/micro');
+ const selectedConfig=await page.locator('#conversation-config').textContent().then(JSON.parse);
+ await page.route('**/agent/micro?session=older-fixture',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({id:'older-fixture',html:'<div class="mu-user">An older selected question</div><div class="mu-agent">Its original answer</div>',pending:false,agent:'',agentName:'Micro',storageNS:selectedConfig.storageNS})}));
+ await page.evaluate(scope=>history.replaceState({muConversation:{scope,id:'older-fixture'}},''),selectedConfig.selectionScope);
+ await page.reload();
+ await page.getByText('An older selected question',{exact:true}).waitFor();
+ assert.equal(new URL(page.url()).search,'','selection leaked into URL');
+ await page.locator('#mu-chat-input').fill('Continue this discussion');
+ await page.locator('#mu-chat-form button[type=submit]').click();
+ assert.equal(await page.evaluate(()=>window.__lastAgentBody.context_id),'older-fixture','reply switched to newer conversation');
+ await page.waitForSelector('.mu-agent h2');
+ // A deliberately empty conversation must also survive a reload.
+ await page.evaluate(scope=>history.replaceState({muConversation:{scope,id:''}},''),selectedConfig.selectionScope);
+ await page.reload();
+ assert.equal(await page.locator('#mu-chat-conv').textContent(),'','empty selection reopened latest thread');
+ assert.equal(await page.locator('#mu-chat-form').evaluate(f=>f.inert),false);
  assert(!failures.length,failures.join('\n'));
  } finally {await browser.close();}
  console.log('All service pages fit; conversation composers remain centered and stable on mobile and desktop.');
