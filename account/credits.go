@@ -135,9 +135,10 @@ func init() {
 	// lets everything through because a hook stayed nil.
 	quota.Enabled = PaymentsEnabled
 	quota.Balance = Balance
+	quota.Included = IncludedToday
 	quota.Record = RecordUsage
 	quota.Deduct = func(account, operation string, amount int, meta map[string]interface{}) error {
-		return DeductCredits(account, amount, operation, meta)
+		return chargeIncluded(account, amount, operation, meta)
 	}
 
 	// Load balances from disk, keeping only the ones that decoded into something.
@@ -198,10 +199,10 @@ func rebuildFromTransactions() {
 
 	restored := 0
 	for id, t := range latest {
-		if _, ok := balances[id]; ok {
+		if w, ok := balances[id]; ok && (w.UpdatedAt.IsZero() || !t.CreatedAt.After(w.UpdatedAt)) {
 			continue
 		}
-		if t.Balance <= 0 {
+		if t.Balance < 0 {
 			continue
 		}
 		balances[id] = &Credits{
@@ -529,6 +530,7 @@ func deductCredits(l *ledger, userID string, amount int, operation string, metad
 		return errors.New("insufficient credits")
 	}
 
+	previous := *w
 	w.Balance -= amount
 	w.UpdatedAt = time.Now()
 
@@ -541,13 +543,20 @@ func deductCredits(l *ledger, userID string, amount int, operation string, metad
 		Balance:   w.Balance,
 		Operation: operation,
 		Metadata:  metadata,
-		CreatedAt: time.Now(),
+		CreatedAt: w.UpdatedAt,
 	}
 	transactions[userID] = append(transactions[userID], tx)
 
 	// Persist
-	data.SaveJSON("wallets.json", balances)
-	data.SaveJSON("transactions.json", transactions)
+	if err := data.SaveJSON("transactions.json", transactions); err != nil {
+		*w = previous
+		transactions[userID] = transactions[userID][:len(transactions[userID])-1]
+		return err
+	}
+	// The transaction is authoritative; the wallet file is its balance cache.
+	if err := data.SaveJSON("wallets.json", balances); err != nil {
+		app.Log("account", "balance cache write failed: %v", err)
+	}
 
 	return nil
 }

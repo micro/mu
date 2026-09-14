@@ -278,7 +278,7 @@ func charge(owner, op string) error {
 	if price == 0 {
 		return nil
 	}
-	if !ok || quota.BalanceOf(owner) < price {
+	if !ok || quota.Available(owner) < price {
 		return fmt.Errorf("sending that costs %d credits and there are not enough on this account", price)
 	}
 	return quota.Charge(owner, op, nil)

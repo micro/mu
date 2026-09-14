@@ -72,26 +72,16 @@ type Price struct {
 }
 
 type priceFile struct {
-	Operations []Price `json:"operations"`
+	DailyCredits *int    `json:"daily_credits,omitempty"`
+	Operations   []Price `json:"operations"`
 }
 
 var (
-	priceMu sync.RWMutex
-	prices  = map[string]Price{}
-	ordered []Price
+	priceMu      sync.RWMutex
+	prices       = map[string]Price{}
+	ordered      []Price
+	dailyCredits int
 )
-
-// There was a DailyQuota here: a hundred credits an account got each day before
-// its balance was touched, spendable on anything priced.
-//
-// It was a patch for charging for the product. An account started at zero, the
-// agent cost seven, so a new signup could do nothing — and rather than stop
-// charging for the agent, the fix granted credits to pay the charge. Two
-// mechanisms cancelling out, leaving a number a person had to understand before
-// asking a question.
-//
-// The agent is free now and credits buy only what a third party bills us for,
-// so there is nothing to grant. See allowance.go.
 
 // defaults are the bytes of quota.json as main handed them over. Kept so
 // ReloadPrices can re-apply the data directory and the environment on top of
@@ -136,6 +126,9 @@ func apply(f priceFile) {
 	if b, err := data.LoadFile("quota.json"); err == nil && len(b) > 0 {
 		var override priceFile
 		if err := json.Unmarshal(b, &override); err == nil {
+			if override.DailyCredits != nil {
+				f.DailyCredits = override.DailyCredits
+			}
 			at := map[string]int{}
 			for i, p := range f.Operations {
 				at[p.Op] = i
@@ -172,6 +165,10 @@ func apply(f priceFile) {
 
 	priceMu.Lock()
 	prices, ordered = byOp, list
+	dailyCredits = 0
+	if f.DailyCredits != nil {
+		dailyCredits = max(0, *f.DailyCredits)
+	}
 	priceMu.Unlock()
 }
 
@@ -333,3 +330,6 @@ func LoadFromTree() error {
 		dir = parent
 	}
 }
+
+// DailyCredits is the included budget per account, resetting at midnight UTC.
+func DailyCredits() int { priceMu.RLock(); defer priceMu.RUnlock(); return dailyCredits }

@@ -448,7 +448,6 @@ func navMain(acc *auth.Account) string {
 	for _, item := range []struct{ id, href, label, icon string }{
 		{"nav-inbox", "/inbox", "Inbox", "/email.svg"},
 		{"nav-work", "/work", "Work", "/tasks.svg"},
-		{"nav-agents", "/agents", "Agents", "/agent.svg"},
 		{"nav-services", "/services", "Services", "/services.svg"},
 	} {
 		b.WriteString(navigationLink(item.id, item.href, item.label, item.icon))

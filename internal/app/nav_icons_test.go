@@ -72,3 +72,16 @@ func TestEveryAccountMenuEntryHasAnIcon(t *testing.T) {
 		}
 	}
 }
+
+func TestPrimaryNavigationHasFourDestinations(t *testing.T) {
+	for _, nav := range []string{navMain(&auth.Account{ID: "someone"}), mobileNav(&auth.Account{ID: "someone"})} {
+		if strings.Count(nav, "<a ") != 4 {
+			t.Fatalf("expected four primary destinations: %s", nav)
+		}
+		for _, path := range []string{"/", "/inbox", "/work", "/services"} {
+			if !strings.Contains(nav, `href="`+path+`"`) {
+				t.Errorf("missing destination %s", path)
+			}
+		}
+	}
+}

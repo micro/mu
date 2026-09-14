@@ -33,6 +33,9 @@ var (
 	// Balance is what the caller has to spend.
 	Balance func(account string) int
 
+	// Included returns the remaining nontransferable daily allowance.
+	Included func(account string) int
+
 	// Deduct charges the caller for an operation that has already succeeded.
 	// The metadata, where there is any, is what the receipt says beyond the
 	// operation's name — the query that was searched, and so on.
@@ -205,7 +208,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	cost := OperationCost(operation)
 
 	// Check if user has sufficient credits
-	balance := BalanceOf(userID)
+	balance := Available(userID)
 	if balance >= cost {
 		return true, false, cost, nil
 	}
@@ -301,4 +304,14 @@ func ExceededPage(cost int) string {
 		`<a href="/account/topup">Top up</a> to continue.</p>` +
 		`<p class="text-sm text-muted">1 credit = 1¢ · <a href="/account/billing#balance">Your balance</a></p>` +
 		`</div>`
+}
+
+// Available includes the daily allowance as well as the paid balance.
+// Transfers and app revenue must use BalanceOf, never this budget.
+func Available(account string) int {
+	n := BalanceOf(account)
+	if Included != nil {
+		n += Included(account)
+	}
+	return n
 }

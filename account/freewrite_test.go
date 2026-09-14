@@ -63,8 +63,12 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 	}
 
 	// Free must not have become a bypass: a priced operation on an empty wallet
-	// is still refused. There used to be a daily grant of credits to spend down
-	// before this held, and there is not any more.
+	// is refused once its included daily budget has been spent.
+	if n := IncludedToday(id); n > 0 {
+		if err := chargeIncluded(id, n, "agent_run", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
 	quota.ResetAllowances()
 	t.Cleanup(quota.ResetAllowances)
 	if quota.OperationCost(quota.OpImageGenerate) > 0 {

@@ -567,3 +567,7 @@ submit variants or give ordinary action buttons per-page sizes. Use
 `.metadata-row` for sender/date rows, `.metric-grid` and `.metric` for system
 measurements, and `.table-scroll` around wide interactive tables so cells do not
 collapse to single-letter columns on mobile.
+
+## Current product direction
+
+Keep Home, Inbox, Work and Services as the four primary destinations on mobile and desktop. Home is messaging with Micro and people; Inbox brings requests and updates needing attention; Work tracks commitments and outcomes; Services exposes useful standalone utilities and mini apps. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.

@@ -84,14 +84,10 @@ func BalanceBody(userID string, showConversion bool) []string {
 		admin = app.Note("You are an admin on this instance, so your own calls are never charged.")
 	}
 
-	// No note about a daily allowance, because there is not one any more.
-	//
-	// A balance of zero used to need explaining: the agent cost credits, an
-	// allowance covered it, and somebody watching zero while the product worked
-	// was owed a reason. Talking to your agent is free now, so zero is the
-	// ordinary state of an account that has not reached for anything a third
-	// party bills us for — and it needs no note.
 	free := ""
+	if n := quota.DailyCredits(); n > 0 {
+		free = app.Note(fmt.Sprintf("%d of %d included credits left today. Resets at midnight UTC; unused credits do not roll over. Messaging limits still apply.", IncludedToday(userID), n))
+	}
 	// Two links, and both go somewhere else. Usage and History were here too,
 	// and the usage graph is the next card down and the history the one after
 	// that — a link is a promise that there is somewhere to go, and scrolling

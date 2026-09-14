@@ -1,4 +1,5 @@
 {
+  "daily_credits": 200,
   "_comment": [
     "What each operation costs, in credits. One credit is one cent.",
     "",
@@ -14,12 +15,9 @@
     "priced. Everything else that reaches a model already was: text_* 1-6,",
     "app_build 19, image_generate 19, web_search 3.",
     "",
-    "It was free, on the argument that the agent is the thing you came for and",
-    "metering it meant a new account could not ask a question until it had",
-    "paid. That was a real problem and the old fix was wrong: a daily grant of",
-    "credits that cancelled the charge back out, two mechanisms doing nothing",
-    "between them. The fix is a welcome balance at signup — see",
-    "quota.WelcomeCredits. You get some use, then you pay for what you use.",
+    "Every account receives daily_credits included credits per UTC day, used",
+    "before its paid balance. Included credits do not roll over or fund transfers.",
+    "The welcome balance is separate. Outbound messaging retains its hard caps.",
     "",
     "`agent_run` is the one operation here that is not the name of a tool, and",
     "it is not the first: quran_search, db_write, app_build, places_eta and",

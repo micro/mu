@@ -11,6 +11,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
   window.SpeechRecognition=class { start(){window.__dictation=this;this.onstart?.()} stop(){this.onend?.()} };
   const originalFetch=window.fetch.bind(window);
   window.fetch=(url,opts)=>{
+   if(url==='/agent'&&opts?.method==='POST')window.__lastAgentBody=JSON.parse(opts.body);
    if(url==='/agent'&&opts?.method==='POST')return Promise.resolve(new Response(new ReadableStream({start(controller){
     const send=e=>controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify(e)+'\n\n'));
     send({type:'flow_id',thread:'stream-fixture',flow_id:'flow-fixture'});
@@ -42,6 +43,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    errors.length=0;
    await page.goto('https://mu.test'+path);await page.waitForTimeout(50);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
+   if(['/about','/privacy','/pricing','/contact','/status'].includes(path))assert(await page.locator('.footer').isVisible(),'public footer missing');
    if(await page.locator('#mobile-nav').count()) {
     assert.deepEqual(await page.locator('#mobile-nav a').allTextContents(),['Home','Inbox','Work','Services']);
     assert.equal(await page.locator('#mobile-nav').isVisible(),width<=900);
@@ -75,7 +77,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await menu.locator('summary').click();
     assert(await items.isVisible(),'item actions did not open');
     const box=await items.boundingBox();assert(box.x>=0&&box.x+box.width<=width,'item actions overflow viewport');
-    const rows=await items.locator('a').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().y));
+    const rows=await items.locator('a').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return r.y+r.height/2}));
     assert(rows.length<2||rows[1]>rows[0],'item actions run together');
     await page.keyboard.press('Escape');assert(!await items.isVisible(),'escape did not close item actions');
    }
@@ -86,7 +88,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert.deepEqual(await links.locator('a').allTextContents(),['API credentials','Mail settings']);
     assert(await links.evaluate(e=>!!e.closest('.card')),'connection settings lack their shared card');
    }
-   if(path.startsWith('/agent?id='))assert.equal(await page.locator('.agent-bar strong').textContent(),'Research','focused agent identity missing');
+   if(path.startsWith('/agent?id='))assert.equal(await page.locator('.conversation-toolbar strong').textContent(),'Research','focused agent identity missing');
    if(path==='/services')assert.equal(await page.locator('.view-switch,#service-feed').count(),0,'services has retired view tabs');
    if(await page.locator('#reply-body').count()) {
     const editor=await page.locator('#reply-body').boundingBox(),form=await page.locator('#reply-body').evaluate(e=>e.closest('form').getBoundingClientRect().width);
@@ -104,7 +106,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(await page.locator('.conversation-toolbar').count()&&await page.locator('.conversation-toolbar').isVisible()) {
     const toolbar=await page.locator('.conversation-toolbar').boundingBox(),prompt=await page.locator('#mu-chat-form').boundingBox();
     assert(Math.abs(toolbar.x-prompt.x)<2&&Math.abs(toolbar.width-prompt.width)<2,'toolbar and prompt differ in alignment');
-    const controls=await page.locator('.conversation-toolbar > *').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().y));
+    const controls=await page.locator('.conversation-toolbar > *').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>{const r=e.getBoundingClientRect();return r.y+r.height/2}));
     assert(Math.max(...controls)-Math.min(...controls)<2,'conversation toolbar wraps');
    }
    if(process.env.MU_LAYOUT_SHOTS&&[390,1440].includes(width)&&!collapsed){
@@ -130,6 +132,8 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert.equal(await page.locator('.mu-agent strong').first().textContent(),'Arabic');
     if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/formatted-answer.png'});
     const assertQuestionAnchor=async()=>{
+     assert(await page.locator('#mu-chat-conv').evaluate(c=>getComputedStyle(c).scrollbarWidth==='none'),'visible chat scrollbar');
+     assert(await page.locator('#mu-chat-conv').evaluate(c=>Math.abs(c.querySelector('.mu-user').getBoundingClientRect().left-c.getBoundingClientRect().left)<2),'question not left aligned');
      const offset=await page.evaluate(()=>{const c=document.getElementById('mu-chat-conv'),q=c.querySelector('.mu-user:last-of-type')||c.querySelectorAll('.mu-user')[c.querySelectorAll('.mu-user').length-1];return q.getBoundingClientRect().top-c.getBoundingClientRect().top;});
      assert(Math.abs(offset-16)<3,`question is not anchored at transcript top: ${offset}`);
     };
@@ -213,6 +217,24 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    } catch(e) { failures.push(path+' at '+width+': '+e.message); }
   }
  }
+
+ // Reload an older selection even when the server initially renders a newer thread.
+ await page.goto('https://mu.test/agent/micro');
+ const selectedConfig=await page.locator('#conversation-config').textContent().then(JSON.parse);
+ await page.route('**/agent/micro?session=older-fixture',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({id:'older-fixture',html:'<div class="mu-user">An older selected question</div><div class="mu-agent">Its original answer</div>',pending:false,agent:'',agentName:'Micro',storageNS:selectedConfig.storageNS})}));
+ await page.evaluate(scope=>history.replaceState({muConversation:{scope,id:'older-fixture'}},''),selectedConfig.selectionScope);
+ await page.reload();
+ await page.getByText('An older selected question',{exact:true}).waitFor();
+ assert.equal(new URL(page.url()).search,'','selection leaked into URL');
+ await page.locator('#mu-chat-input').fill('Continue this discussion');
+ await page.locator('#mu-chat-form button[type=submit]').click();
+ assert.equal(await page.evaluate(()=>window.__lastAgentBody.context_id),'older-fixture','reply switched to newer conversation');
+ await page.waitForSelector('.mu-agent h2');
+ // A deliberately empty conversation must also survive a reload.
+ await page.evaluate(scope=>history.replaceState({muConversation:{scope,id:''}},''),selectedConfig.selectionScope);
+ await page.reload();
+ assert.equal(await page.locator('#mu-chat-conv').textContent(),'','empty selection reopened latest thread');
+ assert.equal(await page.locator('#mu-chat-form').evaluate(f=>f.inert),false);
  assert(!failures.length,failures.join('\n'));
  } finally {await browser.close();}
  console.log('All service pages fit; conversation composers remain centered and stable on mobile and desktop.');

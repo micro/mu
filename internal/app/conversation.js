@@ -1,4 +1,4 @@
-(function(){
+(async function(){
 var config=JSON.parse(document.getElementById("conversation-config").textContent);
 var contextId=config.contextId;
 var attachment=config.attachment;
@@ -9,6 +9,30 @@ var AGENT_NAME=config.agentName;
 var form=document.getElementById('mu-chat-form');
 var input=document.getElementById('mu-chat-input');
 var conv=document.getElementById('mu-chat-conv');
+// History state is local to this tab and survives reloads without exposing IDs in URLs.
+var selectionScope=config.selectionScope;
+var selection=window.history.state&&window.history.state.muConversation;
+if(SESSION&&selectionScope&&location.search===''&&selection&&selection.scope===selectionScope&&selection.id!==contextId){
+  form.inert=true;conv.innerHTML='';
+  if(selection.id){
+    try{
+      var response=await fetch(location.pathname+'?session='+encodeURIComponent(selection.id),{headers:{'X-Mu-Transcript':'1','Accept':'application/json'},credentials:'same-origin'});
+      if(!response.ok)throw new Error('Conversation unavailable');
+      var restored=await response.json();
+      contextId=restored.id;PENDING=restored.pending;config.storageNS=restored.storageNS;
+      AGENT_NAME=restored.agentName;window.muActiveAgent=restored.agent||'';
+      conv.innerHTML=restored.html;
+    }catch(e){conv.textContent='This conversation could not be loaded. Reload to try again.';return;}
+  }else{contextId='';PENDING=false;}
+  var identity=document.querySelector('.conversation-toolbar strong');if(identity)identity.textContent=AGENT_NAME;
+  var remove=document.getElementById('conversation-delete');if(remove){remove.hidden=!contextId;remove.onclick=function(e){window.muSessionDelete(contextId,e);};}
+  form.inert=false;
+}
+function rememberSelection(){
+  if(SESSION&&selectionScope)window.history.replaceState(Object.assign({},window.history.state,{muConversation:{scope:selectionScope,id:contextId||''}}),'');
+}
+rememberSelection();
+
 function nearBottom(){
   if(!conv) return true;
   return (conv.scrollTop+conv.clientHeight)>=(conv.scrollHeight-nearEnough);
@@ -222,7 +246,7 @@ function ask(q){
               var id=ev.thread||ev.flow_id;
               if(id){
                 var fresh=!contextId;
-                contextId=id;save();
+                contextId=id;rememberSelection();save();
                 window.dispatchEvent(new CustomEvent('mu-chat-thread',{detail:id}));
                 if(fresh&&window.muSessionStarted)window.muSessionStarted(id,q);
               }
@@ -277,7 +301,7 @@ window.muChatNew=function(){
   busy=false;viewEpoch++;if(detachActive){detachActive();detachActive=null;}
   try{sessionStorage.removeItem(draftKey());sessionStorage.removeItem(scrollKey());}catch(e){}
   questionAnchor=null;answerAnchor=null;followQuestion=false;
-  conv.innerHTML='';history=[];contextId='';input.value='';
+  conv.innerHTML='';history=[];contextId='';rememberSelection();input.value='';
   window.dispatchEvent(new CustomEvent('mu-chat-new'));
   try{sessionStorage.removeItem(CKEY);sessionStorage.removeItem(HKEY);sessionStorage.removeItem(TKEY);sessionStorage.removeItem(DKEY);}catch(e){}
   
