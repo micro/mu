@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var session = new URL(location.href).searchParams.get('session');
   document.querySelectorAll('#nav a, #mobile-nav a').forEach(function (a) {
     var u = new URL(a.href);
-    if (session ? u.searchParams.get('session') === session : u.pathname === location.pathname && !u.search) { a.classList.add('active'); a.setAttribute('aria-current', 'page'); }
+    if (a.closest('#mobile-nav') ? u.pathname === location.pathname : session ? u.searchParams.get('session') === session : u.pathname === location.pathname && !u.search) { a.classList.add('active'); a.setAttribute('aria-current', 'page'); }
   });
 });
 if (navigator.serviceWorker) navigator.serviceWorker.register('/mu.js', {scope:'/', updateViaCache:'none'}).then(function (r) {r.update();}).catch(function () {});

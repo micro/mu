@@ -33,7 +33,7 @@ p,ul,ol { margin-block:0 16px }
 #menu-toggle { position:absolute; left:16px; border:0; background:transparent; width:36px; height:36px; padding:8px; display:flex; flex-direction:column; justify-content:center; gap:4px }
 #menu-toggle span { display:block; height:1.5px; width:19px; background:#555 }
 #container { margin-top:56px; min-height:calc(100dvh - 56px); padding-left:220px }
-#content { width:100%; max-width:var(--page-width); margin-inline:auto; padding:24px var(--page-gutter) 40px }
+#content { overflow-wrap:anywhere; width:100%; max-width:var(--page-width); margin-inline:auto; padding:24px var(--page-gutter) 40px }
 #page-title { margin:0 0 24px }
 #nav-container { position:fixed; inset:56px auto 0 0; width:220px; padding:20px 12px; background:#fafafa; border-right:1px solid #eee; display:flex; flex-direction:column; z-index:25; overflow:auto }
 #nav { display:flex; flex-direction:column; gap:4px }
@@ -246,3 +246,11 @@ body.index-shell { min-height:100dvh; display:flex; flex-direction:column; }
  body:has(#mobile-nav):has(.chat-layout) #content { height:calc(var(--visible-height,100dvh) - 56px - var(--mobile-nav-height)) }
  body:has(#mobile-nav) #nav-container { bottom:var(--mobile-nav-height) }
 }
+
+
+/* Wide tables scroll within their own bounds; long IDs wrap in content. */
+@media(max-width:600px) {
+ #content table { display:block; max-width:100%; overflow-x:auto; }
+}
+.nav-bottom .nav-me-who { display:block; overflow-wrap:anywhere; }
+#nav .chat-sess { display:block; }

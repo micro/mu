@@ -212,7 +212,7 @@ var Template = `<!doctype html>
 </head><body%s>
 <script>try{if(localStorage.getItem('mu_nav_collapsed')==='1')document.body.classList.add('nav-collapsed')}catch(e){}</script>
 <header id="head"><button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button><div id="brand"><a href="/">Micro</a></div><div id="head-right">%s</div></header>
-<div id="nav-overlay" onclick="toggleMenu()"></div><div id="container"><aside id="nav-container"><nav id="nav">%s%s</nav>%s</aside><main id="content"><h1 id="page-title">%s</h1>%s</main></div>%s%s
+<div id="nav-overlay" onclick="toggleMenu()"></div><div id="container"><aside id="nav-container"><nav id="nav">%s%s</nav><div class="nav-bottom">%s</div></aside><main id="content"><h1 id="page-title">%s</h1>%s</main></div>%s%s
 </body></html>`
 
 var CardTemplate = `
