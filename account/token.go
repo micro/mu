@@ -225,7 +225,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(app.Field{Name: "access", Label: "Access", Options: []app.Option{
 		{Value: "api", Label: "Agent, Work and Inbox", On: true},
 		{Value: "agent", Label: "Agent"}, {Value: "work", Label: "Work"}, {Value: "inbox", Label: "Inbox"},
-		{Value: "services", Label: "Service tools (separate tools host)"},
+		{Value: "services", Label: "Services"},
 	}}.HTML())
 	sb.WriteString(`<p class="text-secondary text-sm">API access applies across your account. Agent and Work may use the selected agent's tools and private context.</p><div id="token-service-scopes" hidden>`)
 
@@ -315,7 +315,7 @@ async function createToken(e) {
 	var res = await fetch('/token', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
-		body: JSON.stringify({name: form.name.value, expires_in: parseInt(form.expires_in.value),
+		body: JSON.stringify({access: access, name: form.name.value, expires_in: parseInt(form.expires_in.value),
 			scope_mode: mode, services: services, permissions: permissions})
 	});
 	var result = await res.json();
@@ -408,10 +408,12 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	var permissions []string
 	var scope []string
 	var scopeMode string
+	var access string
 	var expiresIn int // days
 
 	if app.SendsJSON(r) {
 		var req struct {
+			Access      string   `json:"access"`
 			ScopeMode   string   `json:"scope_mode"`
 			Name        string   `json:"name"`
 			Services    []string `json:"services"`
@@ -427,6 +429,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		expiresIn = req.ExpiresIn
 		scope = req.Services
 		scopeMode = req.ScopeMode
+		access = req.Access
 	} else {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -437,6 +440,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		expiresIn = parseTokenExpiresIn(r.FormValue("expires_in"))
 		scope = r.Form["services"]
 		scopeMode = r.FormValue("scope_mode")
+		access = r.FormValue("access")
 	}
 
 	// Validate
@@ -451,6 +455,12 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	}
 	if scopeMode == "all" {
 		scope = nil
+	}
+	if access == "services" && scopeMode == "all" {
+		for _, sp := range service.Specs() {
+			scope = append(scope, sp.Name)
+		}
+		scopeMode = "select"
 	}
 	validScope := validScopeNames(scope)
 	if (scopeMode == "select" || len(scope) > 0) && len(validScope) == 0 {

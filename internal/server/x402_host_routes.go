@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mu/internal/api"
+	"mu/internal/auth"
 	"mu/internal/origin"
 	"mu/internal/settings"
 )
@@ -17,7 +18,7 @@ import (
 func init() {
 	http.HandleFunc("GET /mcp", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
-			api.PublicMCPHandler(w, r)
+			publicMCPHandler(w, r)
 			return
 		}
 		base := strings.TrimRight(origin.URL(r), "/")
@@ -81,17 +82,31 @@ func x402HostName() string {
 	return "Mu"
 }
 
-// The separately configured tools host retains its contract while Micro adopts
-// the outcome API. It is not part of the primary site's public catalogue.
+// Services credentials select the service contract on either host. API credentials
+// and unauthenticated discovery retain the curated outcome catalogue.
+func serviceAccess(r *http.Request) bool {
+	t := auth.TokenFromRequest(api.CredentialRequest(r))
+	if t == nil || len(t.Services()) == 0 {
+		return false
+	}
+	for _, p := range t.Permissions {
+		if strings.HasPrefix(p, "api:") {
+			return false
+		}
+	}
+	return true
+}
 func publicRESTHandler(w http.ResponseWriter, r *http.Request) {
-	if origin.IsX402Host(r) {
+	if origin.IsX402Host(r) || serviceAccess(r) {
+		r = api.CredentialRequest(r)
 		api.RESTHandler(w, r)
 		return
 	}
 	api.PublicRESTHandler(w, r)
 }
 func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
-	if origin.IsX402Host(r) {
+	if origin.IsX402Host(r) || serviceAccess(r) {
+		r = api.CredentialRequest(r)
 		api.MCPHandler(w, r)
 		return
 	}
@@ -99,7 +114,8 @@ func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func publicReferenceHandler(w http.ResponseWriter, r *http.Request) {
-	if origin.IsX402Host(r) {
+	if origin.IsX402Host(r) || serviceAccess(r) {
+		r = api.CredentialRequest(r)
 		api.RESTPageHandler(w, r)
 		return
 	}

@@ -87,6 +87,10 @@ func serve(addr string) {
 				r.URL.Path = r.URL.Path[:v-1]
 			}
 
+			if api.ToolDispatch(r.URL.Path) {
+				r = api.CredentialRequest(r)
+			}
+
 			// One mark per browser, before anything asks who this is.
 			//
 			// Here rather than at each gate, so nothing downstream needs a
@@ -368,7 +372,7 @@ func serve(addr string) {
 			//
 			// Read the body once. It was read twice, restored twice, and parsed
 			// twice for two questions about the same tool.
-			if api.ToolDispatch(r.URL.Path) && home.IsX402Host(r) {
+			if api.ToolDispatch(r.URL.Path) && (home.IsX402Host(r) || serviceAccess(r)) {
 				host := strings.TrimPrefix(strings.TrimPrefix(app.BaseURL(r), "https://"), "http://")
 				r, _ = wallet.AuthenticateRequest(r, strings.TrimRight(host, "/"))
 

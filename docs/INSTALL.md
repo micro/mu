@@ -1224,8 +1224,8 @@ Create a token at `/token`. Select the needed API capabilities; these apply
 across the token owner's account. They do not isolate an application's
 conversations or disable memory. Service-scoped tokens are refused at the
 outcome API. The first-party service playground and sandboxed app SDK continue
-to use internal service capabilities. A separately configured x402 host retains
-the service API for existing tool clients.
+to use internal service capabilities. Services tokens also select the service API on the same host through `/api/v1`
+and `/mcp`. A separately configured x402 host retains its existing contract.
 
 ### Services running outside Mu
 

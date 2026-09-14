@@ -74,8 +74,8 @@ EXAMPLES
 
 Operation names can be two words: mu work list and mu work_list are the
 same call. Agent operations use the underscore form, such as mu agent_list,
-because mu agent runs a local agent. Service commands require a separate
-tools host; they are not exposed by the primary Micro API.
+because mu agent runs a local agent. Service commands use a Services token
+on the same host.
 
 `
 
