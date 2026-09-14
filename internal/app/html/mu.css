@@ -331,7 +331,7 @@ hr,.hr-soft { border:0; border-top:1px solid var(--card-border); margin-block:24
 /* Categories, filters, tabs and recent-search chips. */
 .category-header,.recent-searches,.app-filters,.page-filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:16px }
 .category,.tag,.recent-search-item { display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border:1px solid var(--card-border); border-radius:6px; color:var(--text-secondary); background:white; font-size:13px; text-decoration:none }
-.category.active,.category.on,.tag.active,.recent-search-item.active { color:white; border-color:var(--btn-primary); background:var(--btn-primary) }
+.category.active,.category.active:visited,.category.on,.category.on:visited,.tag.active,.tag.active:visited,.recent-search-item.active,.recent-search-item.active:visited { color:white; border-color:var(--btn-primary); background:var(--btn-primary) }
 .recent-searches-scroll { display:flex; flex-wrap:wrap; gap:8px; min-width:0 }
 .recent-search-label { font-size:13px; color:var(--text-secondary) }
 .recent-search-close,.recent-search-item button { min-height:24px; padding:0 4px; background:none; border:0; color:inherit }
