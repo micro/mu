@@ -39,7 +39,7 @@ type RoomInfo struct {
 type Message struct {
 	Author    string    `json:"author"`
 	Content   string    `json:"content"`
-	IsAgent   bool      `json:"is_agent" description:"True when the assistant said it"`
+	IsAgent   bool      `json:"is_agent" description:"True when the agent said it"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
