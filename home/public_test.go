@@ -30,7 +30,7 @@ func TestPublicPagesUseLandingShell(t *testing.T) {
 				}
 			}
 			hasFooter := strings.Contains(body, `<div class="footer">`)
-			if hasFooter != (tc.path != "/about") {
+			if !hasFooter {
 				t.Error("wrong footer visibility")
 			}
 			if !strings.Contains(w.Header().Get("Cache-Control"), "private") {
@@ -43,7 +43,7 @@ func TestPublicPagesUseLandingShell(t *testing.T) {
 func TestPricingExplainsWelcomeBalance(t *testing.T) {
 	takesPayment(t)
 	body := pricingPage(t)
-	for _, want := range []string{"one-time welcome balance", "not a daily allowance", "Daily limits", "midnight UTC"} {
+	for _, want := range []string{"one-time welcome balance", "included credits", "Daily limits", "midnight UTC"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)
 		}

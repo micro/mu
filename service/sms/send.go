@@ -158,7 +158,7 @@ func SendOn(channel Channel, owner, to, text string) (*Message, error) {
 			return nil, err
 		}
 		cost = per * segments
-		if !ok || quota.BalanceOf(owner) < cost {
+		if !ok || quota.Available(owner) < cost {
 			return nil, fmt.Errorf("sending that costs %d credits and there are not enough on this account", cost)
 		}
 	}

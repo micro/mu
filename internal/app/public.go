@@ -11,15 +11,11 @@ func RespondPublic(w http.ResponseWriter, r *http.Request, resp Response) {
 		Respond(w, r, resp)
 		return
 	}
-	footer := FooterLinks()
-	if r.URL.Path == "/about" {
-		footer = ""
-	}
 	page := RenderIndex(Index{
 		Title: html.EscapeString(resp.Title), Description: html.EscapeString(resp.Description),
 		TopRight: `<a href="/">Micro</a>`,
 		Body:     `<article class="public-page"><h1>` + html.EscapeString(resp.Title) + `</h1>` + resp.HTML + `</article>`,
-		Footer:   footer,
+		Footer:   FooterLinks(),
 	})
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, private")

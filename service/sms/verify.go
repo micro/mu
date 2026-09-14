@@ -79,7 +79,7 @@ func StartVerify(owner, number string) error {
 			return err
 		}
 		cost = per
-		if !ok || quota.BalanceOf(owner) < cost {
+		if !ok || quota.Available(owner) < cost {
 			return fmt.Errorf("a verification text costs %d credits and there are not enough on this account", cost)
 		}
 	}

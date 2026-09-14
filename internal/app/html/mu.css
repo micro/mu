@@ -341,6 +341,7 @@ hr,.hr-soft { border:0; border-top:1px solid var(--card-border); margin-block:24
 
 /* Contextual conversation actions; navigation lives in the sidebar. */
 .conversation-toolbar { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; margin-bottom:16px; flex:none }
+.conversation-toolbar > strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .conversation-toolbar:empty { display:none }
 @media(max-width:900px) {
  input,textarea,select { font-size:16px }

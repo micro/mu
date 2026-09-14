@@ -69,6 +69,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		// once by somebody new and read past on every visit after that — and
 		// this is a catalogue somebody comes to in order to reach one of the
 		// things in it. The grid says what it is by being a grid of them.
+		b.WriteString(`<div class="section-actions"><a class="btn" href="/agents">Agents</a></div>`)
 		b.WriteString(serviceGrid(r))
 	} else {
 		b.WriteString(`<p class="lens-lead">What an agent can call. Your agents here reach all ` +

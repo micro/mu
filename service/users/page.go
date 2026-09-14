@@ -68,7 +68,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if len(list) == 0 {
 		b.WriteString(app.Note("Nobody here matches " + html.EscapeString(q) + "."))
-		app.Respond(w, r, app.Response{Title: "Users", Description: "Who is on this instance", HTML: b.String()})
+		app.Respond(w, r, app.Response{Title: "People", Description: "Who is on this instance", HTML: b.String()})
 		return
 	}
 
@@ -83,7 +83,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(rows(rest, me.ID))
 	}
 
-	app.Respond(w, r, app.Response{Title: "Users", Description: "Who is on this instance", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "People", Description: "Who is on this instance", HTML: b.String()})
 }
 
 // rows is the list itself.

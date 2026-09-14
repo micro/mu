@@ -26,7 +26,7 @@ func TestHomeStartsEmptyAndHistoryReopensExplicitly(t *testing.T) {
 		path string
 		want bool
 	}{
-		{"/", false},
+		{"/", true},
 		{"/?session=" + id, true},
 		{"/?new=1", false},
 		{"/agent/micro", true},

@@ -274,7 +274,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 	if reopened {
 		selAgent = reopenAgent
-	} else if r.URL.Path != "/" && (selAgent != "" || named || assistant) && prefill == "" && cfg.Attachment == "" && r.URL.Query().Get("new") != "1" {
+	} else if (selAgent != "" || named || assistant) && prefill == "" && cfg.Attachment == "" && r.URL.Query().Get("new") != "1" {
 		if last := latestThreadFor(accountID, selAgent, named); last != "" {
 			cfg.ContextID = last
 			cfg.InitialConvHTML = renderThreadTurns(accountID, last)
@@ -293,7 +293,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		cfg.Location = true
 	}
 
-	chip := `<div class="conversation-toolbar">`
+	chip := `<div class="conversation-toolbar"><strong>` + html.EscapeString(agentTitle(accountID, selAgent)) + `</strong><a class="btn btn-quiet push-right" href="/users">People</a>`
 	if activeRoot != "" {
 		chip += "<button id=\"conversation-delete\" class=\"btn btn-quiet\" type=\"button\" onclick=\"muSessionDelete(" + app.JSAttr(activeRoot) + ",event)\" aria-label=\"Delete conversation\">Delete</button>"
 	}
@@ -309,7 +309,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	content := `<div class="chat-layout"><div class="chat-main">` + chip + main +
 		`</div></div>` + chatPageJS + sessionDeleteJS(chatBase)
 
-	content += `<script>window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(chatBase) + `+'?session='+encodeURIComponent(e.detail));});</script>`
+	content += `<script>history.replaceState(null,'',` + app.JSString(chatBase) + `);window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(chatBase) + `);});</script>`
 	if r.URL.Path == "/" {
 		content += HandoffHTML(r)
 	}
@@ -323,9 +323,6 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		title = "Micro"
 	}
 	desc := "Talk to " + title + ", and the address it answers on"
-	if selAgent != "" {
-		content = strings.Replace(content, `<div class="chat-main">`, `<div class="chat-main"><div class="agent-bar"><strong>`+html.EscapeString(title)+`</strong></div>`, 1)
-	}
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: content})
 }
 

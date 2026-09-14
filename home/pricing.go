@@ -83,7 +83,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	start := `<div class="card"><h3>Starting</h3>` +
 		`<p>A new account gets ` + creditsInWords() + ` to find out whether this is ` +
 		`useful. This is a one-time welcome balance of ` + strconv.Itoa(account.WelcomeCredits) +
-		` credits, not a daily allowance. No card is required to start.</p>`
+		` credits. No card is required to start.</p>`
 	if account.TopUpConfigured() {
 		start += `<p>After that you top up: $5, $10, $25 or $50, or any amount you type. ` +
 			`A credit is a cent, and it is spent on what you use rather than on a plan — ` +
@@ -95,6 +95,9 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		// page must not offer a top-up form that is not there.
 		start += `<p>This instance takes payment over x402 rather than by card, so an ` +
 			`agent pays per request from its own wallet.</p>`
+	}
+	if n := quota.DailyCredits(); n > 0 {
+		start += `<p>Every account also gets ` + strconv.Itoa(n) + ` included credits each day, used before its paid balance. They reset at midnight UTC and do not roll over. SMS, WhatsApp and email have separate daily sending limits.</p>`
 	}
 	start += `</div>`
 	b.WriteString(start)

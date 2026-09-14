@@ -42,6 +42,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    errors.length=0;
    await page.goto('https://mu.test'+path);await page.waitForTimeout(50);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
+   if(['/about','/privacy','/pricing','/contact','/status'].includes(path))assert(await page.locator('.footer').isVisible(),'public footer missing');
    if(await page.locator('#mobile-nav').count()) {
     assert.deepEqual(await page.locator('#mobile-nav a').allTextContents(),['Home','Inbox','Work','Services']);
     assert.equal(await page.locator('#mobile-nav').isVisible(),width<=900);
@@ -75,7 +76,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await menu.locator('summary').click();
     assert(await items.isVisible(),'item actions did not open');
     const box=await items.boundingBox();assert(box.x>=0&&box.x+box.width<=width,'item actions overflow viewport');
-    const rows=await items.locator('a').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().y));
+    const rows=await items.locator('a').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return r.y+r.height/2}));
     assert(rows.length<2||rows[1]>rows[0],'item actions run together');
     await page.keyboard.press('Escape');assert(!await items.isVisible(),'escape did not close item actions');
    }
@@ -86,7 +87,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert.deepEqual(await links.locator('a').allTextContents(),['API credentials','Mail settings']);
     assert(await links.evaluate(e=>!!e.closest('.card')),'connection settings lack their shared card');
    }
-   if(path.startsWith('/agent?id='))assert.equal(await page.locator('.agent-bar strong').textContent(),'Research','focused agent identity missing');
+   if(path.startsWith('/agent?id='))assert.equal(await page.locator('.conversation-toolbar strong').textContent(),'Research','focused agent identity missing');
    if(path==='/services')assert.equal(await page.locator('.view-switch,#service-feed').count(),0,'services has retired view tabs');
    if(await page.locator('#reply-body').count()) {
     const editor=await page.locator('#reply-body').boundingBox(),form=await page.locator('#reply-body').evaluate(e=>e.closest('form').getBoundingClientRect().width);
@@ -104,7 +105,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(await page.locator('.conversation-toolbar').count()&&await page.locator('.conversation-toolbar').isVisible()) {
     const toolbar=await page.locator('.conversation-toolbar').boundingBox(),prompt=await page.locator('#mu-chat-form').boundingBox();
     assert(Math.abs(toolbar.x-prompt.x)<2&&Math.abs(toolbar.width-prompt.width)<2,'toolbar and prompt differ in alignment');
-    const controls=await page.locator('.conversation-toolbar > *').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().y));
+    const controls=await page.locator('.conversation-toolbar > *').evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>{const r=e.getBoundingClientRect();return r.y+r.height/2}));
     assert(Math.max(...controls)-Math.min(...controls)<2,'conversation toolbar wraps');
    }
    if(process.env.MU_LAYOUT_SHOTS&&[390,1440].includes(width)&&!collapsed){
@@ -130,6 +131,8 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert.equal(await page.locator('.mu-agent strong').first().textContent(),'Arabic');
     if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/formatted-answer.png'});
     const assertQuestionAnchor=async()=>{
+     assert(await page.locator('#mu-chat-conv').evaluate(c=>getComputedStyle(c).scrollbarWidth==='none'),'visible chat scrollbar');
+     assert(await page.locator('#mu-chat-conv').evaluate(c=>Math.abs(c.querySelector('.mu-user').getBoundingClientRect().left-c.getBoundingClientRect().left)<2),'question not left aligned');
      const offset=await page.evaluate(()=>{const c=document.getElementById('mu-chat-conv'),q=c.querySelector('.mu-user:last-of-type')||c.querySelectorAll('.mu-user')[c.querySelectorAll('.mu-user').length-1];return q.getBoundingClientRect().top-c.getBoundingClientRect().top;});
      assert(Math.abs(offset-16)<3,`question is not anchored at transcript top: ${offset}`);
     };
