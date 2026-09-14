@@ -66,7 +66,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`here — an aeroplane that has not taken off is not transmitting, so it cannot ` +
 			`be found, and that is not the same as a flight being cancelled.</p></div>`)
 	}
-	b.WriteString(pageCSS)
 	app.Respond(w, r, app.Response{Title: "Flights", Description: "Live aircraft positions from ADS-B", HTML: b.String()})
 }
 
@@ -222,18 +221,6 @@ func linkTo(a Aircraft) string {
 func notice(msg string) string {
 	return `<div class="card"><p class="text-sm text-muted">` + msg + `</p></div>`
 }
-
-const pageCSS = `<style>
-.fl-forms{display:flex;gap:24px;flex-wrap:wrap}
-.fl-form{flex:1 1 260px;min-width:0;max-width:100%}
-.fl-label{display:block;font-size:12px;color:#888;margin-bottom:6px}
-.fl-here{font-size:12px;color:#888;display:inline-block;margin-top:6px}
-.fl-table{width:100%;border-collapse:collapse;font-size:13px}
-.fl-table th{text-align:left;font-weight:normal;color:#888;padding:6px 8px;border-bottom:1px solid #eee}
-.fl-table td{padding:6px 8px;border-bottom:1px solid #f4f4f4}
-.fl-num{text-align:right;white-space:nowrap}
-.fl-line{font-size:14px}
-` + scopeCSS + `</style>`
 
 // CardHTML renders the flights card for the home screen.
 //

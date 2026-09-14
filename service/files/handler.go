@@ -242,44 +242,16 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(sshaccess.Card(r, sess.Account, "/files", "SFTP",
 		"Use the same files from a terminal, script, or any standard SFTP client.",
 		"sftp"))
-
-	b.WriteString(filesPageCSS)
 	app.Respond(w, r, app.Response{Title: "Files", Description: "Your stored files", HTML: b.String()})
 }
 
-// filesPageCSS styles the page, and on a narrow screen unmakes the table.
+// "" styles the page, and on a narrow screen unmakes the table.
 //
 // Phones are most of the traffic and a five-column table is not a phone
 // layout: it either scrolls sideways or crushes the file name, which is the one
 // column that matters. Below 600px the header row goes, each row becomes a
 // block — name, then size · visibility · date on one muted line, then the
 // actions — and the buttons grow to something a thumb can hit.
-const filesPageCSS = `<style>
-/* The card already provides the spacing data-table adds for a bare page. */
-.files-table{margin-bottom:0}
-.files-table .file-name{word-break:break-word}
-.file-actions{white-space:nowrap}
-.file-actions form{display:inline}
-
-@media only screen and (max-width:600px){
-
-  .files-table,.files-table tbody,.files-table tr,.files-table td{display:block;width:auto}
-  .files-table thead{display:none}
-  .files-table tr{padding:12px 0;border-bottom:1px solid var(--divider)}
-  .files-table tbody tr:last-child{border-bottom:none}
-  .files-table td{padding:0;border:none;text-align:left}
-  .files-table .file-name{font-weight:var(--font-weight-medium);margin-bottom:2px}
-  /* The three facts read as one sentence rather than three stacked lines. */
-  .files-table .file-meta{display:inline;color:var(--text-muted);font-size:13px}
-  .files-table .file-meta + .file-meta::before{content:" · "}
-  /* td.file-actions, not .file-actions: .data-table td:last-child aligns
-     right, and on a block row the buttons belong under the file. */
-  .files-table td.file-actions{margin-top:6px;text-align:left}
-  .files-table .file-actions .link-button{padding:6px 14px 6px 0;font-size:14px}
-  /* Striping reads as noise once the rows are blocks. */
-  .files-table tbody tr:nth-child(odd){background:none}
-}
-</style>`
 
 // quoteName makes a file name safe to put in a header, where a quote or a
 // newline would otherwise let a caller write headers of their own.

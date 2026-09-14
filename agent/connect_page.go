@@ -102,7 +102,7 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 		// "← Agents →" is pointing both ways at once.
 		app.TextLink("← Agents", back) + `</p>` +
 		`<div class="w-820">` + notice + body + `</div></div>` +
-		connectCSS + chatPageJS +
+		chatPageJS +
 		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: page})
 }
@@ -337,31 +337,6 @@ func connectPanel(a *Agent, base, csrf string) string {
 
 	return b.String()
 }
-
-const connectCSS = `<style>
-.detail-row{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:9px 0;
-  border-bottom:1px solid var(--border-color,#eee)}
-.conn-k{flex:0 0 110px;font-size:12px;color:var(--text-muted,#999)}
-.detail-value{flex:1 1 300px;min-width:0;font-size:13px;overflow-wrap:anywhere}
-code.detail-value{background:var(--hover-background,#f5f5f5);border-radius:4px;padding:2px 7px}
-.conn-sub{display:inline-block;margin-top:4px;font-size:12px;color:var(--text-muted,#888)}
-.conn-scope{flex:1 1 300px;font-size:13px;color:#0a7d33}
-.conn-scope.wide{color:#a86400}
-.conn-head{font-size:15px;margin:22px 0 8px}
-.conn-pre{background:var(--hover-background,#f5f5f5);border-radius:8px;padding:12px 14px;
-  font-size:12px;overflow-x:auto;margin:0}
-.conn-note{font-size:13px;color:var(--text-muted,#666);margin:10px 0 0}
-.conn-back{display:flex;align-items:center;gap:12px;font-size:13px;margin:0 0 14px}
-/* The rows are label-and-value pairs; below 600px the label column eats most of
-   a phone's width and the value — an endpoint, an address, the thing you came to
-   copy — wraps to a column two words wide. */
-@media(max-width:600px){
-  .detail-row{display:block;padding:10px 0}
-  .conn-k{display:block;flex:none;margin-bottom:3px}
-  .detail-value,.conn-scope{display:block;flex:none}
-  .conn-pre{font-size:11px}
-}
-</style>`
 
 // platformPanel is how to reach one of this instance's own agents.
 //

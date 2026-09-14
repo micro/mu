@@ -107,7 +107,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(verifier(r, who, html.EscapeString(auth.CSRFToken(r))))
 	}
 	b.WriteString(`</div>`)
-	b.WriteString(pageCSS + conversationsCSS)
+	b.WriteString("")
 
 	app.Respond(w, r, app.Response{Title: "SMS", Description: "Text somebody, and read what they text back", HTML: b.String()})
 }
@@ -436,22 +436,3 @@ func itoa(n int) string {
 	}
 	return string(d)
 }
-
-const pageCSS = `<style>
-.sms-to,.sms-in{padding:8px 10px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;
-  font-size:14px;font-family:inherit}
-.sms-text{padding:10px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;font-size:14px;
-  font-family:inherit;line-height:1.5;resize:vertical}
-.sms-verify{margin-top:14px}
-.sms-verify summary{font-size:13px;color:var(--text-muted,#666);cursor:pointer}
-.sms-who{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-control);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;margin:0 0 10px}
-.sms-msg{display:flex;flex-direction:column;gap:2px;max-width:min(80%,460px);padding:8px 12px;
-  border-radius:12px;margin:0 0 8px}
-.sms-out-msg{background:#111;color:#fff;margin-left:auto;border-bottom-right-radius:4px}
-.sms-in-msg{background:var(--surface-alt,#f2f2f2);border-bottom-left-radius:4px}
-.sms-body{font-size:14px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
-.sms-when{font-size:11px;opacity:.65}
-.sms-reply-box{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border-color,#d1d5db);
-  border-radius:8px;font-size:14px;font-family:inherit}
-.sms-closed{font-size:12px;color:var(--text-muted,#999);margin:8px 0 0}
-</style>`

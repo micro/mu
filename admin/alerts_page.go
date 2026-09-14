@@ -36,7 +36,6 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 	sb.WriteString(usage.CSS)
-	sb.WriteString(alertsCSS)
 
 	if r.Method == http.MethodPost {
 		if !auth.ValidCSRF(r) {
@@ -145,16 +144,3 @@ func busiestAccount() int {
 	}
 	return most
 }
-
-const alertsCSS = `<style>
-.alerts-table { width: 100%; border-collapse: collapse; font-size: 14px }
-.alerts-table th, .alerts-table td {
-  text-align: left;
-  padding: 9px 12px 9px 0;
-  border-bottom: var(--border-width, 1px) solid var(--card-border, #f0f0f0);
-}
-.alerts-table th { font-weight: 500; color: var(--text-muted, #888); font-size: 12px }
-.alerts-table tr:last-child td { border-bottom: 0 }
-.alerts-now { font-variant-numeric: tabular-nums; font-weight: 500 }
-.alerts-test { margin-top: 16px }
-</style>`

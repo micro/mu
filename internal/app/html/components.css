@@ -1,0 +1,664 @@
+
+/* admin/alerts_page.go */
+
+.alerts-table { width: 100%; border-collapse: collapse; font-size: 14px }
+.alerts-table th, .alerts-table td {
+  text-align: left;
+  padding: 9px 12px 9px 0;
+  border-bottom: var(--border-width, 1px) solid var(--card-border, #f0f0f0);
+}
+.alerts-table th { font-weight: 500; color: var(--text-muted, #888); font-size: 12px }
+.alerts-table tr:last-child td { border-bottom: 0 }
+.alerts-now { font-variant-numeric: tabular-nums; font-weight: 500 }
+.alerts-test { margin-top: 16px }
+
+
+/* admin/api_usage.go */
+
+.ai-usage-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.ai-usage-table th, .ai-usage-table td { padding:6px 8px; white-space:nowrap; }
+.ai-usage-table td:first-child { word-break:break-all; white-space:normal; }
+@media (max-width: 600px) {
+  .ai-usage-table { font-size:0.72rem; }
+  .ai-usage-table th, .ai-usage-table td { padding:4px 3px; }
+}
+
+
+/* admin/backup.go */
+
+.backup-ok { border-left: 3px solid #1f6f5c; }
+.backup-bad { border-left: 3px solid #a8321b; }
+.backup-bad code { font-size: 12px; word-break: break-all; }
+
+
+/* agent/agents.go */
+
+.agents-panel{border:1px solid var(--card-border,#e8e8e8);border-radius:8px;margin-bottom:12px;background:var(--card-background,#fff);overflow:hidden}
+.agents-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;font-weight: 550;border-bottom:1px solid var(--card-border,#eee)}
+.agents-new{color:var(--btn-primary,#000);text-decoration:none;font-size:13px;font-weight: 550}
+.agents-list{padding:6px}
+.agents-list>div{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#333}
+.agents-list>div:hover{background:#f4f4f5}
+.agents-list>div.on{background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-weight: 550}
+.agents-def{color:#aaa;font-size:11px;font-weight:400}
+.agents-actions{display:flex;gap:2px;opacity:.55}
+.agents-actions a,.agents-actions button{border:0;background:none;cursor:pointer;font-size:12px;padding:0 2px;color:inherit;text-decoration:none}
+
+
+/* agent/builtins_page.go */
+
+.bi-list{display:flex;flex-direction:column;margin:12px 0 0}
+.bi-row{display:grid;grid-template-columns:minmax(90px,auto) minmax(0,1fr);
+  gap:2px 14px;padding:10px 0;border-top:1px solid #f0f0f0}
+.bi-row:first-child{border-top:0}
+.bi-name{font-weight: 600;font-size:14px;color:#111;text-decoration:none}
+.bi-name:hover{text-decoration:underline}
+.bi-what{font-size:14px;color:#333}
+.bi-addr{grid-column:2;font-size:13px;color:var(--link-color);text-decoration:none;word-break:break-all}
+.bi-addr:hover{text-decoration:underline}
+.bi-eg{grid-column:2;font-size:13px;color:#999;font-style:italic}
+@media (max-width:520px){
+  .bi-row{grid-template-columns:1fr}
+  .bi-what,.bi-addr,.bi-eg{grid-column:1}
+}
+
+
+/* agent/connect_page.go */
+
+.detail-row{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:9px 0;
+  border-bottom:1px solid var(--border-color,#eee)}
+.conn-k{flex:0 0 110px;font-size:12px;color:var(--text-muted,#999)}
+.detail-value{flex:1 1 300px;min-width:0;font-size:13px;overflow-wrap:anywhere}
+code.detail-value{background:var(--hover-background,#f5f5f5);border-radius:4px;padding:2px 7px}
+.conn-sub{display:inline-block;margin-top:4px;font-size:12px;color:var(--text-muted,#888)}
+.conn-scope{flex:1 1 300px;font-size:13px;color:#0a7d33}
+.conn-scope.wide{color:#a86400}
+.conn-head{font-size:15px;margin:22px 0 8px}
+.conn-pre{background:var(--hover-background,#f5f5f5);border-radius:8px;padding:12px 14px;
+  font-size:12px;overflow-x:auto;margin:0}
+.conn-note{font-size:13px;color:var(--text-muted,#666);margin:10px 0 0}
+.conn-back{display:flex;align-items:center;gap:12px;font-size:13px;margin:0 0 14px}
+/* The rows are label-and-value pairs; below 600px the label column eats most of
+   a phone's width and the value — an endpoint, an address, the thing you came to
+   copy — wraps to a column two words wide. */
+@media(max-width:600px){
+  .detail-row{display:block;padding:10px 0}
+  .conn-k{display:block;flex:none;margin-bottom:3px}
+  .detail-value,.conn-scope{display:block;flex:none}
+  .conn-pre{font-size:11px}
+}
+
+
+/* agent/roster_page.go */
+
+.lens-lead{color:#666;font-size:14px;margin:0 0 10px;max-width:640px}
+/* The way to the catalogue, on its own line. It trailed the paragraph above
+   and read as a footnote to the last clause, which is the wrong weight for the
+   one place /tools is reachable from since it left the sidebar. */
+.agent-note{color:#999;font-size:12px;margin:0 0 12px;max-width:640px}
+/* The sign of life on a row. Quieter than the description above it, because
+   what an agent is for is why you would pick it and when it last spoke is
+   whether it is alive — the second is a check, not a heading. */
+.agent-seen{color:var(--text-muted,#707070);font-size:12px;margin:8px 0 0}
+/* The name and how long ago it last spoke, on one line with the time out to
+   the right — the same pair in the same places as a row in the inbox. */
+.agent-head{display:flex;align-items:baseline;gap:10px}
+.agent-when{margin-left:auto;flex:none;color:#aaa;font-size:11px;white-space:nowrap}
+.agent-row .agent-seen{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Top-aligned, not centred. A row is three or four lines tall now, and
+   centring left Remove floating in the middle of the card beside nothing. */
+.agent-row{display:flex;align-items:flex-start;gap:16px;min-width:0;border:1px solid var(--divider,#e8e8e8);border-radius:4px;padding:16px 16px 8px}
+/* Only the links are interactive; the card itself does not lift on hover. */
+/* One size, one colour, one weight for every link on a row.
+   They were three: 12px grey in the link strip, 13px green or amber for the
+   scope, 13px for the buttons beside them, and the name at 14px semibold. A
+   row is one thing to read, so the parts that are the same rank look the
+   same. */
+.agent-links{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:auto;padding-top:8px;border-top:1px solid var(--divider,#e8e8e8)}
+.agent-card-content{display:flex;flex-direction:column;gap:8px;width:100%;min-width:0;align-self:stretch}
+.agent-open-actions,.agent-manage-actions{display:flex;align-items:center;gap:16px}
+.agent-open-actions a{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px}
+.agent-recent{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;min-width:0}
+.agent-recent .agent-seen{margin:0;flex:1}
+.agent-row .agent-for,.agent-row .activity-status{margin-top:0}
+.agent-links a{font-size:13px;font-weight:400;color:var(--text-secondary,#555);text-decoration:underline !important;text-underline-offset:3px}
+.agent-links a:hover{color:var(--text-primary,#111);text-decoration:underline}
+/* The form holding Remove is one item in the strip, not a block that breaks it. */
+.agent-links form{display:inline;margin:0}
+/* What it is for. One line, and it truncates rather than wrapping — a list you
+   are scanning stops being a list the moment the rows are different heights. */
+.agent-row .activity-status{display:table;font-size:12px;font-weight:400;line-height:1.5;padding:2px 8px;margin-top:0;align-self:flex-start;border-radius:4px;background:var(--hover-background,#f5f5f5);color:var(--text-secondary,#555)}
+.agent-for{font-size:13px;color:var(--text-secondary,#555);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-meta{font-size:13px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
+.agent-meta code{font-size:12px}
+.agent-mail{font-size:13px;margin-top:3px}
+.agent-mail code{font-size:12px;color:#666;background:#f5f5f5;border-radius:3px;padding:1px 5px}
+/* The agent's name is the way into it, and it looks like body text rather
+   than one more small grey control. */
+.agent-name{display:inline-block;font-weight:500;font-size:14px;color:var(--text-primary,#111);text-decoration:none;min-width:0;overflow-wrap:anywhere}
+/* No underline: the row behind it is the affordance now, and two of them at
+   once is one too many.
+   Stated on :hover rather than left to the rule above, which is the whole
+   point. mu.css has a global a:hover rule setting underline, and that
+   selector is (0,1,1) against .agent-name's (0,1,0) — so deleting this line
+   does not remove the underline, it hands it to the global rule. It has to
+   outrank it, at (0,2,0). */
+.agent-name:hover{text-decoration:none}
+/* Two buttons that did the same thing to the eye and different things to the
+   account. Both were #bbb — barely visible — and both took the same red hover,
+   which said "destructive" about issuing a token. Now issuing reads as an
+   ordinary action and only Remove goes red, which is the one that is. */
+.agent-act{background:none;border:0;color:#666;font-size:13px;cursor:pointer;padding:0;font-family:inherit}
+.agent-act:hover{color:#111;text-decoration:underline}
+.agent-remove{background:none;border:0;color:#999;font-size:13px;cursor:pointer;padding:0;font-family:inherit}
+.agent-remove:hover{color:#b00;text-decoration:underline}
+.agent-by{font-size:12px;color:#999}
+.agent-mine{font-size:12px;color:#999}
+.agent-publish{display:flex;align-items:center;gap:8px;margin:6px 0 0}
+.agent-pub{display:flex;align-items:center;gap:6px;font-size:12px;color:#666;cursor:pointer}
+.agent-pub input{width:auto;flex:none;margin:0}
+.agent-secret{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:0;word-break:break-all}
+/* On a phone a row is a card, not a line.
+   It was a flex row with the name and its scope squeezed into whatever the
+   Remove button and the endpoint left over, so an agent's own address wrapped
+   to three lines and its name to two. Stacked, the controls go to the bottom
+   where they are reachable with a thumb, and the endpoint scrolls inside its own
+   line rather than pushing the page sideways. */
+@media(max-width:600px){
+  /* Preserve the same outside inset at phone width. */
+  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:16px 16px 8px}
+  .agent-name{font-size:15px}
+    .agent-meta{white-space:normal;overflow-wrap:anywhere}
+  /* Links and buttons share a touch target and baseline. */
+  .agent-links{gap:8px 16px}
+  .agent-links a,.agent-act,.agent-remove{
+    display:inline-flex;align-items:center;min-height:32px;font-size:14px;padding:0}
+}
+.agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
+.agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
+
+
+/* home/contact.go */
+
+.clist{display:flex;flex-direction:column;gap:2px;margin:14px 0 0}
+.crow{display:grid;grid-template-columns:90px minmax(0,1fr);gap:2px 14px;
+  align-items:baseline;padding:10px 0;border-top:1px solid #f0f0f0}
+.crow:first-child{border-top:0}
+.clabel{font-weight: 600;font-size:14px}
+.caddr{font-size:15px;color:#111;text-decoration:none;word-break:break-all}
+a.caddr{color:var(--link-color)}
+a.caddr:hover{text-decoration:underline}
+.cnote{grid-column:2;font-size:13px;color:#888}
+.cnext{margin:16px 0 0;font-size:14px;color:#666}
+@media (max-width:520px){
+  .crow{grid-template-columns:1fr}
+  .cnote,.caddr{grid-column:1}
+}
+
+
+/* home/usage.go */
+
+.usage-when{color:var(--text-muted);font-size:12px;white-space:nowrap;padding-left:10px!important}
+
+
+/* internal/app/chat.go */
+
+/* Left, not centred. The rest of the page it sits on starts at the
+   left margin, and a box centred inside a left-aligned column reads as
+   misaligned rather than as centred. That includes the front page, which used
+   to be the exception and is not any more — everything on it hangs off one
+   edge. Nothing passes Centred today; it is kept because a page with a box and
+   nothing else is a shape somebody will want again. */
+#mu-search{max-width:760px;margin:0;width:100%}
+#mu-search.mu-search-mid{max-width:560px;margin:0 auto}
+#mu-search-form{display:flex;align-items:center;gap:0;border:1px solid var(--card-border,#ddd);
+  border-radius:6px;background:var(--card-background,#fff);padding:4px 4px 4px 12px;transition:border-color .2s}
+#mu-search-form:focus-within{border-color:#999}
+#mu-search-input{flex:1;border:0;outline:0;font:inherit;font-size:16px;padding:8px 0;background:transparent;
+  color:var(--text-primary,#111);min-width:0}
+#mu-search-form button{flex:none;border:0;border-radius:4px;background:#f0f1f2;color:var(--text-primary,#171717);
+  font:inherit;width:32px;height:32px;cursor:pointer}
+#mu-search-form button:hover{background:#e7e9eb}
+.mu-search-why{max-width:760px;margin:8px 0 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
+
+
+/* internal/app/paginate.go */
+
+.pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0 8px;padding-top:16px;border-top:1px solid #eee}
+.pager-link{font-size:14px;color:#555;text-decoration:none}
+.pager-link:hover{color:#000}
+.pager-at{font-size:12px;color:#aaa;margin:0 auto}
+
+
+/* internal/app/reading.go */
+
+.reading-row{padding:18px 0;border-bottom:1px solid var(--border,#eee)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
+
+
+/* internal/api/tools_page.go */
+
+.lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
+.service-tile-head{display:flex;align-items:center;gap:8px}
+.service-tile-head img{width:18px;height:18px}
+/* The wrapper exists so the pin can sit on the tile without sitting inside the
+   link — a button inside an anchor cannot be pressed without also following it.
+   The tile still fills the cell, so the whole card remains the hit target for
+   opening the service. */
+.service-tile-wrap{position:relative;display:flex}
+.service-tile-wrap>.tool-tile{flex:1;gap:var(--spacing-sm,8px);padding:16px 34px 16px 16px}
+/* The pin sits on the tile here; .pin-btn itself is in mu.css, because /apps
+   pins an app to home with the same control and a shared control cannot live
+   in one page's style block. */
+.pin-form{position:absolute;top:6px;right:6px;margin:0}
+
+.tool-group{margin:0 0 26px}
+.tool-group-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:0 0 10px}
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.tool-tile{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid #e5e5e5;
+  border-radius:8px;background:#fff;text-decoration:none;color:inherit}
+/* No :hover here. A tile is a card and .card-hover in mu.css is what a card
+   does on hover — this had a grey border of its own, which was a third answer
+   beside the row on /agents and the cards on home. */
+.tool-tile-name{font-family:inherit;font-size:13px;font-weight: 550;color:#111}
+.tool-tile-desc{font-weight:var(--font-weight-normal,400);font-size:13px;color:#666;line-height:1.4}
+.tool-tile-price{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums;margin-top:2px}
+.tool-tile-price .free{color:#9ca3af}
+.connect-note{font-size:13px;color:#888;margin-left:8px}
+.connect-cfg{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:12px 0}
+.connect-way{border-top:1px solid #eee;padding-top:12px;margin-top:14px}
+.connect-way h4{margin:0 0 6px;font-size:14px}
+.scope{margin-top:12px;border-top:1px solid #eee;padding-top:10px}
+.scope summary{cursor:pointer;font-size:13px;font-weight: 550;color:#555}
+.scope-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 12px;margin:10px 0}
+.scope-item{font-size:13px;color:#444;display:flex;align-items:center;gap:6px}
+@media only screen and (max-width:600px){.tool-grid{grid-template-columns:1fr}}
+
+
+/* service/archive/page.go */
+
+.ar{max-width:var(--page-width)}
+.ar-empty{font-size:14px;color:#888;line-height:1.6}
+.ar-row{padding:12px 0;border-bottom:1px solid #f4f4f4}
+/* A kind and a time are two facts, and this had nothing between them — the pill
+   and the text were adjacent nodes in a block, so the line read "news2 hours
+   ago". A gap on the row rather than a margin on .pill: that primitive is
+   shared with the inbox and the agent, it already declares flex:none for
+   exactly this, and every other place it is used sits in a flex row with a gap.
+   This was the one that did not. */
+.ar-meta{display:flex;align-items:center;gap:7px;font-size:11px;color:#bbb;margin-bottom:3px}
+.ar-title{font-size:15px;color:#111;font-weight:500;text-decoration:none;display:block}
+a.ar-title:hover{text-decoration:underline}
+.ar-body{font-size:13px;color:#888;line-height:1.55;margin-top:3px}
+
+
+/* service/bookmarks/page.go */
+.bookmarks-page{max-width:var(--page-width)}.bookmarks-page textarea{display:block;width:100%;box-sizing:border-box;margin:8px 0}
+
+/* service/chat/chat.go */
+
+/* Keep the scroll viewport connected to the page's bounded flex column. */
+body:has(#messages):has(.room-layout) #content { height:calc(var(--visible-height,100dvh) - 56px); display:flex; flex-direction:column; padding-bottom:16px; }
+.room-layout { display:flex; flex:1 1 0; min-height:0; min-width:0; }
+.room-toolbar { flex:0 0 auto; padding:8px 12px; border:1px solid var(--border-color,#e5e5e5); border-bottom:0; border-radius:4px 4px 0 0; background:var(--card-background,#fff); font-size:13px; }
+.room-roster { display:flex; align-items:center; gap:12px; min-width:0; }
+.room-roster > span { color:var(--text-muted,#707070); }
+.room-roster #chat-users { display:flex; flex:1; gap:10px; min-width:0; overflow-x:auto; white-space:nowrap; margin:0; padding:0; border:0; }
+.room-roster #chat-users a { flex-shrink:0; color:inherit; font-weight:400; }
+.room-roster > a { flex-shrink:0; font-weight:400; }
+.room-toolbar .room-about { margin:8px 0 0; padding:8px 0 0; border-bottom:0; border-top:1px solid var(--border-color,#eee); max-height:25dvh; overflow-y:auto; }
+.room-toolbar .room-about > summary { text-transform:none; letter-spacing:normal; font-size:13px; }
+.room-main { display:flex; flex:1; flex-direction:column; min-width:0; min-height:0; }
+.room-main #messages { flex:1; overflow:auto; min-height:0; max-height:none; overflow-wrap:anywhere; }
+.room-main #messages img, .room-main #messages video { max-width:100%; height:auto; }
+.room-main #messages pre { max-width:100%; overflow-x:auto; }
+.room-main #chat-form { display:flex; gap:8px; flex:0 0 auto; min-width:0; }
+.room-main #prompt { width:0; min-width:0; max-width:none; flex:1 1 0; }
+
+
+
+/* service/contacts/handler.go */
+
+.contacts-table{margin-bottom:0}
+.contacts-table .contact-name{font-weight:var(--font-weight-medium)}
+.contact-actions{white-space:nowrap}
+.contact-actions form{display:inline}
+
+@media only screen and (max-width:600px){
+  .contacts-table,.contacts-table tbody,.contacts-table tr,.contacts-table td{display:block;width:auto}
+  .contacts-table thead{display:none}
+  .contacts-table tr{padding:12px 0;border-bottom:1px solid var(--divider)}
+  .contacts-table tbody tr:last-child{border-bottom:none}
+  .contacts-table td{padding:0;border:none;text-align:left}
+  .contacts-table .contact-name{margin-bottom:2px}
+  .contacts-table .contact-meta{display:inline;color:var(--text-muted);font-size:13px}
+  .contacts-table .contact-meta + .contact-meta::before{content:" · "}
+  .contacts-table td.contact-actions{margin-top:6px;text-align:left}
+  .contacts-table .contact-actions .link-button{padding:6px 14px 6px 0;font-size:14px}
+  .contacts-table tbody tr:nth-child(odd){background:none}
+}
+
+
+/* service/docs/handler.go */
+
+.doc-toolbar{display:flex;flex-wrap:wrap;gap:6px}
+.doc-toolbar button{flex:0 0 auto;margin:0}
+.doc-view{overflow-wrap:anywhere}
+.doc-view h2{margin:0 0 12px}
+.doc-view img{max-width:100%}
+.doc-view pre{overflow-x:auto}
+.doc-view table{display:block;max-width:100%;overflow-x:auto}
+.doc-meta{font-size:12px;color:#888;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 2px 0}
+.doc-meta form{display:inline;margin:0}
+.doc-delete{background:none;border:none;color:#c00;font-size:12px;padding:0;cursor:pointer}
+.doc-public{min-width:0;font-size:13px;color:#888;display:flex;align-items:center;gap:6px}
+
+
+/* service/files/handler.go */
+
+/* The card already provides the spacing data-table adds for a bare page. */
+.files-table{margin-bottom:0}
+.files-table .file-name{word-break:break-word}
+.file-actions{white-space:nowrap}
+.file-actions form{display:inline}
+
+@media only screen and (max-width:600px){
+
+  .files-table,.files-table tbody,.files-table tr,.files-table td{display:block;width:auto}
+  .files-table thead{display:none}
+  .files-table tr{padding:12px 0;border-bottom:1px solid var(--divider)}
+  .files-table tbody tr:last-child{border-bottom:none}
+  .files-table td{padding:0;border:none;text-align:left}
+  .files-table .file-name{font-weight:var(--font-weight-medium);margin-bottom:2px}
+  /* The three facts read as one sentence rather than three stacked lines. */
+  .files-table .file-meta{display:inline;color:var(--text-muted);font-size:13px}
+  .files-table .file-meta + .file-meta::before{content:" · "}
+  /* td.file-actions, not .file-actions: .data-table td:last-child aligns
+     right, and on a block row the buttons belong under the file. */
+  .files-table td.file-actions{margin-top:6px;text-align:left}
+  .files-table .file-actions .link-button{padding:6px 14px 6px 0;font-size:14px}
+  /* Striping reads as noise once the rows are blocks. */
+  .files-table tbody tr:nth-child(odd){background:none}
+}
+
+
+/* service/food/page.go */
+
+.food-presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.food-result{white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;background:var(--card-background);border:1px solid var(--border-color);border-radius:8px}
+
+
+/* service/hazards/page.go */
+
+.hz-lede{color:var(--text-secondary,#666);margin:0 0 24px;max-width:60ch}
+.hz-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  margin:28px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--divider,#f0f0f0)}
+.hz-head h2{margin:0;font-size:17px}
+.hz-note{font-size:12px;color:var(--text-muted,#999)}
+.hz-list{list-style:none;margin:0;padding:0}
+.hz-row{display:flex;align-items:baseline;gap:10px;padding:7px 0;
+  border-bottom:1px solid var(--divider,#f4f4f4)}
+.hz-row:last-child{border-bottom:0}
+.hz-what{flex:1;min-width:0}
+.hz-when{color:var(--text-muted,#999);font-size:12px;white-space:nowrap}
+.hz-mag{font-variant-numeric:tabular-nums;font-weight: 550;min-width:48px}
+.hz-level{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+  font-weight: 550;min-width:76px}
+.hz-ok{color:var(--text-secondary,#666)}
+.hz-warn{color:#a86400}
+.hz-sev{color:#b3261e}
+.hz-tag{font-size:11px;margin-left:8px;padding:1px 6px;border-radius:3px;
+  background:#fdecea;color:#b3261e}
+.hz-quiet{color:var(--text-muted,#999);margin:8px 0 0}
+.hz-ref{margin-top:32px;padding-top:14px;
+  border-top:1px solid var(--divider,#f0f0f0);font-size:13px}
+@media (max-width:600px){
+  .hz-row{flex-wrap:wrap}
+  .hz-when{width:100%;margin-left:48px}
+}
+
+
+/* service/mail/mail.go */
+
+.mail-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+/* :visited on both, or the global a:visited rule takes them. It is
+   a:visited:not(.btn) — 0-2-1 — which outranks a plain .mail-tag.on at 0-2-0,
+   so the selected tag went black on black the moment it had been clicked,
+   which for the selected tag is always. Same reason the inbox's Reply pill had
+   to be rebuilt as an a.btn. */
+.mail-tag,.mail-tag:visited{border:1px solid #e5e5e5;border-radius:6px;padding:4px 11px;
+  font-size:12px;color:#555;text-decoration:none;background:#fff}
+.mail-tag:hover{border-color:#bbb}
+.mail-tag.on,.mail-tag.on:visited{background:var(--nav-hover);border-color:var(--border-color);color:var(--text-primary)}
+.mail-tag span{color:#999;font-variant-numeric:tabular-nums}
+.mail-tag.on span{color:#ccc}
+
+
+/* service/mail/mail.go */
+
+.mail-addr{border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;margin-bottom:12px;background:#fafafa}
+.mail-addr-line{font-size:14px;margin-bottom:6px}
+.mail-addr code{background:#fff;border:1px solid #e5e5e5;border-radius:4px;padding:1px 6px;font-size:13px}
+.mail-addr p{margin:6px 0 0;font-size:13px;color:#666;line-height:1.5}
+
+
+/* service/news/browse.go */
+
+.news-reading-row{display:flex;gap:20px;align-items:flex-start}
+.news-reading-content{flex:1;min-width:0}
+.news-reading-image{flex:0 0 200px;display:block;aspect-ratio:4/3;background:var(--hover-background,#eee);border-radius:var(--border-radius,6px)}
+.news-reading-image img[hidden]{display:none}
+.news-reading-image img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--border-radius,6px)}
+.news-reading-row .category-header{margin-bottom:6px}
+.news-topic{display:inline-block;padding:3px 8px;border:1px solid var(--card-border,#ddd);border-radius:var(--border-radius,6px);background:var(--card-background,#fff);color:var(--text-secondary,#555);font-size:12px;font-weight: 550;text-decoration:none}
+@media(max-width:600px){.news-reading-row{flex-direction:column;gap:12px}.news-reading-content{width:100%}.news-reading-image{flex-basis:auto;width:100%;aspect-ratio:16/9}.news-reading-image img{aspect-ratio:16/9}}
+
+
+/* service/notes/page.go */
+.note-delete{margin:12px 0 0}
+
+/* service/notify/page.go */
+
+.notify-devices,.notify-list{list-style:none;margin:0;padding:0}
+.notify-devices li{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;padding:8px 0;
+  border-bottom:1px solid var(--card-border,#eee)}
+.notify-devices li:last-child{border-bottom:0}
+.notify-device{font-size:14px;color:var(--text-primary,#111)}
+.notify-item{padding:10px 0;border-bottom:1px solid var(--card-border,#eee)}
+.notify-item:last-child{border-bottom:0}
+.notify-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.notify-title{font-size:14px;font-weight: 550;color:var(--text-primary,#111)}
+.notify-from{font-size:12px;color:#888}
+/* Out to the right, the way the time sits on a row in the inbox and on /agents. */
+.notify-when{margin-left:auto;flex:none;font-size:12px;color:#aaa;white-space:nowrap}
+.notify-body{font-size:13px;color:#666;line-height:1.5;margin-top:2px}
+.notify-ok{font-size:12px;color:#888}
+.notify-bad{font-size:12px;color:var(--danger,#c33);margin-top:2px}
+/* What the device said. Green when it showed, muted while nothing has come
+   back — the waiting state is not a failure, it is an unanswered question. */
+.notify-got{font-size:12px;color:var(--btn-success,#1a7f37);margin-top:2px}
+.notify-wait{font-size:12px;color:var(--text-muted,#888);margin-top:2px}
+@media only screen and (max-width:600px){.notify-when{margin-left:0}}
+
+
+/* service/recall/page.go */
+
+.rc-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.rc-chip{border:1px solid #eee;border-radius:6px;padding:3px 11px;font-size:12px;color:#666;text-decoration:none}
+.rc-chip:hover{border-color:#ccc}
+.rc-chip.on{background:var(--nav-hover);border-color:var(--border-color);color:var(--text-primary)}
+.rc-count{font-size:13px;color:#888;margin:0 0 10px}
+.rc-hits{display:flex;flex-direction:column;gap:8px}
+.rc-hit{display:block;border:1px solid #eee;border-radius:8px;padding:10px 14px;text-decoration:none;color:inherit}
+.rc-hit:hover{border-color:#ddd;background:#fcfcfc}
+.rc-meta{font-size:12px;color:#999}
+.rc-where{border:1px solid #eee;border-radius:6px;padding:1px 8px;font-size:11px}
+.rc-text{font-size:14px;line-height:1.55;margin:5px 0 4px}
+.rc-text mark{background:#fdf3c3;color:inherit;padding:0 1px}
+.rc-subject{font-size:12px;color:#aaa}
+.rc-empty{color:#888;font-size:14px}
+
+
+/* service/routes/page.go */
+
+.rt-head{margin:0 0 6px;font-size:15px}
+.rt-summary{margin:0 0 12px;font-size:14px;color:var(--text-muted,#666)}
+.rt-traffic{color:#b45309}
+.rt-map{display:block;width:100%;height:auto;margin:0 0 14px;color:#111}
+.rt-steps{margin:0;padding-left:20px;font-size:14px;line-height:1.7}
+.rt-steps li{margin:0 0 2px}
+.rt-dist{color:var(--text-muted,#999);font-size:12px}
+@media (prefers-color-scheme:dark){.rt-map{color:#eee}}
+
+
+/* service/sms/conversations.go */
+
+.sms-conversations{display:flex;flex-direction:column;min-width:0}
+.sms-conversation{font-weight:400;display:flex;flex-direction:column;gap:var(--space-control);padding:var(--space-field) 0;border-bottom:1px solid var(--border-color,#ddd);color:inherit;text-decoration:none;min-width:0}
+.sms-conversation:hover{background:var(--hover-background,#f5f5f5);text-decoration:none}
+.sms-conversation-head{display:flex;align-items:center;gap:var(--space-control);flex-wrap:wrap;min-width:0}
+.sms-conversation-head .sms-name{overflow-wrap:anywhere}
+.sms-preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary,#555)}
+
+
+/* service/sms/page.go */
+
+.sms-to,.sms-in{padding:8px 10px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;
+  font-size:14px;font-family:inherit}
+.sms-text{padding:10px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;font-size:14px;
+  font-family:inherit;line-height:1.5;resize:vertical}
+.sms-verify{margin-top:14px}
+.sms-verify summary{font-size:13px;color:var(--text-muted,#666);cursor:pointer}
+.sms-who{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-control);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;margin:0 0 10px}
+.sms-msg{display:flex;flex-direction:column;gap:2px;max-width:min(80%,460px);padding:8px 12px;
+  border-radius:12px;margin:0 0 8px}
+.sms-out-msg{background:#111;color:#fff;margin-left:auto;border-bottom-right-radius:4px}
+.sms-in-msg{background:var(--surface-alt,#f2f2f2);border-bottom-left-radius:4px}
+.sms-body{font-size:14px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.sms-when{font-size:11px;opacity:.65}
+.sms-reply-box{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border-color,#d1d5db);
+  border-radius:8px;font-size:14px;font-family:inherit}
+.sms-closed{font-size:12px;color:var(--text-muted,#999);margin:8px 0 0}
+
+
+/* service/tasks/handler.go */
+
+.task{display:flex;flex-direction:column;gap:var(--space-control)}
+.task-title{font-weight:var(--font-weight-normal,400)}
+.task-done .task-title{text-decoration:line-through;color:var(--text-muted)}
+.task-meta{font-size:12px;color:var(--text-muted);margin:0}
+.task-context{margin:0}.task-context summary{cursor:pointer;color:var(--text-muted)}
+.task-detail{overflow-wrap:anywhere;font-size:14px;margin-top:6px;color:var(--text-secondary)}
+.task-result{overflow-wrap:anywhere;font-size:14px;margin-top:8px;padding:2px 12px;background:var(--hover-background);border-radius:6px}
+.task-result > :first-child{margin-top:10px}
+.task-result > :last-child{margin-bottom:10px}
+.task-result pre{overflow-x:auto}
+.task-steps{margin:0;font-size:13px}
+.task-steps summary{cursor:pointer;color:var(--text-muted)}
+.task-steps ol{margin:6px 0 0;padding-left:20px}
+.task-step{margin:2px 0;font-variant-numeric:tabular-nums}
+.task-step.failed{color:#b3261e;text-decoration:line-through}
+.task-step-detail{color:var(--text-secondary)}
+.task-step-took{color:var(--text-muted);font-size:12px}
+.task-running{color:#a86400;font-weight: 550}
+.task-running::after{content:"";animation:taskdots 1.2s steps(4,end) infinite}
+@keyframes taskdots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+@media only screen and (max-width:600px){
+}
+
+
+/* service/text/page.go */
+
+.tlede{color:#666;font-size:15px;margin:0}
+.tjobs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.tjob{display:flex;align-items:center;gap:6px;border:1px solid var(--border-color,#e3e3e3);
+  border-radius:var(--border-radius,8px);padding:8px 12px;cursor:pointer;font-size:15px}
+.tjob:has(input:checked){border-color:#111;font-weight: 550}
+.tnote{color:#666;font-size:14px;margin:0 0 10px}
+.tcap{color:#888;font-size:13px;margin:10px 0 0;text-align:center}
+.tresult h3{margin-top:0}
+.tout{white-space:pre-wrap;word-break:break-word;background:var(--hover-background,#f6f6f6);
+  padding:12px;border-radius:var(--border-radius,8px);font-size:14px;margin:0}
+.tcall{color:#666;font-size:13px;margin:10px 0 0;word-break:break-all}
+
+
+/* service/transit/page.go */
+
+.xmuted{color:#888;font-size:14px;margin:0}
+.xgood{color:#0f7a52;font-size:15px;margin:0;font-weight: 550}
+.xline{padding:8px 0;border-bottom:1px solid var(--border-color,#eee);font-size:15px}
+.xline:last-of-type{border-bottom:0}
+.xwhy{color:#666;font-size:13px;margin-top:4px}
+.xstop{padding:8px 0;border-bottom:1px solid var(--border-color,#eee);font-size:15px;cursor:pointer}
+.xstop:last-child{border-bottom:0}
+.xaway{color:#888;font-size:13px}
+.xarr{margin:6px 0 0 12px;font-size:14px;color:#444}
+.xmore{margin:12px 0 0;font-size:14px}
+
+
+/* service/video/browse.go */
+.video-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.video-grid .reading-row{padding:0 0 16px;min-width:0}.video-grid img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px}.video-grid h3{font-size:16px}.video-grid a{text-decoration:none}@media(max-width:1000px){.video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.video-grid{grid-template-columns:1fr}}
+
+/* service/weather/page.go */
+
+.wx-page{max-width:var(--page-width)}
+.wx-find{display:flex;gap:8px;margin:0 0 var(--spacing-lg,24px);flex-wrap:wrap}
+.wx-find .field{flex:1;min-width:0}
+.wx-note{color:var(--text-secondary,#555);line-height:1.6;margin:0}
+.wx-also{margin:var(--spacing-lg,24px) 0 0;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.wx-also-head{font-size:12px;color:var(--text-muted,#999);text-transform:uppercase;letter-spacing:.04em}
+.wx-place{margin:0 0 4px;font-size:18px}
+.wx-now-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 var(--spacing-md,16px)}
+.wx-big{font-size:44px;line-height:1;font-weight: 550;color:var(--text-primary,#111)}
+.wx-said{font-size:16px;color:var(--text-secondary,#555)}
+.wx-facts{display:flex;gap:22px;flex-wrap:wrap;margin:0 0 var(--spacing-lg,24px);
+  padding:0 0 var(--spacing-md,16px);border-bottom:1px solid var(--card-border,#eee)}
+.wx-fact{display:flex;flex-direction:column;gap:2px}
+.wx-fact-n{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#999)}
+.wx-fact-v{font-size:15px;color:var(--text-primary,#111);font-variant-numeric:tabular-nums}
+.wx-strip{margin:0 0 var(--spacing-lg,24px)}
+.wx-strip-head{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--text-muted,#999);margin:0 0 8px}
+/* The hours scroll rather than wrap: eight of them on a phone is two ragged
+   rows, and a row of times reads as a row. */
+.wx-strip-row{display:flex;gap:18px;overflow-x:auto;padding:0 0 4px}
+.wx-hour{display:flex;flex-direction:column;gap:2px;flex:none;text-align:center}
+.wx-hour-at{font-size:11px;color:var(--text-muted,#999)}
+.wx-hour-t{font-size:15px;font-variant-numeric:tabular-nums}
+.wx-list{display:flex;flex-direction:column}
+.wx-row{display:flex;align-items:baseline;gap:12px;padding:7px 0;
+  border-bottom:1px solid var(--card-border,#f0f0f0)}
+.wx-row:last-child{border-bottom:0}
+.wx-row-day{flex:none;min-width:104px;font-size:14px}
+.wx-row-said{flex:1;min-width:0;font-size:13px;color:var(--text-secondary,#555);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wx-row-t{flex:none;font-size:14px;font-variant-numeric:tabular-nums;color:var(--text-secondary,#555)}
+@media (max-width:600px){.wx-row-said{display:none}}
+
+
+/* Flight radar and results */
+
+.fl-forms{display:flex;gap:24px;flex-wrap:wrap}
+.fl-form{flex:1 1 260px;min-width:0;max-width:100%}
+.fl-label{display:block;font-size:12px;color:#888;margin-bottom:6px}
+.fl-here{font-size:12px;color:#888;display:inline-block;margin-top:6px}
+.fl-table{width:100%;border-collapse:collapse;font-size:13px}
+.fl-table th{text-align:left;font-weight:normal;color:#888;padding:6px 8px;border-bottom:1px solid #eee}
+.fl-table td{padding:6px 8px;border-bottom:1px solid #f4f4f4}
+.fl-num{text-align:right;white-space:nowrap}
+.fl-line{font-size:14px}
+
+.fl-scope{margin:12px 0}
+.fl-scope svg{width:100%;max-width:560px;height:auto;display:block;margin:0 auto}
+.fl-ring{fill:none;stroke:#ececec;stroke-width:1}
+.fl-spoke{stroke:#f2f2f2;stroke-width:1}
+.fl-centre{fill:#c00}
+.fl-cardinal{font-size:13px;fill:#bbb;text-anchor:middle;font-family:inherit}
+.fl-ringlabel{font-size:10px;fill:#ccc;font-family:inherit}
+.fl-tag{font-size:10px;fill:#888;font-family:inherit}
+.fl-ground{fill:#d8d8d8}
+.fl-low{fill:#1a1a1a}
+.fl-mid{fill:#777}
+.fl-high{fill:#b8b8b8}
+.fl-scope a{cursor:pointer}
+.fl-scope a:hover .fl-low,.fl-scope a:hover .fl-mid,.fl-scope a:hover .fl-high{fill:#007bff}
+.fl-legend{font-size:12px;color:#888;text-align:center;margin:8px 0 0}

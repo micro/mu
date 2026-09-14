@@ -154,6 +154,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 		thread.Add(thread.Message{Thread: th.ID, Account: who, From: who, Text: "Thanks, please follow up tomorrow.\nI will be there."})
 	}
 
+	chat.Open(chat.PairRoom(who, "friend"), who, "friend")
 	pages := map[string]string{}
 	pages["/components"] = app.RenderHTML("Shared components", "", `<div class="page-stack">
 <section class="card"><h2>Review the brief</h2><p>One action needs your attention.</p><span class="status-badge status-doing">Working</span></section>
@@ -165,6 +166,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 </div>`, &auth.Account{ID: who})
 	policies := map[string]string{}
 	handlers := map[string]http.HandlerFunc{"/about": home.AboutHandler, "/contact": home.ContactHandler, "/inbox/new": inbox.NewHandler, "/inbox": inbox.Handler, "/inbox?id=" + inboxThread: inbox.Handler, "/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/news?id=layout-news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/?new=1": home.Index, "/work": work.Handler, "/services": api.ToolsPageHandler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler}
+	handlers["/chat?view=rooms"] = chat.Handler
 	handlers["/blog?write=true"] = blog.Handler
 	handlers["/blog/post?id="+postID] = blog.PostHandler
 	handlers["/blog/post?id="+postID+"&edit=true"] = blog.PostHandler
@@ -208,14 +210,8 @@ func TestPageCompositionInBrowser(t *testing.T) {
 			t.Errorf("service %s has no browser fixture", name)
 		}
 	}
-	css, err := os.ReadFile("../internal/app/html/mu.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	composition, err := os.ReadFile("../internal/app/html/composition.css")
-	if err != nil {
-		t.Fatal(err)
-	}
+	css := app.Styles()
+	composition := ""
 
 	input, _ := json.Marshal(map[string]any{"resultHTML": app.Results([]result.Item{{Kind: "article", Title: "Dogecoin ETFs struggled for buyers", Summary: "A clear summary of the article you asked for.", URL: "https://example.com/article"}}), "pages": pages, "policies": policies, "css": string(css), "composition": string(composition)})
 	cmd := exec.Command("node", "../internal/app/testdata/layout.cjs")

@@ -74,7 +74,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       "Food",
 		Description: "Ingredients, allergens and nutrition by barcode, and UK food hygiene ratings",
-		HTML:        b.String() + foodCSS,
+		HTML:        b.String(),
 	})
 }
 
@@ -101,8 +101,3 @@ func Card() string {
 		`or check a restaurant's hygiene rating.</p>` +
 		`<p><a href="/food">Look something up</a></p>`
 }
-
-const foodCSS = `<style>
-.food-presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-.food-result{white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;background:var(--card-background);border:1px solid var(--border-color);border-radius:8px}
-</style>`

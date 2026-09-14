@@ -1506,20 +1506,7 @@ func tagFilter(inbox *Inbox, accountID, active string) string {
 			html.EscapeString(tag) + ` <span>` + strconv.Itoa(counts[tag]) + `</span></a>`)
 	}
 	b.WriteString(`</div>
-<style>
-.mail-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
-/* :visited on both, or the global a:visited rule takes them. It is
-   a:visited:not(.btn) — 0-2-1 — which outranks a plain .mail-tag.on at 0-2-0,
-   so the selected tag went black on black the moment it had been clicked,
-   which for the selected tag is always. Same reason the inbox's Reply pill had
-   to be rebuilt as an a.btn. */
-.mail-tag,.mail-tag:visited{border:1px solid #e5e5e5;border-radius:6px;padding:4px 11px;
-  font-size:12px;color:#555;text-decoration:none;background:#fff}
-.mail-tag:hover{border-color:#bbb}
-.mail-tag.on,.mail-tag.on:visited{background:#111;border-color:#111;color:#fff}
-.mail-tag span{color:#999;font-variant-numeric:tabular-nums}
-.mail-tag.on span{color:#ccc}
-</style>`)
+`)
 	return b.String()
 }
 
@@ -1552,12 +1539,7 @@ func addressPanel(accountID string) string {
 		`written to, and known product domains. Everything else is refused at the door — so a newsletter you ` +
 		`never signed up for will not arrive, and neither will a first message from someone you have not mailed.</p>` +
 		`</div></details>
-<style>
-.mail-addr{border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;margin-bottom:12px;background:#fafafa}
-.mail-addr-line{font-size:14px;margin-bottom:6px}
-.mail-addr code{background:#fff;border:1px solid #e5e5e5;border-radius:4px;padding:1px 6px;font-size:13px}
-.mail-addr p{margin:6px 0 0;font-size:13px;color:#666;line-height:1.5}
-</style>`
+`
 }
 
 // renderThreadPreview renders a thread preview showing the latest message but linking to root

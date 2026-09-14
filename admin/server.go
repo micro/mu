@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/internal/app"
@@ -38,9 +39,27 @@ func ServerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := back() + app.RenderInternalStatusHTML() + startupTable() + storesTable()
+	content := back() + serverSnapshot()
 
 	app.Respond(w, r, app.Response{Title: "Server", Description: "What this process is doing and what it is sitting on", HTML: content})
+}
+
+// One bounded snapshot avoids repeating filesystem scans for every page visit.
+var serverView struct {
+	sync.Mutex
+	html    string
+	expires time.Time
+}
+
+func serverSnapshot() string {
+	serverView.Lock()
+	defer serverView.Unlock()
+	if serverView.html != "" && time.Now().Before(serverView.expires) {
+		return serverView.html
+	}
+	serverView.html = `<p class="text-sm text-muted">Snapshot refreshed every minute.</p>` + app.RenderInternalStatusHTML() + startupTable() + storesTable()
+	serverView.expires = time.Now().Add(time.Minute)
+	return serverView.html
 }
 
 // storesShown is how much of the data directory the table lists. The question

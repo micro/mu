@@ -921,6 +921,8 @@ func OnlineCount() int {
 // Personal Access Token (PAT) Management
 // ============================================
 
+var ErrCredentialLimit = errors.New("Remove unused credentials before creating more.")
+
 // CreateToken creates a new Personal Access Token for an account
 func CreateToken(accountID, name string, permissions []string, expiresAt time.Time) (*Token, string, error) {
 	mutex.Lock()
@@ -930,6 +932,18 @@ func CreateToken(accountID, name string, permissions []string, expiresAt time.Ti
 	_, exists := accounts[accountID]
 	if !exists {
 		return nil, "", errors.New("account does not exist")
+	}
+
+	if !accounts[accountID].Admin {
+		count := 0
+		for _, token := range tokens {
+			if token.Account == accountID && (token.ExpiresAt.IsZero() || token.ExpiresAt.After(time.Now())) {
+				count++
+			}
+		}
+		if count >= 20 {
+			return nil, "", ErrCredentialLimit
+		}
 	}
 
 	// Generate a cryptographically secure token

@@ -145,7 +145,7 @@ func devicesCard(devices []push.Subscription) string {
 	b.WriteString(`</ul>`)
 	b.WriteString(`<p class="text-sm text-muted">Turn devices on and off, and send a test, at ` +
 		app.TextLink("/account", "/account") + `.</p>`)
-	b.WriteString(`</div>` + pageCSS)
+	b.WriteString(`</div>`)
 	return b.String()
 }
 
@@ -214,29 +214,6 @@ func historyCard(sent []push.Sent) string {
 		}
 		b.WriteString(`</li>`)
 	}
-	b.WriteString(`</ul></div>` + pageCSS)
+	b.WriteString(`</ul></div>`)
 	return b.String()
 }
-
-const pageCSS = `<style>
-.notify-devices,.notify-list{list-style:none;margin:0;padding:0}
-.notify-devices li{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;padding:8px 0;
-  border-bottom:1px solid var(--card-border,#eee)}
-.notify-devices li:last-child{border-bottom:0}
-.notify-device{font-size:14px;color:var(--text-primary,#111)}
-.notify-item{padding:10px 0;border-bottom:1px solid var(--card-border,#eee)}
-.notify-item:last-child{border-bottom:0}
-.notify-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
-.notify-title{font-size:14px;font-weight: 550;color:var(--text-primary,#111)}
-.notify-from{font-size:12px;color:#888}
-/* Out to the right, the way the time sits on a row in the inbox and on /agents. */
-.notify-when{margin-left:auto;flex:none;font-size:12px;color:#aaa;white-space:nowrap}
-.notify-body{font-size:13px;color:#666;line-height:1.5;margin-top:2px}
-.notify-ok{font-size:12px;color:#888}
-.notify-bad{font-size:12px;color:var(--danger,#c33);margin-top:2px}
-/* What the device said. Green when it showed, muted while nothing has come
-   back — the waiting state is not a failure, it is an unanswered question. */
-.notify-got{font-size:12px;color:var(--btn-success,#1a7f37);margin-top:2px}
-.notify-wait{font-size:12px;color:var(--text-muted,#888);margin-top:2px}
-@media only screen and (max-width:600px){.notify-when{margin-left:0}}
-</style>`

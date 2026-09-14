@@ -66,7 +66,6 @@ func RenderIndex(l Index) string {
 <meta property="og:description" content="` + l.Description + `">
 ` + ogImage + `
 ` + icons + `
-<link rel="stylesheet" href="/composition.css?` + Version + `">
 <link rel="stylesheet" href="/mu.css?` + Version + `">
 
 </head>

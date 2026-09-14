@@ -43,26 +43,7 @@ var Template = `
 <input id="topic" name="topic" type="hidden">
 <textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
 <button>Send</button>
-</form></div></div><style>
-/* Keep the scroll viewport connected to the page's bounded flex column. */
-body:has(#messages):has(.room-layout) #content { height:calc(var(--visible-height,100dvh) - 56px); display:flex; flex-direction:column; padding-bottom:16px; }
-.room-layout { display:flex; flex:1 1 0; min-height:0; min-width:0; }
-.room-toolbar { flex:0 0 auto; padding:8px 12px; border:1px solid var(--border-color,#e5e5e5); border-bottom:0; border-radius:4px 4px 0 0; background:var(--card-background,#fff); font-size:13px; }
-.room-roster { display:flex; align-items:center; gap:12px; min-width:0; }
-.room-roster > span { color:var(--text-muted,#707070); }
-.room-roster #chat-users { display:flex; flex:1; gap:10px; min-width:0; overflow-x:auto; white-space:nowrap; margin:0; padding:0; border:0; }
-.room-roster #chat-users a { flex-shrink:0; color:inherit; font-weight:400; }
-.room-roster > a { flex-shrink:0; font-weight:400; }
-.room-toolbar .room-about { margin:8px 0 0; padding:8px 0 0; border-bottom:0; border-top:1px solid var(--border-color,#eee); max-height:25dvh; overflow-y:auto; }
-.room-toolbar .room-about > summary { text-transform:none; letter-spacing:normal; font-size:13px; }
-.room-main { display:flex; flex:1; flex-direction:column; min-width:0; min-height:0; }
-.room-main #messages { flex:1; overflow:auto; min-height:0; max-height:none; overflow-wrap:anywhere; }
-.room-main #messages img, .room-main #messages video { max-width:100%%; height:auto; }
-.room-main #messages pre { max-width:100%%; overflow-x:auto; }
-.room-main #chat-form { display:flex; gap:8px; flex:0 0 auto; min-width:0; }
-.room-main #prompt { width:0; min-width:0; max-width:none; flex:1 1 0; }
-
-</style>`
+</form></div></div>`
 
 var mutex sync.RWMutex
 
@@ -1871,9 +1852,9 @@ func listRooms(w http.ResponseWriter, r *http.Request) {
 // The whole row is the link, not the name inside it. A one-line row with a
 // four-character target in it is a row you miss on a phone.
 func roomRow(id, name, state string) string {
-	return `<a class="room-row" href="/chat?id=` + url.QueryEscape(id) + `">` +
-		`<span class="room-name">` + htmlpkg.EscapeString(name) + `</span>` +
-		`<span class="room-state">` + htmlpkg.EscapeString(state) + `</span></a>`
+	return `<a class="room-row collection-item" href="/chat?id=` + url.QueryEscape(id) + `">` +
+		`<span class="room-name collection-title">` + htmlpkg.EscapeString(name) + `</span>` +
+		`<span class="room-state collection-preview">` + htmlpkg.EscapeString(state) + `</span></a>`
 }
 
 // conversation is one private room as it appears in somebody's list.

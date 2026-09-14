@@ -78,7 +78,7 @@ func TestPrimaryNavigationHasFourDestinations(t *testing.T) {
 		if strings.Count(nav, "<a ") != 4 {
 			t.Fatalf("expected four primary destinations: %s", nav)
 		}
-		for _, path := range []string{"/", "/inbox", "/work", "/services"} {
+		for _, path := range []string{"/", "/inbox", "/agents", "/services"} {
 			if !strings.Contains(nav, `href="`+path+`"`) {
 				t.Errorf("missing destination %s", path)
 			}

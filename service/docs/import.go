@@ -27,7 +27,7 @@ func importPage(r *http.Request, message string) string {
 
 func handleImport(w http.ResponseWriter, r *http.Request) {
 	fail := func(message string) {
-		app.Respond(w, r, app.Response{Title: "Import document", HTML: importPage(r, message) + pageCSS})
+		app.Respond(w, r, app.Response{Title: "Import document", HTML: importPage(r, message)})
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxBody+64*1024)
 	if err := r.ParseMultipartForm(maxBody + 64*1024); err != nil {
@@ -57,5 +57,5 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 	}
 	title := strings.TrimSuffix(header.Filename, filepath.Ext(header.Filename))
 	draft := &Doc{Title: title, Content: strings.TrimPrefix(string(content), "\ufeff")}
-	app.Respond(w, r, app.Response{Title: "Docs", HTML: editor(r, draft) + pageCSS})
+	app.Respond(w, r, app.Response{Title: "Docs", HTML: editor(r, draft)})
 }

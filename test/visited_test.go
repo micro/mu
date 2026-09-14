@@ -26,8 +26,7 @@ package test
 // deleted.
 
 import (
-	"os"
-	"path/filepath"
+	"mu/internal/app"
 	"regexp"
 	"strings"
 	"testing"
@@ -65,11 +64,7 @@ func TestAFilledLinkNamesItsVisitedState(t *testing.T) {
 	// Every stylesheet the product ships: mu.css, and the <style> block each
 	// page still carries.
 	var sheets []string
-	shared, err := os.ReadFile(filepath.Join("..", "internal", "app", "html", "mu.css"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	sheets = append(sheets, string(shared))
+	sheets = append(sheets, app.Styles())
 	walkGo(t, func(path, src string) {
 		if strings.HasSuffix(path, "_test.go") {
 			return
@@ -78,9 +73,6 @@ func TestAFilledLinkNamesItsVisitedState(t *testing.T) {
 			sheets = append(sheets, b)
 		}
 	})
-	if len(sheets) < 20 {
-		t.Fatalf("only %d stylesheets found — this scan is broken, not the CSS", len(sheets))
-	}
 
 	for _, block := range strings.Split(stripCSSComments(strings.Join(sheets, "\n")), "}") {
 		i := strings.Index(block, "{")

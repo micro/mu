@@ -105,7 +105,7 @@ func page() string {
 	b.WriteString(`<div class="card"><form id="xsearch" class="form"><label for="xquery">Find a London stop or station</label><div class="form-row page-section"><input id="xquery" name="q" type="search" placeholder="Stop, station or area" required maxlength="200"><button type="submit" class="btn">Search</button><button type="button" id="xnear" class="btn">Use my location</button></div></form><div id="xstops" aria-live="polite" class="xmuted">Search for a stop or use your location.</div></div>`)
 
 	b.WriteString(statusCard())
-	b.WriteString(`</div>` + pageStyle + pageScript)
+	b.WriteString(`</div>` + pageScript)
 	return b.String()
 }
 
@@ -172,19 +172,6 @@ func Card() string {
 	b.WriteString(`<p class="xmore"><a href="/transit">Stops near you →</a></p>`)
 	return b.String()
 }
-
-const pageStyle = `<style>
-.xmuted{color:#888;font-size:14px;margin:0}
-.xgood{color:#0f7a52;font-size:15px;margin:0;font-weight: 550}
-.xline{padding:8px 0;border-bottom:1px solid var(--border-color,#eee);font-size:15px}
-.xline:last-of-type{border-bottom:0}
-.xwhy{color:#666;font-size:13px;margin-top:4px}
-.xstop{padding:8px 0;border-bottom:1px solid var(--border-color,#eee);font-size:15px;cursor:pointer}
-.xstop:last-child{border-bottom:0}
-.xaway{color:#888;font-size:13px}
-.xarr{margin:6px 0 0 12px;font-size:14px;color:#444}
-.xmore{margin:12px 0 0;font-size:14px}
-</style>`
 
 // Stops are fetched only after the browser offers a location, and arrivals only
 // when a stop is tapped — two requests nobody made are two requests TfL rate

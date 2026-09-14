@@ -32,7 +32,7 @@ func TestATranscriptPutsTheInputUnderTheTurns(t *testing.T) {
 	// sticky input over a scrolling page floats over the message you are
 	// reading, and "the bottom" then means the bottom of the document rather
 	// than the bottom of the conversation.
-	if !strings.Contains(chat, "overflow:auto") {
+	if !strings.Contains(Styles(), "overflow:auto") {
 		t.Error("the conversation has no scroll region of its own")
 	}
 	if strings.Contains(chat, "#mu-chat-form{position:sticky") {

@@ -1692,7 +1692,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, htmlpkg.EscapeString(articleURL), app.ReadingActionItems(r, articleID))
 
 	// Use title for browser tab, but empty page title since article already has its own H1
-	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: articleHtml + app.ReadingCSS})
+	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: articleHtml})
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

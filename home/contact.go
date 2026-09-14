@@ -97,7 +97,6 @@ func vcardName() string {
 // contactBody is the card, separate from serving it.
 func contactBody(acc *auth.Account) string {
 	var b strings.Builder
-	b.WriteString(contactCSS)
 	// The same column every other page of its kind uses.
 	//
 	// This drew a bare card, so its content sat against the left of the content
@@ -162,24 +161,8 @@ func numberVerified(accountID string) bool {
 	return len(sms.Numbers(accountID)) > 0
 }
 
-// contactCSS is the card's own, because it is the only thing shaped like this.
+// "" is the card's own, because it is the only thing shaped like this.
 //
 // A definition list would be the semantic answer and reads badly at this width:
 // the label, the address and the note are three columns on a desktop and three
 // stacked lines on a phone, which is a grid.
-const contactCSS = `<style>
-.clist{display:flex;flex-direction:column;gap:2px;margin:14px 0 0}
-.crow{display:grid;grid-template-columns:90px minmax(0,1fr);gap:2px 14px;
-  align-items:baseline;padding:10px 0;border-top:1px solid #f0f0f0}
-.crow:first-child{border-top:0}
-.clabel{font-weight: 600;font-size:14px}
-.caddr{font-size:15px;color:#111;text-decoration:none;word-break:break-all}
-a.caddr{color:#0645ad}
-a.caddr:hover{text-decoration:underline}
-.cnote{grid-column:2;font-size:13px;color:#888}
-.cnext{margin:16px 0 0;font-size:14px;color:#666}
-@media (max-width:520px){
-  .crow{grid-template-columns:1fr}
-  .cnote,.caddr{grid-column:1}
-}
-</style>`

@@ -41,7 +41,7 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 	win := usage.WindowFor(r.URL.Query().Get("window"))
 
 	var sb strings.Builder
-	sb.WriteString(usage.CSS + usagePageCSS)
+	sb.WriteString(usage.CSS)
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
 	usage.Stat(&sb, "Last hour", usage.TotalForOver(account, usage.Minute, 60))
@@ -127,7 +127,3 @@ func spendSection(id string, admin bool) string {
 	sb.WriteString(`<p class="text-sm text-muted"><a href="/account#ledger">Every charge, in order →</a></p>`)
 	return sb.String()
 }
-
-const usagePageCSS = `<style>
-.usage-when{color:var(--text-muted);font-size:12px;white-space:nowrap;padding-left:10px!important}
-</style>`

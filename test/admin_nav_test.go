@@ -24,6 +24,7 @@ import (
 // menu entry for one would be a link to a page that does not exist, or a link
 // that performs an action on arrival, and both are worse than the absence.
 var notAPage = map[string]string{
+	"/admin/work":        "operator diagnostic reached by a work report, intentionally omitted from the main menu",
 	"/admin/diagnostics": "legacy redirect to /admin/status",
 	"/admin":             "the menu itself",
 	"/admin/flag":        "an action posted from a moderation row",
