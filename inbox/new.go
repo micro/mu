@@ -93,6 +93,19 @@ func NewHandler(w http.ResponseWriter, r *http.Request) {
 	if f.On != "" {
 		f.Kind = kindMessage
 	}
+
+	// Retired compose modes belong to their focused services. Keep POST
+	// compatibility for existing clients, but offer only communication here.
+	if r.Method == http.MethodGet && f.On == "" {
+		switch f.Kind {
+		case kindNote:
+			http.Redirect(w, r, "/notes", http.StatusSeeOther)
+			return
+		case kindTask:
+			http.Redirect(w, r, "/work?view=new", http.StatusSeeOther)
+			return
+		}
+	}
 	// A conversation somebody else's id names is not a conversation. Checked on
 	// the way in rather than at the point it is written, so a forged id is a
 	// blank form and never a message filed onto a stranger's thread.
@@ -421,19 +434,6 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	}
 	b.WriteString(app.Actions(back))
 
-	// What is being written. Three pills, not three pages.
-	//
-	// A note and a task used to live behind their own pages, so somebody with
-	// something on their mind had to decide which of three places it belonged in
-	// before writing it — a filing decision about a sentence that does not exist
-	// yet. Here the decision is one click, and it is reversible right up until
-	// Send. See kinds.go.
-	//
-	// Not on a reply: answering a conversation has already decided what this is.
-	if f.On == "" {
-		b.WriteString(newKinds(f.Kind))
-	}
-
 	// A text has no subject and no address on either end. The same screen, told
 	// what it is writing by the conversation it is answering — rather than a
 	// second compose page that also sends things.
@@ -643,26 +643,4 @@ func saveTask(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		return
 	}
 	http.Redirect(w, r, "/inbox?kind="+kindTask, http.StatusSeeOther)
-}
-
-// newKinds is the picker: what am I writing.
-//
-// Pills rather than a select, because there are three and they are the first
-// decision on the page — a menu hides two of the three answers behind a click,
-// and the whole point is that choosing is cheap.
-func newKinds(current string) string {
-	if current == "" {
-		current = kindMessage
-	}
-	var b strings.Builder
-	b.WriteString(`<div class="ib-boxes ib-new-kinds">`)
-	for _, k := range []struct{ label, val string }{
-		{"Mail", kindMessage},
-		{"Note", kindNote},
-		{"Task", kindTask},
-	} {
-		b.WriteString(app.PillLink(k.label, "/inbox/new?kind="+url.QueryEscape(k.val), k.val == current))
-	}
-	b.WriteString(`</div>`)
-	return b.String()
 }
