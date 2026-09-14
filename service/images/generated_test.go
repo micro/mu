@@ -148,7 +148,7 @@ func TestTheGridRendersOurOwnURL(t *testing.T) {
 		Data: map[string]interface{}{"prompt": "x", "url": "https://provider.example/tmp/xyz.png"},
 	}})
 
-	if !strings.Contains(html, `src="/images/file/abc123"`) {
+	if !strings.Contains(html, `src="/images/file/abc123?size=thumb"`) {
 		t.Errorf("the grid does not serve from here: %s", html)
 	}
 	if strings.Contains(html, "provider.example") {

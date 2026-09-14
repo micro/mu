@@ -220,7 +220,7 @@ func blockDestructiveTools() gmai.ToolWrapper {
 				return gmai.ToolResult{
 					ID:      call.ID,
 					Refused: "not_permitted",
-					Content: `{"error":"This action can only be taken by the user directly, not by the assistant."}`,
+					Content: `{"error":"This action can only be taken by the user directly, not by the agent."}`,
 				}
 			}
 			return next(ctx, call)
@@ -319,10 +319,8 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Assembled here and handed over as a message — see the note on sys above,
 	// and briefing() in memory.go, which puts it in front of the question.
 	var facts []string
-	if !opts.Public {
-		if client := opts.Context.facts(now); client != "" {
-			facts = append(facts, client)
-		}
+	if client := opts.Context.facts(now); client != "" {
+		facts = append(facts, client)
 	}
 	facts = append(facts, "The current date and time is "+today+" ("+nowRFC+").")
 	if !opts.Public && UserContextFunc != nil {
@@ -334,9 +332,6 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// instructions and this is context, not instruction, so there is no branch
 	// here that could silently drop it — which is what the old placement, after
 	// a line that replaced sys outright, had to be careful about.
-	if strings.TrimSpace(opts.CardContext) != "" {
-		facts = append(facts, strings.TrimSpace(opts.CardContext))
-	}
 	if strings.TrimSpace(opts.Extra) != "" {
 		facts = append(facts, strings.TrimSpace(opts.Extra))
 	}
@@ -413,6 +408,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	if baseURL != "" {
 		agentOpts = append(agentOpts, gmagent.BaseURL(baseURL))
 	}
+	agentOpts = append(agentOpts, managementTools(accountID, opts)...)
 	name := nativeAgentInstanceName()
 	a := service.NewAgent(name, sys, provider, key, services, agentOpts...)
 	return nativeRun{agent: a, question: question, name: name, runs: runs, provider: provider, baseURL: baseURL}, true
@@ -665,7 +661,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 		app.Log("timing", "phase=agent_total caller=%s duration_ms=%.3f failed=%t", costCaller(opts), float64(time.Since(started))/float64(time.Millisecond), runErr != nil)
 	}()
 	if commands, ok := promptCommands(prompt, opts); ok {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(runContext(opts), 20*time.Second)
 		defer cancel()
 		return executeCommands(ctx, accountID, commands, opts)
 	}
@@ -705,7 +701,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	recorder := newNativeToolRecorder()
 	wrappers := []gmai.ToolWrapper{guard, recorder.wrap}
 	if opts.OnStep != nil {
-		wrappers = append(wrappers, stepReporter(opts.OnStep))
+		wrappers = append(wrappers, detailedStepReporter(opts.OnStepStart, opts.OnStep))
 	}
 	prepareStart := time.Now()
 	run, ok := buildNativeAgent(accountID, prompt, opts, wrappers...)
@@ -750,7 +746,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	// cost, and that is AGENT_MAX_STEPS; this is the guard that stops a run
 	// hanging, and a value low enough to cut off honest work would be a bug
 	// rather than a policy.
-	ctx, cancel := context.WithTimeout(context.Background(), turnTimeout)
+	ctx, cancel := context.WithTimeout(runContext(opts), turnTimeout)
 	defer cancel()
 
 	final := ""
@@ -824,17 +820,35 @@ func nativeAnswer(final string, recorder *nativeToolRecorder, opts QueryOpts) (s
 // result whether the run is streaming or not. The stream hooks see tools too,
 // but only when somebody is watching, and a scheduled task is the case where
 // nobody is.
-func stepReporter(onStep func(Step)) gmai.ToolWrapper {
+func runContext(opts QueryOpts) context.Context {
+	if opts.RunContext != nil {
+		return opts.RunContext
+	}
+	return context.Background()
+}
+
+func stepReporter(onStep func(Step)) gmai.ToolWrapper { return detailedStepReporter(nil, onStep) }
+
+func detailedStepReporter(onStart, onStep func(Step)) gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
-			started := time.Now()
+			started := time.Now().UTC()
+			s := Step{ID: fmt.Sprintf("%s-%d", call.Name, started.UnixNano()), Tool: NativeToolName(call.Name), Args: call.Input, Started: started}
+			if onStart != nil {
+				onStart(s)
+			}
 			res := next(ctx, call)
-			onStep(Step{
-				Tool: NativeToolName(call.Name),
-				Args: call.Input,
-				OK:   toolStepSucceeded(call.Name, res),
-				Took: time.Since(started),
-			})
+			s.OK = toolStepSucceeded(call.Name, res)
+			s.Finished = time.Now().UTC()
+			s.Took = time.Since(started)
+			b, _ := json.Marshal(res)
+			s.Output = string(b)
+			if !s.OK {
+				s.Error = s.Output
+			}
+			if onStep != nil {
+				onStep(s)
+			}
 			return res
 		}
 	}
@@ -1218,7 +1232,7 @@ func toolResultError(res gmai.ToolResult) string {
 }
 
 func nativeSystem(opts QueryOpts) string {
-	sys := "You are Micro, a personal AI assistant on Mu. " +
+	sys := "You are Micro, a personal AI agent. " +
 		"Use the available tools for live or personal data (weather, news, market prices, " +
 		"social, video, blog, web search, places and points of interest near a location, " +
 		"the user's own mail inbox, recall across their news/mail, and scheduling reminders/events). " +
@@ -1242,6 +1256,7 @@ func nativeSystem(opts QueryOpts) string {
 		sys = opts.System + "\n\nWhen scheduling a reminder/event, compute the absolute time from the current time given below and pass it to the events Create tool as an RFC3339 timestamp. Use the available tools for live or personal data and quote exact values. After using tools, always give the final answer; never stop at progress narration."
 	}
 
+	sys += "\nUse services to complete the request here instead of sending the user through service pages. For a requested video, search then read the best matching video; the interface can show a player. Save requested items with Bookmarks Add, and retrieve saved items with Bookmarks List/Read. For directions, use Routes Directions with the current device context when available. If current location is missing, ask the user to share it using the location button or name a starting point. Never imply an estimate is navigation. Use focused agents only when useful; keep configuration details out of ordinary answers."
 	if opts.OutputInstruction != "" {
 		sys += "\n\n" + opts.OutputInstruction
 	}

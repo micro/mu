@@ -54,6 +54,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
+	if id := q.Get("id"); id != "" {
+		for _, e := range entries {
+			if e.ID == id {
+				q.Set("note", e.Title)
+				break
+			}
+		}
+	}
 	if title := strings.TrimSpace(q.Get("note")); title != "" {
 		if text := notes.Get(who, title); text != "" {
 			source := ""

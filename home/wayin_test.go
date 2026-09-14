@@ -12,42 +12,15 @@ package home
 // style.
 
 import (
-	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 )
 
 // Nothing in the body of the signed-out home offers a way in.
-func TestSignedOutHomeDoesNotOfferASecondWayIn(t *testing.T) {
-	rec := httptest.NewRecorder()
-	Handler(rec, httptest.NewRequest("GET", "/home", nil))
-	body := rec.Body.String()
 
-	if strings.Contains(body, "home-date-actions") {
-		t.Error("the Sign up / Log in pair is back beside the date, under the corner that already says it")
-	}
-	if n := strings.Count(body, `href="/signup"`); n != 0 {
-		t.Errorf("the guest Home page offers redundant signup links: %d", n)
-	}
-	if rec.Header().Get("Location") != "/" {
-		t.Error("guest Home should redirect to landing")
-	}
-}
-
-// The corner is in the corner.
-//
-// The landing's login link is absolutely positioned, and what it is positioned
-// against decides where it lands. It was anchored to the header row — a centred
-// 760px column — so on a wide desktop it sat at the right edge of that column,
-// in the middle of the empty half of the page, rather than in the corner of the
-// screen. It looked right only while that row also held a wordmark, and the
-// wordmark moved into the body when the landing became one centred stack.
-//
-// Asserted on the stylesheet because the placement is entirely CSS: the markup
-// was correct throughout.
 func TestTheLandingCornerIsAnchoredToThePage(t *testing.T) {
-	b, err := os.ReadFile("../internal/app/index.go")
+	b, err := os.ReadFile("../internal/app/html/mu.css")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +33,7 @@ func TestTheLandingCornerIsAnchoredToThePage(t *testing.T) {
 		t.Error("the header row is positioned again, so the corner is back at the edge of a 760px column")
 	}
 
-	corner := section(css, ".login-link{")
+	corner := section(css, ".login-link {")
 	if !strings.Contains(corner, "position:absolute") {
 		t.Fatalf("the corner is no longer absolutely positioned: %q", corner)
 	}

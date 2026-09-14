@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 
 	"mu/internal/service"
 
@@ -193,6 +194,7 @@ func MCPWalletOp(body []byte) string { return ToolWalletOp(mcpToolName(body)) }
 // parsing above was ever about MCP. A second door that re-derived them would be
 // a second price list and a second opinion about who may pay.
 func ToolWalletOp(name string) string {
+	tools := Tools()
 	if name == "" {
 		return ""
 	}
@@ -237,6 +239,7 @@ func MCPToolNeedsAuth(body []byte) bool { return ToolNeedsAuth(mcpToolName(body)
 // ToolNeedsAuth is the same question asked of a tool name. See ToolWalletOp for
 // why the two halves are separate.
 func ToolNeedsAuth(name string) bool {
+	tools := Tools()
 	if name == "" {
 		return false
 	}
@@ -293,6 +296,7 @@ func toolMatches(t Tool, name string) bool {
 // HasTool reports whether a tool of that name, or one of its aliases, is
 // registered.
 func HasTool(name string) bool {
+	tools := Tools()
 	for i := range tools {
 		if toolMatches(tools[i], name) {
 			return true
@@ -305,33 +309,37 @@ func HasTool(name string) bool {
 // registration order. The handlers come with them, so this is the registry
 // itself and not a description of it — treat the result as read-only.
 func Tools() []Tool {
+	toolsMu.RLock()
+	defer toolsMu.RUnlock()
 	out := make([]Tool, len(tools))
 	copy(out, tools)
 	return out
 }
 
 func RegisterTool(t Tool) {
+	toolsMu.Lock()
+	defer toolsMu.Unlock()
 	tools = append(tools, t)
 }
 
 // RegisterToolWithAuth adds a tool that receives the authenticated account ID.
 func RegisterToolWithAuth(t Tool, handler func(map[string]any, string) (string, error)) {
 	t.HandleAuth = handler
-	tools = append(tools, t)
+	RegisterTool(t)
 }
 
 // RegisterToolWithCall adds a tool that receives the call's context as well as
 // the authenticated account ID. See Tool.HandleCall.
 func RegisterToolWithCall(t Tool, handler func(context.Context, map[string]any, string) (string, error)) {
 	t.HandleCall = handler
-	tools = append(tools, t)
+	RegisterTool(t)
 }
 
 // RegisterToolOpen adds a tool anybody may call, with the call's context. Like
 // RegisterTool, and unlike RegisterToolWithCall, it never asks who is calling.
 func RegisterToolOpen(t Tool, handler func(context.Context, map[string]any) (string, error)) {
 	t.HandleOpen = handler
-	tools = append(tools, t)
+	RegisterTool(t)
 }
 
 // idempotencyHeaders are the names a caller can use to say "this is a retry of
@@ -365,6 +373,7 @@ func callContext(r *http.Request) context.Context {
 // ToolDescriptions returns a simple "- name: description" list of all tools,
 // suitable for agent planning prompts.
 func ToolDescriptions() string {
+	tools := Tools()
 	var sb strings.Builder
 	for _, t := range tools {
 		if t.Name == "" {
@@ -394,6 +403,8 @@ func ToolDescriptions() string {
 // login form, /session, a Personal Access Token) and to the CLI. An agent never
 // walks that path: it authenticates by holding a token a human issued, or by
 // paying per request over x402, where there is no account to sign up for.
+var toolsMu sync.RWMutex
+
 var tools = []Tool{
 	// REST-only: the resource endpoints behind the /news and /search pages. The
 	// agent reaches the same capabilities as news_list and web_search, so these
@@ -614,6 +625,7 @@ func toolCaller(r *http.Request) string {
 }
 
 func ExecuteTool(r *http.Request, name string, args map[string]any) (string, bool, error) {
+	tools := Tools()
 	var tool *Tool
 	for i := range tools {
 		if toolMatches(tools[i], name) {

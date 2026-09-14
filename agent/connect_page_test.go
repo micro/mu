@@ -65,7 +65,7 @@ func TestTheConnectPageCarriesTheScopeTheEndpointAndTheTokenState(t *testing.T) 
 	}
 	// No token was issued, so the page says so and offers one rather than
 	// leaving the reader to find /agents.
-	if !strings.Contains(panel, `href="/token"`) || !strings.Contains(panel, "not only this agent") {
+	if !strings.Contains(panel, `href="/token"`) || !strings.Contains(panel, "Create a token") {
 		t.Errorf("an agent with no token cannot be given one from here:\n%s", panel)
 	}
 	// The client config block is this agent's, not the catalogue's example.

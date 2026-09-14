@@ -1,55 +1,12 @@
-/* Shared by the signed-in app and the public landing page. */
+/* Shared controls and composition. */
 .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
-/* One button, three volumes. The product drew 232 <button> elements against 26
-   uses of .btn, so most of them arrived with the browser's own face on. */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--control-h,30px);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 0 var(--control-pad-x,12px);
-  border-radius:6px;
-  border: var(--border-width, 1px) solid var(--btn-primary, #000);
-  background: var(--btn-primary, #000);
-  color: #fff;
-  text-decoration: none;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--transition-fast, .15s ease), border-color var(--transition-fast, .15s ease);
-}
-
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--control-h,30px); font: inherit; font-size: 13px; line-height: 1.4; padding: 0 var(--control-pad-x,12px); border-radius:6px; border: var(--border-width, 1px) solid var(--btn-primary, #000); background: var(--btn-primary, #000); color: #fff; text-decoration: none; cursor: pointer; white-space: nowrap; transition: background var(--transition-fast, .15s ease), border-color var(--transition-fast, .15s ease); }
 .btn:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333); color: #fff }
-
-.btn-quiet {
-  background: none;
-  border-color: var(--card-border, #e8e8e8);
-  color: var(--text-secondary, #555);
-}
-
+.btn-quiet { background: none; border-color: var(--card-border, #e8e8e8); color: var(--text-secondary, #555); }
 .btn-quiet:hover { background: none; border-color: #ddd; color: var(--text-primary, #1a1a1a) }
-
-.btn-danger {
-  background: none;
-  border-color: var(--card-border, #e8e8e8);
-  color: var(--text-secondary, #555);
-}
-.btn-danger:hover {
-  background: none;
-  border-color: #e6b3b3;
-  color: var(--btn-danger, #c00);
-}
-
-/* Composition: containers own spacing; children do not add another margin.
-   Use .form / .field-label for forms, .page-stack for adjacent page blocks,
-   .page-section between sections and .section-actions for links after content. */
-:root {
-  --space-control: 8px;
-  --space-field: 16px;
-  --space-section: 24px;
-}
+.btn-danger { background: none; border-color: var(--card-border, #e8e8e8); color: var(--text-secondary, #555); }
+.btn-danger:hover { background: none; border-color: #e6b3b3; color: var(--btn-danger, #c00); }
+:root { --space-control: 8px; --space-field: 16px; --space-section: 24px; }
 .page-stack, .page-section { display: flex; flex-direction: column; gap: var(--space-field); min-width: 0; }
 .page-section { margin-block: 0 var(--space-section); }
 .form.page-section { margin-block-end: var(--space-section); }
@@ -72,18 +29,9 @@ fieldset.form-group > legend { padding: 0; }
 .disclosure > summary::after { content: '+'; }
 .disclosure[open] > summary::after { content: '\2212'; }
 .disclosure > :not(summary) { margin-top: var(--space-field); }
-/* Rows wrap according to their available space, including inside a card or
-   beside the sidebar. A nonzero basis moves fields to the next line before
-   buttons and selects can squeeze them away. It is a preferred size, not a
-   fixed minimum: a field still fits a container narrower than that size. */
-.form-row, .form-inline, .search-bar {
- display: flex; flex-direction: row; flex-wrap: wrap;
- align-items: center; gap: var(--space-control); min-width: 0;
-}
+.form-row, .form-inline, .search-bar { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-control); min-width: 0; }
 :is(.form-row, .form-inline, .search-bar) > * { max-width: 100%; box-sizing: border-box; margin-block: 0; }
-:is(.form-row, .form-inline, .search-bar) > :is(input:not(:where([type=hidden], [type=checkbox], [type=radio], [type=submit], [type=button])), textarea, .field-label, .form-group) {
- flex: 1 1 12rem; min-width: 0; width: 100%; max-width: 100%;
-}
+:is(.form-row, .form-inline, .search-bar) > :is(input:not(:where([type=hidden], [type=checkbox], [type=radio], [type=submit], [type=button])), textarea, .field-label, .form-group) { flex: 1 1 12rem; min-width: 0; width: 100%; max-width: 100%; }
 :is(.form-row, .form-inline, .search-bar) > select { flex: 0 1 auto; min-width: 0; width: auto; max-width: 100%; }
 :is(.form-row, .form-inline, .search-bar) > :is(button, .btn, .form-actions) { flex: 0 0 auto; }
 :is(.form-row, .form-inline, .search-bar) > [hidden],
@@ -91,117 +39,36 @@ fieldset.form-group > legend { padding: 0; }
 :is(.form, .form-row, .form-group, .field-label) :is(input, select, textarea) { box-sizing: border-box; max-width: 100%; }
 :is(.form-row, .form-inline) > :is(.field-label, .form-group) > :is(input, select, textarea) { width: 100%; max-width: 100%; min-width: 0; }
 @media(max-width:900px) {
- .form:not(.form-inline) .field { width: 100%; max-width: 100%; }
+.form:not(.form-inline) .field { width: 100%; max-width: 100%; }
 }
-/* The quiet button, after .btn rather than before it.
-   It was declared 2,800 lines above .btn, and both are one class, so .btn won
-   on order alone: background went to var(--btn-primary, #000) while the colour
-   stayed dark, because only the colour here was marked important. The result
-   was dark text on a black fill everywhere the pair was used — the top-up
-   presets, the wallet's sign-up button, two on the blog.
-   Marking the background important as well would have hidden the cause and
-   left the next property to do the same thing. Order is the cause. */
-a.btn-secondary, a.btn-secondary:visited, .btn-secondary {
-  background: var(--hover-background, #eee);
-  color: var(--text-primary, #333);
-  border-color: var(--border-color, #ddd);
-}
+a.btn-secondary, a.btn-secondary:visited, .btn-secondary { background: var(--hover-background, #eee); color: var(--text-primary, #333); border-color: var(--border-color, #ddd); }
 a.btn-secondary:hover, .btn-secondary:hover,
-a.btn-secondary:focus-visible, .btn-secondary:focus-visible {
-  background: var(--border-color, #ddd);
-  color: var(--text-primary, #333);
-  text-decoration: none;
-}
-
-
-/* Inline controls retain their hidden state inside action rows. */
+a.btn-secondary:focus-visible, .btn-secondary:focus-visible { background: var(--border-color, #ddd); color: var(--text-primary, #333); text-decoration: none; }
 .form-actions > [hidden] { display: none; }
-
-/* A text value edited in its own row, without a separate form panel. */
 .inline-edit > input { flex: 1; width: 0; min-width: 0; }
 .inline-edit > button { flex: 1; min-width: 0; padding: 0; display: block; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
 .inline-edit > .inline-edit-value { flex: 0 1 auto; color: var(--text-secondary, #666); font-style: italic; text-decoration: none; }
 .inline-edit > .inline-edit-action { flex: 0 0 auto; font-size: var(--font-size-sm, 12px); text-decoration: none; }
-
 .inline-edit-feedback:empty { display: none; }
-
-/* Tables need the available page width, rather than a prose measure. */
 .log-tables .card { max-width: none; width: 100%; }
-
-
-/* Compact previews keep metadata close and separate adjacent entries. */
 .compact-list { display: flex; flex-direction: column; }
 .compact-list > .compact-list-item { display: flex; flex-direction: column; gap: 2px; padding-block: var(--space-control); margin: 0; font-size: 14px; font-weight: 400; }
 .compact-list-item:first-child { padding-block-start: 0; }
 .compact-list-item:last-child { padding-block-end: 0; }
 .compact-list-item + .compact-list-item { border-top: 1px solid var(--card-border, #e8e8e8); }
-/* Reserve the last slot for the full catalogue at every available width. */
-.home-apps-grid { container: service-shortcuts / inline-size; }
-.home-apps-grid > a:not(.home-apps-all) { display: none; }
-.home-apps-grid > a.home-apps-all { display: flex; }
-@container service-shortcuts (min-width: 128px) { .home-apps-grid > a:nth-child(1):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 200px) { .home-apps-grid > a:nth-child(2):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 272px) { .home-apps-grid > a:nth-child(3):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 344px) { .home-apps-grid > a:nth-child(4):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 416px) { .home-apps-grid > a:nth-child(5):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 488px) { .home-apps-grid > a:nth-child(6):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 560px) { .home-apps-grid > a:nth-child(7):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 632px) { .home-apps-grid > a:nth-child(8):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 704px) { .home-apps-grid > a:nth-child(9):not(.home-apps-all) { display: flex; } }
-@container service-shortcuts (min-width: 776px) { .home-apps-grid > a:nth-child(10):not(.home-apps-all) { display: flex; } }
-
-/* Shared compact header and preview navigation. */
 .page-stack.compact-stack { gap: var(--space-control); }
 .page-stack.compact-stack > * { margin-block: 0; }
 .section-link { display:block; margin:0; font-size:13px; font-weight:400; color:var(--text-primary,#111); text-decoration:none; }
 .section-link:hover { text-decoration:underline; }
-
-@media(max-width:640px){#home-cards .view-switch{justify-content:flex-start;}}
-
-/* Inline actions remain recognizable without hover, including on touch screens. */
-a.link-text {
-  color: var(--link-color, #0066cc);
-  text-decoration: underline !important;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 3px;
-}
+a.link-text { color: var(--link-color, #0066cc); text-decoration: underline !important; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 .link-text:hover, .link-text:focus-visible { text-decoration-thickness: 2px; }
-
-/* Permission notices sit outside untrusted content and use ordinary actions. */
 .access-notice { flex: none; padding: var(--space-control) var(--space-field); font: 14px system-ui; background: Canvas; color: CanvasText; border-bottom: 1px solid GrayText; }
 .access-notice[hidden] { display: none; }
 .access-notice .btn-quiet { color: CanvasText; border-color: GrayText; }
-
-/* The card supplies the outside inset; preview rows supply only inner gaps. */
-.preview-rows > .peek-row:first-child,
-.preview-rows > .agent-peek-row:first-child { padding-top: 0; }
-.preview-rows > .peek-row:last-child,
-.preview-rows > .agent-peek-row:last-child { padding-bottom: 0; }
-
-/* Return to the overview without resetting the conversation. */
-#home-agent .mu-chat-footer:has([hidden]) { display:none; }
-.conversation-actions { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; }
-.conversation-actions[hidden] { display:none; }
-.conversation-actions a { padding:0; font-weight:400; font-size:13px; line-height:1.5; color:var(--text-secondary,#555); text-decoration:underline; text-underline-offset:3px; }
-.conversation-actions a[aria-disabled="true"] { opacity:.5; cursor:default; }
-#mu-chat-transfer-error:empty { display:none; }
-/* One gap owner for the composer, answers and disclosure; empty slots take no space. */
-#home-agent #mu-chat, .assistant-page #mu-chat { display:flex; flex-direction:column; gap:var(--space-control,8px); }
-#home-agent #mu-chat > *, .assistant-page #mu-chat > * { margin-block:0; }
-#home-agent #mu-chat-opts:empty, #home-agent #mu-chat-conv:empty,
-.assistant-page #mu-chat-opts:empty, .assistant-page #mu-chat-conv:empty { display:none; }
-#home-agent #mu-chat-conv > :last-child, .assistant-page #mu-chat-conv > :last-child { margin-bottom:0; }
-.assistant-page { width:100%; max-width:var(--page-width); margin:0; }
-@media(max-width:900px) { #tabs { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); } }
-
-/* Keep the in-page command composer below the fixed app header. */
-#home-agent #mu-chat-form, .assistant-page #mu-chat-form { --mu-composer-top:58px; }
-@media(max-width:900px) { #home-agent #mu-chat-form, .assistant-page #mu-chat-form { --mu-composer-top:52px; } }
-
-/* Quiet orientation, shared across desktop and mobile page shells. */
+@media(max-width:900px) {
+#tabs { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); }
+}
 #page-title { font-size:16px; font-weight:500; line-height:1.4; text-align:left; color:var(--text-secondary,#555); margin:0 0 8px; }
-/* One card boundary encloses the heading, actions and content. */
 .section-card { min-width:0; margin:0 0 24px; border:1px solid var(--divider,#e8e8e8); border-radius:6px; padding:16px; background:var(--bg-primary,#fff); }
 .section-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:16px; }
 .section-card-head h4 { margin:0; min-width:0; font-size:14px; font-weight:500; line-height:1.5; color:var(--text-secondary,#555); }
@@ -210,28 +77,14 @@ a.link-text {
 .section-card-head .section-more { flex:none; font-size:13px; font-weight:400; color:var(--text-secondary,#555); text-decoration:none; }
 .section-card-head .section-more:hover { text-decoration:underline; }
 .section-card > .card, .section-card > .card:hover { min-width:0; margin:0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
-
 @media(max-width:900px) {
- #home { gap:16px; }
- #home > .home-left > .section-card, #home > .home-right > .section-card { order:var(--feed-order); margin:0; }
+#page-title { text-align:center; }
 }
-
-@media(max-width:900px) { #page-title { text-align:center; } }
 .section-card .card-meta { float:right; display:block; margin:0 0 8px 12px; }
 .section-card .card-meta .card-when { margin:0; font-size:12px; }
 .section-card .card-body > :last-child { margin-bottom:0; padding-bottom:0; }
-
-/* Match the byline-to-answer gap below the final answer as well. */
-#home-agent #mu-chat .mu-by { margin-bottom:8px; }
-#home-agent #mu-chat .mu-agent:last-child .card:last-child { margin-bottom:0; }
-#mu-chat-transfer-error { flex-basis:100%; }
-
-/* Contain floated timestamps without reserving a full row above the content. */
 .section-card .card-body { display:flow-root; }
-/* Align the corner mark with the unboxed content. */
 .section-card .card-corner { top:0; right:0; }
-
-/* A ledger entry keeps its description and amounts together at narrow widths. */
 .ledger-list { list-style:none; margin:0; padding:0; }
 .ledger-entry { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 16px; padding:16px 0; border-bottom:1px solid var(--divider,#eee); }
 .ledger-entry:first-child { padding-top:0; }
@@ -239,71 +92,18 @@ a.link-text {
 .ledger-description { min-width:0; overflow-wrap:anywhere; }
 .ledger-values { text-align:right; font-variant-numeric:tabular-nums; }
 .ledger-detail { display:block; font-size:12px; color:var(--text-muted,#707070); }
-
-
-/* An in-page view switch. Panels keep their own content and state. */
 .view-switch { display: flex; gap: var(--space-field); border-bottom: 1px solid var(--card-border, #e8e8e8); margin-block: 0 var(--space-section); }
 .view-switch [role=tab] { box-sizing: border-box; display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-control); border-bottom: 2px solid transparent; color: var(--text-muted, #707070); font-weight: 400; text-decoration: none; }
 .view-switch [role=tab][aria-selected=true] { color: var(--text-primary, #3c3c3c); border-bottom-color: currentColor; }
-
-/* Flatten the columns on small screens so daily actions precede messages. */
-#home-todo:empty { display: none; }
-@media (max-width: 1099px) {
-  .home-workspace > .home-column { display: contents; }
-  .home-workspace #home-agent { order: 0; }
-  .home-workspace #home-recent, .home-workspace #home-start { order: 2; }
-  .home-workspace #home-todo { order: 3; }
-  .home-workspace #home-upcoming { order: 4; }
-  .home-workspace #home-inbox { order: 5; }
-  .home-workspace #home-agents { order: 6; }
-  .home-workspace .home-apps { order: 1; }
-}
-
-#home-personal.is-conversing #mu-chat-conv { animation:home-answer-in 180ms ease-out; }
-@keyframes home-answer-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-@media(prefers-reduced-motion:reduce) {
- #home-personal.is-conversing #mu-chat-conv { animation:none; }
-}
-@media(min-width:1100px) {
- .home-workspace:not(:has(#home-todo,#home-agents,#home-upcoming)) { grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
-}
-
-
-#home-personal[hidden], #home-feed[hidden] { display:none !important; }
-
-/* A shared directory layout keeps short entries from spanning the whole page. */
 .collection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); gap:16px; align-items:stretch; max-width:var(--page-width); }
-.home-workspace { column-gap:48px; row-gap:24px; }
-.home-column.page-stack { gap:24px; }
-/* The workspace owns spacing; card margins must not add a second gap. */
-.home-workspace .section-card { margin:0; }
-#home { column-gap:48px; }
-.home-apps { border:0; padding-top:0; }
-@media(max-width:1099px) { .home-workspace { gap:16px; } }
 @media(max-width:900px) {
- #home { gap:16px; }
- #feed-brief { margin-bottom:16px; }
+#feed-brief { margin-bottom:16px; }
 }
-
-/* Set quoted scripture apart from the reflection without another heavy border. */
 .section-card .verse { background:#f5f5f5; padding:16px; border-radius:4px; max-height:none; overflow:visible; }
 .section-card .verse + p { margin-top:16px; }
-
-/* One stable command area above both Home views. */
-#home-agent { max-width:100%; margin-bottom:16px; }
-#home-agent #mu-chat-conv[hidden], #home-conversation-actions[hidden] { display:none !important; }
-#home-agent #mu-chat-conv { overflow-anchor:none; }
 .preview-rows .peek-main { display:flex; flex-direction:column; min-width:0; gap:4px; }
 .peek-snippet { display:block; color:var(--text-muted,#707070); font-size:13px; font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-
 .activity-status { display:block; font-size:12px; font-weight:500; color:var(--text-secondary,#555); }
-.agent-peek-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; }
-.agent-peek-row .agent-peek-name { grid-column:1; grid-row:1; }
-.agent-peek-row .activity-status { grid-column:2; grid-row:1; text-align:right; }
-.agent-peek-row .agent-peek-last { grid-column:1; grid-row:2; }
-.agent-peek-row .agent-peek-when { grid-column:2; grid-row:2; text-align:right; }
-
-/* Account entry uses the same typography, fields and spacing as application forms. */
 .auth-page #login, .auth-page #signup, .auth-page .auth-help, .auth-page #auth-status { width:100%; max-width:400px; margin:0 auto 16px; }
 .auth-page #login h1, .auth-page #signup h1 { font-size:16px; font-weight:500; margin:0; }
 .auth-page #login input, .auth-page #signup input { margin:0; }
@@ -311,59 +111,30 @@ a.link-text {
 .auth-page .auth-help { font-size:13px; }
 .auth-page #auth-status:empty { display:none; }
 .form-check { display:flex; flex-direction:row; align-items:center; gap:8px; }
-
-/* Static content cards use the same quiet boundary on every service page. */
 .card, .card:hover { box-shadow:none; }
-
-/* Account actions open upward from the compact sidebar footer. */
-.nav-account-disclosure{position:relative;width:100%}
-.nav-account-disclosure summary{display:flex;align-items:center;gap:6px;cursor:pointer;list-style:none;margin:0;padding:8px 0}
-.nav-account-disclosure summary::-webkit-details-marker{display:none}
-.nav-account-disclosure summary>span:last-child{margin-left:auto}
-.nav-account-menu{position:absolute;bottom:calc(100% + 8px);left:0;right:0;padding:8px;background:var(--card-background,#fff);border:1px solid var(--border-color,#ddd);border-radius:4px;box-shadow:0 4px 16px #0001;z-index:60;max-height:60dvh;overflow:auto}
-.nav-account-disclosure:not([open])>.nav-account-menu{display:none}
-
-.home-intro{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
-.home-command{min-width:0}
-.home-attention{align-self:start;border-left:2px solid var(--divider,#ddd);padding:4px 0 4px 16px;min-width:0}
-.home-attention p{margin:0 0 8px}
-.attention-actions{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:12px 0 0}
-.attention-actions button{font:inherit;font-size:13px;font-weight:400;padding:0;background:none;border:0;color:var(--text-secondary,#555);cursor:pointer}
-@media(min-width:1100px){.home-intro{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:40px}}
-
-/* Account control stays at the foot of the sidebar, including short menus. */
+.nav-account-disclosure { position:relative;width:100% }
+.nav-account-disclosure summary { display:flex;align-items:center;gap:6px;cursor:pointer;list-style:none;margin:0;padding:8px 0 }
+.nav-account-disclosure summary::-webkit-details-marker { display:none }
+.nav-account-disclosure summary>span:last-child { margin-left:auto }
+.nav-account-menu { position:absolute;bottom:calc(100% + 8px);left:0;right:0;padding:8px;background:var(--card-background,#fff);border:1px solid var(--border-color,#ddd);border-radius:4px;box-shadow:0 4px 16px #0001;z-index:60;max-height:60dvh;overflow:auto }
+.nav-account-disclosure:not([open])>.nav-account-menu { display:none }
+.attention-actions { display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:12px 0 0 }
+.attention-actions button { font:inherit;font-size:13px;font-weight:400;padding:0;background:none;border:0;color:var(--text-secondary,#555);cursor:pointer }
 #nav-container .nav-bottom { margin-top:auto; }
 @media(max-width:900px) {
- #nav-container { padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); }
+#nav-container { padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); }
 }
-
-/* Empty and short conversations occupy the same frame as a full transcript. */
 .chat-main > .mu-chat-transcript { flex:1 1 0; min-height:0; overflow:hidden; }
 .chat-main > .mu-chat-transcript #mu-chat-conv { flex:1 1 0; min-height:0; max-height:none; }
 .chat-main > .mu-chat-transcript #mu-chat-form { flex-shrink:0; }
 @media(min-width:901px) {
- .chat-layout .chat-main { overflow:hidden; }
+.chat-layout .chat-main { overflow:hidden; }
 }
-
-/* Dropdown choices keep readable text on their light hover/focus surface. */
-.menu-item:hover, .menu-item:focus-visible {
-  background:var(--hover-background,#f5f5f5);
-  color:var(--text-secondary,#555);
-}
-.menu-item.danger:hover, .menu-item.danger:focus-visible {
-  color:var(--btn-danger,#c00);
-}
-
+.menu-item:hover, .menu-item:focus-visible { background:var(--hover-background,#f5f5f5); color:var(--text-secondary,#555); }
+.menu-item.danger:hover, .menu-item.danger:focus-visible { color:var(--btn-danger,#c00); }
 .nav-account-disclosure summary { padding:8px 12px; }
 .nav-account-disclosure summary:hover,
 .nav-account-disclosure summary:focus-visible,
-.nav-account-disclosure[open] summary {
- background:var(--hover-background,#f5f5f5);
- color:var(--text-primary,#333);
-}
-
-/* Keep emphasis distinct without the browser's heavy default bold. */
+.nav-account-disclosure[open] summary { background:var(--hover-background,#f5f5f5); color:var(--text-primary,#333); }
 b, strong { font-weight:var(--font-weight-bold,600); }
 h1, h2, h3, h4, h5, h6, th { font-weight:var(--font-weight-bold,600); }
-/* Home section headings need a stronger anchor than surrounding preview text. */
-#home-cards .section-card-head h4 { font-weight:var(--font-weight-bold,600); }

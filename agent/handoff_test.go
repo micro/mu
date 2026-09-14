@@ -20,7 +20,7 @@ func TestGuestHandoffIsPrivateAndRetryable(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer auth.EndSession(sess.Token)
-	body := `{"turns":[{"prompt":"keep this question","answer":"and this answer"}]}`
+	body := `{"turns":[{"prompt":"keep this question","answer":"and this answer","results":[{"kind":"video","id":"fruits","url":"https://youtube.com/watch?v=fruits","title":"Fruits"}]}]}`
 	request := func(token bool) *http.Request {
 		r := httptest.NewRequest("POST", "/agent/handoff", strings.NewReader(body))
 		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
@@ -58,7 +58,7 @@ func TestGuestHandoffIsPrivateAndRetryable(t *testing.T) {
 	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 	w := httptest.NewRecorder()
 	MicroHandler(w, r)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "keep this question") {
+	if w.Code != 200 || (!strings.Contains(w.Body.String(), "keep this question") || !strings.Contains(w.Body.String(), "youtube.com/embed/fruits")) {
 		t.Fatal("root did not reopen imported conversation")
 	}
 }

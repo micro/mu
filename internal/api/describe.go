@@ -33,6 +33,7 @@ func MCPToolCalled(body []byte) (Tool, bool) { return ToolByName(mcpToolName(bod
 
 // ToolByName resolves a tool by its canonical name or one of its aliases.
 func ToolByName(name string) (Tool, bool) {
+	tools := Tools()
 	if name == "" {
 		return Tool{}, false
 	}
@@ -48,6 +49,7 @@ func ToolByName(name string) (Tool, bool) {
 // canonical MCP tool that sells it. This lets discovery reuse the MCP registry
 // instead of carrying a second list of tool names, descriptions and schemas.
 func ToolForWalletOp(op string) (Tool, bool) {
+	tools := Tools()
 	if op == "" {
 		return Tool{}, false
 	}

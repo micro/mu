@@ -28,6 +28,7 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"mu/internal/result"
 	"strings"
 
 	"mu/internal/notes"
@@ -420,7 +421,11 @@ func SaidTo(account, threadID, text, ref, from, to string) {
 }
 
 // Answered records what the agent replied, and which workflow produced it.
-func Answered(account, threadID, text, workflow string) {
+func Answered(account, threadID, text, workflow string, results ...result.Item) {
+	if len(results) > 0 {
+		thread.Add(thread.Message{Account: account, Thread: threadID, Role: thread.RoleAgent, Text: text, Workflow: workflow, Results: results})
+		return
+	}
 	AnsweredAs(account, threadID, text, workflow, "")
 }
 

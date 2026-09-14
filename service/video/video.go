@@ -689,16 +689,7 @@ func embedVideo(id string) string {
 var validVideoID = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
 func embedVideoWithAutoplay(id string, autoplay bool) string {
-	if !validVideoID.MatchString(id) {
-		return `<p class="text-muted">Invalid video ID.</p>`
-	}
-	u := "https://www.youtube.com/embed/" + id + "?enablejsapi=1&playsinline=1"
-	if autoplay {
-		u += "&autoplay=1"
-	}
-	// YouTube requires a Referer; disclose only the origin, never the watch URL.
-	style := `class="fill-abs"`
-	return `<iframe id="ytplayer" width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" referrerpolicy="strict-origin" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" playsinline allowfullscreen></iframe>`
+	return app.VideoPlayer(id, autoplay, "ytplayer")
 }
 
 func getChannel(category, handle string) (string, []*Result, error) {

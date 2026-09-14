@@ -288,6 +288,7 @@ func registerRoutes() {
 	// admin console
 	http.HandleFunc("/admin/status", admin.StatusHandler)
 	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
+	http.HandleFunc("/admin/work", work.AdminHandler)
 	// What this instance will wake you for. See admin/alert.go.
 	http.HandleFunc("/admin/alerts", admin.AlertsHandler)
 	http.HandleFunc("/admin/backup", admin.BackupHandler)
@@ -375,12 +376,9 @@ func registerRoutes() {
 
 	// serve fact-check page and API
 
-	// The dashboard lives at the named URL /home, consistent with every other
-	// section (/news, /mail, /agent …). It renders for everyone: logged out, the
-	// home screen is the public face — real cards plus the agent — so a visitor
-	// sees the product rather than a separate marketing page.
-	http.HandleFunc("/home", home.Handler)
-	http.HandleFunc("/assistant", home.AssistantHandler)
+	// Old shared entry URLs resolve to the conversation or optional Services feed.
+	http.HandleFunc("/home", conversationRedirect)
+	http.HandleFunc("/assistant", conversationRedirect)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
@@ -806,4 +804,21 @@ func registerRoutes() {
 
 	// serve the app
 	http.Handle("/", app.Serve())
+}
+
+// Only redirects remain for shared links to retired entry pages.
+func conversationRedirect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	target := "/"
+	if r.URL.Query().Get("view") == "feed" || r.URL.Query().Get("mode") == "display" {
+		target = "/services?view=feed"
+	} else if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	http.Redirect(w, r, target, http.StatusSeeOther)
 }

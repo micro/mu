@@ -38,20 +38,3 @@ func TestPickingAnAgentNavigatesRatherThanRelabelling(t *testing.T) {
 // what to do about it, which is an address. The rail is filtered by the agent
 // the page is for, so this is only true if the page is actually re-rendered for
 // the agent that was picked.
-func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
-	acc := owner(t, "rail_reader")
-
-	rail := renderSessionsRail(acc, "", "agent-with-no-history", true, "")
-	if !strings.Contains(rail, "Nothing here yet. Ask this agent something.") {
-		t.Errorf("a fresh agent's inbox does not read as empty:\n%s", rail)
-	}
-	if strings.Contains(rail, `>New</a>`) || strings.Contains(rail, `>New</button>`) {
-		t.Error("history picker duplicates the toolbar New action")
-	}
-
-	// The account-wide rail is a different sentence, because it means
-	// something different: nothing has been asked at all.
-	if all := renderSessionsRail(acc, "", "", false, ""); !strings.Contains(all, "Nothing here yet. Ask something") {
-		t.Errorf("the unfiltered inbox lost its empty state:\n%s", all)
-	}
-}

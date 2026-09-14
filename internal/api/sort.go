@@ -10,8 +10,7 @@ import (
 // The underlying registration slice is left untouched — card ordering and
 // name-based execution lookups don't depend on it.
 func sortedTools() []Tool {
-	out := make([]Tool, len(tools))
-	copy(out, tools)
+	out := Tools()
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
 }

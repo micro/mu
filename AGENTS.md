@@ -50,7 +50,7 @@ digest, the brief, moderation and work.
 mail, chat, SMS, WhatsApp, the web. It is `internal/thread`, not an email
 folder, and a new channel joins that record rather than starting a second one.
 
-**Home** is one view over all three, not a fourth thing.
+**The conversation** is the product entry point, before and after sign-in.
 
 ## Where this goes
 
@@ -59,10 +59,9 @@ Direction, not description — none of this paragraph is a claim about today.
 The services become the building blocks for infrastructure, tools and external
 services. MCP is how agents reach them. The agents are what turn reach into
 intelligence: summarising, contextualising and acting on what is there, rather
-than fetching it again each time somebody asks. The app becomes the focal
-point — the inbox as the place work happens, Home as one view onto it. Work owns delegated goals, execution and outcomes;
+than fetching it again each time somebody asks. The conversation becomes the focal point, with the agent using services and showing their results in place. Work owns delegated goals, execution and outcomes;
 Inbox owns the messages and updates about them. A conversation alone is not
-a work item. `/work` is a top-level destination over delegated task records,
+a work item. `/work` is a secondary destination over task records,
 not a rename of the tasks service.
 
 **Removing the barrier is the product.** An agent wanting news, mail, search,
@@ -72,20 +71,12 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Keep capabilities and data intact while simplifying the app.** Home is the
-personal dashboard, with Feed as a tab. Assistant opens the dedicated
-conversation. Navigation offers Assistant (Ask on mobile), Home, Inbox, Work, Agents
-and Services without an Advanced grouping. Todo remains a Home section over
-the tasks service, not another primary destination. Preserve the useful Home
-structure while applying shared typography, spacing, links and controls.
-Retire redundant pages only with a working replacement; preserve protocols,
-API responses, authorisation, mutations and existing shared content links.
+**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is the saved conversation, not a dashboard. Inbox focuses on communication needing attention, Work is the actionable task list, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. The optional Feed belongs to Services. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
 
 **Extend through stable patterns.** Services, agents and inbox records should
 scale through their existing registries and shared components. Use apps to
 build and test different experiences on the runtime. Adding a capability does
-not imply redesigning Home or adding a primary navigation item. Home is a
-stable overview and launch screen, not a growing catalogue of every experiment.
+not imply redesigning Home or adding a primary navigation item. The root is a conversation, with standalone utilities reachable from Services.
 
 ## What is true today, and what is not
 
@@ -532,7 +523,7 @@ cost; rate limits stop bots.
 
 ## UI composition
 
-The UI is being reduced before adopting a maintained component library. Prefer
+The UI is composed from small shared visual types. Prefer
 plain conversation flow and unboxed sections; use cards only when a distinct
 embedded object needs a boundary. Share typography across landing, account and
 application shells. Do not add new page-specific styling or a second chat
@@ -556,9 +547,4 @@ in their existing components. Check narrow mobile and desktop, with the sidebar
 open and closed, including revealed and collapsed controls when changing these
 shared rules.
 
-Home and Feed share one stationary prompt above their view panels. Focusing it
-must not relocate it or open a modal. Replies grow beneath it; Close preserves
-the exchange. Continue in Assistant reopens the same account-owned saved thread.
-Assistant uses the shared saved-chat renderer and history, while Agents manages
-agent identities, scopes and activity. Do not create separate transcript stores
-for these entry points. Recent conversations are shortcuts to saved threads.
+The root opens the shared saved-chat renderer, including guest-to-account continuity. The composer stays in a stable viewport position. Use mu.css for shared layout and visual types and composition.css for shared controls. Pages compose reusable cards, lists, tables, forms, messages, and status badges; do not create per-page stylesheets or route-based style registration. Specialized interactions such as maps and editors may own narrowly scoped component styles. Do not add layers of overrides to the old stylesheet to implement the core product.

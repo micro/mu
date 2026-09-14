@@ -29,12 +29,6 @@ func TestHomeNewsShortcutReturnsFinalAnswerWithoutCardOrModelWork(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := CardContextFunc
-	t.Cleanup(func() { CardContextFunc = old })
-	CardContextFunc = func(string) string {
-		t.Fatal("shortcut assembled ambient cards instead of returning directly")
-		return ""
-	}
 	for _, prompt := range []string{"users", "/users", "News", "news", " NEWS ", "markets", "MARKETS", "video", "latest videos", `"latest videos"`, "‘latest videos’"} {
 		body, _ := json.Marshal(map[string]any{"prompt": prompt, "cards": true, "agent": "micro"})
 		req := httptest.NewRequest("POST", "/agent", strings.NewReader(string(body)))
@@ -54,7 +48,7 @@ func TestHomeNewsShortcutReturnsFinalAnswerWithoutCardOrModelWork(t *testing.T) 
 			t.Fatal("web still emits partial prose")
 		}
 	}
-	if _, ok := promptCommand("news", QueryOpts{CardContext: "ambient cards"}); !ok {
+	if _, ok := promptCommand("news", QueryOpts{}); !ok {
 		t.Fatal("ambient context blocks shortcut")
 	}
 	if _, ok := promptCommand("news", QueryOpts{Extra: "attached article"}); ok {

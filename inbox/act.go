@@ -156,7 +156,7 @@ func hand(accountID string, t *thread.Thread, ask, agentID string) error {
 	// knows was made — and because inferring that somebody wanted work rather
 	// than an answer is a claim about what they meant, which they should be
 	// able to see and correct.
-	agentSaid(accountID, t.ID, "Taking that on — I will answer here when it is done.", agentID)
+	agentSaid(accountID, t.ID, "Taking that on. [View work]("+app.PublicURL()+"/work?id="+url.QueryEscape(task.ID)+")", agentID)
 	return tasks.Run(accountID, task.ID)
 }
 

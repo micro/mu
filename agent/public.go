@@ -22,7 +22,7 @@ func Resolve(account, slug string) (string, error) {
 func PublicOperations() []api.Operation {
 	return []api.Operation{
 		{Name: "agent_list", Description: "List the agents you can ask.", Handle: func(account string, raw json.RawMessage) (any, error) {
-			out := []map[string]string{{"name": SlugFor(account, DefaultPlatformAgent), "description": "The default assistant"}}
+			out := []map[string]string{{"name": SlugFor(account, DefaultPlatformAgent), "description": "The default agent"}}
 			for _, a := range Agents(account) {
 
 				out = append(out, map[string]string{"name": Slug(a), "description": a.Description})

@@ -141,7 +141,7 @@ func Configured() bool { return ai.Configured() }
 // symmetrical and the prompt should not pretend they are.
 const prompt = `You decide whether a message from an unknown sender should reach somebody's inbox.
 
-This is a personal assistant. Unknown senders are usually legitimate: a tradesperson, a delivery driver, a doctor's surgery, a friend texting from a new number, a business replying to something the person started.
+This is a personal AI agent. Unknown senders are usually legitimate: a tradesperson, a delivery driver, a doctor's surgery, a friend texting from a new number, a business replying to something the person started.
 
 Answer with ONE WORD:
 - HOLD — bulk marketing, a scam or phishing attempt, a one-time-password or verification code the person did not ask for, or abuse.

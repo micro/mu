@@ -61,7 +61,7 @@ func Savable() bool {
 func VCard(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		name = "Assistant"
+		name = "Micro"
 	}
 
 	var b strings.Builder

@@ -69,7 +69,7 @@ func TestPromptIsTheNameAndTextIsTheAlias(t *testing.T) {
 
 // And the page says which door it is knocking on.
 func TestThePageAsksForAStream(t *testing.T) {
-	src, err := os.ReadFile("../internal/app/chat.go")
+	src, err := os.ReadFile("../internal/app/conversation.js")
 	if err != nil {
 		t.Fatal(err)
 	}

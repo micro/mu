@@ -20,7 +20,6 @@ package routes
 import (
 	"fmt"
 	"html"
-	"math"
 	"net/http"
 	"strings"
 
@@ -177,71 +176,7 @@ const (
 // six tenths of a degree of latitude, and without the correction every route in
 // Britain comes out stretched sideways. Over the length of a journey somebody
 // might drive, flat is indistinguishable from correct.
-func draw(shape []point) string {
-	if len(shape) < 2 {
-		return ""
-	}
-	minLat, maxLat := shape[0].Lat, shape[0].Lat
-	minLon, maxLon := shape[0].Lon, shape[0].Lon
-	for _, p := range shape {
-		minLat, maxLat = min(minLat, p.Lat), max(maxLat, p.Lat)
-		minLon, maxLon = min(minLon, p.Lon), max(maxLon, p.Lon)
-	}
-	// A journey that goes nowhere has no shape to draw.
-	squeeze := cosDeg((minLat + maxLat) / 2)
-	spanX, spanY := (maxLon-minLon)*squeeze, maxLat-minLat
-	if spanX <= 0 && spanY <= 0 {
-		return ""
-	}
-	// One scale for both axes, so the drawing keeps the journey's proportions
-	// rather than stretching a straight road to fill the box.
-	scale := min((drawW-2*drawPad)/nonZero(spanX), (drawH-2*drawPad)/nonZero(spanY))
-	offX := (drawW - spanX*scale) / 2
-	offY := (drawH - spanY*scale) / 2
-	at := func(p point) (float64, float64) {
-		x := offX + (p.Lon-minLon)*squeeze*scale
-		// SVG y grows downward and latitude grows northward.
-		y := drawH - offY - (p.Lat-minLat)*scale
-		return x, y
-	}
-
-	var d strings.Builder
-	for i, p := range shape {
-		x, y := at(p)
-		if i == 0 {
-			fmt.Fprintf(&d, "M%.1f %.1f", x, y)
-			continue
-		}
-		fmt.Fprintf(&d, " L%.1f %.1f", x, y)
-	}
-	sx, sy := at(shape[0])
-	ex, ey := at(shape[len(shape)-1])
-
-	return fmt.Sprintf(`<svg class="rt-map" viewBox="0 0 %d %d" role="img" `+
-		`aria-label="The shape of the route from start to finish">`+
-		`<path d="%s" fill="none" stroke="currentColor" stroke-width="2.5" `+
-		`stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>`+
-		`<circle cx="%.1f" cy="%.1f" r="5" fill="none" stroke="currentColor" stroke-width="2"/>`+
-		`<circle cx="%.1f" cy="%.1f" r="5" fill="currentColor"/>`+
-		`</svg>`, drawW, drawH, d.String(), sx, sy, ex, ey)
-}
-
-// nonZero keeps a straight north-south or east-west route from dividing by zero.
-func nonZero(v float64) float64 {
-	if v <= 0 {
-		return 1e-9
-	}
-	return v
-}
-
-// cosDeg is the cosine of an angle in degrees.
-func cosDeg(deg float64) float64 {
-	c := math.Cos(deg * math.Pi / 180)
-	if c < 0.05 {
-		return 0.05 // near the poles, stop squeezing rather than collapse
-	}
-	return c
-}
+func draw(shape []point) string { return app.RouteMap(shape) }
 
 const pageCSS = `<style>
 .rt-head{margin:0 0 6px;font-size:15px}

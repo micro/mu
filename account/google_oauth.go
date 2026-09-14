@@ -184,7 +184,7 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		Name: "session", Value: sess.Token, Path: "/", MaxAge: 2592000,
 		HttpOnly: true, Secure: requestSecure(r), SameSite: http.SameSiteLaxMode,
 	})
-	destination := "/home"
+	destination := "/"
 	if c, err := r.Cookie("g_return"); err == nil {
 		if decoded, err := url.QueryUnescape(c.Value); err == nil {
 			destination = SafeRedirectTo(decoded)

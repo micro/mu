@@ -245,22 +245,7 @@ func serve(addr string) {
 						}
 					}
 
-					// The same front door either way.
-					//
-					// Signing in used to move you to /home, so the page a person
-					// chose to visit was replaced by a different one the moment
-					// they had an account — and the thing they were doing, which
-					// is asking a question in the box, did not survive the move.
-					// A product whose front page becomes a different product
-					// once you sign up has two front pages and no front door.
-					//
-					// So this is one page in two states: the box, the day, the
-					// way on, and signed in the day is also yours. /home is
-					// still there and is still the dashboard — the rail of your
-					// inbox and agents and balance, the grid of services — and
-					// it is reached by the link in the corner, deliberately, by
-					// somebody who came to look at things rather than to find
-					// one thing out. See home.today.
+					// The same conversation before and after sign-in.
 					home.Index(w, r)
 					return
 				}

@@ -67,7 +67,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// the answer; hardcoding it there would be a lie on the day an operator
 	// changes it, and this file is served by every instance.
 	b.WriteString(`<div class="card"><h3>What this costs</h3>` +
-		`<p>A question to the agent is ` + strconv.Itoa(quota.OperationCost(quota.OpAgentRun)) +
+		`<p>A question to Micro is ` + strconv.Itoa(quota.OperationCost(quota.OpAgentRun)) +
 		`¢. This instance charges for what it has to buy from somebody else: a question is a ` +
 		`model call, a search is a search company's, a text message is a carrier's. ` +
 		`Anything that only touches this server — reading the news, your mail, your ` +

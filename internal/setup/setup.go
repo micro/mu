@@ -114,7 +114,7 @@ func applySetup(w http.ResponseWriter, r *http.Request) {
 		Name: "session", Value: sess.Token, Path: "/", MaxAge: 2592000,
 		Secure: secure, HttpOnly: true, SameSite: http.SameSiteLaxMode,
 	})
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // ApplyProvider writes the chosen AI provider into the settings keys the

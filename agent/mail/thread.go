@@ -84,7 +84,7 @@ func introduction(owner string, m mail.InboundMail, addr string) string {
 	if who == "" {
 		who = m.From
 	}
-	return "_" + who + " copied me in — I'm an assistant that can look things up. " +
+	return "_" + who + " copied me in — I'm an AI agent that can look things up. " +
 		"Drop me from the recipients any time and the thread carries on without me._\n\n"
 }
 

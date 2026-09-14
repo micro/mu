@@ -89,7 +89,7 @@ func RenderList(items []*Entry) string {
 // where it came from.
 func source(name string) (label, icon, page string) {
 	if name == "brief" {
-		return "Brief", "home.png", "/home"
+		return "Brief", "home.png", "/"
 	}
 	for _, s := range service.Specs() {
 		if s.Name == name {

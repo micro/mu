@@ -22,7 +22,7 @@ type publicRequest struct {
 }
 
 func publicTask(t *tasks.Task) map[string]any {
-	return map[string]any{"id": t.ID, "prompt": t.Title, "status": t.Status, "result": t.Result, "agent": agent.SlugFor(t.Owner, t.Agent), "thread": t.Thread, "created": t.Created, "updated": t.Updated, "steps": t.Steps}
+	return map[string]any{"id": t.ID, "prompt": t.Title, "status": t.Status, "result": t.Result, "agent": agent.SlugFor(t.Owner, t.Agent), "thread": t.Thread, "created": t.Created, "updated": t.Updated, "steps": t.Steps, "attempts": t.Attempts}
 }
 func PublicOperations() []api.Operation {
 	id := api.ToolParam{Name: "id", Type: "string", Description: "An owned work ID.", Required: true}
@@ -110,7 +110,7 @@ func PublicOperations() []api.Operation {
 				return nil, api.Fail(400, "invalid_arguments", "Invalid pagination")
 			}
 			switch req.Status {
-			case "", tasks.StatusTodo, tasks.StatusDoing, tasks.StatusDone, tasks.StatusFailed, tasks.StatusBlocked:
+			case "", tasks.StatusCanceled, tasks.StatusTodo, tasks.StatusDoing, tasks.StatusDone, tasks.StatusFailed, tasks.StatusBlocked:
 			default:
 				return nil, api.Fail(400, "invalid_arguments", "Unknown status")
 			}
@@ -142,7 +142,10 @@ func PublicOperations() []api.Operation {
 			if err != nil {
 				return nil, err
 			}
-			if t.Status != tasks.StatusFailed && t.Status != tasks.StatusBlocked {
+			if _, running := activeRuns.Load(account + ":" + t.ID); running {
+				return nil, api.Fail(409, "conflict", "The previous run is still stopping")
+			}
+			if t.Status != tasks.StatusFailed && t.Status != tasks.StatusBlocked && t.Status != tasks.StatusCanceled {
 				return nil, api.Fail(409, "conflict", "Only failed or blocked work can be retried")
 			}
 			if err := workCredits(account); err != nil {

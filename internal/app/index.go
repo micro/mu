@@ -58,7 +58,8 @@ func RenderIndex(l Index) string {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
 <title>` + l.Title + `</title>
 <meta name="description" content="` + l.Description + `">
 <meta property="og:title" content="` + l.Title + `">
@@ -66,132 +67,10 @@ func RenderIndex(l Index) string {
 ` + ogImage + `
 ` + icons + `
 <link rel="stylesheet" href="/composition.css?` + Version + `">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;background:#fff;color:#111;min-height:100vh;display:flex;flex-direction:column}
-.index-page{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0 20px 40px;position:relative;width:100%}
-/* The same header the app has: name centred, the way in on the right.
- *
- * This page and the app were two different headers — the app centres its brand
- * with the corner floated right, and this had the name on the left. So signing
- * in moved the wordmark across the screen, which is the discrepancy that shows
- * once everything else has stopped moving.
- *
- * Centred by the row, with the link taken out of the flow — the same shape as
- * #head/#head-right in mu.css, arrived at for the same reason: a name centred
- * against a variable-width link on the other side is not centred on the page,
- * it is centred on what is left over. */
-/* Not positioned, and that is deliberate: the corner below anchors to the page
- * instead. This row is a centred 760px column, so a corner anchored to it sat
- * at the right edge of that column rather than of the screen — on a wide
- * desktop, a Log in link floating in the middle of the empty half of the page.
- * It looked right only while this row also held a wordmark for it to sit
- * beside, and the wordmark moved into the body when the landing became one
- * centred stack. */
-.index-head{width:100%;max-width:760px;margin:0 auto;
-  display:flex;align-items:center;justify-content:center;padding:20px 0 0}
-.brand{font-size:1.05rem;font-weight: 600;letter-spacing:-.2px;line-height:1.25}
-/* The body sits in the middle of what is left, not at the top of it.
- *
- * It was a fixed 12vh above the box, which put the block high and left the
- * spare space in one lump underneath: measured at 1280x900, 108px above and
- * 248px below. A page that ends a quarter of a screen short of its own footer
- * reads as unfinished rather than as roomy.
- *
- * Centring the leftover space was tried once before and rejected, because the
- * wordmark was then the hero at the top of this element and centring what came
- * after it left the name stranded with a hole under it. The wordmark is in the
- * header now, so there is nothing above the box to strand: the block is the
- * whole body, and it centres.
- *
- * flex-grow on the body rather than a margin, so the header keeps its place at
- * the top and the footer keeps its at the bottom; only what is between them
- * moves. Padding rather than centring the flex line, so a body taller than the
- * space scrolls from its top instead of having its head cut off. */
-.index-body{flex:1;display:flex;flex-direction:column;justify-content:center;
-  width:100%;padding:6vh 0}
-.tagline{color:#111;font-size:18px;font-weight: 600;margin-bottom:6px}
-.subtag{color:#666;font-size:15px;margin-bottom:32px;max-width:520px;text-align:center;line-height:1.5}
-/* The corner: the page's top right, the same place the app shell puts it.
-   Anchored to .index-page rather than to the header row above, so it is in the
-   corner of the screen whether or not that row has anything in it.
+<link rel="stylesheet" href="/mu.css?` + Version + `">
 
-   A fixed top rather than centring in the row, because the row's height depends
-   on whether a wordmark is in it: centred, it collapsed to the very top edge on
-   the landing, which has none. 20px lines it up with the middle of a brand
-   where there is one and reads as a margin where there is not.
-
-   right:20px and not 0, because an absolute box is placed against its
-   containing block's padding box — so right:0 is the window's own edge, with
-   the page's 20px gutter passing behind the link. It matches .index-page's
-   horizontal padding, which is what everything else here lines up to.
-
-   It held one link and now holds two controls, so it is a row — and buttons and
-   links take different defaults, which is 3px of misalignment side by side
-   unless both are told the same. */
-.login-link{position:absolute;right:20px;top:20px;
-  display:flex;align-items:center;gap:14px}
-.login-link a,.login-link button{color:#555;text-decoration:none;font-size:14px;font-weight: 550;
-  background:none;border:0;padding:0;font-family:inherit;line-height:20px;cursor:pointer}
-.login-link a:hover,.login-link button:hover{color:#111}
-/* Sign up is the decision this page exists to put in front of somebody, so it
-   is the darker of the two. Weight and colour only — a filled button here
-   competes with the box in the middle of the page, which is the actual thing
-   to do. */
-.login-link a.primary{color:#111;font-weight: 600}
-/* An author rule beats the browser's own [hidden]{display:none} whatever its
-   specificity, and the rule above sets a display on buttons via the flex row.
-   Without this the install control is on the page in every browser that cannot
-   install anything. */
-.login-link [hidden]{display:none}
-.also{text-align:center;margin:32px 0;font-size:14px;color:#888}
-.footer{padding:20px;text-align:center;font-size:13px;color:#999}
-/* No extra margin: FooterLinks already spaces the links with separators,
-   so adding margin here made the same six links wrap where the app shell fits
-   them on one line. */
-.footer a{color:#555;text-decoration:none;font-weight:400}
-.footer a:hover{text-decoration:underline}
-.index-body:has(>.public-page){justify-content:flex-start;padding:32px 0 0}
-.public-page{width:100%;max-width:760px;margin:40px auto 0;line-height:1.65}
-.public-page h1{text-align:center;font-size:28px;margin-bottom:32px}
-.public-page .page-col{width:100%;max-width:none}
-.public-page .card{margin-bottom:24px}
-.public-page h3{font-size:18px;margin-bottom:8px}
-.public-page p{margin-bottom:16px}
-.public-page a:not(.btn){color:#555;text-decoration:none;font-weight: 600}
-.public-page table{width:100%;border-collapse:collapse;margin-bottom:16px;text-align:left;font-size:14px}
-.public-page td,.public-page th{padding:8px;border-bottom:1px solid #eee;vertical-align:top}
-.public-page td:last-child{white-space:nowrap}
-.public-page .text-sm{font-size:13px}
-.public-page .text-muted{color:#777}
-.public-page .status-header,.public-page .status-value{display:flex;align-items:center;gap:8px}
-.public-page .status-header{margin-bottom:24px}
-.public-page .status-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}
-.public-page .status-ok{color:#238636}
-.public-page .status-error{color:#c62828}
-.public-page .status-details{color:#777;font-size:13px}
-
-/* 14vh of air above the wordmark is right on a tall window and is a fifth of a
-   short one — a 1280x600 laptop spent 84px on padding and then scrolled by 23.
-   Height is the axis that decides here, so the query is on height. */
-@media (max-height:720px){.index-body{padding-top:6vh}}
-@media (max-width:600px){.index-body{padding-top:8vh}}
-/* The hero cards on these pages are capped at ~240px so three sit in a row on
-   desktop. Below that the cap left them stranded mid-screen, so let them fill
-   the column like every card elsewhere in the app. */
-/* Descendant selectors so these beat the per-page rules, which are emitted
-   after this block and would otherwise win on source order alone. */
-@media (max-width:600px){
-  .lcards,.pcards{flex-direction:column;align-items:stretch;gap:10px}
-  /* flex:1 1 220px sizes the main axis, which is the *height* once stacked —
-     that left every card padded out to 220px tall. Size to content instead. */
-  .lcards .lcard,.pcards .pcard{flex:0 0 auto;max-width:none;min-width:0;width:100%;box-sizing:border-box}
-  .lctas{flex-direction:column}
-  .lctas .lcta{width:100%;box-sizing:border-box;text-align:center}
-}
-</style>
 </head>
-<body>
+<body class="index-shell">
 <div class="index-page">
   <div class="index-head">
     <div class="brand">` + l.Brand + `</div>

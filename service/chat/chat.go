@@ -45,7 +45,7 @@ var Template = `
 <button>Send</button>
 </form></div></div><style>
 /* Keep the scroll viewport connected to the page's bounded flex column. */
-body:has(#messages):has(.room-layout) #content { height:calc(100dvh - 70px - var(--tabbar)); }
+body:has(#messages):has(.room-layout) #content { height:calc(var(--visible-height,100dvh) - 56px); display:flex; flex-direction:column; padding-bottom:16px; }
 .room-layout { display:flex; flex:1 1 0; min-height:0; min-width:0; }
 .room-toolbar { flex:0 0 auto; padding:8px 12px; border:1px solid var(--border-color,#e5e5e5); border-bottom:0; border-radius:4px 4px 0 0; background:var(--card-background,#fff); font-size:13px; }
 .room-roster { display:flex; align-items:center; gap:12px; min-width:0; }
@@ -56,10 +56,10 @@ body:has(#messages):has(.room-layout) #content { height:calc(100dvh - 70px - var
 .room-toolbar .room-about { margin:8px 0 0; padding:8px 0 0; border-bottom:0; border-top:1px solid var(--border-color,#eee); max-height:25dvh; overflow-y:auto; }
 .room-toolbar .room-about > summary { text-transform:none; letter-spacing:normal; font-size:13px; }
 .room-main { display:flex; flex:1; flex-direction:column; min-width:0; min-height:0; }
-.room-main #messages { min-height:0; max-height:none; overflow-wrap:anywhere; }
+.room-main #messages { flex:1; overflow:auto; min-height:0; max-height:none; overflow-wrap:anywhere; }
 .room-main #messages img, .room-main #messages video { max-width:100%%; height:auto; }
 .room-main #messages pre { max-width:100%%; overflow-x:auto; }
-.room-main #chat-form { flex:0 0 auto; min-width:0; }
+.room-main #chat-form { display:flex; gap:8px; flex:0 0 auto; min-width:0; }
 .room-main #prompt { width:0; min-width:0; max-width:none; flex:1 1 0; }
 
 </style>`
@@ -1665,7 +1665,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	content := fmt.Sprintf(Template, channels(roomID)+guestNotice, about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
-	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})
+	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content + `<script>` + clientJS + `</script>`})
 }
 
 // aboutRoom is what this room is about: the summary, foldable, and the thing it
@@ -2128,3 +2128,6 @@ func cleanupIdleRooms() {
 		}
 	}
 }
+
+//go:embed client.js
+var clientJS string

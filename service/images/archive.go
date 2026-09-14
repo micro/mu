@@ -12,9 +12,12 @@
 package images
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
+	"mu/internal/thumbnail"
 	"net/http"
 	"path"
 	"strings"
@@ -280,7 +283,14 @@ func serveGenerated(caller string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", contentTypeFor(key))
+	ctype := contentTypeFor(key)
+	if r.URL.Query().Get("size") == "thumb" {
+		if preview, err := thumbnail.Get(key, b); err == nil {
+			b = preview
+			ctype = "image/jpeg"
+		}
+	}
+	w.Header().Set("Content-Type", ctype)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(b)))
 	// An image never changes once generated, but a private one must not be
 	// cached anywhere but the browser that is allowed to see it.
@@ -289,7 +299,8 @@ func serveGenerated(caller string, w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("Cache-Control", "no-store")
 	}
-	w.Write(b)
+	w.Header().Set("ETag", fmt.Sprintf(`"%x"`, sha256.Sum256(b)))
+	http.ServeContent(w, r, key, time.Time{}, bytes.NewReader(b))
 }
 
 // validDate matches the YYYY-MM-DD date that names an archived image. The date
@@ -330,10 +341,18 @@ func DailyImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", contentTypeFor(key))
+	ctype := contentTypeFor(key)
+	if r.URL.Query().Get("size") == "thumb" {
+		if preview, err := thumbnail.Get(key, b); err == nil {
+			b = preview
+			ctype = "image/jpeg"
+		}
+	}
+	w.Header().Set("Content-Type", ctype)
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(b)))
-	w.Write(b)
+	w.Header().Set("ETag", fmt.Sprintf(`"%x"`, sha256.Sum256(b)))
+	http.ServeContent(w, r, key, time.Time{}, bytes.NewReader(b))
 }
 
 // displayURL returns the URL to render for a daily: the locally stored copy
@@ -341,6 +360,13 @@ func DailyImageHandler(w http.ResponseWriter, r *http.Request) {
 func (d Daily) displayURL() string {
 	if d.File != "" {
 		return "/images/daily/" + d.Date
+	}
+	return d.URL
+}
+
+func (d Daily) previewURL() string {
+	if d.File != "" {
+		return d.displayURL() + "?size=thumb"
 	}
 	return d.URL
 }

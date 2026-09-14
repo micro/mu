@@ -95,9 +95,6 @@ func TestTheAdvertisedPortIsTheOneToConnectTo(t *testing.T) {
 // nothing, and the failure being guarded against is a link deleted with no
 // replacement, which a grep catches exactly.
 func TestTheMailClientPageIsReachable(t *testing.T) {
-	if strings.Contains(addressBar(httptest.NewRequest("GET", "/inbox", nil), "someone", ""), `href="/inbox/imap"`) {
-		return // still on the inbox, which also satisfies the property
-	}
 	b, err := os.ReadFile(filepath.Join("..", "account", "pages.go"))
 	if err != nil {
 		t.Fatalf("cannot read the account page: %v", err)

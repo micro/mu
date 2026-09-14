@@ -10,6 +10,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/result"
 	"mu/internal/thread"
 )
 
@@ -33,8 +34,9 @@ func HandoffHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Turns []struct {
-			Prompt string `json:"prompt"`
-			Answer string `json:"answer"`
+			Prompt  string        `json:"prompt"`
+			Answer  string        `json:"answer"`
+			Results []result.Item `json:"results,omitempty"`
 		} `json:"turns"`
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 512*1024)
@@ -43,7 +45,7 @@ func HandoffHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, t := range req.Turns {
-		if strings.TrimSpace(t.Prompt) == "" || strings.TrimSpace(t.Answer) == "" {
+		if strings.TrimSpace(t.Prompt) == "" || strings.TrimSpace(t.Answer) == "" || len(t.Results) > 6 {
 			app.RespondError(w, 400, "Only completed turns can be saved")
 			return
 		}
@@ -58,7 +60,7 @@ func HandoffHandler(w http.ResponseWriter, r *http.Request) {
 	if len(thread.Messages(acc.ID, id, 1)) == 0 {
 		for _, t := range req.Turns {
 			Said(acc.ID, id, t.Prompt, "", "")
-			Answered(acc.ID, id, t.Answer, "")
+			Answered(acc.ID, id, t.Answer, "", t.Results...)
 		}
 	}
 	app.RespondJSON(w, map[string]string{"id": id})
@@ -88,8 +90,8 @@ function finish(id){
  if(draft)sessionStorage.setItem('mu_chat_draft:'+ns+':'+id,draft);
  ['hist','conv','ctx','draft'].forEach(function(k){sessionStorage.removeItem('mu_chat_'+k+':landing');});
  }catch(e){return;}
- if(id){if(draft)sessionStorage.setItem('mu_chat_continue_draft:'+id,draft);window.location.replace('/assistant?session='+encodeURIComponent(id));}
- else if(draft){sessionStorage.setItem('mu_chat_draft:'+ns+':',draft);window.location.replace('/assistant?new=1');}
+ if(id){if(draft)sessionStorage.setItem('mu_chat_continue_draft:'+id,draft);window.location.replace('/?session='+encodeURIComponent(id));}
+ else if(draft){sessionStorage.setItem('mu_chat_draft:'+ns+':',draft);window.location.replace('/?new=1');}
 }
 if(!turns.length){finish('');return;}
 fetch('/agent/handoff',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':` + app.JSString(auth.CSRFToken(r)) + `},body:JSON.stringify({turns:turns})})

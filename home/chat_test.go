@@ -29,7 +29,7 @@ import (
 // changed in months reads as a demo rather than an offer.
 func TestTheChatBoxOffersNoStaleSuggestion(t *testing.T) {
 	html := app.ChatComponent(app.ChatConfig{Ask: true})
-	if !strings.Contains(html, `placeholder="Ask it something"`) {
+	if !strings.Contains(html, `placeholder="What do you need?"`) {
 		t.Error("the box has no placeholder")
 	}
 	if strings.Contains(html, "morning brief") {

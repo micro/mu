@@ -25,6 +25,7 @@ package tasks
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"sync"
 
 	"mu/internal/event"
@@ -67,7 +68,12 @@ func Run(owner, id string) error {
 	// was an in-memory map beside it doing the same job, which meant two
 	// answers to "is this running" and only one of them survived a restart —
 	// a task left "doing" by a crash could never be run again.
-	if _, err := update(owner, t.ID, "", "", StatusDoing, Agent, "", nil); err != nil {
+	// Preserve legacy activity before the first run under the new recorder.
+	if len(t.Attempts) == 0 && (len(t.Steps) > 0 || t.Result != "") {
+		t.Attempts = append(t.Attempts, Attempt{ID: uuid.NewString(), Status: t.Status, Finished: t.Updated, Steps: t.Steps, Report: t.Result})
+	}
+	t.Attempts = append(t.Attempts, Attempt{ID: uuid.NewString(), Started: now(), Status: StatusDoing})
+	if _, err := update(owner, t.ID, "", "", StatusDoing, Agent, "", map[string]any{"attempts": encodeAttempts(t.Attempts), "result": nil, "archived": false}, []Step{}); err != nil {
 		return err
 	}
 

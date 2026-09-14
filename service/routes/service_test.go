@@ -161,7 +161,7 @@ func TestNearestIsBounded(t *testing.T) {
 // TestPolylineDecodes against the example published with the format.
 func TestPolylineDecodes(t *testing.T) {
 	got := decodePolyline(polylineExample)
-	want := []point{{38.5, -120.2}, {40.7, -120.95}, {43.252, -126.453}}
+	want := []point{{Lat: 38.5, Lon: -120.2}, {Lat: 40.7, Lon: -120.95}, {Lat: 43.252, Lon: -126.453}}
 	if len(got) != len(want) {
 		t.Fatalf("decoded %d points, want %d: %+v", len(got), len(want), got)
 	}

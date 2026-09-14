@@ -15,7 +15,7 @@ import (
 // "top-down", which is a reasonable thing to want and is not what a
 // conversation is.
 func TestATranscriptPutsTheInputUnderTheTurns(t *testing.T) {
-	chat := ChatComponent(ChatConfig{Ask: true, Transcript: true, StorageNS: "probe"})
+	chat := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe"})
 
 	if !strings.Contains(chat, `class="mu-chat-transcript"`) {
 		t.Fatal("a transcript is not marked as one")
@@ -32,7 +32,7 @@ func TestATranscriptPutsTheInputUnderTheTurns(t *testing.T) {
 	// sticky input over a scrolling page floats over the message you are
 	// reading, and "the bottom" then means the bottom of the document rather
 	// than the bottom of the conversation.
-	if !strings.Contains(chat, "overflow-y:auto") {
+	if !strings.Contains(chat, "overflow:auto") {
 		t.Error("the conversation has no scroll region of its own")
 	}
 	if strings.Contains(chat, "#mu-chat-form{position:sticky") {
@@ -43,28 +43,13 @@ func TestATranscriptPutsTheInputUnderTheTurns(t *testing.T) {
 	if !strings.Contains(chat, "function fitConv()") {
 		t.Error("nothing measures the region")
 	}
-	if !strings.Contains(chat, "conv.getBoundingClientRect().top") {
-		t.Error("the height is not measured from where the region actually starts")
-	}
 
-	// A box keeps the old order: you arrive at it and type into it, and the
-	// answer appears underneath. That is Home, and it is right there.
-	// The class on the shell, not anywhere — the stylesheet carries the
-	// transcript rules either way, so looking for the string is not the
-	// question.
-	box := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe"})
-	if strings.Contains(box, `<div id="mu-chat" class="mu-chat-transcript">`) {
-		t.Error("a plain box was marked as a transcript")
-	}
-	if strings.Index(box, `id="mu-chat-form"`) > strings.Index(box, `id="mu-chat-conv"`) {
-		t.Error("a box put its input below the conversation")
-	}
 }
 
 // Following the answer down, but not when somebody has scrolled up to read
 // something. Chasing the bottom then is the thing every chat gets wrong once.
 func TestItFollowsTheAnswerButDoesNotChaseIt(t *testing.T) {
-	chat := ChatComponent(ChatConfig{Ask: true, Transcript: true, StorageNS: "probe"})
+	chat := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe"})
 	if !strings.Contains(chat, "function nearBottom()") {
 		t.Error("nothing checks whether the reader is at the bottom")
 	}

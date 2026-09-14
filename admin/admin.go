@@ -26,6 +26,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Alphabetical. There is no ranking to express here, and a list that is
 	// sorted is one nobody has to scan twice.
 	content := `<div class="collection-grid">
+		<a class="card card-hover section-actions" href="/admin/work">Work diagnostics</a>
 		<a class="card card-hover section-actions" href="/admin/alerts">Alerts</a>
 		<a class="card card-hover section-actions" href="/admin/backup">Backup</a>
 		<a class="card card-hover section-actions" href="/admin/config">Config</a>

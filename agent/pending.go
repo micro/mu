@@ -184,7 +184,7 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 func renderTurn(m thread.Message, by string) string {
 	if m.Role == thread.RoleAgent {
 		return `<div class="mu-agent">` + byline(by) + `<div class="card">` +
-			app.RenderString(m.Text) + `</div></div>`
+			app.RenderString(m.Text) + `</div>` + app.Results(m.Results) + `</div>`
 	}
 	return `<div class="mu-user">` + htmlEsc(m.Text) + `</div>`
 }

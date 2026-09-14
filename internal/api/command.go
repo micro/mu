@@ -28,6 +28,7 @@ func Commands() []Tool {
 
 // Lookup finds a tool by name or alias.
 func Lookup(name string) (Tool, bool) {
+	tools := Tools()
 	for i := range tools {
 		if toolMatches(tools[i], name) && !tools[i].RESTOnly {
 			return tools[i], true

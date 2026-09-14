@@ -87,7 +87,11 @@ type DirectionsRequest struct {
 
 // DirectionsResponse is the way there, turn by turn.
 type DirectionsResponse struct {
-	Text string `json:"text" description:"The journey summary followed by numbered turn-by-turn instructions"`
+	Summary      string   `json:"summary,omitempty"`
+	Shape        []point  `json:"shape,omitempty"`
+	Instructions []string `json:"instructions,omitempty"`
+	Estimate     bool     `json:"estimate"`
+	Text         string   `json:"text" description:"The journey summary followed by numbered turn-by-turn instructions"`
 }
 
 // Directions gives the turn-by-turn route between two places.
@@ -111,6 +115,14 @@ func (Server) Directions(_ context.Context, req *DirectionsRequest, rsp *Directi
 	fmt.Fprintf(&b, "%s to %s by %s: %s, %s.",
 		j.fromLabel, j.toLabel, spoken(j.mode), humanDuration(r.Duration), humanDistance(r.Metres))
 	b.WriteString(timing(r, j.when))
+	rsp.Summary = b.String()
+	rsp.Estimate = r.Estimate
+	if !r.Estimate {
+		rsp.Shape = r.Shape
+		for _, step := range r.Steps {
+			rsp.Instructions = append(rsp.Instructions, step.Text)
+		}
+	}
 	if r.Estimate {
 		// No key means no route, and a list of turns is exactly what an estimate
 		// cannot invent. Say so rather than return a heading and a distance

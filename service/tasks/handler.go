@@ -137,7 +137,7 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	b.WriteString(`</div>`)
 
 	if len(list) == 0 {
-		b.WriteString(`<p class="text-sm text-muted">Nothing here yet. Add something you want to do, or ask your assistant to help.</p>`)
+		b.WriteString(`<p class="text-sm text-muted">Nothing here yet. Add something you want to do, or ask your agent to help.</p>`)
 	}
 
 	running := 0

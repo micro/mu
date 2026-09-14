@@ -48,11 +48,8 @@ func TestInboxNoteReadEditDeleteAndOwnership(t *testing.T) {
 	notes.Add("inbox_note_owner", "Private title", "**Original note**")
 	n := notes.All("inbox_note_owner")[0]
 	path := "/inbox?kind=note&id=" + n.ID
-	if n.ID == "" || strings.Contains(noteRow(n), `href="/notes`) {
-		t.Fatal("note does not open inside inbox")
-	}
 	w := call(path, nil, false)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "<strong>Original note</strong>") {
+	if w.Code != 303 || w.Header().Get("Location") != "/notes?id="+n.ID {
 		t.Fatalf("read: %d %s", w.Code, w.Body.String())
 	}
 	if w = other(path, nil, false); w.Code != 404 {
@@ -64,11 +61,11 @@ func TestInboxNoteReadEditDeleteAndOwnership(t *testing.T) {
 	if w = call(path, url.Values{"action": {"save"}, "text": {"Changed"}}, false); w.Code != 403 {
 		t.Fatalf("missing CSRF: %d", w.Code)
 	}
-	if edit := call(path+"&edit=1", nil, false); edit.Code != 200 || !strings.Contains(edit.Body.String(), `name="text"`) {
+	if edit := call(path+"&edit=1", nil, false); edit.Code != 303 || edit.Header().Get("Location") != "/notes?id="+n.ID {
 		t.Fatal("note editor missing")
 	}
 	w = call(path, url.Values{"action": {"save"}, "text": {"Changed"}}, true)
-	if w.Code != 303 || w.Header().Get("Location") != path || notes.Get("inbox_note_owner", n.Title) != "Changed" {
+	if w.Code != 303 || w.Header().Get("Location") != "/notes?id="+n.ID || notes.Get("inbox_note_owner", n.Title) != "Changed" {
 		t.Fatal("edit did not update original note and stay in inbox")
 	}
 	if notes.All("inbox_note_owner")[0].ID != n.ID {
@@ -93,11 +90,8 @@ func TestInboxTaskControlsAndOwnership(t *testing.T) {
 	}
 	path := "/inbox?kind=task&id=" + task.ID
 	w := call(path, nil, false)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "Test work") || (strings.Contains(w.Body.String(), `action="/tasks/`) || strings.Contains(w.Body.String(), "&amp;action=")) {
-		t.Fatal("task controls leave inbox")
-	}
-	if strings.Contains(taskRow(task), `href="/tasks`) {
-		t.Fatal("task row leaves inbox")
+	if w.Code != 303 || w.Header().Get("Location") != "/work?id="+task.ID {
+		t.Fatal("legacy task link does not lead to work")
 	}
 	if w = other(path, nil, false); w.Code != 404 {
 		t.Fatal("other account can read task")
@@ -110,7 +104,7 @@ func TestInboxTaskControlsAndOwnership(t *testing.T) {
 	}
 	for _, action := range []string{"done", "reopen"} {
 		w = call(path, url.Values{"action": {action}}, true)
-		if w.Code != 303 || w.Header().Get("Location") != path {
+		if w.Code != 303 || w.Header().Get("Location") != "/work?id="+task.ID {
 			t.Fatal("task action leaves inbox")
 		}
 		got, _ := tasks.Get("inbox_task_owner", task.ID)
@@ -121,7 +115,7 @@ func TestInboxTaskControlsAndOwnership(t *testing.T) {
 	if _, err := tasks.Update("inbox_task_owner", task.ID, "", "", tasks.StatusDone, "", "**Finished work**"); err != nil {
 		t.Fatal(err)
 	}
-	if result := call(path, nil, false); !strings.Contains(result.Body.String(), "<strong>Finished work</strong>") {
+	if result := call(path, nil, false); result.Header().Get("Location") != "/work?id="+task.ID {
 		t.Fatal("task result not rendered in inbox")
 	}
 	w = call(path, url.Values{"action": {"delete"}}, true)

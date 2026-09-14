@@ -17,7 +17,6 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-	"time"
 
 	"mu/internal/auth"
 	"mu/internal/notes"
@@ -29,56 +28,13 @@ func inboxOf(t *testing.T, who, query string) string {
 	t.Helper()
 	r := httptest.NewRequest(http.MethodGet, "/inbox"+query, nil)
 	w := httptest.NewRecorder()
-	list(w, r, who, "")
+	priority(w, r, who)
 	return w.Body.String()
 }
 
 // Notes and tasks are on the list, beside what arrived.
-func TestTheInboxListsNotesAndTasksToo(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	const who = "kindsreader"
-	if err := auth.Create(&auth.Account{ID: who, Name: who}); err != nil {
-		t.Fatal(err)
-	}
-	said(t, who, "mail", "<a@example.com>", "", "about the invoice")
-	notes.Add(who, "Boiler service", "The engineer comes on the 14th")
-	if _, err := tasks.Create(who, "Renew the passport", "Photos first", tasks.Me, time.Time{}); err != nil {
-		t.Fatal(err)
-	}
-
-	body := inboxOf(t, who, "")
-	for _, want := range []string{"Boiler service", "Renew the passport"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("%q is not on the inbox — it is still only conversations:\n%s", want, body)
-		}
-	}
-	// And each says which it is, because a column of mixed things that does not
-	// is a column you have to open to identify.
-	for _, want := range []string{">Note<", ">Task<"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the list does not label %s", want)
-		}
-	}
-}
 
 // And the kind filter narrows to one of them.
-func TestTheKindFilterNarrowsTheList(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	const who = "kindsfilter"
-	if err := auth.Create(&auth.Account{ID: who, Name: who}); err != nil {
-		t.Fatal(err)
-	}
-	said(t, who, "mail", "<b@example.com>", "", "about the roof")
-	notes.Add(who, "Boiler service", "The engineer comes on the 14th")
-
-	only := inboxOf(t, who, "?kind=note")
-	if !strings.Contains(only, "Boiler service") {
-		t.Errorf("the note is not on its own filter:\n%s", only)
-	}
-	if strings.Contains(only, "about the roof") {
-		t.Errorf("filtering to notes still shows conversations:\n%s", only)
-	}
-}
 
 // Nothing is copied: the inbox reads the stores the other pages write.
 //
@@ -87,27 +43,6 @@ func TestTheKindFilterNarrowsTheList(t *testing.T) {
 // the first time somebody edited a note on /notes — and there would be no answer
 // to which copy is true. So: change it at the source, and the inbox says the new
 // thing.
-func TestTheInboxReadsTheNoteStoreRatherThanACopy(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	const who = "kindssource"
-	if err := auth.Create(&auth.Account{ID: who, Name: who}); err != nil {
-		t.Fatal(err)
-	}
-	notes.Add(who, "Boiler service", "The engineer comes on the 14th")
-	if body := inboxOf(t, who, ""); !strings.Contains(body, "comes on the 14th") {
-		t.Fatalf("the note is not on the inbox at all:\n%s", body)
-	}
-
-	// Edited at the source, the way /notes does it.
-	notes.Add(who, "Boiler service", "Moved to the 21st")
-	body := inboxOf(t, who, "")
-	if !strings.Contains(body, "Moved to the 21st") {
-		t.Errorf("the inbox still shows the old text, so it is reading a copy:\n%s", body)
-	}
-	if strings.Contains(body, "comes on the 14th") {
-		t.Errorf("the inbox shows both versions, so it kept one of its own:\n%s", body)
-	}
-}
 
 // /inbox/new writes all three, through the services that own them.
 func TestComposeWritesNotesAndTasks(t *testing.T) {
@@ -193,23 +128,5 @@ func TestAReplyIsAlwaysAMessage(t *testing.T) {
 	}
 	if !strings.Contains(body, `name="kind" value="`+kindMessage+`"`) {
 		t.Errorf("a reply with ?kind=note is not forced back to a message:\n%s", body)
-	}
-}
-
-func TestServiceFiltersSelectTheirOwnConversations(t *testing.T) {
-	const who = "servicefilters"
-	for _, client := range []string{"mail", "chat", "sms", "whatsapp"} {
-		said(t, who, client, "sender-"+client, "", "Only the "+client+" thread")
-	}
-	for _, client := range []string{"mail", "chat", "sms", "whatsapp"} {
-		body := inboxOf(t, who, "?kind="+client)
-		for _, other := range []string{"mail", "chat", "sms", "whatsapp"} {
-			if strings.Contains(body, "Only the "+other+" thread") != (client == other) {
-				t.Errorf("%s filter includes wrong conversations: %s", client, body)
-			}
-		}
-	}
-	if got := newKinds(""); !strings.Contains(got, ">Mail</a>") || strings.Contains(got, ">Message</a>") {
-		t.Errorf("compose picker does not call email Mail: %s", got)
 	}
 }

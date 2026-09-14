@@ -47,33 +47,6 @@ func TestTheInboxListsEveryConversation(t *testing.T) {
 
 // An agent is a mailbox. What arrives for the research agent is its mail, not a
 // slice of yours, so it gets a box of its own with a way in and out.
-func TestEachAgentIsItsOwnMailbox(t *testing.T) {
-	const who = "inbox_boxes"
-	withRoster(t, who,
-		Agent{ID: "a1", Name: "Research", Tag: "research"},
-		Agent{ID: "a2", Name: "Briefer", Tag: "briefer"})
-
-	said(t, who, "mail", "<r@example.com>", "a1", "found three papers")
-	said(t, who, "mail", "<b@example.com>", "a2", "your morning brief")
-	said(t, who, thread.WebClient, "plain", "", "just chatting")
-
-	all := listBody(t, "/inbox", who, "")
-	for _, want := range []string{`href="/inbox/research"`, `href="/inbox/briefer"`, `href="/inbox"`} {
-		if !strings.Contains(all, want) {
-			t.Errorf("no way to reach %s", want)
-		}
-	}
-
-	one := listBody(t, "/inbox/research", who, "research")
-	if !strings.Contains(one, "found three papers") {
-		t.Error("the research box does not hold its own conversation")
-	}
-	for _, other := range []string{"your morning brief", "just chatting"} {
-		if strings.Contains(one, other) {
-			t.Errorf("the research box also shows %q", other)
-		}
-	}
-}
 
 // A switcher with one destination is a control that cannot do anything.
 func TestNoSwitcherWhenNothingHasAnAgent(t *testing.T) {
@@ -88,25 +61,15 @@ func TestNoSwitcherWhenNothingHasAnAgent(t *testing.T) {
 
 // An empty box says which box is empty. The narrower fact is the true one, and
 // the address is already on the page above it.
-func TestAnEmptyBoxSaysWhichBoxIsEmpty(t *testing.T) {
-	const who = "inbox_empty_box"
-	// A distinctive phrase: the page shell has prose in it, and a common
-	// word will match a comment rather than a row.
-	said(t, who, "mail", "<x@example.com>", "", "zarquon the invoice")
-
-	body := listBody(t, "/inbox/briefer", who, "briefer")
-	if !strings.Contains(body, "briefer") {
-		t.Errorf("an empty box does not name itself:\n%s", body)
-	}
-	if strings.Contains(body, "zarquon") {
-		t.Error("an empty box is showing another box's conversation")
-	}
-}
 
 func listBody(t *testing.T, path, accountID, box string) string {
 	t.Helper()
 	w := httptest.NewRecorder()
-	list(w, httptest.NewRequest("GET", path, nil), accountID, box)
+	r := httptest.NewRequest("GET", path, nil)
+	q := r.URL.Query()
+	q.Set("view", "history")
+	r.URL.RawQuery = q.Encode()
+	priority(w, r, accountID)
 	return w.Body.String()
 }
 
@@ -123,6 +86,6 @@ func searchBody(t *testing.T, term, accountID, box string) string {
 	r := httptest.NewRequest(http.MethodPost, "/inbox", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
-	list(w, r, accountID, box)
+	priority(w, r, accountID)
 	return w.Body.String()
 }

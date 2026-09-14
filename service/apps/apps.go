@@ -1649,7 +1649,7 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
-	system := "You are an AI assistant embedded in an app called '" + slug + "'. Be concise and helpful."
+	system := "You are an AI agent embedded in an app called '" + slug + "'. Be concise and helpful."
 	if req.Options.Context != "" {
 		system += "\n\nApp context: " + req.Options.Context
 	}

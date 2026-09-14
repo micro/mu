@@ -42,7 +42,16 @@ func RecordOutcome(owner, id, status, result, reply, from string, steps []Step) 
 	if t.Delivery != nil {
 		return nil, fmt.Errorf("a result is already awaiting delivery")
 	}
+	if t.Status == StatusCanceled {
+		return nil, fmt.Errorf("task was stopped")
+	}
 	extra := map[string]any{}
+	if n := len(t.Attempts); n > 0 {
+		t.Attempts[n-1].Status = status
+		t.Attempts[n-1].Finished = now()
+		t.Attempts[n-1].Steps = steps
+		extra["attempts"] = encodeAttempts(t.Attempts)
+	}
 	if t.Thread != "" && strings.TrimSpace(reply) != "" {
 		delivery := &Delivery{ID: uuid.NewString(), Text: reply, From: from}
 		extra["delivery"] = encodeDelivery(delivery)

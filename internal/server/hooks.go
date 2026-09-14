@@ -31,7 +31,6 @@ import (
 	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
 	help "mu/docs"
-	"mu/home"
 	"mu/inbox"
 	"mu/internal/ai"
 	"mu/internal/api"
@@ -405,8 +404,6 @@ func wireHooks() {
 		return agent.Path("", a.ID), a.Examples
 	}
 
-	startupStep("home.Load", home.Load)
-
 	// load agent
 	startupStep("agent.Load", agent.Load)
 
@@ -461,15 +458,6 @@ func wireHooks() {
 		return strings.Join(parts, "\n")
 	}
 	agent.UserContextFunc = userCtxFunc
-	// The home cards, as something an agent can read — sent with every question,
-	// because they are what the reader is looking at.
-	agent.CardContextFunc = func(accountID string) string {
-		acc, err := auth.GetAccount(accountID)
-		if err != nil || acc == nil {
-			return ""
-		}
-		return home.CardContext(acc)
-	}
 
 	// Three hooks stood here handing the digest a way to publish. They were the
 	// cost of a service that could not import the blog; the digest is an agent

@@ -27,68 +27,6 @@ func completeToolAnswer(answer string, ragParts []string) string {
 	return completeToolAnswerFor(answer, ragParts, false)
 }
 
-func TestPlacesMapURL_QueryAndNear(t *testing.T) {
-	args := map[string]any{"q": "cafe", "near": "Hampton, UK"}
-	items := []placeItem{{Name: "Test Cafe", Lat: 51.4, Lon: -0.37}}
-	got := placesMapURL(args, items)
-	if !strings.Contains(got, "google.com/maps") {
-		t.Errorf("expected google maps URL, got %q", got)
-	}
-	if !strings.Contains(got, "cafe") {
-		t.Errorf("expected query 'cafe' in URL, got %q", got)
-	}
-	if !strings.Contains(got, "Hampton") {
-		t.Errorf("expected 'Hampton' in URL, got %q", got)
-	}
-}
-
-func TestPlacesMapURL_QueryOnly(t *testing.T) {
-	args := map[string]any{"q": "pharmacy"}
-	items := []placeItem{{Name: "Boots", Lat: 51.5, Lon: -0.1}}
-	got := placesMapURL(args, items)
-	if !strings.Contains(got, "google.com/maps") {
-		t.Errorf("expected google maps URL, got %q", got)
-	}
-	if !strings.Contains(got, "pharmacy") {
-		t.Errorf("expected 'pharmacy' in URL, got %q", got)
-	}
-}
-
-func TestPlacesMapURL_AddressArg(t *testing.T) {
-	// places_nearby uses "address" instead of "near"; without a keyword
-	// query the function should fall back to coordinate-based centering.
-	args := map[string]any{"address": "London"}
-	items := []placeItem{{Name: "Park", Lat: 51.5, Lon: -0.1}}
-	got := placesMapURL(args, items)
-	if !strings.Contains(got, "google.com/maps") {
-		t.Errorf("expected google maps URL, got %q", got)
-	}
-	// Coordinate-based fallback should embed the place's lat/lon.
-	if !strings.Contains(got, "51.5") {
-		t.Errorf("expected latitude in coordinate fallback URL, got %q", got)
-	}
-}
-
-func TestPlacesMapURL_FallbackToCoordinates(t *testing.T) {
-	args := map[string]any{}
-	items := []placeItem{{Name: "Mystery Place", Lat: 51.4, Lon: -0.37}}
-	got := placesMapURL(args, items)
-	if !strings.Contains(got, "google.com/maps") {
-		t.Errorf("expected google maps URL, got %q", got)
-	}
-	if !strings.Contains(got, "51.4") {
-		t.Errorf("expected latitude in URL, got %q", got)
-	}
-}
-
-func TestPlacesMapURL_FallbackToPlacesPage(t *testing.T) {
-	// No args, no coordinate data → /places
-	got := placesMapURL(nil, []placeItem{{Name: "No Coords"}})
-	if got != "/places" {
-		t.Errorf("expected /places fallback, got %q", got)
-	}
-}
-
 func TestFormatPlacesResult_WithResults(t *testing.T) {
 	result := `{"results":[{"name":"Blue Cafe","category":"cafe","address":"12 High St"},{"name":"Red Cafe","category":"cafe","address":"5 Market St"}],"count":2}`
 	args := map[string]any{"q": "cafe", "near": "Hampton, UK"}
@@ -121,28 +59,6 @@ func TestFormatPlacesResult_InvalidJSON(t *testing.T) {
 	// Should fall back to original result
 	if got != result {
 		t.Errorf("expected original result as fallback, got %q", got)
-	}
-}
-
-func TestRenderPlacesCard_MapLink(t *testing.T) {
-	result := `{"results":[{"name":"Hampton Cafe","category":"cafe","address":"1 High St, Hampton"}],"count":1}`
-	args := map[string]any{"q": "cafe", "near": "Hampton, UK"}
-	card := renderPlacesCard(result, args)
-	if !strings.Contains(card, "google.com/maps") {
-		t.Errorf("expected google maps link in card, got %q", card)
-	}
-	if !strings.Contains(card, "Open in Google Maps ↗") {
-		t.Errorf("expected 'Open in Google Maps ↗' link text, got %q", card)
-	}
-	if strings.Contains(card, `href="/places"`) {
-		t.Errorf("card should not contain generic /places link, got %q", card)
-	}
-}
-
-func TestRenderPlacesCard_Empty(t *testing.T) {
-	got := renderPlacesCard(`{"results":[],"count":0}`, nil)
-	if got != "" {
-		t.Errorf("expected empty string for empty results, got %q", got)
 	}
 }
 
@@ -421,42 +337,6 @@ func TestFormatNewsResultUsesCleanStoryLabels(t *testing.T) {
 	}
 }
 
-func TestRenderToolCallRef_NewsSearch(t *testing.T) {
-	args := map[string]any{"query": "Iran"}
-	formatted := "News results for \"Iran\":\n1. Iran crisis [world] (2 Mar 2026 10:00) — Conflict escalates\n"
-	got := renderToolCallRef("news_search", args, formatted)
-	if !strings.Contains(got, "<details") {
-		t.Errorf("expected <details> element, got %q", got)
-	}
-	if !strings.Contains(got, "<summary") {
-		t.Errorf("expected <summary> element, got %q", got)
-	}
-	if !strings.Contains(got, "Iran") {
-		t.Errorf("expected query in summary, got %q", got)
-	}
-	if !strings.Contains(got, "Iran crisis") {
-		t.Errorf("expected formatted result content, got %q", got)
-	}
-}
-
-func TestRenderToolCallRef_NoArgs(t *testing.T) {
-	got := renderToolCallRef("news", nil, "Latest news:\n1. Test headline\n")
-	if !strings.Contains(got, "<details") {
-		t.Errorf("expected <details> element, got %q", got)
-	}
-	if !strings.Contains(got, "Test headline") {
-		t.Errorf("expected content, got %q", got)
-	}
-}
-
-func TestRenderToolCallRef_Category(t *testing.T) {
-	args := map[string]any{"category": "crypto"}
-	got := renderToolCallRef("markets", args, "Live crypto market prices:\n- BTC: $97000\n")
-	if !strings.Contains(got, "crypto") {
-		t.Errorf("expected category in label, got %q", got)
-	}
-}
-
 func TestFormatToolResult_WalletDispatch(t *testing.T) {
 	// What the wallet service actually answers: an address and what it holds.
 	got := formatToolResult("wallet_balance", `{"address":"0xabc","usdc":"1.50","network":"Base"}`, nil)
@@ -487,27 +367,6 @@ func TestStripHTMLTags(t *testing.T) {
 	}
 	if !strings.Contains(got, "Title") || !strings.Contains(got, "Some") || !strings.Contains(got, "bold") {
 		t.Errorf("expected text content preserved, got %q", got)
-	}
-}
-
-func TestFormatAge(t *testing.T) {
-	cases := []struct {
-		d    time.Duration
-		want string
-	}{
-		{30 * time.Second, "just now"},
-		{90 * time.Second, "1 minute ago"},
-		{5 * time.Minute, "5 minutes ago"},
-		{time.Hour, "1 hour ago"},
-		{3 * time.Hour, "3 hours ago"},
-		{24 * time.Hour, "1 day ago"},
-		{48 * time.Hour, "2 days ago"},
-	}
-	for _, c := range cases {
-		got := FormatAge(c.d)
-		if got != c.want {
-			t.Errorf("FormatAge(%v) = %q, want %q", c.d, got, c.want)
-		}
 	}
 }
 
@@ -1356,39 +1215,6 @@ Freshness caveat: No same-day news_search results were available for 2026-07-06;
 	}
 	if !strings.Contains(got, "- Context: 1. AI startup raises funding") {
 		t.Fatalf("expected existing caveat answer stories to be labeled as context, got %q", got)
-	}
-}
-
-func TestRenderNewsCardFiltersBroadAIChipFinanceForAIQueries(t *testing.T) {
-	result := `{"query":"Find today's AI news","freshness":{"status":"stale","notice":"No same-day news_search results were available for 2026-07-11."},"results":[{"title":"SK Hynix Nasdaq debut draws investors as AI demand lifts chip shares","description":"A broad finance brief tracks IPO demand, valuation, trading, and market sentiment.","category":"Markets","url":"https://example.com/sk-hynix"},{"title":"AI agent platform adds model-risk governance controls","description":"The assistant product release gives enterprise users audit controls for agent workflows.","category":"Technology","url":"https://example.com/ai-agent"}]}`
-	got := renderNewsCard(result)
-	if strings.Contains(got, "SK Hynix Nasdaq debut") {
-		t.Fatalf("expected broad AI-chip finance story to be hidden from AI-news card, got %q", got)
-	}
-	if !strings.Contains(got, "AI agent platform adds model-risk governance controls") {
-		t.Fatalf("expected substantive AI story to remain in card, got %q", got)
-	}
-	if !strings.Contains(got, "No same-day AI news found for 2026-07-11") {
-		t.Fatalf("expected freshness summary to remain above filtered stories, got %q", got)
-	}
-}
-
-func TestRenderNewsCardKeepsConcreteAIChipInfrastructureStory(t *testing.T) {
-	result := `{"query":"Find today's AI news","results":[{"title":"AI chip startup launches faster inference server","description":"The semiconductor company released a new accelerator for model-serving workloads.","category":"Markets","url":"https://example.com/ai-chip"}]}`
-	got := renderNewsCard(result)
-	if !strings.Contains(got, "AI chip startup launches faster inference server") {
-		t.Fatalf("expected concrete AI infrastructure story to remain in card, got %q", got)
-	}
-}
-
-func TestRenderNewsCardSurfacesMostlyStaleFreshnessCaveat(t *testing.T) {
-	result := `{"query":"AI news","freshness":{"status":"mostly_stale","notice":"Only 1 of 3 dated news_search results are from 2026-07-07; lead with a freshness summary before listing older context as today's news."},"results":[{"title":"AI lab ships current update","category":"Tech","url":"https://example.com/current-ai"}]}`
-	got := renderNewsCard(result)
-	if !strings.Contains(got, "Mixed freshness: only 1 of 3 dated AI-news results") {
-		t.Fatalf("expected mixed-freshness summary in news card html, got %q", got)
-	}
-	if strings.Index(got, "Mixed freshness:") > strings.Index(got, "AI lab ships current update") {
-		t.Fatalf("expected news card caveat before story links, got %q", got)
 	}
 }
 

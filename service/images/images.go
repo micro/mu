@@ -387,7 +387,7 @@ func CardHTML() string {
 	}
 	theme := html.EscapeString(strings.Title(d.Theme))
 	return `<a href="/images" class="no-underline inherit-color">
-<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily ` + theme + ` image" class="w-full rounded-lg d-block" loading="lazy">
+<img src="` + html.EscapeString(d.previewURL()) + `" decoding="async" alt="Daily ` + theme + ` image" class="w-full rounded-lg d-block" loading="lazy">
 <p class="text-sm text-muted mt-2 m-0">Daily image · ` + theme + `</p></a>`
 }
 
@@ -518,7 +518,7 @@ func imageGrid(recs []userdb.Record) string {
 			continue
 		}
 		url := DisplayURL(rec.ID)
-		b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="` + html.EscapeString(prompt) + `" class="w-full rounded-lg d-block" loading="lazy"><span class="text-sm d-block mt-2">` + html.EscapeString(prompt) + `</span></a>`)
+		b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url+"?size=thumb") + `" decoding="async" alt="` + html.EscapeString(prompt) + `" class="w-full rounded-lg d-block" loading="lazy"><span class="text-sm d-block mt-2">` + html.EscapeString(prompt) + `</span></a>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -581,7 +581,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Image of the day</h3>`)
 	if d.URL != "" {
-		b.WriteString(`<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily image" class="my-2" style="display:block;width:100%;max-width:480px;max-height:280px;object-fit:contain;object-position:left center">`)
+		b.WriteString(`<img src="` + html.EscapeString(d.previewURL()) + `" decoding="async" alt="Daily image" class="my-2" style="display:block;width:100%;max-width:480px;max-height:280px;object-fit:contain;object-position:left center">`)
 		b.WriteString(`<p class="card-meta text-muted text-sm">` + html.EscapeString(strings.Title(d.Theme)) + ` · generated ` + html.EscapeString(d.Date) + `</p>`)
 	} else {
 		b.WriteString(`<p class="text-muted">Today's image is being generated — check back shortly.</p>`)
@@ -597,7 +597,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		for _, e := range past {
 			title := strings.Title(e.Theme) + " · " + e.Date
 			b.WriteString(`<a href="` + html.EscapeString(e.displayURL()) + `" target="_blank" title="` + html.EscapeString(title) + `">`)
-			b.WriteString(`<img src="` + html.EscapeString(e.displayURL()) + `" alt="Daily image for ` + html.EscapeString(e.Date) + `" class="w-full rounded-lg d-block" loading="lazy">`)
+			b.WriteString(`<img src="` + html.EscapeString(e.previewURL()) + `" decoding="async" alt="Daily image for ` + html.EscapeString(e.Date) + `" class="w-full rounded-lg d-block" loading="lazy">`)
 			b.WriteString(`<span class="d-block text-xs text-muted mt-1">` + html.EscapeString(e.Date) + `</span></a>`)
 		}
 		b.WriteString(`</div></div>`)
@@ -624,7 +624,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 				label, next = "Shared ✓", "false"
 			}
 			b.WriteString(`<div class="relative">`)
-			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="` + html.EscapeString(prompt) + `" class="w-full rounded-lg d-block" loading="lazy"><span class="text-sm d-block mt-2">` + html.EscapeString(prompt) + `</span></a>`)
+			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url+"?size=thumb") + `" decoding="async" alt="` + html.EscapeString(prompt) + `" class="w-full rounded-lg d-block" loading="lazy"><span class="text-sm d-block mt-2">` + html.EscapeString(prompt) + `</span></a>`)
 			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" onclick="imgShare(this)" class="overlay-btn">` + label + `</button>`)
 			b.WriteString(`</div>`)
 		}

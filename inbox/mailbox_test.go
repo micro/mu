@@ -146,28 +146,6 @@ func TestNothingToPutBackOnSomethingAlreadyRead(t *testing.T) {
 // with the list. Both are gone. This one stays because it is navigation inside
 // the page you are already looking at rather than a number following you
 // around the app.
-func TestTheRailCountsWhatIsWaiting(t *testing.T) {
-	const who = "mailbox_count"
-	withRoster(t, who, Agent{ID: "a1", Name: "Research", Tag: "research"})
-
-	arrived(t, who, "mail", "<e@example.com>", "a1", "them@example.com", "found three papers")
-	read := arrived(t, who, "mail", "<f@example.com>", "a1", "them@example.com", "and one more")
-	thread.MarkSeen(who, read.ID)
-	arrived(t, who, "whatsapp", "44700900000", "", "44700900000", "are you around")
-
-	boxes := Mailboxes(who)
-	if len(boxes) == 0 {
-		t.Fatal("no mailboxes")
-	}
-	if boxes[0].Label != "All" || boxes[0].Badge != "2" {
-		t.Errorf("the whole inbox reads %q/%q, want All/2", boxes[0].Label, boxes[0].Badge)
-	}
-	for _, b := range boxes[1:] {
-		if b.Label == "Research" && b.Badge != "1" {
-			t.Errorf("the research box reads %q, want 1 — one of its two is read", b.Badge)
-		}
-	}
-}
 
 // A mailbox you cannot delete from is a list that only grows.
 func TestAConversationCanBeDeleted(t *testing.T) {

@@ -69,3 +69,20 @@ func MarkUnread(account, id string) {
 	t.Seen = time.Time{}
 	save()
 }
+
+// Handle marks the communication actioned up to the version the owner reviewed.
+func Handle(account, id string) { HandleAt(account, id, time.Now()) }
+
+func HandleAt(account, id string, reviewed time.Time) {
+	mu.Lock()
+	defer mu.Unlock()
+	if t := threads[id]; t != nil && t.Account == account {
+		if reviewed.After(t.Updated) {
+			reviewed = t.Updated
+		}
+		if reviewed.After(t.Handled) {
+			t.Handled = reviewed
+		}
+		save()
+	}
+}

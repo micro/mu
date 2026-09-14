@@ -6,14 +6,14 @@ A runtime for agents and services
 
 Mu is a runtime for agents and services. It's a full stack solution to the question, how do I run everything myself. More and more 
 we're becoming reliant on the ecosystem of hosted things. The question is, how much of the system can you run yourself. The services, 
-the tools, the agents, maybe not the models but everything else. From the personal assistant answering the front door to the smtp server 
+the tools, the agents, maybe not the models but everything else. From the personal AI agent answering the front door to the smtp server 
 handling the inbound mail on the backend. Mu attempts to do it all in a single binary on one machine in one place in one system.
 
 ## Features 
 
 It includes:
 
-- **Micro** - your personal assistant and the default agent.
+- **Micro** - your personal AI agent and the default agent.
 - **Home** - your personal dashboard and Feed, with a prompt for quick questions.
 - **Inbox** - A place to keep track of everything.
 - **Clients** - Use Micro via Web, SMS, email, etc.
@@ -37,7 +37,7 @@ Inbox, Agents and Services together. Logged-out Home visits return to landing.
 
 Mu is the runtime. Micro is the first agent and the one people meet first.
 
-- **Micro** is your personal assistant and the default agent. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
+- **Micro** is your personal AI agent and the default agent. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
 
 Your own agents are the same shape: a name, an instruction, and the tools they may reach. Each has an address, so `agent+yours@` reaches it from anywhere that can send mail, the same way `agent@` reaches Micro.
 
@@ -164,7 +164,8 @@ A separate host configured for x402 retains its existing service contract.
 ## Web
 
 - `/` - talk to Micro
-- `/home` — a launch pad for your assistant, apps and daily work.
+- `/` — talk to Micro, a personal AI agent. Conversations continue after sign-in.
+- `/services` — standalone utilities, with an optional feed.
 - `/inbox` — messages, updates and conversations.
 - `/work` — delegated goals, progress and outcomes.
 - `/agents` — your agents, and where you make a new one.

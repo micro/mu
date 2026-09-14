@@ -65,7 +65,7 @@ func TestTheBylineIsEscaped(t *testing.T) {
 // comes to look different above and below a page refresh. This is the cheapest
 // guard on that: the browser half has to exist and has to use the same class.
 func TestTheLiveReplyIsBylinedToo(t *testing.T) {
-	b, err := os.ReadFile("../internal/app/chat.go")
+	b, err := os.ReadFile("../internal/app/conversation.js")
 	if err != nil {
 		t.Fatal(err)
 	}

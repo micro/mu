@@ -45,7 +45,7 @@ func TestSignupCreatesAccountAndSession(t *testing.T) {
 		req.Header.Set("X-Forwarded-Proto", "https")
 		rec := httptest.NewRecorder()
 		Signup(rec, req)
-		want := "/home"
+		want := "/"
 		if i == 1 {
 			want = "/bookmarks"
 		}
@@ -56,7 +56,7 @@ func TestSignupCreatesAccountAndSession(t *testing.T) {
 		if len(cookies) != 1 || cookies[0].Name != "session" || !cookies[0].HttpOnly || !cookies[0].Secure {
 			t.Fatalf("missing secure login cookie: %v", cookies)
 		}
-		check := httptest.NewRequest("GET", "/home", nil)
+		check := httptest.NewRequest("GET", "/", nil)
 		check.AddCookie(cookies[0])
 		_, acc := auth.TrySession(check)
 		if acc == nil || acc.ID != id {
