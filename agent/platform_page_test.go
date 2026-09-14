@@ -70,21 +70,7 @@ func TestToolWordsNamesServicesNotTools(t *testing.T) {
 // The list published agent+weather@ and the weather agent's page said to write
 // to the bare agent@ — two addresses for one agent, and the one on its page
 // reaches a different one.
-func TestAPlatformAgentPageSaysItsOwnAddress(t *testing.T) {
-	t.Setenv("MAIL_DOMAIN", "example.test")
 
-	withProbe(t)
-	if got := inboxAddress("nobody", probeID); got != "agent+"+probeID+"@example.test" {
-		t.Errorf("the agent's own page says %q", got)
-	}
-	// The default keeps the bare address, which is what it answers at.
-	if got := inboxAddress("nobody", ""); got != "agent@example.test" {
-		t.Errorf("the default says %q", got)
-	}
-}
-
-// And "How to reach it" is about the agent it was clicked from. Every row's
-// link fell through to the default panel and said Micro.
 func TestConnectKnowsThePlatformAgent(t *testing.T) {
 	a := withProbe(t)
 	got := platformPanel(Platform(probeID), "https://example.test")

@@ -22,9 +22,9 @@ func TestTheFilteredCardOffersItsActionsLast(t *testing.T) {
 	// Bounded to the card's own template literal, found from the actions
 	// outwards — so it locates the card whether the buttons are at the top or
 	// the bottom, and no other view's markup can satisfy or break it.
-	j := strings.Index(src, "spam-actions")
+	j := strings.Index(src, "action-footer")
 	if j < 0 {
-		t.Fatal("the filtered card no longer has a spam-actions block")
+		t.Fatal("the filtered card no longer has a action-footer block")
 	}
 	start := strings.LastIndex(src[:j], "thread-preview card")
 	end := strings.Index(src[j:], "`,")
@@ -35,10 +35,10 @@ func TestTheFilteredCardOffersItsActionsLast(t *testing.T) {
 
 	subject := strings.Index(card, "mail-thread-subject")
 	reason := strings.Index(card, "spam-info")
-	actions := strings.Index(card, "spam-actions")
+	actions := strings.Index(card, "action-footer")
 
 	for name, at := range map[string]int{
-		"mail-thread-subject": subject, "spam-info": reason, "spam-actions": actions,
+		"mail-thread-subject": subject, "spam-info": reason, "action-footer": actions,
 	} {
 		if at < 0 {
 			t.Fatalf("the filtered card no longer contains %s", name)
@@ -58,15 +58,15 @@ func TestTheFilteredCardOffersItsActionsLast(t *testing.T) {
 
 // And the buttons have a rule of their own.
 //
-// .spam-actions had no CSS at all, which is why it simply stacked wherever it
+// .action-footer had no CSS at all, which is why it simply stacked wherever it
 // was written in the markup. Order alone would put them in the right place and
 // still leave them crowding the line above.
 func TestTheFilteredActionsAreStyledAsAFooter(t *testing.T) {
 	css := readSource(t, "../../internal/app/html/mu.css")
 
-	i := strings.Index(css, ".spam-actions")
+	i := strings.Index(css, ".action-footer")
 	if i < 0 {
-		t.Fatal("`.spam-actions` has no rule, so the buttons take whatever spacing " +
+		t.Fatal("`.action-footer` has no rule, so the buttons take whatever spacing " +
 			"the surrounding markup happens to give them")
 	}
 	rule := css[i:]
@@ -75,7 +75,7 @@ func TestTheFilteredActionsAreStyledAsAFooter(t *testing.T) {
 	}
 	for _, want := range []string{"margin-top", "border-top"} {
 		if !strings.Contains(rule, want) {
-			t.Errorf("`.spam-actions` sets no %s, so the buttons sit flush against "+
+			t.Errorf("`.action-footer` sets no %s, so the buttons sit flush against "+
 				"the message above them", want)
 		}
 	}

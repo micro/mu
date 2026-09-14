@@ -26,7 +26,7 @@ func checkPublicStatus() PublicStatusResponse {
 }
 
 func publicStatusAt(now time.Time, entries []*APILogEntry) PublicStatusResponse {
-	model := CapabilityHealth{"Assistant models", "unknown", "No recent completed model calls."}
+	model := CapabilityHealth{"AI models", "unknown", "No recent completed model calls."}
 	var durations []time.Duration
 	failed := 0
 	for _, e := range entries {
@@ -65,17 +65,17 @@ func publicStatusAt(now time.Time, entries []*APILogEntry) PublicStatusResponse 
 func renderPublicStatusHTML(status PublicStatusResponse) string {
 	var sb strings.Builder
 	title := "Micro is reachable"
-	guidance := "There are no recent completed assistant requests to assess yet."
+	guidance := "There are no recent completed agent requests to assess yet."
 	switch status.State {
 	case "operational":
-		title = "Recent assistant requests are succeeding"
+		title = "Recent agent requests are succeeding"
 		guidance = "The website is reachable and recent recorded model calls completed successfully."
 	case "degraded":
-		title = "Some assistant requests are failing"
+		title = "Some agent requests are failing"
 		guidance = "Replies may be interrupted. Reopen your conversation to check the result before retrying an action."
 	case "unavailable":
-		title = "Assistant requests are failing"
-		guidance = "All recently recorded model calls failed. You can still check your saved information; try the assistant again later."
+		title = "Agent requests are failing"
+		guidance = "All recently recorded model calls failed. You can still check your saved information; try Micro again later."
 	}
 	sb.WriteString(Column())
 	sb.WriteString(`<div class="page-stack"><section class="page-section"><h2>` + title + `</h2><p>` + html.EscapeString(guidance) + `</p><p class="status-details">Updated ` + html.EscapeString(status.CheckedAt.Format("15:04 UTC")) + `</p></section><section class="page-section">`)
@@ -89,12 +89,12 @@ func renderPublicStatusHTML(status PublicStatusResponse) string {
 		case "unavailable":
 			label, class = "Unavailable", "status-error"
 		}
-		if c.Name == "Assistant models" && c.State == "unknown" {
+		if c.Name == "AI models" && c.State == "unknown" {
 			label = "No recent data"
 		}
 		fmt.Fprintf(&sb, `<div class="status-item"><div><span class="status-name">%s</span><p class="status-details">%s</p></div><span class="%s">%s</span></div>`, html.EscapeString(c.Name), html.EscapeString(c.Details), class, label)
 	}
-	sb.WriteString(`</section><section class="page-section"><p><a href="/home">Home →</a> · <a href="/assistant">Assistant →</a> · <a href="/contact">Report a problem →</a></p><details><summary>About these checks</summary><p class="status-details">Assistant results cover recorded model calls in the last 15 minutes, within the latest 500 external calls. They include retries and background work. Call time is not the total time to receive an answer, and a slow successful call is not counted as a failure.</p><p class="status-details">These checks cover this page and recent model calls, not end-to-end mail delivery or scheduled execution. This page runs on the same server as Micro and may be unreachable during an outage.</p></details></section></div>`)
+	sb.WriteString(`</section><section class="page-section"><p><a href="/">Micro →</a> · <a href="/contact#support">Report a problem →</a></p><details><summary>About these checks</summary><p class="status-details">Agent results cover recorded model calls in the last 15 minutes, within the latest 500 external calls. They include retries and background work. Call time is not the total time to receive an answer, and a slow successful call is not counted as a failure.</p><p class="status-details">These checks cover this page and recent model calls, not end-to-end mail delivery or scheduled execution. This page runs on the same server as Micro and may be unreachable during an outage.</p></details></section></div>`)
 	sb.WriteString(Close())
 	return sb.String()
 }

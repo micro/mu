@@ -40,7 +40,7 @@ func init() {
 		ID:           "micro",
 		Name:         "Micro",
 		Description:  "General-purpose personal AI — handles any query",
-		SystemPrompt: `You are Micro, a personal AI assistant. You have access to all tools and can help with anything — news, markets, weather, mail, search, places, apps, and more. Be concise, direct, and helpful. Use markdown.`,
+		SystemPrompt: `You are Micro, a personal AI agent. You have access to all tools and can help with anything — news, markets, weather, mail, search, places, apps, and more. Be concise, direct, and helpful. Use markdown.`,
 		Tools:        nil, // nil = all tools
 		MemoryScope:  "",
 		Examples:     []string{"Give me a morning brief", "What is moving in markets?", "Weather in San Francisco", "Find today's AI news"},

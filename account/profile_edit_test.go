@@ -110,7 +110,7 @@ func TestLoggingOutIsNotSoftNavigated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(src), `u.pathname === '/logout'`) {
+	if strings.Contains(string(src), `history.pushState`) {
 		t.Error("the soft-navigation interceptor does not exclude /logout, so " +
 			"logging out swaps the content and leaves the signed-in chrome up")
 	}

@@ -1354,7 +1354,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						<span class="mail-thread-time">%s</span>
 					</div>
 					<div class="spam-info text-muted text-sm">Spam score: %d — %s</div>
-					<div class="spam-actions" onclick="event.stopPropagation()">
+					<div class="action-footer" onclick="event.stopPropagation()">
 						<form method="POST" action="/mail?view=filtered" class="d-inline">
 							<input type="hidden" name="action" value="not_spam">
 							<input type="hidden" name="msg_id" value="%s">

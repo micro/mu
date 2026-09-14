@@ -41,6 +41,10 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	services := strings.HasPrefix(r.URL.Path, "/services")
+	if services && r.URL.Query().Get("view") == "feed" {
+		serviceFeed(w, r)
+		return
+	}
 	if v := r.URL.Query().Get("view"); v != "" {
 		services = v == "services"
 	}
@@ -68,6 +72,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		// once by somebody new and read past on every visit after that — and
 		// this is a catalogue somebody comes to in order to reach one of the
 		// things in it. The grid says what it is by being a grid of them.
+		b.WriteString(serviceViews(false))
 		b.WriteString(serviceGrid(r))
 	} else {
 		b.WriteString(`<p class="lens-lead">What an agent can call. Your agents here reach all ` +

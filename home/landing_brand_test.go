@@ -16,7 +16,7 @@ func TestLoggedOutRootIsMicro(t *testing.T) {
 	if !strings.Contains(body, "<title>Micro</title>") {
 		t.Fatalf("logged-out root title is not Micro: %q", body)
 	}
-	if !strings.Contains(body, `<div class="lbrand">Micro</div>`) {
+	if !strings.Contains(body, `<div class="brand">Micro</div>`) {
 		t.Fatalf("logged-out root wordmark is not Micro: %q", body)
 	}
 }

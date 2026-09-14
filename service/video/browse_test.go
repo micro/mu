@@ -27,7 +27,7 @@ func TestBrowseIsBoundedAndHasReadingActions(t *testing.T) {
 	if strings.Count(body, `<article `) != 5 || !strings.Contains(body, `video-grid`) {
 		t.Fatal("wrong video page")
 	}
-	if !strings.Contains(body, `/agent/micro?item=video_v9`) {
+	if !strings.Contains(body, `/?item=video_v9`) {
 		t.Fatal("wrong archive reference")
 	}
 }
@@ -36,7 +36,7 @@ func TestWatchPageKeepsNavigationAndPlayerControls(t *testing.T) {
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest("GET", "/video?id=example", nil))
 	body := w.Body.String()
-	for _, want := range []string{`href="/video">← Video</a>`, `/agent/micro?item=video_example`, `href="https://www.youtube.com/channel/UCexample"`, "Save", "Original", `id="audioBtn"`, `<body class="video-player-body">`, "allowfullscreen"} {
+	for _, want := range []string{`href="/video">← Video</a>`, `/?item=video_example`, `href="https://www.youtube.com/channel/UCexample"`, "Save", "Original", `id="audioBtn"`, `<body class="video-player-body">`, "allowfullscreen"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)
 		}
@@ -63,7 +63,7 @@ func TestBrowseKeepsLegacyVideoCache(t *testing.T) {
 func TestUnknownWatchVideoDoesNotOfferBrokenReferences(t *testing.T) {
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest("GET", "/video?id=unknown-video", nil))
-	if strings.Contains(w.Body.String(), "/agent/micro?item=video_unknown-video") {
+	if strings.Contains(w.Body.String(), "/?item=video_unknown-video") {
 		t.Fatal("offered an unresolved attachment")
 	}
 }

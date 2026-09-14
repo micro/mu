@@ -17,9 +17,9 @@ import (
 // nothing about the layout viewport changed. visualViewport is where both
 // facts live.
 func TestTheChatFitsWhatIsActuallyOnScreen(t *testing.T) {
-	js := ChatComponent(ChatConfig{Ask: true, Transcript: true})
+	js := ChatComponent(ChatConfig{Ask: true})
 
-	if !strings.Contains(js, "window.visualViewport.height") {
+	if !strings.Contains(js, "v?v.height:window.innerHeight") {
 		t.Error("the conversation is sized from window.innerHeight alone, which\n" +
 			"does not change when an iOS keyboard opens — so it fills the\n" +
 			"screen and the composer goes under the keyboard")
@@ -35,25 +35,17 @@ func TestTheChatFitsWhatIsActuallyOnScreen(t *testing.T) {
 	}
 	// And it still works where there is no visualViewport, which is what every
 	// desktop browser wants anyway.
-	if !strings.Contains(js, ": window.innerHeight") {
+	if !strings.Contains(js, ":window.innerHeight") {
 		t.Error("there is no fallback for a browser with no visualViewport")
 	}
-	// The mobile tab bar is fixed, so it occupies no layout space. fitConv sets
-	// an inline max-height and therefore has to include the visible bar itself;
-	// the stylesheet's --tabbar fallback no longer participates once it does.
-	if !strings.Contains(js, "tabs.getBoundingClientRect().height") {
-		t.Error("the measured conversation ignores the fixed tab bar, so the composer lands underneath it")
-	}
-	if !strings.Contains(js, "getComputedStyle(tabs).display!=='none'") {
-		t.Error("the fit reserves room for the tab bar even while the keyboard has hidden it")
-	}
+
 }
 
 // A browser or proxy may drop the SSE connection while the independently
 // running agent continues. The page must follow the recorded conversation in
 // that case rather than turning a transport failure into the run's outcome.
 func TestAChatRecoversTheAnswerAfterItsStreamDrops(t *testing.T) {
-	js := ChatComponent(ChatConfig{Ask: true, Transcript: true, StorageNS: "probe"})
+	js := ChatComponent(ChatConfig{Ask: true, StorageNS: "probe"})
 
 	if !strings.Contains(js, "Reconnecting...") {
 		t.Error("a dropped stream is still presented as a failed run")

@@ -25,15 +25,15 @@ func TestAssistantReopensOwnedConversation(t *testing.T) {
 		id   string
 		want int
 	}{{mine.ID, 200}, {other.ID, 404}, {"nonexistent", 404}} {
-		r := httptest.NewRequest("GET", "/assistant?session="+tc.id, nil)
+		r := httptest.NewRequest("GET", "/?session="+tc.id, nil)
 		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		w := httptest.NewRecorder()
-		AssistantHandler(w, r)
+		Index(w, r)
 		if w.Code != tc.want {
 			t.Fatalf("%s: got %d want %d", tc.id, w.Code, tc.want)
 		}
 		if tc.want == 200 {
-			if !strings.Contains(w.Body.String(), "My preserved question") || !strings.Contains(w.Body.String(), `href="/assistant?session=`) {
+			if !strings.Contains(w.Body.String(), "My preserved question") || !strings.Contains(w.Body.String(), `href="/?session=`) {
 				t.Fatal("saved conversation/history not rendered in Assistant")
 			}
 		}

@@ -31,7 +31,7 @@ func TestOneQuestionGetsMoreThanSixTools(t *testing.T) {
 func TestTheNativeAgentRunsUnderADeadline(t *testing.T) {
 	src := readSource(t, "native.go")
 
-	if !strings.Contains(src, "context.WithTimeout(context.Background(), turnTimeout)") {
+	if !strings.Contains(src, "context.WithTimeout(runContext(opts), turnTimeout)") {
 		t.Error("runNative does not put a deadline on the turn")
 	}
 	if strings.Contains(src, "a.Ask(context.Background()") {

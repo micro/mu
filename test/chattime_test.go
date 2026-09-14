@@ -23,7 +23,11 @@ func TestARoomMessageSaysWhenItWasSaid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	js := string(b)
+	room, err := os.ReadFile("../service/chat/client.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := string(b) + string(room)
 
 	fn := js[strings.Index(js, "function displayRoomMessage"):]
 	if i := strings.Index(fn, "\nfunction "); i > 0 {

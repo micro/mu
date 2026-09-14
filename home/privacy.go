@@ -41,12 +41,12 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 		 identifiers. Nothing you do here is profiled to sell you something, and no
 		 data is sold or shared with a data broker — there is no business model here
 		 that would want it.`,
-		`Your content is not used to train anyone's model.`)
+		`Micro does not train models on your content. Model providers process requests under their own terms and the operator's provider configuration.`)
 
 	section("What is stored",
 		`<b>Your account</b> — a username, a password hash or passkey, and an email
 		 address if you gave one. Signing in with Google stores the email and name
-		 Google returns, nothing else.`,
+		 Google returns. If you connect calendar or contacts access, the granted credentials and imported data are also stored.`,
 		`<b>Your mail</b> — this instance runs an SMTP server, so messages sent to
 		 and from your address are stored here in order to be an inbox at all.
 		 They are readable by you, and by whoever operates the instance, in the
@@ -61,16 +61,14 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	section("Agents and third parties",
 		`Some tools reach outside this instance, and when they do, the request goes
 		 to that provider: web search to Brave, places and travel time to Google,
-		 image generation and model calls to Atlas Cloud. Those requests carry the
-		 query, not your identity.`,
-		`A question you ask the agent is sent to a model provider to be answered.
+		 image generation and model calls to Atlas Cloud. Requests may contain your query and information needed for the action.`,
+		`A question you ask Micro is sent to a model provider to be answered. Relevant conversation history, memory and tool results may also be included.
 		 If that matters for something you are about to ask, it is worth knowing
 		 before you ask it.`)
 
 	section("Tokens and connected agents",
 		`A token, or a client you signed in through the MCP
-		 authorization flow, acts as you: it reaches the same tools and the same
-		 data. Revoke either at <a href="/token">/token</a>. Anything an agent did
+		 authorization flow, acts as you: its access is limited by the scopes you grant. Agent access can run your agents; Services access permits the selected services. Revoke either at <a href="/token">/token</a>. Anything an agent did
 		 with a token is attributed to your account, which is why
 		 <code>mail_send</code> is available only to a signed-in account and never
 		 to an anonymous caller.`)

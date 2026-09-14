@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestWorkPageRequiresOwnerAndShowsOnlyDelegatedJobs(t *testing.T) {
+func TestWorkPageRequiresOwnerAndShowsOwnedTasks(t *testing.T) {
 	for _, who := range []string{"work_page_owner", "work_page_other"} {
 		if err := auth.Create(&auth.Account{ID: who, Secret: "test"}); err != nil {
 			t.Fatal(err)
@@ -47,7 +47,7 @@ func TestWorkPageRequiresOwnerAndShowsOnlyDelegatedJobs(t *testing.T) {
 			t.Fatalf("%s %s: %d", tc.who, tc.path, w.Code)
 		}
 		if tc.who == "work_page_owner" {
-			if !strings.Contains(w.Body.String(), "Delegated goal") || strings.Contains(w.Body.String(), "Personal chore") {
+			if !strings.Contains(w.Body.String(), "Delegated goal") || !strings.Contains(w.Body.String(), "Personal chore") {
 				t.Fatal("work page mixes delegated and personal tasks")
 			}
 		}

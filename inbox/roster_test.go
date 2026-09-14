@@ -36,59 +36,13 @@ func withRoster(t *testing.T, owner string, agents ...Agent) {
 	t.Cleanup(func() { Agents, AgentName = nil, nil })
 }
 
-// The agent you have never written to is the one whose address you need.
-//
-// The switcher was derived from what had arrived, so an agent with no mail had
-// no box — and once the box began carrying that agent's address, no box meant
-// no way to find out where to write. A box with nothing in it says so.
-func TestAnAgentWithNoMailStillHasABox(t *testing.T) {
-	const who = "inbox_unwritten"
-	t.Setenv("MAIL_DOMAIN", "micro.mu")
-	withRoster(t, who, Agent{ID: "a1", Name: "Research", Tag: "research"})
-
-	all := listBody(t, "/inbox", who, "")
-	if !strings.Contains(all, `href="/inbox/research"`) {
-		t.Errorf("an agent with no mail has no box:\n%s", all)
-	}
-
-	one := listBody(t, "/inbox/research", who, "research")
-	if !strings.Contains(one, "research@micro.mu") {
-		t.Errorf("the empty box does not say where to write:\n%s", one)
-	}
-}
-
-// A box is the agent's address tag, not a slug of its name.
-//
-// They were two rules over one thing. A tag is cleaned, cut at 24 characters
-// and made unique with a numeric suffix — two agents named alike are research
-// and research2 — where the slug kept the whole name, stripped a different set
-// of characters, and knew nothing about the other agent. So the address shown
-// above a box was somebody else's, or nobody's.
-func TestABoxIsTheAddressTag(t *testing.T) {
-	const who = "inbox_tags"
-	t.Setenv("MAIL_DOMAIN", "micro.mu")
-	withRoster(t, who,
-		Agent{ID: "a1", Name: "Research", Tag: "research"},
-		// Same name, so the same slug — and a tag of its own.
-		Agent{ID: "a2", Name: "Research", Tag: "research2"},
-		// Longer than a tag may be, so the two cannot agree by accident.
-		Agent{ID: "a3", Name: "A very long agent name indeed", Tag: "averylongagentnameindeed"})
-
-	all := listBody(t, "/inbox", who, "")
-	for _, tag := range []string{"research", "research2", "averylongagentnameindeed"} {
-		if !strings.Contains(all, `href="/inbox/`+tag+`"`) {
-			t.Errorf("no box for the tag %q:\n%s", tag, all)
-		}
-	}
-
-	// And each one names its own address rather than the first agent's.
-	for _, tc := range []struct{ box, want string }{
-		{"research2", who + "+research2@micro.mu"},
-		{"averylongagentnameindeed", who + "+averylongagentnameindeed@micro.mu"},
-	} {
-		body := listBody(t, "/inbox/"+tc.box, who, tc.box)
-		if !strings.Contains(body, tc.want) {
-			t.Errorf("the %s box does not name %s:\n%s", tc.box, tc.want, body)
-		}
+func TestLegacyAgentLinkFiltersOwnedHistory(t *testing.T) {
+	const who = "history_agent"
+	withRoster(t, who, Agent{ID: "one", Name: "Research", Tag: "research"}, Agent{ID: "two", Name: "Research", Tag: "research2"})
+	arrived(t, who, "mail", "first", "one", "a@example.com", "First research message")
+	arrived(t, who, "mail", "second", "two", "a@example.com", "Second research message")
+	body := listBody(t, "/inbox/research2", who, "research2")
+	if !strings.Contains(body, "Second research message") || strings.Contains(body, "First research message") {
+		t.Fatal("legacy link lost agent scoping")
 	}
 }

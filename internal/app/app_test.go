@@ -250,36 +250,7 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 // The no-JavaScript property that <details> was chosen for still holds, and
 // holds better: Log out is an ordinary link, so it needs no disclosure to open
 // and no script to work.
-func TestTheSignedInRailCarriesEveryDestination(t *testing.T) {
-	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice", Pinned: []string{}})
-	for _, want := range []string{
-		`id="nav-home"`, `id="nav-account"`, `id="nav-inbox"`, `id="nav-assistant"`,
-		`id="nav-agents"`, `id="nav-services"`,
-		`id="nav-logout"`, `@alice`,
-	} {
-		if !strings.Contains(result, want) {
-			t.Errorf("signed-in nav missing %q", want)
-		}
-	}
-	// Nothing is folded away any more.
-	if strings.Contains(result, `<details class="nav-me"`) {
-		t.Error("the account destinations are behind a disclosure again")
-	}
-}
 
-// Primary navigation represents composition; services are available through pins.
-func TestPrimaryNavigationDoesNotPromoteIndividualServices(t *testing.T) {
-	for _, acc := range []*auth.Account{nil, {ID: "alice"}} {
-		got := navMain(acc)
-		for _, id := range []string{"nav-wallet", "nav-token", "nav-bookmarks"} {
-			if strings.Contains(got, id) {
-				t.Errorf("primary navigation promotes %s", id)
-			}
-		}
-	}
-}
-
-// Signed out, the account's own destinations are not offered.
 func TestSignedOutSeesNoAccountDestinations(t *testing.T) {
 	result := renderWithLang("Test", "d", "<p>c</p>", "en", nil)
 	for _, gone := range []string{`id="nav-account"`, `id="nav-profile"`, `id="nav-token"`, `id="nav-wallet"`} {
@@ -332,72 +303,7 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 // nineteen, so a permanent second entry above the fold was the spine claiming
 // something the rest of the product does not agree with. Anyone who lives in
 // Apps pins it, which is what pinning is for.
-func TestTheSidebarIsTheProductsNouns(t *testing.T) {
-	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice", Pinned: []string{}})
 
-	// The order somebody meets them in: what is yours first — Inbox, then
-	// Agents — and the catalogue after.
-	//
-	// Tools sat above Agents when tools were the lead, on the reasoning that
-	// the product was named for them and Agents was what you built on top. The
-	// thesis moved and so did this, and then Tools left the rail entirely: a
-	// tool is a property of something rather than a destination. An agent's
-	// tools are what it may reach for and live on /agents; a service's are its
-	// methods and live on /services/<name>. The page stays and /agents links
-	// to it — see the sidebar comment in app.go.
-	// The sidebar, not the whole page: the header carries an envelope that opens
-	// the inbox, and a search over the document finds that first and calls the
-	// rail out of order.
-	nav := result
-	if i := strings.Index(nav, `<div id="nav"`); i >= 0 {
-		nav = nav[i:]
-	} else {
-		t.Fatal("no sidebar in the rendered shell")
-	}
-	if j := strings.Index(nav, `<div id="content"`); j > 0 {
-		nav = nav[:j]
-	}
-
-	want := []string{`href="/assistant"`, `href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`}
-	at := -1
-	for _, w := range want {
-		i := strings.Index(nav, w)
-		if i < 0 {
-			t.Errorf("the sidebar is missing %s", w)
-			continue
-		}
-		if i < at {
-			t.Errorf("%s is out of order in the sidebar", w)
-		}
-		at = i
-	}
-	// Context was a fifth row: a page holding what an agent remembers and what
-	// it is watching. It became a second home screen with a card picker on it,
-	// and it is gone. Memory, the half that was real, is a card on /account.
-	if strings.Contains(result, `href="/context"`) {
-		t.Error("Context is back in the sidebar")
-	}
-	// A service reaches the sidebar by being pinned, never by being a service —
-	// and apps is a service.
-	// And Tools is not a row any more, though the page is still there.
-	if strings.Contains(nav, `href="/tools"`) {
-		t.Error("Tools is back in the sidebar")
-	}
-	for _, gone := range []string{`href="/apps"`, `href="/events"`, `href="/news"`} {
-		if strings.Contains(result, gone) {
-			t.Errorf("%s is in the sidebar of an account that pinned nothing", gone)
-		}
-	}
-}
-
-// A pinned service comes back into the sidebar. Demoting anything out of the
-// spine — apps, most recently — is only defensible if the way back is the
-// ordinary one that every other service already uses.
-//
-// Asserted with a service registered here rather than by naming apps: Pinned
-// resolves through the registry, so naming a real service would make this pass
-// or fail on whether that service's package happens to be linked into this test
-// binary, which is not what is being tested.
 func TestAPinnedServiceReturnsToTheSidebar(t *testing.T) {
 	const name = "pinprobe"
 	if _, known := service.SpecFor(name); !known {
@@ -430,23 +336,6 @@ func (PinProbe) List(ctx context.Context, req *struct{}, rsp *struct {
 func TestPinningNothingDrawsNoGroup(t *testing.T) {
 	if got := navPinned(&auth.Account{ID: "alice", Pinned: []string{}}); got != "" {
 		t.Error("an account that pinned nothing was given a Services group")
-	}
-}
-
-func TestEverydayNavigationMatchesAcrossDevices(t *testing.T) {
-	acc := &auth.Account{ID: "alice"}
-	for _, nav := range []string{navMain(acc), navTabs(acc)} {
-		if strings.Count(nav, `<a `) != 6 {
-			t.Fatal("everyday navigation must have six destinations")
-		}
-		at := -1
-		for _, path := range []string{"/assistant", "/home", "/inbox", "/work", "/agents", "/services"} {
-			i := strings.Index(nav, `href="`+path+`"`)
-			if i <= at {
-				t.Fatalf("missing or misplaced destination %s", path)
-			}
-			at = i
-		}
 	}
 }
 

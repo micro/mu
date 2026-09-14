@@ -103,7 +103,7 @@ func TestTheLabelSaysWhichShellThingIsHappening(t *testing.T) {
 // Asserted on the script because that is where it broke: the events were on
 // the wire and the client had no branch for them.
 func TestTheChatListensForToolEvents(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join("..", "internal", "app", "chat.go"))
+	b, err := os.ReadFile(filepath.Join("..", "internal", "app", "conversation.js"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -55,7 +55,7 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	app.RespondPublic(w, r, app.Response{
 		Title:       "Contact",
-		Description: "Every way to reach this instance's assistant — the web, a text, WhatsApp, mail, or a program.",
+		Description: "Every way to reach this Micro — the web, a text, WhatsApp, mail, or a program.",
 		HTML:        contactBody(acc),
 	})
 }
@@ -89,7 +89,7 @@ func vcardName() string {
 		}
 	}
 	if out.Len() == 0 {
-		return "assistant"
+		return "agent"
 	}
 	return out.String()
 }
@@ -106,7 +106,7 @@ func contactBody(acc *auth.Account) string {
 	// three different widths and two different left edges. See app.Column.
 	b.WriteString(app.Column())
 	b.WriteString(`<div class="card">`)
-	b.WriteString(`<div class="clist">`)
+	b.WriteString(`<h2>Talk to Micro</h2><div class="clist">`)
 	// The ways a person writes to it, and not the ways a program calls it.
 	//
 	// This drew client.All(), which ends in `mu ask "…"` and a curl invocation
@@ -151,6 +151,7 @@ func contactBody(acc *auth.Account) string {
 			`<a href="/sms">verified a number</a> as yours. Mail and the web already know you.</p>`)
 	}
 	b.WriteString(`</div>`)
+	b.WriteString(`<section id="support" class="page-section"><h2>Contact the operator</h2><p>For problems with Micro, email <a href="mailto:admin@micro.mu">admin@micro.mu</a>. Include the diagnostic report from Work when reporting a failed task.</p></section>`)
 	b.WriteString(app.Close())
 	return b.String()
 }

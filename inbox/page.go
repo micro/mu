@@ -24,14 +24,14 @@ import (
 	"html"
 	"net/http"
 	"net/url"
-	"sort"
+
 	"strconv"
 	"strings"
 	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/push"
+
 	"mu/internal/thread"
 	"mu/service/mail"
 )
@@ -118,13 +118,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// carries ask or an action — rather than by a second route, because a second
 	// route under /inbox is a mailbox name somebody could claim.
 	if r.Method == http.MethodPost {
+		if r.FormValue("action") == "handled" {
+			if !auth.StrictCSRF(r) {
+				app.Forbidden(w, r, "Invalid CSRF token")
+				return
+			}
+			reviewed, err := time.Parse(time.RFC3339Nano, r.PostFormValue("reviewed"))
+			if err != nil {
+				app.BadRequest(w, r, "Missing message timestamp")
+				return
+			}
+			thread.HandleAt(acc.ID, r.PostFormValue("id"), reviewed)
+			http.Redirect(w, r, "/inbox", http.StatusSeeOther)
+			return
+		}
 		// Parsed here so PostForm is populated: the two are told apart by whether
 		// the field was sent at all, not by whether it has a value, because
 		// pressing Search on an empty box is a search that found everything and
 		// not an instruction with nothing in it.
 		_ = r.ParseForm()
 		if _, searching := r.PostForm["q"]; searching {
-			list(w, r, acc.ID, boxOf(r))
+			priority(w, r, acc.ID)
 			return
 		}
 		action(w, r, acc.ID)
@@ -134,25 +148,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		conversation(w, r, acc.ID, id)
 		return
 	}
-	list(w, r, acc.ID, boxOf(r))
+	priority(w, r, acc.ID)
 }
 
 // boxOf is which mailbox the path asks for, empty for all of them.
-func boxOf(r *http.Request) string {
-	box := strings.Trim(strings.TrimPrefix(r.URL.Path, "/inbox"), "/")
-	if strings.Contains(box, "/") {
-		return ""
-	}
-	return box
-}
-
-// arrivals is what belongs in the inbox: the conversations that came in,
-// whichever channel carried them.
-//
-// Not the chats you started here. Those are on /agent, which is where you were
-// sitting when you had them — see thread.Arrived. Without this line the two
-// pages are two lists of the same conversations with different furniture, which
-// is what they were, and neither could be described in a sentence.
 func arrivals(accountID string) []thread.Thread {
 	all := thread.List(accountID, held)
 	out := all[:0:0]
@@ -165,116 +164,6 @@ func arrivals(accountID string) []thread.Thread {
 }
 
 // list is the inbox proper.
-func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
-	// Everything, not only conversations. A note and a task are things you wrote
-	// down and things still to do, and deciding which of three pages a sentence
-	// belongs on before writing it is the reason people keep everything in their
-	// mail. See kinds.go.
-	//
-	// A kind is a view over a vocabulary this page published, which is exactly
-	// what a URL query is for — unlike the search term below it. See AGENTS.md,
-	// "What may travel in a URL".
-	kind := kindOf(r.URL.Query().Get("kind"))
-	all := arrivals(accountID)
-	items := everything(r, accountID, box, kind)
-
-	var b strings.Builder
-	b.WriteString(`<div class="ib">`)
-	b.WriteString(addressBar(r, accountID, box))
-	// What just happened, when something did. A message you sent appears in the
-	// list below as a conversation, which is right and is also indistinguishable
-	// from a message that failed to send — so the page says so once.
-	if to := strings.TrimSpace(r.URL.Query().Get("sent")); to != "" {
-		b.WriteString(`<p class="ib-sent">Sent to ` + html.EscapeString(trimTo(to, 80)) +
-			`. Their reply lands on the same conversation.</p>`)
-	}
-	// Search first, because it is the one thing on this page somebody arrives
-	// already knowing they want. It sat under two rows of filter chips, which
-	// is the order the page was built in rather than the order it is read in —
-	// a mailbox you have to scroll past furniture to search is a log with a box
-	// at the bottom.
-	//
-	// From the body, never the URL — see searchBox. PostFormValue rather than
-	// FormValue: FormValue reads the query too, so the form could post while a
-	// hand-made ?q= went on working, which is the leak still open and nothing
-	// looking at it.
-	q := strings.TrimSpace(r.PostFormValue("q"))
-	b.WriteString(searchBox(box, q, auth.CSRFToken(r)))
-
-	// The two filters, on one row.
-	//
-	// They were two labelled rows stacked — "Mailboxes" over one set of chips,
-	// "Type" over another — which is two headings and two boxes of chrome
-	// between the address and the mail, for two questions that are each one
-	// click. They still answer different questions and are still not merged
-	// into one set, because a combined row would offer combinations that are
-	// always empty. They just sit on one line with a rule between them, which
-	// is enough to say they are two things.
-	b.WriteString(`<div class="ib-filters">`)
-	b.WriteString(boxes(accountID, all, box))
-	b.WriteString(kinds(kind))
-	b.WriteString(`</div>`)
-
-	// What is waiting to be let in, above the mailbox and only when there is
-	// some. A held conversation is deliberately not in the list below, so
-	// without this the difference between holding a stranger's message and
-	// dropping it would be invisible from here.
-	b.WriteString(waiting(r, accountID))
-
-	if q != "" {
-		found(&b, r, accountID, box, q)
-		b.WriteString(`</div>`)
-		app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
-		return
-	}
-
-	if len(items) == 0 {
-		// An empty inbox says how to fill it, and the answer is an address.
-		// "Nothing here" is a true sentence that leaves somebody looking at a
-		// blank page with nothing to do about it. An empty box is a narrower
-		// fact and gets the narrower sentence — the address is already above it.
-		if box != "" {
-			// The address, here rather than above every list.
-			//
-			// An empty box is the one place it is the answer: there is nothing
-			// to read and the only useful thing to say is where to write so
-			// there is. Printing it above a full mailbox was the version of
-			// this that helped nobody.
-			where := ""
-			if alias := boxAddress(accountID, box); alias != "" {
-				where = ` Write to ` + writeTo(alias) + ` and it turns up here.`
-			}
-			b.WriteString(`<p class="ib-empty">Nothing for <code>` + html.EscapeString(box) +
-				`</code> yet.` + where + `</p>`)
-		} else {
-			// The address used to be printed directly above this and is not
-			// any more, so the sentence says where to find it rather than
-			// pointing at a line that has gone.
-			b.WriteString(`<p class="ib-empty">Nothing has arrived yet. Write to your ` +
-				`address from anywhere — your own mail, your phone — and it turns up here. ` +
-				`The agent reads what arrives and answers in the thread.</p>` +
-				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
-				`the agent, on ` + app.TextLink("Assistant", "/assistant") + `. Or ` +
-				app.TextLink("write one yourself", "/inbox/new") + `.</p>`)
-		}
-		b.WriteString(`</div>`)
-		app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
-		return
-	}
-
-	pager := app.Paginate(r, len(items), shown)
-	for i := pager.From; i < pager.To; i++ {
-		b.WriteString(items[i].html)
-	}
-	b.WriteString(pager.Nav(boxPath(box)))
-	b.WriteString(`</div>`)
-
-	app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
-}
-
-// row is one conversation: who it is with, what it is about, the last thing
-// said, and when. The shape of a mail client's list, because a list of
-// conversations is what a mail client shows.
 func row(r *http.Request, accountID string, t thread.Thread) string {
 	return rowWith(r, accountID, t, "")
 }
@@ -515,146 +404,6 @@ func boxPath(box string) string {
 //
 // Silent when there are no agents, because a switcher with one destination is a
 // control that cannot do anything.
-func boxes(accountID string, all []thread.Thread, current string) string {
-	agents := roster(accountID)
-	if len(agents) == 0 {
-		return ""
-	}
-
-	// Newest first is how the roster comes back, which is an order for a page
-	// about making agents rather than one about reading their mail. Here they
-	// are a row of chips somebody scans for a name.
-	sort.Slice(agents, func(i, j int) bool { return agents[i].Name < agents[j].Name })
-
-	chip := func(label, box string) string {
-		return app.PillLink(label, boxPath(box), strings.EqualFold(box, current))
-	}
-
-	// Labelled, on the row rather than over it.
-	//
-	// It had a heading — "Mailboxes" — because a row of names with nothing
-	// above it does not say whether it filters, navigates or addresses. That
-	// was right. Dropping it when the two filter rows merged fixed the wrong
-	// half: what was heavy was two headings stacked over two one-line rows, not
-	// the words themselves. Unlabelled, the row became a set of names beside a
-	// set of types with nothing saying which axis either one is — and "All"
-	// beside "Everything" is two words for the same idea on one line.
-	//
-	// So the label is inline, in front of the chips it names. One row, and it
-	// says what it is.
-	var b strings.Builder
-	b.WriteString(`<div class="ib-boxes"><span class="ib-axis">Mailbox</span>` + chip("All", ""))
-	for _, a := range agents {
-		if a.Tag == "" {
-			continue // no alias, so nothing arrives at one: it is only in All
-		}
-		label := strings.TrimSpace(a.Name)
-		if label == "" {
-			label = a.Tag
-		}
-		b.WriteString(chip(label, a.Tag))
-	}
-	b.WriteString(`</div>`)
-	return b.String()
-}
-
-// addressBar is the two addresses this page is about.
-//
-// It showed one — the agent's — and then New sent as a different one, with
-// nothing saying why. Both are real and they are for different things, and the
-// order matters: yours first, because this is your inbox and the agent is in
-// it rather than the other way round.
-//
-//	you@       mail to you lands here, and this is what New sends as
-//	agent@     write to it and it answers, in the thread
-//
-// Same page, because they arrive in the same place. A stranger writing to your
-// address and a stranger writing to your agent are both things that turned up
-// while you were elsewhere, which is what this page is.
-//
-// # The agent address follows the box
-//
-// A box is an agent — /inbox/research is what arrived at you+research@ — and
-// this showed the instance agent's address on every one of them. So the
-// switcher above changed which mail you were looking at and the line above it
-// went on naming a different agent, which is the address you would have copied.
-// It takes the box now: All shows the instance agent, and a named box shows the
-// alias that reaches it.
-//
-// And the address is a link into New with it already filled in, because
-// "write to the agent" is what somebody reading this line is trying to do and
-// the alternative was copying it by hand into a form two clicks away.
-func addressBar(r *http.Request, accountID, box string) string {
-	var b strings.Builder
-
-	// The two controls, and nothing else.
-	//
-	// This printed "You asim@micro.mu / Agent agent@micro.mu / IMAP" above every
-	// list once. Three facts, none of them what somebody opening their inbox
-	// came to find out, and they were cut back to one sentence — "Everything
-	// sent to you, on every channel" — which has the same problem in fewer
-	// words: it is the page's own title said again, read once and then read
-	// every visit afterwards on the way past.
-	//
-	// The addresses have not gone. The agent's is filled in for you on New,
-	// which is where you would use it rather than copy it, and both are on
-	// /inbox/imap with everything else a client asks for.
-	//
-	// Buttons rather than pills, on the left rather than out to the right. They
-	// are the page's actions and every other page in this product puts those at
-	// the top left in that shape; two pills floated right were this page's own
-	// arrangement and nowhere else's.
-	// New is always here.
-	//
-	// It was drawn only when mail.Reachable() — which is only "an operator has
-	// set a mail domain". Three lines under that function the package says what
-	// the shape actually is: "an inbox that always works, and a domain that
-	// turns it into an email address when an operator adds one." The button did
-	// not believe it. On every fresh install, and on every instance that never
-	// intends to send mail outside itself, there was no way to write anything
-	// at all from the page whose whole job is what you write and what arrives.
-	//
-	// A domain is needed to reach a stranger. It is needed for none of the
-	// things this button starts: a note and a task have no recipient, and a
-	// message to your own agent or to somebody with an account here is
-	// delivered locally — see the send path in new.go, which resolves @name
-	// against the accounts on this instance and never leaves it.
-	acts := app.ActionLink("/inbox/new", "New")
-	// No Connect a mail client here.
-	//
-	// It sat beside New as a text link, on the reasoning that writing a message
-	// is what somebody does from here and setting up a mail client is something
-	// they do once, if ever. That reasoning is the argument for taking it off
-	// the page rather than for shrinking it: a control used once in the life of
-	// an account does not belong on the screen its owner opens every day, where
-	// it is read past several thousand times to be used never again. /inbox/imap
-	// still exists and /account is where a thing you set up once belongs.
-	// And whether to be told when the next one arrives, at the other end of the
-	// same row.
-	//
-	// It was only on /account, in a card between the passkey list and the legal
-	// links — a page you visit to change a setting you already knew you wanted.
-	// So the thing that makes an inbox worth having with the page closed was
-	// visible only to somebody who went looking for it. This is the screen
-	// things arrive on, which is where wanting to be told about them is a
-	// thought somebody actually has.
-	//
-	// On the actions row rather than above the list. It shipped as a bordered
-	// banner with a sentence in it and was the biggest thing on the page —
-	// reported as "way too big" — and an explainer is not what a control needs:
-	// "Turn on notifications" already says what pressing it does. See push.Ask,
-	// which renders hidden and reveals itself, because whether this device is
-	// subscribed is a fact only the browser has.
-	b.WriteString(`<div class="page-action ib-acts">` + acts +
-		push.Ask(r, accountID) + `</div>`)
-	return b.String()
-}
-
-// boxAddress is the alias that reaches the agent whose box this is.
-//
-// mail.Handle rather than accountID + "+" + box, which is the same string until
-// it is not: Handle cleans the tag by the service's own rule, and the service is
-// what decides which addresses it will accept.
 func boxAddress(accountID, box string) string {
 	if box == "" {
 		return ""
@@ -698,57 +447,6 @@ func writeTo(addr string) string {
 // Mailboxes is the rail's view of this account's boxes: All, and one per agent
 // that has something in it. The same list the switcher draws, so the sidebar
 // and the page cannot disagree about what boxes exist.
-func Mailboxes(accountID string) []app.NavItem {
-	if accountID == "" {
-		return nil
-	}
-	agents := roster(accountID)
-	if len(agents) == 0 {
-		return nil
-	}
-
-	unread := map[string]int{} // tag -> how many, "" for the whole inbox
-	for _, t := range arrivals(accountID) {
-		if !thread.Unread(t) {
-			continue
-		}
-		unread[""]++
-		if box := boxOfThread(accountID, t); box != "" {
-			unread[box]++
-		}
-	}
-
-	sort.Slice(agents, func(i, j int) bool { return agents[i].Name < agents[j].Name })
-
-	badge := func(n int) string {
-		if n == 0 {
-			return ""
-		}
-		return app.Count(n)
-	}
-
-	out := []app.NavItem{{Label: "All", Href: "/inbox", Badge: badge(unread[""])}}
-	for _, a := range agents {
-		if a.Tag == "" {
-			continue
-		}
-		label := strings.TrimSpace(a.Name)
-		if label == "" {
-			label = a.Tag
-		}
-		out = append(out, app.NavItem{Label: label, Href: boxPath(a.Tag), Key: a.Tag,
-			Badge: badge(unread[a.Tag])})
-	}
-	return out
-}
-
-// senderName is what to call whoever wrote, in a column 130px wide.
-//
-// The address is what a message carries and it is the wrong thing to show: a
-// list of "henrik@getdirectree.co…" tells you nothing that "henrik" does not,
-// and the part that got cut off is the part that would have. So the display
-// name where the conversation knows one, the local part otherwise, and the
-// whole address in a title attribute for anybody who wants it.
 func senderName(accountID, threadID, addr string) string {
 	for _, p := range thread.Parties(accountID, threadID) {
 		if p.Kind == thread.RolePerson && strings.EqualFold(p.Key, addr) && p.Name != "" {

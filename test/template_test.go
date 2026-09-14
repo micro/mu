@@ -58,7 +58,7 @@ func TestThePageTitleIsNotInTheSidebar(t *testing.T) {
 	out := app.RenderHTML("PAGE-TITLE", "a description", "<p>body</p>",
 		&auth.Account{ID: "someone", Name: "Someone"})
 
-	nav := section(out, `<div id="nav"`, `<div id="content"`)
+	nav := section(out, `<aside id="nav-container"`, `</aside>`)
 	if nav == "" {
 		t.Fatal("no sidebar in the rendered shell")
 	}
@@ -75,31 +75,17 @@ func TestThePageTitleIsNotInTheSidebar(t *testing.T) {
 }
 
 // Micro and Home lead the signed-in destinations within reach on a phone.
-func TestThePhoneCarriesMicroAndHome(t *testing.T) {
-	out := app.RenderHTML("A page", "a description", "<p>body</p>",
-		&auth.Account{ID: "someone", Name: "Someone"})
-
-	tabs := section(out, `<nav id="tabs"`, `</nav>`)
-	if tabs == "" {
-		t.Fatal("no tab bar in the rendered shell")
-	}
-	for _, href := range []string{"/assistant", "/home", "/inbox", "/work", "/agents", "/services"} {
-		if !strings.Contains(tabs, `href="`+href+`"`) {
-			t.Errorf("the tab bar does not reach %s:\n%s", href, tabs)
+func TestNavigationHasOneConversationEntry(t *testing.T) {
+	out := app.RenderHTML("A page", "", "body", &auth.Account{ID: "someone"})
+	for _, old := range []string{`id="tabs"`, `href="/home"`, `href="/assistant"`} {
+		if strings.Contains(out, old) {
+			t.Errorf("retired navigation: %s", old)
 		}
 	}
-	if n := strings.Count(tabs, "<a "); n != 6 {
-		t.Errorf("the tab bar holds %d tabs, want Ask, Home, Inbox, Work, Agents and Services:\n%s", n, tabs)
-	}
-	// Not the mail store. That was the bug in the thing this replaced.
-	if strings.Contains(tabs, `href="/mail"`) {
-		t.Errorf("a tab opens the mail store rather than the inbox:\n%s", tabs)
-	}
-
-	// Signed out the shell is a landing page whose job is one button, and a
-	// fixed bar across the bottom of it competes with that button.
-	if out := app.RenderHTML("A page", "a description", "<p>body</p>", nil); strings.Contains(out, `id="tabs"`) {
-		t.Error("a signed-out visitor gets the tab bar")
+	for _, link := range []string{`href="/?new=1"`, `href="/bookmarks"`, `href="/services"`} {
+		if !strings.Contains(out, link) {
+			t.Errorf("missing %s", link)
+		}
 	}
 }
 

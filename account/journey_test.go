@@ -27,7 +27,7 @@ func TestAccountErrorsPreserveOnlyNonSecretFields(t *testing.T) {
 
 func TestGoogleSignInKeepsOnlyASafeReturnDestination(t *testing.T) {
 	withGoogle(t)
-	for _, tc := range []struct{ to, want string }{{"/tasks", "/tasks"}, {"https://example.com", "/home"}, {"//example.com", "/home"}} {
+	for _, tc := range []struct{ to, want string }{{"/tasks", "/tasks"}, {"https://example.com", "/"}, {"//example.com", "/"}} {
 		r := httptest.NewRequest("GET", "https://micro.mu/oauth2/google?redirect="+url.QueryEscape(tc.to), nil)
 		w := httptest.NewRecorder()
 		startGoogle(w, r, false)

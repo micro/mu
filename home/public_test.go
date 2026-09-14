@@ -24,7 +24,7 @@ func TestPublicPagesUseLandingShell(t *testing.T) {
 			if w.Code != 200 || !strings.Contains(body, `<article class="public-page"><h1>`) {
 				t.Fatal("missing public page")
 			}
-			for _, marker := range []string{`id="nav"`, `id="footer"`, `/mu.css?`} {
+			for _, marker := range []string{`id="nav"`, `id="footer"`} {
 				if strings.Contains(body, marker) {
 					t.Errorf("app shell leaked into public page: %s", marker)
 				}

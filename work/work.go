@@ -41,8 +41,10 @@
 package work
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -56,6 +58,7 @@ import (
 	"mu/internal/event"
 	"mu/internal/origin"
 	"mu/internal/thread"
+	"mu/internal/version"
 	"mu/service/events"
 	"mu/service/mail"
 	"mu/service/tasks"
@@ -121,6 +124,16 @@ func run(r request) {
 }
 
 func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string, error)) {
+	ctx, cancel := context.WithCancel(context.Background())
+	key := r.Account + ":" + r.ID
+	if _, loaded := activeRuns.LoadOrStore(key, cancel); loaded {
+		cancel()
+		return
+	}
+	defer activeRuns.Delete(key)
+	defer cancel()
+	runID := ""
+
 	if r.Kind == tasks.Kind {
 		t, err := tasks.Get(r.Account, r.ID)
 		if err != nil {
@@ -133,8 +146,11 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 			}
 			return
 		}
-		if t.Status == tasks.StatusDone || t.Status == tasks.StatusFailed || t.Status == tasks.StatusBlocked {
+		if t.Status == tasks.StatusCanceled || t.Archived || t.Status == tasks.StatusDone || t.Status == tasks.StatusFailed || t.Status == tasks.StatusBlocked {
 			return
+		}
+		if len(t.Attempts) > 0 {
+			runID = t.Attempts[len(t.Attempts)-1].ID
 		}
 	}
 
@@ -145,7 +161,13 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 			failure := fmt.Errorf("the agent run stopped unexpectedly")
 			app.Log("work", "running %s %s panicked: %v", r.Kind, r.ID, rec)
 			if r.Kind == tasks.Kind {
-				finishTask(r, "", nil, failure)
+				stepsMu.Lock()
+				partial := append([]tasks.Step(nil), steps...)
+				stepsMu.Unlock()
+				if runID != "" {
+					saveProgress(r.Account, r.ID, runID, partial, "", diagnosticText(fmt.Sprint(rec)), version.String())
+				}
+				finishTask(r, "", partial, failure)
 			} else {
 				answered(r, "", failure)
 			}
@@ -200,25 +222,63 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 		system = agent.InboxPrompt(opts.System)
 	}
 
+	opts.RunContext = ctx
 	opts.System = system
 	if r.Kind == tasks.Kind {
 		opts.RawReply = true
 		opts.OutputInstruction = outcomeInstruction
 	}
+	opts.OnStepStart = func(s agent.Step) {
+		stepsMu.Lock()
+		defer stepsMu.Unlock()
+		steps = append(steps, recordedStep(s, "running"))
+		if runID != "" {
+			saveProgress(r.Account, r.ID, runID, steps, "", "", version.String())
+		}
+	}
 	opts.OnStep = func(s agent.Step) {
 		stepsMu.Lock()
 		defer stepsMu.Unlock()
-		steps = append(steps, tasks.Step{Tool: s.Tool, Detail: tasks.StepDetail(s.Args), OK: s.OK, Seconds: s.Took.Seconds()})
+		status := "done"
+		if !s.OK {
+			status = "failed"
+		}
+		step := recordedStep(s, status)
+		replaced := false
+		for i := range steps {
+			if s.ID != "" && steps[i].ID == s.ID {
+				steps[i] = step
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			steps = append(steps, step)
+		}
+		if runID != "" {
+			saveProgress(r.Account, r.ID, runID, steps, "", "", version.String())
+		}
 	}
 	answer, err := query(r.Account, workPrompt(r), opts)
 	stepsMu.Lock()
 	completedSteps := append([]tasks.Step(nil), steps...)
 	stepsMu.Unlock()
+	if ctx.Err() != nil {
+		return
+	}
+	rawReport := answer
 
 	switch r.Kind {
 	case tasks.Kind:
 		if err == nil {
 			answer, err = readOutcome(answer)
+		}
+		failure := ""
+		if err != nil {
+			failure = err.Error()
+		}
+		if runID != "" {
+			saveProgress(r.Account, r.ID, runID, completedSteps, diagnosticText(rawReport), diagnosticText(failure), version.String())
 		}
 		finishTask(r, answer, completedSteps, err)
 		return
@@ -299,6 +359,7 @@ func finishTask(r request, answer string, steps []tasks.Step, err error) {
 	if from == "" {
 		from = agent.DefaultName()
 	}
+	reply += "\n\n[View work](" + origin.Self() + "/work?id=" + url.QueryEscape(r.ID) + ")"
 	t, saveErr := tasks.RecordOutcome(r.Account, r.ID, status, result, reply, from, steps)
 	if saveErr != nil {
 		app.Log("work", "saving task outcome %s: %v", r.ID, saveErr)
@@ -396,3 +457,5 @@ func deliver(r request, answer string, err error) {
 		event.Announce("brief", strings.TrimSpace(answer), link, r.Account)
 	}
 }
+
+var activeRuns sync.Map // account:task -> context.CancelFunc

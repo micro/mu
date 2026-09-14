@@ -256,7 +256,7 @@ func write() {
 		app.Log("brief", "nothing worth saying about today")
 		return
 	}
-	event.Announce("brief", text, "/home", "")
+	event.Announce("brief", text, "/services?view=feed", "")
 	app.Log("brief", "wrote: %s", text)
 }
 

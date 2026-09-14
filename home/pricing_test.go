@@ -55,7 +55,7 @@ func TestPricingLeadsWithWhatAQuestionCosts(t *testing.T) {
 	if cost <= 0 {
 		t.Fatalf("agent_run costs %d, so this test cannot say anything", cost)
 	}
-	want := "the agent is " + strconv.Itoa(cost) + "¢"
+	want := "Micro is " + strconv.Itoa(cost) + "¢"
 	if !strings.Contains(body, want) {
 		t.Errorf("the page does not say what a question costs (%q): %s", want, clipPage(body))
 	}

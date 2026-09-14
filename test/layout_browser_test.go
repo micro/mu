@@ -7,6 +7,7 @@ import (
 	"mu/agent"
 	"mu/home"
 	"mu/inbox"
+	"mu/internal/api"
 	"mu/internal/auth"
 	"mu/internal/data"
 	recordnotes "mu/internal/notes"
@@ -47,6 +48,7 @@ import (
 	"mu/service/video"
 	"mu/service/weather"
 	"mu/service/web"
+	"mu/work"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -114,16 +116,14 @@ func TestPageCompositionInBrowser(t *testing.T) {
 		thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RoleAgent, From: "Micro", Text: "I found the details. Here is the summary."})
 		thread.Add(thread.Message{Thread: th.ID, Account: who, From: who, Text: "Thanks, please follow up tomorrow.\nI will be there."})
 	}
-	previousCards := home.Cards
-	home.Cards = append(append([]home.Card(nil), previousCards...), home.Card{ID: "layout-feed", Title: "A feed card", Column: "left", CachedHTML: "A service card with a headline to read.", Content: service.Timed(func() (string, time.Time) { return "A service card with a headline to read.", time.Time{} })})
-	t.Cleanup(func() { home.Cards = previousCards })
+
 	pages := map[string]string{}
 	policies := map[string]string{}
-	handlers := map[string]http.HandlerFunc{"/about": home.AboutHandler, "/contact": home.ContactHandler, "/inbox/new": inbox.NewHandler, "/inbox": inbox.Handler, "/inbox?id=" + inboxThread: inbox.Handler, "/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/news?id=layout-news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/home": home.Handler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler}
+	handlers := map[string]http.HandlerFunc{"/about": home.AboutHandler, "/contact": home.ContactHandler, "/inbox/new": inbox.NewHandler, "/inbox": inbox.Handler, "/inbox?id=" + inboxThread: inbox.Handler, "/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/news?id=layout-news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/?new=1": home.Index, "/work": work.Handler, "/services": api.ToolsPageHandler, "/services?view=feed": api.ToolsPageHandler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler}
 	for path, handler := range conversationPages {
 		handlers[path] = handler
 	}
-	handlers["/inbox?kind=note&id="+recordnotes.All(who)[0].ID] = inbox.Handler
+	handlers["/notes?id="+recordnotes.All(who)[0].ID] = notes.Handler
 	for path, handler := range handlers {
 		t.Log("render", path)
 		req := httptest.NewRequest("GET", path, nil)

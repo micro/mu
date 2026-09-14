@@ -72,7 +72,7 @@ func TestPageAndToolsSharePrivateCollection(t *testing.T) {
 	if !strings.Contains(body, `name="_csrf"`) {
 		t.Fatal("forms lack the recognized CSRF field")
 	}
-	if !strings.Contains(body, "/agent/micro?bookmark="+id) || strings.Contains(body, "/chat?id=") {
+	if !strings.Contains(body, "/?bookmark="+id) || strings.Contains(body, "/chat?id=") {
 		t.Fatal("saved material does not lead to private Micro")
 	}
 	if w.Header().Get("Cache-Control") != "private, no-store" {

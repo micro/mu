@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"html"
 	"mu/internal/ai"
 	"mu/service/tasks"
 	"strings"
@@ -68,8 +67,4 @@ func activity(accountID, agentID string) string {
 		return "Not configured"
 	}
 	return "Idle"
-}
-
-func activityHTML(accountID, agentID string) string {
-	return `<span class="activity-status">` + html.EscapeString(activity(accountID, agentID)) + `</span>`
 }

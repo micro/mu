@@ -49,6 +49,7 @@ package thread
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"mu/internal/result"
 	"os"
 	"sort"
 	"strings"
@@ -73,6 +74,7 @@ const (
 // client knows what a conversation is on its own service, and this stores
 // whatever it says without interpreting it.
 type Thread struct {
+	Handled  time.Time  `json:"handled,omitempty"`
 	Evidence []Evidence `json:"-"`
 	ID       string     `json:"id"`
 	Account  string     `json:"account"`
@@ -146,12 +148,13 @@ type Party struct {
 
 // Message is one thing said.
 type Message struct {
-	ID      string    `json:"id"`
-	Thread  string    `json:"thread"`
-	Account string    `json:"account"`
-	Role    string    `json:"role"`
-	Text    string    `json:"text"`
-	At      time.Time `json:"at"`
+	Results []result.Item `json:"results,omitempty"`
+	ID      string        `json:"id"`
+	Thread  string        `json:"thread"`
+	Account string        `json:"account"`
+	Role    string        `json:"role"`
+	Text    string        `json:"text"`
+	At      time.Time     `json:"at"`
 	// Ref is the client's own identifier for this message, where it has one —
 	// a mail Message-ID. It is how a reply finds the conversation it continues
 	// when the client knows better than the store does: answering something

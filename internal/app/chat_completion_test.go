@@ -13,7 +13,7 @@ func TestChatCompletionAndRecovery(t *testing.T) {
 	if err != nil {
 		t.Skip("Node is needed for the browser response state test")
 	}
-	src, err := os.ReadFile("chat.go")
+	src, err := os.ReadFile("conversation.js")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,6 +42,16 @@ func TestClientLocationSharing(t *testing.T) {
 		t.Skip("Node is needed for client location checks")
 	}
 	if out, err := exec.Command(node, "testdata/location_test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+}
+
+func TestDictationKeepsUserControl(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("Node needed for dictation behavior test")
+	}
+	if out, err := exec.Command(node, "testdata/dictation_test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, out)
 	}
 }

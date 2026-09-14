@@ -4,36 +4,49 @@ import (
 	"mu/internal/auth"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
-func TestExpiredInstalledSessionOpensLogin(t *testing.T) {
-	w := httptest.NewRecorder()
-	Index(w, httptest.NewRequest("GET", "/?from=app", nil))
-	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/login" {
-		t.Fatalf("PWA entry: %d %s", w.Code, w.Header().Get("Location"))
+func TestRootIsTheConversationBeforeAndAfterSignIn(t *testing.T) {
+	const who = "v2_entry"
+	if err := auth.Create(&auth.Account{ID: who, Approved: true}); err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestSignedInEntryUsesHomeAndPreservesOldChatLinks(t *testing.T) {
-	const who = "home_entry_redirect"
-	if e := auth.Create(&auth.Account{ID: who}); e != nil {
-		t.Fatal(e)
+	session, err := auth.CreateSession(who)
+	if err != nil {
+		t.Fatal(err)
 	}
-	sess, e := auth.CreateSession(who)
-	if e != nil {
-		t.Fatal(e)
-	}
-	defer auth.EndSession(sess.Token)
-	for _, tc := range []struct{ path, want string }{
-		{"/", "/home"}, {"/?from=app", "/home"}, {"/?session=old-thread", "/agent/micro?session=old-thread"}, {"/?new=1", "/agent/micro?new=1"},
-	} {
-		r := httptest.NewRequest("GET", tc.path, nil)
-		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
-		w := httptest.NewRecorder()
-		Index(w, r)
-		if w.Code != http.StatusSeeOther || w.Header().Get("Location") != tc.want {
-			t.Errorf("%s: %d %s", tc.path, w.Code, w.Header().Get("Location"))
+	defer auth.EndSession(session.Token)
+	for _, signedIn := range []bool{false, true} {
+		for _, path := range []string{"/", "/?from=app", "/?new=1"} {
+			req := httptest.NewRequest("GET", path, nil)
+			if signedIn {
+				req.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
+			}
+			w := httptest.NewRecorder()
+			Index(w, req)
+			if w.Code != 200 || w.Header().Get("Location") != "" {
+				t.Fatalf("%s signedIn=%v: %d", path, signedIn, w.Code)
+			}
+			body := w.Body.String()
+			if strings.Count(body, `id="mu-chat-input"`) != 1 {
+				t.Fatal("expected one composer")
+			}
+			for _, obsolete := range []string{`id="home-cards"`, `id="home-agent"`, `mu-chat-continue`, `Continue in Assistant`} {
+				if strings.Contains(body, obsolete) {
+					t.Errorf("obsolete UI: %s", obsolete)
+				}
+			}
+			if !signedIn && !strings.Contains(body, "A personal AI agent") {
+				t.Fatal("missing tagline")
+			}
+			if !strings.Contains(body, `id="mu-chat-mic"`) {
+				t.Fatal("missing dictation control")
+			}
+			if w.Header().Get("Cache-Control") != "private, no-store" {
+				t.Fatal("conversation must not be cached")
+			}
 		}
 	}
 }

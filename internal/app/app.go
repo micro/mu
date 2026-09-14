@@ -21,6 +21,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/internal/thread"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
@@ -28,10 +29,8 @@ import (
 	"github.com/gomarkdown/markdown/parser"
 )
 
-// Version for cache busting static assets (generated at startup)
 var Version = fmt.Sprintf("%d", time.Now().Unix())
 
-// ANSI color codes
 const (
 	colorReset  = "\033[0m"
 	colorRed    = "\033[31m"
@@ -43,7 +42,6 @@ const (
 	colorWhite  = "\033[37m"
 )
 
-// Package color mapping
 var pkgColors = map[string]string{
 	"news":  colorCyan,
 	"chat":  colorGreen,
@@ -53,14 +51,9 @@ var pkgColors = map[string]string{
 	"mail":  colorRed,
 }
 
-// cliMode is set at init time when the process is invoked without
-// --serve, i.e. as a CLI rather than the server. It suppresses the
-// package startup logs so they don't contaminate CLI stdout.
 var cliMode bool
 
 func init() {
-	// Detect CLI mode without importing the cli package. The rule
-	// mirrors isServerMode in main.go: any --serve means server.
 	server := false
 	for _, a := range os.Args[1:] {
 		if a == "--serve" || a == "-serve" ||
@@ -72,42 +65,23 @@ func init() {
 	cliMode = !server
 }
 
-// Response holds data for responding in either JSON or HTML format
-// Response is one page, or one JSON answer, from anywhere in the product.
-//
-// The single door. There were six — RenderHTML, RenderHTMLForRequest,
-// RenderHTMLWithLang, RenderHTMLWithLangAndAuth, RenderHTMLWithLangAndBody and
-// this — which is what happens when each new need adds a parameter and a name
-// rather than a field. Four of them had one caller or none, and the two that
-// were used differed only in whether the caller remembered to wrap the result
-// in w.Write([]byte(...)).
-//
-// Everything a page can vary is a field here, so the next thing a page needs is
-// a field rather than a seventh function.
 type Response struct {
 	Data        interface{} // Data to serialize as JSON or pass to HTML renderer
 	HTML        string      // Pre-rendered HTML body (used when Data is nil for HTML)
 	Title       string      // Page title for HTML response
 	Description string      // Meta description for HTML response
-	// BodyClass is set on <body>, for a page whose layout differs from the
-	// rest — the home screen, and the kiosk variant of it. One field rather
-	// than the function that existed to pass one string.
-	BodyClass string
+	BodyClass   string
 }
 
-// WantsJSON returns true if the request prefers JSON response
 func WantsJSON(r *http.Request) bool {
 	accept := r.Header.Get("Accept")
 	return strings.Contains(accept, "application/json")
 }
 
-// SendsJSON returns true if the request is sending JSON
 func SendsJSON(r *http.Request) bool {
 	return strings.Contains(r.Header.Get("Content-Type"), "application/json")
 }
 
-// DecodeJSON decodes JSON from request body into the given struct
-// Returns error if not JSON content type or decode fails
 func DecodeJSON(r *http.Request, v interface{}) error {
 	if !SendsJSON(r) {
 		return fmt.Errorf("expected application/json content type")
@@ -115,39 +89,22 @@ func DecodeJSON(r *http.Request, v interface{}) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
-// RespondJSON writes a JSON response
 func RespondJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
 }
 
-// RespondError writes a JSON error response with the given status code
 func RespondError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
-// isFetch reports whether this request came from script rather than from the
-// address bar or a form submit.
-//
-// Only a navigation can display a page, and a fetch() that asks for one gets
-// several kilobytes of markup where it expected a sentence — which is exactly
-// what happened the first time the console's compose box showed a refusal: it
-// printed the <head> of an error page into the notice area. Browsers label the
-// difference themselves in Sec-Fetch-Mode ("navigate" for a page load or form
-// post, "cors"/"same-origin" for fetch and XHR), so nothing has to be guessed
-// and no call site has to remember to set a header. Absent header — curl, an
-// old browser — is treated as a navigation, which is the safe assumption for a
-// human-readable response.
 func isFetch(r *http.Request) bool {
 	mode := r.Header.Get("Sec-Fetch-Mode")
 	return mode != "" && mode != "navigate"
 }
 
-// errorTitle heads the page with what happened in plain words. The HTTP status
-// text is written for a proxy log — "Forbidden" over a sentence explaining how
-// to start posting reads as a scolding rather than an answer.
 func errorTitle(status int) string {
 	switch status {
 	case http.StatusUnauthorized:
@@ -166,9 +123,6 @@ func errorTitle(status int) string {
 	return http.StatusText(status)
 }
 
-// errorBackTo picks where "Back" goes: the page the request came from when it
-// is one of ours, otherwise home. A refused POST has no useful URL of its own —
-// the form lives at the referer.
 func errorBackTo(r *http.Request) string {
 	ref := r.Referer()
 	if strings.HasPrefix(ref, "/") && !strings.HasPrefix(ref, "//") {
@@ -180,14 +134,10 @@ func errorBackTo(r *http.Request) string {
 	return "/"
 }
 
-// Unauthorized writes a 401 error response
 func Unauthorized(w http.ResponseWriter, r *http.Request) {
 	Error(w, r, http.StatusUnauthorized, "Authentication required")
 }
 
-// TooManyRequests writes a 429. Use it where a limit is about how often
-// something may be done rather than what it costs — a price refuses the caller
-// without credits, a rate limit refuses the caller going too fast.
 func TooManyRequests(w http.ResponseWriter, r *http.Request, message string) {
 	if message == "" {
 		message = "Too many requests"
@@ -195,7 +145,6 @@ func TooManyRequests(w http.ResponseWriter, r *http.Request, message string) {
 	Error(w, r, http.StatusTooManyRequests, message)
 }
 
-// NotFound writes a 404 error response
 func NotFound(w http.ResponseWriter, r *http.Request, message string) {
 	if message == "" {
 		message = "Not found"
@@ -203,7 +152,6 @@ func NotFound(w http.ResponseWriter, r *http.Request, message string) {
 	Error(w, r, http.StatusNotFound, message)
 }
 
-// RedirectToLogin redirects to login page with optional redirect back URL
 func RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 	redirect := r.URL.Path
 	if r.URL.RawQuery != "" {
@@ -212,14 +160,10 @@ func RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login?redirect="+url.QueryEscape(redirect), http.StatusSeeOther)
 }
 
-// MethodNotAllowed writes a 405 error response
 func MethodNotAllowed(w http.ResponseWriter, r *http.Request) {
 	Error(w, r, http.StatusMethodNotAllowed, "Method not allowed")
 }
 
-// Respond writes either JSON or HTML based on the Accept header
-// If resp.Data is provided, it will be used for JSON responses
-// If resp.HTML is provided, it will be wrapped in the page template for HTML responses
 func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 	if WantsJSON(r) {
 		w.Header().Set("Content-Type", "application/json")
@@ -227,45 +171,16 @@ func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 		return
 	}
 
-	// Revalidate every time.
-	//
-	// Pages went out with no cache headers at all, which does not mean "do not
-	// cache" — it means the browser guesses, and an installed app guessing
-	// wrong holds a page for as long as it likes. That is how a fix ships and
-	// somebody on their home screen keeps the old screen: the assets are
-	// versioned and the *page* that names those versions is not, so a stale
-	// page goes on asking for the stale stylesheet it was built against, and
-	// any inline script in it stays whatever it was the day it was cached.
-	//
-	// no-cache rather than no-store: the page is still cached, it just has to
-	// ask first, so an unchanged one costs a 304 rather than a download.
-	//
-	// private because these are not interchangeable between people. Every page
-	// carries the corner that says who is signed in, so a shared cache holding
-	// one and handing it to the next reader is somebody else's name in the
-	// header.
-	// A private reader may ask for stricter storage rules (e.g. saved notes).
 	if w.Header().Get("Cache-Control") == "" {
 		w.Header().Set("Cache-Control", "no-cache, private")
 	}
 
-	// HTML response — renderForRequest already prepends the verify banner for
-	// unverified users on verification-gated instances.
 	w.Write([]byte(renderForRequest(resp.Title, resp.Description, resp.HTML, resp.BodyClass, r))) //nolint:errcheck
 }
 
 //go:embed html/*
 var htmlFiles embed.FS
 
-// footerFor is the footer, and signed in there isn't one.
-//
-// About · Tools · Pricing · Help · Privacy · Status is a website's footer: it
-// exists to tell a visitor what this is and to satisfy the links a site is
-// expected to carry. Once somebody is signed in they are not a visitor, they are
-// using the thing — and an app does not put a marketing nav under every screen.
-// It is the single clearest tell that this is a page rather than an app, and it
-// costs nothing to drop, because everything in it is in the sidebar or on
-// /account for anyone who wants it.
 func footerFor(acc *auth.Account) string {
 	if acc != nil {
 		return ""
@@ -273,56 +188,7 @@ func footerFor(acc *auth.Account) string {
 	return `<div id="footer">` + FooterLinks() + `</div>`
 }
 
-// FooterLinks is the site footer, shared by the app shell and the sidebar-less
-// landing shell (/about, /agents) so every page shows the same links.
 func FooterLinks() string {
-	// Support is in the footer because a person who cannot pay has to be able to
-	// find a way to say so from wherever they got stuck, and there was none: the
-	// Discord invite lived in the README on GitHub, and support@ was a reserved
-	// username with no mailbox behind it. Somebody whose top-up failed had
-	// nowhere at all to report it, which meant an operator only found out by
-	// being told in person.
-	// No Help. It was a second page about pointing an agent at this instance,
-	// which is what /tools is for — two pages answering one question, and the
-	// one nobody maintained was the one in the footer.
-	//
-	// Pricing is here because a signed-out visitor had no way to learn the
-	// terms. /tools carries a price on each of a hundred-odd entries, which
-	// answers what one call costs and never what this is going to cost you, and
-	// somebody deciding whether to sign up is asking the second question. It is
-	// not the plan chooser that was deleted — see home.PricingHandler.
-	//
-	// This paragraph was here and the link was not, and /pricing was a 404 in
-	// production: the argument survived the page. A footer that argues for a
-	// destination it does not carry is worse than one that never mentioned it,
-	// because it reads as done.
-	//
-	// API is here rather than in the landing's developer band, which used to end
-	// with its own row of Tools · API · Pricing — two of the three repeated from
-	// this line, a few centimetres above it. A footer is where a site keeps its
-	// destinations; a second copy of most of one is furniture.
-	// Five links, alphabetical.
-	//
-	// Alphabetical because every other order is an argument about which
-	// destination matters most, and a footer is the one place on a page that is
-	// not making an argument — it is where a site keeps its addresses. A ranked
-	// row also needs re-ranking whenever something is added, which nobody does.
-	//
-	// About and Contact are the two questions somebody with no account has:
-	// what is this, and how do I use it. Privacy and Status are the two a site
-	// is expected to answer whoever is asking.
-	//
-	// Tools, API and Archive were all here and are all the same mistake in
-	// different clothes — a footer full of doors onto machinery. A tool is a
-	// property of something rather than a destination, which is what took it
-	// off the sidebar. The API is for programs, and a program does not read a
-	// footer; the people who want it arrive at /about or /contact, which link
-	// it. And the archive is a corpus: what this server has read stays openable
-	// by a person, which is the argument for having a public one, but the row
-	// of doors under the box on the front page is where somebody goes looking
-	// and /about links it too.
-	//
-	// What is left is five links a stranger might actually want.
 	return `<a href="/about">About</a> · <a href="/contact">Contact</a> · ` +
 		`<a href="/pricing">Pricing</a> · ` +
 		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
@@ -335,561 +201,19 @@ func torFooterLink() string {
 	return ""
 }
 
-// Why the sidebar starts out of the way, and why this note is out here.
-//
-// It was the other way round — always there unless you had collapsed it — and
-// the cost was not the width. A rail of twenty destinations is the shape of a
-// console for a system, and this is one assistant: the page you are on and the
-// box you type in are the product, and the rail is how you get somewhere else
-// on the rare occasion you want to. Permanently open it also made a signed-in
-// page and a signed-out one two different-looking products, because a stranger
-// never had one.
-//
-// So absent means collapsed and a first visit is the quiet version; an explicit
-// '0' is somebody who opened it and wants it kept, which wins.
-//
-// This note is here rather than in the script it describes, because everything
-// inside Template is served to every visitor on every page. Fifteen lines of
-// reasoning about a design decision is not something to put on the wire a
-// million times. See home/index.go, which learned the same lesson about a
-// comment inside a <style> block.
-
-var Template = `
-<html lang="%s">
-  <head>
-    <title>%s | Micro</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
-    <meta name="description" content="%s">
-    <meta name="referrer" content="no-referrer"/>
-    <meta name="theme-color" content="#ffffff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Micro">
-    <meta name="application-name" content="Mu">
-    <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="preload" href="/home.png?` + Version + `" as="image">
-    <link rel="preload" href="/mail.png?` + Version + `" as="image">
-    <link rel="preload" href="/chat.png?` + Version + `" as="image">
-    <link rel="preload" href="/post.png?` + Version + `" as="image">
-    <link rel="preload" href="/news.png?` + Version + `" as="image">
-    <link rel="preload" href="/video.png?` + Version + `" as="image">
-    <link rel="preload" href="/account.png?` + Version + `" as="image">
-    <link rel="preload" href="/weather.png?` + Version + `" as="image">
-    <link rel="preload" href="/prayer.svg?` + Version + `" as="image">
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="/mu.css?` + Version + `">
- <link rel="stylesheet" href="/composition.css?` + Version + `">
-    <script src="/mu.js?` + Version + `"></script>
- <script defer src="/viewport.js?` + Version + `"></script>
-  </head>
-  <body%s>
-    <script>
-      // Absent means collapsed; an explicit '0' is the reader's own choice
-      // and wins. Runs before paint. Reasoning: the note above Template.
-      try {
-        if (localStorage.getItem('mu_nav_collapsed') !== '0') {
-          document.body.classList.add('nav-collapsed');
-        }
-      } catch (e) {
-        document.body.classList.add('nav-collapsed');
-      }
-    </script>
-    <div id="head">
-      <button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <div id="brand">
-        <a href="/">Micro</a>
-      </div>
-      <!-- One flex cluster, so the items sit next to each other by measuring
-           themselves. They used to be three absolutely positioned elements
-           nudged apart by hand with sibling combinators, which could not look
-           backwards and could not survive a fourth item — the balance is that
-           fourth item. Hidden children take no space, so mail appearing and
-           disappearing still costs nothing. -->
-      <div id="head-right">
-        <!-- An envelope stood here, on the argument that the rail is behind a
-             hamburger on a phone so Inbox needs a shortcut. The argument was
-             right and the patch was not: it was display:none in the stylesheet
-             with nothing anywhere turning it on, so the shortcut was invisible
-             for as long as it existed. Inbox is a tab along the bottom now,
-             beside the other three. See navTabs. -->
-        %s
-      </div>
-    </div>
-
-    <div id="nav-overlay" onclick="toggleMenu()"></div>
-    <div id="container">
-      <div id="nav-container">
-        <div id="nav">
-          <!-- The nouns, in the order somebody meets them. Tools is what the
-               product is named for and what carries the connect instructions,
-               so it comes first; Agents is the showcase — what you can build on
-               top of the tools once you have them — and Services is the back
-               end, the answer to "what does this actually run".
-
-               Agents used to be second and Tools third, which put the demo in
-               front of the thing being demonstrated. Before any of this it was
-               one alphabetical list of nineteen services that put Wallet
-               eighteenth, between Video and Weather — alphabetical is not an
-               ordering, it is the absence of one.
-
-               Context was a fifth row: a page for what an agent remembers and
-               what it is watching. It became a second home screen with a card
-               picker on it and was removed. Memory, the half that was real, is
-               a card on /account.
-
-               Inbox is above Tools because it is the thing itself. An agent
-               with an address that answers and remembers is what this is; the
-               tools are what it reaches for. Agents stays below it and is a
-               different question — the roster, where one is made and scoped.
-
-               Apps was here once, on the argument that it is half the product.
-               It is a service with a Spec and a tile in the catalogue like the
-               others, so a permanent entry above the fold was the spine
-               claiming something the rest of the product does not agree with.
-               Anyone who lives in Apps can pin it and it comes back, which is
-               what pinning is for.
-
-               Tools was here and is not. The page stays — /tools is the whole
-               catalogue at the granularity an agent calls it, and it is worth
-               having — but a tool is not a destination, it is a property of
-               something. An agent's tools are what it may reach for, and that
-               is on /agents; a service's are its methods, and those are on
-               /services/<name> with the form to try one. So the two rows that
-               went to one catalogue are one row to the noun, and the verbs are
-               reached through whatever has them. /agents links to it. -->
-          %s
-          %s
-        </div>
-        <div class="nav-bottom">
-          %s
-        </div>
-      </div>
-      <div id="content">
-        <h1 id="page-title">%s</h1>
-        %s
-      </div>
-      %s
-    </div>
-    %s
-  <script>
-      // Navigating without repainting the page.
-      //
-      // A full load between screens is the loudest thing that says "website":
-      // the chrome flashes, the sidebar redraws, and for a moment there is
-      // nothing there. The pages are server-rendered and that is worth keeping —
-      // no build step, no framework, works with JavaScript off — so this does
-      // the smallest thing that removes the flash: fetch the next page, swap the
-      // title and the content, leave the sidebar alone.
-      //
-      // Everything degrades. Without JavaScript, or if the fetch fails, or on
-      // anything that is not a plain same-origin left-click, the browser does
-      // what it always did. Nothing here is load-bearing.
-      (function(){
-        var content = document.getElementById('content');
-        if (!content || !window.history || !window.fetch) return;
-
-        // What has already been fetched, so going back is not a network round
-        // trip. A real back button comes out of the browser's cache instantly;
-        // intercepting popstate and re-fetching threw that away, and on a phone
-        // — especially installed as a PWA, where back is a swipe and gets used
-        // constantly — that is the difference between instant and a spinner.
-        //
-        // Bounded, and holding what the page looked like when it was left,
-        // which is what a back button is meant to show.
-        // What actually scrolls.
-        //
-        // Not the window. This layout gives body a fixed height and
-        // overflow-y:auto, so body is the scroll container and the root element
-        // does not scroll at all — which makes window.scrollY permanently 0 and
-        // window.scrollTo a no-op. Everything here used to use both: the
-        // position saved into history was always 0, restoring it did nothing,
-        // and — the one people notice — scrolling to the top on a forward
-        // navigation did nothing either, so following a link from halfway down
-        // a page landed you halfway down the next one.
-        //
-        // document.scrollingElement is the standard answer and the wrong one
-        // here: it reports the root, which is exactly the element that does not
-        // move. So ask which one has somewhere to scroll to.
-        function scroller() {
-          var b = document.body, d = document.documentElement;
-          if (b && b.scrollHeight > b.clientHeight + 1) return b;
-          if (d && d.scrollHeight > d.clientHeight + 1) return d;
-          return document.scrollingElement || d || b;
-        }
-        function scrollNow() { var e = scroller(); return e ? e.scrollTop : 0; }
-        function scrollToY(y) { var e = scroller(); if (e) e.scrollTop = y; }
-
-        var seen = Object.create(null), order = [];
-        function remember(url, html) {
-          if (!(url in seen)) order.push(url);
-          seen[url] = html;
-          while (order.length > 12) { delete seen[order.shift()]; }
-        }
-
-        // The page you arrived on was never fetched by this code, so it was the
-        // one thing never in the cache — and it is the one people go back to.
-        // Land on Home, open a card, press back, and that was a network fetch
-        // of the page you had been looking at a second earlier.
-        //
-        // Built through the DOM rather than by concatenating strings, so the
-        // title cannot be mis-escaped into the markup. swap() only reads #content
-        // and the title, which is all this has to carry.
-        function snapshot() {
-          try {
-            var d = document.implementation.createHTMLDocument('');
-            d.title = document.title;
-            var c = d.createElement('div');
-            c.id = 'content';
-            c.innerHTML = content.innerHTML;
-            d.body.appendChild(c);
-            return d.documentElement.outerHTML;
-          } catch (e) { return null; }
-        }
-
-        function swap(html, push, url, restoreY) {
-          // Where the page being left was scrolled to, read before anything is
-          // replaced. Reading it after the swap records the wrong number and
-          // usually zero: the new content is written first, the document
-          // collapses to whatever height it has before images and cards lay
-          // out, and the browser clamps scrollTop down to fit. The position
-          // being saved for the back button was the position after the page it
-          // describes had already gone.
-          var leavingY = scrollNow();
-          var doc = new DOMParser().parseFromString(html, 'text/html');
-          var next = doc.getElementById('content');
-          // Not a shell page — an app is a frame around untrusted HTML and has
-          // no #content. Hand it to the browser, without leaving the dim on.
-          if (!next) { content.removeAttribute('data-loading'); location.href = url; return; }
-
-          // The body's classes come with the page, and a soft navigation was
-          // not bringing them.
-          //
-          // Only #content and the title were being replaced, so body kept
-          // whatever the last full page load put there — and the page's width
-          // is decided from it: body.page-home #content is 1700px where every
-          // other page is 1400. Load /apps, click Home, and Home laid itself
-          // out under Apps' rules until you refreshed. The width appeared to
-          // follow you around, which reads as a caching bug and is not one:
-          // nothing was stale, the selector was simply matching the wrong page.
-          //
-          // Runtime classes are kept. None of these is in the server's markup —
-          // nav-collapsed is the reader's own choice, and signed-in is added by
-          // mu.js once the session check comes back — so copying className
-          // wholesale would open the sidebar on every navigation and make every
-          // soft-navigated page look signed out until the next session check.
-          // typing is here for the same reason: it is set by a focus handler
-          // and is not in any server markup, so a soft navigation would drop
-          // it and bring the tab bar back over an open keyboard.
-          var runtime = ['nav-collapsed', 'menu-open', 'signed-in', 'typing'];
-          var keep = [];
-          for (var k = 0; k < runtime.length; k++) {
-            if (document.body.classList.contains(runtime[k])) keep.push(runtime[k]);
-          }
-          document.body.className = doc.body ? doc.body.className : '';
-          for (var k2 = 0; k2 < keep.length; k2++) document.body.classList.add(keep[k2]);
-
-          content.innerHTML = next.innerHTML;
-          // innerHTML does not run scripts, and half these pages carry one:
-          // the weather card, the flights radar, the notes editor. Without this
-          // a soft navigation would leave them inert, which is worse than the
-          // flash it was removing. Re-create each script so the browser runs it.
-          var scripts = content.querySelectorAll('script');
-          for (var i = 0; i < scripts.length; i++) {
-            var old = scripts[i], s = document.createElement('script');
-            for (var j = 0; j < old.attributes.length; j++) {
-              s.setAttribute(old.attributes[j].name, old.attributes[j].value);
-            }
-            s.text = old.text;
-            old.parentNode.replaceChild(s, old);
-          }
-          if (doc.title) document.title = doc.title;
-          // Remember where the page being left was scrolled to, so going back
-          // returns you to it rather than to the top of a list you had already
-          // read halfway down.
-          if (push) {
-            try { history.replaceState({mu:1, scroll: leavingY}, ''); } catch (e) {}
-            history.pushState({mu:1}, '', url);
-          }
-          // A hash is a destination, not decoration. The browser scrolls to one
-          // by itself on a real page load and never on a soft one, so a link to
-          // /news#Tech swapped the content in and then scrolled to the top —
-          // the anchor still existed and nothing went to it.
-          var hash = '';
-          try { hash = new URL(url, location.href).hash; } catch (e) {}
-          var target = hash.length > 1 ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
-
-          // restoreY is an argument, and it used to be read as a free variable
-          // here while being a parameter of go() — a sibling function, not an
-          // enclosing one. typeof on an undeclared name is "undefined" rather
-          // than an error, so the branch was silently never taken and going
-          // back always landed at the top. The popstate handler had been
-          // carefully passing the saved position to a parameter nobody read.
-          //
-          // Applied twice. The content has just been written and the images and
-          // cards in it have no height yet, so the document can still be
-          // shorter than the offset being restored — the browser clamps to
-          // whatever the height is now, and a moment later the rest arrives and
-          // you are somewhere you never scrolled to. The second pass runs after
-          // a frame, once layout has caught up.
-          function place() {
-            if (typeof restoreY === 'number') { scrollToY(restoreY); }
-            else if (target && target.scrollIntoView) { target.scrollIntoView(); }
-            else { scrollToY(0); }
-          }
-          place();
-          if (window.requestAnimationFrame) requestAnimationFrame(place);
-
-          // Anything the new content wired up on load has to be re-wired.
-          document.dispatchEvent(new CustomEvent('mu:navigated'));
-        }
-
-        // On a phone the sidebar is an overlay sitting on top of the content,
-        // and a soft navigation does not reload the page — so tapping a nav
-        // item swapped the content in behind a menu that was still covering
-        // it. The page you asked for had arrived and you could not see it, and
-        // the only way out was to find the overlay's edge and tap that.
-        //
-        // Nothing was wrong before soft navigation, which is what makes it easy
-        // to miss: the reload used to close the menu as a side effect of
-        // throwing the whole document away. On desktop the sidebar is not an
-        // overlay and menu-open is unused, so this is a no-op there.
-        //
-        // There used to be a second half: the account menu was a <details>,
-        // which stays open on its own, so after a soft navigation it would hang
-        // over the new page's rail. That menu is gone — every destination is in
-        // the rail now — and so is the line that closed it.
-        function closeMenu() {
-          document.body.classList.remove('menu-open');
-        }
-
-        function go(url, push, restoreY) {
-          closeMenu();
-
-          // Going back to something already seen is answered from memory. Only
-          // on back and forward, never on a click: following a link is a
-          // request for the current state of that page, and serving a copy
-          // would show yesterday's headlines to somebody who just asked for
-          // today's.
-          if (!push && seen[url] !== undefined) {
-            swap(seen[url], push, url, restoreY);
-            return;
-          }
-
-          // Keep the page being left, before it is replaced.
-          if (push && seen[location.href] === undefined) {
-            var snap = snapshot();
-            if (snap) remember(location.href, snap);
-          }
-
-          // The dim waits, so a navigation that is quick never shows one.
-          //
-          // It used to be applied the moment a click landed, which made every
-          // navigation flicker and made one of them look broken: an app page is
-          // a standalone document with no #content in it — it is a frame around
-          // untrusted HTML and deliberately not part of the shell — so opening
-          // an app dimmed the page, discovered there was nothing to swap, and
-          // then hard-navigated. Dim, then reload, for a page that was only ever
-          // going to be a full load.
-          //
-          // 150ms is under the threshold where a delay reads as one. Anything
-          // answered faster than that never dims, which is most of them.
-          var dim = setTimeout(function(){ content.setAttribute('data-loading', '1'); }, 150);
-          function undim() { clearTimeout(dim); content.removeAttribute('data-loading'); }
-          fetch(url, {credentials: 'same-origin', headers: {'X-Mu-Nav': '1'}})
-            .then(function(r){
-              if (!r.ok || (r.redirected && r.url !== url)) { undim(); location.href = url; return null; }
-              return r.text();
-            })
-            .then(function(html){
-              if (html === null) return;
-              remember(url, html);
-              swap(html, push, url, restoreY);
-            })
-            .catch(function(){ undim(); location.href = url; })
-            .then(undim);
-        }
-
-        document.addEventListener('click', function(e){
-          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-          var a = e.target.closest ? e.target.closest('a') : null;
-          if (!a || !a.href || a.target || a.hasAttribute('download')) return;
-          if (a.getAttribute('href').charAt(0) === '#') return;
-          var u = new URL(a.href, location.href);
-          if (u.origin !== location.origin) return;
-          // Downloads, media and anything that is not a page.
-          if (/\.(png|jpe?g|gif|svg|ico|css|js|json|pdf|zip|webmanifest)$/i.test(u.pathname)) return;
-          // Only the hash differs, so this is a jump within the page we are
-          // already on. The browser does that natively, and doing it here
-          // instead meant re-fetching the page to land back where we started.
-          if (u.pathname === location.pathname && u.search === location.search && u.hash) return;
-          // Logging out changes who you are, and a soft navigation only swaps
-          // #content — the sidebar and everything else drawn for a signed-in
-          // person would stay exactly as it was, so it reads as nothing having
-          // happened. Let the browser do the whole page: rebuilding the chrome
-          // is the point, not a side effect.
-          if (u.pathname === '/logout') return;
-          // The video watch page is a standalone document that owns the viewport.
-          if (u.pathname === '/video' && u.searchParams.get('id')) return;
-          // Agent pages own live streams and per-thread draft/scroll state.
-          // Use document navigation so pagehide saves it and listeners retire.
-          if (u.pathname === '/home' || location.pathname === '/home' || u.pathname === '/assistant' || location.pathname === '/assistant' || u.pathname === '/' || location.pathname === '/' || /^\/agent(?:\/|$)/.test(u.pathname) || /^\/agent(?:\/|$)/.test(location.pathname)) return;
-          e.preventDefault();
-          if (u.href === location.href) return;
-          go(u.href, true);
-        });
-
-        // A tap on anything in the sidebar closes it, whether or not it turned
-        // into a soft navigation. Some links never reach go(): a hash on the
-        // page you are already on is handled by the browser, and a link to
-        // where you already are returns early. Both leave the menu open over
-        // the content, which is the same dead end from a different direction.
-        document.addEventListener('click', function(e){
-          var a = e.target.closest ? e.target.closest('a') : null;
-          if (a && a.closest('#nav-container')) closeMenu();
-        });
-
-        window.addEventListener('popstate', function(e){
-          if(window.muChatOpen && /^\/agent(?:\/|$)/.test(location.pathname) && document.querySelector('.chat-sess-list')) return;
-          go(location.href, false, e.state && typeof e.state.scroll === 'number' ? e.state.scroll : undefined);
-        });
-
-        // Scroll position is ours to set, not the browser's to restore.
-        //
-        // The default is 'auto': the browser remembers where each history entry
-        // was scrolled to and puts you back there — which is right for a real
-        // page load and wrong for a soft one, because pushState records a
-        // position for the page being left and then restores it over the page
-        // arriving. On a phone, where you are usually scrolled down before you
-        // reach for the menu, that landed you halfway down whatever you tapped.
-        // go() already scrolls deliberately, to the anchor or to the top.
-        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-      })();
-
-      if (navigator.serviceWorker) {
-        // updateViaCache:'none' — the browser must fetch the worker from the
-        // network on every update check, not from its HTTP cache.
-        //
-        // The default is 'imports', which consults the cache for the top-level
-        // script too, and /mu.js was served max-age=86400. So for a day after
-        // any visit an update check got the cached bytes back, found them
-        // identical, and kept the installed worker. On a phone that visits most
-        // days, that is never updating. Both halves are needed: the header, so
-        // there is nothing stale to find, and this, so the fetch does not go
-        // looking in the first place.
-        navigator.serviceWorker.register(
-          '/mu.js',
-          {scope: '/', updateViaCache: 'none'}
-        ).then(function (reg) {
-          // And ask, on every load. Registration alone only checks on
-          // navigation, and a page opened from the home screen of an installed
-          // app may not count as one.
-          if (reg && reg.update) reg.update();
-        }).catch(function () {});
-      }
-      
-      // One button, two meanings. On a phone the sidebar is an overlay that
-      // slides in, so this opens it. On desktop the sidebar is always there,
-      // so this collapses it out of the way and the choice is remembered.
-      // The tab bar, while somebody is typing.
-      //
-      // It is fixed to the bottom of the layout viewport, and on iOS a
-      // keyboard does not shrink that viewport — it moves the visual one — so
-      // the bar sat over the field that had just been tapped. The viewport meta
-      // asks for interactive-widget=resizes-content, which is the right request
-      // and is not honoured there.
-      //
-      // So the bar goes away while a field has focus and comes back when it
-      // does not. Four destinations are not useful mid-sentence, and the
-      // alternative — holding the bar above the keyboard — is arithmetic on
-      // numbers no browser reports honestly.
-      //
-      // This is the bar only. Making the *content* fit around a keyboard is
-      // the surface's own job and belongs where its layout arithmetic already
-      // is: see fitConv in chat.go, which had the same iOS bug for the same
-      // reason and is where it was actually fixed. A scrollIntoView from here
-      // stood in for that for one commit and was treating the symptom.
-      //
-      // focusin and focusout rather than per-element listeners: the chat input
-      // is drawn by a component on some pages and not others, and a soft
-      // navigation swaps the content under this script. Delegating to the
-      // document means nothing has to be re-bound.
-      (function () {
-        var typing = function (on) {
-          document.body.classList.toggle('typing', on);
-        };
-        var wants = function (el) {
-          if (!el || !el.tagName) return false;
-          if (el.isContentEditable) return true;
-          var t = el.tagName.toLowerCase();
-          if (t === 'textarea') return true;
-          if (t !== 'input') return false;
-          // Not every input opens a keyboard. A checkbox or a button taking
-          // focus should not take the navigation away with it.
-          return !/^(checkbox|radio|button|submit|reset|file|range|color)$/i
-            .test(el.type || 'text');
-        };
-        document.addEventListener('focusin', function (e) {
-          if (wants(e.target)) typing(true);
-        });
-        document.addEventListener('focusout', function () {
-          // On the next tick, because focus moving between two fields fires
-          // focusout before the focusin that follows it — without this the bar
-          // flickers back on every tab between inputs.
-          setTimeout(function () {
-            typing(wants(document.activeElement));
-          }, 0);
-        });
-      })();
-
-      function toggleMenu() {
-        if (window.matchMedia('(min-width: 901px)').matches) {
-          var collapsed = document.body.classList.toggle('nav-collapsed');
-          try { localStorage.setItem('mu_nav_collapsed', collapsed ? '1' : '0'); } catch (e) {}
-          return;
-        }
-        document.body.classList.toggle('menu-open');
-      }
-      document.addEventListener('click',function(){document.querySelectorAll('.ctrl-menu').forEach(function(m){m.style.display='none'})});
-
-      // Which sidebar item is the page you are on.
-      //
-      // The stylesheet has had a rule for this all along and nothing ever set
-      // the class, so the only highlight the sidebar had was :hover — which on
-      // a phone sticks to whatever was tapped last. The item you came from
-      // stayed lit, and the item you were actually on never did.
-      //
-      // Re-run on soft navigation, because that swaps #content and leaves the
-      // sidebar exactly as the last full page load drew it.
-      // Once per group of links, not once per page. The rail and the phone's
-      // tab bar are two lists of the same destinations shown at different
-      // widths, and a single winner across both lit whichever appeared first
-      // in the document — so the tab bar was never marked.
-      function markNav() {
-        var here = location.pathname.replace(/\/+$/, '') || '/';
-        if(here === '/agent' || here.indexOf('/agent/') === 0) here = '/agents';
-        var groups = ['#nav a, .nav-bottom a', '#tabs a'];
-        for (var g = 0; g < groups.length; g++) {
-          var links = document.querySelectorAll(groups[g]);
-          var best = null, bestLen = -1;
-          for (var i = 0; i < links.length; i++) {
-            links[i].classList.remove('active');
-            var path;
-            try { path = new URL(links[i].href, location.href).pathname.replace(/\/+$/, '') || '/'; }
-            catch (e) { continue; }
-            // Longest match wins, so /news/tech lights News rather than Home —
-            // and "/" only matches "/", or it would claim every page.
-            var hit = path === here || (path !== '/' && here.indexOf(path + '/') === 0);
-            if (hit && path.length > bestLen) { best = links[i]; bestLen = path.length; }
-          }
-          if (best) best.classList.add('active');
-        }
-      }
-      document.addEventListener('mu:navigated', markNav);
-      markNav();
-  </script>
-  </body>
-</html>
-`
+var Template = `<!doctype html>
+<html lang="%s"><head><meta charset="utf-8"><title>%s | Micro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover">
+<meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro">
+<meta name="description" content="%s"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#ffffff">
+<link rel="apple-touch-icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/mu.css?` + Version + `"><link rel="stylesheet" href="/composition.css?` + Version + `">
+<script src="/mu.js?` + Version + `"></script><script defer src="/shell.js?` + Version + `"></script><script defer src="/viewport.js?` + Version + `"></script>
+</head><body%s>
+<script>try{if(localStorage.getItem('mu_nav_collapsed')==='1')document.body.classList.add('nav-collapsed')}catch(e){}</script>
+<header id="head"><button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button><div id="brand"><a href="/">Micro</a></div><div id="head-right">%s</div></header>
+<div id="nav-overlay" onclick="toggleMenu()"></div><div id="container"><aside id="nav-container"><nav id="nav">%s%s</nav>%s</aside><main id="content"><h1 id="page-title">%s</h1>%s</main></div>%s%s
+</body></html>`
 
 var CardTemplate = `
 <!-- %s -->
@@ -899,23 +223,10 @@ var CardTemplate = `
 </div>
 `
 
-// Link is a call to action: its own line, with an arrow. `.link` is
-// display:block globally, which is what makes it one.
 func Link(name, ref string) string {
 	return fmt.Sprintf(`<a href="%s" class="link">%s →</a>`, ref, name)
 }
 
-// TextLink is a link inside a sentence.
-//
-// Link was being used for both, and a display:block anchor in the middle of a
-// paragraph breaks the line where it sits — so "talk to it in your inbox →, or
-// hand it a token" rendered as three lines with a stray arrow before a comma.
-// The arrow goes too: it points at a destination, and inside prose the sentence
-// is already doing that.
-//
-// The alternative was another entry in the `.notice .link, .rooms .row .link`
-// override list in mu.css, which is a list that grows by one every time
-// somebody writes a sentence with a link in it.
 func TextLink(name, ref string) string {
 	return fmt.Sprintf(`<a href="%s" class="link-text">%s</a>`, ref, name)
 }
@@ -925,10 +236,8 @@ func Head(appName string, refs []string) string {
 
 	var head string
 
-	// Add main link first
 	head += fmt.Sprintf(`<a href="/%s" class="head">All</a>`, appName)
 
-	// create head for topics - plain text format with hash
 	for _, ref := range refs {
 		if strings.EqualFold(ref, "all") {
 			continue
@@ -943,8 +252,6 @@ func Card(id, title, content string) string {
 	return fmt.Sprintf(CardTemplate, id, id, title, content)
 }
 
-// CardWithIcon renders a card with an icon image to the left of the title.
-// If icon is empty, it falls back to Card without an icon.
 func CardWithIcon(id, title, icon, content string) string {
 	if icon == "" {
 		return Card(id, title, content)
@@ -953,57 +260,34 @@ func CardWithIcon(id, title, icon, content string) string {
 	return fmt.Sprintf(CardTemplate, id, id, titleHTML, content)
 }
 
-// Render converts untrusted markdown to HTML. Use this for anything a user or
-// a remote server authored: blog posts and comments, federated ActivityPub
-// content, model output. Raw HTML in the source is dropped and link and image
-// destinations are restricted to safe schemes, so a post containing
-// <script>…</script> or [x](javascript:…) renders as inert text rather than
-// executing on the reader's session.
-//
-// For repo-shipped markdown that deliberately embeds HTML, use RenderTrusted.
 func Render(md []byte) []byte {
 	return render(md, false, false, 0)
 }
 
-// RenderTrusted converts markdown to HTML with raw HTML passed through. Only
-// for content that ships in the binary (the docs) — never for anything
-// that arrived over the network.
 func RenderTrusted(md []byte) []byte {
 	return render(md, true, false, 0)
 }
 
-// RenderNoImages formats private conversation context without loading sender images.
 func RenderNoImages(md []byte) []byte {
 	return render(md, false, true, 0)
 }
 
-// RenderLines renders untrusted Markdown while preserving typed line breaks.
 func RenderLines(md []byte) []byte {
 	return render(md, false, false, parser.HardLineBreak)
 }
 
 func render(md []byte, trusted, noImages bool, extra parser.Extensions) []byte {
-	// Strip LaTeX dollar sign escapes and protect plain currency before
-	// parsing markdown so downstream MathJax scanners do not treat blog cards
-	// or other rendered content as inline math.
 	md = []byte(protectCurrencyDollars(StripLatexDollars(string(md))))
 
-	// create markdown parser with extensions. MathJax is intentionally disabled:
-	// Mu renders everyday prose more often than formulas, and paired currency
-	// amounts such as "$1 billion ... $94,000" must remain readable text.
 	extensions := (parser.CommonExtensions &^ parser.MathJax) | parser.AutoHeadingIDs | parser.NoEmptyLineBeforeBlock | extra
 	p := parser.NewWithExtensions(extensions)
 	doc := p.Parse(md)
 
-	// create HTML renderer with extensions
 	htmlFlags := html.CommonFlags | html.HrefTargetBlank
 	if noImages {
 		htmlFlags |= html.SkipImages
 	}
 	if !trusted {
-		// SkipHTML drops raw HTML blocks and inline tags; Safelink limits link
-		// destinations to http/https/mailto and friends. Safelink does not cover
-		// image destinations, so those are filtered on the parsed tree below.
 		htmlFlags |= html.SkipHTML | html.Safelink
 		stripUnsafeImages(doc)
 	}
@@ -1013,13 +297,8 @@ func render(md []byte, trusted, noImages bool, extra parser.Extensions) []byte {
 	return markdown.Render(doc, renderer)
 }
 
-// safeImageSchemes are the URL schemes an untrusted image may point at.
-// Relative and protocol-relative URLs carry no scheme and are allowed.
 var safeImageSchemes = map[string]bool{"http": true, "https": true}
 
-// stripUnsafeImages blanks image destinations whose scheme is not known safe,
-// so markdown like ![x](javascript:…) cannot emit an executable src. The
-// renderer's Safelink flag only guards links, not images.
 func stripUnsafeImages(doc ast.Node) {
 	ast.WalkFunc(doc, func(node ast.Node, entering bool) ast.WalkStatus {
 		if !entering {
@@ -1036,10 +315,6 @@ func stripUnsafeImages(doc ast.Node) {
 	})
 }
 
-// safeURL reports whether a destination is safe to emit as an image src.
-// A URL with no scheme (relative, or protocol-relative) is safe; one with a
-// scheme must be on the allowlist. Leading control characters and whitespace
-// are stripped first, since browsers ignore them when parsing the scheme.
 func safeURL(dest string) bool {
 	cleaned := strings.Map(func(r rune) rune {
 		if r <= 0x20 || r == 0x7f {
@@ -1052,31 +327,19 @@ func safeURL(dest string) bool {
 	if colon < 0 {
 		return true // no scheme — relative
 	}
-	// A slash, question mark or hash before the colon means the colon is in a
-	// path or query, not a scheme (e.g. "/a/b:c" or "?x=a:b").
 	if i := strings.IndexAny(cleaned, "/?#"); i >= 0 && i < colon {
 		return true
 	}
 	return safeImageSchemes[strings.ToLower(cleaned[:colon])]
 }
 
-// Regex patterns for LaTeX math delimiters around prices.
-// LLMs (especially Claude) are heavily trained on LaTeX and frequently wrap
-// dollar amounts in math delimiters: $100$, $$94.63$$, \(100\), etc.
 var (
-	// $$<price>$$ display math around prices: $$94.63$$ → $94.63
 	displayPriceRe = regexp.MustCompile(`\$\$(\d[\d,]*\.?\d*(?:\s*(?:billion|trillion|million|thousand|k|m|bn|tn|%))?)\$\$`)
-	// $$<text>$$ general display math: strip delimiters
-	displayMathRe = regexp.MustCompile(`\$\$(.+?)\$\$`)
-	// $<price>$ inline math around prices: $100.50$ → $100.50
-	inlinePriceRe = regexp.MustCompile(`(\$\d[\d,]*\.?\d*(?:\s*(?:billion|trillion|million|thousand|k|m|bn|tn|%))?)\$`)
+	displayMathRe  = regexp.MustCompile(`\$\$(.+?)\$\$`)
+	inlinePriceRe  = regexp.MustCompile(`(\$\d[\d,]*\.?\d*(?:\s*(?:billion|trillion|million|thousand|k|m|bn|tn|%))?)\$`)
 )
 
-// StripLatexDollars removes LaTeX math delimiters that LLMs insert around
-// dollar amounts. Handles backslash variants (\$, \(, \)), dollar-sign math
-// delimiters ($...$, $$...$$), and HTML-escaped variants.
 func StripLatexDollars(s string) string {
-	// HTML-escaped backslash variants first (&#92; = \, &#x5c; = \)
 	s = strings.ReplaceAll(s, `&#92;(`, "")
 	s = strings.ReplaceAll(s, `&#92;)`, "")
 	s = strings.ReplaceAll(s, `&#92;[`, "")
@@ -1087,44 +350,31 @@ func StripLatexDollars(s string) string {
 	s = strings.ReplaceAll(s, `&#x5c;[`, "")
 	s = strings.ReplaceAll(s, `&#x5c;]`, "")
 	s = strings.ReplaceAll(s, `&#x5c;$`, "$")
-	// Escaped dollar sign: \$ → $ (do this BEFORE stripping \( \) to avoid
-	// consuming the backslash from \$ and leaving a bare $)
 	s = strings.ReplaceAll(s, `\$`, "$")
-	// \( or \) before a digit is a dollar sign: \(112 → $112, \)4,703 → $4,703
 	s = regexp.MustCompile(`\\\((\d)`).ReplaceAllString(s, "$$$1")
 	s = regexp.MustCompile(`\\\)(\d)`).ReplaceAllString(s, "$$$1")
-	// \) after a digit is just a closing delimiter: 4,703\) → 4,703
 	s = regexp.MustCompile(`(\d)\\\)`).ReplaceAllString(s, "$1")
-	// Remaining \( \) \[ \] are math delimiters — strip them
 	s = strings.ReplaceAll(s, `\(`, "")
 	s = strings.ReplaceAll(s, `\)`, "")
 	s = strings.ReplaceAll(s, `\[`, "")
 	s = strings.ReplaceAll(s, `\]`, "")
-	// \text{...} → content (LaTeX text command)
 	s = regexp.MustCompile(`\\text\{([^}]*)\}`).ReplaceAllString(s, "$1")
-	// \mathrm{...} → content
 	s = regexp.MustCompile(`\\mathrm\{([^}]*)\}`).ReplaceAllString(s, "$1")
-	// LaTeX display math around prices: $$94.63$$ → $94.63 (keep one $ as currency)
 	s = displayPriceRe.ReplaceAllString(s, `$$$1`)
-	// General display math: $$content$$ → content
 	s = displayMathRe.ReplaceAllString(s, `$1`)
-	// LaTeX inline math around prices: $100$ → $100 (strip trailing $)
 	s = inlinePriceRe.ReplaceAllString(s, `$1`)
-	// Clean up doubled dollar signs from any overlap
 	for strings.Contains(s, "$$") {
 		s = strings.ReplaceAll(s, "$$", "$")
 	}
 	return s
 }
 
-// SupportedLanguages maps language codes to their display names
 var SupportedLanguages = map[string]string{
 	"en": "English",
 	"ar": "العربية",
 	"zh": "中文",
 }
 
-// UserLanguage returns the language preference for the current user, defaults to "en"
 func UserLanguage(r *http.Request) string {
 	_, acc := auth.TrySession(r)
 	if acc == nil || acc.Language == "" {
@@ -1133,23 +383,10 @@ func UserLanguage(r *http.Request) string {
 	return acc.Language
 }
 
-// RenderHTML renders the given html in a template with default language (English)
-// RenderHTML is a page with no request behind it.
-//
-// The one exported render besides Respond, and it survives because two callers
-// genuinely have no request: first-run setup, which happens before there is a
-// session or a language to read, and the test that asks what chrome a signed-in
-// account is served. Everything else has a request and goes through Respond.
-//
-// acc may be nil, which is a signed-out reader.
 func RenderHTML(title, desc, html string, acc *auth.Account) string {
 	return renderWithLang(title, desc, html, "en", acc)
 }
 
-// RenderHTMLForRequest renders the given html in a template using the
-// user's language preference. Prepends the verify-to-post banner if the
-// authenticated user has an unverified account on a verification-gated
-// instance.
 func renderForRequest(title, desc, html, bodyClass string, r *http.Request) string {
 	lang := UserLanguage(r)
 	if banner := VerifyBanner(r); banner != "" {
@@ -1158,21 +395,7 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 	if banner := CreditsBanner(r); banner != "" {
 		html = banner + html
 	}
-	// No connect banner.
-	//
-	// It ran on every page of every instance: "Connect your agent. This is the
-	// app; the tools are the other half. All N of them, on one server." That is
-	// a pitch — "on one server" is an argument aimed at somebody choosing
-	// between products — and it was above the fold on the archive, the inbox
-	// and the home screen of people who had already chosen. /tools is in the
-	// rail, which is where a destination belongs.
 	_, acc := auth.TrySession(r)
-	// The path, so the rail can show which mailbox or agent you are in. Only
-	// this render has a request to read it from.
-	// The address as asked for, query and all, so signing in from a search
-	// result comes back to that result rather than to the bare page. navPath
-	// above is the rail's idea of where you are, which is a different question
-	// and a lossy answer to this one.
 	here := r.URL.Path
 	if r.URL.RawQuery != "" {
 		here += "?" + r.URL.RawQuery
@@ -1180,16 +403,6 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 	return renderShell(lang, title, desc, bodyClass, html, acc, navPath(r.URL.Path), here)
 }
 
-// VerifyBanner says, before you write anything, that you cannot post yet and
-// what to do about it. Empty for anyone who can.
-//
-// It asks auth.CanPost rather than re-deriving the rule, because it used to
-// carry its own copy — verification only, and only on instances with mail
-// configured — while the actual gate also blocked every account under 24 hours
-// old, on every instance. The two disagreed in the worst direction: the block
-// was wider than the warning, so a new user met it for the first time as a
-// rejected POST after writing a post, creating an app, or filling in a form.
-// Anything the gate refuses, this now announces.
 func VerifyBanner(r *http.Request) string {
 	_, acc := auth.TrySession(r)
 	if acc == nil {
@@ -1199,42 +412,18 @@ func VerifyBanner(r *http.Request) string {
 	if reason == "" {
 		return ""
 	}
-	// Not on the pages that are the way out of it — the form is right there —
-	// and not on money at all.
-	//
-	// This was a list of four exact paths, so /wallet/transfer was not on it,
-	// and moving your own credit between accounts was met with "You cannot post
-	// yet. Verify your email address before posting." Nothing on that page is a
-	// post, so the banner read as a refusal of the transfer. A prefix rather
-	// than a fifth path, because the next page under /account would have been
-	// wrong in the same way.
 	switch p := r.URL.Path; {
 	case p == "/verify":
 		return ""
 	case p == "/account" || strings.HasPrefix(p, "/account/"):
 		return ""
 	case p == "/wallet" || strings.HasPrefix(p, "/wallet/"):
-		// The money moved out of /account and this prefix went with it. The
-		// same bug as the one above, one rename later.
 		return ""
 	}
 	action, href := "Verify →", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
-		// No mail on this instance, so verifying is not on offer: credit is.
 		action, href = "Top up →", "/account/topup"
 	}
-	// The places named in the sentence are links, because they read as ones.
-	//
-	// The reason says where to go — "verify your email address in your Account"
-	// — and that is the sentence a person acts on. It was plain text naming a
-	// route, /account, which looks like a link, invites a click and does
-	// nothing; the only way out was the button at the far end of the row, which
-	// on a narrow screen wraps below the fold of the banner. Two ways to one
-	// place is not clutter when one of them is the one people try.
-	//
-	// "your Account" rather than the bare word, because the same sentence
-	// contains "a new account waits 24 hours" — and a rule that linked every
-	// "account" would turn that into a route to somewhere it does not mean.
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{
 		{"your Account", "/account"},
@@ -1250,52 +439,26 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// navMain holds the app destinations in the same order as the mobile tabs.
 func navMain(acc *auth.Account) string {
 	if acc == nil {
 		return ""
 	}
-	item := func(id, href, icon, label string) string {
-		return `<a id="` + id + `" href="` + href + `"><img src="` + icon + `?` + Version +
-			`"><span class="label">` + label + `</span></a>`
+	var b strings.Builder
+	b.WriteString(`<a id="nav-home" href="/">Home</a><a id="nav-conversation" href="/?new=1">New conversation</a><div class="chat-sess-list" aria-label="Conversations">`)
+	for i, t := range thread.List(acc.ID, 30) {
+		if i == 30 {
+			break
+		}
+		title := t.Subject
+		if title == "" {
+			title = "Conversation"
+		}
+		b.WriteString(`<a class="chat-sess" href="/?session=` + url.QueryEscape(t.ID) + `">` + htmlpkg.EscapeString(title) + `</a>`)
 	}
-
-	b := item("nav-assistant", "/assistant", "/chat.png", "Assistant")
-	b += item("nav-home", "/home", "/home.png", "Home")
-	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
-	b += item("nav-work", "/work", "/tasks.svg", "Work")
-	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
-	b += item("nav-services", "/services", "/services.svg", "Services")
-
-	return b
+	b.WriteString(`</div><div class="nav-secondary"><a id="nav-bookmarks" href="/bookmarks">Bookmarks</a><a id="nav-services" href="/services">Services</a><details><summary>Manage</summary><a id="nav-inbox" href="/inbox">Inbox</a><a id="nav-work" href="/work">Work</a><a id="nav-agents" href="/agents">Agents</a></details></div>`)
+	return b.String()
 }
 
-// navTabs keeps everyday destinations in thumb reach on phones.
-func navTabs(acc *auth.Account) string {
-	if acc == nil {
-		return ""
-	}
-	tab := func(href, icon, label string) string {
-		return `<a href="` + href + `"><img src="` + icon + `?` + Version +
-			`" alt=""><span>` + label + `</span></a>`
-	}
-	return `<nav id="tabs" aria-label="Main">` +
-		tab("/assistant", "/chat.png", "Ask") +
-		tab("/home", "/home.png", "Home") +
-		tab("/inbox", "/mail.png", "Inbox") +
-		tab("/work", "/tasks.svg", "Work") +
-		tab("/agents", "/agent.svg", "Agents") +
-		tab("/services", "/services.svg", "Services") + `</nav>`
-}
-
-// TopUpConfigured reports whether this instance can take a payment, filled in
-// by the server.
-//
-// A hook for the same reason as AgentReady: the answer lives in the package
-// that holds the payment keys, and that package imports this one. Nil means no
-// — the opposite default to AgentReady, and deliberately: an unwired hook
-// there would hide a working box, and here it would offer a wallet nobody can
-// put anything in.
 var TopUpConfigured func() bool
 
 func navAdmin(acc *auth.Account) string {
@@ -1305,7 +468,6 @@ func navAdmin(acc *auth.Account) string {
 	return `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
 }
 
-// navPinned contains only services the reader explicitly pinned.
 func navPinned(acc *auth.Account) string {
 	if acc == nil {
 		return ""
@@ -1326,47 +488,6 @@ func navPinned(acc *auth.Account) string {
 	return b.String()
 }
 
-// navBottom is the account: who you are, the page about you, running the place
-// if you do, and the way out.
-//
-// Usage was here and is not a nav item any more. The reasoning that moved it out
-// of the top group was right and did not go far enough: it is a view of money,
-// so it belongs beside the money — and the money is on /account, not in a rail
-// next to it. It is a card there now, showing the graph and linking through, so
-// what an account has spent is read where its balance is.
-//
-// Admin follows Account for the same reason it left the top group once and came
-// back: it is a role, not a level of the product. Under Home it sat between
-// "how the instance looks" and "what you do with it", which reads as a fourth
-// thing everybody has; here it is what this account may additionally do, next to
-// the rest of what this account is. The objection recorded when it moved out —
-// that it ended up last, past Usage and past whatever is pinned — is answered by
-// where it goes rather than by which group: directly under Account, with Usage
-// gone from the group entirely.
-//
-// One row, not five.
-//
-// This group was a text label reading "Signed in as @asim" and then Account,
-// Admin, Support and Logout as four more destinations — on top of the five the
-// product already has above it. Ten rows and a caption is a dashboard, and a
-// dashboard is what somebody said it felt like. No app anybody compares this to
-// does that: the account is one control at the bottom of the rail and everything
-// about the account is behind it, because Log out is not a peer of Inbox.
-//
-// The earlier reasoning was that "signing out is something you reach for
-// directly and a logout that takes two clicks is a logout people hunt for."
-// Two clicks is where every other product keeps it, and it is not hunted for
-// there, because the first click is your own name — which is the one thing on
-// the screen a person already reads as "me and my stuff".
-//
-// <details> rather than a button and a handler: it opens on click and on
-// Enter, it is a disclosure to a screen reader without being told to be one, and
-// it works with no JavaScript at all. The menu opens upward because the control
-// is at the bottom of the rail.
-//
-// nav-username is a label mu.js corrects from the session: a page cached for
-// one viewer and served to another would otherwise greet them by the wrong name.
-// headCorner holds the balance; account identity belongs in the sidebar.
 func headCorner(acc *auth.Account, here string) string {
 	if acc == nil {
 		return ""
@@ -1387,28 +508,6 @@ func navBottom(acc *auth.Account, here string) string {
 	}
 	username := htmlpkg.EscapeString(acc.ID)
 
-	// Who you are, and the way out. Nothing else.
-	//
-	// This was a disclosure triangle holding Account, Profile, Wallet, Tokens,
-	// Admin and Log out — everything the account owns, one click behind your own
-	// name. The reasoning was that a menu under your name is what is yours, which
-	// is true and does not follow: the things in there were destinations like any
-	// other, and being yours made them more likely to be wanted, not less. They
-	// are in navMain now.
-	//
-	// Most of them are in navMain now. Two came back: Profile and Account are
-	// the ones that are about you rather than about the instance, and under
-	// your own name is where they read — "signed in as @asim" and then the two
-	// pages that are @asim's. The disclosure triangle was wrong because it hid
-	// destinations; a flat list under the name is not hiding anything.
-	//
-	// "Signed in as" answers a question a shared or long-lived browser makes
-	// real — which account is this — and it has to be beside Log out, because
-	// that is the moment somebody checks.
-	//
-	// Profile was under it and is gone with the page. /@you is not a page about
-	// you any more, it is the conversation with somebody — and your own resolves
-	// to your inbox, which is already the first thing in the nav.
 	return `<details class="nav-account-disclosure"><summary class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span><span aria-hidden="true">⌃</span></summary><div class="nav-account-menu">
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-profile" href="/account/profile"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
@@ -1426,21 +525,14 @@ func renderWithLang(title, desc, html, lang string, acc *auth.Account) string {
 	return renderShell(lang, title, desc, "", html, acc, "", "")
 }
 
-// escapeMeta escapes a page title or description. Handlers pass these through
-// from query strings and stored records (a search term, a post title, a
-// contact's name), and they land in <title>, a meta content attribute and an
-// <h1> — all text or attribute contexts where markup must not survive. The
-// body argument is deliberately not escaped: handlers build that as HTML.
 func escapeMeta(s string) string {
 	return htmlpkg.EscapeString(s)
 }
 
-// RenderString renders a markdown string as html
 func RenderString(v string) string {
 	return string(Render([]byte(v)))
 }
 
-// RenderTemplate renders a markdown string in a html template
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
@@ -1453,7 +545,6 @@ func ServeHTML(html string) http.Handler {
 	})
 }
 
-// ServeStatic serves the static content in app/html
 func Serve() http.Handler {
 	var staticFS = fs.FS(htmlFiles)
 	htmlContent, err := fs.Sub(staticFS, "html")
@@ -1463,35 +554,10 @@ func Serve() http.Handler {
 
 	fileServer := http.FileServer(http.FS(htmlContent))
 
-	// Wrap with cache headers for static assets
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The service worker is the one file that must never be cached.
-		//
-		// It was, for a day at a time, by the rule below — and a service worker
-		// is not loaded like a script, it is *installed*. The browser replaces
-		// it only when it fetches the file and finds different bytes, and under
-		// the default updateViaCache it makes that fetch through the HTTP cache.
-		// So max-age=86400 meant: for twenty-four hours after any visit, every
-		// update check on that device got the cached copy back, found it
-		// identical, and concluded there was nothing new. registration.update()
-		// goes through the same cache, so the button offering to fix it could
-		// not either.
-		//
-		// The effect is that a phone can run a months-old worker while the
-		// server has shipped a dozen versions — which is what happened here.
-		// The worker handling pushes predated the code that reports a
-		// notification arrived, so every send read "sent, the device has not
-		// said it arrived", which is also what a device that never woke looks
-		// like. Days went into the sending half, which was correct throughout.
-		//
-		// no-cache is not "do not store": it is "revalidate every time", so the
-		// file still costs a 304 rather than a download when it has not changed.
-		// A service worker is exactly what that is for.
 		switch {
 		case r.URL.Path == "/mu.js" || strings.HasSuffix(r.URL.Path, "/mu.js"):
 			w.Header().Set("Cache-Control", "no-cache")
-			// Page scripts carry this build's version and can be reused without
-			// a blocking revalidation. Worker update requests stay uncached.
 			if r.URL.RawQuery == Version && r.Header.Get("Service-Worker") != "script" && r.Header.Get("Sec-Fetch-Dest") != "serviceworker" {
 				w.Header().Set("Cache-Control", "public, max-age=86400")
 			}
@@ -1505,25 +571,6 @@ func Serve() http.Handler {
 		if compressed(w, r, htmlContent) {
 			return
 		}
-		// The type Go's own table does not know.
-		//
-		// http.FileServer sniffs by extension and .webmanifest is not in
-		// mime.TypeByExtension, so it fell through to sniffing the bytes and
-		// answered text/plain. With X-Content-Type-Options: nosniff on every
-		// response — which is right and is not going anywhere — a browser is
-		// then required to refuse it, and a refused manifest is a site that
-		// cannot be installed.
-		//
-		// It only showed on this path. compressed() sets the type itself and
-		// every real browser sends Accept-Encoding: gzip, so the one request
-		// that got it wrong was the one nobody makes with a browser. That is
-		// how it survived: correct in the case anybody tested, wrong in the
-		// fallback.
-		// Only this one. contentType answers application/octet-stream for
-		// anything it does not recognise, so asking it about every path would
-		// serve every png and ico as a download — and .css, .js and .svg are
-		// in Go's own table, so FileServer already gets those right. The
-		// manifest is the single extension it does not know.
 		if strings.HasSuffix(r.URL.Path, ".webmanifest") {
 			w.Header().Set("Content-Type", "application/manifest+json")
 		}
@@ -1531,20 +578,6 @@ func Serve() http.Handler {
 	})
 }
 
-// compressed serves a text asset gzipped, and reports whether it did.
-//
-// The pages are compressed by whatever sits in front of this — 28KB of news
-// arrives as 28KB — but the assets are not, because serve() has a fast path
-// that sends anything with a static suffix straight to the mux to skip the
-// middleware. mu.css is 110KB and mu.js is 42KB, so every cold visit pulled
-// 150KB of text that compresses to about a fifth of that, and every cache
-// expiry pulled it again.
-//
-// Compressed once and kept, rather than per request: the files are embedded, so
-// they cannot change while the process runs, and there are a handful of them.
-//
-// Only text. A png or an ico is already compressed and gzipping it spends CPU
-// to make it very slightly bigger.
 func compressed(w http.ResponseWriter, r *http.Request, files fs.FS) bool {
 	name := strings.TrimPrefix(r.URL.Path, "/")
 	switch {
@@ -1590,9 +623,6 @@ var (
 	gzipped  = map[string][]byte{}
 )
 
-// contentType is set here because writing the body ourselves skips the sniffing
-// http.FileServer would have done, and a stylesheet served as text/plain is a
-// page with no styles.
 func contentType(name string) string {
 	switch {
 	case strings.HasSuffix(name, ".css"):
@@ -1607,14 +637,6 @@ func contentType(name string) string {
 	return "application/octet-stream"
 }
 
-// ReturnTo is where to send someone after a control that writes the account is
-// used from a page other than the one that owns the write.
-//
-// The card picker is on /context and pinning is on /apps, but both post here,
-// because this is where the account is written. Sending them to /account
-// afterwards would answer a click on /context by navigating away from the
-// thing they were looking at. The form says where it was; the guard is
-// safeRedirect's, since a `return` field is as forgeable as a query parameter.
 func ReturnTo(r *http.Request, fallback string) string {
 	to := r.Form.Get("return")
 	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
@@ -1623,7 +645,6 @@ func ReturnTo(r *http.Request, fallback string) string {
 	return to
 }
 
-// Forbidden writes a 403 error response
 func Forbidden(w http.ResponseWriter, r *http.Request, message string) {
 	if message == "" {
 		message = "Forbidden"
@@ -1631,16 +652,11 @@ func Forbidden(w http.ResponseWriter, r *http.Request, message string) {
 	Error(w, r, http.StatusForbidden, message)
 }
 
-// Log prints a formatted log message with a colored package prefix
-// and stores it in the in-memory system log ring buffer.
 func Log(pkg string, format string, args ...interface{}) {
 	logLine(pkg, format, args...)
 	appendSysLog(pkg, format, args...)
 }
 
-// logLine writes to the terminal without recording anything. Split out so that
-// Alert can print and record separately — it records with a flag, and calling
-// Log would have stored the line twice.
 func logLine(pkg string, format string, args ...interface{}) {
 	color := pkgColors[pkg]
 	if color == "" {
@@ -1650,8 +666,6 @@ func logLine(pkg string, format string, args ...interface{}) {
 	if cliMode {
 		return
 	}
-	// To the file, where there is room for it. Colour is for a terminal and a
-	// file is not one — see logfile.go for why the log moved off the screen.
 	if w := logDest(); w != os.Stdout {
 		fmt.Fprintf(w, "[%s %s] "+format+"\n", append([]interface{}{timestamp, pkg}, args...)...)
 		return
@@ -1660,15 +674,6 @@ func logLine(pkg string, format string, args ...interface{}) {
 	fmt.Printf(prefix+format+"\n", args...)
 }
 
-// Error writes an error response: JSON if the client expects it, otherwise a
-// rendered page.
-//
-// The page matters. This is the single exit for every Forbidden, Unauthorized
-// and BadRequest in the product, and it used to be http.Error — so a person
-// who hit any of them was dropped onto a white screen with one line of text,
-// no nav, and no way back except the browser's own button. The refusal is
-// often the most important thing we ever say to a new user ("verify your
-// email and you can post"), and it was the one thing said worst.
 func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
 	if WantsJSON(r) || SendsJSON(r) || isFetch(r) {
 		RespondError(w, status, message)
@@ -1679,10 +684,6 @@ func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
 	}
 	body := `<div class="notice"><p>` + htmlpkg.EscapeString(message) + `</p></div>` +
 		`<p><a class="link" href="` + htmlpkg.EscapeString(errorBackTo(r)) + `">Back</a></p>`
-	// Rendered without the standing banners. They exist to interrupt an ordinary
-	// page with something you should know; here the something-you-should-know is
-	// the page, and a banner repeating the message word for word above it just
-	// says the same thing twice.
 	_, acc := auth.TrySession(r)
 	page := renderWithLang(errorTitle(status), message, body, UserLanguage(r), acc)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -1690,7 +691,6 @@ func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
 	w.Write([]byte(page))
 }
 
-// BadRequest writes a 400 error response
 func BadRequest(w http.ResponseWriter, r *http.Request, message string) {
 	if message == "" {
 		message = "Bad request"
@@ -1698,7 +698,6 @@ func BadRequest(w http.ResponseWriter, r *http.Request, message string) {
 	Error(w, r, http.StatusBadRequest, message)
 }
 
-// ServerError writes a 500 error response
 func ServerError(w http.ResponseWriter, r *http.Request, message string) {
 	if message == "" {
 		message = "Internal server error"
@@ -1706,17 +705,8 @@ func ServerError(w http.ResponseWriter, r *http.Request, message string) {
 	Error(w, r, http.StatusInternalServerError, message)
 }
 
-// EmailSender is set by main.go and called to deliver verification
-// emails. It's a callback to avoid an import cycle (mail imports app).
-// If nil, email verification is unavailable on this instance.
-// replyTo is where an answer should go, when that is not this instance. Empty
-// for the transactional mails — a verification, an invite — which are notices
-// from us and have nobody to reply to. Set for a forwarded message, which is a
-// copy of somebody else's mail and whose reply belongs to them.
 var EmailSender func(to, subject, bodyPlain, bodyHTML, replyTo string) error
 
-// PublicURL returns the externally-reachable base URL for the instance.
-// Falls back to relative paths when not configured.
 func PublicURL() string {
 	if v := os.Getenv("PUBLIC_URL"); v != "" {
 		return strings.TrimRight(v, "/")
@@ -1727,8 +717,6 @@ func PublicURL() string {
 	return ""
 }
 
-// validEmail performs minimal sanity checking — the real check is whether
-// the verification email actually arrives and is clicked.
 func ValidEmail(s string) bool {
 	if len(s) < 5 || len(s) > 254 {
 		return false
@@ -1746,24 +734,21 @@ func ValidEmail(s string) bool {
 	return true
 }
 
-// renderShell fills the app shell.
-//
-// One place, because three call sites each filling eleven positional slots is a
-// shape where adding one silently shifts the rest.
-//
-// path is what the rail highlights against, and is empty where the caller has
-// no request to read it from. It was also what the nested mailbox list under
-// Inbox matched itself against; that list is gone — see navlist.go — and the
-// parameter stays because the pinned items still use it.
-// renderShell draws the page. here is the address of the page being drawn, so
-// the corner can send somebody back to it after they sign in; empty where there
-// is no request to read one from.
 func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path, here string) string {
-	return fmt.Sprintf(Template,
+	template := Template
+	return fmt.Sprintf(template,
 		lang, title, desc, bodyAttr,
 		headCorner(acc, here),
 		navMain(acc),
 		navPinned(acc),
 		navBottom(acc, here),
-		title, body, footerFor(acc), navTabs(acc))
+		title, body, footerFor(acc), mobileNav(acc))
+}
+
+// mobileNav keeps the same four destinations on every signed-in page.
+func mobileNav(acc *auth.Account) string {
+	if acc == nil {
+		return ""
+	}
+	return `<nav id="mobile-nav" aria-label="Main navigation"><a href="/">Home</a><a href="/inbox">Inbox</a><a href="/work">Work</a><a href="/services">Services</a></nav>`
 }

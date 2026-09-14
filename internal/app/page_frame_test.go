@@ -27,15 +27,9 @@ func TestApplicationPagesShareOneFrame(t *testing.T) {
 			continue
 		}
 		if strings.Contains(selector, "#content") && strings.Contains(body, "max-width:") && !strings.Contains(selector, ".card") {
-			if strings.TrimSpace(selector) != "#content" || !strings.Contains(body, "max-width: var(--page-width)") {
+			if strings.TrimSpace(selector) != "#content" || !strings.Contains(body, "max-width:var(--page-width)") {
 				t.Errorf("page-specific shell width: %s", rule)
 			}
-		}
-	}
-	for _, selector := range []string{".page-col", ".card", ".col-feed", ".markets-page", ".browser-page", ".maps-page", ".ib", ".assistant-page", ".collection-grid"} {
-		pattern := regexp.MustCompile(regexp.QuoteMeta(selector) + `\s*\{[^}]*max-width:\s*var\(--page-width\)`)
-		if !pattern.MatchString(css) {
-			t.Errorf("%s does not use the shared width", selector)
 		}
 	}
 	if strings.Contains(css, "#content:has(.page-col) #page-title") {

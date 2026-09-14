@@ -36,6 +36,36 @@ jobs:
       - name: Test (race detector)
         run: go test ./... -short -race -count=1 -timeout 180s
 
+  layout:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/mu-layout" playwright@1.62.1
+          "$RUNNER_TEMP/mu-layout/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check mobile and desktop layouts
+        run: |
+          export MU_PLAYWRIGHT_MODULE="$RUNNER_TEMP/mu-layout/node_modules/playwright"
+          export MU_LAYOUT_BROWSER=$(node -e 'console.log(require(process.env.MU_PLAYWRIGHT_MODULE).chromium.executablePath())')
+          export MU_LAYOUT_SHOTS="$RUNNER_TEMP/mu-layout-shots"
+          go test ./test -run '^TestPageCompositionInBrowser$' -count=1 -timeout=10m -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: layout-screenshots
+          path: ${{ runner.temp }}/mu-layout-shots
+          retention-days: 7
+
+
   build:
     runs-on: ubuntu-latest
     steps:

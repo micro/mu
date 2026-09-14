@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"mu/internal/result"
 	"net/http"
 	"strings"
 	"time"
@@ -88,7 +89,7 @@ type step struct {
 }
 
 // point is somewhere the route passes through.
-type point struct{ Lat, Lon float64 }
+type point = result.Point
 
 // detail is how much of the route to ask for.
 type detail int

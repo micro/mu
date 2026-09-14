@@ -159,7 +159,7 @@ var LoginTemplate = `<html lang="en">
 	    });
 	    var result = await finishRes.json();
 	    if (result.success) {
-	      window.location.href = result.redirect || '/home';
+	      window.location.href = result.redirect || '/';
 	    } else {
 	      document.getElementById('auth-status').textContent='Sign-in failed. Please try another sign-in method.';
 	    }
@@ -291,13 +291,13 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		body := fmt.Sprintf(`<div class="card">
 <h4>Invite sent</h4>
 <p>Invite sent to <strong>%s</strong></p>
-<p><a href="/invite">Invite another</a> · <a href="/home">Home</a></p>
+<p><a href="/invite">Invite another</a> · <a href="/">Home</a></p>
 </div>`, htmlpkg.EscapeString(email))
 		app.Respond(w, r, app.Response{Title: "Invite Sent", Description: "Invite sent", HTML: body})
 		return
 	}
 
-	body := `<p><a href="/home">← Home</a></p>
+	body := `<p><a href="/">← Home</a></p>
 <div class="card">
 <h4>Invite someone to Micro</h4>
 <p class="text-sm">Enter their email — they'll get a signup link.</p>
@@ -437,7 +437,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 
 	// Carried through every render so the POST keeps it — see renderSignupTo.
 	redirectParam := ""
-	if to := safeRedirect(r); to != "/home" {
+	if to := safeRedirect(r); to != "/" {
 		redirectParam = "?redirect=" + url.QueryEscape(to)
 	}
 
@@ -1084,7 +1084,7 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 	body := fmt.Sprintf(`<div class="card">
 <h4>Email verified ✓</h4>
 <p>Thanks, <strong>%s</strong>. Your email is verified and you can now post.</p>
-<p><a href="/home" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
+<p><a href="/" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
 </div>`, htmlpkg.EscapeString(acc.Name))
 	app.Respond(w, r, app.Response{Title: "Verified", Description: "Email verified", HTML: body})
 }
@@ -1245,7 +1245,7 @@ func safeRedirect(r *http.Request) string {
 // somebody straight back to a login page, which is a loop rather than a
 // vulnerability but is still not a destination.
 func SafeRedirectTo(to string) string {
-	const home = "/home"
+	const home = "/"
 	if to == "" || to[0] != '/' {
 		return home
 	}

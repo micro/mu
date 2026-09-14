@@ -37,11 +37,12 @@ const (
 // Failed and blocked work needs attention before another attempt. Keeping it
 // separate from todo prevents ordinary pickup from replaying uncertain actions.
 const (
-	StatusTodo    = "todo"
-	StatusDoing   = "doing"
-	StatusDone    = "done"
-	StatusFailed  = "failed"
-	StatusBlocked = "blocked"
+	StatusCanceled = "canceled"
+	StatusTodo     = "todo"
+	StatusDoing    = "doing"
+	StatusDone     = "done"
+	StatusFailed   = "failed"
+	StatusBlocked  = "blocked"
 )
 
 // Assignee values. A task is yours unless you hand it over.
@@ -53,13 +54,22 @@ const (
 // Task is one piece of work.
 // Step is one tool the agent ran while working on a task.
 type Step struct {
-	Tool    string  `json:"tool"`
-	Detail  string  `json:"detail,omitempty"` // the argument worth showing, if any
-	OK      bool    `json:"ok"`
-	Seconds float64 `json:"seconds"`
+	ID       string    `json:"id,omitempty"`
+	Started  time.Time `json:"started,omitempty"`
+	Finished time.Time `json:"finished,omitempty"`
+	Status   string    `json:"status,omitempty"`
+	Args     string    `json:"args,omitempty"`
+	Output   string    `json:"output,omitempty"`
+	Error    string    `json:"error,omitempty"`
+	Tool     string    `json:"tool"`
+	Detail   string    `json:"detail,omitempty"` // the argument worth showing, if any
+	OK       bool      `json:"ok"`
+	Seconds  float64   `json:"seconds"`
 }
 
 type Task struct {
+	Attempts []Attempt `json:"attempts,omitempty"`
+	Archived bool      `json:"archived,omitempty"`
 	ID       string    `json:"id"`
 	Title    string    `json:"title"`
 	Detail   string    `json:"detail,omitempty"`
@@ -107,7 +117,9 @@ type Task struct {
 }
 
 // Open reports whether the task is still to be done.
-func (t *Task) Open() bool { return t.Status != StatusDone }
+func (t *Task) Open() bool {
+	return t.Status != StatusDone && t.Status != StatusCanceled && !t.Archived
+}
 
 // Create adds a task.
 func Create(owner, title, detail, assignee string, due time.Time) (*Task, error) {
@@ -250,6 +262,8 @@ func update(owner, id, title, detail, status, assignee, result string, extra map
 		"created":  stamp(existing.Created),
 		"updated":  stamp(now()),
 	}
+	fields["attempts"] = encodeAttempts(existing.Attempts)
+	fields["archived"] = existing.Archived
 	if assignee != "" {
 		fields["assignee"] = normaliseAssignee(assignee)
 	}
@@ -315,6 +329,9 @@ func Remove(owner, id string) error {
 		return fmt.Errorf("sign in to use tasks")
 	}
 	id = strings.TrimSpace(id)
+	if t, err := Get(owner, id); err == nil && t.Status == StatusDoing {
+		return fmt.Errorf("stop the running task first")
+	}
 	if err := userdb.Delete(ns, owner, collection, id); err != nil {
 		return err
 	}
@@ -351,7 +368,7 @@ func Render(ts []*Task) string {
 }
 
 func validStatus(s string) bool {
-	return s == StatusTodo || s == StatusDoing || s == StatusDone || s == StatusFailed || s == StatusBlocked
+	return s == StatusCanceled || s == StatusTodo || s == StatusDoing || s == StatusDone || s == StatusFailed || s == StatusBlocked
 }
 
 // normaliseAssignee accepts the words a person or a model would use and lands
@@ -395,6 +412,7 @@ func toTask(id, owner string, d map[string]any) *Task {
 	}
 	return &Task{
 		ID: id, Title: str("title"), Detail: str("detail"),
+		Attempts: decodeAttempts(str("attempts")), Archived: d["archived"] == true,
 		Status: status, Assignee: normaliseAssignee(str("assignee")),
 		Result: str("result"), Due: when("due"),
 		Created: when("created"), Updated: when("updated"), Owner: owner,
