@@ -250,7 +250,7 @@ body.index-shell { min-height:100dvh; display:flex; flex-direction:column; }
 
 /* Wide tables scroll within their own bounds; long IDs wrap in content. */
 @media(max-width:600px) {
- #content table { display:block; max-width:100%; overflow-x:auto; }
+ table { display:block; max-width:100%; overflow-x:auto; }
 }
 .nav-bottom .nav-me-who { display:block; overflow-wrap:anywhere; }
 #nav .chat-sess { display:block; }
