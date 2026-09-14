@@ -6,6 +6,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  try {
  const page=await browser.newPage();
  page.setDefaultTimeout(5000);
+ const failures=[];
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{
   const u=new URL(route.request().url());
@@ -23,6 +24,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
   await page.setViewportSize({width,height:900});
   for(const path of Object.keys(input.pages).filter(p=>!process.env.MU_LAYOUT_PATHS||process.env.MU_LAYOUT_PATHS.split(',').includes(p.split('?')[0]))){
    console.log("Checking",path,width,collapsed);
+   try {
    errors.length=0;
    await page.goto('https://mu.test'+path);await page.waitForTimeout(50);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
@@ -48,7 +50,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
     await page.waitForTimeout(50);const after=await form.boundingBox();
     assert(Math.abs(before.y-after.y)<2,'composer moved as conversation grew');
-    const nav=await page.locator('#mobile-nav').boundingBox();
+    const nav=await page.locator('#mobile-nav').count()?await page.locator('#mobile-nav').boundingBox():null;
     assert(after.y+after.height<=(nav?nav.y:900),'navigation covers composer');
     const center=await page.locator('#mu-chat').evaluate(e=>{const r=e.getBoundingClientRect();const available=document.body.classList.contains('index-shell')||innerWidth<=900||document.body.classList.contains('nav-collapsed')?0:220;return Math.abs((r.left+r.right)/2-(available+innerWidth)/2)});
     assert(center<2,`conversation offset ${center}px at ${width}`);
@@ -64,8 +66,10 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(process.env.MU_LAYOUT_SHOTS&&['/','/?new=1','/services','/services?view=feed','/work','/inbox','/agents','/mail','/video'].includes(path)){
     fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true});await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/'+(path.replace(/[^a-zA-Z0-9_-]/g,'-')||'landing')+'-'+width+'-'+collapsed+'.png',fullPage:true});
    }
+   } catch(e) { failures.push(path+' at '+width+': '+e.message); }
   }
  }
+ assert(!failures.length,failures.join('\n'));
  } finally {await browser.close();}
  console.log('All service pages fit; conversation composers remain centered and stable on mobile and desktop.');
 })().catch(e=>{console.error(e);process.exitCode=1});
