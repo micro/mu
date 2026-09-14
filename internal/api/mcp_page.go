@@ -206,7 +206,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<details>`)
 	b.WriteString(`<summary class="clickable medium">Raw JSON-RPC</summary>`)
 	b.WriteString(`<div class="mt-3">`)
-	b.WriteString(`<form id="mcp-test-form" onsubmit="return sendMCP(event)">`)
+	b.WriteString(`<form class="form" id="mcp-test-form" onsubmit="return sendMCP(event)">`)
 	b.WriteString(`<textarea id="mcp-input" rows="5" class="form-input w-full text-sm mono" placeholder='{"jsonrpc":"2.0","id":1,"method":"tools/list"}'></textarea>`)
 	b.WriteString(`<button type="submit" class="mt-2">Send</button>`)
 	b.WriteString(`</form>`)

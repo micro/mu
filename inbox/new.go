@@ -491,7 +491,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		b.WriteString(`<p class="ib-ask-problem">` + html.EscapeString(f.Problem) + `</p>`)
 	}
 
-	b.WriteString(`<form class="ib-new" method="post" action="/inbox/new">`)
+	b.WriteString(`<form class="form" method="post" action="/inbox/new">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	if f.On != "" {
 		b.WriteString(`<input type="hidden" name="on" value="` + html.EscapeString(f.On) + `">`)
@@ -545,8 +545,8 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	b.WriteString(`<textarea class="ib-field" name="body" rows="` + rows +
 		`" placeholder="` + placeholder + `">` + html.EscapeString(f.Body) + `</textarea>`)
 
-	b.WriteString(`<div class="ib-ask-row"><button type="submit">` + verb + `</button>`)
-	b.WriteString(`</form></div>`)
+	b.WriteString(`<div class="form-actions"><button type="submit">` + verb + `</button>`)
+	b.WriteString(`</div></form></div>`)
 
 	// Named for what is being written. "New message" over a note form is the
 	// page telling you it is doing something other than what it is doing.

@@ -259,7 +259,7 @@ func rowMeta(who, kind string, tags []string, at time.Time) string {
 // "Delete"s is a column of warnings. It is labelled for anything not reading
 // the shape, and it asks first — thread.Delete is not recoverable.
 func rowDelete(r *http.Request, id string) string {
-	return `<form class="ib-del" method="post" action="/inbox/delete" ` +
+	return `<form class="form-action ib-del" method="post" action="/inbox/delete" ` +
 		`onsubmit="return confirm('Delete this conversation? What was said in it is gone.')">` +
 		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +

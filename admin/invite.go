@@ -121,11 +121,11 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 			actions := ""
 			if !req.Invited {
 				actions = fmt.Sprintf(
-					`<div class="d-flex gap-1 mt-1"><form method="POST"><input type="hidden" name="email" value="%s"><button type="submit" class="mini-btn good">Send invite</button></form><form method="POST" onsubmit="return confirm('Reject?')"><input type="hidden" name="action" value="reject"><input type="hidden" name="email" value="%s"><button type="submit" class="mini-btn danger">Reject</button></form></div>`,
+					`<div class="d-flex gap-1 mt-1"><form class="form-action" method="POST"><input type="hidden" name="email" value="%s"><button type="submit" class="mini-btn good">Send invite</button></form><form class="form-action" method="POST" onsubmit="return confirm('Reject?')"><input type="hidden" name="action" value="reject"><input type="hidden" name="email" value="%s"><button type="submit" class="mini-btn danger">Reject</button></form></div>`,
 					req.Email, req.Email)
 			} else {
 				actions = fmt.Sprintf(
-					`<div class="mt-1"><form method="POST" onsubmit="return confirm('Resend?')"><input type="hidden" name="email" value="%s"><button type="submit" class="text-xs p-tight">Resend</button></form></div>`,
+					`<div class="mt-1"><form class="form-action" method="POST" onsubmit="return confirm('Resend?')"><input type="hidden" name="email" value="%s"><button type="submit" class="text-xs p-tight">Resend</button></form></div>`,
 					req.Email)
 			}
 			sb.WriteString(fmt.Sprintf(`<div class="thin-row row-pad"><div class="baseline-row flex-wrap"><strong class="text-base">%s</strong>%s<span class="text-faint text-xs">%s</span></div>%s%s</div>`,
@@ -137,7 +137,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<div class="card mt-4">
 <h4>Invite someone directly</h4>
 <p class="text-sm">Enter an email — they'll get a single-use signup link.</p>
-<form method="POST" action="/admin/invite" class="mt-4">
+<form method="POST" action="/admin/invite" class="form mt-4">
 	<input type="email" name="email" placeholder="user@example.com" required class="form-input">
 	<button type="submit" class="mt-2">Send invite</button>
 </form>

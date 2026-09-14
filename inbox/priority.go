@@ -59,7 +59,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 				text, _ := unquoted(msgs[0].Text)
 				b.WriteString(`<div class="markdown-content">` + app.RenderString(text) + `</div>`)
 			}
-			b.WriteString(`<div class="form-actions"><a class="btn btn-secondary" href="/inbox?id=` + url.QueryEscape(t.ID) + `">Open conversation</a><button type="button" onclick="muAssignOpen()">Ask Micro</button><form method="POST" action="/inbox">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `"><input type="hidden" name="reviewed" value="` + t.Updated.Format(time.RFC3339Nano) + `"><input type="hidden" name="action" value="handled"><button>Done</button></form></div>`)
+			b.WriteString(`<div class="form-actions"><a class="btn btn-secondary" href="/inbox?id=` + url.QueryEscape(t.ID) + `">Open conversation</a><button type="button" onclick="muAssignOpen()">Ask Micro</button><form class="form-action" method="POST" action="/inbox">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `"><input type="hidden" name="reviewed" value="` + t.Updated.Format(time.RFC3339Nano) + `"><input type="hidden" name="action" value="handled"><button>Done</button></form></div>`)
 			b.WriteString(assignDialog(r, owner, &t, ""))
 			b.WriteString(`</article>`)
 			if len(waiting) > 1 {

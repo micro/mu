@@ -26,7 +26,7 @@ import (
 // A confirm, because it is not undoable and the thing it takes is a
 // conversation rather than a row.
 func deleteButton(r *http.Request, id string) string {
-	return `<form method="post" action="/inbox/delete" ` +
+	return `<form class="form-action" method="post" action="/inbox/delete" ` +
 		`onsubmit="return confirm('Delete this conversation? What was said in it is gone.')">` +
 		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
@@ -66,7 +66,7 @@ func unreadButton(r *http.Request, id string, wasUnread bool) string {
 	if !wasUnread {
 		return ""
 	}
-	return `<form method="post" action="/inbox/unread">` +
+	return `<form class="form-action" method="post" action="/inbox/unread">` +
 		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<button class="pill" type="submit">Mark unread</button></form>`

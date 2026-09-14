@@ -826,21 +826,21 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Show only the posting form
 		content = `<div id="blog">
 			<div class="mb-6">
-				<form id="blog-form" class="blog-form" method="POST" action="/blog">` + backTo + `
+				<form id="blog-form" class="form" method="POST" action="/blog">` + backTo + `
 					<input type="text" id="post-title" name="title" placeholder="Title (optional)">
 					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of God" required></textarea>
 					<input type="text" id="post-tags" name="tags" placeholder="Tags (optional, comma-separated)">
-					<div class="blog-form-row">
+					<div class="form-row">
 						<select id="post-visibility" name="visibility">
 							<option value="public" selected>Public</option>
 							<option value="private">Private (Admin only)</option>
 						</select>
-						<div class="blog-form-actions">
+						<div class="form-actions">
 							<a href="/blog" class="btn btn-secondary">Cancel</a>
 							<button type="submit">Post</button>
 						</div>
 					</div>
-					<div class="blog-form-hint">
+					<div class="note">
 						<span id="char-count">Min 50 chars</span>
 					</div>
 				</form>
@@ -1529,7 +1529,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		content := fmt.Sprintf(`<div id="blog">
-			<form method="POST" action="/blog/post?id=%s" class="blog-form">
+			<form method="POST" action="/blog/post?id=%s" class="form">
 				<input type="hidden" name="_method" value="PATCH">
 				<input type="text" name="title" placeholder="Title (optional)" value="%s">
 				<textarea name="content" rows="15" required>%s</textarea>
@@ -1538,10 +1538,10 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 					<option value="public" %s>Public</option>
 					<option value="private" %s>Private (Admin only)</option>
 				</select>
-				<div class="blog-form-hint">
+				<div class="note">
 					Supports markdown: **bold**, *italic**, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
 				</div>
-				<div class="blog-form-actions">
+				<div class="form-actions">
 					<button type="submit">Save Changes</button>
 					<a href="/blog/post?id=%s" class="btn btn-secondary">Cancel</a>
 				</div>
@@ -1644,9 +1644,9 @@ func renderComments(postID string, r *http.Request) string {
 
 	if isAuthenticated {
 		commentsHTML.WriteString(fmt.Sprintf(`
-			<form method="POST" action="/blog/post/%s/comment" class="blog-form my-5">
+			<form method="POST" action="/blog/post/%s/comment" class="form my-5">
 				<textarea name="content" rows="3" placeholder="Add a comment..." required></textarea>
-				<div>
+				<div class="form-actions">
 					<button type="submit">Add Comment</button>
 				</div>
 			</form>

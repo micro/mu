@@ -96,14 +96,14 @@ func heldActions(r *http.Request, t thread.Thread) string {
 	// button that quietly does nothing is worse than no button.
 	block := ""
 	if t.Client == thread.SMSClient && strings.TrimSpace(t.Key) != "" {
-		block = `<form method="post" action="/inbox/held" class="d-inline">` + csrf +
+		block = `<form method="post" action="/inbox/held" class="form-action d-inline">` + csrf +
 			`<input type="hidden" name="do" value="block">` +
 			`<button class="pill pill-danger" type="submit">Block ` +
 			html.EscapeString(trimTo(t.Key, 20)) + `</button></form>`
 	}
 
 	return `<div class="ib-held-acts">` +
-		`<form method="post" action="/inbox/held" class="d-inline">` + csrf +
+		`<form method="post" action="/inbox/held" class="form-action d-inline">` + csrf +
 		`<input type="hidden" name="do" value="let">` +
 		`<button class="pill" type="submit">Let in</button></form>` +
 		block + `</div>`

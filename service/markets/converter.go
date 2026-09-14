@@ -90,7 +90,7 @@ func converterHTML(r *http.Request) string {
 		open = " open"
 	}
 	sb.WriteString(`<details class="disclosure page-section"` + open + `><summary class="btn">Convert</summary><div>`)
-	sb.WriteString(`<form class="fx-form" method="get" action="/markets">`)
+	sb.WriteString(`<form class="form form-inline" method="get" action="/markets">`)
 	fmt.Fprintf(&sb, `<input type="hidden" name="category" value="%s">`,
 		html.EscapeString(category))
 	fmt.Fprintf(&sb, `<input class="fx-amount" type="text" name="amount" value="%s" aria-label="Amount">`,

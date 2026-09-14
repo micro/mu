@@ -116,8 +116,8 @@ func blocklistSection() string {
 	content := `<div class="blocklist-section mt-6">
 		<h3>Blocked senders (` + fmt.Sprintf("%d", len(bl.Emails)) + `)</h3>
 		<p class="text-sm text-muted">Refused at the door, before anything is scored.</p>
-		<div class="block-form">
-			<form method="POST">
+		<div class="form form-inline">
+			<form class="form" method="POST">
 				<input type="hidden" name="action" value="block_email">
 				<input type="text" name="email" placeholder="email@example.com or *@domain.com" required>
 				<button type="submit">Block</button>
@@ -139,8 +139,8 @@ func blocklistSection() string {
 
 	<div class="blocklist-section mt-4">
 		<h3>Blocked IPs (` + fmt.Sprintf("%d", len(bl.IPs)) + `)</h3>
-		<div class="block-form">
-			<form method="POST">
+		<div class="form form-inline">
+			<form class="form" method="POST">
 				<input type="hidden" name="action" value="block_ip">
 				<input type="text" name="ip" placeholder="192.168.1.1" required>
 				<button type="submit">Block</button>
@@ -166,7 +166,7 @@ func blocklistEmailRow(email string) string {
 				<tr>
 					<td><code>` + escapedEmail + `</code></td>
 					<td class="text-center">
-						<form method="POST" class="d-inline">
+						<form method="POST" class="form-action d-inline">
 							<input type="hidden" name="action" value="unblock_email">
 							<input type="hidden" name="email" value="` + escapedEmail + `">
 							<button type="submit" class="btn-success">Unblock</button>
@@ -181,7 +181,7 @@ func blocklistIPRow(ip string) string {
 				<tr>
 					<td><code>` + escapedIP + `</code></td>
 					<td class="text-center">
-						<form method="POST" class="d-inline">
+						<form method="POST" class="form-action d-inline">
 							<input type="hidden" name="action" value="unblock_ip">
 							<input type="hidden" name="ip" value="` + escapedIP + `">
 							<button type="submit" class="btn-success">Unblock</button>
@@ -269,7 +269,7 @@ func spamSettings() string {
 				<td><strong>Filter Status</strong></td>
 				<td>%s</td>
 				<td>
-					<form method="POST" class="d-inline">
+					<form method="POST" class="form-action d-inline">
 						<input type="hidden" name="action" value="toggle">
 						<button type="submit">%s</button>
 					</form>
@@ -279,7 +279,7 @@ func spamSettings() string {
 				<td><strong>Spam Handling</strong></td>
 				<td>%s</td>
 				<td>
-					<form method="POST" class="d-inline">
+					<form method="POST" class="form-action d-inline">
 						<input type="hidden" name="action" value="toggle_reject">
 						<button type="submit">%s</button>
 					</form>
@@ -289,7 +289,7 @@ func spamSettings() string {
 				<td><strong>Auto-block spam domains</strong></td>
 				<td>%s</td>
 				<td>
-					<form method="POST" class="d-inline">
+					<form method="POST" class="form-action d-inline">
 						<input type="hidden" name="action" value="toggle_autoblock">
 						<button type="submit">%s</button>
 					</form>
@@ -299,7 +299,7 @@ func spamSettings() string {
 				<td><strong>Score Threshold</strong></td>
 				<td>%d</td>
 				<td>
-					<form method="POST" class="d-inline">
+					<form method="POST" class="form-action d-inline">
 						<input type="hidden" name="action" value="set_threshold">
 						<input type="number" name="value" value="%d" min="1" max="100" class="w-60">
 						<button type="submit">Set</button>
@@ -313,7 +313,7 @@ func spamSettings() string {
 	// Blocked TLDs
 	content += `<div class="spam-section mt-4">
 		<h3>Blocked TLDs (` + fmt.Sprintf("%d", len(sf.BlockedTLDs)) + `)</h3>
-		<form method="POST" class="block-form">
+		<form method="POST" class="form form-inline">
 			<input type="hidden" name="action" value="add_tld">
 			<input type="text" name="value" placeholder=".vn, .xyz, .top" required>
 			<button type="submit">Block TLD</button>
@@ -323,7 +323,7 @@ func spamSettings() string {
 		content += `<table class="blacklist-table"><tbody>`
 		for _, tld := range sf.BlockedTLDs {
 			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
-				<form method="POST" class="d-inline">
+				<form method="POST" class="form-action d-inline">
 					<input type="hidden" name="action" value="remove_tld">
 					<input type="hidden" name="value" value="%s">
 					<button type="submit" class="btn-success">Remove</button>
@@ -336,7 +336,7 @@ func spamSettings() string {
 	// Blocked keywords
 	content += `<div class="spam-section mt-4">
 		<h3>Blocked Keywords (` + fmt.Sprintf("%d", len(sf.BlockedKeywords)) + `)</h3>
-		<form method="POST" class="block-form">
+		<form method="POST" class="form form-inline">
 			<input type="hidden" name="action" value="add_keyword">
 			<input type="text" name="value" placeholder="keyword or phrase" required>
 			<button type="submit">Block Keyword</button>
@@ -346,7 +346,7 @@ func spamSettings() string {
 		content += `<table class="blacklist-table"><tbody>`
 		for _, kw := range sf.BlockedKeywords {
 			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
-				<form method="POST" class="d-inline">
+				<form method="POST" class="form-action d-inline">
 					<input type="hidden" name="action" value="remove_keyword">
 					<input type="hidden" name="value" value="%s">
 					<button type="submit" class="btn-success">Remove</button>
@@ -360,7 +360,7 @@ func spamSettings() string {
 	content += `<div class="spam-section mt-4">
 		<h3>Allowed Senders (` + fmt.Sprintf("%d", len(sf.AllowedSenders)) + `)</h3>
 		<p class="text-sm text-muted">These senders bypass spam checks. Use @domain.com for entire domains.</p>
-		<form method="POST" class="block-form">
+		<form method="POST" class="form form-inline">
 			<input type="hidden" name="action" value="add_allowed">
 			<input type="text" name="value" placeholder="user@example.com or @domain.com" required>
 			<button type="submit">Allow Sender</button>
@@ -370,7 +370,7 @@ func spamSettings() string {
 		content += `<table class="blacklist-table"><tbody>`
 		for _, s := range sf.AllowedSenders {
 			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
-				<form method="POST" class="d-inline">
+				<form method="POST" class="form-action d-inline">
 					<input type="hidden" name="action" value="remove_allowed">
 					<input type="hidden" name="value" value="%s">
 					<button type="submit" class="btn-success">Remove</button>

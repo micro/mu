@@ -228,7 +228,7 @@ func workDetail(t *tasks.Task, csrf string) string {
 	}
 	b.WriteString(`<section><h3>Activity</h3>` + stepHTML(t.Steps) + `</section>`)
 	form := func(action, label string) {
-		b.WriteString(`<form method="POST" action="/work">` + app.CSRFField(csrf) + `<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `"><input type="hidden" name="action" value="` + action + `"><button>` + label + `</button></form>`)
+		b.WriteString(`<form class="form-action" method="POST" action="/work">` + app.CSRFField(csrf) + `<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `"><input type="hidden" name="action" value="` + action + `"><button>` + label + `</button></form>`)
 	}
 	b.WriteString(`<div class="form-actions">`)
 	if t.Status == tasks.StatusDoing {

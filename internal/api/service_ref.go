@@ -232,7 +232,7 @@ func refMethodCard(m restMethod, base string) string {
 // call for real.
 func tryForm(m restMethod) string {
 	var b strings.Builder
-	b.WriteString(`<form class="try" data-path="` + html.EscapeString(m.Path) +
+	b.WriteString(`<form class="form try" data-path="` + html.EscapeString(m.Path) +
 		`" data-method="` + "POST" + `">`)
 
 	for _, p := range m.Params {

@@ -95,7 +95,7 @@ func Card(r *http.Request, accountID, action, heading, description, command stri
 			b.WriteString(`<tr><td>` + html.EscapeString(k.Name) + `</td>` +
 				`<td class="addr">` + html.EscapeString(k.Print) + `</td>` +
 				`<td>` + html.EscapeString(used) + `</td><td>` +
-				`<form method="post" action="` + html.EscapeString(action) + `" class="d-inline">` +
+				`<form method="post" action="` + html.EscapeString(action) + `" class="form-action d-inline">` +
 				`<input type="hidden" name="csrf_token" value="` +
 				html.EscapeString(auth.CSRFToken(r)) + `">` +
 				`<input type="hidden" name="removekey" value="` +
@@ -106,7 +106,7 @@ func Card(r *http.Request, accountID, action, heading, description, command stri
 		b.WriteString(`</table>`)
 	}
 
-	b.WriteString(`<form method="post" action="` + html.EscapeString(action) + `" class="mt-3">`)
+	b.WriteString(`<form method="post" action="` + html.EscapeString(action) + `" class="form mt-3">`)
 	b.WriteString(`<input type="hidden" name="csrf_token" value="` +
 		html.EscapeString(auth.CSRFToken(r)) + `">`)
 	b.WriteString(`<input class="form-input w-full" type="text" name="sshkey" ` +

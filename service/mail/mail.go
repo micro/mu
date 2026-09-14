@@ -1057,12 +1057,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			<div class="banner">
 				<span class="banner-text">This message was filtered as spam (score: %d)</span>
 				<div class="d-flex gap-2">
-					<form method="POST" action="/mail?view=filtered" class="d-inline">
+					<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
 						<input type="hidden" name="action" value="not_spam">
 						<input type="hidden" name="msg_id" value="%s">
 						<button type="submit" class="btn text-sm">Not Spam</button>
 					</form>
-					<form method="POST" action="/mail?view=filtered" class="d-inline">
+					<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
 						<input type="hidden" name="action" value="delete_spam">
 						<input type="hidden" name="msg_id" value="%s">
 						<button type="submit" class="btn btn-plain text-error text-sm">Delete</button>
@@ -1080,7 +1080,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	<div class="text-muted text-sm mb-5">Thread with: %s</div>
 	%s
 	<div class="mt-6 border-t pt-5">
-		<form method="POST" action="/mail?id=%s" class="d-flex flex-column gap-4" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}document.getElementById('reply-body-plain').value=replyText;var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML;return true;">
+		<form method="POST" action="/mail?id=%s" class="form-action d-flex flex-column gap-4" onsubmit="var replyText=document.getElementById('reply-body').innerText.trim().replace(/\n{3,}/g,'\n\n');if(!replyText){alert('Please write a reply');return false;}document.getElementById('reply-body-plain').value=replyText;var replyHTML=replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');document.getElementById('reply-body-html').value=replyHTML;return true;">
 			<input type="hidden" name="to" value="%s">
 			<input type="hidden" name="subject" value="%s">
 			<input type="hidden" name="reply_to" value="%s">
@@ -1133,7 +1133,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		datalist := dl.String()
 
 		composeForm := fmt.Sprintf(`
-			<form method="POST" action="/mail" class="mail-form">
+			<form method="POST" action="/mail" class="form mail-form">
 				<input type="hidden" name="reply_to" value="%s">
 				<input type="text" name="to" placeholder="To: username or email" value="%s" required autocomplete="off" list="mail-users">
 				%s
@@ -1355,12 +1355,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					</div>
 					<div class="spam-info text-muted text-sm">Spam score: %d — %s</div>
 					<div class="action-footer" onclick="event.stopPropagation()">
-						<form method="POST" action="/mail?view=filtered" class="d-inline">
+						<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
 							<input type="hidden" name="action" value="not_spam">
 							<input type="hidden" name="msg_id" value="%s">
 							<button type="submit" class="btn-sm">Not Spam</button>
 						</form>
-						<form method="POST" action="/mail?view=filtered" class="d-inline">
+						<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
 							<input type="hidden" name="action" value="delete_spam">
 							<input type="hidden" name="msg_id" value="%s">
 							<button type="submit" class="btn-sm btn-danger">Delete</button>
@@ -1452,7 +1452,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	readAction := ""
 	if unreadCount > 0 && view != "sent" && view != "filtered" {
-		readAction = `<form method="POST" action="/mail" class="section-actions page-section">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="mark_read"><input type="hidden" name="all" value="true"><button type="submit" class="btn btn-quiet">Mark all as read</button></form>`
+		readAction = `<form method="POST" action="/mail" class="form-action section-actions page-section">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="mark_read"><input type="hidden" name="all" value="true"><button type="submit" class="btn btn-quiet">Mark all as read</button></form>`
 	}
 	// Search bar
 	searchBar := mailSearchBar(searchTerm(r), auth.CSRFToken(r))

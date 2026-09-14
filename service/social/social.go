@@ -655,7 +655,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	// Reply form (for logged-in users)
 	if acc != nil {
 		sb.WriteString(fmt.Sprintf(`<div class="my-4">
-  <form method="POST" action="/social/thread" id="reply-form">
+  <form class="form" method="POST" action="/social/thread" id="reply-form">
     <input type="hidden" name="reply_to" value="%s">
     <textarea name="content" id="reply-content" rows="2" placeholder="Write a message..." required
       class="form-area"></textarea>
@@ -919,7 +919,7 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
 	_, acc := auth.TrySession(r)
 	if acc != nil {
 		sb.WriteString(`<div class="mb-5">
-  <form method="POST" action="/social" id="social-form">
+  <form class="form" method="POST" action="/social" id="social-form">
     <textarea name="content" id="social-content" rows="3" placeholder="Start a thread..." required
       class="form-area"></textarea>
     <div class="d-flex between items-center mt-2">

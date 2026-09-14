@@ -280,7 +280,7 @@ func taskCard(t *Task, csrf, label string, actionURL func(string) string) string
 	} else {
 		button(&b, actionURL, "reopen", csrf, "Reopen", "")
 	}
-	fmt.Fprintf(&b, `<form method="POST" action="%s" onsubmit="return confirm('Delete %s?')">
+	fmt.Fprintf(&b, `<form class="form-action" method="POST" action="%s" onsubmit="return confirm('Delete %s?')">
   <input type="hidden" name="action" value="delete">
   <input type="hidden" name="_csrf" value="%s">
   <button type="submit" class="btn btn-danger">Delete</button>
@@ -291,7 +291,7 @@ func taskCard(t *Task, csrf, label string, actionURL func(string) string) string
 }
 
 func button(b *strings.Builder, actionURL func(string) string, action, csrf, label, extra string) {
-	fmt.Fprintf(b, `<form method="POST" action="%s">
+	fmt.Fprintf(b, `<form class="form-action" method="POST" action="%s">
   <input type="hidden" name="action" value="%s">
   <input type="hidden" name="_csrf" value="%s">%s
   <button type="submit" class="btn btn-quiet">%s</button>

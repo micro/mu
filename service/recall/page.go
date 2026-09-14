@@ -151,7 +151,7 @@ func clientChips(owner, query, active, csrf string) string {
 		if client == active {
 			cls += " on"
 		}
-		return `<form class="rc-chip-form" method="POST" action="/recall">` +
+		return `<form class="form-action rc-chip-form" method="POST" action="/recall">` +
 			app.CSRFField(csrf) +
 			`<input type="hidden" name="q" value="` + html.EscapeString(query) + `">` +
 			`<input type="hidden" name="client" value="` + html.EscapeString(client) + `">` +

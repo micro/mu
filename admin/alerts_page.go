@@ -120,7 +120,7 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 		`until it is fixed. Edit them at ` + app.TextLink("config", "/admin/config") + `.</p>`)
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(`<form method="post" action="/admin/alerts" class="alerts-test">` +
+	sb.WriteString(`<form method="post" action="/admin/alerts" class="form alerts-test">` +
 		`<input type="hidden" name="csrf_token" value="` +
 		html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<button type="submit">Send a test alert</button></form>`)

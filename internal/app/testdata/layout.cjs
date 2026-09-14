@@ -59,6 +59,16 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
    await page.locator('#content details').evaluateAll(es=>es.forEach(e=>e.open=false));
    if(path==='/chat')await page.locator('#messages').evaluate(e=>e.innerHTML='<div class="message"><span class="you">Sarah <span class="msg-when">Today, 10:30</span></span><p>Can we meet tomorrow afternoon?</p></div><div class="message"><span class="you">You <span class="msg-when">Today, 10:32</span></span><p>Yes, see you at two.</p></div>');
+   const narrowTextareas=await page.locator('form.form:not(.form-inline) > textarea').evaluateAll(es=>es.filter(e=>e.getClientRects().length).filter(e=>{const f=e.parentElement,style=getComputedStyle(f);return e.getBoundingClientRect().width<f.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-2}).map(e=>e.name));
+   assert(!narrowTextareas.length,`full-width form fields are narrow: ${narrowTextareas}`);
+   if(path==='/archive') {
+    const search=await page.locator('.search-bar').boundingBox(),next=await page.locator('.search-bar + *').boundingBox();
+    assert(next.y-search.y-search.height>=16,'search section has no spacing beneath it');
+   }
+   if(path.includes('/blog/post')&&path.includes('edit=true')) {
+    const boxes=await page.locator('.form-actions > *').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().height));
+    assert(Math.max(...boxes)-Math.min(...boxes)<2,'button links and submit controls differ in height');
+   }
    if(path==='/login'||path==='/signup') {
     const box=await page.locator(path==='/login'?'#login':'#signup').boundingBox();assert(Math.abs(box.x+box.width/2-width/2)<2,'auth form off center');
     assert.equal(await page.locator('.oauth-btn').count(),1,'Google sign-in fixture missing');

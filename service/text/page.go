@@ -127,7 +127,7 @@ func page(answer string) string {
 
 	b.WriteString(answer)
 
-	b.WriteString(`<form method="post" class="card tform">`)
+	b.WriteString(`<form method="post" class="card form">`)
 	b.WriteString(`<div class="tjobs">`)
 	for i, j := range jobs {
 		checked := ""
@@ -160,8 +160,6 @@ const pageStyle = `<style>
   border-radius:var(--border-radius,8px);padding:8px 12px;cursor:pointer;font-size:15px}
 .tjob:has(input:checked){border-color:#111;font-weight: 550}
 .tnote{color:#666;font-size:14px;margin:0 0 10px}
-.tform textarea,.tform input[type=text]{width:100%;margin-bottom:10px;font-family:inherit}
-.tform button{width:100%}
 .tcap{color:#888;font-size:13px;margin:10px 0 0;text-align:center}
 .tresult h3{margin-top:0}
 .tout{white-space:pre-wrap;word-break:break-word;background:var(--hover-background,#f6f6f6);

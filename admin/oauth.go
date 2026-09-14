@@ -90,7 +90,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		// row offers the one thing that fixes it. Every client the /token form
 		// made before it asked for an address is in this state, and none of
 		// them ever worked.
-		where := `<form method="POST" action="/admin/oauth" class="m-0 d-flex gap-xs">` +
+		where := `<form method="POST" action="/admin/oauth" class="form m-0 d-flex gap-xs">` +
 			`<input type="hidden" name="action" value="redirect">` +
 			`<input type="hidden" name="client_id" value="` + html.EscapeString(c.ClientID) + `">` +
 			`<input type="text" name="redirect_uri" placeholder="https://… or http://localhost:0/callback" ` +
@@ -101,7 +101,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprintf(&b, `<tr><td>%s</td><td><code class="text-2xs">%s</code></td>`+
 			`<td>%s</td><td>%s</td><td class="created-col">%s</td><td class="center">`+
-			`<form method="POST" action="/admin/oauth" class="d-inline" `+
+			`<form method="POST" action="/admin/oauth" class="form-action d-inline" `+
 			`onsubmit="return confirm('Remove this client?')">`+
 			`<input type="hidden" name="client_id" value="%s">`+
 			`<button type="submit" class="text-sm">Remove</button></form></td></tr>`,

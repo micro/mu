@@ -87,6 +87,6 @@ func editorHandler(w http.ResponseWriter, r *http.Request, id string) {
 	if message != "" {
 		body += `<p role="alert">` + html.EscapeString(message) + `</p>`
 	}
-	body += `<form method="POST" action="` + html.EscapeString(action) + `" class="card">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="checksum" value="` + html.EscapeString(f.Checksum) + `"><label>File name<input class="field field-wide" name="name" required maxlength="255" value="` + html.EscapeString(f.Name) + `"` + readonly + `></label><label>Contents<textarea class="field field-wide" name="content" rows="22">` + html.EscapeString(string(raw)) + `</textarea></label><button type="submit">Save file</button></form></div>`
+	body += `<form method="POST" action="` + html.EscapeString(action) + `" class="form card">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="checksum" value="` + html.EscapeString(f.Checksum) + `"><label>File name<input class="field field-wide" name="name" required maxlength="255" value="` + html.EscapeString(f.Name) + `"` + readonly + `></label><label>Contents<textarea class="field field-wide" name="content" rows="22">` + html.EscapeString(string(raw)) + `</textarea></label><button type="submit">Save file</button></form></div>`
 	app.Respond(w, r, app.Response{Title: "Files", HTML: body})
 }

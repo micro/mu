@@ -100,7 +100,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request, q, near string, lat, lon
 // forms are the two questions the page answers.
 func forms(q, near string, radius int, csrf string) string {
 	return `<div class="card fl-forms">
-<form method="GET" action="/flights" class="fl-form">
+<form method="GET" action="/flights" class="form fl-form">
 <label class="fl-label" for="fl-near">What's overhead</label>
 <div class="form-row">
 <input id="fl-near" type="text" name="near" value="` + html.EscapeString(near) + `" placeholder="A place or airport — Camden, London or LHR" autocomplete="off">
@@ -109,7 +109,7 @@ func forms(q, near string, radius int, csrf string) string {
 </div>
 <a href="#" class="fl-here" onclick="muFlightsHere();return false">Use my location</a>
 </form>
-<form method="POST" action="/flights" class="fl-form">` + app.CSRFField(csrf) + `
+<form method="POST" action="/flights" class="form fl-form">` + app.CSRFField(csrf) + `
 <label class="fl-label" for="fl-q">Where's a flight</label>
 <div class="form-row">
 <input id="fl-q" type="text" name="q" value="` + html.EscapeString(q) + `" placeholder="BA117, BAW117 or G-ZBKL" autocomplete="off">

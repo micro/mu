@@ -236,7 +236,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`<button type="submit">Search</button>` +
 		`</div>`
 	form := func(inner string) string {
-		return `<form id="web-search" action="/web" method="POST">` + inner + `</form>`
+		return `<form class="search-bar" id="web-search" action="/web" method="POST">` + inner + `</form>`
 	}
 	// One column, at the measure every other column page uses.
 	//
@@ -412,7 +412,7 @@ func renderResults(results []BraveResult) string {
 
 // searchForm is the box, prefilled, for a page that is not Handler.
 func searchForm(r *http.Request, query string) string {
-	return `<form id="web-search" action="/web" method="POST"><div class="search-bar">` +
+	return `<form class="search-bar" id="web-search" action="/web" method="POST"><div class="search-bar">` +
 		app.CSRFField(auth.CSRFToken(r)) +
 		`<input type="text" name="q" placeholder="Search the web..." value="` +
 		html.EscapeString(query) + `"><button type="submit">Search</button></div></form>`

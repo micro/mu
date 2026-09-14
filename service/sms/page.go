@@ -194,7 +194,7 @@ func composer(r *http.Request, who string) string {
 	// longer has. Numbers you know are a convenience now, not a gate.
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
-	b.WriteString(`<form method="POST" action="/sms" class="sms-send">` +
+	b.WriteString(`<form method="POST" action="/sms" class="form">` +
 		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 		`<input type="hidden" name="send" value="1">` +
 		`<input name="to" class="sms-to" required list="sms-known" autocomplete="off" ` +
@@ -240,7 +240,7 @@ func verifier(r *http.Request, who, csrf string) string {
 			`<input name="code" inputmode="numeric" autocomplete="one-time-code" required ` +
 			`placeholder="123456" class="sms-in" aria-label="The code that was texted to you">` +
 			`<button type="submit">Confirm</button></form>` +
-			`<form method="POST" action="/sms" class="mt-2 m-0">` +
+			`<form method="POST" action="/sms" class="form-action mt-2 m-0">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 			`<input type="hidden" name="start" value="` + html.EscapeString(number) + `">` +
 			`<button type="submit" class="link-button">Send another code</button></form>`)
@@ -261,7 +261,7 @@ func verifier(r *http.Request, who, csrf string) string {
 			b.WriteString(`</p>`)
 			for _, n := range mine {
 				b.WriteString(`<form method="POST" action="/sms" id="forget-` +
-					html.EscapeString(n) + `" class="d-none">` +
+					html.EscapeString(n) + `" class="form-action d-none">` +
 					`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 					`<input type="hidden" name="forget" value="` + html.EscapeString(n) + `"></form>`)
 			}
@@ -438,7 +438,6 @@ func itoa(n int) string {
 }
 
 const pageCSS = `<style>
-.sms-send{display:flex;flex-direction:column;gap:8px}
 .sms-to,.sms-in{padding:8px 10px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;
   font-size:14px;font-family:inherit}
 .sms-text{padding:10px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;font-size:14px;

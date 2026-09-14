@@ -251,7 +251,7 @@ func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message str
 	body := fmt.Sprintf(`<div class="card w-440 centered">
 <h3>Request an invite</h3>
 %s
-<form method="POST" action="/request-invite" class="mt-3">
+<form method="POST" action="/request-invite" class="form mt-3">
   <input type="email" name="email" placeholder="your@email.com" required class="w-full mb-2">
   <input type="text" name="reason" placeholder="Why you'd like to join (optional)" maxlength="500" class="w-full mb-2">
   %s
@@ -301,7 +301,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 <div class="card">
 <h4>Invite someone to Micro</h4>
 <p class="text-sm">Enter their email — they'll get a signup link.</p>
-<form method="POST" action="/invite" class="mt-2">
+<form method="POST" action="/invite" class="form mt-2">
 	<input type="email" name="email" placeholder="friend@example.com" required class="form-input w-full">
 	<button type="submit" class="mt-2">Send invite</button>
 </form>
@@ -1003,7 +1003,7 @@ func forwardingToggle(acc *auth.Account) string {
 	// Posted to /account with a named field, the same as every other control on
 	// this page — submit, land back here, see the result.
 	return app.Note(note) +
-		`<form method="POST" action="/account" class="d-inline">` +
+		`<form method="POST" action="/account" class="form-action d-inline">` +
 		`<input type="hidden" name="forwarding" value="` + state + `">` +
 		`<button type="submit" class="btn-link">` + submit + `</button></form>`
 }

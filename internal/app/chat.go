@@ -66,7 +66,7 @@ func searchBox(o SearchBoxOpts) string {
 		focus = " autofocus"
 	}
 
-	return `<div id="mu-search" class="` + wrap + `"><form id="mu-search-form" method="GET" action="/archive">
+	return `<div id="mu-search" class="` + wrap + `"><form class="search-bar" id="mu-search-form" method="GET" action="/archive">
     <input id="mu-search-input" type="search" name="q" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="256"` + focus + `>
     <button type="submit" aria-label="Search">&#x2192;</button>
   </form>` + note + `</div>

@@ -772,7 +772,7 @@ func renderSavedSearchesSection(userID string) string {
 		}
 		sb.WriteString(fmt.Sprintf(
 			`<span class="recent-search-item"><button type="button" class="recent-search-label" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);">%s</button> `+
-				`<form class="d-inline" action="/places/save/delete" method="POST">`+
+				`<form class="form-action d-inline" action="/places/save/delete" method="POST">`+
 				`<input type="hidden" name="id" value="%s">`+
 				`<button type="submit" class="btn-link recent-search-close" aria-label="Remove search" title="Remove">&times;</button></form></span>`,
 			escapeHTML(jsonStr(s.Type)), escapeHTML(jsonStr(s.Query)), escapeHTML(jsonStr(s.Location)),
