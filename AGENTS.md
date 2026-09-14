@@ -559,3 +559,11 @@ Use `.form-actions` for an action row. A search section owns its trailing space;
 a stack or section parent owns spacing between its children. Text fields and
 comment textareas fill their form; checkboxes and radios keep intrinsic widths.
 Do not reintroduce service-specific form, field, search, or button styling.
+
+Ordinary buttons and button links use one neutral outlined treatment and one
+control height (40px desktop, 44px mobile), including legacy `.mini-btn` actions.
+Reserve compact pills for noninteractive metadata. Do not restore black-filled
+submit variants or give ordinary action buttons per-page sizes. Use
+`.metadata-row` for sender/date rows, `.metric-grid` and `.metric` for system
+measurements, and `.table-scroll` around wide interactive tables so cells do not
+collapse to single-letter columns on mobile.

@@ -52,6 +52,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     const bad=await page.evaluate(()=>Array.from(document.querySelectorAll('#content input,#content select,#content textarea')).flatMap(e=>{
      if(['hidden','checkbox','radio','submit','button','range','color'].includes(e.type)||!e.getClientRects().length||e.closest('#chat-form,#mu-chat-form'))return [];
      const r=e.getBoundingClientRect(),p=e.parentElement.getBoundingClientRect();
+     if(e.closest('.table-scroll'))return r.width<120?[{name:e.name,width:r.width}]:[];
      return r.width<Math.min(e.tagName==='SELECT'?40:80,p.width-2)||r.right>innerWidth+1||r.left<0?[{name:e.name||e.id,width:r.width,left:r.left,right:r.right}]:[];
     }));
     assert(!bad.length,`${path} controls at ${width}, collapsed=${collapsed}, revealed=${revealed}: ${JSON.stringify(bad)}`);
@@ -93,7 +94,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
    if(path==='/blog?write=true') {
     const colors=await page.locator('.form-actions > *').evaluateAll(es=>es.map(e=>getComputedStyle(e).backgroundColor));
-    assert.notEqual(colors[0],colors[1],'primary and secondary actions look identical');
+    assert(colors.every(c=>c==='rgb(255, 255, 255)'),'ordinary actions have heavy filled backgrounds');
    }
    if(path==='/login'||path==='/signup') {
     const box=await page.locator(path==='/login'?'#login':'#signup').boundingBox();assert(Math.abs(box.x+box.width/2-width/2)<2,'auth form off center');
@@ -171,6 +172,38 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(path==='/components') {
     const styles=await page.evaluate(()=>{const s=e=>getComputedStyle(document.querySelector(e));return {border:s('.card').borderTopWidth,padding:s('.card').paddingLeft,preview:s('.collection-item').textDecorationLine,notice:s('.notice').backgroundColor,thumb:document.querySelector('.thumbnail img').getBoundingClientRect().width}});
     assert.equal(styles.border,'1px','cards have boundaries');assert.equal(styles.padding,'16px','cards have space');assert.equal(styles.preview,'none','collection previews are readable');assert.notEqual(styles.notice,'rgba(0, 0, 0, 0)','notice has a background');assert(styles.thumb<=320,'bounded thumbnails');
+   }
+   if(path.startsWith('/inbox?id=')) {
+    const row=page.locator('.ib-reply');
+    const boxes=await row.locator('a.btn,button').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {x:r.x,y:r.y,right:r.right,height:r.height,bg:s.backgroundColor};}));
+    assert(boxes.length>=2,'reply and assign fixture missing');
+    assert(Math.abs(boxes[0].height-boxes[1].height)<2,'inbox actions differ in size');
+    assert(boxes[1].y>boxes[0].y||boxes[1].x-boxes[0].right>=8,'inbox actions run together');
+    assert(boxes.every(b=>b.bg==='rgb(255, 255, 255)'),'inbox actions have filled backgrounds');
+    assert(await page.locator('.ib-from,.ib-msg .you').first().evaluate(e=>getComputedStyle(e).display==='flex'),'thread sender and time run together');
+    await page.locator('.ib-assign-open').click();
+    const dialog=page.locator('#ib-assign');assert(await dialog.isVisible(),'assign dialog failed to open');
+    const dr=await dialog.boundingBox();assert(dr.x>=0&&dr.x+dr.width<=width,'assign dialog overflows');
+    const ask=await dialog.locator('textarea').boundingBox();assert(ask.width>=dr.width-52,'assignment field is too narrow');
+    await page.keyboard.press('Escape');
+   }
+   if(path==='/admin/server') {
+    assert.equal(await page.locator('.metric-grid .metric').count(),5,'server metrics missing');
+    const metrics=await page.locator('.metric').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().width));
+    assert(metrics.every(w=>w>=140),'server metrics compressed');
+   }
+   if(path==='/admin/oauth') {
+    const scroller=page.locator('.table-scroll');
+    assert(await scroller.evaluate(e=>e.scrollWidth>=760&&e.getBoundingClientRect().right<=innerWidth),'OAuth table is squeezed or exceeds viewport');
+    assert(await page.locator('input[name=redirect_uri]').first().evaluate(e=>e.getBoundingClientRect().width>=160),'OAuth redirect field is too narrow');
+    await scroller.evaluate(e=>e.scrollLeft=e.scrollWidth);
+    const remove=page.getByRole('button',{name:'Remove'}).first();const r=await remove.boundingBox();
+    assert(r.x>=0&&r.x+r.width<=width,'OAuth remove action cannot be reached by scrolling');
+    await scroller.evaluate(e=>e.scrollLeft=0);
+   }
+   if(path==='/admin/moderate') {
+    const card=page.locator('#flagged-content .card').first();assert(await card.isVisible(),'moderation fixture empty');
+    assert(await card.locator('.form-actions').evaluate(e=>parseFloat(getComputedStyle(e).gap)>=8),'moderation actions lack spacing');
    }
    if(path==='/inbox')assert.equal(await page.locator('article.message').count(),1,'priority should show one communication');
    if(path==='/chat'){

@@ -1,11 +1,9 @@
 /* Base UI kit: neutral surfaces, shared controls and container-owned spacing. */
-:root { --control-h:40px; --control-h-sm:30px; --control-font-sm:13px; --control-pad-x-sm:10px; --control-pad-x:12px; --control-font:14px }
+:root { --control-h:40px; --control-h-sm:var(--control-h); --control-font-sm:14px; --control-pad-x-sm:14px; --control-pad-x:12px; --control-font:14px }
 button,input,textarea,select { font:inherit; color:var(--text-primary,#171717) }
-button,.btn,.mini-btn { color:var(--text-primary,#171717); display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--control-h,40px); padding:8px 14px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; font-size:14px; font-weight:500; line-height:1.4; text-decoration:none; cursor:pointer; transition:background .15s,border-color .15s; }
+button,button[class],a.btn,a.mini-btn,.btn,.mini-btn { color:var(--text-primary,#171717); display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--control-h,40px); padding:8px 14px; border:1px solid var(--border-color,#e5e5e5); border-radius:8px; background:#fff; font-size:14px; font-weight:500; line-height:1.4; text-decoration:none; cursor:pointer; transition:background .15s,border-color .15s; }
 button:hover,.btn:hover,.mini-btn:hover { background:#f5f5f5; border-color:#cfcfcf; color:var(--text-primary,#171717); text-decoration:none }
 button:disabled,.btn[aria-disabled=true] { opacity:.45; cursor:default }
-.btn,.form > :where(button:not([type=button]):not([type=reset])),.form-actions > :where(button:not([type=button]):not([type=reset])),.search-bar > :where(button:not([type=button]):not([type=reset])) { background:var(--btn-primary,#171717); border-color:var(--btn-primary,#171717); color:#fff }
-.btn:hover,.form > :where(button:not([type=button]):not([type=reset])):hover,.form-actions > :where(button:not([type=button]):not([type=reset])):hover,.search-bar > :where(button:not([type=button]):not([type=reset])):hover { background:#333; border-color:#333; color:#fff }
 .btn-quiet,.btn-secondary,.btn-danger { background:#fff; border-color:var(--border-color,#e5e5e5); color:var(--text-primary,#171717) }
 .btn-quiet:hover,.btn-secondary:hover { background:#f5f5f5; border-color:#cfcfcf; color:var(--text-primary,#171717) }
 .btn-danger:hover { background:#fff5f5; border-color:#e6b3b3; color:var(--btn-danger,#a12424) }
@@ -46,7 +44,7 @@ fieldset.form-group > legend { padding: 0; }
 .choice { position: relative; max-width: 100%; }
 .choice input { position: absolute; opacity: 0; width: 0; height: 0; }
 .choice span { display: block; border: 1px solid var(--border-color,#ddd); border-radius: var(--border-radius,6px); padding: 5px 12px; font-size: var(--control-font,13px); cursor: pointer; overflow-wrap: anywhere; }
-.choice input:checked + span { background: var(--btn-primary,#111); border-color: var(--btn-primary,#111); color: #fff; }
+.choice input:checked + span { background: #eceef0; border-color: #b8bec5; color: var(--text-primary,#111); }
 .choice input:focus-visible + span { outline: 2px solid var(--text-primary,#111); outline-offset: 2px; }
 .disclosure > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: var(--space-control); }
 .disclosure > summary::-webkit-details-marker { display: none; }
@@ -138,8 +136,7 @@ a.link-text { color: var(--link-color, #0066cc); text-decoration: underline !imp
 .nav-account-disclosure summary::-webkit-details-marker { display:none }
 .nav-account-menu { position:absolute;bottom:calc(100% + 8px);left:0;right:0;padding:8px;background:var(--card-background,#fff);border:1px solid var(--border-color,#ddd);border-radius:4px;box-shadow:0 4px 16px #0001;z-index:60;max-height:60dvh;overflow:auto }
 .nav-account-disclosure:not([open])>.nav-account-menu { display:none }
-.attention-actions { display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:12px 0 0 }
-.attention-actions button { font:inherit;font-size:13px;font-weight:400;padding:0;background:none;border:0;color:var(--text-secondary,#555);cursor:pointer }
+.attention-actions { display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-control);margin:var(--space-field) 0 0 }
 #nav-container .nav-bottom { margin-top:auto; }
 @media(max-width:900px) {
 #nav-container { padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); }
@@ -164,9 +161,28 @@ a.link-text { color: var(--link-color, #0066cc); text-decoration: underline !imp
 b, strong { font-weight:var(--font-weight-bold,600); }
 h1, h2, h3, h4, h5, h6, th { font-weight:var(--font-weight-bold,600); }
 
-/* Explicit compact controls; ordinary forms keep the standard control size. */
-.mini-btn,.num-field,.pill,a.pill { font-size:var(--control-font-sm,13px); min-height:var(--control-h-sm,30px); padding:4px var(--control-pad-x-sm,10px) }
-.pill,a.pill { display:inline-flex; align-items:center }
+/* Legacy action classes use the same size as ordinary form controls. */
+.mini-btn,.num-field,button.pill,a.pill { font-size:var(--control-font-sm,13px); min-height:var(--control-h-sm,30px); padding:8px var(--control-pad-x-sm,14px) }
+.pill { display:inline-flex; align-items:center }
+span.pill { padding:2px 8px; font-size:12px; min-height:0 }
 .field,.field-wide { max-width:100% }
 .form input[type=checkbox],.form input[type=radio] { width:auto }
 .form-actions > button[formmethod=dialog] { background:#fff; color:var(--text-primary); border-color:var(--border-color) }
+
+/* Reusable metadata, metrics and action composition. */
+.metadata-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 16px; min-width:0; font-size:13px; color:var(--text-secondary); overflow-wrap:anywhere }
+.metadata-row > :last-child { margin-inline-start:auto }
+.metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr)); gap:16px }
+.metric { display:flex; flex-direction:column; gap:8px; min-width:0; padding:16px; border:1px solid var(--border-color); border-radius:8px }
+.metric-label { font-size:13px; color:var(--text-secondary) }
+.metric-value { font-size:18px; font-weight:500; overflow-wrap:anywhere }
+.detail-row { display:flex; justify-content:space-between; gap:16px; padding-block:12px; border-bottom:1px solid var(--border-color); overflow-wrap:anywhere }
+.detail-row > :last-child { display:flex; align-items:baseline; gap:8px; text-align:right; min-width:0 }
+.action-note { flex-basis:100%; font-size:13px; color:var(--text-secondary); overflow-wrap:anywhere }
+
+.table-scroll { width:100%; min-width:0; overflow-x:auto; border:1px solid var(--border-color); border-radius:8px }
+.table-scroll > table { display:table; width:100%; min-width:760px; margin:0; overflow-wrap:normal }
+.table-scroll td { max-width:24rem }
+.table-scroll :is(code,.form) { overflow-wrap:anywhere }
+.table-scroll .form { min-width:12rem }
+.table-scroll :is(button,.btn) { white-space:nowrap }

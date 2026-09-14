@@ -51,9 +51,9 @@ func PillLink(label, href string, on bool) string {
 // of them are forms with a token in; back is a link.
 func Actions(back string, controls ...string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="actions"><div class="actions-back">` + back + `</div>`)
+	b.WriteString(`<div class="actions section-actions between"><div class="actions-back">` + back + `</div>`)
 	if len(controls) > 0 {
-		b.WriteString(`<div class="actions-set">`)
+		b.WriteString(`<div class="actions-set form-actions">`)
 		for _, c := range controls {
 			b.WriteString(c)
 		}

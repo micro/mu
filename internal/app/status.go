@@ -480,10 +480,10 @@ func renderStatusHTML(status StatusResponse) string {
 		statusText = "Issues Detected"
 	}
 
-	sb.WriteString(`<div class="status-page">`)
+	sb.WriteString(`<div class="status-page page-section">`)
 
 	// Header
-	sb.WriteString(fmt.Sprintf(`<div class="status-header">
+	sb.WriteString(fmt.Sprintf(`<div class="section-actions">
 <span class="%s status-icon">%s</span>
 <span class="text-18">%s</span>
 </div>`, statusClass, statusIcon, statusText))
@@ -491,40 +491,40 @@ func renderStatusHTML(status StatusResponse) string {
 	// Disk warning
 	diskWarning := ""
 	if status.Disk.Percent > 90 {
-		diskWarning = ` class="status-error"`
+		diskWarning = ` status-error`
 	} else if status.Disk.Percent > 75 {
-		diskWarning = ` class="status-warn"`
+		diskWarning = ` status-warn`
 	}
 
 	// System Info
-	sb.WriteString(`<div class="status-section">
+	sb.WriteString(`<div class="page-section">
 <h3>System</h3>
-<div class="system-info">
-<div class="system-info-item">
-<div class="system-info-label">Uptime</div>
-<div class="system-info-value">` + status.Uptime + `</div>
+<div class="metric-grid">
+<div class="metric">
+<div class="metric-label">Uptime</div>
+<div class="metric-value">` + status.Uptime + `</div>
 </div>
-<div class="system-info-item">
-<div class="system-info-label">Memory</div>
-<div class="system-info-value">` + fmt.Sprintf("%dMB / %dMB", status.Memory.Alloc, status.Memory.Sys) + `</div>
+<div class="metric">
+<div class="metric-label">Memory</div>
+<div class="metric-value">` + fmt.Sprintf("%dMB / %dMB", status.Memory.Alloc, status.Memory.Sys) + `</div>
 </div>
-<div class="system-info-item">
-<div class="system-info-label">Disk</div>
-<div class="system-info-value"` + diskWarning + `>` + fmt.Sprintf("%.1fGB / %.1fGB (%.0f%%)", status.Disk.UsedGB, status.Disk.TotalGB, status.Disk.Percent) + `</div>
+<div class="metric">
+<div class="metric-label">Disk</div>
+<div class="metric-value` + diskWarning + `">` + fmt.Sprintf("%.1fGB / %.1fGB (%.0f%%)", status.Disk.UsedGB, status.Disk.TotalGB, status.Disk.Percent) + `</div>
 </div>
-<div class="system-info-item">
-<div class="system-info-label">Online Users</div>
-<div class="system-info-value">` + fmt.Sprintf("%d", status.OnlineUsers) + `</div>
+<div class="metric">
+<div class="metric-label">Online Users</div>
+<div class="metric-value">` + fmt.Sprintf("%d", status.OnlineUsers) + `</div>
 </div>
-<div class="system-info-item">
-<div class="system-info-label">Index Entries</div>
-<div class="system-info-value">` + fmt.Sprintf("%d", status.IndexStats.Entries) + `</div>
+<div class="metric">
+<div class="metric-label">Index Entries</div>
+<div class="metric-value">` + fmt.Sprintf("%d", status.IndexStats.Entries) + `</div>
 </div>
 </div>
 </div>`)
 
 	// Services
-	sb.WriteString(`<div class="status-section">
+	sb.WriteString(`<div class="page-section">
 <h3>Services</h3>`)
 	for _, svc := range status.Services {
 		icon := "✓"
@@ -537,7 +537,7 @@ func renderStatusHTML(status StatusResponse) string {
 		if svc.Details != "" {
 			details = fmt.Sprintf(`<span class="status-details">%s</span>`, svc.Details)
 		}
-		sb.WriteString(fmt.Sprintf(`<div class="status-item">
+		sb.WriteString(fmt.Sprintf(`<div class="detail-row">
 <span class="status-name">%s</span>
 <span class="status-value">%s<span class="status-icon %s">%s</span></span>
 </div>`, svc.Name, details, class, icon))
@@ -545,7 +545,7 @@ func renderStatusHTML(status StatusResponse) string {
 	sb.WriteString(`</div>`)
 
 	// Configuration
-	sb.WriteString(`<div class="status-section">
+	sb.WriteString(`<div class="page-section">
 <h3>Configuration</h3>`)
 	for _, cfg := range status.Config {
 		icon := "✓"
@@ -558,7 +558,7 @@ func renderStatusHTML(status StatusResponse) string {
 		if cfg.Details != "" {
 			details = fmt.Sprintf(`<span class="status-details">%s</span>`, cfg.Details)
 		}
-		sb.WriteString(fmt.Sprintf(`<div class="status-item">
+		sb.WriteString(fmt.Sprintf(`<div class="detail-row">
 <span class="status-name">%s</span>
 <span class="status-value">%s<span class="status-icon %s">%s</span></span>
 </div>`, cfg.Name, details, class, icon))

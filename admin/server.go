@@ -76,7 +76,7 @@ func storesTable() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<h3>Stores</h3><table class="stats-table">`)
+	b.WriteString(`<section class="page-section"><h3>Stores</h3><table class="stats-table"><thead><tr><th>Store</th><th class="cell-right">Size</th></tr></thead><tbody>`)
 	for _, s := range stores {
 		where := html.EscapeString(s.Name)
 		if s.Files > 1 {
@@ -85,12 +85,13 @@ func storesTable() string {
 		if stale[strings.TrimSuffix(s.Name, "/")] {
 			where += ` <span class="text-muted text-sm">not written</span>`
 		}
-		b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, where, app.Bytes(s.Size)))
+		b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td class="cell-right">%s</td></tr>`, where, app.Bytes(s.Size)))
 	}
-	b.WriteString(`</table>`)
+	b.WriteString(`</tbody></table>`)
 	b.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%s in the data directory. `+
 		`Each of these is rewritten whole when it changes, except where marked. `+
 		`Search index: %s.</p>`, app.Bytes(total), html.EscapeString(data.SearchBackend())))
+	b.WriteString(`</section>`)
 	return b.String()
 }
 
@@ -102,9 +103,9 @@ func startupTable() string {
 	}
 	sort.SliceStable(steps, func(i, j int) bool { return steps[i].Duration > steps[j].Duration })
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf(`<section class="page-section"><h3>Startup</h3><p>Initialization: <strong>%s</strong>. Current process, slowest loaders first. Timings cover service loading through route registration.</p><table class="stats-table"><thead><tr><th>Component</th><th>Time</th></tr></thead><tbody>`, total.Round(time.Millisecond)))
+	b.WriteString(fmt.Sprintf(`<section class="page-section"><h3>Startup</h3><p>Initialization: <strong>%s</strong>. Current process, slowest loaders first. Timings cover service loading through route registration.</p><table class="stats-table"><thead><tr><th>Component</th><th class="cell-right">Time</th></tr></thead><tbody>`, total.Round(time.Millisecond)))
 	for _, step := range steps {
-		b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%.1f ms</td></tr>`, html.EscapeString(step.Component), float64(step.Duration)/float64(time.Millisecond)))
+		b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td class="cell-right">%.1f ms</td></tr>`, html.EscapeString(step.Component), float64(step.Duration)/float64(time.Millisecond)))
 	}
 	b.WriteString(`</tbody></table><p class="text-muted text-sm">Loader start and completion events are also recorded in the server log.</p></section>`)
 	return b.String()

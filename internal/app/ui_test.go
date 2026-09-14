@@ -106,7 +106,7 @@ func TestActionsTakesMarkup(t *testing.T) {
 	if !strings.Contains(got, `<button class="pill">Delete</button>`) {
 		t.Errorf("Actions escaped a control it was handed: %s", got)
 	}
-	if !strings.Contains(got, `class="actions"`) {
+	if !strings.Contains(got, `class="actions section-actions between"`) {
 		t.Errorf("Actions lost its container: %s", got)
 	}
 }

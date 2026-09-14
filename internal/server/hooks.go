@@ -39,7 +39,6 @@ import (
 	"mu/internal/backup"
 	"mu/internal/data"
 	"mu/internal/event"
-	"mu/internal/google"
 	"mu/internal/notes"
 	"mu/internal/origin"
 	"mu/internal/push"
@@ -83,66 +82,6 @@ const mailHistoryTurns = 6
 
 // wireHooks connects the building blocks to each other.
 func wireHooks() {
-	// Attach the calendar somebody already keeps. events owns scheduling and
-	// knows nothing about Google; this is the only place the two meet, and it
-	// stays unset on an instance with no Google credentials — one calendar
-	// instead of two, rather than a broken second one.
-	startupStep("google.Load", google.Load)
-	if google.Configured() {
-		events.ExternalConnected = func(owner string) bool {
-			return google.HasScope(owner, google.CalendarScope)
-		}
-		events.ExternalAccount = google.ConnectedEmail
-		events.ExternalBusy = func(owner string, from, to time.Time) ([]events.Slot, error) {
-			if !google.HasScope(owner, google.CalendarScope) {
-				return nil, nil
-			}
-			periods, err := google.Busy(owner, from, to)
-			if err != nil {
-				app.Log("events", "google busy for %s: %v", owner, err)
-				return nil, fmt.Errorf("Google Calendar availability is unavailable; try again or check your calendar selection at /events")
-			}
-			slots := make([]events.Slot, 0, len(periods))
-			for _, p := range periods {
-				slots = append(slots, events.Slot{Start: p.Start, End: p.End})
-			}
-			return slots, nil
-		}
-		contacts.ExternalConnected = func(owner string) bool {
-			return google.HasScope(owner, google.ContactsScope)
-		}
-		contacts.ExternalFind = func(owner, query string) []contacts.External {
-			people, err := google.SearchContacts(owner, query, 10)
-			if err != nil {
-				if err != google.ErrNotConnected {
-					app.Log("contacts", "google contacts for %s: %v", owner, err)
-				}
-				return nil
-			}
-			out := make([]contacts.External, 0, len(people))
-			for _, p := range people {
-				out = append(out, contacts.External{Name: p.Name, Email: p.Email, Phone: p.Phone})
-			}
-			return out
-		}
-		events.ExternalEntries = func(owner string, from, to time.Time, limit int) []events.External {
-			entries, err := google.Events(owner, from, to, limit)
-			if err != nil {
-				if err != google.ErrNotConnected {
-					app.Log("events", "google events for %s: %v", owner, err)
-				}
-				return nil
-			}
-			out := make([]events.External, 0, len(entries))
-			for _, e := range entries {
-				out = append(out, events.External{
-					UID: e.UID, URL: e.URL, Title: e.Title, Start: e.Start, End: e.End,
-					Location: e.Location, AllDay: e.AllDay, Source: events.ExternalName,
-				})
-			}
-			return out
-		}
-	}
 
 	events.OnFire = func(accountID, title, note string) {
 		// Nothing goes to the public timeline.

@@ -84,9 +84,9 @@ func searchBox(o SearchBoxOpts) string {
 #mu-search-form:focus-within{border-color:#999}
 #mu-search-input{flex:1;border:0;outline:0;font:inherit;font-size:16px;padding:8px 0;background:transparent;
   color:var(--text-primary,#111);min-width:0}
-#mu-search-form button{flex:none;border:0;border-radius:4px;background:var(--btn-primary,#111);color:#fff;
+#mu-search-form button{flex:none;border:0;border-radius:4px;background:#f0f1f2;color:var(--text-primary,#171717);
   font:inherit;width:32px;height:32px;cursor:pointer}
-#mu-search-form button:hover{background:var(--btn-primary-hover,#333)}
+#mu-search-form button:hover{background:#e7e9eb}
 .mu-search-why{max-width:760px;margin:8px 0 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
 </style>`
 }

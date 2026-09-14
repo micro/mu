@@ -39,7 +39,7 @@ func waiting(r *http.Request, accountID string) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="ib-held"><div class="ib-held-head">` +
+	b.WriteString(`<div class="ib-held page-section"><div class="ib-held-head page-stack compact-stack">` +
 		`<strong>Waiting to be let in</strong>` +
 		`<span class="ib-held-note">From people nobody here has written to. ` +
 		`Nothing has acted on these.</span></div>`)
@@ -71,8 +71,8 @@ func heldRow(r *http.Request, accountID string, t thread.Thread) string {
 		said = trimTo(strings.TrimSpace(msgs[0].Text), 300)
 	}
 
-	return `<div class="ib-held-row">` +
-		`<div class="ib-held-who">` +
+	return `<div class="ib-held-row page-section">` +
+		`<div class="ib-held-who metadata-row">` +
 		`<a href="/inbox?id=` + url.QueryEscape(t.ID) + `">` + html.EscapeString(who) + `</a>` +
 		app.Pill(app.ClientName(t.Client)) +
 		`<span class="ib-held-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></div>` +
@@ -102,7 +102,7 @@ func heldActions(r *http.Request, t thread.Thread) string {
 			html.EscapeString(trimTo(t.Key, 20)) + `</button></form>`
 	}
 
-	return `<div class="ib-held-acts">` +
+	return `<div class="ib-held-acts form-actions">` +
 		`<form method="post" action="/inbox/held" class="form-action d-inline">` + csrf +
 		`<input type="hidden" name="do" value="let">` +
 		`<button class="pill" type="submit">Let in</button></form>` +

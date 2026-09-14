@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"html"
 	"net/http"
-	"sort"
 	"strings"
-	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/google"
 )
 
 // Handler serves the /events page: schedule a reminder, see what's upcoming,
@@ -30,17 +27,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		switch r.FormValue("action") {
-		case "calendars":
-			if !auth.StrictCSRF(r) {
-				http.Error(w, "Invalid form token", http.StatusForbidden)
-				return
-			}
-			if err := google.SetCalendars(owner, r.PostForm["calendars"]); err != nil {
-				http.Redirect(w, r, "/events?calendar=failed", http.StatusSeeOther)
-				return
-			}
-			http.Redirect(w, r, "/events?calendar=saved", http.StatusSeeOther)
-			return
 		case "cancel":
 			Cancel(owner, r.FormValue("id"))
 		case "create":
@@ -73,26 +59,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(briefScheduleHTML(owner, csrf))
 
 	up := Upcoming(owner)
-	ext := Overview(owner, 0)
 
-	if len(up) == 0 && len(ext) == 0 {
+	if len(up) == 0 {
 		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Choose New to add an event, or ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
 	} else {
 		b.WriteString(`<h3 class="lead-15 m-0 mb-3">Upcoming</h3>`)
 		b.WriteString(`<div class="d-flex flex-column gap-2">`)
-		for _, row := range mergedRows(up, ext) {
-			if row.Event != nil {
-				if row.Event.Kind != "brief" {
-					b.WriteString(eventRow(row.Event, csrf))
-				}
-			} else {
-				b.WriteString(externalRow(row.External))
+		for _, e := range up {
+			if e.Kind != "brief" {
+				b.WriteString(eventRow(e, csrf))
 			}
 		}
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(calendarCard(owner, r.URL.Query().Get("calendar"), csrf))
 	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: "Events", Description: "Your scheduled reminders and events", HTML: b.String()})
@@ -109,7 +89,6 @@ func eventRow(e *Event, csrf string) string {
   <div class="text-sm link-colour">%s</div>
   %s
 </div>
-<a href="%s" target="_blank" rel="noopener" title="Add to Google Calendar" class="text-xs text-muted no-underline nowrap">Add to calendar</a>
 <form method="POST" action="/events" class="form-action m-0">
   <input type="hidden" name="_csrf" value="%s">
   <input type="hidden" name="action" value="cancel">
@@ -121,109 +100,7 @@ func eventRow(e *Event, csrf string) string {
 		html.EscapeString(e.Title),
 		e.When.Local().Format("Mon 2 Jan, 15:04"),
 		note,
-		html.EscapeString(GoogleCalendarURL(e.Title, e.When, e.Note)),
 		html.EscapeString(csrf),
 		html.EscapeString(e.ID),
 	)
-}
-
-// row is one line of the upcoming list, from either calendar.
-type row struct {
-	When     time.Time
-	Event    *Event
-	External External
-}
-
-// mergedRows interleaves both calendars in time order, which is the only order
-// a day happens in. Two separate lists would have left the reader doing the
-// merge, and the merge is the whole point of attaching one.
-func mergedRows(up []*Event, ext []External) []row {
-	rows := make([]row, 0, len(up)+len(ext))
-	for _, e := range up {
-		rows = append(rows, row{When: e.When, Event: e})
-	}
-	for _, x := range ext {
-		rows = append(rows, row{When: x.Start, External: x})
-	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].When.Before(rows[j].When) })
-	return rows
-}
-
-// externalRow renders an entry Mu does not own: no cancel button, because Mu
-// cannot cancel it, and a source label so nobody reads it as something Mu
-// scheduled.
-func externalRow(x External) string {
-	when := x.Start.Local().Format("Mon 2 Jan, 15:04")
-	if x.AllDay {
-		when = x.Start.Local().Format("Mon 2 Jan") + ", all day"
-	}
-	where := ""
-	if x.Location != "" {
-		where = `<div class="text-xs text-muted">` + html.EscapeString(x.Location) + `</div>`
-	}
-	source := x.Source
-	if source == "" {
-		source = ExternalName
-	}
-	return fmt.Sprintf(`<div class="pick-row-box soft">
-<div class="grow">
-  <a class="text-base no-underline" href="%s">%s</a>
-  <div class="text-sm link-colour">%s</div>
-  %s
-</div>
-<span class="text-2xs text-muted nowrap">%s</span>
-</div>`, html.EscapeString(externalURL(x)), html.EscapeString(x.Title), html.EscapeString(when), where, html.EscapeString(source))
-}
-
-// calendarCard is the ask, and afterwards the receipt.
-//
-// It sits below the list rather than above it, because someone arriving at
-// /events came to see their events. An empty page that leads with a permission
-// request is a product asking before it has done anything.
-func calendarCard(owner, status, csrf string) string {
-	if !CanConnectExternal() {
-		return ""
-	}
-
-	note := ""
-	switch status {
-	case "saved":
-		note = `<p class="notice ok">Calendar selection saved.</p>`
-	case "connected":
-		note = `<p class="notice ok">Connected. Your calendar is now included in what's scheduled and when you're free.</p>`
-	case "disconnected":
-		note = `<p class="text-sm text-muted m-0 mb-2">Disconnected. The access was revoked at Google and forgotten here.</p>`
-	case "declined":
-		note = `<p class="text-sm text-muted m-0 mb-2">No calendar access granted — nothing changed.</p>`
-	case "failed":
-		note = `<p class="notice bad">That didn't complete. Try again.</p>`
-	}
-
-	var b strings.Builder
-	b.WriteString(`<div class="card">`)
-	b.WriteString(note)
-
-	if HasExternal(owner) {
-		who := ""
-		if ExternalAccount != nil {
-			if e := ExternalAccount(owner); e != "" {
-				who = " (" + html.EscapeString(e) + ")"
-			}
-		}
-		b.WriteString(`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(ExternalName) + who + `</h4>`)
-		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Read-only. Mu can see what's on it, and cannot change it.</p>`)
-		b.WriteString(calendarsHTML(owner, csrf))
-		// No disconnect here. Withdrawing access is one action covering
-		// everything granted — Google revokes the whole grant at once — so it
-		// belongs with the rest of the inventory rather than repeated on every
-		// page that happens to use a piece of it.
-		b.WriteString(`<p class="text-sm text-muted m-0">Manage it in ` +
-			`<a href="/account">your account</a>.</p>`)
-	} else {
-		b.WriteString(`<h4 class="m-0 mb-2 text-base">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
-		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now "when am I free" only counts what you scheduled here. Connect Google Calendar and choose which calendars to include. Read-only — Mu can see what's on it, and cannot change it.</p>`)
-		b.WriteString(`<a href="/oauth2/google/calendar" class="btn">Connect ` + html.EscapeString(ExternalName) + `</a>`)
-	}
-	b.WriteString(`</div>`)
-	return b.String()
 }

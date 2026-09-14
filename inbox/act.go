@@ -227,7 +227,7 @@ func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho 
 	// with no order between them — and one of the four does something and three
 	// fill in a box. Under the textarea they are what they are: ways to fill it
 	// in. The action row is last, which is where a dialog's actions go.
-	b.WriteString(`<div class="ib-ask-hints">`)
+	b.WriteString(`<div class="ib-ask-hints form-actions">`)
 	for _, s := range []string{
 		"Summarise this",
 		"Draft a reply",
@@ -315,7 +315,7 @@ func agentPicker(accountID string, t *thread.Thread) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<label class="ib-assign-who">Give it to`)
+	b.WriteString(`<label class="ib-assign-who field-label">Give it to`)
 	b.WriteString(`<select name="agent">`)
 	// The default first, and named rather than called "default": it is an agent
 	// like the others and the list should read as a list of agents.

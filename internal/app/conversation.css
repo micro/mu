@@ -7,7 +7,7 @@
 #mu-chat-input { flex:1; min-width:0; width:100%; min-height:36px; max-height:140px; resize:none; margin:0; padding:7px; border:0; border-radius:0; box-shadow:none; font:16px/1.4 system-ui,sans-serif; }
 #mu-chat-input:focus { outline:0; }
 #mu-chat-form button { display:flex; align-items:center; justify-content:center; flex:none; width:36px; height:36px; padding:6px; border:0; background:transparent; color:#444; border-radius:8px; cursor:pointer; }
-#mu-chat-form button[type=submit] { background:#222; color:white; font-size:22px; }
+#mu-chat-form button[type=submit] { background:#f0f1f2; color:#333; font-size:22px; }
 #mu-chat-form button:hover { background:#eee; color:#111; }
 #mu-chat-form button[aria-pressed=true] { background:#fde9e9; color:#9e2020; }
 #mu-chat-form button[hidden] { display:none; }

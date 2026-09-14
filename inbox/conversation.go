@@ -114,7 +114,7 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="ib-conv"><div class="ib-head"><span class="pill">` +
+	b.WriteString(`<div class="ib-conv page-stack"><div class="ib-head metadata-row"><span class="pill">` +
 		html.EscapeString(app.ClientName(t.Client)) + `</span><span class="ib-started">started ` +
 		html.EscapeString(app.TimeAgo(t.Started)) + `</span></div>`)
 	if titled {
@@ -158,7 +158,7 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	// same link inside it. Everything else that cannot be answered here still
 	// needs saying.
 	if to == "" && room(t) == "" {
-		b.WriteString(`<p class="ib-note">This happened on ` +
+		b.WriteString(`<p class="ib-note text-sm text-muted">This happened on ` +
 			html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
 			`the way it arrived and the agent picks it up in the same thread.` +
 			backTo(t) + `</p>`)
@@ -261,7 +261,7 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 // verbs, same weight, one row.
 func actionBar(t *thread.Thread, to string, canAssign bool) string {
 	var b strings.Builder
-	b.WriteString(`<div class="ib-reply">`)
+	b.WriteString(`<div class="ib-reply form-actions">`)
 	switch {
 	case to != "":
 		subject := strings.TrimSpace(t.Subject)
@@ -293,7 +293,7 @@ func actionBar(t *thread.Thread, to string, canAssign bool) string {
 	// form — and it is drawn only where there is a dialog to open. See
 	// conversationPane's assign parameter.
 	if canAssign {
-		b.WriteString(`<button type="button" class="ib-assign-open" ` +
+		b.WriteString(`<button type="button" class="ib-assign-open btn" ` +
 			`onclick="muAssignOpen()">Assign to agent</button>`)
 	}
 	// Where the reply goes, and only when that is not obvious.
@@ -309,7 +309,7 @@ func actionBar(t *thread.Thread, to string, canAssign bool) string {
 	// conversation is on, so which one it chose is a real fact that a reader
 	// cannot otherwise see and may want to correct.
 	if to != "" && !onThisInstance(to) {
-		b.WriteString(`<span class="ib-reply-who">Reply goes to ` +
+		b.WriteString(`<span class="ib-reply-who action-note">Reply goes to ` +
 			html.EscapeString(to) + `</span>`)
 	}
 	b.WriteString(`</div>`)
@@ -376,7 +376,7 @@ func partyLine(accountID string, t *thread.Thread) string {
 	if people < 2 {
 		return ""
 	}
-	return `<div class="ib-parties">Between ` + html.EscapeString(strings.Join(names, ", ")) +
+	return `<div class="ib-parties text-sm text-muted">Between ` + html.EscapeString(strings.Join(names, ", ")) +
 		` and the agent</div>`
 }
 
@@ -498,7 +498,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 		rendered = mail.Rendered(&mail.Message{Body: m.Text, FromID: m.From})
 	}
 	if rendered != "" {
-		return `<div class="ib-msg card ib-person">` + fromLine(who, m.At) + addressLine(m) +
+		return `<div class="ib-msg card page-stack ib-person">` + fromLine(who, m.At) + addressLine(m) +
 			`<div class="ib-body">` + rendered + `</div></div>`
 	}
 	// What they wrote, and — folded away — the part of it that is this
@@ -508,7 +508,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 	// renderer above and come out with working links, and what a person wrote
 	// came out as text — so the same URL in the same conversation was clickable
 	// on one line and not on the next. See app.Linkify for the ordering.
-	return `<div class="ib-msg card ib-person">` + fromLine(who, m.At) + addressLine(m) +
+	return `<div class="ib-msg card page-stack ib-person">` + fromLine(who, m.At) + addressLine(m) +
 		`<div class="ib-body ib-typed">` + app.Linkify(html.EscapeString(body)) + `</div>` +
 		quotedBlock(quote) + `</div>`
 }
@@ -519,7 +519,7 @@ func textConversation(t *thread.Thread) bool {
 }
 
 func messageOpen(t *thread.Thread, m thread.Message, accountID, role string) string {
-	classes := "ib-msg card " + role
+	classes := "ib-msg card page-stack " + role
 	if textConversation(t) {
 		classes = "ib-msg message " + role
 	}
@@ -537,7 +537,7 @@ func messageFrom(t *thread.Thread, who string, at time.Time) string {
 	if t.Client != thread.ChatClient {
 		return fromLine(who, at)
 	}
-	return `<div class="you"><span class="ib-who-l">` + html.EscapeString(who) +
+	return `<div class="you metadata-row"><span class="ib-who-l">` + html.EscapeString(who) +
 		`</span> <span class="msg-when" data-timestamp="` + strconv.FormatInt(at.Unix(), 10) + `">` +
 		html.EscapeString(app.TimeAgo(at)) + `</span></div>`
 }
@@ -552,7 +552,7 @@ func quotedBlock(quoted string) string {
 	if strings.TrimSpace(quoted) == "" {
 		return ""
 	}
-	return `<details class="ib-quoted"><summary title="Show quoted text" ` +
+	return `<details class="ib-quoted disclosure"><summary title="Show quoted text" ` +
 		`aria-label="Show quoted text">&middot;&middot;&middot;</summary>` +
 		`<div class="ib-quoted-text">` + app.Linkify(html.EscapeString(quoted)) + `</div></details>`
 }
@@ -566,7 +566,7 @@ func quotedBlock(quoted string) string {
 // text colour and the time is muted at the far end, the way a mail client sets
 // it, so a thread reads down its left edge.
 func fromLine(who string, at time.Time) string {
-	return `<div class="ib-from"><span class="ib-who-l">` + html.EscapeString(who) +
+	return `<div class="ib-from metadata-row"><span class="ib-who-l">` + html.EscapeString(who) +
 		`</span><span class="ib-at">` + html.EscapeString(app.TimeAgo(at)) + `</span></div>`
 }
 
@@ -609,12 +609,12 @@ func addressLine(m thread.Message) string {
 	}
 	var parts []string
 	if from != "" {
-		parts = append(parts, `<span class="ib-addr-k">from</span> `+html.EscapeString(from))
+		parts = append(parts, `<span><span class="ib-addr-k">from</span> `+html.EscapeString(from)+`</span>`)
 	}
 	if to != "" {
-		parts = append(parts, `<span class="ib-addr-k">to</span> `+html.EscapeString(to))
+		parts = append(parts, `<span><span class="ib-addr-k">to</span> `+html.EscapeString(to)+`</span>`)
 	}
-	return `<div class="ib-addrs">` + strings.Join(parts, `<span class="ib-addr-sep">·</span>`) + `</div>`
+	return `<div class="ib-addrs section-actions text-muted">` + strings.Join(parts, `<span class="ib-addr-sep">·</span>`) + `</div>`
 }
 
 // mailBody is the stored mail for a recorded message, rendered — or empty when
