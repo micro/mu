@@ -212,7 +212,7 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every
 	// time, because nothing says which of these you have dealt with.
-	cls := "ib-row"
+	cls := "ib-row grow page-stack compact-stack"
 	if thread.Unread(t) {
 		cls += " unseen"
 	}
@@ -227,11 +227,11 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	// Beside the link rather than inside it: a form cannot live in an <a>, and
 	// nesting a submit inside a navigation target means a click has two
 	// meanings. The row reserves an action column even when there is no form.
-	return `<div class="ib-item">` +
+	return `<div class="ib-item section-actions">` +
 		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `"` + titleAttr(full) + `>` +
 		rowMeta(who, app.ClientName(t.Client), tags, t.Updated) +
 		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 90)) + `</span>` +
-		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></a>` +
+		`<span class="ib-snip text-muted">` + html.EscapeString(snippet) + `</span></a>` +
 		rowDelete(r, t.ID) + `</div>`
 }
 
@@ -248,7 +248,7 @@ func rowMeta(who, kind string, tags []string, at time.Time) string {
 	if len(tags) > 0 {
 		context += `<span class="ib-tags">` + html.EscapeString(strings.Join(tags, " · ")) + `</span>`
 	}
-	return `<span class="ib-meta"><span class="ib-context">` + context +
+	return `<span class="ib-meta metadata-row"><span class="ib-context section-actions">` + context +
 		`</span><time class="ib-when" datetime="` + at.Format(time.RFC3339) + `">` +
 		html.EscapeString(app.TimeAgo(at)) + `</time></span>`
 }
@@ -327,7 +327,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	var b strings.Builder
 	// The same width as the list. It was wider to hold a second column, and
 	// there is no second column.
-	b.WriteString(`<div class="ib">`)
+	b.WriteString(`<div class="ib page-stack">`)
 	// Where you came from, and what you can do to this — one bar rather than
 	// three loose things stacked above the conversation. See app.Actions.
 	b.WriteString(app.Actions(app.TextLink("← Inbox", "/inbox"),

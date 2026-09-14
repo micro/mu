@@ -102,8 +102,6 @@ func authRequired() map[string]bool {
 		"/oauth2/google/connect":      true,  // Link Google to the current account
 		"/agents":                     false, // Public — the instance's own agents; yours needs a session, checked in the handler
 		"/agents/data":                true,  // JSON behind the chat's agent picker
-		"/oauth2/google/calendar":     true,  // Grant calendar access to the current account
-		"/oauth2/google/contacts":     true,  // Grant contacts access to the current account
 		"/oauth2/callback":            false, // Google sign-in callback (no session yet)
 		"/images":                     false, // Public daily image; generation needs login
 		"/img":                        false, // Public — cached article images (a prefix of /images, same answer)
@@ -653,11 +651,6 @@ func registerRoutes() {
 	http.HandleFunc("/oauth2/google", account.GoogleLogin)
 	http.HandleFunc("/oauth2/google/connect", account.GoogleConnect)
 	http.HandleFunc("/oauth2/callback", account.GoogleCallback)
-	// Reading a calendar is a separate grant, asked for separately — see
-	// internal/app/google_calendar.go.
-	http.HandleFunc("/oauth2/google/calendar", account.GoogleGrantConnect)
-	http.HandleFunc("/oauth2/google/contacts", account.GoogleGrantConnect)
-	http.HandleFunc("/oauth2/google/disconnect", account.GoogleGrantDisconnect)
 
 	http.HandleFunc("/admin/oauth", admin.OAuthHandler)
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)

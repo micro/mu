@@ -73,7 +73,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		suffix = ""
 	}
 	fmt.Fprintf(&b, `<p class="text-muted text-sm">%d client%s.</p>`, len(clients), suffix)
-	b.WriteString(`<table class="admin-table"><thead><tr><th>Name</th><th>Client ID</th>` +
+	b.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="OAuth clients"><table class="data-table"><thead><tr><th>Name</th><th>Client ID</th>` +
 		`<th>Redirects to</th><th>Owner</th><th class="created-col">Created</th>` +
 		`<th class="center"></th></tr></thead><tbody>`)
 
@@ -90,28 +90,28 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		// row offers the one thing that fixes it. Every client the /token form
 		// made before it asked for an address is in this state, and none of
 		// them ever worked.
-		where := `<form method="POST" action="/admin/oauth" class="form m-0 d-flex gap-xs">` +
+		where := `<form method="POST" action="/admin/oauth" class="form">` +
 			`<input type="hidden" name="action" value="redirect">` +
 			`<input type="hidden" name="client_id" value="` + html.EscapeString(c.ClientID) + `">` +
 			`<input type="text" name="redirect_uri" placeholder="https://… or http://localhost:0/callback" ` +
-			`class="text-2xs w-230" value="` + html.EscapeString(firstURI(c.RedirectURIs)) + `">` +
-			`<button type="submit" class="text-2xs">Set</button></form>`
+			`aria-label="Redirect URI" value="` + html.EscapeString(firstURI(c.RedirectURIs)) + `">` +
+			`<button type="submit" >Set</button></form>`
 		if len(c.RedirectURIs) == 0 {
-			where = `<span class="text-muted text-2xs">none — cannot sign anybody in</span><br>` + where
+			where = `<span class="text-muted text-sm">none — cannot sign anybody in</span>` + where
 		}
 		fmt.Fprintf(&b, `<tr><td>%s</td><td><code class="text-2xs">%s</code></td>`+
-			`<td>%s</td><td>%s</td><td class="created-col">%s</td><td class="center">`+
+			`<td><div class="page-stack compact-stack">%s</div></td><td>%s</td><td class="created-col">%s</td><td class="center">`+
 			`<form method="POST" action="/admin/oauth" class="form-action d-inline" `+
 			`onsubmit="return confirm('Remove this client?')">`+
 			`<input type="hidden" name="client_id" value="%s">`+
-			`<button type="submit" class="text-sm">Remove</button></form></td></tr>`,
+			`<button type="submit" class="btn-danger">Remove</button></form></td></tr>`,
 			html.EscapeString(c.Name), html.EscapeString(c.ClientID), where, owner,
 			c.CreatedAt.Format("2006-01-02"), html.EscapeString(c.ClientID))
 	}
 	if len(clients) == 0 {
 		b.WriteString(`<tr><td colspan="6" class="center text-muted">Nothing registered.</td></tr>`)
 	}
-	b.WriteString(`</tbody></table>`)
+	b.WriteString(`</tbody></table></div>`)
 
 	app.Respond(w, r, app.Response{Title: "OAuth Clients", Description: "Applications that may sign somebody in here", HTML: b.String()})
 }

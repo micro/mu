@@ -19,14 +19,3 @@ func TestEventDetailsRespectOwner(t *testing.T) {
 		t.Fatal("read returned mutable stored record")
 	}
 }
-
-func TestExternalEventLinksRejectScripts(t *testing.T) {
-	for _, raw := range []string{"javascript:alert(1)", "//evil.example", "data:text/html,test"} {
-		if externalURL(External{URL: raw}) != "/events" {
-			t.Fatal(raw)
-		}
-	}
-	if externalURL(External{URL: "https://calendar.google.com/calendar/event?eid=123"}) == "/events" {
-		t.Fatal("valid event link rejected")
-	}
-}

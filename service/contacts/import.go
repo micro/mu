@@ -3,14 +3,12 @@ package contacts
 import (
 	"encoding/csv"
 	"fmt"
-	"html"
 	"io"
 	"net/http"
 	"strings"
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/google"
 )
 
 func importHandler(w http.ResponseWriter, r *http.Request) {
@@ -84,32 +82,4 @@ func importHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	body := fmt.Sprintf(`<div class="card"><p>Imported %d contacts. Skipped %d existing email addresses. %d rows could not be imported.</p><a class="btn" href="/contacts">Back to contacts</a></div>`, added, skipped, failed)
 	app.Respond(w, r, app.Response{Title: "Contacts", HTML: body})
-}
-
-func googleCard(r *http.Request, owner, query string) string {
-	if !HasExternal(owner) {
-		return ""
-	}
-	var people []google.Person
-	var next string
-	var err error
-	if query != "" {
-		people, err = google.SearchContacts(owner, query, 30)
-	} else {
-		people, next, err = google.ContactPage(owner, r.PostFormValue("google_page"))
-	}
-	b := `<section class="card"><h3>Google Contacts</h3>`
-	if err != nil {
-		return b + `<p role="status">Could not load Google Contacts. Try again, or reconnect from Account.</p></section>`
-	}
-	if len(people) == 0 {
-		b += `<p>No matching Google contacts.</p>`
-	}
-	for _, p := range people {
-		b += `<div class="thin-row"><strong>` + html.EscapeString(p.Name) + `</strong><div class="text-sm text-muted">` + html.EscapeString(strings.TrimSpace(p.Email+" "+p.Phone)) + `</div></div>`
-	}
-	if next != "" {
-		b += `<form method="POST" action="/contacts" class="form-action mt-3">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="q" value=""><input type="hidden" name="google_page" value="` + html.EscapeString(next) + `"><button>More Google contacts</button> <a href="/contacts">First page</a></form>`
-	}
-	return b + `</section>`
 }

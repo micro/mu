@@ -89,22 +89,6 @@ func TestICS(t *testing.T) {
 	}
 }
 
-func TestGoogleCalendarURL(t *testing.T) {
-	when := time.Date(2026, 7, 22, 14, 0, 0, 0, time.UTC)
-	u := GoogleCalendarURL("Dentist", when, "bring card")
-	for _, want := range []string{
-		"calendar.google.com/calendar/render",
-		"action=TEMPLATE",
-		"dates=20260722T140000Z%2F20260722T143000Z",
-		"text=Dentist",
-		"details=bring+card",
-	} {
-		if !strings.Contains(u, want) {
-			t.Errorf("calendar url missing %q\n got: %s", want, u)
-		}
-	}
-}
-
 // Scheduling something you cannot unschedule is not safe to use for anything
 // real: a standing instruction set to run every morning could not be stopped by
 // the person paying for each run.

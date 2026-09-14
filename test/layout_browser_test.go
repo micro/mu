@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mu/account"
+	"mu/admin"
 	"mu/agent"
 	"mu/home"
 	"mu/inbox"
@@ -12,6 +13,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/flag"
 	recordnotes "mu/internal/notes"
 	"mu/internal/result"
 	"mu/internal/service"
@@ -120,6 +122,12 @@ func TestPageCompositionInBrowser(t *testing.T) {
 		t.Fatal(err)
 	}
 	postID := blog.PostsByAuthorID(who, "")[0].ID
+	flag.Load()
+	if err := flag.AdminFlag("post", postID, who); err != nil {
+		t.Fatal(err)
+	}
+	auth.RegisterOAuthClient(who, "Desktop MCP client", []string{"http://localhost:9000/oauth/callback"})
+	auth.RegisterOAuthClient("", "Self-registered client", nil)
 	mail.Load()
 	if err := mail.SendMessage("Sarah", "sarah", "Alex", who, "Tomorrow's appointment", "Please bring the paperwork.", "", "layout-mail"); err != nil {
 		t.Fatal(err)
@@ -160,6 +168,10 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	handlers["/blog?write=true"] = blog.Handler
 	handlers["/blog/post?id="+postID] = blog.PostHandler
 	handlers["/blog/post?id="+postID+"&edit=true"] = blog.PostHandler
+	handlers["/inbox?view=history"] = inbox.Handler
+	handlers["/admin/server"] = admin.ServerHandler
+	handlers["/admin/oauth"] = admin.OAuthHandler
+	handlers["/admin/moderate"] = admin.ModerateHandler
 	handlers["/login"] = account.Login
 	handlers["/mail?id="+mailID] = mail.Handler
 	handlers["/agent?id="+focused.ID] = agent.Handler

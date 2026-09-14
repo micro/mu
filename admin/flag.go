@@ -189,30 +189,30 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					<input type="hidden" name="action" value="approve">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
-					<button type="submit" class="btn-approve">Approve</button>
+					<button type="submit" class="btn">Approve</button>
 				</form>
 				<form class="form-action" method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Permanently delete this content?').then(function(ok){if(ok)event.target.submit()})">
 					<input type="hidden" name="action" value="delete">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
-					<button type="submit" class="btn-delete">Delete</button>
+					<button type="submit" class="btn-danger">Delete</button>
 				</form>`,
 			item.ContentType, item.ContentID,
 			item.ContentType, item.ContentID)
 
-		html := fmt.Sprintf(`<div class="flagged-item">
+		html := fmt.Sprintf(`<div class="card page-stack">
 			<div>
-				<span class="content-type-badge">%s</span>
+				<span class="status-badge">%s</span>
 				<h3>%s</h3>
 			</div>
 			%s
-			<div class="info">
+			<div class="text-sm text-muted">
 				%s by %s · Flags: %d · Status: %s<br>
 				Flagged by: %s
 			</div>
-			<div class="actions">
+			<div class="form-actions">
 				%s
-				<a href="/%s?id=%s" target="_blank">view</a>
+				<a href="/%s?id=%s" target="_blank" class="btn">View</a>
 			</div>
 		</div>`,
 			item.ContentType,
@@ -230,7 +230,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		itemsList = append(itemsList, html)
 	}
 
-	listHTML := "<p style='color: #666;'>No flagged content</p>"
+	listHTML := "<p class='text-muted'>No flagged content</p>"
 	if len(itemsList) > 0 {
 		listHTML = strings.Join(itemsList, "\n")
 	}
@@ -252,26 +252,26 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					content = content[:300] + "..."
 				}
 
-				item := fmt.Sprintf(`<div class="flagged-item">
+				item := fmt.Sprintf(`<div class="card page-stack">
 				<div>
-					<span class="content-type-badge">post</span>
+					<span class="status-badge">post</span>
 					<h3>%s</h3>
 				</div>
 				<p class="whitespace-pre-wrap">%s</p>
-				<div class="info">
+				<div class="text-sm text-muted">
 					%s by %s · New Account (&lt; 24h) · Hidden from homepage
 				</div>
-				<div class="actions">
+				<div class="form-actions">
 					<form class="form-action" method="POST" action="/admin/moderate">
 						<input type="hidden" name="action" value="approve_account">
 						<input type="hidden" name="type" value="post">
 						<input type="hidden" name="id" value="%s">
-						<button type="submit" class="btn-approve">Approve</button>
+						<button type="submit" class="btn">Approve</button>
 					</form>
 					<form class="form-action" method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Flag this post?').then(function(ok){if(ok){fetch('/admin/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{if(d.success){location.reload()}else{alert(d.message||'Failed')}}).catch(()=>alert('Error'))}});return false;">
-						<button type="submit" class="btn-delete">Flag</button>
+						<button type="submit" class="btn-danger">Flag</button>
 					</form>
-					<a href="/blog/post?id=%s" target="_blank">view</a>
+					<a href="/blog/post?id=%s" target="_blank" class="btn">View</a>
 				</div>
 			</div>`,
 					title,
@@ -288,7 +288,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 			newAccountPostsHTML = fmt.Sprintf(`
 				<h2 class="mt-6">New Account Blog Posts (< 24 hours old)</h2>
 				<p class="text-muted mb-4">These blog posts are hidden from the public homepage but can still be flagged if inappropriate.</p>
-				<div id="new-account-blog">
+				<div id="new-account-blog" class="page-stack">
 					%s
 				</div>`, strings.Join(newPostsList, "\n"))
 		}
@@ -298,10 +298,10 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 	// above it. The shell draws the title; what is left here is the one thing a
 	// reader does not already know — the rule that hides something at three
 	// flags — said once, in a sentence.
-	content := fmt.Sprintf(back()+`<div id="moderation">
+	content := fmt.Sprintf(back()+`<div id="moderation" class="page-stack">
 		<p class="text-sm text-muted">Flagged by other people. Three flags hides
 		something automatically; approving clears them, deleting is permanent.</p>
-		<div id="flagged-content">
+		<div id="flagged-content" class="page-stack">
 			%s
 		</div>
 		%s

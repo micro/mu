@@ -123,7 +123,7 @@ func TestTheFoldIsDrawnOnlyWhenThereIsAQuote(t *testing.T) {
 		t.Errorf("an empty quote drew %q", got)
 	}
 	got := quotedBlock("> <script>alert(1)</script>")
-	if !strings.Contains(got, "<details class=\"ib-quoted\"") {
+	if !strings.Contains(got, `<details class="ib-quoted disclosure"`) {
 		t.Errorf("no fold: %q", got)
 	}
 	if strings.Contains(got, "<script>") {

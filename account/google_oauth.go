@@ -120,25 +120,6 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: "g_state", Value: "", Path: "/", MaxAge: -1})
 
-	// A calendar grant comes back through the same redirect URI — Google
-	// requires every one to be registered, and one route with a mode cookie is
-	// less to keep in sync than two. Checked before the error branch below so a
-	// declined calendar returns to the calendar, not to a login page.
-	if c, cerr := r.Cookie("g_grant"); cerr == nil && c.Value != "" {
-		what := c.Value
-		http.SetCookie(w, &http.Cookie{Name: "g_grant", Value: "", Path: "/", MaxAge: -1})
-		if r.URL.Query().Get("error") != "" || r.URL.Query().Get("code") == "" {
-			ret := "/account"
-			if g, ok := grants[what]; ok {
-				ret = g.ret
-			}
-			http.Redirect(w, r, ret+"?connection=declined", http.StatusSeeOther)
-			return
-		}
-		finishGoogleGrant(w, r, what, r.URL.Query().Get("code"))
-		return
-	}
-
 	if r.URL.Query().Get("error") != "" || r.URL.Query().Get("code") == "" {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
@@ -386,4 +367,12 @@ func loginPage(redirectParam, errHTML string) string {
 	// A template slot, not a replace on the heading — see renderSignupTo.
 	return fmt.Sprintf(LoginTemplate, redirectParam,
 		googleButtonHTML("Continue with Google"), errHTML)
+}
+
+// renderGoogleCard contains only the optional sign-in connection.
+func renderGoogleCard(acc *auth.Account) string {
+	if !GoogleConfigured() || acc == nil {
+		return ""
+	}
+	return app.Section("Google sign-in", googleSignIn(acc))
 }

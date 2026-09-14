@@ -732,12 +732,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	emailCard := renderEmailCard(acc)
 
-	// One card for Google: signing in with it, and what of it this account has
-	// handed over. The asks live on the pages that earn them — the calendar on
-	// /events, contacts on /contacts — and the audit belongs where somebody goes
-	// to check. It was two cards, "Google" and "Connected accounts", stacked,
-	// and the first one's name claimed the subject of the second.
-	googleCard := renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
+	googleCard := renderGoogleCard(acc)
 	if r.URL.Query().Get("linked") == "google" {
 		googleCard = app.Notice("Google connected. You can now sign in with Google.") + googleCard
 	}
