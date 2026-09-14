@@ -96,7 +96,7 @@ body:has(.chat-layout) #mu-chat-form { flex:none }
 .ib-layout,.ib-conversation,.ib-main { min-width:0 }.ib-msg { padding-block:16px; border-bottom:1px solid #eee; overflow-wrap:anywhere }
 .ib-assign { width:min(560px,calc(100% - 32px)); border:1px solid #ddd; border-radius:8px; padding:24px }
 .ib-assign::backdrop { background:#0004 }.ib-ask-note { color:#666;font-size:13px }
-.detail-row { display:grid; grid-template-columns:100px minmax(0,1fr); gap:16px; padding-block:12px; border-bottom:1px solid #eee }.detail-value { overflow-wrap:anywhere }
+.detail-value { overflow-wrap:anywhere }
 table { width:100%; border-collapse:collapse } th,td { padding:10px; text-align:left; border-bottom:1px solid #eee }
 @media(max-width:900px) {
  :root { --page-gutter:16px;  }
@@ -105,7 +105,6 @@ table { width:100%; border-collapse:collapse } th,td { padding:10px; text-align:
  body.menu-open #nav-container { transform:none }
  body.menu-open #nav-overlay { display:block; position:fixed; inset:56px 0 0; background:#0003; z-index:24 }
  body:has(.chat-layout) #content { height:calc(var(--visible-height,100dvh) - 56px); padding-bottom:calc(12px + 0px + env(safe-area-inset-bottom)) }
- .detail-row { grid-template-columns:70px minmax(0,1fr) }
 }
 
 /* Shared utility classes used by standalone tools. */

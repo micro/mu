@@ -24,7 +24,8 @@ if(SESSION&&selectionScope&&location.search===''&&selection&&selection.scope===s
       conv.innerHTML=restored.html;
     }catch(e){conv.textContent='This conversation could not be loaded. Reload to try again.';return;}
   }else{contextId='';PENDING=false;}
-  var identity=document.querySelector('.conversation-toolbar strong');if(identity)identity.textContent=AGENT_NAME;
+  var identity=document.querySelector('.conversation-toolbar strong');
+  if(identity){identity.textContent=AGENT_NAME;identity.parentElement.hidden=!window.muActiveAgent;}
   form.inert=false;
 }
 function rememberSelection(){

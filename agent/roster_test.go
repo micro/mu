@@ -34,7 +34,7 @@ func (AgentProbe) List(ctx context.Context, req *struct{}, rsp *struct {
 
 func owner(t *testing.T, id string) string {
 	t.Helper()
-	if err := auth.Create(&auth.Account{ID: id, Name: id, Secret: "s"}); err != nil {
+	if err := auth.Create(&auth.Account{ID: id, Name: id, Secret: "s", Approved: true}); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -287,5 +287,27 @@ func TestCreatingAnAgentIssuesNoToken(t *testing.T) {
 	}
 	if got := For(id, a.ID); got == nil || got.TokenID == "" {
 		t.Error("the issued token was not recorded on the agent")
+	}
+}
+
+func TestPendingAccountCannotIssueAgentCredentials(t *testing.T) {
+	owner(t, "credential_bootstrap")
+	const id = "pending_credentials"
+	if err := auth.Create(&auth.Account{ID: id}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { auth.DeleteAccount(id) })
+	a, _, err := CreateAgent(id, "Private", Hosted, "help", "", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secret, err := IssueToken(id, a.ID); err == nil || secret != "" {
+		t.Fatal("pending account issued agent token")
+	}
+	if _, secret, err := CreateAgent(id, "External", Hosted, "help", "", nil, true); err == nil || secret != "" {
+		t.Fatal("pending account created agent with token")
+	}
+	if len(auth.ListTokens(id)) != 0 {
+		t.Fatal("pending account has credentials")
 	}
 }

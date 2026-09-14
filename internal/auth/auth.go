@@ -923,6 +923,17 @@ func OnlineCount() int {
 
 var ErrCredentialLimit = errors.New("Remove unused credentials before creating more.")
 
+// CheckCredentialAccess applies the account trust gate to user-requested credentials.
+func CheckCredentialAccess(accountID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	acc := accounts[accountID]
+	if acc == nil || acc.Banned || (!acc.Admin && !acc.Approved && !acc.EmailVerified) {
+		return errors.New("Verify your email or ask the operator to approve your account before creating credentials.")
+	}
+	return nil
+}
+
 // CreateToken creates a new Personal Access Token for an account
 func CreateToken(accountID, name string, permissions []string, expiresAt time.Time) (*Token, string, error) {
 	mutex.Lock()

@@ -176,8 +176,8 @@ span.pill { padding:2px 8px; font-size:12px; min-height:0 }
 .metric { display:flex; flex-direction:column; gap:8px; min-width:0; padding:16px; border:1px solid var(--border-color); border-radius:8px }
 .metric-label { font-size:13px; color:var(--text-secondary) }
 .metric-value { font-size:18px; font-weight:500; overflow-wrap:anywhere }
-.detail-row { display:flex; justify-content:space-between; gap:16px; padding-block:12px; border-bottom:1px solid var(--border-color); overflow-wrap:anywhere }
-.detail-row > :last-child { display:flex; align-items:baseline; gap:8px; text-align:right; min-width:0 }
+.detail-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; padding-block:12px; border-bottom:1px solid var(--border-color); overflow-wrap:anywhere }
+.detail-row > :last-child { justify-self:end; display:flex; align-items:baseline; gap:8px; text-align:right; min-width:0 }
 .action-note { flex-basis:100%; font-size:13px; color:var(--text-secondary); overflow-wrap:anywhere }
 
 .table-scroll { width:100%; min-width:0; overflow-x:auto; border:1px solid var(--border-color); border-radius:8px }

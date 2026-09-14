@@ -194,6 +194,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.keyboard.press('Escape');
    }
    if(path==='/admin/server') {
+    assert.equal(await page.locator('.detail-row').first().evaluate(e=>getComputedStyle(e).display),'grid','connect styling leaked into status rows');
     assert.equal(await page.locator('.metric-grid .metric').count(),5,'server metrics missing');
     const metrics=await page.locator('.metric').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().width));
     assert(metrics.every(w=>w>=140),'server metrics compressed');
@@ -224,11 +225,13 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  // Reload an older selection even when the server initially renders a newer thread.
  await page.goto('https://mu.test/agent/micro');
  const selectedConfig=await page.locator('#conversation-config').textContent().then(JSON.parse);
- await page.route('**/agent/micro?session=older-fixture',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({id:'older-fixture',html:'<div class="mu-user">An older selected question</div><div class="mu-agent">Its original answer</div>',pending:false,agent:'',agentName:'Micro',storageNS:selectedConfig.storageNS})}));
+ await page.route('**/agent/micro?session=older-fixture',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({id:'older-fixture',html:'<div class="mu-user">An older selected question</div><div class="mu-agent">Its original answer</div>',pending:false,agent:'research',agentName:'Research',storageNS:selectedConfig.storageNS})}));
  await page.evaluate(scope=>history.replaceState({muConversation:{scope,id:'older-fixture'}},''),selectedConfig.selectionScope);
  await page.reload();
  await page.getByText('An older selected question',{exact:true}).waitFor();
  assert.equal(new URL(page.url()).search,'','selection leaked into URL');
+ assert.equal(await page.locator('.conversation-toolbar strong').textContent(),'Research','restored named agent identity missing');
+ assert(await page.locator('.conversation-toolbar').isVisible(),'restored identity hidden');
  await page.locator('#mu-chat-input').fill('Continue this discussion');
  await page.locator('#mu-chat-form button[type=submit]').click();
  assert.equal(await page.evaluate(()=>window.__lastAgentBody.context_id),'older-fixture','reply switched to newer conversation');

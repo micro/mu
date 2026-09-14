@@ -61,8 +61,8 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		creating := r.URL.Query().Get("create_client") == "1" || r.FormValue("_method") != "DELETE"
 		if creating {
-			if acc.Banned || (!acc.Admin && !acc.Approved && !acc.EmailVerified) {
-				app.Forbidden(w, r, "Verify your email or ask the operator to approve your account before creating credentials.")
+			if err := auth.CheckCredentialAccess(acc.ID); err != nil {
+				app.Forbidden(w, r, err.Error())
 				return
 			}
 			if err := auth.CheckPostRate(acc.ID); err != nil {

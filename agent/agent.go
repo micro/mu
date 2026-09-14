@@ -296,7 +296,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	chip := `<div class="conversation-toolbar"><strong>` + html.EscapeString(agentTitle(accountID, selAgent)) + `</strong></div>`
 	if selAgent == "" {
-		chip = ""
+		chip = `<div class="conversation-toolbar" hidden><strong></strong></div>`
 	}
 	cfg.Placeholder = "What do you need?"
 	cfg.StorageNS = "agent-" + accountID + "-" + selAgent
