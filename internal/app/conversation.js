@@ -221,9 +221,8 @@ function ask(q){
             }else if(ev.type==='stream_start'){
               streamText='';
             }else if(ev.type==='stream_token'){
-              if(timer){clearInterval(timer);timer=null;}
               streamText+=ev.text||ev.token||'';
-              a.textContent=streamText;toBottom(false);
+              if(workLabel!=='Writing')startWork('Writing');
             }else if(ev.type==='response'){
               terminal=true;clearTimeout(completionTimer);stopWork();
               a.innerHTML=ev.html;

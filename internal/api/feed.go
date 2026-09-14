@@ -24,7 +24,7 @@ var feedCache struct {
 
 func serviceFeed(w http.ResponseWriter, r *http.Request) {
 	if !app.WantsJSON(r) {
-		app.Respond(w, r, app.Response{Title: "Services", HTML: serviceViews(true) + `<div id="service-feed" class="page-stack" aria-live="polite">Loading feed…</div><script>(function(){var n=0;function load(){var el=document.getElementById('service-feed');if(!el)return;fetch('/services?view=feed',{headers:{Accept:'application/json'}}).then(function(r){if(!r.ok)throw new Error();return r.json()}).then(function(d){el.innerHTML=d.html||'Nothing to show yet.';if(d.loading&&n++<30)setTimeout(load,2000)}).catch(function(){el.textContent='Could not load the feed. Reload to try again.'})}load()})()</script>`})
+		app.Respond(w, r, app.Response{Title: "Services", HTML: serviceViews(true) + `<div id="service-feed" class="feed-layout" aria-live="polite">Loading feed…</div><script>(function(){var n=0;function load(){var el=document.getElementById('service-feed');if(!el)return;fetch('/services?view=feed',{headers:{Accept:'application/json'}}).then(function(r){if(!r.ok)throw new Error();return r.json()}).then(function(d){el.innerHTML=d.html||'Nothing to show yet.';if(d.loading&&n++<30)setTimeout(load,2000)}).catch(function(){el.textContent='Could not load the feed. Reload to try again.'})}load()})()</script>`})
 		return
 	}
 	feedCache.Lock()
@@ -61,7 +61,7 @@ func refreshFeed() {
 		if strings.TrimSpace(content.HTML) == "" {
 			continue
 		}
-		entries = append(entries, entry{app.SectionCard("", html.EscapeString(sp.NavLabel()), sp.Page, content.HTML), content.At})
+		entries = append(entries, entry{app.SectionCard("", `<img class="section-icon" src="/`+html.EscapeString(sp.NavIcon())+`" alt="" aria-hidden="true">`+html.EscapeString(sp.NavLabel()), sp.Page, content.HTML), content.At})
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].at.After(entries[j].at) })
 	var b strings.Builder

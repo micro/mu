@@ -443,10 +443,29 @@ func navMain(acc *auth.Account) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("<a id=\"nav-home\" href=\"/\">Home</a><a id=\"nav-conversation\" href=\"/?new=1\">New conversation</a>")
-	b.WriteString(ConversationList(acc.ID, ""))
-	b.WriteString("<div class=\"nav-secondary\"><a id=\"nav-bookmarks\" href=\"/bookmarks\">Bookmarks</a><a id=\"nav-services\" href=\"/services\">Services</a><details><summary>Manage</summary><a id=\"nav-inbox\" href=\"/inbox\">Inbox</a><a id=\"nav-work\" href=\"/work\">Work</a><a id=\"nav-agents\" href=\"/agents\">Agents</a></details></div>")
+	b.WriteString(navigationLink("nav-home", "/", "Home", "/home.png"))
+	b.WriteString(`<div class="nav-history"><span class="nav-label">History</span>` + ConversationList(acc.ID, "") + `</div>`)
+	b.WriteString(`<div class="nav-secondary">`)
+	for _, item := range []struct{ id, href, label, icon string }{
+		{"nav-inbox", "/inbox", "Inbox", "/email.svg"},
+		{"nav-work", "/work", "Work", "/tasks.svg"},
+		{"nav-bookmarks", "/bookmarks", "Bookmarks", "/bookmarks.svg"},
+		{"nav-agents", "/agents", "Agents", "/agent.svg"},
+		{"nav-services", "/services", "Services", "/services.svg"},
+	} {
+		b.WriteString(navigationLink(item.id, item.href, item.label, item.icon))
+	}
+	b.WriteString(`</div>`)
+
 	return b.String()
+}
+
+func navigationLink(id, href, label, icon string) string {
+	attr := ""
+	if id != "" {
+		attr = ` id="` + htmlpkg.EscapeString(id) + `"`
+	}
+	return `<a` + attr + ` href="` + htmlpkg.EscapeString(href) + `"><img src="` + icon + `" alt="" aria-hidden="true"><span>` + htmlpkg.EscapeString(label) + `</span></a>`
 }
 
 var TopUpConfigured func() bool
@@ -498,7 +517,7 @@ func navBottom(acc *auth.Account, here string) string {
 	}
 	username := htmlpkg.EscapeString(acc.ID)
 
-	return `<details class="nav-account-disclosure"><summary class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span><span aria-hidden="true">⌃</span></summary><div class="nav-account-menu">
+	return `<details class="nav-account-disclosure"><summary class="nav-me-who" aria-label="Account menu"><img src="/account.png" alt="" aria-hidden="true"><span>Signed in as <span id="nav-username">@` + username + `</span></span></summary><div class="nav-account-menu">
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-profile" href="/account/profile"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
           <a id="nav-account-billing" href="/account/billing"><img src="/wallet.png?` + Version + `"><span class="label">Billing</span></a>
@@ -740,5 +759,5 @@ func mobileNav(acc *auth.Account) string {
 	if acc == nil {
 		return ""
 	}
-	return `<nav id="mobile-nav" aria-label="Main navigation"><a href="/">Home</a><a href="/inbox">Inbox</a><a href="/work">Work</a><a href="/services">Services</a></nav>`
+	return `<nav id="mobile-nav" aria-label="Main navigation">` + navigationLink("", "/", "Home", "/home.png") + navigationLink("", "/inbox", "Inbox", "/email.svg") + navigationLink("", "/work", "Work", "/tasks.svg") + navigationLink("", "/services", "Services", "/services.svg") + `</nav>`
 }

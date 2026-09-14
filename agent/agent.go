@@ -274,7 +274,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 	if reopened {
 		selAgent = reopenAgent
-	} else if (selAgent != "" || named || assistant) && prefill == "" && cfg.Attachment == "" && r.URL.Query().Get("new") != "1" {
+	} else if r.URL.Path != "/" && (selAgent != "" || named || assistant) && prefill == "" && cfg.Attachment == "" && r.URL.Query().Get("new") != "1" {
 		if last := latestThreadFor(accountID, selAgent, named); last != "" {
 			cfg.ContextID = last
 			cfg.InitialConvHTML = renderThreadTurns(accountID, last)
@@ -293,9 +293,9 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		cfg.Location = true
 	}
 
-	chip := "<div class=\"conversation-toolbar\"><details class=\"conversation-switcher\"><summary>Conversations</summary><div class=\"conversation-menu\">" + app.ConversationList(accountID, activeRoot) + "</div></details><a class=\"btn btn-quiet\" href=\"" + html.EscapeString(chatBase) + "?new=1\">New conversation</a>"
+	chip := "<div class=\"conversation-toolbar\"><details class=\"conversation-switcher\"><summary aria-label=\"Conversation history\">History</summary><div class=\"conversation-menu\">" + app.ConversationList(accountID, activeRoot) + "</div></details><a class=\"btn btn-quiet\" href=\"" + html.EscapeString(chatBase) + "?new=1\" aria-label=\"New conversation\">New</a>"
 	if activeRoot != "" {
-		chip += "<button class=\"btn btn-quiet\" type=\"button\" onclick=\"muSessionDelete(" + app.JSAttr(activeRoot) + ",event)\">Delete conversation</button>"
+		chip += "<button id=\"conversation-delete\" class=\"btn btn-quiet\" type=\"button\" onclick=\"muSessionDelete(" + app.JSAttr(activeRoot) + ",event)\" aria-label=\"Delete conversation\">Delete</button>"
 	}
 	chip += "</div>"
 	cfg.Placeholder = "What do you need?"
@@ -310,7 +310,6 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		`</div></div>` + chatPageJS + sessionDeleteJS(chatBase)
 
 	content += `<script>window.addEventListener('mu-chat-thread',function(e){history.replaceState(null,'',` + app.JSString(chatBase) + `+'?session='+encodeURIComponent(e.detail));});</script>`
-	content += resumeMicroJS(accountID, selAgent, cfg.ContextID)
 	if r.URL.Path == "/" {
 		content += HandoffHTML(r)
 	}
@@ -385,6 +384,11 @@ function muSessionDelete(id,ev){
     .then(function(r){if(!r.ok)throw new Error('Could not delete conversation');window.location=` + app.JSString(back) + `;}).catch(function(e){alert(e.message)});
 }
 window.muSessionStarted=function(id,title){
+  var toolbar=document.querySelector('.conversation-toolbar');
+  if(toolbar&&!document.getElementById('conversation-delete')){
+    var del=document.createElement('button');del.id='conversation-delete';del.type='button';del.className='btn btn-quiet';del.textContent='Delete';del.setAttribute('aria-label','Delete conversation');
+    del.onclick=function(e){muSessionDelete(id,e);};toolbar.appendChild(del);
+  }
   document.querySelectorAll('.chat-sess-list').forEach(function(list){
   var empty=list.querySelector('.chat-sess-empty');if(empty)empty.remove();
   var href='/?session='+encodeURIComponent(id);
