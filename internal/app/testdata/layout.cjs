@@ -3,7 +3,9 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const input=JSON.parse(fs.readFileSync(0,'utf8'));
  const browser=await chromium.launch({executablePath:process.env.MU_LAYOUT_BROWSER,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+ try {
  const page=await browser.newPage();
+ page.setDefaultTimeout(5000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>{
   const u=new URL(route.request().url());
@@ -20,6 +22,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  for(const width of [320,390,768,1024,1440])for(const collapsed of (width>900?[false,true]:[false])){
   await page.setViewportSize({width,height:900});
   for(const path of Object.keys(input.pages).filter(p=>!process.env.MU_LAYOUT_PATHS||process.env.MU_LAYOUT_PATHS.split(',').includes(p.split('?')[0]))){
+   console.log("Checking",path,width,collapsed);
    errors.length=0;
    await page.goto('https://mu.test'+path);await page.waitForTimeout(50);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
@@ -63,5 +66,6 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
   }
  }
- await browser.close();console.log('All service pages fit; conversation composers remain centered and stable on mobile and desktop.');
+ } finally {await browser.close();}
+ console.log('All service pages fit; conversation composers remain centered and stable on mobile and desktop.');
 })().catch(e=>{console.error(e);process.exitCode=1});
