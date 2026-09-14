@@ -21,7 +21,6 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/internal/thread"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
@@ -444,18 +443,9 @@ func navMain(acc *auth.Account) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<a id="nav-home" href="/">Home</a><a id="nav-conversation" href="/?new=1">New conversation</a><div class="chat-sess-list" aria-label="Conversations">`)
-	for i, t := range thread.List(acc.ID, 30) {
-		if i == 30 {
-			break
-		}
-		title := t.Subject
-		if title == "" {
-			title = "Conversation"
-		}
-		b.WriteString(`<a class="chat-sess" href="/?session=` + url.QueryEscape(t.ID) + `">` + htmlpkg.EscapeString(title) + `</a>`)
-	}
-	b.WriteString(`</div><div class="nav-secondary"><a id="nav-bookmarks" href="/bookmarks">Bookmarks</a><a id="nav-services" href="/services">Services</a><details><summary>Manage</summary><a id="nav-inbox" href="/inbox">Inbox</a><a id="nav-work" href="/work">Work</a><a id="nav-agents" href="/agents">Agents</a></details></div>`)
+	b.WriteString("<a id=\"nav-home\" href=\"/\">Home</a><a id=\"nav-conversation\" href=\"/?new=1\">New conversation</a>")
+	b.WriteString(ConversationList(acc.ID, ""))
+	b.WriteString("<div class=\"nav-secondary\"><a id=\"nav-bookmarks\" href=\"/bookmarks\">Bookmarks</a><a id=\"nav-services\" href=\"/services\">Services</a><details><summary>Manage</summary><a id=\"nav-inbox\" href=\"/inbox\">Inbox</a><a id=\"nav-work\" href=\"/work\">Work</a><a id=\"nav-agents\" href=\"/agents\">Agents</a></details></div>")
 	return b.String()
 }
 

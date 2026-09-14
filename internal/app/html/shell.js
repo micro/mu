@@ -15,3 +15,12 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 if (navigator.serviceWorker) navigator.serviceWorker.register('/mu.js', {scope:'/', updateViaCache:'none'}).then(function (r) {r.update();}).catch(function () {});
+
+document.addEventListener('click', function(e) {
+  document.querySelectorAll('.conversation-switcher[open]').forEach(function(menu) {
+    if(!menu.contains(e.target))menu.open=false;
+  });
+});
+document.addEventListener('keydown', function(e) {
+  if(e.key==='Escape')document.querySelectorAll('.conversation-switcher[open]').forEach(function(menu){menu.open=false;});
+});
