@@ -68,7 +68,7 @@ body:has(.chat-layout) #mu-chat-form { flex:none }
 .card > :last-child,.section-card > :last-child { margin-bottom:0 }
 .card-title { display:block; margin:0 0 8px; color:var(--text-primary); font-size:15px; font-weight:600; text-decoration:none }
 .card-desc,.card-preview { margin:0 0 8px; line-height:1.6 }
-.card h2,.card h3,.card h4 { margin-top:0 }
+.card h2,.card h3,.card h4 { margin:0 0 var(--space-control) }
 .card-hover { transition:box-shadow .15s }
 .card-hover:hover { box-shadow:0 2px 8px #0000000d; text-decoration:none }
 .card-meta,.text-muted,.text-sm,.note,.card-desc { color:#666; font-size:14px }

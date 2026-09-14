@@ -120,28 +120,8 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	var sb strings.Builder
 
-	// === OAuth Clients ===
-	// Yours, and only yours.
-	//
-	// Tokens first.
-	//
-	// OAuth clients were, because they were written first. Almost nobody
-	// registers one — a client that connects registers itself and does not
-	// appear here — while a token is what you come to this page for, and it was
-	// below a form most people will never fill in.
-
-	// === Tokens ===
-	//
-	// "Tokens", not "Personal Access Tokens". The page is /token, the section
-	// under it is the only kind of token an account has, and the phrase is
-	// GitHub's name for the thing rather than a description of it — three words
-	// where one is unambiguous. PAT stays in the code, where it distinguishes
-	// this from a session and an OAuth grant.
-	// "API tokens" and not "Tokens", because the page is /token and is titled
-	// Tokens — so a section heading of the same one word said nothing about
-	// what was under it. There are two kinds of credential on this page and
-	// this is the one you paste into an Authorization header; the other is an
-	// OAuth client, further down, and now the two headings tell them apart.
+	// API credentials contains tokens and registered OAuth clients. Tokens come
+	// first because they are the usual reason to open this page.
 	sb.WriteString(`<h3>API tokens</h3>`)
 	sb.WriteString(`<p class="text-secondary text-sm">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
 
@@ -333,7 +313,7 @@ async function createToken(e) {
 	// part of the chrome that depends on knowing who is signed in — the nav,
 	// the account menu, the balance — went missing on a page you can only
 	// reach by being signed in. Same bug /account had.
-	app.Respond(w, r, app.Response{Title: "Tokens", Description: "Tokens for calling this instance", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "API credentials", Description: "Tokens for calling this instance", HTML: sb.String()})
 }
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {

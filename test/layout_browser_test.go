@@ -151,6 +151,9 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	handlers["/blog/post?id="+postID] = blog.PostHandler
 	handlers["/blog/post?id="+postID+"&edit=true"] = blog.PostHandler
 	handlers["/login"] = account.Login
+	for _, path := range []string{"/account", "/account/profile", "/account/billing"} {
+		handlers[path] = account.Account
+	}
 	handlers["/privacy"] = home.PrivacyHandler
 	handlers["/pricing"] = home.PricingHandler
 	handlers["/@"+who] = inbox.PersonHandler

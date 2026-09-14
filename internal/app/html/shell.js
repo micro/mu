@@ -17,10 +17,20 @@ document.addEventListener('DOMContentLoaded', function () {
 if (navigator.serviceWorker) navigator.serviceWorker.register('/mu.js', {scope:'/', updateViaCache:'none'}).then(function (r) {r.update();}).catch(function () {});
 
 document.addEventListener('click', function(e) {
-  document.querySelectorAll('.conversation-switcher[open]').forEach(function(menu) {
+  document.querySelectorAll('.conversation-switcher[open],.action-menu[open]').forEach(function(menu) {
     if(!menu.contains(e.target))menu.open=false;
   });
 });
 document.addEventListener('keydown', function(e) {
-  if(e.key==='Escape')document.querySelectorAll('.conversation-switcher[open]').forEach(function(menu){menu.open=false;});
+  if(e.key==='Escape')document.querySelectorAll('.conversation-switcher[open],.action-menu[open]').forEach(function(menu){menu.open=false;menu.querySelector('summary').focus();});
 });
+
+// Keep shared action menus inside the viewport, wherever their trigger appears.
+document.addEventListener('toggle', function(e) {
+  var menu=e.target;
+  if(!menu.matches('.action-menu')||!menu.open)return;
+  var items=menu.querySelector('.action-menu-items');
+  items.style.marginLeft='0';
+  var box=items.getBoundingClientRect();
+  if(box.right>innerWidth-16)items.style.marginLeft=(innerWidth-16-box.right)+'px';
+},true);

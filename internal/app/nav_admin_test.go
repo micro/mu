@@ -47,7 +47,7 @@ func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
 func TestTheBottomIsWhoYouAreAndTheWayOut(t *testing.T) {
 	bottom := navBottom(&auth.Account{ID: "someone"}, "")
 
-	if !strings.Contains(bottom, "Signed in as") || !strings.Contains(bottom, "@someone") {
+	if strings.Contains(bottom, "Signed in as") || !strings.Contains(bottom, "@someone") {
 		t.Errorf("the rail does not say which account this is: %q", bottom)
 	}
 	if !strings.Contains(bottom, `id="nav-logout" href="/logout"`) {
@@ -55,7 +55,7 @@ func TestTheBottomIsWhoYouAreAndTheWayOut(t *testing.T) {
 	}
 	// Account came back deliberately: it is the page that is about *you*
 	// rather than about the instance, and under your own name is where it
-	// reads — "signed in as @someone", then the page that is @someone's, then
+	// reads — "@someone", then the page that is @someone's, then
 	// the way out.
 	//
 	// Profile was the other one and is gone with the page. /@somebody is the

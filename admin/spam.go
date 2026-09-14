@@ -116,8 +116,8 @@ func blocklistSection() string {
 	content := `<div class="blocklist-section mt-6">
 		<h3>Blocked senders (` + fmt.Sprintf("%d", len(bl.Emails)) + `)</h3>
 		<p class="text-sm text-muted">Refused at the door, before anything is scored.</p>
-		<div class="form form-inline">
-			<form class="form" method="POST">
+		<div class="page-section">
+			<form class="form form-inline" method="POST">
 				<input type="hidden" name="action" value="block_email">
 				<input type="text" name="email" placeholder="email@example.com or *@domain.com" required>
 				<button type="submit">Block</button>
@@ -139,8 +139,8 @@ func blocklistSection() string {
 
 	<div class="blocklist-section mt-4">
 		<h3>Blocked IPs (` + fmt.Sprintf("%d", len(bl.IPs)) + `)</h3>
-		<div class="form form-inline">
-			<form class="form" method="POST">
+		<div class="page-section">
+			<form class="form form-inline" method="POST">
 				<input type="hidden" name="action" value="block_ip">
 				<input type="text" name="ip" placeholder="192.168.1.1" required>
 				<button type="submit">Block</button>

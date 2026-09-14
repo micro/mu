@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html"
 	"strings"
-	"sync/atomic"
 )
 
 // Action is a content control (edit, delete, flag, etc.)
@@ -85,19 +84,14 @@ func contentURL(contentType, contentID string) string {
 	}
 }
 
-var menuCounter atomic.Int64
-
 // renderMenu renders a ⋯ button with a dropdown containing all actions.
 func renderMenu(actions []Action) string {
 	if len(actions) == 0 {
 		return ""
 	}
 
-	id := fmt.Sprintf("cm%d", menuCounter.Add(1))
-
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<span class="corner"><a href="#" class="corner-x" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;">⋯</a>`, id))
-	sb.WriteString(fmt.Sprintf(`<div id="%s" class="ctrl-menu dropdown">`, id))
+	sb.WriteString(`<details class="action-menu"><summary class="mini-btn" aria-label="More actions">⋯</summary><div class="action-menu-items">`)
 
 	// The menu item's look is .menu-item, not a style string assembled here and
 	// interpolated into six format calls. The one thing that varied was the
@@ -122,7 +116,7 @@ func renderMenu(actions []Action) string {
 		}
 	}
 
-	sb.WriteString(`</div></span>`)
+	sb.WriteString(`</div></details>`)
 	return sb.String()
 }
 
