@@ -315,6 +315,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     const mobilePrompt = await page.getByRole("textbox", {name:"Message",exact:true}).boundingBox();
     assert(mobilePrompt.y+mobilePrompt.height <= 840, "mobile room composer outside viewport");
     assert.deepEqual(errors, []);
+    assert(await page.locator("main h1 img").evaluate(img => img.complete && img.naturalWidth > 0), "native app icon did not load");
     await page.screenshot({
       path: "/tmp/mu-apps-verified.png",
       fullPage: true,

@@ -8,6 +8,7 @@ import (
 	firstparty "mu/app"
 	"mu/home"
 	"mu/internal/api"
+	legacyapp "mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/internal/sshaccess"
@@ -62,6 +63,13 @@ func TestReactApplicationsInBrowser(t *testing.T) {
 	newer := thread.Open(owner, thread.WebClient, "newer-react-app")
 	thread.Add(thread.Message{Thread: newer.ID, Account: owner, Role: thread.RolePerson, Text: "Newer saved question"})
 	mux := http.NewServeMux()
+	icons := map[string]bool{}
+	for _, entry := range firstparty.Entries() {
+		if entry.Icon != "" && !icons[entry.Icon] {
+			mux.Handle("/"+entry.Icon, legacyapp.Serve())
+			icons[entry.Icon] = true
+		}
+	}
 	mux.HandleFunc("/agent/new", firstparty.Page(agent.NewAgentHandler, "New agent"))
 	mux.HandleFunc("/agents", firstparty.Page(agent.AgentsHandler, "Agents"))
 	mux.HandleFunc("/chat", firstparty.Page(chat.Handler, "Chat"))

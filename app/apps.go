@@ -19,6 +19,7 @@ type Entry struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Path string `json:"path"`
+	Icon string `json:"icon"`
 }
 
 func Entries() []Entry { var entries []Entry; _ = json.Unmarshal(catalog, &entries); return entries }
