@@ -16,9 +16,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 	auth.SetCSRFCookie(w, r)
 	w.Header().Set("Cache-Control", "private, no-store")
-	if web.Page(w, r, "Home") {
-		return
-	}
 	_, acc := auth.TrySession(r)
 	state := map[string]any{"account": nil, "csrf": auth.CSRFToken(r)}
 	if acc != nil {
@@ -29,6 +26,9 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		}
 		state["account"] = map[string]any{"id": acc.ID, "name": acc.Name, "admin": acc.Admin}
 		state["conversation"] = conversation
+	}
+	if web.Page(w, r, "Home", state) {
+		return
 	}
 	app.RespondJSON(w, state)
 }

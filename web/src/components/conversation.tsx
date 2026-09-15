@@ -22,29 +22,52 @@ import {
   type State,
 } from "../lib/api";
 
-export function Conversation({ state }: { state: State }) {
-  const agentName = state.conversation?.agent_name || "Micro";
+export function Conversation({
+  state,
+  onConversation,
+}: {
+  state: State;
+  onConversation?: (value: State["conversation"]) => void;
+}) {
+  const [conversation, setConversation] = useState(state.conversation);
+  const selectionScope =
+    (state.account?.id || "guest") +
+    ":" +
+    (typeof window === "undefined" ? "/" : window.location.pathname);
+  function rememberSelection() {
+    history.replaceState(
+      {
+        ...history.state,
+        microConversation: { scope: selectionScope, id: id.current },
+      },
+      "",
+      window.location.pathname,
+    );
+  }
+  const agentName = conversation?.agent_name || "Micro";
   const draftKey =
     "micro-draft:" +
     (state.account?.id || "guest") +
-    (state.conversation?.attachment ? ":" + state.conversation.attachment : "");
+    (conversation?.agent ? ":" + conversation.agent : "") +
+    (conversation?.attachment ? ":" + conversation.attachment : "");
   const [messages, setMessages] = useState<Message[]>(
-      state.conversation?.messages || guestMessages,
+      conversation?.messages || guestMessages,
     ),
-    [draft, setDraft] = useState(
-      () =>
-        sessionStorage.getItem(draftKey) ||
-        sessionStorage.getItem("micro-draft:guest") ||
-        sessionStorage.getItem("mu_chat_draft:landing") ||
-        "",
+    [draft, setDraft] = useState(() =>
+      typeof sessionStorage === "undefined"
+        ? ""
+        : sessionStorage.getItem(draftKey) ||
+          sessionStorage.getItem("micro-draft:guest") ||
+          sessionStorage.getItem("mu_chat_draft:landing") ||
+          "",
     ),
-    [busy, setBusy] = useState(!!state.conversation?.pending),
+    [busy, setBusy] = useState(!!conversation?.pending),
     [status, setStatus] = useState(""),
     [error, setError] = useState(""),
     [listening, setListening] = useState(false),
     [location, setLocation] = useState<Record<string, unknown> | null>(null),
     [ready, setReady] = useState(false);
-  const id = useRef(state.conversation?.id || ""),
+  const id = useRef(conversation?.id || ""),
     controller = useRef<AbortController | null>(null),
     recognition = useRef<any>(null),
     transcript = useRef<HTMLDivElement>(null),
@@ -54,8 +77,10 @@ export function Conversation({ state }: { state: State }) {
     alive = useRef(true);
   const signedIn = !!state.account;
   const Speech =
-    (window as any).SpeechRecognition ||
-    (window as any).webkitSpeechRecognition;
+    typeof window === "undefined"
+      ? undefined
+      : (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
   useEffect(() => {
     sessionStorage.setItem(draftKey, draft);
     if (state.account) sessionStorage.removeItem("micro-draft:guest");
@@ -117,6 +142,36 @@ export function Conversation({ state }: { state: State }) {
     let cancelled = false;
     async function init() {
       try {
+        let opening = conversation;
+        const params = new URLSearchParams(window.location.search);
+        const explicit = [
+          "session",
+          "continue",
+          "new",
+          "bookmark",
+          "saved",
+          "item",
+        ].some((key) => params.has(key));
+        const selected = history.state?.microConversation;
+        if (
+          signedIn &&
+          !explicit &&
+          selected?.scope === selectionScope &&
+          typeof selected.id === "string"
+        ) {
+          opening = selected.id
+            ? (
+                await json<State>(
+                  "/?session=" + encodeURIComponent(selected.id),
+                )
+              ).conversation
+            : { ...conversation, id: "", messages: [], pending: false };
+          if (cancelled) return;
+          id.current = opening?.id || "";
+          setMessages(opening?.messages || []);
+          setConversation(opening);
+          onConversation?.(opening);
+        }
         if (signedIn && guestTurns().length) {
           const turns = guestTurns();
           const saved = await json<{ id: string }>("/agent/handoff", {
@@ -129,16 +184,21 @@ export function Conversation({ state }: { state: State }) {
             "/?session=" + encodeURIComponent(saved.id),
           );
           if (cancelled) return;
+          opening = next.conversation;
+          setConversation(opening);
+          onConversation?.(opening);
           setMessages(next.conversation?.messages || []);
           sessionStorage.removeItem(guestKey);
           ["hist", "conv", "ctx", "draft"].forEach((k) =>
             sessionStorage.removeItem("mu_chat_" + k + ":landing"),
           );
-          history.replaceState(null, "", "/");
+          rememberSelection();
         }
         if (cancelled) return;
+        if (signedIn && !opening?.attachment) rememberSelection();
+        setBusy(!!opening?.pending);
         setReady(true);
-        if (state.conversation?.pending) {
+        if (opening?.pending) {
           setStatus("Working…");
           await recover();
         }
@@ -172,8 +232,8 @@ export function Conversation({ state }: { state: State }) {
       await stream(
         {
           prompt,
-          agent: state.conversation?.agent || "",
-          attachment: state.conversation?.attachment || "",
+          agent: conversation?.agent || "",
+          attachment: conversation?.attachment || "",
           context: {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             ...(location ? { location } : {}),
@@ -185,7 +245,7 @@ export function Conversation({ state }: { state: State }) {
         (ev) => {
           if (ev.type === "flow_id" && ev.thread) {
             id.current = ev.thread;
-            if (signedIn) history.replaceState(null, "", "/");
+            if (signedIn) rememberSelection();
           }
           if (ev.type === "stream_token") setStatus("Writing…");
           if (ev.type === "status" && ev.message) setStatus(ev.message);
@@ -297,9 +357,9 @@ export function Conversation({ state }: { state: State }) {
         (empty && !signedIn ? "justify-center" : "")
       }
     >
-      {state.conversation?.attachment_title && (
+      {conversation?.attachment_title && (
         <div className="mb-4 rounded-lg border p-3">
-          <p className="font-medium">{state.conversation.attachment_title}</p>
+          <p className="font-medium">{conversation.attachment_title}</p>
           <p className="text-sm text-muted-foreground">
             This material accompanies your question.
           </p>

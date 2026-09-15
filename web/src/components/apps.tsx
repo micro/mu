@@ -5,6 +5,7 @@ import { Card } from "./ui/card";
 import { NativeSelect } from "./ui/select";
 import { PageHeading, Status } from "./layout";
 import { json, mutate } from "../lib/api";
+import catalogue from "../../../apps/catalog.json";
 type App = {
   slug: string;
   name: string;
@@ -71,7 +72,7 @@ export function AppsPage() {
         title="Apps"
         actions={
           <Button asChild>
-            <a href="/apps/new">New app</a>
+            <a href="/apps/new">New</a>
           </Button>
         }
       />
@@ -146,11 +147,39 @@ export function AppsPage() {
           </Card>
         ))}
       </div>
-      {visible?.length === 0 && (
-        <p className="py-8 text-muted-foreground">
-          {apps?.length ? "No apps match these filters." : "No apps yet."}
-        </p>
-      )}
+      <div className="mb-8 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+        {catalogue
+          .filter(
+            (a) =>
+              a.name.toLowerCase().includes(query.toLowerCase()) &&
+              pricing !== "paid" &&
+              !tag,
+          )
+          .map((a) => (
+            <section
+              key={a.id}
+              className="flex items-center justify-between gap-3 border-b py-3"
+            >
+              <h2 className="font-medium">
+                <a href={a.path}>{a.name}</a>
+              </h2>
+              <Button asChild>
+                <a href={a.path}>Open</a>
+              </Button>
+            </section>
+          ))}
+      </div>
+      {visible?.length === 0 &&
+        !catalogue.some(
+          (a) =>
+            a.name.toLowerCase().includes(query.toLowerCase()) &&
+            pricing !== "paid" &&
+            !tag,
+        ) && (
+          <p className="py-8 text-muted-foreground">
+            {apps?.length ? "No apps match these filters." : "No apps yet."}
+          </p>
+        )}
     </>
   );
 }

@@ -25,7 +25,11 @@ func outboxPage(w http.ResponseWriter, r *http.Request, owner string) {
 			err = retryQueued(owner, r.FormValue("id"))
 		}
 		if err != nil {
-			app.Respond(w, r, app.Response{Title: "Outbox", HTML: `<p>` + html.EscapeString(err.Error()) + `</p>`})
+			if app.WantsJSON(r) {
+				app.RespondError(w, 400, err.Error())
+			} else {
+				app.Respond(w, r, app.Response{Title: "Outbox", HTML: `<p>` + html.EscapeString(err.Error()) + `</p>`})
+			}
 			return
 		}
 		http.Redirect(w, r, "/mail?view=outbox", http.StatusSeeOther)
@@ -35,6 +39,18 @@ func outboxPage(w http.ResponseWriter, r *http.Request, owner string) {
 	rows, err := userdb.List("mail", owner, outboxCollection, "mine", nil, "", "", userdb.MaxListLimit)
 	if err != nil {
 		app.Respond(w, r, app.Response{Title: "Outbox", HTML: `<p>Could not load outgoing mail.</p>`})
+		return
+	}
+	if app.WantsJSON(r) {
+		items := []map[string]any{}
+		for _, rec := range rows {
+			m, e := readQueued(&rec)
+			if e != nil {
+				continue
+			}
+			items = append(items, map[string]any{"id": rec.ID, "subject": m.Subject, "recipients": m.Recipients, "attempts": m.Attempts, "created": m.Created, "last_error": m.LastError, "pending": rec.Data["pending"] == true})
+		}
+		app.RespondJSON(w, map[string]any{"items": items})
 		return
 	}
 	var b strings.Builder

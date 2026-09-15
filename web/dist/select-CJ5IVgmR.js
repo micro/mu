@@ -1,0 +1,1 @@
+import{j as t,z as i}from"./client-DAZDTePM.js";function o({className:e,...s}){return t.jsx("select",{"data-slot":"select",className:i("h-9 min-w-0 rounded-md border border-input bg-background px-3 text-base outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50",e),...s})}export{o as N};

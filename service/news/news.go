@@ -1612,6 +1612,10 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 
 	app.Log("news", "Final title='%s', desc='%s'", title, description)
 
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]any{"id": entry.ID, "title": title, "url": articleURL, "description": description, "summary": summary, "image": imageproxy.URL(image), "posted_at": postedAt})
+		return
+	}
 	// Build the article page
 	// Served from here, not from the publisher's CDN.
 	//

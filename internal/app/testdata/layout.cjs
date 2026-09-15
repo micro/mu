@@ -262,6 +262,8 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
   }
  }
 
+ // React selection persistence is covered against real handlers in apps.cjs.
+ if(!input.pages["/agent/micro"].includes('id="root"')) {
  // Reload an older selection even when the server initially renders a newer thread.
  await page.goto('https://mu.test/agent/micro');
  const selectedConfig=await page.locator('#conversation-config').textContent().then(JSON.parse);
@@ -281,6 +283,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  await page.reload();
  assert.equal(await page.locator('#mu-chat-conv').textContent(),'','empty selection reopened latest thread');
  assert.equal(await page.locator('#mu-chat-form').evaluate(f=>f.inert),false);
+ }
  if(process.env.MU_LAYOUT_AUDIT)fs.writeFileSync(process.env.MU_LAYOUT_AUDIT,JSON.stringify(audit));
  assert(!failures.length,failures.join('\n'));
  } finally {await browser.close();}

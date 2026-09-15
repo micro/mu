@@ -41,6 +41,14 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		snap, err := backup.Take()
+		if app.WantsJSON(r) {
+			if err != nil {
+				app.RespondError(w, 500, err.Error())
+			} else {
+				app.RespondJSON(w, snap)
+			}
+			return
+		}
 		if err != nil {
 			notice = `<div class="card backup-bad">Could not take a snapshot: ` +
 				html.EscapeString(err.Error()) + `</div>`

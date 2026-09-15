@@ -39,7 +39,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == http.MethodGet && r.URL.Query().Get("view") == "brief" && app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]any{"brief": Brief(owner)})
+		return
+	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		if id := r.URL.Query().Get("id"); id != "" {
+			e := ownedEvent(owner, id)
+			if e == nil {
+				app.RespondError(w, 404, "Event not found")
+				return
+			}
+			app.RespondJSON(w, []*Event{e})
+			return
+		}
 		app.RespondJSON(w, Upcoming(owner))
 		return
 	}

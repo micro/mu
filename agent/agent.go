@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html"
 	"mu/internal/ai"
+	"mu/web"
 	"net/http"
 	"net/url"
 
@@ -294,6 +295,27 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		cfg.Location = true
 	}
 
+	if elsewhere != "" && !app.WantsJSON(r) {
+		http.Redirect(w, r, "/inbox?id="+url.QueryEscape(sessionID), http.StatusSeeOther)
+		return
+	}
+	conversation := ClientConversation{Messages: []ClientMessage{}}
+	if cfg.ContextID != "" {
+		conversation = ClientHistory(accountID, cfg.ContextID)
+	}
+	conversation.Agent, conversation.AgentName = selAgent, agentTitle(accountID, selAgent)
+	conversation.Attachment = cfg.Attachment
+	if selected != "" {
+		conversation.AttachmentTitle = "Reading material"
+	}
+	state := map[string]any{"account": map[string]any{"id": acc.ID, "name": acc.Name, "admin": acc.Admin}, "csrf": auth.CSRFToken(r), "conversation": conversation}
+	if web.Page(w, r, conversation.AgentName, state) {
+		return
+	}
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, state)
+		return
+	}
 	chip := `<div class="conversation-toolbar"><strong>` + html.EscapeString(agentTitle(accountID, selAgent)) + `</strong></div>`
 	if selAgent == "" {
 		chip = `<div class="conversation-toolbar" hidden><strong></strong></div>`

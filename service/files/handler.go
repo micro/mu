@@ -98,6 +98,14 @@ func handleAction(w http.ResponseWriter, r *http.Request, id, action string) {
 	// Errors a person can act on — too big, out of space, wrong sort of file —
 	// belong on the page they came from, not on an error screen they have to
 	// navigate back from.
+	if app.WantsJSON(r) {
+		if actErr != nil {
+			app.RespondError(w, 400, actErr.Error())
+			return
+		}
+		app.RespondJSON(w, map[string]bool{"success": true})
+		return
+	}
 	dest := "/files"
 	if actErr != nil {
 		dest += "?error=" + neturl.QueryEscape(actErr.Error())

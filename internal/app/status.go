@@ -102,6 +102,9 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		HTML: renderPublicStatusHTML(status)})
 }
 
+// InternalStatus is an operator-only snapshot; callers must require admin access.
+func InternalStatus() StatusResponse { return buildStatus() }
+
 // RenderInternalStatusHTML returns the internal status HTML for embedding in the admin server page
 func RenderInternalStatusHTML() string {
 	status := buildStatus()

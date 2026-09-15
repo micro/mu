@@ -151,3 +151,36 @@ func Port() string {
 	}
 	return strings.TrimSpace(settings.Get(strings.Join([]string{"SANDBOX", "SSH", "PORT"}, "_")))
 }
+
+// ClientHandler manages the caller's SSH keys for both terminal and SFTP clients.
+func ClientHandler(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	if r.Method == http.MethodPost {
+		if !auth.StrictCSRF(r) {
+			app.Forbidden(w, r, "Invalid CSRF token")
+			return
+		}
+		if id := r.FormValue("removekey"); id != "" {
+			err = auth.RemoveSSHKey(sess.Account, id)
+		} else {
+			_, err = Register(sess.Account, r.FormValue("sshkey"), r.FormValue("keyname"))
+		}
+		if err != nil {
+			app.RespondError(w, 400, err.Error())
+			return
+		}
+	} else if r.Method != http.MethodGet {
+		app.MethodNotAllowed(w, r)
+		return
+	}
+	keys := []map[string]any{}
+	for _, k := range auth.SSHKeys(sess.Account) {
+		keys = append(keys, map[string]any{"name": k.Name, "fingerprint": k.Print, "used": k.Used})
+	}
+	app.RespondJSON(w, map[string]any{"enabled": Port() != "" && !strings.EqualFold(Port(), "off"), "ssh": connectLine("ssh", Port()), "sftp": connectLine("sftp", Port()), "keys": keys})
+}

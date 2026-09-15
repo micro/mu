@@ -58,7 +58,7 @@ func TestGuestHandoffIsPrivateAndRetryable(t *testing.T) {
 	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 	w := httptest.NewRecorder()
 	MicroHandler(w, r)
-	if w.Code != 200 || (!strings.Contains(w.Body.String(), "keep this question") || !strings.Contains(w.Body.String(), "youtube.com/embed/fruits")) {
+	if w.Code != 200 || (!strings.Contains(w.Body.String(), "keep this question") || !strings.Contains(w.Body.String(), "youtube.com/watch?v=fruits")) {
 		t.Fatal("root did not reopen imported conversation")
 	}
 }

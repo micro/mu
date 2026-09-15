@@ -17,6 +17,7 @@ import (
 	"mu/agent/brief"
 	"mu/agent/digest"
 	"mu/agent/micro"
+	firstparty "mu/apps"
 	"mu/client"
 	help "mu/docs"
 	"mu/home"
@@ -28,6 +29,7 @@ import (
 	"mu/internal/push"
 	"mu/internal/settings"
 	"mu/internal/setup"
+	"mu/internal/sshaccess"
 	"mu/internal/user"
 	"mu/service/apps"
 	"mu/service/archive"
@@ -216,15 +218,15 @@ func registerRoutes() {
 	api.Operations = append(agent.PublicOperations(), work.PublicOperations()...)
 	api.Operations = append(api.Operations, inbox.PublicOperations()...)
 	http.HandleFunc("/services/call/", api.ServiceCallHandler)
-	http.HandleFunc("/work", work.Handler)
+	http.HandleFunc("/work", firstparty.Page(work.Handler, "Work"))
 	// serve video
-	http.HandleFunc("/video", video.Handler)
+	http.HandleFunc("/video", firstparty.Page(video.Handler, "Video"))
 	http.HandleFunc("/video/thumb", video.ThumbHandler)
 
 	// serve news
-	http.HandleFunc("/news", news.Handler)
+	http.HandleFunc("/news", firstparty.Page(news.Handler, "News"))
 	// serve chat
-	http.HandleFunc("/chat", chat.Handler)
+	http.HandleFunc("/chat", firstparty.Page(chat.Handler, "Chat"))
 	// XMPP for the browser (RFC 7395), so the web page is a carrier of the chat
 	// protocol rather than a second protocol beside it — and host-meta, which is
 	// how a browser finds this endpoint from a domain, since it cannot look up
@@ -233,7 +235,7 @@ func registerRoutes() {
 	http.HandleFunc("/.well-known/host-meta.json", chat.WellKnownHostMeta)
 
 	// serve blog (full list)
-	http.HandleFunc("/blog", blog.Handler)
+	http.HandleFunc("/blog", firstparty.Page(blog.Handler, "Blog"))
 
 	// serve individual blog post (public, no auth)
 	// Serves ActivityPub JSON-LD when requested via Accept header
@@ -252,19 +254,19 @@ func registerRoutes() {
 	http.HandleFunc("/admin/flag", admin.FlagHandler)
 
 	// admin dashboard
-	http.HandleFunc("/admin", admin.Handler)
+	http.HandleFunc("/admin", firstparty.Page(admin.Handler, "Admin"))
 
 	// admin user management
 	http.HandleFunc("/admin/users", admin.UsersHandler)
 
 	// moderation queue
-	http.HandleFunc("/admin/moderate", admin.ModerateHandler)
+	http.HandleFunc("/admin/moderate", firstparty.Page(admin.ModerateHandler, "Admin"))
 
 	// mail blocklist management
 	http.HandleFunc("/admin/blocklist", admin.BlocklistMoved)
 
 	// spam filter management
-	http.HandleFunc("/admin/spam", admin.SpamHandler)
+	http.HandleFunc("/admin/spam", firstparty.Page(admin.SpamHandler, "Admin"))
 
 	// email log
 	http.HandleFunc("/admin/email", admin.MailLogMoved)
@@ -272,25 +274,25 @@ func registerRoutes() {
 	// external API call log
 
 	// system log
-	http.HandleFunc("/admin/log", admin.LogHandler)
+	http.HandleFunc("/admin/log", firstparty.Page(admin.LogHandler, "Admin"))
 
 	// environment variables status
-	http.HandleFunc("/admin/config", admin.ConfigHandler)
+	http.HandleFunc("/admin/config", firstparty.Page(admin.ConfigHandler, "Admin"))
 
 	// server update and restart
-	http.HandleFunc("/admin/server", admin.ServerHandler)
+	http.HandleFunc("/admin/server", firstparty.Page(admin.ServerHandler, "Admin"))
 
 	// AI usage tracking
 	http.HandleFunc("/admin/usage", admin.SpendMoved)
-	http.HandleFunc("/admin/traffic", admin.TrafficHandler)
+	http.HandleFunc("/admin/traffic", firstparty.Page(admin.TrafficHandler, "Admin"))
 
 	// admin console
-	http.HandleFunc("/admin/status", admin.StatusHandler)
+	http.HandleFunc("/admin/status", firstparty.Page(admin.StatusHandler, "Admin"))
 	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
 	http.HandleFunc("/admin/work", work.AdminHandler)
 	// What this instance will wake you for. See admin/alert.go.
-	http.HandleFunc("/admin/alerts", admin.AlertsHandler)
-	http.HandleFunc("/admin/backup", admin.BackupHandler)
+	http.HandleFunc("/admin/alerts", firstparty.Page(admin.AlertsHandler, "Admin"))
+	http.HandleFunc("/admin/backup", firstparty.Page(admin.BackupHandler, "Admin"))
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
 	// Money: top-up, transfer, Stripe and the price list, all under /wallet with
@@ -334,14 +336,14 @@ func registerRoutes() {
 	// A real browser, for the pages a fetch cannot read. /browser is the page;
 	// the pictures it takes are at /browser/shot/<id>.png. See service/browser.
 	// A machine of your own, in a container. See service/shell.
-	http.HandleFunc("/shell", shell.Handler)
+	http.HandleFunc("/shell", firstparty.Page(shell.Handler, "Shell"))
 	// The address this had until it was renamed. Kept because links to it
 	// exist — in mail this instance has already sent, and in anybody's
 	// bookmarks — and breaking a URL to tidy a name is a bad trade.
-	http.HandleFunc("/browser", browser.Handler)
+	http.HandleFunc("/browser", firstparty.Page(browser.Handler, "Browser"))
 	http.HandleFunc("/browser/shot/", browser.ShotHandler)
 
-	http.HandleFunc("/web", web.Handler)
+	http.HandleFunc("/web", firstparty.Page(web.Handler, "Search"))
 	// /search is the obvious URL and it answered 404.
 	//
 	// The apps SDK's mu.search() called it, so every app that searched got
@@ -455,19 +457,19 @@ func registerRoutes() {
 	http.HandleFunc("/agents/data", agent.AgentsHandler)
 	// The old path, so a page cached with the previous script keeps working.
 	http.HandleFunc("/agent/agents", agent.AgentsHandler)
-	http.HandleFunc("/agent/new", agent.NewAgentHandler)
+	http.HandleFunc("/agent/new", firstparty.Page(agent.NewAgentHandler, "New agent"))
 	http.HandleFunc("/agent/run", agent.RunHandler)
 	// Has the answer landed yet — see agent/pending.go.
 	http.HandleFunc("/agent/pending", agent.PendingHandler)
 
 	// serve mail inbox
-	http.HandleFunc("/mail", mail.Handler)
+	http.HandleFunc("/mail", firstparty.Page(mail.Handler, "Mail"))
 
 	// serve markets page
-	http.HandleFunc("/markets", markets.Handler)
-	http.HandleFunc("/text", text.Handler)
-	http.HandleFunc("/food", food.Handler)
-	http.HandleFunc("/transit", transit.Handler)
+	http.HandleFunc("/markets", firstparty.Page(markets.Handler, "Markets"))
+	http.HandleFunc("/text", firstparty.Page(text.Handler, "Text"))
+	http.HandleFunc("/food", firstparty.Page(food.Handler, "Food"))
+	http.HandleFunc("/transit", firstparty.Page(transit.Handler, "Transit"))
 	// The basemap under anything spatial. /maps is the page; the images are at
 	// /tiles/<style>/<z>/<x>/<y>.png, which is the shape every map library
 	// takes and the only shape any of them take. See service/maps.
@@ -482,7 +484,7 @@ func registerRoutes() {
 	// /tiles/ still answers, permanently redirected. Browsers and map libraries
 	// cache a 301, so a config that has not been updated costs one extra round
 	// trip and then stops costing anything.
-	http.HandleFunc("/maps", maps.Handler)
+	http.HandleFunc("/maps", firstparty.Page(maps.Handler, "Maps"))
 	http.HandleFunc("/maps/", maps.TileHandler)
 	// What you have, and the key that can spend it. One destination: x402 is a
 	// substrate and a substrate does not get a page of its own, the same way
@@ -509,12 +511,12 @@ func registerRoutes() {
 	// Who is here. See service/users: the directory that did not exist, so a
 	// person could sign up alongside a hundred and eighty others and meet none
 	// of them.
-	http.HandleFunc("/users", users.Handler)
-	http.HandleFunc("/contacts", contacts.Handler)
-	http.HandleFunc("/docs", docs.Handler)
-	http.HandleFunc("/notes", notes.Handler)
-	http.HandleFunc("/notify", notify.Handler)
-	http.HandleFunc("/sms", sms.Handler)
+	http.HandleFunc("/users", firstparty.Page(users.Handler, "Users"))
+	http.HandleFunc("/contacts", firstparty.Page(contacts.Handler, "Contacts"))
+	http.HandleFunc("/docs", firstparty.Page(docs.Handler, "Documents"))
+	http.HandleFunc("/notes", firstparty.Page(notes.Handler, "Notes"))
+	http.HandleFunc("/notify", firstparty.Page(notify.Handler, "Notifications"))
+	http.HandleFunc("/sms", firstparty.Page(sms.Handler, "Sms"))
 
 	// Twilio posts everything arriving on a Messaging Service to one webhook,
 	// so both paths answer and whichever is configured works.
@@ -532,45 +534,45 @@ func registerRoutes() {
 			return agent.NameOf(owner, id)
 		})
 	}
-	http.HandleFunc("/tasks", taskPage)
+	http.HandleFunc("/tasks", firstparty.Page(taskPage, "Tasks"))
 	http.HandleFunc("/tasks/", taskPage)
-	http.HandleFunc("/images", images.Handler)
+	http.HandleFunc("/images", firstparty.Page(images.Handler, "Images"))
 	http.HandleFunc("/images/daily/", images.DailyImageHandler)
 	http.HandleFunc("/images/file/", images.GeneratedImageHandler)
-	http.HandleFunc("/events", events.Handler)
+	http.HandleFunc("/events", firstparty.Page(events.Handler, "Events"))
 	// /files lists a person's files; /files/<id> serves one. A stored file's URL
 	// has to be fetchable by an ordinary HTTP client, or handing someone a link
 	// to it is worthless.
-	http.HandleFunc("/files", files.Handler)
+	http.HandleFunc("/files", firstparty.Page(files.Handler, "Files"))
 	http.HandleFunc("/files/", files.Handler)
 
 	// serve social page
-	http.HandleFunc("/social", social.Handler)
+	http.HandleFunc("/social", firstparty.Page(social.Handler, "Social"))
 	http.HandleFunc("/social/thread", social.ThreadHandler)
 
 	// Stream (console) routes
-	http.HandleFunc("/stream", stream.Handler)
+	http.HandleFunc("/stream", firstparty.Page(stream.Handler, "Stream"))
 	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
 
 	// JSON only. The page is /services/weather; this no longer bounces there.
-	http.HandleFunc("/weather", weather.Handler)
-	http.HandleFunc("/prayer", prayer.Handler)
+	http.HandleFunc("/weather", firstparty.Page(weather.Handler, "Weather"))
+	http.HandleFunc("/prayer", firstparty.Page(prayer.Handler, "Prayer"))
 
 	// Every service answers at its own name. This was the one that did not —
 	// see service/hazards/page.go for how the route went missing.
-	http.HandleFunc("/hazards", hazards.Handler)
+	http.HandleFunc("/hazards", firstparty.Page(hazards.Handler, "Hazards"))
 
 	// serve places page
-	http.HandleFunc("/places", places.Handler)
+	http.HandleFunc("/places", firstparty.Page(places.Handler, "Places"))
 	http.HandleFunc("/places/", places.Handler)
 
 	// serve weather page
 
 	// serve flights page
-	http.HandleFunc("/flights", flights.Handler)
+	http.HandleFunc("/flights", firstparty.Page(flights.Handler, "Flights"))
 
 	// serve routes page
-	http.HandleFunc("/routes", routes.Handler)
+	http.HandleFunc("/routes", firstparty.Page(routes.Handler, "Routes"))
 
 	// serve apps
 	http.HandleFunc("/apps", apps.Handler)
@@ -594,6 +596,12 @@ func registerRoutes() {
 	// What you are doing, set on your own profile. See internal/user/status.go.
 	http.HandleFunc("/client/assets/", webclient.Assets)
 	http.HandleFunc("/client/state", account.ClientStateHandler)
+	http.HandleFunc("/admin/client", admin.ClientHandler)
+	http.HandleFunc("/client/ssh", sshaccess.ClientHandler)
+	http.HandleFunc("/client/apps", firstparty.CatalogueHandler)
+	http.HandleFunc("/client/agents", agent.CatalogueHandler)
+	http.HandleFunc("/client/services", api.CatalogueHandler)
+	http.HandleFunc("/client/call/", api.AppCallHandler)
 	http.HandleFunc("/inbox/settings", inbox.SettingsHandler)
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/account/profile", account.Account)
@@ -650,13 +658,13 @@ func registerRoutes() {
 	// A tool that created agents would let a scoped agent mint an unscoped one,
 	// which is privilege escalation dressed as a feature. Agents are created by
 	// a person in a browser or not at all.
-	http.HandleFunc("/agents", agent.RosterHandler)
+	http.HandleFunc("/agents", firstparty.Page(agent.RosterHandler, "Agents"))
 
 	http.HandleFunc("/oauth2/google", account.GoogleLogin)
 	http.HandleFunc("/oauth2/google/connect", account.GoogleConnect)
 	http.HandleFunc("/oauth2/callback", account.GoogleCallback)
 
-	http.HandleFunc("/admin/oauth", admin.OAuthHandler)
+	http.HandleFunc("/admin/oauth", firstparty.Page(admin.OAuthHandler, "Admin"))
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
 	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)
 	http.HandleFunc("/oauth/token", auth.OAuthTokenHandler)
@@ -729,25 +737,25 @@ func registerRoutes() {
 	// now the only one with no page: clicking a tool jumped to a fragment on
 	// the playground. See internal/api/tool_page.go.
 	http.HandleFunc("/tools/", api.PublicPageHandler)
-	http.HandleFunc("/services", api.ToolsPageHandler)
+	http.HandleFunc("/services", firstparty.Page(api.ToolsPageHandler, "Services"))
 	// /services/<name> — one service as the thing you call: what it knows right
 	// now, every method with its arguments and its price, and a form that makes
 	// the call for real. See internal/api/service_ref.go.
-	http.HandleFunc("/services/", api.ServiceRefHandler)
+	http.HandleFunc("/services/", firstparty.Page(api.ServiceRefHandler, "Services"))
 	// What your agents did. Flows were recorded and never served.
 	// Runs belong to the agent, so they live under it and the agent surface
 	// tabs between them. /runs still works — links to it exist.
 	http.HandleFunc("/agent/connect", agent.ConnectHandler)
 	// Search everything you have ever said to an agent. The list of your
 	// conversations is /agent; this is the search over all of them.
-	http.HandleFunc("/recall", recall.Handler)
-	http.HandleFunc("/bookmarks", bookmarks.Handler)
+	http.HandleFunc("/recall", firstparty.Page(recall.Handler, "Recall"))
+	http.HandleFunc("/bookmarks", firstparty.Page(bookmarks.Handler, "Bookmarks"))
 	http.HandleFunc("/saved", bookmarks.Handler)
 	http.HandleFunc("/saved/search", bookmarks.Handler)
 	http.HandleFunc("/bookmarks/search", bookmarks.Handler)
 	// And the search over what the instance has collected, which is the other
 	// archive and belongs to nobody.
-	http.HandleFunc("/archive", archive.Handler)
+	http.HandleFunc("/archive", firstparty.Page(archive.Handler, "Archive"))
 	// Deleting a conversation. The list of them is the rail on /agent.
 	http.HandleFunc("/agent/session/", inbox.SessionHandler)
 	// Putting a conversation back to unread. Its own path, because /inbox's POST

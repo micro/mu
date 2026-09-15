@@ -40,10 +40,10 @@ func TestHomeStartsEmptyAndHistoryReopensExplicitly(t *testing.T) {
 		if w.Code != 200 {
 			t.Fatalf("%s: %d", tc.path, w.Code)
 		}
-		if got := strings.Contains(w.Body.String(), `"contextId":"`+id+`"`); got != tc.want {
+		if got := strings.Contains(w.Body.String(), `"id":"`+id+`"`); got != tc.want {
 			t.Errorf("%s reopened=%v", tc.path, got)
 		}
-		if !strings.Contains(w.Body.String(), `agent-micro_entry_test-`) {
+		if !strings.Contains(w.Body.String(), `"id":"micro_entry_test"`) {
 			t.Error("storage lacks account scope")
 		}
 	}

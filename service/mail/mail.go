@@ -576,6 +576,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == http.MethodGet && r.URL.Query().Get("client") == "1" {
+		clientPage(w, r, acc)
+		return
+	}
 	if r.Method == http.MethodPost && r.FormValue("action") == "mark_read" {
 		if !auth.StrictCSRF(r) {
 			http.Error(w, "Invalid form token", http.StatusForbidden)
