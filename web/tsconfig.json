@@ -7,10 +7,17 @@
     "jsx": "react-jsx",
     "strict": true,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "paths": {
+      "@/*": ["src/*"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-markdown": ["./node_modules/react-markdown"],
+      "remark-gfm": ["./node_modules/remark-gfm"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../apps"]
 }

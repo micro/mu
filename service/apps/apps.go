@@ -527,6 +527,9 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if web.Page(w, r, "New app") {
+		return
+	}
 	var sb strings.Builder
 
 	sb.WriteString(`<form method="POST" action="/apps/new" class="form page-col">`)
@@ -815,6 +818,9 @@ func handleEdit(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
+	if web.Page(w, r, "Edit app") {
+		return
+	}
 	var sb strings.Builder
 	sb.WriteString(editPageHTML(a))
 
@@ -904,6 +910,9 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 	_, acc, _ := auth.RequireSession(r)
 	isAuthor := acc != nil && acc.ID == a.AuthorID
 
+	if web.Page(w, r, "App versions") {
+		return
+	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">%s</a></p>`, htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
 	sb.WriteString(`<h2 class="mb-4">Version History</h2>`)

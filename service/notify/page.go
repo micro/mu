@@ -71,7 +71,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]any{
-			"reachable": Reachable(who), "devices": devices, "sent": sent,
+			"public_key": push.PublicKey(), "reachable": Reachable(who), "devices": devices, "sent": sent,
 		})
 		return
 	}

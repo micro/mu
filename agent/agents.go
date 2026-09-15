@@ -184,10 +184,11 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 		models = append(models, model{c.ID, c.Label})
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"agents":  mine,
-		"tools":   AllAgentTools(),
-		"address": mail.SharedAgentAddress(),
-		"models":  models,
+		"agents":   mine,
+		"tools":    AllAgentTools(),
+		"address":  mail.SharedAgentAddress(),
+		"models":   models,
+		"builtins": Builtins(),
 	})
 }
 

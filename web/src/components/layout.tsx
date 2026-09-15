@@ -171,17 +171,18 @@ export function Layout({
         >
           {children}
         </main>
-        {!account && location.pathname === "/" && (
-          <footer className="flex shrink-0 flex-wrap justify-center gap-x-4 gap-y-2 px-4 py-3 text-sm text-muted-foreground">
-            {["About", "Contact", "Pricing", "Privacy", "Status"].map(
-              (label) => (
-                <a key={label} href={"/" + label.toLowerCase()}>
-                  {label}
-                </a>
-              ),
-            )}
-          </footer>
-        )}
+        {!account &&
+          (typeof location === "undefined" || location.pathname === "/") && (
+            <footer className="flex shrink-0 flex-wrap justify-center gap-x-4 gap-y-2 px-4 py-3 text-sm text-muted-foreground">
+              {["About", "Contact", "Pricing", "Privacy", "Status"].map(
+                (label) => (
+                  <a key={label} href={"/" + label.toLowerCase()}>
+                    {label}
+                  </a>
+                ),
+              )}
+            </footer>
+          )}
       </div>
     </div>
   );

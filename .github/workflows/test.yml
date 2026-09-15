@@ -140,7 +140,7 @@ jobs:
           export MU_PLAYWRIGHT_MODULE="$RUNNER_TEMP/mu-layout/node_modules/playwright"
           export MU_LAYOUT_BROWSER=$(node -e 'console.log(require(process.env.MU_PLAYWRIGHT_MODULE).chromium.executablePath())')
           export MU_LAYOUT_SHOTS="$RUNNER_TEMP/mu-layout-shots"
-          go test ./test -run '^Test(PageComposition|ReactClient)InBrowser$' -count=1 -timeout=10m -v
+          go test ./test -run '^Test(PageComposition|ReactClient|ReactApplications)InBrowser$' -count=1 -timeout=10m -v
       - uses: actions/upload-artifact@v4
         if: always()
         with:

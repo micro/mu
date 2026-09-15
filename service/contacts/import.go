@@ -80,6 +80,10 @@ func importHandler(w http.ResponseWriter, r *http.Request) {
 			added++
 		}
 	}
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]int{"added": added, "skipped": skipped, "failed": failed})
+		return
+	}
 	body := fmt.Sprintf(`<div class="card"><p>Imported %d contacts. Skipped %d existing email addresses. %d rows could not be imported.</p><a class="btn" href="/contacts">Back to contacts</a></div>`, added, skipped, failed)
 	app.Respond(w, r, app.Response{Title: "Contacts", HTML: body})
 }

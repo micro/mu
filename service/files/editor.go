@@ -9,6 +9,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	store "mu/internal/files"
+	"mu/web"
 )
 
 const editorLimit = 256 << 10
@@ -65,6 +66,10 @@ func editorHandler(w http.ResponseWriter, r *http.Request, id string) {
 			}
 			_, err = store.Replace(sess.Account, id, name, f.Type, []byte(text))
 			if err == nil {
+				if app.WantsJSON(r) {
+					app.RespondJSON(w, map[string]bool{"saved": true})
+					return
+				}
 				http.Redirect(w, r, "/files", http.StatusSeeOther)
 				return
 			}
@@ -73,6 +78,17 @@ func editorHandler(w http.ResponseWriter, r *http.Request, id string) {
 		raw = []byte(text)
 	} else if r.Method != http.MethodGet {
 		app.MethodNotAllowed(w, r)
+		return
+	}
+	if app.WantsJSON(r) {
+		if message != "" {
+			app.RespondError(w, http.StatusConflict, message)
+			return
+		}
+		app.RespondJSON(w, map[string]any{"file": f, "content": string(raw)})
+		return
+	}
+	if web.Page(w, r, "Files") {
 		return
 	}
 	readonly := ""

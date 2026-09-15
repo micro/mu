@@ -207,10 +207,10 @@ expose agent operations without turning the agent into a service.
   identity comes from the credential, never request arguments.
 - One directory per service, named for the service. `internal/service` is the
   runtime that hosts them, not a service.
-- Every service has a page: service name == directory == route == nav label ==
-  tool prefix. A capability with no page is one a person cannot find, and the
-  last attempt at "is a service, but hide it" was a boolean whose deletion was
-  the fix.
+- Every service is discoverable through the generated Services API/SDK reference.
+  First-party application screens live in top-level `apps/` and are registered
+  in `apps/catalog.json`. They use services without declaring Specs or changing
+  the runtime service boundary. Existing service URLs remain their entry points.
 - A service is named for a **domain** (a noun), never an action. Tool names are
   `service_method`, so an action-named service leaves its main method nothing to
   be called but the same word — which is how `search.Search` produced
@@ -321,7 +321,7 @@ eviction limit governed both, which is why it was wrong for each.
 ## Layering
 
 The top level is the product — `home/`, `agent/`, `service/`, `admin/`,
-`account/`. Each is a staple: it owns something nothing else owns, and a user
+`account/`, `apps/`, and `web/`. Each is a staple: it owns something nothing else owns, and a user
 can name it. Underneath is `internal/`, which is everything with no name a user
 would recognise.
 
