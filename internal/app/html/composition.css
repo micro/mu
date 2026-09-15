@@ -219,7 +219,7 @@ body:has(.conversation-layout) #footer { display:none }
 
 /* Linked rows share interaction styling across search and message lists. */
 a.list-link, a.list-link:visited, a.list-link:hover, a.list-link:focus-visible { color:inherit; text-decoration:none; }
-a.list-link { display:block; min-width:0; }
+a.list-link { min-width:0; }
 a.list-link:hover { background:var(--hover-background); }
 .link-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:8px; }
 .media-preview { display:block; width:100%; max-width:480px; max-height:280px; object-fit:contain; object-position:left center; }

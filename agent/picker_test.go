@@ -63,9 +63,9 @@ func TestALinkInASentenceStaysInTheSentence(t *testing.T) {
 		t.Errorf("not a link at all: %s", inline)
 	}
 
-	// The call to action keeps both, because that is what makes it one.
+	// A standalone action keeps its class but uses a plain label too.
 	cta := app.Link("inbox", "/inbox")
-	if !strings.Contains(cta, `class="link"`) || !strings.Contains(cta, "→") {
+	if !strings.Contains(cta, `class="link"`) || strings.Contains(cta, "→") {
 		t.Errorf("the call-to-action form changed: %s", cta)
 	}
 }
