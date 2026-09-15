@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "radix-ui";
 import {
   Home,
@@ -94,10 +94,42 @@ export function Layout({
   conversation?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const shell = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    let frame = 0;
+    const fit = () => {
+      frame = 0;
+      const element = shell.current;
+      if (!element || (viewport && viewport.scale !== 1)) return;
+      // Keyboard overlays can shrink only the visual viewport in installed apps.
+      // Its bottom and the shell top are both in layout viewport coordinates.
+      const height = viewport?.height ?? window.innerHeight;
+      const available = conversation
+        ? height + (viewport?.offsetTop ?? 0) - element.getBoundingClientRect().top
+        : height;
+      element.style.setProperty("--app-height", `${Math.max(0, available)}px`);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(fit); };
+    fit();
+    window.addEventListener("resize", schedule);
+    viewport?.addEventListener("resize", schedule);
+    viewport?.addEventListener("scroll", schedule);
+    document.addEventListener("focusin", schedule);
+    document.addEventListener("focusout", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", schedule);
+      viewport?.removeEventListener("resize", schedule);
+      viewport?.removeEventListener("scroll", schedule);
+      document.removeEventListener("focusin", schedule);
+      document.removeEventListener("focusout", schedule);
+    };
+  }, [conversation]);
   return (
-    <div className="flex min-h-dvh bg-background text-foreground">
+    <div ref={shell} className={"app-shell flex bg-background text-foreground" + (conversation ? " app-conversation" : "")}>
       {account && (
-        <aside className="fixed inset-y-0 left-0 hidden w-56 border-r bg-muted/30 md:block">
+        <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-56 border-r bg-muted/30 md:block">
           <Navigation account={account} />
         </aside>
       )}
@@ -105,7 +137,7 @@ export function Layout({
         className={
           "flex min-w-0 flex-1 flex-col " +
           (account ? "md:ml-56 " : "") +
-          (conversation ? "h-dvh overflow-hidden" : "")
+          (conversation ? "min-h-0 overflow-hidden" : "")
         }
       >
         <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4 sm:px-6">
@@ -124,7 +156,7 @@ export function Layout({
                 </Dialog.Trigger>
                 <Dialog.Portal>
                   <Dialog.Overlay className="fixed inset-0 z-40 bg-black/30" />
-                  <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] bg-background shadow-lg">
+                  <Dialog.Content className="app-sidebar fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] bg-background shadow-lg">
                     <Dialog.Title className="sr-only">Navigation</Dialog.Title>
                     <Dialog.Description className="sr-only">
                       Your conversations and account

@@ -117,3 +117,22 @@
 }
 
 @source "../../apps";
+
+/* Shared installed-app geometry, including notches and the home indicator. */
+.app-shell {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  min-height: var(--app-height, 100dvh);
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+}
+.app-conversation {
+  height: var(--app-height, 100dvh);
+  overflow: hidden;
+}
+.app-sidebar {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}

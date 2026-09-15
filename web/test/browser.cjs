@@ -432,6 +432,41 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       { headers: { Accept: "application/json" } },
     );
     assert.equal(response.status(), 404, "another owner’s conversation leaked");
+    // Model a standalone viewport: safe areas and an overlay keyboard which
+    // resizes visualViewport without changing the layout viewport.
+    await page.setViewportSize({ width: 390, height: 840 });
+    for (const route of ["/", "/inbox", "/account/profile", "/apps"]) {
+      await page.goto(input.base + route);
+      await page.locator(".app-shell").waitFor();
+      await page.evaluate(() => {
+        const shell = document.querySelector(".app-shell");
+        shell.style.setProperty("--safe-top", "44px");
+        shell.style.setProperty("--safe-bottom", "34px");
+        shell.style.setProperty("--safe-left", "12px");
+        shell.style.setProperty("--safe-right", "12px");
+      });
+      const header = await page.locator("header").boundingBox();
+      assert(header.y >= 44 && header.x >= 12, "page overlaps installed-app safe area: " + route);
+      await checkWidth();
+      if (route !== "/") continue;
+      const composer = page.getByRole("textbox", { name: "Message Micro" }).locator("..");
+      await composer.waitFor();
+      for (const [height, offsetTop] of [[840, 0], [460, 0], [420, 40], [840, 0]]) {
+        await page.evaluate(({ height, offsetTop }) => {
+          Object.defineProperty(visualViewport, "height", { configurable: true, value: height });
+          Object.defineProperty(visualViewport, "offsetTop", { configurable: true, value: offsetTop });
+          visualViewport.dispatchEvent(new Event("resize"));
+          visualViewport.dispatchEvent(new Event("scroll"));
+        }, { height, offsetTop });
+        await page.waitForFunction(({ bottom }) => {
+          const form = document.querySelector('textarea[aria-label="Message Micro"]').form;
+          const rect = form.getBoundingClientRect();
+          return rect.bottom <= bottom - 34 && rect.bottom >= bottom - 70;
+        }, { bottom: height + offsetTop });
+        const box = await composer.boundingBox();
+        assert(box.y >= 100, "keyboard pushes composer over header");
+      }
+    }
     assert.equal(errors.length, 0, errors.join("\n"));
     assert.equal(failures.length, 0, failures.join("\n"));
   } finally {
