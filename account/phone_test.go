@@ -3,6 +3,8 @@ package account
 // The number, on the page where the other addresses are.
 
 import (
+	"mu/internal/auth"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -36,15 +38,12 @@ func TestThePhoneCardOffersVerificationLikeEmail(t *testing.T) {
 			"Configured() reads something this test does not set")
 	}
 
-	got := renderPhoneCard("nobody_has_this_account")
-	if got == "" {
-		t.Fatal("no phone card on an instance that can text")
+	w := httptest.NewRecorder()
+	clientAccount(w, httptest.NewRequest("GET", "/account", nil), &auth.Account{ID: "phone-prefs"})
+	if !strings.Contains(w.Body.String(), `"phone_enabled":true`) {
+		t.Fatal("phone configuration missing")
 	}
-	for _, want := range []string{"Phone", "verify_number", "/account"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("the card does not contain %q:\n%s", want, got)
-		}
-	}
+
 }
 
 // And it is absent where it could only fail.
@@ -57,7 +56,10 @@ func TestNoPhoneCardWithoutANumberToTextFrom(t *testing.T) {
 	t.Cleanup(func() { settings.Set("TWILIO_FROM", prev) })
 	settings.Set("TWILIO_FROM", "")
 
-	if got := renderPhoneCard("nobody_has_this_account"); got != "" {
-		t.Errorf("a phone card was drawn on an instance with no number:\n%s", got)
+	w := httptest.NewRecorder()
+	clientAccount(w, httptest.NewRequest("GET", "/account", nil), &auth.Account{ID: "phone-prefs"})
+	if !strings.Contains(w.Body.String(), `"phone_enabled":false`) {
+		t.Fatal("phone form would be offered without a sending number")
 	}
+
 }

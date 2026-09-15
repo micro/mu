@@ -26,6 +26,7 @@ func TestAssistantReopensOwnedConversation(t *testing.T) {
 		want int
 	}{{mine.ID, 200}, {other.ID, 404}, {"nonexistent", 404}} {
 		r := httptest.NewRequest("GET", "/?session="+tc.id, nil)
+		r.Header.Set("Accept", "application/json")
 		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		w := httptest.NewRecorder()
 		Index(w, r)

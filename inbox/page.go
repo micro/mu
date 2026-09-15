@@ -34,6 +34,7 @@ import (
 
 	"mu/internal/thread"
 	"mu/service/mail"
+	"mu/web"
 )
 
 // shown is how many conversations one page of the inbox is.
@@ -108,6 +109,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	auth.SetCSRFCookie(w, r)
+	if r.Method == http.MethodGet {
+		if web.Page(w, r, "Inbox") {
+			return
+		}
+		clientData(w, r, acc.ID)
+		return
+	}
 	// An instruction about the conversation being read. POST here rather than at
 	// a path of its own, because /inbox/<box> is a mailbox name and /inbox/act
 	// would be one an account could have.
@@ -138,7 +147,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// not an instruction with nothing in it.
 		_ = r.ParseForm()
 		if _, searching := r.PostForm["q"]; searching {
-			priority(w, r, acc.ID)
+			if app.WantsJSON(r) {
+				clientData(w, r, acc.ID)
+			} else {
+				priority(w, r, acc.ID)
+			}
 			return
 		}
 		action(w, r, acc.ID)

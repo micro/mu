@@ -52,3 +52,5 @@ cookies*.txt
 mob.js
 *-sidebar.png
 screenshot*.png
+
+web/node_modules

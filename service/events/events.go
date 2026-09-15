@@ -21,16 +21,17 @@ import (
 
 // Event is a scheduled reminder owned by a single user.
 type Event struct {
-	Builtin  bool      `json:"builtin,omitempty"`
-	Kind     string    `json:"kind,omitempty"`
-	Zone     string    `json:"zone,omitempty"`
-	Paused   bool      `json:"paused,omitempty"`
-	Sequence int       `json:"sequence,omitempty"`
-	ID       string    `json:"id"`
-	Owner    string    `json:"owner"`
-	Title    string    `json:"title"`
-	When     time.Time `json:"when"`
-	Note     string    `json:"note,omitempty"`
+	WorldNews *bool     `json:"world_news,omitempty"`
+	Builtin   bool      `json:"builtin,omitempty"`
+	Kind      string    `json:"kind,omitempty"`
+	Zone      string    `json:"zone,omitempty"`
+	Paused    bool      `json:"paused,omitempty"`
+	Sequence  int       `json:"sequence,omitempty"`
+	ID        string    `json:"id"`
+	Owner     string    `json:"owner"`
+	Title     string    `json:"title"`
+	When      time.Time `json:"when"`
+	Note      string    `json:"note,omitempty"`
 	// Minutes is how long the event lasts. Zero means the half hour the .ics
 	// export has always assumed, so events stored before this existed keep the
 	// meaning they were saved with.

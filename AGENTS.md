@@ -529,7 +529,15 @@ embedded object needs a boundary. Share typography across landing, account and
 application shells. Do not add new page-specific styling or a second chat
 implementation during this migration.
 
-Use the shared components in `internal/app/form.go`, `internal/app/html/mu.css` and
+New browser work uses the React client in `web/`, shadcn/ui controls in
+`web/src/components/ui/`, the shared shell and one theme stylesheet. Run
+`npm ci && npm run build` in `web/` and commit the embedded `dist/` assets.
+Do not reintroduce Go-generated markup on a migrated route or load the legacy
+stylesheets into React. Keep private reads and writes authenticated and scope
+records by the session account; JSON view data must not serialize account
+credentials. Preserve service APIs, protocols and existing shared links.
+
+Standalone pages not yet migrated use the shared components in `internal/app/form.go`, `internal/app/html/mu.css` and
 `internal/app/html/composition.css` (also loaded by the landing page).
 Forms use `.form`, labelled fields use `app.Field` or `.field-label`, and related
 controls use `.form-group`. Use `.form-row` for related controls side by side

@@ -20,6 +20,7 @@ import (
 	"mu/internal/flag"
 	"mu/internal/service"
 	"mu/service/apps/micro"
+	"mu/web"
 
 	"github.com/google/uuid"
 )
@@ -462,16 +463,25 @@ func sortForReader(list []*App, viewerID string) {
 
 // handleList shows all public apps.
 func handleList(w http.ResponseWriter, r *http.Request) {
+	if web.Page(w, r, "Apps") {
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	_, viewer := auth.TrySession(r)
+	owner := ""
+	if viewer != nil {
+		owner = viewer.ID
+	}
 	mutex.RLock()
 	var list []*App
 	for _, a := range apps {
-		if a.Public {
+		if a.Public || (owner != "" && a.AuthorID == owner) {
 			list = append(list, a)
 		}
 	}
 	mutex.RUnlock()
 
-	sortForDirectory(list)
+	sortForReader(list, owner)
 
 	if app.WantsJSON(r) {
 		// Strip HTML from JSON response
@@ -483,6 +493,8 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			Tags        string `json:"tags"`
 			Price       int    `json:"price"`
 			Installs    int    `json:"installs"`
+			CanEdit     bool   `json:"can_edit"`
+			Public      bool   `json:"public"`
 		}
 		summaries := make([]appSummary, len(list))
 		for i, a := range list {
@@ -494,178 +506,15 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				Tags:        a.Tags,
 				Price:       a.Price,
 				Installs:    a.Installs,
+				CanEdit:     viewer != nil && (viewer.Admin || a.AuthorID == owner), Public: a.Public,
 			}
 		}
 		app.RespondJSON(w, summaries)
 		return
 	}
 
-	sess, acc := auth.TrySession(r)
-	var userID string
-	var isAdmin bool
-	if sess != nil {
-		userID = sess.Account
-		isAdmin = acc.Admin
-	}
-
-	// Re-ordered for whoever is reading it. The sort above ran before there
-	// was a session to read and still serves the JSON branch, which returns
-	// the same bytes to everybody and must not vary by caller.
-	sortForReader(list, userID)
-
-	// HTML
-	var sb strings.Builder
-
-	// Building one is the point of the page, so it is a button at the top
-	// rather than a line of text under however many apps happen to be listed —
-	// which on a full catalogue meant scrolling past everything to find it.
-	// app.ActionLink, not a hand-rolled anchor: it is what renders "+ Compose"
-	// on mail and every other page's primary action, so this matches them by
-	// construction rather than by copying their colours.
-	//
-	// The hand-rolled one set color:#fff and lost anyway — a.btn carries
-	// !important for exactly that reason, because the link colour rules in this
-	// stylesheet outrank a plain class and turn a white label on a black button
-	// black on black. There is a comment about it on connect-cta too. Third
-	// time; hence using the shared thing.
-	sb.WriteString(`<div class="page-action">` + app.ActionLink("/apps/new", "New") + `</div>`)
-
-	// Pricing filter
-	pricing := r.URL.Query().Get("pricing")
-
-	// Tag filter
-	tag := r.URL.Query().Get("tag")
-
-	// Filter by tag
-	if tag != "" {
-		var filtered []*App
-		for _, a := range list {
-			if hasTag(a.Tags, tag) {
-				filtered = append(filtered, a)
-			}
-		}
-		list = filtered
-	}
-
-	// Filter by pricing
-	if pricing == "free" {
-		var filtered []*App
-		for _, a := range list {
-			if a.Price == 0 {
-				filtered = append(filtered, a)
-			}
-		}
-		list = filtered
-	} else if pricing == "paid" {
-		var filtered []*App
-		for _, a := range list {
-			if a.Price > 0 {
-				filtered = append(filtered, a)
-			}
-		}
-		list = filtered
-	}
-
-	if len(list) == 0 {
-		sb.WriteString(`<p>No apps yet. <a href="/apps/new">Create the first one</a>.</p>`)
-	} else {
-		// Three sections now, in the order sortForReader put them: yours, then
-		// everybody else's, then the ones that ship with the instance.
-		//
-		// Yours is the new one and is the whole point. They were filed under
-		// "From the community" — your own apps, on your own server, described
-		// as somebody else's and listed below a fixed set you have already
-		// read.
-		//
-		// And the built-ins are Templates. "Built in" says where they came
-		// from, which is a fact about us; what they are for is being copied
-		// and changed, which is a fact about what you can do with them, and
-		// that is what a heading on a directory should say.
-		//
-		// Emitted from the run rather than by partitioning the slice, so a
-		// filter that leaves a section empty leaves out its heading too.
-		var saidMine, saidTheirs, saidOurs bool
-		for _, a := range list {
-			switch {
-			case userID != "" && a.AuthorID == userID && !saidMine:
-				saidMine = true
-				sb.WriteString(`<h2 class="app-section">Yours</h2>`)
-			case a.Official && !saidOurs:
-				saidOurs = true
-				sb.WriteString(`<h2 class="app-section">Templates</h2>`)
-			case !a.Official && (userID == "" || a.AuthorID != userID) && !saidTheirs:
-				saidTheirs = true
-				heading := "From the community"
-				if !saidMine && !saidOurs {
-					heading = "Apps"
-				}
-				sb.WriteString(`<h2 class="app-section">` + heading + `</h2>`)
-			}
-			tagsHTML := ""
-			if a.Tags != "" {
-				tagsHTML = " · " + htmlpkg.EscapeString(a.Tags)
-			}
-			priceHTML := ""
-			if a.Price > 0 {
-				priceHTML = fmt.Sprintf(` · <span class="text-warn semibold">%d credits/use</span>`, a.Price)
-			} else {
-				priceHTML = ` · <span class="text-success">Free</span>`
-			}
-			// What you can do with it, inline.
-			//
-			// Launch was here and did what the title above it already does, so
-			// the slot went to Embed — the other half of what you do with an
-			// app, and the thing that had no way in from this page.
-			//
-			// Edit and Delete are words on the row rather than entries in a
-			// menu behind three dots. On your own app they are the two things
-			// you came for, and a dropdown to reach them is a click spent
-			// hiding two links. The menu stays on everybody else's, where it
-			// carries Save, Hide, Report and Block — which are decisions about
-			// somebody else's work and belong tucked away.
-			mine := userID != "" && (userID == a.AuthorID || isAdmin)
-			controls := ""
-			if mine {
-				controls = fmt.Sprintf(` · <a href="/apps/%s/edit">Edit</a> · %s`,
-					htmlpkg.EscapeString(a.Slug), deleteLink(a.Slug, ""))
-			} else {
-				controls = app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "", "")
-			}
-			author := a.Author
-			if strings.TrimSpace(author) == "" {
-				author = a.AuthorID
-			}
-			sb.WriteString(fmt.Sprintf(`<div class="tile tile-row mb-3">
-<img src="/apps/%s/icon.svg" width="32" height="32" class="fixed-w mt-px">
-<div>
-<h3 class="m-0 mb-1"><a href="/apps/%s">%s</a></h3>
-<p class="m-0 mb-1 text-secondary">%s</p>
-<p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s/embed">Embed</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
-</div>
-</div>`,
-				htmlpkg.EscapeString(a.Slug),
-				htmlpkg.EscapeString(a.Slug),
-				htmlpkg.EscapeString(a.Name),
-				htmlpkg.EscapeString(a.Description),
-				htmlpkg.EscapeString(author),
-				tagsHTML,
-				priceHTML,
-				a.Installs,
-				htmlpkg.EscapeString(a.Slug),
-				htmlpkg.EscapeString(a.Slug),
-				controls,
-			))
-		}
-	}
-
-	app.Respond(w, r, app.Response{
-		Title:       "Apps",
-		Description: "Apps — small, useful tools that do one thing well",
-		HTML:        sb.String(),
-	})
 }
 
-// handleNew shows the create form or processes creation.
 func handleNew(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		handleCreate(w, r)

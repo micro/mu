@@ -672,6 +672,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			threadID = Opened(accountID, thread.WebClient, flow.ID, "", req.Agent)
 			thread.SetAttachment(accountID, threadID, attachment)
 		}
+		if req.Agent == "" {
+			RememberClientConversation(w, r, threadID)
+		}
 		flow.ThreadID = threadID
 		if err := saveFlow(flow); err != nil {
 			app.Log("agent", "Failed to create flow: %v", err)

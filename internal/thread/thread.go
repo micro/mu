@@ -580,6 +580,38 @@ func Messages(account, threadID string, limit int) []Message {
 	return out
 }
 
+// MessageWindow reads a bounded page from the end of an owned conversation.
+// It copies only the returned messages, even for a long-running dialogue.
+func MessageWindow(account, threadID string, before, limit int) ([]Message, bool) {
+	ensure()
+	mu.RLock()
+	defer mu.RUnlock()
+	t := threads[threadID]
+	if t == nil || t.Account != account {
+		return nil, false
+	}
+	src := messages[threadID]
+	if before < 0 {
+		before = 0
+	}
+	if before > len(src) {
+		before = len(src)
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+	end := len(src) - before
+	start := end - limit
+	if start < 0 {
+		start = 0
+	}
+	out := make([]Message, 0, end-start)
+	for _, m := range src[start:end] {
+		out = append(out, *m)
+	}
+	return out, start > 0
+}
+
 // List returns an account's conversations, most recently active first.
 func List(account string, limit int) []Thread {
 	ensure()

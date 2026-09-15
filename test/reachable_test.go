@@ -30,57 +30,20 @@ import (
 	"testing"
 
 	"mu/internal/api"
-	"mu/internal/app"
-	"mu/internal/auth"
 )
 
 var footerHref = regexp.MustCompile(`href="(/[a-z0-9/-]*)"`)
 
-func TestEveryFooterLinkIsReachableSignedIn(t *testing.T) {
-	links := footerHref.FindAllStringSubmatch(app.FooterLinks(), -1)
-	if len(links) < 4 {
-		t.Fatalf("found %d footer links — this scan is broken, not the code", len(links))
-	}
-
-	// The chrome a signed-in account is served. Rendered rather than asserted
-	// about, so a link moving out of the sidebar is noticed here.
-	acc := &auth.Account{ID: "reader", Name: "Reader"}
-	sidebar := app.RenderHTML("t", "d", "", acc)
-
-	if strings.Contains(sidebar, `id="footer"`) {
-		t.Error("the footer is rendered for a signed-in account — if that is now " +
-			"intended, this whole test is moot and should go")
-	}
-
-	// Anything not in the sidebar has to be on /account, which is. That is one
-	// structural fact — the page embeds the footer links — and it is asserted
-	// against the source rather than by re-deriving it here, because a helper
-	// that returned app.FooterLinks() would be this test agreeing with itself.
-	onAccount := accountEmbedsFooterLinks(t)
-
-	for _, m := range links {
-		href := m[1]
-		if strings.Contains(sidebar, `href="`+href+`"`) {
-			continue
-		}
-		if onAccount {
-			continue
-		}
-		t.Errorf("%s is in the footer, not in the sidebar, and not on /account — "+
-			"the footer is not rendered for a signed-in account, so this page is "+
-			"unreachable inside the product", href)
-	}
-}
-
-// accountEmbedsFooterLinks reports whether the account page carries the footer
-// links, read from its source.
-func accountEmbedsFooterLinks(t *testing.T) bool {
-	t.Helper()
+// Account screens deliberately omit marketing navigation. Browser tests cover
+// the React shell; public footer pages remain directly accessible.
+func TestAccountDoesNotEmbedTheLandingFooter(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(at(""), "account/pages.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return strings.Contains(string(b), "app.FooterLinks()")
+	if strings.Contains(string(b), "app.FooterLinks()") {
+		t.Fatal("landing footer returned to account pages")
+	}
 }
 
 // And the two reference pages are reachable from the one page somebody opens in

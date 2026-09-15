@@ -10,6 +10,7 @@ import (
 	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/web"
 )
 
 // Handler shows the admin page with user management
@@ -145,28 +146,15 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, redir, http.StatusSeeOther)
 		return
 	}
+	if web.Page(w, r, "Users") {
+		return
+	}
 	users := auth.AllAccounts()
 	sort.Slice(users, func(i, j int) bool { return users[i].Created.After(users[j].Created) })
 	tab := r.URL.Query().Get("tab")
 	if tab == "" {
 		tab = "all"
 	}
-	var sb strings.Builder
-	// Invites are on this page rather than in the dashboard list, because the
-	// question "who is here" and the question "who should be" are the same
-	// errand, and an operator looking at a list of accounts is one click from
-	// wanting to add one. It kept its own nav entry only because it had its own
-	// handler.
-	// No <h2>Users</h2>. The page shell already draws the title as an h1, and
-	// this page said "Admin" up there and "Users" directly under it — the same
-	// heading twice, one of them wrong. Every admin page did it.
-	sb.WriteString(`<div class="page-action"><div class="section-actions">` + back() +
-		`<a class="push-right" href="/admin/invite">Invites` + pendingInvites() + `</a></div></div>`)
-	sb.WriteString(`<div class="app-filters">`)
-	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
-		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id, t.id == tab))
-	}
-	sb.WriteString(`</div>`)
 	var filtered []*auth.Account
 	for _, u := range users {
 		switch tab {
@@ -182,83 +170,13 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			filtered = append(filtered, u)
 		}
 	}
-	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%d users</p>`, len(filtered)))
-	sb.WriteString(`<table class="admin-table"><thead><tr><th>Username</th><th>Name</th><th class="created-col">Created</th><th>Status</th><th class="center">Credits</th><th class="center">Actions</th></tr></thead><tbody>`)
-	for _, u := range filtered {
-		created := u.Created.Format("2006-01-02")
-		var badges []string
-		if u.Admin {
-			badges = append(badges, `<span class="count-badge">admin</span>`)
-		}
-		if u.Agent {
-			badges = append(badges, `<span class="count-badge quiet">agent</span>`)
-		}
-		if u.Banned {
-			badges = append(badges, `<span class="count-badge">banned</span>`)
-		}
-		if u.EmailVerified {
-			badges = append(badges, `<span class="count-badge good">verified</span>`)
-		}
-		if u.Approved {
-			badges = append(badges, `<span class="count-badge info">approved</span>`)
-		}
-		// One element, not several.
-		//
-		// On a phone the cell is a two-column grid — label, value — and every
-		// child is a grid item. Two badges meant the second one started a new
-		// grid row in the label's column, so "approved" appeared under
-		// "Status" as if it were a field of its own. Wrapping them makes the
-		// pair one value that wraps inside its own column.
-		statusHTML := `<span class="badge-row">` + strings.Join(badges, " ") + `</span>`
-		if len(badges) == 0 {
-			statusHTML = `<span class="text-muted text-xs">—</span>`
-		}
-		var actions []string
-		agentLabel, agentTitle := "Mark agent", "Mark as a program: recorded, not charged"
-		if u.Agent {
-			agentLabel, agentTitle = "Mark human", "Mark as a person: charged like any other account"
-		}
-		actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action d-inline"><input type="hidden" name="action" value="toggle_agent"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" title="%s" class="mini-btn">%s</button></form>`,
-			u.ID, tab, agentTitle, agentLabel))
-		if u.ID != acc.ID {
-			if u.Banned {
-				actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action d-inline"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn good">Unban</button></form>`, u.ID, tab))
-			} else {
-				actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
-			}
-			actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger">Delete</button></form>`, u.ID, u.ID, tab))
-		}
-		// Credit, on the row, because that is where somebody wanting to comp an
-		// account is looking. An amount box rather than fixed buttons: the
-		// number is different every time — a refund is what a call cost, a comp
-		// is what you feel like giving — and three preset buttons would be
-		// wrong for most of them.
-		actions = append(actions, fmt.Sprintf(
-			`<form method="POST" class="form-action d-inline inline-row">`+
-				`<input type="hidden" name="action" value="credit">`+
-				`<input type="hidden" name="user_id" value="%s">`+
-				`<input type="hidden" name="tab" value="%s">`+
-				`<input name="amount" inputmode="numeric" pattern="[0-9]*" placeholder="credits" `+
-				`class="num-field">`+
-				`<button type="submit" title="Top up this account" `+
-				`class="mini-btn info">Credit</button></form>`,
-			u.ID, tab))
-
-		// data-label on every cell, because on a narrow screen the table stops
-		// being a table — see .admin-table in mu.css. The header row is what
-		// tells you which column you are looking at, and it is the first thing
-		// that has to go when six columns will not fit across a phone.
-		sb.WriteString(fmt.Sprintf(`<tr>`+
-			`<td data-label="Username"><strong><a href="/@%s">%s</a></strong></td>`+
-			`<td data-label="Name">%s</td>`+
-			`<td data-label="Created" class="created-col">%s</td>`+
-			`<td data-label="Status">%s</td>`+
-			`<td data-label="Credits" class="center">%s</td>`+
-			`<td data-label="Actions" class="center actions-cell">%s</td>`+
-			`</tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
+	page := app.Paginate(r, len(filtered), 25)
+	rows := make([]map[string]any, 0, page.To-page.From)
+	for _, u := range filtered[page.From:page.To] {
+		rows = append(rows, map[string]any{"id": u.ID, "name": u.Name, "created": u.Created, "admin": u.Admin, "agent": u.Agent, "banned": u.Banned, "approved": u.Approved, "verified": u.EmailVerified, "balance": account.Balance(u.ID), "self": u.ID == acc.ID})
 	}
-	sb.WriteString(`</tbody></table>`)
-	app.Respond(w, r, app.Response{Title: "Users", Description: "Accounts on this instance", HTML: sb.String()})
+	app.RespondJSON(w, map[string]any{"items": rows, "page": page.Page, "total": len(filtered), "page_size": 25, "tab": tab})
+
 }
 
 // back is the way up, in the same words and the same place on every page.

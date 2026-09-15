@@ -14,7 +14,6 @@ package apps
 
 import (
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -36,27 +35,12 @@ func TestTheNewAppButtonIsTheSharedButton(t *testing.T) {
 //
 // Checked against the source, because the cascade cannot be resolved in Go.
 func TestTheAppsPageDoesNotRollItsOwnButton(t *testing.T) {
-	b, err := os.ReadFile("apps.go")
+	b, err := os.ReadFile("../../web/src/components/apps.tsx")
 	if err != nil {
 		t.Fatal(err)
 	}
 	src := string(b)
-
-	// The shape, not the destination. This named "/apps/new" and failed when
-	// the button was pointed at /code, which is a change to where building an
-	// app happens and not a change to how the button is drawn — the one thing
-	// this test exists to hold. Where it goes is
-	// TestThereIsOneBoxThatBuildsAnAppFromASentence's business.
-	if !strings.Contains(src, `"New"`) {
-		t.Fatal("there is no new-app button on the apps page at all")
-	}
-	if !strings.Contains(src, `app.ActionLink(`) {
-		t.Error("the new-app button no longer uses the shared action link")
-	}
-	// An <a class="..."> whose class sets a dark background: the losing shape.
-	classStyled := regexp.MustCompile(`<a class="(?:apps-new|[a-z-]*-cta|[a-z-]*-btn)"`)
-	if m := classStyled.FindString(src); m != "" {
-		t.Errorf("apps.go styles an action anchor by class (%s) — a class loses to the "+
-			"stylesheet's link colour, which is how the label goes black on black. Use app.ActionLink", m)
+	if !strings.Contains(src, `<Button asChild`) || !strings.Contains(src, `href="/apps/new"`) {
+		t.Fatal("catalogue does not use the shared button")
 	}
 }

@@ -127,3 +127,61 @@ func legacyBrief(e *Event) bool {
 	at := e.When.In(loc)
 	return at.Hour() == 20 && at.Minute() == 0
 }
+
+// BriefWorldNews preserves the existing inclusion for schedules made before this preference.
+func BriefWorldNews(e *Event) bool { return e == nil || e.WorldNews == nil || *e.WorldNews }
+
+// ConfigureBrief changes one owned schedule atomically. Toggles preserve its identity and cadence.
+func ConfigureBrief(owner string, enabled, news bool, zone string) error {
+	if owner == "" {
+		return fmt.Errorf("sign in to change your brief")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	var old *Event
+	for _, e := range events {
+		if e.Owner == owner && e.Kind == "brief" {
+			old = e
+			break
+		}
+	}
+	var e Event
+	if old != nil {
+		e = *old
+	} else {
+		loc, err := time.LoadLocation(zone)
+		if err != nil || zone == "" || zone == "Local" {
+			return fmt.Errorf("a valid timezone is needed for your morning brief")
+		}
+		now := time.Now().In(loc)
+		e = Event{ID: uuid.NewString(), Owner: owner, Kind: "brief", Builtin: true, Title: "Morning brief", Zone: zone, Repeat: "daily", Prompt: "Give me a brief for today", Created: time.Now().UTC(), When: time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, loc)}
+	}
+	e.Paused = !enabled
+	e.WorldNews = &news
+	e.Sequence++
+	if enabled && !e.When.After(time.Now()) {
+		at := e.When
+		if loc, err := time.LoadLocation(e.Zone); err == nil {
+			at = at.In(loc)
+		}
+		next, ok := catchUp(at, e.Repeat, time.Now())
+		if !ok {
+			return fmt.Errorf("invalid brief schedule")
+		}
+		e.When = next
+	}
+	e.Fired = false
+	e.FiredAt = time.Time{}
+	list := make([]*Event, 0, len(events)+1)
+	for id, v := range events {
+		if id != e.ID {
+			list = append(list, v)
+		}
+	}
+	list = append(list, &e)
+	if err := data.SaveJSON(storeKey, list); err != nil {
+		return err
+	}
+	events[e.ID] = &e
+	return nil
+}

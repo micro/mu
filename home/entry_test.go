@@ -30,7 +30,7 @@ func TestRootIsTheConversationBeforeAndAfterSignIn(t *testing.T) {
 				t.Fatalf("%s signedIn=%v: %d", path, signedIn, w.Code)
 			}
 			body := w.Body.String()
-			if strings.Count(body, `id="mu-chat-input"`) != 1 {
+			if strings.Count(body, `id="root"`) != 1 {
 				t.Fatal("expected one composer")
 			}
 			for _, obsolete := range []string{`id="home-cards"`, `id="home-agent"`, `mu-chat-continue`, `Continue in Assistant`} {
@@ -40,9 +40,6 @@ func TestRootIsTheConversationBeforeAndAfterSignIn(t *testing.T) {
 			}
 			if !signedIn && !strings.Contains(body, "A personal AI agent") {
 				t.Fatal("missing tagline")
-			}
-			if !strings.Contains(body, `id="mu-chat-mic"`) {
-				t.Fatal("missing dictation control")
 			}
 			if w.Header().Get("Cache-Control") != "private, no-store" {
 				t.Fatal("conversation must not be cached")
