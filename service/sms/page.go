@@ -81,9 +81,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`<p class="text-sm text-muted">Sent from <strong>` + html.EscapeString(from) +
 		`</strong>. ` + html.EscapeString(allowance(who)+yours) + `</p>`)
-	b.WriteString(`<div class="page-stack">`)
+	layout := "page-stack"
+	if r.URL.Query().Get("id") != "" {
+		layout += " conversation-layout"
+	}
+	b.WriteString(`<div class="` + layout + `">`)
 	if r.URL.Query().Get("view") == "new" {
-		b.WriteString(`<div class="section-actions"><a href="/sms">← Conversations</a></div>`)
+		b.WriteString(`<div class="section-actions"><a href="/sms">Conversations</a></div>`)
 		b.WriteString(composer(r, who))
 	} else if id := r.URL.Query().Get("id"); id != "" {
 		// The opaque message ID locates a conversation only within this account.
@@ -94,7 +98,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		number, _ := rec.Data["number"].(string)
 		channel, _ := rec.Data["channel"].(string)
-		b.WriteString(`<div class="section-actions"><a href="/sms">← Conversations</a><a href="/sms?view=new">New</a></div>`)
+		b.WriteString(`<div class="section-actions"><a href="/sms">Conversations</a><a href="/sms?view=new">New</a></div>`)
 		b.WriteString(threads(r, who, conversationHistory(who, number, Channel(channel))))
 	} else {
 		b.WriteString(`<div class="page-action"><a class="btn" href="/sms?view=new">New</a></div>`)
@@ -327,9 +331,9 @@ func threads(r *http.Request, who string, history []Message) string {
 	var b strings.Builder
 	for _, k := range order {
 		number, channel := k.number, k.channel
-		b.WriteString(`<div class="card"><h3 class="sms-who">` + html.EscapeString(number))
+		b.WriteString(`<div class="conversation-panel"><h3 class="sms-who">` + html.EscapeString(number))
 		b.WriteString(app.Pill(channel.Label()))
-		b.WriteString(`</h3>`)
+		b.WriteString(`</h3><div class="conversation-messages" data-scroll-end>`)
 		msgs := byWhom[k]
 		// Oldest first inside a conversation, which is how a conversation reads.
 		for i := len(msgs) - 1; i >= 0; i-- {
@@ -349,6 +353,7 @@ func threads(r *http.Request, who string, history []Message) string {
 				`<span class="sms-body">` + html.EscapeString(m.Text) + `</span>` +
 				`<span class="sms-when">` + html.EscapeString(when) + `</span></div>`)
 		}
+		b.WriteString(`</div>`)
 		// Somebody who has said STOP has said it to us, and the page should say
 		// so where the reply box would be rather than take a message and fail.
 		if OptedOut(number) {
@@ -359,7 +364,7 @@ func threads(r *http.Request, who string, history []Message) string {
 			// way it came. Without it this replied by text to a WhatsApp
 			// conversation: a second thread on the other person's phone, from a
 			// number they do not recognise, with nothing on it to say why.
-			b.WriteString(`<form method="POST" action="/sms" class="form form-inline mt-3">` +
+			b.WriteString(`<form method="POST" action="/sms" class="form form-inline conversation-composer">` +
 				`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 				`<input type="hidden" name="send" value="1">` +
 				`<input type="hidden" name="to" value="` + html.EscapeString(number) + `">` +

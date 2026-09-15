@@ -138,216 +138,57 @@ func Configured() bool { return key() != "" && api() != nil }
 
 // Video styles are in mu.css
 
-var recentSearchesScript = `
-<script>
-(function () {
-// Wrapped, because this script runs more than once in one document.
-//
-// Soft navigation swaps #content and re-creates every script inside it so the
-// page's behaviour comes with it. This one declared MAX_RECENT_SEARCHES and
-// STORAGE_KEY as top-level consts, so the second execution threw
-// "Identifier 'STORAGE_KEY' has already been declared" before a single line of
-// it ran — and a SyntaxError kills the whole script, not just the declaration.
-//
-// The symptom names the cause exactly: recent searches were missing when you
-// arrived by clicking Open, and appeared after a refresh. A refresh is a new
-// document, where these are declared for the first time. Reported that way.
-//
-// A function scope means the second run redeclares them in its own scope, which
-// is what every one of these blocks needs and what none of them had.
-
-  const MAX_RECENT_SEARCHES = 10;
-  const STORAGE_KEY = 'mu_recent_video_searches';
-
-  function escapeHTML(text) {
-    return text.replace(/&/g, '&amp;')
-               .replace(/</g, '&lt;')
-               .replace(/>/g, '&gt;')
-               .replace(/"/g, '&quot;')
-               .replace(/'/g, '&#039;');
-  }
-
-  function loadRecentSearches() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      console.error('Error loading recent searches:', e);
-      return [];
-    }
-  }
-
-  function saveRecentSearch(query) {
-    if (!query || !query.trim()) return;
-
-    try {
-      let searches = loadRecentSearches();
-
-      // Remove if already exists
-      searches = searches.filter(s => s !== query);
-
-      // Add to beginning
-      searches.unshift(query);
-
-      // Keep only MAX_RECENT_SEARCHES
-      if (searches.length > MAX_RECENT_SEARCHES) {
-        searches = searches.slice(0, MAX_RECENT_SEARCHES);
-      }
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
-    } catch (e) {
-      console.error('Error saving recent search:', e);
-    }
-  }
-
-  function displayRecentSearches() {
-    const searches = loadRecentSearches();
-    const container = document.getElementById('recent-searches-container');
-
-    if (!container) return;
-
-    if (searches.length === 0) {
-      container.innerHTML = '';
-      return;
-    }
-
-		// Get current query from input to highlight active search
-		const queryInput = document.getElementById('query');
-		const currentQuery = queryInput ? queryInput.value.trim() : '';
-
-		let html = '<div class="recent-searches"><h3>Recent Searches</h3><div class="recent-searches-scroll">';
-		searches.forEach(search => {
-			const escaped = escapeHTML(search);
-			const isActive = currentQuery && search === currentQuery;
-			const activeClass = isActive ? ' active' : '';
-			// each item contains a label and a close button
-			html += '<span class="recent-search-item' + activeClass + '" data-query="' + escaped + '">'
-					 + '<span class="recent-search-label">' + escaped + '</span>'
-					 + '<span class="recent-search-close" title="Remove">&times;</span>'
-					 + '</span>';
-		});
-		html += '</div></div>';
-
-    container.innerHTML = html;
-
-    // Add click handlers
-		// Clicking the label triggers a search, clicking the close removes it
-		container.querySelectorAll('.recent-search-item').forEach(item => {
-			const label = item.querySelector('.recent-search-label');
-			const close = item.querySelector('.recent-search-close');
-
-			if (label) {
-				label.addEventListener('click', function(e) {
-					e.preventDefault();
-					e.stopPropagation();
-					const query = item.getAttribute('data-query');
-
-					// Move clicked search to front
-					saveRecentSearch(query);
-
-					const queryInput = document.getElementById('query');
-					const form = document.getElementById('video-search');
-					if (queryInput && form) {
-						queryInput.value = query;
-						form.submit();
-					}
-				});
-			}
-
-			if (close) {
-				close.addEventListener('click', function(e) {
-					e.preventDefault();
-					e.stopPropagation();
-					const q = item.getAttribute('data-query');
-					removeRecentSearch(q);
-				});
-			}
-		});
-  }
-
-	function removeRecentSearch(query) {
-		try {
-			let searches = loadRecentSearches();
-			searches = searches.filter(s => s !== query);
-			localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
-			displayRecentSearches();
-		} catch (e) {
-			console.error('Error removing recent search:', e);
-		}
-	}
-
-  // Save search when form is submitted
-  // Run now if the document is already parsed — see the note in
-  // service/web/search.go. A soft navigation re-runs this script but
-  // DOMContentLoaded has long since fired.
-  function wireVideo() {
-    displayRecentSearches();
-
-    const form = document.querySelector('form[action="/video"]');
-    if (form) {
-      form.addEventListener('submit', function() {
-        const queryInput = document.getElementById('query');
-        if (queryInput && queryInput.value && queryInput.value.trim()) {
-          saveRecentSearch(queryInput.value.trim());
-        }
-      });
-    }
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wireVideo);
-  } else {
-    wireVideo();
-  }
-
-})();
-</script>
-`
+var recentSearchesScript = app.RecentSearches("video-search", "mu_recent_video_searches")
 
 var Results = `<form id="video-search" class="search-bar" action="/video" method="GET">
-  <input name="query" id="query" type="text" value="%s">
+  <input name="query" id="query" type="search" aria-label="Search videos" value="%s">
   <button type="submit">Search</button>
 </form>
+` + recentSearchesScript + `
 <div id="topics">%s</div>
-<div id="recent-searches-container"></div>
+
 <h1>Results</h1>
 <div id="results">
 %s
 </div>
-` + recentSearchesScript
+`
 
 var PlaylistView = `<form id="video-search" class="search-bar" action="/video" method="GET">
-  <input name="query" id="query" type="text" placeholder="Search...">
+  <input name="query" id="query" type="search" aria-label="Search videos" placeholder="Search...">
   <button type="submit">Search</button>
 </form>
+` + recentSearchesScript + `
 <div id="topics">%s</div>
-<div id="recent-searches-container"></div>
+
 <h1>Playlist</h1>
 <div id="results">
 %s
 </div>
-` + recentSearchesScript
+`
 
 var ChannelView = `<form id="video-search" class="search-bar" action="/video" method="GET">
-  <input name="query" id="query" type="text" placeholder="Search...">
+  <input name="query" id="query" type="search" aria-label="Search videos" placeholder="Search...">
   <button type="submit">Search</button>
 </form>
+` + recentSearchesScript + `
 <div id="topics">%s</div>
-<div id="recent-searches-container"></div>
+
 <h1>Channel</h1>
 %s
 <div id="results">
 %s
 </div>
-` + recentSearchesScript
+`
 
 var Template = `<form id="video-search" class="search-bar" action="/video" method="GET">
-  <input name="query" id="query" type="text" placeholder="Search..." autocomplete="off">
+  <input name="query" id="query" type="search" aria-label="Search videos" placeholder="Search..." autocomplete="off">
   <button type="submit">Search</button>
 </form>
+` + recentSearchesScript + `
 <div id="topics">%s</div>
-<div id="recent-searches-container"></div>
+
 <div>%s</div>
-` + recentSearchesScript
+`
 
 func loadChannels() {
 	// load the feeds file
@@ -1233,7 +1074,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		autoplay := r.Form.Get("autoplay") == "1"
 
 		title, channel, channelID := watchInfo(id)
-		actions := `<a href="https://www.youtube.com/watch?v=` + url.QueryEscape(id) + `" rel="noopener noreferrer">Original ↗</a>`
+		actions := `<a href="https://www.youtube.com/watch?v=` + url.QueryEscape(id) + `" rel="noopener noreferrer">Original</a>`
 		if e := data.ByID("video_" + id); e != nil && e.Owner == "" && e.Type == data.KindVideo {
 			actions += app.ReadingActionItems(r, "video_"+id)
 		}

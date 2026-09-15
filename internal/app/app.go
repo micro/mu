@@ -211,7 +211,7 @@ var Template = `<!doctype html>
 </head><body%s>
 <script>try{if(localStorage.getItem('mu_nav_collapsed')==='1')document.body.classList.add('nav-collapsed')}catch(e){}</script>
 <header id="head"><button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button><div id="brand"><a href="/">Micro</a></div><div id="head-right">%s</div></header>
-<div id="nav-overlay" onclick="toggleMenu()"></div><div id="container"><aside id="nav-container"><nav id="nav">%s%s</nav><div class="nav-bottom">%s</div></aside><main id="content">%s%s</main></div>%s%s
+<div id="nav-overlay" onclick="toggleMenu()"></div><div id="container"><aside id="nav-container"><nav id="nav">%s%s</nav><div class="nav-bottom">%s</div></aside><main id="content">%s%s</main></div>%s
 </body></html>`
 
 var CardTemplate = `
@@ -223,7 +223,7 @@ var CardTemplate = `
 `
 
 func Link(name, ref string) string {
-	return fmt.Sprintf(`<a href="%s" class="link">%s →</a>`, ref, name)
+	return fmt.Sprintf(`<a href="%s" class="link">%s</a>`, ref, name)
 }
 
 func TextLink(name, ref string) string {
@@ -419,9 +419,9 @@ func VerifyBanner(r *http.Request) string {
 	case p == "/wallet" || strings.HasPrefix(p, "/wallet/"):
 		return ""
 	}
-	action, href := "Verify →", "/account"
+	action, href := "Verify", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
-		action, href = "Top up →", "/account/topup"
+		action, href = "Top up", "/account/topup"
 	}
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{
@@ -762,13 +762,5 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		navMain(acc),
 		navPinned(acc),
 		navBottom(acc, here),
-		heading, body, footerFor(acc), mobileNav(acc))
-}
-
-// mobileNav keeps the same four destinations on every signed-in page.
-func mobileNav(acc *auth.Account) string {
-	if acc == nil {
-		return ""
-	}
-	return `<nav id="mobile-nav" aria-label="Main navigation">` + navigationLink("", "/", "Home", "/home.png") + navigationLink("", "/inbox", "Inbox", "/email.svg") + navigationLink("", "/agents", "Agents", "/agent.svg") + navigationLink("", "/services", "Services", "/services.svg") + `</nav>`
+		heading, body, footerFor(acc))
 }

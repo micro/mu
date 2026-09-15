@@ -87,7 +87,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 <p>Invite created for <strong>%s</strong></p>
 <p><a href="%s">%s</a></p>
 %s
-<p><a href="/admin/invite">Back to invites →</a></p>
+<p><a href="/admin/invite">Back to invites</a></p>
 </div>`, email, link, link, emailedMsg)
 		app.Respond(w, r, app.Response{Title: "Invite Sent", Description: "Invite sent", HTML: content})
 		return

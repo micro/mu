@@ -68,3 +68,10 @@ func TestPagingKeepsTheRestOfTheQuery(t *testing.T) {
 		t.Errorf("the first page is spelled two ways: %s", nav)
 	}
 }
+
+func TestPagingMergesQueryInDestination(t *testing.T) {
+	nav := pagerFor(t, "?view=history", 60, 20).Nav("/inbox?view=history")
+	if strings.Contains(nav, "?view=history?") || !strings.Contains(nav, "/inbox?page=2&amp;view=history") {
+		t.Fatalf("malformed pagination destination: %s", nav)
+	}
+}

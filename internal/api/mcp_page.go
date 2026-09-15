@@ -97,7 +97,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 		`with <code>402</code> and an <a href="https://x402.org">x402</a> challenge. ` +
 		`Pay it in USDC on Base and the same request succeeds. No signup. ` +
 		`Every tool below carries its price.</p>`)
-	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent &rarr;</a> ` +
+	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent</a> ` +
 		`&middot; <a href="/tools">Auth, protocol detail and what calls cost</a></p>`)
 	// Not everybody arriving here is building an agent. Somebody writing a
 	// client wants one URL per method, and being handed a tool-calling protocol

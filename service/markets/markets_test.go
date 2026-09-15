@@ -107,7 +107,7 @@ func TestGenerateMarketRow(t *testing.T) {
 
 func TestGenerateMarketRow_WithChart(t *testing.T) {
 	row := generateMarketRow("BTC", 97000, 0)
-	if !strings.Contains(row, "Chart ↗") {
+	if !strings.Contains(row, "Chart") {
 		t.Error("expected chart link for known symbol")
 	}
 	if !strings.Contains(row, "coingecko.com") {

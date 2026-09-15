@@ -5,21 +5,18 @@
   function fit(){
     queued=false;
     var content=document.getElementById('content');
-    var chat=content&&content.querySelector('.chat-layout,.room-layout');
-    var bounded=!!chat&&window.matchMedia('(max-width:900px)').matches;
+    var chat=content&&content.querySelector('.chat-layout,.room-layout,.conversation-layout');
+    var bounded=!!chat&&(chat.classList.contains('conversation-layout')||window.matchMedia('(max-width:900px)').matches);
     document.body.classList.toggle('chat-page',bounded);
     var viewport=window.visualViewport;
     var height=viewport?viewport.height:window.innerHeight;
     var offset=viewport?viewport.offsetTop:0;
     document.documentElement.style.setProperty('--visible-height',(height+offset)+'px');
-    var nav=document.getElementById('mobile-nav');
-    var navHeight=nav?nav.getBoundingClientRect().height:0;
-    if(nav)nav.style.bottom=Math.max(0,window.innerHeight-height-offset)+'px';
     if(!bounded){if(content)content.style.height='';return;}
     // Both values use layout viewport coordinates. Do not subtract page scroll
     // or the keyboard height a second time.
     var top=content.getBoundingClientRect().top;
-    content.style.height=Math.max(0,height+offset-top-navHeight)+'px';
+    content.style.height=Math.max(0,height+offset-top)+'px';
   }
   function schedule(){if(!queued){queued=true;requestAnimationFrame(fit);}}
   window.addEventListener('resize',schedule);

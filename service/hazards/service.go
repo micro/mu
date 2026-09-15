@@ -214,7 +214,7 @@ func Card() string {
 	}
 	if len(quakes) == 0 {
 		return `<p class="hmuted">Nothing above M4.5 in the past day.</p>` +
-			`<p class="hmore"><a href="/services/hazards">Hazards →</a></p>`
+			`<p class="hmore"><a href="/services/hazards">Hazards</a></p>`
 	}
 	var b strings.Builder
 	for i, q := range quakes {
@@ -226,7 +226,7 @@ func Card() string {
 			html.EscapeString(q.Place) +
 			`<span class="hago">` + html.EscapeString(ago(q.When)) + `</span></div>`)
 	}
-	b.WriteString(`<p class="hmore"><a href="/services/hazards">All hazards →</a></p>`)
+	b.WriteString(`<p class="hmore"><a href="/services/hazards">All hazards</a></p>`)
 	return b.String()
 }
 

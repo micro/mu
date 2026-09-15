@@ -63,8 +63,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(up) == 0 {
 		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Choose New to add an event, or ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
 	} else {
-		b.WriteString(`<h3 class="lead-15 m-0 mb-3">Upcoming</h3>`)
-		b.WriteString(`<div class="d-flex flex-column gap-2">`)
+		b.WriteString(`<h3 >Upcoming</h3>`)
+		b.WriteString(`<div class="compact-list">`)
 		for _, e := range up {
 			if e.Kind != "brief" {
 				b.WriteString(eventRow(e, csrf))
@@ -83,17 +83,17 @@ func eventRow(e *Event, csrf string) string {
 	if e.Note != "" {
 		note = `<div class="text-xs text-muted">` + html.EscapeString(e.Note) + `</div>`
 	}
-	return fmt.Sprintf(`<div class="pick-row-box">
+	return fmt.Sprintf(`<div class="list-row compact-row">
 <div class="grow">
   <a class="text-base no-underline" href="%s">%s</a>
-  <div class="text-sm link-colour">%s</div>
+  <div class="metadata-row">%s</div>
   %s
 </div>
 <form method="POST" action="/events" class="form-action m-0">
   <input type="hidden" name="_csrf" value="%s">
   <input type="hidden" name="action" value="cancel">
   <input type="hidden" name="id" value="%s">
-  <button type="submit" title="Cancel" class="plain-btn faint">&times;</button>
+  <button type="submit" title="Cancel" class="btn-quiet">&times;</button>
 </form>
 </div>`,
 		html.EscapeString(eventURL(e.ID)),

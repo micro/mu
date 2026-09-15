@@ -231,12 +231,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// has to be, and outside the row, where the flexbox is.
 	searchRow := `<div class="search-bar">` +
 		app.CSRFField(auth.CSRFToken(r)) +
-		`<input type="text" name="q" placeholder="Search the web..." value="` +
+		`<input type="search" name="q" aria-label="Search the web" placeholder="Search the web..." value="` +
 		html.EscapeString(query) + `" autofocus>` +
 		`<button type="submit">Search</button>` +
 		`</div>`
 	form := func(inner string) string {
-		return `<form class="search-bar" id="web-search" action="/web" method="POST">` + inner + `</form>`
+		return `<form class="form" id="web-search" action="/web" method="POST">` + inner + `</form>`
 	}
 	// One column, at the measure every other column page uses.
 	//
@@ -245,7 +245,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// wider than its own results. Every page in the row under the front door's
 	// box is a column of text now, and they are all the same column. See
 	// --measure in mu.css.
-	page := func(inner string) string { return `<div class="w-760">` + inner + `</div>` }
+	page := func(inner string) string { return `<div class="w-760 page-stack">` + inner + `</div>` }
 
 	if query == "" {
 		var landing strings.Builder
@@ -281,7 +281,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// One form around both, so a chip submits the same thing the button does.
 		landing.WriteString(form(searchRow + topicChips))
-		landing.WriteString(`<div id="recent-searches-container"></div>`)
 
 		landing.WriteString(webRecentSearchesScript)
 		content := page(landing.String())
@@ -379,7 +378,7 @@ func ResultsHandler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       "Search: " + query,
 		Description: "Results for " + query,
-		HTML:        `<div class="w-760">` + b.String() + `</div>`,
+		HTML:        `<div class="w-760 page-stack">` + b.String() + `</div>`,
 	})
 }
 
@@ -412,10 +411,10 @@ func renderResults(results []BraveResult) string {
 
 // searchForm is the box, prefilled, for a page that is not Handler.
 func searchForm(r *http.Request, query string) string {
-	return `<form class="search-bar" id="web-search" action="/web" method="POST"><div class="search-bar">` +
+	return `<form class="search-bar" id="web-search" action="/web" method="POST">` +
 		app.CSRFField(auth.CSRFToken(r)) +
-		`<input type="text" name="q" placeholder="Search the web..." value="` +
-		html.EscapeString(query) + `"><button type="submit">Search</button></div></form>`
+		`<input type="search" name="q" aria-label="Search the web" placeholder="Search the web..." value="` +
+		html.EscapeString(query) + `"><button type="submit">Search</button></form>`
 }
 
 // rememberScript adds this search to the recent list in the browser.
@@ -444,130 +443,4 @@ func stripHTML(s string) string {
 }
 
 // webRecentSearchesScript is the client-side JS for recent web searches (localStorage).
-var webRecentSearchesScript = `
-<script>
-(function () {
-// Wrapped, because this script runs more than once in one document.
-//
-// Soft navigation swaps #content and re-creates every script inside it so the
-// page's behaviour comes with it. This one declared MAX_RECENT_SEARCHES and
-// STORAGE_KEY as top-level consts, so the second execution threw
-// "Identifier 'STORAGE_KEY' has already been declared" before a single line of
-// it ran — and a SyntaxError kills the whole script, not just the declaration.
-//
-// The symptom names the cause exactly: recent searches were missing when you
-// arrived by clicking Open, and appeared after a refresh. A refresh is a new
-// document, where these are declared for the first time. Reported that way.
-//
-// A function scope means the second run redeclares them in its own scope, which
-// is what every one of these blocks needs and what none of them had.
-
-  const MAX_RECENT_SEARCHES = 10;
-  const STORAGE_KEY = 'mu_recent_web_searches';
-
-  function escapeHTML(text) {
-    const div = document.createElement('div');
-    div.textContent = String(text);
-    return div.innerHTML;
-  }
-
-  function loadRecentSearches() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) { return []; }
-  }
-
-  function saveRecentSearch(query) {
-    if (!query || !query.trim()) return;
-    try {
-      let searches = loadRecentSearches();
-      searches = searches.filter(s => s !== query);
-      searches.unshift(query);
-      if (searches.length > MAX_RECENT_SEARCHES) searches = searches.slice(0, MAX_RECENT_SEARCHES);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
-    } catch (e) {}
-  }
-
-  function removeRecentSearch(query) {
-    try {
-      let searches = loadRecentSearches().filter(s => s !== query);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
-      displayRecentSearches();
-    } catch (e) {}
-  }
-
-  function displayRecentSearches() {
-    const searches = loadRecentSearches();
-    const container = document.getElementById('recent-searches-container');
-    if (!container || searches.length === 0) { if (container) container.innerHTML = ''; return; }
-
-    let h = '<div class="recent-searches"><h3>Recent Searches</h3><div class="recent-searches-scroll">';
-    searches.forEach(function(search) {
-      const escaped = escapeHTML(search);
-      h += '<span class="recent-search-item" data-query="' + encodeURIComponent(search) + '">'
-         + '<span class="recent-search-label">' + escaped + '</span>'
-         + '<span class="recent-search-close" title="Remove">&times;</span>'
-         + '</span>';
-    });
-    h += '</div></div>';
-    container.innerHTML = h;
-
-    container.querySelectorAll('.recent-search-item').forEach(function(item) {
-      var label = item.querySelector('.recent-search-label');
-      var close = item.querySelector('.recent-search-close');
-      if (label) {
-        label.addEventListener('click', function(e) {
-          e.preventDefault(); e.stopPropagation();
-          var q = decodeURIComponent(item.getAttribute('data-query') || '');
-          saveRecentSearch(q);
-          // Post it, the same as the box and the topic chips.
-          //
-          // This navigated to /web?q=<query>, which had both of the faults the
-          // topic links had: it does not work, because the handler reads the
-          // query from the body and not the URL, and on the way to not working
-          // it wrote what somebody searched for into their history and into the
-          // access log of whatever terminates TLS. A recent search is the worst
-          // one to leak — it is by definition a search somebody ran before.
-          var form = document.getElementById('web-search');
-          var input = form ? form.querySelector('input[name=q]') : null;
-          if (form && input) { input.value = q; form.submit(); return; }
-          // No form on this page: fall back to the box's own submit path.
-          window.location.href = '/web';
-        });
-      }
-      if (close) {
-        close.addEventListener('click', function(e) {
-          e.preventDefault(); e.stopPropagation();
-          removeRecentSearch(decodeURIComponent(item.getAttribute('data-query') || ''));
-        });
-      }
-    });
-  }
-
-  // Run now if the document is already parsed, not only on DOMContentLoaded.
-  //
-  // A soft navigation swaps #content and re-creates the scripts inside it, so
-  // this script runs again — but DOMContentLoaded fired once, on the first real
-  // page load, and never again. So arriving at /search by clicking a link left
-  // the recent searches unrendered and the form unwired, and reloading fixed
-  // it, which is the tell.
-  function wireSearch() {
-    displayRecentSearches();
-    var form = document.querySelector('form[action="/web"]');
-    if (form) {
-      form.addEventListener('submit', function() {
-        var q = form.querySelector('input[name="q"]');
-        if (q && q.value.trim()) saveRecentSearch(q.value.trim());
-      });
-    }
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wireSearch);
-  } else {
-    wireSearch();
-  }
-
-})();
-</script>
-`
+var webRecentSearchesScript = app.RecentSearches("web-search", "mu_recent_web_searches")

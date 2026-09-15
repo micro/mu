@@ -187,7 +187,7 @@ func htmlToText(html string) string {
 			sb.WriteString(n.Data)
 		}
 		if n.Type == nethtml.ElementNode {
-			// Preserve <a> tags with their href
+			// Preserve <a>tags with their href
 			if n.Data == "a" {
 				var href string
 				for _, attr := range n.Attr {
@@ -1074,13 +1074,11 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 		return fmt.Sprintf(`
 	<div id="%s" class="news">
 	  %s
-	  <a href="%s" rel="noopener noreferrer" target="_blank">
-	    <img class="cover" src="%s" onerror="this.style.display='none'">
+	  <a href="%s" rel="noopener noreferrer" target="_blank"><img class="cover" src="%s" onerror="this.style.display='none'">
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
-	    </div>
-	  </a>
+	    </div></a>
 	  <div class="summary">%s%s</div>
 </div>`, itemGUID, categoryBadge, post.URL, htmlpkg.EscapeString(imageproxy.URL(post.Image)), post.Title, post.Description, summary, summaryLink)
 	}
@@ -1088,13 +1086,11 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	return fmt.Sprintf(`
 	<div id="%s" class="news">
 	  %s
-	  <a href="%s" rel="noopener noreferrer" target="_blank">
-	    <img class="cover">
+	  <a href="%s" rel="noopener noreferrer" target="_blank"><img class="cover">
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
-	    </div>
-	  </a>
+	    </div></a>
 	  <div class="summary">%s%s</div>
 </div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary, summaryLink)
 }
@@ -1237,9 +1233,7 @@ func generateHeadlinesHTML(headlines []*Post) string {
 		fmt.Fprintf(&sb, `
 			<div class="headline">
 			   %s
-			  <a href="%s">
-			   <span class="title">%s</span>
-			  </a>
+			  <a href="%s"><span class="title">%s</span></a>
 			 <span class="description">%s</span>
 			 <div class="summary">%s</div>
 			`, categoryBadge, link, h.Title, h.Description, summary)
@@ -1686,7 +1680,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				%s
 			</div>
 			<div class="article-back">
-				<a href="/news">← Back to news</a>
+				<a href="/news">Back to news</a>
 			</div>
 		</div>
 	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, htmlpkg.EscapeString(articleURL), app.ReadingActionItems(r, articleID))
@@ -2601,28 +2595,24 @@ func formatSearchResult(entry *data.IndexEntry) string {
 	if image != "" {
 		return fmt.Sprintf(`
 <div id="%s" class="news">
-  <a href="%s" rel="noopener noreferrer" target="_blank">
-    <img class="cover" src="%s">
+  <a href="%s" rel="noopener noreferrer" target="_blank"><img class="cover" src="%s">
     <div class="blurb">
       %s
       <span class="title">%s</span>
       <span class="description">%s</span>
-    </div>
-  </a>
+    </div></a>
   <div class="summary">%s</div>
 </div>`, entry.ID, url, htmlpkg.EscapeString(imageproxy.URL(image)), categoryBadge, title, description, summary)
 	}
 
 	return fmt.Sprintf(`
 <div id="%s" class="news">
-  <a href="%s" rel="noopener noreferrer" target="_blank">
-    <img class="cover">
+  <a href="%s" rel="noopener noreferrer" target="_blank"><img class="cover">
     <div class="blurb">
       %s
       <span class="title">%s</span>
       <span class="description">%s</span>
-    </div>
-  </a>
+    </div></a>
   <div class="summary">%s</div>
 </div>`, entry.ID, url, categoryBadge, title, description, summary)
 }

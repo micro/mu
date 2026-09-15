@@ -570,6 +570,6 @@ collapse to single-letter columns on mobile.
 
 ## Current product direction
 
-Keep Home, Inbox, Agents and Services as the four primary destinations on mobile and desktop. Home is the private conversation with Micro; Inbox brings communications needing attention; Agents contains focused agents; Services exposes useful standalone utilities and mini apps. Work remains available by direct link and API. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
+Keep Home, Inbox, Agents and Services as the four primary destinations in the sidebar on mobile and desktop. On mobile the menu opens the sidebar; do not duplicate it in a bottom navigation bar. Home is the private conversation with Micro; Inbox brings communications needing attention; Agents contains focused agents; Services exposes useful standalone utilities and mini apps. Work remains available by direct link and API. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
 
 Agents are not services. Do not place agent management in the Services catalogue. Home is a private conversation, without a Delete control or a platform-wide People directory shortcut. Contacts must be explicitly chosen, not implicitly all registered users.

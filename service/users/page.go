@@ -89,7 +89,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // rows is the list itself.
 func rows(list []User, me string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="page-stack">`)
+	b.WriteString(`<div class="compact-list">`)
 	for _, u := range list {
 		name := html.EscapeString(u.Display())
 		badge := ""
@@ -115,7 +115,7 @@ func rows(list []User, me string) string {
 		act := ""
 		if u.ID != me {
 			to := html.EscapeString(url.QueryEscape(u.ID))
-			act = `<div class="form-actions"><a class="mini-btn" href="/chat?with=` + to + `">Chat</a>` +
+			act = `<div class="form-actions no-wrap"><a class="mini-btn" href="/chat?with=` + to + `">Chat</a>` +
 				`<a class="mini-btn" href="/inbox/new?to=` + to + `">Mail</a></div>`
 		}
 
@@ -125,9 +125,9 @@ func rows(list []User, me string) string {
 		} else if at := auth.LastSeen(u.ID); !at.IsZero() {
 			seen = "Last seen " + app.TimeAgo(at)
 		}
-		b.WriteString(`<div class="card page-stack"><div class="row-top">` +
-			`<div>` + who + `</div><span class="push-right text-muted text-xs">` +
-			html.EscapeString(seen) + `</span></div>` + act + `</div>`)
+		b.WriteString(`<div class="list-row compact-row">` +
+			`<div class="grow truncate">` + who + `</div><span class="text-muted text-xs nowrap">` +
+			html.EscapeString(seen) + `</span>` + act + `</div>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()

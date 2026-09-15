@@ -38,7 +38,7 @@ func TestTheBlogPageShowsOnePageOfPosts(t *testing.T) {
 		w := httptest.NewRecorder()
 		Handler(w, httptest.NewRequest("GET", url, nil))
 		body := w.Body.String()
-		return strings.Count(body, `class="post-item"`), body
+		return strings.Count(body, `class="post-item reading-row"`), body
 	}
 
 	shown, body := count("/blog")

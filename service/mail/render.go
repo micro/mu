@@ -2,6 +2,8 @@ package mail
 
 import (
 	"fmt"
+	stdhtml "html"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -10,7 +12,7 @@ import (
 // renderThreadPreview renders a thread preview showing the latest message but linking to root
 func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, hasUnread bool) string {
 	unreadIndicator := ""
-	rowClass := "thread-preview card"
+	rowClass := "thread-preview"
 	if hasUnread {
 		rowClass += " mail-unread"
 		unreadIndicator = `<span class="unread-dot">● </span>`
@@ -42,21 +44,7 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 
-	html := fmt.Sprintf(`
-		<div class="%s" onclick="window.location.href='/mail?id=%s'">
-			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" title="Delete conversation">×</a>
-			<div class="mail-thread-item">
-				<strong class="mail-thread-subject">%s%s</strong>
-			</div>
-			<div class="mail-thread-meta">%s</div>
-			<div class="mail-thread-row">
-				<div class="mail-thread-preview">%s</div>
-				<span class="mail-thread-time">%s</span>
-			</div>
-		</div>
-	`, rowClass, rootID, rootID, unreadIndicator, fromDisplay, decodeMIMEHeader(latestMsg.Subject), bodyPreview, relativeTime)
-
-	return html
+	return previewRow(rootID, rowClass, unreadIndicator+stdhtml.EscapeString(fromDisplay), latestMsg.Subject, bodyPreview, relativeTime)
 }
 
 // renderSentThreadPreview renders a sent thread preview showing latest message
@@ -89,19 +77,9 @@ func renderSentThreadPreview(rootID string, latestMsg *Message, viewerID string)
 
 	relativeTime := app.TimeAgo(latestMsg.CreatedAt)
 
-	html := fmt.Sprintf(`
-		<div class="thread-preview card" onclick="window.location.href='/mail?id=%s'">
-			<a href="#" class="delete-btn" onclick="event.stopPropagation(); if(confirm('Delete this conversation?')){var form=document.createElement('form');form.method='POST';form.action='/mail';var input1=document.createElement('input');input1.type='hidden';input1.name='action';input1.value='delete_thread';form.appendChild(input1);var input2=document.createElement('input');input2.type='hidden';input2.name='msg_id';input2.value='%s';form.appendChild(input2);document.body.appendChild(form);form.submit();}return false;" title="Delete conversation">×</a>
-			<div class="mail-thread-item">
-				<strong class="mail-thread-subject">%s</strong>
-			</div>
-			<div class="mail-thread-meta">to %s</div>
-			<div class="mail-thread-row">
-				<div class="mail-thread-preview">%s</div>
-				<span class="mail-thread-time">%s</span>
-			</div>
-		</div>
-	`, rootID, rootID, decodeMIMEHeader(latestMsg.Subject), toDisplay, bodyPreview, relativeTime)
+	return previewRow(rootID, "thread-preview", "to "+stdhtml.EscapeString(toDisplay), latestMsg.Subject, bodyPreview, relativeTime)
+}
 
-	return html
+func previewRow(id, classes, sender, subject, preview, when string) string {
+	return fmt.Sprintf(`<div class="list-row compact-row %s"><a class="list-link grow page-stack compact-stack" href="/mail?id=%s"><span class="mail-thread-subject truncate">%s</span><span class="text-sm truncate">%s</span><span class="text-sm text-muted truncate">%s</span></a><form class="form-action" method="POST" action="/mail" onsubmit="return confirm('Delete this conversation?')"><input type="hidden" name="action" value="delete_thread"><input type="hidden" name="msg_id" value="%s"><button type="submit" aria-label="Delete conversation">×</button></form><span class="metadata-time">%s</span></div>`, classes, url.QueryEscape(id), sender, stdhtml.EscapeString(decodeMIMEHeader(subject)), stdhtml.EscapeString(preview), stdhtml.EscapeString(id), when)
 }

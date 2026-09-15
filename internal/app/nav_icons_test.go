@@ -74,7 +74,7 @@ func TestEveryAccountMenuEntryHasAnIcon(t *testing.T) {
 }
 
 func TestPrimaryNavigationHasFourDestinations(t *testing.T) {
-	for _, nav := range []string{navMain(&auth.Account{ID: "someone"}), mobileNav(&auth.Account{ID: "someone"})} {
+	for _, nav := range []string{navMain(&auth.Account{ID: "someone"})} {
 		if strings.Count(nav, "<a ") != 4 {
 			t.Fatalf("expected four primary destinations: %s", nav)
 		}

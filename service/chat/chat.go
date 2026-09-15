@@ -1704,7 +1704,7 @@ func aboutRoom(roomData map[string]interface{}) string {
 			rel = ` target="_blank" rel="noopener noreferrer"`
 		}
 		link = `<a class="link room-source" href="` + htmlpkg.EscapeString(src) + `"` + rel + `>` +
-			label + ` →</a>`
+			label + `</a>`
 	}
 
 	if sum == "" {

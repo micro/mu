@@ -106,8 +106,8 @@ func BalanceBody(userID string, showConversion bool) []string {
 		conversion,
 		free,
 		admin,
-		`<p class="balance-links"><a href="/account/topup">Top up &rarr;</a> · ` +
-			`<a href="/account/transfer">Transfer &rarr;</a></p>`,
+		`<p class="balance-links"><a href="/account/topup">Top up</a> · ` +
+			`<a href="/account/transfer">Transfer</a></p>`,
 	}
 }
 
@@ -133,7 +133,7 @@ func LedgerSection(userID string) string {
 	if totalEarnings > 0 {
 		sb.WriteString(app.Section("App earnings",
 			fmt.Sprintf(`<p>%d credits earned from your apps (recent)</p>`, totalEarnings),
-			app.NoteHTML(`You keep every penny of every sale. <a href="/apps">Manage your apps &rarr;</a>`)))
+			app.NoteHTML(`You keep every penny of every sale. <a href="/apps">Manage your apps</a>`)))
 	}
 
 	// No price table here. It was a second copy of what /tools already says
@@ -156,7 +156,7 @@ func LedgerSection(userID string) string {
 		}
 		rows.WriteString(`</ul>`)
 
-		sb.WriteString(app.SectionID("ledger", "History", rows.String()))
+		sb.WriteString(app.SectionID("ledger", "History", app.Note("Latest 20 transactions, newest first."), rows.String()))
 	}
 
 	return sb.String()
@@ -838,7 +838,7 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<tr><td>Platform fee</td><td>10%</td></tr>`)
 	sb.WriteString(`<tr><td>Free apps</td><td>No charge</td></tr>`)
 	sb.WriteString(`</table>`)
-	sb.WriteString(`<p class="info mt-3"><a href="/apps/new">Build an app →</a></p>`)
+	sb.WriteString(`<p class="info mt-3"><a href="/apps/new">Build an app</a></p>`)
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /wallet/pricing</code></p>`)

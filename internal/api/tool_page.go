@@ -69,7 +69,7 @@ func ToolPageHandler(w http.ResponseWriter, r *http.Request) {
 func toolPage(t Tool) string {
 	var b strings.Builder
 	b.WriteString(`<div class="tool-page">`)
-	b.WriteString(app.Actions(app.TextLink("← Tools", "/tools")))
+	b.WriteString(app.Actions(app.TextLink("Tools", "/tools")))
 
 	b.WriteString(`<h1 class="tool-name">` + html.EscapeString(t.Name) + `</h1>`)
 	b.WriteString(`<p class="tool-lead">` + html.EscapeString(t.Description) + `</p>`)

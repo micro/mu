@@ -55,7 +55,7 @@ function connectRoomWebSocket(roomId) {
 
 function displayRoomMessage(msg, shouldScroll = true) {
   const messagesDiv = document.getElementById('messages');
-  if (!messagesDiv) return;
+  if (!messagesDiv || (msg.system && /^@\S+ (joined|left)$/.test(msg.content))) return;
   
   const msgDiv = document.createElement('div');
   msgDiv.className = 'message';
@@ -74,7 +74,7 @@ function displayRoomMessage(msg, shouldScroll = true) {
   }
 
   const userSpan = msg.is_llm ?
-    '<span class="llm"><a href="/@micro" style="color:inherit;text-decoration:none;">micro</a>' + timeSpan + '</span>' :
+    '<span class="llm"><a href="/@micro">micro</a>' + timeSpan + '</span>' :
     '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a>' + timeSpan + '</span>';
 
   let content;

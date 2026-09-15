@@ -481,7 +481,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       "Social",
 		Description: "Threads and conversations",
-		HTML:        body,
+		HTML:        `<div class="content-narrow">` + body + `</div>`,
 	})
 }
 
@@ -531,7 +531,7 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       "Thread by " + p.Author,
 		Description: truncate(p.Content, 160),
-		HTML:        body,
+		HTML:        `<div class="content-narrow">` + body + `</div>`,
 	})
 }
 
@@ -598,7 +598,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	sb.WriteString(`<div class="col-feed">`)
 
 	// Back link
-	sb.WriteString(`<div class="mb-4"><a href="/social" class="text-muted no-underline">&larr; Back to threads</a></div>`)
+	sb.WriteString(`<div class="mb-4"><a href="/social" class="text-muted no-underline">Back to threads</a></div>`)
 
 	// Original message (full, no truncation)
 	content := htmlpkg.EscapeString(p.Content)
@@ -765,7 +765,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		content := quota.ExceededPage(cost)
 		app.Respond(w, r, app.Response{
 			Title: "Social - Search",
-			HTML:  content,
+			HTML:  `<div class="content-narrow">` + content + `</div>`,
 		})
 		return
 	}
@@ -798,7 +798,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 
 	app.Respond(w, r, app.Response{
 		Title: "Social - Search",
-		HTML:  sb.String(),
+		HTML:  `<div class="content-narrow">` + sb.String() + `</div>`,
 	})
 }
 
@@ -892,9 +892,7 @@ func generateCardHTML(allMessages []*Message) string {
 			authorHTML = fmt.Sprintf(`<span class="category">%s</span>`, authorHTML)
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
-  <a href="/social/thread?id=%s">
-    <span class="title">%s</span>
-  </a>
+  <a href="/social/thread?id=%s"><span class="title">%s</span></a>
   <span class="description breakable">%s</span>%s
   <div class="summary"><span data-timestamp="%d">%s</span>%s</div>
 </div>`,
@@ -1051,9 +1049,7 @@ func renderLinkCard(rawURL string) string {
 		if err != nil {
 			return ""
 		}
-		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="link-card link-card-pad">
-  <div class="text-sm text-muted">%s</div>
-</a>`, htmlpkg.EscapeString(rawURL), htmlpkg.EscapeString(parsed.Hostname()))
+		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="link-card link-card-pad"><div class="text-sm text-muted">%s</div></a>`, htmlpkg.EscapeString(rawURL), htmlpkg.EscapeString(parsed.Hostname()))
 	}
 
 	var sb strings.Builder

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestPriorityShowsOneCommunicationAndHandledTimestampDoesNotHideNewMessages(t *testing.T) {
+func TestInboxShowsCommunicationListAndPreservesNewMessages(t *testing.T) {
 	const owner = "priority_reader"
 	first := arrived(t, owner, "mail", "first", "", "first@example.com", "First arrival")
 	second := arrived(t, owner, "mail", "second", "", "second@example.com", "Second arrival")
@@ -21,8 +21,8 @@ func TestPriorityShowsOneCommunicationAndHandledTimestampDoesNotHideNewMessages(
 		return w.Body.String()
 	}
 	body := render()
-	if !strings.Contains(body, "Second arrival") || strings.Contains(body, "First arrival") || strings.Contains(body, "A web conversation") {
-		t.Fatal("priority is a mixed feed")
+	if !strings.Contains(body, "Second arrival") || !strings.Contains(body, "First arrival") || strings.Contains(body, "A web conversation") {
+		t.Fatal("inbox must list both arrivals and exclude private web chat")
 	}
 	reviewed := thread.Get(owner, second.ID).Updated
 	thread.HandleAt(owner, second.ID, reviewed)
@@ -36,5 +36,13 @@ func TestPriorityShowsOneCommunicationAndHandledTimestampDoesNotHideNewMessages(
 	}
 	if thread.Get("other", first.ID) != nil {
 		t.Fatal("cross-account thread visible")
+	}
+}
+
+func TestInboxNavigationEscapesDecodedPaths(t *testing.T) {
+	r := httptest.NewRequest("GET", "/inbox%22%20onclick=%22alert(1)?view=history", nil)
+	got := inboxURL(r, "thread")
+	if strings.ContainsAny(got, "\" <>") || !strings.Contains(got, "%22") {
+		t.Fatalf("decoded path became unsafe link markup: %s", got)
 	}
 }

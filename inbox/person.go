@@ -181,7 +181,7 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(convs) == 0 {
-		b.WriteString(`<div class="ib-person-empty">` +
+		b.WriteString(`<div class="ib-person-empty page-stack">` +
 			`<p>Nothing between you yet.</p>` + reachTo(handle) + `</div></div>`)
 		app.Respond(w, r, app.Response{
 			Title:       title,
@@ -226,19 +226,18 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 func reachTo(handle string) string {
 	to := html.EscapeString(url.QueryEscape(handle))
 	who := html.EscapeString(url.QueryEscape(strings.TrimPrefix(handle, "@")))
-	return `<a class="btn ib-act" href="/chat?with=` + who + `">` +
+	return `<div class="form-actions"><a class="btn" href="/chat?with=` + who + `">` +
 		iconChat + `Chat</a>` +
-		`<a class="btn btn-quiet ib-act" href="/inbox/new?to=` + to + `">` +
-		iconMail + `Mail</a>`
+		`<a class="btn btn-quiet" href="/inbox/new?to=` + to + `">` +
+		iconMail + `Mail</a></div>`
 }
 
 // iconChat is a speech bubble.
 //
 // The pair earns its keep: the shapes separate now from later faster than the
 // words do, and the words say which is which for anybody who does not read
-// icons. Chat leads and is the solid button because it is the one that depends
-// on them being here, which is the fact the page above it just stated.
-const iconChat = `<svg class="ib-act-icon" viewBox="0 0 16 16" aria-hidden="true">` +
+// icons. Both use the shared compact button treatment.
+const iconChat = `<svg class="button-icon" viewBox="0 0 16 16" aria-hidden="true">` +
 	`<path d="M14 9.5a1.5 1.5 0 0 1-1.5 1.5H6l-3 2.5V11H3.5A1.5 1.5 0 0 1 2 9.5v-6A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5z" ` +
 	`fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>`
 
@@ -248,7 +247,7 @@ const iconChat = `<svg class="ib-act-icon" viewBox="0 0 16 16" aria-hidden="true
 // for an image that has to exist, be cached and be found again by whoever moves
 // it. currentColor so it takes the button's own colour rather than needing one
 // of its own for every place a button appears.
-const iconMail = `<svg class="ib-act-icon" viewBox="0 0 16 16" aria-hidden="true">` +
+const iconMail = `<svg class="button-icon" viewBox="0 0 16 16" aria-hidden="true">` +
 	`<rect x="1.5" y="3.5" width="13" height="9" rx="1.5" fill="none" ` +
 	`stroke="currentColor" stroke-width="1.3"/>` +
 	`<path d="M2 4.5l6 4 6-4" fill="none" stroke="currentColor" ` +

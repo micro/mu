@@ -178,7 +178,7 @@ func creditsBannerFor(acc *auth.Account, path string) string {
 	return `<div class="credits-banner">
 <strong>` + headline + `</strong>
 <span>` + detail + `</span>
-<a href="/account/topup">Top up →</a>
+<a href="/account/topup">Top up</a>
 </div>`
 }
 
@@ -232,6 +232,6 @@ func connectBannerFor(acc *auth.Account, path string) string {
 	return `<div class="credits-banner connect-banner">
 <strong>Connect your agent.</strong>
 <span>This is the app; the tools are the other half.` + tools + `</span>
-<a href="/tools">Connect →</a>
+<a href="/tools">Connect</a>
 </div>`
 }

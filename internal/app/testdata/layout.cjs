@@ -44,10 +44,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    await page.goto('https://mu.test'+path);await page.waitForTimeout(50);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
    if(['/about','/privacy','/pricing','/contact','/status'].includes(path))assert(await page.locator('.footer').isVisible(),'public footer missing');
-   if(await page.locator('#mobile-nav').count()) {
-    assert.deepEqual(await page.locator('#mobile-nav a').allTextContents(),['Home','Inbox','Agents','Services']);
-    assert.equal(await page.locator('#mobile-nav').isVisible(),width<=900);
-   }
+   assert.equal(await page.locator('#mobile-nav').count(),0,'sidebar navigation duplicated in bottom bar');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${path} overflows at ${width}`);
    for(const revealed of [false,true]) {
     if(revealed)await page.locator('#content details').evaluateAll(es=>es.forEach(e=>e.open=true));
@@ -123,7 +120,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     const form=page.locator('#mu-chat-form');
     const empty=await form.boundingBox();
     if(path==='/')assert(empty.y>220&&empty.y<620,'public empty prompt is not centered');
-    else {const nav=await page.locator('#mobile-nav').isVisible()?await page.locator('#mobile-nav').boundingBox():null;const bottom=nav?nav.y:900;assert(bottom-empty.y-empty.height<=24,'signed-in prompt is not at the bottom');}
+    else {assert(900-empty.y-empty.height<=24,'signed-in prompt is not at the bottom');}
     await page.locator('#mu-chat-mic').click();const listening=await form.boundingBox();assert(Math.abs(empty.y-listening.y)<2,'dictation moved prompt');
     assert.equal(await page.locator('#mu-chat-mic').getAttribute('aria-pressed'),'true');
     if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/dictating.png'});
@@ -157,8 +154,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
     await page.waitForTimeout(50);const after=await form.boundingBox();
     assert(Math.abs(before.y-after.y)<2,'composer moved as conversation grew');
-    const nav=await page.locator('#mobile-nav').count()?await page.locator('#mobile-nav').boundingBox():null;
-    assert(after.y+after.height<=(nav?nav.y:900),'navigation covers composer');
+    assert(after.y+after.height<=900,'composer below viewport');
     const center=await page.locator('#mu-chat').evaluate(e=>{const r=e.getBoundingClientRect();const available=document.body.classList.contains('index-shell')||innerWidth<=900||document.body.classList.contains('nav-collapsed')?0:220;return Math.abs((r.left+r.right)/2-(available+innerWidth)/2)});
     assert(center<2,`conversation offset ${center}px at ${width}`);
     if(path==='/?new=1'&&width>900) {
@@ -182,9 +178,20 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(path.startsWith('/inbox?id=')) {
     const row=page.locator('.ib-reply');
     const boxes=await row.locator('a.btn,button').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {x:r.x,y:r.y,right:r.right,height:r.height,bg:s.backgroundColor};}));
-    assert(boxes.length>=2,'reply and assign fixture missing');
-    assert(Math.abs(boxes[0].height-boxes[1].height)<2,'inbox actions differ in size');
-    assert(boxes[1].y>boxes[0].y||boxes[1].x-boxes[0].right>=8,'inbox actions run together');
+    const inline=page.locator('#inbox-reply');
+    assert(boxes.length>=1,'assign fixture missing');
+    if(await inline.count()) {
+     const before=page.url();await inline.locator('summary').click();
+     assert(await inline.locator('textarea').isVisible(),'inline reply did not expand');
+     assert.equal(page.url(),before,'reply navigated away');
+     const field=await inline.locator('textarea').boundingBox();const panel=await inline.boundingBox();
+     assert(field.width>=panel.width-4,'inline reply is not full width');
+     await inline.locator('summary').click();
+    } else {
+     assert(boxes.length>=2,'reply fixture missing');
+     assert(Math.abs(boxes[0].height-boxes[1].height)<2,'inbox actions differ in size');
+     assert(boxes[1].y>boxes[0].y||boxes[1].x-boxes[0].right>=8,'inbox actions run together');
+    }
     assert(boxes.every(b=>b.bg==='rgb(255, 255, 255)'),'inbox actions have filled backgrounds');
     assert(await page.locator('.ib-from,.ib-msg .you').first().evaluate(e=>getComputedStyle(e).display==='flex'),'thread sender and time run together');
     await page.locator('.ib-assign-open').click();
@@ -212,7 +219,38 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     const card=page.locator('#flagged-content .card').first();assert(await card.isVisible(),'moderation fixture empty');
     assert(await card.locator('.form-actions').evaluate(e=>parseFloat(getComputedStyle(e).gap)>=8),'moderation actions lack spacing');
    }
-   if(path==='/inbox')assert.equal(await page.locator('article.message').count(),1,'priority should show one communication');
+   if(path==='/inbox') {
+    assert.equal(await page.locator('article.message').count(),0,'inbox opened a priority item');
+    assert(await page.locator('.ib-row').count()>1,'inbox is not a list');
+    const first=page.locator('.ib-row').first();await first.hover();
+    assert.equal(await first.evaluate(e=>getComputedStyle(e).textDecorationLine),'none','row hover underlines text');
+    const labels=await page.locator('.ib-kind').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().x));
+    assert(labels.every(x=>Math.abs(x-labels[0])<1),'type labels move between rows');
+    assert((await first.boundingBox()).height<110,'inbox rows are too tall');
+   }
+   if(path==='/maps') {
+    const map=await page.locator('#map').boundingBox();
+    assert(map.height>=280&&map.height<=560,'map viewport is not bounded');
+    const tiles=await page.locator('.map-tile').evaluateAll(es=>es.map(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,pos:getComputedStyle(e).position})));
+    assert(tiles.length>0&&tiles.every(t=>t.w===256&&t.h===256&&t.pos==='absolute'),'map tiles lost native pixel geometry');
+   }
+   if(path==='/docs') {
+    const actions=await page.locator('.form-actions a').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().toJSON()));
+    if(actions.length>=2)assert(actions[1].x-actions[0].right>=8||actions[1].y>actions[0].y,'New and Import touch');
+   }
+   if(path==='/web'||path==='/video') {
+    const formID=path==='/web'?'web-search':'video-search', key=path==='/web'?'mu_recent_web_searches':'mu_recent_video_searches';
+    await page.evaluate(({key})=>localStorage.setItem(key,JSON.stringify(['bread & butter','Bread  & butter','<img src=x>'])),{key});
+    await page.reload();
+    await page.evaluate(({formID})=>document.getElementById(formID).addEventListener('submit',e=>{e.preventDefault();window.submittedQuery=new FormData(e.target).get('q')||new FormData(e.target).get('query');}),{formID});
+    const recent=page.locator('[data-recent-searches]');
+    assert.equal(await recent.locator('img').count(),0,'recent search became markup');
+    assert.equal(await recent.locator('button').count(),4,'recent search duplicates remain');
+    await recent.getByRole('button',{name:'bread & butter',exact:true}).focus();await page.keyboard.press('Enter');
+    assert.equal(await page.evaluate(()=>window.submittedQuery),'bread & butter','recent search did not submit');
+    await recent.getByRole('button',{name:'Remove recent search: bread & butter',exact:true}).click();
+    assert.equal(await recent.locator('button').count(),2,'remove did not update recent searches');
+   }
    if(path==='/chat'){
     await page.locator('#messages').evaluate(e=>e.innerHTML='<p>Room message</p>'.repeat(100));await page.waitForTimeout(70);
     const box=await page.locator('#chat-form').boundingBox();assert(box.y+box.height<=900,`room composer below viewport at ${width}`);

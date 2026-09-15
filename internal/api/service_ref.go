@@ -85,7 +85,7 @@ func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 	// this one, and a button back to the page you are on is furniture.
 	if spec.Page != "" && spec.Page != "/services/"+spec.Name {
 		b.WriteString(`<p class="svc-open"><a class="btn" href="` + html.EscapeString(spec.Page) +
-			`">Open ` + html.EscapeString(spec.NavLabel()) + ` &rarr;</a></p>`)
+			`">Open ` + html.EscapeString(spec.NavLabel()) + `</a></p>`)
 	}
 
 	b.WriteString(askTheAgent(spec.Name))
@@ -107,7 +107,7 @@ func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(`<p class="svc-doors"><a href="/api">Ask an agent through HTTP or MCP &rarr;</a></p>`)
+	b.WriteString(`<p class="svc-doors"><a href="/api">Ask an agent through HTTP or MCP</a></p>`)
 
 	b.WriteString(`</div>`)
 	b.WriteString(tryScript)
@@ -180,7 +180,7 @@ func refAuthCard(spec service.Spec, base string) string {
 			html.EscapeString(m.Tool) + `</code>. The answer is identical.</p>`)
 	}
 
-	b.WriteString(`<p class="card-meta"><a href="/api">How every call behaves &rarr;</a></p>`)
+	b.WriteString(`<p class="card-meta"><a href="/api">How every call behaves</a></p>`)
 	b.WriteString(`</div>`)
 	return b.String()
 }

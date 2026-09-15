@@ -100,7 +100,7 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 		// TextLink, not Link: app.Link appends a → because it points at a
 		// destination you are going on to, and a back link that reads
 		// "← Agents →" is pointing both ways at once.
-		app.TextLink("← Agents", back) + `</p>` +
+		app.TextLink("Agents", back) + `</p>` +
 		`<div class="w-820">` + notice + body + `</div></div>` +
 		chatPageJS +
 		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`

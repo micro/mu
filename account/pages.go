@@ -295,7 +295,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := `<p><a href="/">← Home</a></p>
+	body := `<p><a href="/">Home</a></p>
 <div class="card">
 <h4>Invite someone to Micro</h4>
 <p class="text-sm">Enter their email — they'll get a signup link.</p>
@@ -349,7 +349,7 @@ func RequestInvite(w http.ResponseWriter, r *http.Request) {
 	body := fmt.Sprintf(`<div class="card w-440 centered">
 <h3>Thanks — we got your request</h3>
 <p>We'll email <strong>%s</strong> if we have a seat for you.</p>
-<p class="mt-3"><a href="/">← Back</a></p>
+<p class="mt-3"><a href="/">Back</a></p>
 </div>`, htmlpkg.EscapeString(email))
 	app.Respond(w, r, app.Response{Title: "Request Received", Description: "Invite request received", HTML: body})
 }
@@ -758,7 +758,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	profileURL := "/@" + htmlpkg.EscapeString(acc.ID)
 	profile := app.Section("Identity",
 		`<p>@`+htmlpkg.EscapeString(acc.ID)+`</p>`,
-		`<div class="section-actions"><a href="`+profileURL+`">View profile →</a></div>`,
+		`<div class="section-actions"><a href="`+profileURL+`">View profile</a></div>`,
 		app.Form{Action: "/account", Inline: true,
 			Hidden: map[string]string{"save_name": "1"},
 			Fields: []app.Field{{Name: "display_name", Label: "Display name", Value: acc.Name, Max: 60,
@@ -771,7 +771,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 	profile += app.Section("Status", `<p>`+htmlpkg.EscapeString(status)+`</p>`,
 		app.Note("A short update other people can see on your profile."),
-		`<div class="section-actions"><a href="`+profileURL+`#profile-status">Set status →</a></div>`)
+		`<div class="section-actions"><a href="`+profileURL+`#profile-status">Set status</a></div>`)
 
 	// No Settings section, and no About card.
 	//
@@ -799,16 +799,18 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	case "/account/profile":
 		content += profile + PlaceCard(r, acc.ID)
 	case "/account/billing":
-		content += BalanceCard(acc.ID) + usage.Card(acc.ID) +
-			app.Section("Usage", `<a href="/usage">Detailed usage →</a>`) +
-			LedgerSection(acc.ID)
+		usageSection := usage.Card(acc.ID)
+		if usageSection == "" {
+			usageSection = app.Section("Usage", `<a href="/usage?window=week">View usage</a>`)
+		}
+		content += BalanceCard(acc.ID) + usageSection + LedgerSection(acc.ID)
 	default:
 		content += emailCard +
 			`<section id="connections" class="page-section"><h3>Connections</h3>` +
 			googleCard + renderPhoneCard(acc.ID) +
 			app.Section("API and mail", `<nav class="section-actions" aria-label="Connection settings"><a href="/token">API credentials</a><a href="/inbox/imap">Mail settings</a></nav>`) + `</section>` +
 			passwordCard(acc) + PasskeyListHTML(acc.ID) +
-			app.Section("Notifications", `<a href="/notify">Notification settings →</a>`)
+			app.Section("Notifications", `<a href="/notify">Notification settings</a>`)
 	}
 	// Forms return to the settings destination the user opened.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
@@ -1046,7 +1048,7 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 	body := fmt.Sprintf(`<div class="card">
 <h4>Email verified ✓</h4>
 <p>Thanks, <strong>%s</strong>. Your email is verified and you can now post.</p>
-<p><a href="/" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
+<p><a href="/" class="btn">Go home</a> &nbsp; <a href="/account">Account</a></p>
 </div>`, htmlpkg.EscapeString(acc.Name))
 	app.Respond(w, r, app.Response{Title: "Verified", Description: "Email verified", HTML: body})
 }

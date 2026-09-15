@@ -25,25 +25,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	b.WriteString(`<div class="card"><h3>Products</h3><form class="form form-inline" method="get" action="/food">`)
-	fmt.Fprintf(&b, `<input class="food-input" type="text" name="q" value="%s" placeholder="Find a product — oat milk" aria-label="Product name">`,
-		html.EscapeString(find))
-	fmt.Fprintf(&b, `<input class="food-input food-code" type="text" name="barcode" value="%s" placeholder="or a barcode" aria-label="Barcode">`,
-		html.EscapeString(barcode))
-	b.WriteString(`<button class="btn" type="submit">Look up</button>`)
-	b.WriteString(`</form><div class="food-presets" aria-label="Common product searches">`)
-	for _, q := range []string{"Milk", "Oat milk", "Bread", "Eggs", "Yogurt", "Cheese", "Rice", "Pasta", "Cereal", "Peanut butter", "Baked beans", "Chocolate"} {
-		b.WriteString(`<a class="btn" href="/food?q=` + url.QueryEscape(q) + `">` + html.EscapeString(q) + `</a>`)
-	}
-	b.WriteString(`</div></div>`)
-
-	b.WriteString(`<div class="card"><h3>Hygiene ratings</h3><form class="form form-inline" method="get" action="/food">`)
-	fmt.Fprintf(&b, `<input class="food-input" type="text" name="rating" value="%s" placeholder="Hygiene rating — a business name" aria-label="Business name">`,
-		html.EscapeString(rating))
-	fmt.Fprintf(&b, `<input class="food-input" type="text" name="where" value="%s" placeholder="town or postcode" aria-label="Where">`,
-		html.EscapeString(q.Get("where")))
-	b.WriteString(`<button class="btn" type="submit">Check</button>`)
-	b.WriteString(`</form></div>`)
+	b.WriteString(`<div class="page-stack"><section class="page-section"><h3>Nutrition and ingredients</h3><p>Find a packaged food to see its nutritional information, ingredients and recorded allergens.</p><form class="search-bar" method="get" action="/food">`)
+	fmt.Fprintf(&b, `<input type="search" name="q" value="%s" placeholder="Search food or brand" aria-label="Food or brand"><button type="submit">Search</button></form>`, html.EscapeString(find))
+	b.WriteString(`<details class="disclosure"><summary>Look up a barcode</summary><form class="search-bar" method="get" action="/food">`)
+	fmt.Fprintf(&b, `<input type="text" inputmode="numeric" name="barcode" value="%s" placeholder="Barcode on the packet" aria-label="Barcode"><button type="submit">Look up</button></form></details></section>`, html.EscapeString(barcode))
 
 	switch {
 	case barcode != "":
@@ -54,11 +39,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(textBlock(rsp.Text))
 		}
 	case find != "":
-		var rsp SearchResponse
-		if err := (Server{}).Search(r.Context(), &SearchRequest{Query: find, Limit: 12}, &rsp); err != nil {
+		hits, err := search(find, 12)
+		if err != nil {
 			b.WriteString(errorBlock(err))
 		} else {
-			b.WriteString(textBlock(rsp.Text))
+			b.WriteString(`<div class="compact-list">`)
+			for _, h := range hits {
+				fmt.Fprintf(&b, `<a class="list-link compact-list-item" href="/food?barcode=%s"><strong>%s</strong><span class="text-muted">%s</span><span class="text-sm">View nutritional information</span></a>`, url.QueryEscape(h.Code), html.EscapeString(h.Name), html.EscapeString(strings.TrimSpace(h.Brands+" "+h.Quantity)))
+			}
+			if len(hits) == 0 {
+				b.WriteString(`<p>No matching foods found.</p>`)
+			}
+			b.WriteString(`</div>`)
 		}
 	case rating != "" || strings.TrimSpace(q.Get("where")) != "":
 		var rsp HygieneResponse
@@ -71,9 +63,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{
 		Title:       "Food",
-		Description: "Ingredients, allergens and nutrition by barcode, and UK food hygiene ratings",
+		Description: "Nutrition, ingredients and allergens",
 		HTML:        b.String(),
 	})
 }
@@ -84,7 +77,7 @@ func textBlock(s string) string {
 	if strings.TrimSpace(s) == "" {
 		return ""
 	}
-	return `<pre class="food-result">` + html.EscapeString(s) + `</pre>`
+	return `<div class="pre-wrap">` + html.EscapeString(s) + `</div>`
 }
 
 func errorBlock(err error) string {
@@ -97,7 +90,5 @@ func errorBlock(err error) string {
 // request at a free database on every page render to show a fixed sentence
 // would be rude.
 func Card() string {
-	return `<p class="card-desc">Scan a barcode for ingredients and allergens, ` +
-		`or check a restaurant's hygiene rating.</p>` +
-		`<p><a href="/food">Look something up</a></p>`
+	return `<p class="card-desc">Find nutritional information, ingredients and allergens for packaged foods.</p><p><a href="/food">Find food</a></p>`
 }

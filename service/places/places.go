@@ -663,7 +663,7 @@ func renderPlacesPage(r *http.Request) string {
 	// No <h4>Places</h4>. The page is already titled Places by app.Respond, and
 	// a card headed with the name of the page it is the only card on says the
 	// same word twice.
-	return fmt.Sprintf(`<div class="places-page">
+	return fmt.Sprintf(`<div class="places-page page-stack">
 %s
 <div class="card">
   %s
@@ -687,13 +687,13 @@ func renderCitiesSection() string {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(`<h3>Browse by City</h3><div class="city-grid">`)
+	sb.WriteString(`<h3>Browse by city</h3><div class="link-grid">`)
 	for _, c := range cs {
 		href := fmt.Sprintf("/places/nearby?lat=%f&lon=%f&radius=%d&address=%s",
 			c.Lat, c.Lon, defaultRadiusM,
 			url.QueryEscape(c.Name+", "+c.Country))
 		sb.WriteString(fmt.Sprintf(
-			`<a href="%s" class="city-link">%s <span class="text-muted text-08">%s</span></a>`,
+			`<a href="%s" class="list-link list-row">%s <span class="text-muted text-08">%s</span></a>`,
 			escapeHTML(href), escapeHTML(c.Name), escapeHTML(c.Country),
 		))
 	}
@@ -760,7 +760,7 @@ func renderSavedSearchesSection(userID string) string {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(`<div class="recent-searches"><h3>Recent searches</h3><div class="recent-searches-scroll">`)
+	sb.WriteString(`<div class="page-stack compact-stack"><h3>Recent searches</h3><div class="form-actions">`)
 	for _, s := range searches {
 		latStr := fmt.Sprintf("%f", s.Lat)
 		lonStr := fmt.Sprintf("%f", s.Lon)
@@ -771,7 +771,7 @@ func renderSavedSearchesSection(userID string) string {
 			lonStr = ""
 		}
 		sb.WriteString(fmt.Sprintf(
-			`<span class="recent-search-item"><button type="button" class="recent-search-label" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);">%s</button> `+
+			`<span class="form-actions no-wrap"><button type="button" class="recent-search-label" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);">%s</button> `+
 				`<form class="form-action d-inline" action="/places/save/delete" method="POST">`+
 				`<input type="hidden" name="id" value="%s">`+
 				`<button type="submit" class="btn-link recent-search-close" aria-label="Remove search" title="Remove">&times;</button></form></span>`,
@@ -796,8 +796,8 @@ func renderSearchResults(query string, places []*Place, nearLocation bool, nearA
 	}
 	radiusStr := fmt.Sprintf("%d", radiusM)
 
-	sb.WriteString(`<div class="places-page">`)
-	sb.WriteString(`<p><a href="/places">&larr; Back to Places</a></p>`)
+	sb.WriteString(`<div class="places-page page-stack">`)
+	sb.WriteString(`<p><a href="/places">Back to Places</a></p>`)
 	sb.WriteString(renderSearchFormHTML(query, nearAddr, nearLatStr, nearLonStr, radiusStr, sortBy))
 	sb.WriteString(renderPlacesPageJS())
 
@@ -825,7 +825,7 @@ func renderSearchResults(query string, places []*Place, nearLocation bool, nearA
 		sb.WriteString(fmt.Sprintf(`<p class="text-muted">%d result(s) &middot; sorted by %s</p>`, len(places), sortLabel))
 	}
 
-	sb.WriteString(`<div class="places-results">`)
+	sb.WriteString(`<div class="places-results compact-list">`)
 	for _, p := range places {
 		sb.WriteString(renderPlaceCard(p))
 	}
@@ -843,8 +843,8 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 	latStr := fmt.Sprintf("%f", lat)
 	lonStr := fmt.Sprintf("%f", lon)
 
-	sb.WriteString(`<div class="places-page">`)
-	sb.WriteString(`<p><a href="/places">&larr; Back to Places</a></p>`)
+	sb.WriteString(`<div class="places-page page-stack">`)
+	sb.WriteString(`<p><a href="/places">Back to Places</a></p>`)
 	sb.WriteString(renderSearchFormHTML("", label, latStr, lonStr, radiusStr, ""))
 	sb.WriteString(renderPlacesPageJS())
 
@@ -858,7 +858,7 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 		sb.WriteString(renderTypeFilter(places))
 	}
 
-	sb.WriteString(`<div class="places-results">`)
+	sb.WriteString(`<div class="places-results compact-list">`)
 	for _, p := range places {
 		sb.WriteString(renderPlaceCard(p))
 	}
@@ -937,7 +937,7 @@ func renderPlaceCard(p *Place) string {
 		if p.Type != "" && p.Type != p.Category {
 			label += " · " + strings.ReplaceAll(p.Type, "_", " ")
 		}
-		cat = fmt.Sprintf(` <span class="place-category">%s</span>`, escapeHTML(label))
+		cat = fmt.Sprintf(` <span class="text-muted text-sm">%s</span>`, escapeHTML(label))
 	}
 
 	addr := p.Address
@@ -972,16 +972,16 @@ func renderPlaceCard(p *Place) string {
 	if p.OpeningHours != "" {
 		extraHTML += fmt.Sprintf(`<p class="place-info text-muted">Hours: %s</p>`, escapeHTML(p.OpeningHours))
 	} else {
-		extraHTML += fmt.Sprintf(`<p class="place-info text-muted">Hours: <a href="%s" target="_blank" rel="noopener noreferrer">check on Google Maps &#8599;</a></p>`, gmapsViewURL)
+		extraHTML += fmt.Sprintf(`<p class="place-info text-muted">Hours: <a href="%s" target="_blank" rel="noopener noreferrer">check on Google Maps</a></p>`, gmapsViewURL)
 	}
 	if p.Phone != "" {
 		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="tel:%s">%s</a></p>`, escapeHTML(p.Phone), escapeHTML(p.Phone))
 	}
 	if p.Website != "" {
-		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website &#8599;</a></p>`, escapeHTML(p.Website))
+		extraHTML += fmt.Sprintf(`<p class="place-info"><a href="%s" target="_blank" rel="noopener noreferrer">Website</a></p>`, escapeHTML(p.Website))
 	}
 
-	return fmt.Sprintf(`<div class="card place-card" data-category="%s">
+	return fmt.Sprintf(`<div class="place-card compact-list-item page-stack compact-stack" data-category="%s">
   <h4><a href="%s" target="_blank" rel="noopener">%s</a>%s%s</h4>
   %s%s
   <p class="place-links"><a href="%s" target="_blank" rel="noopener">Get Directions</a></p>

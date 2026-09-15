@@ -963,7 +963,7 @@ func generateMarketRow(symbol string, price, change24h float64) string {
 	chartLink := chartLinks[symbol]
 	chartHTML := ""
 	if chartLink != "" {
-		chartHTML = fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="markets-chart-link">Chart ↗</a>`, chartLink)
+		chartHTML = fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="markets-chart-link">Chart</a>`, chartLink)
 	}
 
 	// BTC and GOLD say what they are; AVGO does not. A ticker only reads as a

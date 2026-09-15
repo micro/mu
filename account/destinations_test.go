@@ -13,7 +13,7 @@ func TestAccountDestinationsSeparateForms(t *testing.T) {
 	for _, tc := range []struct{ path, want, absent string }{
 		{"/account", "name=\"new_secret\"", "name=\"language\""},
 		{"/account/profile", "name=\"display_name\"", "name=\"language\""},
-		{"/account/billing", "Detailed usage", "name=\"display_name\""},
+		{"/account/billing", "View usage", "name=\"display_name\""},
 		{"/account", "id=\"connections\"", "name=\"display_name\""},
 	} {
 		r := httptest.NewRequest("GET", tc.path, nil)

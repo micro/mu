@@ -15,6 +15,7 @@ package app
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -82,26 +83,28 @@ func (p Pager) Nav(path string) string {
 	}
 
 	link := func(n int, label string) string {
-		q := url.Values{}
+		u, err := url.Parse(path)
+		if err != nil {
+			return ""
+		}
+		q := u.Query()
 		for k, v := range p.query {
 			q[k] = v
 		}
+		q.Del("page")
 		if n > 1 {
 			q.Set("page", strconv.Itoa(n))
 		}
-		href := path
-		if s := q.Encode(); s != "" {
-			href += "?" + s
-		}
-		return fmt.Sprintf(`<a href="%s" class="pager-link">%s</a>`, href, label)
+		u.RawQuery = q.Encode()
+		return fmt.Sprintf(`<a href="%s" class="pager-link">%s</a>`, html.EscapeString(u.String()), label)
 	}
 
 	var older, newer string
 	if p.Page < p.Pages {
-		older = link(p.Page+1, "Older →")
+		older = link(p.Page+1, "Older")
 	}
 	if p.Page > 1 {
-		newer = link(p.Page-1, "← Newer")
+		newer = link(p.Page-1, "Newer")
 	}
 
 	return fmt.Sprintf(`<nav class="pager">%s<span class="pager-at">%d of %d</span>%s</nav>%s`,

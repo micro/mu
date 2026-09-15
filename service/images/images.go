@@ -386,8 +386,7 @@ func CardHTML() string {
 		return ""
 	}
 	theme := html.EscapeString(strings.Title(d.Theme))
-	return `<a href="/images" class="no-underline inherit-color">
-<img src="` + html.EscapeString(d.previewURL()) + `" decoding="async" alt="Daily ` + theme + ` image" class="w-full rounded-lg d-block" loading="lazy">
+	return `<a href="/images" class="no-underline inherit-color"><img src="` + html.EscapeString(d.previewURL()) + `" decoding="async" alt="Daily ` + theme + ` image" class="w-full rounded-lg d-block" loading="lazy">
 <p class="text-sm text-muted mt-2 m-0">Daily image · ` + theme + `</p></a>`
 }
 
@@ -539,11 +538,11 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 
 	auth.SetCSRFCookie(w, r)
 	// One search box, with an explicit choice of library or web.
-	b.WriteString(`<form method="POST" action="/images?search=1" class="search-bar page-section">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images"><button type="submit">Search</button>`)
+	b.WriteString(`<form method="POST" action="/images?search=1" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images"><button type="submit">Search</button>`)
 	if caller != "" {
 		b.WriteString(`<button type="submit" class="btn-secondary" formmethod="POST" formaction="/images?web=1">Search web</button>`)
 	}
-	b.WriteString(`</form><div class="form-actions page-section"><button type="button" aria-controls="image-import" aria-expanded="false" onclick="var p=document.getElementById('image-import');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))">Import</button><button type="button" aria-controls="image-generate" aria-expanded="false" onclick="var p=document.getElementById('image-generate');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))">Generate</button></div><div id="image-import" hidden>`)
+	b.WriteString(`</form><div class="form-actions"><button type="button" aria-controls="image-import" aria-expanded="false" onclick="var p=document.getElementById('image-import');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))">Import</button><button type="button" aria-controls="image-generate" aria-expanded="false" onclick="var p=document.getElementById('image-generate');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))">Generate</button></div><div id="image-import" hidden>`)
 	if caller != "" {
 		b.WriteString(uploadForm(r))
 	} else {
@@ -551,7 +550,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</div>`)
 	// Generate panel.
-	b.WriteString(`<div id="image-generate" hidden><div class="card">`)
+	b.WriteString(`<div id="image-generate" hidden><div class="page-section">`)
 	b.WriteString(`<h3>Generate an image</h3>`)
 	if acc == nil {
 		b.WriteString(`<p><a href="/login">Sign in</a> to generate images.</p>`)
@@ -566,22 +565,22 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	// Search results.
 	if q != "" {
 		res := Search(caller, q)
-		b.WriteString(`<div class="card"><h3>Results for &ldquo;` + html.EscapeString(q) + `&rdquo;</h3>`)
+		b.WriteString(`<div class="page-section"><h3>Results for &ldquo;` + html.EscapeString(q) + `&rdquo;</h3>`)
 		if len(res) == 0 {
 			b.WriteString(`<p class="text-muted text-base">No matching images.</p>`)
 		} else {
 			b.WriteString(imageGrid(res))
 		}
 		b.WriteString(`</div>`)
-		b.WriteString(`<p class="m-0 mb-3"><a href="/images">← Back to Images</a></p>`)
+		b.WriteString(`<p class="m-0 mb-3"><a href="/images">Back to Images</a></p>`)
 	}
 
 	// Daily image hero.
 	d := getDaily()
-	b.WriteString(`<div class="card">`)
+	b.WriteString(`<div class="page-section">`)
 	b.WriteString(`<h3>Image of the day</h3>`)
 	if d.URL != "" {
-		b.WriteString(`<img src="` + html.EscapeString(d.previewURL()) + `" decoding="async" alt="Daily image" class="my-2" style="display:block;width:100%;max-width:480px;max-height:280px;object-fit:contain;object-position:left center">`)
+		b.WriteString(`<img src="` + html.EscapeString(d.previewURL()) + `" decoding="async" alt="Daily image" class="media-preview">`)
 		b.WriteString(`<p class="card-meta text-muted text-sm">` + html.EscapeString(strings.Title(d.Theme)) + ` · generated ` + html.EscapeString(d.Date) + `</p>`)
 	} else {
 		b.WriteString(`<p class="text-muted">Today's image is being generated — check back shortly.</p>`)
@@ -591,7 +590,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	// Past dailies — the archive, newest first, today's excluded since it is
 	// already the hero above.
 	if past := pastDailies(d.Date, 60); len(past) > 0 {
-		b.WriteString(`<div class="card">`)
+		b.WriteString(`<div class="page-section">`)
 		b.WriteString(`<h3>Past dailies</h3>`)
 		b.WriteString(`<div class="thumb-grid">`)
 		for _, e := range past {
@@ -606,7 +605,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	// Your images — each with a share-to-stock toggle.
 	if acc != nil {
 		recs := gallery(acc.ID)
-		b.WriteString(`<div class="card">`)
+		b.WriteString(`<div class="page-section">`)
 		b.WriteString(`<h3>Your images</h3>`)
 		b.WriteString(`<p class="card-desc">Share an image to the public stock pool so others (and their agents) can find and reuse it.</p>`)
 		b.WriteString(`<div id="img-gallery" class="thumb-grid wide">`)
@@ -634,7 +633,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	// Community stock — public images anyone can reuse.
 	stock := Search("", "")
 	if len(stock) > 0 {
-		b.WriteString(`<div class="card">`)
+		b.WriteString(`<div class="page-section">`)
 		b.WriteString(`<h3>Community stock</h3>`)
 		b.WriteString(imageGrid(stock))
 		b.WriteString(`</div>`)

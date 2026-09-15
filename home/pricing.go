@@ -47,7 +47,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 			`<p>Nothing. This instance is not set up to take payments, so nothing on it ` +
 			`is metered — whoever runs it is paying for the models and the searches it ` +
 			`makes.</p>` +
-			`<p class="text-sm"><a href="/install">Run your own &rarr;</a> · ` +
+			`<p class="text-sm"><a href="/install">Run your own</a> · ` +
 			`<a href="/about">What this is</a></p></div>`)
 		b.WriteString(app.Close())
 		app.RespondPublic(w, r, app.Response{

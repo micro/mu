@@ -368,8 +368,8 @@ func TestLink(t *testing.T) {
 	if !strings.Contains(result, `href="/blog"`) {
 		t.Error("expected href")
 	}
-	if !strings.Contains(result, "Blog →") {
-		t.Error("expected link text with arrow")
+	if !strings.Contains(result, ">Blog</a>") {
+		t.Error("expected plain link text")
 	}
 }
 

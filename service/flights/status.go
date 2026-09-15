@@ -172,6 +172,6 @@ func statusPage(w http.ResponseWriter, r *http.Request) {
 		}
 		b += `<p class="text-sm text-muted">Source: Aviationstack · fetched ` + time.Now().UTC().Format("15:04 UTC") + `</p>`
 	}
-	b += `<p><a href="/flights">← Flights</a></p>`
+	b += `<p><a href="/flights">Flights</a></p>`
 	app.Respond(w, r, app.Response{Title: "Flights", HTML: b})
 }

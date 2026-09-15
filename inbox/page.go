@@ -212,7 +212,7 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every
 	// time, because nothing says which of these you have dealt with.
-	cls := "ib-row grow page-stack compact-stack"
+	cls := "list-link ib-row"
 	if thread.Unread(t) {
 		cls += " unseen"
 	}
@@ -227,12 +227,12 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 	// Beside the link rather than inside it: a form cannot live in an <a>, and
 	// nesting a submit inside a navigation target means a click has two
 	// meanings. The row reserves an action column even when there is no form.
-	return `<div class="ib-item section-actions">` +
-		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `"` + titleAttr(full) + `>` +
-		rowMeta(who, app.ClientName(t.Client), tags, t.Updated) +
+	return `<div class="ib-item">` +
+		`<a class="` + cls + `" href="` + html.EscapeString(inboxURL(r, t.ID)) + `"` + titleAttr(full) + `>` +
+		rowMeta(who, app.ClientName(t.Client), tags, time.Time{}) +
 		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 90)) + `</span>` +
 		`<span class="ib-snip text-muted">` + html.EscapeString(snippet) + `</span></a>` +
-		rowDelete(r, t.ID) + `</div>`
+		rowDelete(r, t.ID) + rowTime(t.Updated) + `</div>`
 }
 
 // rowMeta gives every inbox kind the same label and date positions. The
@@ -240,17 +240,23 @@ func rowWith(r *http.Request, accountID string, t thread.Thread, preview string)
 func rowMeta(who, kind string, tags []string, at time.Time) string {
 	context := ""
 	if who != "" {
-		context = `<span class="ib-who">` + html.EscapeString(who) + `</span>`
+		context = `<span class="ib-who metadata-name">` + html.EscapeString(who) + `</span>`
 	}
 	if kind != "" {
-		context += app.Pill(kind)
+		context += `<span class="ib-kind metadata-kind">` + html.EscapeString(kind) + `</span>`
 	}
 	if len(tags) > 0 {
-		context += `<span class="ib-tags">` + html.EscapeString(strings.Join(tags, " · ")) + `</span>`
+		context += `<span class="ib-tags metadata-detail">` + html.EscapeString(strings.Join(tags, " · ")) + `</span>`
 	}
-	return `<span class="ib-meta metadata-row"><span class="ib-context section-actions">` + context +
-		`</span><time class="ib-when" datetime="` + at.Format(time.RFC3339) + `">` +
-		html.EscapeString(app.TimeAgo(at)) + `</time></span>`
+	return `<span class="ib-meta metadata-row metadata-columns"><span class="metadata-identity">` + context +
+		`</span>` + rowTime(at) + `</span>`
+}
+
+func rowTime(at time.Time) string {
+	if at.IsZero() {
+		return ""
+	}
+	return `<time class="ib-when metadata-time" datetime="` + at.Format(time.RFC3339) + `">` + html.EscapeString(app.TimeAgo(at)) + `</time>`
 }
 
 // rowDelete is the cross at the end of a row.
@@ -305,7 +311,9 @@ func party(accountID string, t thread.Thread) (who, full string) {
 }
 
 // conversation is one thread, read.
-func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) {
+func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, draft ...form) {
+	w.Header().Set("Cache-Control", "no-store")
+	auth.SetCSRFCookie(w, r)
 	t := thread.Get(accountID, id)
 	if t == nil {
 		// Scoped to the reader by thread.Get, so somebody else's id is not
@@ -330,8 +338,26 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	b.WriteString(`<div class="ib page-stack">`)
 	// Where you came from, and what you can do to this — one bar rather than
 	// three loose things stacked above the conversation. See app.Actions.
-	b.WriteString(app.Actions(app.TextLink("← Inbox", "/inbox"),
+	b.WriteString(app.Actions(app.TextLink("Inbox", inboxURL(r, "")),
 		unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)))
+
+	all := inboxThreads(accountID, r.URL.Path)
+	for i, item := range all {
+		if item.ID != id {
+			continue
+		}
+		var links []string
+		if i > 0 {
+			links = append(links, app.TextLink("Previous", inboxURL(r, all[i-1].ID)))
+		}
+		if i+1 < len(all) {
+			links = append(links, app.TextLink("Next", inboxURL(r, all[i+1].ID)))
+		}
+		if len(links) > 0 {
+			b.WriteString(app.Actions(links[0], links[1:]...))
+		}
+		break
+	}
 
 	// One column, and the agent's answers in it.
 	//
@@ -352,7 +378,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	// saying what it is not.
 	msgs := thread.Messages(accountID, t.ID, MessagesShown)
 	b.WriteString(conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, false,
-		assignDialog(r, accountID, t, replyTo(accountID, t, msgs))))
+		assignDialog(r, accountID, t, replyTo(accountID, t, msgs)), inlineReply(r, accountID, t, msgs, draft...)))
 	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: subject, Description: "A conversation", HTML: b.String()})
