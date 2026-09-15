@@ -22,7 +22,7 @@
     "id": "assistant",
     "name": "Assistant",
     "path": "/assistant",
-    "icon": "chat.png"
+    "icon": "agent.svg"
   },
   {
     "id": "blog",

@@ -76,7 +76,7 @@ export function Health({ data }: { data: any }) {
       </div>
       {data.diagnosis && <Read>{data.diagnosis}</Read>}
       <p className="font-medium">
-        {issues ? `${issues} checks need attention` : "All systems operational"}
+        {issues ? `${issues} ${issues === 1 ? "check needs" : "checks need"} attention` : "All systems operational"}
       </p>
       <div className="divide-y">
         {checks.map((c: any) => (
