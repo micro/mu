@@ -85,7 +85,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		// an account could not reach /api from anywhere in the product.
 		b.WriteString(`<p class="card-meta pull-up">` +
 			`Not connecting an agent? Every method is a plain HTTP call too — ` +
-			`<a href="/api">the HTTP API &rarr;</a></p>`)
+			`<a href="/api">the HTTP API</a></p>`)
 		b.WriteString(toolGrid())
 	}
 
@@ -278,7 +278,7 @@ func connectSection(r *http.Request) string {
 		// scale with no unit — "12 credits" is not a price until you know.
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
 			`and calls are charged to your credits. One credit is one cent.</p>`)
-		b.WriteString(`<p><a class="btn" href="/signup">Create an account →</a> ` +
+		b.WriteString(`<p><a class="btn" href="/signup">Create an account</a> ` +
 			`<span class="connect-note">it is the same account you sign into the app with</span></p>`)
 	} else {
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
@@ -293,7 +293,7 @@ func connectSection(r *http.Request) string {
 		`with your token in <code>MU_TOKEN</code>.</p>`)
 	b.WriteString(`<pre class="connect-cfg">` + html.EscapeString(cfg) + `</pre>`)
 	if acc != nil {
-		b.WriteString(`<p><a class="btn" href="/token">Create a token →</a></p>`)
+		b.WriteString(`<p><a class="btn" href="/token">Create a token</a></p>`)
 	}
 	b.WriteString(`</div>`)
 

@@ -63,7 +63,7 @@ func Card(account string) string {
 		` calls in the last 7 days</p>`)
 	sb.WriteString(ChartSVG(series, CardWindow))
 	sb.WriteString(`<p class="card-meta"><a href="/usage?window=` + CardWindow.Slug +
-		`">View usage →</a></p>`)
+		`">View usage</a></p>`)
 	sb.WriteString(`</div>`)
 	return sb.String()
 }

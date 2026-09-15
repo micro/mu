@@ -52,7 +52,7 @@ func RESTPageHandler(w http.ResponseWriter, r *http.Request) {
 			"POST "+base+RESTPrefix+"<service>/<method>   {\"arg\":\"value\"}") +
 		`</pre>`)
 	b.WriteString(`<p class="card-meta">` +
-		`<a href="` + RESTRoot + `">Machine-readable catalogue &rarr;</a> &middot; ` +
+		`<a href="` + RESTRoot + `">Machine-readable catalogue</a> &middot; ` +
 		`<a href="/token">Get a token</a> &middot; ` +
 		`<a href="/tools">What calls cost</a></p>`)
 	b.WriteString(`<p class="card-meta">Building an AI agent instead? ` +
