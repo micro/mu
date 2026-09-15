@@ -91,7 +91,17 @@ body:has(.chat-layout) #mu-chat-form { flex:none }
 .message .markdown-content { margin-block:var(--space-field) }
 .toolbar { margin-block:0 var(--space-field,16px); display:flex; justify-content:space-between; align-items:center; gap:16px; font-size:14px }
 .ib { width:100% }.ib-header,.ib-top,.ib-bar,.ib-actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center }
-.ib-row { display:flex; flex-wrap:wrap; gap:8px 16px; padding:16px 0; border-bottom:1px solid #eee; text-decoration:none; color:inherit }
+.ib-item { display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--card-border) }
+.ib-row { display:flex; flex:1; min-width:0; flex-direction:column; gap:2px; padding:8px 0; text-decoration:none; color:inherit }
+.ib-row:hover,.ib-row:focus-visible { text-decoration:none; background:var(--hover-background) }
+.ib-meta { display:grid; grid-template-columns:minmax(0,1fr) 88px; gap:8px; align-items:baseline; font-size:13px; color:var(--text-secondary) }
+.ib-context { display:grid; grid-template-columns:76px minmax(0,1fr); gap:2px 8px; align-items:baseline; min-width:0 }
+.ib-kind { grid-column:1; grid-row:1; white-space:nowrap; font-size:12px; color:var(--text-secondary) }
+.ib-who { grid-column:2; grid-row:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ib-tags { grid-column:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ib-when { text-align:right; white-space:nowrap; font-size:12px }
+.ib-snip { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ib-subject { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .ib-subject,.ib-who { font-weight:500 }.unseen .ib-subject,.unseen .ib-who { font-weight:600 }.ib-preview,.ib-time { color:#666; font-size:13px }
 .ib-layout,.ib-conversation,.ib-main { min-width:0 }.ib-msg { padding-block:16px; border-bottom:1px solid #eee; overflow-wrap:anywhere }
 .ib-assign { width:min(560px,calc(100% - 32px)); border:1px solid #ddd; border-radius:8px; padding:24px }
@@ -165,8 +175,8 @@ table { width:100%; border-collapse:collapse } th,td { padding:10px; text-align:
 .p-3 { padding: 10px; }
 .p-4 { padding: 15px; }
 .field-label { font-weight: 500; }
-.link-button { background: none; border: 0; padding: 0; font-size: inherit; color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-family: inherit; }
-.link-button:hover { background: none; border-color: transparent; color: var(--text-primary); text-decoration: underline; }
+.link-button { background: none; border: 0; padding: 0; font-size: inherit; color: inherit; text-decoration: none; text-underline-offset: 2px; cursor: pointer; font-family: inherit; }
+.link-button:hover { background: none; border-color: transparent; color: var(--text-primary); text-decoration: none; }
 .link-button.danger { color: var(--btn-danger); }
 .rounded { border-radius: var(--border-radius, 6px); }
 .mx-2 { margin-left: 8px; margin-right: 8px; }
@@ -351,7 +361,7 @@ hr,.hr-soft { border:0; border-top:1px solid var(--card-border); margin-block:24
 #mobile-nav img { width:18px; height:18px; object-fit:contain }
 #nav a > img,.nav-bottom img { flex:none }
 .nav-me-who > span { min-width:0 }
-.nav-me-who #nav-username { display:block; font-weight:500 }
+.nav-me-who #nav-username { display:block; font-weight:var(--font-weight-normal,400) }
 summary { list-style:none; cursor:pointer }
 summary::-webkit-details-marker { display:none }
 :is(.btn,.mini-btn,.pill,.oauth-btn),:is(.btn,.mini-btn,.pill,.oauth-btn):hover { text-decoration:none }

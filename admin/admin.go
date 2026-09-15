@@ -21,23 +21,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users := auth.AllAccounts()
-
 	// Alphabetical. There is no ranking to express here, and a list that is
 	// sorted is one nobody has to scan twice.
-	content := `<div class="collection-grid">
-		<a class="card card-hover section-actions" href="/admin/alerts">Alerts</a>
-		<a class="card card-hover section-actions" href="/admin/backup">Backup</a>
-		<a class="card card-hover section-actions" href="/admin/config">Config</a>
-		<a class="card card-hover section-actions" href="/admin/log">Logs` + alertBadge() + `</a>
-		<a class="card card-hover section-actions" href="/admin/moderate">Moderation</a>
-		<a class="card card-hover section-actions" href="/admin/oauth">OAuth</a>
-		<a class="card card-hover section-actions" href="/admin/server">Server</a>
-		<a class="card card-hover section-actions" href="/admin/spam">Spam</a>
-		<a class="card card-hover section-actions" href="/admin/status">Status</a>
-		<a class="card card-hover section-actions" href="/admin/traffic">Usage</a>
-		<a class="card card-hover section-actions" href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
-	</div>`
+	content := `<nav aria-label="Admin" class="page-stack compact-stack">
+		<a class="section-link" href="/admin/alerts">Alerts</a>
+		<a class="section-link" href="/admin/backup">Backup</a>
+		<a class="section-link" href="/admin/config">Config</a>
+		<a class="section-link" href="/admin/log">Logs` + alertBadge() + `</a>
+		<a class="section-link" href="/admin/moderate">Moderation</a>
+		<a class="section-link" href="/admin/oauth">OAuth</a>
+		<a class="section-link" href="/admin/server">Server</a>
+		<a class="section-link" href="/admin/spam">Spam</a>
+		<a class="section-link" href="/admin/status">Status</a>
+		<a class="section-link" href="/admin/traffic">Usage</a>
+		<a class="section-link" href="/admin/users">Users</a>
+	</nav>`
 
 	app.Respond(w, r, app.Response{Title: "Admin", Description: "Admin Dashboard", HTML: content})
 }
@@ -162,8 +160,8 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	// No <h2>Users</h2>. The page shell already draws the title as an h1, and
 	// this page said "Admin" up there and "Users" directly under it — the same
 	// heading twice, one of them wrong. Every admin page did it.
-	sb.WriteString(back() +
-		`<p><a href="/admin/invite">Invites` + pendingInvites() + ` &rarr;</a></p>`)
+	sb.WriteString(`<div class="page-action"><div class="section-actions">` + back() +
+		`<a class="push-right" href="/admin/invite">Invites` + pendingInvites() + ` &rarr;</a></div></div>`)
 	sb.WriteString(`<div class="app-filters">`)
 	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
 		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id, t.id == tab))

@@ -799,9 +799,11 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	case "/account/profile":
 		content += profile + PlaceCard(r, acc.ID)
 	case "/account/billing":
-		content += BalanceCard(acc.ID) + usage.Card(acc.ID) +
-			app.Section("Usage", `<a href="/usage">Detailed usage →</a>`) +
-			LedgerSection(acc.ID)
+		usageSection := usage.Card(acc.ID)
+		if usageSection == "" {
+			usageSection = app.Section("Usage", `<a href="/usage?window=week">View usage →</a>`)
+		}
+		content += BalanceCard(acc.ID) + usageSection + LedgerSection(acc.ID)
 	default:
 		content += emailCard +
 			`<section id="connections" class="page-section"><h3>Connections</h3>` +

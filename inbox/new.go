@@ -424,6 +424,16 @@ const mailClient = "mail"
 
 // writeOne renders the form.
 func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) {
+	if r.PostFormValue("inline") == "1" && f.On != "" && thread.Get(accountID, f.On) != nil {
+		view := r.Clone(r.Context())
+		u := *r.URL
+		u.Path = "/inbox"
+		u.RawQuery = url.Values{"id": {f.On}}.Encode()
+		view.URL = &u
+		conversation(w, view, accountID, f.On, f)
+		return
+	}
+
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
 	// Back where you came from. A reply reached from a conversation that offers

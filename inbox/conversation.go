@@ -106,7 +106,7 @@ func ConversationView(accountID string, t *thread.Thread) string {
 // inbox/new.go records when a conversation is started. So the override had
 // nothing left to override, and it went with the profile page's copy of this
 // call — one reader for a conversation, not two.
-func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool, assign string) string {
+func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool, assign string, reply ...string) string {
 	to := ""
 	subject := t.Subject
 	if subject == "" {
@@ -150,7 +150,11 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	// cannot answer from. Assign is offered wherever the caller has a dialog for
 	// it to open.
 	to = replyTo(accountID, t, msgs)
-	b.WriteString(actionBar(t, to, assign != ""))
+	inline := len(reply) > 0 && reply[0] != ""
+	b.WriteString(actionBar(t, to, assign != "", inline))
+	if inline {
+		b.WriteString(reply[0])
+	}
 	// The note explains; it does not carry the action.
 	//
 	// A room conversation has Reply on the bar now — it goes to the room — so
@@ -259,11 +263,11 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 //
 // So it is a button beside Reply, and the box it opens is a dialog. Same two
 // verbs, same weight, one row.
-func actionBar(t *thread.Thread, to string, canAssign bool) string {
+func actionBar(t *thread.Thread, to string, canAssign bool, inline ...bool) string {
 	var b strings.Builder
 	b.WriteString(`<div class="ib-reply form-actions">`)
 	switch {
-	case to != "":
+	case to != "" && !(len(inline) > 0 && inline[0]):
 		subject := strings.TrimSpace(t.Subject)
 		if subject == "" {
 			subject = "your message"

@@ -156,7 +156,7 @@ func LedgerSection(userID string) string {
 		}
 		rows.WriteString(`</ul>`)
 
-		sb.WriteString(app.SectionID("ledger", "History", rows.String()))
+		sb.WriteString(app.SectionID("ledger", "History", app.Note("Latest 20 transactions, newest first."), rows.String()))
 	}
 
 	return sb.String()

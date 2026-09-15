@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestPriorityShowsOneCommunicationAndHandledTimestampDoesNotHideNewMessages(t *testing.T) {
+func TestInboxShowsCommunicationListAndPreservesNewMessages(t *testing.T) {
 	const owner = "priority_reader"
 	first := arrived(t, owner, "mail", "first", "", "first@example.com", "First arrival")
 	second := arrived(t, owner, "mail", "second", "", "second@example.com", "Second arrival")
@@ -21,8 +21,8 @@ func TestPriorityShowsOneCommunicationAndHandledTimestampDoesNotHideNewMessages(
 		return w.Body.String()
 	}
 	body := render()
-	if !strings.Contains(body, "Second arrival") || strings.Contains(body, "First arrival") || strings.Contains(body, "A web conversation") {
-		t.Fatal("priority is a mixed feed")
+	if !strings.Contains(body, "Second arrival") || !strings.Contains(body, "First arrival") || strings.Contains(body, "A web conversation") {
+		t.Fatal("inbox must list both arrivals and exclude private web chat")
 	}
 	reviewed := thread.Get(owner, second.ID).Updated
 	thread.HandleAt(owner, second.ID, reviewed)
