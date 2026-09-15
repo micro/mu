@@ -9,9 +9,9 @@ document.addEventListener('keydown', function (e) {
 });
 document.addEventListener('DOMContentLoaded', function () {
   var session = new URL(location.href).searchParams.get('session');
-  document.querySelectorAll('#nav a, #mobile-nav a').forEach(function (a) {
+  document.querySelectorAll('#nav a').forEach(function (a) {
     var u = new URL(a.href);
-    if (a.closest('#mobile-nav') ? u.pathname === location.pathname : session ? u.searchParams.get('session') === session : u.pathname === location.pathname && !u.search) { a.classList.add('active'); a.setAttribute('aria-current', 'page'); }
+    if (session ? u.searchParams.get('session') === session : u.pathname === location.pathname && !u.search) { a.classList.add('active'); a.setAttribute('aria-current', 'page'); }
   });
 });
 if (navigator.serviceWorker) navigator.serviceWorker.register('/mu.js', {scope:'/', updateViaCache:'none'}).then(function (r) {r.update();}).catch(function () {});
@@ -34,6 +34,5 @@ document.addEventListener('toggle', function(e) {
   var box=items.getBoundingClientRect();
   if(box.right>innerWidth-16)items.style.marginLeft=(innerWidth-16-box.right)+'px';
   var viewport=window.visualViewport,top=viewport?viewport.offsetTop:0,bottom=top+(viewport?viewport.height:innerHeight);
-  var nav=document.getElementById('mobile-nav');if(nav&&nav.getClientRects().length)bottom=Math.min(bottom,nav.getBoundingClientRect().top);
   if(box.bottom>bottom-8){var trigger=menu.querySelector('summary').getBoundingClientRect();items.style.marginTop=(Math.max(top+8,trigger.top-8-box.height)-box.top)+'px';}
 },true);

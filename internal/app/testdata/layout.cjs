@@ -44,10 +44,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    await page.goto('https://mu.test'+path);await page.waitForTimeout(50);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
    if(['/about','/privacy','/pricing','/contact','/status'].includes(path))assert(await page.locator('.footer').isVisible(),'public footer missing');
-   if(await page.locator('#mobile-nav').count()) {
-    assert.deepEqual(await page.locator('#mobile-nav a').allTextContents(),['Home','Inbox','Agents','Services']);
-    assert.equal(await page.locator('#mobile-nav').isVisible(),width<=900);
-   }
+   assert.equal(await page.locator('#mobile-nav').count(),0,'sidebar navigation duplicated in bottom bar');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${path} overflows at ${width}`);
    for(const revealed of [false,true]) {
     if(revealed)await page.locator('#content details').evaluateAll(es=>es.forEach(e=>e.open=true));
@@ -123,7 +120,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     const form=page.locator('#mu-chat-form');
     const empty=await form.boundingBox();
     if(path==='/')assert(empty.y>220&&empty.y<620,'public empty prompt is not centered');
-    else {const nav=await page.locator('#mobile-nav').isVisible()?await page.locator('#mobile-nav').boundingBox():null;const bottom=nav?nav.y:900;assert(bottom-empty.y-empty.height<=24,'signed-in prompt is not at the bottom');}
+    else {assert(900-empty.y-empty.height<=24,'signed-in prompt is not at the bottom');}
     await page.locator('#mu-chat-mic').click();const listening=await form.boundingBox();assert(Math.abs(empty.y-listening.y)<2,'dictation moved prompt');
     assert.equal(await page.locator('#mu-chat-mic').getAttribute('aria-pressed'),'true');
     if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/dictating.png'});
@@ -157,8 +154,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
     await page.waitForTimeout(50);const after=await form.boundingBox();
     assert(Math.abs(before.y-after.y)<2,'composer moved as conversation grew');
-    const nav=await page.locator('#mobile-nav').count()?await page.locator('#mobile-nav').boundingBox():null;
-    assert(after.y+after.height<=(nav?nav.y:900),'navigation covers composer');
+    assert(after.y+after.height<=900,'composer below viewport');
     const center=await page.locator('#mu-chat').evaluate(e=>{const r=e.getBoundingClientRect();const available=document.body.classList.contains('index-shell')||innerWidth<=900||document.body.classList.contains('nav-collapsed')?0:220;return Math.abs((r.left+r.right)/2-(available+innerWidth)/2)});
     assert(center<2,`conversation offset ${center}px at ${width}`);
     if(path==='/?new=1'&&width>900) {

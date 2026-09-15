@@ -220,19 +220,6 @@ body.index-shell { min-height:100dvh; display:flex; flex-direction:column; }
 
 #nav-overlay {display:none}
 
-/* The four primary destinations share one mobile navigation bar. */
-#mobile-nav { display:none }
-@media(max-width:900px) {
- body:has(#mobile-nav) { --mobile-nav-height:calc(52px + env(safe-area-inset-bottom)) }
- #mobile-nav { display:flex; position:fixed; inset:auto 0 0; height:var(--mobile-nav-height); padding-bottom:env(safe-area-inset-bottom); background:#fff; border-top:1px solid #eee; z-index:30 }
- #mobile-nav a { flex:1; display:flex; flex-direction:column; gap:3px; align-items:center; justify-content:center; color:#666; font-size:13px; text-decoration:none }
- #mobile-nav a.active { color:#111; background:#f3f4f5; font-weight:600 }
- body:has(#mobile-nav) #container { padding-bottom:var(--mobile-nav-height) }
- body:has(#mobile-nav):has(.chat-layout) #content { height:calc(var(--visible-height,100dvh) - 56px - var(--mobile-nav-height)) }
- body:has(#mobile-nav) #nav-container { bottom:var(--mobile-nav-height) }
-}
-
-
 /* Wide tables scroll within their own bounds; long IDs wrap in content. */
 @media(max-width:600px) {
  table { display:block; max-width:100%; overflow-x:auto; }
@@ -358,7 +345,6 @@ hr,.hr-soft { border:0; border-top:1px solid var(--card-border); margin-block:24
 }
 
 /* Navigation keeps destinations in view while history scrolls independently. */
-#mobile-nav img { width:18px; height:18px; object-fit:contain }
 #nav a > img,.nav-bottom img { flex:none }
 .nav-me-who > span { min-width:0 }
 .nav-me-who #nav-username { display:block; font-weight:var(--font-weight-normal,400) }
