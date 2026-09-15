@@ -12,7 +12,7 @@ func TestClientLocationFreshnessAndPrecision(t *testing.T) {
 	good := DeviceLocation{Latitude: 51.412345, Longitude: -0.312345, Accuracy: 20, CapturedAt: now, Source: "device"}
 	c := ClientContext{Location: &good, Timezone: "Europe/London"}
 	got := c.facts(now)
-	if !strings.Contains(got, "51.41") || strings.Contains(got, "51.412345") || !strings.Contains(got, "1600 metres") || !strings.Contains(got, "Saved profile location is only a fallback") {
+	if !strings.Contains(got, "51.410") || strings.Contains(got, "51.412345") || !strings.Contains(got, "500 metres") || !strings.Contains(got, "Saved profile location is only a fallback") {
 		t.Fatal(got)
 	}
 	for _, edit := range []func(*DeviceLocation){

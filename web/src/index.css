@@ -116,7 +116,7 @@
   text-underline-offset: 3px;
 }
 
-@source "../../apps";
+@source "../../app";
 
 /* Shared installed-app geometry, including notches and the home indicator. */
 .app-shell {
@@ -136,3 +136,5 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
 }
+
+@source "../../work/client.tsx";

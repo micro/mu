@@ -89,6 +89,10 @@ func DecodeJSON(r *http.Request, v interface{}) error {
 }
 
 func RespondJSON(w http.ResponseWriter, data interface{}) {
+	w.Header().Add("Vary", "Accept")
+	if w.Header().Get("Cache-Control") == "" {
+		w.Header().Set("Cache-Control", "private, no-store")
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
 }
@@ -447,6 +451,7 @@ func navMain(acc *auth.Account) string {
 	b.WriteString(`<div class="nav-secondary">`)
 	for _, item := range []struct{ id, href, label, icon string }{
 		{"nav-inbox", "/inbox", "Inbox", "/email.svg"},
+		{"nav-work", "/work", "Work", "/tasks.svg"},
 		{"nav-agents", "/agents", "Agents", "/agent.svg"},
 		{"nav-services", "/services", "Services", "/services.svg"},
 	} {

@@ -52,8 +52,8 @@ type Account struct {
 	// scheduled run at 7am had no location at all because there was no browser
 	// in the room.
 	//
-	// Coordinates are rounded to two decimal places before they are stored —
-	// see account.SetPlace. That is about a kilometre, which is right for a
+	// Coordinates are rounded to a 0.005-degree grid before they are stored —
+	// see account.SetPlace. That is roughly 500 metres, which is right for a
 	// forecast, a prayer time and what is nearby, and is not somebody's
 	// address.
 	Place           string    `json:"place,omitempty"`

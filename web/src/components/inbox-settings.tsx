@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
 import { PageHeading, Status } from "./layout";
-import { json } from "../lib/api";
+import { initialData, json } from "../lib/api";
 type Preferences = {
   enabled: boolean;
   include_world_news: boolean;
@@ -12,7 +12,7 @@ type Preferences = {
   repeat?: string;
 };
 export function InboxSettings() {
-  const [prefs, setPrefs] = useState<Preferences>(),
+  const [prefs, setPrefs] = useState<Preferences | undefined>(() => initialData<Preferences>()),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [saved, setSaved] = useState(false);
@@ -111,6 +111,11 @@ export function InboxSettings() {
       ) : (
         !error && <Status>Loading settings…</Status>
       )}
+      <section className="mt-8 space-y-3 border-t pt-5">
+        <h2 className="font-medium">Connect a mail app</h2>
+        <p className="text-sm text-muted-foreground">Read your mail in a mail app using IMAP and send using SMTP. The setup page has this server’s connection details and access-token instructions.</p>
+        <Button asChild><a href="/inbox/imap">IMAP and SMTP settings</a></Button>
+      </section>
       <div className="mt-3 min-h-6">
         <Status>{busy ? "Saving…" : saved ? "Saved." : ""}</Status>
       </div>

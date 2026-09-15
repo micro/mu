@@ -1,0 +1,206 @@
+[
+  {
+    "id": "archive",
+    "name": "Archive",
+    "path": "/archive",
+    "icon": "archive.svg"
+  },
+  {
+    "id": "blog",
+    "name": "Blog",
+    "path": "/blog",
+    "icon": "post.png"
+  },
+  {
+    "id": "bookmarks",
+    "name": "Bookmarks",
+    "path": "/bookmarks",
+    "icon": "bookmarks.svg"
+  },
+  {
+    "id": "browser",
+    "name": "Browser",
+    "path": "/browser",
+    "icon": "browser.svg"
+  },
+  {
+    "id": "chat",
+    "name": "Chat",
+    "path": "/chat",
+    "icon": "chat.png"
+  },
+  {
+    "id": "contacts",
+    "name": "Contacts",
+    "path": "/contacts",
+    "icon": "contacts.svg"
+  },
+  {
+    "id": "docs",
+    "name": "Documents",
+    "path": "/docs",
+    "icon": "docs.svg"
+  },
+  {
+    "id": "events",
+    "name": "Events",
+    "path": "/events",
+    "icon": "events.svg"
+  },
+  {
+    "id": "files",
+    "name": "Files",
+    "path": "/files",
+    "icon": "files.svg"
+  },
+  {
+    "id": "flights",
+    "name": "Flights",
+    "path": "/flights",
+    "icon": "flights.svg"
+  },
+  {
+    "id": "food",
+    "name": "Food",
+    "path": "/food",
+    "icon": "food.svg"
+  },
+  {
+    "id": "hazards",
+    "name": "Hazards",
+    "path": "/hazards",
+    "icon": "hazards.svg"
+  },
+  {
+    "id": "images",
+    "name": "Images",
+    "path": "/images",
+    "icon": "images.svg"
+  },
+  {
+    "id": "mail",
+    "name": "Mail",
+    "path": "/mail",
+    "icon": "mail.png"
+  },
+  {
+    "id": "maps",
+    "name": "Maps",
+    "path": "/maps",
+    "icon": "maps.svg"
+  },
+  {
+    "id": "markets",
+    "name": "Markets",
+    "path": "/markets",
+    "icon": "markets.svg"
+  },
+  {
+    "id": "news",
+    "name": "News",
+    "path": "/news",
+    "icon": "news.png"
+  },
+  {
+    "id": "notes",
+    "name": "Notes",
+    "path": "/notes",
+    "icon": "notes.svg"
+  },
+  {
+    "id": "notify",
+    "name": "Notifications",
+    "path": "/notify",
+    "icon": "notify.svg"
+  },
+  {
+    "id": "places",
+    "name": "Places",
+    "path": "/places",
+    "icon": "places.svg"
+  },
+  {
+    "id": "prayer",
+    "name": "Prayer",
+    "path": "/prayer",
+    "icon": "prayer.svg"
+  },
+  {
+    "id": "recall",
+    "name": "Recall",
+    "path": "/recall",
+    "icon": "saved.svg"
+  },
+  {
+    "id": "routes",
+    "name": "Routes",
+    "path": "/routes",
+    "icon": "routes.svg"
+  },
+  {
+    "id": "shell",
+    "name": "Shell",
+    "path": "/shell",
+    "icon": "shell.svg"
+  },
+  {
+    "id": "sms",
+    "name": "SMS",
+    "path": "/sms",
+    "icon": "sms.svg"
+  },
+  {
+    "id": "social",
+    "name": "Social",
+    "path": "/social",
+    "icon": "social.svg"
+  },
+  {
+    "id": "stream",
+    "name": "Stream",
+    "path": "/stream",
+    "icon": "stream.svg"
+  },
+  {
+    "id": "tasks",
+    "name": "Tasks",
+    "path": "/tasks",
+    "icon": "tasks.svg"
+  },
+  {
+    "id": "text",
+    "name": "Text",
+    "path": "/text",
+    "icon": "text.svg"
+  },
+  {
+    "id": "transit",
+    "name": "Transit",
+    "path": "/transit",
+    "icon": "transit.svg"
+  },
+  {
+    "id": "users",
+    "name": "Users",
+    "path": "/users",
+    "icon": "account.png"
+  },
+  {
+    "id": "video",
+    "name": "Video",
+    "path": "/video",
+    "icon": "video.png"
+  },
+  {
+    "id": "weather",
+    "name": "Weather",
+    "path": "/weather",
+    "icon": "weather.svg"
+  },
+  {
+    "id": "web",
+    "name": "Search",
+    "path": "/web",
+    "icon": "search.svg"
+  }
+]

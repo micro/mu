@@ -19,5 +19,5 @@
       "remark-gfm": ["./node_modules/remark-gfm"]
     }
   },
-  "include": ["src", "../apps"]
+  "include": ["src", "../app", "../work/client.tsx"]
 }

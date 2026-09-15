@@ -61,8 +61,8 @@ services. MCP is how agents reach them. The agents are what turn reach into
 intelligence: summarising, contextualising and acting on what is there, rather
 than fetching it again each time somebody asks. The conversation becomes the focal point, with the agent using services and showing their results in place. Work owns delegated goals, execution and outcomes;
 Inbox owns the messages and updates about them. A conversation alone is not
-a work item. `/work` is a secondary destination over task records,
-not a rename of the tasks service.
+a work item. `/work` is the space to build: app creation, delegated tasks and their results.
+It composes those records without renaming the tasks or apps services.
 
 **Removing the barrier is the product.** An agent wanting news, mail, search,
 weather, markets, places and somewhere to keep records otherwise needs six
@@ -71,7 +71,7 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is the saved conversation, not a dashboard. Inbox focuses on communication needing attention, Work is the actionable task list, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. Services opens directly to its grid; do not add a feed or view tabs. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
+**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is the saved conversation, not a dashboard. Inbox focuses on communication needing attention, Work is the space to build apps and delegate tasks, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. Services opens directly to its grid; do not add a feed or view tabs. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
 
 **Extend through stable patterns.** Services, agents and inbox records should
 scale through their existing registries and shared components. Use apps to
@@ -208,8 +208,8 @@ expose agent operations without turning the agent into a service.
 - One directory per service, named for the service. `internal/service` is the
   runtime that hosts them, not a service.
 - Every service is discoverable through the generated Services API/SDK reference.
-  First-party application screens live in top-level `apps/` and are registered
-  in `apps/catalog.json`. They use services without declaring Specs or changing
+  First-party application screens live in top-level `app/` and are registered
+  in `app/catalog.json`. They use services without declaring Specs or changing
   the runtime service boundary. Existing service URLs remain their entry points.
 - A service is named for a **domain** (a noun), never an action. Tool names are
   `service_method`, so an action-named service leaves its main method nothing to
@@ -321,7 +321,7 @@ eviction limit governed both, which is why it was wrong for each.
 ## Layering
 
 The top level is the product — `home/`, `agent/`, `service/`, `admin/`,
-`account/`, `apps/`, and `web/`. Each is a staple: it owns something nothing else owns, and a user
+`account/`, `app/`, and `web/`. Each is a staple: it owns something nothing else owns, and a user
 can name it. Underneath is `internal/`, which is everything with no name a user
 would recognise.
 
@@ -578,6 +578,20 @@ collapse to single-letter columns on mobile.
 
 ## Current product direction
 
-Keep Home, Inbox, Agents and Services as the four primary destinations in the sidebar on mobile and desktop. On mobile the menu opens the sidebar; do not duplicate it in a bottom navigation bar. Home is the private conversation with Micro; Inbox brings communications needing attention; Agents contains focused agents; Services exposes useful standalone utilities and mini apps. Work remains available by direct link and API. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
+Keep Home, Inbox, Work, Agents and Services as the primary destinations in the sidebar on mobile and desktop. On mobile the menu opens the sidebar; do not duplicate it in a bottom navigation bar. Home is the private conversation with Micro; Inbox brings communications needing attention; Agents contains focused agents; Services exposes useful standalone utilities and mini apps. Work brings app creation, tasks, execution and results together; chat is an interaction within building, not the definition of work. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
 
 Agents are not services. Do not place agent management in the Services catalogue. Home is a private conversation, without a Delete control or a platform-wide People directory shortcut. Contacts must be explicitly chosen, not implicitly all registered users.
+
+## Service references and built-in apps
+
+`/services` is the grid; `/service/<name>` owns API, SDK, MCP and playground
+reference material derived from the service registry. Built-in application views
+live in top-level `app/<name>/`, appear as built-in in the app catalogue, and
+open at the familiar service URL such as `/mail` or `/news`. These are useful
+consumer apps, separate from `/service/<name>` reference pages. Existing data
+and protocol contracts stay intact; the grid offers direct app and reference links. `service/apps` owns user-created app documents, versions, permissions and their
+sandbox. `/apps` is one catalogue combining those documents with the built-in
+apps; "built-in" is metadata, not another product or URL hierarchy. `app/apps/`
+owns that catalogue and editor UI. Do not add an Apps or Studio sidebar item: keep Home, Inbox,
+Work, Agents and Services. Work composes user-created apps and delegated tasks. Prepare initial view data with the page response rather than
+showing a loading flash for a second request on every navigation.

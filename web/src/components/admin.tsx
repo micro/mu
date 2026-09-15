@@ -12,7 +12,7 @@ import {
   Action,
   When,
   StateBadge,
-} from "../../../apps/shared";
+} from "../../../app/shared";
 import { PageHeading } from "./layout";
 const pages = [
   "alerts",

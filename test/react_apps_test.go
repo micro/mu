@@ -5,15 +5,18 @@ import (
 	"mu/account"
 	"mu/admin"
 	"mu/agent"
-	firstparty "mu/apps"
+	firstparty "mu/app"
 	"mu/home"
 	"mu/internal/api"
+	legacyapp "mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/internal/sshaccess"
 	"mu/internal/thread"
 	"mu/internal/tool"
+	"mu/service/apps"
 	"mu/service/bookmarks"
+	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
 	"mu/service/events"
@@ -22,6 +25,7 @@ import (
 	"mu/service/notes"
 	"mu/service/tasks"
 	webclient "mu/web"
+	"mu/work"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -59,8 +63,20 @@ func TestReactApplicationsInBrowser(t *testing.T) {
 	newer := thread.Open(owner, thread.WebClient, "newer-react-app")
 	thread.Add(thread.Message{Thread: newer.ID, Account: owner, Role: thread.RolePerson, Text: "Newer saved question"})
 	mux := http.NewServeMux()
+	icons := map[string]bool{}
+	for _, entry := range firstparty.Entries() {
+		if entry.Icon != "" && !icons[entry.Icon] {
+			mux.Handle("/"+entry.Icon, legacyapp.Serve())
+			icons[entry.Icon] = true
+		}
+	}
+	mux.HandleFunc("/agent/new", firstparty.Page(agent.NewAgentHandler, "New agent"))
+	mux.HandleFunc("/agents", firstparty.Page(agent.AgentsHandler, "Agents"))
+	mux.HandleFunc("/chat", firstparty.Page(chat.Handler, "Chat"))
 	mux.HandleFunc("/agent/", agent.Handler)
 	mux.HandleFunc("/", home.Index)
+	mux.HandleFunc("/about", home.AboutHandler)
+	mux.HandleFunc("/privacy", home.PrivacyHandler)
 	mux.HandleFunc("/client/assets/", webclient.Assets)
 	mux.HandleFunc("/client/ssh", sshaccess.ClientHandler)
 	mux.HandleFunc("/mail", firstparty.Page(mail.Handler, "Mail"))
@@ -74,12 +90,15 @@ func TestReactApplicationsInBrowser(t *testing.T) {
 	mux.HandleFunc("/services/call/", api.ServiceCallHandler)
 	mux.HandleFunc("/services", firstparty.Page(api.ToolsPageHandler, "Services"))
 	mux.HandleFunc("/services/", firstparty.Page(api.ServiceRefHandler, "Services"))
+	mux.HandleFunc("/service/", firstparty.Page(api.ServiceRefHandler, "Services"))
 	mux.HandleFunc("/docs", firstparty.Page(docs.Handler, "Documents"))
 	mux.HandleFunc("/notes", firstparty.Page(notes.Handler, "Notes"))
 	mux.HandleFunc("/contacts", firstparty.Page(contacts.Handler, "Contacts"))
 	mux.HandleFunc("/events", firstparty.Page(events.Handler, "Events"))
 	mux.HandleFunc("/files", firstparty.Page(files.Handler, "Files"))
 	mux.HandleFunc("/files/", files.Handler)
+	mux.HandleFunc("/work", firstparty.Page(work.Handler, "Work"))
+	mux.HandleFunc("/apps", firstparty.Page(apps.Handler, "Apps"))
 	mux.HandleFunc("/tasks", firstparty.Page(tasks.Handler, "Tasks"))
 	mux.HandleFunc("/tasks/", tasks.Handler)
 	mux.HandleFunc("/admin", firstparty.Page(admin.Handler, "Admin"))
@@ -89,7 +108,7 @@ func TestReactApplicationsInBrowser(t *testing.T) {
 		w.Header().Set("Content-Type", "text/javascript")
 		w.Write([]byte("// fixture"))
 	})
-	server := httptest.NewServer(mux)
+	server := httptest.NewServer(webclient.WithData(mux))
 	defer server.Close()
 	input, _ := json.Marshal(map[string]any{"base": server.URL, "session": session.Token, "older": older.ID})
 	cmd := exec.Command("node", "../web/test/apps.cjs")

@@ -19,13 +19,13 @@ function refreshDeviceLocation(explicit){
   navigator.geolocation.getCurrentPosition(function(p){
    locationBusy=false;
    if(locationOff || epoch!==locationEpoch)return;
-   deviceLocation={latitude:Math.round(p.coords.latitude*100)/100,longitude:Math.round(p.coords.longitude*100)/100,accuracy_m:Math.max(1600,p.coords.accuracy),captured_at:new Date(p.timestamp).toISOString(),source:'device'};
+   deviceLocation={latitude:Math.round(p.coords.latitude*200)/200,longitude:Math.round(p.coords.longitude*200)/200,accuracy_m:Math.max(500,p.coords.accuracy+400),captured_at:new Date(p.timestamp).toISOString(),source:'device'};
    locationLabel('Location shared · Stop');
   },function(){
    locationBusy=false;
    if(epoch!==locationEpoch)return;
    deviceLocation=null;locationLabel('Share location');
-  },{maximumAge:60000,timeout:5000,enableHighAccuracy:false});
+  },{maximumAge:30000,timeout:15000,enableHighAccuracy:true});
  }
  if(explicit){locate();return;}
  if(navigator.permissions && navigator.permissions.query){

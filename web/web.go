@@ -16,18 +16,23 @@ var files embed.FS
 
 // Page serves an HTML view; JSON and mutations remain with the owning handler.
 func Page(w http.ResponseWriter, r *http.Request, title string, initial ...any) bool {
+	w.Header().Add("Vary", "Accept")
+	w.Header().Set("Cache-Control", "private, no-store")
 	if r.Header.Get("Upgrade") != "" || r.Method != http.MethodGet || strings.Contains(r.Header.Get("Accept"), "application/json") {
 		return false
 	}
 	auth.SetCSRFCookie(w, r)
-	page, err := files.ReadFile("dist/index.html")
+	template := "dist/index.html"
+	if r.URL.Path == "/about" || r.URL.Path == "/privacy" {
+		template = "dist" + r.URL.Path + ".html"
+	}
+	page, err := files.ReadFile(template)
 	if err != nil {
 		http.Error(w, "Web client unavailable", 503)
 		return true
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "private, no-store")
-	w.Header().Add("Vary", "Accept")
 	var state any
 	if len(initial) > 0 {
 		state = initial[0]
@@ -49,6 +54,11 @@ func Page(w http.ResponseWriter, r *http.Request, title string, initial ...any) 
 		start, end := strings.Index(content, "<!--landing-->"), strings.Index(content, "<!--/landing-->")
 		if start >= 0 && end > start {
 			content = content[:start] + content[end+len("<!--/landing-->"):]
+		}
+	}
+	if data := initialData(r); len(data) > 0 {
+		if encoded, err := json.Marshal(data); err == nil {
+			content = strings.Replace(content, "</head>", `<script id="client-data" type="application/json">`+string(encoded)+`</script></head>`, 1)
 		}
 	}
 	content = strings.Replace(content, "</head>", `<script id="client-state" type="application/json">`+string(bootstrap)+`</script></head>`, 1)

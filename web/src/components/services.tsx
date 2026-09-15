@@ -2,16 +2,14 @@ import { useState } from "react";
 import {
   useData,
   json,
-  call,
   Button,
   Input,
   Status,
   Form,
-  Read,
   Link,
-} from "../../../apps/shared";
+} from "../../../app/shared";
 import { PageHeading } from "./layout";
-import catalogue from "../../../apps/catalog.json";
+import catalogue from "../../../app/catalog.json";
 type Param = {
   name: string;
   type: string;
@@ -26,6 +24,7 @@ type Method = {
   Cost: number;
   NeedsAuth: boolean;
   Changes: boolean;
+  Destructive: boolean;
   PrivateSearch: boolean;
   Params: Param[];
 };
@@ -34,9 +33,15 @@ type Service = {
   label: string;
   description: string;
   page: string;
+  icon: string;
   methods: Method[];
 };
+import { SDKGuide } from "./sdk-guide";
 export function Services() {
+  if (["/service/sdk", "/services/sdk"].includes(location.pathname)) return <SDKGuide />;
+  return <ServiceReference />;
+}
+function ServiceReference() {
   const { data, error } = useData<Service[]>(() => json("/client/services"));
   const [q, setQ] = useState("");
   const name = location.pathname.split("/")[2];
@@ -62,14 +67,15 @@ export function Services() {
               </Button>
               {catalogue.some((a) => a.id === name) && (
                 <Button asChild>
-                  <a href={service.page}>Open app</a>
+                  <a href={catalogue.find(a => a.id === service.name)!.path}>Open app</a>
                 </Button>
               )}
+              <Button asChild><a href="/mcp">MCP connection</a></Button>
               <Button asChild>
                 <a href="/api">API</a>
               </Button>
               <Button asChild>
-                <a href="/apps/sdk.js">App SDK</a>
+                <a href="/service/sdk">App SDK</a>
               </Button>
             </div>
             <p className="mb-6">
@@ -102,19 +108,20 @@ export function Services() {
               )
               .map((s) => (
                 <section key={s.name} className="space-y-2 border-b pb-5">
-                  <h2 className="font-medium">
-                    <Link url={"/services/" + s.name}>{s.label}</Link>
+                  <h2 className="flex items-center gap-2 font-medium">
+                    <img src={"/" + s.icon} alt="" className="size-5" aria-hidden="true" />
+                    <Link url={"/service/" + s.name}>{s.label}</Link>
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     {s.description}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button asChild>
-                      <a href={"/services/" + s.name}>API & SDK</a>
+                      <a href={"/service/" + s.name}>API & SDK</a>
                     </Button>
                     {catalogue.some((a) => a.id === s.name) && (
                       <Button asChild>
-                        <a href={s.page}>Open app</a>
+                        <a href={catalogue.find(a => a.id === s.name)!.path}>Open app</a>
                       </Button>
                     )}
                   </div>
@@ -169,8 +176,22 @@ function MethodView({
           </tbody>
         </table>
       </div>
+      <details><summary className="cursor-pointer">API, SDK and MCP examples</summary>
+        <div className="mt-3 space-y-4">
+          <p className="text-sm">For service access, create a Services token with access to this service. Keep credentials on your server, never in shared app source.</p>
+          <a className="underline" href="/token">Manage tokens</a>
+          <h3 className="font-medium">HTTP API</h3>
+          <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{`curl -X POST '${location.origin}${m.Path}' \\\n  -H 'Authorization: Bearer <services-token>' \\\n  -H 'Content-Type: application/json' \\\n  --data '{}'`}</pre>
+          <h3 className="font-medium">App SDK</h3>
+          <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{`await mu.service(${JSON.stringify(service)}, ${JSON.stringify(m.Method.toLowerCase())}, {});`}</pre>
+          <h3 className="font-medium">MCP</h3>
+          <p className="text-sm">Connect to {location.origin}/mcp using the same Services token. Use tools/list to discover your permitted tools.</p>
+          <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{JSON.stringify({jsonrpc:"2.0",id:1,method:"tools/call",params:{name:m.Tool,arguments:{}}},null,2)}</pre>
+          <p className="text-sm text-muted-foreground">Replace the empty argument object with the parameters listed above.</p>
+        </div>
+      </details>
       <details>
-        <summary>Try it</summary>
+        <summary className="cursor-pointer">Playground</summary>
         <div className="mt-4 max-w-xl">
           <Form
             label="Run"
@@ -197,9 +218,11 @@ function MethodView({
                       ? Number(v[p.name])
                       : p.type === "boolean"
                         ? v[p.name] === "true"
-                        : v[p.name];
+                        : p.type === "object" || p.type === "array" ? JSON.parse(v[p.name]) : v[p.name];
               }
-              setResult(await call(service, m.Method.toLowerCase(), args));
+              if (m.Destructive && !confirm("Run " + m.Method + "? This changes or deletes stored data.")) return;
+              const response = await json<any>(`/services/call/${service}/${m.Method.toLowerCase()}`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(args)});
+              setResult(response.data ?? response.result ?? response);
             }}
           />
           {result !== undefined && (

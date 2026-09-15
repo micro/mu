@@ -17,7 +17,7 @@ import (
 	"mu/agent/brief"
 	"mu/agent/digest"
 	"mu/agent/micro"
-	firstparty "mu/apps"
+	firstparty "mu/app"
 	"mu/client"
 	help "mu/docs"
 	"mu/home"
@@ -77,6 +77,7 @@ func authRequired() map[string]bool {
 		"/tools":       false, // Public — the catalogue, agent lens
 		"/tools/":      false, // Public — one tool, same as the catalogue
 		"/services":    false, // Public — the catalogue, person lens
+		"/service/":    false,
 		"/services/":   false, // Public — one service, what it is and how to call it
 		"/card/":       false, // Public — a service rendered at a glance
 		"/usage":       true,  // Your own calls and spend
@@ -690,7 +691,7 @@ func registerRoutes() {
 
 	// public status page - service health checks
 	app.HealthCheckFunc = runHealthChecks
-	http.HandleFunc("/status", app.StatusHandler)
+	http.HandleFunc("/status", home.StatusHandler)
 
 	// Documentation. One page: how to run your own. Every address the old nine
 	// answered on redirects to whatever replaced it — an exact pattern outranks
@@ -742,6 +743,7 @@ func registerRoutes() {
 	// now, every method with its arguments and its price, and a form that makes
 	// the call for real. See internal/api/service_ref.go.
 	http.HandleFunc("/services/", firstparty.Page(api.ServiceRefHandler, "Services"))
+	http.HandleFunc("/service/", firstparty.Page(api.ServiceRefHandler, "Services"))
 	// What your agents did. Flows were recorded and never served.
 	// Runs belong to the agent, so they live under it and the agent surface
 	// tabs between them. /runs still works — links to it exist.

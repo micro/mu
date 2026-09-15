@@ -17,7 +17,7 @@ func CatalogueHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := make([]map[string]any, 0)
 	for _, s := range service.Specs() {
-		rows = append(rows, map[string]any{"name": s.Name, "label": s.NavLabel(), "description": s.Description, "page": s.Page, "scoped": s.Scoped, "methods": restMethodsFor(s.Name)})
+		rows = append(rows, map[string]any{"name": s.Name, "label": s.NavLabel(), "icon": s.NavIcon(), "description": s.Description, "page": s.Page, "scoped": s.Scoped, "methods": restMethodsFor(s.Name)})
 	}
 	app.RespondJSON(w, rows)
 }

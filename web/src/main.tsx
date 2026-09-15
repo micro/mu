@@ -1,47 +1,23 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Layout, Status } from "./components/layout";
 import { json, type State } from "./lib/api";
 import "./index.css";
 import { Conversation } from "./components/conversation";
-const InboxPage = lazy(() =>
-  import("./components/inbox").then((m) => ({ default: m.InboxPage })),
-);
-const InboxCompose = lazy(() =>
-  import("./components/inbox-compose").then((m) => ({
-    default: m.InboxCompose,
-  })),
-);
-const InboxSettings = lazy(() =>
-  import("./components/inbox-settings").then((m) => ({
-    default: m.InboxSettings,
-  })),
-);
-const AdminUsers = lazy(() =>
-  import("./components/admin-users").then((m) => ({ default: m.AdminUsers })),
-);
-const AccountPage = lazy(() =>
-  import("./components/account").then((m) => ({ default: m.AccountPage })),
-);
-const AppsPage = lazy(() =>
-  import("./components/apps").then((m) => ({ default: m.AppsPage })),
-);
-const Admin = lazy(() =>
-  import("./components/admin").then((m) => ({ default: m.Admin })),
-);
-const AppEditor = lazy(() =>
-  import("./components/app-editor").then((m) => ({ default: m.AppEditor })),
-);
-const Agents = lazy(() =>
-  import("./components/agents").then((m) => ({ default: m.Agents })),
-);
-const Application = lazy(() =>
-  import("../../apps").then((m) => ({ default: m.Application })),
-);
-const Services = lazy(() =>
-  import("./components/services").then((m) => ({ default: m.Services })),
-);
-import catalogue from "../../apps/catalog.json";
+import { InboxPage } from "./components/inbox";
+import { InboxCompose } from "./components/inbox-compose";
+import { InboxSettings } from "./components/inbox-settings";
+import { AdminUsers } from "./components/admin-users";
+import { AccountPage } from "./components/account";
+import { AppsPage } from "../../app/apps";
+import { Admin } from "./components/admin";
+import { AppEditor } from "../../app/apps/editor";
+import { Agents } from "./components/agents";
+import { Application } from "../../app";
+import { Workspace } from "../../work/client";
+import { Services } from "./components/services";
+import { PublicPage, publicTitles } from "./components/public-page";
+import catalogue from "../../app/catalog.json";
 function App() {
   const [state, setState] = useState<State>(() => {
       const value = document.getElementById("client-state")?.textContent;
@@ -60,13 +36,14 @@ function App() {
         : path === "/work"
           ? { id: "tasks", name: "Work" }
           : catalogue.find((a) => a.path === path);
+  const publicPage = !!publicTitles[path];
   const title =
-    application?.name ||
+    publicTitles[path] || application?.name ||
     (path === "/agents" || path === "/agent/new"
       ? "Agents"
       : path === "/apps/new" || path.startsWith("/apps/")
         ? "Apps"
-        : path.startsWith("/services")
+        : (path.startsWith("/services") || path.startsWith("/service/"))
           ? "Services"
           : home
             ? "Home"
@@ -114,24 +91,27 @@ function App() {
     );
   return (
     <Layout
-      account={state.account}
+      account={publicPage ? null : state.account}
+      publicPage={publicPage}
       title={
         state.conversation?.agent
           ? state.conversation.agent_name || title
           : title
       }
-      conversation={home}
+      conversation={home || (path === "/chat" && new URLSearchParams(location.search).has("id"))}
     >
-      <Suspense fallback={<Status>Loading…</Status>}>
-        {path.startsWith("/admin") && path !== "/admin/users" ? (
+      <>
+        {publicPage ? <PublicPage path={path} /> : path.startsWith("/admin") && path !== "/admin/users" ? (
           <Admin />
         ) : path === "/agents" || path === "/agent/new" ? (
           <Agents />
         ) : path === "/apps/new" || path.startsWith("/apps/") ? (
           <AppEditor />
+        ) : path === "/work" ? (
+          <Workspace />
         ) : application ? (
           <Application name={application.id} />
-        ) : path.startsWith("/services") ? (
+        ) : (path.startsWith("/services") || path.startsWith("/service/")) ? (
           <Services />
         ) : home ? (
           <Conversation
@@ -153,7 +133,7 @@ function App() {
         ) : (
           <AccountPage />
         )}
-      </Suspense>
+      </>
     </Layout>
   );
 }

@@ -35,7 +35,7 @@ func TestTheNewAppButtonIsTheSharedButton(t *testing.T) {
 //
 // Checked against the source, because the cascade cannot be resolved in Go.
 func TestTheAppsPageDoesNotRollItsOwnButton(t *testing.T) {
-	b, err := os.ReadFile("../../web/src/components/apps.tsx")
+	b, err := os.ReadFile("../../app/apps/index.tsx")
 	if err != nil {
 		t.Fatal(err)
 	}

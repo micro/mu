@@ -74,6 +74,8 @@ export function Conversation({
     spacer = useRef<HTMLDivElement>(null),
     input = useRef<HTMLTextAreaElement>(null),
     follow = useRef(true),
+    anchor = useRef(0),
+    restoredScroll = useRef(""),
     alive = useRef(true);
   const signedIn = !!state.account;
   const Speech =
@@ -99,8 +101,20 @@ export function Conversation({
     pad.style.height = "0px";
     pad.style.height =
       Math.max(0, box.clientHeight - (box.scrollHeight - top) - 16) + "px";
-    if (follow.current) box.scrollTo({ top: Math.max(0, top - 16) });
+    anchor.current = Math.max(0, top - 16);
+    const key = "micro-conversation-scroll:" + selectionScope + ":" + id.current;
+    if (restoredScroll.current !== key) {
+      restoredScroll.current = key;
+      const saved = sessionStorage.getItem(key);
+      if (saved !== null) { follow.current = false; box.scrollTop = Number(saved); return; }
+    }
+    if (follow.current) box.scrollTo({ top: anchor.current });
   }, [messages, busy]);
+  useEffect(() => {
+    const save = () => { if(transcript.current) sessionStorage.setItem("micro-conversation-scroll:" + selectionScope + ":" + id.current, String(transcript.current.scrollTop)); };
+    window.addEventListener("pagehide", save);
+    return () => {save(); window.removeEventListener("pagehide", save);};
+  }, [selectionScope]);
   useEffect(() => {
     const el = input.current;
     if (el) {
@@ -225,6 +239,8 @@ export function Conversation({
     setStatus("Working…");
     setDraft("");
     follow.current = true;
+    restoredScroll.current = "micro-conversation-scroll:" + selectionScope + ":" + id.current;
+    sessionStorage.removeItem(restoredScroll.current);
     setMessages((m) => [...m, { role: "person", text: prompt }]);
     controller.current = new AbortController();
     let completed = false;
@@ -337,23 +353,23 @@ export function Conversation({
     navigator.geolocation.getCurrentPosition(
       (p) => {
         setLocation({
-          latitude: Math.round(p.coords.latitude * 100) / 100,
-          longitude: Math.round(p.coords.longitude * 100) / 100,
-          accuracy_m: Math.max(1600, p.coords.accuracy),
+          latitude: Math.round(p.coords.latitude * 200) / 200,
+          longitude: Math.round(p.coords.longitude * 200) / 200,
+          accuracy_m: Math.max(500, p.coords.accuracy + 400),
           captured_at: new Date().toISOString(),
           source: "device",
         });
       },
       () =>
         setError("Location unavailable. You can type your location instead."),
-      { timeout: 10000, maximumAge: 300000 },
+      { timeout: 15000, maximumAge: 30000, enableHighAccuracy: true },
     );
   }
   const empty = !messages.length && !busy;
   return (
     <div
       className={
-        "flex min-h-0 flex-1 flex-col " +
+        "flex min-h-0 min-w-0 flex-1 flex-col " +
         (empty && !signedIn ? "justify-center" : "")
       }
     >
@@ -382,9 +398,9 @@ export function Conversation({
           onScroll={() => {
             const e = transcript.current;
             follow.current =
-              !e || e.scrollHeight - e.scrollTop - e.clientHeight < 100;
+              !e || Math.abs(e.scrollTop - anchor.current) < 8;
           }}
-          className="relative min-h-0 flex-1 chat-transcript overflow-y-auto overscroll-contain py-6"
+          className="relative min-h-0 min-w-0 flex-1 chat-transcript overflow-y-auto overscroll-contain py-6"
           role="log"
           aria-label="Conversation"
         >
