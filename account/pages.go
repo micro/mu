@@ -83,7 +83,7 @@ var LoginTemplate = `<html lang="en">
     <div id="container">
       <div id="content">
 	<p id="auth-status" role="status"></p><form id="login" action="/login%s" method="POST" class="form page-stack">
-	  <h1>Log in</h1>
+	  <h1 class="text-center">Log in</h1>
 	  %s
 	  %s
 	  <label class="field-label">Username<input id="id" name="id" autocomplete="username" required></label>
@@ -190,7 +190,7 @@ var SignupTemplate = `<html lang="en">
     <div id="container">
       <div id="content">
 	<form id="signup" action="/signup%s" method="POST" class="form page-stack">
-	  <h1>Create your account</h1>
+	  <h1 class="text-center">Create your account</h1>
 	  %s
 	  %s
 	  <label class="field-label">Username<input id="id" name="id" autocomplete="username" minlength="4" maxlength="24" pattern="[a-z][a-z0-9_]{3,23}" aria-describedby="username-help" required></label><small id="username-help" class="text-muted">4–24 characters. Start with a letter; use lowercase letters, numbers or underscores.</small>
