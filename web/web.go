@@ -50,7 +50,8 @@ func Page(w http.ResponseWriter, r *http.Request, title string, initial ...any) 
 		return true
 	}
 	content := strings.Replace(string(page), "<title>Micro</title>", "<title>"+html.EscapeString(title)+" | Micro</title>", 1)
-	if r.URL.Path != "/" {
+	_, signedIn := auth.TrySession(r)
+	if r.URL.Path != "/" || signedIn != nil {
 		start, end := strings.Index(content, "<!--landing-->"), strings.Index(content, "<!--/landing-->")
 		if start >= 0 && end > start {
 			content = content[:start] + content[end+len("<!--/landing-->"):]

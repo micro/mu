@@ -37,3 +37,20 @@ func TestPagePreparesViewDataWithoutCachingJSON(t *testing.T) {
 		t.Fatal("JSON could replace the page in cache")
 	}
 }
+
+func TestAdminInitialDataKeepsSelectedView(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/admin/log", func(w http.ResponseWriter, r *http.Request) { Page(w, r, "Logs") })
+	mux.HandleFunc("/admin/client", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("page") != "log" || r.URL.Query().Get("tab") != "mail" {
+			t.Errorf("lost selected log view: %s", r.URL)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"messages":[]}`))
+	})
+	w := httptest.NewRecorder()
+	WithData(mux).ServeHTTP(w, httptest.NewRequest("GET", "/admin/log?tab=mail", nil))
+	if !strings.Contains(w.Body.String(), `"messages":[]`) {
+		t.Fatal("mail log data missing")
+	}
+}

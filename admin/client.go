@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/backup"
@@ -55,7 +56,13 @@ func ClientHandler(w http.ResponseWriter, r *http.Request) {
 	case "server":
 		app.RespondJSON(w, map[string]any{"status": app.InternalStatus(), "stores": data.Stores()})
 	case "status":
-		app.RespondJSON(w, map[string]any{"checks": runHealthChecks(false, false)})
+		test := r.URL.Query().Get("test")
+		checks := runHealthChecks(test == "digest", test == "federation")
+		diagnosis := ""
+		if r.URL.Query().Get("diagnose") == "1" {
+			diagnosis = aiDiagnose(checks)
+		}
+		app.RespondJSON(w, map[string]any{"checks": checks, "diagnosis": diagnosis})
 	case "backup":
 		at, key, failure := backup.LastPush()
 		app.RespondJSON(w, map[string]any{"snapshots": backup.List(), "quarantined": data.Quarantined(), "offsite": backup.PushEnabled(), "last_push": at, "key": key, "failure": failure})
@@ -88,7 +95,7 @@ func ClientHandler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]any{"enabled": enabled(), "recipients": admins(), "alerts": app.AlertCount(), "calls_last_hour": usage.TotalOver(usage.Minute, 60)})
 	case "traffic":
 		win := usage.WindowFor(r.URL.Query().Get("window"))
-		app.RespondJSON(w, map[string]any{"series": usage.Series(win.Res, win.Points), "endpoints": usage.Top(win.Res, win.Points, usage.ByName, 20), "callers": usage.Top(win.Res, win.Points, usage.ByUser, 20), "surfaces": usage.Top(win.Res, win.Points, usage.BySurface, 10), "spend": app.GetUsageSummary()})
+		app.RespondJSON(w, map[string]any{"series": usage.Series(win.Res, win.Points), "endpoints": usage.Top(win.Res, win.Points, usage.ByName, 20), "callers": usage.Top(win.Res, win.Points, usage.ByUser, 20), "surfaces": usage.Top(win.Res, win.Points, usage.BySurface, 10), "spend": app.GetUsageSummary(), "agent_health": agent.Summary()})
 	default:
 		app.NotFound(w, r, "No such admin page")
 	}

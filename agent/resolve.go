@@ -37,7 +37,7 @@ func AskAs(accountID, ref string) (QueryOpts, error) {
 	// Model too. It was dropped here, so an agent could be given one and then
 	// answer on the instance default anyway — the field set, the run ignoring
 	// it, and nothing on screen to say which had happened.
-	return QueryOpts{System: m.SystemPrompt, Tools: m.Tools, Model: m.Model}, nil
+	return QueryOpts{System: namedSystem(m.Name, m.SystemPrompt), Tools: m.Tools, Model: m.Model}, nil
 }
 
 // findAgent resolves by id first, then by name, case-insensitively. By name
@@ -77,4 +77,14 @@ func ListForCaller(accountID string) (string, error) {
 	}
 	b, err := json.Marshal(map[string]any{"agents": out})
 	return string(b), err
+}
+
+// namedSystem binds the selected agent's identity independently of its persona.
+// A directory entry or the account used for tools does not identify the speaker.
+func namedSystem(name, prompt string) string {
+	name = strings.TrimSpace(name)
+	if name == "" || name == DefaultName() {
+		return prompt
+	}
+	return fmt.Sprintf("You are %s, the selected agent running on Mu. Your name is %s. Micro is another agent, not your identity. Account names in tool results identify those accounts, not you; do not claim their handles as your own.\n\n%s", name, name, prompt)
 }

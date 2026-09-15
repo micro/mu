@@ -16,10 +16,11 @@ import (
 var catalog []byte
 
 type Entry struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Path string `json:"path"`
-	Icon string `json:"icon"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Path  string `json:"path"`
+	Icon  string `json:"icon"`
+	Admin bool   `json:"admin,omitempty"`
 }
 
 func Entries() []Entry { var entries []Entry; _ = json.Unmarshal(catalog, &entries); return entries }
@@ -58,5 +59,13 @@ func CatalogueHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(catalog)
+	_, account := auth.TrySession(r)
+	entries := []Entry{}
+	for _, entry := range Entries() {
+		if !entry.Admin || account != nil && account.Admin {
+			entries = append(entries, entry)
+		}
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	json.NewEncoder(w).Encode(entries)
 }

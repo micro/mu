@@ -17,9 +17,15 @@ type App = {
   can_edit: boolean;
   public: boolean;
 };
-export function AppsPage({ workspace = false }: {workspace?: boolean}) {
+export function AppsPage({ workspace = false }: { workspace?: boolean }) {
   const params = new URLSearchParams(location.search);
-  const [apps, setApps] = useState<App[] | undefined>(() => initialData<App[]>(workspace ? "apps" : "page")),
+  const identity = JSON.parse(
+    document.getElementById("client-state")?.textContent || "{}",
+  );
+  const builtins = catalogue.filter((a) => !a.admin || identity.account?.admin);
+  const [apps, setApps] = useState<App[] | undefined>(() =>
+      initialData<App[]>(workspace ? "apps" : "page"),
+    ),
     [query, setQuery] = useState(""),
     [pricing, setPricing] = useState(params.get("pricing") || "all"),
     [tag, setTag] = useState(params.get("tag") || ""),
@@ -78,37 +84,39 @@ export function AppsPage({ workspace = false }: {workspace?: boolean}) {
           </Button>
         }
       />
-      <div className="mb-5 flex flex-wrap gap-2">
-        <Input
-          className="w-full max-w-xl"
-          type="search"
-          aria-label="Find apps"
-          placeholder="Find an app"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <NativeSelect
-          aria-label="Price"
-          value={pricing}
-          onChange={(e) => setPricing(e.target.value)}
-        >
-          <option value="all">All prices</option>
-          <option value="free">Free</option>
-          <option value="paid">Paid</option>
-        </NativeSelect>
-        {!!tags.length && (
+      {!workspace && (
+        <div className="mb-5 flex flex-wrap gap-2">
+          <Input
+            className="w-full max-w-xl"
+            type="search"
+            aria-label="Find apps"
+            placeholder="Find an app"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
           <NativeSelect
-            aria-label="Tag"
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
+            aria-label="Price"
+            value={pricing}
+            onChange={(e) => setPricing(e.target.value)}
           >
-            <option value="">All tags</option>
-            {tags.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
+            <option value="all">All prices</option>
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
           </NativeSelect>
-        )}
-      </div>
+          {!!tags.length && (
+            <NativeSelect
+              aria-label="Tag"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+            >
+              <option value="">All tags</option>
+              {tags.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </NativeSelect>
+          )}
+        </div>
+      )}
       {error && <Status error>{error}</Status>}
       {!apps && !error && <Status>Loading apps…</Status>}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -149,34 +157,47 @@ export function AppsPage({ workspace = false }: {workspace?: boolean}) {
           </Card>
         ))}
       </div>
-      {!workspace && <><h2 className="mb-4 mt-8 text-lg font-medium">Built-in apps</h2>
-      <div className="mb-8 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-        {catalogue
-          .filter(
-            (a) =>
-              a.name.toLowerCase().includes(query.toLowerCase()) &&
-              pricing !== "paid" &&
-              !tag,
-          )
-          .map((a) => (
-            <section
-              key={a.id}
-              className="flex items-center justify-between gap-3 border-b py-3"
-            >
-              <h2 className="flex items-center gap-2 font-medium">
-                <img src={"/" + a.icon} alt="" className="size-5" aria-hidden="true" />
-                <a href={a.path}>{a.name}</a>
-              </h2>
-              <Button asChild>
-                <a href={a.path}>Open</a>
-              </Button>
-            </section>
-          ))}
-      </div>
-      </>}
-      {workspace && visible?.length === 0 && <p className="py-4 text-muted-foreground">Build your first app, or start with a task below.</p>}
-      {!workspace && visible?.length === 0 &&
-        !catalogue.some(
+      {!workspace && (
+        <>
+          <h2 className="mb-4 mt-8 text-lg font-medium">Built-in apps</h2>
+          <div className="mb-8 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+            {builtins
+              .filter(
+                (a) =>
+                  a.name.toLowerCase().includes(query.toLowerCase()) &&
+                  pricing !== "paid" &&
+                  !tag,
+              )
+              .map((a) => (
+                <section
+                  key={a.id}
+                  className="flex items-center justify-between gap-3 border-b py-3"
+                >
+                  <h2 className="flex items-center gap-2 font-medium">
+                    <img
+                      src={"/" + a.icon}
+                      alt=""
+                      className="size-5"
+                      aria-hidden="true"
+                    />
+                    <a href={a.path}>{a.name}</a>
+                  </h2>
+                  <Button asChild>
+                    <a href={a.path}>Open</a>
+                  </Button>
+                </section>
+              ))}
+          </div>
+        </>
+      )}
+      {workspace && visible?.length === 0 && (
+        <p className="py-4 text-muted-foreground">
+          Build your first app, or start with a task below.
+        </p>
+      )}
+      {!workspace &&
+        visible?.length === 0 &&
+        !builtins.some(
           (a) =>
             a.name.toLowerCase().includes(query.toLowerCase()) &&
             pricing !== "paid" &&

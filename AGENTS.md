@@ -50,7 +50,7 @@ digest, the brief, moderation and work.
 mail, chat, SMS, WhatsApp, the web. It is `internal/thread`, not an email
 folder, and a new channel joins that record rather than starting a second one.
 
-**The conversation** is the product entry point, before and after sign-in.
+**Home** is the signed-in app launcher. Assistant is an app at `/assistant`; the signed-out landing page still offers a conversation.
 
 ## Where this goes
 
@@ -71,12 +71,12 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is the saved conversation, not a dashboard. Inbox focuses on communication needing attention, Work is the space to build apps and delegate tasks, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. Services opens directly to its grid; do not add a feed or view tabs. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
+**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door launches apps; the Assistant app owns the saved conversation. Inbox focuses on communication needing attention, Work is the space to build apps and delegate tasks, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. Services opens directly to its grid; do not add a feed or view tabs. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
 
 **Extend through stable patterns.** Services, agents and inbox records should
 scale through their existing registries and shared components. Use apps to
 build and test different experiences on the runtime. Adding a capability does
-not imply redesigning Home or adding a primary navigation item. The root is a conversation, with standalone utilities reachable from Services.
+not imply redesigning Home or adding a primary navigation item. Home launches the apps. Services is the capability reference directory.
 
 ## What is true today, and what is not
 
@@ -555,7 +555,7 @@ in their existing components. Check narrow mobile and desktop, with the sidebar
 open and closed, including revealed and collapsed controls when changing these
 shared rules.
 
-The root opens the React conversation, including guest-to-account continuity. The composer stays in a stable viewport position. Compose pages from shared cards, lists, tables, forms, messages and status badges. Specialized interactions such as maps and editors may own narrowly scoped component styles. Do not add layers of overrides to the old stylesheet to implement the core product.
+The signed-in root opens the app launcher; `/assistant` opens the React conversation, preserving guest-to-account continuity and old conversation links. The composer stays in a stable viewport position. Compose pages from shared cards, lists, tables, forms, messages and status badges. Specialized interactions such as maps and editors may own narrowly scoped component styles. Do not add layers of overrides to the old stylesheet to implement the core product.
 
 The base control kit is `internal/app/html/composition.css`; `mu.css` owns the
 page shell and content layouts. Keep control geometry in the kit, independent
@@ -578,9 +578,9 @@ collapse to single-letter columns on mobile.
 
 ## Current product direction
 
-Keep Home, Inbox, Work, Agents and Services as the primary destinations in the sidebar on mobile and desktop. On mobile the menu opens the sidebar; do not duplicate it in a bottom navigation bar. Home is the private conversation with Micro; Inbox brings communications needing attention; Agents contains focused agents; Services exposes useful standalone utilities and mini apps. Work brings app creation, tasks, execution and results together; chat is an interaction within building, not the definition of work. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
+Keep Home, Inbox, Work, Agents and Services as the primary destinations in the sidebar on mobile and desktop. On mobile the menu opens the sidebar; do not duplicate it in a bottom navigation bar. Home is the app launcher; Assistant is the private conversation app with Micro; Inbox brings communications needing attention; Agents contains focused agents; Services exposes useful standalone utilities and mini apps. Work brings app creation, tasks, execution and results together; chat is an interaction within building, not the definition of work. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
 
-Agents are not services. Do not place agent management in the Services catalogue. Home is a private conversation, without a Delete control or a platform-wide People directory shortcut. Contacts must be explicitly chosen, not implicitly all registered users.
+Agents are not services. Do not place agent management in the Services catalogue. Home launches apps. The Assistant conversation has no Delete control or platform-wide People directory shortcut. Contacts must be explicitly chosen, not implicitly all registered users.
 
 ## Service references and built-in apps
 
