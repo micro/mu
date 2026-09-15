@@ -16,7 +16,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     const page = await context.newPage();
     page.setDefaultTimeout(12000);
     const errors = [];
-    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("pageerror", (e) => { errors.push(e.message); console.error("Browser error:", e.message); });
     const go = async (path) => {
       await page.goto(input.base + path);
       await page.waitForFunction(
@@ -91,6 +91,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       .getByRole("textbox", { name: "Body", exact: true })
       .fill("Keep this edited note");
     await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForURL(url => url.pathname === "/notes" && url.search === "");
     await page.getByText("Keep this edited note", { exact: true }).waitFor();
     await go("/contacts");
     await page.getByRole("button", { name: "New", exact: true }).click();
