@@ -182,9 +182,20 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(path.startsWith('/inbox?id=')) {
     const row=page.locator('.ib-reply');
     const boxes=await row.locator('a.btn,button').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {x:r.x,y:r.y,right:r.right,height:r.height,bg:s.backgroundColor};}));
-    assert(boxes.length>=2,'reply and assign fixture missing');
-    assert(Math.abs(boxes[0].height-boxes[1].height)<2,'inbox actions differ in size');
-    assert(boxes[1].y>boxes[0].y||boxes[1].x-boxes[0].right>=8,'inbox actions run together');
+    const inline=page.locator('#inbox-reply');
+    assert(boxes.length>=1,'assign fixture missing');
+    if(await inline.count()) {
+     const before=page.url();await inline.locator('summary').click();
+     assert(await inline.locator('textarea').isVisible(),'inline reply did not expand');
+     assert.equal(page.url(),before,'reply navigated away');
+     const field=await inline.locator('textarea').boundingBox();const panel=await inline.boundingBox();
+     assert(field.width>=panel.width-4,'inline reply is not full width');
+     await inline.locator('summary').click();
+    } else {
+     assert(boxes.length>=2,'reply fixture missing');
+     assert(Math.abs(boxes[0].height-boxes[1].height)<2,'inbox actions differ in size');
+     assert(boxes[1].y>boxes[0].y||boxes[1].x-boxes[0].right>=8,'inbox actions run together');
+    }
     assert(boxes.every(b=>b.bg==='rgb(255, 255, 255)'),'inbox actions have filled backgrounds');
     assert(await page.locator('.ib-from,.ib-msg .you').first().evaluate(e=>getComputedStyle(e).display==='flex'),'thread sender and time run together');
     await page.locator('.ib-assign-open').click();
@@ -212,7 +223,15 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     const card=page.locator('#flagged-content .card').first();assert(await card.isVisible(),'moderation fixture empty');
     assert(await card.locator('.form-actions').evaluate(e=>parseFloat(getComputedStyle(e).gap)>=8),'moderation actions lack spacing');
    }
-   if(path==='/inbox')assert.equal(await page.locator('article.message').count(),1,'priority should show one communication');
+   if(path==='/inbox') {
+    assert.equal(await page.locator('article.message').count(),0,'inbox opened a priority item');
+    assert(await page.locator('.ib-row').count()>1,'inbox is not a list');
+    const first=page.locator('.ib-row').first();await first.hover();
+    assert.equal(await first.evaluate(e=>getComputedStyle(e).textDecorationLine),'none','row hover underlines text');
+    const labels=await page.locator('.ib-kind').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().x));
+    assert(labels.every(x=>Math.abs(x-labels[0])<1),'type labels move between rows');
+    assert((await first.boundingBox()).height<110,'inbox rows are too tall');
+   }
    if(path==='/chat'){
     await page.locator('#messages').evaluate(e=>e.innerHTML='<p>Room message</p>'.repeat(100));await page.waitForTimeout(70);
     const box=await page.locator('#chat-form').boundingBox();assert(box.y+box.height<=900,`room composer below viewport at ${width}`);
