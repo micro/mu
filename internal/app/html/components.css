@@ -232,7 +232,7 @@ a.caddr:hover{text-decoration:underline}
 
 /* internal/app/reading.go */
 
-.reading-row{padding:16px 0;border-bottom:1px solid var(--card-border)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
+.reading-row{padding:16px 0;border-bottom:1px solid var(--card-border)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:16px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:14px;color:var(--text-muted,#777)}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
 
 
 /* internal/api/tools_page.go */
