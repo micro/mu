@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	htmlpkg "html"
 	"net/http"
 	"net/url"
 	"strings"
@@ -342,37 +341,10 @@ func googleButtonHTML(text string) string {
 <div class="text-center text-muted text-sm m-0 mb-4">or</div>`
 }
 
-// googleSignIn is how sign-in with Google stands for this account: a sentence,
-// and the button when there is one to press.
-//
-// It used to be a card of its own headed "Google", sitting directly above a
-// second card headed "Connected accounts" that was also about Google and said
-// what access had been granted. Two cards, one noun, adjacent — so somebody
-// reading the one called Google reasonably expected the connections to be under
-// it. They are now: see renderGoogleCard, which this is a part of.
-func googleSignIn(acc *auth.Account) string {
-	if acc.EmailVerified && acc.Email != "" {
-		return `<p class="text-sm text-muted">You can sign in with Google using <strong>` +
-			htmlpkg.EscapeString(acc.Email) + `</strong>.</p>`
-	}
-	return `<p class="text-sm text-muted">Link Google so you can sign in with it next time. ` +
-		`This just sets your verified email — it doesn't change your username or password.</p>` +
-		`<a href="/oauth2/google/connect" class="oauth-btn inline">` + googleGlyph() +
-		` Connect Google</a>`
-}
-
 // loginPage renders the login template with the Google button above the form,
 // when Google sign-in is configured.
 func loginPage(redirectParam, errHTML string) string {
 	// A template slot, not a replace on the heading — see renderSignupTo.
 	return fmt.Sprintf(LoginTemplate, redirectParam,
 		googleButtonHTML("Continue with Google"), errHTML)
-}
-
-// renderGoogleCard contains only the optional sign-in connection.
-func renderGoogleCard(acc *auth.Account) string {
-	if !GoogleConfigured() || acc == nil {
-		return ""
-	}
-	return app.Section("Google sign-in", googleSignIn(acc))
 }

@@ -2,7 +2,6 @@ package account
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -318,107 +317,4 @@ func passkeyDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/account", http.StatusSeeOther)
-}
-
-// PasskeyListHTML returns HTML for listing passkeys on the account page
-func PasskeyListHTML(accountID string) string {
-	pks := auth.Passkeys(accountID)
-
-	var rows string
-	for _, pk := range pks {
-		created := pk.Created.Format("Jan 2, 2006")
-		lastUsed := "Never"
-		if !pk.LastUsed.IsZero() {
-			lastUsed = app.TimeAgo(pk.LastUsed)
-		}
-		// data-label on every cell, because under 640px .data-table.stacked
-		// turns the row into a card and the label is what says which date is
-		// which. Four columns of passkey do not fit across a phone, and a
-		// table that is width:100% squashes rather than scrolling.
-		rows += fmt.Sprintf(`<tr>
-<td data-label="Name">%s</td>
-<td data-label="Created">%s</td>
-<td data-label="Last used">%s</td>
-<td><form class="form-action" method="POST" action="/passkey/delete" onsubmit="return confirm('Remove this passkey?')"><input type="hidden" name="id" value="%s"><button type="submit" class="mini-btn danger">Remove</button></form></td>
-</tr>`, pk.Name, created, lastUsed, pk.ID)
-	}
-
-	if rows == "" {
-		rows = `<tr><td colspan="4" class="p-5 text-center text-secondary">No passkeys registered. Add one below.</td></tr>`
-	}
-
-	return fmt.Sprintf(`<div class="card">
-<h4>Passkeys</h4>
-<p>Sign in without a password using your device's biometrics or security key.</p>
-<table class="data-table stacked">
-<thead><tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr></thead>
-<tbody>%s</tbody>
-</table>
-<button onclick="registerPasskey()">Add a passkey</button>
-<script>
-async function registerPasskey() {
-  try {
-    const beginRes = await fetch('/passkey/register/begin', {method: 'POST'});
-    if (!beginRes.ok) { alert('Failed to start registration'); return; }
-    const options = await beginRes.json();
-
-    options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
-    options.publicKey.user.id = base64urlToBuffer(options.publicKey.user.id);
-    if (options.publicKey.excludeCredentials) {
-      options.publicKey.excludeCredentials = options.publicKey.excludeCredentials.map(c => ({
-        ...c, id: base64urlToBuffer(c.id)
-      }));
-    }
-
-    const credential = await navigator.credentials.create(options);
-
-    const attestation = {
-      id: credential.id,
-      rawId: bufferToBase64url(credential.rawId),
-      type: credential.type,
-      response: {
-        attestationObject: bufferToBase64url(credential.response.attestationObject),
-        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON)
-      }
-    };
-    if (credential.response.getTransports) {
-      attestation.response.transports = credential.response.getTransports();
-    }
-    if (credential.authenticatorAttachment) {
-      attestation.authenticatorAttachment = credential.authenticatorAttachment;
-    }
-
-    const finishRes = await fetch('/passkey/register/finish', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(attestation)
-    });
-    const result = await finishRes.json();
-    if (result.success) {
-      location.reload();
-    } else {
-      alert('Registration failed');
-    }
-  } catch (e) {
-    if (e.name !== 'NotAllowedError') alert('Error: ' + e.message);
-  }
-}
-
-function base64urlToBuffer(b64) {
-  const pad = b64.length %% 4;
-  if (pad) b64 += '='.repeat(4 - pad);
-  const str = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
-  const buf = new Uint8Array(str.length);
-  for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
-  return buf.buffer;
-}
-
-function bufferToBase64url(buf) {
-  const bytes = new Uint8Array(buf);
-  let str = '';
-  for (const b of bytes) str += String.fromCharCode(b);
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-</script>
-</div>`, rows)
 }

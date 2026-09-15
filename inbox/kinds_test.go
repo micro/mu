@@ -118,6 +118,7 @@ func TestAReplyIsAlwaysAMessage(t *testing.T) {
 
 	r := httptest.NewRequest(http.MethodGet,
 		"/inbox/new?kind=note&on="+url.QueryEscape(th.ID), nil)
+	r.Header.Set("Accept", "application/json")
 	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 	w := httptest.NewRecorder()
 	NewHandler(w, r)
@@ -126,7 +127,7 @@ func TestAReplyIsAlwaysAMessage(t *testing.T) {
 	if strings.Contains(body, "ib-new-kinds") {
 		t.Errorf("a reply offers the kind picker:\n%s", body)
 	}
-	if !strings.Contains(body, `name="kind" value="`+kindMessage+`"`) {
+	if !strings.Contains(body, `"kind":"`+kindMessage+`"`) {
 		t.Errorf("a reply with ?kind=note is not forced back to a message:\n%s", body)
 	}
 }

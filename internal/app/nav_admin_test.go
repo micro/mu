@@ -135,7 +135,7 @@ func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
 			"change your language")
 	}
 	// Anchor on authentication rather than a movable settings section.
-	if !strings.Contains(page, `auth.RequireSession(r)`) || !strings.Contains(page, `app.Respond(w, r,`) {
+	if !strings.Contains(page, `auth.RequireSession(r)`) || !strings.Contains(page, `web.Page(w, r,`) {
 		t.Error("the account handler no longer authenticates and renders a page")
 	}
 }

@@ -125,6 +125,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Build and verify embedded web client
+        run: |
+          npm ci --prefix web
+          npm run build --prefix web
+          git diff --exit-code -- web/dist
+          test -z "$(git ls-files --others --exclude-standard web/dist)"
       - name: Install browser test tools
         run: |
           npm install --prefix "$RUNNER_TEMP/mu-layout" playwright@1.62.1
@@ -134,7 +140,7 @@ jobs:
           export MU_PLAYWRIGHT_MODULE="$RUNNER_TEMP/mu-layout/node_modules/playwright"
           export MU_LAYOUT_BROWSER=$(node -e 'console.log(require(process.env.MU_PLAYWRIGHT_MODULE).chromium.executablePath())')
           export MU_LAYOUT_SHOTS="$RUNNER_TEMP/mu-layout-shots"
-          go test ./test -run '^TestPageCompositionInBrowser$' -count=1 -timeout=10m -v
+          go test ./test -run '^Test(PageComposition|ReactClient)InBrowser$' -count=1 -timeout=10m -v
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -63,6 +63,7 @@ func HandoffHandler(w http.ResponseWriter, r *http.Request) {
 			Answered(acc.ID, id, t.Answer, "", t.Results...)
 		}
 	}
+	RememberClientConversation(w, r, id)
 	app.RespondJSON(w, map[string]string{"id": id})
 }
 

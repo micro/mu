@@ -38,6 +38,8 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  for(const width of (process.env.MU_LAYOUT_WIDTHS||'320,390,768,1024,1440').split(',').map(Number))for(const collapsed of (width>900?[false,true]:[false])){
   await page.setViewportSize({width,height:900});
   for(const path of Object.keys(input.pages).filter(p=>!process.env.MU_LAYOUT_PATHS||process.env.MU_LAYOUT_PATHS.split(',').includes(p.split('?')[0]))){
+   // Migrated routes are exercised against real JSON handlers by TestReactClientInBrowser.
+   if(input.pages[path].includes('id="root"'))continue;
    console.log("Checking",path,width,collapsed);
    try {
    errors.length=0;

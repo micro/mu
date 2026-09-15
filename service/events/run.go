@@ -45,6 +45,13 @@ func requestWork(e *Event) {
 	if prompt == "" {
 		return
 	}
+	if e.Kind == "brief" {
+		if BriefWorldNews(e) {
+			prompt += "\nInclude a short world news section with current sources."
+		} else {
+			prompt += "\nKeep this brief personal: calendar, messages, tasks and local weather. Do not fetch or include world news, general headlines, social trends or market news."
+		}
+	}
 	// Whose instruction it is, checked because it is a real question and not
 	// because of money. It used to fall out of the credit check — an unknown
 	// account could not be charged, so it could not run — and that guard left

@@ -65,6 +65,7 @@ import (
 	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
+	webclient "mu/web"
 	"mu/work"
 )
 
@@ -591,6 +592,9 @@ func registerRoutes() {
 	http.HandleFunc("/invite", account.InviteHandler)
 	http.HandleFunc("/report", app.ReportHandler)
 	// What you are doing, set on your own profile. See internal/user/status.go.
+	http.HandleFunc("/client/assets/", webclient.Assets)
+	http.HandleFunc("/client/state", account.ClientStateHandler)
+	http.HandleFunc("/inbox/settings", inbox.SettingsHandler)
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/account/profile", account.Account)
 	http.HandleFunc("/account/billing", account.Account)

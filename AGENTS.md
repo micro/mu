@@ -529,8 +529,16 @@ embedded object needs a boundary. Share typography across landing, account and
 application shells. Do not add new page-specific styling or a second chat
 implementation during this migration.
 
-Use the shared components in `internal/app/form.go`, `internal/app/html/mu.css` and
-`internal/app/html/composition.css` (also loaded by the landing page).
+New browser work uses the React client in `web/`, shadcn/ui controls in
+`web/src/components/ui/`, the shared shell and one theme stylesheet. Run
+`npm ci && npm run build` in `web/` and commit the embedded `dist/` assets.
+Do not reintroduce Go-generated markup on a migrated route or load the legacy
+stylesheets into React. Keep private reads and writes authenticated and scope
+records by the session account; JSON view data must not serialize account
+credentials. Preserve service APIs, protocols and existing shared links.
+
+Standalone pages not yet migrated use the shared components in `internal/app/form.go`, `internal/app/html/mu.css` and
+`internal/app/html/composition.css`.
 Forms use `.form`, labelled fields use `app.Field` or `.field-label`, and related
 controls use `.form-group`. Use `.form-row` for related controls side by side
 (or `.form.form-inline` for a whole inline form); its fields wrap based on the
@@ -547,7 +555,7 @@ in their existing components. Check narrow mobile and desktop, with the sidebar
 open and closed, including revealed and collapsed controls when changing these
 shared rules.
 
-The root opens the shared saved-chat renderer, including guest-to-account continuity. The composer stays in a stable viewport position. Use mu.css for shared layout and visual types and composition.css for shared controls. Pages compose reusable cards, lists, tables, forms, messages, and status badges; do not create per-page stylesheets or route-based style registration. Specialized interactions such as maps and editors may own narrowly scoped component styles. Do not add layers of overrides to the old stylesheet to implement the core product.
+The root opens the React conversation, including guest-to-account continuity. The composer stays in a stable viewport position. Compose pages from shared cards, lists, tables, forms, messages and status badges. Specialized interactions such as maps and editors may own narrowly scoped component styles. Do not add layers of overrides to the old stylesheet to implement the core product.
 
 The base control kit is `internal/app/html/composition.css`; `mu.css` owns the
 page shell and content layouts. Keep control geometry in the kit, independent
