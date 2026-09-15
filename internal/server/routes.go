@@ -380,7 +380,7 @@ func registerRoutes() {
 
 	// Old shared entry URLs resolve to the conversation or optional Services feed.
 	http.HandleFunc("/home", conversationRedirect)
-	http.HandleFunc("/assistant", conversationRedirect)
+	http.HandleFunc("/assistant", home.Index)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.

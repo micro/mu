@@ -2550,9 +2550,17 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 
 	// JSON response
 	if app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]interface{}{
-			"feed": currentFeed,
-		})
+		type preview struct {
+			*Post
+			DisplayImage string `json:"display_image,omitempty"`
+		}
+		feed := make([]preview, 0, len(currentFeed))
+		for _, post := range currentFeed {
+			if post != nil {
+				feed = append(feed, preview{Post: post, DisplayImage: imageproxy.URL(post.Image)})
+			}
+		}
+		app.RespondJSON(w, map[string]interface{}{"feed": feed})
 		return
 	}
 

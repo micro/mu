@@ -1,16 +1,17 @@
+import { Launcher } from "../../home/client";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Layout, Status } from "./components/layout";
 import { json, type State } from "./lib/api";
 import "./index.css";
-import { Conversation } from "./components/conversation";
+import { Conversation } from "../../app/assistant";
 import { InboxPage } from "./components/inbox";
 import { InboxCompose } from "./components/inbox-compose";
 import { InboxSettings } from "./components/inbox-settings";
-import { AdminUsers } from "./components/admin-users";
+import { AdminUsers } from "../../app/admin/users";
 import { AccountPage } from "./components/account";
 import { AppsPage } from "../../app/apps";
-import { Admin } from "./components/admin";
+import { Admin } from "../../app/admin";
 import { AppEditor } from "../../app/apps/editor";
 import { Agents } from "./components/agents";
 import { Application } from "../../app";
@@ -26,7 +27,9 @@ function App() {
     [error, setError] = useState("");
   const path = location.pathname.replace(/\/$/, "") || "/",
     home =
-      path === "/" || (path.startsWith("/agent/") && path !== "/agent/new");
+      path === "/assistant" ||
+      path === "/" ||
+      (path.startsWith("/agent/") && path !== "/agent/new");
   const application = path.startsWith("/blog/post")
     ? { id: "blog", name: "Blog" }
     : path === "/social/thread"
@@ -35,15 +38,33 @@ function App() {
         ? { id: "files", name: "Files" }
         : path === "/work"
           ? { id: "tasks", name: "Work" }
-          : catalogue.find((a) => a.path === path);
+          : catalogue.find(
+              (a) =>
+                a.path === path &&
+                !["inbox", "work", "assistant"].includes(a.id),
+            );
   const publicPage = !!publicTitles[path];
+  const [legacyConversation] = useState(
+    () =>
+      path === "/" &&
+      (history.state?.microConversation?.scope ===
+        `${state?.account?.id || "guest"}:/` ||
+        ["session", "continue", "new", "item", "bookmark", "saved"].some(
+          (key) => new URLSearchParams(location.search).has(key),
+        ) ||
+        (sessionStorage.getItem("micro-guest-conversation") &&
+          sessionStorage.getItem("micro-guest-conversation") !== "[]")),
+  );
+  const launcher = path === "/" && !!state?.account && !legacyConversation;
   const title =
-    publicTitles[path] || application?.name ||
+    publicTitles[path] ||
+    (path === "/assistant" ? "Assistant" : undefined) ||
+    application?.name ||
     (path === "/agents" || path === "/agent/new"
       ? "Agents"
       : path === "/apps/new" || path.startsWith("/apps/")
         ? "Apps"
-        : (path.startsWith("/services") || path.startsWith("/service/"))
+        : path.startsWith("/services") || path.startsWith("/service/")
           ? "Services"
           : home
             ? "Home"
@@ -94,14 +115,19 @@ function App() {
       account={publicPage ? null : state.account}
       publicPage={publicPage}
       title={
-        state.conversation?.agent
+        !launcher && state.conversation?.agent
           ? state.conversation.agent_name || title
           : title
       }
-      conversation={home || (path === "/chat" && new URLSearchParams(location.search).has("id"))}
+      conversation={
+        (home && !launcher) ||
+        (path === "/chat" && new URLSearchParams(location.search).has("id"))
+      }
     >
       <>
-        {publicPage ? <PublicPage path={path} /> : path.startsWith("/admin") && path !== "/admin/users" ? (
+        {publicPage ? (
+          <PublicPage path={path} />
+        ) : path.startsWith("/admin") && path !== "/admin/users" ? (
           <Admin />
         ) : path === "/agents" || path === "/agent/new" ? (
           <Agents />
@@ -109,10 +135,8 @@ function App() {
           <AppEditor />
         ) : path === "/work" ? (
           <Workspace />
-        ) : application ? (
-          <Application name={application.id} />
-        ) : (path.startsWith("/services") || path.startsWith("/service/")) ? (
-          <Services />
+        ) : launcher ? (
+          <Launcher account={state.account!} />
         ) : home ? (
           <Conversation
             state={state}
@@ -120,6 +144,10 @@ function App() {
               setState((s) => ({ ...s, conversation }))
             }
           />
+        ) : application ? (
+          <Application name={application.id} />
+        ) : path.startsWith("/services") || path.startsWith("/service/") ? (
+          <Services />
         ) : path === "/inbox/settings" ? (
           <InboxSettings />
         ) : path === "/inbox/new" ? (

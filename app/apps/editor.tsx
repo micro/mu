@@ -1,3 +1,4 @@
+import { AppBuilder } from "./builder";
 import { useState } from "react";
 import {
   useData,
@@ -15,6 +16,22 @@ import {
 import { PageHeading } from "../../web/src/components/layout";
 export function AppEditor() {
   if (location.pathname.endsWith("/versions")) return <Versions />;
+  if (
+    location.pathname === "/apps/new" &&
+    !new URLSearchParams(location.search).has("manual")
+  )
+    return (
+      <>
+        <PageHeading title="Build an app" />
+        <AppBuilder />
+        <a
+          className="mt-6 inline-block text-sm underline underline-offset-4"
+          href="/apps/new?manual=1"
+        >
+          Start from your own HTML
+        </a>
+      </>
+    );
   return <AppEditorPage />;
 }
 function AppEditorPage() {
@@ -51,138 +68,127 @@ function Editor({ app, creating }: { app: any; creating: boolean }) {
     [error, setError] = useState("");
   return (
     <>
-      <form
-        className="space-y-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          setError("");
-          try {
-            const fields = Object.fromEntries(new FormData(e.currentTarget));
-            const saved = await json<any>(
-              creating ? "/apps/new" : "/apps/" + encodeURIComponent(app.slug),
-              {
-                method: creating ? "POST" : "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  ...fields,
-                  name,
-                  description,
-                  html,
-                  public: pub,
-                  price: Number(fields.price || 0),
-                }),
-              },
-            );
-            location.assign(
-              "/apps/" + encodeURIComponent(saved.slug || app.slug),
-            );
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <div className="flex flex-wrap gap-2">
-          <Button asChild>
-            <a href="/apps">Apps</a>
-          </Button>
-          <Button disabled={busy} type="submit">
-            {busy ? "Saving…" : creating ? "Create" : "Save"}
-          </Button>
-          {!creating && (
-            <Button asChild>
-              <a href={"/apps/" + encodeURIComponent(app.slug)}>Open</a>
-            </Button>
-          )}
-          {!creating && (
-            <Button asChild>
-              <a href={"/apps/" + encodeURIComponent(app.slug) + "/versions"}>
-                Versions
-              </a>
-            </Button>
-          )}
-        </div>
-        <label className="block space-y-2">
-          Name
-          <Input
-            required
-            name="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <label className="block space-y-2">
-          Description
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </label>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-2">
-            Tags
-            <Input name="tags" defaultValue={app.tags} />
-          </label>
-          <label className="block space-y-2">
-            Price in credits
-            <Input
-              name="price"
-              type="number"
-              min={0}
-              defaultValue={app.price || 0}
-            />
-          </label>
-        </div>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={pub}
-            onChange={(e) => setPublic(e.target.checked)}
-          />
-          Public
-        </label>
-        <label className="block space-y-2">
-          HTML
-          <Textarea
-            className="font-mono text-sm"
-            rows={24}
-            value={html}
-            onChange={(e) => setHTML(e.target.value)}
-          />
-        </label>
-        {error && <Status error>{error}</Status>}
-      </form>
       {!creating && (
-        <details className="mt-6">
-          <summary>Change with the agent</summary>
-          <div className="mt-4">
-            <Form
-              fields={[
-                {
-                  name: "instruction",
-                  label: "What should change?",
-                  type: "textarea",
-                  required: true,
-                },
-              ]}
-              label="Update"
-              submit={async (v) => {
-                const r = await json<any>(
-                  `/apps/${encodeURIComponent(app.slug)}/ai-edit`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(v),
-                  },
-                );
-                setHTML(r.html);
-              }}
-            />
-          </div>
-        </details>
+        <AppBuilder
+          app={app}
+          onSaved={(saved) => {
+            setHTML(saved.html || "");
+            setName(saved.name);
+            setDescription(saved.description || "");
+            setPublic(!!saved.public);
+          }}
+        />
       )}
+      <details open={creating || undefined} className="mt-6">
+        <summary className="cursor-pointer font-medium">
+          App settings and source
+        </summary>
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            setError("");
+            try {
+              const fields = Object.fromEntries(new FormData(e.currentTarget));
+              const saved = await json<any>(
+                creating
+                  ? "/apps/new"
+                  : "/apps/" + encodeURIComponent(app.slug),
+                {
+                  method: creating ? "POST" : "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    ...fields,
+                    name,
+                    description,
+                    html,
+                    public: pub,
+                    price: Number(fields.price || 0),
+                  }),
+                },
+              );
+              location.assign(
+                "/apps/" + encodeURIComponent(saved.slug || app.slug),
+              );
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <a href="/apps">Apps</a>
+            </Button>
+            <Button disabled={busy} type="submit">
+              {busy ? "Saving…" : creating ? "Create" : "Save"}
+            </Button>
+            {!creating && (
+              <Button asChild>
+                <a href={"/apps/" + encodeURIComponent(app.slug)}>Open</a>
+              </Button>
+            )}
+            {!creating && (
+              <Button asChild>
+                <a href={"/apps/" + encodeURIComponent(app.slug) + "/versions"}>
+                  Versions
+                </a>
+              </Button>
+            )}
+          </div>
+          <label className="block space-y-2">
+            Name
+            <Input
+              required
+              name="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+          <label className="block space-y-2">
+            Description
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-2">
+              Tags
+              <Input name="tags" defaultValue={app.tags} />
+            </label>
+            <label className="block space-y-2">
+              Price in credits
+              <Input
+                name="price"
+                type="number"
+                min={0}
+                defaultValue={app.price || 0}
+              />
+            </label>
+          </div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={pub}
+              onChange={(e) => setPublic(e.target.checked)}
+            />
+            Public
+          </label>
+          <label className="block space-y-2">
+            HTML
+            <Textarea
+              className="font-mono text-sm"
+              rows={24}
+              value={html}
+              onChange={(e) => setHTML(e.target.value)}
+            />
+          </label>
+          {error && <Status error>{error}</Status>}
+        </form>
+      </details>
     </>
   );
 }

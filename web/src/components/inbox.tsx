@@ -3,6 +3,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { DropdownMenu } from "radix-ui";
 import { Settings, Plus, MoreHorizontal } from "lucide-react";
+import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -192,7 +193,7 @@ export function InboxPage() {
         <>
           <nav className="mb-5 flex items-center justify-between gap-3" aria-label="Thread actions">
             <a className="text-sm underline underline-offset-4" href={listURL}>{requests ? "Message requests" : "Inbox"}</a>
-            <span className="min-w-0 flex-1 text-sm text-muted-foreground">{kindLabel(thread.kind)}</span>
+            <div className="min-w-0 flex-1"><Badge>{kindLabel(thread.kind)}</Badge></div>
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild><Button size="icon" variant="ghost" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenu.Trigger>
               <DropdownMenu.Portal><DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-44 rounded-lg border bg-background p-1 shadow-md">
@@ -387,9 +388,7 @@ export function InboxPage() {
                       {date(t.updated)}
                     </time>
                     <div className="col-span-2 flex min-w-0 items-baseline gap-2">
-                      <span className="w-16 shrink-0 text-sm capitalize text-muted-foreground">
-                        {kindLabel(t.kind)}
-                      </span>
+                      <Badge>{kindLabel(t.kind)}</Badge>
                       <span className="truncate">
                         {t.subject || "Untitled"}
                       </span>
@@ -425,5 +424,5 @@ function date(value: string) {
 }
 
 function kindLabel(kind: string) {
-  return ({mail:"Email",web:"Conversation with Micro",chat:"Chat",note:"Note",task:"Task",sms:"Text message",whatsapp:"WhatsApp"} as Record<string,string>)[kind] || kind;
+  return ({mail:"Mail",web:"Conversation with Micro",chat:"Chat",note:"Note",task:"Task",sms:"Text message",whatsapp:"WhatsApp"} as Record<string,string>)[kind] || kind;
 }

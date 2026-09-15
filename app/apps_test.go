@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,5 +27,29 @@ func TestBuiltInViewsDoNotReplaceServiceData(t *testing.T) {
 		if w.Body.String() != `{"ok":true}` {
 			t.Fatal("data or mutation intercepted")
 		}
+	}
+}
+
+func TestPublicCatalogueHidesAdmin(t *testing.T) {
+	w := httptest.NewRecorder()
+	CatalogueHandler(w, httptest.NewRequest("GET", "/client/apps", nil))
+	var entries []Entry
+	if err := json.Unmarshal(w.Body.Bytes(), &entries); err != nil {
+		t.Fatal(err)
+	}
+	apps := false
+	for _, e := range entries {
+		if e.ID == "admin" {
+			t.Fatal("public catalogue contains admin")
+		}
+		if e.ID == "apps" {
+			apps = true
+		}
+	}
+	if !apps {
+		t.Fatal("apps service has no app entry")
+	}
+	if w.Header().Get("Cache-Control") != "private, no-store" {
+		t.Fatal("role-dependent catalogue may be cached")
 	}
 }

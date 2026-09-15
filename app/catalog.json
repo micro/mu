@@ -1,9 +1,28 @@
 [
   {
+    "id": "admin",
+    "name": "Admin",
+    "path": "/admin",
+    "icon": "admin.svg",
+    "admin": true
+  },
+  {
+    "id": "apps",
+    "name": "Apps",
+    "path": "/apps",
+    "icon": "apps.svg"
+  },
+  {
     "id": "archive",
     "name": "Archive",
     "path": "/archive",
     "icon": "archive.svg"
+  },
+  {
+    "id": "assistant",
+    "name": "Assistant",
+    "path": "/assistant",
+    "icon": "chat.png"
   },
   {
     "id": "blog",
@@ -76,6 +95,12 @@
     "name": "Images",
     "path": "/images",
     "icon": "images.svg"
+  },
+  {
+    "id": "inbox",
+    "name": "Inbox",
+    "path": "/inbox",
+    "icon": "mail.png"
   },
   {
     "id": "mail",
@@ -202,5 +227,11 @@
     "name": "Search",
     "path": "/web",
     "icon": "search.svg"
+  },
+  {
+    "id": "work",
+    "name": "Work",
+    "path": "/work",
+    "icon": "apps.svg"
   }
 ]

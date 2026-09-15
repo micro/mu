@@ -104,6 +104,16 @@ func TestReactApplicationsInBrowser(t *testing.T) {
 	mux.HandleFunc("/admin", firstparty.Page(admin.Handler, "Admin"))
 	mux.HandleFunc("/admin/client", admin.ClientHandler)
 	mux.HandleFunc("/admin/config", firstparty.Page(admin.ConfigHandler, "Config"))
+	// Populated consumer views catch data-shape and layout regressions.
+	views := map[string]any{
+		"/markets": map[string]any{"data": []map[string]any{{"symbol": "BTC", "name": "Bitcoin", "price": 62000.25, "change_24h": 2.35, "chart": "https://example.com/chart"}}, "freshness": "Updated just now"},
+		"/news":    map[string]any{"feed": []map[string]any{{"id": "sample-news", "title": "A headline with enough detail to wrap cleanly on mobile", "description": "A short news summary.", "category": "Technology", "posted_at": "2026-09-15T10:00:00Z", "url": "https://example.com/story"}}},
+		"/video":   map[string]any{"channels": map[string]any{"Technology": map[string]any{"videos": []map[string]any{{"id": "sample-video", "title": "A useful video", "channel": "Sample channel", "published": "2026-09-15T10:00:00Z"}}}}},
+		"/blog":    []map[string]any{{"id": "sample-post", "title": "A useful post", "content": strings.Repeat("A short paragraph about a useful idea. ", 100), "author": "App Reader", "tags": "design,apps", "created_at": "2026-09-15T10:00:00Z"}},
+	}
+	for path, payload := range views {
+		mux.HandleFunc(path, firstparty.Page(func(w http.ResponseWriter, r *http.Request) { legacyapp.RespondJSON(w, payload) }, "App"))
+	}
 	mux.HandleFunc("/mu.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/javascript")
 		w.Write([]byte("// fixture"))

@@ -88,7 +88,7 @@ func PlatformOpts(a *micro.Agent) QueryOpts {
 	if a == nil {
 		return QueryOpts{}
 	}
-	return QueryOpts{System: a.SystemPrompt, Tools: a.Tools, Model: a.Model}
+	return QueryOpts{System: namedSystem(a.Name, a.SystemPrompt), Tools: a.Tools, Model: a.Model}
 }
 
 // platformName is a display name for a run record, so the runs page can say

@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-// Index keeps the conversation at the same address before and after sign-in.
+// Index serves Home and the Assistant app, preserving saved conversation links.
 func Index(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		app.MethodNotAllowed(w, r)
@@ -27,7 +27,11 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		state["account"] = map[string]any{"id": acc.ID, "name": acc.Name, "admin": acc.Admin}
 		state["conversation"] = conversation
 	}
-	if web.Page(w, r, "Home", state) {
+	title := "Home"
+	if r.URL.Path == "/assistant" {
+		title = "Assistant"
+	}
+	if web.Page(w, r, title, state) {
 		return
 	}
 	app.RespondJSON(w, state)

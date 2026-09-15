@@ -13,6 +13,9 @@
   --color-accent-foreground: #202124;
   --color-destructive: #b42318;
   --color-border: #e5e5e5;
+  --color-control: #eeeeef;
+  --color-control-hover: #dedee1;
+  --color-control-border: #9b9ba3;
   --color-input: #d4d4d4;
   --color-ring: #737373;
   --radius-sm: 0.375rem;
@@ -138,3 +141,5 @@
 }
 
 @source "../../work/client.tsx";
+
+@source "../../home/client.tsx";

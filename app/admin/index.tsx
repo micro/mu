@@ -1,3 +1,12 @@
+import {
+  Health,
+  Server,
+  Backups,
+  Logs,
+  Traffic,
+  Alerts,
+  Spam,
+} from "./operations";
 import { useState } from "react";
 import {
   useData,
@@ -12,8 +21,8 @@ import {
   Action,
   When,
   StateBadge,
-} from "../../../app/shared";
-import { PageHeading } from "./layout";
+} from "../shared";
+import { PageHeading } from "../../web/src/components/layout";
 const pages = [
   "alerts",
   "backup",
@@ -36,7 +45,7 @@ export function Admin() {
         ? json(
             name === "log"
               ? "/admin/client?page=log&" + location.search.slice(1)
-              : `/admin/client?page=${name}${social ? "&source=social" : ""}`,
+              : `/admin/client?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), page: name, ...(social ? { source: "social" } : {}) })}`,
           )
         : Promise.resolve(null),
     [name, social],
@@ -102,43 +111,6 @@ export function Admin() {
               />
               Include imported social content
             </label>
-          )}
-          {name === "spam" && (
-            <div className="mb-6 max-w-xl">
-              <Form
-                fields={[
-                  {
-                    name: "action",
-                    label: "Action",
-                    options: [
-                      "block_email",
-                      "block_ip",
-                      "unblock_email",
-                      "unblock_ip",
-                      "set_threshold",
-                      "add_tld",
-                      "remove_tld",
-                      "add_keyword",
-                      "remove_keyword",
-                      "add_allowed",
-                      "remove_allowed",
-                      "toggle",
-                      "toggle_reject",
-                      "toggle_autoblock",
-                    ],
-                  },
-                  { name: "value", label: "Value" },
-                ]}
-                submit={async (v) => {
-                  await mutate("/admin/spam", {
-                    ...v,
-                    email: v.value,
-                    ip: v.value,
-                  });
-                  await refresh();
-                }}
-              />
-            </div>
           )}
           {name === "moderate" ? (
             <Rows
@@ -229,7 +201,25 @@ export function Admin() {
             />
           ) : (
             <div className="mt-5">
-              <DataView data={data} />
+              {!data ? (
+                <Status>Loading…</Status>
+              ) : name === "status" ? (
+                <Health data={data} />
+              ) : name === "server" ? (
+                <Server data={data} />
+              ) : name === "backup" ? (
+                <Backups data={data} />
+              ) : name === "log" ? (
+                <Logs data={data} />
+              ) : name === "traffic" ? (
+                <Traffic data={data} />
+              ) : name === "alerts" ? (
+                <Alerts data={data} />
+              ) : name === "spam" ? (
+                <Spam data={data} refresh={refresh} />
+              ) : (
+                <Status error>This admin page is unavailable.</Status>
+              )}
             </div>
           )}
         </>
@@ -296,54 +286,5 @@ function Config({ groups }: { groups: any[] }) {
       ))}
       <Button disabled={busy}>Save</Button>
     </form>
-  );
-}
-function label(key: string) {
-  return key.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
-}
-function DataView({ data }: { data: any }) {
-  if (data === undefined) return <Status>Loading…</Status>;
-  if (data === null)
-    return <p className="text-muted-foreground">Nothing to show.</p>;
-  if (Array.isArray(data))
-    return data.length ? (
-      <div className="divide-y">
-        {data.map((d, i) => (
-          <div key={d.id || i} className="py-3">
-            <DataView data={d} />
-          </div>
-        ))}
-      </div>
-    ) : (
-      <p className="text-muted-foreground">None</p>
-    );
-  if (typeof data === "object")
-    return (
-      <dl className="space-y-3">
-        {Object.entries(data).map(([k, v]) => (
-          <div key={k} className="min-w-0">
-            <dt className="mb-1 text-sm font-medium capitalize">{label(k)}</dt>
-            <dd className="min-w-0 break-words">
-              {typeof v === "object" ? (
-                <details>
-                  <summary className="text-sm text-muted-foreground">
-                    View {label(k)}
-                  </summary>
-                  <div className="mt-3 border-l pl-4">
-                    <DataView data={v} />
-                  </div>
-                </details>
-              ) : (
-                <DataView data={v} />
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    );
-  if (typeof data === "boolean")
-    return <StateBadge value={data ? "yes" : "no"} />;
-  return (
-    <span className="whitespace-pre-wrap break-words">{String(data)}</span>
   );
 }

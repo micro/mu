@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -12,12 +16,33 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "react": ["./node_modules/@types/react"],
-      "react/*": ["./node_modules/@types/react/*"],
-      "react-markdown": ["./node_modules/react-markdown"],
-      "remark-gfm": ["./node_modules/remark-gfm"]
+      "@/*": [
+        "src/*"
+      ],
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react/*": [
+        "./node_modules/@types/react/*"
+      ],
+      "react-markdown": [
+        "./node_modules/react-markdown"
+      ],
+      "remark-gfm": [
+        "./node_modules/remark-gfm"
+      ],
+      "radix-ui": [
+        "./node_modules/radix-ui"
+      ],
+      "lucide-react": [
+        "./node_modules/lucide-react"
+      ]
     }
   },
-  "include": ["src", "../app", "../work/client.tsx"]
+  "include": [
+    "src",
+    "../app",
+    "../work/client.tsx",
+    "../home/client.tsx"
+  ]
 }

@@ -16,7 +16,10 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     const page = await context.newPage();
     page.setDefaultTimeout(12000);
     const errors = [];
-    page.on("pageerror", (e) => { errors.push(e.message); console.error("Browser error:", e.message); });
+    page.on("pageerror", (e) => {
+      errors.push(e.message);
+      console.error("Browser error:", e.message);
+    });
     const go = async (path) => {
       await page.goto(input.base + path);
       await page.waitForFunction(
@@ -34,6 +37,10 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
         "/tasks",
         "/services",
         "/work",
+        "/markets",
+        "/news",
+        "/video",
+        "/blog",
         "/services/docs",
         "/admin/config",
       ]) {
@@ -51,10 +58,14 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     await page.locator('h2 a[href="/service/docs"]').click();
     assert.equal(new URL(page.url()).pathname, "/service/docs");
     const listMethod = page.locator("section#docs_list");
-    await listMethod.getByText("API, SDK and MCP examples", { exact: true }).click();
+    await listMethod
+      .getByText("API, SDK and MCP examples", { exact: true })
+      .click();
     await listMethod.getByText("Connect to", { exact: false }).waitFor();
     await listMethod.getByText("Playground", { exact: true }).click();
-    const call = page.waitForResponse(r => r.url().endsWith("/services/call/docs/list"));
+    const call = page.waitForResponse((r) =>
+      r.url().endsWith("/services/call/docs/list"),
+    );
     await listMethod.getByRole("button", { name: "Run", exact: true }).click();
     assert.equal((await call).status(), 200, "service playground read failed");
     await go("/docs?new=1");
@@ -91,7 +102,9 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       .getByRole("textbox", { name: "Body", exact: true })
       .fill("Keep this edited note");
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await page.waitForURL(url => url.pathname === "/notes" && url.search === "");
+    await page.waitForURL(
+      (url) => url.pathname === "/notes" && url.search === "",
+    );
     await page.getByText("Keep this edited note", { exact: true }).waitFor();
     await go("/contacts");
     await page.getByRole("button", { name: "New", exact: true }).click();
@@ -119,14 +132,114 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       .last()
       .click();
     await page.locator("span").getByText("done", { exact: true }).waitFor();
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 840 });
+      for (const route of ["/markets", "/news", "/video", "/blog"]) {
+        await go(route);
+        await page.locator("main h1").waitFor();
+        if (route === "/markets")
+          await page
+            .getByRole("link", { name: "Chart", exact: true })
+            .waitFor();
+        if (route === "/blog")
+          assert(
+            (await page.locator("main").innerText()).length < 1500,
+            "blog lists whole posts instead of excerpts",
+          );
+        await page.screenshot({
+          path: `/tmp/mu-repair-${route.slice(1)}-${width}.png`,
+          fullPage: true,
+        });
+      }
+    }
+    await go("/");
+    await page
+      .getByRole("navigation", { name: "Apps", exact: true })
+      .getByRole("link", { name: "Assistant", exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByRole("textbox", { name: "Message Micro", exact: true })
+        .count(),
+      0,
+      "Home still shows a composer",
+    );
+    await page
+      .getByRole("searchbox", { name: "Find an app", exact: true })
+      .fill("Markets");
+    assert.equal(
+      await page
+        .getByRole("navigation", { name: "Apps", exact: true })
+        .getByRole("link")
+        .count(),
+      1,
+    );
     await go("/work");
-    await page.getByRole("heading", {name:"Work",exact:true}).waitFor();
-    await page.getByRole("link", {name:"New app",exact:true}).waitFor();
-    await page.getByRole("button", {name:"New task",exact:true}).click();
-    await page.getByRole("textbox", {name:"What needs doing?",exact:true}).fill("Workspace task");
-    await page.getByRole("button", {name:"Add",exact:true}).click();
-    await page.getByRole("link", {name:"Workspace task",exact:true}).waitFor();
-    assert.equal(await page.locator('nav[aria-label="Main"] a[href="/work"]').count(), 1);
+    await page.getByRole("heading", { name: "Work", exact: true }).waitFor();
+    await page
+      .getByRole("button", { name: "Build with Micro", exact: true })
+      .waitFor();
+    let generated = false,
+      edited = false;
+    const builtApp = {
+      slug: "test-builder",
+      name: "Habit tracker",
+      html: "<h1>Habit tracker</h1>",
+      public: false,
+    };
+    await page.route("**/apps/generate", async (route) => {
+      assert.equal(
+        new URLSearchParams(route.request().postData()).get("description"),
+        "Build a habit tracker",
+      );
+      generated = true;
+      await route.fulfill({ json: builtApp });
+    });
+    await page.route("**/apps/test-builder", (route) =>
+      route.fulfill({ contentType: "text/html", body: builtApp.html }),
+    );
+    await page.route("**/apps/test-builder/ai-edit", async (route) => {
+      assert.equal(
+        new URLSearchParams(route.request().postData()).get("instruction"),
+        "Add a weekly view",
+      );
+      edited = true;
+      await route.fulfill({ json: builtApp });
+    });
+    await page
+      .getByRole("textbox", { name: "What would you like to build?" })
+      .fill("Build a habit tracker");
+    await page
+      .getByRole("button", { name: "Build with Micro", exact: true })
+      .click();
+    await page
+      .frameLocator('iframe[title="Habit tracker preview"]')
+      .getByRole("heading", { name: "Habit tracker" })
+      .waitFor();
+    await page
+      .getByRole("textbox", { name: "What should Micro change?" })
+      .fill("Add a weekly view");
+    await page
+      .getByRole("button", { name: "Apply changes", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Apply changes", exact: true })
+      .waitFor();
+    assert(generated && edited, "builder did not generate and iterate");
+    await page.screenshot({ path: "/tmp/mu-repair-work.png", fullPage: true });
+    await page.getByRole("tab", { name: "Tasks", exact: true }).click();
+    await page.getByRole("button", { name: "New task", exact: true }).click();
+    await page
+      .getByRole("textbox", { name: "What needs doing?", exact: true })
+      .fill("Workspace task");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page
+      .getByRole("link", { name: "Workspace task", exact: true })
+      .waitFor();
+    assert.equal(
+      await page.locator('nav[aria-label="Main"] a[href="/work"]').count(),
+      1,
+    );
     await go("/files?new=1");
     await page
       .getByRole("textbox", { name: "Filename", exact: true })
@@ -257,14 +370,22 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       0,
     );
     await page.goto(input.base + "/chat");
-    await page.getByRole("heading", {name:"Chat", exact:true}).waitFor();
-    await page.waitForFunction(() => !Array.from(document.querySelectorAll('[role="status"]')).some(e => /Loading/.test(e.textContent)));
+    await page.getByRole("heading", { name: "Chat", exact: true }).waitFor();
+    await page.waitForFunction(
+      () =>
+        !Array.from(document.querySelectorAll('[role="status"]')).some((e) =>
+          /Loading/.test(e.textContent),
+        ),
+    );
     await page.goto(input.base + "/services/sdk");
-    await page.getByRole("heading", {name:"App SDK", exact:true}).waitFor();
+    await page.getByRole("heading", { name: "App SDK", exact: true }).waitFor();
     assert((await page.locator("main").innerText()).includes("mu.service"));
     await page.goto(input.base + "/agent/new");
-    await page.getByLabel("Instructions", {exact:true}).waitFor();
-    assert((await page.getByLabel("Instructions", {exact:true}).boundingBox()).width <= 768);
+    await page.getByLabel("Instructions", { exact: true }).waitFor();
+    assert(
+      (await page.getByLabel("Instructions", { exact: true }).boundingBox())
+        .width <= 768,
+    );
     // Replay and incoming WebSocket messages exercise scrolling without a model call.
     await context.addInitScript(() => {
       window.WebSocket = class {
@@ -272,8 +393,20 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
           window.testRoomSocket = this;
           setTimeout(() => {
             this.onopen?.();
-            for(let i=0;i<35;i++) this.onmessage?.({data:JSON.stringify({username:"reader",content:"Message " + i + "\nSecond line",timestamp:"2026-09-15T12:00:00Z"})});
-            this.onmessage?.({data:JSON.stringify({type:"user_list",users:["reader","reader"]})});
+            for (let i = 0; i < 35; i++)
+              this.onmessage?.({
+                data: JSON.stringify({
+                  username: "reader",
+                  content: "Message " + i + "\nSecond line",
+                  timestamp: "2026-09-15T12:00:00Z",
+                }),
+              });
+            this.onmessage?.({
+              data: JSON.stringify({
+                type: "user_list",
+                users: ["reader", "reader"],
+              }),
+            });
           }, 30);
         }
         close() {}
@@ -281,20 +414,46 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       };
     });
     await page.goto(input.base + "/chat?id=chat_test");
-    const log = page.getByRole("log", {name:"Chat messages"});
-    await page.getByText("Message 34", {exact:false}).waitFor();
-    assert(await log.evaluate(e => e.scrollHeight-e.scrollTop-e.clientHeight<80), "room did not open at recent messages");
-    await log.evaluate(e => {e.scrollTop=120;});
+    const log = page.getByRole("log", { name: "Chat messages" });
+    await page.getByText("Message 34", { exact: false }).waitFor();
+    assert(
+      await log.evaluate(
+        (e) => e.scrollHeight - e.scrollTop - e.clientHeight < 80,
+      ),
+      "room did not open at recent messages",
+    );
+    await log.evaluate((e) => {
+      e.scrollTop = 120;
+    });
     await page.waitForTimeout(50);
-    await page.evaluate(() => window.testRoomSocket.onmessage({data:JSON.stringify({username:"reader",content:"New arriving message",timestamp:"2026-09-15T12:01:00Z"})}));
-    assert(Math.abs(await log.evaluate(e => e.scrollTop)-120)<3, "new message moved a reader in history");
-    await page.getByLabel("Auto-scroll", {exact:true}).uncheck();
+    await page.evaluate(() =>
+      window.testRoomSocket.onmessage({
+        data: JSON.stringify({
+          username: "reader",
+          content: "New arriving message",
+          timestamp: "2026-09-15T12:01:00Z",
+        }),
+      }),
+    );
+    assert(
+      Math.abs((await log.evaluate((e) => e.scrollTop)) - 120) < 3,
+      "new message moved a reader in history",
+    );
+    await page.getByLabel("Auto-scroll", { exact: true }).uncheck();
     await page.reload();
-    await page.getByText("Message 34", {exact:false}).waitFor();
-    assert.equal(await page.getByLabel("Auto-scroll", {exact:true}).isChecked(), false);
-    assert(Math.abs(await log.evaluate(e => e.scrollTop)-120)<3, "room lost saved scroll position");
-    const prompt = await page.getByRole("textbox", {name:"Message",exact:true}).boundingBox();
-    assert(prompt.y+prompt.height <= 840, "room composer outside viewport");
+    await page.getByText("Message 34", { exact: false }).waitFor();
+    assert.equal(
+      await page.getByLabel("Auto-scroll", { exact: true }).isChecked(),
+      false,
+    );
+    assert(
+      Math.abs((await log.evaluate((e) => e.scrollTop)) - 120) < 3,
+      "room lost saved scroll position",
+    );
+    const prompt = await page
+      .getByRole("textbox", { name: "Message", exact: true })
+      .boundingBox();
+    assert(prompt.y + prompt.height <= 840, "room composer outside viewport");
     const anon = await browser.newContext({ javaScriptEnabled: false });
     const bare = await anon.newPage();
     await bare.goto(input.base);
@@ -305,18 +464,42 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     );
     for (const path of ["/about", "/privacy"]) {
       await bare.goto(input.base + path);
-      assert((await bare.locator("main").innerText()).length > 300, path + " missing static content");
-      await bare.getByRole("link", { name: "Micro", exact: true }).first().waitFor();
-      assert.equal(await bare.getByText("Loading…", {exact:true}).count(), 0);
+      assert(
+        (await bare.locator("main").innerText()).length > 300,
+        path + " missing static content",
+      );
+      await bare
+        .getByRole("link", { name: "Micro", exact: true })
+        .first()
+        .waitFor();
+      assert.equal(
+        await bare.getByText("Loading…", { exact: true }).count(),
+        0,
+      );
     }
     await anon.close();
-    await page.setViewportSize({width:390,height:840});
+    await page.setViewportSize({ width: 390, height: 840 });
     await page.waitForTimeout(100);
-    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "mobile room overflows");
-    const mobilePrompt = await page.getByRole("textbox", {name:"Message",exact:true}).boundingBox();
-    assert(mobilePrompt.y+mobilePrompt.height <= 840, "mobile room composer outside viewport");
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+      "mobile room overflows",
+    );
+    const mobilePrompt = await page
+      .getByRole("textbox", { name: "Message", exact: true })
+      .boundingBox();
+    assert(
+      mobilePrompt.y + mobilePrompt.height <= 840,
+      "mobile room composer outside viewport",
+    );
     assert.deepEqual(errors, []);
-    assert(await page.locator("main h1 img").evaluate(img => img.complete && img.naturalWidth > 0), "native app icon did not load");
+    assert(
+      await page
+        .locator("main h1 img")
+        .evaluate((img) => img.complete && img.naturalWidth > 0),
+      "native app icon did not load",
+    );
     await page.screenshot({
       path: "/tmp/mu-apps-verified.png",
       fullPage: true,

@@ -276,9 +276,9 @@ export function Link({ url, children }: { url?: string; children: ReactNode }) {
 export function StateBadge({ value }: { value: string }) {
   const c = /fail|error/.test(value)
     ? "bg-red-50 text-red-800"
-    : /block|pending|todo/.test(value)
+    : /block|pending|todo|warning/.test(value)
       ? "bg-amber-50 text-amber-900"
-      : /done|success|complete/.test(value)
+      : /done|success|complete|healthy|^ok$/.test(value)
         ? "bg-green-50 text-green-800"
         : "bg-blue-50 text-blue-800";
   return (

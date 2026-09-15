@@ -39,7 +39,7 @@ func (v *viewResponse) Write(p []byte) (int, error) {
 }
 func initialData(r *http.Request) map[string]any {
 	next, _ := r.Context().Value(dataHandlerKey{}).(http.Handler)
-	if next == nil || r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/agent/") && r.URL.Path != "/agent/new" {
+	if next == nil || r.URL.Path == "/assistant" || strings.HasPrefix(r.URL.Path, "/agent/") && r.URL.Path != "/agent/new" {
 		return nil
 	}
 	read := func(path, body string) any {
@@ -85,6 +85,13 @@ func initialData(r *http.Request) map[string]any {
 		data["ssh"] = read("/client/ssh", "")
 	}
 	switch {
+	case r.URL.Path == "/":
+		_, account := auth.TrySession(r)
+		if account == nil {
+			return nil
+		}
+		data["apps"] = read("/apps", "")
+		return data
 	case r.URL.Path == "/about" || r.URL.Path == "/privacy":
 		return nil
 	case r.URL.Path == "/agents" || r.URL.Path == "/agent/new":
@@ -100,7 +107,9 @@ func initialData(r *http.Request) map[string]any {
 		path = "/tasks"
 		data["apps"] = read("/apps", "")
 	case strings.HasPrefix(r.URL.Path, "/admin/") && r.URL.Path != "/admin/users":
-		path = "/admin/client?page=" + url.QueryEscape(strings.TrimPrefix(r.URL.Path, "/admin/"))
+		q := r.URL.Query()
+		q.Set("page", strings.TrimPrefix(r.URL.Path, "/admin/"))
+		path = "/admin/client?" + q.Encode()
 	case r.URL.Path == "/docs":
 		path = "/docs"
 		body = "action=search&q="

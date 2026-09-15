@@ -786,6 +786,8 @@ var chartLinks = map[string]string{
 
 // MarketData represents market data for display
 type MarketData struct {
+	Name      string  `json:"name,omitempty"`
+	Chart     string  `json:"chart,omitempty"`
 	Symbol    string  `json:"symbol"`
 	Price     float64 `json:"price"`
 	Change24h float64 `json:"change_24h"`
@@ -831,6 +833,8 @@ func handleJSON(w http.ResponseWriter, r *http.Request, category string) {
 			pd.Price = 0
 		}
 		data = append(data, MarketData{
+			Name:      stockNames[symbol],
+			Chart:     chartLinks[symbol],
 			Symbol:    symbol,
 			Price:     pd.Price,
 			Change24h: pd.Change24h,

@@ -717,7 +717,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	nopts.Context = req.Context
 	nopts.Extra = reading
 	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
-		nopts.System = ua.SystemPrompt
+		nopts.System = namedSystem(ua.Name, ua.SystemPrompt)
 		nopts.Tools = ua.Tools
 	}
 

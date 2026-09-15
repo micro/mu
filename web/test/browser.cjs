@@ -120,7 +120,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
         { name: "session", value: input.session, url: input.base },
       ]);
       for (const route of [
-        "/",
+        "/assistant",
         "/inbox",
         "/inbox?view=requests",
         "/inbox?view=history&page=2",
@@ -153,7 +153,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
             0,
             "bottom bar duplicates sidebar",
           );
-          if (route === "/") {
+          if (route === "/assistant") {
             await page
               .getByText("My saved question", { exact: true })
               .waitFor();
@@ -403,7 +403,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     );
     await checkWidth();
     await page.goto(input.base + "/inbox?id=" + input.thread);
-    await page.getByRole("button", {name:"More actions"}).click();
+    await page.getByRole("button", { name: "More actions" }).click();
     await page
       .getByRole("menuitem", { name: "Mark unread", exact: true })
       .click();
@@ -436,7 +436,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     // Model a standalone viewport: safe areas and an overlay keyboard which
     // resizes visualViewport without changing the layout viewport.
     await page.setViewportSize({ width: 390, height: 840 });
-    for (const route of ["/", "/inbox", "/account/profile", "/apps"]) {
+    for (const route of ["/assistant", "/inbox", "/account/profile", "/apps"]) {
       await page.goto(input.base + route);
       await page.locator(".app-shell").waitFor();
       await page.evaluate(() => {
@@ -447,43 +447,141 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
         shell.style.setProperty("--safe-right", "12px");
       });
       const header = await page.locator("header").boundingBox();
-      assert(header.y >= 44 && header.x >= 12, "page overlaps installed-app safe area: " + route);
+      assert(
+        header.y >= 44 && header.x >= 12,
+        "page overlaps installed-app safe area: " + route,
+      );
       await checkWidth();
-      if (route !== "/") continue;
-      const composer = page.getByRole("textbox", { name: "Message Micro" }).locator("..");
+      if (route !== "/assistant") continue;
+      const composer = page
+        .getByRole("textbox", { name: "Message Micro" })
+        .locator("..");
       await composer.waitFor();
-      for (const [height, offsetTop] of [[840, 0], [460, 0], [420, 40], [840, 0]]) {
-        await page.evaluate(({ height, offsetTop }) => {
-          Object.defineProperty(visualViewport, "height", { configurable: true, value: height });
-          Object.defineProperty(visualViewport, "offsetTop", { configurable: true, value: offsetTop });
-          visualViewport.dispatchEvent(new Event("resize"));
-          visualViewport.dispatchEvent(new Event("scroll"));
-        }, { height, offsetTop });
-        await page.waitForFunction(({ bottom }) => {
-          const form = document.querySelector('textarea[aria-label="Message Micro"]').form;
-          const rect = form.getBoundingClientRect();
-          return rect.bottom <= bottom - 34 && rect.bottom >= bottom - 70;
-        }, { bottom: height + offsetTop });
+      for (const [height, offsetTop] of [
+        [840, 0],
+        [460, 0],
+        [420, 40],
+        [840, 0],
+      ]) {
+        await page.evaluate(
+          ({ height, offsetTop }) => {
+            Object.defineProperty(visualViewport, "height", {
+              configurable: true,
+              value: height,
+            });
+            Object.defineProperty(visualViewport, "offsetTop", {
+              configurable: true,
+              value: offsetTop,
+            });
+            visualViewport.dispatchEvent(new Event("resize"));
+            visualViewport.dispatchEvent(new Event("scroll"));
+          },
+          { height, offsetTop },
+        );
+        await page.waitForFunction(
+          ({ bottom }) => {
+            const form = document.querySelector(
+              'textarea[aria-label="Message Micro"]',
+            ).form;
+            const rect = form.getBoundingClientRect();
+            return rect.bottom <= bottom - 34 && rect.bottom >= bottom - 70;
+          },
+          { bottom: height + offsetTop },
+        );
         const box = await composer.boundingBox();
         assert(box.y >= 100, "keyboard pushes composer over header");
       }
     }
-    for (const route of ["/about", "/privacy", "/contact", "/pricing", "/status"]) {
+    for (const route of [
+      "/about",
+      "/privacy",
+      "/contact",
+      "/pricing",
+      "/status",
+    ]) {
       await page.goto(input.base + route);
       await page.locator("main h1").waitFor();
-      await page.waitForFunction(() => !Array.from(document.querySelectorAll('[role="status"]')).some(e => /Loading/.test(e.textContent)));
+      await page.waitForFunction(
+        () =>
+          !Array.from(document.querySelectorAll('[role="status"]')).some((e) =>
+            /Loading/.test(e.textContent),
+          ),
+      );
       assert.equal(await page.locator("footer a").count(), 5);
       await checkWidth();
-      const api = await context.request.get(input.base + route, {headers: {Accept: "application/json"}});
-      if (!["/about", "/privacy"].includes(route)) assert(api.headers()["cache-control"].includes("no-store"));
+      const api = await context.request.get(input.base + route, {
+        headers: { Accept: "application/json" },
+      });
+      if (!["/about", "/privacy"].includes(route))
+        assert(api.headers()["cache-control"].includes("no-store"));
     }
+    // Paid pricing must render the actual JSON contract, not Go field names.
+    const paidPricing = {
+      payments: true,
+      topup: true,
+      question_cost: 2,
+      welcome: 100,
+      daily: 10,
+      prices: [
+        {
+          operation: "app_build",
+          description: "Build an app",
+          cost: 25,
+          unit: "credits",
+        },
+        {
+          operation: "news_search",
+          description: "Search news",
+          cost: 0,
+          unit: "credits",
+        },
+      ],
+      limits: [{ label: "Mail", limit: 50 }],
+    };
+    await page.route("**/pricing", async (route) => {
+      if (route.request().headers().accept?.includes("application/json"))
+        return route.fulfill({ json: paidPricing });
+      const response = await route.fetch();
+      const html = (await response.text()).replace(
+        /<script id="client-data" type="application\/json">[\s\S]*?<\/script>/,
+        '<script id="client-data" type="application/json">' +
+          JSON.stringify({ page: paidPricing }) +
+          "</script>",
+      );
+      await route.fulfill({ response, body: html });
+    });
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 840 });
+      await page.goto(input.base + "/pricing");
+      const row = page.getByRole("row").filter({ hasText: "Build an app" });
+      await row.waitFor();
+      assert.equal(await row.getByRole("cell").innerText(), "25");
+      assert.equal(
+        await page
+          .getByRole("row")
+          .filter({ hasText: "Search news" })
+          .getByRole("cell")
+          .innerText(),
+        "Free",
+      );
+      await checkWidth();
+    }
+    await page.unroute("**/pricing");
     // A JSON read of a page URL must not poison browser back navigation.
     await page.goto(input.base + "/inbox");
-    await page.evaluate(() => fetch('/inbox', {headers:{Accept:'application/json'}}).then(r => r.json()));
+    await page.evaluate(() =>
+      fetch("/inbox", { headers: { Accept: "application/json" } }).then((r) =>
+        r.json(),
+      ),
+    );
     await page.goto(input.base + "/account");
     await page.goBack();
-    await page.getByRole("heading", {name:"Inbox", exact:true}).waitFor();
-    assert.equal(await page.locator('script#client-data').count(), 1, "page data missing from HTML response");
+    await page.getByRole("heading", { name: "Inbox", exact: true }).waitFor();
+    assert.equal(
+      await page.locator("script#client-data").count(),
+      1,
+      "page data missing from HTML response",
+    );
     assert.equal(errors.length, 0, errors.join("\n"));
     assert.equal(failures.length, 0, failures.join("\n"));
   } finally {

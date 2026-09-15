@@ -1,3 +1,5 @@
+import { AppsPage } from "./apps";
+import { Admin } from "./admin";
 import catalogue from "./catalog.json";
 export { catalogue };
 import { Mail as App0 } from "./mail";
@@ -34,5 +36,45 @@ import { App as App30 } from "./text";
 import { App as App31 } from "./transit";
 import { App as App32 } from "./video";
 import { App as App33 } from "./weather";
-const applications = {"mail": App0,"sms": App1,"notify": App2,"users": App3,"chat": App4,"contacts": App5,"events": App6,"files": App7,"tasks": App8,"maps": App9,"images": App10,"web": App11,"archive": App12,"blog": App13,"bookmarks": App14,"browser": App15,"docs": App16,"flights": App17,"food": App18,"hazards": App19,"markets": App20,"news": App21,"notes": App22,"places": App23,"prayer": App24,"recall": App25,"routes": App26,"shell": App27,"social": App28,"stream": App29,"text": App30,"transit": App31,"video": App32,"weather": App33};
-export function Application({name}: {name:string}) { const Component = applications[name as keyof typeof applications]; return Component ? <Component /> : null; }
+const applications = {
+  apps: AppsPage,
+  admin: Admin,
+  mail: App0,
+  sms: App1,
+  notify: App2,
+  users: App3,
+  chat: App4,
+  contacts: App5,
+  events: App6,
+  files: App7,
+  tasks: App8,
+  maps: App9,
+  images: App10,
+  web: App11,
+  archive: App12,
+  blog: App13,
+  bookmarks: App14,
+  browser: App15,
+  docs: App16,
+  flights: App17,
+  food: App18,
+  hazards: App19,
+  markets: App20,
+  news: App21,
+  notes: App22,
+  places: App23,
+  prayer: App24,
+  recall: App25,
+  routes: App26,
+  shell: App27,
+  social: App28,
+  stream: App29,
+  text: App30,
+  transit: App31,
+  video: App32,
+  weather: App33,
+};
+export function Application({ name }: { name: string }) {
+  const Component = applications[name as keyof typeof applications];
+  return Component ? <Component /> : null;
+}

@@ -8,9 +8,9 @@ import {
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ArrowUp, Mic, LocateFixed, LoaderCircle } from "lucide-react";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { ResultView } from "./result";
+import { Button } from "../../web/src/components/ui/button";
+import { Textarea } from "../../web/src/components/ui/textarea";
+import { ResultView } from "../../web/src/components/result";
 import {
   csrf,
   guestKey,
@@ -20,7 +20,7 @@ import {
   stream,
   type Message,
   type State,
-} from "../lib/api";
+} from "../../web/src/lib/api";
 
 export function Conversation({
   state,
@@ -102,18 +102,32 @@ export function Conversation({
     pad.style.height =
       Math.max(0, box.clientHeight - (box.scrollHeight - top) - 16) + "px";
     anchor.current = Math.max(0, top - 16);
-    const key = "micro-conversation-scroll:" + selectionScope + ":" + id.current;
+    const key =
+      "micro-conversation-scroll:" + selectionScope + ":" + id.current;
     if (restoredScroll.current !== key) {
       restoredScroll.current = key;
       const saved = sessionStorage.getItem(key);
-      if (saved !== null) { follow.current = false; box.scrollTop = Number(saved); return; }
+      if (saved !== null) {
+        follow.current = false;
+        box.scrollTop = Number(saved);
+        return;
+      }
     }
     if (follow.current) box.scrollTo({ top: anchor.current });
   }, [messages, busy]);
   useEffect(() => {
-    const save = () => { if(transcript.current) sessionStorage.setItem("micro-conversation-scroll:" + selectionScope + ":" + id.current, String(transcript.current.scrollTop)); };
+    const save = () => {
+      if (transcript.current)
+        sessionStorage.setItem(
+          "micro-conversation-scroll:" + selectionScope + ":" + id.current,
+          String(transcript.current.scrollTop),
+        );
+    };
     window.addEventListener("pagehide", save);
-    return () => {save(); window.removeEventListener("pagehide", save);};
+    return () => {
+      save();
+      window.removeEventListener("pagehide", save);
+    };
   }, [selectionScope]);
   useEffect(() => {
     const el = input.current;
@@ -239,7 +253,8 @@ export function Conversation({
     setStatus("Working…");
     setDraft("");
     follow.current = true;
-    restoredScroll.current = "micro-conversation-scroll:" + selectionScope + ":" + id.current;
+    restoredScroll.current =
+      "micro-conversation-scroll:" + selectionScope + ":" + id.current;
     sessionStorage.removeItem(restoredScroll.current);
     setMessages((m) => [...m, { role: "person", text: prompt }]);
     controller.current = new AbortController();
@@ -397,8 +412,7 @@ export function Conversation({
           ref={transcript}
           onScroll={() => {
             const e = transcript.current;
-            follow.current =
-              !e || Math.abs(e.scrollTop - anchor.current) < 8;
+            follow.current = !e || Math.abs(e.scrollTop - anchor.current) < 8;
           }}
           className="relative min-h-0 min-w-0 flex-1 chat-transcript overflow-y-auto overscroll-contain py-6"
           role="log"
@@ -464,7 +478,7 @@ export function Conversation({
         >
           <Textarea
             ref={input}
-            aria-label="Message Micro"
+            aria-label={`Message ${agentName}`}
             placeholder="What do you need?"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -492,7 +506,7 @@ export function Conversation({
                   ? "Stop sharing approximate location"
                   : "Share approximate location"
               }
-              title="Share approximate location with Micro and its model"
+              title={`Share approximate location with ${agentName} and its model`}
               onClick={locate}
             >
               <LocateFixed />
