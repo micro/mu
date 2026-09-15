@@ -164,12 +164,9 @@ A separate host configured for x402 retains its existing service contract.
 ## Web
 
 - `/` - talk to Micro
-- `/` — talk to Micro, a personal AI agent. Conversations continue after sign-in.
-- `/services` — standalone utilities, with an optional feed.
-- `/inbox` — messages, updates and conversations.
-- `/work` — delegated goals, progress and outcomes.
-- `/agents` — your agents, and where you make a new one.
-- `/services` — `/news`, `/weather`, `/markets`, etc.
+- `/services` — standalone utilities
+- `/inbox` — messages, updates and threads 
+- `/agents` — where you make a new one
 
 ## Configuration
 
