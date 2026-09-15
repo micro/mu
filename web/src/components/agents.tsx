@@ -11,11 +11,11 @@ import {
   Action,
   Link,
   mutate,
-} from "../../../apps/shared";
+} from "../../../app/shared";
 import { PageHeading } from "./layout";
 export function Agents() {
   const { data, error, refresh } = useData<any>(() => json("/client/agents"));
-  const { data: services } = useData<any[]>(() => json("/client/services"));
+  const { data: services } = useData<any[]>(() => json("/client/services"), [], "services");
   const params = new URLSearchParams(location.search),
     editing = location.pathname === "/agent/new",
     id = params.get("id") || params.get("fork"),
@@ -23,7 +23,7 @@ export function Agents() {
   return (
     <>
       <PageHeading
-        title={editing ? "New agent" : "Agents"}
+        title={editing ? (params.has("id") ? "Edit agent" : "New agent") : "Agents"}
         actions={
           !editing ? (
             <Button asChild>
@@ -125,7 +125,7 @@ function AgentEditor({
     [busy, setBusy] = useState(false);
   return (
     <form
-      className="space-y-4"
+      className="max-w-3xl space-y-6"
       onSubmit={async (e) => {
         e.preventDefault();
         const values = new URLSearchParams(
@@ -148,8 +148,9 @@ function AgentEditor({
         }
       }}
     >
-      <label className="block space-y-2">
-        Name
+      <div className="grid gap-6 sm:grid-cols-2">
+      <label className="block min-w-0 space-y-2">
+        <span className="block text-sm font-medium">Name</span>
         <Input
           name="name"
           required
@@ -157,20 +158,24 @@ function AgentEditor({
         />
       </label>
       <label className="block space-y-2">
-        Description
+        <span className="block text-sm font-medium">Description</span>
         <Input name="description" defaultValue={agent?.description} />
       </label>
+      </div>
       <label className="block space-y-2">
-        Instructions
+        <span className="block text-sm font-medium">Instructions</span>
         <Textarea
           name="prompt"
           required
-          rows={12}
+          rows={8}
           defaultValue={agent?.prompt}
         />
       </label>
-      <label className="block space-y-2">
-        Model
+      <section className="space-y-5 border-t pt-5">
+      <h2 className="font-medium">Model and tools</h2>
+      <div className="grid gap-5 sm:grid-cols-2">
+      <label className="block min-w-0 space-y-2">
+        <span className="block text-sm font-medium">Model</span>
         <NativeSelect name="model" defaultValue={agent?.model || ""}>
           <option value="">Default</option>
           {models.map((m) => (
@@ -181,18 +186,20 @@ function AgentEditor({
         </NativeSelect>
       </label>
       <label className="block space-y-2">
-        Service access
+        <span className="block text-sm font-medium">Service access</span>
         <NativeSelect value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="all">All services</option>
           <option value="select">Select services</option>
         </NativeSelect>
       </label>
+      </div>
       {mode === "select" && (
-        <fieldset className="grid gap-3 sm:grid-cols-2">
+        <fieldset className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
           <legend className="mb-3 text-sm">Services this agent can use</legend>
           {services.map((s) => (
-            <label key={s.name} className="flex items-center gap-2">
+            <label key={s.name} className="flex min-w-0 items-start gap-3 text-sm">
               <input
+                className="mt-1 size-4 shrink-0"
                 type="checkbox"
                 name="tools"
                 value={s.name}
@@ -203,7 +210,8 @@ function AgentEditor({
           ))}
         </fieldset>
       )}
-      <div className="flex gap-2">
+      </section>
+      <div className="flex gap-2 border-t pt-5">
         <Button disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
         <Button asChild>
           <a href="/agents">Cancel</a>

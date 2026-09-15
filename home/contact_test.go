@@ -8,6 +8,7 @@ package home
 // I contact you" a question you have to already be a customer to ask.
 
 import (
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -19,8 +20,8 @@ import (
 // answers texts, an address that answers mail. Gating it is asking somebody to
 // sign up before they can find out what they would be signing up to.
 func TestTheCardIsReadableWithoutAnAccount(t *testing.T) {
-	body := contactBody(nil)
-	if !strings.Contains(body, ">Web<") {
+	body := contactJSON()
+	if !strings.Contains(body, `"Label":"Web"`) {
 		t.Error("the public card has no contact options")
 	}
 	// The route table has to agree. A public page listed as gated is a page
@@ -41,7 +42,7 @@ func TestTheCardIsReadableWithoutAnAccount(t *testing.T) {
 // that you write to this thing the way you write to a person — finished in a
 // shell snippet. See client.Personal.
 func TestTheContactCardIsNotADeveloperPage(t *testing.T) {
-	body := contactBody(nil)
+	body := contactJSON()
 	for _, dev := range []string{"mu ask", "curl", "Bearer", "MU_TOKEN"} {
 		if strings.Contains(body, dev) {
 			t.Errorf("the contact card carries %q, which is /api's answer to a "+
@@ -50,7 +51,15 @@ func TestTheContactCardIsNotADeveloperPage(t *testing.T) {
 	}
 	// And it still lists the ways a person does reach it. Web is the one client
 	// that is always there.
-	if !strings.Contains(body, ">Web<") {
+	if !strings.Contains(body, `"Label":"Web"`) {
 		t.Error("the card lists no way in at all")
 	}
+}
+
+func contactJSON() string {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/contact", nil)
+	r.Header.Set("Accept", "application/json")
+	ContactHandler(w, r)
+	return w.Body.String()
 }

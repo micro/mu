@@ -355,6 +355,12 @@ func RequestInvite(w http.ResponseWriter, r *http.Request) {
 
 // Login handler
 func Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		if _, acc := auth.TrySession(r); acc != nil {
+			http.Redirect(w, r, safeRedirect(r), http.StatusSeeOther)
+			return
+		}
+	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	renderLogin := func(to, msg string) string { return accountFormValues(loginPage(to, msg), r) }
 	if r.Method == "GET" {
@@ -964,6 +970,9 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 
 // Preserve non-secret form fields on errors and the destination between auth pages.
 func accountFormValues(page string, r *http.Request) string {
+	if token := auth.CSRFToken(r); token != "" {
+		page = strings.ReplaceAll(page, "</form>", `<input type="hidden" name="_csrf" value="`+htmlpkg.EscapeString(token)+`"></form>`)
+	}
 	if r.Method == "POST" {
 		for _, name := range []string{"id"} {
 			marker := `id="` + name + `" name="` + name + `"`

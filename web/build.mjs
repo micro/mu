@@ -19,4 +19,7 @@ await writeFile(
     '<div id="root"><!--landing-->' + render() + "<!--/landing--></div>",
   ),
 );
+for (const page of ["about", "privacy"]) {
+  await writeFile(`dist/${page}.html`, html.replace('<div id="root"></div>', `<div id="root">${render("/" + page)}</div>`));
+}
 await rm(".prerender", { recursive: true, force: true });

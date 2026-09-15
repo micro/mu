@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Field } from "./ui/field";
 import { Switch } from "./ui/switch";
 import { PageHeading, Section, Status } from "./layout";
-import { json, mutate } from "../lib/api";
+import { initialData, json, mutate } from "../lib/api";
 import { passkey } from "../lib/passkey";
 type Account = {
   id: string;
@@ -37,7 +37,7 @@ type Account = {
   }[];
 };
 export function AccountPage() {
-  const [account, setAccount] = useState<Account>(),
+  const [account, setAccount] = useState<Account | undefined>(() => initialData<Account>()),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false);
@@ -103,8 +103,8 @@ export function AccountPage() {
         run(() =>
           mutate("/account/place", {
             place: account?.place || "",
-            lat: (Math.round(p.coords.latitude * 100) / 100).toString(),
-            lon: (Math.round(p.coords.longitude * 100) / 100).toString(),
+            lat: (Math.round(p.coords.latitude * 200) / 200).toString(),
+            lon: (Math.round(p.coords.longitude * 200) / 200).toString(),
             zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           }),
         ),
@@ -112,7 +112,7 @@ export function AccountPage() {
         setBusy(false);
         setError("Location unavailable. You can enter your city instead.");
       },
-      { timeout: 10000 },
+      { timeout: 15000, maximumAge: 30000, enableHighAccuracy: true },
     );
   }
   const links = (items: [string, string][]) => (
@@ -229,7 +229,7 @@ export function AccountPage() {
               <Section title="Location">
                 <p className="text-sm text-muted-foreground">
                   Used for local weather, nearby places and scheduled briefs.
-                  Coordinates are rounded to about a kilometre.
+                  Coordinates are rounded to a grid of roughly 500 metres.
                 </p>
                 {form(
                   <>
@@ -284,13 +284,13 @@ export function AccountPage() {
             </>
           ) : (
             <>
-              <Section title="Account">
+              <section className="space-y-4 pb-5">
                 <p>@{account.id}</p>
                 {links([
                   ["/account/profile", "Profile"],
                   ["/account/billing", "Billing"],
                 ])}
-              </Section>
+              </section>
               <Section title="Email">
                 <p className="break-words">
                   {account.email || "No email address linked"}

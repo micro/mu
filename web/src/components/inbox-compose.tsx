@@ -4,14 +4,14 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import { PageHeading, Status } from "./layout";
-import { json, mutate } from "../lib/api";
+import { initialData, json, mutate } from "../lib/api";
 export function InboxCompose() {
   const [values, setValues] = useState<{
       to: string;
       subject: string;
       body: string;
       on: string;
-    }>(),
+    } | undefined>(() => initialData()),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   useEffect(() => {

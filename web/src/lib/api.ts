@@ -36,6 +36,7 @@ export function csrf() {
 export async function json<T>(url: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(url, {
     ...init,
+    cache: "no-store",
     headers: {
       Accept: "application/json",
       "X-CSRF-Token": csrf(),
@@ -166,4 +167,10 @@ export async function mutate(url: string, values: Record<string, string>) {
   if (redirect.pathname === "/login")
     throw Error("Your session expired. Please log in again.");
   return res;
+}
+
+// Data prepared by the owning Go handler for this document only.
+export function initialData<T>(key = "page"): T | undefined {
+  if (typeof document === "undefined") return undefined;
+  try { return JSON.parse(document.getElementById("client-data")?.textContent || "{}")[key]; } catch { return undefined; }
 }

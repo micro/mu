@@ -348,7 +348,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
                 .getByRole("navigation", { name: "Main", exact: true })
                 .getByRole("link")
                 .count(),
-              4,
+              5,
             );
             await page.keyboard.press("Escape");
             assert.equal(await page.getByRole("dialog").count(), 0);
@@ -403,8 +403,9 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     );
     await checkWidth();
     await page.goto(input.base + "/inbox?id=" + input.thread);
+    await page.getByRole("button", {name:"More actions"}).click();
     await page
-      .getByRole("button", { name: "Mark unread", exact: true })
+      .getByRole("menuitem", { name: "Mark unread", exact: true })
       .click();
     await page.waitForURL(input.base + "/inbox");
     const list = await context.request.get(input.base + "/inbox", {
@@ -467,6 +468,22 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
         assert(box.y >= 100, "keyboard pushes composer over header");
       }
     }
+    for (const route of ["/about", "/privacy", "/contact", "/pricing", "/status"]) {
+      await page.goto(input.base + route);
+      await page.locator("main h1").waitFor();
+      await page.waitForFunction(() => !Array.from(document.querySelectorAll('[role="status"]')).some(e => /Loading/.test(e.textContent)));
+      assert.equal(await page.locator("footer a").count(), 5);
+      await checkWidth();
+      const api = await context.request.get(input.base + route, {headers: {Accept: "application/json"}});
+      if (!["/about", "/privacy"].includes(route)) assert(api.headers()["cache-control"].includes("no-store"));
+    }
+    // A JSON read of a page URL must not poison browser back navigation.
+    await page.goto(input.base + "/inbox");
+    await page.evaluate(() => fetch('/inbox', {headers:{Accept:'application/json'}}).then(r => r.json()));
+    await page.goto(input.base + "/account");
+    await page.goBack();
+    await page.getByRole("heading", {name:"Inbox", exact:true}).waitFor();
+    assert.equal(await page.locator('script#client-data').count(), 1, "page data missing from HTML response");
     assert.equal(errors.length, 0, errors.join("\n"));
     assert.equal(failures.length, 0, failures.join("\n"));
   } finally {

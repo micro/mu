@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { PageHeading, Pager, Status } from "./layout";
-import { json, mutate } from "../lib/api";
+import { initialData, json, mutate } from "../lib/api";
 type User = {
   id: string;
   name: string;
@@ -20,7 +20,7 @@ type User = {
 };
 type Users = { items: User[]; page: number; total: number; page_size: number };
 export function AdminUsers() {
-  const [data, setData] = useState<Users>(),
+  const [data, setData] = useState<Users | undefined>(() => initialData<Users>()),
     [tab, setTab] = useState(
       new URLSearchParams(location.search).get("tab") || "all",
     ),

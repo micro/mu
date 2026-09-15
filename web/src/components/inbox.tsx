@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Settings, Plus } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
+import { Settings, Plus, MoreHorizontal } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -9,7 +10,7 @@ import { Label } from "./ui/label";
 import { PageHeading, Pager, Status } from "./layout";
 import { Email } from "./email";
 import { ResultView } from "./result";
-import { json, mutate, type Result } from "../lib/api";
+import { initialData, json, mutate, type Result } from "../lib/api";
 type Row = {
   id: string;
   sender: string;
@@ -46,7 +47,7 @@ type Data = {
   open: string;
 };
 export function InboxPage() {
-  const [data, setData] = useState<Data>(),
+  const [data, setData] = useState<Data | undefined>(() => initialData<Data>()),
     [error, setError] = useState(""),
     [page, setPage] = useState(
       Number(new URLSearchParams(location.search).get("page")) || 1,
@@ -166,7 +167,7 @@ export function InboxPage() {
     <div className="mx-auto max-w-4xl">
       <PageHeading
         title={thread?.subject || (requests ? "Message requests" : "Inbox")}
-        actions={
+        actions={!thread &&
           <>
             <Button asChild variant="outline">
               <a href="/inbox/settings">
@@ -189,54 +190,17 @@ export function InboxPage() {
       {!data && !error && <Status>Loading inbox…</Status>}
       {thread ? (
         <>
-          <nav className="mb-5 flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline">
-              <a href={listURL}>{requests ? "Message requests" : "Inbox"}</a>
-            </Button>
-            {[data.previous, data.next].map(
-              (to, i) =>
-                to && (
-                  <Button key={i} asChild variant="ghost">
-                    <a
-                      href={
-                        base + "?" + new URLSearchParams({ id: to, ...view })
-                      }
-                    >
-                      {i ? "Next" : "Previous"}
-                    </a>
-                  </Button>
-                ),
-            )}
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                act(base, {
-                  action: "handled",
-                  id: thread.id,
-                  reviewed: thread.updated,
-                })
-              }
-            >
-              Done
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => act("/inbox/unread", { id: thread.id })}
-            >
-              Mark unread
-            </Button>
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() => {
-                if (confirm("Delete this conversation?"))
-                  act("/inbox/delete", { id: thread.id });
-              }}
-            >
-              Delete
-            </Button>
+          <nav className="mb-5 flex items-center justify-between gap-3" aria-label="Thread actions">
+            <a className="text-sm underline underline-offset-4" href={listURL}>{requests ? "Message requests" : "Inbox"}</a>
+            <span className="min-w-0 flex-1 text-sm text-muted-foreground">{kindLabel(thread.kind)}</span>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild><Button size="icon" variant="ghost" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenu.Trigger>
+              <DropdownMenu.Portal><DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-44 rounded-lg border bg-background p-1 shadow-md">
+                {[data.previous, data.next].map((to, i) => to && <DropdownMenu.Item key={i} asChild className="block rounded px-3 py-2 text-sm outline-none focus:bg-accent"><a href={base + "?" + new URLSearchParams({id:to,...view})}>{i ? "Next" : "Previous"}</a></DropdownMenu.Item>)}
+                <DropdownMenu.Item disabled={busy} className="cursor-pointer rounded px-3 py-2 text-sm outline-none focus:bg-accent" onSelect={() => act("/inbox/unread", {id:thread.id})}>Mark unread</DropdownMenu.Item>
+                <DropdownMenu.Item disabled={busy} className="cursor-pointer rounded px-3 py-2 text-sm outline-none focus:bg-accent" onSelect={() => {if(confirm("Delete this conversation?")) act("/inbox/delete", {id:thread.id});}}>Delete</DropdownMenu.Item>
+              </DropdownMenu.Content></DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </nav>
           {thread.held && (
             <section
@@ -256,11 +220,7 @@ export function InboxPage() {
                 Earlier messages
               </Button>
             )}
-            {data.open && (
-              <Button variant="outline" asChild>
-                <a href={data.open}>Open</a>
-              </Button>
-            )}
+
           </div>
           <div className="divide-y">
             {data.messages?.map((m) => (
@@ -290,7 +250,11 @@ export function InboxPage() {
               </article>
             ))}
           </div>
-          {!thread.held && data.reply_to && (
+          {!thread.held && <div className="mt-5 flex flex-wrap gap-2" aria-label="Respond to thread">
+            {data.open ? <Button asChild><a href={data.open}>Open chat</a></Button> : data.reply_to && !reply ? <Button onClick={() => setReply(true)}>Reply</Button> : null}
+            <Button disabled={busy} onClick={() => act(base,{action:"handled",id:thread.id,reviewed:thread.updated})}>Done</Button>
+          </div>}
+          {!thread.held && data.reply_to && !data.open && (
             <div className="mt-4">
               {reply ? (
                 <form
@@ -329,11 +293,12 @@ export function InboxPage() {
                   </div>
                 </form>
               ) : (
-                <Button onClick={() => setReply(true)}>Reply</Button>
+                null
               )}
             </div>
           )}
           {!thread.held && (
+            <details className="mt-5 border-t pt-4"><summary className="cursor-pointer text-sm">Ask Micro about this</summary>
             <form
               className="mt-6 space-y-2 border-t pt-5"
               onSubmit={(e) => {
@@ -352,7 +317,7 @@ export function InboxPage() {
                 />
                 <Button disabled={busy}>Ask</Button>
               </div>
-            </form>
+            </form></details>
           )}
         </>
       ) : (
@@ -423,7 +388,7 @@ export function InboxPage() {
                     </time>
                     <div className="col-span-2 flex min-w-0 items-baseline gap-2">
                       <span className="w-16 shrink-0 text-sm capitalize text-muted-foreground">
-                        {t.kind}
+                        {kindLabel(t.kind)}
                       </span>
                       <span className="truncate">
                         {t.subject || "Untitled"}
@@ -457,4 +422,8 @@ export function InboxPage() {
 function date(value: string) {
   const d = new Date(value);
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function kindLabel(kind: string) {
+  return ({mail:"Email",web:"Conversation with Micro",chat:"Chat",note:"Note",task:"Task",sms:"Text message",whatsapp:"WhatsApp"} as Record<string,string>)[kind] || kind;
 }

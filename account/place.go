@@ -19,12 +19,8 @@ package account
 //
 // # Precision
 //
-// Rounded to two decimal places, always, on the way in. That is about a
-// kilometre. A forecast, a prayer time, a train and what is nearby are all the
-// same at that resolution, and it is not somebody's address — which matters
-// because this is stored on a server, read by a model, and can end up quoted in
-// an answer. There is no case here that wants more precision and several that
-// are harmed by it.
+// Rounded to a 0.005-degree grid (roughly 500 metres), including direct API input.
+// Device uncertainty may be greater than the rounding distance.
 
 import (
 	"fmt"
@@ -58,8 +54,8 @@ func SetPlace(accountID, place string, lat, lon float64, zone string) error {
 		if lat < -90 || lat > 90 || lon < -180 || lon > 180 {
 			return fmt.Errorf("that is not a point on the earth")
 		}
-		acc.Lat = math.Round(lat*100) / 100
-		acc.Lon = math.Round(lon*100) / 100
+		acc.Lat = math.Round(lat*200) / 200
+		acc.Lon = math.Round(lon*200) / 200
 	}
 	return auth.UpdateAccount(acc)
 }
@@ -124,7 +120,7 @@ func PlaceLine(accountID string) string {
 		parts = append(parts, acc.Place)
 	}
 	if acc.Lat != 0 || acc.Lon != 0 {
-		parts = append(parts, fmt.Sprintf("%.2f,%.2f", acc.Lat, acc.Lon))
+		parts = append(parts, fmt.Sprintf("%.3f,%.3f", acc.Lat, acc.Lon))
 	}
 	if len(parts) == 0 {
 		return ""

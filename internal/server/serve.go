@@ -35,6 +35,7 @@ import (
 	"mu/service/chat"
 	"mu/service/mail"
 	"mu/service/wallet"
+	"mu/web"
 )
 
 // serve builds the handler and runs the server until interrupted.
@@ -58,7 +59,7 @@ func serve(addr string) {
 
 			setSecurityHeaders(w)
 			if !browserWriteAllowed(r) {
-				http.Error(w, "Cross-origin account action refused", http.StatusForbidden)
+				app.Error(w, r, http.StatusForbidden, "This form could not be verified. Reopen the page and try again.")
 				return
 			}
 			if !scopedRequestAllowed(r) {
@@ -107,7 +108,7 @@ func serve(addr string) {
 			// Fast path for static assets - skip all middleware
 			for _, ext := range staticPaths {
 				if strings.HasSuffix(r.URL.Path, ext) {
-					http.DefaultServeMux.ServeHTTP(w, r)
+					web.WithData(http.DefaultServeMux).ServeHTTP(w, r)
 					return
 				}
 			}
@@ -438,7 +439,7 @@ func serve(addr string) {
 				}
 			}
 
-			http.DefaultServeMux.ServeHTTP(w, r)
+			web.WithData(http.DefaultServeMux).ServeHTTP(w, r)
 		}),
 	}
 

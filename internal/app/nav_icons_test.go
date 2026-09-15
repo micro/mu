@@ -73,12 +73,12 @@ func TestEveryAccountMenuEntryHasAnIcon(t *testing.T) {
 	}
 }
 
-func TestPrimaryNavigationHasFourDestinations(t *testing.T) {
+func TestPrimaryNavigationIncludesBuildWorkspace(t *testing.T) {
 	for _, nav := range []string{navMain(&auth.Account{ID: "someone"})} {
-		if strings.Count(nav, "<a ") != 4 {
-			t.Fatalf("expected four primary destinations: %s", nav)
+		if strings.Count(nav, "<a ") != 5 {
+			t.Fatalf("expected five primary destinations: %s", nav)
 		}
-		for _, path := range []string{"/", "/inbox", "/agents", "/services"} {
+		for _, path := range []string{"/", "/inbox", "/work", "/agents", "/services"} {
 			if !strings.Contains(nav, `href="`+path+`"`) {
 				t.Errorf("missing destination %s", path)
 			}

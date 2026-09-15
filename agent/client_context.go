@@ -31,7 +31,10 @@ func (c ClientContext) facts(now time.Time) string {
 		return result
 	}
 	// Round even if a third-party client sends greater precision.
-	lat, lon := math.Round(l.Latitude*100)/100, math.Round(l.Longitude*100)/100
-	accuracy := math.Max(l.Accuracy, 1600)
-	return result + fmt.Sprintf("Recent approximate device location, shared for this request: latitude %.2f, longitude %.2f; uncertainty at least %.0f metres; captured %s. Prefer an explicit place in the user's question; otherwise use this for here/near me/current location. Saved profile location is only a fallback. Do not infer a street address or exact venue, or save this position as memory/profile data.\n", lat, lon, accuracy, l.CapturedAt.UTC().Format(time.RFC3339))
+	lat, lon := math.Round(l.Latitude*200)/200, math.Round(l.Longitude*200)/200
+	accuracy := math.Max(l.Accuracy, 500)
+	if lat != l.Latitude || lon != l.Longitude {
+		accuracy = math.Max(500, l.Accuracy+400)
+	}
+	return result + fmt.Sprintf("Recent approximate device location, shared for this request: latitude %.3f, longitude %.3f; uncertainty at least %.0f metres; captured %s. Prefer an explicit place in the user's question; otherwise use this for here/near me/current location. Saved profile location is only a fallback. Do not infer a street address or exact venue, or save this position as memory/profile data.\n", lat, lon, accuracy, l.CapturedAt.UTC().Format(time.RFC3339))
 }

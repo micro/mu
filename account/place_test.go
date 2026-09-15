@@ -22,7 +22,7 @@ func located(t *testing.T, id string) {
 
 // Coordinates are rounded on the way in, always.
 //
-// About a kilometre, which is the same forecast, the same prayer time, the same
+// Roughly 500 metres, which is the same forecast, the same prayer time, the same
 // trains and the same cafes — and is not somebody's address. This is stored on
 // a server and read by a model that may quote it back, so the rounding is a
 // property of the store rather than of whoever remembered to round before
@@ -38,7 +38,7 @@ func TestAPlaceIsNotAnAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if acc.Lat != 51.51 || acc.Lon != -0.13 {
+	if acc.Lat != 51.505 || acc.Lon != -0.13 {
 		t.Errorf("stored %v,%v — six decimal places is a doorway, not a city",
 			acc.Lat, acc.Lon)
 	}

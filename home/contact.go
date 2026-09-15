@@ -30,13 +30,13 @@ package home
 // handlers, and a client is a way to reach one. This page renders it.
 
 import (
-	"html"
+	"encoding/json"
+	"mu/web"
 	"net/http"
 	"strings"
 
 	"mu/agent"
 	"mu/client"
-	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/service/sms"
 )
@@ -53,11 +53,12 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 	if _, a := auth.TrySession(r); a != nil {
 		acc = a
 	}
-	app.RespondPublic(w, r, app.Response{
-		Title:       "Contact",
-		Description: "Every way to reach this Micro — the web, a text, WhatsApp, mail, or a program.",
-		HTML:        contactBody(acc),
-	})
+	if web.Page(w, r, "Contact") {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "private, no-store")
+	json.NewEncoder(w).Encode(map[string]any{"channels": client.Personal(), "savable": client.Savable(), "verify_number": acc != nil && !numberVerified(acc.ID)})
 }
 
 // VCardHandler serves /contact.vcf — the agent as an address-book entry.
@@ -92,67 +93,6 @@ func vcardName() string {
 		return "agent"
 	}
 	return out.String()
-}
-
-// contactBody is the card, separate from serving it.
-func contactBody(acc *auth.Account) string {
-	var b strings.Builder
-	// The same column every other page of its kind uses.
-	//
-	// This drew a bare card, so its content sat against the left of the content
-	// box while /about and /privacy — which do use the column — sat centred
-	// under a collapsed rail. Four pages a stranger reads in one sitting, at
-	// three different widths and two different left edges. See app.Column.
-	b.WriteString(app.Column())
-	b.WriteString(`<div class="card">`)
-	b.WriteString(`<h2>Talk to Micro</h2><div class="clist">`)
-	// The ways a person writes to it, and not the ways a program calls it.
-	//
-	// This drew client.All(), which ends in `mu ask "…"` and a curl invocation
-	// with a bearer token in it — so a card headed "How to reach Micro", whose
-	// whole argument is that you can text this thing like a person, finished
-	// with a shell snippet. Those are answers to a different question and /api
-	// is where it is asked. See client.Personal.
-	for _, c := range client.Personal() {
-		b.WriteString(`<div class="crow"><span class="clabel">` + html.EscapeString(c.Label) + `</span>`)
-		addr := `<code class="caddr">` + html.EscapeString(c.Address) + `</code>`
-		if c.Href != "" {
-			addr = `<a class="caddr" href="` + html.EscapeString(c.Href) + `">` +
-				html.EscapeString(c.Address) + `</a>`
-		}
-		b.WriteString(addr)
-		b.WriteString(`<span class="cnote">` + html.EscapeString(c.Note) + `</span>`)
-		// No worked example here any more. The one row that needed one was the
-		// API, which is a developer door and is drawn on /api instead — see
-		// client.Developer. Every row left is an address: somebody reads one and
-		// knows what to do with it.
-		b.WriteString(`</div>`)
-	}
-	b.WriteString(`</div>`)
-
-	// And the card itself, for a phone.
-	//
-	// Everything above is four things to copy out by hand, and nobody does
-	// that: the point of an assistant you can text is that texting it is the
-	// easy thing, and it is only easy once it is in the list where your phone
-	// keeps the people you write to. One tap saves it there under one name,
-	// with every way of reaching it under that name.
-	//
-	// Only when there is something a phone can hold. On an instance with no
-	// number and no mail domain the card would be a name and a URL, which is a
-	// bookmark, and the button would be a promise of more than it does.
-	if client.Savable() {
-		b.WriteString(`<div class="section-actions">` + app.ActionLink("/contact.vcf", "Add to contacts") + `</div>`)
-	}
-
-	if acc != nil && !numberVerified(acc.ID) {
-		b.WriteString(`<p class="cnext">It will not recognise you by phone until you have ` +
-			`<a href="/sms">verified a number</a> as yours. Mail and the web already know you.</p>`)
-	}
-	b.WriteString(`</div>`)
-	b.WriteString(`<section id="support" class="page-section"><h2>Contact the operator</h2><p>For problems with Micro, email <a href="mailto:admin@micro.mu">admin@micro.mu</a>. Include the diagnostic report from Work when reporting a failed task.</p></section>`)
-	b.WriteString(app.Close())
-	return b.String()
 }
 
 // numberVerified reports whether this account has proved a number is theirs,

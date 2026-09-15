@@ -1,0 +1,78 @@
+{
+  "about": {
+    "title": "About Micro",
+    "sections": [
+      {
+        "title": "A personal AI agent",
+        "paragraphs": [
+          "Micro helps you find answers, think things through and get things done. Start a conversation with a question, an idea or a task.",
+          "It can search the web, work with your notes and documents, and use tools to carry out a request. Relevant information from your conversations helps it respond with context."
+        ]
+      },
+      {
+        "title": "Keep the conversation together",
+        "paragraphs": [
+          "Home is your conversation with Micro. Inbox brings together messages and updates that need your attention. When you delegate work, you can follow its progress and review the result.",
+          "Use Micro on the web or install it on your phone. Other ways to reach it, where available, are listed on the Contact page."
+        ]
+      },
+      {
+        "title": "Your information, within reach",
+        "paragraphs": [
+          "Services gives you direct access to tools such as notes, documents, files, contacts and events. Use them yourself or ask Micro for help. Agents lets you create assistants for particular purposes.",
+          "AI can make mistakes. Check important answers and the outcome of actions. Some requests send relevant information to outside providers; Privacy explains what is stored and shared."
+        ]
+      },
+      {
+        "title": "Run it your way",
+        "paragraphs": [
+          "Micro runs on Mu, an open-source personal server. Use this instance or host your own. Each operator chooses the available models, services and pricing."
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "title": "Privacy",
+    "sections": [
+      {
+        "title": "What we collect",
+        "paragraphs": [
+          "We store your account details, including your username, password hash or passkeys, and an email address or phone number if you provide one. This instance does not offer Google sign-in or connect to Google Calendar or Google Contacts.",
+          "We store your conversations, messages, agent memory, tasks and the information you add to tools, such as notes, documents, files, contacts and events. Contacts and events you create or import here are separate from any Google account.",
+          "We also store credit balances, transaction records and operational information needed to run the service and investigate errors or abuse. Operational records may include IP addresses."
+        ]
+      },
+      {
+        "title": "How your information is used",
+        "paragraphs": [
+          "Your information is used to provide the features you request, keep your conversations available and carry out work on your behalf. The operator can access data held on the server; this is not an end-to-end encrypted service.",
+          "There is no advertising, third-party analytics or sale of personal data. Micro does not train models on your content. Model providers process requests under their own terms and the operator’s configuration."
+        ]
+      },
+      {
+        "title": "AI and outside providers",
+        "paragraphs": [
+          "When you ask Micro a question, the configured model provider receives your prompt and relevant context. This can include conversation history, memory, attachments and tool results.",
+          "Tools may send information needed for an action to outside providers, such as a search query, a place to look up, an image prompt or a message recipient and content. The providers used depend on the service and operator configuration. Disabling Google account connections does not mean no tool uses a Google service.",
+          "Information you publish or send to someone else can leave this server and may be retained by its recipients."
+        ]
+      },
+      {
+        "title": "Location and your device",
+        "paragraphs": [
+          "Location access is optional and requires your device’s permission. When you choose to share it in chat, coordinates are rounded to a grid of roughly 500 metres and used as temporary context for your request. A less accurate device reading remains less accurate.",
+          "Using “Use my location” in Profile saves rounded coordinates for features such as local information and scheduled briefs. You can clear the saved location in Profile and stop sharing chat location using the location control.",
+          "Session cookies keep you signed in and help protect requests. Browser storage retains interface preferences and drafts; the installed app also uses a service worker. These are functional features, not advertising trackers."
+        ]
+      },
+      {
+        "title": "Access and deletion",
+        "paragraphs": [
+          "API tokens and authorised clients can act within the permissions you grant. Review and revoke credentials from your account. Only give access to clients you trust.",
+          "You can delete individual items through the tools that created them. To request account closure or ask about stored data, contact the operator at admin@micro.mu. Deletion from the active service does not recall messages already delivered or copies held by outside providers.",
+          "If you self-host Mu, you operate the server and control its storage and provider configuration. This page describes this instance; another operator may make different choices."
+        ]
+      }
+    ]
+  }
+}

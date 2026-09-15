@@ -34,7 +34,7 @@ import (
 
 // ServiceRefHandler serves /services/<name>.
 func ServiceRefHandler(w http.ResponseWriter, r *http.Request) {
-	name := strings.Trim(strings.TrimPrefix(r.URL.Path, "/services/"), "/")
+	name := strings.Trim(strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/services/"), "/service/"), "/")
 	if name == "" {
 		http.Redirect(w, r, "/services", http.StatusSeeOther)
 		return

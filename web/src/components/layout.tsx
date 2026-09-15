@@ -5,6 +5,7 @@ import {
   Inbox,
   Bot,
   Grid2X2,
+  Hammer,
   Menu,
   X,
   Settings,
@@ -12,11 +13,13 @@ import {
   Shield,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import appCatalogue from "../../../app/catalog.json";
 import type { Identity } from "../lib/api";
 
 const links = [
   { href: "/", label: "Home", icon: Home },
   { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/work", label: "Work", icon: Hammer },
   { href: "/agents", label: "Agents", icon: Bot },
   { href: "/services", label: "Services", icon: Grid2X2 },
 ];
@@ -87,11 +90,13 @@ export function Layout({
   title,
   children,
   conversation = false,
+  publicPage = false,
 }: {
   account: Identity | null;
   title: string;
   children: ReactNode;
   conversation?: boolean;
+  publicPage?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const shell = useRef<HTMLDivElement>(null);
@@ -179,7 +184,7 @@ export function Layout({
                 </Dialog.Portal>
               </Dialog.Root>
               <span className="min-w-0 flex-1 truncate font-medium">
-                {title}
+                {conversation ? title : <a href="/">Micro</a>}
               </span>
             </>
           ) : (
@@ -198,13 +203,13 @@ export function Layout({
             "mx-auto w-full min-w-0 flex-1 px-4 sm:px-6 " +
             (conversation
               ? "flex min-h-0 max-w-3xl flex-col py-3"
-              : "max-w-6xl py-6")
+              : publicPage ? "max-w-3xl py-8" : "max-w-6xl py-6")
           }
         >
           {children}
         </main>
         {!account &&
-          (typeof location === "undefined" || location.pathname === "/") && (
+          (publicPage || typeof location === "undefined" || location.pathname === "/") && (
             <footer className="flex shrink-0 flex-wrap justify-center gap-x-4 gap-y-2 px-4 py-3 text-sm text-muted-foreground">
               {["About", "Contact", "Pricing", "Privacy", "Status"].map(
                 (label) => (
@@ -223,15 +228,21 @@ export function Layout({
 export function PageHeading({
   title,
   actions,
+  level = 1,
 }: {
   title: string;
   actions?: ReactNode;
+  level?: 1 | 2;
 }) {
+  const Heading = level === 1 ? "h1" : "h2";
+  const path = typeof location === "undefined" ? "" : location.pathname;
+  const entry = appCatalogue.find(a => a.path === path || path === "/service/" + a.id);
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <h1 className="min-w-0 max-w-full break-words text-2xl font-semibold tracking-tight">
+      <Heading className="flex min-w-0 max-w-full items-center gap-3 break-words text-2xl font-semibold tracking-tight">
+        {entry && <img src={"/" + entry.icon} alt="" aria-hidden="true" className="size-6 shrink-0" />}
         {title}
-      </h1>
+      </Heading>
       <div className="flex flex-wrap items-center gap-2">{actions}</div>
     </div>
   );
