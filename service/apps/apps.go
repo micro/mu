@@ -1056,7 +1056,7 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 	isAuthor := acc != nil && acc.ID == a.AuthorID
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">&larr; %s</a></p>`, htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
+	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">%s</a></p>`, htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
 	sb.WriteString(`<h2 class="mb-4">Version History</h2>`)
 
 	if len(a.Versions) == 0 {
@@ -1425,7 +1425,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request, slug string) {
 
 // deleteLink is the Delete control, and it posts.
 //
-// It was written twice and one of the two was a plain <a href> to
+// It was written twice and one of the two was a plain <a href>to
 // /apps/<slug>/delete with a confirm on it. That route is POST-only, so a
 // click was a GET, matched nothing, and 404d — after the confirmation dialog
 // had already asked whether you were sure, which is the worst place to find

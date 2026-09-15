@@ -232,7 +232,7 @@ a.caddr:hover{text-decoration:underline}
 
 /* internal/app/reading.go */
 
-.reading-row{padding:18px 0;border-bottom:1px solid var(--border,#eee)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
+.reading-row{padding:16px 0;border-bottom:1px solid var(--card-border)}.reading-row h3{font-size:18px;line-height:1.4;margin:5px 0}.reading-row p{font-size:14px;line-height:1.6;color:var(--text-muted,#666);margin:6px 0}.reading-meta{font-size:12px;color:var(--text-muted,#777)}.reading-list{max-width:840px}.reading-row h3 a{text-decoration:none}.reading-row h3 a:hover{text-decoration:underline}
 
 
 /* internal/api/tools_page.go */
@@ -488,13 +488,13 @@ body:has(#messages):has(.room-layout) #content { height:calc(var(--visible-heigh
 .rc-chip.on{background:var(--nav-hover);border-color:var(--border-color);color:var(--text-primary)}
 .rc-count{font-size:13px;color:#888;margin:0 0 10px}
 .rc-hits{display:flex;flex-direction:column;gap:8px}
-.rc-hit{display:block;border:1px solid #eee;border-radius:8px;padding:10px 14px;text-decoration:none;color:inherit}
-.rc-hit:hover{border-color:#ddd;background:#fcfcfc}
-.rc-meta{font-size:12px;color:#999}
+
+
+.rc-meta{font-size:14px;color:var(--text-muted)}
 .rc-where{border:1px solid #eee;border-radius:6px;padding:1px 8px;font-size:11px}
-.rc-text{font-size:14px;line-height:1.55;margin:5px 0 4px}
+.rc-text{font-size:16px;line-height:1.55;margin:5px 0 4px}
 .rc-text mark{background:#fdf3c3;color:inherit;padding:0 1px}
-.rc-subject{font-size:12px;color:#aaa}
+.rc-subject{font-size:14px;color:var(--text-muted)}
 .rc-empty{color:#888;font-size:14px}
 
 
@@ -662,3 +662,10 @@ body:has(#messages):has(.room-layout) #content { height:calc(var(--visible-heigh
 .fl-scope a{cursor:pointer}
 .fl-scope a:hover .fl-low,.fl-scope a:hover .fl-mid,.fl-scope a:hover .fl-high{fill:#007bff}
 .fl-legend{font-size:12px;color:#888;text-align:center;margin:8px 0 0}
+
+/* Tile coordinates are pixels; responsive image rules must not resize tiles. */
+.map { position:relative; height:clamp(280px,55dvh,560px); overflow:hidden; touch-action:none; background:#edf0f3; cursor:grab; }
+.map-layer { position:absolute; inset:0; }
+.map-layer .map-tile { position:absolute; width:256px; height:256px; max-width:none; margin:0; border-radius:0; user-select:none; pointer-events:none; }
+.map-gap { visibility:hidden; }
+.map-overlay { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }

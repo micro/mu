@@ -101,10 +101,10 @@ func (p Pager) Nav(path string) string {
 
 	var older, newer string
 	if p.Page < p.Pages {
-		older = link(p.Page+1, "Older →")
+		older = link(p.Page+1, "Older")
 	}
 	if p.Page > 1 {
-		newer = link(p.Page-1, "← Newer")
+		newer = link(p.Page-1, "Newer")
 	}
 
 	return fmt.Sprintf(`<nav class="pager">%s<span class="pager-at">%d of %d</span>%s</nav>%s`,

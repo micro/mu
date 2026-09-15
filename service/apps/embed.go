@@ -100,7 +100,7 @@ func handleEmbed(w http.ResponseWriter, r *http.Request, slug string) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="embed-page">`)
-	b.WriteString(app.Actions(app.TextLink("← Apps", "/apps"),
+	b.WriteString(app.Actions(app.TextLink("Apps", "/apps"),
 		app.TextLink("Open "+a.Name, "/apps/"+a.Slug)))
 	b.WriteString(`<h2 class="embed-title">Embed ` + html.EscapeString(a.Name) + `</h2>`)
 

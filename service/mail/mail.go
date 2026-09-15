@@ -1094,7 +1094,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			</div>
 		</form>
 		<div class="mt-5">
-			<a href="%s" class="text-muted">← Back to mail</a>
+			<a href="%s" class="text-muted">Back to mail</a>
 		</div>
 	</div>
 `, spamActions, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton, backToMail)
@@ -1145,7 +1145,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			</div>
 		</form>
 		<div class="mt-5">
-			<a href="%s" class="text-muted">← Back</a>
+			<a href="%s" class="text-muted">Back</a>
 		</div>
 		`, replyTo, to, datalist, subject, backLink, backLink)
 
@@ -1452,7 +1452,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	readAction := ""
 	if unreadCount > 0 && view != "sent" && view != "filtered" {
-		readAction = `<form method="POST" action="/mail" class="form-action section-actions page-section">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="mark_read"><input type="hidden" name="all" value="true"><button type="submit" class="btn btn-quiet">Mark all as read</button></form>`
+		readAction = `<form method="POST" action="/mail" class="form-action section-actions">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="mark_read"><input type="hidden" name="all" value="true"><button type="submit" class="btn btn-quiet">Mark all as read</button></form>`
 	}
 	// Search bar
 	searchBar := mailSearchBar(searchTerm(r), auth.CSRFToken(r))
@@ -1461,8 +1461,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Action:  "/mail?compose=true",
 		Label:   "New",
 		Filters: tabs,
-		Content: addressPanel(acc.ID) + tagFilter(userInbox, acc.ID, viewTag) + searchBar + readAction +
-			`<div id="mailbox">` + content + `</div>`,
+		Content: `<div class="page-stack compact-stack">` + addressPanel(acc.ID) + tagFilter(userInbox, acc.ID, viewTag) + searchBar + readAction +
+			`<div id="mailbox" class="compact-list">` + content + `</div></div>`,
 	})
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Your messages", HTML: pageHTML})
@@ -1531,7 +1531,7 @@ func addressPanel(accountID string) string {
 	addr := AliasFor(accountID, "")
 	agentAddr := AliasFor(accountID, "research")
 
-	return `<details class="disclosure page-section"><summary>Mail settings</summary><div class="mail-addr">` +
+	return `<details class="disclosure"><summary>Mail settings</summary><div class="mail-addr">` +
 		`<div class="mail-addr-line">Your address <code>` + html.EscapeString(addr) + `</code></div>` +
 		`<p>Give an agent its own by adding a tag: <code>` + html.EscapeString(agentAddr) + `</code> ` +
 		`lands in this inbox, marked so that agent can ask for only its own mail. No second account needed.</p>` +

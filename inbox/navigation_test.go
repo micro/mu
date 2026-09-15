@@ -29,7 +29,7 @@ func TestOlderKeepsInboxListAndPage(t *testing.T) {
 		}
 		w = httptest.NewRecorder()
 		priority(w, httptest.NewRequest("GET", target, nil), owner)
-		if n := strings.Count(w.Body.String(), `class="ib-row`); n != 2 {
+		if n := strings.Count(w.Body.String(), `class="list-link ib-row`); n != 2 {
 			t.Fatalf("older page has %d rows, want 2", n)
 		}
 		if strings.Contains(w.Body.String(), `<article`) {
@@ -48,7 +48,7 @@ func TestReaderHasNeighboursAndInlineReply(t *testing.T) {
 	w := httptest.NewRecorder()
 	conversation(w, httptest.NewRequest("GET", "/inbox?view=history&page=2&id="+current.ID, nil), owner, current.ID)
 	body := html.UnescapeString(w.Body.String())
-	for _, want := range []string{all[0].ID, all[2].ID, "← Previous", "Next →", `id="inbox-reply"`, `name="on" value="` + current.ID + `"`, `name="body"`, `action="/inbox/new"`, `/inbox?page=2&view=history`} {
+	for _, want := range []string{all[0].ID, all[2].ID, "Previous", "Next", `id="inbox-reply"`, `name="on" value="` + current.ID + `"`, `name="body"`, `action="/inbox/new"`, `/inbox?page=2&view=history`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("reader missing %q", want)
 		}

@@ -83,7 +83,7 @@ func editorHandler(w http.ResponseWriter, r *http.Request, id string) {
 	if id != "" {
 		action = "/files/" + id + "/edit"
 	}
-	body := `<div class="page-col"><p><a href="/files">← Files</a></p>`
+	body := `<div class="page-col"><p><a href="/files">Files</a></p>`
 	if message != "" {
 		body += `<p role="alert">` + html.EscapeString(message) + `</p>`
 	}

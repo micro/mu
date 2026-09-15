@@ -104,7 +104,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="bookmarks-page">`)
+	b.WriteString(`<div class="bookmarks-page page-stack">`)
 	if ref := r.URL.Query().Get("item"); ref != "" {
 		item, e := store.Source(ref)
 		if e != nil {
@@ -122,10 +122,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, item)
 			return
 		}
-		b.WriteString(`<p><a href="/bookmarks">← Bookmarks</a></p><h2>` + html.EscapeString(item.Title) + `</h2><p>` + html.EscapeString(item.Excerpt) + `</p>`)
-		b.WriteString(`<div class="reading-actions"><a href="` + html.EscapeString(item.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/?bookmark=` + url.QueryEscape(item.ID) + `">Discuss</a></div>`)
-		b.WriteString(`<form class="form" method="POST" action="/bookmarks">` + token(r) + hidden("action", "note") + hidden("id", item.ID) + `<label for="saved-note">Private note</label><textarea id="saved-note" name="note" rows="4" maxlength="4000">` + html.EscapeString(item.Note) + `</textarea><button>Save note</button></form>`)
-		b.WriteString(`<form method="POST" action="/bookmarks" class="form-action reading-actions">` + token(r) + hidden("action", "delete") + hidden("id", item.ID) + `<button>Remove bookmark</button></form>`)
+		b.WriteString(`<p><a href="/bookmarks">Bookmarks</a></p><h2>` + html.EscapeString(item.Title) + `</h2><p>` + html.EscapeString(item.Excerpt) + `</p>`)
+		b.WriteString(`<div class="reading-actions"><a href="` + html.EscapeString(item.URL) + `" rel="noopener noreferrer">Original</a><a class="mini-btn" href="/?bookmark=` + url.QueryEscape(item.ID) + `">Discuss</a></div>`)
+		b.WriteString(`<form id="bookmark-note" class="form" method="POST" action="/bookmarks">` + token(r) + hidden("action", "note") + hidden("id", item.ID) + `<label for="saved-note">Private note</label><textarea id="saved-note" name="note" rows="4" maxlength="4000">` + html.EscapeString(item.Note) + `</textarea></form><div class="form-actions"><button type="submit" form="bookmark-note">Save note</button>`)
+		b.WriteString(`<form method="POST" action="/bookmarks" class="form-action reading-actions">` + token(r) + hidden("action", "delete") + hidden("id", item.ID) + `<button>Remove bookmark</button></form></div>`)
 	} else {
 		items, total, e := store.List(sess.Account, query, kind, offset, 20)
 		if e != nil {
@@ -157,7 +157,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for _, i := range items {
-			b.WriteString(`<article class="reading-row"><div class="reading-meta">` + app.Pill(i.Kind) + " · " + html.EscapeString(i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p>` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original ↗</a><a class="mini-btn" href="/?bookmark=` + url.QueryEscape(i.ID) + `">Discuss</a></div></article>`)
+			b.WriteString(`<article class="reading-row"><div class="reading-meta">` + app.Pill(i.Kind) + " · " + html.EscapeString(i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p>` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original</a><a class="mini-btn" href="/?bookmark=` + url.QueryEscape(i.ID) + `">Discuss</a></div></article>`)
 		}
 		b.WriteString(`<div class="reading-actions">`)
 		for _, p := range []struct {

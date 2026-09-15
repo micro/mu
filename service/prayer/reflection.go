@@ -602,7 +602,7 @@ func renderPrayerPage(rd *ReminderData, view string) string {
 		}
 		b.WriteString(`<p class="pre-line">` + html.EscapeString(body) + `</p>`)
 		if p, ok := rd.Links[linkKey].(string); ok && strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//") {
-			b.WriteString(`<p><a href="https://reminder.dev` + html.EscapeString(p) + `" target="_blank" rel="noopener noreferrer">` + linkLabel + ` &rarr;</a></p>`)
+			b.WriteString(`<p><a href="https://reminder.dev` + html.EscapeString(p) + `" target="_blank" rel="noopener noreferrer">` + linkLabel + `</a></p>`)
 		}
 		b.WriteString(`</section>`)
 	}

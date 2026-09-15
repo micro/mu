@@ -75,7 +75,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		cached := CachedResult(resultID)
 
 		var b strings.Builder
-		b.WriteString(`<div id="news-article">`)
+		b.WriteString(`<div id="news-article" class="reading-list page-stack">`)
 		if cached != nil && cached.Title != "" {
 			if cached.Description != "" {
 				b.WriteString(fmt.Sprintf(`<p class="text-secondary m-0 mb-3">%s</p>`, html.EscapeString(cached.Description)))
@@ -84,10 +84,10 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			b.WriteString(fmt.Sprintf(`<p class="text-muted">This page couldn't be loaded.</p>`))
 		}
-		b.WriteString(fmt.Sprintf(`<div class="article-actions mt-4">
-			<a href="%s" target="_blank" rel="noopener noreferrer" class="semibold">Visit original site →</a>
-			<span class="sep">·</span>
-			<a href="javascript:history.back()">← Back to results</a>
+		b.WriteString(fmt.Sprintf(`<div class="section-actions">
+			<a href="%s" target="_blank" rel="noopener noreferrer" class="semibold">Visit original site</a>
+
+			<a href="javascript:history.back()">Back to results</a>
 		</div>`, html.EscapeString(rawURL)))
 		b.WriteString(`</div>`)
 
@@ -105,10 +105,10 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div id="news-article">`)
+	b.WriteString(`<div id="news-article" class="reading-list page-stack">`)
 
 	// Meta: source domain
-	b.WriteString(fmt.Sprintf(`<div class="article-meta"><span>Source: <i>%s</i></span></div>`, html.EscapeString(domain)))
+	b.WriteString(fmt.Sprintf(`<div class="metadata-row"><span>Source: <i>%s</i></span></div>`, html.EscapeString(domain)))
 
 	// Render sanitized HTML content
 	b.WriteString(`<div class="reader-content">`)
@@ -117,17 +117,17 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Actions
 	b.WriteString(fmt.Sprintf(`
-		<div class="article-actions">
-			<a href="%s" target="_blank" rel="noopener noreferrer">Visit Original →</a>
-			<span class="mx-2">·</span>
-			<a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: '%s'}) : navigator.clipboard.writeText('%s').then(() => alert('Link copied!')); return false;">Share →</a>
+		<div class="section-actions">
+			<a href="%s" target="_blank" rel="noopener noreferrer">Visit Original</a>
+
+			<a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: '%s'}) : navigator.clipboard.writeText('%s').then(() =>alert('Link copied!')); return false;">Share</a>
 		</div>`,
 		html.EscapeString(rawURL),
 		html.EscapeString(strings.ReplaceAll(rawURL, "'", "\\'")),
 		html.EscapeString(strings.ReplaceAll(rawURL, "'", "\\'")),
 	))
 
-	b.WriteString(`<div class="article-back"><a href="javascript:history.back()">← Back to results</a></div>`)
+	b.WriteString(`<div class="article-back"><a href="javascript:history.back()">Back to results</a></div>`)
 	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: b.String()})

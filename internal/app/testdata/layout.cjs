@@ -228,6 +228,29 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(labels.every(x=>Math.abs(x-labels[0])<1),'type labels move between rows');
     assert((await first.boundingBox()).height<110,'inbox rows are too tall');
    }
+   if(path==='/maps') {
+    const map=await page.locator('#map').boundingBox();
+    assert(map.height>=280&&map.height<=560,'map viewport is not bounded');
+    const tiles=await page.locator('.map-tile').evaluateAll(es=>es.map(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,pos:getComputedStyle(e).position})));
+    assert(tiles.length>0&&tiles.every(t=>t.w===256&&t.h===256&&t.pos==='absolute'),'map tiles lost native pixel geometry');
+   }
+   if(path==='/docs') {
+    const actions=await page.locator('.form-actions a').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().toJSON()));
+    if(actions.length>=2)assert(actions[1].x-actions[0].right>=8||actions[1].y>actions[0].y,'New and Import touch');
+   }
+   if(path==='/web'||path==='/video') {
+    const formID=path==='/web'?'web-search':'video-search', key=path==='/web'?'mu_recent_web_searches':'mu_recent_video_searches';
+    await page.evaluate(({key})=>localStorage.setItem(key,JSON.stringify(['bread & butter','Bread  & butter','<img src=x>'])),{key});
+    await page.reload();
+    await page.evaluate(({formID})=>document.getElementById(formID).addEventListener('submit',e=>{e.preventDefault();window.submittedQuery=new FormData(e.target).get('q')||new FormData(e.target).get('query');}),{formID});
+    const recent=page.locator('[data-recent-searches]');
+    assert.equal(await recent.locator('img').count(),0,'recent search became markup');
+    assert.equal(await recent.locator('button').count(),4,'recent search duplicates remain');
+    await recent.getByRole('button',{name:'bread & butter',exact:true}).focus();await page.keyboard.press('Enter');
+    assert.equal(await page.evaluate(()=>window.submittedQuery),'bread & butter','recent search did not submit');
+    await recent.getByRole('button',{name:'Remove recent search: bread & butter',exact:true}).click();
+    assert.equal(await recent.locator('button').count(),2,'remove did not update recent searches');
+   }
    if(path==='/chat'){
     await page.locator('#messages').evaluate(e=>e.innerHTML='<p>Room message</p>'.repeat(100));await page.waitForTimeout(70);
     const box=await page.locator('#chat-form').boundingBox();assert(box.y+box.height<=900,`room composer below viewport at ${width}`);

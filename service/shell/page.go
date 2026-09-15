@@ -77,13 +77,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	b.WriteString(`<form id="shell-command" class="form form-inline" method="post" action="/shell">`)
+	b.WriteString(`<form id="shell-command" class="form" method="post" action="/shell">`)
 	b.WriteString(`<input type="hidden" name="csrf_token" value="` +
 		html.EscapeString(auth.CSRFToken(r)) + `">`)
-	b.WriteString(`<div class="sbx-line"><span class="sbx-prompt">/work $</span>` +
-		`<input class="sbx-cmd" type="text" name="command" autofocus autocomplete="off" ` +
-		`spellcheck="false" placeholder="ls -la" value="` + html.EscapeString(command) + `"></div>`)
-	b.WriteString(`<button type="submit">Run</button>`)
+	b.WriteString(`<label class="field-label" for="shell-input">Command</label><div class="form-row"><span class="action-note">/work $</span>` +
+		`<input id="shell-input" type="text" aria-label="Command" name="command" autofocus autocomplete="off" ` +
+		`spellcheck="false" placeholder="ls -la" value="` + html.EscapeString(command) + `">`)
+	b.WriteString(`<button type="submit">Run</button></div>`)
 	b.WriteString(`</form>`)
 
 	b.WriteString(`<div id="shell-result" aria-live="polite">`)

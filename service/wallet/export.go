@@ -118,7 +118,7 @@ func exportForm(r *http.Request, errMsg string) string {
 		// A link rather than a path in the prose. errMsg is escaped and stays
 		// that way — a message that could carry markup is a message that will
 		// one day carry somebody else's — so the way out is its own line.
-		b.WriteString(`<p class="text-sm"><a href="/account">Set a password on your account &rarr;</a></p>`)
+		b.WriteString(`<p class="text-sm"><a href="/account">Set a password on your account</a></p>`)
 	}
 	b.WriteString(`<form class="form" method="POST" action="/wallet/export" autocomplete="off">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)

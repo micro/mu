@@ -96,7 +96,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// and wants it in their own program. That is the moment the reference is
 	// wanted, which is why it is here and not instead of all this.
 	b.WriteString(`<p class="hz-ref"><a href="/services/hazards">` +
-		`Call this from your own code &rarr;</a></p>`)
+		`Call this from your own code</a></p>`)
 	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{

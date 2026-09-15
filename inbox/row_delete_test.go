@@ -58,7 +58,7 @@ func TestTheDeleteIsNotInsideTheRowLink(t *testing.T) {
 	said(t, who, "mail", "<a@example.com>", "", "something")
 
 	body := listBody(t, "/inbox", who, "")
-	i := strings.Index(body, `<a class="ib-row`)
+	i := strings.Index(body, `<a class="list-link ib-row`)
 	if i < 0 {
 		t.Fatal("no row on the page")
 	}

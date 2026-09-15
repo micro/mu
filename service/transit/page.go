@@ -169,7 +169,7 @@ func Card() string {
 	if shown == 0 {
 		b.WriteString(`<p class="xgood">Good service on all ` + strconv.Itoa(len(lines)) + ` lines.</p>`)
 	}
-	b.WriteString(`<p class="xmore"><a href="/transit">Stops near you →</a></p>`)
+	b.WriteString(`<p class="xmore"><a href="/transit">Stops near you</a></p>`)
 	return b.String()
 }
 

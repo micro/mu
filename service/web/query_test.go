@@ -48,7 +48,7 @@ func TestARecentSearchSubmitsTheForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := string(b)
-	if !strings.Contains(src, "form.submit(); return;") {
+	if !strings.Contains(src, `app.RecentSearches("web-search", "mu_recent_web_searches")`) {
 		t.Error("clicking a recent search does not submit the search form, so it\n" +
 			"either does nothing or navigates with the query in the URL")
 	}

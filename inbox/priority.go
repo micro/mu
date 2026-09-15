@@ -35,11 +35,8 @@ func inboxURL(r *http.Request, id string) string {
 	if id != "" {
 		q.Set("id", id)
 	}
-	path := r.URL.Path
-	if s := q.Encode(); s != "" {
-		path += "?" + s
-	}
-	return path
+	u := url.URL{Path: r.URL.Path, RawQuery: q.Encode()}
+	return u.String()
 }
 
 // priority renders the inbox list; a conversation opens only when selected.

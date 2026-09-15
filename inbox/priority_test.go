@@ -38,3 +38,11 @@ func TestInboxShowsCommunicationListAndPreservesNewMessages(t *testing.T) {
 		t.Fatal("cross-account thread visible")
 	}
 }
+
+func TestInboxNavigationEscapesDecodedPaths(t *testing.T) {
+	r := httptest.NewRequest("GET", "/inbox%22%20onclick=%22alert(1)?view=history", nil)
+	got := inboxURL(r, "thread")
+	if strings.ContainsAny(got, "\" <>") || !strings.Contains(got, "%22") {
+		t.Fatalf("decoded path became unsafe link markup: %s", got)
+	}
+}

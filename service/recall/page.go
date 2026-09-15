@@ -90,7 +90,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`<strong>` + html.EscapeString(query) + `</strong>.</p>`)
 	default:
 		b.WriteString(`<p class="rc-count">` + plural(len(hits)) + ` mentioning <strong>` +
-			html.EscapeString(query) + `</strong></p><div class="rc-hits">`)
+			html.EscapeString(query) + `</strong></p><div class="rc-hits compact-list">`)
 		for _, h := range hits {
 			b.WriteString(hitRow(h, query))
 		}
@@ -115,7 +115,7 @@ func hitRow(h thread.Hit, query string) string {
 	if subject == "" {
 		subject = "Untitled"
 	}
-	return `<a class="rc-hit" href="/inbox?id=` + url.QueryEscape(h.Thread) + `">` +
+	return `<a class="rc-hit list-link compact-list-item" href="/inbox?id=` + url.QueryEscape(h.Thread) + `">` +
 		`<div class="rc-meta">` + html.EscapeString(who) + ` · ` +
 		html.EscapeString(app.TimeAgo(h.At)) + ` · ` +
 		`<span class="rc-where">` + html.EscapeString(app.ClientName(h.Client)) + `</span></div>` +

@@ -438,9 +438,9 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	b.WriteString(`<div class="ib">`)
 	// Back where you came from. A reply reached from a conversation that offers
 	// "← Inbox" sends you to the list, which is one step past where you were.
-	back := app.TextLink("← Inbox", "/inbox")
+	back := app.TextLink("Inbox", "/inbox")
 	if f.On != "" {
-		back = app.TextLink("← Back to the conversation", "/inbox?id="+url.QueryEscape(f.On))
+		back = app.TextLink("Back to the conversation", "/inbox?id="+url.QueryEscape(f.On))
 	}
 	b.WriteString(app.Actions(back))
 

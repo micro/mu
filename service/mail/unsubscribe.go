@@ -143,7 +143,7 @@ func UnsubscribeHandler(w http.ResponseWriter, r *http.Request) {
 				`<p>Mail sent to your Mu address will stay in your inbox and will not be ` +
 				`copied to you by email.</p>` +
 				`<p class="text-muted">You can turn it back on in your Account.</p>` +
-				`<p><a href="/inbox">Go to your inbox &rarr;</a></p></div>`,
+				`<p><a href="/inbox">Go to your inbox</a></p></div>`,
 		})
 		return
 	}

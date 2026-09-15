@@ -200,7 +200,7 @@ function ask(q){
     if(resp.status===402||resp.status===429){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();var message=resp.status===402?'You need more credits to continue.':'Please wait a moment before trying again.';
-        a.innerHTML='<div class="mu-err" role="status">'+esc(message)+(resp.status===402?' <a href="/wallet">View credits →</a>':'')+'</div>';input.value=q;saveDraft();save();throw 'handled';
+        a.innerHTML='<div class="mu-err" role="status">'+esc(message)+(resp.status===402?' <a href="/wallet">View credits</a>':'')+'</div>';input.value=q;saveDraft();save();throw 'handled';
       });
     }
     if(resp.status===403){
@@ -219,7 +219,7 @@ function ask(q){
         input.value=q;saveDraft();
         var returnTo=SESSION&&contextId?'/?session='+encodeURIComponent(contextId):'/';
         try{sessionStorage.setItem(contextId?'mu_chat_continue_draft:'+contextId:'mu_chat_draft:landing',q);}catch(e){}
-        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/login?redirect='+encodeURIComponent(returnTo)+'">Sign in to continue →</a></div>';
+        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/login?redirect='+encodeURIComponent(returnTo)+'">Sign in to continue</a></div>';
         save();
         throw 'handled';
       });

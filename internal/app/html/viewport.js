@@ -5,8 +5,8 @@
   function fit(){
     queued=false;
     var content=document.getElementById('content');
-    var chat=content&&content.querySelector('.chat-layout,.room-layout');
-    var bounded=!!chat&&window.matchMedia('(max-width:900px)').matches;
+    var chat=content&&content.querySelector('.chat-layout,.room-layout,.conversation-layout');
+    var bounded=!!chat&&(chat.classList.contains('conversation-layout')||window.matchMedia('(max-width:900px)').matches);
     document.body.classList.toggle('chat-page',bounded);
     var viewport=window.visualViewport;
     var height=viewport?viewport.height:window.innerHeight;

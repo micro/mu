@@ -223,7 +223,7 @@ var CardTemplate = `
 `
 
 func Link(name, ref string) string {
-	return fmt.Sprintf(`<a href="%s" class="link">%s →</a>`, ref, name)
+	return fmt.Sprintf(`<a href="%s" class="link">%s</a>`, ref, name)
 }
 
 func TextLink(name, ref string) string {
@@ -419,9 +419,9 @@ func VerifyBanner(r *http.Request) string {
 	case p == "/wallet" || strings.HasPrefix(p, "/wallet/"):
 		return ""
 	}
-	action, href := "Verify →", "/account"
+	action, href := "Verify", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
-		action, href = "Top up →", "/account/topup"
+		action, href = "Top up", "/account/topup"
 	}
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{

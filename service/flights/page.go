@@ -303,6 +303,6 @@ func nearestHTML(found []Aircraft) string {
 		b.WriteString(`<div class="fl-line-row">` + linkTo(a) +
 			`<span class="fl-alt">` + html.EscapeString(alt) + `</span></div>`)
 	}
-	b.WriteString(`<div class="fl-more"><a href="/flights">More →</a></div>`)
+	b.WriteString(`<div class="fl-more"><a href="/flights">More</a></div>`)
 	return b.String()
 }

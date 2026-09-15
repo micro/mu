@@ -25,17 +25,8 @@ func TestStripHTML(t *testing.T) {
 	}
 }
 
-func TestRecentSearchesScriptEscapesLabelsWithoutManglingSpaces(t *testing.T) {
-	if !strings.Contains(webRecentSearchesScript, "div.textContent = String(text);") {
-		t.Fatal("recent search labels should escape via textContent")
-	}
-	if strings.Contains(webRecentSearchesScript, ".replace(/ /g, '&gt;')") || strings.Contains(webRecentSearchesScript, ".replace(/\\s/g, '&gt;')") {
-		t.Fatal("recent search escaping must not convert spaces to HTML entities")
-	}
-	if !strings.Contains(webRecentSearchesScript, "encodeURIComponent(search)") {
-		t.Fatal("recent search data attributes should encode raw queries without changing label text")
-	}
-	if !strings.Contains(webRecentSearchesScript, "decodeURIComponent(item.getAttribute('data-query') || '')") {
-		t.Fatal("recent search click/remove handlers should decode stored queries")
+func TestRecentSearchesUseSharedComponent(t *testing.T) {
+	if !strings.Contains(webRecentSearchesScript, `data-recent-searches="web-search"`) || !strings.Contains(webRecentSearchesScript, `data-storage-key="mu_recent_web_searches"`) {
+		t.Fatal("recent searches must use the shared form-bound component")
 	}
 }

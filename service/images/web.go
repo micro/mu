@@ -34,7 +34,7 @@ func webSearchPage(w http.ResponseWriter, r *http.Request) {
 	if err == nil && owner != "" {
 		err = quota.Charge(owner, quota.OpWebSearch, nil)
 	}
-	b := `<p><a href="/images">← Images</a></p>`
+	b := `<p><a href="/images">Images</a></p>`
 	if err != nil {
 		b += `<p role="alert">` + html.EscapeString(err.Error()) + `</p>`
 	} else {

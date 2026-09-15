@@ -312,7 +312,7 @@ func Links(pairs ...[2]string) string {
 	b.WriteString(`<div class="links">`)
 	for _, p := range pairs {
 		b.WriteString(`<a href="` + htmlpkg.EscapeString(p[0]) + `">` +
-			htmlpkg.EscapeString(p[1]) + ` &rarr;</a>`)
+			htmlpkg.EscapeString(p[1]) + `</a>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -336,4 +336,9 @@ func ServiceSelect(id, listID, name string, options []Option) string {
 		hidden, on = "", " selected"
 	}
 	return `<div class="form-group"><label class="field-label" for="` + htmlpkg.EscapeString(id) + `">Services</label><select class="field field-wide" id="` + htmlpkg.EscapeString(id) + `" name="scope_mode" onchange="document.getElementById('` + jsQuote(listID) + `').hidden=this.value!=='select'"><option value="all">All</option><option value="select"` + on + `>Select</option></select><div id="` + htmlpkg.EscapeString(listID) + `"` + hidden + `><div class="choices">` + choices.String() + `</div></div></div>`
+}
+
+// RecentSearches shares browser-local search history across search clients.
+func RecentSearches(formID, storageKey string) string {
+	return `<div id="recent-searches-container" class="page-stack compact-stack" data-recent-searches="` + htmlpkg.EscapeString(formID) + `" data-storage-key="` + htmlpkg.EscapeString(storageKey) + `"></div>`
 }

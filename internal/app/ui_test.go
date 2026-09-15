@@ -102,7 +102,7 @@ func TestEveryComponentEscapesWhatItIsGiven(t *testing.T) {
 // them — and that is the one exception, worth a test that says so out loud
 // rather than a reader wondering whether it was forgotten.
 func TestActionsTakesMarkup(t *testing.T) {
-	got := Actions(TextLink("← Back", "/x"), `<button class="pill">Delete</button>`)
+	got := Actions(TextLink("Back", "/x"), `<button class="pill">Delete</button>`)
 	if !strings.Contains(got, `<button class="pill">Delete</button>`) {
 		t.Errorf("Actions escaped a control it was handed: %s", got)
 	}

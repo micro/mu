@@ -32,8 +32,8 @@ import (
 // refused it: a fourth service reaching up into the account, which is the
 // import TestNoServiceImportsTheAccount forbids, wearing a function variable.
 func SignedOut() string {
-	return `<div class="card">` +
-		`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>`
+	return `<div class="card page-stack">` +
+		`<p class="form-actions"><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>`
 }
 
 // Page renders the signed-in wallet.
@@ -43,7 +43,7 @@ func Page(accountID string) string {
 	// and a QR code of nothing is worse than no card: it looks like the feature
 	// half-works, and there is nothing to go on.
 	if err != nil || bw == nil || bw.Address == "" {
-		return `<div class="card">` +
+		return `<div class="card page-stack">` +
 			`<p class="text-sm text-muted">Your wallet could not be opened, so there is no ` +
 			`address to show. The server log under <code>wallet</code> says why.</p></div>`
 	}
@@ -79,22 +79,22 @@ func Page(accountID string) string {
 	// names — on-chain key, secp256k1 keypair, Base address — all describe the
 	// mechanism, and the reader deciding whether this card is for them is
 	// answering a different question: is this the crypto bit. It is.
-	return fmt.Sprintf(`<div class="card">
+	return fmt.Sprintf(`<div class="card page-stack">
   <h4>Crypto</h4>
   <p class="text-28 mt-2 mb-3"><b>$%s</b> <span class="text-muted text-base">USDC</span>%s</p>
-  <p class="cw-net"><b>%s only.</b> USDC sent on Ethereum, Arbitrum or any other
+  <p class="notice"><b>%s only.</b> USDC sent on Ethereum, Arbitrum or any other
   chain lands at this same address on that chain, where this instance cannot see it
   or move it.</p>
-  <button type="button" class="cw-addr" data-addr="%s" onclick="cwCopy(this)">%s</button>
+  <button type="button" class="cw-addr address-control" data-addr="%s" onclick="cwCopy(this)">%s</button>
   <div class="cw-copied" id="cw-copied" hidden>Copied to clipboard ✓</div>
-  <details class="cw-qrwrap"><summary>Show QR code</summary>
+  <details class="disclosure"><summary>Show QR code</summary>
     <div class="cw-qr" id="cw-qr" data-uri="%s"></div>
-    <p class="cw-qrnote">Scans as <b>USDC on %s</b> — your wallet should already
+    <p class="text-muted text-sm">Scans as <b>USDC on %s</b> — your wallet should already
     have the network and token filled in. If it offers a different network, stop.</p>
   </details>
 %s
   <p class="text-sm text-muted mt-3 m-0"><a href="/wallet/export">Export your
-  private key →</a> The key is held on this instance; a copy you hold yourself is the only
+  private key</a> The key is held on this instance; a copy you hold yourself is the only
   thing that makes losing it here survivable.</p>
 </div>
 <script src="/qrcode.js"></script>
@@ -134,12 +134,12 @@ func convertForm() string {
 	}
 	return `<form class="form cw-convert" method="POST" action="/account/convert">
   <label for="cw-amount">Turn into credits</label>
-  <div class="cw-convert-row">
+  <div class="form-row">
     <span class="cw-convert-unit">$</span>
-    <input id="cw-amount" class="field" type="number" name="amount" min="1" step="1" placeholder="5" required>
+    <input id="cw-amount" type="number" name="amount" min="1" step="1" placeholder="5" required>
     <button class="btn" type="submit">Convert</button>
   </div>
-  <p class="cw-convert-note">Moves USDC from this address to the instance and adds it to your
+  <p class="text-muted text-sm">Moves USDC from this address to the instance and adds it to your
   balance. $1 is 100 credits.</p>
 </form>`
 }

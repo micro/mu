@@ -116,7 +116,7 @@ func list(r *http.Request, docs []*Doc, query string) string {
 		`<input type="search" name="q" value="` + html.EscapeString(query) +
 		`" placeholder="Search your documents" autocomplete="off">` +
 		`<button type="submit">Search</button></form>`)
-	b.WriteString(`<div class="page-action"><a class="btn" href="/docs?new=1">New</a><a class="btn" href="/docs?import=1">Import</a></div>`)
+	b.WriteString(`<div class="form-actions"><a class="btn" href="/docs?new=1">New</a><a class="btn" href="/docs?import=1">Import</a></div>`)
 	b.WriteString(`</div>`)
 
 	if len(docs) == 0 {
@@ -139,7 +139,7 @@ func list(r *http.Request, docs []*Doc, query string) string {
 // view is one document, read.
 func view(r *http.Request, d *Doc) string {
 	var b strings.Builder
-	b.WriteString(`<div class="collection-head"><a class="section-link" href="/docs">← Documents</a>`)
+	b.WriteString(`<div class="collection-head"><a class="section-link" href="/docs">Documents</a>`)
 	b.WriteString(`<a class="btn btn-quiet" href="/docs?id=` + html.EscapeString(d.ID) + `&amp;edit=1">Edit</a></div>`)
 	b.WriteString(`<article class="card record-card doc-view">`)
 	b.WriteString(`<h2>` + html.EscapeString(d.Title) + `</h2>`)
@@ -164,21 +164,21 @@ func editor(r *http.Request, d *Doc) string {
 	if d.Public {
 		checked = " checked"
 	}
-	back := `<a class="section-link" href="/docs">← Documents</a>`
+	back := `<a class="section-link" href="/docs">Documents</a>`
 	if d.ID != "" {
-		back = `<a class="section-link" href="/docs?id=` + html.EscapeString(d.ID) + `">← Back</a>`
+		back = `<a class="section-link" href="/docs?id=` + html.EscapeString(d.ID) + `">Back</a>`
 	}
 	return `<form method="POST" action="/docs" class="form record-editor">
 <input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
 <input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">
-<div class="record-controls">
-<div class="record-actions">` + back + `<button type="submit">Save</button></div>
+<div class="page-stack compact-stack">
+<div class="form-actions">` + back + `<button type="submit">Save</button></div>
 ` + editorTools + `</div>
-<div class="form card record-card record-editor">
+<div class="form">
 <input id="doc-title" class="record-title" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
 <textarea id="doc-body" class="record-body" name="content" rows="24" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
 </div>
-<label class="doc-public"><input type="checkbox" name="public"` + checked + `> Anyone with the link can read it</label>
+<label class="check-label"><input type="checkbox" name="public"` + checked + `> Anyone with the link can read it</label>
 </form>` + editorScript
 }
 

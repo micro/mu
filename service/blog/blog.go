@@ -552,10 +552,10 @@ func updateCacheUnlocked() {
 			previewTimeLabel = "Updated " + app.TimeAgo(previewTime)
 		}
 
-		item := fmt.Sprintf(`<div class="post-item">
+		item := fmt.Sprintf(`<div class="post-item reading-row">
 		%s
 		<h3><a href="/blog/post?id=%s">%s</a></h3>
-		<div class="info"><span data-timestamp="%d">%s</span> · %s%s</div>
+		<div class="metadata-row"><span data-timestamp="%d">%s</span> · %s%s</div>
 		<div>%s</div>
 	</div>`, tagsHtml, post.ID, title, previewTime.Unix(), previewTimeLabel, authorLink, replyLink, content)
 		preview = append(preview, item)
@@ -645,7 +645,7 @@ func updateCacheUnlocked() {
 
 		keepReading := ""
 		if truncated {
-			keepReading = fmt.Sprintf(`<a href="/blog/post?id=%s" class="keep-reading">Keep Reading →</a>`, post.ID)
+			keepReading = fmt.Sprintf(`<a href="/blog/post?id=%s" class="keep-reading">Keep Reading</a>`, post.ID)
 		}
 
 		listTime := post.CreatedAt
@@ -656,10 +656,10 @@ func updateCacheUnlocked() {
 		}
 
 		controls := app.StaticControls("post", post.ID)
-		item := fmt.Sprintf(`<div class="post-item">
+		item := fmt.Sprintf(`<div class="post-item reading-row">
 			%s
 			<h3><a href="/blog/post?id=%s">%s</a></h3>
-			<div class="info"><span data-timestamp="%d">%s</span> · %s%s%s</div>
+			<div class="metadata-row"><span data-timestamp="%d">%s</span> · %s%s%s</div>
 			<div>%s</div>
 			%s
 		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, controls, content, keepReading)
@@ -824,7 +824,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 				stdhtml.EscapeString(returnTo(asked)) + `">`
 		}
 		// Show only the posting form
-		content = `<div id="blog">
+		content = `<div id="blog" class="reading-list page-stack">
 			<div class="mb-6">
 				<form id="blog-form" class="form" method="POST" action="/blog">` + backTo + `
 					<input type="text" id="post-title" name="title" placeholder="Title (optional)">
@@ -1528,7 +1528,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			publicSelected = "selected"
 		}
 
-		content := fmt.Sprintf(`<div id="blog">
+		content := fmt.Sprintf(`<div id="blog" class="reading-list page-stack">
 			<form method="POST" action="/blog/post?id=%s" class="form">
 				<input type="hidden" name="_method" value="PATCH">
 				<input type="text" name="title" placeholder="Title (optional)" value="%s">
@@ -1595,7 +1595,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	// Format tags for display (on separate line if present)
 	tagsDisplay := ""
 	if tagsHtml != "" {
-		tagsDisplay = fmt.Sprintf(`<div class="post-tags">%s</div>`, tagsHtml)
+		tagsDisplay = fmt.Sprintf(`<div class="form-actions">%s</div>`, tagsHtml)
 	}
 
 	timeInfo := app.TimeAgo(post.CreatedAt)
@@ -1604,21 +1604,21 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var contentSB strings.Builder
-	contentSB.WriteString(`<div id="blog">`)
+	contentSB.WriteString(`<div id="blog" class="reading-list page-stack">`)
 	contentSB.WriteString(tagsDisplay)
-	contentSB.WriteString(`<div class="info">` + timeInfo + ` · ` + authorLink + editButton + `</div><div class="reading-actions">`)
+	contentSB.WriteString(`<div class="metadata-row">` + timeInfo + ` · ` + authorLink + editButton + `</div><div class="reading-actions">`)
 	if !post.Private {
 		w.Header().Set("Cache-Control", "private, no-store")
 		contentSB.WriteString(app.ReadingActionItems(r, post.ID))
 	}
 	contentSB.WriteString(`</div>`)
 
-	contentSB.WriteString(`<hr class="my-5 border-t">`)
-	contentSB.WriteString(`<div class="mb-5">` + contentHTML + `</div>`)
-	contentSB.WriteString(`<hr class="my-5 border-t">`)
-	contentSB.WriteString(`<h3 class="mt-6">Comments</h3>`)
+	contentSB.WriteString(`<hr>`)
+	contentSB.WriteString(`<article class="reader-content">` + contentHTML + `</article>`)
+	contentSB.WriteString(`<hr>`)
+	contentSB.WriteString(`<h3>Comments</h3>`)
 	contentSB.WriteString(renderComments(post.ID, r))
-	contentSB.WriteString(`<div class="mt-6"><a href="/blog" class="text-muted">← Back to posts</a></div>`)
+	contentSB.WriteString(`<div class="mt-6"><a href="/blog" class="text-muted">Back to posts</a></div>`)
 	contentSB.WriteString(`</div>`)
 	content := contentSB.String()
 

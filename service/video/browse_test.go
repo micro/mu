@@ -36,7 +36,7 @@ func TestWatchPageKeepsNavigationAndPlayerControls(t *testing.T) {
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest("GET", "/video?id=example", nil))
 	body := w.Body.String()
-	for _, want := range []string{`href="/video">← Video</a>`, `/?item=video_example`, `href="https://www.youtube.com/channel/UCexample"`, "Save", "Original", `id="audioBtn"`, `<body class="video-player-body">`, "allowfullscreen"} {
+	for _, want := range []string{`href="/video">Video</a>`, `/?item=video_example`, `href="https://www.youtube.com/channel/UCexample"`, "Save", "Original", `id="audioBtn"`, `<body class="video-player-body">`, "allowfullscreen"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)
 		}

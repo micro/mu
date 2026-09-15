@@ -662,7 +662,7 @@ func mailBody(accountID string, m thread.Message) string {
 // that opens it.
 func backTo(t *thread.Thread) string {
 	if r := room(t); r != "" {
-		return ` <a href="` + r + `">Open the room &rarr;</a>`
+		return ` <a href="` + r + `">Open the room</a>`
 	}
 	return ""
 }

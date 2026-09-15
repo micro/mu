@@ -72,12 +72,13 @@ fieldset.form-group > legend { padding: 0; }
 .inline-edit-feedback:empty { display: none; }
 .log-tables .card { max-width: none; width: 100%; }
 .compact-list { display: flex; flex-direction: column; }
-.compact-list > .compact-list-item { display: flex; flex-direction: column; gap: 2px; padding-block: var(--space-control); margin: 0; font-size: 14px; font-weight: 400; }
+.compact-list > .compact-list-item { display: flex; flex-direction: column; gap: 2px; padding-block: var(--space-control); margin: 0; font-size: var(--font-size-body,16px); font-weight: 400; }
 .compact-list-item:first-child { padding-block-start: 0; }
 .compact-list-item:last-child { padding-block-end: 0; }
 .compact-list-item + .compact-list-item { border-top: 1px solid var(--card-border, #e8e8e8); }
 .page-stack.compact-stack { gap: var(--space-control); }
 .page-stack.compact-stack > * { margin-block: 0; }
+.page-filters > * { margin-block:0; }
 .section-link { display:block; margin:0; font-size:13px; font-weight:400; color:var(--text-primary,#111); text-decoration:none; }
 .section-link:hover { text-decoration:underline; }
 a.link-text:not(:is(.btn,.mini-btn,.oauth-btn)) { color: var(--link-color, #0066cc); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
@@ -173,6 +174,13 @@ span.pill { padding:2px 8px; font-size:12px; min-height:0 }
 /* Reusable metadata, metrics and action composition. */
 .metadata-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 16px; min-width:0; font-size:13px; color:var(--text-secondary); overflow-wrap:anywhere }
 .metadata-row > :last-child { margin-inline-start:auto }
+.metadata-row.metadata-columns { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px }
+.metadata-identity { display:grid; grid-template-columns:76px minmax(0,1fr); gap:2px 8px; align-items:baseline; min-width:0 }
+.metadata-kind { grid-column:1; grid-row:1; white-space:nowrap; font-size:12px; color:var(--text-secondary) }
+.metadata-name { grid-column:2; grid-row:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.metadata-detail { grid-column:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.metadata-time { text-align:right; white-space:nowrap; font-size:12px; color:var(--text-secondary) }
+
 .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr)); gap:16px }
 .metric { display:flex; flex-direction:column; gap:8px; min-width:0; padding:16px; border:1px solid var(--border-color); border-radius:8px }
 .metric-label { font-size:13px; color:var(--text-secondary) }
@@ -197,3 +205,25 @@ span.pill { padding:2px 8px; font-size:12px; min-height:0 }
  .data-table.stacked td[data-label] { display:grid; grid-template-columns:6rem minmax(0,1fr); gap:var(--space-control) }
  .data-table.stacked td[data-label]::before { content:attr(data-label); color:var(--text-secondary); font-size:12px; font-weight:500 }
 }
+.list-row.compact-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-color:var(--card-border) }
+.truncate { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.form-actions.no-wrap { flex-wrap:nowrap }
+.address-control { max-width:100%; overflow-wrap:anywhere; white-space:normal; text-align:left; font-family:monospace }
+.content-narrow { width:100%; max-width:600px; margin-inline:auto }
+body:has(.conversation-layout) #content { display:flex; flex-direction:column; height:calc(var(--visible-height,100dvh) - 56px); overflow:hidden; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)) }
+body:has(.conversation-layout) #footer { display:none }
+.conversation-layout,.conversation-panel { display:flex; flex-direction:column; flex:1; min-height:0; min-width:0; gap:var(--space-control) }
+.conversation-messages { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:none }
+.conversation-messages::-webkit-scrollbar { display:none }
+.conversation-composer { flex:none; margin:0 }
+
+/* Linked rows share interaction styling across search and message lists. */
+a.list-link, a.list-link:visited, a.list-link:hover, a.list-link:focus-visible { color:inherit; text-decoration:none; }
+a.list-link { display:block; min-width:0; }
+a.list-link:hover { background:var(--hover-background); }
+.link-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:8px; }
+.media-preview { display:block; width:100%; max-width:480px; max-height:280px; object-fit:contain; object-position:left center; }
+
+:is(input,textarea,select):focus-visible { outline:1px solid var(--text-secondary); outline-offset:1px; border-color:var(--text-secondary); box-shadow:none; }
+.page-action { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-control); }
+.pre-wrap { white-space:pre-wrap; overflow-wrap:anywhere; }

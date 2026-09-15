@@ -68,11 +68,11 @@ func ReadingPages(path, category string, page, total, size int) string {
 		fmt.Fprintf(&b, `<a href="%s?%s">%s</a>`, path, html.EscapeString(q.Encode()), label)
 	}
 	if page > 1 {
-		link("← Previous", page-1)
+		link("Previous", page-1)
 	}
 	fmt.Fprintf(&b, `<span>Page %d of %d</span>`, page, last)
 	if page < last {
-		link("Next →", page+1)
+		link("Next", page+1)
 	}
 	return b.String() + `</nav>`
 }

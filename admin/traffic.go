@@ -116,7 +116,7 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`<div class="traffic-drill">`)
 		usage.TableWithRest(&sb, who+" is calling", rows, rest)
 		sb.WriteString(`<p class="text-sm"><a href="/admin/traffic?window=` +
-			html.EscapeString(win.Slug) + `">&larr; All callers</a></p>`)
+			html.EscapeString(win.Slug) + `">All callers</a></p>`)
 		sb.WriteString(`</div>`)
 	}
 

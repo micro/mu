@@ -135,7 +135,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="maps-page">`)
+	b.WriteString(`<div class="maps-page page-stack">`)
 
 	if style != "world" && !Configured() {
 		b.WriteString(app.Problem("This instance has no Ordnance Survey key, so it can only " +
@@ -143,7 +143,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			"Settings — the free tier at osdatahub.os.uk is enough."))
 	}
 
-	b.WriteString(`<div class="maps-styles">`)
+	b.WriteString(`<div class="form-actions">`)
 	b.WriteString(app.PillLink("World", "/maps", style == "world"))
 	for _, s := range StyleNames() {
 		b.WriteString(app.PillLink(s, "/maps?style="+s, s == style))
@@ -200,7 +200,7 @@ func mapPane(style string) string {
 		style = styleName(style)
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="map-wrap">`)
+	b.WriteString(`<div class="map-wrap page-stack compact-stack">`)
 	b.WriteString(`<div id="map" class="map" data-style="` + html.EscapeString(style) +
 		`" data-lat="` + strconv.FormatFloat(homeLat, 'f', -1, 64) +
 		`" data-lon="` + strconv.FormatFloat(homeLon, 'f', -1, 64) +
@@ -209,7 +209,7 @@ func mapPane(style string) string {
 		`" data-max="` + strconv.Itoa(max) + `">`)
 	b.WriteString(`<div id="map-layer" class="map-layer"></div>`)
 	b.WriteString(`</div>`)
-	b.WriteString(`<div class="map-controls">` +
+	b.WriteString(`<div class="form-actions">` +
 		`<button type="button" id="map-in" aria-label="Zoom in">+</button>` +
 		`<button type="button" id="map-out" aria-label="Zoom out">&minus;</button>` +
 		`<button type="button" id="map-here" aria-label="Go to my location">Locate</button>` +
@@ -249,7 +249,7 @@ const mapJS = `<script>
   var SIZE=256, style=el.dataset.style, where=document.getElementById('map-where');
   var z=+el.dataset.zoom, minZ=+el.dataset.min, maxZ=+el.dataset.max;
   var routeShape=[];
- var overlay=document.createElementNS('http://www.w3.org/2000/svg','svg');overlay.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2';el.appendChild(overlay);
+ var overlay=document.createElementNS('http://www.w3.org/2000/svg','svg');overlay.classList.add('map-overlay');el.appendChild(overlay);
  el.addEventListener('map-route',function(e){routeShape=e.detail.filter(function(p){return Number.isFinite(p.Lat)&&Number.isFinite(p.Lon);});if(!routeShape.length){overlay.replaceChildren();return;}var lat=routeShape.reduce(function(a,p){return a+p.Lat;},0)/routeShape.length,lon=routeShape.reduce(function(a,p){return a+p.Lon;},0)/routeShape.length;z=Math.min(maxZ,15);while(z>minZ){var xs=routeShape.map(function(p){return xOf(p.Lon,z)*SIZE;}),ys=routeShape.map(function(p){return yOf(p.Lat,z)*SIZE;});if(Math.max.apply(null,xs)-Math.min.apply(null,xs)<el.clientWidth-40&&Math.max.apply(null,ys)-Math.min.apply(null,ys)<el.clientHeight-40)break;z--;}cx=xOf(lon,z);cy=yOf(lat,z);layer.innerHTML='';live={};render();});
  var live={}, arrived=0, missing=0, asked=0;
   function done(){ say(); }
