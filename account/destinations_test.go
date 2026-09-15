@@ -1,12 +1,51 @@
 package account
 
 import (
+	"encoding/json"
+	"fmt"
+	"mu/internal/quota"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 )
+
+func TestBillingClientKeepsBoundedReceiptsAndAllowance(t *testing.T) {
+	const owner = "billing-client"
+	cookie := holder(t, owner, "Billing")
+	for i := 0; i < 23; i++ {
+		if err := AddCredits(owner, 1, fmt.Sprintf("test-%d", i), map[string]interface{}{"private_receipt": "not-for-the-view"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r := httptest.NewRequest("GET", "/account/billing", nil)
+	r.AddCookie(cookie)
+	r.Header.Set("Accept", "application/json")
+	w := httptest.NewRecorder()
+	Account(w, r)
+	var state struct {
+		Balance       int `json:"balance"`
+		DailyCredits  int `json:"daily_credits"`
+		IncludedToday int `json:"included_today"`
+		Transactions  []struct {
+			Label  string `json:"label"`
+			Amount string `json:"amount_label"`
+		} `json:"transactions"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &state); err != nil {
+		t.Fatal(err)
+	}
+	if state.Balance != 23 || len(state.Transactions) != 20 || state.Transactions[0].Label != "Deposit" || state.Transactions[0].Amount != "+1" {
+		t.Fatalf("billing view lost receipt information: %+v", state)
+	}
+	if state.DailyCredits != quota.DailyCredits() || state.IncludedToday != IncludedToday(owner) {
+		t.Fatalf("daily allowance missing: %+v", state)
+	}
+	if strings.Contains(w.Body.String(), "private_receipt") || strings.Contains(w.Body.String(), "not-for-the-view") {
+		t.Fatal("billing view leaked transaction metadata")
+	}
+}
 
 func TestAccountDestinationsSeparateForms(t *testing.T) {
 	cookie := holder(t, "account_split", "Account Split")

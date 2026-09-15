@@ -122,6 +122,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       for (const route of [
         "/",
         "/inbox",
+        "/inbox?view=requests",
         "/inbox?view=history&page=2",
         "/inbox?id=" + input.thread,
         "/inbox/new",
@@ -293,6 +294,20 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
               1,
             );
           }
+          if (route === "/account/billing") {
+            assert.equal(
+              await page
+                .getByRole("link", { name: "Transfer", exact: true })
+                .getAttribute("href"),
+              "/account/transfer",
+            );
+            await page.getByText("1 credit = 1¢", { exact: true }).waitFor();
+            await page
+              .getByText(
+                "Your own calls are not charged because you are an admin.",
+              )
+              .waitFor();
+          }
           if (route === "/account/profile") {
             await page
               .getByLabel("Display name", { exact: true })
@@ -357,6 +372,60 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
           failures.push(width + " " + route + ": " + e.message);
         }
       }
+    }
+    await page.setViewportSize({ width: 390, height: 840 });
+    await page.goto(input.base + "/inbox");
+    await page
+      .getByRole("link", { name: "Message requests (2)", exact: true })
+      .click();
+    await page.getByText("Waiting SMS", { exact: true }).click();
+    await page
+      .getByRole("region", { name: "Message request", exact: true })
+      .waitFor();
+    assert.equal(
+      await page.getByLabel("Ask Micro about this").count(),
+      0,
+      "held message offers agent actions before approval",
+    );
+    await page.getByRole("button", { name: "Let in", exact: true }).click();
+    await page.waitForURL(input.base + "/inbox");
+    await page
+      .getByRole("link", { name: "Message requests (1)", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Block sender", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Blocked", exact: true }).waitFor();
+    assert(
+      await page
+        .getByRole("button", { name: "Blocked", exact: true })
+        .isDisabled(),
+    );
+    await checkWidth();
+    await page.goto(input.base + "/inbox?id=" + input.thread);
+    await page
+      .getByRole("button", { name: "Mark unread", exact: true })
+      .click();
+    await page.waitForURL(input.base + "/inbox");
+    const list = await context.request.get(input.base + "/inbox", {
+      headers: { Accept: "application/json" },
+    });
+    assert(
+      (await list.json()).items.find((row) => row.id === input.thread)?.unread,
+      "mark unread was immediately undone",
+    );
+    const csrf = (await context.cookies()).find(
+      (c) => c.name === "csrf_token",
+    ).value;
+    for (const headers of [
+      { Accept: "application/json" },
+      { Accept: "application/json", "X-CSRF-Token": csrf },
+    ]) {
+      const forbidden = await context.request.post(input.base + "/inbox/held", {
+        headers,
+        form: { id: input.other, do: "let" },
+      });
+      assert.equal(forbidden.status(), headers["X-CSRF-Token"] ? 404 : 403);
     }
     const response = await context.request.get(
       input.base + "/inbox?id=" + input.other,

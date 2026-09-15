@@ -45,7 +45,7 @@ function App() {
           ? "Users"
           : path === "/apps"
             ? "Apps"
-            : path.endsWith("/billing")
+            : path.endsWith("/billing") || path.endsWith("/usage")
               ? "Billing"
               : path.endsWith("/profile")
                 ? "Profile"

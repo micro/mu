@@ -8,6 +8,8 @@ type Preferences = {
   include_world_news: boolean;
   timezone: string;
   time: string;
+  title?: string;
+  repeat?: string;
 };
 export function InboxSettings() {
   const [prefs, setPrefs] = useState<Preferences>(),
@@ -62,13 +64,14 @@ export function InboxSettings() {
           <div className="flex items-start justify-between gap-5 py-5">
             <div>
               <label htmlFor="morning-brief" className="font-medium">
-                Morning brief
+                {prefs.title || "Morning brief"}
               </label>
               <p
                 id="brief-description"
                 className="mt-1 text-sm text-muted-foreground"
               >
-                A daily summary of your day, delivered to your inbox at{" "}
+                A summary of your day, delivered to your inbox
+                {prefs.repeat === "weekdays" ? " on weekdays" : " daily"} at{" "}
                 {prefs.time}
                 {prefs.timezone
                   ? " (" + prefs.timezone + ")"
@@ -93,7 +96,7 @@ export function InboxSettings() {
                 id="news-description"
                 className="mt-1 text-sm text-muted-foreground"
               >
-                Add a short world news section to your morning brief.
+                Add a short world news section to your brief.
               </p>
             </div>
             <Switch

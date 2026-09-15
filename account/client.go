@@ -3,6 +3,7 @@ package account
 import (
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/user"
 	"mu/service/sms"
 	"net/http"
@@ -17,8 +18,18 @@ func clientAccount(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	}
 	pending, _ := sms.Pending(acc.ID)
 	state := map[string]any{"id": acc.ID, "name": acc.Name, "email": acc.Email, "email_verified": acc.EmailVerified, "addresses": acc.Addresses, "balance": Balance(acc.ID), "place": acc.Place, "lat": acc.Lat, "lon": acc.Lon, "timezone": acc.Zone, "numbers": sms.Numbers(acc.ID), "pending_number": pending, "phone_enabled": agentNumber() != "", "forwarding": MailForwardingOn(acc.ID), "passkeys": keys, "status": user.Status(acc.ID), "payments": PaymentsEnabled(), "google_enabled": GoogleConfigured(), "google_linked": acc.EmailVerified && acc.Email != ""}
-	if r.URL.Path == "/account/billing" {
-		state["transactions"] = Transactions(acc.ID, 20)
+	if r.URL.Path == "/account/billing" || r.URL.Path == "/account/usage" {
+		state["admin"] = acc.Admin
+		state["daily_credits"] = quota.DailyCredits()
+		state["included_today"] = IncludedToday(acc.ID)
+		rows := make([]map[string]any, 0)
+		for _, tx := range Transactions(acc.ID, 20) {
+			rows = append(rows, map[string]any{
+				"id": tx.ID, "label": transactionLabel(tx), "amount_label": transactionAmount(tx),
+				"balance": tx.Balance, "created_at": tx.CreatedAt,
+			})
+		}
+		state["transactions"] = rows
 	}
 	app.RespondJSON(w, state)
 }

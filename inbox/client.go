@@ -4,6 +4,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/result"
 	"mu/internal/thread"
+	"mu/service/sms"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,13 +13,16 @@ import (
 )
 
 type clientRow struct {
-	ID      string    `json:"id"`
-	Subject string    `json:"subject"`
-	Sender  string    `json:"sender"`
-	Kind    string    `json:"kind"`
-	Preview string    `json:"preview"`
-	Updated time.Time `json:"updated"`
-	Unread  bool      `json:"unread"`
+	ID       string    `json:"id"`
+	Subject  string    `json:"subject"`
+	Sender   string    `json:"sender"`
+	Kind     string    `json:"kind"`
+	Preview  string    `json:"preview"`
+	Updated  time.Time `json:"updated"`
+	Unread   bool      `json:"unread"`
+	Held     bool      `json:"held"`
+	CanBlock bool      `json:"can_block"`
+	Blocked  bool      `json:"blocked"`
 }
 
 func summary(owner string, t thread.Thread) clientRow {
@@ -27,12 +31,17 @@ func summary(owner string, t thread.Thread) clientRow {
 	if ms := thread.Messages(owner, t.ID, 1); len(ms) > 0 {
 		preview = plainPreview(ms[len(ms)-1].Text)
 	}
-	return clientRow{t.ID, t.Subject, who, t.Client, preview, t.Updated, thread.Unread(t)}
+	canBlock := t.Held && t.Client == thread.SMSClient && strings.TrimSpace(t.Key) != ""
+	return clientRow{ID: t.ID, Subject: t.Subject, Sender: who, Kind: t.Client, Preview: preview, Updated: t.Updated, Unread: thread.Unread(t), Held: t.Held, CanBlock: canBlock, Blocked: canBlock && sms.OptedOut(t.Key)}
 }
 
 func clientData(w http.ResponseWriter, r *http.Request, owner string) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	all := inboxThreads(owner, r.URL.Path)
+	requests := r.URL.Query().Get("view") == "requests"
+	if requests {
+		all = thread.HeldFor(owner, held)
+	}
 	if id := r.URL.Query().Get("id"); id != "" {
 		t := thread.Get(owner, id)
 		if t == nil {
@@ -94,7 +103,7 @@ func clientData(w http.ResponseWriter, r *http.Request, owner string) {
 	for _, t := range all[p.From:p.To] {
 		rows = append(rows, summary(owner, t))
 	}
-	app.RespondJSON(w, map[string]any{"items": rows, "page": p.Page, "total": len(all), "page_size": shown, "query": q})
+	app.RespondJSON(w, map[string]any{"items": rows, "page": p.Page, "total": len(all), "page_size": shown, "query": q, "request_count": thread.HeldCount(owner)})
 }
 
 func plainPreview(text string) string {

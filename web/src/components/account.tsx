@@ -16,6 +16,9 @@ type Account = {
   pending_number: string;
   phone_enabled: boolean;
   balance: number;
+  admin: boolean;
+  daily_credits: number;
+  included_today: number;
   payments: boolean;
   place: string;
   lat: number;
@@ -27,8 +30,8 @@ type Account = {
   passkeys: { id: string; name: string; created: string; last_used: string }[];
   transactions: {
     id: string;
-    operation: string;
-    amount: number;
+    label: string;
+    amount_label: string;
     balance: number;
     created_at: string;
   }[];
@@ -40,7 +43,7 @@ export function AccountPage() {
     [busy, setBusy] = useState(false);
   const path = location.pathname,
     profile = path === "/account/profile",
-    billing = path === "/account/billing";
+    billing = path === "/account/billing" || path === "/account/usage";
   async function load() {
     setAccount(await json<Account>(path));
   }
@@ -141,10 +144,25 @@ export function AccountPage() {
             <>
               <Section title="Balance">
                 <p>{account.balance.toLocaleString()} credits</p>
+                <p className="text-sm text-muted-foreground">1 credit = 1¢</p>
+                {account.daily_credits > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {account.included_today.toLocaleString()} of{" "}
+                    {account.daily_credits.toLocaleString()} included credits
+                    left today. Resets at midnight UTC; unused credits do not
+                    roll over. Messaging limits still apply.
+                  </p>
+                )}
+                {account.admin && (
+                  <p className="text-sm text-muted-foreground">
+                    Your own calls are not charged because you are an admin.
+                  </p>
+                )}
                 {links([
                   ...(account.payments
                     ? [["/account/topup", "Top up"] as [string, string]]
                     : []),
+                  ["/account/transfer", "Transfer"],
                   ["/usage", "View usage"],
                 ])}
               </Section>
@@ -159,9 +177,7 @@ export function AccountPage() {
                       className="flex items-start justify-between gap-3 py-3"
                     >
                       <div className="min-w-0">
-                        <p className="break-words">
-                          {t.operation.replaceAll("_", " ")}
-                        </p>
+                        <p className="break-words">{t.label}</p>
                         <time
                           className="text-sm text-muted-foreground"
                           dateTime={t.created_at}
@@ -170,8 +186,8 @@ export function AccountPage() {
                         </time>
                       </div>
                       <p className="shrink-0 text-right tabular-nums">
-                        {t.amount > 0 ? "+" : ""}
-                        {t.amount.toLocaleString()}
+                        {t.amount_label}
+                        {t.amount_label !== "included" && " credits"}
                         <span className="block text-sm text-muted-foreground">
                           {t.balance.toLocaleString()} balance
                         </span>

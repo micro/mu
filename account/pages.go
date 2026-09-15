@@ -736,18 +736,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// renderPhoneCard is the number you have proved is yours.
-//
-// Beside Email because it is the same kind of fact — an address you claimed —
-// and because of what it now decides. A text from a verified number wakes your
-// agent; a text from any other number is filed and answered by nobody. That is
-// an account-level consequence, so the claiming belongs on the account page
-// rather than folded inside a <details> on /sms, which is where it lived and
-// where nobody looking for it would think to open.
-//
-// Absent entirely on an instance with no number to text from. A form that can
-// only fail reads as broken rather than as unconfigured — the same call the
-// wallet's convert form makes.
 // agentNumber is the number the agent texts from, for saving as a contact.
 //
 // Drawn only when the instance has one. A line saying where texts come from,

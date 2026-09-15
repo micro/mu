@@ -18,12 +18,16 @@ type Row = {
   preview: string;
   updated: string;
   unread: boolean;
+  held: boolean;
+  can_block: boolean;
+  blocked: boolean;
 };
 type Data = {
   items: Row[];
   page: number;
   total: number;
   page_size: number;
+  request_count: number;
   thread?: Row;
   messages?: {
     id: string;
@@ -54,7 +58,10 @@ export function InboxPage() {
     [ask, setAsk] = useState(""),
     [busy, setBusy] = useState(false);
   const id = new URLSearchParams(location.search).get("id"),
+    requests = new URLSearchParams(location.search).get("view") === "requests",
     base = location.pathname;
+  const view: Record<string, string> = requests ? { view: "requests" } : {};
+  const listURL = requests ? "/inbox?view=requests" : "/inbox";
   async function load() {
     setError("");
     try {
@@ -62,7 +69,11 @@ export function InboxPage() {
         await json<Data>(
           base +
             "?" +
-            new URLSearchParams({ page: String(page), ...(id ? { id } : {}) }),
+            new URLSearchParams({
+              page: String(page),
+              ...view,
+              ...(id ? { id } : {}),
+            }),
           search
             ? { method: "POST", body: new URLSearchParams({ q: search }) }
             : {},
@@ -83,6 +94,8 @@ export function InboxPage() {
       if (
         values.action === "delete" ||
         path.includes("/delete") ||
+        path === "/inbox/unread" ||
+        (path === "/inbox/held" && values.do === "let" && id) ||
         values.action === "handled"
       ) {
         location.href = "/inbox";
@@ -104,7 +117,11 @@ export function InboxPage() {
       const next = await json<Data>(
         base +
           "?" +
-          new URLSearchParams({ id: id!, before: String(data?.before || 0) }),
+          new URLSearchParams({
+            id: id!,
+            before: String(data?.before || 0),
+            ...view,
+          }),
       );
       setData((previous) =>
         previous
@@ -126,10 +143,29 @@ export function InboxPage() {
     }
   }
   const thread = data?.thread;
+  const heldActions = (row: Row) => (
+    <div className="flex flex-wrap gap-2">
+      <Button
+        disabled={busy}
+        onClick={() => act("/inbox/held", { id: row.id, do: "let" })}
+      >
+        Let in
+      </Button>
+      {row.can_block && (
+        <Button
+          variant="outline"
+          disabled={busy || row.blocked}
+          onClick={() => act("/inbox/held", { id: row.id, do: "block" })}
+        >
+          {row.blocked ? "Blocked" : "Block sender"}
+        </Button>
+      )}
+    </div>
+  );
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeading
-        title={thread?.subject || "Inbox"}
+        title={thread?.subject || (requests ? "Message requests" : "Inbox")}
         actions={
           <>
             <Button asChild variant="outline">
@@ -138,7 +174,7 @@ export function InboxPage() {
                 Settings
               </a>
             </Button>
-            {!thread && (
+            {!thread && !requests && (
               <Button asChild>
                 <a href="/inbox/new">
                   <Plus />
@@ -155,13 +191,17 @@ export function InboxPage() {
         <>
           <nav className="mb-5 flex flex-wrap items-center gap-2">
             <Button asChild variant="outline">
-              <a href="/inbox">Inbox</a>
+              <a href={listURL}>{requests ? "Message requests" : "Inbox"}</a>
             </Button>
             {[data.previous, data.next].map(
               (to, i) =>
                 to && (
                   <Button key={i} asChild variant="ghost">
-                    <a href={base + "?id=" + encodeURIComponent(to)}>
+                    <a
+                      href={
+                        base + "?" + new URLSearchParams({ id: to, ...view })
+                      }
+                    >
                       {i ? "Next" : "Previous"}
                     </a>
                   </Button>
@@ -181,6 +221,13 @@ export function InboxPage() {
               Done
             </Button>
             <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => act("/inbox/unread", { id: thread.id })}
+            >
+              Mark unread
+            </Button>
+            <Button
               variant="ghost"
               disabled={busy}
               onClick={() => {
@@ -191,6 +238,18 @@ export function InboxPage() {
               Delete
             </Button>
           </nav>
+          {thread.held && (
+            <section
+              className="mb-5 space-y-3 rounded-lg border p-4"
+              aria-label="Message request"
+            >
+              <p className="text-sm text-muted-foreground">
+                This sender is waiting to be let in. Micro has not acted on this
+                message.
+              </p>
+              {heldActions(thread)}
+            </section>
+          )}
           <div className="mb-3 flex gap-2">
             {data.has_older && (
               <Button variant="outline" disabled={busy} onClick={older}>
@@ -231,7 +290,7 @@ export function InboxPage() {
               </article>
             ))}
           </div>
-          {data.reply_to && (
+          {!thread.held && data.reply_to && (
             <div className="mt-4">
               {reply ? (
                 <form
@@ -274,29 +333,47 @@ export function InboxPage() {
               )}
             </div>
           )}
-          <form
-            className="mt-6 space-y-2 border-t pt-5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              act(base, { ask, id: thread.id });
-            }}
-          >
-            <Label htmlFor="inbox-ask">Ask Micro about this</Label>
-            <div className="flex gap-2">
-              <Input
-                id="inbox-ask"
-                value={ask}
-                onChange={(e) => setAsk(e.target.value)}
-                required
-                placeholder="What would you like done?"
-              />
-              <Button disabled={busy}>Ask</Button>
-            </div>
-          </form>
+          {!thread.held && (
+            <form
+              className="mt-6 space-y-2 border-t pt-5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                act(base, { ask, id: thread.id });
+              }}
+            >
+              <Label htmlFor="inbox-ask">Ask Micro about this</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="inbox-ask"
+                  value={ask}
+                  onChange={(e) => setAsk(e.target.value)}
+                  required
+                  placeholder="What would you like done?"
+                />
+                <Button disabled={busy}>Ask</Button>
+              </div>
+            </form>
+          )}
         </>
       ) : (
         data && (
           <>
+            {(requests || data.request_count > 0) && (
+              <div className="mb-4">
+                <Button asChild variant="outline">
+                  <a href={requests ? "/inbox" : "/inbox?view=requests"}>
+                    {requests
+                      ? "Inbox"
+                      : `Message requests (${data.request_count})`}
+                  </a>
+                </Button>
+                {requests && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    From new senders. Micro has not acted on these messages.
+                  </p>
+                )}
+              </div>
+            )}
             <form
               className="mb-4 flex gap-2"
               onSubmit={(e: FormEvent) => {
@@ -316,43 +393,52 @@ export function InboxPage() {
             </form>
             <div className="divide-y border-y">
               {data.items?.map((t) => (
-                <a
-                  key={t.id}
-                  className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-sm py-3 hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  href={
-                    base +
-                    "?" +
-                    new URLSearchParams({ id: t.id, page: String(page) })
-                  }
-                >
-                  <span
-                    className={
-                      "truncate " + (t.unread ? "font-semibold" : "font-medium")
+                <div key={t.id}>
+                  <a
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-sm py-3 hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    href={
+                      base +
+                      "?" +
+                      new URLSearchParams({
+                        id: t.id,
+                        page: String(page),
+                        ...view,
+                      })
                     }
                   >
-                    {t.sender || "Micro"}
-                  </span>
-                  <time
-                    className="text-right text-sm text-muted-foreground"
-                    title={new Date(t.updated).toLocaleString()}
-                    dateTime={t.updated}
-                  >
-                    {date(t.updated)}
-                  </time>
-                  <div className="col-span-2 flex min-w-0 items-baseline gap-2">
-                    <span className="w-16 shrink-0 text-sm capitalize text-muted-foreground">
-                      {t.kind}
+                    <span
+                      className={
+                        "truncate " +
+                        (t.unread ? "font-semibold" : "font-medium")
+                      }
+                    >
+                      {t.sender || "Micro"}
                     </span>
-                    <span className="truncate">{t.subject || "Untitled"}</span>
-                  </div>
-                  <p className="col-span-2 truncate text-sm text-muted-foreground">
-                    {t.preview}
-                  </p>
-                </a>
+                    <time
+                      className="text-right text-sm text-muted-foreground"
+                      title={new Date(t.updated).toLocaleString()}
+                      dateTime={t.updated}
+                    >
+                      {date(t.updated)}
+                    </time>
+                    <div className="col-span-2 flex min-w-0 items-baseline gap-2">
+                      <span className="w-16 shrink-0 text-sm capitalize text-muted-foreground">
+                        {t.kind}
+                      </span>
+                      <span className="truncate">
+                        {t.subject || "Untitled"}
+                      </span>
+                    </div>
+                    <p className="col-span-2 truncate text-sm text-muted-foreground">
+                      {t.preview}
+                    </p>
+                  </a>
+                  {t.held && <div className="pb-3">{heldActions(t)}</div>}
+                </div>
               ))}
               {!data.items?.length && (
                 <p className="py-8 text-muted-foreground">
-                  Your inbox is empty.
+                  {requests ? "No message requests." : "Your inbox is empty."}
                 </p>
               )}
             </div>
