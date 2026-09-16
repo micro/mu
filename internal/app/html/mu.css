@@ -317,3 +317,9 @@ main{overflow-wrap:anywhere}
 .directory-description{display:block;color:#666;margin-top:4px}
 a.directory-content:hover .directory-heading{text-decoration:underline}
 .view-switch{margin-block:8px}
+
+.directory-heading{flex-wrap:wrap}
+.directory-content .metadata-row{margin-top:4px;font-size:.8rem;color:var(--text-muted)}
+.badge-row{display:inline-flex;flex-wrap:wrap;gap:4px 8px}
+input.compact-number:not([type=checkbox]):not([type=radio]):not([type=hidden]){width:7rem;flex:0 1 7rem}
+.form-actions>.form-action{margin:0}

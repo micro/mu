@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"sort"
 	"strings"
@@ -180,7 +181,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	users := auth.AllAccounts()
 	sort.Slice(users, func(i, j int) bool { return users[i].Created.After(users[j].Created) })
 	tab := r.URL.Query().Get("tab")
-	if tab == "" {
+	if tab != "banned" && tab != "new" {
 		tab = "all"
 	}
 	var sb strings.Builder
@@ -193,7 +194,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	// this page said "Admin" up there and "Users" directly under it — the same
 	// heading twice, one of them wrong. Every admin page did it.
 	sb.WriteString(`<p><a href="/admin/invite">Invites` + pendingInvites() + ` &rarr;</a></p>`)
-	sb.WriteString(`<div class="app-filters">`)
+	sb.WriteString(`<div class="view-switch">`)
 	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
 		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id, t.id == tab))
 	}
@@ -214,8 +215,12 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%d users</p>`, len(filtered)))
-	sb.WriteString(`<table class="admin-table"><thead><tr><th>Username</th><th>Name</th><th class="created-col">Created</th><th>Status</th><th class="center">Credits</th><th class="center">Actions</th></tr></thead><tbody>`)
-	for _, u := range filtered {
+	page := app.Paginate(r, len(filtered), 25)
+	sb.WriteString(`<div class="directory-list">`)
+	if len(filtered) == 0 {
+		sb.WriteString(`<p class="text-muted">No users in this view.</p>`)
+	}
+	for _, u := range filtered[page.From:page.To] {
 		created := u.Created.Format("2006-01-02")
 		var badges []string
 		if u.Admin {
@@ -249,15 +254,15 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		if u.Agent {
 			agentLabel, agentTitle = "Mark human", "Mark as a person: charged like any other account"
 		}
-		actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="toggle_agent"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" title="%s" class="mini-btn">%s</button></form>`,
+		actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action"><input type="hidden" name="action" value="toggle_agent"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" title="%s" class="mini-btn">%s</button></form>`,
 			u.ID, tab, agentTitle, agentLabel))
 		if u.ID != acc.ID {
 			if u.Banned {
-				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn good">Unban</button></form>`, u.ID, tab))
+				actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn good">Unban</button></form>`, u.ID, tab))
 			} else {
-				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
+				actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
 			}
-			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger">Delete</button></form>`, u.ID, u.ID, tab))
+			actions = append(actions, fmt.Sprintf(`<form method="POST" class="form-action" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger">Delete</button></form>`, u.ID, u.ID, tab))
 		}
 		// Credit, on the row, because that is where somebody wanting to comp an
 		// account is looking. An amount box rather than fixed buttons: the
@@ -265,30 +270,25 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		// is what you feel like giving — and three preset buttons would be
 		// wrong for most of them.
 		actions = append(actions, fmt.Sprintf(
-			`<form method="POST" class="d-inline inline-row">`+
+			`<form method="POST" class="form-action inline-row">`+
 				`<input type="hidden" name="action" value="credit">`+
 				`<input type="hidden" name="user_id" value="%s">`+
 				`<input type="hidden" name="tab" value="%s">`+
 				`<input name="amount" inputmode="numeric" pattern="[0-9]*" placeholder="credits" `+
-				`class="num-field">`+
+				`class="compact-number" aria-label="Credits to add">`+
 				`<button type="submit" title="Top up this account" `+
 				`class="mini-btn info">Credit</button></form>`,
 			u.ID, tab))
 
-		// data-label on every cell, because on a narrow screen the table stops
-		// being a table — see .admin-table in mu.css. The header row is what
-		// tells you which column you are looking at, and it is the first thing
-		// that has to go when six columns will not fit across a phone.
-		sb.WriteString(fmt.Sprintf(`<tr>`+
-			`<td data-label="Username"><strong><a href="/@%s">%s</a></strong></td>`+
-			`<td data-label="Name">%s</td>`+
-			`<td data-label="Created" class="created-col">%s</td>`+
-			`<td data-label="Status">%s</td>`+
-			`<td data-label="Credits" class="center">%s</td>`+
-			`<td data-label="Actions" class="center actions-cell">%s</td>`+
-			`</tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
+		actionsHTML := strings.Join(actions, "")
+		actionsHTML = strings.ReplaceAll(actionsHTML, `<input type="hidden" name="action"`, app.CSRFField(auth.CSRFToken(r))+`<input type="hidden" name="action"`)
+		sb.WriteString(`<article class="directory-row"><div class="directory-content">` +
+			`<div class="directory-heading"><a href="/@` + html.EscapeString(u.ID) + `">` + html.EscapeString(u.ID) + `</a><span class="text-muted">` + html.EscapeString(u.Name) + `</span></div>` +
+			`<div class="metadata-row"><span>Joined ` + created + `</span><span>Credits: ` + balanceCell(u.ID) + `</span>` + statusHTML + `</div>` +
+			`<div class="form-actions">` + actionsHTML + `</div></div></article>`)
 	}
-	sb.WriteString(`</tbody></table>`)
+	sb.WriteString(`</div>`)
+	sb.WriteString(page.Nav("/admin/users?tab=" + tab))
 	app.Respond(w, r, app.Response{Title: "Users", Description: "Accounts on this instance", HTML: sb.String()})
 }
 
