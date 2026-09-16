@@ -232,7 +232,7 @@
  .cell.nested { padding-left: 24px; }
  .sep { margin: 0 8px; color: var(--card-border, #ddd); }
  .underlined { color: var(--link-color, #0066cc); text-decoration: underline; }
- .num-field { width: 72px; }
+ .num-field { width: 96px; min-width: 80px; }
  .tile { border: var(--border-width, 1px) solid var(--card-border, #eee); border-radius: var(--border-radius, 6px); padding: 12px; }
  .align-middle { vertical-align: middle; }
  .mt-px { margin-top: 2px; }
