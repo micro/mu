@@ -93,17 +93,13 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	// beside each, so a second list here is the room carrying the list of
 	// rooms. The back link is how you leave, and it was already here.
 	//
-	// Losing the panel also loses the <script> it carried, which is where
-	// window.muSeedAgent was defined — see chatPageJS in agent.go, which this
-	// now uses for the same reason that page does.
+	// Connection details use the shared page layout and do not load a chat renderer.
 	page := `<div class="chat-main"><p class="conn-back">` +
 		// TextLink, not Link: app.Link appends a → because it points at a
 		// destination you are going on to, and a back link that reads
 		// "← Agents →" is pointing both ways at once.
 		app.TextLink("Agents", back) + `</p>` +
-		`<div class="w-820">` + notice + body + `</div></div>` +
-		chatPageJS +
-		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`
+		`<div class="page-stack">` + notice + body + `</div></div>`
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: page})
 }
 
@@ -118,11 +114,11 @@ func connModel(prefer string) string {
 	if !ok {
 		model = "Not configured"
 	}
-	return connRow("Model", `<code class="connection-value">`+html.EscapeString(model)+`</code>`)
+	return connRow("Model", `<code class="detail-value">`+html.EscapeString(model)+`</code>`)
 }
 
 func connRow(k, v string) string {
-	return `<div class="connection-row"><span class="conn-k">` + k + `</span>` + v + `</div>`
+	return `<div class="detail-row"><span class="text-muted">` + k + `</span>` + v + `</div>`
 }
 
 // connEndpoint is how to ask this agent a question from a program.
@@ -147,7 +143,7 @@ func connEndpoint(base, path string) string {
   -H "Authorization: Bearer $MU_TOKEN" \
   -H "Content-Type: application/json" \
   -d '` + string(payload) + "'"
-	return `<h3 class="conn-head">HTTP endpoint</h3><p class="conn-note">Ask this agent through the <a href="/api">Agent API</a>. Create an API token at <a href="/token">Tokens</a>; service-scoped credentials cannot run an agent.</p><pre class="conn-pre">` + html.EscapeString(example) + `</pre><p class="conn-note">The response contains <code>data.text</code> and <code>data.thread</code>. Send <code>thread</code> back to continue.</p>`
+	return `<h3 class="conn-head">HTTP endpoint</h3><p class="conn-note">Ask this agent through the <a href="/tools">Agent API</a>. Create an API token at <a href="/token">Tokens</a>; service-scoped credentials cannot run an agent.</p><pre class="conn-pre">` + html.EscapeString(example) + `</pre><p class="conn-note">The response contains <code>data.text</code> and <code>data.thread</code>. Send <code>thread</code> back to continue.</p>`
 
 }
 
@@ -163,7 +159,7 @@ func connChat(base, path string) string {
 	// The same code style as Email, because it is the same kind of thing — a
 	// value on this page you read — and a bare link beside two boxed ones read
 	// as three rows with two designs.
-	return connRow("Chat", `<a href="`+path+`"><code class="connection-value">`+
+	return connRow("Chat", `<a href="`+path+`"><code class="detail-value">`+
 		html.EscapeString(strings.TrimSuffix(base, "/")+path)+`</code></a>`)
 }
 
@@ -197,13 +193,13 @@ func defaultPanel(base string) string {
 		// the same channel — see app.ClientName. This row sits directly above a
 		// Chat row, which is exactly where a second name for one thing reads as
 		// a second channel.
-		b.WriteString(connRow("Mail", `<code class="connection-value">`+html.EscapeString(addr)+`</code>`))
+		b.WriteString(connRow("Mail", `<code class="detail-value">`+html.EscapeString(addr)+`</code>`))
 	}
 
 	b.WriteString(connChat(base, "/agent/"+DefaultPlatformAgent))
 
-	b.WriteString(`<div class="connection-row"><span class="conn-k">Service token</span>` +
-		`<span class="connection-value">Your account's. ` + app.TextLink("Issue one", "/token") +
+	b.WriteString(`<div class="detail-row"><span class="text-muted">Service token</span>` +
+		`<span class="detail-value">Your account's. ` + app.TextLink("Issue one", "/token") +
 		` and anything holding it reaches every tool you can — which is why an agent you ` +
 		`hand to somebody else should be ` + app.TextLink("its own", "/agent/new") +
 		`, with a scope.</span></div>`)
@@ -220,7 +216,7 @@ func defaultPanel(base string) string {
 	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
-	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Use an API token from <a href="/token">Tokens</a>.</p>`)
+	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Create a token with Agent API access in <a href="/token">Client access</a>.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "mu": {
@@ -265,7 +261,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 		`</strong> — this instance executes its standing instruction. It needs no ` +
 		`credential unless you want to reach it from outside.</p>`)
 
-	b.WriteString(`<div class="connection-row"><span class="conn-k">Tools</span>` +
+	b.WriteString(`<div class="detail-row"><span class="text-muted">Tools</span>` +
 		`<span class="` + cls + `">` + html.EscapeString(scope) + `</span></div>`)
 
 	// The address, and who it listens to. Knowing the address is not permission
@@ -281,9 +277,9 @@ func connectPanel(a *Agent, base, csrf string) string {
 		// senders and filtering is about mail arriving from outside, which on
 		// such an instance never happens.
 		if !mail.Reachable() {
-			b.WriteString(`<div class="connection-row"><span class="conn-k">Message it</span>` +
-				`<span class="connection-value"><code>` + html.EscapeString(addr) + `</code><br>` +
-				`<span class="conn-sub">From anyone on this instance. There is no mail domain ` +
+			b.WriteString(`<div class="detail-row"><span class="text-muted">Message it</span>` +
+				`<span class="detail-value"><code>` + html.EscapeString(addr) + `</code><br>` +
+				`<span class="detail-note">From anyone on this instance. There is no mail domain ` +
 				`configured, so nothing from outside can reach it — an operator sets ` +
 				`<code>MAIL_DOMAIN</code> to change that.</span></span></div>`)
 		} else {
@@ -295,8 +291,8 @@ func connectPanel(a *Agent, base, csrf string) string {
 			// things you take somewhere else — an endpoint, an address, a
 			// scope, a token. Where the rules belong is /help; where the other
 			// address belongs is the page about the other agent.
-			b.WriteString(`<div class="connection-row"><span class="conn-k">Email</span>` +
-				`<code class="connection-value">` + html.EscapeString(addr) + `</code></div>`)
+			b.WriteString(`<div class="detail-row"><span class="text-muted">Email</span>` +
+				`<code class="detail-value">` + html.EscapeString(addr) + `</code></div>`)
 		}
 	}
 
@@ -305,7 +301,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	// now, because every agent is something you can talk to.
 	b.WriteString(connChat(base, Path(a.Owner, a.ID)))
 
-	b.WriteString(`<div class="connection-row"><span class="conn-k">Token</span><span class="connection-value"><a href="/token">Create a token</a></span></div>`)
+	b.WriteString(`<div class="detail-row"><span class="text-muted">Token</span><span class="detail-value"><a href="/token">Create a token</a></span></div>`)
 
 	b.WriteString(connModel(a.Model))
 
@@ -322,7 +318,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	b.WriteString(connEndpoint(base, Path(a.Owner, a.ID)))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
-	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Use an API token from <a href="/token">Tokens</a>.</p>`)
+	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Create a token with Agent API access in <a href="/token">Client access</a>.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "`+strings.ToLower(a.Name)+`": {
@@ -350,13 +346,13 @@ func platformPanel(a *micro.Agent, base string) string {
 		`instance, so there is nothing to create and no token to hold: it answers as your ` +
 		`account, against your credits. ` + app.Link("Make one of your own", "/agent/new") + `</p>`)
 
-	b.WriteString(`<div class="connection-row"><span class="conn-k">Tools</span>` +
+	b.WriteString(`<div class="detail-row"><span class="text-muted">Tools</span>` +
 		`<span class="conn-scope">` + html.EscapeString(toolWords(a.Tools)) + `</span></div>`)
 
 	if addr := PlatformAddress(a.ID); addr != "" {
-		b.WriteString(`<div class="connection-row"><span class="conn-k">Write to it</span>` +
-			`<span class="connection-value"><code>` + html.EscapeString(addr) + `</code><br>` +
-			`<span class="conn-sub">From your verified address. The tag names the agent ` +
+		b.WriteString(`<div class="detail-row"><span class="text-muted">Write to it</span>` +
+			`<span class="detail-value"><code>` + html.EscapeString(addr) + `</code><br>` +
+			`<span class="detail-note">From your verified address. The tag names the agent ` +
 			`rather than you, so it is one thing to remember — and it answers in the ` +
 			`thread, which turns up in your inbox.</span></span></div>`)
 	}
@@ -375,9 +371,9 @@ func platformPanel(a *micro.Agent, base string) string {
 	// answers on the web and on a machine: a coding agent in your contacts,
 	// under a number you would never text a file to, offers the wrong thing.
 	if a.ID == DefaultPlatformAgent && client.Savable() {
-		b.WriteString(`<div class="connection-row"><span class="conn-k">Contact</span>` +
-			`<span class="connection-value">` + app.TextLink("Add to contacts", "/contact.vcf") +
-			`<br><span class="conn-sub">Every number and address it answers on, saved ` +
+		b.WriteString(`<div class="detail-row"><span class="text-muted">Contact</span>` +
+			`<span class="detail-value">` + app.TextLink("Add to contacts", "/contact.vcf") +
+			`<br><span class="detail-note">Every number and address it answers on, saved ` +
 			`under one name. On a phone it opens your contacts and offers to keep ` +
 			`it.</span></span></div>`)
 	}

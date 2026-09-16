@@ -281,7 +281,8 @@ func publicMCPPage(w http.ResponseWriter, r *http.Request) {
 
 func PublicPageHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
-	b.WriteString(`<p>Give Micro a goal, follow its work, and read the result. HTTP and MCP expose the same Agent, Work and Inbox operations.</p><p>Use an account access token from <a href="/token">Tokens</a> with <code>Authorization: Bearer &lt;token&gt;</code>. Read operations require read permission; actions require write permission. Services tokens use these same endpoints for their selected services, without granting Agent, Work or Inbox access.</p><p>Optional scopes are <code>api:agent</code>, <code>api:work</code> and <code>api:inbox</code>, supplied in permissions when creating a token. These grant the selected capability across your account, not an isolated application or stateless agent. The token page offers these scopes directly.</p><pre>POST /api/v1/agent/ask
+	b.WriteString(`<p><a href="/tools?view=services">Browse service tools</a></p>`)
+	b.WriteString(`<p>Give Micro a goal, follow its work, and read the result. HTTP and MCP expose the same Agent, Work and Inbox operations.</p><p>Use an account access token from <a href="/token">Tokens</a> with <code>Authorization: Bearer &lt;token&gt;</code>. Read operations require read permission; actions require write permission. Services tokens use these same endpoints for their selected services, without granting Agent, Work or Inbox access.</p><p>Optional scopes are <code>api:agent</code>, <code>api:work</code> and <code>api:inbox</code>, supplied in permissions when creating a token. These grant the selected capability across your account, not an isolated application or stateless agent. In Client access, choose Assistant API / MCP and select the capabilities and whether actions are allowed. Choose Selected services API / MCP for access confined to specific services. Mail and Chat protocol tokens do not grant API access.</p><pre>POST /api/v1/agent/ask
 {"prompt":"What needs my attention?"}</pre><p>HTTP returns <code>{"data": ...}</code> or <code>{"error":{"code": ..., "message": ...}}</code>. All operations use POST with JSON arguments. Discover schemas at <a href="/api/v1">/api/v1</a>. Connect MCP clients to <code>/mcp</code>; tools/list describes the same operations and tools/call returns the same JSON.</p><p>Agent asks create a saved conversation. Pass its thread ID to continue; Inbox reads its messages. Work submit returns a durable job immediately; poll Work get for its status and result. Failed or blocked work requires review before an explicit retry, which may repeat side effects. Submission is not idempotent: do not automatically resubmit after a lost response. Model and paid tool calls use your existing account credits.</p>`)
 	for _, op := range Operations {
 		b.WriteString(`<h3>` + html.EscapeString(op.Name) + `</h3><p>` + html.EscapeString(op.Description) + `</p><code>POST /api/v1/` + strings.Replace(op.Name, "_", "/", 1) + `</code>`)
@@ -289,7 +290,7 @@ func PublicPageHandler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<p><code>` + html.EscapeString(p.Name) + `</code> (` + html.EscapeString(p.Type) + `) — ` + html.EscapeString(p.Description) + `</p>`)
 		}
 	}
-	app.Respond(w, r, app.Response{Title: "API", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Tools", HTML: b.String()})
 }
 
 // ServiceCallHandler is the first-party service playground, not a public API.

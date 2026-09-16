@@ -32,6 +32,11 @@ import (
 // does it cost", not parameter types. Each card links through to its entry on
 // /mcp, which already carries the schema, an example request and a playground.
 func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
+	if _, _, err := auth.RequireAdmin(r); err != nil {
+		app.Forbidden(w, r, "Admin access required")
+		return
+	}
+
 	// Pinning happens here because this is where you are when you find out a
 	// service exists. A separate settings page for it would mean discovering
 	// something and then going somewhere else to keep it.
@@ -69,6 +74,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		// once by somebody new and read past on every visit after that — and
 		// this is a catalogue somebody comes to in order to reach one of the
 		// things in it. The grid says what it is by being a grid of them.
+		b.WriteString(`<p class="text-muted">Services are the capabilities your agents use. Open a service below to manage its data and settings.</p>`)
 		b.WriteString(serviceGrid(r))
 	} else {
 		b.WriteString(`<p class="lens-lead">What an agent can call. Your agents here reach all ` +
@@ -176,13 +182,16 @@ func serviceGrid(r *http.Request) string {
 		}
 		count++
 		b.WriteString(`<div class="directory-row">`)
-		destination := "/services/" + url.PathEscape(s.Name)
+		destination := s.Page
+		if destination == "" {
+			destination = "/services/" + url.PathEscape(s.Name)
+		}
 		open := `<a class="directory-content" href="` + html.EscapeString(destination) + `">`
 		close := `</a>`
 		b.WriteString(open)
 		b.WriteString(`<span class="directory-heading">` +
 			`<img src="/` + html.EscapeString(s.NavIcon()) + `?` + app.Version + `" alt="">` +
-			`<span class="tool-tile-name">` + html.EscapeString(s.NavLabel()) + `</span></span>`)
+			`<span class="directory-heading">` + html.EscapeString(s.NavLabel()) + `</span></span>`)
 		b.WriteString(`<span class="directory-description">` + html.EscapeString(s.Description) + `</span>`)
 
 		b.WriteString(close)
@@ -208,10 +217,10 @@ func toolGrid() string {
 	for _, g := range groupTools() {
 		b.WriteString(`<div class="tool-group" id="svc-` + html.EscapeString(groupAnchor(g.Label)) + `">`)
 		b.WriteString(`<h3 class="tool-group-title">` + html.EscapeString(g.Label) + `</h3>`)
-		b.WriteString(`<div class="tool-grid">`)
+		b.WriteString(`<div class="directory-list">`)
 		for _, t := range g.Tools {
-			b.WriteString(`<a class="tool-tile card-hover" href="/tools/` + html.EscapeString(t.Name) + `">`)
-			b.WriteString(`<span class="tool-tile-name">` + html.EscapeString(t.Name) + `</span>`)
+			b.WriteString(`<a class="directory-row directory-content" href="/tools/` + html.EscapeString(t.Name) + `">`)
+			b.WriteString(`<span class="directory-heading">` + html.EscapeString(t.Name) + `</span>`)
 			b.WriteString(`<span class="directory-description">` + html.EscapeString(clipDesc(t.Description)) + `</span>`)
 			b.WriteString(`<span class="tool-tile-price">` + priceLabel(t) + `</span>`)
 			b.WriteString(`</a>`)
@@ -463,4 +472,10 @@ func serviceOf(tool string) string {
 		return name
 	}
 	return ""
+}
+
+// ServiceToolsPageHandler documents the service contract used by scoped clients and x402.
+func ServiceToolsPageHandler(w http.ResponseWriter, r *http.Request) {
+	body := `<p>Tools are operations provided by services. Connect to <code>/mcp</code> or call <code>/api/v1</code>.</p><p>For account access, <a href="/token">create a token</a> with Selected services API / MCP access and choose only the services the client needs. That token cannot run agents or use the Inbox API. On an x402 host, priced calls can instead be paid per request.</p>` + toolGrid()
+	app.Respond(w, r, app.Response{Title: "Service tools", HTML: body})
 }

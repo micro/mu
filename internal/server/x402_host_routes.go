@@ -105,7 +105,7 @@ func publicRESTHandler(w http.ResponseWriter, r *http.Request) {
 	api.PublicRESTHandler(w, r)
 }
 func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+	if !origin.IsX402Host(r) && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
 		http.NotFound(w, r)
 		return
 	}

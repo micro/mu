@@ -122,9 +122,11 @@ mu help
 ```
 
 CLI and API operations require a credential with the appropriate API or service
-permissions. The current browser token form issues Mail/Chat protocol tokens;
-those do **not** grant CLI, agent API, or MCP access. Existing API and
-service-scoped credentials remain supported.
+permissions. Client access offers separate Mail/Chat protocol tokens, Assistant API / MCP
+tokens with selected capabilities and optional actions, and tokens restricted to
+selected services. Protocol tokens do **not** grant CLI, agent API, or MCP access.
+Agent API access can execute your account’s agents with their configured tools;
+use service scopes when a client should reach only specific capabilities.
 
 The JSON API at `/api/v1` and MCP protocol at `/mcp` retain Agent, Work, and Inbox
 operations. Service-scoped credentials select service operations instead. The
