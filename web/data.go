@@ -86,12 +86,7 @@ func initialData(r *http.Request) map[string]any {
 	}
 	switch {
 	case r.URL.Path == "/":
-		_, account := auth.TrySession(r)
-		if account == nil {
-			return nil
-		}
-		data["apps"] = read("/apps", "")
-		return data
+		return nil
 	case r.URL.Path == "/about" || r.URL.Path == "/privacy":
 		return nil
 	case r.URL.Path == "/agents" || r.URL.Path == "/agent/new":

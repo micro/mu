@@ -6,7 +6,6 @@ import {
   Input,
   Status,
   Form,
-  Link,
 } from "../../../app/shared";
 import { PageHeading } from "./layout";
 import catalogue from "../../../app/catalog.json";
@@ -56,33 +55,28 @@ function ServiceReference() {
           <>
             <p className="mb-5 text-muted-foreground">{service.description}</p>
             <div className="mb-6 flex flex-wrap gap-2">
-              <Button asChild>
-                <a href="/services">All services</a>
-              </Button>
               {catalogue.some((a) => a.id === name) && (
                 <Button asChild>
                   <a href={catalogue.find((a) => a.id === service.name)!.path}>
-                    Open app
+                    App
                   </a>
                 </Button>
               )}
-              <Button asChild>
-                <a href="/mcp">MCP connection</a>
-              </Button>
-              <Button asChild>
-                <a href="/api">API</a>
-              </Button>
-              <Button asChild>
-                <a href="/service/sdk">App SDK</a>
-              </Button>
             </div>
-            <p className="mb-6">
-              These capabilities are available to your agents and apps. Service
-              tokens select the service API; Agent, Work and Inbox use the
-              public outcome API.
-            </p>
+            <div className="mb-6 space-y-2 text-sm text-muted-foreground">
+              <p>Use a Services token for HTTP API and MCP access. Apps receive the SDK automatically.</p>
+              <p>MCP endpoint: <code>{location.origin}/mcp</code>. The playground uses your signed-in session and the service tool dispatcher, and shows the complete JSON response.</p>
+              <div className="flex flex-wrap gap-4 pb-2">
+                <a className="underline underline-offset-4" href="/token">Manage tokens</a>
+                <a className="underline underline-offset-4" href="/service/sdk">SDK setup</a>
+              </div>
+            </div>
             {service.methods?.map((m) => (
-              <MethodView key={m.Method} service={name} method={m} />
+              <MethodView
+                key={m.Method}
+                service={name}
+                method={m}
+              />
             ))}
           </>
         ) : (
@@ -97,7 +91,10 @@ function ServiceReference() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+          <nav
+            aria-label="Services"
+            className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6"
+          >
             {data
               ?.filter((s) =>
                 (s.label + " " + s.description)
@@ -105,34 +102,26 @@ function ServiceReference() {
                   .includes(q.toLowerCase()),
               )
               .map((s) => (
-                <section key={s.name} className="space-y-2 border-b pb-5">
-                  <h2 className="flex items-center gap-2 font-medium">
-                    <img
-                      src={"/" + s.icon}
-                      alt=""
-                      className="size-5"
-                      aria-hidden="true"
-                    />
-                    <Link url={"/service/" + s.name}>{s.label}</Link>
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {s.description}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button asChild>
-                      <a href={"/service/" + s.name}>API & SDK</a>
-                    </Button>
-                    {catalogue.some((a) => a.id === s.name) && (
-                      <Button asChild>
-                        <a href={catalogue.find((a) => a.id === s.name)!.path}>
-                          Open app
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                </section>
+                <a
+                  key={s.name}
+                  href={"/service/" + s.name}
+                  title={s.description}
+                  className="flex min-w-0 flex-col items-center gap-2 rounded-xl px-2 py-4 text-center hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <img
+                    src={"/" + s.icon}
+                    alt=""
+                    className="size-8 object-contain"
+                  />
+                  <span className="max-w-full break-words text-sm font-medium">
+                    {s.label}
+                  </span>
+                </a>
               ))}
-          </div>
+          </nav>
+          {data && !data.some((s) =>
+            (s.label + " " + s.description).toLowerCase().includes(q.toLowerCase()),
+          ) && <p className="py-5 text-muted-foreground">No services match.</p>}
         </>
       )}
     </>
@@ -147,11 +136,11 @@ function MethodView({
 }) {
   const [result, setResult] = useState<any>();
   return (
-    <section className="space-y-4 border-t py-5" id={m.Tool}>
-      <h2 className="text-lg font-medium">{m.Method}</h2>
+    <section className="space-y-3 border-t py-4 text-sm" id={m.Tool}>
+      <h2 className="text-base font-semibold">{m.Method}</h2>
       <p>{m.Doc}</p>
       <code className="block overflow-x-auto rounded bg-muted p-3 text-sm">
-        {m.Changes || m.PrivateSearch ? "POST" : "GET"} {m.Path}
+        POST {m.Path}
       </code>
       {m.Cost > 0 && (
         <p className="text-sm text-muted-foreground">
@@ -181,45 +170,45 @@ function MethodView({
           </tbody>
         </table>
       </div>
-      <details>
-        <summary className="cursor-pointer">API, SDK and MCP examples</summary>
-        <div className="mt-3 space-y-4">
-          <p className="text-sm">
-            For service access, create a Services token with access to this
-            service. Keep credentials on your server, never in shared app
-            source.
-          </p>
-          <a className="underline" href="/token">
-            Manage tokens
-          </a>
-          <h3 className="font-medium">HTTP API</h3>
-          <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{`curl -X POST '${location.origin}${m.Path}' \\\n  -H 'Authorization: Bearer <services-token>' \\\n  -H 'Content-Type: application/json' \\\n  --data '{}'`}</pre>
-          <h3 className="font-medium">App SDK</h3>
-          <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{`await mu.service(${JSON.stringify(service)}, ${JSON.stringify(m.Method.toLowerCase())}, {});`}</pre>
-          <h3 className="font-medium">MCP</h3>
-          <p className="text-sm">
-            Connect to {location.origin}/mcp using the same Services token. Use
-            tools/list to discover your permitted tools.
-          </p>
-          <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">
-            {JSON.stringify(
-              {
-                jsonrpc: "2.0",
-                id: 1,
-                method: "tools/call",
-                params: { name: m.Tool, arguments: {} },
-              },
-              null,
-              2,
-            )}
-          </pre>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+      <div className="min-w-0">
+        <div className="space-y-3">
+          {(
+            <>
+              <h3 className="font-medium">HTTP API</h3>
+              <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{`curl -X POST '${location.origin}${m.Path}' \\\n  -H 'Authorization: Bearer <services-token>' \\\n  -H 'Content-Type: application/json' \\\n  --data '{}'`}</pre>
+            </>
+          )}
+          {(
+            <>
+              <h3 className="font-medium">App SDK</h3>
+              <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{`await mu.service(${JSON.stringify(service)}, ${JSON.stringify(m.Method.toLowerCase())}, {});`}</pre>
+            </>
+          )}
+          {(
+            <>
+              <h3 className="font-medium">MCP</h3>
+              <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">
+                {JSON.stringify(
+                  {
+                    jsonrpc: "2.0",
+                    id: 1,
+                    method: "tools/call",
+                    params: { name: m.Tool, arguments: {} },
+                  },
+                  null,
+                  2,
+                )}
+              </pre>
+            </>
+          )}
           <p className="text-sm text-muted-foreground">
             Replace the empty argument object with the parameters listed above.
           </p>
         </div>
-      </details>
-      <details>
-        <summary className="cursor-pointer">Playground</summary>
+      </div>
+      <div className="min-w-0">
+        <h3 className="font-medium">Playground</h3>
         <div className="mt-4 max-w-xl">
           <Form
             label="Run"
@@ -265,7 +254,7 @@ function MethodView({
                   body: JSON.stringify(args),
                 },
               );
-              setResult(response.data ?? response.result ?? response);
+              setResult(response);
             }}
           />
           {result !== undefined && (
@@ -274,7 +263,8 @@ function MethodView({
             </pre>
           )}
         </div>
-      </details>
+      </div>
+      </div>
     </section>
   );
 }

@@ -254,8 +254,8 @@ function Config({ groups }: { groups: any[] }) {
       <Button disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
       {status && <Status>{status}</Status>}
       {groups.map((g) => (
-        <details key={g.name} className="border-b pb-4">
-          <summary className="font-medium">{g.name}</summary>
+        <section key={g.name} className="border-t pt-4">
+          <h2 className="font-medium">{g.name}</h2>
           <p className="my-3 text-sm text-muted-foreground">{g.description}</p>
           <div className="grid gap-4 sm:grid-cols-2">
             {g.fields.map((f: any) => (
@@ -282,7 +282,7 @@ function Config({ groups }: { groups: any[] }) {
               </label>
             ))}
           </div>
-        </details>
+        </section>
       ))}
       <Button disabled={busy}>Save</Button>
     </form>

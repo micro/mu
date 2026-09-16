@@ -217,6 +217,12 @@
     "icon": "video.png"
   },
   {
+    "id": "wallet",
+    "name": "Wallet",
+    "path": "/wallet",
+    "icon": "wallet.png"
+  },
+  {
     "id": "weather",
     "name": "Weather",
     "path": "/weather",

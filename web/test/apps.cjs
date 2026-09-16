@@ -55,19 +55,24 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       }
     }
     await go("/services");
-    await page.locator('h2 a[href="/service/docs"]').click();
+    await page.getByRole("navigation", {name:"Services", exact:true}).locator('a[href="/service/docs"]').click();
     assert.equal(new URL(page.url()).pathname, "/service/docs");
     const listMethod = page.locator("section#docs_list");
-    await listMethod
-      .getByText("API, SDK and MCP examples", { exact: true })
-      .click();
-    await listMethod.getByText("Connect to", { exact: false }).waitFor();
-    await listMethod.getByText("Playground", { exact: true }).click();
+    await listMethod.getByRole("heading", {name:"HTTP API", exact:true}).waitFor();
+    await listMethod.getByRole("heading", {name:"App SDK", exact:true}).waitFor();
+    await listMethod.getByRole("heading", {name:"MCP", exact:true}).waitFor();
+    assert.equal(await listMethod.locator("details").count(), 0, "reference still hides controls in disclosures");
     const call = page.waitForResponse((r) =>
       r.url().endsWith("/services/call/docs/list"),
     );
     await listMethod.getByRole("button", { name: "Run", exact: true }).click();
-    assert.equal((await call).status(), 200, "service playground read failed");
+    const response = await call;
+    assert.equal(response.status(), 200, "service playground read failed");
+    const payload = await response.json();
+    await page.waitForFunction(expected => {
+      const result = Array.from(document.querySelectorAll("section#docs_list pre")).at(-1);
+      try { return JSON.stringify(JSON.parse(result.textContent)) === expected; } catch { return false; }
+    }, JSON.stringify(payload));
     await go("/docs?new=1");
     await page
       .getByRole("textbox", { name: "Title", exact: true })
@@ -164,6 +169,18 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       0,
       "Home still shows a composer",
     );
+    const launcher = page.getByRole("navigation", {name: "Apps", exact: true});
+    assert.equal(await launcher.locator('a[href^="/apps/"]').count(), 0, "Home contains user apps");
+    assert.equal(await launcher.locator('a[href="/inbox"], a[href="/work"]').count(), 0);
+    assert.equal(await launcher.locator("section").count(), 4, "Home categories missing");
+    const collapse = page.getByRole("button", {name:"Collapse sidebar", exact:true});
+    await collapse.click();
+    await page.getByRole("button", {name:"Expand sidebar", exact:true}).waitFor();
+    assert((await page.locator("main").boundingBox()).width > 1000, "content still constrained to 4xl");
+    await page.reload();
+    await page.getByRole("button", {name:"Expand sidebar", exact:true}).click();
+    await collapse.waitFor();
+    assert.equal(await collapse.evaluate(e => getComputedStyle(e).cursor), "pointer");
     await page
       .getByRole("searchbox", { name: "Find an app", exact: true })
       .fill("Markets");
