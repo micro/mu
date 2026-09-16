@@ -1,49 +1,7 @@
 package apps
 
-// Writing an app, rather than choosing one of three.
-//
-// # What this replaces
-//
-// apps_build did not write an app. It asked a flash model, in eight hundred
-// tokens, to pick one of three shapes — tracker, checklist, counter — and fill
-// in a title, an emoji and some field names; a renderer turned that spec into
-// markup. The model never wrote a line of HTML.
-//
-// So "build me a unit converter" produced a checklist called Unit Converter,
-// and every complaint that the button makes bad apps was really the observation
-// that it can only make three things. Somebody sitting with a model and writing
-// the HTML by hand got a good app, from the same model, because they were not
-// choosing from a menu.
-//
-// That design was right once. Its own comment says why: "a tiny, checkable
-// output the renderer can always turn into a working app" — which is exactly
-// the trade you want when the model cannot reliably produce a working page.
-// That has not been the constraint for some time.
-//
-// # The loop is what makes it work
-//
-// A model writing a whole document unaided is the other failure, and it is the
-// one micro.Generate was avoiding. What closes the gap is the thing a person
-// does by hand: look at what came back, say what is wrong, ask again. Every
-// piece of that already existed here and none of it was wired to anything.
-//
-//   - ScanApp reads HTML for the patterns an app must not contain. It had a
-//     test suite and no caller at all — a scanner nothing ran, which is worse
-//     than none, because it reads as protection.
-//   - TestHTML checks structure and then *executes the app's mu. calls
-//     server-side*, so "it calls a service that does not exist" or "it reads a
-//     field the response does not have" is known before anybody opens it.
-//
-// Three attempts, with the problems fed back each time, and the three shapes
-// underneath as the floor: if the model cannot produce a document that passes,
-// a checklist that works beats a broken page.
-//
-// # Why the model is not named here
-//
-// Model is left empty, so this takes the instance's default rather than the
-// cheap one micro.Generate asks for by name. The whole complaint was quality
-// and this is the one operation where the output is a program somebody keeps.
-// It is metered — quota.OpAppBuild — so the cost is already accounted for.
+// Build apps as HTML documents, preserving the requested behaviour through
+// bounded repair attempts. A failed build must not become a different app.
 
 import (
 	"fmt"
@@ -53,9 +11,7 @@ import (
 	"mu/internal/ai"
 )
 
-// buildAttempts is how many times the model is asked before falling back to a
-// shape. Three, which is what micro.Generate already uses for its own repair
-// loop: a fourth try on the same complaint is rarely a different answer.
+// buildAttempts bounds generation and repair costs.
 const buildAttempts = 3
 
 // buildTokens bounds one document. A single-page app with its styles and its
@@ -64,21 +20,16 @@ const buildAttempts = 3
 const buildTokens = 8000
 
 // BuildApp writes an app from a description and saves it.
-//
-// The fallback is the whole of the old behaviour, kept because it is a good
-// floor rather than a good ceiling. Build is a tool an agent calls in the
-// middle of doing something else, and returning an error to it means the person
-// who asked for a tracker gets an apology.
 func BuildApp(description, authorID, authorName string) (*App, error) {
 	written, err := writeApp(description, authorID)
 	if err != nil {
-		return BuildMicroApp(description, authorID, authorName)
+		return nil, fmt.Errorf("could not build the requested app: %w", err)
 	}
 
 	a, err := CreateApp(authorID, written.Title, "", strings.TrimSpace(description),
 		written.Tags, written.HTML, emojiSVG(written.Emoji), 0, true)
 	if err != nil {
-		return BuildMicroApp(description, authorID, authorName)
+		return nil, fmt.Errorf("could not save the generated app: %w", err)
 	}
 	return a, nil
 }
@@ -133,7 +84,7 @@ func (rf refinement) run() (written, int, error) {
 			return out, attempt, nil
 		}
 		last = problems
-		question = rf.again(problems)
+		question = rf.again(problems) + "\n\nPrevious candidate document (repair this implementation):\n" + out.HTML
 	}
 	return written{}, buildAttempts, fmt.Errorf("three attempts, still: %s",
 		strings.Join(last, "; "))
@@ -142,6 +93,9 @@ func (rf refinement) run() (written, int, error) {
 // writeApp asks for a document, checks it, and asks again with the problems.
 func writeApp(description, authorID string) (written, error) {
 	description = strings.TrimSpace(description)
+	if description == "" {
+		return written{}, fmt.Errorf("description is required")
+	}
 	out, _, err := refinement{
 		system:    buildSystem,
 		caller:    "app-build",
@@ -277,6 +231,9 @@ Answer with the metadata line, then the document, and nothing else — no prose,
 <!-- mu {"title":"Unit Converter","emoji":"📐","tags":"tools,convert"} -->
 <!doctype html>
 <html>...</html>
+
+Before writing, identify the domain-specific behaviour implied by the request, the data it needs, and how the user completes the main action. Implement that behaviour; a generic checklist with a different title is not a substitute. Include sensible domain defaults where they are unambiguous. Do not add unrelated features.
+Check your implementation against every requested behaviour before returning it: initial state, interaction, persistence, revisiting saved data, and narrow-screen layout. Never claim runtime verification you have not performed.
 
 Rules for the document:
 - Everything inline. No external scripts, stylesheets, fonts or images — they are blocked, and the app will simply fail.
