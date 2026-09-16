@@ -77,7 +77,11 @@ func CommandHandler(w http.ResponseWriter, r *http.Request) {
 		app.RespondError(w, 400, "Enter a command or question")
 		return
 	}
-	input := strings.TrimSpace(req.Command)
+	input := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(req.Command), "/"))
+	if input == "" {
+		app.RespondError(w, 400, "Enter a command or question")
+		return
+	}
 	words := strings.Fields(input)
 	_, acc := auth.TrySession(r)
 	owner := ""
@@ -118,7 +122,7 @@ func CommandHandler(w http.ResponseWriter, r *http.Request) {
 			if zone == "" {
 				zone = "UTC"
 			}
-			err = events.ConfigureBrief(owner, words[1] == "on", true, zone)
+			err = events.ConfigureBrief(owner, words[1] == "on", events.BriefWorldNews(events.Brief(owner)), zone)
 			value = "Daily brief " + words[1] + "."
 		default:
 			err = fmt.Errorf("use brief, brief on, or brief off")

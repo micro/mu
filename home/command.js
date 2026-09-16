@@ -16,7 +16,7 @@ async function run(command){
  if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
  // Administrative values are neither displayed nor persisted in browser history.
- q.textContent=/^admin\s+config\s+set\s/i.test(command)?command.trim().split(/\s+/).slice(0,4).join(' ')+' [value hidden]':command;
+ q.textContent=/^\/?\s*admin\s+config\s+set\s/i.test(command)?command.trim().split(/\s+/).slice(0,4).join(' ')+' [value hidden]':command;
  const answer=document.createElement('div');answer.className='answer';turn.append(q,answer);log.append(turn);
  try{const response=await fetch('/command',{method:'POST',credentials:'same-origin',headers:headers('application/json'),body:JSON.stringify({command,thread})});if(!response.ok)throw Error(await failure(response));const data=await response.json();if(data.assistant)await assistant(command,answer);else {answer.innerHTML=data.html;if(data.thread){thread=data.thread;remember();}}status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Request stopped.';}finally{busy=false;send.disabled=false;input.focus();}
 }

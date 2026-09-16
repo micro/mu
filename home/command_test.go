@@ -84,7 +84,7 @@ func TestAdminCommandsNeverReachModelOrTranscript(t *testing.T) {
 	if w := commandRequest(t, "command_admin", "admin config set OPENAI_API_KEY secret-test-value", "", false); w.Code != 403 {
 		t.Fatal("missing CSRF accepted")
 	}
-	for _, input := range []string{"admin config set OPENAI_API_KEY secret-test-value", "admin config list", "admin typo"} {
+	for _, input := range []string{"admin config set OPENAI_API_KEY secret-test-value", "admin config list", "admin typo", "/admin config set OPENAI_API_KEY secret-test-value"} {
 		w := commandRequest(t, "command_admin", input, "", true)
 		if strings.Contains(w.Body.String(), "secret-test-value") || strings.Contains(w.Body.String(), `"assistant":true`) {
 			t.Fatal("admin command leaked a credential or reached model")
