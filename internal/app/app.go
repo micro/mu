@@ -457,8 +457,7 @@ func navMain(acc *auth.Account) string {
 	for _, item := range []struct{ id, href, label, icon string }{
 		{"nav-home", "/home", "Home", "/home.png"},
 		{"nav-inbox", "/inbox", "Inbox", "/mail.png"},
-		{"nav-agents", "/agents", "Agents", "/agent.svg"},
-		{"nav-services", "/services", "Services", "/services.svg"},
+		{"nav-work", "/work", "Work", "/tasks.svg"},
 	} {
 		b.WriteString(navigationLink(item.id, item.href, item.label, item.icon))
 	}
@@ -523,9 +522,7 @@ func navBottom(acc *auth.Account, here string) string {
 	username := htmlpkg.EscapeString(acc.ID)
 
 	return `<details class="nav-account-disclosure"><summary class="nav-me-who" aria-label="Account menu"><img src="/account.png" alt="" aria-hidden="true"><span id="nav-username">@` + username + `</span></summary><div class="nav-account-menu">
-          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-          <a id="nav-profile" href="/account/profile"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
-          <a id="nav-account-billing" href="/account/billing"><img src="/wallet.png?` + Version + `"><span class="label">Billing</span></a>
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Settings</span></a>
 ` + navAdmin(acc) + `
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a></div></details>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`

@@ -232,7 +232,7 @@ func stringField(val map[string]interface{}, key string) string {
 	return ""
 }
 
-// ReminderHTML returns the verse and reflection without personal prayer times.
+// ReminderHTML returns only the verse for the Prayer card.
 func ReminderHTML(_ service.Viewer) string {
 	reminderMutex.RLock()
 	defer reminderMutex.RUnlock()
@@ -244,9 +244,6 @@ func renderReminderCard(rd *ReminderData) string {
 	b.WriteString(`<div class="item">`)
 	if verse := strings.TrimSpace(deduplicateVerseName(rd.Verse)); verse != "" {
 		b.WriteString(`<div class="verse pre-line">` + html.EscapeString(verse) + `</div>`)
-	}
-	if message := strings.TrimSpace(rd.Message); message != "" {
-		b.WriteString(`<p class="pre-line">` + html.EscapeString(message) + `</p>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()

@@ -331,6 +331,13 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 		return
 	}
 
+	// Web conversations resume in the shared composer, preserving the owned thread.
+	if t.Client == thread.WebClient {
+		thread.MarkSeen(accountID, t.ID)
+		http.Redirect(w, r, "/agent?session="+url.QueryEscape(t.ID), http.StatusSeeOther)
+		return
+	}
+
 	subject := strings.TrimSpace(t.Subject)
 	if subject == "" {
 		subject = "Untitled"

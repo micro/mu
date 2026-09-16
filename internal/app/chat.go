@@ -22,6 +22,7 @@ func JSAttr(s string) string {
 }
 
 type ChatConfig struct {
+	TranscriptPath  string
 	Ask             bool
 	Location        bool
 	ContextID       string
@@ -92,7 +93,7 @@ func ChatComponent(cfg ChatConfig) string {
 	if placeholder == "" {
 		placeholder = "What do you need?"
 	}
-	config, _ := json.Marshal(map[string]any{"contextId": cfg.ContextID, "attachment": cfg.Attachment, "serverOwned": cfg.ServerOwned, "pending": cfg.Pending, "agentName": cfg.AgentName, "storageNS": cfg.StorageNS, "selectionScope": cfg.SelectionScope})
+	config, _ := json.Marshal(map[string]any{"transcriptPath": cfg.TranscriptPath, "contextId": cfg.ContextID, "attachment": cfg.Attachment, "serverOwned": cfg.ServerOwned, "pending": cfg.Pending, "agentName": cfg.AgentName, "storageNS": cfg.StorageNS, "selectionScope": cfg.SelectionScope})
 	location := ""
 	if cfg.Location {
 		location = `<button type="button" id="mu-chat-location" aria-label="Share approximate location" title="Share approximate location"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>`

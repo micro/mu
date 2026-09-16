@@ -12,7 +12,7 @@ import (
 // inboxThreads is the same ordered selection for the list and its reader.
 func inboxThreads(owner, path string) []thread.Thread {
 	box := strings.Trim(strings.TrimPrefix(path, "/inbox"), "/")
-	all := arrivals(owner)
+	all := thread.List(owner, held)
 	if box == "" {
 		return all
 	}

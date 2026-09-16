@@ -42,6 +42,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    errors.length=0;
    await page.goto('https://mu.test'+path);await page.waitForTimeout(50);
    await page.evaluate(c=>document.body.classList.toggle('nav-collapsed',c),collapsed);
+   assert(await page.locator('#content,.index-body,body.video-player-body').count()>0,'page returned no HTML shell');
    if(['/about','/privacy','/pricing','/contact','/status'].includes(path))assert(await page.locator('.footer').isVisible(),'public footer missing');
    assert.equal(await page.locator('#mobile-nav').count(),0,'sidebar navigation duplicated in bottom bar');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${path} overflows at ${width}`);
@@ -78,6 +79,8 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(rows.length<2||rows[1]>rows[0],'item actions run together');
     await page.keyboard.press('Escape');assert(!await items.isVisible(),'escape did not close item actions');
    }
+   if(path==='/login'||path==='/signup')assert(await page.locator('#footer a[href="/privacy"]').isVisible(),'auth footer missing');
+   if(path==='/account/billing')assert.equal(await page.locator('input[name=display_name],input[name=new_secret]').count(),0,'billing renders unrelated account forms');
    if(path==='/signup')assert.equal(await page.locator('input[name=name]').count(),0,'signup still asks for a name');
    if(path==='/account') {
     assert(await page.locator('#content a[href="/token"]').count()>0,'API credentials missing');
@@ -278,6 +281,42 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  await page.reload();
  assert.equal(await page.locator('#mu-chat-conv').textContent(),'','empty selection reopened latest thread');
  assert.equal(await page.locator('#mu-chat-form').evaluate(f=>f.inert),false);
+ }
+ {
+ await page.setViewportSize({width:390,height:900});
+ await page.goto('https://mu.test/home');
+ const config=await page.locator('#conversation-config').textContent().then(JSON.parse);
+ await page.route('**/agent/micro?session=home-continued',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({id:'home-continued',html:'<div class="mu-user">Continue my morning brief</div><div class="mu-agent">Your appointment is at ten.</div>',pending:false,agent:'micro',agentName:'Micro',storageNS:config.storageNS})}));
+ await page.evaluate(scope=>history.replaceState({muConversation:{scope,id:'home-continued'}},''),config.selectionScope);
+ await page.reload();
+ await page.getByText('Continue my morning brief',{exact:true}).waitFor();
+ assert(!await page.locator('.overview-details').isVisible(),'overview distracts from active conversation');
+ const form=await page.locator('#mu-chat-form').boundingBox();
+ assert(form.y+form.height<=900,'Home composer below mobile viewport');
+ await page.locator('#mu-chat-input').fill('How long will it take to get there?');
+ await page.locator('#mu-chat-form button[type=submit]').click();
+ assert.equal(await page.evaluate(()=>window.__lastAgentBody.context_id),'home-continued','Home reply lost the selected conversation');
+ await page.waitForSelector('.mu-agent h2');
+ }
+ // Follow the real links between rendered handlers; model execution is tested in Go.
+ // Leave the previous Home entry: navigating to the identical URL preserves its
+ // history.state and intentionally restores the conversation instead of the brief.
+ await page.goto('https://mu.test/inbox');
+ for(const width of [390,1440]) {
+  await page.setViewportSize({width,height:900});
+  await page.goto('https://mu.test/home');
+  const brief=page.locator('.morning-brief');
+  assert(await brief.isVisible(),'delivered brief missing from Home');
+  const box=await brief.boundingBox(),content=await page.locator('#content').boundingBox();
+  assert(box.width>=content.width-50,'brief is squashed');
+  await brief.getByRole('link',{name:'Continue conversation'}).click();
+  const conversation=page.url();
+  await page.getByRole('link',{name:'View work',exact:true}).click();
+  assert(await page.getByRole('heading',{name:'Outcome',exact:true}).isVisible(),'work outcome missing');
+  await page.getByRole('link',{name:'Conversation',exact:true}).click();
+  assert.equal(page.url(),conversation,'work returns to a different conversation');
+  await page.reload();
+  assert(await page.getByRole('link',{name:'View work',exact:true}).isVisible(),'returning loses linked work');
  }
  if(process.env.MU_LAYOUT_AUDIT)fs.writeFileSync(process.env.MU_LAYOUT_AUDIT,JSON.stringify(audit));
  assert(!failures.length,failures.join('\n'));

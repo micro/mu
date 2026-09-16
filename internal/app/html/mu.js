@@ -168,12 +168,6 @@ document.addEventListener('submit', function(e) {
   form.appendChild(input);
 }, true);
 
-document.addEventListener('click', function() {
-  document.querySelectorAll('.card-tooltip.show').forEach(function(e) {
-    e.classList.remove('show');
-  });
-});
-
 function timeAgo(timestamp) {
   const now = Math.floor(Date.now() / 1000);
   const deltaMinutes = (now - timestamp) / 60;

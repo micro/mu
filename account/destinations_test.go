@@ -57,6 +57,14 @@ func TestAccountDestinationsSeparateForms(t *testing.T) {
 		if w.Code != 200 || !strings.Contains(w.Body.String(), `id="content"`) {
 			t.Fatalf("%s: client missing", path)
 		}
+		page := w.Body.String()
+		if path == "/account/billing" {
+			if !strings.Contains(page, `id="balance"`) || strings.Contains(page, `name="display_name"`) || strings.Contains(page, `name="new_secret"`) {
+				t.Fatal("Billing must show balance without profile or password forms")
+			}
+		} else if strings.Contains(page, `id="balance"`) {
+			t.Fatalf("%s duplicates billing", path)
+		}
 		r.Header.Set("Accept", "application/json")
 		w = httptest.NewRecorder()
 		Account(w, r)

@@ -1,7 +1,6 @@
 package home
 
 import (
-	"html"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/user"
@@ -12,17 +11,6 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	app.StatusHandler(w, r)
 }
 
-func statusForm(r *http.Request, id string) string {
-	if id == "" {
-		return ""
-	}
-	return `<details class="disclosure page-section"><summary>Your status</summary>` +
-		`<form class="form" method="post" action="/home">` +
-		`<input type="hidden" name="action" value="status">` +
-		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`<label class="field-label">Shown on your profile<input class="field field-wide" name="status" maxlength="160" placeholder="What are you up to?" value="` + html.EscapeString(user.Status(id)) + `"></label>` +
-		`<div class="form-actions"><button type="submit">Save</button><button type="submit" name="clear" value="1">Clear</button></div></form></details>`
-}
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {

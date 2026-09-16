@@ -21,8 +21,8 @@ func TestInboxShowsCommunicationListAndPreservesNewMessages(t *testing.T) {
 		return w.Body.String()
 	}
 	body := render()
-	if !strings.Contains(body, "Second arrival") || !strings.Contains(body, "First arrival") || strings.Contains(body, "A web conversation") {
-		t.Fatal("inbox must list both arrivals and exclude private web chat")
+	if !strings.Contains(body, "Second arrival") || !strings.Contains(body, "First arrival") || !strings.Contains(body, "A web conversation") {
+		t.Fatal("inbox must list arrivals and the owner’s web conversations")
 	}
 	reviewed := thread.Get(owner, second.ID).Updated
 	thread.HandleAt(owner, second.ID, reviewed)

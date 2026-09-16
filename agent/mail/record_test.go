@@ -140,3 +140,28 @@ func TestNotificationOpensDeliveredThread(t *testing.T) {
 		t.Fatal("thread leaked across owners")
 	}
 }
+
+func TestBriefFollowUpsKeepOneOwnedConversation(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	const owner = "brief-follow-up"
+	first := mail.InboundMail{Owner: owner, From: "agent@micro.mu", To: "you@micro.mu", Subject: "Your morning brief", Text: "Your appointment is at ten.", MessageID: "<brief-follow-up@micro.mu>"}
+	link := InboxURL(first)
+	if link == "/inbox" {
+		t.Fatal("brief must link to its conversation")
+	}
+	second := mail.InboundMail{Owner: owner, From: "you@micro.mu", To: "agent@micro.mu", Subject: "Re: Your morning brief", Text: "How long will the journey take?", MessageID: "<brief-second@micro.mu>", InReplyTo: first.MessageID}
+	third := mail.InboundMail{Owner: owner, From: "you@micro.mu", To: "agent@micro.mu", Subject: "Re: Your morning brief", Text: "And by train?", MessageID: "<brief-third@micro.mu>", InReplyTo: second.MessageID}
+	for _, m := range []mail.InboundMail{second, third, third} {
+		if got := InboxURL(m); got != link {
+			t.Fatalf("reply opened another conversation: %s, want %s", got, link)
+		}
+	}
+	threads := thread.List(owner, 10)
+	if len(threads) != 1 || len(thread.Messages(owner, threads[0].ID, 10)) != 3 {
+		t.Fatal("brief and replies must be recorded once in one thread")
+	}
+	third.Owner = "brief-other-owner"
+	if got := InboxURL(third); got == link || got == "/inbox" {
+		t.Fatal("references must not join another account's conversation")
+	}
+}

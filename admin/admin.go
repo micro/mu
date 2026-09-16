@@ -24,6 +24,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Alphabetical. There is no ranking to express here, and a list that is
 	// sorted is one nobody has to scan twice.
 	content := `<nav aria-label="Admin" class="page-stack compact-stack">
+ <a class="section-link" href="/agents">Agents</a>
+ <a class="section-link" href="/apps">Apps</a>
+ <a class="section-link" href="/services">Services</a>
 		<a class="section-link" href="/admin/alerts">Alerts</a>
 		<a class="section-link" href="/admin/backup">Backup</a>
 		<a class="section-link" href="/admin/config">Config</a>

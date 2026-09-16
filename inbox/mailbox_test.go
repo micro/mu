@@ -33,7 +33,7 @@ func arrived(t *testing.T, owner, client, key, agentID, from, text string) *thre
 // These were two lists of the same conversations — /inbox and the rail on
 // /agent both read the whole record — so neither page could be described in a
 // sentence, which is exactly how it read.
-func TestTheInboxIsWhatArrived(t *testing.T) {
+func TestTheInboxIncludesConversationsFromEveryChannel(t *testing.T) {
 	const who = "mailbox_arrived"
 	said(t, who, "mail", "<a@example.com>", "", "about the invoice")
 	said(t, who, thread.WebClient, "chat", "", "what are the markets doing")
@@ -44,8 +44,8 @@ func TestTheInboxIsWhatArrived(t *testing.T) {
 		t.Error("mail is not in the inbox")
 	}
 	for _, started := range []string{"what are the markets doing", "run the briefing"} {
-		if strings.Contains(body, started) {
-			t.Errorf("a conversation started here is in the inbox: %q", started)
+		if !strings.Contains(body, started) {
+			t.Errorf("a conversation started here is missing from the inbox: %q", started)
 		}
 	}
 }

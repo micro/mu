@@ -75,3 +75,51 @@ func TestSettingsRequireOwnerAndCSRF(t *testing.T) {
 		t.Fatal("preferences can be shared-cached")
 	}
 }
+
+func TestSettingsRenderAndSaveWithoutJavaScript(t *testing.T) {
+	const owner = "brief_form_owner"
+	if err := auth.Create(&auth.Account{ID: owner, Zone: "Europe/London"}); err != nil {
+		t.Fatal(err)
+	}
+	sess, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { auth.DeleteAccount(owner) })
+	req := httptest.NewRequest("GET", "/inbox/settings", nil)
+	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	rec := httptest.NewRecorder()
+	SettingsHandler(rec, req)
+	for _, want := range []string{`<form`, `name="enabled"`, `name="include_world_news"`, `href="/inbox/imap"`} {
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("missing settings control %s", want)
+		}
+	}
+	for _, csrf := range []bool{false, true} {
+		body := "enabled=1&owner=forged_owner"
+		if csrf {
+			body += "&_csrf=" + auth.CSRFToken(req)
+		}
+		post := httptest.NewRequest("POST", "/inbox/settings", strings.NewReader(body))
+		post.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		post.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		out := httptest.NewRecorder()
+		SettingsHandler(out, post)
+		if !csrf {
+			if out.Code != 403 {
+				t.Fatalf("missing CSRF accepted: %d", out.Code)
+			}
+			continue
+		}
+		if out.Code != 303 || out.Header().Get("Location") != "/inbox/settings" {
+			t.Fatalf("form failed: %d %s", out.Code, out.Body.String())
+		}
+	}
+	brief := events.Brief(owner)
+	if brief == nil || brief.Paused || events.BriefWorldNews(brief) {
+		t.Fatal("checkbox preferences were not saved")
+	}
+	if events.Brief("forged_owner") != nil {
+		t.Fatal("form changed another account's preferences")
+	}
+}

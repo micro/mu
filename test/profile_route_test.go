@@ -66,8 +66,8 @@ func TestLegacyProfileIsRetiredAndSettingsAreReachable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(shell), `id="nav-profile" href="/account/profile"`) {
-		t.Error("Profile must open account profile settings")
+	if !strings.Contains(string(shell), `id="nav-account" href="/account"`) {
+		t.Error("Settings must open the consolidated account page")
 	}
 
 }
