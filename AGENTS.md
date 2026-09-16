@@ -95,7 +95,7 @@ anything else; chat was the protocol that did not. The claim stands when a
 message from here lands on a Prosody account and one comes back.
 
 Background work now has a dedicated public surface.
-`service/tasks`, `work` and `event.WorkForAgent` run work nobody is
+`service/tasks`, `agent/work` and `event.WorkForAgent` run work nobody is
 present for; `/work` and the public Work operations expose its state and outcome. Outbound is the same gap from the other
 side — mail leaving, an x402 payment to another server — and `X402_SERVERS` is
 read by a client no tool exposes. Inbound has three good rungs; outbound has
@@ -321,7 +321,7 @@ eviction limit governed both, which is why it was wrong for each.
 ## Layering
 
 The top level is the product — `home/`, `agent/`, `service/`, `admin/`,
-`account/`, `inbox/`, and `work/`. Each is a staple: it owns something nothing else owns, and a user
+`account/` and `inbox/`. Background execution lives under `agent/work/`. Each is a staple: it owns something nothing else owns, and a user
 can name it. Underneath is `internal/`, which is everything with no name a user
 would recognise.
 
@@ -383,7 +383,7 @@ Four things ask an agent for work: a chat message, an email arriving, a task
 assigned, a schedule firing. Three of the four used to reach upward through a
 function variable filled in at boot. They are one fact now —
 `event.WorkForAgent`, published by whichever service holds the record,
-subscribed by `work`, which knows where the answer goes because a task
+subscribed by `agent/work`, which knows where the answer goes because a task
 keeps its result and a standing instruction is mailed.
 
 **A function variable is an import the compiler cannot see.** Every rule above

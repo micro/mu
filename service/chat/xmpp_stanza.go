@@ -48,7 +48,7 @@ func (s *session) authenticate() bool {
 		s.send(`<failure xmlns='%s'><malformed-request/></failure>`, nsSASL) //nolint:errcheck
 		return false
 	}
-	acc, err := auth.AccountForToken(parts[1], parts[2])
+	acc, err := auth.AccountForToken(parts[1], parts[2], "chat")
 	if err != nil {
 		app.Log("chat", "xmpp sign-in refused for %q from %s", parts[1], s.remote)
 		s.send(`<failure xmlns='%s'><not-authorized/></failure>`, nsSASL) //nolint:errcheck

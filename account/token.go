@@ -11,9 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/internal/sshaccess"
 )
 
 // TokenHandler manages Personal Access Tokens (PATs)
@@ -37,7 +39,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	// Credential creation requires a verified or explicitly approved account.
 	if r.Method == http.MethodPost {
 		r.ParseForm()
-		creating := r.URL.Query().Get("create_client") == "1" || r.FormValue("_method") != "DELETE"
+		creating := r.URL.Query().Get("create_client") == "1" || (r.FormValue("_method") != "DELETE" && r.FormValue("removekey") == "")
 		if creating {
 			if err := auth.CheckCredentialAccess(acc.ID); err != nil {
 				app.Forbidden(w, r, err.Error())
@@ -48,6 +50,24 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+	}
+	if r.Method == http.MethodPost && (r.FormValue("sshkey") != "" || r.FormValue("removekey") != "") {
+		if !auth.ValidCSRF(r) {
+			app.Forbidden(w, r, "Reopen Client access and try again.")
+			return
+		}
+		var keyErr error
+		if key := r.FormValue("sshkey"); key != "" {
+			_, keyErr = sshaccess.Register(acc.ID, key, r.FormValue("keyname"))
+		} else {
+			keyErr = auth.RemoveSSHKey(acc.ID, r.FormValue("removekey"))
+		}
+		if keyErr != nil {
+			app.RespondError(w, http.StatusBadRequest, keyErr.Error())
+			return
+		}
+		http.Redirect(w, r, "/token", http.StatusSeeOther)
+		return
 	}
 	// Handle OAuth client actions
 	if r.Method == "POST" {
@@ -151,8 +171,9 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<h4 class="mt-5">Create a token</h4>`)
 	sb.WriteString(`<form id="create-token-form" class="form" onsubmit="createToken(event)">`)
 	sb.WriteString(app.Field{
-		Name: "name", Label: "Name", Placeholder: "e.g. CI/CD", Required: true, Wide: true,
+		Name: "name", Label: "Name", Placeholder: "e.g. My phone", Required: true, Wide: true,
 	}.HTML())
+	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "mail", Label: "Mail (IMAP and SMTP)", On: true}, {Value: "chat", Label: "Chat (XMPP)"}, {Value: "both", Label: "Mail and chat"}}}.HTML())
 	sb.WriteString(app.Field{
 		Name: "expires_in", Label: "Expires", Options: []app.Option{
 			{Value: "0", Label: "Never"},
@@ -164,6 +185,9 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	}.HTML())
 
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
+
+	sb.WriteString(inbox.ClientSettings(accountID))
+	sb.WriteString(sshaccess.Card(r, accountID, "/token", "SSH and SFTP", "SSH and SFTP use an SSH key, not an access token. Add your public key below. Use sftp in place of ssh and -P in place of -p to connect to files.", "ssh"))
 
 	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
 	// part of the chrome that depends on knowing who is signed in — the nav,
@@ -245,11 +269,13 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	var scope []string
 	var scopeMode string
 	var access string
+	var client string
 	var expiresIn int // days
 
 	if app.SendsJSON(r) {
 		var req struct {
 			Access      string   `json:"access"`
+			Client      string   `json:"client"`
 			ScopeMode   string   `json:"scope_mode"`
 			Name        string   `json:"name"`
 			Services    []string `json:"services"`
@@ -266,6 +292,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		scope = req.Services
 		scopeMode = req.ScopeMode
 		access = req.Access
+		client = req.Client
 	} else {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -277,6 +304,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		scope = r.Form["services"]
 		scopeMode = r.FormValue("scope_mode")
 		access = r.FormValue("access")
+		client = r.FormValue("client")
 	}
 
 	// Validate
@@ -315,6 +343,21 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	// tools/list it reads is its own rather than the whole instance.
 	if named := auth.ScopeFor(validScope); len(named) > 0 {
 		permissions = append(permissions, named...)
+	}
+
+	if client != "" {
+		permissions = []string{"read", "write"}
+		switch client {
+		case "mail":
+			permissions = append(permissions, "protocol:mail")
+		case "chat":
+			permissions = append(permissions, "protocol:chat")
+		case "both":
+			permissions = append(permissions, "protocol:mail", "protocol:chat")
+		default:
+			app.RespondError(w, http.StatusBadRequest, "Choose mail, chat, or both")
+			return
+		}
 	}
 
 	// Calculate expiration
@@ -410,6 +453,18 @@ func validScopeNames(in []string) []string {
 // unscoped token reaches everything the account can, which is the thing worth
 // saying out loud on the page that hands out credentials.
 func tokenScope(t *auth.Token) string {
+	var clients []string
+	for _, permission := range t.Permissions {
+		switch permission {
+		case "protocol:mail":
+			clients = append(clients, "Mail (IMAP/SMTP)")
+		case "protocol:chat":
+			clients = append(clients, "Chat (XMPP)")
+		}
+	}
+	if len(clients) > 0 {
+		return strings.Join(clients, ", ")
+	}
 	names := t.Services()
 	if len(names) == 0 && t.Scoped() {
 		var capabilities []string

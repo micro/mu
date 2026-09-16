@@ -35,6 +35,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/settings"
+	"mu/service/chat"
 	"mu/service/mail"
 )
 
@@ -216,4 +217,34 @@ func splitHostPort(addr string) (host, port string) {
 		return "", addr
 	}
 	return strings.Trim(addr[:i], "[]"), addr[i+1:]
+}
+
+// ClientSettings shows the connection details beside account credentials.
+func ClientSettings(accountID string) string {
+	var b strings.Builder
+	b.WriteString(`<h3>Connection details</h3><p>Use the token as the password for mail and chat.</p><table class="data-table stacked"><thead><tr><th>Client</th><th>Server</th><th>Port</th><th>Security</th><th>Username</th></tr></thead><tbody>`)
+	row := func(label, host, port, security, user string) {
+		b.WriteString(`<tr>`)
+		for i, value := range []string{label, host, port, security, user} {
+			b.WriteString(`<td data-label="` + []string{"Client", "Server", "Port", "Security", "Username"}[i] + `">` + html.EscapeString(value) + `</td>`)
+		}
+		b.WriteString(`</tr>`)
+	}
+	if host, port, secure, on := imapReach(); on {
+		row("IMAP", host, port, secure, accountID)
+	} else {
+		row("IMAP", "Disabled", "—", "—", "—")
+	}
+	if host, port, secure, on := submissionReach(); on {
+		row("SMTP", host, port, secure, accountID)
+	} else {
+		row("SMTP", "Disabled", "—", "—", "—")
+	}
+	if _, on := app.ListenAddr("XMPP_PORT", app.XMPPPort); on {
+		row("XMPP", chat.Domain(), "5223", "Direct TLS (requires server TLS proxy)", accountID+"@"+chat.Domain())
+	} else {
+		row("XMPP", "Disabled", "—", "—", "—")
+	}
+	b.WriteString(`</tbody></table><p class="text-sm text-secondary">Public ports depend on the server’s proxy configuration. XMPP does not support STARTTLS. <a href="/inbox/imap">More mail settings</a>.</p>`)
+	return b.String()
 }

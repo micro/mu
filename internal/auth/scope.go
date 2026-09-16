@@ -66,7 +66,7 @@ func (t *Token) Scoped() bool {
 		return false
 	}
 	for _, p := range t.Permissions {
-		if strings.HasPrefix(p, ScopePrefix) || strings.HasPrefix(p, "api:") {
+		if strings.HasPrefix(p, ScopePrefix) || strings.HasPrefix(p, "api:") || strings.HasPrefix(p, "protocol:") {
 			return true
 		}
 	}
