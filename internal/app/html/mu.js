@@ -936,7 +936,9 @@ if (typeof document !== 'undefined') {
     section.disabled = section.hidden;
    });
    const field = mode.value === 'services' ? 'service' : 'capability';
-   const selected = Array.from(consent.querySelectorAll('input[name="' + field + '"]:checked')).map(input => input.value);
+   const selected = mode.value === 'all' ? ['All current services'] : Array.from(consent.querySelectorAll('input[name="' + field + '"]:checked')).map(input => input.value);
+   const picker = document.getElementById('oauth-access-picker');
+   picker.hidden = mode.value === 'all';
    document.getElementById('oauth-access-summary').textContent = selected.length ? selected.join(', ') + (consent.elements.write.checked ? ' · Read and act' : ' · Read') : 'No access selected';
    consent.querySelector('button[type="submit"]').disabled = selected.length === 0;
    rows.sort((a,b) => Number(b.querySelector('input').checked) - Number(a.querySelector('input').checked) || a.textContent.localeCompare(b.textContent)).forEach(row => list.appendChild(row));
@@ -946,6 +948,7 @@ if (typeof document !== 'undefined') {
    rows.forEach(row => { row.hidden = !row.textContent.toLowerCase().includes(query); });
    document.getElementById('oauth-no-results').hidden = rows.some(row => !row.hidden);
   });
+  mode.addEventListener('change', () => { document.getElementById('oauth-access-picker').open = mode.value !== 'all'; });
   consent.addEventListener('change', updateConsent);
   updateConsent();
  }
