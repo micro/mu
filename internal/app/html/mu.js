@@ -921,3 +921,32 @@ if(typeof document!=='undefined'){
  const tokenForm=document.getElementById('create-token-form');
  if(tokenForm){const update=()=>tokenForm.querySelectorAll('[data-token-access]').forEach(section=>{section.hidden=section.dataset.tokenAccess!==tokenForm.client.value;section.disabled=section.hidden;});tokenForm.client.addEventListener('change',update);update();}
 }
+
+if (typeof document !== 'undefined') {
+ const consent = document.getElementById('oauth-consent');
+ if (consent) {
+  const mode = consent.elements.access;
+  const search = document.getElementById('oauth-service-search');
+  const list = consent.querySelector('.oauth-service-list');
+  const rows = Array.from(list.children);
+  consent.querySelector('.oauth-search').hidden = false;
+  function updateConsent() {
+   consent.querySelectorAll('[data-oauth-access]').forEach(section => {
+    section.hidden = section.dataset.oauthAccess !== mode.value;
+    section.disabled = section.hidden;
+   });
+   const field = mode.value === 'services' ? 'service' : 'capability';
+   const selected = Array.from(consent.querySelectorAll('input[name="' + field + '"]:checked')).map(input => input.value);
+   document.getElementById('oauth-access-summary').textContent = selected.length ? selected.join(', ') + (consent.elements.write.checked ? ' · Read and act' : ' · Read') : 'No access selected';
+   consent.querySelector('button[type="submit"]').disabled = selected.length === 0;
+   rows.sort((a,b) => Number(b.querySelector('input').checked) - Number(a.querySelector('input').checked) || a.textContent.localeCompare(b.textContent)).forEach(row => list.appendChild(row));
+  }
+  search.addEventListener('input', () => {
+   const query = search.value.trim().toLowerCase();
+   rows.forEach(row => { row.hidden = !row.textContent.toLowerCase().includes(query); });
+   document.getElementById('oauth-no-results').hidden = rows.some(row => !row.hidden);
+  });
+  consent.addEventListener('change', updateConsent);
+  updateConsent();
+ }
+}
