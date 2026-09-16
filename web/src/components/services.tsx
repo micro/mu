@@ -93,7 +93,7 @@ function ServiceReference() {
           />
           <nav
             aria-label="Services"
-            className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6"
+            className="divide-y"
           >
             {data
               ?.filter((s) =>
@@ -106,15 +106,16 @@ function ServiceReference() {
                   key={s.name}
                   href={"/service/" + s.name}
                   title={s.description}
-                  className="flex min-w-0 flex-col items-center gap-2 rounded-xl px-2 py-4 text-center hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-w-0 items-start gap-3 rounded px-2 py-3 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <img
                     src={"/" + s.icon}
                     alt=""
-                    className="size-8 object-contain"
+                    className="mt-0.5 size-6 shrink-0 object-contain"
                   />
-                  <span className="max-w-full break-words text-sm font-medium">
-                    {s.label}
+                  <span className="min-w-0 text-sm">
+                    <span className="block font-medium">{s.label}</span>
+                    <span className="block text-muted-foreground">{s.description}</span>
                   </span>
                 </a>
               ))}
@@ -182,7 +183,7 @@ function MethodView({
           {(
             <>
               <h3 className="font-medium">App SDK</h3>
-              <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{`await mu.service(${JSON.stringify(service)}, ${JSON.stringify(m.Method.toLowerCase())}, {});`}</pre>
+              <pre className="overflow-x-auto rounded bg-muted p-3 text-sm">{`const mu = window.mu.createClient();\nawait mu.${service}.${m.Method.toLowerCase()}({});`}</pre>
             </>
           )}
           {(

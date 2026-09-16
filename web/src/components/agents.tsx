@@ -94,8 +94,9 @@ export function Agents() {
                   <Link url={"/agent/" + encodeURIComponent(a.ID)}>{a.Name}</Link>
                 </h3>
                 <p className="break-words text-sm text-muted-foreground">{a.Description}</p>
-                <div className="mt-auto pt-2">
+                <div className="mt-auto flex flex-wrap gap-2 pt-2">
                   <Button asChild><a href={"/agent/" + encodeURIComponent(a.ID)}>Chat</a></Button>
+                  <Button asChild><a href={"/agent/connect?id=" + encodeURIComponent(a.ID)}>Connect</a></Button>
                 </div>
               </Card>
             ))}
