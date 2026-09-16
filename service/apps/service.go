@@ -26,7 +26,7 @@ type BuildResponse struct {
 	Run  string `json:"run"`
 }
 
-// Build generates a small app (tracker, checklist or counter) from a natural
+// Build generates a self-contained HTML app from a natural
 // language description, saves it, and returns its details with URLs.
 // @example {"prompt": "an expense tracker"}
 func (Server) Build(ctx context.Context, req *BuildRequest, rsp *BuildResponse) error {
@@ -122,7 +122,7 @@ var Spec = service.Spec{
 	Icon:        "apps.svg",
 	Card:        service.Glance(Preview),
 	Endpoints: map[string]service.Endpoint{
-		"Build": {Writes: true, Doc: "Build a small app from a description, save it, and return its details and URL. An app is a single page — a tracker, a checklist, a counter — that keeps its own store and runs in the browser",
+		"Build": {Writes: true, Doc: "Build a small app from a description, save it, and return its details and URL. An app is a self-contained HTML page with JavaScript and CSS that implements the requested behaviour, keeps its own store, and runs in the browser",
 			Cost: quota.OpAppBuild, Needs: service.Caller},
 		"Read":   {Doc: "Read the details of one app by its slug"},
 		"Search": {Doc: "Search the apps directory for small, useful tools, by name, description or tag"},
