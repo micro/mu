@@ -282,6 +282,8 @@ if (typeof document !== "undefined") {
 (()=>{'use strict';
 const form=document.querySelector('#command-form'),input=document.querySelector('#command-input'),log=document.querySelector('#responses'),send=document.querySelector('#send'),status=document.querySelector('#status');
 if(!form)return;
+const conversation=form.closest('.conversation'),panel=form.closest('.prompt-panel');
+const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 let busy=false,thread=new URLSearchParams(location.search).get('session')||new URLSearchParams(location.search).get('continue')||'';
 function remember(){if(thread)history.replaceState(null,'','/?session='+encodeURIComponent(thread));}
 function headers(accept){const token=(document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'';return {'Content-Type':'application/json','Accept':accept,'X-CSRF-Token':decodeURIComponent(token)};}
@@ -296,14 +298,17 @@ async function assistant(command,answer){
 async function failure(response){try{const j=await response.json();return typeof j.error==='string'?j.error:(j.error?.message||'Request failed.');}catch{return 'Request failed ('+response.status+').';}}
 async function run(command){
  if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
+ const first=!conversation.classList.contains('is-active'),before=form.getBoundingClientRect().top;
+ conversation.classList.add('is-active');
+ if(first&&!reducedMotion.matches)panel.animate([{transform:'translateY('+(before-form.getBoundingClientRect().top)+'px)'},{transform:'translateY(0)'}],{duration:320,easing:'cubic-bezier(.2,.7,.2,1)'});
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
  q.textContent=command;
  const answer=document.createElement('div');answer.className='answer';turn.append(q,answer);log.append(turn);
  log.querySelectorAll('.turn').forEach(item=>item.style.minHeight='');
- turn.style.minHeight=Math.max(0,(window.visualViewport?.height||innerHeight)-form.offsetHeight)+'px';
+ turn.style.minHeight=log.clientHeight+'px';
  requestAnimationFrame(()=>{
-  const top=window.scrollY+turn.getBoundingClientRect().top-form.offsetHeight;
-  window.scrollTo({top:Math.max(0,top),behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  const top=log.scrollTop+turn.getBoundingClientRect().top-log.getBoundingClientRect().top;
+  log.scrollTo({top:Math.max(0,top),behavior:first||reducedMotion.matches?'instant':'smooth'});
  });
  try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Request stopped.';}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
 }
@@ -462,19 +467,17 @@ function muForgetLocation(btn){
 async function createToken(e) {
 	e.preventDefault();
 	var form = e.target;
- var access='api',mode='all',services=[];
- var permissions=['read','write','api:agent','api:work','api:inbox'];
+
 	var res = await fetch('/token', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
-		body: JSON.stringify({access: access, name: form.name.value, expires_in: parseInt(form.expires_in.value),
-			scope_mode: mode, services: services, permissions: permissions})
+		body: JSON.stringify({client: form.client.value, name: form.name.value, expires_in: parseInt(form.expires_in.value)})
 	});
 	var result = await res.json();
 	if (result.success) {
 		document.getElementById('new-token').textContent = result.token;
 		document.getElementById('token-result').classList.remove('d-none');
-		setTimeout(function() { location.reload(); }, 5000);
+
 	} else {
 		alert('Failed to create token');
 	}

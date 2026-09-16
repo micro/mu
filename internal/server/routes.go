@@ -17,6 +17,7 @@ import (
 	"mu/agent/brief"
 	"mu/agent/digest"
 	"mu/agent/micro"
+	"mu/agent/work"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -65,7 +66,6 @@ import (
 	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
-	"mu/work"
 )
 
 // authRequired reports, per path, whether a caller must be signed in.

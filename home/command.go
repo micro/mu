@@ -39,5 +39,9 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			initial += `<section class="turn"><div class="` + class + `">` + content + `</div></section>`
 		}
 	}
-	fmt.Fprint(w, app.ConsoleHTML("Micro", `<form id="command-form"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="What do you need?" autocomplete="off" required><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div>`, acc))
+	state := "conversation"
+	if initial != "" {
+		state += " is-active"
+	}
+	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div><form id="command-form"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="What do you need?" autocomplete="off" required><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
 }

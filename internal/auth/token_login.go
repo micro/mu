@@ -30,7 +30,7 @@ var ErrBadCredentials = errors.New("wrong username or access token")
 // three are what a person has in front of them when filling in a client, and
 // asim+research@ is asim's own account — so refusing it would be refusing the
 // address the product told them to use.
-func AccountForToken(user, pass string) (*Account, error) {
+func AccountForToken(user, pass, protocol string) (*Account, error) {
 	if strings.TrimSpace(user) == "" || pass == "" {
 		return nil, ErrBadCredentials
 	}
@@ -48,6 +48,10 @@ func AccountForToken(user, pass string) (*Account, error) {
 
 	accountID, err := ValidatePAT(pass)
 	if err != nil || accountID == "" {
+		return nil, ErrBadCredentials
+	}
+	token := tokenByRaw(pass)
+	if token == nil || (token.Scoped() && !token.HasPermission("protocol:"+protocol) && !token.AllowsService(protocol)) {
 		return nil, ErrBadCredentials
 	}
 	acc, err := GetAccount(accountID)

@@ -30,6 +30,7 @@ import (
 	"mu/agent/moderate"
 	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
+	"mu/agent/work"
 	help "mu/docs"
 	"mu/inbox"
 	"mu/internal/ai"
@@ -71,7 +72,6 @@ import (
 	"mu/service/tasks"
 	"mu/service/wallet"
 	"mu/service/web"
-	"mu/work"
 )
 
 // mailHistoryTurns is how much of an email thread an agent is reminded of.

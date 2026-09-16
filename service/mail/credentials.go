@@ -34,7 +34,7 @@ var errBadCredentials = errors.New("that username or token was not accepted")
 // have been two implementations that agree until one is changed. This stays as
 // the name the mail code calls it by.
 func accountForToken(user, pass string) (*auth.Account, error) {
-	acc, err := auth.AccountForToken(user, pass)
+	acc, err := auth.AccountForToken(user, pass, "mail")
 	if err != nil {
 		return nil, errBadCredentials
 	}
