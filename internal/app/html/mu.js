@@ -869,3 +869,50 @@ if ('serviceWorker' in navigator) {
 }
 
 function muToggleSyslog(id){const row=document.getElementById(id);if(row)row.style.display=row.style.display==='none'?'table-row':'none';}
+
+// Service forms use the shared browser script.
+if(typeof document !== "undefined"){
+(function(){
+  function csrf() {
+    var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  function values(form) {
+    var out = {};
+    form.querySelectorAll('[data-type]').forEach(function(el){
+      var v = el.value.trim();
+      if (v === '') return;
+      if (el.dataset.type === 'number') out[el.name] = parseFloat(v);
+      else if (el.dataset.type === 'integer') out[el.name] = parseInt(v, 10);
+      else if (el.dataset.type === 'boolean') out[el.name] = v === 'true';
+      else out[el.name] = v;
+    });
+    return out;
+  }
+  document.querySelectorAll('form.try').forEach(function(form){
+    form.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var out = form.querySelector('.try-out');
+      var args = values(form);
+      var path = form.dataset.path.replace('/api/v1/', '/services/call/');
+      var opts = { credentials: 'same-origin', cache: 'no-store', headers: {} };
+      opts.method = 'POST';
+      opts.headers['Content-Type'] = 'application/json';
+      var t = csrf();
+      if (t) opts.headers['X-CSRF-Token'] = t;
+      opts.body = JSON.stringify(args);
+      out.hidden = false;
+      out.textContent = '…';
+      fetch(path, opts)
+        .then(function(r){ return r.text().then(function(t){ return {status: r.status, text: t}; }); })
+        .then(function(res){
+          var body = res.text;
+          try { body = JSON.stringify(JSON.parse(body), null, 2); } catch (e) {}
+          out.textContent = res.status + '\n\n' + body;
+        })
+        .catch(function(e){ out.textContent = String(e); });
+    });
+  });
+})();
+
+}

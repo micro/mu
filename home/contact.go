@@ -197,7 +197,7 @@ func contactBody(acc *auth.Account) string {
 			`for the rest, <a href="/signup">make one</a> and verify your number.</p>`)
 	} else if !numberVerified(acc.ID) {
 		b.WriteString(`<p class="text-muted">It will not recognise you by phone until you have ` +
-			`<a href="/sms">verified a number</a> as yours. Mail and the web already know you.</p>`)
+			`<a href="/account#phone">verified a number</a> as yours. Mail and the web already know you.</p>`)
 	}
 	b.WriteString(`</div>`)
 	b.WriteString(app.Close())

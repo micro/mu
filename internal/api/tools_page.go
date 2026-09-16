@@ -164,44 +164,29 @@ func pinControl(r *http.Request, name string, pinned bool) string {
 // Each tile carries a pin, which is how a service gets into the sidebar. The
 // sidebar shows what you chose; this shows everything there is to choose.
 func serviceGrid(r *http.Request) string {
-	isPinned := map[string]bool{}
-	if _, acc := auth.TrySession(r); acc != nil {
-		for _, n := range acc.PinnedServices() {
-			isPinned[n] = true
-		}
-	}
 
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	var b strings.Builder
-	b.WriteString(app.SearchBar("/services", "Find a service", query, ""))
+	b.WriteString(`<form class="search-bar" method="GET" action="/services"><input type="search" name="q" aria-label="Find a service" placeholder="Find a service" value="` + html.EscapeString(query) + `"><button type="submit">Search</button></form>`)
 	count := 0
-	b.WriteString(`<div class="tool-grid service-grid">`)
+	b.WriteString(`<div class="directory-list">`)
 	for _, s := range service.Nav() {
 		if query != "" && !strings.Contains(strings.ToLower(s.Name+" "+s.NavLabel()+" "+s.Description), strings.ToLower(query)) {
 			continue
 		}
 		count++
-		b.WriteString(`<div class="service-tile-wrap">`)
-		// Open the service experience directly. A reference remains the fallback
-		// for services without a dedicated page.
-		destination := s.Page
-		if destination == "" {
-			destination = "/api?service=" + s.Name
-		}
-		open := `<a class="tool-tile service-tile card-hover" href="` + html.EscapeString(destination) + `">`
+		b.WriteString(`<div class="directory-row">`)
+		destination := "/services/" + url.PathEscape(s.Name)
+		open := `<a class="directory-content" href="` + html.EscapeString(destination) + `">`
 		close := `</a>`
 		b.WriteString(open)
-		b.WriteString(`<span class="service-tile-head">` +
+		b.WriteString(`<span class="directory-heading">` +
 			`<img src="/` + html.EscapeString(s.NavIcon()) + `?` + app.Version + `" alt="">` +
 			`<span class="tool-tile-name">` + html.EscapeString(s.NavLabel()) + `</span></span>`)
-		b.WriteString(`<span class="tool-tile-desc">` + html.EscapeString(s.Description) + `</span>`)
+		b.WriteString(`<span class="directory-description">` + html.EscapeString(s.Description) + `</span>`)
 
 		b.WriteString(close)
 
-		// Nothing to pin without a page — the sidebar is a list of places.
-		if s.Page != "" {
-			b.WriteString(pinControl(r, s.Name, isPinned[s.Name]))
-		}
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
@@ -227,7 +212,7 @@ func toolGrid() string {
 		for _, t := range g.Tools {
 			b.WriteString(`<a class="tool-tile card-hover" href="/tools/` + html.EscapeString(t.Name) + `">`)
 			b.WriteString(`<span class="tool-tile-name">` + html.EscapeString(t.Name) + `</span>`)
-			b.WriteString(`<span class="tool-tile-desc">` + html.EscapeString(clipDesc(t.Description)) + `</span>`)
+			b.WriteString(`<span class="directory-description">` + html.EscapeString(clipDesc(t.Description)) + `</span>`)
 			b.WriteString(`<span class="tool-tile-price">` + priceLabel(t) + `</span>`)
 			b.WriteString(`</a>`)
 		}

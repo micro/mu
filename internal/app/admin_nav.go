@@ -1,22 +1,9 @@
 package app
 
-import "strings"
-
+// Admin pages share one way back rather than repeating the entire menu.
 func adminNavigation(path string) string {
-	var nav strings.Builder
-	nav.WriteString(`<nav class="admin-navigation" aria-label="Admin">`)
-	for _, item := range []struct{ path, label string }{
-		{"/admin", "Overview"}, {"/admin/users", "Users"}, {"/admin/config", "Config"},
-		{"/admin/work", "Work"}, {"/admin/traffic", "Usage"}, {"/admin/log", "Logs"}, {"/admin/status", "Status"},
-		{"/admin/alerts", "Alerts"}, {"/admin/moderate", "Moderation"}, {"/admin/spam", "Spam"},
-		{"/admin/server", "Server"}, {"/admin/backup", "Backup"}, {"/admin/oauth", "OAuth"},
-	} {
-		current := ""
-		if path == item.path {
-			current = ` aria-current="page"`
-		}
-		nav.WriteString(`<a href="` + item.path + `"` + current + `>` + item.label + `</a>`)
+	if path == "/admin" {
+		return ""
 	}
-	nav.WriteString(`</nav>`)
-	return nav.String()
+	return `<nav class="admin-navigation" aria-label="Admin"><a href="/admin">Back to Admin</a></nav>`
 }

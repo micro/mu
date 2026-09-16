@@ -138,7 +138,7 @@ func All() []Client {
 	if w := sms.SendersFor(sms.ChannelWhatsApp); len(w) > 0 && sms.ConfiguredFor(sms.ChannelWhatsApp) {
 		out = append(out, Client{ID: thread.WhatsAppClient, Label: "WhatsApp", Address: w[0],
 			Href: "https://wa.me/" + strings.TrimPrefix(w[0], "+"),
-			Note: "the same conversation, on WhatsApp"})
+			Note: "message the assistant on WhatsApp"})
 	}
 	// Mail, and only where the domain is a real one.
 	//
