@@ -5,10 +5,10 @@ body{margin:0}
 a{color:inherit;text-decoration:underline;text-underline-offset:3px}
 a:hover{color:#555}
 button,input,textarea,select{font:inherit;color:inherit}
-button,.btn,.oauth-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:6px 12px;min-height:36px;border:1px solid #bbb;border-radius:6px;background:#fff;text-decoration:none;cursor:pointer;width:auto}
+button,.btn,.oauth-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:5px 10px;min-height:32px;line-height:20px;border:1px solid #bbb;border-radius:6px;background:#fff;text-decoration:none;cursor:pointer;width:auto}
 button:hover,.btn:hover,.oauth-btn:hover{background:#f5f5f5}
 button:disabled{opacity:.5;cursor:wait}
-input,select,textarea{min-width:0;max-width:100%;padding:8px 10px;border:1px solid #bbb;border-radius:6px;background:#fff}
+input,select,textarea{min-width:0;max-width:100%;padding:7px 10px;line-height:20px;border:1px solid #bbb;border-radius:6px;background:#fff}
 input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select{width:100%}
 input[type=checkbox],input[type=radio]{width:auto}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid #426994;outline-offset:3px}
@@ -44,8 +44,8 @@ dd{margin:0 0 12px;overflow-wrap:anywhere}
 .command-page main{padding-top:max(24px,calc(50svh - 118px));padding-bottom:40px}
 .command-page #command-form{position:sticky;top:0;z-index:2;margin:0;padding:16px 0 8px;background:#fff}
 .composer{display:flex;align-items:flex-end;gap:8px}
-.composer textarea{display:block;flex:1;width:100%;resize:vertical;min-height:48px;max-height:200px;line-height:24px}
-.composer button{min-height:48px}
+.composer textarea{display:block;flex:1;width:100%;height:36px;resize:none;min-height:36px;max-height:36px;line-height:20px;padding:7px 10px;appearance:none;overflow-y:auto;box-shadow:none;border-radius:6px}
+.composer button{height:36px;min-height:36px;padding:7px 10px}
 #status{font-size:.8rem;color:#666;min-height:20px;margin:6px 0 0}
 #responses:empty{display:none}
 .turn{padding:16px 0;overflow-wrap:anywhere;scroll-margin-top:110px}
@@ -71,12 +71,12 @@ dd{margin:0 0 12px;overflow-wrap:anywhere}
 .auth-page .mt-5{margin-top:20px}
 .oauth-btn svg{width:20px;height:20px;flex:none}
 .field-label{display:flex;flex-direction:column;gap:6px;font-size:.875rem;text-align:left}
-.form{display:flex;flex-direction:column;gap:16px;margin:0}
+.form{display:flex;flex-direction:column;gap:8px;margin:0}
 .form button{align-self:flex-start}
 .form small{font-size:.8rem}
-.form-row,.form-inline{display:flex;flex-direction:row;flex-wrap:wrap;align-items:end;gap:12px}
+.form-row,.form-inline{display:flex;flex-direction:row;flex-wrap:wrap;align-items:end;gap:8px}
 .form-row>input,.form-row>select,.form-inline>input,.form-inline>select,.form-inline>.field-label{flex:1 1 200px;width:auto}
-.form-group,.page-stack,.section-stack,.section-body{display:flex;flex-direction:column;gap:16px}
+.form-group,.page-stack,.section-stack,.section-body{display:flex;flex-direction:column;gap:8px}
 .form-actions,.section-actions,.view-switch{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
 .view-switch{margin-bottom:32px}
 .card,.page-section,.settings-sections>section,.settings-sections>.section-stack{padding:16px 0;border-top:1px solid #e5e5e5}
@@ -240,3 +240,23 @@ footer{gap:16px}
  .data-table.stacked td { border:0; padding:4px 0; overflow-wrap:anywhere; }
  .data-table.stacked td[data-label]::before { content:attr(data-label) ': '; color:var(--text-muted); margin-right:8px; }
 }
+
+/* Shared action spacing, including controls emitted directly by older cards. */
+.form-actions,.section-actions,.actions-set { gap:8px; }
+.card > :is(button,.btn),.card-body > :is(button,.btn) { margin-block:8px; }
+:is(button,.btn,.form-action) + :is(button,.btn,.form-action) { margin-inline-start:8px; }
+:is(.form-actions,.section-actions,.actions-set,.composer,.inline-row) > :is(button,.btn,.form-action) { margin:0; }
+.section-stack > * { margin-block:0; }
+
+.action-block { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-block:12px; }
+.action-block > * { margin:0; }
+.action-note { color:var(--text-muted); font-size:.875rem; line-height:1.5; }
+.card > .form-actions { margin-block:12px; }
+.form-action + p { margin-block-start:8px; }
+
+:is(.form,.form-group,.page-stack,.section-stack,.section-body) > * { margin-block:0; }
+.settings-sections { gap:0; }
+.settings-sections > .card { padding-block:12px; }
+.d-flex { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+
+.composer textarea::placeholder { color:#777; opacity:1; font:inherit; }

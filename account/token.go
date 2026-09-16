@@ -9,34 +9,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
 )
-
-// Flash storage — one-time values shown after redirect, then deleted.
-var (
-	flashMu   sync.Mutex
-	flashData = map[string]string{} // "sessionID:key" → value
-)
-
-func setFlash(sessionID, key, value string) {
-	flashMu.Lock()
-	flashData[sessionID+":"+key] = value
-	flashMu.Unlock()
-}
-
-func getFlash(sessionID, key string) string {
-	flashMu.Lock()
-	defer flashMu.Unlock()
-	k := sessionID + ":" + key
-	v := flashData[k]
-	delete(flashData, k)
-	return v
-}
 
 // TokenHandler manages Personal Access Tokens (PATs)
 // GET /token - List all tokens for the authenticated user
@@ -75,35 +53,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		if r.URL.Query().Get("create_client") == "1" {
-			name := r.FormValue("client_name")
-			if name == "" {
-				name = "MCP Client"
-			}
-			// Where this client will receive its authorization code.
-			//
-			// The form asked for a name and nothing else, and registered the
-			// client with no address at all — so every client made here was a
-			// dead record: there was nowhere a code could correctly be sent.
-			// Nothing noticed, because the flow did not read the registry. Five
-			// of them accumulated on micro.mu before the check that reads it
-			// made them visible.
-			redirect := strings.TrimSpace(r.FormValue("redirect_uri"))
-			if redirect == "" {
-				redirect = "http://localhost:0/callback"
-			}
-			if !auth.RegisterableRedirect(redirect) {
-				app.BadRequest(w, r, "The redirect URL must be https, or http on localhost: "+redirect)
-				return
-			}
-			client, err := auth.RegisterOwnedOAuthClient(acc.ID, name, []string{redirect})
-			if err != nil {
-				app.TooManyRequests(w, r, err.Error())
-				return
-			}
-			// Store credentials in session flash (not URL)
-			setFlash(sess.ID, "client_id", client.ClientID)
-			setFlash(sess.ID, "client_secret", client.ClientSecret)
-			http.Redirect(w, r, "/token?created=1", http.StatusSeeOther)
+			http.NotFound(w, r)
 			return
 		}
 		if clientID := r.URL.Query().Get("delete_client"); clientID != "" && r.FormValue("_method") == "DELETE" {
@@ -135,15 +85,13 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionID string) {
-	newClientID := getFlash(sessionID, "client_id")
-	newClientSecret := getFlash(sessionID, "client_secret")
 
 	var sb strings.Builder
 
 	// API credentials contains tokens and registered OAuth clients. Tokens come
 	// first because they are the usual reason to open this page.
-	sb.WriteString(`<h3>API tokens</h3>`)
-	sb.WriteString(`<p class="text-secondary text-sm">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
+	sb.WriteString(`<h3>Client tokens</h3>`)
+	sb.WriteString(`<p class="text-secondary text-sm">Use your username and a token as the password in your IMAP or XMPP client.</p>`)
 
 	sb.WriteString(`<div id="token-result" class="success-panel d-none">`)
 	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
@@ -215,96 +163,13 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		},
 	}.HTML())
 
-	// What it may reach, on the page that hands out the credential.
-	//
-	// This page had a name and an expiry and nothing else, so every token
-	// created here carried the whole account: eighty-odd tools, the mail, the
-	// wallet. The scoped path existed on /agents and the README pointed here —
-	// so the documented road was the unsafe one and the safe one was
-	// undocumented. Same control, same meaning, on both pages now.
-	sb.WriteString(app.Field{Name: "access", Label: "Access", Options: []app.Option{
-		{Value: "api", Label: "Agent, Work and Inbox", On: true},
-		{Value: "agent", Label: "Agent"}, {Value: "work", Label: "Work"}, {Value: "inbox", Label: "Inbox"},
-		{Value: "services", Label: "Services"},
-	}}.HTML())
-	sb.WriteString(`<p class="text-secondary text-sm">API access applies across your account. Agent and Work may use the selected agent's tools and private context.</p><div id="token-service-scopes" hidden>`)
-
-	var scopeChoices []app.Option
-	for _, sp := range tokenScopeChoices() {
-		scopeChoices = append(scopeChoices, app.Option{Value: sp.Name, Label: sp.NavLabel()})
-	}
-	sb.WriteString(app.ServiceSelect("tok-scope", "tok-service-list", "services", scopeChoices))
-	sb.WriteString(`</div>`)
-	sb.WriteString(`<div class="form-actions"><button type="submit">Generate Token</button></div></form>`)
-
-	sb.WriteString(`<hr class="hr-soft">`)
-
-	// This asked for every client on the instance. Anyone signed in saw the
-	// names other people's MCP clients had registered under, their client ids
-	// and when they appeared — with a Delete beside each that worked. A client
-	// that registered itself at /oauth/register has no owner to compare
-	// against, so it belongs to nobody and appears here for nobody.
-	sb.WriteString(`<h3>OAuth Clients</h3>`)
-	sb.WriteString(`<p class="text-secondary text-sm">For connecting Claude, MCP clients, or ` +
-		`other apps via OAuth 2.1. Clients that register themselves when they connect do not ` +
-		`appear here — they belong to no account, and nothing needs doing about them.</p>`)
-
-	if newClientID != "" {
-		sb.WriteString(fmt.Sprintf(`<div class="success-panel">
-			<strong>Client Created</strong>
-			<p>Copy these now — the secret won't be shown again.</p>
-			<p><strong>Client ID:</strong><br><code class="text-xs break-all">%s</code></p>
-			<p><strong>Client Secret:</strong><br><code class="text-xs break-all">%s</code></p>
-		</div>`, newClientID, newClientSecret))
-	}
-
-	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
-	oauthClients := auth.OAuthClientsFor(accountID)
-	if len(oauthClients) == 0 {
-		sb.WriteString(`<tr><td colspan="4" class="p-5 text-center text-secondary">No OAuth clients yet.</td></tr>`)
-	}
-	for _, c := range oauthClients {
-		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Client ID"><code>%s</code></td><td data-label="Created">%s</td><td>
-			<form method="POST" action="/token?delete_client=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Delete</button></form></td></tr>`,
-			htmlpkg.EscapeString(c.Name), c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID, app.CSRFField(auth.CSRFToken(r))))
-	}
-	sb.WriteString(`</tbody></table>`)
-
-	sb.WriteString(`<h4 class="mt-5">Create an OAuth client</h4>`)
-	sb.WriteString(`<form class="form" method="POST" action="/token?create_client=1">`)
-	sb.WriteString(app.Field{
-		Name: "client_name", Label: "Name", Placeholder: "e.g. Claude", Required: true, Wide: true,
-	}.HTML())
-	// The address is half of what a client is. Without it there is nowhere a
-	// code may be sent, and a client registered without one can never complete
-	// a sign-in — which is what every client made on this form used to be.
-	// A list you can type past, not a list you must choose from.
-	//
-	// The address belongs to the client, not to us: a closed set would be a
-	// claim that we know every client's callback, and that claim goes stale on
-	// its own — Cursor moved from cursor:// to a loopback port, and any list
-	// naming the old one would have been confidently wrong for months. What
-	// helps is showing the shape and saving the typing for the two that are
-	// actually common.
-	sb.WriteString(`<div class="form-group"><label class="field-label">Redirect URL` +
-		`<input type="text" name="redirect_uri" ` +
-		`list="redirect-suggestions" placeholder="https://example.com/callback" ` +
-		`class="field field-wide"></label>` +
-		`<datalist id="redirect-suggestions">` +
-		`<option value="http://localhost:0/callback">Command-line or desktop client</option>` +
-		`<option value="https://claude.ai/api/mcp/auth_callback">Claude custom connector</option>` +
-		`</datalist></div>`)
-	sb.WriteString(`<p class="text-secondary text-xs m-0">Where the client receives ` +
-		`its code. Must be https, or http on localhost. Left empty it is ` +
-		`<code>http://localhost:0/callback</code>, which suits a command-line or desktop client.</p>`)
-	sb.WriteString(`<div class="form-actions"><button type="submit">Create</button></div></form>`)
+	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
 
 	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
 	// part of the chrome that depends on knowing who is signed in — the nav,
 	// the account menu, the balance — went missing on a page you can only
 	// reach by being signed in. Same bug /account had.
-	app.Respond(w, r, app.Response{Title: "API credentials", Description: "Tokens for calling this instance", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Client access", Description: "Tokens for IMAP and XMPP clients", HTML: sb.String()})
 }
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {

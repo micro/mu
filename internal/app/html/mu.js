@@ -129,27 +129,22 @@ self.addEventListener('message', function (e) {
 } else {
 function getCsrfToken() {
   var m = document.cookie.match('(?:^|; )csrf_token=([^;]*)');
-  return m ? m[1] : '';
+  return m ? decodeURIComponent(m[1]) : '';
 }
 
+// All browser writes use the current session token, including pages left open
+// across a deployment. Refresh before sending; never replay a mutation.
 (function() {
-  var _fetch = window.fetch;
-  window.fetch = function(url, opts) {
-    opts = opts || {};
-    var method = (opts.method || 'GET').toUpperCase();
-    if (method !== 'GET' && method !== 'HEAD' && new URL(url instanceof Request ? url.url : url, location.href).origin === location.origin) {
-      opts.headers = opts.headers || {};
-      if (opts.headers instanceof Headers) {
-        if (!opts.headers.has('X-CSRF-Token')) {
-          opts.headers.set('X-CSRF-Token', getCsrfToken());
-        }
-      } else {
-        if (!opts.headers['X-CSRF-Token']) {
-          opts.headers['X-CSRF-Token'] = getCsrfToken();
-        }
-      }
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async function(url, opts) {
+    const request = new Request(url, opts);
+    const write = !['GET','HEAD','OPTIONS'].includes(request.method);
+    if (write && new URL(request.url).origin === location.origin && getCsrfToken()) {
+      const session = await nativeFetch('/session', {credentials:'same-origin',cache:'no-store'});
+      if (!session.ok) throw Error('Please reload the page and sign in again.');
+      request.headers.set('X-CSRF-Token', getCsrfToken());
     }
-    return _fetch.call(this, url, opts);
+    return nativeFetch(request);
   };
 })();
 
@@ -466,17 +461,11 @@ function muForgetLocation(btn){
 
 
 // account/token.go
-document.querySelector('[name="access"]')?.addEventListener('change',function(){document.getElementById('token-service-scopes').hidden=this.value!=='services';});
 async function createToken(e) {
 	e.preventDefault();
 	var form = e.target;
- var access=form.access.value;
- var mode=access==='services'?form.scope_mode.value:'all';
- var permissions=['read','write'];
- if(access==='api') permissions=permissions.concat(['api:agent','api:work','api:inbox']);
- else if(access!=='services') permissions.push('api:'+access);
- var services=mode==='select'?Array.from(form.querySelectorAll('input[name="services"]:checked')).map(function(c){return c.value}):[];
- if(mode==='select' && !services.length){alert('Select at least one service');return;}
+ var access='api',mode='all',services=[];
+ var permissions=['read','write','api:agent','api:work','api:inbox'];
 	var res = await fetch('/token', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
@@ -583,7 +572,7 @@ async function createToken(e) {
       credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': document.getElementById('push-csrf').value
+        'X-CSRF-Token': getCsrfToken()
       },
       body: JSON.stringify({
         endpoint: sub.endpoint,
@@ -700,7 +689,7 @@ async function createToken(e) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': document.getElementById('push-csrf').value
+            'X-CSRF-Token': getCsrfToken()
           },
           body: JSON.stringify({endpoint: ep})
         });
@@ -749,7 +738,7 @@ async function createToken(e) {
           credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': document.getElementById('push-csrf').value
+            'X-CSRF-Token': getCsrfToken()
           },
           body: JSON.stringify({endpoint: endpoint})
         });
@@ -781,7 +770,7 @@ async function createToken(e) {
         credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': document.getElementById('push-csrf').value
+          'X-CSRF-Token': getCsrfToken()
         },
         body: JSON.stringify({endpoint: sub ? sub.endpoint : ''})
       });
