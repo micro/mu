@@ -75,9 +75,6 @@ var (
 
 // Load starts the daily digest scheduler.
 func Load() {
-	if !ai.BackgroundEnabled() {
-		return
-	}
 	if b, err := data.LoadFile("digest_last.txt"); err == nil {
 		t, err := time.Parse(time.RFC3339, strings.TrimSpace(string(b)))
 		if err == nil {
@@ -91,7 +88,9 @@ func Load() {
 		lastStatus = "ok"
 	}
 
-	go scheduler()
+	if ai.BackgroundEnabled() {
+		go scheduler()
+	}
 }
 
 // Status returns the current digest state for the status page.

@@ -134,7 +134,7 @@ const readLimit = 1000
 //
 // So a page can say "nothing is being judged, held messages are waiting for
 // you" rather than showing a list that reads as a decision somebody made.
-func Configured() bool { return ai.Configured() }
+func Configured() bool { return ai.BackgroundEnabled() && ai.Configured() }
 
 // prompt is what the model is asked.
 //
