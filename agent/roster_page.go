@@ -161,7 +161,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// Remove, because neither is a thing you can do to it.
 	EnsureTags(owner)
 	roster := Agents(owner)
-	b.WriteString(`<div class="collection-grid">`)
+	b.WriteString(`<div class="directory-list">`)
 	// The default carries the same sign of life as the rest. It is the one most
 	// accounts have actually used, so a roster where every row but that one says
 	// when it last spoke is a roster missing the row that would say the most.
@@ -338,18 +338,18 @@ type entry struct {
 // the feature rather than offering it.
 func entryRow(e entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="agent-row"><div class="agent-card-content"><div class="agent-head"><a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a></div>`)
+	b.WriteString(`<div class="directory-row"><div class="directory-content"><div class="agent-head"><a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a></div>`)
 	if e.For != "" {
-		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
+		b.WriteString(`<div class="directory-description">` + html.EscapeString(e.For) + `</div>`)
 	}
 	if e.Status != "" {
 		b.WriteString(`<div class="activity-status">` + html.EscapeString(e.Status) + `</div>`)
 	}
-	b.WriteString(`<div class="agent-links"><div class="agent-open-actions">`)
+	b.WriteString(`<div class="form-actions"><div class="form-actions">`)
 	if e.Chat != "" {
 		b.WriteString(`<a href="` + e.Chat + `" aria-label="Chat with ` + html.EscapeString(e.Name) + `" title="Chat"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4h16v12H9l-5 4z"/></svg></a>`)
 	}
-	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `" aria-label="Connect to ` + html.EscapeString(e.Name) + `" title="Connect"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m9 15 6-6M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 10a4 4 0 0 0 6 0l4-4a4 4 0 0 0-6-6l-1 1"/></svg></a></div><div class="agent-manage-actions">`)
+	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `" aria-label="Connect to ` + html.EscapeString(e.Name) + `" title="Connect"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m9 15 6-6M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 10a4 4 0 0 0 6 0l4-4a4 4 0 0 0-6-6l-1 1"/></svg></a></div><div class="form-actions">`)
 	if e.Admin {
 		b.WriteString(`<a href="/agent/new?id=` + html.EscapeString(e.ID) + `">Edit</a>`)
 	}

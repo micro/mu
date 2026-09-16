@@ -79,15 +79,6 @@ func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 		b.WriteString(`<div class="svc-card">` + spec.Card.Render(who).HTML + `</div>`)
 	}
 
-	// Where a person goes. The tile on /services leads here, so this is the way
-	// back out to the thing itself — unless this *is* the thing, which is true
-	// of a service whose page was derived: weather and hazards have no page but
-	// this one, and a button back to the page you are on is furniture.
-	if spec.Page != "" && spec.Page != "/services/"+spec.Name {
-		b.WriteString(`<p class="svc-open"><a class="btn" href="` + html.EscapeString(spec.Page) +
-			`">Open ` + html.EscapeString(spec.NavLabel()) + `</a></p>`)
-	}
-
 	b.WriteString(askTheAgent(spec.Name))
 
 	methods := restMethodsFor(spec.Name)
@@ -97,7 +88,7 @@ func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 		return b.String()
 	}
 
-	b.WriteString(`<p>These are internal service capabilities used by your agents. Sign in to try them here. For programmatic access, use the <a href="/api">Agent, Work and Inbox API</a>.</p>`)
+	b.WriteString(`<p>These are internal service capabilities used by your agents. Sign in to try them here. </p>`)
 
 	b.WriteString(`<h2 class="svc-h">Methods</h2>`)
 	for _, m := range methods {
@@ -107,10 +98,9 @@ func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(`<p class="svc-doors"><a href="/api">Ask an agent through HTTP or MCP</a></p>`)
+	b.WriteString(`<p><a href="/services">Back to Services</a></p>`)
 
 	b.WriteString(`</div>`)
-	b.WriteString(tryScript)
 	return b.String()
 }
 
@@ -240,7 +230,7 @@ func tryForm(m restMethod) string {
 		if p.Required {
 			req = ` <span class="text-error">*</span>`
 		}
-		b.WriteString(`<label class="try-field"><span>` + html.EscapeString(p.Name) + req + `</span>`)
+		b.WriteString(`<label class="field-label"><span>` + html.EscapeString(p.Name) + req + `</span>`)
 		switch p.Type {
 		case "boolean":
 			b.WriteString(`<select name="` + html.EscapeString(p.Name) + `" data-type="boolean">` +
@@ -256,7 +246,7 @@ func tryForm(m restMethod) string {
 		b.WriteString(`</label>`)
 	}
 
-	b.WriteString(`<div class="try-actions"><button type="submit" class="btn">Send</button>`)
+	b.WriteString(`<div class="form-actions"><button type="submit" class="btn">Send</button>`)
 	if m.Cost > 0 {
 		// Said before the button is pressed, because this one spends money.
 		b.WriteString(`<span class="card-meta">Costs ` + strconv.Itoa(m.Cost) + ` ` +
@@ -272,47 +262,3 @@ func tryForm(m restMethod) string {
 // what happens here is what happens there. A signed-in session carries the
 // call, which is why the CSRF header goes on the POST: api.StrictCSRF refuses a
 // cookie-authenticated write without it.
-const tryScript = `<script>
-(function(){
-  function csrf() {
-    var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
-    return m ? decodeURIComponent(m[1]) : '';
-  }
-  function values(form) {
-    var out = {};
-    form.querySelectorAll('[data-type]').forEach(function(el){
-      var v = el.value.trim();
-      if (v === '') return;
-      if (el.dataset.type === 'number') out[el.name] = parseFloat(v);
-      else if (el.dataset.type === 'integer') out[el.name] = parseInt(v, 10);
-      else if (el.dataset.type === 'boolean') out[el.name] = v === 'true';
-      else out[el.name] = v;
-    });
-    return out;
-  }
-  document.querySelectorAll('form.try').forEach(function(form){
-    form.addEventListener('submit', function(ev){
-      ev.preventDefault();
-      var out = form.querySelector('.try-out');
-      var args = values(form);
-      var path = form.dataset.path.replace('/api/v1/', '/services/call/');
-      var opts = { credentials: 'same-origin', cache: 'no-store', headers: {} };
-      opts.method = 'POST';
-      opts.headers['Content-Type'] = 'application/json';
-      var t = csrf();
-      if (t) opts.headers['X-CSRF-Token'] = t;
-      opts.body = JSON.stringify(args);
-      out.hidden = false;
-      out.textContent = '…';
-      fetch(path, opts)
-        .then(function(r){ return r.text().then(function(t){ return {status: r.status, text: t}; }); })
-        .then(function(res){
-          var body = res.text;
-          try { body = JSON.stringify(JSON.parse(body), null, 2); } catch (e) {}
-          out.textContent = res.status + '\n\n' + body;
-        })
-        .catch(function(e){ out.textContent = String(e); });
-    });
-  });
-})();
-</script>`

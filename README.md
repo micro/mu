@@ -1,192 +1,158 @@
 # Mu
 
-A runtime for apps, agents and services
+The runtime for **Micro, a personal assistant**.
 
-## Overview
+Ask on the web, send an email, or message it from your phone. Mu runs the
+assistant, its tools, and your saved conversations in one Go binary that you
+can host yourself. Try the hosted instance at [micro.mu](https://micro.mu).
 
-Mu is a runtime for apps, agents and services. It's a full stack solution to the question, how do I run everything myself. More and more 
-we're becoming reliant on the ecosystem of hosted things. The question is, how much of the system can you run yourself. The services, 
-the tools, the agents, maybe not the models but everything else. From the personal AI agent answering the front door to the smtp server 
-handling the inbound mail on the backend. Mu attempts to do it all in a single binary on one machine in one place in one system.
+## A small interface
 
-## Features 
+The web starts with one input. Ask a question or give an instruction; the answer
+appears below it. The prompt moves up on the first request and stays there while
+you read and continue the conversation.
 
-It includes:
+- **Inbox** keeps saved conversations and incoming messages together. Return to
+  a web conversation and continue where you left off.
+- **Account** holds your profile, connections, client credentials, and billing.
+- **Admin**, visible to administrators, holds users, settings, logs, and server
+  controls.
 
-- **Micro** - your personal AI agent and the default agent.
-- **Home** - your personal overview: assistant prompt, brief and recent conversations.
-- **Inbox** - A place to keep track of everything.
-- **Clients** - Use Micro via Web, SMS, email, etc.
-- **Services** - building blocks for agents.
-- **Protocols** - a way to self host SMTP, XMPP, SFTP, SSH.
+One shared stylesheet (`/mu.css`) and browser script (`/mu.js`) serve the pages.
+HTML is rendered in Go. There is no frontend build step. The site includes a
+manifest and service worker so it can be installed as a PWA.
 
-## How it works
+## Reach the same assistant in different ways
 
-**Mu** is a single binary: the runtime, services, archive, inbox and agent system all in one host. Services operate as building blocks for agents — mail, chat, news, video, search, markets, weather and more. Data gets archived locally so it stays searchable and becomes contextual memory. Services and the archive become tools for Micro and any other agents you create.
+Open **Contact** in the footer, or **Account → Reach Micro**, for the addresses
+and numbers configured on your instance. Add Micro to your phone's contacts
+from that page.
 
-**Micro** is the first agent and the one you use for everything. It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
+| Channel | How it fits |
+|---|---|
+| Web | Start a conversation or reopen one from Inbox. |
+| Email | Send or forward a message to `agent@your-domain` from your verified email address. Include what you want the assistant to do. |
+| SMS | Verify your phone number in Account, then text the configured number. |
+| WhatsApp | Use your verified number to message the configured WhatsApp sender. |
+| XMPP | Connect with your account and a Chat token from Client access, then message the agent. |
 
-Mu comes with a unified inbox for mail, chat, SMS, WhatsApp and agent replies.
-Home shows your brief and recent conversations alongside one assistant prompt.
-Inbox brings conversations from every channel together. News, video, markets
-and other sources inform the assistant and the brief; they are not separate
-consumer destinations. Profile, billing and connections live together in Settings.
-App and agent builders are operator tools, also available through the assistant.
-Existing service URLs and saved conversations remain accessible.
+Email, SMS, WhatsApp, and XMPP require the corresponding server configuration.
+SMS and WhatsApp use Twilio; they are not enabled merely by installing Mu.
+Contact lists the configured ways to reach the assistant. Incoming mail must
+pass the sender checks; account identity comes from verified addresses and
+numbers, not from whatever a message claims.
 
-Pages render on the server in Go, with Tailwind and a shared tweakcn theme.
-The styles build under `internal/app/`; the deployed application is still one Go
-binary and does not need Node or React. Optional Google connections let the
-assistant read Calendar, Contacts, Gmail and Drive with your consent.
+Conversations from the different channels appear in one inbox, but are still
+separate threads. Switching from a web conversation to a fresh SMS does not
+automatically continue that exact thread. Replies retain their channel context.
+Forwarding mail to your own mailbox stores it; addressing an agent asks it to
+act. WhatsApp replies are subject to the provider's messaging window.
 
-## Agents
+## Agents and services
 
-Mu is the runtime. Micro is the first agent and the one people meet first.
+**Micro** is the default agent. Agents have instructions and a permitted set of
+tools. Services provide those tools: mail, files, calendar, search, weather,
+notes, shell, and more. You ask for an outcome; the agent chooses the tools.
 
-- **Micro** is your personal AI agent and the default agent. General purpose, with the services above as its tools, so it can answer from what is true now rather than only from what a model remembers: the news this morning, the price this minute, your own mail.
+Optional Google connections provide access to Gmail, Calendar, Contacts, and
+Drive with your consent. User-created agents can have different instructions
+and access; mail to `you+research@your-domain` addresses your Research agent.
 
-Your own agents are the same shape: a name, an instruction, and the tools they may reach. Each has an address, so `agent+yours@` reaches it from anywhere that can send mail, the same way `agent@` reaches Micro.
+An explicitly requested job can run in the background and return its result to
+the originating conversation. Execution lives under `agent/work`; task records
+live in `service/tasks`. The personal daily brief remains available. Other
+unsolicited model-generated feeds are disabled.
+
+## Use your existing clients
+
+**Account → Client access** shows connection details and creates tokens with an
+explicit choice of Mail, Chat, or both.
+
+- **IMAP** reads the inbox; **SMTP submission** sends mail using a Mail token.
+- **XMPP** uses a Chat token.
+- **SFTP** transfers stored files using a registered SSH key.
+- **SSH** opens an interactive terminal in your account's sandbox using that key.
+  It does not grant access to the host machine. Remote exec and port forwarding
+  are not supported.
+
+SSH/SFTP must be enabled by the operator. Mail and XMPP public TLS endpoints
+require the proxy setup described in the installation guide. The page reports
+configured settings; it cannot verify that external DNS, ports, or proxies work.
 
 ## Install
 
-Quick install guide for self hosting (let us know if it's broken).
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
+mu setup
 mu --serve
 ```
 
-Open **http://localhost:8080**. The first account you create is the admin.
+Open **http://localhost:8080**. Initial administrator setup depends on the
+instance's bootstrap configuration; see the installation guide.
 
-Quite a few things need API keys, but here's some must haves.
+Configure an AI provider with `mu setup`. Supported settings include
+`ANTHROPIC_API_KEY`, `ATLASCLOUD_API_KEY`, `GEMINI_API_KEY`,
+`OPENROUTER_API_KEY`, or an OpenAI-compatible `OPENAI_BASE_URL`.
+Individual tools may need provider keys, such as `BRAVE_API_KEY` for web search
+or `YOUTUBE_API_KEY` for video. Google sign-in and payments are optional.
 
-| For | Set | Notes |
-|---|---|---|
-| AI models | `ANTHROPIC_API_KEY`, `ATLASCLOUD_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
-| Web search | `BRAVE_API_KEY` | Brave has a free tier |
-| Video | `YOUTUBE_API_KEY` | free quota |
-
-Follow setup in CLI
-
-```bash
-mu setup        # pick an AI provider, paste a key
-mu --serve
-```
-
-Everything else — mail, Google sign-in, Stripe for payments, etc — is optional.
-
-The binary is a client, and by default it calls **https://micro.mu** — the hosted Mu instance where Micro runs publicly. Running your own? Point it there:
+From source:
 
 ```bash
-mu login https://your.host   # saves the address and a token
-mu config get                # says which instance is in use, and why
-```
-
-Without that, `mu news list` on the machine you just installed calls the hosted instance rather than the one you are running. `MU_URL` and `--url` override per shell and per command.
-
-Other ways to run it:
-
-```bash
-# Docker
-git clone https://github.com/micro/mu && cd mu
-docker compose up
-
-# From source
 git clone https://github.com/micro/mu
-cd mu && go install
+cd mu
+go install
+mu setup
 mu --serve
 ```
 
-See the [installation guide](docs/INSTALL.md).
+Or run `docker compose up` from the checkout. See the
+[installation guide](docs/INSTALL.md) for domains, TLS, mail, messaging,
+sandbox configuration, and deployment.
 
-## CLI
+## CLI and programmatic access
 
-The CLI calls the same public capabilities as HTTP and MCP:
+The binary also acts as a client. It defaults to the hosted instance; set
+`MU_URL` or use `mu login https://your.host` for your own server.
 
 ```bash
-mu agent_list
-mu work submit --prompt "Research the options and recommend one"
-mu work list
-mu work get --id WORK_ID
+mu ask "What needs my attention?"
 mu inbox list
 mu help
 ```
 
-Use `mu ask` for an interactive conversation. Operation names can be written as
-two words or with an underscore, such as `mu work list` or `mu work_list`.
-`mu agent` remains the local-agent command; use `mu agent_list` to list remote
-agents. Service commands use a Services token on the same host.
+CLI and API operations require a credential with the appropriate API or service
+permissions. The current browser token form issues Mail/Chat protocol tokens;
+those do **not** grant CLI, agent API, or MCP access. Existing API and
+service-scoped credentials remain supported.
 
-To authenticate
-
-```bash
-mu login                  # opens /token in your browser, paste the PAT back
-mu config set token xxx   # or set it directly
-export MU_TOKEN=xxx       # or use the environment
-```
-
-Run `mu --help` for the list — it reads the same catalogue the agent does.
-
-To talk to **Micro** instead, use `mu ask` — it runs on the instance, so it needs your token and no model key of your own:
+The JSON API at `/api/v1` and MCP protocol at `/mcp` retain Agent, Work, and Inbox
+operations. Service-scoped credentials select service operations instead. The
+old browser API and MCP documentation pages have been removed.
 
 ```bash
-mu ask "what is in my inbox?"
-mu ask --agent research "anything new this week?"
-```
-
-`mu agent` is the other direction and easy to reach for by mistake: it runs the agent *here*, on your machine, with your own model key, renting tools from an instance over x402 and paying per call. Same word in English, opposite ways round.
-
-## API
-
-One public surface for **Agent, Work and Inbox**, available through JSON HTTP
-at `/api/v1` and MCP at `/mcp`. Mu runs the agent and manages its tool calls;
-your client supplies the goal and reads the outcome.
-
-```bash
-curl https://micro.mu/api/v1
-curl https://micro.mu/api/v1/agent/ask \
+curl "$MU_URL/api/v1/agent/ask" \
   -H "Authorization: Bearer $MU_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"What needs my attention?"}'
 ```
 
-The response contains `data.text` and `data.thread`. Pass `thread` back to
-continue. For background execution, call `work/submit` and poll `work/get` with
-the returned `id`. Inbox lists and reads the same saved conversations as the UI.
-All operations use POST bodies; only the catalogue uses GET.
+The response includes `data.text` and `data.thread`; send the thread identifier
+back to continue. Requests and credentials belong in request bodies and headers.
+A separately configured x402 host provides paid service calls.
 
-Create a token at `/token`. API scopes are `api:agent`, `api:work`, and
-`api:inbox`, with read/write permissions. These are account-wide capabilities,
-not stateless application sandboxes. Existing service-scoped tokens cannot
-acquire broader agent access. Agent calls use the existing credit balance.
+## Development and releases
 
-The [live API reference](https://micro.mu/api) describes each operation and its
-arguments. MCP exposes the same operations as `agent_ask`, `work_submit`, etc.
-Select Services when creating a token to call selected services through the same
-HTTP and MCP endpoints. Discovery with that token shows services; default discovery
-shows Agent, Work and Inbox.
-A separate host configured for x402 retains its existing service contract.
+```bash
+go build ./...
+```
 
-## Web
+Pages, styles, scripts, and bundled service data are embedded in the binary;
+changes require rebuilding. Server settings are available in **Admin → Settings**.
 
-- `/` - talk to Micro
-- `/services` — standalone utilities
-- `/inbox` — messages, updates and threads 
-- `/agents` — where you make a new one
-
-## Configuration
-
-Some files are embedded in the binary, so editing means rebuilding:
-
-- `home/cards.json` — home screen cards
-- `service/news/feeds.json` — RSS news feeds
-- `service/chat/prompts.json` — chat topics
-- `service/video/channels.json` — YouTube channels
-- `service/places/locations.json` — saved locations
-
-See [Install](docs/INSTALL.md) for every setting the code reads.
-
-The rest lives in /admin/config on the server.
+`VERSION` names the release. Updating it on `main` runs the release workflow,
+which builds Linux and macOS binaries, creates the version tag, and publishes
+the release. A version-tag push or manual workflow dispatch is also supported.
 
 ## License
 

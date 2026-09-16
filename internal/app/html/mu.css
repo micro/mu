@@ -14,9 +14,9 @@ input[type=checkbox],input[type=radio]{width:auto}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid #426994;outline-offset:3px}
 
 .page{min-height:100svh}
-header{height:80px;padding:20px 32px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+header{min-height:80px;height:auto;padding:20px 32px;display:flex;justify-content:space-between;align-items:center;gap:16px}
 header a{text-decoration:none}
-header nav{display:flex;gap:16px;font-size:.875rem}
+header nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 16px;font-size:.875rem}
 .brand{font-weight:600}
 main{width:min(100% - 40px,760px);margin:0 auto;padding:16px 0 40px}
 footer{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;padding:28px 20px 36px;color:#666;font-size:.8rem}
@@ -110,7 +110,7 @@ dd{margin:0 0 12px;overflow-wrap:anywhere}
 .m-0{margin:0}
 .fixed-w{flex-shrink:0}
 
-@media(max-width:480px){header{height:64px;padding:16px 20px}
+@media(max-width:480px){header{min-height:64px;height:auto;padding:16px 20px}
 header nav{gap:16px}
 main{padding-top:24px}
 
@@ -299,3 +299,21 @@ footer{gap:16px}
 .search-bar input{flex:1;min-width:0;width:0}
 .search-bar button,.search-bar a{flex-shrink:0}
 @media(max-width:480px){header{padding-inline:12px;gap:8px}header nav{gap:12px;font-size:13px}.conversation-row{gap:4px 8px}}
+
+.admin-navigation{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px}
+main,.section-stack,.page-stack,.form-actions,.section-actions{min-width:0}
+main{overflow-wrap:anywhere}
+.form-actions>*,.section-actions>*{max-width:100%}
+@media(max-width:480px){header nav a{padding-block:4px}.form-row,.form-inline{align-items:stretch}pre{padding:12px}}
+
+/* Shared compact lists for Services, Apps, and Agents. */
+.directory-list{display:flex;flex-direction:column;min-width:0}
+.directory-row{display:flex;align-items:flex-start;gap:12px;min-width:0;padding:12px 0;border-bottom:1px solid #eee}
+.directory-content{display:block;flex:1;min-width:0;text-decoration:none}
+.directory-content h3{margin:0 0 4px}
+.directory-content .form-actions{margin-top:8px}
+.directory-heading{display:flex;align-items:center;gap:8px;font-weight:600}
+.directory-heading img,.directory-icon{width:24px;height:24px;flex:none;object-fit:contain}
+.directory-description{display:block;color:#666;margin-top:4px}
+a.directory-content:hover .directory-heading{text-decoration:underline}
+.view-switch{margin-block:8px}

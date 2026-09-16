@@ -1,6 +1,6 @@
 name: Release
 
-# Cut a release one of two ways:
+# Cut a release by updating VERSION on main, or:
 #   - push a version tag:  git tag v0.30.0 && git push origin v0.30.0
 #   - or run this workflow manually (Actions tab / dispatch) with a tag input
 # Either way it cross-compiles the single Mu binary for linux/macOS
@@ -9,6 +9,8 @@ name: Release
 
 on:
   push:
+    branches: [main]
+    paths: [VERSION]
     tags:
       - 'v*'
   workflow_dispatch:
@@ -35,8 +37,12 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            tag="$(cat VERSION)"
+            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build binaries

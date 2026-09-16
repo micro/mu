@@ -554,7 +554,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(tagSet) > 0 {
-		sb.WriteString(`<div class="app-filters">`)
+		sb.WriteString(`<div class="view-switch">`)
 		sb.WriteString(app.PillLink("All", "/apps", tag == ""))
 		var sortedTags []string
 		for t := range tagSet {
@@ -578,7 +578,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if hasPaid && hasFree {
-		sb.WriteString(`<div class="app-filters">`)
+		sb.WriteString(`<div class="view-switch">`)
 		sb.WriteString(app.PillLink("All", "/apps", pricing == ""))
 		sb.WriteString(app.PillLink("Free", "/apps?pricing=free", pricing == "free"))
 		sb.WriteString(app.PillLink("Paid", "/apps?pricing=paid", pricing == "paid"))
@@ -680,9 +680,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			} else {
 				controls = app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "", "")
 			}
-			sb.WriteString(fmt.Sprintf(`<div class="tile tile-row mb-3">
-<img src="/apps/%s/icon.svg" width="32" height="32" class="fixed-w mt-px">
-<div>
+			sb.WriteString(fmt.Sprintf(`<div class="directory-row">
+<img src="/apps/%s/icon.svg" width="32" height="32" class="directory-icon">
+<div class="directory-content">
 <h3 class="m-0 mb-1"><a href="/apps/%s">%s</a></h3>
 <p class="m-0 mb-1 text-secondary">%s</p>
 <p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s/embed">Embed</a>%s</p>

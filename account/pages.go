@@ -695,7 +695,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// remain shared, including old profile and billing links.
 	content := profile + passwordCard(acc) + PlaceCard(r, acc.ID) + emailCard +
 		renderPhoneCard(acc.ID) + googleCard + language + PasskeyListHTML(acc.ID) +
-		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/token">Client access</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`) + push.Card(r, acc.ID)
+		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/contact">Reach Micro</a><a class="btn" href="/token">Client access</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`) + push.Card(r, acc.ID)
 	content += `<section id="billing" class="section-stack"><h2>Billing</h2>` + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) + `</section>`
 	content = `<nav class="view-switch" aria-label="Settings"><a href="#profile">Profile</a><a href="#connections">Connections</a><a href="#billing">Billing</a></nav>` + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
@@ -994,7 +994,7 @@ func renderPhoneCard(accountID string) string {
 					Hidden: map[string]string{"forget_number": n},
 					Submit: "Forget"}.HTML() + `</p>`)
 		}
-		return app.Section("Phone",
+		return app.SectionID("phone", "Phone",
 			b.String(),
 			app.Note("A text from here reaches your agent, and it answers. "+
 				"Texts from anywhere else are filed and answered by nobody."),
@@ -1015,7 +1015,7 @@ func renderPhoneCard(accountID string) string {
 
 	// Waiting for the code it just texted.
 	if pending, ok := sms.Pending(accountID); ok {
-		return app.Section("Phone",
+		return app.SectionID("phone", "Phone",
 			`<p>A code was texted to <strong>`+htmlpkg.EscapeString(pending)+`</strong>.</p>`,
 			app.Form{Action: "/account", Inline: true,
 				Hidden: map[string]string{"confirm_number": pending},
@@ -1023,7 +1023,7 @@ func renderPhoneCard(accountID string) string {
 				Submit: "Confirm"}.HTML())
 	}
 
-	return app.Section("Phone",
+	return app.SectionID("phone", "Phone",
 		app.Note("Prove a number is yours and you can text your agent from it, "+
 			"like any other contact. It replies on the same number."),
 		app.Form{Action: "/account", Inline: true,
