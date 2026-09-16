@@ -299,6 +299,9 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  await page.waitForSelector('.mu-agent h2');
  }
  // Follow the real links between rendered handlers; model execution is tested in Go.
+ // Leave the previous Home entry: navigating to the identical URL preserves its
+ // history.state and intentionally restores the conversation instead of the brief.
+ await page.goto('https://mu.test/inbox');
  for(const width of [390,1440]) {
   await page.setViewportSize({width,height:900});
   await page.goto('https://mu.test/home');

@@ -74,7 +74,7 @@ func deliveredBrief(owner string) string {
 		if len(runes) > 1200 {
 			body = string(runes[:1200]) + "…"
 		}
-		return sectionRule("Your brief") + `<section class="card morning-brief"><div class="markdown-content">` + app.RenderString(body) + `</div><div class="form-actions">` + app.ActionLink("/inbox?id="+url.QueryEscape(th.ID), "Continue conversation") + `</div></section>`
+		return sectionRule("Latest brief") + `<section class="card morning-brief">` + briefDeliveredAt(m.CreatedAt) + `<div class="markdown-content">` + app.RenderString(body) + `</div><div class="form-actions">` + app.ActionLink("/inbox?id="+url.QueryEscape(th.ID), "Continue conversation") + `</div></section>`
 	}
 	return ""
 }
@@ -82,4 +82,12 @@ func deliveredBrief(owner string) string {
 func htmlEsc(s string) string { return html.EscapeString(s) }
 func sectionRule(label string) string {
 	return `<p class="home-section"><small>` + htmlEsc(label) + `</small></p>`
+}
+
+// An absolute delivery date keeps an older brief from masquerading as today's.
+func briefDeliveredAt(at time.Time) string {
+	if at.IsZero() {
+		return `<p class="text-muted">Delivery date unavailable</p>`
+	}
+	return `<p class="text-muted">Delivered <time datetime="` + at.UTC().Format(time.RFC3339) + `">` + at.UTC().Format("2 January 2006 at 15:04 UTC") + `</time></p>`
 }

@@ -13,6 +13,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"mu/internal/dir"
@@ -25,6 +26,7 @@ import (
 
 	"go-micro.dev/v6/broker"
 	"go-micro.dev/v6/client"
+	raw "go-micro.dev/v6/codec/bytes"
 	gwmcp "go-micro.dev/v6/gateway/mcp"
 	"go-micro.dev/v6/registry"
 	"go-micro.dev/v6/server"
@@ -140,7 +142,9 @@ func Init() {
 	}
 	br = broker.NewMemoryBroker()
 	_ = br.Connect()
+	local := func(o *client.Options) { o.Local = tr.String() == "memory" }
 	cl = client.NewClient(
+		local,
 		client.Registry(reg),
 		client.Wrap(timingClientWrapper),
 		client.Selector(serviceSelector(reg)),
@@ -296,6 +300,23 @@ func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 	ctx, release := operatorCall(ctx, svcName+"."+methodName(endpoint))
 	defer release()
 	ensure()
+	// The default runtime is in-process. Use the framework's synchronous local
+	// dispatcher through the same router and gateway, avoiding the RPC codec's
+	// timeout/receive cleanup race. Networked registries keep their transport.
+	if cl.Options().Local {
+		body, err := json.Marshal(req)
+		if err != nil {
+			return err
+		}
+		var reply raw.Frame
+		if err := cl.Call(ctx, cl.NewRequest(CanonicalName(svcName), endpoint, &raw.Frame{Data: body}, client.WithContentType("application/json")), &reply); err != nil {
+			return err
+		}
+		if rsp == nil || len(reply.Data) == 0 {
+			return nil
+		}
+		return json.Unmarshal(reply.Data, rsp)
+	}
 	return cl.Call(ctx, cl.NewRequest(CanonicalName(svcName), endpoint, req), rsp)
 }
 

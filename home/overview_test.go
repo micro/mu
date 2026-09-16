@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"mu/inbox"
 	"mu/internal/auth"
@@ -63,5 +64,18 @@ func TestOverviewKeepsBriefAndConversationOwned(t *testing.T) {
 		if tc.status == 303 && rec.Header().Get("Location") != "/agent?session="+own.ID {
 			t.Fatal("inbox must resume the exact web conversation")
 		}
+	}
+}
+
+func TestBriefDeliveryDateIsExplicit(t *testing.T) {
+	old := time.Date(2026, 9, 12, 9, 30, 0, 0, time.FixedZone("BST", 3600))
+	got := briefDeliveredAt(old)
+	for _, want := range []string{`datetime="2026-09-12T08:30:00Z"`, "12 September 2026 at 08:30 UTC"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("delivery date missing %q: %s", want, got)
+		}
+	}
+	if got := briefDeliveredAt(time.Time{}); !strings.Contains(got, "unavailable") {
+		t.Fatal(got)
 	}
 }
