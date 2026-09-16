@@ -137,7 +137,7 @@ var LoginTemplate = `
 	      body.authenticatorAttachment = assertion.authenticatorAttachment;
 	    }
 
-	    var finishRes = await fetch('/passkey/login/finish', {
+	    var finishRes = await fetch('/passkey/login/finish'+window.location.search, {
 	      method: 'POST',
 	      headers: {'Content-Type': 'application/json'},
 	      body: JSON.stringify(body)
@@ -581,7 +581,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 	// These authenticated views share mutation handling, not duplicated settings forms.
 	accountPath := "/account"
-	title := "Settings"
+	title := "Account"
 	switch r.URL.Path {
 	case "/account/profile":
 		accountPath, title = r.URL.Path, "Profile"

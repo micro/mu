@@ -29,7 +29,7 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 		if id := r.URL.Query().Get("id"); id != "" {
 			command += " read " + id
 		}
-	case "account", "account/profile", "account/billing", "account/usage", "wallet":
+	case "wallet":
 		command = "account"
 	case "work":
 		command = "work"

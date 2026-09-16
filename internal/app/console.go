@@ -12,12 +12,19 @@ var consoleCSS string
 
 // ConsoleHTML is the single sparse shell, also used by authentication and legal pages.
 func ConsoleHTML(title, body string, acc *auth.Account) string {
-	links := `<a href="/login">Log in</a><a href="/signup">Sign up</a>`
+	links := `<a href="/login">Login</a>`
 	if acc != nil {
-		links = `<span>` + html.EscapeString(acc.ID) + `</span><a href="/logout">Log out</a>`
+		links = `<a href="/account">Account</a><a href="/logout">Logout</a>`
 	}
 	if title != "Micro" {
 		title += " | Micro"
 	}
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><style>` + consoleCSS + `</style></head><body><header><a href="/" class="brand">Micro</a><nav aria-label="Account">` + links + `</nav></header><main>` + body + `</main><footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer></body></html>`
+	pageClass := "document-page"
+	if title == "Micro" {
+		pageClass = "command-page"
+	}
+	if title == "Log in | Micro" || title == "Sign up | Micro" {
+		pageClass = "auth-page"
+	}
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><style>` + consoleCSS + `</style></head><body class="` + pageClass + `"><div class="page"><header><a href="/" class="brand">Micro</a><nav aria-label="Account">` + links + `</nav></header><main>` + body + `</main></div><footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer></body></html>`
 }
