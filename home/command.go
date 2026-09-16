@@ -32,7 +32,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		thread.MarkSeen(acc.ID, session)
 		for _, message := range thread.Messages(acc.ID, session, 100) {
 			class := "answer"
-			content := app.RenderString(message.Text)
+			content := app.RenderString(message.Text) + app.Results(message.Results)
 			if message.Role == thread.RolePerson {
 				class = "request"
 				content = html.EscapeString(message.Text)

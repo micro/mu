@@ -29,7 +29,11 @@ func VideoPlayer(id string, autoplay bool, playerID ...string) string {
 }
 
 func Results(items []result.Item) string {
+	if len(items) == 0 {
+		return ""
+	}
 	var b strings.Builder
+	fmt.Fprintf(&b, `<details class="answer-details"><summary>Sources and results (%d)</summary><div class="answer-details-body">`, len(items))
 	for _, item := range items {
 		b.WriteString(`<section class="result-card page-stack">`)
 		switch item.Kind {
@@ -55,6 +59,7 @@ func Results(items []result.Item) string {
 		}
 		b.WriteString(`</section>`)
 	}
+	b.WriteString(`</div></details>`)
 	return b.String()
 }
 
