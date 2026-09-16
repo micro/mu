@@ -646,13 +646,27 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	threadID := ""
 	if !guest && req.ContextID != "" {
 		threadID = openThread(accountID, req.ContextID)
+		if threadID == "" {
+			app.RespondError(w, http.StatusNotFound, "Conversation not found")
+			return
+		}
 	}
 
 	attachment := req.Attachment
 	if threadID != "" {
 		attachment = thread.Attachment(accountID, threadID)
-		req.Agent = thread.Get(accountID, threadID).Agent
+		if t := thread.Get(accountID, threadID); t != nil {
+			req.Agent = t.Agent
+		} else {
+			app.RespondError(w, http.StatusNotFound, "Conversation not found")
+			return
+		}
 	}
+	if req.Agent != "" && (guest || resolveAgent(accountID, req.Agent) == nil) {
+		app.RespondError(w, http.StatusNotFound, "Agent not found")
+		return
+	}
+
 	reading := ""
 	if attachment != "" {
 		if guest {
@@ -717,7 +731,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("X-Accel-Buffering", "no")
 
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID, "thread": threadID})

@@ -57,6 +57,16 @@ func serve(addr string) {
 			}
 
 			setSecurityHeaders(w)
+			// Default every dynamic response to private. Public asset handlers may
+			// opt into caching explicitly; personalized JSON must never inherit it.
+			w.Header().Set("Cache-Control", "private, no-store")
+			// The legacy flag endpoint accepts ordinary users' content reports.
+			if r.URL.Path != "/admin/flag" && (r.URL.Path == "/admin" || strings.HasPrefix(r.URL.Path, "/admin/")) {
+				if _, _, err := auth.RequireAdmin(r); err != nil {
+					app.Forbidden(w, r, "Admin access required")
+					return
+				}
+			}
 			if !browserWriteAllowed(r) {
 				app.Error(w, r, http.StatusForbidden, "This form could not be verified. Reopen the page and try again.")
 				return

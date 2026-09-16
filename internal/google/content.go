@@ -22,7 +22,7 @@ func readAPI(ctx context.Context, owner, scope, endpoint string) ([]byte, error)
 	if owner == "" || !HasScope(owner, scope) {
 		return nil, fmt.Errorf("connect %s in Account before using it", Label(scope))
 	}
-	token, err := accessToken(owner)
+	token, err := accessToken(owner, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -208,9 +208,24 @@ func gmailMessage(ctx context.Context, owner, id, format string) (GmailMessage, 
 	return result, nil
 }
 
+// Default to recent mail. An explicit date range can reach older messages.
+func recentGmailQuery(query string) string {
+	query = strings.TrimSpace(query)
+	for _, term := range []string{"after:", "before:", "older:", "newer:", "older_than:", "newer_than:"} {
+		if strings.Contains(strings.ToLower(query), term) {
+			return query
+		}
+	}
+	if query == "" {
+		return "newer_than:30d"
+	}
+	return "(" + query + ") newer_than:30d"
+}
+
 // SearchGmail reads summaries on demand; nothing is imported or marked read.
 func SearchGmail(ctx context.Context, owner, query, page string, limit int) (GmailPage, error) {
 	out := GmailPage{Messages: []GmailMessage{}}
+	query = recentGmailQuery(query)
 	q := url.Values{"q": {query}, "maxResults": {fmt.Sprint(boundedLimit(limit))}}
 	if page != "" {
 		q.Set("pageToken", page)

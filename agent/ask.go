@@ -170,23 +170,8 @@ type Answer struct {
 	Thread string
 }
 
-// historyTurns is how much of a conversation is read out of the record.
-//
-// It was six — three exchanges — and that is not a conversation, it is the last
-// thing you said. Anything referred to four exchanges ago was gone, so the
-// agent could not be asked about its own earlier answer and could not be
-// corrected twice about the same thing.
-//
-// Six was defensible only because history was flattened into one string, where
-// the only bound available is a count of turns and every extra turn is paid for
-// on every request. That is fixed — see memory.go — so the count no longer has
-// to stand in for the cost.
-//
-// This is now the read from the record, and what bounds the prompt is
-// historyBudget, which is about size because size is what is actually being
-// spent. Two hundred messages is a long conversation by any measure; the
-// budget decides how many of them are affordable.
-const historyTurns = 200
+// Read only the recent context window; older messages remain available in Inbox.
+const historyTurns = historyMessages
 
 // Ask runs one turn of a conversation and remembers it happened.
 func Ask(r AskRequest) (Answer, error) {

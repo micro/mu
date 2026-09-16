@@ -29,7 +29,7 @@ func SelectedCalendars(accountID string) []string {
 
 // Calendars lists all readable calendars, including those hidden in Google's UI.
 func Calendars(accountID string) ([]Calendar, error) {
-	token, err := accessToken(accountID)
+	token, err := accessToken(accountID, CalendarScope)
 	if err != nil {
 		return nil, err
 	}

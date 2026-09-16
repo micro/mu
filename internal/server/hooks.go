@@ -61,7 +61,6 @@ import (
 	"mu/service/files"
 	"mu/service/images"
 	"mu/service/mail"
-	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/notify"
 	"mu/service/recall"
@@ -407,21 +406,8 @@ func wireHooks() {
 	// load agent
 	startupStep("agent.Load", agent.Load)
 
-	// Wire user context into the agent — personalises responses.
-	// What an agent knows about you before you have said anything.
-	//
-	// It was four lines — unread mail, balance, top movers, notes — and none of
-	// them answered the question every specialist actually needs answered
-	// first, which is who and where and when. So the weather agent, asked "do I
-	// need a coat today", replied "which city are you in?" from an instance
-	// whose home screen was showing that account's local forecast: the
-	// coordinates existed, in a browser, and nothing server-side had ever been
-	// told. Places could not do "near me", prayer had no latitude to compute
-	// from, and every scheduled run started from nowhere because there was no
-	// browser in the room at 7am.
-	//
-	// Who, where, when, then what is going on. The order is deliberate: the
-	// first three are the ones a model needs to not ask a question back.
+	// Only basic profile context is automatic. Private service data requires a
+	// permitted tool call, including saved notes and mail counts.
 	userCtxFunc := func(accountID string) string {
 		var parts []string
 		if acc, err := auth.GetAccount(accountID); err == nil && acc != nil {
@@ -435,23 +421,8 @@ func wireHooks() {
 			parts = append(parts, "- Saved profile location (not live device location; fallback only): "+place)
 		}
 		parts = append(parts, "- It is "+localNow(accountID))
-		// Unread mail count.
-		if unread := mail.GetUnreadCount(accountID); unread > 0 {
-			parts = append(parts, fmt.Sprintf("- %d unread email(s)", unread))
-		}
-		// Wallet balance.
-		bal := account.Balance(accountID)
-		if bal > 0 {
-			parts = append(parts, fmt.Sprintf("- Wallet: %d credits", bal))
-		}
-		// Market prices — top movers.
-		if prices := markets.TopMovers(3); prices != "" {
-			parts = append(parts, "- Markets: "+prices)
-		}
-		// Persistent memory — things the user has told you to remember.
-		if mem := notes.ForContext(accountID); mem != "" {
-			parts = append(parts, "User preferences/notes:\n"+mem)
-		}
+		// Mail, billing and saved notes are fetched through permitted tools when
+		// needed, not injected into every agent irrespective of its scope.
 		if len(parts) == 0 {
 			return ""
 		}
