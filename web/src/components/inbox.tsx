@@ -165,7 +165,7 @@ export function InboxPage() {
     </div>
   );
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full min-w-0">
       <PageHeading
         title={thread?.subject || (requests ? "Message requests" : "Inbox")}
         actions={!thread &&

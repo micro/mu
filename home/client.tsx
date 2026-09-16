@@ -1,35 +1,14 @@
 import { useState } from "react";
 import catalogue from "../app/catalog.json";
-import { useData, json } from "../app/shared";
 import { Input } from "../web/src/components/ui/input";
-import { PageHeading, Status } from "../web/src/components/layout";
+import { PageHeading } from "../web/src/components/layout";
 import type { Identity } from "../web/src/lib/api";
-type SavedApp = {
-  slug: string;
-  name: string;
-  official: boolean;
-  can_edit: boolean;
-};
 export function Launcher({ account }: { account: Identity }) {
   const [query, setQuery] = useState("");
-  const { data, error } = useData<SavedApp[]>(() => json("/apps"), [], "apps");
-  const builtins = catalogue.filter((a) => !a.admin || account.admin);
-  const entries = [
-    ...builtins.map((a) => ({ ...a, key: a.id })),
-    ...(data || [])
-      .filter(
-        (a) =>
-          a.can_edit && !(a.official && builtins.some((b) => b.id === a.slug)),
-      )
-      .map((a) => ({
-        id: a.slug,
-        key: "saved:" + a.slug,
-        name: a.name,
-        path: "/apps/" + encodeURIComponent(a.slug),
-        icon: "apps.svg",
-      })),
-  ];
-  const first = ["assistant", "inbox", "work"];
+  const entries = catalogue
+    .filter((a) => (!a.admin || account.admin) && !["inbox", "work", "admin"].includes(a.id))
+    .map((a) => ({ ...a, key: a.id }));
+  const first = ["assistant"];
   entries.sort((a, b) => {
     const ai = first.indexOf(a.id),
       bi = first.indexOf(b.id);
@@ -41,7 +20,7 @@ export function Launcher({ account }: { account: Identity }) {
     a.name.toLowerCase().includes(query.toLowerCase()),
   );
   return (
-    <div className="mx-auto w-full max-w-4xl">
+    <div className="w-full min-w-0">
       <PageHeading title="Home" />
       <Input
         type="search"
@@ -51,27 +30,28 @@ export function Launcher({ account }: { account: Identity }) {
         onChange={(e) => setQuery(e.target.value)}
         className="mb-6"
       />
-      <nav
-        aria-label="Apps"
-        className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6"
-      >
-        {shown.map((a) => (
-          <a
-            key={a.key}
-            href={a.path}
-            className="flex min-w-0 flex-col items-center gap-2 rounded-xl px-2 py-4 text-center hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <img src={"/" + a.icon} alt="" className="size-8 object-contain" />
-            <span className="max-w-full break-words text-sm font-medium">
-              {a.name}
-            </span>
-          </a>
-        ))}
+      <nav aria-label="Apps" className="space-y-5">
+        {[
+          ["Everyday", ["assistant", "apps", "mail", "chat", "sms", "contacts", "events", "notify", "users"]],
+          ["Read and explore", ["news", "blog", "video", "images", "web", "social", "stream", "markets"]],
+          ["Places and travel", ["places", "maps", "routes", "transit", "flights", "weather", "hazards", "food", "prayer"]],
+          ["Tools", ["docs", "notes", "files", "tasks", "bookmarks", "archive", "recall", "browser", "shell", "text", "wallet"]],
+        ].map(([label, ids]) => {
+          const apps = shown.filter(a => (ids as string[]).includes(a.id));
+          return apps.length ? <section key={label as string} className="border-t pt-4">
+            <h2 className="mb-2 text-sm font-medium text-muted-foreground">{label}</h2>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              {apps.map(a => <a key={a.id} href={a.path} className="flex min-w-0 flex-col items-center gap-2 rounded-lg px-2 py-3 text-center hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <img src={"/" + a.icon} alt="" className="size-8 object-contain" />
+                <span className="max-w-full break-words text-sm font-medium">{a.name}</span>
+              </a>)}
+            </div>
+          </section> : null;
+        })}
       </nav>
       {!shown.length && (
         <p className="py-5 text-muted-foreground">No apps match.</p>
       )}
-      {error && <Status error>Could not load your saved apps: {error}</Status>}
     </div>
   );
 }

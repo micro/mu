@@ -7,11 +7,11 @@ import {
   Textarea,
   NativeSelect,
   Status,
-  Rows,
   Action,
   Link,
   mutate,
 } from "../../../app/shared";
+import { Card } from "./ui/card";
 import { PageHeading } from "./layout";
 export function Agents() {
   const { data, error, refresh } = useData<any>(() => json("/client/agents"));
@@ -44,17 +44,17 @@ export function Agents() {
         )
       ) : (
         <>
-          <Rows
-            items={data?.agents}
-            render={(a) => (
-              <>
-                <h2 className="font-medium">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {data?.agents?.map((a: any) => (
+              <Card key={a.id}>
+                <h2 className="flex items-center gap-3 text-lg font-medium">
+                  <img src="/agent.svg" alt="" className="size-8 shrink-0" />
                   <Link url={"/agent/" + encodeURIComponent(a.id)}>
                     {a.name}
                   </Link>
                 </h2>
-                <p className="text-muted-foreground">{a.description}</p>
-                <div className="flex flex-wrap gap-2">
+                <p className="break-words text-sm text-muted-foreground">{a.description}</p>
+                <div className="mt-auto flex flex-wrap gap-2 pt-2">
                   <Button asChild>
                     <a href={"/agent/" + encodeURIComponent(a.id)}>Chat</a>
                   </Button>
@@ -81,27 +81,25 @@ export function Agents() {
                     Delete
                   </Action>
                 </div>
-              </>
-            )}
-          />
-          <h2 className="my-5 text-lg font-medium">Built in</h2>
-          <Rows
-            items={data?.builtins?.map((a: any) => ({
-              id: a.ID,
-              name: a.Name,
-              description: a.Description,
-            }))}
-            render={(a) => (
-              <>
-                <h3 className="font-medium">
-                  <Link url={"/agent/" + encodeURIComponent(a.id)}>
-                    {a.name}
-                  </Link>
+              </Card>
+            ))}
+          </div>
+          {data?.agents?.length === 0 && <p className="py-4 text-muted-foreground">No agents yet. Create one, or try a built-in agent below.</p>}
+          <h2 className="mb-4 mt-8 text-lg font-medium">Built-in agents</h2>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {data?.builtins?.map((a: any) => (
+              <Card key={a.ID}>
+                <h3 className="flex items-center gap-3 text-lg font-medium">
+                  <img src="/agent.svg" alt="" className="size-8 shrink-0" />
+                  <Link url={"/agent/" + encodeURIComponent(a.ID)}>{a.Name}</Link>
                 </h3>
-                <p className="text-muted-foreground">{a.description}</p>
-              </>
-            )}
-          />
+                <p className="break-words text-sm text-muted-foreground">{a.Description}</p>
+                <div className="mt-auto pt-2">
+                  <Button asChild><a href={"/agent/" + encodeURIComponent(a.ID)}>Chat</a></Button>
+                </div>
+              </Card>
+            ))}
+          </div>
         </>
       )}
     </>

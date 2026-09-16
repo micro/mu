@@ -9,7 +9,7 @@ export function Workspace() {
   const detail = new URLSearchParams(location.search).has("id");
   const [tab, setTab] = useState(detail ? "tasks" : "build");
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-5">
+    <div className="w-full min-w-0 space-y-5">
       <PageHeading title="Work" />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList aria-label="Work">

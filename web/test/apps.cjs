@@ -164,6 +164,18 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       0,
       "Home still shows a composer",
     );
+    const launcher = page.getByRole("navigation", {name: "Apps", exact: true});
+    assert.equal(await launcher.locator('a[href^="/apps/"]').count(), 0, "Home contains user apps");
+    assert.equal(await launcher.locator('a[href="/inbox"], a[href="/work"]').count(), 0);
+    assert.equal(await launcher.locator("section").count(), 4, "Home categories missing");
+    const collapse = page.getByRole("button", {name:"Collapse sidebar", exact:true});
+    await collapse.click();
+    await page.getByRole("button", {name:"Expand sidebar", exact:true}).waitFor();
+    assert((await page.locator("main").boundingBox()).width > 1000, "content still constrained to 4xl");
+    await page.reload();
+    await page.getByRole("button", {name:"Expand sidebar", exact:true}).click();
+    await collapse.waitFor();
+    assert.equal(await collapse.evaluate(e => getComputedStyle(e).cursor), "pointer");
     await page
       .getByRole("searchbox", { name: "Find an app", exact: true })
       .fill("Markets");

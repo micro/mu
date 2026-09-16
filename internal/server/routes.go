@@ -517,7 +517,8 @@ func registerRoutes() {
 	http.HandleFunc("/docs", firstparty.Page(docs.Handler, "Documents"))
 	http.HandleFunc("/notes", firstparty.Page(notes.Handler, "Notes"))
 	http.HandleFunc("/notify", firstparty.Page(notify.Handler, "Notifications"))
-	http.HandleFunc("/sms", firstparty.Page(sms.Handler, "Sms"))
+	// Preserve the complete conversation UI until the SDK app replaces it.
+	http.HandleFunc("/sms", sms.Handler)
 
 	// Twilio posts everything arriving on a Messaging Service to one webhook,
 	// so both paths answer and whichever is configured works.

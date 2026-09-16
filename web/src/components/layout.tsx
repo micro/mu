@@ -99,6 +99,7 @@ export function Layout({
   publicPage?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem("mu.sidebar.collapsed") === "true"; } catch { return false; } });
   const shell = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -133,21 +134,26 @@ export function Layout({
   }, [conversation]);
   return (
     <div ref={shell} className={"app-shell flex bg-background text-foreground" + (conversation ? " app-conversation" : "")}>
-      {account && (
-        <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-56 border-r bg-muted/30 md:block">
+      {account && !collapsed && (
+        <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-56 border-r bg-background md:block">
           <Navigation account={account} />
         </aside>
       )}
       <div
         className={
           "flex min-w-0 flex-1 flex-col " +
-          (account ? "md:ml-56 " : "") +
+          (account && !collapsed ? "md:ml-56 " : "") +
           (conversation ? "min-h-0 overflow-hidden" : "")
         }
       >
         <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4 sm:px-6">
           {account ? (
             <>
+              <Button size="icon" variant="ghost" className="hidden md:inline-flex" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} onClick={() => {
+                const next = !collapsed;
+                setCollapsed(next);
+                try { localStorage.setItem("mu.sidebar.collapsed", String(next)); } catch {}
+              }}><Menu /></Button>
               <Dialog.Root open={open} onOpenChange={setOpen}>
                 <Dialog.Trigger asChild>
                   <Button
