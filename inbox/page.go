@@ -334,7 +334,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 	// Web conversations resume in the shared composer, preserving the owned thread.
 	if t.Client == thread.WebClient {
 		thread.MarkSeen(accountID, t.ID)
-		http.Redirect(w, r, "/agent?session="+url.QueryEscape(t.ID), http.StatusSeeOther)
+		http.Redirect(w, r, "/?session="+url.QueryEscape(t.ID), http.StatusSeeOther)
 		return
 	}
 

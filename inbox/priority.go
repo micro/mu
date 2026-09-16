@@ -1,6 +1,7 @@
 package inbox
 
 import (
+	"html"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
@@ -45,7 +46,8 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 	auth.SetCSRFCookie(w, r)
 	box := strings.Trim(strings.TrimPrefix(r.URL.Path, "/inbox"), "/")
 	var b strings.Builder
-	b.WriteString(searchBox("", strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r)))
+	b.WriteString(`<div class="section-actions"><a href="/">New conversation</a></div>`)
+	b.WriteString(searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r)))
 	b.WriteString(waitingHTML(r, owner))
 	if q := strings.TrimSpace(r.PostFormValue("q")); q != "" {
 		found(&b, r, owner, box, q)
@@ -56,7 +58,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 			b.WriteString(`<p class="text-muted">Your inbox is empty.</p>`)
 		}
 		for _, t := range all[pager.From:pager.To] {
-			b.WriteString(row(r, owner, t))
+			b.WriteString(conversationRow(t, ""))
 		}
 		b.WriteString(pager.Nav(r.URL.Path))
 	}
@@ -64,3 +66,24 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 }
 
 func waitingHTML(r *http.Request, owner string) string { return waiting(r, owner) }
+
+// conversationRow keeps saved conversations compact and easy to return to.
+func conversationRow(t thread.Thread, preview string) string {
+	title := strings.TrimSpace(t.Subject)
+	if title == "" {
+		title = "Untitled conversation"
+	}
+	destination := "/inbox?id=" + url.QueryEscape(t.ID)
+	if t.Client == thread.WebClient {
+		destination = "/?session=" + url.QueryEscape(t.ID)
+	}
+	unread := ""
+	if thread.Unread(t) {
+		unread = `<span class="unread-dot" aria-label="Unread"></span>`
+	}
+	result := `<a class="conversation-row" href="` + html.EscapeString(destination) + `"><span class="conversation-title">` + unread + html.EscapeString(title) + `</span><time datetime="` + t.Updated.Format("2006-01-02T15:04:05Z07:00") + `">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time>`
+	if preview != "" {
+		result += `<span class="conversation-preview">` + html.EscapeString(preview) + `</span>`
+	}
+	return result + `</a>`
+}
