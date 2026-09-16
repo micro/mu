@@ -174,7 +174,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	handlers["/inbox/settings"] = inbox.SettingsHandler
 	handlers["/inbox/imap"] = inbox.ImapHandler
 	for path, handler := range map[string]http.HandlerFunc{
-		"/admin/config": admin.ConfigHandler, "/admin/users": admin.UsersHandler,
+		"/admin": admin.Handler, "/admin/config": admin.ConfigHandler, "/admin/users": admin.UsersHandler,
 		"/admin/alerts": admin.AlertsHandler, "/admin/backup": admin.BackupHandler,
 		"/admin/log": admin.LogHandler, "/admin/spam": admin.SpamHandler,
 		"/admin/status": admin.StatusHandler, "/admin/traffic": admin.TrafficHandler,
@@ -182,13 +182,20 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	} {
 		handlers[path] = handler
 	}
+	for _, path := range []string{"/admin/log?tab=api", "/admin/log?tab=mail"} {
+		handlers[path] = admin.LogHandler
+	}
+	for _, path := range []string{"/admin/users?tab=banned", "/admin/users?tab=new"} {
+		handlers[path] = admin.UsersHandler
+	}
+	handlers["/admin/traffic?tab=spend"] = admin.TrafficHandler
 	handlers["/admin/server"] = admin.ServerHandler
 	handlers["/admin/oauth"] = admin.OAuthHandler
 	handlers["/admin/moderate"] = admin.ModerateHandler
 	handlers["/login"] = account.Login
 	handlers["/mail?id="+mailID] = mail.Handler
 	handlers["/agent?id="+focused.ID] = agent.Handler
-	for _, path := range []string{"/account", "/account/profile", "/account/billing"} {
+	for _, path := range []string{"/account"} {
 		handlers[path] = account.Account
 	}
 	handlers["/privacy"] = home.PrivacyHandler

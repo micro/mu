@@ -39,9 +39,9 @@ func ServerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := back() + serverSnapshot()
+	content := serverSnapshot()
 
-	app.Respond(w, r, app.Response{Title: "Server", Description: "What this process is doing and what it is sitting on", HTML: content})
+	respond(w, r, app.Response{Title: "Server", Description: "What this process is doing and what it is sitting on", HTML: content})
 }
 
 // One bounded snapshot avoids repeating filesystem scans for every page visit.

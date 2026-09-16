@@ -132,6 +132,9 @@ var (
 
 // Load restores the last line and starts writing new ones.
 func Load() {
+	if !ai.BackgroundEnabled() {
+		return
+	}
 	mu.Lock()
 	data.LoadJSON("brief.json", &entries) //nolint:errcheck
 	mu.Unlock()

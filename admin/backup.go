@@ -90,7 +90,7 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(snapshotTable(snaps))
 	sb.WriteString(backupCaveats())
 
-	app.Respond(w, r, app.Response{
+	respond(w, r, app.Response{
 		Title:       "Backup",
 		Description: "Snapshots of this instance's data",
 		HTML:        sb.String(),

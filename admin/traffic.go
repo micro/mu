@@ -49,7 +49,7 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 		// agentHealthCard, and agent/outcome.go for why this had no reader
 		// until now.
 		sb.WriteString(agentHealthCard())
-		app.Respond(w, r, app.Response{Title: "Spend",
+		respond(w, r, app.Response{Title: "Spend",
 			Description: "What this instance spends on third parties", HTML: sb.String()})
 		return
 	}
@@ -123,7 +123,7 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="text-sm text-muted">Counts only — no request is stored. ` +
 		`Minutes are kept for 2 hours, hours for 7 days, days for 90.</p>`)
 
-	app.Respond(w, r, app.Response{Title: "Usage",
+	respond(w, r, app.Response{Title: "Usage",
 		Description: "What this instance is being asked to do", HTML: sb.String()})
 }
 

@@ -51,6 +51,9 @@ import (
 
 // Load subscribes to what gets published. Called at boot.
 func Load() {
+	if !ai.BackgroundEnabled() {
+		return
+	}
 	go func() {
 		sub := event.Subscribe(event.ContentPublished)
 		for e := range sub.Chan {

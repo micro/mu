@@ -83,3 +83,42 @@ details[open] > summary::before { content: "−"; }
 .auth-page #container { flex:1; min-height:0; width:100%; }
 .auth-page #content { max-width:448px; }
 .auth-page #footer { flex:none; line-height:2; }
+
+/* A section groups controls, rather than spacing them like separate pages. */
+.section-stack { display:flex; flex-direction:column; gap:12px; }
+.section-stack > * { margin-block:0; }
+:is(.form,.page-stack,.section-stack) > :is(button,.btn,input[type="submit"]) { align-self:flex-start; width:auto; }
+.nav-account-disclosure > summary::before { content:none; }
+.nav-account-disclosure > summary { display:flex; align-items:center; gap:8px; }
+.nav-account-disclosure > summary::after { content:""; width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg); margin-left:auto; }
+.nav-account-disclosure[open] > summary::after { transform:rotate(225deg); }
+.settings-sections { max-width:680px; gap:16px; }
+
+/* Shared flow rules: gaps own vertical rhythm, children do not add margins. */
+.page-stack > * { margin-block:0; }
+.section-actions { justify-content:space-between; gap:8px 16px; }
+.section-actions .form-actions { padding:0; margin:0; }
+.actions-back,.actions-set { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; }
+.actions-set form { margin:0; }
+.ib.page-stack,.ib-conv.page-stack,.ib-person.page-stack { gap:12px; }
+.ib-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.ib-head .ib-started::before { content:"·"; margin-right:8px; }
+.ib-person { max-width:680px; }
+.card > .section-stack { gap:12px; }
+form > :is(button,input[type="submit"]) { width:auto; max-width:100%; }
+.scroll-x { min-width:0; max-width:100%; overflow-x:auto; }
+.admin-page .card { margin-bottom:16px; }
+.admin-page :is(.card,.section-card) > :last-child { margin-bottom:0; }
+.admin-page :is(td,th) { padding:10px 12px; vertical-align:top; }
+.admin-page :is(td,th) :is(button,.btn) { white-space:nowrap; }
+.admin-page .form > .card { margin:0; }
+.admin-navigation { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:20px; }
+.admin-navigation a { padding:5px 9px; border-radius:6px; color:var(--text-secondary); text-decoration:none; font-size:13px; }
+.admin-navigation a:hover,.admin-navigation a[aria-current] { background:var(--muted); color:var(--foreground); }
+
+.cohort-scroll { max-width:100%; overflow-x:auto; }
+.cohort { min-width:600px; }
+.caveats { padding-left:20px; }
+.caveats li + li { margin-top:8px; }
+.email-detail { white-space:normal; overflow-wrap:anywhere; }
+.settings-sections section[id],.settings-sections .card[id] { scroll-margin-top:80px; }

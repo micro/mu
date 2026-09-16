@@ -89,13 +89,12 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 %s
 <p><a href="/admin/invite">Back to invites</a></p>
 </div>`, email, link, link, emailedMsg)
-		app.Respond(w, r, app.Response{Title: "Invite Sent", Description: "Invite sent", HTML: content})
+		respond(w, r, app.Response{Title: "Invite Sent", Description: "Invite sent", HTML: content})
 		return
 	}
 
 	// GET: show pending requests + ad-hoc invite form.
 	var sb strings.Builder
-	sb.WriteString(back())
 
 	requests := auth.ListInviteRequests()
 	pending := 0
@@ -143,5 +142,5 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 </form>
 </div>`)
 
-	app.Respond(w, r, app.Response{Title: "Invites", Description: "Invite requests and send invites", HTML: sb.String()})
+	respond(w, r, app.Response{Title: "Invites", Description: "Invite requests and send invites", HTML: sb.String()})
 }

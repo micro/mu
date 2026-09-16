@@ -308,7 +308,7 @@ func indexBody() string {
  * the eye can take in without tracking. */
 .index-page:has(.lwrap){height:calc(var(--visible-height,100dvh) - 60px);flex:none;padding-bottom:0}
 .index-body:has(.lwrap){min-height:0;padding:16px 0}
-.lwrap{padding:0;max-width:var(--prompt-width);margin:0 auto;width:100%;height:100%;min-height:0;text-align:center;display:flex;flex-direction:column;justify-content:center}
+.lwrap{padding:0;max-width:560px;margin:0 auto;width:100%;height:100%;min-height:0;text-align:center;display:flex;flex-direction:column;justify-content:center}
 .lwrap #mu-chat:has(#mu-chat-conv:empty){flex:0 0 auto;max-width:560px}
 .lwrap:has(#mu-chat-conv:not(:empty))>.lbrand,.lwrap:has(#mu-chat-conv:not(:empty))>.lwhat,.lwrap:has(#mu-chat-conv:not(:empty))>.ltoday{display:none}
 /* Slightly larger than the box's own text, so the pair reads as one object —

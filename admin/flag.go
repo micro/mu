@@ -305,7 +305,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 	// above it. The shell draws the title; what is left here is the one thing a
 	// reader does not already know — the rule that hides something at three
 	// flags — said once, in a sentence.
-	content := fmt.Sprintf(back()+`<div class="page-action">`+filter+`</div><div id="moderation" class="page-stack">
+	content := fmt.Sprintf(`<div class="page-action">`+filter+`</div><div id="moderation" class="page-stack">
 		<p class="text-sm text-muted">Flagged by other people. Three flags hides
 		something automatically; approving clears them, deleting is permanent.</p>
 		<div id="flagged-content" class="page-stack">
@@ -314,7 +314,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		%s
 	</div>`, listHTML, newAccountPostsHTML)
 
-	app.Respond(w, r, app.Response{Title: "Moderation", Description: "Content other people flagged", HTML: content})
+	respond(w, r, app.Response{Title: "Moderation", Description: "Content other people flagged", HTML: content})
 }
 
 func getViewPath(contentType string) string {

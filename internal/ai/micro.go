@@ -32,6 +32,12 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 	if isOpenRouterModel(model) && getOpenRouterAPIKey() != "" {
 		return "openrouter", getOpenRouterAPIKey(), openRouterBaseURL, nil
 	}
+	if isAtlasModel(model) {
+		return "", "", "", fmt.Errorf("selected Atlas model has no configured key")
+	}
+	if isOpenRouterModel(model) {
+		return "", "", "", fmt.Errorf("selected OpenRouter model has no configured key")
+	}
 	// What this instance was told to prefer, before the built-in order.
 	//
 	// After the two branches above and not before them: those are a model
@@ -39,6 +45,9 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 	// See PreferredProvider.
 	if p, k, base, ok := PreferredProvider(); ok {
 		return p, k, base, nil
+	}
+	if strings.TrimSpace(settings.Get("AI_PROVIDER")) != "" {
+		return "", "", "", fmt.Errorf("selected AI provider is unavailable")
 	}
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
 		return "anthropic", key, "", nil
@@ -121,6 +130,9 @@ func modelFor(provider, model string) string {
 // maxTok caps the response length (via go-micro's WithMaxTokens). Cheap
 // background callers get a tighter cap to reduce latency and cost.
 func generateViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int) (reply string, err error) {
+	if err := checkBackground(caller); err != nil {
+		return "", err
+	}
 	// Every exit from this function is a verdict on whether the model answers.
 	defer func() { recordHealth(err) }()
 
@@ -195,6 +207,9 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 // support streaming, it falls back to a single Generate call and emits the
 // whole reply at once — so every caller works regardless of provider.
 func streamViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int, onToken func(string)) (reply string, err error) {
+	if err := checkBackground(caller); err != nil {
+		return "", err
+	}
 	defer func() { recordHealth(err) }()
 
 	provider, apiKey, baseURL, err := resolveProvider(model)

@@ -56,7 +56,6 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	clients := auth.AllOAuthClients()
 
 	var b strings.Builder
-	b.WriteString(back())
 	b.WriteString(`<p class="text-muted text-sm">Anything that speaks MCP can register ` +
 		`itself at <code>/oauth/register</code> without signing in — that is what the ` +
 		`protocol asks for — so most of these belong to nobody. A client registered from ` +
@@ -113,7 +112,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</tbody></table></div>`)
 
-	app.Respond(w, r, app.Response{Title: "OAuth Clients", Description: "Applications that may sign somebody in here", HTML: b.String()})
+	respond(w, r, app.Response{Title: "OAuth Clients", Description: "Applications that may sign somebody in here", HTML: b.String()})
 }
 
 // firstURI is what to show in the row's box: the address it has, or nothing.

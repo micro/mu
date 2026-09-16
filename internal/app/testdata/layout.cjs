@@ -80,7 +80,15 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.keyboard.press('Escape');assert(!await items.isVisible(),'escape did not close item actions');
    }
    if(path==='/login'||path==='/signup')assert(await page.locator('#footer a[href="/privacy"]').isVisible(),'auth footer missing');
-   if(path==='/account/billing')assert.equal(await page.locator('input[name=display_name],input[name=new_secret]').count(),0,'billing renders unrelated account forms');
+   if(path==='/account')assert.equal(await page.locator('#billing,#profile,#connections').count(),3,'Settings sections missing');
+   if(path.startsWith('/admin'))assert.equal(await page.locator('nav[aria-label="Admin"]').count(),path==='/admin'?2:1,'shared Admin navigation missing');
+   if(path==='/') {
+    const input=await page.locator('#mu-chat').boundingBox(),brief=await page.locator('.ltoday').boundingBox();
+    if(brief)assert(Math.abs(input.width-brief.width)<2,'landing brief and input have different widths');
+   }
+   const stretched=await page.locator('.form > button,.section-stack > button').evaluateAll(es=>es.filter(e=>e.getClientRects().length&&getComputedStyle(e).alignSelf==='stretch').map(e=>e.textContent));
+   assert(!stretched.length,`stretched action buttons: ${stretched}`);
+   if(await page.locator('.ib-row').count())assert(await page.locator('.ib-row').first().evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft)>=12),'Inbox row has no horizontal padding');
    if(path==='/signup')assert.equal(await page.locator('input[name=name]').count(),0,'signup still asks for a name');
    if(path==='/account') {
     assert(await page.locator('#content a[href="/token"]').count()>0,'API credentials missing');

@@ -526,8 +526,9 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 		unservedModel.Do(func() {
 			app.Log("agent", "the model %q is asked for and no key is set for the "+
 				"provider that serves it, so it is being ignored; the agent is "+
-				"using the default model instead", want)
+				"stopping without calling another provider", want)
 		})
+		return "", "", "", "", false
 	}
 
 	// What the instance prefers, before the built-in order — the same question
@@ -546,6 +547,10 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 		// There was, and it is exactly the split this function's own comment
 		// above says it exists to prevent: the agent and the chat asking two
 		// different questions and getting two different models.
+	}
+
+	if strings.TrimSpace(settings.Get("AI_PROVIDER")) != "" {
+		return "", "", "", "", false
 	}
 
 	// The built-in order, each provider's model asked for through

@@ -35,7 +35,7 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 		`</p></div>`)
 
 	app.Respond(w, r, app.Response{
-		Title:       "About Micro",
+		Title:       "About",
 		Description: "Micro is a personal assistant powered by the open source Mu runtime.",
 		HTML:        b.String(),
 	})

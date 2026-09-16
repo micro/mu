@@ -51,6 +51,7 @@ var settingGroups = []settingGroup{
 			"ANTHROPIC_API_KEY",
 			// Which provider, when there are keys for more than one.
 			"AI_PROVIDER",
+			"AI_BACKGROUND_ENABLED",
 			"ANTHROPIC_MODEL",
 			// The agent's own model, which is the one running the tool loop.
 			"AGENT_MODEL",
@@ -599,7 +600,5 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<button type="submit" class="btn mb-4">Save</button>`)
 	b.WriteString(`</form>`)
 
-	b.WriteString(back())
-
-	app.Respond(w, r, app.Response{Title: "Config", Description: "What this instance is configured with", HTML: b.String()})
+	respond(w, r, app.Response{Title: "Config", Description: "What this instance is configured with", HTML: b.String()})
 }

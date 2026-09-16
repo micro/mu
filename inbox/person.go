@@ -171,7 +171,7 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 		// this instance, where people reach you, and the way to change it.
 		b.WriteString(yourAddresses(acc.ID))
 		b.WriteString(`<div class="section-actions">` +
-			app.Link("Edit profile", "/account/profile") + app.Link("Account settings", "/account") + `</div></div>`)
+			app.Link("Settings", "/account#profile") + `</div></div>`)
 		app.Respond(w, r, app.Response{
 			Title:       title,
 			Description: handle + " on this instance",

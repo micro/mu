@@ -45,7 +45,6 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var content strings.Builder
-	content.WriteString(back())
 	content.WriteString(alertsCard())
 	content.WriteString(logTabs(tab))
 	switch {
@@ -64,7 +63,7 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 	case mailTab:
 		title = "Mail Log"
 	}
-	app.Respond(w, r, app.Response{Title: title, Description: "Logs", HTML: `<div class="log-tables">` + content.String() + `</div>`})
+	respond(w, r, app.Response{Title: title, Description: "Logs", HTML: `<div class="log-tables">` + content.String() + `</div>`})
 }
 
 // MailLogMoved sends the old mail-log address to its tab.
