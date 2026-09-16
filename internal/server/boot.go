@@ -6,7 +6,6 @@ package server
 // register itself as its package loads. The rest is independent.
 
 import (
-	"mu/account"
 	"mu/admin"
 	"mu/internal/data"
 	"mu/internal/imageproxy"
@@ -145,7 +144,6 @@ func boot() {
 	// answer three short. Loading is boot's job.
 	startupStep("apps.Load", apps.Load)
 	startupStep("social.Load", social.Load)
-	startupStep("account.Load", account.Load)
 	startupStep("tasks.Load", tasks.Load)
 	startupStep("events.Load", events.Load)
 }

@@ -742,3 +742,94 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 
 	app.Respond(w, r, app.Response{Title: "Pricing", Description: "Platform pricing and costs", HTML: sb.String()})
 }
+
+func BalanceCard(userID string) string {
+	return app.SectionID("balance", "Balance", BalanceBody(userID, true)...)
+}
+
+func BalanceBody(userID string, showConversion bool) []string {
+	c := CreditsOf(userID)
+
+	isAdmin := false
+	if acc, err := auth.GetAccount(userID); err == nil {
+		isAdmin = acc.Admin
+	}
+
+	admin := ""
+	if isAdmin {
+		admin = app.Note("You are an admin on this instance, so your own calls are never charged.")
+	}
+
+	// No note about a daily allowance, because there is not one any more.
+	//
+	// A balance of zero used to need explaining: the agent cost credits, an
+	// allowance covered it, and somebody watching zero while the product worked
+	// was owed a reason. Talking to your agent is free now, so zero is the
+	// ordinary state of an account that has not reached for anything a third
+	// party bills us for — and it needs no note.
+	free := ""
+	// Two links, and both go somewhere else. Usage and History were here too,
+	// and the usage graph is the next card down and the history the one after
+	// that — a link is a promise that there is somewhere to go, and scrolling
+	// four hundred pixels is not somewhere. What is on the page does not need
+	// announcing on the page.
+	// Balance, on a page titled Wallet. There are two numbers here and both are
+	// balances — this one in credits, and the USDC the key holds — but the
+	// second card names itself "Crypto", so this one does not have to
+	// carry the disambiguation in its own title as well.
+	conversion := ""
+	if showConversion {
+		conversion = app.Note(money(c.Balance) + " · 1 credit = 1¢")
+	}
+	return []string{
+		`<p class="balance-figure"><b>` + thousands(c.Balance) + `</b> <span>credits</span></p>`,
+		conversion,
+		free,
+		admin,
+		`<p class="balance-links"><a href="/account/topup">Top up &rarr;</a> · ` +
+			`<a href="/account/transfer">Transfer &rarr;</a></p>`,
+	}
+}
+
+func LedgerSection(userID string) string {
+	transactions := Transactions(userID, 20)
+
+	var sb strings.Builder
+
+	// App earnings, when there are any. Money coming in reads differently from
+	// money going out and should not be a row in the same table.
+	var totalEarnings int
+	for _, tx := range transactions {
+		if tx.Operation == quota.OpAppRevenue {
+			totalEarnings += tx.Amount
+		}
+	}
+	if totalEarnings > 0 {
+		sb.WriteString(app.Section("App earnings",
+			fmt.Sprintf(`<p>%d credits earned from your apps (recent)</p>`, totalEarnings),
+			app.NoteHTML(`You keep every penny of every sale. <a href="/apps">Manage your apps &rarr;</a>`)))
+	}
+
+	// No price table here. It was a second copy of what /tools already says
+	// beside each tool, where somebody asks the question — and a price list
+	// kept in two places is one that drifts. /pricing points at /tools for the
+	// same reason.
+	if len(transactions) > 0 {
+		var rows strings.Builder
+		rows.WriteString(`<table class="data-table">`)
+		rows.WriteString(`<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>`)
+		for _, tx := range transactions {
+			rows.WriteString(fmt.Sprintf(`<tr>
+				<td>%s</td>
+				<td>%s</td>
+				<td>%s</td>
+				<td>%d</td>
+			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), htmlEsc(transactionLabel(tx)),
+				transactionAmount(tx), tx.Balance))
+		}
+		rows.WriteString(`</table>`)
+		sb.WriteString(app.SectionID("ledger", "History", rows.String()))
+	}
+
+	return sb.String()
+}

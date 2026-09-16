@@ -77,12 +77,12 @@ func TestThePageTitleIsNotInTheSidebar(t *testing.T) {
 // Micro and Home lead the signed-in destinations within reach on a phone.
 func TestNavigationHasOneConversationEntry(t *testing.T) {
 	out := app.RenderHTML("A page", "", "body", &auth.Account{ID: "someone"})
-	for _, old := range []string{`id="tabs"`, `href="/home"`, `href="/assistant"`, `id="nav-conversation"`} {
+	for _, old := range []string{`id="tabs"`, `href="/assistant"`, `id="nav-conversation"`} {
 		if strings.Contains(out, old) {
 			t.Errorf("retired navigation: %s", old)
 		}
 	}
-	for _, link := range []string{`id="nav-home" href="/"`, `href="/services"`} {
+	for _, link := range []string{`id="nav-home" href="/home"`, `href="/services"`} {
 		if !strings.Contains(out, link) {
 			t.Errorf("missing %s", link)
 		}

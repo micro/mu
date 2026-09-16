@@ -53,14 +53,6 @@ func TestEveryConfigVarIsDocumented(t *testing.T) {
 			return nil
 		}
 		if info.IsDir() {
-			// examples/ is its own module, and what it reads from the
-			// environment belongs to the example program rather than to an
-			// instance. The x402 agent takes a wallet key that way; listing it
-			// on the operator's configuration page would offer a setting no
-			// server has.
-			if info.Name() == "examples" {
-				return filepath.SkipDir
-			}
 			return nil
 		}
 		if strings.HasSuffix(path, "_test.go") {

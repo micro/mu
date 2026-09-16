@@ -278,11 +278,11 @@ func TestMarginZeroComesBeforeTheDirectionalMargins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(string(b), "\n")
+	lines := strings.Split(strings.ReplaceAll(string(b), "}", "}\n"), "\n")
 
 	zero := -1
 	directional := map[string]int{}
-	rule := regexp.MustCompile(`^\.(m-0|m[trbl]-[a-z0-9]+)\s*\{`)
+	rule := regexp.MustCompile(`\.(m-0|m[trbl]-[a-z0-9]+)\s*\{`)
 	for i, l := range lines {
 		m := rule.FindStringSubmatch(l)
 		if m == nil {

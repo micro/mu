@@ -19,9 +19,9 @@ import (
 	"strings"
 
 	"mu/agent/micro"
-	"mu/client"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/client"
 	"mu/internal/service"
 	"mu/service/mail"
 )

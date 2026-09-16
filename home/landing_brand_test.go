@@ -13,10 +13,10 @@ func TestLoggedOutRootIsHome(t *testing.T) {
 	Index(w, r)
 	body := w.Body.String()
 
-	if !strings.Contains(body, "<title>Home | Micro</title>") {
+	if !strings.Contains(body, "<title>Micro</title>") {
 		t.Fatalf("logged-out root title is not Home | Micro: %q", body)
 	}
-	if !strings.Contains(body, `id="root"`) {
+	if !strings.Contains(body, `class="lbrand"`) {
 		t.Fatalf("logged-out root wordmark is not Micro: %q", body)
 	}
 }

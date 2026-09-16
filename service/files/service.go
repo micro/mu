@@ -188,6 +188,9 @@ var Spec = service.Spec{
 	Icon:        "files.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
+		"DriveSearch": {Needs: service.Account, Doc: "Search the caller's connected Google Drive. Read-only; connect in Account first."},
+		"DriveRead":   {Needs: service.Account, Doc: "Read the caller's connected Google Drive. Read-only; connect in Account first."},
+
 		"Put":    {Writes: true, Doc: "Store a file and get a URL for it — a report, a CSV, a transcript"},
 		"Get":    {Doc: "Read a stored file back by its id"},
 		"List":   {Doc: "List the caller's stored files, newest first"},

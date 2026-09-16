@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"mu/internal/ai"
-	"mu/web"
 	"net/http"
 	"net/url"
 
@@ -309,9 +308,6 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		conversation.AttachmentTitle = "Reading material"
 	}
 	state := map[string]any{"account": map[string]any{"id": acc.ID, "name": acc.Name, "admin": acc.Admin}, "csrf": auth.CSRFToken(r), "conversation": conversation}
-	if web.Page(w, r, conversation.AgentName, state) {
-		return
-	}
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, state)
 		return

@@ -11,6 +11,15 @@ import (
 
 func eventURL(id string) string { return "/events?id=" + url.QueryEscape(id) }
 
+// Only navigation URLs are accepted from an external calendar.
+func externalURL(e External) string {
+	u, err := url.Parse(e.URL)
+	if err == nil && u.Scheme == "https" && u.Host != "" {
+		return u.String()
+	}
+	return "/events"
+}
+
 func ownedEvent(owner, id string) *Event {
 	mu.RLock()
 	defer mu.RUnlock()
@@ -35,7 +44,7 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 	if e.Repeat != "" {
 		body += `<p>Repeats: ` + html.EscapeString(e.Repeat) + `</p>`
 	}
-	body += `</article><a class="link" href="/events">Back to events</a></div>`
+	body += `<a class="btn" href="` + html.EscapeString(GoogleCalendarURL(e.Title, e.When, e.Note)) + `" target="_blank" rel="noopener">Add to calendar</a></article><a class="link" href="/events">Back to events</a></div>`
 	body += `<script>document.querySelectorAll('time[data-event-time]').forEach(function(el){var d=new Date(el.dateTime);if(!isNaN(d.getTime()))el.textContent=d.toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});});</script>`
 	app.Respond(w, r, app.Response{Title: e.Title, HTML: body})
 }

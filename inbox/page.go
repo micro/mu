@@ -34,7 +34,6 @@ import (
 
 	"mu/internal/thread"
 	"mu/service/mail"
-	"mu/web"
 )
 
 // shown is how many conversations one page of the inbox is.
@@ -110,10 +109,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	auth.SetCSRFCookie(w, r)
-	if r.Method == http.MethodGet {
-		if web.Page(w, r, "Inbox") {
-			return
-		}
+	if r.Method == http.MethodGet && app.WantsJSON(r) {
 		clientData(w, r, acc.ID)
 		return
 	}

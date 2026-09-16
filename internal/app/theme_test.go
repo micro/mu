@@ -18,7 +18,7 @@ func TestTheStylesheetDeclaresItsTheme(t *testing.T) {
 			t.Errorf("shared theme is missing %q", declaration)
 		}
 	}
-	if !strings.Contains(Styles(), css) {
+	if !strings.Contains(Styles(), "--background:") || !strings.Contains(Styles(), "--font-sans:") || !strings.Contains(Styles(), ".dark{") {
 		t.Error("legacy pages do not receive the shared theme")
 	}
 }

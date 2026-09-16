@@ -27,7 +27,6 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
   const u=new URL(route.request().url());
   if(u.pathname==='/fixture.svg'||u.pathname.endsWith('/icon.svg'))return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#f2f5e9"/><circle cx="320" cy="180" r="90" fill="#d97a32"/></svg>'});
   if(u.hostname==='www.youtube.com')return route.fulfill({body:'<!doctype html><p>Video fixture</p>',contentType:'text/html'});
-  if(u.pathname==='/composition.css')return route.fulfill({contentType:'text/css',body:input.composition});
   if(u.pathname==='/mu.css')return route.fulfill({contentType:'text/css',body:input.css});
   if(['/mu.js','/shell.js','/viewport.js'].includes(u.pathname))return route.fulfill({body:fs.readFileSync('../internal/app/html'+u.pathname),contentType:'application/javascript'});
   const html=input.pages[u.pathname+u.search]||input.pages[u.pathname];
@@ -38,8 +37,6 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  for(const width of (process.env.MU_LAYOUT_WIDTHS||'320,390,768,1024,1440').split(',').map(Number))for(const collapsed of (width>900?[false,true]:[false])){
   await page.setViewportSize({width,height:900});
   for(const path of Object.keys(input.pages).filter(p=>!process.env.MU_LAYOUT_PATHS||process.env.MU_LAYOUT_PATHS.split(',').includes(p.split('?')[0]))){
-   // Migrated routes are exercised against real JSON handlers by TestReactClientInBrowser.
-   if(input.pages[path].includes('id="root"'))continue;
    console.log("Checking",path,width,collapsed);
    try {
    errors.length=0;
@@ -262,7 +259,6 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
   }
  }
 
- // React selection persistence is covered against real handlers in apps.cjs.
  if(!input.pages["/agent/micro"].includes('id="root"')) {
  // Reload an older selection even when the server initially renders a newer thread.
  await page.goto('https://mu.test/agent/micro');

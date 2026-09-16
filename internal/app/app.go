@@ -168,14 +168,15 @@ func MethodNotAllowed(w http.ResponseWriter, r *http.Request) {
 }
 
 func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
+	w.Header().Add("Vary", "Accept")
+	if w.Header().Get("Cache-Control") == "" {
+		w.Header().Set("Cache-Control", "no-cache, private")
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if WantsJSON(r) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp.Data)
 		return
-	}
-
-	if w.Header().Get("Cache-Control") == "" {
-		w.Header().Set("Cache-Control", "no-cache, private")
 	}
 
 	w.Write([]byte(renderForRequest(resp.Title, resp.Description, resp.HTML, resp.BodyClass, r))) //nolint:errcheck
@@ -403,6 +404,12 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 	if r.URL.RawQuery != "" {
 		here += "?" + r.URL.RawQuery
 	}
+	if acc == nil {
+		switch r.URL.Path {
+		case "/about", "/contact", "/pricing", "/privacy", "/status":
+			return RenderIndex(Index{Title: htmlpkg.EscapeString(title) + " | Micro", Description: htmlpkg.EscapeString(desc), Brand: `<a href="/">Micro</a>`, TopRight: `<a href="/login">Sign in</a>`, Body: `<h1>` + htmlpkg.EscapeString(title) + `</h1>` + html, Footer: FooterLinks()})
+		}
+	}
 	return renderShell(lang, title, desc, bodyClass, html, acc, navPath(r.URL.Path), here)
 }
 
@@ -447,18 +454,14 @@ func navMain(acc *auth.Account) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(navigationLink("nav-home", "/", "Home", "/home.png"))
-	b.WriteString(`<div class="nav-secondary">`)
 	for _, item := range []struct{ id, href, label, icon string }{
-		{"nav-inbox", "/inbox", "Inbox", "/email.svg"},
-		{"nav-work", "/work", "Work", "/tasks.svg"},
+		{"nav-home", "/home", "Home", "/home.png"},
+		{"nav-inbox", "/inbox", "Inbox", "/mail.png"},
 		{"nav-agents", "/agents", "Agents", "/agent.svg"},
 		{"nav-services", "/services", "Services", "/services.svg"},
 	} {
 		b.WriteString(navigationLink(item.id, item.href, item.label, item.icon))
 	}
-	b.WriteString(`</div>`)
-
 	return b.String()
 }
 

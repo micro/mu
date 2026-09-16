@@ -1,6 +1,7 @@
 package home
 
 import (
+	"mu/agent"
 	"mu/internal/auth"
 	"mu/internal/thread"
 	"net/http"
@@ -30,6 +31,14 @@ func TestAssistantReopensOwnedConversation(t *testing.T) {
 		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		w := httptest.NewRecorder()
 		Index(w, r)
+		if w.Code != http.StatusSeeOther {
+			t.Fatalf("saved link did not redirect: %d", w.Code)
+		}
+		next := httptest.NewRequest("GET", w.Header().Get("Location"), nil)
+		next.Header.Set("Accept", "application/json")
+		next.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		w = httptest.NewRecorder()
+		agent.Handler(w, next)
 		if w.Code != tc.want {
 			t.Fatalf("%s: got %d want %d", tc.id, w.Code, tc.want)
 		}

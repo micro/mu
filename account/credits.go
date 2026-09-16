@@ -216,15 +216,6 @@ func rebuildFromTransactions() {
 	}
 }
 
-// Load initializes wallet
-func Load() {
-	go func() {
-		if err := retireGoogleGrants(); err != nil {
-			app.Log("account", "Google grant retirement: %v", err)
-		}
-	}()
-}
-
 // CreditsOf retrieves or creates a wallet for a user
 // CreditsOf returns what an account has, creating the record on first ask.
 //

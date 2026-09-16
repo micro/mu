@@ -52,6 +52,7 @@ var productImport = regexp.MustCompile(`"mu/(home|agent|admin|account|service|cl
 var assembly = map[string]bool{
 	"internal/server": true,
 	"internal/cli":    true,
+	"internal/client": true, // assembles protocol addresses for account and contact pages
 }
 
 // No service asks the account what money is.

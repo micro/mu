@@ -1,0 +1,11 @@
+{
+  "name": "mu-styles",
+  "private": true,
+  "scripts": {
+    "build": "tailwindcss -i styles/input.css -o html/mu.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "4.2.1",
+    "@tailwindcss/cli": "4.2.1"
+  }
+}

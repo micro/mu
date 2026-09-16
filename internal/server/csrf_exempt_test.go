@@ -141,7 +141,7 @@ func TestTheGateVerifiesAndDoesNotSettle(t *testing.T) {
 	// against that one said the defer was in the wrong place while it was in
 	// the right one.
 	if i, j := strings.Index(body, "defer x402.Finish(w)"),
-		strings.LastIndex(body, "web.WithData(http.DefaultServeMux).ServeHTTP(w, r)"); i < 0 || j < 0 || i > j {
+		strings.LastIndex(body, "http.DefaultServeMux.ServeHTTP(w, r)"); i < 0 || j < 0 || i > j {
 		t.Error("Finish is not deferred before the handler runs, so an early return " +
 			"leaves the caller with nothing")
 	}

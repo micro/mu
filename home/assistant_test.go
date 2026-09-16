@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"mu/agent"
 	"mu/internal/auth"
 )
 
@@ -23,8 +24,14 @@ func TestAssistantSeparatesAccountAndGuestConversations(t *testing.T) {
 			}
 			r.Header.Set("Accept", "application/json")
 			w := httptest.NewRecorder()
-			Index(w, r)
+			agent.Handler(w, r)
 			body := w.Body.String()
+			if who == "" {
+				if w.Code != http.StatusSeeOther {
+					t.Fatal("anonymous caller accessed private conversation")
+				}
+				continue
+			}
 			if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "private, no-store" {
 				t.Fatalf("%s: %d %v", path, w.Code, w.Header())
 			}

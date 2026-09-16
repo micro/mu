@@ -135,12 +135,12 @@ func markupPerFunc(src string) []string {
 // If .link ever stops being display:block the test above is checking nothing,
 // and would keep passing forever — the worst kind of green.
 func TestLinkIsStillDisplayBlock(t *testing.T) {
-	b, err := os.ReadFile(repoRoot(t) + "/internal/app/html/mu.css")
+	b, err := os.ReadFile(repoRoot(t) + "/internal/app/styles/shell.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	css := string(b)
-	i := strings.Index(css, "\n.link {")
+	i := strings.Index(css, ".link {")
 	if i < 0 {
 		t.Fatal("no .link rule in mu.css — this scan is broken, not the code")
 	}

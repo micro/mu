@@ -4,7 +4,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/service/events"
-	"mu/web"
 	"net/http"
 	"time"
 )
@@ -22,9 +21,6 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	auth.SetCSRFCookie(w, r)
-	if web.Page(w, r, "Inbox settings") {
-		return
-	}
 	if r.Method == http.MethodPost {
 		if !auth.StrictCSRF(r) {
 			app.Forbidden(w, r, "Invalid CSRF token")

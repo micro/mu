@@ -53,7 +53,6 @@ import (
 	"mu/service/mail"
 	"mu/service/sms"
 	"mu/service/tasks"
-	"mu/web"
 )
 
 // bodyLimit bounds one message. A mail nobody would read is not a mail this
@@ -119,9 +118,6 @@ func NewHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
 		auth.SetCSRFCookie(w, r)
-		if web.Page(w, r, "New message") {
-			return
-		}
 		if app.WantsJSON(r) {
 			app.RespondJSON(w, map[string]string{"to": f.To, "subject": f.Subject, "on": f.On, "body": f.Body, "kind": f.Kind})
 			return

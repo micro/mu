@@ -35,7 +35,6 @@ import (
 	"mu/service/chat"
 	"mu/service/mail"
 	"mu/service/wallet"
-	"mu/web"
 )
 
 // serve builds the handler and runs the server until interrupted.
@@ -108,7 +107,7 @@ func serve(addr string) {
 			// Fast path for static assets - skip all middleware
 			for _, ext := range staticPaths {
 				if strings.HasSuffix(r.URL.Path, ext) {
-					web.WithData(http.DefaultServeMux).ServeHTTP(w, r)
+					http.DefaultServeMux.ServeHTTP(w, r)
 					return
 				}
 			}
@@ -439,7 +438,7 @@ func serve(addr string) {
 				}
 			}
 
-			web.WithData(http.DefaultServeMux).ServeHTTP(w, r)
+			http.DefaultServeMux.ServeHTTP(w, r)
 		}),
 	}
 

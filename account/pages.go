@@ -24,7 +24,9 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/web"
+	"mu/internal/push"
+	"mu/internal/usage"
+	"sort"
 
 	"mu/internal/auth"
 	"mu/service/sms"
@@ -71,7 +73,6 @@ var LoginTemplate = `<html lang="en">
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer"/>
     <link rel="stylesheet" href="/mu.css?` + app.Version + `">
-    <link rel="stylesheet" href="/composition.css?` + app.Version + `">
   </head>
   <body class="auth-page">
     <div id="head">
@@ -178,7 +179,6 @@ var SignupTemplate = `<html lang="en">
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer"/>
     <link rel="stylesheet" href="/mu.css?` + app.Version + `">
-    <link rel="stylesheet" href="/composition.css?` + app.Version + `">
   </head>
   <body class="auth-page">
     <div id="head">
@@ -735,11 +735,134 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if web.Page(w, r, title) {
+	if app.WantsJSON(r) {
+		clientAccount(w, r, acc)
 		return
 	}
-	clientAccount(w, r, acc)
+	// The languages this instance speaks, as options rather than as markup.
+	currentLang := acc.Language
+	if currentLang == "" {
+		currentLang = "en"
+	}
+	langs := make([]app.Option, 0, len(app.SupportedLanguages))
+	for code, name := range app.SupportedLanguages {
+		langs = append(langs, app.Option{Value: code, Label: name, On: code == currentLang})
+	}
+	sort.Slice(langs, func(i, j int) bool { return langs[i].Label < langs[j].Label })
 
+	emailCard := renderEmailCard(acc)
+
+	// One card for Google: signing in with it, and what of it this account has
+	// handed over. The asks live on the pages that earn them — the calendar on
+	// /events, contacts on /contacts — and the audit belongs where somebody goes
+	// to check. It was two cards, "Google" and "Connected accounts", stacked,
+	// and the first one's name claimed the subject of the second.
+	googleCard := renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
+	if r.URL.Query().Get("linked") == "google" {
+		googleCard = app.Notice("Google connected. You can now sign in with Google.") + googleCard
+	}
+
+	// No Clients card. It offered a link code to send to a Mu bot on Discord,
+	// Telegram or WhatsApp, and all three are gone — 2,100 lines and three
+	// third-party APIs carrying no traffic. Mail is the client that matters and
+	// needs no linking: the address is the account.
+
+	notice := ""
+	switch r.URL.Query().Get("saved") {
+	case "converted":
+		notice = app.Notice("USDC converted to account credits.")
+	case "name":
+		notice = app.Notice("Name saved.")
+	case "address":
+		notice = app.Notice("Address removed.")
+	}
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		notice = app.Problem(msg)
+	}
+
+	// The balance goes directly under the profile, and everything else after it.
+	//
+	// It is the one thing on this page with a deadline: a display name, a
+	// language or a passkey can wait, and an empty balance stops the agent
+	// mid-errand. It was a nav item of its own called Wallet, which put a
+	// person's money one click further away than their choice of language.
+	// The page, as a list of sections.
+	//
+	// It was one fmt.Sprintf with fourteen %s in it and a template above them,
+	// so reading it meant counting placeholders down one list and arguments up
+	// another to find out which card was which. Every block below says its own
+	// name, and the order on the screen is the order in the code.
+	//
+	// The balance goes directly under the profile because it is the one thing
+	// here with a deadline: a display name, a language or a passkey can wait,
+	// and an empty balance stops the agent mid-errand.
+	profile := app.Section("Profile",
+		`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
+			htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
+			` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
+		app.Form{Action: "/account", Inline: true,
+			Hidden: map[string]string{"save_name": "1"},
+			Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
+				Placeholder: "Display name"}},
+			Submit: "Save"}.HTML(),
+		app.Note("Shown on your posts and your profile. Your username, @"+acc.ID+
+			", is the one in addresses and links and does not change."))
+
+	language := app.Section("Language",
+		app.Form{Action: "/account", Inline: true,
+			Fields: []app.Field{{Name: "language", Options: langs}},
+			Submit: "Save"}.HTML())
+
+	// No Settings section, and no About card.
+	//
+	// "Settings" was a section named after the page it was on, which is a name
+	// that can absorb anything — and it had: a link to your tokens, a link to
+	// the three piles you accumulate by using the product, and Log out. Nothing
+	// they share, and not one of them a setting. "About Mu" was the footer in a
+	// card, titled for one of its four links while holding Privacy and Status,
+	// and one of the four (Tools) is a sidebar item already.
+	//
+	// Both are the same tell: a card whose name means "miscellaneous" is where
+	// things go when nobody decided where they belong. They are destinations,
+	// and destinations belong in the menu with your name on it — see
+	// app.navBottom. Log out was already there.
+
+	// Credits and their transaction history belong to this account.
+	// Notifications last, because it is a thing you do rather than a thing you
+	// read, and on a phone it is what makes the product work with the page
+	// closed. It used to render below the Settings section — which ended with
+	// Log out, so the control sat under the link that ends the session, where a
+	// page has plainly finished.
+	content := notice + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) +
+		app.Section("Clients", `<a href="/token">Tokens</a> · <a href="/inbox/imap">IMAP</a>`) + profile +
+		passwordCard(acc) +
+		PlaceCard(r, acc.ID) +
+		emailCard +
+		renderPhoneCard(acc.ID) +
+		googleCard +
+		language +
+		PasskeyListHTML(acc.ID) +
+		push.Card(r, acc.ID)
+
+	// About, Privacy, Status — a line, not a card.
+	//
+	// These have to be reachable and are worth very little. They were a card
+	// headed "About Mu", which titled the group for one of its four links while
+	// two of the others were Privacy and Status, and gave a marketing nav the
+	// same weight as the balance. About is in the account menu now; this is the
+	// rest of it at the weight it deserves, at the foot of the page where a
+	// footer would be if there were one.
+	//
+	// It is here rather than nowhere because the footer is not rendered for a
+	// signed-in account — see footerFor — so with no line at all /privacy and
+	// /status become unreachable from inside the product. TestEveryFooterLink-
+	// IsReachableSignedIn caught exactly that when About left for the menu.
+	content += `<p class="account-legal"><a href="/privacy">Privacy</a> · <a href="/about">About</a> · <a href="/status">Status</a></p>`
+
+	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
+	// so every part of the chrome that depends on knowing who is signed in went
+	// missing on the one page you reach by being signed in.
+	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: content})
 }
 
 // agentNumber is the number the agent texts from, for saving as a contact.
@@ -985,4 +1108,177 @@ func accountFormValues(page string, r *http.Request) string {
 		}
 	}
 	return page
+}
+
+func otherAddresses(acc *auth.Account) string {
+	var extra []string
+	for _, a := range acc.Verified() {
+		if !strings.EqualFold(a, acc.Email) {
+			extra = append(extra, a)
+		}
+	}
+	if len(extra) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(app.Note("Also proved yours — mail from these reaches your agents:"))
+	b.WriteString(`<ul class="addr-list">`)
+	for _, a := range extra {
+		b.WriteString(`<li><code>` + htmlpkg.EscapeString(a) + `</code>` +
+			app.Form{Action: "/account", Class: "addr-drop",
+				Hidden: map[string]string{"forget_address": a},
+				Extra:  []app.Button{{Label: "remove", Kind: app.Danger}}}.HTML() +
+			`</li>`)
+	}
+	b.WriteString(`</ul>`)
+	return b.String()
+}
+
+func renderPhoneCard(accountID string) string {
+	if !sms.Configured() {
+		return ""
+	}
+
+	mine := sms.Numbers(accountID)
+	if len(mine) > 0 {
+		var b strings.Builder
+		for _, n := range mine {
+			b.WriteString(`<p><strong>` + htmlpkg.EscapeString(n) + `</strong> — verified ✓ ` +
+				app.Form{Action: "/account", Inline: true,
+					Hidden: map[string]string{"forget_number": n},
+					Submit: "Forget"}.HTML() + `</p>`)
+		}
+		return app.Section("Phone",
+			b.String(),
+			app.Note("A text from here reaches your agent, and it answers. "+
+				"Texts from anywhere else are filed and answered by nobody."),
+			// The other direction, which this card never mentioned.
+			//
+			// Every section on this page asks the same question — prove this is
+			// yours, so we will listen to it — and none of them says how the
+			// agent reaches you or what number it comes from. So the one thing
+			// somebody needs in order to save the contact was on the page
+			// nowhere, and the number arrived unannounced in a text about a
+			// code. See #1485.
+			agentNumber(),
+			app.Form{Action: "/account", Inline: true,
+				Fields: []app.Field{{Name: "verify_number", Type: "tel", Required: true,
+					Placeholder: "+447700900123"}},
+				Submit: "Verify another"}.HTML())
+	}
+
+	// Waiting for the code it just texted.
+	if pending, ok := sms.Pending(accountID); ok {
+		return app.Section("Phone",
+			`<p>A code was texted to <strong>`+htmlpkg.EscapeString(pending)+`</strong>.</p>`,
+			app.Form{Action: "/account", Inline: true,
+				Hidden: map[string]string{"confirm_number": pending},
+				Fields: []app.Field{{Name: "code", Required: true, Placeholder: "123456"}},
+				Submit: "Confirm"}.HTML())
+	}
+
+	return app.Section("Phone",
+		app.Note("Prove a number is yours and you can text your agent from it, "+
+			"like any other contact. It replies on the same number."),
+		app.Form{Action: "/account", Inline: true,
+			Fields: []app.Field{{Name: "verify_number", Type: "tel", Required: true,
+				Placeholder: "+447700900123"}},
+			Submit: "Send me a code"}.HTML())
+}
+
+func forwardingToggle(acc *auth.Account) string {
+	on := MailForwardingOn(acc.ID)
+	state, submit := "off", "Turn off"
+	note := "Mail sent to your Mu address is also copied to you here."
+	if !on {
+		state, submit = "on", "Turn on"
+		note = "Mail sent to your Mu address is not copied to you here."
+	}
+	// Posted to /account with a named field, the same as every other control on
+	// this page — submit, land back here, see the result.
+	return app.Note(note) +
+		`<form method="POST" action="/account" class="d-inline">` +
+		`<input type="hidden" name="forwarding" value="` + state + `">` +
+		`<button type="submit" class="btn-link">` + submit + `</button></form>`
+}
+
+func renderEmailCard(acc *auth.Account) string {
+	if acc.Admin || acc.Approved {
+		// Admins/approved users don't need verification.
+		if acc.EmailVerified {
+			// The toggle here too. An admin gets forwarded mail like anybody
+			// else and had no way to turn it off from this page — only the link
+			// at the bottom of a message, which is the way out for somebody who
+			// does not want to come here and the wrong only way for somebody
+			// who is already on the page.
+			return app.Section("Email",
+				`<p>`+htmlpkg.EscapeString(acc.Email)+` — verified</p>`,
+				forwardingToggle(acc))
+		}
+		return ""
+	}
+
+	if app.EmailSender == nil {
+		return app.Section("Email",
+			app.Note("Email verification is not configured on this instance."))
+	}
+
+	if acc.EmailVerified {
+		// Verified was a dead end: the address showed with a tick and there was
+		// no way to change it, and no way to see or drop the others this account
+		// had proved. An address is not yours for ever — people leave jobs and
+		// close accounts — and the one a password reset goes to is exactly the
+		// one somebody needs to be able to move.
+		return app.Section("Email",
+			`<p><strong>`+htmlpkg.EscapeString(acc.Email)+`</strong> — verified ✓</p>`,
+			app.Note("Where a password reset goes. Verifying a different one replaces it."),
+			forwardingToggle(acc),
+			app.Form{Action: "/account", Inline: true,
+				Fields: []app.Field{{Name: "email", Type: "email", Required: true,
+					Placeholder: "you@example.com"}},
+				Submit: "Verify a different address"}.HTML(),
+			otherAddresses(acc))
+	}
+
+	pending := ""
+	if acc.Email != "" {
+		pending = app.NoteHTML(`A verification link was sent to <strong>` +
+			htmlpkg.EscapeString(acc.Email) + `</strong>. Click it to unlock posting. ` +
+			`Submit again to resend.`)
+	}
+
+	return app.Section("Verify your email to post",
+		`<p>Verifying your email unlocks status updates, replies, comments and blog posts. `+
+			`We do not share or sell your address.</p>`,
+		pending,
+		app.Form{Action: "/account", Inline: true,
+			Fields: []app.Field{{Name: "email", Type: "email", Value: acc.Email,
+				Required: true, Placeholder: "you@example.com"}},
+			Submit: "Send verification"}.HTML())
+}
+
+func passwordCard(acc *auth.Account) string {
+	note := "Signing up with Google or a passkey leaves no password you could type. " +
+		"Setting one here lets you sign in with your username, and unlocks exporting " +
+		"your wallet key. If you already have a password, this replaces it."
+	if auth.HasSecret(acc.ID) {
+		note = "Replaces the one you have. You stay signed in here; other devices are unaffected."
+	}
+
+	// "Password", not "Set a password" or "Change password". Both of those are
+	// claims about whether the reader already has one, and the flag they rest on
+	// is only reliable for accounts created after it existed. The other headings
+	// on this page name the thing they are about — Email, Location — and this one
+	// can too. The note below still says which of the two this will do.
+	return app.Section("Password",
+		app.Form{Action: "/account",
+			Hidden: map[string]string{"save_secret": "1"},
+			Fields: []app.Field{
+				{Name: "new_secret", Type: "password", Label: "New password", Wide: true,
+					Placeholder: "At least 6 characters"},
+				{Name: "confirm_secret", Type: "password", Label: "Again", Wide: true,
+					Placeholder: "The same one"},
+			},
+			Submit: "Save"}.HTML(),
+		app.Note(note))
 }

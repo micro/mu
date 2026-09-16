@@ -18,7 +18,7 @@ func TestAccountErrorsPreserveOnlyNonSecretFields(t *testing.T) {
 	if strings.Contains(page, `name="name"`) || !strings.Contains(page, `value="bad&#34;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"`) || !strings.Contains(page, `href="/login?redirect=%2Fassistant"`) {
 		t.Fatal("form values or destination lost")
 	}
-	for _, want := range []string{"/composition.css?", `autocomplete="new-password"`, `class="field-label"`, ">Micro</a>"} {
+	for _, want := range []string{"/mu.css?", `autocomplete="new-password"`, `class="field-label"`, ">Micro</a>"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("missing %s", want)
 		}

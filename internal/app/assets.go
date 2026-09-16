@@ -15,17 +15,11 @@ var stylesGzip []byte
 // Styles is the native UI and app component stylesheet, assembled from shared modules.
 func Styles() string {
 	stylesOnce.Do(func() {
-		var b strings.Builder
-		for _, name := range []string{"theme.css", "mu.css", "components.css", "composition.css"} {
-			data, err := htmlFiles.ReadFile("html/" + name)
-			if err != nil {
-				panic(err)
-			}
-			b.Write(data)
-			b.WriteByte('\n')
+		data, err := htmlFiles.ReadFile("html/mu.css")
+		if err != nil {
+			panic(err)
 		}
-		b.WriteString(conversationCSS)
-		stylesText = b.String()
+		stylesText = string(data)
 		var compressed bytes.Buffer
 		z := gzip.NewWriter(&compressed)
 		_, _ = z.Write([]byte(stylesText))
