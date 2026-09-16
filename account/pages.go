@@ -695,7 +695,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// remain shared, including old profile and billing links.
 	content := profile + passwordCard(acc) + PlaceCard(r, acc.ID) + emailCard +
 		renderPhoneCard(acc.ID) + googleCard + language + PasskeyListHTML(acc.ID) +
-		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/token">Tokens</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`) + push.Card(r, acc.ID)
+		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/token">Client access</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`) + push.Card(r, acc.ID)
 	content += `<section id="billing" class="section-stack"><h2>Billing</h2>` + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) + `</section>`
 	content = `<nav class="view-switch" aria-label="Settings"><a href="#profile">Profile</a><a href="#connections">Connections</a><a href="#billing">Billing</a></nav>` + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
@@ -795,6 +795,12 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 
 // Session handler
 func Session(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		app.MethodNotAllowed(w, r)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	auth.SetCSRFCookie(w, r)
 	sess, acc := auth.TrySession(r)
 	if sess == nil {
 		// Return guest session instead of error

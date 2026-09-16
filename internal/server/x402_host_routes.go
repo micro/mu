@@ -105,6 +105,10 @@ func publicRESTHandler(w http.ResponseWriter, r *http.Request) {
 	api.PublicRESTHandler(w, r)
 }
 func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+		http.NotFound(w, r)
+		return
+	}
 	if origin.IsX402Host(r) || serviceAccess(r) {
 		r = api.CredentialRequest(r)
 		api.MCPHandler(w, r)
@@ -114,10 +118,5 @@ func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func publicReferenceHandler(w http.ResponseWriter, r *http.Request) {
-	if origin.IsX402Host(r) || serviceAccess(r) {
-		r = api.CredentialRequest(r)
-		api.RESTPageHandler(w, r)
-		return
-	}
-	api.PublicPageHandler(w, r)
+	http.NotFound(w, r)
 }
