@@ -22,7 +22,7 @@ func mcpToolsFor(r *http.Request) []Tool {
 	all := sortedTools()
 	out := make([]Tool, 0, len(all))
 	for _, t := range all {
-		if t.RESTOnly || (t.OperatorOnly && !operatorAllowed(r)) {
+		if t.RESTOnly || (t.OperatorOnly && !operatorAllowed(r)) || checkTokenScope(r, t.Name) != nil {
 			continue
 		}
 		out = append(out, t)

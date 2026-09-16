@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"html"
+	"mu/internal/service"
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +41,7 @@ type OAuthClient struct {
 
 // OAuthCode represents a pending authorization code.
 type OAuthCode struct {
+	Permissions         []string
 	Code                string
 	ClientID            string
 	AccountID           string
@@ -213,12 +216,13 @@ func ForceDeleteOAuthClient(clientID string) {
 }
 
 // CreateAuthorizationCode creates a code for the OAuth flow.
-func CreateAuthorizationCode(clientID, accountID, redirectURI, codeChallenge, codeChallengeMethod string) string {
+func CreateAuthorizationCode(clientID, accountID, redirectURI, codeChallenge, codeChallengeMethod string, permissions ...string) string {
 	code := generateRandomString(32)
 
 	oauthMu.Lock()
 	oauthCodes[code] = &OAuthCode{
 		Code:                code,
+		Permissions:         append([]string(nil), permissions...),
 		ClientID:            clientID,
 		AccountID:           accountID,
 		RedirectURI:         redirectURI,
@@ -264,12 +268,11 @@ func ExchangeAuthorizationCode(code, clientID, redirectURI, codeVerifier string)
 		}
 	}
 
-	// Create a session token for this account
-	sess, err := CreateSession(authCode.AccountID)
-	if err != nil {
-		return "", err
+	if len(authCode.Permissions) == 0 {
+		return "", errors.New("authorization has no approved permissions; reconnect")
 	}
-	return sess.Token, nil
+	_, raw, err := CreateToken(authCode.AccountID, "OAuth: "+clientID, authCode.Permissions, time.Now().Add(24*time.Hour))
+	return raw, err
 }
 
 // validatePKCE checks the code_verifier against the code_challenge.
@@ -379,65 +382,35 @@ func OAuthRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// OAuthAuthorizeHandler handles GET /oauth/authorize — shows login form or redirects.
-// authorizePage is the sign-in screen a client sends someone to.
-//
-// It carries a way to create an account, which it did not. A client following
-// the MCP authorization spec — Claude Desktop's custom connectors are the
-// common case — registers itself, opens a browser, and lands the user here.
-// Someone arriving for the first time met a username and password field, no
-// signup link, and no way forward: the flow could authenticate an account but
-// could not enrol one, so a new user's only route in was to guess that the app
-// existed and go and sign up somewhere else first.
-//
-// The signup link carries the whole authorize request back as a redirect, so
-// after creating an account they land here again, now with a session, and
-// OAuthAuthorizeHandler issues the code without asking anything twice.
-//
-// Rendered for both GET and the failed POST so the two cannot drift; errMsg is
-// empty on the first showing.
-func authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMethod, username, errMsg string) string {
-	back := "/oauth/authorize?" + url.Values{
-		"client_id":             {clientID},
-		"redirect_uri":          {redirectURI},
-		"state":                 {state},
-		"code_challenge":        {codeChallenge},
-		"code_challenge_method": {codeChallengeMethod},
-	}.Encode()
-
-	errHTML := ""
-	if errMsg != "" {
-		errHTML = `<p class="error">` + html.EscapeString(errMsg) + `</p>`
-	}
-
+// oauthConsent renders explicit, session-bound approval using the shared stylesheet.
+func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI string) {
 	e := html.EscapeString
-	return `<!DOCTYPE html>
-<html><head><title>Authorize</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body{font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;max-width:400px;margin:50px auto;padding:0 20px}
-h2{margin-bottom:4px}
-p{color:#666;font-size:14px}
-input{width:100%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit}
-button{width:100%;padding:10px;background:#000;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit;margin-top:8px}
-.error{color:#c00;font-size:13px}
-.alt{margin-top:14px;font-size:13px;text-align:center}
-.alt a{color:#111}
-</style></head><body>
-<h2>Authorize</h2>
-<p>Sign in to grant access to your account.</p>` + errHTML + `
-<form class="form" method="POST" action="/oauth/authorize">
-<input type="hidden" name="client_id" value="` + e(clientID) + `">
-<input type="hidden" name="redirect_uri" value="` + e(redirectURI) + `">
-<input type="hidden" name="state" value="` + e(state) + `">
-<input type="hidden" name="code_challenge" value="` + e(codeChallenge) + `">
-<input type="hidden" name="code_challenge_method" value="` + e(codeChallengeMethod) + `">
-<input type="text" name="username" placeholder="Username" value="` + e(username) + `" required autofocus>
-<input type="password" name="password" placeholder="Password" required>
-<button type="submit">Sign In &amp; Authorize</button>
-</form>
-<p class="alt">No account? <a href="/signup?redirect=` + e(url.QueryEscape(back)) + `">Create one</a>.</p>
-</body></html>`
+	var b strings.Builder
+	b.WriteString(`<!doctype html><html><head><title>Connect to Micro</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/mu.css"></head><body><main><h1>Connect to Micro</h1>`)
+	oauthMu.Lock()
+	name := clientID
+	if client := oauthClients[clientID]; client != nil {
+		name = client.Name
+	}
+	oauthMu.Unlock()
+	b.WriteString(`<p>Choose what <strong>` + e(name) + `</strong> may access. Access expires after 24 hours and can be revoked in <a href="/token">Client access</a>.</p><form method="POST" action="/oauth/authorize" class="form-col">`)
+	values := map[string]string{"client_id": clientID, "redirect_uri": redirectURI, "state": r.URL.Query().Get("state"), "code_challenge": r.URL.Query().Get("code_challenge"), "code_challenge_method": r.URL.Query().Get("code_challenge_method"), "_csrf": CSRFToken(r)}
+	for k, v := range values {
+		b.WriteString(`<input type="hidden" name="` + k + `" value="` + e(v) + `">`)
+	}
+	b.WriteString(`<label>Access type<select name="access"><option value="services">Selected services</option><option value="api">Assistant API</option></select></label><fieldset><legend>Services</legend><p>Select only the services this client needs. These selections apply to Selected services access.</p><div class="choices">`)
+	specs := service.Specs()
+	sort.Slice(specs, func(i, j int) bool { return specs[i].Name < specs[j].Name })
+	for _, sp := range specs {
+		b.WriteString(`<label class="choice"><input type="checkbox" name="service" value="` + e(sp.Name) + `">` + e(sp.Name) + `</label>`)
+	}
+	b.WriteString(`</div></fieldset><fieldset><legend>Assistant API</legend><p>These selections apply to Assistant API access. Agents can use their configured tools across your account.</p><div class="choices">`)
+	for _, cap := range []string{"agent", "inbox", "work"} {
+		b.WriteString(`<label class="choice"><input type="checkbox" name="capability" value="` + cap + `">` + cap + `</label>`)
+	}
+	b.WriteString(`</div></fieldset><label class="choice"><input type="checkbox" name="write" value="yes">Allow actions, including building apps and asking agents</label><p>Reading is allowed for the selected services or capabilities. Service access does not grant agent access.</p><div class="form-actions"><button type="submit">Allow access</button><a href="/">Cancel</a></div></form></main></body></html>`)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(b.String()))
 }
 
 func authorizationRedirect(redirectURI, code, state string) string {
@@ -455,9 +428,6 @@ func OAuthAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	clientID := r.URL.Query().Get("client_id")
 	redirectURI := r.URL.Query().Get("redirect_uri")
-	state := r.URL.Query().Get("state")
-	codeChallenge := r.URL.Query().Get("code_challenge")
-	codeChallengeMethod := r.URL.Query().Get("code_challenge_method")
 
 	if clientID == "" {
 		http.Error(w, "client_id required", 400)
@@ -477,10 +447,7 @@ func OAuthAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if already logged in
 	sess, _ := TrySession(r)
 	if sess != nil {
-		// Already authenticated — issue code immediately
-		code := CreateAuthorizationCode(clientID, sess.Account, redirectURI, codeChallenge, codeChallengeMethod)
-		redirect := authorizationRedirect(redirectURI, code, state)
-		http.Redirect(w, r, redirect, http.StatusFound)
+		oauthConsent(w, r, clientID, redirectURI)
 		return
 	}
 
@@ -495,41 +462,61 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "no-store")
+	session, _ := TrySession(r)
+	if session == nil {
+		http.Error(w, "Sign in again", http.StatusUnauthorized)
+		return
+	}
+	if !StrictCSRF(r) {
+		http.Error(w, "Reopen the authorization page and try again", http.StatusForbidden)
+		return
+	}
 	r.ParseForm()
-	clientID := r.FormValue("client_id")
-	redirectURI := r.FormValue("redirect_uri")
-	state := r.FormValue("state")
-	codeChallenge := r.FormValue("code_challenge")
-	codeChallengeMethod := r.FormValue("code_challenge_method")
-	username := r.FormValue("username")
-	// PostFormValue, not FormValue: FormValue reads the query too, so
-	// ?password=… would authenticate — and put the password in the browser
-	// history and in the reverse proxy's access log on the way. The form posts,
-	// so the body is the only place it should ever be read from.
-	password := r.PostFormValue("password")
-
-	// The same check as the GET, and it has to be here too: this form posts
-	// back whatever hidden fields the page carried, and the page was rendered
-	// from the query string.
-	redirectURI, err := RedirectFor(clientID, redirectURI)
+	clientID := r.PostFormValue("client_id")
+	redirectURI, err := RedirectFor(clientID, r.PostFormValue("redirect_uri"))
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
 	}
-
-	// Validate credentials
-	session, err := Login(username, password)
-	if err != nil {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMethod,
-			username, "Invalid username or password.")))
+	permissions := []string{"read"}
+	if r.PostFormValue("write") == "yes" {
+		permissions = append(permissions, "write")
+	}
+	selected := 0
+	switch r.PostFormValue("access") {
+	case "services":
+		valid := map[string]bool{}
+		for _, sp := range service.Specs() {
+			valid[sp.Name] = true
+		}
+		for _, name := range r.PostForm["service"] {
+			if !valid[name] {
+				http.Error(w, "Unknown service", 400)
+				return
+			}
+			permissions = append(permissions, ScopePrefix+name)
+			selected++
+		}
+	case "api":
+		for _, name := range r.PostForm["capability"] {
+			if name != "agent" && name != "inbox" && name != "work" {
+				http.Error(w, "Unknown capability", 400)
+				return
+			}
+			permissions = append(permissions, "api:"+name)
+			selected++
+		}
+	default:
+		http.Error(w, "Choose an access type", 400)
 		return
 	}
-
-	// Issue authorization code
-	code := CreateAuthorizationCode(clientID, session.Account, redirectURI, codeChallenge, codeChallengeMethod)
-	redirect := authorizationRedirect(redirectURI, code, state)
-	http.Redirect(w, r, redirect, http.StatusFound)
+	if selected == 0 {
+		http.Error(w, "Select at least one service or capability for the chosen access type", 400)
+		return
+	}
+	code := CreateAuthorizationCode(clientID, session.Account, redirectURI, r.PostFormValue("code_challenge"), r.PostFormValue("code_challenge_method"), permissions...)
+	http.Redirect(w, r, authorizationRedirect(redirectURI, code, r.PostFormValue("state")), http.StatusSeeOther)
 }
 
 // OAuthTokenHandler handles POST /oauth/token — exchanges code for access token.
