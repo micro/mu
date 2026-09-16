@@ -412,7 +412,13 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 			}
 		}
 	}
-	summary := "No access selected"
+	if len(selected) == 0 {
+		access = "all"
+	}
+	summary := "All current services · Read"
+	if requested["write"] {
+		summary += " and act"
+	}
 	if len(selected) > 0 {
 		summary = strings.Join(selected, ", ") + " · Read"
 		if requested["write"] {
@@ -438,16 +444,13 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 	}
 	oauthMu.Unlock()
 	var b strings.Builder
-	b.WriteString(`<!doctype html><html><head><title>Connect to Micro</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/mu.css?v=consent-2"><script defer src="/mu.js?v=consent-2"></script></head><body class="oauth-consent"><main><h1>Connect ` + e(name) + ` to Micro</h1><form id="oauth-consent" method="POST" action="/oauth/authorize" class="form-col"><p id="oauth-access-summary" aria-live="polite">` + e(summary) + `</p>`)
+	b.WriteString(`<!doctype html><html><head><title>Connect to Micro</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/mu.css?v=consent-3"><script defer src="/mu.js?v=consent-3"></script></head><body class="oauth-consent"><main><h1>Connect ` + e(name) + ` to Micro</h1><form id="oauth-consent" method="POST" action="/oauth/authorize" class="form-col"><p id="oauth-access-summary" aria-live="polite">` + e(summary) + `</p>`)
 	values := map[string]string{"client_id": clientID, "redirect_uri": redirectURI, "state": r.URL.Query().Get("state"), "code_challenge": r.URL.Query().Get("code_challenge"), "code_challenge_method": r.URL.Query().Get("code_challenge_method"), "_csrf": CSRFToken(r)}
 	for k, v := range values {
 		b.WriteString(`<input type="hidden" name="` + k + `" value="` + e(v) + `">`)
 	}
-	open := ""
-	if len(selected) == 0 {
-		open = " open"
-	}
-	b.WriteString(`<details` + open + `><summary>Change access</summary><div class="form-col"><label>Access<select name="access"><option value="services"` + chosen(access == "services") + `>Selected services</option><option value="api"` + chosen(access == "api") + `>Assistant API</option></select></label><fieldset data-oauth-access="services"><legend>Services</legend><label class="oauth-search" hidden>Find a service<input type="search" id="oauth-service-search" placeholder="Search services" autocomplete="off"></label><div class="oauth-service-list">`)
+	b.WriteString(`<label>Access<select name="access"><option value="all"` + chosen(access == "all") + `>All services</option><option value="services"` + chosen(access == "services") + `>Selected services</option><option value="api"` + chosen(access == "api") + `>Assistant API</option></select></label><details id="oauth-access-picker"><summary>Change selection</summary><div class="form-col"><fieldset data-oauth-access="services"><legend>Services</legend><label class="oauth-search" hidden>Find a service<input type="search" id="oauth-service-search" placeholder="Search services" autocomplete="off"></label><div class="oauth-service-list">`)
+
 	for _, sp := range specs {
 		b.WriteString(`<label class="choice"><input type="checkbox" name="service" value="` + e(sp.Name) + `"` + checked(requested[ScopePrefix+sp.Name]) + `>` + e(sp.Name) + `</label>`)
 	}
@@ -455,7 +458,7 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 	for _, cap := range []string{"agent", "inbox", "work"} {
 		b.WriteString(`<label class="choice"><input type="checkbox" name="capability" value="` + cap + `"` + checked(requested["api:"+cap]) + `>` + cap + `</label>`)
 	}
-	b.WriteString(`</div></fieldset><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow actions</label></div></details><p class="text-muted text-sm">Expires in 24 hours. Revoke anytime in <a href="/token">Client access</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
+	b.WriteString(`</div></fieldset></div></details><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow changes and actions</label><p class="text-muted text-sm">Expires in 24 hours. Revoke anytime in <a href="/token">Client access</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(b.String()))
 }
@@ -532,6 +535,11 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	selected := 0
 	switch r.PostFormValue("access") {
+	case "all":
+		for _, sp := range service.Specs() {
+			permissions = append(permissions, ScopePrefix+sp.Name)
+			selected++
+		}
 	case "services":
 		valid := map[string]bool{}
 		for _, sp := range service.Specs() {
