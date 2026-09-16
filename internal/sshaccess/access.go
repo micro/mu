@@ -151,5 +151,3 @@ func Port() string {
 	}
 	return strings.TrimSpace(settings.Get(strings.Join([]string{"SANDBOX", "SSH", "PORT"}, "_")))
 }
-
-// ClientHandler manages the caller's SSH keys for both terminal and SFTP clients.

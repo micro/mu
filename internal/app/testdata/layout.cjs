@@ -190,7 +190,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
      assert(Math.abs(boxes[0].height-boxes[1].height)<2,'inbox actions differ in size');
      assert(boxes[1].y>boxes[0].y||boxes[1].x-boxes[0].right>=8,'inbox actions run together');
     }
-    assert(boxes.every(b=>b.bg==='rgb(255, 255, 255)'),'inbox actions have filled backgrounds');
+    assert(boxes.every(b=>b.bg===boxes[0].bg&&b.bg!=='rgba(0, 0, 0, 0)'),'inbox actions lack consistent contrast');
     assert(await page.locator('.ib-from,.ib-msg .you').first().evaluate(e=>getComputedStyle(e).display==='flex'),'thread sender and time run together');
     await page.locator('.ib-assign-open').click();
     const dialog=page.locator('#ib-assign');assert(await dialog.isVisible(),'assign dialog failed to open');
@@ -258,7 +258,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
   }
  }
 
- if(!input.pages["/agent/micro"].includes('id="root"')) {
+ {
  // Reload an older selection even when the server initially renders a newer thread.
  await page.goto('https://mu.test/agent/micro');
  const selectedConfig=await page.locator('#conversation-config').textContent().then(JSON.parse);

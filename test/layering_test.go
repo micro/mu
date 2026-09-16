@@ -2,18 +2,9 @@ package test
 
 // The direction things are allowed to point.
 //
-// The top level is the product: home, agent, service, client, admin, account.
-//
-// client joined it with the package of that name: a service is a name with
-// registered handlers and a client is a way to reach one, which is the pair Go
-// Micro started with, and both halves belong at the same level. tool left it
-// the other way — it derives one list from another and models no noun anybody
-// meets, which is machinery.
-// Underneath it is internal/, which is everything that has no name a user would
-// recognise. The rule is one-way — the product may reach down into internal/,
-// and internal/ may never reach back up — with one exception, which is the
-// assembly: internal/server and internal/cli are the two programs, and a
-// program is allowed to import everything it is assembling.
+// Top-level packages model product capabilities. Shared runtime machinery lives
+// under internal/. Server, CLI and the protocol-address registry assemble the
+// product; other internal packages receive product dependencies through hooks.
 //
 // This is not tidiness. Every time the rule was broken the fix was a function
 // variable filled in at boot, and internal/server/hooks.go is where they all
@@ -46,7 +37,7 @@ import (
 // under that regex, and the test that exists to notice said nothing, because a
 // package one directory deeper is invisible to a pattern that stops at the
 // first level. Anything under a product directory is the product.
-var productImport = regexp.MustCompile(`"mu/(home|agent|admin|account|service|client)(/[a-z0-9/]+)?"`)
+var productImport = regexp.MustCompile(`"mu/(home|agent|admin|account|service)(/[a-z0-9/]+)?"`)
 
 // The programs. They assemble everything, so they import everything.
 var assembly = map[string]bool{

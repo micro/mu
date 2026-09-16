@@ -681,10 +681,7 @@ func registerRoutes() {
 
 	// The doors that are not MCP, for the connect card on /tools.
 	//
-	// Handed over rather than imported: mu/client is a product package and
-	// internal/api is underneath it — see api.DevClientsFunc, and the layering
-	// test that catches the shortcut. This function is the assembly, which is
-	// the one place allowed to know both halves.
+	// Keep API rendering independent of the services behind these addresses.
 	api.DevClientsFunc = func() []api.DevClient {
 		var out []api.DevClient
 		for _, c := range client.Developer() {

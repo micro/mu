@@ -68,7 +68,6 @@ func RenderIndex(l Index) string {
 <link rel="stylesheet" href="/mu.css?` + Version + `">
 <script src="/mu.js?` + Version + `"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--font-sans);background:var(--background);color:var(--foreground);min-height:100vh;display:flex;flex-direction:column}
 .index-page{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0 20px 40px;position:relative;width:100%}
 /* The same header the app has: name centred, the way in on the right.

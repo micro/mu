@@ -33,5 +33,3 @@ func clientAccount(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	}
 	app.RespondJSON(w, state)
 }
-
-// ClientStateHandler supplies the common browser shell with its own identity.

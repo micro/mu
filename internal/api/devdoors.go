@@ -1,12 +1,7 @@
 package api
 
-// The doors that are not MCP, handed down from the product.
-//
-// mu/client holds every way in and this package may not see it: internal/ is
-// underneath the product, and a package down here that imports up there has
-// inverted the layering — see test.TestInternalNeverImportsTheProduct. The
-// server assembles both halves and knows both, so it hands this one over, the
-// same way app.ToolCountFunc goes the other way.
+// The server supplies configured connection addresses. Keeping this dependency
+// injected avoids coupling API rendering to the mail and SMS service packages.
 //
 // Two rows, and they belong on this page rather than on /contact. `mu ask "…"`
 // and a curl invocation with a bearer token in it are answers to "how do I call
@@ -16,9 +11,7 @@ package api
 
 // A DevClient is one way a program reaches this instance's agent.
 //
-// A copy of the fields this page draws rather than the product's own type,
-// because taking the type would be taking the import. Three strings is a
-// smaller thing to keep in step than a package boundary is to give up.
+// Only the fields used by API documentation cross this boundary.
 type DevClient struct {
 	Address string // what you type or call
 	Note    string // the one thing the address does not say

@@ -32,15 +32,8 @@
 // number on an instance with no Twilio account sends somebody to text nothing
 // and reads as broken rather than unconfigured.
 //
-// The addresses are why this is a top-level package rather than something under
-// internal/. They come from service/sms (the numbers, per channel), service/mail
-// (the domain) and the settings (the host), and a service may not import
-// another service — so nothing under internal/ or service/ can assemble them.
-// A product package may.
-//
-// The receiving code — agent/sms, agent/mail, agent/chat, the web handler — is
-// still where it was. Moving it is the obvious next step and a bigger one; this
-// is the name and the list, which is what nothing had.
+// This internal package assembles configured protocol addresses for the UI.
+// Receiving handlers remain with their agents and services.
 package client
 
 import (

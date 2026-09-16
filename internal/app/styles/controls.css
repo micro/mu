@@ -27,3 +27,26 @@ details[open] > summary::before { content: "−"; }
 .thread-preview { cursor: pointer; }
 .thread-preview:hover { background: var(--accent); }
 @media (max-width: 640px) { :root { --control-h: 36px; } input, textarea, select { font-size: 16px !important; } }
+
+.metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr)); gap:16px }
+.metric { display:flex; flex-direction:column; gap:8px; min-width:0; padding:16px; border:1px solid var(--border-color); border-radius:calc(var(--radius) - 2px) }
+.metric-label { font-size:13px; color:var(--text-secondary) }
+.metric-value { font-size:18px; font-weight:500; overflow-wrap:anywhere }
+.detail-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; padding-block:12px; border-bottom:1px solid var(--border-color); overflow-wrap:anywhere }
+.detail-row > :last-child { justify-self:end; display:flex; align-items:baseline; gap:8px; text-align:right; min-width:0 }
+.action-note { flex-basis:100%; font-size:13px; color:var(--text-secondary); overflow-wrap:anywhere }
+
+.table-scroll { width:100%; min-width:0; overflow-x:auto; border:1px solid var(--border-color); border-radius:calc(var(--radius) - 2px) }
+.table-scroll > table { display:table; width:100%; min-width:760px; margin:0; overflow-wrap:normal }
+.table-scroll td { max-width:24rem }
+.table-scroll :is(code,.form) { overflow-wrap:anywhere }
+.table-scroll .form { min-width:12rem }
+.table-scroll :is(button,.btn) { white-space:nowrap }
+
+
+.search-bar { margin-block:0 24px; }
+:is(.page-stack,.page-section,.form) > .search-bar { margin:0; }
+.w-760 { width:100%; max-width:100%; }
+.rooms .room-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; }
+.ib-reply :is(a.btn,button) { background:var(--input); }
+.ib-reply :is(a.btn,button):hover { background:var(--accent); }
