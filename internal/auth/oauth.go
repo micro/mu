@@ -385,30 +385,77 @@ func OAuthRegisterHandler(w http.ResponseWriter, r *http.Request) {
 // oauthConsent renders explicit, session-bound approval using the shared stylesheet.
 func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI string) {
 	e := html.EscapeString
-	var b strings.Builder
-	b.WriteString(`<!doctype html><html><head><title>Connect to Micro</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/mu.css"></head><body><main><h1>Connect to Micro</h1>`)
+	requested := map[string]bool{}
+	for _, scope := range strings.Fields(r.URL.Query().Get("scope")) {
+		requested[scope] = true
+	}
+	specs := service.Specs()
+	sort.Slice(specs, func(i, j int) bool {
+		si, sj := requested[ScopePrefix+specs[i].Name], requested[ScopePrefix+specs[j].Name]
+		if si != sj {
+			return si
+		}
+		return specs[i].Name < specs[j].Name
+	})
+	access := "services"
+	selected := []string{}
+	for _, sp := range specs {
+		if requested[ScopePrefix+sp.Name] {
+			selected = append(selected, sp.Name)
+		}
+	}
+	if len(selected) == 0 {
+		for _, cap := range []string{"agent", "inbox", "work"} {
+			if requested["api:"+cap] {
+				access = "api"
+				selected = append(selected, cap)
+			}
+		}
+	}
+	summary := "No access selected"
+	if len(selected) > 0 {
+		summary = strings.Join(selected, ", ") + " · Read"
+		if requested["write"] {
+			summary += " and act"
+		}
+	}
+	checked := func(v bool) string {
+		if v {
+			return " checked"
+		}
+		return ""
+	}
+	chosen := func(v bool) string {
+		if v {
+			return " selected"
+		}
+		return ""
+	}
 	oauthMu.Lock()
 	name := clientID
 	if client := oauthClients[clientID]; client != nil {
 		name = client.Name
 	}
 	oauthMu.Unlock()
-	b.WriteString(`<p>Choose what <strong>` + e(name) + `</strong> may access. Access expires after 24 hours and can be revoked in <a href="/token">Client access</a>.</p><form method="POST" action="/oauth/authorize" class="form-col">`)
+	var b strings.Builder
+	b.WriteString(`<!doctype html><html><head><title>Connect to Micro</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/mu.css?v=consent-2"><script defer src="/mu.js?v=consent-2"></script></head><body class="oauth-consent"><main><h1>Connect ` + e(name) + ` to Micro</h1><form id="oauth-consent" method="POST" action="/oauth/authorize" class="form-col"><p id="oauth-access-summary" aria-live="polite">` + e(summary) + `</p>`)
 	values := map[string]string{"client_id": clientID, "redirect_uri": redirectURI, "state": r.URL.Query().Get("state"), "code_challenge": r.URL.Query().Get("code_challenge"), "code_challenge_method": r.URL.Query().Get("code_challenge_method"), "_csrf": CSRFToken(r)}
 	for k, v := range values {
 		b.WriteString(`<input type="hidden" name="` + k + `" value="` + e(v) + `">`)
 	}
-	b.WriteString(`<label>Access type<select name="access"><option value="services">Selected services</option><option value="api">Assistant API</option></select></label><fieldset><legend>Services</legend><p>Select only the services this client needs. These selections apply to Selected services access.</p><div class="choices">`)
-	specs := service.Specs()
-	sort.Slice(specs, func(i, j int) bool { return specs[i].Name < specs[j].Name })
+	open := ""
+	if len(selected) == 0 {
+		open = " open"
+	}
+	b.WriteString(`<details` + open + `><summary>Change access</summary><div class="form-col"><label>Access<select name="access"><option value="services"` + chosen(access == "services") + `>Selected services</option><option value="api"` + chosen(access == "api") + `>Assistant API</option></select></label><fieldset data-oauth-access="services"><legend>Services</legend><label class="oauth-search" hidden>Find a service<input type="search" id="oauth-service-search" placeholder="Search services" autocomplete="off"></label><div class="oauth-service-list">`)
 	for _, sp := range specs {
-		b.WriteString(`<label class="choice"><input type="checkbox" name="service" value="` + e(sp.Name) + `">` + e(sp.Name) + `</label>`)
+		b.WriteString(`<label class="choice"><input type="checkbox" name="service" value="` + e(sp.Name) + `"` + checked(requested[ScopePrefix+sp.Name]) + `>` + e(sp.Name) + `</label>`)
 	}
-	b.WriteString(`</div></fieldset><fieldset><legend>Assistant API</legend><p>These selections apply to Assistant API access. Agents can use their configured tools across your account.</p><div class="choices">`)
+	b.WriteString(`</div><p id="oauth-no-results" hidden>No matching services.</p></fieldset><fieldset data-oauth-access="api"><legend>Assistant API</legend><p class="text-muted">Agents can use their configured tools across your account.</p><div class="choices">`)
 	for _, cap := range []string{"agent", "inbox", "work"} {
-		b.WriteString(`<label class="choice"><input type="checkbox" name="capability" value="` + cap + `">` + cap + `</label>`)
+		b.WriteString(`<label class="choice"><input type="checkbox" name="capability" value="` + cap + `"` + checked(requested["api:"+cap]) + `>` + cap + `</label>`)
 	}
-	b.WriteString(`</div></fieldset><label class="choice"><input type="checkbox" name="write" value="yes">Allow actions, including building apps and asking agents</label><p>Reading is allowed for the selected services or capabilities. Service access does not grant agent access.</p><div class="form-actions"><button type="submit">Allow access</button><a href="/">Cancel</a></div></form></main></body></html>`)
+	b.WriteString(`</div></fieldset><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow actions</label></div></details><p class="text-muted text-sm">Expires in 24 hours. Revoke anytime in <a href="/token">Client access</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(b.String()))
 }

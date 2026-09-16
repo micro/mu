@@ -439,3 +439,12 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 
 .map-tile{position:absolute;width:256px;height:256px;max-width:none;user-select:none;pointer-events:none}
 .map-gap{visibility:hidden}
+
+.oauth-consent{min-height:100svh;display:grid;place-items:center}
+.oauth-consent main{width:min(100% - 32px,420px);margin:32px auto;min-width:0}
+.oauth-consent h1{font-size:18px;overflow-wrap:anywhere}
+.oauth-consent details>.form-col{margin-top:12px}
+.oauth-consent fieldset{min-width:0;margin:0;padding:0;border:0}
+.oauth-service-list{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;margin-top:8px}
+.oauth-consent [hidden]{display:none!important}
+#oauth-access-summary{overflow-wrap:anywhere}
