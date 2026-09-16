@@ -45,7 +45,7 @@ func (g settingGroup) on() (bool, []string) {
 
 var settingGroups = []settingGroup{
 	{Name: "AI",
-		Does:  "The model behind the agent, chat and summaries. Nothing that thinks works without one of these keys.",
+		Does:  "The selected model handles requests. Only requests and personal daily briefs use models. Automatic content generation is disabled. Requests never retry on another provider.",
 		Needs: []string{"ANTHROPIC_API_KEY"},
 		Vars: []string{
 			"ANTHROPIC_API_KEY",
@@ -598,8 +598,6 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`<button type="submit" class="btn mb-4">Save</button>`)
 	b.WriteString(`</form>`)
-
-	b.WriteString(back())
 
 	app.Respond(w, r, app.Response{Title: "Config", Description: "What this instance is configured with", HTML: b.String()})
 }

@@ -78,7 +78,7 @@ func PreferredProvider() (provider, key, baseURL string, ok bool) {
 	}
 	unreachablePreference.Do(func() {
 		app.Log("ai", "AI_PROVIDER is %q and there is no key or endpoint for it, "+
-			"so it is being ignored", want)
+			"so model requests will stop", want)
 	})
 	return "", "", "", false
 }

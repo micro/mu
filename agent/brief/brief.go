@@ -136,7 +136,9 @@ func Load() {
 	data.LoadJSON("brief.json", &entries) //nolint:errcheck
 	mu.Unlock()
 
-	go scheduler()
+	if ai.BackgroundEnabled() {
+		go scheduler()
+	}
 }
 
 // Line is what to show, or nothing.

@@ -52,30 +52,12 @@ func TestAnAgentCanNameItsOwnModel(t *testing.T) {
 // provider has no key is a misconfiguration, not an instruction, and an agent
 // that still answers beats one that fails closed over a typo. What makes it
 // findable is the log line, not a broken agent.
-func TestAModelWithNoKeyFallsBackRatherThanFailing(t *testing.T) {
-	// Every variable the lookup reads, not the one it used to.
-	//
-	// This cleared ATLAS_API_KEY alone and passed for as long as that was the
-	// only name Atlas answered to. getAtlasAPIKey reads three now —
-	// ATLASCLOUD_API_KEY first — so on a machine with the real key exported the
-	// test found one, routed to Atlas, and failed on an assertion about
-	// something else entirely.
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
-	for _, k := range []string{"ATLASCLOUD_API_KEY", "ATLAS_API_KEY", "OPENAI_API_KEY",
-		"GEMINI_API_KEY", "OPENROUTER_API_KEY", "AGENT_MODEL", "AI_PROVIDER"} {
-		t.Setenv(k, "")
-	}
-
-	provider, _, model, _, ok := nativeLLMFor("deepseek-ai/deepseek-v4-flash", false)
-	if !ok {
-		t.Fatal("an unservable model left the agent with no model at all")
-	}
-	if provider == "atlascloud" {
-		t.Error("routed to a provider whose key is not set")
-	}
-	if model == "deepseek-ai/deepseek-v4-flash" {
-		t.Error("kept a model no configured provider can serve, which is a 400 " +
-			"on every question rather than a wrong answer")
+func TestAModelWithNoKeyStopsWithoutFallback(t *testing.T) {
+	noProviders(t)
+	t.Setenv("ANTHROPIC_API_KEY", "test")
+	provider, _, _, _, ok := nativeLLMFor("deepseek-ai/deepseek-v4-flash", false)
+	if ok || provider != "" {
+		t.Fatal("unavailable selection fell back to a paid provider")
 	}
 }
 

@@ -136,7 +136,7 @@ func classify(title, text string) (string, error) {
 // see the naming rules. It exists so /admin/moderate can say "no model
 // configured, nothing is being classified" instead of showing an empty list
 // that reads as a clean bill of health.
-func Configured() bool { return ai.Configured() }
+func Configured() bool { return ai.BackgroundEnabled() && ai.Configured() }
 
 // prompt is what the model is asked. Moved here from internal/flag with the
 // rest of the judgement: a store does not hold an opinion about prose.

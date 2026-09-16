@@ -29,7 +29,7 @@ func Topics() []string {
 	stale := time.Since(topicCache.updated) > topicCacheTTL
 	topicCache.RUnlock()
 
-	if stale {
+	if stale && ai.BackgroundEnabled() {
 		go regenerateTopics()
 	}
 
@@ -46,7 +46,9 @@ func StartTopics() {
 		topicCache.Unlock()
 		app.Log("search", "Loaded %d cached topics from disk", len(cached))
 	}
-	go regenerateTopics()
+	if ai.BackgroundEnabled() {
+		go regenerateTopics()
+	}
 }
 
 var topicGenerating sync.Mutex

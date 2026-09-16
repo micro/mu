@@ -3,6 +3,8 @@ package moderate
 import "testing"
 
 func TestProfanityIsRejectedWithoutAModel(t *testing.T) {
+	t.Setenv("AI_BACKGROUND_ENABLED", "")
+	t.Setenv("ANTHROPIC_API_KEY", "unused-test-key")
 	v, err := classify("", "Bring it on you little fuckers")
 	if err != nil || v != "HARMFUL" {
 		t.Fatalf("verdict=%q err=%v", v, err)

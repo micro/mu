@@ -1006,11 +1006,6 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 		return err
 	}
 
-	// Auto-tag if no tags provided
-	if tags == "" {
-		go autoTagPost(post.ID, title, content)
-	}
-
 	// A private post is announced to its author alone, so the timeline shows
 	// them their own writing without publishing it.
 	owner := ""
@@ -1020,22 +1015,6 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 	event.Announce("blog", "New post: "+post.Title, "/blog/post?id="+post.ID, owner)
 
 	return nil
-}
-
-// autoTagPost requests AI categorization via pubsub
-func autoTagPost(postID, title, content string) {
-	app.Log("blog", "Requesting tag generation for post: %s", postID)
-
-	// Publish tag generation request
-	event.Publish(event.Event{
-		Type: event.GenerateTag,
-		Data: map[string]interface{}{
-			"post_id": postID,
-			"title":   title,
-			"content": content,
-			"type":    "post",
-		},
-	})
 }
 
 // CreateComment adds a comment to a post and returns the new comment.

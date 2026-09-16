@@ -354,8 +354,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 	b.WriteString(`<div class="ib page-stack">`)
 	// Where you came from, and what you can do to this — one bar rather than
 	// three loose things stacked above the conversation. See app.Actions.
-	b.WriteString(app.Actions(app.TextLink("Inbox", inboxURL(r, "")),
-		unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)))
+	toolbar := []string{unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)}
 
 	all := inboxThreads(accountID, r.URL.Path)
 	for i, item := range all {
@@ -370,10 +369,12 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 			links = append(links, app.TextLink("Next", inboxURL(r, all[i+1].ID)))
 		}
 		if len(links) > 0 {
-			b.WriteString(app.Actions(links[0], links[1:]...))
+			toolbar = append(links, toolbar...)
 		}
 		break
 	}
+
+	b.WriteString(app.Actions(app.TextLink("Inbox", inboxURL(r, "")), toolbar...))
 
 	// One column, and the agent's answers in it.
 	//

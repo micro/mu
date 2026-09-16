@@ -82,19 +82,11 @@ func TestANamedModelNeverReachesAProviderThatCannotServeIt(t *testing.T) {
 	settings.Set("ATLAS_API_KEY", "")
 	t.Cleanup(func() { settings.Set("ATLAS_API_KEY", "") })
 
-	provider, _, model, _, ok := nativeLLM()
-	if !ok {
-		t.Fatal("no provider chosen at all")
+	provider, _, _, _, ok := nativeLLM()
+	if ok || provider != "" {
+		t.Fatalf("unavailable selection used %s", provider)
 	}
-	if model == "deepseek-ai/deepseek-v4-pro-0813" && provider != "atlascloud" {
-		t.Errorf("a DeepSeek id was sent to %q, which cannot serve it", provider)
-	}
-	// It falls back to the default choice rather than failing closed: an agent
-	// that answers beats one taken down by a typo.
-	if provider != "anthropic" {
-		t.Errorf("provider = %q, want the default choice (anthropic) once the "+
-			"named model was ignored", provider)
-	}
+
 }
 
 // An OpenAI-compatible endpoint: Ollama, vLLM, llama.cpp.

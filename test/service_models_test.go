@@ -95,7 +95,7 @@ var models = map[string]struct {
 
 	// Generates an image. The clearest case on the list: an image service that
 	// cannot make an image is not a service.
-	"service/images": {producesAnswer, 2},
+	"service/images": {producesAnswer, 1},
 
 	// Summarise, translate, rewrite. Every method is "here is some text, do
 	// this to it" — the caller supplies the input and names the operation.
@@ -114,13 +114,6 @@ var models = map[string]struct {
 	// is an agent's. agent/blog already exists and already writes opinion
 	// pieces this way.
 	"service/blog": {decidesAnswer, 1},
-
-	// DEBT, and the one that matters most. Composes replies in a room and
-	// opens conversations — "ask a thought-provoking question" is the service
-	// deciding there should be a message and what it says. Named in #1469 and
-	// tracked in #89, where moving it out also unblocks serving XMPP: an agent
-	// that joins a room as a participant is the same change.
-	"service/chat": {decidesAnswer, 1},
 }
 
 // Every reach is on the ledger, at the count it actually has.
@@ -164,7 +157,7 @@ func TestEveryServiceModelCallIsOnTheLedger(t *testing.T) {
 // edits and a number is the thing somebody notices. Both go down together or
 // neither does.
 func TestNoNewServiceDecidesItsOwnAnswerWithAModel(t *testing.T) {
-	const known = 2 // service/blog, service/chat — see #1469 and #89
+	const known = 1 // service/blog, disabled automatically
 
 	var debt []string
 	for pkg, e := range models {

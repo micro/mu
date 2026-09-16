@@ -55,21 +55,15 @@ func TestSetupsOwnVocabularyWorks(t *testing.T) {
 }
 
 // A preference for a provider with no key is a typo, not an instruction.
-func TestAPreferenceWithNoKeyIsIgnored(t *testing.T) {
-	clearProviders(t)
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
-	t.Setenv("AI_PROVIDER", "atlascloud") // no Atlas key
-
-	if _, _, _, ok := PreferredProvider(); ok {
-		t.Error("a provider with no key was returned as usable")
-	}
-	// And the instance still answers, on the provider it can reach.
-	if got, _, _, err := resolveProvider(DefaultModel()); err != nil || got != ProviderAnthropic {
-		t.Errorf("resolveProvider = %q (err %v), want anthropic", got, err)
+func TestUnavailablePreferenceDoesNotUseAnthropic(t *testing.T) {
+	t.Setenv("AI_PROVIDER", "gemini")
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("ANTHROPIC_API_KEY", "test")
+	if p, _, _, err := resolveProvider(""); err == nil || p != "" {
+		t.Fatalf("provider=%s err=%v", p, err)
 	}
 }
 
-// A named model still names its provider: the more specific statement wins.
 func TestANamedModelBeatsThePreference(t *testing.T) {
 	clearProviders(t)
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test")

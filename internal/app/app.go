@@ -404,11 +404,14 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 	if r.URL.RawQuery != "" {
 		here += "?" + r.URL.RawQuery
 	}
-	if acc == nil {
-		switch r.URL.Path {
-		case "/about", "/contact", "/pricing", "/privacy", "/status":
-			return RenderIndex(Index{Title: htmlpkg.EscapeString(title) + " | Micro", Description: htmlpkg.EscapeString(desc), Brand: `<a href="/">Micro</a>`, TopRight: `<a href="/login">Sign in</a>`, Body: `<h1>` + htmlpkg.EscapeString(title) + `</h1>` + html, Footer: FooterLinks()})
-		}
+	switch r.URL.Path {
+	case "/about", "/contact", "/pricing", "/privacy", "/status", "/verify", "/invite", "/request-invite":
+		return ConsoleHTML(title, `<h1>`+htmlpkg.EscapeString(title)+`</h1>`+html, acc)
+	}
+
+	if acc != nil && acc.Admin && (r.URL.Path == "/admin" || strings.HasPrefix(r.URL.Path, "/admin/")) {
+		bodyClass += " admin-page"
+		html = adminNavigation(r.URL.Path) + html
 	}
 	return renderShell(lang, title, desc, bodyClass, html, acc, navPath(r.URL.Path), here)
 }
@@ -458,6 +461,7 @@ func navMain(acc *auth.Account) string {
 		{"nav-home", "/home", "Home", "/home.png"},
 		{"nav-inbox", "/inbox", "Inbox", "/mail.png"},
 		{"nav-work", "/work", "Work", "/tasks.svg"},
+		{"nav-services", "/services", "Services", "/services.svg"},
 	} {
 		b.WriteString(navigationLink(item.id, item.href, item.label, item.icon))
 	}

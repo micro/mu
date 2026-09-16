@@ -20,16 +20,16 @@ func TestRootOffersAssistantAndSignedInOverview(t *testing.T) {
 	defer auth.EndSession(sess.Token)
 	guest := httptest.NewRecorder()
 	Index(guest, httptest.NewRequest("GET", "/", nil))
-	if guest.Code != 200 || !strings.Contains(guest.Body.String(), "A personal assistant") || strings.Count(guest.Body.String(), `id="mu-chat-input"`) != 1 {
+	if guest.Code != 200 || !strings.Contains(guest.Body.String(), "Type a command or ask a question.") || strings.Count(guest.Body.String(), `id="command-input"`) != 1 {
 		t.Fatal("guest landing lost its assistant")
 	}
-	for _, tc := range []struct{ path, want string }{{"/", "/home"}, {"/?new=1", "/agent/micro?new=1"}, {"/?session=previous", "/agent/micro?session=previous"}} {
-		req := httptest.NewRequest("GET", tc.path, nil)
+	for _, path := range []string{"/", "/?new=1"} {
+		req := httptest.NewRequest("GET", path, nil)
 		req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		w := httptest.NewRecorder()
 		Index(w, req)
-		if w.Code != http.StatusSeeOther || w.Header().Get("Location") != tc.want {
-			t.Fatalf("%s: %d %s", tc.path, w.Code, w.Header().Get("Location"))
+		if w.Code != 200 || strings.Count(w.Body.String(), `id="command-input"`) != 1 || strings.Contains(w.Body.String(), `id="nav-container"`) {
+			t.Fatalf("one command surface required: %s %d", path, w.Code)
 		}
 	}
 }

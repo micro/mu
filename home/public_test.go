@@ -19,7 +19,7 @@ func TestPublicPagesUseLandingShell(t *testing.T) {
 			w := httptest.NewRecorder()
 			tc.handler(w, httptest.NewRequest("GET", tc.path, nil))
 			body := w.Body.String()
-			if w.Code != 200 || !strings.Contains(body, `class="index-page"`) {
+			if w.Code != 200 || !strings.Contains(body, `<main>`) {
 				t.Fatal("missing public page")
 			}
 			for _, marker := range []string{`id="nav"`, `id="footer"`} {
@@ -27,7 +27,7 @@ func TestPublicPagesUseLandingShell(t *testing.T) {
 					t.Errorf("app shell leaked into public page: %s", marker)
 				}
 			}
-			hasFooter := strings.Contains(body, `class="footer"`)
+			hasFooter := strings.Contains(body, `aria-label="Site information"`)
 			if !hasFooter {
 				t.Error("wrong footer visibility")
 			}

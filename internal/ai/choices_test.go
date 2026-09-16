@@ -95,8 +95,8 @@ func TestLabels(t *testing.T) {
 	// "Instance default" when it cannot. Atlas alone is the second case:
 	// DefaultModel ends at a Claude id regardless of keys and modelFor swaps
 	// it at the call, so naming it here would name a model that never runs.
-	if got := LabelFor(""); got != "Instance default" {
-		t.Errorf("with an unreachable default the empty model reads as %q", got)
+	if got := LabelFor(""); got != "Default — "+LabelFor(DefaultModel()) {
+		t.Errorf("the configured default reads as %q", got)
 	}
 	if got := LabelFor(ModelDeepSeekFlash); got == ModelDeepSeekFlash {
 		t.Errorf("a known model shows its id rather than a name: %q", got)

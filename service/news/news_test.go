@@ -1483,67 +1483,6 @@ func TestGetDomain(t *testing.T) {
 	}
 }
 
-func TestShouldRequestSummary(t *testing.T) {
-	now := time.Now()
-
-	tests := []struct {
-		name               string
-		summaryRequestedAt int64
-		summaryAttempts    int
-		expected           bool
-		description        string
-	}{
-		{
-			name:               "Never requested",
-			summaryRequestedAt: 0,
-			summaryAttempts:    0,
-			expected:           true,
-			description:        "Should request on first attempt",
-		},
-		{
-			name:               "First retry after 5 minutes",
-			summaryRequestedAt: now.Add(-6 * time.Minute).UnixNano(),
-			summaryAttempts:    1,
-			expected:           true,
-			description:        "Should retry after 5 min backoff",
-		},
-		{
-			name:               "First retry too soon",
-			summaryRequestedAt: now.Add(-4 * time.Minute).UnixNano(),
-			summaryAttempts:    1,
-			expected:           false,
-			description:        "Should not retry before 5 min backoff",
-		},
-		{
-			name:               "Max attempts reached",
-			summaryRequestedAt: now.Add(-25 * time.Hour).UnixNano(),
-			summaryAttempts:    5,
-			expected:           false,
-			description:        "Should stop after 5 attempts",
-		},
-		{
-			name:               "Second retry after 30 minutes",
-			summaryRequestedAt: now.Add(-31 * time.Minute).UnixNano(),
-			summaryAttempts:    2,
-			expected:           true,
-			description:        "Should retry after 30 min backoff",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			md := &Metadata{
-				SummaryRequestedAt: tt.summaryRequestedAt,
-				SummaryAttempts:    tt.summaryAttempts,
-			}
-			result := shouldRequestSummary(md)
-			if result != tt.expected {
-				t.Errorf("%s: expected %v, got %v", tt.description, tt.expected, result)
-			}
-		})
-	}
-}
-
 func TestFormatSummary(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -150,19 +150,22 @@ const (
 // default only when it is the cloud provider in play — its slugs are
 // provider/model, and a bare Claude id would 400.
 func DefaultModel() string {
+	if p, _, _, ok := PreferredProvider(); ok && p != ProviderAnthropic {
+		return PreferredModel(p, false)
+	}
 	if m := settings.Get("ANTHROPIC_MODEL"); m != "" {
 		return m
 	}
-	// A preferred provider answers with its own model rather than being handed
-	// a Claude id and having modelFor swap it. Same result, one less place
-	// where the model on screen is not the model that ran.
-	if p, _, _, ok := PreferredProvider(); ok && p != ProviderAnthropic {
-		if m := PreferredModel(p, false); m != "" {
-			return m
-		}
-	}
 	if getOpenRouterAPIKey() != "" && settings.Get("ANTHROPIC_API_KEY") == "" {
 		return OpenRouterModel()
+	}
+	if settings.Get("ANTHROPIC_API_KEY") == "" {
+		if getAtlasAPIKey() != "" {
+			return AtlasModel()
+		}
+		if getGeminiAPIKey() != "" {
+			return GeminiModel()
+		}
 	}
 	// Current generation. This said claude-sonnet-4-6 — a generation behind,
 	// pinned in a constant nobody revisits, on an instance whose operator

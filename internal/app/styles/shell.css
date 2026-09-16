@@ -96,7 +96,7 @@ body:has(.chat-layout) #mu-chat-form { flex:none }
 .ib-item { display:grid; grid-template-columns:minmax(0,1fr) auto 88px; align-items:start; gap:8px; border-bottom:1px solid var(--card-border) }
 .ib-item > :is(.ib-del,.ib-when) { margin-top:8px }
 .ib-item:has(.unseen) { background:var(--muted) }
-.ib-row { display:flex; flex:1; min-width:0; flex-direction:column; gap:2px; padding:8px 0; text-decoration:none; color:inherit }
+.ib-row { display:flex; flex:1; min-width:0; flex-direction:column; gap:4px; padding:12px 16px; text-decoration:none; color:inherit }
 .ib-row:hover,.ib-row:focus-visible { text-decoration:none; background:var(--hover-background) }
 .ib-snip { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .ib-subject { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }

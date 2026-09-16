@@ -39,7 +39,7 @@ func ServerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := back() + serverSnapshot()
+	content := serverSnapshot()
 
 	app.Respond(w, r, app.Response{Title: "Server", Description: "What this process is doing and what it is sitting on", HTML: content})
 }

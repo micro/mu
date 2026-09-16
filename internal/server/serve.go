@@ -438,6 +438,9 @@ func serve(addr string) {
 				}
 			}
 
+			if consoleRedirect(w, r) {
+				return
+			}
 			http.DefaultServeMux.ServeHTTP(w, r)
 		}),
 	}

@@ -75,10 +75,10 @@ func TestEveryAccountMenuEntryHasAnIcon(t *testing.T) {
 
 func TestPrimaryNavigationCentersPersonalAssistant(t *testing.T) {
 	for _, nav := range []string{navMain(&auth.Account{ID: "someone"})} {
-		if strings.Count(nav, "<a ") != 3 {
-			t.Fatalf("expected three primary destinations: %s", nav)
+		if strings.Count(nav, "<a ") != 4 {
+			t.Fatalf("expected four primary destinations: %s", nav)
 		}
-		for _, path := range []string{"/home", "/inbox", "/work"} {
+		for _, path := range []string{"/home", "/inbox", "/work", "/services"} {
 			if !strings.Contains(nav, `href="`+path+`"`) {
 				t.Errorf("missing destination %s", path)
 			}

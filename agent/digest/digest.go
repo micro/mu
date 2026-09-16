@@ -88,7 +88,9 @@ func Load() {
 		lastStatus = "ok"
 	}
 
-	go scheduler()
+	if ai.BackgroundEnabled() {
+		go scheduler()
+	}
 }
 
 // Status returns the current digest state for the status page.

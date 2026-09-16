@@ -55,7 +55,7 @@ func summarise(dropped []QueryMessage) string {
 	if len(dropped) == 0 {
 		return ""
 	}
-	if !ai.Configured() {
+	if !ai.BackgroundEnabled() || !ai.Configured() {
 		return ""
 	}
 

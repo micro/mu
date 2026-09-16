@@ -26,6 +26,9 @@ var (
 
 // StartSentimentLoop runs sentiment tagging every 15 minutes.
 func StartSentimentLoop() {
+	if !ai.BackgroundEnabled() {
+		return
+	}
 	go func() {
 		time.Sleep(30 * time.Second) // let feeds load first
 		tagSentiments()

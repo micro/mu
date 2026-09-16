@@ -744,90 +744,7 @@ func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
 	// Cache the metadata
 	saveCachedMetadata(uri, g)
 
-	// Request LLM summary generation via event (non-blocking) only if we don't have one
-	if g.Summary == "" {
-		go requestArticleSummary(uri, g)
-	}
-
 	return g, true, nil // true = freshly fetched
-}
-
-// shouldRequestSummary determines if we should retry requesting a summary
-// Uses exponential backoff: 5min, 30min, 2hr, 6hr, 24hr, then stop
-func shouldRequestSummary(md *Metadata) bool {
-	// Never requested before
-	if md.SummaryRequestedAt == 0 {
-		return true
-	}
-
-	// Stop retrying after 5 attempts
-	if md.SummaryAttempts >= 5 {
-		return false
-	}
-
-	// Calculate backoff duration based on attempts
-	var backoffDuration time.Duration
-	switch md.SummaryAttempts {
-	case 0:
-		backoffDuration = 0 // First attempt, no delay
-	case 1:
-		backoffDuration = 5 * time.Minute
-	case 2:
-		backoffDuration = 30 * time.Minute
-	case 3:
-		backoffDuration = 2 * time.Hour
-	case 4:
-		backoffDuration = 6 * time.Hour
-	default:
-		backoffDuration = 24 * time.Hour
-	}
-
-	timeSinceLastRequest := time.Since(time.Unix(0, md.SummaryRequestedAt))
-	return timeSinceLastRequest >= backoffDuration
-}
-
-// requestArticleSummary publishes a request for LLM summary generation.
-func requestArticleSummary(uri string, md *Metadata) {
-	// Skip if we already have a summary
-	if md.Summary != "" {
-		return
-	}
-
-	// Prepare content for summarization
-	contentToSummarize := md.Title
-	if md.Description != "" {
-		contentToSummarize += "\n\n" + md.Description
-	}
-	if md.Content != "" {
-		// Limit content length to avoid overwhelming the LLM
-		content := htmlToText(md.Content)
-		if len(content) > 2000 {
-			content = content[:2000]
-		}
-		contentToSummarize += "\n\n" + content
-	}
-
-	// Skip if there's not enough content
-	if len(contentToSummarize) < 100 {
-		return
-	}
-
-	// Update request tracking
-	md.SummaryRequestedAt = time.Now().UnixNano()
-	md.SummaryAttempts++
-	saveCachedMetadata(uri, md)
-
-	app.Log("news", "Requesting summary generation for %s (attempt %d)", uri, md.SummaryAttempts)
-
-	// Publish summary generation request
-	event.Publish(event.Event{
-		Type: event.GenerateSummary,
-		Data: map[string]interface{}{
-			"uri":     uri,
-			"content": contentToSummarize,
-			"type":    "news",
-		},
-	})
 }
 
 // FetchHNComments fetches top-level comments from a HackerNews story
@@ -1595,18 +1512,6 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 			}
 		} else {
 			app.Log("news", "Error fetching metadata: %v", err)
-		}
-	}
-
-	// On-demand summary generation: if the article has no summary yet,
-	// request one now that someone is actually reading it. Uses Haiku
-	// for cost efficiency. Previously this ran proactively for every
-	// article in the feed.
-	if summary == "" && articleURL != "" {
-		if cached, exists := loadCachedMetadata(articleURL); exists && cached.Summary == "" {
-			if shouldRequestSummary(cached) {
-				go requestArticleSummary(articleURL, cached)
-			}
 		}
 	}
 

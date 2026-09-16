@@ -3,8 +3,6 @@ package events
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/data"
 	"time"
 	_ "time/tzdata"
@@ -94,25 +92,8 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	return nil
 }
 
-// Reconcile defaults for existing and newly created human accounts. Unknown
-// timezones wait rather than sending at the server's six o'clock. An existing
-// record is preserved except the exact superseded 20:00 preset. Opt-outs survive.
-func ensureDefaultBriefs() {
-	for _, acc := range auth.AllAccounts() {
-		if acc.Agent || acc.Banned || acc.Unclaimed || acc.Zone == "" || acc.Zone == "Local" {
-			continue
-		}
-		if _, err := time.LoadLocation(acc.Zone); err != nil {
-			continue
-		}
-		if old := Brief(acc.ID); old != nil && !legacyBrief(old) {
-			continue
-		}
-		if err := scheduleBrief(acc.ID, "06:00", acc.Zone, "daily", "morning", false, true); err != nil {
-			app.Log("events", "default brief: %v", err)
-		}
-	}
-}
+// Existing daily briefs remain intact. New accounts are not enrolled implicitly.
+func ensureDefaultBriefs() {}
 
 // The first shipped brief default was a tomorrow brief at 20:00. Migrate that
 // exact legacy preset once; renamed schedules and other times stay untouched.
@@ -156,6 +137,7 @@ func ConfigureBrief(owner string, enabled, news bool, zone string) error {
 		now := time.Now().In(loc)
 		e = Event{ID: uuid.NewString(), Owner: owner, Kind: "brief", Builtin: true, Title: "Morning brief", Zone: zone, Repeat: "daily", Prompt: "Give me a brief for today", Created: time.Now().UTC(), When: time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, loc)}
 	}
+	e.Builtin = false // An explicit preference, not automatic enrollment.
 	e.Paused = !enabled
 	e.WorldNews = &news
 	e.Sequence++

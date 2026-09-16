@@ -45,7 +45,6 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var content strings.Builder
-	content.WriteString(back())
 	content.WriteString(alertsCard())
 	content.WriteString(logTabs(tab))
 	switch {

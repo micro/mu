@@ -194,8 +194,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	// No <h2>Users</h2>. The page shell already draws the title as an h1, and
 	// this page said "Admin" up there and "Users" directly under it — the same
 	// heading twice, one of them wrong. Every admin page did it.
-	sb.WriteString(back() +
-		`<p><a href="/admin/invite">Invites` + pendingInvites() + ` &rarr;</a></p>`)
+	sb.WriteString(`<p><a href="/admin/invite">Invites` + pendingInvites() + ` &rarr;</a></p>`)
 	sb.WriteString(`<div class="app-filters">`)
 	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
 		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id, t.id == tab))
@@ -300,4 +299,3 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 // It was "← Admin" on four pages and "← Back to Admin" on five, at the top on
 // some and the bottom on others, and on one page both. The top: a way out
 // belongs where you can see it without reading to the end.
-func back() string { return `<p><a href="/admin">Admin</a></p>` }

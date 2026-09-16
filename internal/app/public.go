@@ -11,12 +11,7 @@ func RespondPublic(w http.ResponseWriter, r *http.Request, resp Response) {
 		Respond(w, r, resp)
 		return
 	}
-	page := RenderIndex(Index{
-		Title: html.EscapeString(resp.Title), Description: html.EscapeString(resp.Description),
-		TopRight: `<a href="/">Micro</a>`,
-		Body:     `<article class="public-page"><h1>` + html.EscapeString(resp.Title) + `</h1>` + resp.HTML + `</article>`,
-		Footer:   FooterLinks(),
-	})
+	page := ConsoleHTML(resp.Title, `<h1>`+html.EscapeString(resp.Title)+`</h1>`+resp.HTML, nil)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, private")
 	w.Write([]byte(page)) //nolint:errcheck

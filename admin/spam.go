@@ -57,7 +57,7 @@ func SpamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := back() + spamSettings() + blocklistSection()
+	content := spamSettings() + blocklistSection()
 
 	app.Respond(w, r, app.Response{Title: "Spam", Description: "What is filtered, and who is refused outright", HTML: content})
 }

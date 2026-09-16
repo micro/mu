@@ -67,23 +67,7 @@ func SignupRateLimit(ip string) bool {
 	return true
 }
 
-var LoginTemplate = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Login | Micro</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
-    <meta name="referrer" content="no-referrer"/>
-    <link rel="stylesheet" href="/mu.css?` + app.Version + `">
-  </head>
-  <body class="auth-page">
-    <div id="head">
-      <div id="brand">
-        <a href="/">Micro</a>
-      </div>
-    </div>
-    <div id="container">
-      <div id="content">
+var LoginTemplate = `
 	<p id="auth-status" role="status"></p><form id="login" action="/login%s" method="POST" class="form page-stack">
 	  <h1 class="text-center">Log in</h1>
 	  %s
@@ -169,30 +153,9 @@ var LoginTemplate = `<!DOCTYPE html>
 	  }
 	}
 	</script>
-      </div>
-    </div>
-    <footer id="footer" aria-label="Site information">%s</footer>
-  </body>
-</html>
 `
 
-var SignupTemplate = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Signup | Micro</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
-    <meta name="referrer" content="no-referrer"/>
-    <link rel="stylesheet" href="/mu.css?` + app.Version + `">
-  </head>
-  <body class="auth-page">
-    <div id="head">
-      <div id="brand">
-        <a href="/">Micro</a>
-      </div>
-    </div>
-    <div id="container">
-      <div id="content">
+var SignupTemplate = `
 	<form id="signup" action="/signup%s" method="POST" class="form page-stack">
 	  <h1 class="text-center">Create your account</h1>
 	  %s
@@ -205,11 +168,6 @@ var SignupTemplate = `<!DOCTYPE html>
 	  <button>Create account</button>
 	</form>
 	<p class="text-center mt-5"><a href="/login">Log in</a> if you have an account</p>
-      </div>
-    </div>
-    <footer id="footer" aria-label="Site information">%s</footer>
-  </body>
-</html>
 `
 
 // renderSignup renders the signup template with a fresh captcha challenge
@@ -238,8 +196,8 @@ func renderSignupInvite(errHTML, redirectParam, invite string) string {
 	// landing's copy — silently deleted Sign up with Google from the page. No
 	// error, no test, nothing in a diff to notice: the replace simply matched
 	// nothing and returned the string unchanged. A slot cannot miss.
-	return fmt.Sprintf(SignupTemplate, redirectParam,
-		googleButtonHTML("Sign up with Google"), errHTML, app.CaptchaHTML(c), inviteField, app.FooterLinks())
+	return app.ConsoleHTML("Sign up", fmt.Sprintf(SignupTemplate, redirectParam,
+		googleButtonHTML("Sign up with Google"), errHTML, app.CaptchaHTML(c), inviteField), nil)
 }
 
 // renderRequestInvitePage shows the "request an invite" form that
@@ -602,17 +560,16 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == http.MethodGet {
+	if r.Method == http.MethodGet && !app.WantsJSON(r) {
 		target, fragment := "", ""
 		switch r.URL.Path {
-		case "/account/usage":
-			target = "/account/billing"
+		case "/account/usage", "/account/billing":
+			target, fragment = "/account", "#billing"
+		case "/account/profile":
+			target, fragment = "/account", "#profile"
 		case "/account/connections":
 			target, fragment = "/account", "#connections"
-		case "/account":
-			if r.URL.Query().Get("saved") == "converted" {
-				target = "/account/billing"
-			}
+
 		}
 		if target != "" {
 			if r.URL.RawQuery != "" {
@@ -786,7 +743,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		notice = app.Problem(msg)
 	}
 
-	profile := app.Section("Profile",
+	profile := app.SectionID("profile", "Profile",
 		`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
 			htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
 			` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
@@ -805,39 +762,17 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	// Each destination renders only its own sections. Mutation and JSON contracts
 	// remain shared, including old profile and billing links.
-	var content string
-	switch accountPath {
-	case "/account/billing":
-		content = BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID)
-	case "/account/profile":
-		content = profile + passwordCard(acc) + language + PasskeyListHTML(acc.ID)
-	default:
-		content = profile + passwordCard(acc) + PlaceCard(r, acc.ID) + emailCard +
-			renderPhoneCard(acc.ID) + googleCard + language + PasskeyListHTML(acc.ID) +
-			app.Section("Connections", `<div class="form-actions"><a class="btn" href="/token">Tokens</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Morning brief</a></div>`) +
-			push.Card(r, acc.ID)
-	}
-	content = settingsNavigation(accountPath) + notice + `<div class="page-stack settings-sections">` + content + `</div>` +
+	content := profile + passwordCard(acc) + PlaceCard(r, acc.ID) + emailCard +
+		renderPhoneCard(acc.ID) + googleCard + language + PasskeyListHTML(acc.ID) +
+		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/token">Tokens</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`) + push.Card(r, acc.ID)
+	content += `<section id="billing" class="section-stack"><h2>Billing</h2>` + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) + `</section>`
+	content = `<nav class="view-switch" aria-label="Settings"><a href="#profile">Profile</a><a href="#connections">Connections</a><a href="#billing">Billing</a></nav>` + notice + `<div class="page-stack settings-sections">` + content + `</div>` +
 		`<p class="account-legal"><a href="/privacy">Privacy</a> · <a href="/about">About</a> · <a href="/status">Status</a></p>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
 	// missing on the one page you reach by being signed in.
 	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: content})
-}
-
-func settingsNavigation(path string) string {
-	var b strings.Builder
-	b.WriteString(`<nav class="view-switch" aria-label="Settings">`)
-	for _, item := range []struct{ path, label string }{{"/account", "Settings"}, {"/account/billing", "Billing"}} {
-		current := ""
-		if path == item.path || (path == "/account/profile" && item.path == "/account") {
-			current = ` aria-current="page"`
-		}
-		b.WriteString(`<a href="` + item.path + `"` + current + `>` + item.label + `</a>`)
-	}
-	b.WriteString(`</nav>`)
-	return b.String()
 }
 
 // agentNumber is the number the agent texts from, for saving as a contact.

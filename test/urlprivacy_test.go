@@ -62,6 +62,7 @@ var privateParams = regexp.MustCompile(
 // worse than one that can. Every entry here is a decision; adding one means
 // deciding the same thing again, in writing.
 var publicSearch = map[string]string{
+	"internal/api/tools_page.go": "Searches public service names and descriptions only; no account content or conversations.",
 	"service/transit/page.go":    "Public stop and station names, for linking transport searches.",
 	"service/news/news.go":       "the news index is public and a headline search is not about the reader",
 	"service/images/images.go":   "public image search, the same search anybody would run",

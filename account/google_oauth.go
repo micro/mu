@@ -368,8 +368,8 @@ func googleButtonHTML(text string) string {
 // when Google sign-in is configured.
 func loginPage(redirectParam, errHTML string) string {
 	// A template slot, not a replace on the heading — see renderSignupTo.
-	return fmt.Sprintf(LoginTemplate, redirectParam,
-		googleButtonHTML("Continue with Google"), errHTML, app.FooterLinks())
+	return app.ConsoleHTML("Log in", fmt.Sprintf(LoginTemplate, redirectParam,
+		googleButtonHTML("Continue with Google"), errHTML), nil)
 }
 
 func googleSignIn(acc *auth.Account) string {

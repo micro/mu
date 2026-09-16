@@ -54,17 +54,14 @@ func TestAccountDestinationsSeparateForms(t *testing.T) {
 		r.AddCookie(cookie)
 		w := httptest.NewRecorder()
 		Account(w, r)
-		if w.Code != 200 || !strings.Contains(w.Body.String(), `id="content"`) {
-			t.Fatalf("%s: client missing", path)
-		}
-		page := w.Body.String()
-		if path == "/account/billing" {
-			if !strings.Contains(page, `id="balance"`) || strings.Contains(page, `name="display_name"`) || strings.Contains(page, `name="new_secret"`) {
-				t.Fatal("Billing must show balance without profile or password forms")
+		if path == "/account" {
+			if w.Code != 200 || !strings.Contains(w.Body.String(), `id="billing"`) || !strings.Contains(w.Body.String(), `id="profile"`) {
+				t.Fatal("settings missing sections")
 			}
-		} else if strings.Contains(page, `id="balance"`) {
-			t.Fatalf("%s duplicates billing", path)
+		} else if w.Code != http.StatusSeeOther {
+			t.Fatalf("%s should redirect to Settings", path)
 		}
+
 		r.Header.Set("Accept", "application/json")
 		w = httptest.NewRecorder()
 		Account(w, r)
@@ -97,9 +94,8 @@ func TestAccountDestinationsSeparateForms(t *testing.T) {
 func TestPreviousAccountDestinationsRedirect(t *testing.T) {
 	cookie := holder(t, "account_alias", "Account Alias")
 	for _, tc := range []struct{ path, want string }{
-		{"/account/usage", "/account/billing"},
+		{"/account/usage", "/account#billing"},
 		{"/account/connections?linked=google", "/account?linked=google#connections"},
-		{"/account?saved=converted", "/account/billing?saved=converted"},
 	} {
 		r := httptest.NewRequest("GET", tc.path, nil)
 		r.AddCookie(cookie)

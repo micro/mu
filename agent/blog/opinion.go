@@ -83,6 +83,9 @@ func opinionCategories() []string { return blogsvc.Topics() }
 
 // Start begins the background opinion generation loop.
 func Start() {
+	if !ai.BackgroundEnabled() {
+		return
+	}
 	memory = loadMemory()
 	go opinionLoop()
 	go opinionEngageLoop()
