@@ -37,11 +37,13 @@ func TestOverviewKeepsBriefAndConversationOwned(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Handler(rec, req)
 	body := rec.Body.String()
-	for _, want := range []string{"Your appointment is at ten.", "Continue conversation", "/inbox?id=" + brief.ID, "/inbox?id=" + own.ID, "Continue a conversation"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("overview missing %q", want)
-		}
+	if !strings.Contains(body, `data-command="brief"`) || strings.Contains(body, "Your appointment is at ten.") {
+		t.Fatal("brief should be requested, not fetched on arrival")
 	}
+	if got := deliveredBrief(owner); !strings.Contains(got, "Your appointment is at ten.") || strings.Contains(got, "Other account secret") {
+		t.Fatal("brief lost or leaked")
+	}
+
 	for _, unwanted := range []string{"Other account secret", "Manage scheduled instructions", `href="/apps/new"`, `href="/agent/new"`} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("overview exposes %q", unwanted)

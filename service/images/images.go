@@ -17,7 +17,6 @@ import (
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/blob"
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/quota"
@@ -45,9 +44,8 @@ type Daily struct {
 }
 
 var (
-	dailyMu  sync.RWMutex
-	daily    Daily
-	dailyGen sync.Once
+	dailyMu sync.RWMutex
+	daily   Daily
 )
 
 // dailyThemes rotate day to day — always calm, never ragebait.
@@ -119,7 +117,7 @@ var dailyThemes = []struct {
 	{"textile", "Handwoven cloth in undyed fibres, the weave visible, raking light across the texture. Warm, tactile, high detail, no text."},
 }
 
-// Load restores the last daily image and starts the daily generator.
+// Load restores the image library. Images are generated only on request.
 func Load() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("images", "service register failed: %v", err)
@@ -135,7 +133,6 @@ func Load() {
 		// Pull it in, and fetch its bytes if the provider URL still resolves.
 		go backfill(d)
 	}
-	go scheduler()
 }
 
 // imageLocation uses an explicit IANA timezone even in minimal containers.
@@ -169,65 +166,6 @@ const themeStride = 7
 // themeFor is which theme a day of the year gets.
 func themeFor(day int) struct{ name, prompt string } {
 	return dailyThemes[(day*themeStride)%len(dailyThemes)]
-}
-
-// scheduler generates today's image if missing, then wakes each day at 06:00 in the site timezone.
-func scheduler() {
-	// Small delay so AI settings/env are wired before the first attempt.
-	time.Sleep(5 * time.Second)
-	for {
-		now := time.Now().In(imageLocation())
-		target := imageTime(now)
-		if now.Before(target) {
-			time.Sleep(time.Until(target))
-			continue
-		}
-		dailyMu.RLock()
-		due := imageDue(now, daily)
-		dailyMu.RUnlock()
-		if due {
-			generateDaily()
-		}
-		dailyMu.RLock()
-		ok := daily.Date == today() && daily.URL != ""
-		dailyMu.RUnlock()
-		if !ok {
-			time.Sleep(time.Hour)
-			continue
-		}
-		time.Sleep(time.Until(imageTime(time.Now().In(imageLocation())).AddDate(0, 0, 1)))
-	}
-}
-
-// generateDaily creates the ambient image for today and persists it. The theme
-// rotates by day so consecutive days differ.
-func generateDaily() {
-	if !aiReady() {
-		return // no provider configured — try again next cycle
-	}
-	theme := themeFor(time.Now().In(imageLocation()).YearDay())
-	url, err := ai.GenerateImage(theme.prompt)
-	if err != nil {
-		app.Log("images", "daily image generation failed: %v", err)
-		return
-	}
-	d := Daily{URL: url, Prompt: theme.prompt, Theme: theme.name, Date: today()}
-	// Take our own copy of the bytes. The provider URL can expire, and without
-	// this the archive would fill up with links that stop resolving.
-	d.File = storeImage(url, dailyPrefix(d.Date))
-
-	dailyMu.Lock()
-	daily = d
-	dailyMu.Unlock()
-	if err := data.SaveJSON(dailyKey, d); err != nil {
-		app.Log("images", "failed to persist daily image: %v", err)
-	}
-	for _, old := range archiveDaily(d) {
-		if old.File != "" {
-			blob.Delete(old.File) //nolint:errcheck
-		}
-	}
-	app.Log("images", "generated daily %s image", theme.name)
 }
 
 // aiReady reports whether an AI provider (and thus image generation) is usable.

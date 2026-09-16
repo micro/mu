@@ -67,23 +67,7 @@ func SignupRateLimit(ip string) bool {
 	return true
 }
 
-var LoginTemplate = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Login | Micro</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
-    <meta name="referrer" content="no-referrer"/>
-    <link rel="stylesheet" href="/mu.css?` + app.Version + `">
-  </head>
-  <body class="auth-page">
-    <div id="head">
-      <div id="brand">
-        <a href="/">Micro</a>
-      </div>
-    </div>
-    <div id="container">
-      <div id="content">
+var LoginTemplate = `
 	<p id="auth-status" role="status"></p><form id="login" action="/login%s" method="POST" class="form page-stack">
 	  <h1 class="text-center">Log in</h1>
 	  %s
@@ -169,30 +153,9 @@ var LoginTemplate = `<!DOCTYPE html>
 	  }
 	}
 	</script>
-      </div>
-    </div>
-    <footer id="footer" aria-label="Site information">%s</footer>
-  </body>
-</html>
 `
 
-var SignupTemplate = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Signup | Micro</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
-    <meta name="referrer" content="no-referrer"/>
-    <link rel="stylesheet" href="/mu.css?` + app.Version + `">
-  </head>
-  <body class="auth-page">
-    <div id="head">
-      <div id="brand">
-        <a href="/">Micro</a>
-      </div>
-    </div>
-    <div id="container">
-      <div id="content">
+var SignupTemplate = `
 	<form id="signup" action="/signup%s" method="POST" class="form page-stack">
 	  <h1 class="text-center">Create your account</h1>
 	  %s
@@ -205,11 +168,6 @@ var SignupTemplate = `<!DOCTYPE html>
 	  <button>Create account</button>
 	</form>
 	<p class="text-center mt-5"><a href="/login">Log in</a> if you have an account</p>
-      </div>
-    </div>
-    <footer id="footer" aria-label="Site information">%s</footer>
-  </body>
-</html>
 `
 
 // renderSignup renders the signup template with a fresh captcha challenge
@@ -238,8 +196,8 @@ func renderSignupInvite(errHTML, redirectParam, invite string) string {
 	// landing's copy — silently deleted Sign up with Google from the page. No
 	// error, no test, nothing in a diff to notice: the replace simply matched
 	// nothing and returned the string unchanged. A slot cannot miss.
-	return fmt.Sprintf(SignupTemplate, redirectParam,
-		googleButtonHTML("Sign up with Google"), errHTML, app.CaptchaHTML(c), inviteField, app.FooterLinks())
+	return app.ConsoleHTML("Sign up", fmt.Sprintf(SignupTemplate, redirectParam,
+		googleButtonHTML("Sign up with Google"), errHTML, app.CaptchaHTML(c), inviteField), nil)
 }
 
 // renderRequestInvitePage shows the "request an invite" form that

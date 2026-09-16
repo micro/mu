@@ -1,15 +1,10 @@
 package ai
 
-import (
-	"fmt"
-	"mu/internal/settings"
-	"strings"
-)
+import "fmt"
 
-// BackgroundEnabled is an explicit opt-in to automatic model processing.
-func BackgroundEnabled() bool {
-	return strings.EqualFold(strings.TrimSpace(settings.Get("AI_BACKGROUND_ENABLED")), "true")
-}
+// BackgroundEnabled is false: models run on requests and personal brief schedules.
+// Retained as the common guard for automatic content producers.
+func BackgroundEnabled() bool { return false }
 
 func checkBackground(caller string) error {
 	switch caller {

@@ -218,9 +218,6 @@ func checkAI() healthCheck {
 	// moderation go to the cheap one, and it is not always the same vendor.
 	provider := providerLabel()
 	detail := provider + " · " + ai.DefaultModel()
-	if bg := ai.BackgroundModel(); bg != ai.DefaultModel() {
-		detail += ", and " + bg + " for summaries and moderation"
-	}
 
 	return healthCheck{
 		Name:   "AI model",
@@ -392,6 +389,9 @@ func checkMarkets() healthCheck {
 // look at, and takes as long as one, is how /admin/status came to be
 // something you avoided loading.
 func checkDigest(test bool) healthCheck {
+	if !ai.BackgroundEnabled() {
+		return healthCheck{Name: "Public digest", Status: "ok", Detail: "Automatic generation disabled; personal daily briefs are separate."}
+	}
 	ok, details := digest.Status()
 	if ok {
 		return healthCheck{

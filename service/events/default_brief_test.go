@@ -23,13 +23,13 @@ func TestBriefRequiresOptIn(t *testing.T) {
 		t.Fatalf("explicit choice lost: %+v", e)
 	}
 }
-func TestPreviouslyAutomaticBriefIsPaused(t *testing.T) {
+func TestExistingDailyBriefIsPreserved(t *testing.T) {
 	reset()
 	defer reset()
 	events["auto"] = &Event{ID: "auto", Owner: "owner", Kind: "brief", Builtin: true, When: time.Now()}
 	events["chosen"] = &Event{ID: "chosen", Owner: "other", Kind: "brief", When: time.Now()}
 	ensureDefaultBriefs()
-	if !events["auto"].Paused || events["chosen"].Paused {
-		t.Fatal("must pause only automatically created schedules")
+	if events["auto"].Paused || events["chosen"].Paused {
+		t.Fatal("existing daily briefs must remain enabled")
 	}
 }

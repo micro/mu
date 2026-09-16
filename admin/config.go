@@ -45,13 +45,12 @@ func (g settingGroup) on() (bool, []string) {
 
 var settingGroups = []settingGroup{
 	{Name: "AI",
-		Does:  "The selected model handles requests. Automatic AI processing is off unless AI_BACKGROUND_ENABLED is true. Requests never retry on another provider.",
+		Does:  "The selected model handles requests. Only requests and personal daily briefs use models. Automatic content generation is disabled. Requests never retry on another provider.",
 		Needs: []string{"ANTHROPIC_API_KEY"},
 		Vars: []string{
 			"ANTHROPIC_API_KEY",
 			// Which provider, when there are keys for more than one.
 			"AI_PROVIDER",
-			"AI_BACKGROUND_ENABLED",
 			"ANTHROPIC_MODEL",
 			// The agent's own model, which is the one running the tool loop.
 			"AGENT_MODEL",

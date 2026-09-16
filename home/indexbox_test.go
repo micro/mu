@@ -10,7 +10,7 @@ func TestLandingIsRenderedWithoutAClientBootstrap(t *testing.T) {
 	w := httptest.NewRecorder()
 	Index(w, httptest.NewRequest("GET", "/", nil))
 	body := w.Body.String()
-	for _, want := range []string{"A personal assistant", `id="mu-chat-input"`, `/mu.css?`} {
+	for _, want := range []string{"Type a command or ask a question.", `id="command-input"`, `id="responses"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)
 		}

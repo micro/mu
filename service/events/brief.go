@@ -92,17 +92,8 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	return nil
 }
 
-// Pause schedules that were enrolled automatically, without changing explicit choices.
-func ensureDefaultBriefs() {
-	// Retire automatic enrollment. Explicitly configured schedules set Builtin=false.
-	mu.Lock()
-	defer mu.Unlock()
-	for _, e := range events {
-		if e.Builtin {
-			e.Paused = true
-		}
-	}
-}
+// Existing daily briefs remain intact. New accounts are not enrolled implicitly.
+func ensureDefaultBriefs() {}
 
 // The first shipped brief default was a tomorrow brief at 20:00. Migrate that
 // exact legacy preset once; renamed schedules and other times stay untouched.

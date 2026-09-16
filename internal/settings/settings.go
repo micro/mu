@@ -39,14 +39,27 @@ func Get(key string) string {
 
 // Set stores a value persistently. Does not affect the environment.
 func Set(key, value string) {
+	_ = Store(key, value)
+}
+
+// Store changes a setting only if it can also be persisted.
+func Store(key, value string) error {
 	mu.Lock()
 	defer mu.Unlock()
-	if value == "" {
-		delete(values, key)
-	} else {
-		values[key] = value
+	updated := make(map[string]string, len(values)+1)
+	for k, v := range values {
+		updated[k] = v
 	}
-	data.SaveJSON("settings.json", values)
+	if value == "" {
+		delete(updated, key)
+	} else {
+		updated[key] = value
+	}
+	if err := data.SaveJSON("settings.json", updated); err != nil {
+		return err
+	}
+	values = updated
+	return nil
 }
 
 // IsSet returns true if the key has a value (from env or stored).

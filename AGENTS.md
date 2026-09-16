@@ -523,26 +523,23 @@ cost; rate limits stop bots.
 
 ## UI composition
 
-Go handlers render HTML on the server. Home is the personal overview with the
-assistant prompt, brief and recent conversations. Services such as news, video
-and markets supply the assistant; they are not Home feeds or primary destinations.
-Home, Inbox and Work are the daily navigation. Settings groups account controls,
-connections and a distinct Billing view. App and agent authoring belongs to operators and assistant tools. The public
-landing says “A personal assistant”. Preserve current backend contracts, account
-isolation, CSRF protections and existing shared links when changing presentation.
+The web front door is a single request-driven command interface. Simple service
+commands use registered endpoints directly. Complex questions use the selected
+model and its tools. Admin commands require the caller's operator authorization
+and never enter model context. Do not add a page or navigation item for a service.
 
-The shared UI lives in `internal/app`. Tailwind compiles Go, HTML and JavaScript
-class usage with the tweakcn variables in `internal/app/html/theme.css`. Run
-`npm ci --prefix internal/app && npm run build --prefix internal/app` and commit
-the generated `internal/app/html/mu.css`. React is not part of the application.
-Use the shared form and control helpers; keep custom CSS for specialised content
-only. Do not add a parallel frontend, copied templates or compatibility wrappers
-with no callers. Remove obsolete code and assets when replacing their owners.
+Keep authentication and informational pages sparse, using the shared console
+shell in `internal/app`. Preserve backend APIs, protocols, account isolation,
+CSRF checks, payments and stored conversations. Legacy browser destinations
+prefill commands without executing them. Requests and credentials belong in POST
+bodies, never URLs. Only opaque conversation IDs may be used to resume a session.
 
-Use a consistent 6xl content width, restrained controls, visible hover/focus
-states and +/− disclosures. Check populated and empty pages at desktop and mobile
-widths. Backend tests and the browser layout gate must pass before merge.
+Personal daily brief schedules remain available. No other automatic model
+content generation: no daily images, public digests, summaries, tagging, topic
+suggestions, greetings or arrival triage. User-requested jobs remain explicit.
 
-Public landing, every footer destination, login and signup are part of UI review.
-Review actual desktop/mobile screenshots alongside browser assertions; a page
-returning HTML or fitting the viewport is not sufficient evidence of good layout.
+Remove obsolete page renderers when separating them from backend handlers.
+The command shell has one stylesheet; service results share one renderer.
+Backend tests and the browser layout gate must pass before merge. Inspect real
+desktop and mobile screenshots of populated/empty command results, login,
+signup and footer destinations alongside browser assertions.
