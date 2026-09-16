@@ -19,3 +19,6 @@
 @source "../*.go";
 @source "../html/*.js";
 @custom-variant dark (&:is(.dark *));
+
+/* Legacy semantic class: muted text uses foreground contrast, not the surface token. */
+@layer utilities { .text-muted { color:var(--muted-foreground); } }

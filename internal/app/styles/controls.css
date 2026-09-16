@@ -50,3 +50,16 @@ details[open] > summary::before { content: "−"; }
 .rooms .room-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; }
 .ib-reply :is(a.btn,button) { background:var(--input); }
 .ib-reply :is(a.btn,button):hover { background:var(--accent); }
+
+.page-stack.compact-stack { gap:8px; }
+.page-stack.compact-stack > * { margin-block:0; }
+.section-link { display:block; margin:0; padding:8px 0; font-size:14px; color:var(--foreground); text-decoration:none; border-bottom:1px solid var(--border); }
+.section-link:hover { background:var(--accent); text-decoration:none; }
+
+.metadata-row.metadata-columns { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px }
+.metadata-identity { display:grid; grid-template-columns:76px minmax(0,1fr); gap:2px 8px; align-items:baseline; min-width:0 }
+.metadata-kind { grid-column:1; grid-row:1; white-space:nowrap; font-size:12px; color:var(--text-secondary) }
+.metadata-name { grid-column:2; grid-row:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.metadata-detail { grid-column:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.metadata-time { text-align:right; white-space:nowrap; font-size:12px; color:var(--text-secondary) }
+

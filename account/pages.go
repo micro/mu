@@ -834,7 +834,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
 	content := notice + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) +
-		app.Section("Clients", `<a href="/token">Tokens</a> · <a href="/inbox/imap">IMAP</a>`) + profile +
+		app.Section("Clients", `<div class="form-actions"><a class="btn" href="/token">Tokens</a><a class="btn" href="/inbox/imap">IMAP</a></div>`) + profile +
 		passwordCard(acc) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
