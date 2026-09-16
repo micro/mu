@@ -566,6 +566,9 @@ func Serve() http.Handler {
 	fileServer := http.FileServer(http.FS(htmlContent))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".woff2") {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
 		if r.URL.Path == "/mu.css" {
 			serveStyles(w, r)
 			return
@@ -576,7 +579,7 @@ func Serve() http.Handler {
 			if r.URL.RawQuery == Version && r.Header.Get("Service-Worker") != "script" && r.Header.Get("Sec-Fetch-Dest") != "serviceworker" {
 				w.Header().Set("Cache-Control", "public, max-age=86400")
 			}
-		case strings.HasSuffix(r.URL.Path, ".css"),
+		case strings.HasSuffix(r.URL.Path, ".woff2"), strings.HasSuffix(r.URL.Path, ".css"),
 			strings.HasSuffix(r.URL.Path, ".js"),
 			strings.HasSuffix(r.URL.Path, ".png"),
 			strings.HasSuffix(r.URL.Path, ".ico"),

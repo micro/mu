@@ -16,7 +16,7 @@ var stylesGzip []byte
 func Styles() string {
 	stylesOnce.Do(func() {
 		var b strings.Builder
-		for _, name := range []string{"mu.css", "components.css", "composition.css"} {
+		for _, name := range []string{"theme.css", "mu.css", "components.css", "composition.css"} {
 			data, err := htmlFiles.ReadFile("html/" + name)
 			if err != nil {
 				panic(err)

@@ -3,9 +3,11 @@ import { Button, mutate, Status } from "./shared";
 export function ReadingActions({
   reference,
   href,
+  source,
 }: {
   reference: string;
   href: string;
+  source?: string;
 }) {
   const [saved, setSaved] = useState(false),
     [busy, setBusy] = useState(false),
@@ -13,6 +15,7 @@ export function ReadingActions({
   return (
     <>
       <div className="flex flex-wrap gap-2">
+        {source && /^https?:\/\//i.test(source) && <Button size="sm" asChild><a href={source}>Source</a></Button>}
         <Button
           size="sm"
           disabled={busy || saved}

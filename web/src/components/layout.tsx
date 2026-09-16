@@ -49,7 +49,7 @@ function Navigation({
                 ? "page"
                 : undefined
             }
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base hover:bg-accent aria-[current=page]:bg-accent"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent"
             href={href}
           >
             <Icon className="size-4" />
@@ -135,7 +135,7 @@ export function Layout({
   return (
     <div ref={shell} className={"app-shell flex bg-background text-foreground" + (conversation ? " app-conversation" : "")}>
       {account && !collapsed && (
-        <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-56 border-r bg-background md:block">
+        <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-56 border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:block">
           <Navigation account={account} />
         </aside>
       )}
@@ -167,7 +167,7 @@ export function Layout({
                 </Dialog.Trigger>
                 <Dialog.Portal>
                   <Dialog.Overlay className="fixed inset-0 z-40 bg-black/30" />
-                  <Dialog.Content className="app-sidebar fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] bg-background shadow-lg">
+                  <Dialog.Content className="app-sidebar fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] bg-sidebar text-sidebar-foreground shadow-lg">
                     <Dialog.Title className="sr-only">Navigation</Dialog.Title>
                     <Dialog.Description className="sr-only">
                       Your conversations and account

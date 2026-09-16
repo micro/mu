@@ -146,6 +146,16 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
           await page
             .getByRole("link", { name: "Chart", exact: true })
             .waitFor();
+        if (route === "/news") {
+          assert(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('16px "DM Sans"'); }), 'DM Sans failed to load');
+          await page.evaluate(() => document.documentElement.classList.add('dark'));
+          assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), 'dark');
+          await page.screenshot({path:`/tmp/mu-theme-news-dark-${width}.png`,fullPage:true});
+          await page.evaluate(() => document.documentElement.classList.remove('dark'));
+          const source = page.getByRole('link',{name:'Source',exact:true});
+          assert.equal(await source.getAttribute('data-slot'), 'button');
+          assert(await source.evaluate(el => !!Array.from(el.parentElement.querySelectorAll('button')).find(button=>button.textContent==='Save')));
+        }
         if (route === "/blog")
           assert(
             (await page.locator("main").innerText()).length < 1500,
@@ -289,7 +299,13 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
       .getByRole("heading", { name: "Migration event", exact: true })
       .waitFor();
     await go("/mail");
-    await page.getByText("Migration mail", { exact: true }).click();
+    await page.mouse.move(0, 0);
+    const mailRow = page.getByRole('button').filter({has:page.getByText('Migration mail',{exact:true})});
+    assert.equal(await mailRow.evaluate(el=>getComputedStyle(el).cursor),'pointer');
+    const mailBackground = await mailRow.evaluate(el=>getComputedStyle(el).backgroundColor);
+    await mailRow.hover();
+    await page.waitForFunction(before=>getComputedStyle(Array.from(document.querySelectorAll('button')).find(el=>el.textContent.includes('Migration mail'))).backgroundColor!==before,mailBackground);
+    await mailRow.click();
     await page
       .getByRole("heading", { name: "Migration mail", exact: true })
       .waitFor();
