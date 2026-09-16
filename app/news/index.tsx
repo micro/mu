@@ -69,7 +69,7 @@ export function App() {
       {error && <Status error>{error}</Status>}
       {id ? (
         data && (
-          <article className="mx-auto max-w-3xl space-y-4">
+          <article className="space-y-4">
             <Link url="/news">Headlines</Link>
             <h2 className="text-2xl font-semibold">{data.title}</h2>
             {data.image && (
@@ -80,7 +80,7 @@ export function App() {
               />
             )}
             <Read>{data.summary || data.description || ""}</Read>
-            <Link url={data.url}>Read source</Link>
+            <ReadingActions source={data.url} reference={id} href={`/news?id=${encodeURIComponent(id)}`} />
           </article>
         )
       ) : (
@@ -126,8 +126,8 @@ export function App() {
                   <p className="line-clamp-3 text-sm text-muted-foreground">
                     {excerpt(a.description || "")}
                   </p>
-                  <Link url={a.url}>Source</Link>
                   <ReadingActions
+                    source={a.url}
                     reference={a.id}
                     href={`/news?id=${encodeURIComponent(a.id)}`}
                   />

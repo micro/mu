@@ -210,7 +210,7 @@ func authRequired() map[string]bool {
 func staticSuffixes() []string {
 	return []string{
 		".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg",
-		".ico", ".webmanifest", ".json",
+		".ico", ".webmanifest", ".json", ".woff2",
 	}
 }
 

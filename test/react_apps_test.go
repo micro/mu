@@ -78,6 +78,8 @@ func TestReactApplicationsInBrowser(t *testing.T) {
 	mux.HandleFunc("/about", home.AboutHandler)
 	mux.HandleFunc("/privacy", home.PrivacyHandler)
 	mux.HandleFunc("/client/assets/", webclient.Assets)
+	mux.Handle("/dm-sans-latin.woff2", legacyapp.Serve())
+	mux.Handle("/geist-mono-latin.woff2", legacyapp.Serve())
 	mux.HandleFunc("/client/ssh", sshaccess.ClientHandler)
 	mux.HandleFunc("/mail", firstparty.Page(mail.Handler, "Mail"))
 	mux.HandleFunc("/contacts/import", contacts.Handler)

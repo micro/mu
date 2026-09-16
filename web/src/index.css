@@ -1,45 +1,64 @@
 @import "tailwindcss" source(none);
+@import "../../internal/app/html/theme.css";
 @source "./";
+@custom-variant dark (&:is(.dark *));
 @theme inline {
-  --color-background: white;
-  --color-foreground: #202124;
-  --color-primary: #202124;
-  --color-primary-foreground: white;
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #202124;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #52525b;
-  --color-accent: #f5f5f5;
-  --color-accent-foreground: #202124;
-  --color-destructive: #b42318;
-  --color-border: #e5e5e5;
-  --color-control: #fafafa;
-  --color-control-hover: #f0f0f0;
-  --color-control-border: #d4d4d4;
-  --color-input: #d4d4d4;
-  --color-ring: #737373;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-control: var(--input);
+  --color-control-hover: var(--accent);
+  --color-control-border: var(--secondary);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
 }
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
-  body {
-    margin: 0;
-    background: white;
-    color: var(--color-foreground);
-    font-family: system-ui, sans-serif;
-    font-size: 16px;
-    line-height: 1.5;
-  }
-  button,
-  a,
-  input,
-  textarea {
-    -webkit-tap-highlight-color: transparent;
-  }
+  * { @apply border-border outline-ring/50; }
+  body { margin:0; background:var(--background); color:var(--foreground); font-family:var(--font-sans); font-size:16px; line-height:1.5; letter-spacing:var(--tracking-normal); }
+  code,pre,kbd,samp { font-family:var(--font-mono); }
+  button,a,input,textarea { -webkit-tap-highlight-color:transparent; }
 }
 .markdown {
   overflow-wrap: anywhere;
@@ -69,7 +88,7 @@
 }
 .markdown pre {
   padding: 1rem;
-  background: #f5f5f5;
+  background: var(--muted);
   border-radius: 0.5rem;
   overflow: auto;
 }
@@ -80,13 +99,13 @@
 }
 .markdown :is(th, td) {
   padding: 0.5rem 1rem;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 .markdown blockquote {
   padding-left: 1rem;
-  border-left: 2px solid #d4d4d4;
-  color: #666;
+  border-left: 2px solid var(--secondary);
+  color: var(--muted-foreground);
 }
 .markdown img {
   max-width: 100%;
@@ -143,3 +162,22 @@
 @source "../../work/client.tsx";
 
 @source "../../home/client.tsx";
+
+summary { list-style:none; cursor:pointer; }
+summary::-webkit-details-marker { display:none; }
+summary::marker { content:''; }
+summary::after { content:'+'; display:inline-block; margin-inline-start:.5rem; font-weight:500; }
+details[open] > summary::after { content:'\2212'; }
+button:not(:disabled),[role="button"]:not([aria-disabled="true"]) { cursor:pointer; }
+/* Native selects retain their keyboard behaviour with the shared disclosure mark. */
+select {
+  appearance:none;
+  cursor:pointer;
+  padding-inline-end:2rem;
+  background-image:linear-gradient(var(--foreground),var(--foreground)),linear-gradient(var(--foreground),var(--foreground));
+  background-size:10px 1px,1px 10px;
+  background-position:right 11px center,right 15.5px center;
+  background-repeat:no-repeat;
+}
+select:open { background-size:10px 1px,0 0; }
+select:disabled { cursor:default; }

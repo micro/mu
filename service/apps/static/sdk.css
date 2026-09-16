@@ -1,27 +1,28 @@
+@import url("/theme.css");
 /* mu-app runtime styles */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: #fff; color: #333; }
+body { font-family: var(--font-sans); background: var(--background); color: var(--foreground); }
 
 /* Shell */
-.mu-app-shell { max-width: 640px; margin: 0 auto; padding: 16px; }
+.mu-app-shell { max-width: 1152px; margin: 0 auto; padding: 16px; }
 .mu-app-header { font-size: 20px; font-weight: 550; margin-bottom: 16px; }
 .mu-app-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.mu-tab { padding: 6px 16px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-family: inherit; font-size: 13px; }
-.mu-tab.active { background: #000; color: #fff; border-color: #000; }
+.mu-tab { padding: 6px 16px; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); background: var(--background); cursor: pointer; font-family: inherit; font-size: 13px; }
+.mu-tab.active { background: var(--foreground); color: var(--background); border-color: var(--foreground); }
 .mu-app-search { display: none; gap: 8px; margin-bottom: 16px; }
-.mu-app-search input { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; }
+.mu-app-search input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); font-size: 15px; font-family: inherit; }
 
 /* Sections */
 .mu-section { margin-bottom: 20px; }
-.mu-section-title { font-size: 14px; font-weight: 550; color: #555; margin-bottom: 10px; }
+.mu-section-title { font-size: 14px; font-weight: 550; color: var(--muted-foreground); margin-bottom: 10px; }
 
 /* Cards */
-.mu-card { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; gap: 12px; }
+.mu-card { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); margin-bottom: 8px; gap: 12px; }
 .mu-card-icon { font-size: 20px; flex-shrink: 0; }
 .mu-card-body { flex: 1; min-width: 0; }
 .mu-card-title { font-weight: 550; font-size: 14px; }
-.mu-card-subtitle { font-size: 13px; color: #666; }
-.mu-card-desc { font-size: 13px; color: #888; margin-top: 2px; line-height: 1.4; }
+.mu-card-subtitle { font-size: 13px; color: var(--muted-foreground); }
+.mu-card-desc { font-size: 13px; color: var(--muted-foreground); margin-top: 2px; line-height: 1.4; }
 .mu-card-right { text-align: right; flex-shrink: 0; }
 .mu-card-value { font-weight: 500; font-variant-numeric: tabular-nums; }
 
@@ -29,22 +30,22 @@ body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif
 .mu-badge { font-size: 12px; font-weight: 500; margin-top: 2px; }
 .mu-badge-green { color: #16a34a; }
 .mu-badge-red { color: #dc2626; }
-.mu-badge-gray { color: #888; }
+.mu-badge-gray { color: var(--muted-foreground); }
 .mu-badge-blue { color: #2563eb; }
 
 /* Stats */
 .mu-stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.mu-stat { flex: 1; min-width: 100px; padding: 16px; background: #f8f8f8; border-radius: 8px; text-align: center; }
+.mu-stat { flex: 1; min-width: 100px; padding: 16px; background: var(--muted); border-radius: var(--radius); text-align: center; }
 .mu-stat-value { font-size: 24px; font-weight: 600; }
-.mu-stat-label { font-size: 12px; color: #888; margin-top: 2px; }
+.mu-stat-label { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
 .mu-stat-change { font-size: 13px; font-weight: 500; margin-top: 4px; }
 .mu-up { color: #16a34a; }
 .mu-down { color: #dc2626; }
 
 /* Table */
 .mu-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.mu-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid #eee; font-weight: 550; font-size: 13px; color: #555; }
-.mu-table td { padding: 8px 12px; border-bottom: 1px solid #f5f5f5; }
+.mu-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border); font-weight: 550; font-size: 13px; color: var(--muted-foreground); }
+.mu-table td { padding: 8px 12px; border-bottom: 1px solid var(--muted); }
 
 /* Grid layout */
 .mu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -52,5 +53,5 @@ body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif
 .mu-grid-cell { min-width: 0; }
 
 /* States */
-.mu-loading { text-align: center; color: #999; padding: 24px; font-size: 14px; }
+.mu-loading { text-align: center; color: var(--muted-foreground); padding: 24px; font-size: 14px; }
 .mu-error { text-align: center; color: #c00; padding: 16px; font-size: 14px; }

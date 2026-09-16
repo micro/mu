@@ -186,7 +186,8 @@ export function Mail() {
             render={(m) => (
               <>
                 <button
-                  className="w-full text-left"
+                  className="w-full rounded-md p-3 text-left transition-colors enabled:cursor-pointer enabled:hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-default"
+                  disabled={view === "outbox"}
                   onClick={() => view !== "outbox" && open(m.id)}
                 >
                   <span className="block break-words font-medium">
