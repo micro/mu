@@ -131,9 +131,9 @@ func contactBody(acc *auth.Account) string {
 	// three different widths and two different left edges. See app.Column.
 	b.WriteString(app.Column())
 	b.WriteString(`<div class="card"><h3>How to reach Micro</h3>`)
-	b.WriteString(`<p class="ccap">The same assistant, the same memory, whichever way you write. ` +
+	b.WriteString(`<p class="text-muted">The same assistant, the same memory, whichever way you write. ` +
 		`A conversation you start by text is one you can carry on here.</p>`)
-	b.WriteString(`<div class="clist">`)
+	b.WriteString(`<div class="detail-list">`)
 	// The ways a person writes to it, and not the ways a program calls it.
 	//
 	// This drew client.All(), which ends in `mu ask "…"` and a curl invocation
@@ -142,14 +142,14 @@ func contactBody(acc *auth.Account) string {
 	// with a shell snippet. Those are answers to a different question and /api
 	// is where it is asked. See client.Personal.
 	for _, c := range client.Personal() {
-		b.WriteString(`<div class="crow"><span class="clabel">` + html.EscapeString(c.Label) + `</span>`)
-		addr := `<code class="caddr">` + html.EscapeString(c.Address) + `</code>`
+		b.WriteString(`<div class="detail-row"><span class="text-muted">` + html.EscapeString(c.Label) + `</span>`)
+		addr := `<code class="detail-value">` + html.EscapeString(c.Address) + `</code>`
 		if c.Href != "" {
-			addr = `<a class="caddr" href="` + html.EscapeString(c.Href) + `">` +
+			addr = `<a class="detail-value" href="` + html.EscapeString(c.Href) + `">` +
 				html.EscapeString(c.Address) + `</a>`
 		}
 		b.WriteString(addr)
-		b.WriteString(`<span class="cnote">` + html.EscapeString(c.Note) + `</span>`)
+		b.WriteString(`<span class="detail-note">` + html.EscapeString(c.Note) + `</span>`)
 		// No worked example here any more. The one row that needed one was the
 		// API, which is a developer door and is drawn on /api instead — see
 		// client.Developer. Every row left is an address: somebody reads one and
@@ -171,7 +171,7 @@ func contactBody(acc *auth.Account) string {
 	// bookmark, and the button would be a promise of more than it does.
 	if client.Savable() {
 		b.WriteString(`<p class="mt-4">` + app.ActionLink("/contact.vcf", "Add to contacts") +
-			`</p><p class="ccap">Saves ` + html.EscapeString(agent.DefaultName()) +
+			`</p><p class="text-muted">Saves ` + html.EscapeString(agent.DefaultName()) +
 			` to your phone with every number and address on it.</p>`)
 	}
 
@@ -192,11 +192,11 @@ func contactBody(acc *auth.Account) string {
 	// than a wall: there is something you can try right now, and the rest is
 	// what an account is for.
 	if acc == nil {
-		b.WriteString(`<p class="cnext">These answer once it knows who you are. ` +
+		b.WriteString(`<p class="text-muted">These answer once it knows who you are. ` +
 			`The box on the <a href="/">front page</a> works without an account — ` +
 			`for the rest, <a href="/signup">make one</a> and verify your number.</p>`)
 	} else if !numberVerified(acc.ID) {
-		b.WriteString(`<p class="cnext">It will not recognise you by phone until you have ` +
+		b.WriteString(`<p class="text-muted">It will not recognise you by phone until you have ` +
 			`<a href="/sms">verified a number</a> as yours. Mail and the web already know you.</p>`)
 	}
 	b.WriteString(`</div>`)

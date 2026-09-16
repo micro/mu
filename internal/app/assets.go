@@ -12,7 +12,7 @@ var stylesOnce sync.Once
 var stylesText string
 var stylesGzip []byte
 
-// Styles is the native UI and app component stylesheet, assembled from shared modules.
+// Styles serves the single shared UI stylesheet in html/mu.css.
 func Styles() string {
 	stylesOnce.Do(func() {
 		data, err := htmlFiles.ReadFile("html/mu.css")

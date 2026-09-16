@@ -83,76 +83,7 @@ var LoginTemplate = `
 	  <button onclick="loginWithPasskey()">Login with Passkey</button>
 	</div>
 	<p class="text-center mt-5"><a href="/signup">Sign up</a> if you don't have an account</p>
-	<script>
-	if (window.PublicKeyCredential) {
-	  PublicKeyCredential.isConditionalMediationAvailable && PublicKeyCredential.isConditionalMediationAvailable().then(function(){});
-	  // classList, not style.display: .d-none is display:none !important and an
-	  // inline style loses to it, which is why this button was never once seen.
-	  document.getElementById('passkey-login').classList.remove('d-none');
-	}
 
-	function base64urlToBuffer(b64) {
-	  var pad = b64.length %% 4;
-	  if (pad) b64 += '='.repeat(4 - pad);
-	  var str = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
-	  var buf = new Uint8Array(str.length);
-	  for (var i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
-	  return buf.buffer;
-	}
-
-	function bufferToBase64url(buf) {
-	  var bytes = new Uint8Array(buf);
-	  var str = '';
-	  for (var i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
-	  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-	}
-
-	async function loginWithPasskey() {
-	  try {
-	    var beginRes = await fetch('/passkey/login/begin', {method: 'POST'});
-	    if (!beginRes.ok) { alert('Passkey login not available'); return; }
-	    var options = await beginRes.json();
-
-	    options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
-	    if (options.publicKey.allowCredentials) {
-	      options.publicKey.allowCredentials = options.publicKey.allowCredentials.map(function(c) {
-	        return Object.assign({}, c, {id: base64urlToBuffer(c.id)});
-	      });
-	    }
-
-	    var assertion = await navigator.credentials.get(options);
-
-	    var body = {
-	      id: assertion.id,
-	      rawId: bufferToBase64url(assertion.rawId),
-	      type: assertion.type,
-	      response: {
-	        authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
-	        clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
-	        signature: bufferToBase64url(assertion.response.signature),
-	        userHandle: bufferToBase64url(assertion.response.userHandle)
-	      }
-	    };
-	    if (assertion.authenticatorAttachment) {
-	      body.authenticatorAttachment = assertion.authenticatorAttachment;
-	    }
-
-	    var finishRes = await fetch('/passkey/login/finish'+window.location.search, {
-	      method: 'POST',
-	      headers: {'Content-Type': 'application/json'},
-	      body: JSON.stringify(body)
-	    });
-	    var result = await finishRes.json();
-	    if (result.success) {
-	      window.location.href = result.redirect || '/';
-	    } else {
-	      document.getElementById('auth-status').textContent='Sign-in failed. Please try another sign-in method.';
-	    }
-	  } catch (e) {
-	    if (e.name !== 'NotAllowedError') document.getElementById('auth-status').textContent='Unable to sign in. Please try again.';
-	  }
-	}
-	</script>
 `
 
 var SignupTemplate = `
@@ -766,8 +697,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		renderPhoneCard(acc.ID) + googleCard + language + PasskeyListHTML(acc.ID) +
 		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/token">Tokens</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`) + push.Card(r, acc.ID)
 	content += `<section id="billing" class="section-stack"><h2>Billing</h2>` + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) + `</section>`
-	content = `<nav class="view-switch" aria-label="Settings"><a href="#profile">Profile</a><a href="#connections">Connections</a><a href="#billing">Billing</a></nav>` + notice + `<div class="page-stack settings-sections">` + content + `</div>` +
-		`<p class="account-legal"><a href="/privacy">Privacy</a> · <a href="/about">About</a> · <a href="/status">Status</a></p>`
+	content = `<nav class="view-switch" aria-label="Settings"><a href="#profile">Profile</a><a href="#connections">Connections</a><a href="#billing">Billing</a></nav>` + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went

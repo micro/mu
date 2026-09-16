@@ -1,7 +1,6 @@
 package home
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -21,9 +20,6 @@ import (
 	"mu/internal/thread"
 	"mu/service/events"
 )
-
-//go:embed command.js
-var commandJS string
 
 // ConsoleHandler is the web front door. Nothing runs until a request is sent.
 func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +51,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			initial += `<section class="turn"><div class="` + class + `">` + content + `</div></section>`
 		}
 	}
-	fmt.Fprint(w, app.ConsoleHTML("Micro", `<form id="command-form"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" autocomplete="off" required></textarea><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div><script>`+commandJS+`</script>`, acc))
+	fmt.Fprint(w, app.ConsoleHTML("Micro", `<form id="command-form"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" autocomplete="off" required></textarea><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div>`, acc))
 }
 
 // CommandHandler performs explicit commands before considering the assistant.

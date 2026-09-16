@@ -316,7 +316,7 @@ func conversationsWith(who string, convs []thread.Thread) string {
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="ib-person-also"><h3>With ` +
-		html.EscapeString(who) + `</h3><ul class="ib-person-list">`)
+		html.EscapeString(who) + `</h3><ul class="addr-list">`)
 	for i := range convs {
 		t := convs[i]
 		subject := strings.TrimSpace(t.Subject)
@@ -325,7 +325,7 @@ func conversationsWith(who string, convs []thread.Thread) string {
 		}
 		b.WriteString(`<li><a href="/inbox?id=` + html.EscapeString(url.QueryEscape(t.ID)) + `">` +
 			html.EscapeString(subject) + `</a>` +
-			`<span class="ib-person-tags"><span class="pill">` +
+			`<span class="inline-row text-muted"><span class="pill">` +
 			html.EscapeString(app.ClientName(t.Client)) + `</span>` +
 			`<span class="ib-person-when">` + html.EscapeString(app.TimeAgo(t.Updated)) +
 			`</span></span></li>`)
@@ -350,12 +350,12 @@ func conversationsWith(who string, convs []thread.Thread) string {
 func yourAddresses(accountID string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="ib-person-also"><h3>Where people reach you</h3>` +
-		`<ul class="ib-person-list">`)
+		`<ul class="addr-list">`)
 	b.WriteString(`<li><code>@` + html.EscapeString(accountID) + `</code>` +
-		`<span class="ib-person-tags"><span class="ib-person-when">here</span></span></li>`)
+		`<span class="inline-row text-muted"><span class="ib-person-when">here</span></span></li>`)
 	if addr, ok := addressOfPerson("@" + accountID); ok {
 		b.WriteString(`<li><code>` + html.EscapeString(addr) + `</code>` +
-			`<span class="ib-person-tags"><span class="ib-person-when">mail</span></span></li>`)
+			`<span class="inline-row text-muted"><span class="ib-person-when">mail</span></span></li>`)
 	}
 	b.WriteString(`</ul></div>`)
 	return b.String()

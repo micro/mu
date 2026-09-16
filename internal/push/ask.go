@@ -95,49 +95,5 @@ func Ask(r *http.Request, accountID string) string {
 		`<span class="push-state" id="push-state"></span>` +
 		`<input type="hidden" id="push-key" value="` + html.EscapeString(key) + `">` +
 		`<input type="hidden" id="push-csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`</span>` + askCSS + cardJS + askJS
+		`</span>`
 }
-
-const askCSS = `<style>
-/* At the end of the row the page's actions are on, pushed to the right by the
- * auto margin — opposite New rather than under a banner of its own.
- *
- * It was a bordered box across the full width with a sentence in it, which is
- * the shape of an announcement. A control is smaller than the thing it
- * controls. */
-.push-ask{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
-.push-ask[hidden]{display:none}
-.push-ask .push-state{font-size:12px;color:var(--text-muted,#888)}
-/* The noun, in the page's ordinary voice — this is a label rather than a
-   heading, and it sits on the row with the button it names. */
-.push-ask .push-what{font-size:13px;color:var(--text-muted,#888)}
-.push-ask-go{font-size:13px}
-</style>`
-
-// askJS decides whether the offer is worth making, and takes it away when it
-// is not.
-//
-// cardJS runs first and does the work; this only shows and hides. The order
-// matters and is why Ask concatenates them that way round: cardJS re-posts an
-// existing subscription on load, and this reads the result.
-const askJS = `<script>
-(function(){
-  var ask = document.getElementById('push-ask');
-  var go = document.getElementById('push-go');
-  if (!ask || !go) return;
-
-  // A control that cannot work is worse than no control. cardJS disables the
-  // button and writes the reason into push-state for both of these; on this
-  // row there is no room to read a reason, so there is nothing to show.
-  if (!('serviceWorker' in navigator) || !('PushManager' in window) ||
-      typeof Notification === 'undefined' || Notification.permission === 'denied') {
-    return; // stays hidden
-  }
-
-  // Reveal once, whichever way round it is. cardJS decides which of the two
-  // buttons is showing — it swaps them on load if this device already has a
-  // subscription, and again after turning on or off — so all this has to do is
-  // stop hiding the pair. Nothing here duplicates that decision.
-  ask.hidden = false;
-})();
-</script>`
