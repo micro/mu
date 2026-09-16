@@ -208,7 +208,7 @@ export function Layout({
           className={
             "mx-auto w-full min-w-0 flex-1 px-4 sm:px-6 " +
             (conversation
-              ? "flex min-h-0 max-w-3xl flex-col py-3"
+              ? "flex min-h-0 max-w-6xl flex-col py-3"
               : publicPage ? "max-w-3xl py-8" : "max-w-6xl py-6")
           }
         >
