@@ -72,3 +72,6 @@ details[open] > summary::before { content: "−"; }
 .assistant-overview:has(#mu-chat-conv:not(:empty)) .overview-details { display:none; }
 .morning-brief { max-width:100%; }
 .index-body { max-width:var(--page-width); margin-inline:auto; }
+
+.check-label { display:flex; align-items:center; gap:8px; cursor:pointer; margin-block:12px; }
+.check-label input { flex:none; cursor:pointer; accent-color:var(--foreground); }

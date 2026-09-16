@@ -172,6 +172,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	handlers["/blog/post?id="+postID+"&edit=true"] = blog.PostHandler
 	handlers["/inbox?view=history"] = inbox.Handler
 	handlers["/inbox/settings"] = inbox.SettingsHandler
+	handlers["/inbox/imap"] = inbox.ImapHandler
 	for path, handler := range map[string]http.HandlerFunc{
 		"/admin/config": admin.ConfigHandler, "/admin/users": admin.UsersHandler,
 		"/admin/alerts": admin.AlertsHandler, "/admin/backup": admin.BackupHandler,
