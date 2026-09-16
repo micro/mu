@@ -219,7 +219,16 @@ func staticSuffixes() []string {
 
 // registerRoutes attaches every handler to the default mux.
 func registerRoutes() {
-	http.HandleFunc("/command", http.NotFound)
+	// Older open pages ask this endpoint whether to use the assistant.
+	// Keep that handshake without restoring keyword execution.
+	http.HandleFunc("/command", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		app.RespondJSON(w, map[string]bool{"assistant": true})
+	})
 	api.Operations = append(agent.PublicOperations(), work.PublicOperations()...)
 	api.Operations = append(api.Operations, inbox.PublicOperations()...)
 	http.HandleFunc("/services/call/", api.ServiceCallHandler)
