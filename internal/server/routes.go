@@ -98,6 +98,7 @@ func authRequired() map[string]bool {
 		"/browser/shot/":              false, // A picture already taken, of a page anybody could open
 		"/maps":                       false, // Public — the page, and any tile already held
 		"/maps/":                      false, // A held tile is free to anybody; a cold one needs a session
+		"/islam":                      false, // Public knowledge service reference
 		"/prayer":                     false, // Public prayer times, daily verse and hadith
 		"/oauth2/google":              false, // Google sign-in start (no session yet)
 		"/oauth2/google/connect":      true,
@@ -569,6 +570,9 @@ func registerRoutes() {
 	// JSON only. The page is /services/weather; this no longer bounces there.
 	http.HandleFunc("/weather", weather.Handler)
 	http.HandleFunc("/prayer", prayer.Handler)
+	http.HandleFunc("/islam", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/services/islam", http.StatusSeeOther)
+	})
 
 	// Every service answers at its own name. This was the one that did not —
 	// see service/hazards/page.go for how the route went missing.

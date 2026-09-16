@@ -42,7 +42,7 @@ import (
 // page by showing something the card cannot; hazards shows three feeds at once
 // where the card shows four quakes, which is the third reason — it is
 // browsable.
-var derived = map[string]string{}
+var derived = map[string]string{"islam": "knowledge tools used by the assistant; the generated Services reference is sufficient"}
 
 // keptItsPage records why, for the ones that draw their own. The reason is the
 // point: an entry with no reason is a page nobody has asked the question about.
