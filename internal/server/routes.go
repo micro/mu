@@ -753,11 +753,17 @@ func registerRoutes() {
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	// One catalogue, two lenses — see internal/api/tools_page.go.
-	http.HandleFunc("/tools", api.PublicPageHandler)
+	http.HandleFunc("/tools", func(w http.ResponseWriter, r *http.Request) {
+		if home.IsX402Host(r) || r.URL.Query().Get("view") == "services" {
+			api.ServiceToolsPageHandler(w, r)
+			return
+		}
+		api.PublicPageHandler(w, r)
+	})
 	// /tools/<name> — one tool. The smallest unit in the catalogue, and until
 	// now the only one with no page: clicking a tool jumped to a fragment on
 	// the playground. See internal/api/tool_page.go.
-	http.HandleFunc("/tools/", api.PublicPageHandler)
+	http.HandleFunc("/tools/", api.ToolPageHandler)
 	http.HandleFunc("/services", api.ToolsPageHandler)
 	// /services/<name> — one service as the thing you call: what it knows right
 	// now, every method with its arguments and its price, and a form that makes

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
 )
 
@@ -23,6 +24,13 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 		path == "agents" || path == "services" || path == "tools" || path == "apps" {
 		return false
 	}
+	if _, acc := auth.TrySession(r); acc != nil && acc.Admin {
+		for _, spec := range service.Specs() {
+			if r.URL.Path == spec.Page || path == spec.Name {
+				return false
+			}
+		}
+	}
 	command := ""
 	switch path {
 	case "home", "assistant", "agent", "agent/micro":
@@ -30,7 +38,8 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 			http.Redirect(w, r, "/?session="+url.QueryEscape(id), 303)
 			return true
 		}
-		command = "help"
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return true
 	case "wallet":
 		command = "account"
 	case "work":

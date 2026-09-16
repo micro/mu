@@ -69,7 +69,7 @@ func ToolPageHandler(w http.ResponseWriter, r *http.Request) {
 func toolPage(t Tool) string {
 	var b strings.Builder
 	b.WriteString(`<div class="tool-page">`)
-	b.WriteString(app.Actions(app.TextLink("Tools", "/tools")))
+	b.WriteString(app.Actions(app.TextLink("Tools", "/tools?view=services")))
 
 	b.WriteString(`<h1 class="tool-name">` + html.EscapeString(t.Name) + `</h1>`)
 	b.WriteString(`<p class="tool-lead">` + html.EscapeString(t.Description) + `</p>`)
@@ -121,8 +121,8 @@ func toolPage(t Tool) string {
 	// is not obvious from any single one of them.
 	b.WriteString(`<h2 class="tool-h">Calling it</h2>`)
 	b.WriteString(`<p class="tool-note">Three doors onto the same method. ` +
-		`<a href="/mcp">MCP</a> is what an agent speaks, ` +
-		`<a href="/api">REST</a> is what a program speaks, and the answer is identical.</p>`)
+		`<code>/mcp</code> is what an agent speaks, ` +
+		`<code>/api/v1</code> is what a program speaks, and the answer is identical.</p>`)
 	b.WriteString(`<pre class="tool-call">` + html.EscapeString(exampleRequest(t)) + `</pre>`)
 	if t.Path != "" {
 		method := t.Method
@@ -131,8 +131,8 @@ func toolPage(t Tool) string {
 		}
 		b.WriteString(`<pre class="tool-call">` + html.EscapeString(method+" "+t.Path) + `</pre>`)
 	}
-	b.WriteString(`<p class="tool-note">Try it in the ` +
-		`<a href="/mcp#tool-` + html.EscapeString(t.Name) + `">playground</a>.</p>`)
+	b.WriteString(`<p class="tool-note">Browse related tools in the ` +
+		`<a href="/tools?view=services">service tools reference</a>.</p>`)
 
 	b.WriteString(`</div>`)
 	return b.String()

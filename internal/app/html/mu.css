@@ -339,3 +339,12 @@ html:has(>body.command-page)::-webkit-scrollbar,.command-page::-webkit-scrollbar
 .answer-details .result-card p{margin:0}
 .answer-details .form-actions{margin-top:4px}
 .answer-details .mini-btn{font-size:inherit;min-height:26px;padding:2px 8px}
+
+.conversation-actions{gap:12px;justify-content:space-between}
+.detail-row{row-gap:6px}
+.detail-row>code,.detail-row>.detail-value{min-width:0;overflow-wrap:anywhere}
+
+.scope-fields{min-width:0;border:1px solid var(--card-border);border-radius:6px;padding:12px;margin:4px 0}
+.scope-fields[hidden]{display:none}
+.scope-fields legend{font-size:.875rem;padding-inline:4px}
+.detail-row:has(>:last-child:nth-child(2)){grid-template-columns:88px minmax(0,1fr)}

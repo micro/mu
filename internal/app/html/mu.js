@@ -289,7 +289,7 @@ let busy=false,thread=new URLSearchParams(location.search).get('session')||new U
 function remember(){if(thread)history.replaceState(null,'','/?session='+encodeURIComponent(thread));}
 function headers(accept){const token=(document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'';return {'Content-Type':'application/json','Accept':accept,'X-CSRF-Token':decodeURIComponent(token)};}
 async function assistant(command,answer){
- const response=await fetch('/agent',{method:'POST',credentials:'same-origin',headers:headers('text/event-stream'),body:JSON.stringify({prompt:command,context_id:thread,stream_text:true})});
+ const response=await fetch('/agent',{method:'POST',credentials:'same-origin',headers:headers('text/event-stream'),body:JSON.stringify({prompt:command,context_id:thread,agent:form.dataset.agent||'',stream_text:true})});
  if(!response.ok)throw Error(response.status===401?'Log in to ask the assistant.':await failure(response));
  const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',done=false;
  function event(line){if(!line.startsWith('data: '))return;const e=JSON.parse(line.slice(6));if(e.type==='flow_id'){thread=e.thread||thread;remember();}if(e.type==='working'||e.type==='tool_start')status.textContent=e.message||'Working…';if(e.type==='stream_token'){status.textContent='Writing…';}if(e.type==='response'){answer.innerHTML=e.html;done=true;}if(e.type==='error'){throw Error(e.message||'Request failed.');}}
@@ -472,7 +472,7 @@ async function createToken(e) {
 	var res = await fetch('/token', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
-		body: JSON.stringify({client: form.client.value, name: form.name.value, expires_in: parseInt(form.expires_in.value)})
+		body: JSON.stringify({client: form.client.value, name: form.name.value, expires_in: parseInt(form.expires_in.value), services:form.client.value==='services'?Array.from(form.querySelectorAll('[name="services"]:checked'),el=>el.value):[], permissions:form.client.value==='api'?['read',...Array.from(form.querySelectorAll('[name="capability"]:checked'),el=>el.value),...(form.api_write.checked?['write']:[])]:[]})
 	});
 	var result = await res.json();
 	if (result.success) {
@@ -480,7 +480,7 @@ async function createToken(e) {
 		document.getElementById('token-result').classList.remove('d-none');
 
 	} else {
-		alert('Failed to create token');
+		alert(typeof result.error==='string'?result.error:(result.error?.message||'Failed to create token'));
 	}
 }
 
@@ -915,4 +915,9 @@ if(typeof document !== "undefined"){
   });
 })();
 
+}
+
+if(typeof document!=='undefined'){
+ const tokenForm=document.getElementById('create-token-form');
+ if(tokenForm){const update=()=>tokenForm.querySelectorAll('[data-token-access]').forEach(section=>{section.hidden=section.dataset.tokenAccess!==tokenForm.client.value;section.disabled=section.hidden;});tokenForm.client.addEventListener('change',update);update();}
 }

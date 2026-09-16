@@ -158,6 +158,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case "GET":
+		if !app.WantsJSON(r) && r.URL.Query().Get("bookmark") == "" && r.URL.Query().Get("saved") == "" {
+			q := url.Values{}
+			slug := strings.TrimPrefix(r.URL.Path, "/agent/")
+			if r.URL.Path != "/agent" && slug != "" {
+				q.Set("agent", slug)
+			}
+			for _, key := range []string{"session", "continue"} {
+				if v := r.URL.Query().Get(key); v != "" {
+					q.Set(key, v)
+				}
+			}
+			http.Redirect(w, r, "/?"+q.Encode(), http.StatusSeeOther)
+			return
+		}
 		servePage(w, r)
 	case "POST":
 		if strings.TrimPrefix(path, "/agent/") != "" && path != "/agent" {
@@ -637,6 +651,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	attachment := req.Attachment
 	if threadID != "" {
 		attachment = thread.Attachment(accountID, threadID)
+		req.Agent = thread.Get(accountID, threadID).Agent
 	}
 	reading := ""
 	if attachment != "" {

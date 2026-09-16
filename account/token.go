@@ -173,7 +173,13 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(app.Field{
 		Name: "name", Label: "Name", Placeholder: "e.g. My phone", Required: true, Wide: true,
 	}.HTML())
-	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "mail", Label: "Mail (IMAP and SMTP)", On: true}, {Value: "chat", Label: "Chat (XMPP)"}, {Value: "both", Label: "Mail and chat"}}}.HTML())
+	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "mail", Label: "Mail (IMAP and SMTP)", On: true}, {Value: "chat", Label: "Chat (XMPP)"}, {Value: "both", Label: "Mail and chat"}, {Value: "api", Label: "Assistant API / MCP"}, {Value: "services", Label: "Selected services API / MCP"}}}.HTML())
+	sb.WriteString(`<fieldset class="scope-fields" data-token-access="api" hidden><legend>API capabilities</legend><div class="choices"><label class="choice"><input type="checkbox" name="capability" value="api:agent">Agents</label><label class="choice"><input type="checkbox" name="capability" value="api:inbox">Inbox</label><label class="choice"><input type="checkbox" name="capability" value="api:work">Background jobs</label></div><p class="text-muted text-sm">Agent access can run your account’s agents with their configured tools. Choose Services instead to restrict a client to specific capabilities.</p><label class="choice"><input type="checkbox" name="api_write">Allow actions (required to ask agents or start jobs)</label></fieldset>`)
+	sb.WriteString(`<fieldset class="scope-fields" data-token-access="services" hidden><legend>Allowed services</legend><p class="text-muted text-sm">Only selected services are accessible, including their actions. This does not grant agent execution or Inbox API access.</p><div class="choices">`)
+	for _, spec := range service.Specs() {
+		sb.WriteString(`<label class="choice"><input type="checkbox" name="services" value="` + htmlpkg.EscapeString(spec.Name) + `">` + htmlpkg.EscapeString(spec.NavLabel()) + `</label>`)
+	}
+	sb.WriteString(`</div></fieldset>`)
 	sb.WriteString(app.Field{
 		Name: "expires_in", Label: "Expires", Options: []app.Option{
 			{Value: "0", Label: "Never"},
@@ -193,7 +199,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// part of the chrome that depends on knowing who is signed in — the nav,
 	// the account menu, the balance — went missing on a page you can only
 	// reach by being signed in. Same bug /account had.
-	app.Respond(w, r, app.Response{Title: "Client access", Description: "Tokens for IMAP and XMPP clients", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Client access", Description: "Scoped tokens and connection details", HTML: sb.String()})
 }
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {
@@ -332,8 +338,8 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		return
 	}
 
-	// Default permissions if none provided
-	if len(permissions) == 0 {
+	// Default permissions for legacy callers; API selections are explicit.
+	if len(permissions) == 0 && client != "api" {
 		permissions = []string{"read", "write"}
 	}
 
@@ -346,6 +352,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	}
 
 	if client != "" {
+		requested := permissions
 		permissions = []string{"read", "write"}
 		switch client {
 		case "mail":
@@ -354,8 +361,30 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 			permissions = append(permissions, "protocol:chat")
 		case "both":
 			permissions = append(permissions, "protocol:mail", "protocol:chat")
+		case "api":
+			permissions = []string{"read"}
+			selected := 0
+			for _, p := range requested {
+				switch p {
+				case "api:agent", "api:inbox", "api:work":
+					permissions = append(permissions, p)
+					selected++
+				case "write":
+					permissions = append(permissions, p)
+				}
+			}
+			if selected == 0 {
+				app.RespondError(w, http.StatusBadRequest, "Select at least one API capability")
+				return
+			}
+		case "services":
+			if len(validScope) == 0 {
+				app.RespondError(w, http.StatusBadRequest, "Select at least one service")
+				return
+			}
+			permissions = append(permissions, auth.ScopeFor(validScope)...)
 		default:
-			app.RespondError(w, http.StatusBadRequest, "Choose mail, chat, or both")
+			app.RespondError(w, http.StatusBadRequest, "Choose a valid access type")
 			return
 		}
 	}
@@ -476,7 +505,11 @@ func tokenScope(t *auth.Token) string {
 		if len(capabilities) == 0 {
 			return "None"
 		}
-		return htmlpkg.EscapeString(strings.Join(capabilities, ", "))
+		suffix := " (read only)"
+		if t.HasPermission("write") {
+			suffix = " (read and actions)"
+		}
+		return htmlpkg.EscapeString(strings.Join(capabilities, ", ") + suffix)
 	}
 	if len(names) == 0 {
 		return "All"
