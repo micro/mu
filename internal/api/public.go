@@ -238,7 +238,7 @@ func publicResolver(r *http.Request) gwmcp.Resolver {
 func PublicMCPHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.Method == http.MethodGet {
-		PublicPageHandler(w, r)
+		publicMCPPage(w, r)
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -264,6 +264,21 @@ func PublicMCPHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	gwmcp.NewHandler(publicResolver(r), gwmcp.WithServerInfo("micro", "1.0.0"), gwmcp.WithProtocolVersion(MCPVersion)).ServeHTTP(w, r)
 }
+
+// publicMCPPage documents the protocol served at this endpoint.
+func publicMCPPage(w http.ResponseWriter, r *http.Request) {
+	var b strings.Builder
+	b.WriteString(`<p>Connect an MCP client to Micro to ask questions, manage work and read your inbox.</p><h2>Connect</h2><p>Server URL: <code>` + html.EscapeString(app.BaseURL(r)+"/mcp") + `</code></p><p>Choose HTTP in your client. Sign in when prompted, or use an access token from <a href="/token">Tokens</a> as <code>Authorization: Bearer &lt;token&gt;</code>.</p><h2>Tools</h2><p>The client discovers tools with <code>tools/list</code> and invokes them with <code>tools/call</code>. Access follows your account and token permissions.</p>`)
+	for _, op := range Operations {
+		b.WriteString(`<section class="page-section"><h3>` + html.EscapeString(op.Name) + `</h3><p>` + html.EscapeString(op.Description) + `</p><dl>`)
+		for _, p := range op.Params {
+			b.WriteString(`<dt><code>` + html.EscapeString(p.Name) + `</code> (` + html.EscapeString(p.Type) + `)</dt><dd>` + html.EscapeString(p.Description) + `</dd>`)
+		}
+		b.WriteString(`</dl></section>`)
+	}
+	app.Respond(w, r, app.Response{Title: "MCP", HTML: b.String()})
+}
+
 func PublicPageHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<p>Give Micro a goal, follow its work, and read the result. HTTP and MCP expose the same Agent, Work and Inbox operations.</p><p>Use an account access token from <a href="/token">Tokens</a> with <code>Authorization: Bearer &lt;token&gt;</code>. Read operations require read permission; actions require write permission. Services tokens use these same endpoints for their selected services, without granting Agent, Work or Inbox access.</p><p>Optional scopes are <code>api:agent</code>, <code>api:work</code> and <code>api:inbox</code>, supplied in permissions when creating a token. These grant the selected capability across your account, not an isolated application or stateless agent. The token page offers these scopes directly.</p><pre>POST /api/v1/agent/ask

@@ -209,32 +209,7 @@ func PlaceCard(r *http.Request, accountID string) string {
 		form.HTML()+at,
 		app.Note("Your agents use this for the forecast, what is nearby, prayer times "+
 			"and the trains — including runs that happen while you are away from the "+
-			"screen. Coordinates are rounded to about a kilometre, never finer."),
-		placeJS)
+			"screen. Coordinates are rounded to about a kilometre, never finer."))
 }
-
-const placeJS = `<script>
-function muUseMyLocation(btn){
-  if(!navigator.geolocation){btn.textContent='Not available';return}
-  btn.textContent='Locating…';
-  navigator.geolocation.getCurrentPosition(function(p){
-    document.getElementById('place-lat').value=p.coords.latitude.toFixed(2);
-    document.getElementById('place-lon').value=p.coords.longitude.toFixed(2);
-    try{document.getElementById('place-zone').value=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
-    btn.textContent='Got it — press Save';
-  },function(){btn.textContent='Could not locate'},{timeout:8000});
-}
-// The opposite. Empties every field, including the hidden ones, and posts —
-// which is the input SetPlace already treats as "forget where I am".
-function muForgetLocation(btn){
-  if(!confirm('Forget where you are? Your agents stop knowing — no forecast, no trains, no prayer times.'))return;
-  var f=btn.form||btn.closest('form');if(!f)return;
-  var name=f.querySelector('[name="place"]');if(name)name.value='';
-  ['place-lat','place-lon','place-zone'].forEach(function(id){
-    var e=document.getElementById(id);if(e)e.value='';
-  });
-  f.submit();
-}
-</script>`
 
 // PlaceHandler serves POST /account/place.

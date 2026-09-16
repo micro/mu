@@ -188,8 +188,8 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		}
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Access">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
 			<form method="POST" action="/token?id=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
-			token.Name, tokenScope(token), created, lastUsed, expires, token.ID))
+			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Delete</button></form></td></tr>`,
+			htmlpkg.EscapeString(token.Name), tokenScope(token), created, lastUsed, expires, token.ID, app.CSRFField(auth.CSRFToken(r))))
 	}
 	sb.WriteString(`</tbody></table>`)
 
@@ -266,8 +266,8 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	for _, c := range oauthClients {
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Client ID"><code>%s</code></td><td data-label="Created">%s</td><td>
 			<form method="POST" action="/token?delete_client=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
-			c.Name, c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID))
+			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Delete</button></form></td></tr>`,
+			htmlpkg.EscapeString(c.Name), c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID, app.CSRFField(auth.CSRFToken(r))))
 	}
 	sb.WriteString(`</tbody></table>`)
 
@@ -299,35 +299,6 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		`its code. Must be https, or http on localhost. Left empty it is ` +
 		`<code>http://localhost:0/callback</code>, which suits a command-line or desktop client.</p>`)
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create</button></div></form>`)
-
-	sb.WriteString(`<script>
-document.querySelector('[name="access"]').addEventListener('change',function(){document.getElementById('token-service-scopes').hidden=this.value!=='services';});
-async function createToken(e) {
-	e.preventDefault();
-	var form = e.target;
- var access=form.access.value;
- var mode=access==='services'?form.scope_mode.value:'all';
- var permissions=['read','write'];
- if(access==='api') permissions=permissions.concat(['api:agent','api:work','api:inbox']);
- else if(access!=='services') permissions.push('api:'+access);
- var services=mode==='select'?Array.from(form.querySelectorAll('input[name="services"]:checked')).map(function(c){return c.value}):[];
- if(mode==='select' && !services.length){alert('Select at least one service');return;}
-	var res = await fetch('/token', {
-		method: 'POST',
-		headers: {'Content-Type': 'application/json'},
-		body: JSON.stringify({access: access, name: form.name.value, expires_in: parseInt(form.expires_in.value),
-			scope_mode: mode, services: services, permissions: permissions})
-	});
-	var result = await res.json();
-	if (result.success) {
-		document.getElementById('new-token').textContent = result.token;
-		document.getElementById('token-result').classList.remove('d-none');
-		setTimeout(function() { location.reload(); }, 5000);
-	} else {
-		alert('Failed to create token');
-	}
-}
-</script>`)
 
 	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
 	// part of the chrome that depends on knowing who is signed in — the nav,

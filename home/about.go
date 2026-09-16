@@ -27,12 +27,6 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 		`archive, inbox and agent system that make those capabilities available. You can ` +
 		`run Mu yourself and Micro remains the default agent and front door.</p>` +
 		`</div>`)
-	b.WriteString(`<div class="card"><h3>Where to go next</h3><p class="text-sm">` +
-		`<a href="/contact">Every way to reach Micro</a> · ` +
-		`<a href="/archive">What this server has read</a> · ` +
-		`<a href="/api">For programs</a> · ` +
-		`<a href="https://github.com/micro/mu">The Mu source</a>` +
-		`</p></div>`)
 
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{

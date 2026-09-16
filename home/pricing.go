@@ -77,13 +77,6 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	start += `</div>`
 	b.WriteString(start)
 
-	b.WriteString(`<div class="card"><h3>Running it yourself</h3>` +
-		`<p>The software is the same either way, and an instance you run has no meter ` +
-		`in it: you hold the API keys and pay the providers directly.</p>` +
-		`<p class="text-sm"><a href="/install">How to run it</a> · ` +
-		`<a href="/about">What this is</a> · ` +
-		`<a href="https://github.com/micro/mu">The source</a></p></div>`)
-
 	app.Respond(w, r, app.Response{
 		Title:       "Pricing",
 		Description: "What this instance costs: a dollar of credit to start, then a credit is a cent.",
