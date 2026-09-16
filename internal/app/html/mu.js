@@ -303,7 +303,7 @@ async function run(command){
  turn.style.minHeight=Math.max(0,(window.visualViewport?.height||innerHeight)-form.offsetHeight)+'px';
  requestAnimationFrame(()=>{
   const top=window.scrollY+turn.getBoundingClientRect().top-form.offsetHeight;
-  window.scrollTo({top:Math.max(0,top),behavior:'instant'});
+  window.scrollTo({top:Math.max(0,top),behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
  });
  try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Request stopped.';}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
 }
