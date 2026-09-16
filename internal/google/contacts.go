@@ -44,7 +44,7 @@ func SearchContacts(accountID, query string, limit int) ([]Person, error) {
 	if query == "" {
 		return nil, nil
 	}
-	token, err := accessToken(accountID)
+	token, err := accessToken(accountID, ContactsScope)
 	if err != nil {
 		return nil, err
 	}

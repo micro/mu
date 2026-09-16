@@ -62,25 +62,10 @@ import (
 	gmai "go-micro.dev/v6/model"
 )
 
-// historyBudget is how much conversation one question may carry, in characters.
-//
-// A bound on size rather than on turns, because size is what is actually being
-// spent and a turn is not a unit of anything — one is "yes", the next is a
-// forty-line answer with a table in it. Counting turns meant a cap low enough
-// to survive the worst turn, applied to all of them, which is how six became
-// the number.
-//
-// 48,000 characters is roughly 12,000 tokens: a small fraction of any current
-// model's window, and far more than the tool definitions and system prompt take
-// up beside it. It is deliberately generous — the failure being avoided is a
-// conversation somebody has been adding to for a month, not an ordinary one.
-//
-// What this does not yet do is compact. When the budget is reached the oldest
-// turns are dropped, and dropping the oldest can lose the thing that set the
-// task. Summarising them instead is the next step and is what Claude Code and
-// Shelley both do; it costs a model call, which is why it is a separate change
-// rather than smuggled in here.
-const historyBudget = 48_000
+// Bound automatic context. Older turns remain in Inbox and can be recalled
+// deliberately; they are not sent to a separate summarisation model.
+const historyBudget = 16_000
+const historyMessages = 24
 
 // threadMemory is a conversation handed to a go-micro agent for one question.
 type threadMemory struct {
@@ -142,7 +127,7 @@ func history(brief string, turns []QueryMessage) *threadMemory {
 		// Whole turns only. Half an answer is worse than no answer — it reads
 		// as something the model said and stops mid-sentence — which is the
 		// mistake the 300-character truncation was making on every turn.
-		if spent+len(t.Text) > historyBudget && len(kept) > 0 {
+		if spent+len(t.Text) > historyBudget || len(kept) >= historyMessages {
 			m.dropped = i + 1
 			break
 		}
@@ -158,22 +143,8 @@ func history(brief string, turns []QueryMessage) *threadMemory {
 		m.msgs = append(m.msgs, kept[i])
 	}
 
-	// What the dropped turns were about, in front of what is left.
-	//
-	// The beginning is where somebody says what they are trying to do, so a
-	// long working conversation that simply drops its oldest turns forgets its
-	// own purpose while remembering the last twenty exchanges of detail. See
-	// compact.go.
-	//
-	// The note is the fallback rather than the answer: a model told that
-	// something is missing can only say so, which is honest and no use.
 	if m.dropped > 0 {
-		opening := summarise(turns[:m.dropped])
-		if opening == "" {
-			opening = fmt.Sprintf("[%d earlier messages in this conversation are not "+
-				"shown. If the answer depends on them, say so rather than guessing.]",
-				m.dropped)
-		}
+		opening := fmt.Sprintf("[%d earlier messages are omitted. Use recall only if the user's request needs older history and the tool is permitted.]", m.dropped)
 		m.msgs = append([]gmai.Message{{Role: "user", Content: opening}}, m.msgs...)
 	}
 

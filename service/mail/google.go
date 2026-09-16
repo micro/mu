@@ -7,7 +7,7 @@ import (
 )
 
 type GmailSearchRequest struct {
-	Query string `json:"query" description:"Gmail search, e.g. is:unread or from:someone@example.com"`
+	Query string `json:"query" description:"Gmail search, e.g. is:unread. Defaults to the last 30 days; use explicit date operators only when older mail is requested"`
 	Page  string `json:"page,omitempty" description:"Next page token from a previous search"`
 	Limit int    `json:"limit,omitempty" description:"Number of messages, up to 20"`
 }

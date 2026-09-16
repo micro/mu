@@ -173,11 +173,12 @@ func finishGoogleGrant(w http.ResponseWriter, r *http.Request, what, code string
 		return
 	}
 
-	email := ""
-	if info, err := googleUserInfo(tok.AccessToken); err == nil {
-		email = info.Email
+	info, err := googleUserInfo(tok.AccessToken)
+	if err != nil || info == nil || info.Email == "" || !info.EmailVerified {
+		http.Redirect(w, r, g.ret+"?connection=failed", http.StatusSeeOther)
+		return
 	}
-	google.Store(acc.ID, email, tok.RefreshToken, strings.Fields(tok.Scope))
+	google.Store(acc.ID, info.Email, tok.RefreshToken, strings.Fields(tok.Scope))
 	http.Redirect(w, r, g.ret+"?connection=connected", http.StatusSeeOther)
 }
 

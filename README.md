@@ -58,6 +58,13 @@ Optional Google connections provide access to Gmail, Calendar, Contacts, and
 Drive with your consent. User-created agents can have different instructions
 and access; mail to `you+research@your-domain` addresses your Research agent.
 
+Google reads use the signed-in account's connection and granted scope. Gmail
+searches default to the last 30 days unless an explicit date range is supplied.
+The assistant carries at most 24 recent messages within a 16,000-character
+history budget. Older conversations and saved notes are read through permitted
+tools when needed, rather than automatically added to every question. Disconnecting
+Google stops new reads; it does not erase answers already saved in your Inbox.
+
 An explicitly requested job can run in the background and return its result to
 the originating conversation. Execution lives under `agent/work`; task records
 live in `service/tasks`. The personal daily brief remains available. Other
@@ -75,7 +82,8 @@ explicit choice of Mail, Chat, or both.
   It does not grant access to the host machine. Remote exec and port forwarding
   are not supported.
 
-SSH/SFTP must be enabled by the operator. Mail and XMPP public TLS endpoints
+SSH/SFTP must be enabled by the operator. Legacy `SHELL_SHARED` execution is
+blocked; existing shared workspaces need migration to per-account containers. Mail and XMPP public TLS endpoints
 require the proxy setup described in the installation guide. The page reports
 configured settings; it cannot verify that external DNS, ports, or proxies work.
 

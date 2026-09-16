@@ -99,18 +99,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			credits(quota.OperationCost(quota.OpShellRun)) + `, because it is CPU and ` +
 			`memory here. Keeping and reading files is free. `
 		if shared() {
-			// Said, because it changes what somebody should put in there. A
-			// person who thinks they have a machine to themselves will leave a
-			// token in it.
-			note += `This instance shares ` + strconv.Itoa(machineBudget()) +
-				` machine(s) between everyone, each with <code>` +
-				html.EscapeString(l.Memory) + `</code> of memory and <code>` +
-				html.EscapeString(l.CPUs) + `</code> CPU, from ` +
-				html.EscapeString(image()) + `. <code>` + html.EscapeString(home(acc.ID)) +
-				`</code> is yours and nobody else can read it, delete it or list it. ` +
-				`What is not private is the machine itself: other people's ` +
-				`processes are visible in <code>ps</code>, and a heavy build by ` +
-				`somebody else will slow yours down.`
+			note = `Shared shell execution is disabled. Existing files are preserved; an administrator must migrate the workspaces to per-account containers before enabling shell access.`
 		} else {
 			note += `This instance gives each machine <code>` +
 				html.EscapeString(l.Memory) + `</code> of memory and <code>` +

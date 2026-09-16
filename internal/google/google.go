@@ -125,6 +125,16 @@ func HasScope(accountID, scope string) bool {
 	return false
 }
 
+// connectionScope is called while holding mu.
+func connectionScope(c *Connection, scope string) bool {
+	for _, granted := range c.Scopes {
+		if granted == scope {
+			return true
+		}
+	}
+	return false
+}
+
 // dropScope forgets one capability without dropping the whole grant — for when
 // Google answers 403, meaning the person withdrew that scope at their end.
 // Continuing to show them as connected to something that answers nothing is the
@@ -265,9 +275,12 @@ func Disconnect(accountID string) {
 // forget drops a grant locally without calling Google — for the case where the
 // grant is already dead at Google's end, so revoking it would be a round trip
 // to be told what Mu just learned.
-func forget(accountID string) {
+func forget(accountID string, expected *Connection) {
 	mu.Lock()
 	defer mu.Unlock()
+	if conns[accountID] != expected {
+		return
+	}
 	delete(conns, accountID)
 	delete(access, accountID)
 	save()
@@ -305,18 +318,19 @@ func Configured() bool { return clientID() != "" && clientSecret() != "" }
 
 // accessToken returns a usable access token for an account, refreshing when the
 // cached one is spent.
-func accessToken(accountID string) (string, error) {
+func accessToken(accountID, scope string) (string, error) {
 	mu.RLock()
+	c := conns[accountID]
+	if accountID == "" || c == nil || c.RefreshToken == "" || !connectionScope(c, scope) {
+		mu.RUnlock()
+		return "", ErrNotConnected
+	}
 	if t, ok := access[accountID]; ok && time.Now().Before(t.expires) {
 		mu.RUnlock()
 		return t.token, nil
 	}
-	c := conns[accountID]
+	refresh := c.RefreshToken
 	mu.RUnlock()
-
-	if c == nil || c.RefreshToken == "" {
-		return "", ErrNotConnected
-	}
 	if !Configured() {
 		return "", fmt.Errorf("google is not configured on this instance")
 	}
@@ -324,7 +338,7 @@ func accessToken(accountID string) (string, error) {
 	form := url.Values{}
 	form.Set("client_id", clientID())
 	form.Set("client_secret", clientSecret())
-	form.Set("refresh_token", c.RefreshToken)
+	form.Set("refresh_token", refresh)
 	form.Set("grant_type", "refresh_token")
 
 	req, _ := http.NewRequest(http.MethodPost, "https://oauth2.googleapis.com/token",
@@ -349,7 +363,7 @@ func accessToken(accountID string) (string, error) {
 		// grant expired. Holding a dead credential helps nobody, and keeping it
 		// would leave the UI claiming a connection that cannot answer.
 		if t.Error == "invalid_grant" {
-			forget(accountID)
+			forget(accountID, c)
 			return "", ErrNotConnected
 		}
 		return "", fmt.Errorf("could not refresh google access (%s)", t.Error)
@@ -360,6 +374,11 @@ func accessToken(accountID string) (string, error) {
 		ttl = time.Hour
 	}
 	mu.Lock()
+	// A disconnect or replacement grant wins over an in-flight refresh.
+	if conns[accountID] != c || !connectionScope(c, scope) {
+		mu.Unlock()
+		return "", ErrNotConnected
+	}
 	// A minute of headroom, so a token fetched here is not spent mid-request.
 	access[accountID] = cachedToken{token: t.AccessToken, expires: time.Now().Add(ttl - time.Minute)}
 	mu.Unlock()
@@ -381,7 +400,7 @@ type Period struct {
 // Busy returns booked periods from the selected calendars, using the same
 // selection as Events. Free/busy reads times without fetching event titles.
 func Busy(accountID string, from, to time.Time) ([]Period, error) {
-	token, err := accessToken(accountID)
+	token, err := accessToken(accountID, CalendarScope)
 	if err != nil {
 		return nil, err
 	}
@@ -462,7 +481,7 @@ type Entry struct {
 // a person would recognise rather than as one rule they would have to apply
 // themselves.
 func Events(accountID string, from, to time.Time, limit int) ([]Entry, error) {
-	token, err := accessToken(accountID)
+	token, err := accessToken(accountID, CalendarScope)
 	if err != nil {
 		return nil, err
 	}

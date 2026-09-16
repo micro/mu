@@ -55,9 +55,8 @@ func retrievedContext(account, prompt string, opts QueryOpts, services []string)
 	}
 	terms := data.QueryTerms(retrievalQuery(prompt, opts.History))
 	var payload struct {
-		Sources       []data.Passage    `json:"archived_sources,omitempty"`
-		Conversations []thread.Hit      `json:"earlier_conversation_excerpts,omitempty"`
-		Evidence      []thread.Evidence `json:"previous_tool_observations,omitempty"`
+		Sources  []data.Passage    `json:"archived_sources,omitempty"`
+		Evidence []thread.Evidence `json:"previous_tool_observations,omitempty"`
 	}
 	var err error
 	if data.UseSQLite {
@@ -72,9 +71,7 @@ func retrievedContext(account, prompt string, opts QueryOpts, services []string)
 		payload.Sources, err = data.Retrieve(ctx, terms, kinds, retrievalSince(prompt, now))
 	}
 	if !opts.Public && account != "" {
-		if permit["recall"] {
-			payload.Conversations = thread.Recall(ctx, account, opts.Thread, terms)
-		}
+		// Other conversations are read only through an explicit recall tool call.
 		payload.Evidence = thread.EvidenceFor(account, opts.Thread, services, time.Now())
 	}
 	// Keep complete JSON records, never truncate a serialised envelope.
@@ -91,11 +88,10 @@ func retrievedContext(account, prompt string, opts QueryOpts, services []string)
 			payload.Sources = payload.Sources[:len(payload.Sources)-1]
 			continue
 		}
-		payload.Conversations = nil
 		break
 	}
-	app.Log("retrieval", "duration_ms=%d sources=%d conversations=%d observations=%d failed=%t", time.Since(started).Milliseconds(), len(payload.Sources), len(payload.Conversations), len(payload.Evidence), err != nil || ctx.Err() != nil)
-	if len(payload.Sources)+len(payload.Conversations)+len(payload.Evidence) == 0 {
+	app.Log("retrieval", "duration_ms=%d sources=%d observations=%d failed=%t", time.Since(started).Milliseconds(), len(payload.Sources), len(payload.Evidence), err != nil || ctx.Err() != nil)
+	if len(payload.Sources)+len(payload.Evidence) == 0 {
 		return ""
 	}
 	b, _ := json.Marshal(payload)

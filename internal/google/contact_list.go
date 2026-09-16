@@ -11,7 +11,7 @@ import (
 
 // ContactPage reads one bounded page of the connected address book without copying it.
 func ContactPage(owner, page string) ([]Person, string, error) {
-	token, err := accessToken(owner)
+	token, err := accessToken(owner, ContactsScope)
 	if err != nil {
 		return nil, "", err
 	}

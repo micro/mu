@@ -35,6 +35,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"go-micro.dev/v6/server"
 )
@@ -88,6 +89,12 @@ func gateway(spec Spec) server.HandlerWrapper {
 		// actually returned — everybody waiting on it as a duplicate gets the
 		// same answer, including the same failure.
 		return func(ctx context.Context, req server.Request, rsp interface{}) (retErr error) {
+			// Enforce private-service identity at dispatch as well as at each
+			// entrypoint. A missing caller must never select shared/default data.
+			ep := spec.Endpoints[methodName(req.Method())]
+			if (spec.Scoped || ep.Needs >= Account) && AccountFrom(ctx) == "" {
+				return fmt.Errorf("authentication required")
+			}
 			if ep, ok := spec.Endpoints[methodName(req.Method())]; ok && ep.Needs == Operator {
 				if err := requireOperator(ctx, spec.Name+"."+methodName(req.Method())); err != nil {
 					return err

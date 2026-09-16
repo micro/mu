@@ -130,9 +130,7 @@ func runAs(accountID string) string {
 // command runs. Starting one that is already running costs one inspect.
 func ready(ctx context.Context, accountID string) error {
 	if shared() {
-		// No eviction here: the pool is sized to fit and its members serve
-		// everybody, so there is never a machine to take away to make room.
-		return readyShared(ctx, accountID)
+		return fmt.Errorf("shared shell execution is disabled for account isolation; migrate shared workspaces to per-account containers and unset SHELL_SHARED")
 	}
 	name := boxOf(accountID)
 	// Somewhere to put it, before starting anything. On a small box the

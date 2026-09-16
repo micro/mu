@@ -27,10 +27,8 @@ func scopeOf(agentID string) string {
 	return ""
 }
 
-// UserContextFunc is set by main.go to provide personalised context
-// for the agent's responses. Returns a string with the user's current
-// state (unread mail, market prices, etc.) that gets injected into the
-// synthesis prompt.
+// UserContextFunc supplies minimal profile context (name, place and time).
+// Private service content is read through the agent's permitted tools.
 var UserContextFunc func(accountID string) string
 
 type RunRequest struct {
