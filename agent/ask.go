@@ -337,9 +337,7 @@ func Ask(r AskRequest) (Answer, error) {
 	// lands in the conversation like any other reply — somebody who asked a
 	// question on their phone should read why nothing happened in the place
 	// they asked, not find out by opening a wallet page.
-	_, directCommand := promptCommands(r.Text, opts)
-	directCommand = directCommand || explicitCommand(r.Text) || commandDenied(r.Text, opts)
-	if reason, ok := affordable(r.Account); !ok && !directCommand {
+	if reason, ok := affordable(r.Account); !ok {
 		Answered(r.Account, threadID(th), reason, "")
 		return Answer{Text: reason, Thread: threadID(th)}, nil
 	}
@@ -352,7 +350,7 @@ func Ask(r AskRequest) (Answer, error) {
 	// a provider timing out is our problem, and billing for it teaches people
 	// to distrust the number. The same reasoning as service/web, which charges
 	// only when the fetch came back.
-	if err == nil && strings.TrimSpace(answer) != "" && !directCommand {
+	if err == nil && strings.TrimSpace(answer) != "" {
 		quota.Charge(r.Account, quota.OpAgentRun, map[string]interface{}{
 			"agent": r.Agent, "client": r.Client,
 		}) //nolint:errcheck

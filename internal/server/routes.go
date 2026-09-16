@@ -219,7 +219,7 @@ func staticSuffixes() []string {
 
 // registerRoutes attaches every handler to the default mux.
 func registerRoutes() {
-	http.HandleFunc("/command", home.CommandHandler)
+	http.HandleFunc("/command", http.NotFound)
 	api.Operations = append(agent.PublicOperations(), work.PublicOperations()...)
 	api.Operations = append(api.Operations, inbox.PublicOperations()...)
 	http.HandleFunc("/services/call/", api.ServiceCallHandler)
