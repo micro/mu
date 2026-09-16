@@ -526,8 +526,8 @@ cost; rate limits stop bots.
 Go handlers render HTML on the server. Home is the personal overview with the
 assistant prompt, brief and recent conversations. Services such as news, video
 and markets supply the assistant; they are not Home feeds or primary destinations.
-Home and Inbox are the daily navigation. Settings combines profile, billing and
-connections. App and agent authoring belongs to operators and assistant tools. The public
+Home, Inbox and Work are the daily navigation. Settings groups account controls,
+connections and a distinct Billing view. App and agent authoring belongs to operators and assistant tools. The public
 landing says “A personal assistant”. Preserve current backend contracts, account
 isolation, CSRF protections and existing shared links when changing presentation.
 
@@ -542,3 +542,7 @@ with no callers. Remove obsolete code and assets when replacing their owners.
 Use a consistent 6xl content width, restrained controls, visible hover/focus
 states and +/− disclosures. Check populated and empty pages at desktop and mobile
 widths. Backend tests and the browser layout gate must pass before merge.
+
+Public landing, every footer destination, login and signup are part of UI review.
+Review actual desktop/mobile screenshots alongside browser assertions; a page
+returning HTML or fitting the viewport is not sufficient evidence of good layout.

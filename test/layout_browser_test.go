@@ -67,7 +67,7 @@ import (
 // Run with MU_LAYOUT_BROWSER pointing at Chromium and MU_PLAYWRIGHT_MODULE at
 // playwright's module. Uses actual handlers, isolated accounts and no providers.
 func TestPageCompositionInBrowser(t *testing.T) {
-	if os.Getenv("MU_LAYOUT_BROWSER") == "" {
+	if os.Getenv("MU_LAYOUT_BROWSER") == "" && os.Getenv("MU_LAYOUT_EXPORT") == "" {
 		t.Skip("set MU_LAYOUT_BROWSER to run browser layout checks")
 	}
 	// Render without contacting providers, including pages that fetch on GET.
@@ -221,9 +221,47 @@ func TestPageCompositionInBrowser(t *testing.T) {
 			t.Errorf("service %s has no browser fixture", name)
 		}
 	}
+	// Reference journey: one delivered brief, one conversation and its linked work.
+	const briefRef = "<layout-brief@mu.test>"
+	briefThread := thread.Open(who, "mail", briefRef)
+	thread.Add(thread.Message{Account: who, Thread: briefThread.ID, Ref: briefRef, Role: thread.RoleAgent, From: "Micro", Text: "Your morning brief. Review the appointment details."})
+	if err := mail.SendMessageTo(mail.Delivery{From: "Micro", FromID: "agent", ToID: who, Tag: "brief", MessageID: briefRef, Body: "Your morning brief. Review the appointment details."}); err != nil {
+		t.Fatal(err)
+	}
+	job, err := tasks.CreateOn(who, briefThread.ID, "", "Review appointment details", "", tasks.Me, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tasks.Update(who, job.ID, "", "", tasks.StatusDone, "", "The appointment details are ready."); err != nil {
+		t.Fatal(err)
+	}
+	thread.Add(thread.Message{Account: who, Thread: briefThread.ID, Role: thread.RoleAgent, From: "Micro", Text: "The appointment details are ready. [View work](/work?id=" + job.ID + ")"})
+	for path, handler := range map[string]http.HandlerFunc{
+		"/home": home.Handler, "/inbox?id=" + briefThread.ID: inbox.Handler, "/work?id=" + job.ID: work.Handler,
+		"/status": home.StatusHandler,
+	} {
+		req := httptest.NewRequest("GET", path, nil)
+		if path != "/status" {
+			req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		}
+		rec := httptest.NewRecorder()
+		handler(rec, req)
+		if rec.Code != 200 {
+			t.Fatalf("reference %s: %d", path, rec.Code)
+		}
+		pages[path] = rec.Body.String()
+	}
 	css := app.Styles()
 
 	input, _ := json.Marshal(map[string]any{"resultHTML": app.Results([]result.Item{{Kind: "article", Title: "Dogecoin ETFs struggled for buyers", Summary: "A clear summary of the article you asked for.", URL: "https://example.com/article"}}), "pages": pages, "policies": policies, "css": string(css)})
+	if path := os.Getenv("MU_LAYOUT_EXPORT"); path != "" {
+		if err := os.WriteFile(path, input, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if os.Getenv("MU_LAYOUT_BROWSER") == "" {
+			return
+		}
+	}
 	cmd := exec.Command("node", "../internal/app/testdata/layout.cjs")
 	cmd.Stdin = strings.NewReader(string(input))
 	out, err := cmd.CombinedOutput()

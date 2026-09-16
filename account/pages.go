@@ -67,8 +67,10 @@ func SignupRateLimit(ip string) bool {
 	return true
 }
 
-var LoginTemplate = `<html lang="en">
+var LoginTemplate = `<!DOCTYPE html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
     <title>Login | Micro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer"/>
@@ -169,12 +171,15 @@ var LoginTemplate = `<html lang="en">
 	</script>
       </div>
     </div>
+    <footer id="footer" aria-label="Site information">%s</footer>
   </body>
 </html>
 `
 
-var SignupTemplate = `<html lang="en">
+var SignupTemplate = `<!DOCTYPE html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
     <title>Signup | Micro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
     <meta name="referrer" content="no-referrer"/>
@@ -202,6 +207,7 @@ var SignupTemplate = `<html lang="en">
 	<p class="text-center mt-5"><a href="/login">Log in</a> if you have an account</p>
       </div>
     </div>
+    <footer id="footer" aria-label="Site information">%s</footer>
   </body>
 </html>
 `
@@ -233,7 +239,7 @@ func renderSignupInvite(errHTML, redirectParam, invite string) string {
 	// error, no test, nothing in a diff to notice: the replace simply matched
 	// nothing and returned the string unchanged. A slot cannot miss.
 	return fmt.Sprintf(SignupTemplate, redirectParam,
-		googleButtonHTML("Sign up with Google"), errHTML, app.CaptchaHTML(c), inviteField)
+		googleButtonHTML("Sign up with Google"), errHTML, app.CaptchaHTML(c), inviteField, app.FooterLinks())
 }
 
 // renderRequestInvitePage shows the "request an invite" form that
@@ -618,7 +624,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 	// These authenticated views share mutation handling, not duplicated settings forms.
 	accountPath := "/account"
-	title := "Account"
+	title := "Settings"
 	switch r.URL.Path {
 	case "/account/profile":
 		accountPath, title = r.URL.Path, "Profile"
@@ -780,22 +786,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		notice = app.Problem(msg)
 	}
 
-	// The balance goes directly under the profile, and everything else after it.
-	//
-	// It is the one thing on this page with a deadline: a display name, a
-	// language or a passkey can wait, and an empty balance stops the agent
-	// mid-errand. It was a nav item of its own called Wallet, which put a
-	// person's money one click further away than their choice of language.
-	// The page, as a list of sections.
-	//
-	// It was one fmt.Sprintf with fourteen %s in it and a template above them,
-	// so reading it meant counting placeholders down one list and arguments up
-	// another to find out which card was which. Every block below says its own
-	// name, and the order on the screen is the order in the code.
-	//
-	// The balance goes directly under the profile because it is the one thing
-	// here with a deadline: a display name, a language or a passkey can wait,
-	// and an empty balance stops the agent mid-errand.
 	profile := app.Section("Profile",
 		`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
 			htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
@@ -813,56 +803,41 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			Fields: []app.Field{{Name: "language", Options: langs}},
 			Submit: "Save"}.HTML())
 
-	// No Settings section, and no About card.
-	//
-	// "Settings" was a section named after the page it was on, which is a name
-	// that can absorb anything — and it had: a link to your tokens, a link to
-	// the three piles you accumulate by using the product, and Log out. Nothing
-	// they share, and not one of them a setting. "About Mu" was the footer in a
-	// card, titled for one of its four links while holding Privacy and Status,
-	// and one of the four (Tools) is a sidebar item already.
-	//
-	// Both are the same tell: a card whose name means "miscellaneous" is where
-	// things go when nobody decided where they belong. They are destinations,
-	// and destinations belong in the menu with your name on it — see
-	// app.navBottom. Log out was already there.
-
-	// Credits and their transaction history belong to this account.
-	// Notifications last, because it is a thing you do rather than a thing you
-	// read, and on a phone it is what makes the product work with the page
-	// closed. It used to render below the Settings section — which ended with
-	// Log out, so the control sat under the link that ends the session, where a
-	// page has plainly finished.
-	content := notice + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) +
-		app.Section("Clients", `<div class="form-actions"><a class="btn" href="/token">Tokens</a><a class="btn" href="/inbox/imap">IMAP</a><a class="btn" href="/inbox/settings">Morning brief</a></div>`) + profile +
-		passwordCard(acc) +
-		PlaceCard(r, acc.ID) +
-		emailCard +
-		renderPhoneCard(acc.ID) +
-		googleCard +
-		language +
-		PasskeyListHTML(acc.ID) +
-		push.Card(r, acc.ID)
-
-	// About, Privacy, Status — a line, not a card.
-	//
-	// These have to be reachable and are worth very little. They were a card
-	// headed "About Mu", which titled the group for one of its four links while
-	// two of the others were Privacy and Status, and gave a marketing nav the
-	// same weight as the balance. About is in the account menu now; this is the
-	// rest of it at the weight it deserves, at the foot of the page where a
-	// footer would be if there were one.
-	//
-	// It is here rather than nowhere because the footer is not rendered for a
-	// signed-in account — see footerFor — so with no line at all /privacy and
-	// /status become unreachable from inside the product. TestEveryFooterLink-
-	// IsReachableSignedIn caught exactly that when About left for the menu.
-	content += `<p class="account-legal"><a href="/privacy">Privacy</a> · <a href="/about">About</a> · <a href="/status">Status</a></p>`
+	// Each destination renders only its own sections. Mutation and JSON contracts
+	// remain shared, including old profile and billing links.
+	var content string
+	switch accountPath {
+	case "/account/billing":
+		content = BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID)
+	case "/account/profile":
+		content = profile + passwordCard(acc) + language + PasskeyListHTML(acc.ID)
+	default:
+		content = profile + passwordCard(acc) + PlaceCard(r, acc.ID) + emailCard +
+			renderPhoneCard(acc.ID) + googleCard + language + PasskeyListHTML(acc.ID) +
+			app.Section("Connections", `<div class="form-actions"><a class="btn" href="/token">Tokens</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Morning brief</a></div>`) +
+			push.Card(r, acc.ID)
+	}
+	content = settingsNavigation(accountPath) + notice + `<div class="page-stack settings-sections">` + content + `</div>` +
+		`<p class="account-legal"><a href="/privacy">Privacy</a> · <a href="/about">About</a> · <a href="/status">Status</a></p>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
 	// missing on the one page you reach by being signed in.
 	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: content})
+}
+
+func settingsNavigation(path string) string {
+	var b strings.Builder
+	b.WriteString(`<nav class="view-switch" aria-label="Settings">`)
+	for _, item := range []struct{ path, label string }{{"/account", "Settings"}, {"/account/billing", "Billing"}} {
+		current := ""
+		if path == item.path || (path == "/account/profile" && item.path == "/account") {
+			current = ` aria-current="page"`
+		}
+		b.WriteString(`<a href="` + item.path + `"` + current + `>` + item.label + `</a>`)
+	}
+	b.WriteString(`</nav>`)
+	return b.String()
 }
 
 // agentNumber is the number the agent texts from, for saving as a contact.

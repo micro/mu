@@ -23,13 +23,13 @@ package test
 
 import (
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
 	"mu/internal/api"
+	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 var footerHref = regexp.MustCompile(`href="(/[a-z0-9/-]*)"`)
@@ -37,12 +37,9 @@ var footerHref = regexp.MustCompile(`href="(/[a-z0-9/-]*)"`)
 // Account screens deliberately omit marketing navigation. Browser tests cover
 // the rendered Go shell; public footer pages remain directly accessible.
 func TestAccountDoesNotEmbedTheLandingFooter(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(at(""), "account/pages.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(b), "app.FooterLinks()") {
-		t.Fatal("landing footer returned to account pages")
+	page := app.RenderHTML("Settings", "", "", &auth.Account{ID: "reader"})
+	if strings.Contains(page, `id="footer"`) {
+		t.Fatal("landing footer returned to signed-in shell")
 	}
 }
 
