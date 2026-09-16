@@ -23,20 +23,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := `<nav aria-label="Admin" class="section-stack">
-		<a class="section-link" href="/admin/users">Users</a>
-		<a class="section-link" href="/admin/status">Status</a>
-		<a class="section-link" href="/admin/server">Server</a>
-		<a class="section-link" href="/admin/config">Settings</a>
-		<a class="section-link" href="/admin/log">Logs` + alertBadge() + `</a>
-		<a class="section-link" href="/admin/traffic">Usage</a>
-		<a class="section-link" href="/admin/alerts">Alerts</a>
-		<a class="section-link" href="/admin/moderate">Moderation</a>
-		<a class="section-link" href="/admin/spam">Spam</a>
-		<a class="section-link" href="/admin/backup">Backups</a>
-		<a class="section-link" href="/admin/oauth">OAuth</a>
 		<a class="section-link" href="/agents">Agents</a>
-		<a class="section-link" href="/services">Services</a>
+		<a class="section-link" href="/admin/alerts">Alerts</a>
 		<a class="section-link" href="/apps">Apps</a>
+		<a class="section-link" href="/admin/backup">Backups</a>
+		<a class="section-link" href="/admin/log">Logs` + alertBadge() + `</a>
+		<a class="section-link" href="/admin/moderate">Moderation</a>
+		<a class="section-link" href="/admin/oauth">OAuth</a>
+		<a class="section-link" href="/admin/server">Server</a>
+		<a class="section-link" href="/services">Services</a>
+		<a class="section-link" href="/admin/config">Settings</a>
+		<a class="section-link" href="/admin/spam">Spam</a>
+		<a class="section-link" href="/admin/status">Status</a>
+		<a class="section-link" href="/admin/traffic">Usage</a>
+		<a class="section-link" href="/admin/users">Users</a>
 	</nav>`
 
 	app.Respond(w, r, app.Response{Title: "Admin", Description: "Admin Dashboard", HTML: content})
