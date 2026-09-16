@@ -45,6 +45,9 @@ import (
 
 // Load subscribes to arrivals that were held. Called at boot.
 func Load() {
+	if !ai.BackgroundEnabled() {
+		return
+	}
 	go func() {
 		sub := event.Subscribe(event.ArrivalHeld)
 		for e := range sub.Chan {
@@ -82,6 +85,7 @@ func judge(account, id, from string) {
 		System:   prompt,
 		Question: "From: " + from + "\n\nMessage: " + said,
 		Model:    ai.BackgroundModel(),
+		Caller:   "arrival-gate",
 	})
 	if err != nil {
 		// Worth a line. A gatekeeper that has stopped working looks exactly

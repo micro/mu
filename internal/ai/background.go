@@ -13,7 +13,7 @@ func BackgroundEnabled() bool {
 
 func checkBackground(caller string) error {
 	switch caller {
-	case "brief", "daily-digest", "moderate", "social-judge", "news-sentiment", "notes-generate", "opinion-generate", "article-summary", "auto-tag-post", "auto-tag-note", "topic-summary", "topic-generation":
+	case "arrival-gate", "agent.compact", "brief", "daily-digest", "moderate", "social-judge", "news-sentiment", "notes-generate", "opinion-generate", "article-summary", "auto-tag-post", "auto-tag-note", "topic-summary", "topic-generation":
 		if !BackgroundEnabled() {
 			return fmt.Errorf("automatic AI processing is disabled")
 		}

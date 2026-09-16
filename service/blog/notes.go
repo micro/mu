@@ -82,6 +82,9 @@ func notesEnabled() bool {
 // StartNotes begins the background notes posting loop. Called from main.go after
 // the building blocks are loaded (next to StartOpinion).
 func StartNotes() {
+	if !ai.BackgroundEnabled() {
+		return
+	}
 	go notesLoop()
 }
 

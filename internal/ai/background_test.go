@@ -4,7 +4,7 @@ import "testing"
 
 func TestAutomaticProcessingRequiresOptIn(t *testing.T) {
 	t.Setenv("AI_BACKGROUND_ENABLED", "")
-	for _, caller := range []string{"brief", "daily-digest", "moderate", "news-sentiment", "article-summary", "notes-generate", "opinion-generate", "social-judge", "topic-generation"} {
+	for _, caller := range []string{"arrival-gate", "agent.compact", "brief", "daily-digest", "moderate", "news-sentiment", "article-summary", "notes-generate", "opinion-generate", "social-judge", "topic-generation"} {
 		if err := checkBackground(caller); err == nil {
 			t.Fatalf("%s permitted", caller)
 		}
