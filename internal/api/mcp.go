@@ -779,7 +779,17 @@ func checkTokenScope(r *http.Request, toolName string) error {
 		return nil
 	}
 	tok := auth.TokenFromRequest(r)
-	if tok == nil || !tok.Scoped() {
+	if tok == nil {
+		return nil
+	}
+	permission := "read"
+	if service.ChangingTool(toolName) {
+		permission = "write"
+	}
+	if !tok.HasPermission(permission) {
+		return fmt.Errorf("this token does not allow %s operations", permission)
+	}
+	if !tok.Scoped() {
 		return nil
 	}
 	svc := serviceOf(toolName)
