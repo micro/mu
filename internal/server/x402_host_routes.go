@@ -118,5 +118,9 @@ func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func publicReferenceHandler(w http.ResponseWriter, r *http.Request) {
-	http.NotFound(w, r)
+	if origin.IsX402Host(r) {
+		api.RESTPageHandler(w, r)
+		return
+	}
+	api.PublicPageHandler(w, r)
 }

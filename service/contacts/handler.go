@@ -152,7 +152,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</p></div>`)
 	} else {
-		b.WriteString(`<div class="card"><table class="data-table contacts-table">`)
+		b.WriteString(`<div class="card"><table class="data-table stacked contacts-table">`)
 		b.WriteString(`<thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Note</th><th></th></tr></thead><tbody>`)
 		for _, c := range people {
 			// Classed cells, not positional ones: a phone renders this as a
@@ -163,7 +163,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 				mailLink = `<a href="/mail?to=` + html.EscapeString(neturl.QueryEscape(c.Email)) + `">` +
 					html.EscapeString(c.Email) + `</a>`
 			}
-			fmt.Fprintf(&b, `<td class="contact-meta">%s</td><td class="contact-meta">%s</td><td class="contact-meta">%s</td>`,
+			fmt.Fprintf(&b, `<td class="contact-meta" data-label="Email">%s</td><td class="contact-meta" data-label="Phone">%s</td><td class="contact-meta" data-label="Note">%s</td>`,
 				mailLink, orDash(c.Phone), orDash(c.Note))
 
 			fmt.Fprintf(&b, `<td class="contact-actions"><form class="form-action" method="POST" action="/contacts/%s/delete" onsubmit="return confirm('Remove %s?')">

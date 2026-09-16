@@ -23,6 +23,10 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
 	initial := ""
 	selected, agentName := "", "Micro"
+	agentDescription := ""
+	if a := agent.Platform(""); a != nil {
+		agentDescription = a.Description
+	}
 	if ref := r.URL.Query().Get("agent"); ref != "" {
 		if acc == nil {
 			app.RedirectToLogin(w, r)
@@ -58,10 +62,14 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if acc != nil {
 		if a := agent.For(acc.ID, selected); a != nil {
-			agentName = a.Name
+			agentName, agentDescription = a.Name, a.Description
 		} else if a := agent.Platform(selected); a != nil {
-			agentName = a.Name
+			agentName, agentDescription = a.Name, a.Description
 		}
+	}
+	description := ""
+	if agentDescription != "" {
+		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
 	newConversation := "/"
 	if selected != "" && acc != nil {
@@ -71,5 +79,5 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if session != "" {
 		state += " is-active"
 	}
-	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="conversation-actions"><span>`+html.EscapeString(agentName)+`</span><a href="`+html.EscapeString(newConversation)+`">New conversation</a></div><div class="prompt-welcome"><h1>`+html.EscapeString(agentName)+`</h1><p>A personal assistant</p></div><form id="command-form" data-agent="`+html.EscapeString(selected)+`"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="What do you need?" autocomplete="off" required><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
+	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="conversation-actions"><span>`+html.EscapeString(agentName)+`</span><a href="`+html.EscapeString(newConversation)+`">New conversation</a></div><div class="prompt-welcome"><h1>`+html.EscapeString(agentName)+`</h1>`+description+`</div><form id="command-form" data-agent="`+html.EscapeString(selected)+`"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="What do you need?" autocomplete="off" required><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
 }

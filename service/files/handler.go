@@ -209,9 +209,9 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	if len(stored) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">Nothing stored yet. ` +
-			`Upload something above, or an agent connected over <a href="/mcp">MCP</a> can put a file here with <code>files_put</code>.</p></div>`)
+			`Upload something above, or an agent connected over <a href="/tools">service tools</a> can put a file here with <code>files_put</code>.</p></div>`)
 	} else {
-		b.WriteString(`<div class="card"><table class="data-table files-table">`)
+		b.WriteString(`<div class="card"><table class="data-table stacked files-table">`)
 		b.WriteString(`<thead><tr><th>Name</th><th>Size</th><th>Visibility</th><th>Stored</th><th></th></tr></thead><tbody>`)
 		for _, f := range stored {
 			visibility, shareTo, shareLabel := "Private", "1", "Share"
@@ -224,7 +224,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 			// name. Five columns at 375px would either overflow the screen or
 			// squeeze the name to nothing.
 			fmt.Fprintf(&b, `<tr><td class="file-name"><a href="%s">%s</a></td>`+
-				`<td class="file-meta">%s</td><td class="file-meta">%s</td><td class="file-meta">%s</td>`+
+				`<td class="file-meta" data-label="Size">%s</td><td class="file-meta" data-label="Visibility">%s</td><td class="file-meta" data-label="Stored">%s</td>`+
 				`<td class="file-actions">`,
 				html.EscapeString(f.URL), html.EscapeString(f.Name),
 				human(f.Size), visibility, f.Created.Format("2 Jan 15:04"))

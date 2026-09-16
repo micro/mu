@@ -168,13 +168,19 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// — read as one, it is the wrong word. A placeholder is not a label either:
 	// it disappears the moment you type, and "e.g. CI/CD" over an empty box is
 	// the only thing that ever said what the box was for.
+	agentAccess := r.URL.Query().Get("access") == "agent"
+	serviceAccess := r.URL.Query().Get("access") == "services"
+	checked := ""
+	if agentAccess {
+		checked = " checked"
+	}
 	sb.WriteString(`<h4 class="mt-5">Create a token</h4>`)
 	sb.WriteString(`<form id="create-token-form" class="form" onsubmit="createToken(event)">`)
 	sb.WriteString(app.Field{
 		Name: "name", Label: "Name", Placeholder: "e.g. My phone", Required: true, Wide: true,
 	}.HTML())
-	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "mail", Label: "Mail (IMAP and SMTP)", On: true}, {Value: "chat", Label: "Chat (XMPP)"}, {Value: "both", Label: "Mail and chat"}, {Value: "api", Label: "Assistant API / MCP"}, {Value: "services", Label: "Selected services API / MCP"}}}.HTML())
-	sb.WriteString(`<fieldset class="scope-fields" data-token-access="api" hidden><legend>API capabilities</legend><div class="choices"><label class="choice"><input type="checkbox" name="capability" value="api:agent">Agents</label><label class="choice"><input type="checkbox" name="capability" value="api:inbox">Inbox</label><label class="choice"><input type="checkbox" name="capability" value="api:work">Background jobs</label></div><p class="text-muted text-sm">Agent access can run your account’s agents with their configured tools. Choose Services instead to restrict a client to specific capabilities.</p><label class="choice"><input type="checkbox" name="api_write">Allow actions (required to ask agents or start jobs)</label></fieldset>`)
+	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "mail", Label: "Mail (IMAP and SMTP)", On: !agentAccess && !serviceAccess}, {Value: "chat", Label: "Chat (XMPP)"}, {Value: "both", Label: "Mail and chat"}, {Value: "api", Label: "Assistant API / MCP", On: agentAccess}, {Value: "services", Label: "Selected services API / MCP", On: serviceAccess}}}.HTML())
+	sb.WriteString(`<fieldset class="scope-fields" data-token-access="api" hidden><legend>API capabilities</legend><div class="choices"><label class="choice"><input type="checkbox" name="capability" value="api:agent"` + checked + `>Agents</label><label class="choice"><input type="checkbox" name="capability" value="api:inbox">Inbox</label><label class="choice"><input type="checkbox" name="capability" value="api:work">Background jobs</label></div><p class="text-muted text-sm">Agent access can run any of your account’s agents with their configured tools; it is not limited to one named agent. Choose Services instead to restrict a client to specific capabilities.</p><label class="choice"><input type="checkbox" name="api_write"` + checked + `>Allow actions (required to ask agents or start jobs)</label></fieldset>`)
 	sb.WriteString(`<fieldset class="scope-fields" data-token-access="services" hidden><legend>Allowed services</legend><p class="text-muted text-sm">Only selected services are accessible, including their actions. This does not grant agent execution or Inbox API access.</p><div class="choices">`)
 	for _, spec := range service.Specs() {
 		sb.WriteString(`<label class="choice"><input type="checkbox" name="services" value="` + htmlpkg.EscapeString(spec.Name) + `">` + htmlpkg.EscapeString(spec.NavLabel()) + `</label>`)

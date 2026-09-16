@@ -39,7 +39,7 @@ func init() {
 	Register(&Agent{
 		ID:           "micro",
 		Name:         "Micro",
-		Description:  "General-purpose personal AI — handles any query",
+		Description:  "A personal assistant",
 		SystemPrompt: `You are Micro, a personal AI agent. You have access to all tools and can help with anything — news, markets, weather, mail, search, places, apps, and more. Be concise, direct, and helpful. Use markdown.`,
 		Tools:        nil, // nil = all tools
 		MemoryScope:  "",

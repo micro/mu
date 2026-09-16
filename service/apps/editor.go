@@ -64,22 +64,7 @@ func editPageHTML(a *App) string {
 	}
 
 	return fmt.Sprintf(`
-<style>
-.builder { display: flex; flex-direction: column; gap: 12px; }
-.preview-area { display: flex; flex-direction: column; min-height: 60vh; }
-.preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.preview-header h3 { font-size: 14px; font-weight: 550; margin: 0; }
-.preview-frame { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; min-height: 50vh; }
-.code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.code-header h3 { font-size: 14px; font-weight: 550; margin: 0; }
-.code-editor { width: 100%%; min-height: 300px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; line-height: 1.5; resize: vertical; tab-size: 2; background: #fafafa; }
-.status-msg { font-size: 13px; color: #999; margin-left: 8px; }
-.ai-edit { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa; }
-.ai-edit label { display: block; font-size: 13px; font-weight: 550; margin-bottom: 6px; }
-.ai-edit-note { font-size: 12px; color: #888; margin: 8px 0 0; }
-.ed-tall { min-height: 50vh; }
-.ed-grow { flex: 1 1 300px; min-width: 0; max-width: 100%%; }
-</style>
+
 
 <div class="builder">
   <div class="d-flex between items-center mb-1 flex-wrap gap-2">

@@ -434,16 +434,6 @@ func platformRow(name string, viewers ...string) string {
 	if for_ == "" {
 		for_ = toolWords(a.Tools)
 	}
-	if len(a.Tools) == 0 {
-		for_ = "Everything"
-	}
-	// The default says so, because nothing else on the row does. It has no Edit
-	// and no Remove, which is a difference you notice only by comparing it with
-	// a row underneath — and on an account with no agents of its own there is
-	// nothing to compare it to.
-	if strings.EqualFold(name, DefaultPlatformAgent) {
-		for_ = "The default — " + strings.ToLower(for_[:1]) + for_[1:]
-	}
 
 	// No Edit and no Remove: this one is the instance's, not yours. Making one
 	// of your own starts from the builder rather than from this row.
