@@ -327,3 +327,15 @@ input.compact-number:not([type=checkbox]):not([type=radio]):not([type=hidden]){w
 .pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:16px;margin-top:20px;padding-block:8px;font-size:.875rem}
 .pager-at{color:var(--text-muted);white-space:nowrap}
 .pager-link{display:inline-block;padding-block:4px}
+
+/* Hide landing scrollbars without disabling wheel, touch, or keyboard scrolling. */
+html:has(>body.command-page),.command-page,.command-page #responses{scrollbar-width:none}
+html:has(>body.command-page)::-webkit-scrollbar,.command-page::-webkit-scrollbar,.command-page #responses::-webkit-scrollbar{display:none}
+
+.answer-details{margin-top:12px;font-size:.8rem;color:var(--text-muted)}
+.answer-details>summary{cursor:pointer;width:fit-content}
+.answer-details-body{display:flex;flex-direction:column;gap:8px;margin-top:8px;color:#222}
+.answer-details .result-card{gap:4px;padding:8px 0;border-top:1px solid #eee}
+.answer-details .result-card p{margin:0}
+.answer-details .form-actions{margin-top:4px}
+.answer-details .mini-btn{font-size:inherit;min-height:26px;padding:2px 8px}
