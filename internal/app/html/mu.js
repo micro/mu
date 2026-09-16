@@ -297,20 +297,18 @@ async function failure(response){try{const j=await response.json();return typeof
 async function run(command){
  if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
- // Administrative values are neither displayed nor persisted in browser history.
- q.textContent=/^\/?\s*admin\s+config\s+set\s/i.test(command)?command.trim().split(/\s+/).slice(0,4).join(' ')+' [value hidden]':command;
+ q.textContent=command;
  const answer=document.createElement('div');answer.className='answer';turn.append(q,answer);log.append(turn);
  log.querySelectorAll('.turn').forEach(item=>item.style.minHeight='');
- turn.style.minHeight=Math.max(0,innerHeight-form.offsetHeight)+'px';
+ turn.style.minHeight=Math.max(0,(window.visualViewport?.height||innerHeight)-form.offsetHeight)+'px';
  requestAnimationFrame(()=>{
   const top=window.scrollY+turn.getBoundingClientRect().top-form.offsetHeight;
   window.scrollTo({top:Math.max(0,top),behavior:'instant'});
  });
- try{const response=await fetch('/command',{method:'POST',credentials:'same-origin',headers:headers('application/json'),body:JSON.stringify({command,thread})});if(!response.ok)throw Error(await failure(response));const data=await response.json();if(data.assistant)await assistant(command,answer);else {answer.innerHTML=data.html;if(data.thread){thread=data.thread;remember();}}status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Request stopped.';}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
+ try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Request stopped.';}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
 }
 form.addEventListener('submit',e=>{e.preventDefault();run(input.value.trim());});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
-document.addEventListener('click',event=>{const button=event.target.closest('[data-command]');if(button)run(button.dataset.command);});
 try{if(location.hash){input.value=decodeURIComponent(location.hash.slice(1));history.replaceState(null,'','/');}}catch{}
 })();
 

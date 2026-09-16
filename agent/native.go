@@ -662,22 +662,6 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	defer func() {
 		app.Log("timing", "phase=agent_total caller=%s duration_ms=%.3f failed=%t", costCaller(opts), float64(time.Since(started))/float64(time.Millisecond), runErr != nil)
 	}()
-	if commands, ok := promptCommands(prompt, opts); ok {
-		ctx, cancel := context.WithTimeout(runContext(opts), 20*time.Second)
-		defer cancel()
-		return executeCommands(ctx, accountID, commands, opts)
-	}
-
-	if commandDenied(prompt, opts) {
-		return "", fmt.Errorf("command unavailable in this context")
-	}
-	if strings.EqualFold(strings.TrimSpace(prompt), "/help") {
-		examples := service.CommandExamples(filterServices(nativeServices(opts.Public), opts.Tools), !opts.Public)
-		return "Type a command directly, with or without /. Combine independent reads with ‘and’.\n\n" + strings.Join(examples, " · "), nil
-	}
-	if explicitCommand(prompt) {
-		return "", fmt.Errorf("unknown or unavailable command: %s", strings.Fields(prompt)[0])
-	}
 
 	var startedWork atomic.Bool
 	originalToken := opts.Stream.Token
