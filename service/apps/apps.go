@@ -348,6 +348,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleNew(w, r)
 	case path == "/generate":
 		handleMicroGenerate(w, r)
+	case path == "/services.js" || path == "/services.d.ts":
+		namedSDK(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
 	case path == "/sdk.css":
@@ -1139,7 +1141,7 @@ func handleApp(w http.ResponseWriter, r *http.Request, slug string) {
 		// localStorage answers synchronously, so what it answers with has to be
 		// in the document before anything can ask. injectSDK puts each block
 		// straight after <head>, so the last one injected ends up first.
-		rawHTML = injectSDK(rawHTML, appShimJS)
+		rawHTML = injectSDK(rawHTML, appShimJS+namedShim())
 		if _, acc := auth.TrySession(r); acc != nil {
 			rawHTML = injectSDK(rawHTML, appSeedJS(a.Slug, acc.ID))
 		}

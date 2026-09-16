@@ -396,7 +396,7 @@ const { chromium } = require(process.env.MU_PLAYWRIGHT_MODULE || "playwright");
     );
     await page.goto(input.base + "/services/sdk");
     await page.getByRole("heading", { name: "App SDK", exact: true }).waitFor();
-    assert((await page.locator("main").innerText()).includes("mu.service"));
+    assert((await page.locator("main").innerText()).includes("mu.news.headlines"));
     await page.goto(input.base + "/agent/new");
     await page.getByLabel("Instructions", { exact: true }).waitFor();
     assert(
