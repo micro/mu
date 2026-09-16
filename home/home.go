@@ -12,13 +12,20 @@ import (
 	"mu/service/mail"
 )
 
-// Handler is the personal overview. Sources remain tools; Home shows what is
-// useful to this person and provides a short path back to their conversations.
+// Handler keeps the old Home route on the shared command surface.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	ConsoleHandler(w, r)
 }
 
 func deliveredBrief(owner string) string {
+	body, id, at := latestBrief(owner)
+	if id == "" {
+		return ""
+	}
+	return sectionRule("Latest brief") + `<section class="card morning-brief">` + briefDeliveredAt(at) + `<div class="markdown-content">` + app.RenderString(body) + `</div><div class="form-actions">` + app.ActionLink("/?session="+url.QueryEscape(id), "Continue conversation") + `</div></section>`
+}
+
+func latestBrief(owner string) (string, string, time.Time) {
 	for _, m := range mail.ListMessages(owner, 100) {
 		if m.Tag != "brief" {
 			continue
@@ -29,9 +36,9 @@ func deliveredBrief(owner string) string {
 		}
 		body := strings.SplitN(m.Body, "\n\n---\n", 2)[0]
 
-		return sectionRule("Latest brief") + `<section class="card morning-brief">` + briefDeliveredAt(m.CreatedAt) + `<div class="markdown-content">` + app.RenderString(body) + `</div><div class="form-actions">` + app.ActionLink("/?session="+url.QueryEscape(th.ID), "Continue conversation") + `</div></section>`
+		return body, th.ID, m.CreatedAt
 	}
-	return ""
+	return "", "", time.Time{}
 }
 
 func htmlEsc(s string) string { return html.EscapeString(s) }

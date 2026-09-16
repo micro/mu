@@ -89,6 +89,7 @@ func CommandHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var value any
+	var rendered string
 	var err error
 	switch strings.ToLower(words[0]) {
 	case "help":
@@ -102,9 +103,10 @@ func CommandHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		switch {
 		case len(words) == 1:
-			if content := deliveredBrief(owner); content != "" {
-				app.RespondJSON(w, map[string]any{"html": content})
-				return
+			if body, id, at := latestBrief(owner); id != "" {
+				rendered = deliveredBrief(owner)
+				value = map[string]any{"brief": body, "delivered": at}
+				break
 			}
 			if schedule := events.Brief(owner); schedule != nil {
 				value = schedule
@@ -222,7 +224,10 @@ func CommandHandler(w http.ResponseWriter, r *http.Request) {
 		app.RespondError(w, 400, err.Error())
 		return
 	}
-	result := map[string]any{"html": formatCommand(value)}
+	if rendered == "" {
+		rendered = formatCommand(value)
+	}
+	result := map[string]any{"html": rendered}
 	// Keep requested service results in the same conversation the assistant uses.
 	// Operator commands (which can contain credentials) never enter that history.
 	if owner != "" && !strings.EqualFold(words[0], "admin") && !strings.EqualFold(words[0], "help") {

@@ -1,6 +1,7 @@
 package home
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -44,6 +45,20 @@ func TestOverviewKeepsBriefAndConversationOwned(t *testing.T) {
 		t.Fatal("brief lost or leaked")
 	}
 
+	response := commandRequest(t, owner, "brief", "", true)
+	var command struct {
+		Thread string `json:"thread"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &command); err != nil {
+		t.Fatal(err)
+	}
+	if command.Thread == "" {
+		t.Fatal("brief response cannot be continued")
+	}
+	messages := thread.Messages(owner, command.Thread, 10)
+	if len(messages) != 2 || !strings.Contains(messages[1].Text, "Your appointment is at ten.") {
+		t.Fatal("brief missing from assistant context")
+	}
 	for _, unwanted := range []string{"Other account secret", "Manage scheduled instructions", `href="/apps/new"`, `href="/agent/new"`} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("overview exposes %q", unwanted)

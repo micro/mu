@@ -13,6 +13,7 @@ import (
 	"mu/internal/settings"
 	"mu/internal/usage"
 	"mu/service/mail"
+	"mu/service/tasks"
 )
 
 // Command executes operator commands without involving a model. The request
@@ -26,7 +27,7 @@ func Command(r *http.Request, input string) (any, error) {
 	}
 	words := strings.Fields(input)
 	if len(words) == 1 {
-		return []string{"admin logs", "admin config list", "admin config set KEY value", "admin users", "admin alerts", "admin status", "admin server", "admin backup", "admin moderate", "admin spam", "admin usage", "admin oauth"}, nil
+		return []string{"admin logs", "admin config list", "admin config set KEY value", "admin users", "admin alerts", "admin status", "admin server", "admin backup", "admin moderate", "admin spam", "admin usage", "admin oauth", "admin work ID"}, nil
 	}
 	if len(words) == 3 && strings.EqualFold(words[1], "logs") {
 		switch strings.ToLower(words[2]) {
@@ -36,8 +37,18 @@ func Command(r *http.Request, input string) (any, error) {
 			return mail.RecentRelays(100), nil
 		}
 	}
+	if len(words) == 3 && strings.EqualFold(words[1], "work") {
+		for _, owner := range auth.AllAccounts() {
+			if task, err := tasks.Get(owner.ID, words[2]); err == nil {
+				return map[string]any{"id": task.ID, "status": task.Status, "steps": task.Steps, "result": task.Result}, nil
+			}
+		}
+		return nil, fmt.Errorf("work not found")
+	}
 	if len(words) == 2 {
 		switch strings.ToLower(words[1]) {
+		case "work":
+			return "Use admin work ID to inspect a job.", nil
 		case "logs":
 			return app.SysLog(), nil
 		case "alerts":
