@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"go-micro.dev/v6/broker"
 	"go-micro.dev/v6/client"
@@ -297,6 +298,12 @@ func isAddressTaken(err error) bool {
 //	service.Call(ctx, "weather", "Weather.Forecast", &weather.ForecastRequest{...}, &rsp)
 func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 	svcName = CanonicalName(svcName)
+	var opts []client.CallOption
+	// A build can make three bounded model attempts. The RPC default expires
+	// before even one model attempt finishes; never retry this paid mutation.
+	if svcName == "apps" && strings.EqualFold(methodName(endpoint), "Build") {
+		opts = append(opts, client.WithRequestTimeout(7*time.Minute), client.WithRetries(0))
+	}
 	ctx, release := operatorCall(ctx, svcName+"."+methodName(endpoint))
 	defer release()
 	ensure()
@@ -309,7 +316,7 @@ func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 			return err
 		}
 		var reply raw.Frame
-		if err := cl.Call(ctx, cl.NewRequest(CanonicalName(svcName), endpoint, &raw.Frame{Data: body}, client.WithContentType("application/json")), &reply); err != nil {
+		if err := cl.Call(ctx, cl.NewRequest(CanonicalName(svcName), endpoint, &raw.Frame{Data: body}, client.WithContentType("application/json")), &reply, opts...); err != nil {
 			return err
 		}
 		if rsp == nil || len(reply.Data) == 0 {
@@ -317,7 +324,7 @@ func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 		}
 		return json.Unmarshal(reply.Data, rsp)
 	}
-	return cl.Call(ctx, cl.NewRequest(CanonicalName(svcName), endpoint, req), rsp)
+	return cl.Call(ctx, cl.NewRequest(CanonicalName(svcName), endpoint, req), rsp, opts...)
 }
 
 // StartMCPGateway runs go-micro's MCP gateway on addr (e.g. ":4100"),
