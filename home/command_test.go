@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"mu/inbox"
+	"mu/internal/api"
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -102,5 +104,33 @@ func TestCommandRendererEscapesUntrustedData(t *testing.T) {
 	got := formatCommand(map[string]any{"items": []any{map[string]any{"title": "<script>alert(1)</script>", "url": "javascript:alert(1)"}}})
 	if strings.Contains(got, "<script>") || strings.Contains(got, `href="javascript:`) {
 		t.Fatal("tool data became executable HTML")
+	}
+}
+
+func TestInboxReadResumesWithoutCopyingItsOwnMessages(t *testing.T) {
+	const who = "command_inbox"
+	if err := auth.Create(&auth.Account{ID: who, Approved: true}); err != nil {
+		t.Fatal(err)
+	}
+	defer auth.DeleteAccount(who)
+	old := api.Operations
+	api.Operations = inbox.PublicOperations()
+	defer func() { api.Operations = old }()
+	conversation := thread.Open(who, thread.WebClient, "inbox-resume")
+	thread.Add(thread.Message{Account: who, Thread: conversation.ID, Role: thread.RolePerson, Text: "Original question"})
+	for i := 0; i < 3; i++ {
+		w := commandRequest(t, who, "inbox read "+conversation.ID, conversation.ID, true)
+		var result struct {
+			Thread string `json:"thread"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+			t.Fatal(err)
+		}
+		if w.Code != 200 || result.Thread != conversation.ID {
+			t.Fatal("inbox did not resume its conversation")
+		}
+	}
+	if len(thread.Messages(who, conversation.ID, 100)) != 1 {
+		t.Fatal("reading the inbox duplicated its transcript")
 	}
 }

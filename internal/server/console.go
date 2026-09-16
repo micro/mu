@@ -33,12 +33,20 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 		command = "account"
 	case "work":
 		command = "work"
+		if id := r.URL.Query().Get("id"); id != "" {
+			command += " get " + id
+		}
 	case "services", "tools", "agents":
 		command = "help"
 	case "admin":
 		command = "admin"
 	case "admin/log", "admin/email":
 		command = "admin logs"
+	case "admin/work":
+		command = "admin work"
+		if id := r.URL.Query().Get("id"); id != "" {
+			command += " " + id
+		}
 	case "admin/config":
 		command = "admin config list"
 	default:

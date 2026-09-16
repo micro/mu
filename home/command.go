@@ -94,6 +94,7 @@ func CommandHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var value any
 	var rendered string
+	var readThread string
 	var err error
 	switch strings.ToLower(words[0]) {
 	case "help":
@@ -145,6 +146,9 @@ func CommandHandler(w http.ResponseWriter, r *http.Request) {
 			args["id"] = words[2]
 		}
 		value, err = api.Call(r, name, args)
+		if err == nil && name == "inbox_read" {
+			readThread, _ = args["id"].(string)
+		}
 	default:
 		calls, matched := service.MatchCommandsFor(input, service.Services(), acc != nil)
 		if !matched {
@@ -232,6 +236,11 @@ func CommandHandler(w http.ResponseWriter, r *http.Request) {
 		rendered = formatCommand(value)
 	}
 	result := map[string]any{"html": rendered}
+	if readThread != "" {
+		result["thread"] = readThread
+		app.RespondJSON(w, result)
+		return
+	}
 	// Keep requested service results in the same conversation the assistant uses.
 	// Operator commands (which can contain credentials) never enter that history.
 	if owner != "" && !strings.EqualFold(words[0], "admin") && !strings.EqualFold(words[0], "help") {
@@ -284,6 +293,48 @@ func commandValue(value any) string {
 		b.WriteString(`</div>`)
 		return b.String()
 	case map[string]any:
+		if rows, ok := v["conversations"].([]any); ok {
+			var b strings.Builder
+			b.WriteString(`<div class="results">`)
+			for _, raw := range rows {
+				row, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				id, _ := row["id"].(string)
+				title, _ := row["subject"].(string)
+				if title == "" {
+					title = "Conversation"
+				}
+				client, _ := row["client"].(string)
+				updated, _ := row["updated"].(string)
+				b.WriteString(`<section class="result"><button class="record-link" type="button" data-command="` + html.EscapeString("inbox read "+id) + `">` + html.EscapeString(title) + `</button><small class="record-meta">` + html.EscapeString(client+" · "+updated) + `</small></section>`)
+			}
+			if len(rows) == 0 {
+				b.WriteString(`<p>No conversations yet.</p>`)
+			}
+			b.WriteString(`</div>`)
+			return b.String()
+		}
+		if rows, ok := v["messages"].([]any); ok {
+			var b strings.Builder
+			b.WriteString(`<div class="results">`)
+			for _, raw := range rows {
+				row, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				text, _ := row["text"].(string)
+				role, _ := row["role"].(string)
+				at, _ := row["at"].(string)
+				b.WriteString(`<section class="result"><small class="record-meta">` + html.EscapeString(role+" · "+at) + `</small>` + app.RenderString(text) + `</section>`)
+			}
+			if len(rows) == 0 {
+				b.WriteString(`<p>No messages yet.</p>`)
+			}
+			b.WriteString(`</div>`)
+			return b.String()
+		}
 		if items, ok := v["items"].([]any); ok && len(items) > 0 {
 			return commandValue(items)
 		}

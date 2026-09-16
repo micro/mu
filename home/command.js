@@ -22,6 +22,6 @@ async function run(command){
 }
 form.addEventListener('submit',e=>{e.preventDefault();run(input.value.trim());});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
-document.querySelectorAll('[data-command]').forEach(button=>button.addEventListener('click',()=>run(button.dataset.command)));
+document.addEventListener('click',event=>{const button=event.target.closest('[data-command]');if(button)run(button.dataset.command);});
 try{if(location.hash){input.value=decodeURIComponent(location.hash.slice(1));history.replaceState(null,'','/');}}catch{}
 })();

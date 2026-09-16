@@ -34,6 +34,7 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 		`<a href="https://github.com/micro/mu">The Mu source</a>` +
 		`</p></div>`)
 
+	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{
 		Title:       "About",
 		Description: "Micro is a personal assistant powered by the open source Mu runtime.",
