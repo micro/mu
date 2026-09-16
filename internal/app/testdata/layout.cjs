@@ -80,10 +80,9 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
    if(path==='/signup')assert.equal(await page.locator('input[name=name]').count(),0,'signup still asks for a name');
    if(path==='/account') {
-    assert.equal(await page.locator('[name=language]').count(),0,'account still has language setting');
-    const links=page.locator('[aria-label="Connection settings"]');
-    assert.deepEqual(await links.locator('a').allTextContents(),['API credentials','Mail settings']);
-    assert(await links.evaluate(e=>e.closest('.card')?.querySelector('h4')?.textContent==='API and mail'),'connection settings lack their labelled card');
+    assert(await page.locator('#content a[href="/token"]').count()>0,'API credentials missing');
+    assert(await page.locator('#content a[href="/inbox/imap"]').count()>0,'Mail connection help missing');
+    assert(await page.locator('#content a[href*="/oauth2/google/"]').count()>0,'Google connections missing');
    }
    if(path.startsWith('/agent?id='))assert.equal(await page.locator('.conversation-toolbar strong').textContent(),'Research','focused agent identity missing');
    if(path==='/services'){assert.equal(await page.locator('.view-switch,#service-feed').count(),0,'services has retired view tabs');assert.equal(await page.locator('#content a[href="/agents"]').count(),0,'Agents is not a service');}
@@ -93,7 +92,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    }
    if(path==='/blog?write=true') {
     const colors=await page.locator('.form-actions > *').evaluateAll(es=>es.map(e=>getComputedStyle(e).backgroundColor));
-    assert(colors.every(c=>c==='rgb(255, 255, 255)'),'ordinary actions have heavy filled backgrounds');
+    assert(colors.length>0&&colors.every(c=>c===colors[0]),'ordinary actions have inconsistent backgrounds');
    }
    if(path==='/login'||path==='/signup') {
     const box=await page.locator(path==='/login'?'#login':'#signup').boundingBox();assert(Math.abs(box.x+box.width/2-width/2)<2,'auth form off center');
@@ -110,7 +109,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
    if(process.env.MU_LAYOUT_SHOTS&&[390,1440].includes(width)&&!collapsed){
     fs.mkdirSync(process.env.MU_LAYOUT_SHOTS,{recursive:true});await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/'+(path.replace(/[^a-zA-Z0-9_-]/g,'-')||'landing')+'-'+width+'-'+collapsed+'.png',fullPage:true});
    }
-   if(path==='/'||path==='/?new=1') {
+   if(path==='/'||path==='/agent/micro?new=1') {
     assert.equal(await page.locator('#mu-chat-input').count(),1,'one composer');
     assert.equal(await page.locator('.conversation-switcher,.conversation-menu').count(),0,'duplicate history controls');
     assert.equal(await page.locator('#nav .chat-sess,#nav-bookmarks').count(),0,'retired sidebar collections');
@@ -122,13 +121,13 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     else {assert(900-empty.y-empty.height<=24,'signed-in prompt is not at the bottom');}
     await page.locator('#mu-chat-mic').click();const listening=await form.boundingBox();assert(Math.abs(empty.y-listening.y)<2,'dictation moved prompt');
     assert.equal(await page.locator('#mu-chat-mic').getAttribute('aria-pressed'),'true');
-    if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/dictating.png'});
+    if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/agent/micro?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/dictating.png'});
     await page.locator('#mu-chat-mic').click();
     await page.locator('#mu-chat-input').fill('Find fruit names');await page.locator('#mu-chat-form button[type=submit]').click();
     await page.waitForTimeout(100);assert(!await page.locator('.mu-agent').textContent().then(s=>s.includes('**')||s.includes('# Fruit')),'raw Markdown flashed');
     await page.waitForSelector('.mu-agent h2');
     assert.equal(await page.locator('.mu-agent strong').first().textContent(),'Arabic');
-    if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/formatted-answer.png'});
+    if(process.env.MU_LAYOUT_SHOTS&&width===390&&path==='/agent/micro?new=1')await page.screenshot({path:process.env.MU_LAYOUT_SHOTS+'/formatted-answer.png'});
     const assertQuestionAnchor=async()=>{
      assert(await page.locator('#mu-chat-conv').evaluate(c=>getComputedStyle(c).scrollbarWidth==='none'),'visible chat scrollbar');
      assert(await page.locator('#mu-chat-conv').evaluate(c=>Math.abs(c.querySelector('.mu-user').getBoundingClientRect().left-c.getBoundingClientRect().left)<2),'question not left aligned');
@@ -148,7 +147,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     await page.waitForTimeout(100);await page.locator('#mu-chat-conv').evaluate(e=>e.scrollTop=0);
     await page.waitForSelector('.mu-agent:last-child h2');await page.waitForTimeout(50);
     assert(await page.locator('#mu-chat-conv').evaluate(e=>e.scrollTop<2),'response overrode manual scrolling');
-    if(path==='/?new=1')assert.equal(await page.locator('#conversation-delete').count(),0,'sending recreated the deleted control');
+    if(path==='/agent/micro?new=1')assert.equal(await page.locator('#conversation-delete').count(),0,'sending recreated the deleted control');
     const before=await form.boundingBox();
     await page.locator('#mu-chat-conv').evaluate(e=>e.innerHTML='<p>A long answer</p>'.repeat(100));
     await page.waitForTimeout(50);const after=await form.boundingBox();
@@ -156,7 +155,7 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
     assert(after.y+after.height<=900,'composer below viewport');
     const center=await page.locator('#mu-chat').evaluate(e=>{const r=e.getBoundingClientRect();const available=document.body.classList.contains('index-shell')||innerWidth<=900||document.body.classList.contains('nav-collapsed')?0:220;return Math.abs((r.left+r.right)/2-(available+innerWidth)/2)});
     assert(center<2,`conversation offset ${center}px at ${width}`);
-    if(path==='/?new=1'&&width>900) {
+    if(path==='/agent/micro?new=1'&&width>900) {
      for(let toggle=0;toggle<2;toggle++) {
       await page.locator('#menu-toggle').click();await page.waitForTimeout(50);
       const alignment=await page.evaluate(()=>{

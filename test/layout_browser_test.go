@@ -165,7 +165,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 <div class="notice warn">The result needs your review.</div>
 </div>`, &auth.Account{ID: who})
 	policies := map[string]string{}
-	handlers := map[string]http.HandlerFunc{"/home": home.Handler, "/account": account.Account, "/admin": admin.Handler, "/privacy": home.PrivacyHandler, "/pricing": home.PricingHandler, "/about": home.AboutHandler, "/contact": home.ContactHandler, "/inbox/new": inbox.NewHandler, "/inbox": inbox.Handler, "/inbox?id=" + inboxThread: inbox.Handler, "/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/news?id=layout-news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/?new=1": home.Index, "/work": work.Handler, "/services": api.ToolsPageHandler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler}
+	handlers := map[string]http.HandlerFunc{"/home": home.Handler, "/account": account.Account, "/admin": admin.Handler, "/privacy": home.PrivacyHandler, "/pricing": home.PricingHandler, "/about": home.AboutHandler, "/contact": home.ContactHandler, "/inbox/new": inbox.NewHandler, "/inbox": inbox.Handler, "/inbox?id=" + inboxThread: inbox.Handler, "/archive": archive.Handler, "/blog": blog.Handler, "/bookmarks": bookmarks.Handler, "/browser": browser.Handler, "/contacts": contacts.Handler, "/flights": flights.Handler, "/food": food.Handler, "/hazards": hazards.Handler, "/images": images.Handler, "/mail": mail.Handler, "/maps": maps.Handler, "/notify": notify.Handler, "/places": places.Handler, "/prayer": prayer.Handler, "/recall": recall.Handler, "/routes": routes.Handler, "/shell": shell.Handler, "/sms": sms.Handler, "/sms?view=new": sms.Handler, "/sms?id=" + smsThread.ID: sms.Handler, "/social": social.Handler, "/stream": stream.Handler, "/text": text.Handler, "/transit": transit.Handler, "/users": users.Handler, "/wallet": account.Wallet, "/notes": notes.Handler, "/news": news.Handler, "/news?id=layout-news": news.Handler, "/web": web.Handler, "/weather": weather.PageHandler, "/markets": markets.Handler, "/video": video.Handler, "/video?id=layout-video&autoplay=1": video.Handler, "/signup": account.Signup, "/agent/new": agent.NewAgentHandler, "/agents": agent.RosterHandler, "/token": account.TokenHandler, "/apps/new": apps.Handler, "/apps/layout-app/edit": apps.Handler, "/apps": apps.Handler, "/events": events.Handler, "/files": files.Handler, "/docs": docs.Handler, "/": home.Index, "/agent/micro?new=1": agent.Handler, "/work": work.Handler, "/services": api.ToolsPageHandler, "/tasks": tasks.Handler, "/chat": chat.Handler, "/agent/micro": agent.Handler}
 	handlers["/chat?view=rooms"] = chat.Handler
 	handlers["/blog?write=true"] = blog.Handler
 	handlers["/blog/post?id="+postID] = blog.PostHandler
@@ -183,7 +183,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	handlers["/privacy"] = home.PrivacyHandler
 	handlers["/pricing"] = home.PricingHandler
 	handlers["/@"+who] = inbox.PersonHandler
-	handlers["/?session="+webThread.ID] = home.Index
+	handlers["/agent/micro?session="+webThread.ID] = agent.Handler
 	for path, handler := range conversationPages {
 		handlers[path] = handler
 	}
@@ -191,7 +191,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	for path, handler := range handlers {
 		t.Log("render", path)
 		req := httptest.NewRequest("GET", path, nil)
-		if path != "/" && path != "/login" && path != "/signup" {
+		if path != "/" && path != "/login" && path != "/signup" && path != "/about" && path != "/privacy" && path != "/pricing" && path != "/contact" {
 			req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		}
 		rec := httptest.NewRecorder()

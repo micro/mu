@@ -172,7 +172,7 @@ body{font-family:var(--font-sans);background:var(--background);color:var(--foreg
 }
 </style>
 </head>
-<body>
+<body class="index-shell">
 <div class="index-page">
   <div class="index-head">
     <div class="brand">` + l.Brand + `</div>
