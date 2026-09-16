@@ -323,3 +323,7 @@ a.directory-content:hover .directory-heading{text-decoration:underline}
 .badge-row{display:inline-flex;flex-wrap:wrap;gap:4px 8px}
 input.compact-number:not([type=checkbox]):not([type=radio]):not([type=hidden]){width:7rem;flex:0 1 7rem}
 .form-actions>.form-action{margin:0}
+
+.pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:16px;margin-top:20px;padding-block:8px;font-size:.875rem}
+.pager-at{color:var(--text-muted);white-space:nowrap}
+.pager-link{display:inline-block;padding-block:4px}
