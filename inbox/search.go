@@ -137,7 +137,7 @@ func found(b *strings.Builder, r *http.Request, accountID, box, q string) {
 	b.WriteString(`<p class="ib-found">` + count(len(out)) + ` for <code>` +
 		html.EscapeString(trimTo(q, 60)) + `</code>.</p>`)
 	for _, res := range out {
-		b.WriteString(rowWith(r, accountID, res.t, res.line))
+		b.WriteString(conversationRow(res.t, res.line))
 	}
 	// No pager. The scan is capped at searchHits and collapses to fewer
 	// conversations than that, so there is no second page to offer — and an

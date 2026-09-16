@@ -29,6 +29,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Conversation not found", 404)
 			return
 		}
+		thread.MarkSeen(acc.ID, session)
 		for _, message := range thread.Messages(acc.ID, session, 100) {
 			class := "answer"
 			content := app.RenderString(message.Text)
@@ -40,8 +41,8 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	state := "conversation"
-	if initial != "" {
+	if session != "" {
 		state += " is-active"
 	}
-	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div><form id="command-form"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="What do you need?" autocomplete="off" required><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
+	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="conversation-actions"><a href="/">New conversation</a></div><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div><form id="command-form"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="What do you need?" autocomplete="off" required><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
 }

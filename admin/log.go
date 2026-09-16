@@ -110,7 +110,6 @@ func sysLogCard() string {
 		return content.String()
 	}
 
-	content.WriteString(`<script>function muToggleSyslog(id){var d=document.getElementById(id);if(d){d.style.display=d.style.display==='none'?'table-row':'none';}}</script>`)
 	content.WriteString(`<div class="scroll-x">`)
 	content.WriteString(`<table class="email-log fixed-table">`)
 	content.WriteString(`<colgroup><col class="w-110"><col class="w-90"><col></colgroup>`)

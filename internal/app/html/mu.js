@@ -284,6 +284,7 @@ const form=document.querySelector('#command-form'),input=document.querySelector(
 if(!form)return;
 const conversation=form.closest('.conversation'),panel=form.closest('.prompt-panel');
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
+if(conversation.classList.contains('is-active'))log.scrollTop=log.scrollHeight;
 let busy=false,thread=new URLSearchParams(location.search).get('session')||new URLSearchParams(location.search).get('continue')||'';
 function remember(){if(thread)history.replaceState(null,'','/?session='+encodeURIComponent(thread));}
 function headers(accept){const token=(document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'';return {'Content-Type':'application/json','Accept':accept,'X-CSRF-Token':decodeURIComponent(token)};}
@@ -299,7 +300,7 @@ async function failure(response){try{const j=await response.json();return typeof
 async function run(command){
  if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
  const first=!conversation.classList.contains('is-active'),before=form.getBoundingClientRect().top;
- conversation.classList.add('is-active');
+ if(first)conversation.classList.add('is-active');
  if(first&&!reducedMotion.matches)panel.animate([{transform:'translateY('+(before-form.getBoundingClientRect().top)+'px)'},{transform:'translateY(0)'}],{duration:320,easing:'cubic-bezier(.2,.7,.2,1)'});
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
  q.textContent=command;
@@ -866,3 +867,5 @@ if ('serviceWorker' in navigator) {
  navigator.serviceWorker.register('/mu.js', {scope:'/'}).catch(()=>{});
 }
 }
+
+function muToggleSyslog(id){const row=document.getElementById(id);if(row)row.style.display=row.style.display==='none'?'table-row':'none';}
