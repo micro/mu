@@ -36,26 +36,3 @@ func TestTheChatPickerOffersEveryAgent(t *testing.T) {
 			"anything — every agent runs here")
 	}
 }
-
-// Clicking one on the rail opens the conversation, not a page about how to
-// reach it.
-func TestTheRailOpensAnAgentOnItsConversation(t *testing.T) {
-	src := readAgentSource(t, "agents.go")
-	if !strings.Contains(src, `onclick="muAgentOpen(`) {
-		t.Fatal("the rail rows do not go through muAgentOpen")
-	}
-	// muAgentOpen used to branch to /agent/connect for an external agent. The
-	// rail's own rows must not carry that jump any more.
-	i := strings.Index(src, "function muAgentOpen(")
-	if i < 0 {
-		t.Fatal("muAgentOpen is gone; the rail has no opener")
-	}
-	end := strings.Index(src[i:], "\n}")
-	if end < 0 {
-		t.Fatal("muAgentOpen is never closed")
-	}
-	if strings.Contains(src[i:i+end], "/agent/connect") {
-		t.Error("opening an agent from the rail still lands on the Connect page " +
-			"for some of them")
-	}
-}

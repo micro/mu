@@ -285,7 +285,7 @@ func Preview() string {
 	defer mutex.RUnlock()
 
 	if len(apps) == 0 {
-		return `<p><a href="/apps/new">Create your first app</a></p>`
+		return `<p>No apps yet.</p>`
 	}
 
 	// Show 3 most recent public apps
@@ -296,7 +296,7 @@ func Preview() string {
 		}
 	}
 	if len(public) == 0 {
-		return `<p><a href="/apps/new">Create your first app</a></p>`
+		return `<p>No apps yet.</p>`
 	}
 	sort.Slice(public, func(i, j int) bool {
 		return public[i].CreatedAt.After(public[j].CreatedAt)
@@ -340,6 +340,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Route sub-paths
 	path := strings.TrimPrefix(r.URL.Path, "/apps")
 	path = strings.TrimSuffix(path, "/")
+
+	if (path == "/new" || strings.HasSuffix(path, "/fork")) && !app.SendsJSON(r) {
+		_, acc := auth.TrySession(r)
+		if acc == nil || !acc.Admin {
+			app.Forbidden(w, r, "App authoring is managed by the operator. Ask your assistant to build what you need.")
+			return
+		}
+	}
 
 	switch {
 	case path == "" || path == "/":
@@ -528,7 +536,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	sb.WriteString(`<div class="page-action">` + app.ActionLink("/apps/new", "New") + `</div>`)
+	if isAdmin {
+		sb.WriteString(`<div class="page-action">` + app.ActionLink("/apps/new", "New") + `</div>`)
+	}
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
@@ -606,7 +616,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(list) == 0 {
-		sb.WriteString(`<p>No apps yet. <a href="/apps/new">Create the first one</a>.</p>`)
+		sb.WriteString(`<p>No apps yet. Ask your assistant when you need a tool built for you.</p>`)
 	} else {
 		// Three sections now, in the order sortForReader put them: yours, then
 		// everybody else's, then the ones that ship with the instance.
@@ -675,7 +685,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 <div>
 <h3 class="m-0 mb-1"><a href="/apps/%s">%s</a></h3>
 <p class="m-0 mb-1 text-secondary">%s</p>
-<p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s/embed">Embed</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
+<p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s/embed">Embed</a>%s</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -686,7 +696,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				tagsHTML,
 				priceHTML,
 				a.Installs,
-				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Slug),
 				controls,
 			))
@@ -952,7 +961,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	sb.WriteString(fmt.Sprintf(`<div class="d-flex gap-2 flex-wrap my-3">
 <a href="/apps/%s" class="btn">%s</a>`, htmlpkg.EscapeString(a.Slug), launchLabel))
 	_, detailAcc, detailErr := auth.RequireSession(r)
-	if detailErr == nil {
+	if detailErr == nil && detailAcc.Admin {
 		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/fork" class="btn btn-plain">Fork</a>`,
 			htmlpkg.EscapeString(a.Slug)))
 	}

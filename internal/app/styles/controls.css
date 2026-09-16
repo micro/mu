@@ -63,3 +63,12 @@ details[open] > summary::before { content: "−"; }
 .metadata-detail { grid-column:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .metadata-time { text-align:right; white-space:nowrap; font-size:12px; color:var(--text-secondary) }
 
+
+.assistant-overview { width:100%; min-width:0; }
+.overview-date { color:var(--muted-foreground); font-size:14px; margin-bottom:20px; }
+.overview-details { margin-top:24px; }
+.overview-details .inbox-peek { width:100%; }
+.overview-assistant:has(#mu-chat-conv:not(:empty)) { height:calc(var(--visible-height,100dvh) - 180px); min-height:240px; display:flex; }
+.assistant-overview:has(#mu-chat-conv:not(:empty)) .overview-details { display:none; }
+.morning-brief { max-width:100%; }
+.index-body { max-width:var(--page-width); margin-inline:auto; }

@@ -734,7 +734,9 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<tr><td>Platform fee</td><td>10%</td></tr>`)
 	sb.WriteString(`<tr><td>Free apps</td><td>No charge</td></tr>`)
 	sb.WriteString(`</table>`)
-	sb.WriteString(`<p class="info mt-3"><a href="/apps/new">Build an app</a></p>`)
+	if _, acc := auth.TrySession(r); acc != nil && acc.Admin {
+		sb.WriteString(`<p class="info mt-3"><a href="/apps/new">Build an app</a></p>`)
+	}
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /wallet/pricing</code></p>`)

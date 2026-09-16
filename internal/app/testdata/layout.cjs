@@ -279,6 +279,22 @@ const {chromium}=require(process.env.MU_PLAYWRIGHT_MODULE||'playwright');
  assert.equal(await page.locator('#mu-chat-conv').textContent(),'','empty selection reopened latest thread');
  assert.equal(await page.locator('#mu-chat-form').evaluate(f=>f.inert),false);
  }
+ {
+ await page.setViewportSize({width:390,height:900});
+ await page.goto('https://mu.test/home');
+ const config=await page.locator('#conversation-config').textContent().then(JSON.parse);
+ await page.route('**/agent/micro?session=home-continued',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({id:'home-continued',html:'<div class="mu-user">Continue my morning brief</div><div class="mu-agent">Your appointment is at ten.</div>',pending:false,agent:'micro',agentName:'Micro',storageNS:config.storageNS})}));
+ await page.evaluate(scope=>history.replaceState({muConversation:{scope,id:'home-continued'}},''),config.selectionScope);
+ await page.reload();
+ await page.getByText('Continue my morning brief',{exact:true}).waitFor();
+ assert(!await page.locator('.overview-details').isVisible(),'overview distracts from active conversation');
+ const form=await page.locator('#mu-chat-form').boundingBox();
+ assert(form.y+form.height<=900,'Home composer below mobile viewport');
+ await page.locator('#mu-chat-input').fill('How long will it take to get there?');
+ await page.locator('#mu-chat-form button[type=submit]').click();
+ assert.equal(await page.evaluate(()=>window.__lastAgentBody.context_id),'home-continued','Home reply lost the selected conversation');
+ await page.waitForSelector('.mu-agent h2');
+ }
  if(process.env.MU_LAYOUT_AUDIT)fs.writeFileSync(process.env.MU_LAYOUT_AUDIT,JSON.stringify(audit));
  assert(!failures.length,failures.join('\n'));
  } finally {await browser.close();}

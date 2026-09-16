@@ -15,7 +15,7 @@ func TestConversationShellHasOneComposerAndOwnedHistory(t *testing.T) {
 	other := thread.Open("v2-other", thread.WebClient, "private")
 	thread.Add(thread.Message{Account: "v2-other", Thread: other.ID, Text: "Other private conversation"})
 	nav := navMain(&auth.Account{ID: owner})
-	if strings.Contains(nav, own.ID) || strings.Contains(nav, other.ID) || strings.Contains(nav, "chat-sess") || strings.Contains(nav, `href="/bookmarks"`) || !strings.Contains(nav, `href="/services"`) {
+	if strings.Contains(nav, own.ID) || strings.Contains(nav, other.ID) || strings.Contains(nav, "chat-sess") || strings.Contains(nav, `href="/bookmarks"`) || !strings.Contains(nav, `href="/inbox"`) {
 		t.Fatal("sidebar must contain destinations without conversation history or bookmarks")
 	}
 	got := ChatComponent(ChatConfig{Ask: true, ServerOwned: true, StorageNS: "account", ContextID: own.ID})

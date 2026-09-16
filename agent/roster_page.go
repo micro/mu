@@ -224,6 +224,10 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 // you cannot submit. It becomes the thing that would actually change the
 // answer.
 func newAgentAction(owner string) string {
+	acc, err := auth.GetAccount(owner)
+	if err != nil || !acc.Admin {
+		return ""
+	}
 	full, have, max := AtAgentLimit(owner)
 	if !full {
 		return app.ActionLink("/agent/new", "New")
@@ -397,6 +401,7 @@ func agentRow(a *Agent, csrf, base string) string {
 	// agent. See the Kind field in roster.go.
 	open, chat := Path(a.Owner, a.ID), Path(a.Owner, a.ID)
 
+	owner, _ := auth.GetAccount(a.Owner)
 	return entryRow(entry{
 		Name:   a.Name,
 		Status: activity(a.Owner, a.ID),
@@ -406,7 +411,7 @@ func agentRow(a *Agent, csrf, base string) string {
 		Seen:   seenLine(a.Owner, a.ID),
 		When:   seenWhen(a.Owner, a.ID),
 		ID:     a.ID,
-		Admin:  true,
+		Admin:  owner != nil && owner.Admin,
 		Extra:  extra,
 	})
 }

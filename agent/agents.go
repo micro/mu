@@ -208,78 +208,17 @@ func firstLine(stored, fallback string) string {
 	return s
 }
 
-// renderAgentsPanel renders the lean "Agents" card for the rail: pick the
-// default or one of your agents. Creating/editing happens on /agent/new.
-func renderAgentsPanel() string {
-	return `<div class="agents-panel">
-  <div class="agents-head"><span>Agents</span><a class="agents-new" href="/agent/new">New</a></div>
-  <div class="agents-list" id="agents-list"><div class="on" data-id="" onclick="muAgentPick('')">Micro <span class="agents-def">default</span></div></div>
-</div>
-
-<script>
-window.muActiveAgent='';
-function muAgentCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
-// Resolve an agent id to its display name from the loaded list ('' = default).
-function muAgentName(id){if(!id)return 'Micro';var d=document.querySelector('#agents-list>div[data-id="'+id+'"]');if(d){var s=d.querySelector('span');if(s&&s.textContent)return s.textContent;}return 'Micro';}
-function muAgentChip(){var c=document.getElementById('active-agent-chip');if(c)c.textContent='Agent: '+muAgentName(window.muActiveAgent);}
-// Picking an agent is a navigation, not a highlight.
-//
-// It used to set a variable, move the highlight and update the chip, and stop
-// there. Everything else on the page — the conversation in the middle and the
-// rail of past conversations beside it — is rendered by the server for one
-// agent, so switching left you looking at the previous agent's history with a
-// chip claiming you were talking to the new one. Worse for a brand-new agent:
-// the rail should be empty and instead showed somebody else's conversations,
-// so an agent that had never been used looked well used.
-//
-// The id goes in the URL, which is the same thing clicking an agent on /agents
-// does. One door, one behaviour, and a reload keeps the agent.
-//
-// It stays where you are. The picker is beside the conversation and beside the
-// page saying how to reach an agent, and sending every pick back to the
-// conversation meant switching agents while reading how to connect one threw
-// away what you were doing.
-function muAgentPick(id){
-  var p=window.location.pathname,to;
-  if(p.indexOf('/agent/connect')===0){to=id?'/agent/connect?id='+encodeURIComponent(id):'/agent/connect';}
-  else{to=id?'/agent?id='+encodeURIComponent(id):'/agent';}
-  if(window.location.pathname+window.location.search===to){return;}
-  window.location=to;
-}
-// Every agent is one you can talk to, so clicking one picks it. The second
-// argument is a leftover from when an agent could be declared external and had
-// no conversation here; callers pass false.
-function muAgentOpen(id,external){
-  muAgentPick(id);
-}
-// Set the page agent from the server (session reopen / deep link); the list highlight + chip refresh once the agents finish loading.
-window.muSeedAgent=function(id){window.muActiveAgent=id||'';document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===window.muActiveAgent);});muAgentChip();};
-function muAgentEsc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function muAgentDelete(id,ev){ev.stopPropagation();ev.preventDefault();if(!confirm('Delete this agent?'))return;
-  var b=new URLSearchParams();b.append('action','delete');b.append('id',id);
-  fetch('/agents/data',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':muAgentCsrf()},body:b.toString()})
-    .then(function(){if(window.muActiveAgent===id)muAgentPick('');muAgentsLoad();}).catch(function(){});}
-function muAgentsLoad(){
-  fetch('/agents/data',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
-    var list=document.getElementById('agents-list');if(!list)return;
-    var h='<div class="'+(window.muActiveAgent?'':'on')+'" data-id="" onclick="muAgentPick(\'\')">Micro <span class="agents-def">default</span></div>';
-    (d.agents||[]).forEach(function(a){var id=muAgentEsc(a.id);
-      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentOpen(\''+id+'\',false)" title="'+muAgentEsc(a.description||'')+'"><span>'+muAgentEsc(a.name)+'</span><span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
-    });
-    list.innerHTML=h;
-    muAgentChip();
-  }).catch(function(){});
-}
-muAgentsLoad();
-</script>`
-}
-
 // NewAgentHandler renders the full-page agent builder at /agent/new, separate
 // from the chat. It handles new agents, ?id= (edit) and ?fork= (copy).
 func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
 	if acc == nil {
 		http.Redirect(w, r, "/login?next=/agent/new", http.StatusSeeOther)
+		return
+	}
+
+	if !acc.Admin {
+		app.Forbidden(w, r, "Agent setup is managed by the operator. Ask your assistant for help with a task.")
 		return
 	}
 

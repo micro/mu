@@ -16,7 +16,7 @@ if(SESSION&&selectionScope&&location.search===''&&selection&&selection.scope===s
   form.inert=true;conv.innerHTML='';
   if(selection.id){
     try{
-      var response=await fetch(location.pathname+'?session='+encodeURIComponent(selection.id),{headers:{'X-Mu-Transcript':'1','Accept':'application/json'},credentials:'same-origin'});
+      var response=await fetch((config.transcriptPath||location.pathname)+'?session='+encodeURIComponent(selection.id),{headers:{'X-Mu-Transcript':'1','Accept':'application/json'},credentials:'same-origin'});
       if(!response.ok)throw new Error('Conversation unavailable');
       var restored=await response.json();
       contextId=restored.id;PENDING=restored.pending;config.storageNS=restored.storageNS;

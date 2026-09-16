@@ -61,7 +61,8 @@ services. MCP is how agents reach them. The agents are what turn reach into
 intelligence: summarising, contextualising and acting on what is there, rather
 than fetching it again each time somebody asks. The conversation becomes the focal point, with the agent using services and showing their results in place. Work owns delegated goals, execution and outcomes;
 Inbox owns the messages and updates about them. A conversation alone is not
-a work item. `/work` is the space to build: app creation, delegated tasks and their results.
+a work item. `/work` retains delegated task details; the assistant starts work
+and delivers outcomes back to the conversation.
 It composes those records without renaming the tasks or apps services.
 
 **Removing the barrier is the product.** An agent wanting news, mail, search,
@@ -71,7 +72,7 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is a personal overview; the assistant owns the saved conversation. Inbox focuses on communication needing attention, Work is the space to build apps and delegate tasks, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. Services opens directly to its grid; do not add a feed or view tabs. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
+**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is a personal overview; the assistant owns the saved conversation. Inbox keeps conversations from every channel, including the web. Agents and Services are operator references; authoring is handled by operators and assistant tools. Keep standalone utilities such as Mail useful and directly accessible. Do not turn Home into a service catalogue or feed. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
 
 **Extend through stable patterns.** Services, agents and inbox records should
 scale through their existing registries and shared components. Use apps to
@@ -208,9 +209,8 @@ expose agent operations without turning the agent into a service.
 - One directory per service, named for the service. `internal/service` is the
   runtime that hosts them, not a service.
 - Every service is discoverable through the generated Services API/SDK reference.
-  First-party application screens live in top-level `app/` and are registered
-  in `app/catalog.json`. They use services without declaring Specs or changing
-  the runtime service boundary. Existing service URLs remain their entry points.
+  Go handlers own their HTML pages and use the shared `internal/app` shell.
+  Existing service URLs remain available without requiring primary navigation.
 - A service is named for a **domain** (a noun), never an action. Tool names are
   `service_method`, so an action-named service leaves its main method nothing to
   be called but the same word — which is how `search.Search` produced
@@ -524,7 +524,10 @@ cost; rate limits stop bots.
 ## UI composition
 
 Go handlers render HTML on the server. Home is the personal overview with the
-assistant prompt, brief, inbox, agents and relevant service cards. The public
+assistant prompt, brief and recent conversations. Services such as news, video
+and markets supply the assistant; they are not Home feeds or primary destinations.
+Home and Inbox are the daily navigation. Settings combines profile, billing and
+connections. App and agent authoring belongs to operators and assistant tools. The public
 landing says “A personal assistant”. Preserve current backend contracts, account
 isolation, CSRF protections and existing shared links when changing presentation.
 

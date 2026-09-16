@@ -31,7 +31,6 @@ import (
 	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
 	help "mu/docs"
-	"mu/home"
 	"mu/inbox"
 	"mu/internal/ai"
 	"mu/internal/api"
@@ -352,7 +351,6 @@ func wireHooks() {
 	// sign up and find nothing, which is the one thing the invitation promises.
 	auth.Renamed(thread.Rename)
 
-	startupStep("home.Load", home.Load)
 	// load the home cards
 	// What the inbox needs from packages it must not import. It renders the
 	// record; the roster is the agent's and the mail domain is the mail

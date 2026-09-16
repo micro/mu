@@ -28,7 +28,7 @@ import (
 //
 // Enough to show that something happened while you were away, not so many that
 // Home becomes the inbox. The page for reading them is one link below.
-const previewShown = 3
+const previewShown = 6
 
 // previewSnippet bounds the line of text under a subject.
 const previewSnippet = 90
@@ -40,11 +40,7 @@ func Preview(accountID string) string {
 	if accountID == "" {
 		return ""
 	}
-	// What arrived, the same as the page it previews. It listed every
-	// conversation, so Home showed the chat you had here thirty seconds ago
-	// under a heading that says these are things that turned up while you were
-	// away — see thread.Arrived.
-	all := arrivals(accountID)
+	all := thread.List(accountID, held)
 	if len(all) == 0 {
 		return ""
 	}

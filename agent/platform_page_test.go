@@ -146,9 +146,9 @@ func TestTheRosterIsYourOwnAgents(t *testing.T) {
 			t.Errorf("%s is back on the roster", specialist)
 		}
 	}
-	// And the way to make one is on it.
-	if !strings.Contains(page, `href="/agent/new" class="btn">New</a>`) {
-		t.Error("there is no way to make an agent on the page about agents")
+	// Authoring belongs to operators and the assistant.
+	if strings.Contains(page, `href="/agent/new" class="btn">New</a>`) {
+		t.Error("ordinary accounts should not be sent into the agent builder")
 	}
 	// Fork is gone: it offered to copy an agent as a first-class action, on a
 	// page where most people have never made one.

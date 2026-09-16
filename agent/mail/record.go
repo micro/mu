@@ -68,7 +68,10 @@ func recordDelivery(m mail.InboundMail) {
 		}
 		text = "(no message — attached: " + m.Attachment + ")"
 	}
-	th := thread.Open(m.Owner, Client, chainKey(m))
+	th := thread.ByRef(m.Owner, append(thread.Refs(m.InReplyTo), thread.Refs(m.References)...)...)
+	if th == nil {
+		th = thread.Open(m.Owner, Client, chainKey(m))
+	}
 	if th == nil {
 		return
 	}
@@ -86,7 +89,7 @@ func recordDelivery(m mail.InboundMail) {
 // Recording is idempotent by Message-ID, including when the subscriber runs first.
 func InboxURL(m mail.InboundMail) string {
 	recordDelivery(m)
-	if th := thread.Find(m.Owner, Client, chainKey(m)); th != nil {
+	if th := thread.ByRef(m.Owner, m.MessageID); th != nil {
 		return "/inbox?id=" + url.QueryEscape(th.ID)
 	}
 	return "/inbox"
