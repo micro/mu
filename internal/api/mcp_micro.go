@@ -181,7 +181,7 @@ func itoa(n int) string {
 func serveMCP(w http.ResponseWriter, r *http.Request) {
 	catalogueHeaders(w, r)
 	handler := gwmcp.NewHandler(scoped(mcpResolverFor(r), scopeFrom(r)),
-		gwmcp.WithServerInfo("mu", "1.0.0"),
+		gwmcp.WithServerInfo("micro", "1.0.0"),
 		gwmcp.WithProtocolVersion(MCPVersion))
 	ctx := context.WithValue(r.Context(), mcpReqKey{}, r)
 
