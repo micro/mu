@@ -191,6 +191,7 @@ func TestPageCompositionInBrowser(t *testing.T) {
 	handlers["/admin/traffic?tab=spend"] = admin.TrafficHandler
 	handlers["/admin/server"] = admin.ServerHandler
 	handlers["/admin/oauth"] = admin.OAuthHandler
+	handlers["/admin/work"] = work.AdminHandler
 	handlers["/admin/moderate"] = admin.ModerateHandler
 	handlers["/login"] = account.Login
 	handlers["/mail?id="+mailID] = mail.Handler

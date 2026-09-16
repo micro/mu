@@ -26,3 +26,13 @@ func TestProviderPreferenceBeatsStaleAnthropicModel(t *testing.T) {
 		t.Fatal("stale Anthropic setting overrides selected provider")
 	}
 }
+
+func TestUnavailableNamedModelNeverUsesStoredAnthropicKey(t *testing.T) {
+	clearProviders(t)
+	t.Setenv("ANTHROPIC_API_KEY", "test")
+	for _, model := range []string{ModelDeepSeekFlash, ModelGeminiFlash, "google/gemini-2.5-flash"} {
+		if p, _, _, err := resolveProvider(model); err == nil || p != "" {
+			t.Fatalf("%s fell through to %s: %v", model, p, err)
+		}
+	}
+}

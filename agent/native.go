@@ -397,12 +397,9 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		// Bounds on the provider rather than on the work.
 		//
 		// Neither of these was set, so a provider that accepted the connection
-		// and then went quiet held the turn until something upstream gave up,
-		// and a single transient failure lost the whole question. Shelley has
-		// the same pair for the same reason — an idle bound plus a retry budget
-		// — arrived at from running one in production.
+		// and then went quiet is bounded; a failed attempt returns to the caller.
 		gmagent.ModelCallTimeout(90 * time.Second),
-		gmagent.ModelRetry(3, 2*time.Second),
+		gmagent.ModelRetry(1, 0),
 		gmagent.WrapTool(toolWrappers...),
 	}
 	if baseURL != "" {

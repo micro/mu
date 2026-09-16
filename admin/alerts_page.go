@@ -124,7 +124,7 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 		html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<button type="submit">Send a test alert</button></form>`)
 
-	respond(w, r, app.Response{
+	app.Respond(w, r, app.Response{
 		Title:       "Alerts",
 		Description: "What this instance will tell you about, and where",
 		HTML:        sb.String(),

@@ -63,7 +63,7 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 	case mailTab:
 		title = "Mail Log"
 	}
-	respond(w, r, app.Response{Title: title, Description: "Logs", HTML: `<div class="log-tables">` + content.String() + `</div>`})
+	app.Respond(w, r, app.Response{Title: title, Description: "Logs", HTML: `<div class="log-tables">` + content.String() + `</div>`})
 }
 
 // MailLogMoved sends the old mail-log address to its tab.

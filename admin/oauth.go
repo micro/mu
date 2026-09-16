@@ -112,7 +112,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</tbody></table></div>`)
 
-	respond(w, r, app.Response{Title: "OAuth Clients", Description: "Applications that may sign somebody in here", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "OAuth Clients", Description: "Applications that may sign somebody in here", HTML: b.String()})
 }
 
 // firstURI is what to show in the row's box: the address it has, or nothing.

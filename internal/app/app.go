@@ -410,6 +410,10 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 			return RenderIndex(Index{Title: htmlpkg.EscapeString(title) + " | Micro", Description: htmlpkg.EscapeString(desc), Brand: `<a href="/">Micro</a>`, TopRight: `<a href="/login">Sign in</a>`, Body: `<h1>` + htmlpkg.EscapeString(title) + `</h1>` + html, Footer: FooterLinks()})
 		}
 	}
+	if acc != nil && acc.Admin && (r.URL.Path == "/admin" || strings.HasPrefix(r.URL.Path, "/admin/")) {
+		bodyClass += " admin-page"
+		html = adminNavigation(r.URL.Path) + html
+	}
 	return renderShell(lang, title, desc, bodyClass, html, acc, navPath(r.URL.Path), here)
 }
 

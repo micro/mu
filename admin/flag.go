@@ -314,7 +314,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		%s
 	</div>`, listHTML, newAccountPostsHTML)
 
-	respond(w, r, app.Response{Title: "Moderation", Description: "Content other people flagged", HTML: content})
+	app.Respond(w, r, app.Response{Title: "Moderation", Description: "Content other people flagged", HTML: content})
 }
 
 func getViewPath(contentType string) string {

@@ -89,7 +89,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 %s
 <p><a href="/admin/invite">Back to invites</a></p>
 </div>`, email, link, link, emailedMsg)
-		respond(w, r, app.Response{Title: "Invite Sent", Description: "Invite sent", HTML: content})
+		app.Respond(w, r, app.Response{Title: "Invite Sent", Description: "Invite sent", HTML: content})
 		return
 	}
 
@@ -142,5 +142,5 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 </form>
 </div>`)
 
-	respond(w, r, app.Response{Title: "Invites", Description: "Invite requests and send invites", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Invites", Description: "Invite requests and send invites", HTML: sb.String()})
 }

@@ -40,7 +40,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a class="section-link" href="/admin/users">Users</a>
 	</nav>`
 
-	respond(w, r, app.Response{Title: "Admin", Description: "Admin Dashboard", HTML: content})
+	app.Respond(w, r, app.Response{Title: "Admin", Description: "Admin Dashboard", HTML: content})
 }
 
 // alertBadge puts the number of outstanding alerts beside the log, so that
@@ -291,7 +291,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			`</tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
 	}
 	sb.WriteString(`</tbody></table>`)
-	respond(w, r, app.Response{Title: "Users", Description: "Accounts on this instance", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Users", Description: "Accounts on this instance", HTML: sb.String()})
 }
 
 // back is the way up, in the same words and the same place on every page.

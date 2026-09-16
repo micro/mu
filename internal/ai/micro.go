@@ -26,6 +26,12 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 	if p, k, base, ok := PreferredProvider(); ok && GLMModel(p, model) != "" {
 		return p, k, base, nil
 	}
+	if GeminiHosted(model) {
+		if key := getGeminiAPIKey(); key != "" {
+			return ProviderGemini, key, "", nil
+		}
+		return "", "", "", fmt.Errorf("selected Gemini model has no configured key")
+	}
 	if isAtlasModel(model) && getAtlasAPIKey() != "" {
 		return "atlascloud", getAtlasAPIKey(), "", nil
 	}
