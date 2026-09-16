@@ -16,6 +16,13 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	path := strings.Trim(r.URL.Path, "/")
+	// These pages are part of the restored navigation. Let their handlers
+	// render them and enforce their own session and administrator checks.
+	if path == "inbox" || strings.HasPrefix(path, "inbox/") ||
+		path == "admin" || strings.HasPrefix(path, "admin/") ||
+		path == "agents" || path == "services" || path == "tools" || path == "apps" {
+		return false
+	}
 	command := ""
 	switch path {
 	case "home", "assistant", "agent", "agent/micro":
@@ -24,11 +31,6 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 			return true
 		}
 		command = "help"
-	case "inbox":
-		command = "inbox"
-		if id := r.URL.Query().Get("id"); id != "" {
-			command += " read " + id
-		}
 	case "wallet":
 		command = "account"
 	case "work":
@@ -36,23 +38,7 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 		if id := r.URL.Query().Get("id"); id != "" {
 			command += " get " + id
 		}
-	case "services", "tools", "agents":
-		command = "help"
-	case "admin":
-		command = "admin"
-	case "admin/log", "admin/email":
-		command = "admin logs"
-	case "admin/work":
-		command = "admin work"
-		if id := r.URL.Query().Get("id"); id != "" {
-			command += " " + id
-		}
-	case "admin/config":
-		command = "admin config list"
 	default:
-		if strings.HasPrefix(path, "admin/") {
-			command = "admin " + strings.TrimPrefix(path, "admin/")
-		}
 		for _, spec := range service.Specs() {
 			if path == spec.Name {
 				command = spec.Name
