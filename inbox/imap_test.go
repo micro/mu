@@ -95,7 +95,7 @@ func TestTheAdvertisedPortIsTheOneToConnectTo(t *testing.T) {
 // nothing, and the failure being guarded against is a link deleted with no
 // replacement, which a grep catches exactly.
 func TestTheMailClientPageIsReachable(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join("..", "web", "src", "components", "account.tsx"))
+	b, err := os.ReadFile(filepath.Join("..", "account", "pages.go"))
 	if err != nil {
 		t.Fatalf("cannot read the account page: %v", err)
 	}

@@ -43,7 +43,7 @@ func TestThePlainPathIsTheDefaultAgent(t *testing.T) {
 
 // And the card says the address a caller should use.
 func TestTheCardOffersThePlainAddress(t *testing.T) {
-	src, err := os.ReadFile("../client/client.go")
+	src, err := os.ReadFile("../internal/client/client.go")
 	if err != nil {
 		t.Fatal(err)
 	}

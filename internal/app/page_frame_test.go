@@ -1,21 +1,17 @@
 package app
 
 import (
+	"os"
 	"regexp"
 	"strings"
 	"testing"
 )
 
 func TestApplicationPagesShareOneFrame(t *testing.T) {
-	b, err := htmlFiles.ReadFile("html/mu.css")
+	b, err := os.ReadFile("styles/shell.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	composition, err := htmlFiles.ReadFile("html/composition.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	b = append(b, composition...)
 	css := regexp.MustCompile(`(?s)/\*.*?\*/`).ReplaceAllString(string(b), "")
 	if strings.Count(css, "--page-width:") != 1 {
 		t.Fatal("page width must be defined once")

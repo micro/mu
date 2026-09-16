@@ -2,7 +2,7 @@
 
 **A personal server: one Go binary you can self-host that carries a web app, an
 HTTP API, a CLI, an MCP server and an installable PWA over the same 36 services
-and 141 tools.** `go build ./...` produces it; nothing else has to be running.
+and 145 tools.** `go build ./...` produces it; nothing else has to be running.
 
 It is not a framework or a set of libraries. It is a thing that runs, that you
 sign into, and that other programs can call.
@@ -50,7 +50,7 @@ digest, the brief, moderation and work.
 mail, chat, SMS, WhatsApp, the web. It is `internal/thread`, not an email
 folder, and a new channel joins that record rather than starting a second one.
 
-**Home** is the signed-in app launcher. Assistant is an app at `/assistant`; the signed-out landing page still offers a conversation.
+**Home** is the signed-in personal overview: assistant prompt, brief, inbox and relevant context.
 
 ## Where this goes
 
@@ -71,12 +71,12 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door launches apps; the Assistant app owns the saved conversation. Inbox focuses on communication needing attention, Work is the space to build apps and delegate tasks, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. Services opens directly to its grid; do not add a feed or view tabs. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
+**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is a personal overview; the assistant owns the saved conversation. Inbox focuses on communication needing attention, Work is the space to build apps and delegate tasks, and Agents and Services are secondary. Keep standalone utilities such as Mail useful and directly accessible. Services opens directly to its grid; do not add a feed or view tabs. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
 
 **Extend through stable patterns.** Services, agents and inbox records should
 scale through their existing registries and shared components. Use apps to
 build and test different experiences on the runtime. Adding a capability does
-not imply redesigning Home or adding a primary navigation item. Home launches the apps. Services is the capability reference directory.
+not imply redesigning Home or adding a primary navigation item. Home shows your overview. Services is the capability reference directory.
 
 ## What is true today, and what is not
 
@@ -321,7 +321,7 @@ eviction limit governed both, which is why it was wrong for each.
 ## Layering
 
 The top level is the product — `home/`, `agent/`, `service/`, `admin/`,
-`account/`, `app/`, and `web/`. Each is a staple: it owns something nothing else owns, and a user
+`account/`, `inbox/`, and `work/`. Each is a staple: it owns something nothing else owns, and a user
 can name it. Underneath is `internal/`, which is everything with no name a user
 would recognise.
 
@@ -523,75 +523,19 @@ cost; rate limits stop bots.
 
 ## UI composition
 
-The UI is composed from small shared visual types. Prefer
-plain conversation flow and unboxed sections; use cards only when a distinct
-embedded object needs a boundary. Share typography across landing, account and
-application shells. Do not add new page-specific styling or a second chat
-implementation during this migration.
+Go handlers render HTML on the server. Home is the personal overview with the
+assistant prompt, brief, inbox, agents and relevant service cards. The public
+landing says “A personal assistant”. Preserve current backend contracts, account
+isolation, CSRF protections and existing shared links when changing presentation.
 
-New browser work uses the React client in `web/`, shadcn/ui controls in
-`web/src/components/ui/`, the shared shell and one theme stylesheet. Run
-`npm ci && npm run build` in `web/` and commit the embedded `dist/` assets.
-Do not reintroduce Go-generated markup on a migrated route or load the legacy
-stylesheets into React. Keep private reads and writes authenticated and scope
-records by the session account; JSON view data must not serialize account
-credentials. Preserve service APIs, protocols and existing shared links.
+The shared UI lives in `internal/app`. Tailwind compiles Go, HTML and JavaScript
+class usage with the tweakcn variables in `internal/app/html/theme.css`. Run
+`npm ci --prefix internal/app && npm run build --prefix internal/app` and commit
+the generated `internal/app/html/mu.css`. React is not part of the application.
+Use the shared form and control helpers; keep custom CSS for specialised content
+only. Do not add a parallel frontend, copied templates or compatibility wrappers
+with no callers. Remove obsolete code and assets when replacing their owners.
 
-Standalone pages not yet migrated use the shared components in `internal/app/form.go`, `internal/app/html/mu.css` and
-`internal/app/html/composition.css`.
-Forms use `.form`, labelled fields use `app.Field` or `.field-label`, and related
-controls use `.form-group`. Use `.form-row` for related controls side by side
-(or `.form.form-inline` for a whole inline form); its fields wrap based on the
-container width before they can be squeezed by buttons. Do not replace its
-field basis with `flex: 1` or add service-specific row breakpoints. Services All/Select uses `app.ServiceSelect` on every
-page. Actions use `.form-actions`, `.page-action`, or `.section-actions`; searches
-use `.search-bar`. A `.page-stack` owns the gap between adjacent blocks and a
-`.page-section` separates sections. Use `.disclosure` for Manage/expand controls.
-
-Containers own spacing: do not add child margins, `<br>` spacers, or page-specific
-CSS for ordinary fields, select lists, buttons, and action rows. Use the shared
-8/16/24px spacing tokens. Keep content-specific layouts (editors, media, tables)
-in their existing components. Check narrow mobile and desktop, with the sidebar
-open and closed, including revealed and collapsed controls when changing these
-shared rules.
-
-The signed-in root opens the app launcher; `/assistant` opens the React conversation, preserving guest-to-account continuity and old conversation links. The composer stays in a stable viewport position. Compose pages from shared cards, lists, tables, forms, messages and status badges. Specialized interactions such as maps and editors may own narrowly scoped component styles. Do not add layers of overrides to the old stylesheet to implement the core product.
-
-The base control kit is `internal/app/html/composition.css`; `mu.css` owns the
-page shell and content layouts. Keep control geometry in the kit, independent
-of stylesheet loading order. Every ordinary form uses `.form` (stacked),
-`.form.form-inline` (related controls), `.search-bar` (search section), or
-`.form-action` (one inline mutation). Buttons and button links share dimensions;
-use `.btn`, `.btn-secondary`, `.btn-quiet`, or `.btn-danger` for intent.
-Use `.form-actions` for an action row. A search section owns its trailing space;
-a stack or section parent owns spacing between its children. Text fields and
-comment textareas fill their form; checkboxes and radios keep intrinsic widths.
-Do not reintroduce service-specific form, field, search, or button styling.
-
-Ordinary buttons and button links use one neutral outlined treatment and one
-control height (32px desktop, 36px mobile), including legacy `.mini-btn` actions.
-Reserve compact pills for noninteractive metadata. Do not restore black-filled
-submit variants or give ordinary action buttons per-page sizes. Use
-`.metadata-row` for sender/date rows, `.metric-grid` and `.metric` for system
-measurements, and `.table-scroll` around wide interactive tables so cells do not
-collapse to single-letter columns on mobile.
-
-## Current product direction
-
-Keep Home, Inbox, Work, Agents and Services as the primary destinations in the sidebar on mobile and desktop. On mobile the menu opens the sidebar; do not duplicate it in a bottom navigation bar. Home is the app launcher; Assistant is the private conversation app with Micro; Inbox brings communications needing attention; Agents contains focused agents; Services exposes useful standalone utilities and mini apps. Work brings app creation, tasks, execution and results together; chat is an interaction within building, not the definition of work. Preserve the existing service pages, APIs and protocols. Prefer shared UI components, left-aligned dialogue and one authoritative record for each object. Do not remove these destinations in pursuit of a single agent-only screen.
-
-Agents are not services. Do not place agent management in the Services catalogue. Home launches apps. The Assistant conversation has no Delete control or platform-wide People directory shortcut. Contacts must be explicitly chosen, not implicitly all registered users.
-
-## Service references and built-in apps
-
-`/services` is the grid; `/service/<name>` owns API, SDK, MCP and playground
-reference material derived from the service registry. Built-in application views
-live in top-level `app/<name>/`, appear as built-in in the app catalogue, and
-open at the familiar service URL such as `/mail` or `/news`. These are useful
-consumer apps, separate from `/service/<name>` reference pages. Existing data
-and protocol contracts stay intact; the grid offers direct app and reference links. `service/apps` owns user-created app documents, versions, permissions and their
-sandbox. `/apps` is one catalogue combining those documents with the built-in
-apps; "built-in" is metadata, not another product or URL hierarchy. `app/apps/`
-owns that catalogue and editor UI. Do not add an Apps or Studio sidebar item: keep Home, Inbox,
-Work, Agents and Services. Work composes user-created apps and delegated tasks. Prepare initial view data with the page response rather than
-showing a loading flash for a second request on every navigation.
+Use a consistent 6xl content width, restrained controls, visible hover/focus
+states and +/− disclosures. Check populated and empty pages at desktop and mobile
+widths. Backend tests and the browser layout gate must pass before merge.

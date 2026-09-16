@@ -21,7 +21,6 @@ import (
 	"mu/internal/flag"
 	"mu/internal/service"
 	"mu/internal/snapshot"
-	"mu/web"
 )
 
 //go:embed topics.json
@@ -1499,9 +1498,6 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		_, acc := auth.TrySession(r)
 		canEdit := acc != nil && (acc.Admin || acc.ID == post.AuthorID)
 		app.RespondJSON(w, map[string]any{"post": post, "comments": post.Comments, "can_edit": canEdit})
-		return
-	}
-	if web.Page(w, r, post.Title) {
 		return
 	}
 	if r.Method == "GET" && app.WantsJSON(r) {

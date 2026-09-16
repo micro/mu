@@ -20,7 +20,7 @@ import (
 // Nothing in the body of the signed-out home offers a way in.
 
 func TestTheLandingCornerIsAnchoredToThePage(t *testing.T) {
-	b, err := os.ReadFile("../internal/app/html/mu.css")
+	b, err := os.ReadFile("../internal/app/index.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestTheLandingCornerIsAnchoredToThePage(t *testing.T) {
 		t.Error("the header row is positioned again, so the corner is back at the edge of a 760px column")
 	}
 
-	corner := section(css, ".login-link {")
+	corner := section(css, ".login-link{")
 	if !strings.Contains(corner, "position:absolute") {
 		t.Fatalf("the corner is no longer absolutely positioned: %q", corner)
 	}

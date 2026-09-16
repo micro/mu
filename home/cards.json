@@ -1,0 +1,62 @@
+{
+  "left": [
+    {
+      "id": "blog",
+      "title": "Blog",
+      "type": "blog",
+      "position": 0,
+      "link": "/blog",
+      "icon": "/post.png"
+    },
+    {
+      "id": "prayer",
+      "title": "Prayer",
+      "type": "prayer",
+      "position": 1,
+      "link": "/prayer",
+      "icon": "/prayer.svg"
+    },
+    {
+      "id": "news",
+      "title": "News",
+      "type": "news",
+      "position": 2,
+      "link": "/news",
+      "icon": "/news.png"
+    }
+  ],
+  "right": [
+    {
+      "id": "markets",
+      "title": "Markets",
+      "type": "markets",
+      "position": 0,
+      "link": "/markets",
+      "icon": "/markets.svg"
+    },
+    {
+      "id": "images",
+      "title": "Images",
+      "type": "images",
+      "position": 1,
+      "link": "/images",
+      "icon": "/images.svg"
+    },
+    {
+      "id": "social",
+      "title": "Social",
+      "type": "social",
+      "position": 2,
+      "link": "/social",
+      "icon": ""
+    },
+    {
+      "id": "video",
+      "title": "Video",
+      "type": "video",
+      "position": 3,
+      "link": "/video",
+      "icon": "/video.png"
+    }
+  ]
+}

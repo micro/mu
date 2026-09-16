@@ -14,7 +14,7 @@ handling the inbound mail on the backend. Mu attempts to do it all in a single b
 It includes:
 
 - **Micro** - your personal AI agent and the default agent.
-- **Home** - your personal dashboard and Feed, with a prompt for quick questions.
+- **Home** - your personal overview: assistant prompt, brief, inbox, agents and relevant context.
 - **Inbox** - A place to keep track of everything.
 - **Clients** - Use Micro via Web, SMS, email, etc.
 - **Services** - building blocks for agents.
@@ -26,12 +26,15 @@ It includes:
 
 **Micro** is the first agent and the one you use for everything. It answers by default and can be reached from the web, email, SMS, WhatsApp or the CLI.
 
-Mu comes with a unified inbox for mail, chat, SMS, WhatsApp, notes, tasks and agent activity, bringing communication and agent work into one place.
+Mu comes with a unified inbox for mail, chat, SMS, WhatsApp and agent replies.
+Home gives you an overview and a place to ask the assistant. Inbox, Agents and
+Services are the other primary destinations. Saved conversations and existing
+service URLs remain directly accessible.
 
-Home keeps the prompt, brief, service shortcuts, Inbox, Todo and Upcoming
-in a personal dashboard, with Feed as a separate tab. Assistant opens the
-dedicated conversation. Navigation offers Assistant (Ask on mobile), Home,
-Inbox, Agents and Services together. Logged-out Home visits return to landing.
+Pages render on the server in Go, with Tailwind and a shared tweakcn theme.
+The styles build under `internal/app/`; the deployed application is still one Go
+binary and does not need Node or React. Optional Google connections let the
+assistant read Calendar, Contacts, Gmail and Drive with your consent.
 
 ## Agents
 

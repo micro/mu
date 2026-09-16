@@ -54,7 +54,7 @@ func TestAccountDestinationsSeparateForms(t *testing.T) {
 		r.AddCookie(cookie)
 		w := httptest.NewRecorder()
 		Account(w, r)
-		if w.Code != 200 || !strings.Contains(w.Body.String(), `id="root"`) {
+		if w.Code != 200 || !strings.Contains(w.Body.String(), `id="content"`) {
 			t.Fatalf("%s: client missing", path)
 		}
 		r.Header.Set("Accept", "application/json")

@@ -23,7 +23,6 @@ import (
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/snapshot"
-	"mu/web"
 )
 
 // cardSnap is the go-micro read-plane channel for the social card (store +
@@ -524,10 +523,6 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{"thread": p, "messages": replies})
-		return
-	}
-
-	if web.Page(w, r, "Social") {
 		return
 	}
 	body := generateThreadHTML(p, replies, r)

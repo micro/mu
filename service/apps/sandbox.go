@@ -512,7 +512,7 @@ func sandboxPage(slug, title string) string {
 	// Canvas is the system background and color-scheme is what tells the
 	// browser which one to use. Two words, no media query, and it follows the
 	// reader rather than a guess made here.
-	b.WriteString(`<link rel="stylesheet" href="/composition.css">`)
+	b.WriteString(`<link rel="stylesheet" href="/mu.css">`)
 	b.WriteString(`<style>html,body{margin:0;padding:0;height:100%;background:Canvas;color-scheme:light dark}
 body{display:flex;flex-direction:column}
 #app-frame{display:block;width:100%;flex:1;min-height:0;border:0;background:Canvas}</style>`)

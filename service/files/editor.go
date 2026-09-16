@@ -9,7 +9,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	store "mu/internal/files"
-	"mu/web"
 )
 
 const editorLimit = 256 << 10
@@ -86,9 +85,6 @@ func editorHandler(w http.ResponseWriter, r *http.Request, id string) {
 			return
 		}
 		app.RespondJSON(w, map[string]any{"file": f, "content": string(raw)})
-		return
-	}
-	if web.Page(w, r, "Files") {
 		return
 	}
 	readonly := ""

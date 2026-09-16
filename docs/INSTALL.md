@@ -586,12 +586,6 @@ cannot upload mail into one. Folders here follow your addresses and your mail,
 so there is nothing for those commands to do that would still be true a minute
 later.
 
-To check the listener before pointing a real client at it,
-[`examples/imap-client`](../examples/imap-client) signs in, lists the folders and
-prints the newest messages. It is written against
-[emersion/go-imap](https://github.com/emersion/go-imap) rather than anything in
-this repo, so it fails the way a real client would.
-
 ### Outbound deliverability
 
 By default Mu delivers its own mail: it looks up the recipient's MX and speaks
@@ -1247,3 +1241,21 @@ stop the external service. Mu currently discovers and calls it; Mu does not
 install or manage its process. A separately written Go module linked into Mu
 is different again: importing that module requires a rebuild. Forking is only
 necessary when you want to maintain changes to Mu itself.
+
+### Optional Google connections
+
+Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, and register the instance's
+`https://<host>/oauth2/callback` redirect URI in Google Cloud. Sign-in requests
+only identity. Calendar, Contacts, Gmail and Drive each have a separate Connect
+button under Account and request read-only access only after the user chooses it.
+Enable Calendar API, People API, Gmail API and Drive API for the connections you
+intend to offer. Gmail and Drive read-only scopes are restricted scopes; external
+production OAuth applications require Google's applicable verification. Testing
+apps are limited to the test users and token lifetime set by Google.
+
+Previously revoked grants cannot be restored; users must reconnect. The agent
+can search Gmail and Drive and read selected messages or text files (including
+text exports of Docs, Sheets and Slides). There is no background bulk import.
+Looked-up content used to answer a prompt is sent to the configured AI provider,
+and answers may be retained in the conversation. Disconnect removes the local
+grant and requests revocation from Google.

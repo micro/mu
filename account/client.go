@@ -33,19 +33,3 @@ func clientAccount(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	}
 	app.RespondJSON(w, state)
 }
-
-// ClientStateHandler supplies the common browser shell with its own identity.
-func ClientStateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		app.MethodNotAllowed(w, r)
-		return
-	}
-	auth.SetCSRFCookie(w, r)
-	w.Header().Set("Cache-Control", "private, no-store")
-	_, acc := auth.TrySession(r)
-	var viewer any
-	if acc != nil {
-		viewer = map[string]any{"id": acc.ID, "name": acc.Name, "admin": acc.Admin}
-	}
-	app.RespondJSON(w, map[string]any{"account": viewer, "csrf": auth.CSRFToken(r)})
-}

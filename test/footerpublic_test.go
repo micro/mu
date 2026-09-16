@@ -74,7 +74,7 @@ func TestTheArchiveIsReachableWithoutTheAgent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(src), `http.HandleFunc("/archive", firstparty.Page(archive.Handler, "Archive"))`) {
+	if !strings.Contains(string(src), `http.HandleFunc("/archive", archive.Handler)`) {
 		t.Fatal("the archive has no direct route")
 	}
 	for _, m := range routeGate.FindAllStringSubmatch(string(src), -1) {

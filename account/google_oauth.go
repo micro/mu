@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"net/http"
 	"net/url"
 	"strings"
@@ -74,6 +75,9 @@ func startGoogle(w http.ResponseWriter, r *http.Request, link bool) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
+	for _, name := range []string{"g_grant", "g_owner"} {
+		http.SetCookie(w, &http.Cookie{Name: name, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: requestSecure(r), SameSite: http.SameSiteLaxMode})
+	}
 	state := randToken(16)
 	secure := requestSecure(r)
 	http.SetCookie(w, &http.Cookie{
@@ -119,6 +123,25 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: "g_state", Value: "", Path: "/", MaxAge: -1})
 
+	// A calendar grant comes back through the same redirect URI — Google
+	// requires every one to be registered, and one route with a mode cookie is
+	// less to keep in sync than two. Checked before the error branch below so a
+	// declined calendar returns to the calendar, not to a login page.
+	if c, cerr := r.Cookie("g_grant"); cerr == nil && c.Value != "" {
+		what := c.Value
+		http.SetCookie(w, &http.Cookie{Name: "g_grant", Value: "", Path: "/", MaxAge: -1})
+		if r.URL.Query().Get("error") != "" || r.URL.Query().Get("code") == "" {
+			ret := "/account"
+			if g, ok := grants[what]; ok {
+				ret = g.ret
+			}
+			http.Redirect(w, r, ret+"?connection=declined", http.StatusSeeOther)
+			return
+		}
+		finishGoogleGrant(w, r, what, r.URL.Query().Get("code"))
+		return
+	}
+
 	if r.URL.Query().Get("error") != "" || r.URL.Query().Get("code") == "" {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
@@ -131,7 +154,7 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	info, err := googleUserInfo(token)
-	if err != nil || info.Email == "" {
+	if err != nil || info.Email == "" || !info.EmailVerified {
 		app.Log("auth", "google userinfo failed: %v", err)
 		http.Error(w, "Google sign-in failed, please try again", http.StatusBadGateway)
 		return
@@ -347,4 +370,15 @@ func loginPage(redirectParam, errHTML string) string {
 	// A template slot, not a replace on the heading — see renderSignupTo.
 	return fmt.Sprintf(LoginTemplate, redirectParam,
 		googleButtonHTML("Continue with Google"), errHTML)
+}
+
+func googleSignIn(acc *auth.Account) string {
+	if acc.EmailVerified && acc.Email != "" {
+		return `<p class="text-sm text-muted">You can sign in with Google using <strong>` +
+			htmlpkg.EscapeString(acc.Email) + `</strong>.</p>`
+	}
+	return `<p class="text-sm text-muted">Link Google so you can sign in with it next time. ` +
+		`This just sets your verified email — it doesn't change your username or password.</p>` +
+		`<a href="/oauth2/google/connect" class="oauth-btn inline">` + googleGlyph() +
+		` Connect Google</a>`
 }

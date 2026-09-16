@@ -35,7 +35,7 @@ import (
 var footerHref = regexp.MustCompile(`href="(/[a-z0-9/-]*)"`)
 
 // Account screens deliberately omit marketing navigation. Browser tests cover
-// the React shell; public footer pages remain directly accessible.
+// the rendered Go shell; public footer pages remain directly accessible.
 func TestAccountDoesNotEmbedTheLandingFooter(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(at(""), "account/pages.go"))
 	if err != nil {

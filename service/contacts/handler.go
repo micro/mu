@@ -176,6 +176,8 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</tbody></table></div>`)
 	}
+	b.WriteString(googleCard(r, sess.Account, query))
+	b.WriteString(connectCard(sess.Account, r.URL.Query().Get("connection")))
 	app.Respond(w, r, app.Response{Title: "Contacts", Description: "Your address book", HTML: b.String()})
 }
 
@@ -189,3 +191,36 @@ func orDash(s string) string {
 // "" styles the page and, below 600px, unmakes the table — the
 // same treatment the files list gets, for the same reason: five columns on a
 // phone either scroll sideways or crush the name.
+
+func connectCard(owner, status string) string {
+	if !CanConnectExternal() {
+		return ""
+	}
+
+	note := ""
+	switch status {
+	case "connected":
+		note = `<p class="text-sm text-success m-0 mb-2">Connected. Names are now resolved against ` + html.EscapeString(ExternalName) + ` too.</p>`
+	case "declined":
+		note = `<p class="text-sm text-muted m-0 mb-2">No access granted — nothing changed.</p>`
+	case "failed":
+		note = `<p class="notice bad">That didn't complete. Try again.</p>`
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="card mt-24">`)
+	b.WriteString(note)
+	if HasExternal(owner) {
+		b.WriteString(`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(ExternalName) + `</h4>`)
+		b.WriteString(`<p class="text-sm text-secondary m-0">Attached and read-only. Names are looked up when you ask; ` +
+			`nothing from it is copied here. Manage it in <a href="/account">your account</a>.</p>`)
+	} else {
+		b.WriteString(`<h4 class="m-0 mb-2 text-base">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
+		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now a name only resolves if you typed it in above. ` +
+			`Connect your address book and "email Sarah about Thursday" works without teaching Mu who Sarah is. ` +
+			`Read-only, and nothing is copied — names are looked up when you ask.</p>`)
+		b.WriteString(`<a href="/oauth2/google/contacts" class="btn">Connect ` + html.EscapeString(ExternalName) + `</a>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}

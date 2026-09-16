@@ -35,12 +35,12 @@ func TestTheNewAppButtonIsTheSharedButton(t *testing.T) {
 //
 // Checked against the source, because the cascade cannot be resolved in Go.
 func TestTheAppsPageDoesNotRollItsOwnButton(t *testing.T) {
-	b, err := os.ReadFile("../../app/apps/index.tsx")
+	b, err := os.ReadFile("apps.go")
 	if err != nil {
 		t.Fatal(err)
 	}
 	src := string(b)
-	if !strings.Contains(src, `<Button asChild`) || !strings.Contains(src, `href="/apps/new"`) {
+	if !strings.Contains(src, `app.ActionLink("/apps/new", "New")`) {
 		t.Fatal("catalogue does not use the shared button")
 	}
 }

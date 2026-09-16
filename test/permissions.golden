@@ -37,6 +37,8 @@ events_free                  needsAccount=true  destructive=false bound accountO
 events_list                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 events_update                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 files_delete                 needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
+files_driveread              needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
+files_drivesearch            needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 files_get                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 files_list                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 files_put                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
@@ -60,6 +62,8 @@ images_search                needsAccount=true  destructive=false bound accountO
 images_share                 needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
 images_update                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 images_upload                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+mail_gmailread               needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
+mail_gmailsearch             needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 mail_inbox                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_info                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_markread                needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false

@@ -122,6 +122,9 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
+		"GmailSearch": {Needs: service.Account, Doc: "Search the caller's connected Gmail. Read-only; connect in Account first."},
+		"GmailRead":   {Needs: service.Account, Doc: "Read the caller's connected Gmail. Read-only; connect in Account first."},
+
 		"MarkRead": {Doc: "Mark specified inbox message IDs, or explicitly all current inbox messages, as read. Changes read status only; does not read, summarize or triage the content.", Needs: service.Account, Writes: true},
 		"Read":     {Doc: "Read your correspondence by id in bounded body-character pages, including attachment names. Follow the returned next offset for the rest. Omitting id retains the legacy inbox summary"},
 		"Inbox":    {Doc: "List the account's most recent messages — read my mail, check my inbox"},

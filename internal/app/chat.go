@@ -77,9 +77,6 @@ func searchBox(o SearchBoxOpts) string {
 //go:embed conversation.js
 var conversationJS string
 
-//go:embed conversation.css
-var conversationCSS string
-
 //go:embed dictation.js
 var dictationJS string
 

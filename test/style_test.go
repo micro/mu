@@ -278,11 +278,18 @@ func TestMarginZeroComesBeforeTheDirectionalMargins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(string(b), "\n")
+	// Tailwind utilities intentionally override component-layer defaults.
+	// Compare ordering inside that layer, not against historical component rules.
+	css := string(b)
+	start := strings.LastIndex(css, "@layer utilities{")
+	if start < 0 {
+		t.Fatal("generated Tailwind utilities layer missing")
+	}
+	lines := strings.Split(strings.ReplaceAll(css[start:], "}", "}\n"), "\n")
 
 	zero := -1
 	directional := map[string]int{}
-	rule := regexp.MustCompile(`^\.(m-0|m[trbl]-[a-z0-9]+)\s*\{`)
+	rule := regexp.MustCompile(`\.(m-0|m[trbl]-[a-z0-9]+)\s*\{`)
 	for i, l := range lines {
 		m := rule.FindStringSubmatch(l)
 		if m == nil {
