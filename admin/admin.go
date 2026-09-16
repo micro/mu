@@ -270,7 +270,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		// is what you feel like giving — and three preset buttons would be
 		// wrong for most of them.
 		actions = append(actions, fmt.Sprintf(
-			`<form method="POST" class="form-action inline-row">`+
+			`<form method="POST" class="form-action inline-row amount-action">`+
 				`<input type="hidden" name="action" value="credit">`+
 				`<input type="hidden" name="user_id" value="%s">`+
 				`<input type="hidden" name="tab" value="%s">`+
@@ -284,8 +284,8 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		actionsHTML = strings.ReplaceAll(actionsHTML, `<input type="hidden" name="action"`, app.CSRFField(auth.CSRFToken(r))+`<input type="hidden" name="action"`)
 		sb.WriteString(`<article class="directory-row"><div class="directory-content">` +
 			`<div class="directory-heading"><a href="/@` + html.EscapeString(u.ID) + `">` + html.EscapeString(u.ID) + `</a><span class="text-muted">` + html.EscapeString(u.Name) + `</span></div>` +
-			`<div class="metadata-row"><span>Joined ` + created + `</span><span>Credits: ` + balanceCell(u.ID) + `</span>` + statusHTML + `</div>` +
-			`<div class="form-actions">` + actionsHTML + `</div></div></article>`)
+			`<div class="metadata-row"><span>Joined ` + created + `</span><span>Credits: ` + balanceCell(u.ID) + `</span></div><div class="metadata-row">` + statusHTML + `</div>` +
+			`<details class="action-menu"><summary>Manage <span class="sr-only">` + html.EscapeString(u.ID) + `</span></summary><div class="action-grid">` + actionsHTML + `</div></details></div></article>`)
 	}
 	sb.WriteString(`</div>`)
 	sb.WriteString(page.Nav("/admin/users?tab=" + tab))
