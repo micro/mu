@@ -462,6 +462,7 @@ func navMain(acc *auth.Account) string {
 		{"nav-home", "/home", "Home", "/home.png"},
 		{"nav-inbox", "/inbox", "Inbox", "/mail.png"},
 		{"nav-work", "/work", "Work", "/tasks.svg"},
+		{"nav-services", "/services", "Services", "/services.svg"},
 	} {
 		b.WriteString(navigationLink(item.id, item.href, item.label, item.icon))
 	}

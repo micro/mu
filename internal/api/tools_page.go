@@ -171,9 +171,16 @@ func serviceGrid(r *http.Request) string {
 		}
 	}
 
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	var b strings.Builder
+	b.WriteString(app.SearchBar("/services", "Find a service", query, ""))
+	count := 0
 	b.WriteString(`<div class="tool-grid service-grid">`)
 	for _, s := range service.Nav() {
+		if query != "" && !strings.Contains(strings.ToLower(s.Name+" "+s.NavLabel()+" "+s.Description), strings.ToLower(query)) {
+			continue
+		}
+		count++
 		b.WriteString(`<div class="service-tile-wrap">`)
 		// Open the service experience directly. A reference remains the fallback
 		// for services without a dedicated page.
@@ -198,6 +205,9 @@ func serviceGrid(r *http.Request) string {
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
+	if count == 0 {
+		b.WriteString(`<p class="text-muted">No matching services.</p>`)
+	}
 	return b.String()
 }
 

@@ -92,9 +92,7 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	return nil
 }
 
-// Reconcile defaults for existing and newly created human accounts. Unknown
-// timezones wait rather than sending at the server's six o'clock. An existing
-// record is preserved except the exact superseded 20:00 preset. Opt-outs survive.
+// Pause schedules that were enrolled automatically, without changing explicit choices.
 func ensureDefaultBriefs() {
 	// Retire automatic enrollment. Explicitly configured schedules set Builtin=false.
 	mu.Lock()
