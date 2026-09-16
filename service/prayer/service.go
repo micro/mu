@@ -127,7 +127,7 @@ func (Server) Qibla(_ context.Context, req *QiblaRequest, rsp *QiblaResponse) er
 var Spec = service.Spec{
 	Name:        "prayer",
 	Handler:     new(Server),
-	Description: "Check prayer times and qibla",
+	Description: "Prayer times, qibla and daily reminders",
 	Page:        "/prayer",
 	Card:        service.Personal(ReminderHTML),
 	Endpoints: map[string]service.Endpoint{

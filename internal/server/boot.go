@@ -27,6 +27,7 @@ import (
 	"mu/service/food"
 	"mu/service/hazards"
 	"mu/service/images"
+	"mu/service/islam"
 	"mu/service/mail"
 	"mu/service/maps"
 	"mu/service/markets"
@@ -92,6 +93,7 @@ func boot() {
 	// load markets, reminder, wallet
 	startupStep("markets.Load", markets.Load)
 	startupStep("prayer.Load", prayer.Load)
+	startupStep("islam.Load", islam.Load)
 	// Going looking in your own past on purpose — the read over internal/thread
 	// that every client writes to. See service/recall.
 	startupStep("recall.Load", recall.Load)
