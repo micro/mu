@@ -440,7 +440,19 @@ button{width:100%;padding:10px;background:#000;color:#fff;border:none;border-rad
 </body></html>`
 }
 
+func authorizationRedirect(redirectURI, code, state string) string {
+	u, _ := url.Parse(redirectURI) // already validated against the registered client
+	q := u.Query()
+	q.Set("code", code)
+	if state != "" {
+		q.Set("state", state)
+	}
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
 func OAuthAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	clientID := r.URL.Query().Get("client_id")
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	state := r.URL.Query().Get("state")
@@ -467,17 +479,13 @@ func OAuthAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	if sess != nil {
 		// Already authenticated — issue code immediately
 		code := CreateAuthorizationCode(clientID, sess.Account, redirectURI, codeChallenge, codeChallengeMethod)
-		redirect := redirectURI + "?code=" + code
-		if state != "" {
-			redirect += "&state=" + state
-		}
+		redirect := authorizationRedirect(redirectURI, code, state)
 		http.Redirect(w, r, redirect, http.StatusFound)
 		return
 	}
 
-	// Show login form
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMethod, "", "")))
+	// All sign-in methods return to this validated authorization request.
+	http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.RequestURI()), http.StatusSeeOther)
 }
 
 // OAuthAuthorizePostHandler handles POST /oauth/authorize — validates credentials and redirects.
@@ -510,7 +518,7 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate credentials
-	_, err = Login(username, password)
+	session, err := Login(username, password)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMethod,
@@ -519,11 +527,8 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Issue authorization code
-	code := CreateAuthorizationCode(clientID, username, redirectURI, codeChallenge, codeChallengeMethod)
-	redirect := redirectURI + "?code=" + code
-	if state != "" {
-		redirect += "&state=" + state
-	}
+	code := CreateAuthorizationCode(clientID, session.Account, redirectURI, codeChallenge, codeChallengeMethod)
+	redirect := authorizationRedirect(redirectURI, code, state)
 	http.Redirect(w, r, redirect, http.StatusFound)
 }
 

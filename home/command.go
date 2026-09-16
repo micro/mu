@@ -55,7 +55,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			initial += `<section class="turn"><div class="` + class + `">` + content + `</div></section>`
 		}
 	}
-	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div id="responses" role="log" aria-label="Requests and responses"><section class="welcome"><h1>What do you need?</h1><p>Type a command or ask a question.</p><div class="examples"><button data-command="news">news</button><button data-command="weather">weather</button><button data-command="markets">markets</button><button data-command="brief">brief</button><button data-command="inbox">inbox</button><button data-command="help">help</button></div></section>`+initial+`</div><form id="command-form"><label for="command-input">Request</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="Type a command or question…" autocomplete="off" spellcheck="false" required></textarea><button id="send" type="submit">Send</button></div><p id="status" role="status"></p></form><script>`+commandJS+`</script>`, acc))
+	fmt.Fprint(w, app.ConsoleHTML("Micro", `<form id="command-form"><label class="sr-only" for="command-input">Command or question</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" autocomplete="off" required></textarea><button id="send" type="submit" aria-label="Send command">Send</button></div><p id="status" role="status"></p></form><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div><script>`+commandJS+`</script>`, acc))
 }
 
 // CommandHandler performs explicit commands before considering the assistant.

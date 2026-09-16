@@ -205,20 +205,6 @@ func torFooterLink() string {
 	return ""
 }
 
-var Template = `<!doctype html>
-<html lang="%s"><head><meta charset="utf-8"><title>%s</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover">
-<meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro">
-<meta name="description" content="%s"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#ffffff">
-<link rel="apple-touch-icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
-<link rel="stylesheet" href="/mu.css?` + Version + `">
-<script src="/mu.js?` + Version + `"></script><script defer src="/shell.js?` + Version + `"></script><script defer src="/viewport.js?` + Version + `"></script>
-</head><body%s>
-<script>try{if(localStorage.getItem('mu_nav_collapsed')==='1')document.body.classList.add('nav-collapsed')}catch(e){}</script>
-<header id="head"><button id="menu-toggle" onclick="toggleMenu()" aria-label="Menu"><span></span><span></span><span></span></button><div id="brand"><a href="/">Micro</a></div><div id="head-right">%s</div></header>
-<div id="nav-overlay" onclick="toggleMenu()"></div><div id="container"><aside id="nav-container"><nav id="nav">%s%s</nav><div class="nav-bottom">%s</div></aside><main id="content">%s%s</main></div>%s
-</body></html>`
-
 var CardTemplate = `
 <!-- %s -->
 <div id="%s" class="card">
@@ -757,22 +743,5 @@ func ValidEmail(s string) bool {
 }
 
 func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path, here string) string {
-	template := Template
-	browserTitle := title
-	if title != "" && title != "Micro" {
-		browserTitle += " | Micro"
-	} else {
-		browserTitle = "Micro"
-	}
-	heading := ""
-	if title != "" {
-		heading = `<h1 id="page-title">` + htmlpkg.EscapeString(title) + `</h1>`
-	}
-	return fmt.Sprintf(template,
-		lang, htmlpkg.EscapeString(browserTitle), desc, bodyAttr,
-		headCorner(acc, here),
-		navMain(acc),
-		navPinned(acc),
-		navBottom(acc, here),
-		heading, body, footerFor(acc))
+	return ConsoleHTML(title, `<h1 id="page-title">`+htmlpkg.EscapeString(title)+`</h1>`+body, acc)
 }
