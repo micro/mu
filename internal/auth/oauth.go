@@ -384,6 +384,24 @@ func OAuthRegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 // oauthConsent renders explicit, session-bound approval using the shared stylesheet.
 func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI string) {
+	// Browsers may apply form-action to the redirect after a form POST.
+	// Permit only this validated client's callback origin, not arbitrary sites.
+	callback, err := url.Parse(redirectURI)
+	if err != nil || callback.Host == "" || strings.ContainsAny(callback.Host, " ;'\"\\\t\r\n") {
+		http.Error(w, "Invalid callback origin", http.StatusBadRequest)
+		return
+	}
+	policy := w.Header().Get("Content-Security-Policy")
+	directives := strings.Split(policy, ";")
+	filtered := make([]string, 0, len(directives)+1)
+	for _, directive := range directives {
+		directive = strings.TrimSpace(directive)
+		if directive != "" && !strings.HasPrefix(directive, "form-action ") {
+			filtered = append(filtered, directive)
+		}
+	}
+	filtered = append(filtered, "form-action 'self' "+callback.Scheme+"://"+callback.Host)
+	w.Header().Set("Content-Security-Policy", strings.Join(filtered, "; "))
 	e := html.EscapeString
 	requested := map[string]bool{}
 	for _, scope := range strings.Fields(r.URL.Query().Get("scope")) {
