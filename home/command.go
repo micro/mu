@@ -74,7 +74,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var channels strings.Builder
 	for _, c := range client.Personal() {
-		if c.ID == thread.WebClient || c.ID == thread.ChatClient || c.Href == "" {
+		if c.ID == thread.WebClient || c.Href == "" {
 			continue
 		}
 		label := c.Label
