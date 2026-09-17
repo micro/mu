@@ -39,6 +39,7 @@ package client
 import (
 	"strings"
 
+	"mu/internal/app"
 	"mu/internal/settings"
 	"mu/internal/thread"
 	"mu/service/mail"
@@ -152,6 +153,20 @@ func All() []Client {
 		if addr := mail.SharedAgentAddress(); addr != "" {
 			out = append(out, Client{ID: "mail", Label: "Email", Address: addr,
 				Href: "mailto:" + addr, Note: "write to it and it writes back"})
+		}
+	}
+	// Match the XMPP listener and its domain precedence. This advertises a
+	// configured transport, not a claim that federation has been verified.
+	if _, on := app.ListenAddr("XMPP_PORT", app.XMPPPort); on {
+		d := strings.TrimSpace(settings.Get("MU_DOMAIN"))
+		if d == "" {
+			d = strings.TrimSpace(settings.Get("MAIL_DOMAIN"))
+		}
+		if d != "" && d != "localhost" {
+			address := "agent@" + d
+			out = append(out, Client{ID: thread.ChatClient, Label: "Chat", Address: address,
+				Href: "xmpp:" + address + "?message",
+				Note: "XMPP: sign in to this server with your username and a Chat token from Account"})
 		}
 	}
 	// The command line, which was forgotten and is a real way in.
