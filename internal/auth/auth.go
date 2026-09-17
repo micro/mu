@@ -184,6 +184,16 @@ func init() {
 // Two of them did; internal/setup and Claim did not, and micro.mu has an
 // account called 3834 to show for it.
 func Create(acc *Account) error {
+	return createAccount(acc, true)
+}
+
+// CreateMember creates a verified channel user without operator bootstrap.
+func CreateMember(acc *Account) error {
+	acc.Admin = false
+	return createAccount(acc, false)
+}
+
+func createAccount(acc *Account, bootstrap bool) error {
 	if reason := ValidateUsername(acc.ID); reason != "" {
 		return errors.New(reason)
 	}
@@ -209,12 +219,15 @@ func Create(acc *Account) error {
 	// var (comma-separated ids/usernames/emails) is made an admin; if ADMIN is
 	// unset, the very first account on a fresh instance becomes admin.
 	first := len(accounts) == 0
-	if shouldBootstrapAdmin(acc, first) {
+	if bootstrap && shouldBootstrapAdmin(acc, first) {
 		acc.Admin = true
 	}
 
 	accounts[acc.ID] = acc
-	data.SaveJSON("accounts.json", accounts)
+	if err := data.SaveJSON("accounts.json", accounts); err != nil {
+		delete(accounts, acc.ID)
+		return err
+	}
 
 	// Said, not sent. Whether anybody wants to know is not this package's
 	// question — see event.AccountCreated. Published after the save, so a

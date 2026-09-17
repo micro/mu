@@ -406,6 +406,7 @@ func wireHooks() {
 
 	// load agent
 	startupStep("agent.Load", agent.Load)
+	startupStep("account.LoadChannelOnboarding", account.LoadChannelOnboarding)
 
 	// Only basic profile context is automatic. Private service data requires a
 	// permitted tool call, including saved notes and mail counts.
