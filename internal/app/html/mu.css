@@ -519,7 +519,7 @@ form:not(.form-action)>:is(button,.btn)+p{margin-top:10px}
 .reading-actions{gap:8px;margin-block:10px}
 .action-menu{display:inline-block;position:relative;margin:0 6px 0 0;vertical-align:top}
 .action-menu>summary{padding:5px 10px;border:1px solid var(--border);border-radius:6px;text-decoration:none}
-.action-menu[open]{display:block;margin-block:8px}
+.action-menu[open]{display:inline-block;margin:0 6px 0 0}
 .action-menu :is(button,.btn){margin:0}
 summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:8px}
 summary::-webkit-details-marker{display:none}
@@ -648,7 +648,18 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .social-post>*{margin-block:0;min-width:0}
 .so-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px}
 .social-post .breakable,.col-feed .feed-row .breakable{line-height:1.6;overflow-wrap:anywhere}
-.action-menu-items{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-block:8px}
+.action-menu-items{position:absolute;inset-block-start:calc(100% + 6px);inset-inline-start:0;z-index:30;display:flex;flex-direction:column;align-items:stretch;gap:4px;width:max-content;min-width:128px;max-width:calc(100vw - 40px);padding:6px;margin:0;background:white;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 14px #00000012}
+.action-menu>.action-menu-items{margin-top:0}
+.action-menu>summary::before{content:none}
+.action-menu>summary{box-sizing:border-box;min-height:32px;padding:4px 10px;align-items:center;justify-content:center;line-height:1.4}
+.action-menu-items>.menu-item{display:block;margin:0;padding:6px 10px;border-radius:3px;line-height:1.4;font-size:.875rem;text-decoration:none;white-space:nowrap}
+.action-menu-items>.menu-item:hover,.action-menu-items>.menu-item:focus-visible{background:var(--surface)}
+.action-menu-items>.danger{color:#a32323}
+.reading-actions{align-items:center;gap:8px}
+.reading-actions>:is(.mini-btn,button,.btn,.form-action,.action-menu),.reading-actions>.action-menu[open]{flex:none;margin:0}
+.reading-actions>.action-menu>.action-menu-items{inset-inline-start:auto;inset-inline-end:0}
+.reading-actions .reading-save{padding:0;align-self:center}
+.reading-actions .mini-btn{box-sizing:border-box;min-height:32px;margin:0;padding:4px 10px}
 .action-menu-items form{margin:0}
 .social-post>.action-menu{align-self:flex-start}
 .link-card{display:block;border:1px solid var(--border);border-radius:6px;overflow:hidden;text-decoration:none;margin-block:8px}
