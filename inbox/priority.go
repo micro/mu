@@ -59,7 +59,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 			b.WriteString(`<p class="text-muted">Your inbox is empty.</p>`)
 		}
 		for _, t := range all[pager.From:pager.To] {
-			b.WriteString(conversationRow(t, ""))
+			b.WriteString(conversationRow(r, owner, t, ""))
 		}
 		b.WriteString(pager.Nav(r.URL.Path))
 	}
@@ -69,20 +69,19 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 func waitingHTML(r *http.Request, owner string) string { return waiting(r, owner) }
 
 // conversationRow keeps saved conversations compact and easy to return to.
-func conversationRow(t thread.Thread, preview string) string {
+func conversationRow(r *http.Request, owner string, t thread.Thread, preview string) string {
 	title := strings.TrimSpace(t.Subject)
 	if title == "" {
 		title = "Untitled conversation"
 	}
-	destination := "/inbox?id=" + url.QueryEscape(t.ID)
-	if t.Client == thread.WebClient {
-		destination = "/?session=" + url.QueryEscape(t.ID)
-	}
+	destination := inboxURL(r, t.ID)
 	unread := ""
 	if thread.Unread(t) {
 		unread = `<span class="unread-dot" aria-label="Unread"></span>`
 	}
 	result := `<a class="conversation-row" href="` + html.EscapeString(destination) + `"><span class="conversation-title">` + unread + html.EscapeString(title) + `</span><time datetime="` + t.Updated.Format("2006-01-02T15:04:05Z07:00") + `">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time>`
+	who, _ := party(owner, t)
+	result += `<span class="conversation-context"><span class="metadata-kind">` + html.EscapeString(app.ClientName(t.Client)) + `</span><span>` + html.EscapeString(who) + `</span></span>`
 	if preview != "" {
 		result += `<span class="conversation-preview">` + html.EscapeString(preview) + `</span>`
 	}
