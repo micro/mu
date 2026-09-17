@@ -233,7 +233,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			badges = append(badges, `<span class="count-badge">banned</span>`)
 		}
 		if u.EmailVerified {
-			badges = append(badges, `<span class="count-badge good">verified</span>`)
+			badges = append(badges, `<span class="text-muted text-xs">Email verified</span>`)
 		}
 		if u.Approved {
 			badges = append(badges, `<span class="count-badge info">approved</span>`)

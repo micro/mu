@@ -616,3 +616,31 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 #map-directions{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) minmax(110px,.6fr) auto;align-items:end;gap:8px}
 #map-directions-result:empty{display:none}#map-directions-result{padding-block:12px}#map-directions-result li{padding-block:4px}
 @media(max-width:700px){.contacts-table td.contact-meta{display:block}#map-directions{grid-template-columns:minmax(0,1fr) auto}#map-directions input[name=to]{grid-column:1/-1}#map-directions select{grid-column:1}#topics{gap:8px}}
+
+/* Actions and media retain their own space inside compact records. */
+.button-icon{display:block;width:18px;height:18px;flex:0 0 18px}
+.form-actions>:is(.btn,.mini-btn,button){flex-shrink:0;white-space:nowrap}
+.directory-content>.action-menu{margin-top:12px}
+.directory-content>.metadata-row .badge-row{align-items:center;gap:6px 8px}
+.video-grid>.reading-row{flex-direction:column;align-items:stretch;gap:10px}
+.video-grid>.reading-row>a{display:block;width:100%}
+.video-grid>.reading-row>a>img,.thumbnail>a>img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:6px;margin-bottom:10px}
+.video-grid .reading-actions{margin:0;gap:8px}
+.video-grid .reading-meta{font-size:.85rem;color:var(--text-muted);line-height:1.5}
+.thumbnail{padding-block:16px;border-bottom:1px solid var(--border);max-width:640px}
+.thumbnail h3{margin:0 0 8px}
+#xstops{margin-top:16px}
+.xstop{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:14px 0;border-bottom:1px solid var(--border)}
+.xstop>button{flex:0 1 auto;text-align:left;justify-content:flex-start}
+.xaway{font-size:.85rem;color:var(--text-muted)}
+.xarr{flex-basis:100%;padding:8px 0;line-height:1.8;color:var(--text-primary)}
+
+.social-post{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:20px 0;border-bottom:1px solid var(--border);font-weight:400}
+.social-post>*{margin-block:0;min-width:0}
+.so-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px}
+.social-post .breakable,.col-feed .feed-row .breakable{line-height:1.6;overflow-wrap:anywhere}
+.action-menu-items{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-block:8px}
+.action-menu-items form{margin:0}
+.social-post>.action-menu{align-self:flex-start}
+.link-card{display:block;border:1px solid var(--border);border-radius:6px;overflow:hidden;text-decoration:none;margin-block:8px}
+.so-pad,.link-card-pad{padding:12px}
