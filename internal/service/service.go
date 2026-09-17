@@ -23,7 +23,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"go-micro.dev/v6/broker"
 	"go-micro.dev/v6/client"
@@ -299,10 +298,10 @@ func isAddressTaken(err error) bool {
 func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 	svcName = CanonicalName(svcName)
 	var opts []client.CallOption
-	// A build can make three bounded model attempts. The RPC default expires
-	// before even one model attempt finishes; never retry this paid mutation.
+	// Builds acknowledge durable submission immediately. Never automatically
+	// retry a paid submission after a lost response.
 	if svcName == "apps" && strings.EqualFold(methodName(endpoint), "Build") {
-		opts = append(opts, client.WithRequestTimeout(7*time.Minute), client.WithRetries(0))
+		opts = append(opts, client.WithRetries(0))
 	}
 	ctx, release := operatorCall(ctx, svcName+"."+methodName(endpoint))
 	defer release()

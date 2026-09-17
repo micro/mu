@@ -185,7 +185,7 @@ func forwardedIP(r *http.Request) string {
 // HttpOnly, so a script cannot read it; SameSite=Lax, so it is not sent along
 // with somebody else's form post.
 func MarkClient(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(clientCookie); err == nil && len(c.Value) >= 16 {
+	if c, err := r.Cookie(clientCookie); err == nil && len(c.Value) >= 16 && len(c.Value) <= 128 {
 		return
 	}
 	var b [16]byte
@@ -215,7 +215,7 @@ func MarkClient(w http.ResponseWriter, r *http.Request) {
 // cookies, a tool posting to the API, the first request of all. Those fall back
 // to the address limit, which is why that one still exists.
 func ClientID(r *http.Request) string {
-	if c, err := r.Cookie(clientCookie); err == nil && len(c.Value) >= 16 {
+	if c, err := r.Cookie(clientCookie); err == nil && len(c.Value) >= 16 && len(c.Value) <= 128 {
 		return c.Value
 	}
 	return ""
@@ -244,6 +244,16 @@ func allow(key string, max int, window time.Duration) bool {
 	now := time.Now()
 	b, ok := rates[key]
 	if !ok || now.After(b.resetAt) {
+		if !ok && len(rates) >= 20000 {
+			for key, bucket := range rates {
+				if now.After(bucket.resetAt) {
+					delete(rates, key)
+				}
+			}
+			if len(rates) >= 20000 {
+				return false
+			}
+		}
 		b = &rateBucket{resetAt: now.Add(window)}
 		rates[key] = b
 	}
@@ -262,39 +272,25 @@ func allow(key string, max int, window time.Duration) bool {
 	return true
 }
 
-// GuestAllowed reports whether an unauthenticated caller may make another free
-// call, and counts it when they may.
-//
-// Both ceilings, and the call has to clear both.
-//
-//   - The mark, GUEST_MAX_PER_CLIENT (default 40) an hour, is the fair share.
-//     One browser, so it can be sized for a person rather than for a building.
-//   - The address, GUEST_MAX_PER_IP (default 300) an hour, is the backstop. It
-//     is wide because it may be a cafe or a phone network, and it is there for
-//     the caller who drops the mark to get a new one — which resets the first
-//     ceiling and not this one.
-//
-// The address limit used to be the only one and was 120, sized as if an address
-// were a person. It is both too tight for a shared one and too loose for a
-// script that keeps its cookies, which is what having two of these fixes.
-//
-// Localhost is never limited, the same as before: that is a self-hosted
-// instance or a developer, and both are the operator.
+// GuestAllowed bounds anonymous calls per browser, per address and across the
+// instance. Loopback is limited too: reverse-proxy traffic may arrive there.
+// Limits reset on process restart; anonymous model access is disabled separately
+// unless the operator explicitly enables ALLOW_GUEST_AI.
 func GuestAllowed(r *http.Request) bool {
 	ip := ClientIP(r)
-	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
-		return true
+	if ip == "" {
+		return false
 	}
 	window := time.Duration(EnvInt("GUEST_WINDOW_MINUTES", 60)) * time.Minute
 
 	// The mark first, so a browser that is over its own share does not spend
 	// the address's allowance finding that out.
 	if id := ClientID(r); id != "" {
-		if !allow("c:"+id, EnvInt("GUEST_MAX_PER_CLIENT", 40), window) {
+		if !allow("c:"+id, EnvInt("GUEST_MAX_PER_CLIENT", 10), window) {
 			return false
 		}
 	}
-	return allow("ip:"+ip, EnvInt("GUEST_MAX_PER_IP", 300), window)
+	return allow("ip:"+ip, EnvInt("GUEST_MAX_PER_IP", 30), window) && allow("guest:instance", EnvInt("GUEST_MAX_TOTAL", 100), window)
 }
 
 // resetRates is for the tests, which have to start from nothing.
