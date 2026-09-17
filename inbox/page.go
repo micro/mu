@@ -101,6 +101,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RedirectToLogin(w, r)
 		return
 	}
+	if view := r.URL.Query().Get("view"); (view == "saved" || view == "scheduled") && r.URL.Path == "/inbox" && r.URL.Query().Get("id") == "" {
+		collectionView(w, r, acc, view)
+		return
+	}
 	if id := r.URL.Query().Get("id"); id != "" {
 		kind := kindOf(r.URL.Query().Get("kind"))
 		if kind == kindNote || kind == kindTask {
