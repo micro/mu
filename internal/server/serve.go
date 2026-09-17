@@ -57,9 +57,6 @@ func serve(addr string) {
 			}
 
 			setSecurityHeaders(w)
-			if !rateGate(w, r, staticPaths) {
-				return
-			}
 			// Default every dynamic response to private. Public asset handlers may
 			// opt into caching explicitly; personalized JSON must never inherit it.
 			w.Header().Set("Cache-Control", "private, no-store")
