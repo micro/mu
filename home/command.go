@@ -10,6 +10,7 @@ import (
 	"mu/internal/thread"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // ConsoleHandler is the web front door. Nothing runs until a request is sent.
@@ -58,6 +59,16 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 				class = "request"
 				content = html.EscapeString(message.Text)
 			}
+			who := "You"
+			if message.Role == thread.RoleAgent {
+				who = "Micro"
+				if a := agent.For(acc.ID, selected); a != nil {
+					who = a.Name
+				} else if a := agent.Platform(selected); a != nil {
+					who = a.Name
+				}
+			}
+			content = `<div class="ib-from metadata-row"><span class="ib-who-l">` + html.EscapeString(who) + `</span><time class="ib-at" datetime="` + message.At.Format(time.RFC3339) + `" title="` + message.At.Format("2 Jan 2006, 15:04 MST") + `">` + html.EscapeString(app.TimeAgo(message.At)) + `</time></div><div class="message-body">` + content + `</div>`
 			initial += `<section class="turn"><div class="` + class + `">` + content + `</div></section>`
 		}
 	}
@@ -78,18 +89,22 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		label := c.Label
+		title := ""
+		if label == "XMPP" {
+			title = ` title="Use an XMPP client with your Micro account"`
+		}
 		if label == "SMS" {
 			label = "Text"
 		}
-		channels.WriteString(`<a href="` + html.EscapeString(c.Href) + `">` + html.EscapeString(label) + `</a>`)
+		channels.WriteString(`<a href="` + html.EscapeString(c.Href) + `"` + title + `>` + html.EscapeString(label) + `</a>`)
 	}
 	if acc == nil {
-		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant. Talk here, or use the apps you already use.</p><div class="form-actions landing-actions"><a class="btn" href="/signup">Create an account</a></div><div class="form-actions landing-channels">`+channels.String()+`</div><p class="text-small">Use a verified email address or phone number from your account.</p></div></div></div>`, acc))
+		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant for everyone.</p><p class="landing-example">Research a trip, remember something, or set a reminder.</p></div><form id="guest-command-form" action="/signup" method="get"><label class="sr-only" for="guest-command-input">Message</label><div class="composer"><input type="text" id="guest-command-input" maxlength="8000" placeholder="Write a message…" autocomplete="off" aria-describedby="guest-status" required><button type="submit">Continue</button></div><p id="guest-status" class="composer-note" role="status">Create an account to send your message.</p></form><div class="form-actions landing-channels">`+channels.String()+`</div></div></div>`, acc))
 		return
 	}
 	state := "conversation"
 	if session != "" || r.URL.Query().Get("new") == "1" {
 		state += " is-active"
 	}
-	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="prompt-welcome"><h1>`+html.EscapeString(agentName)+`</h1>`+description+`</div><form id="command-form" data-agent="`+html.EscapeString(selected)+`"><label class="sr-only" for="command-input">Message</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="Write a message…" autocomplete="off" required><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form><div class="form-actions landing-channels">`+channels.String()+`</div></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
+	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="prompt-welcome"><h1>`+html.EscapeString(agentName)+`</h1>`+description+`</div><form id="command-form" data-agent="`+html.EscapeString(selected)+`" data-agent-name="`+html.EscapeString(agentName)+`"><label class="sr-only" for="command-input">Message</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="Write a message…" autocomplete="off" required><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form><div class="form-actions landing-channels">`+channels.String()+`</div></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
 }
