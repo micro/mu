@@ -655,3 +655,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .markets-table .markets-chart-link{padding:0}
 .markets-table .markets-name{font-weight:400;color:var(--text-muted)}
 .view-share{display:flex;align-items:center;gap:10px;margin-block:12px;font-size:.85rem}
+
+/* Reading pages align the whole page, not just the article body. */
+.document-page.reading-page main,.reading-page>.page>header{width:min(calc(100% - 40px),var(--reading-width));margin-inline:auto}
+.reading-page>.page>header{padding-inline:0}
