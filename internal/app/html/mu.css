@@ -503,7 +503,7 @@ img[width="16"],img[width="20"],img[width="24"],.stream-icon{object-fit:contain}
 .field-label>:is(input,select,textarea),.form>:is(input,select,textarea),.form-group>:is(input,select,textarea){flex:0 0 auto}
 .form-row>.field,.form-inline>.field{flex:1 1 180px;margin:0}
 .form-row>.field-wide,.form-inline>.field-wide{flex:2 1 280px}
-.form-row>button,.form-inline>button,.search-bar>button{flex:0 0 auto}
+.form-row>button,.form-inline>button,.search-bar>button{flex:0 0 auto;align-self:flex-end;min-height:36px;padding-block:7px}
 form:not(.form-action)>:is(button,.btn)+p{margin-top:10px}
 :is(.form-actions,.section-actions,.action-grid,.reading-actions) form{margin:0}
 .reading-actions:empty{display:none}
