@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/html"
 	stdhtml "html"
 	"net/http"
 	"net/url"
@@ -52,10 +53,11 @@ var postsPreviewHtml string
 // author next to each item costs nothing and lets a viewer who has hidden or
 // blocked something get a list without it.
 type listItem struct {
-	ID       string
-	AuthorID string
-	HTML     string
-	Search   string
+	Editorial bool
+	ID        string
+	AuthorID  string
+	HTML      string
+	Search    string
 }
 
 // postsItems is every visible post, rendered, newest first.
@@ -92,6 +94,7 @@ func loadTopics() []string {
 }
 
 type Post struct {
+	Editorial bool       `json:"editorial,omitempty"`
 	ID        string     `json:"id"`
 	Title     string     `json:"title"`
 	Content   string     `json:"content"` // Raw markdown content
@@ -585,85 +588,16 @@ func updateCacheUnlocked() {
 			continue
 		}
 
-		title := post.Title
+		title := strings.TrimSpace(strings.TrimLeft(post.Title, "#"))
 		if title == "" {
 			title = "Untitled"
 		}
-
-		// Use pre-rendered HTML, truncate for list view
-		content := post.Content
-
-		// Truncate plain text before rendering
-		truncated := false
-		if len(content) > 500 {
-			lastSpace := 500
-			for i := 499; i >= 0 && i < len(content); i-- {
-				if content[i] == ' ' {
-					lastSpace = i
-					break
-				}
-			}
-			content = content[:lastSpace] + "..."
-			truncated = true
-		}
-
-		// Add links and YouTube embeds
-		content = Linkify(content)
-
-		authorLink := post.Author
+		author := stdhtml.EscapeString(post.Author)
 		if post.AuthorID != "" {
-			authorLink = fmt.Sprintf(`<a href="/@%s">%s</a>`, post.AuthorID, post.Author)
+			author = `<a href="/@` + url.PathEscape(post.AuthorID) + `">` + author + `</a>`
 		}
-
-		tagsHtml := ""
-		if post.Tags != "" {
-			tagsHtml = formatTags(post.Tags)
-		}
-
-		// Add private badge if post is private
-		if post.Private {
-			privateBadge := `<span class="category badge-private">Private</span>`
-			if tagsHtml != "" {
-				tagsHtml = tagsHtml + " " + privateBadge
-			} else {
-				tagsHtml = privateBadge
-			}
-		}
-
-		if tagsHtml != "" {
-			tagsHtml = `<div class="mt-2">` + tagsHtml + `</div>`
-		}
-
-		// Add Comment/Comments count
-		commentCount := countComments(post)
-		replyLink := ""
-		if commentCount == 0 {
-			replyLink = fmt.Sprintf(` · <a href="/blog/post?id=%s">Comment</a>`, post.ID)
-		} else {
-			replyLink = fmt.Sprintf(` · <a href="/blog/post?id=%s">Comments (%d)</a>`, post.ID, commentCount)
-		}
-
-		keepReading := ""
-		if truncated {
-			keepReading = fmt.Sprintf(`<a href="/blog/post?id=%s" class="keep-reading">Keep Reading</a>`, post.ID)
-		}
-
-		listTime := post.CreatedAt
-		listTimeLabel := app.TimeAgo(listTime)
-		if !post.UpdatedAt.IsZero() {
-			listTime = post.UpdatedAt
-			listTimeLabel = "Updated " + app.TimeAgo(listTime)
-		}
-
-		controls := app.StaticControls("post", post.ID)
-		item := fmt.Sprintf(`<div class="post-item record-card">
-			%s
-			<h3><a href="/blog/post?id=%s">%s</a></h3>
-			<div class="metadata-row"><span data-timestamp="%d">%s</span> · %s%s%s</div>
-			<div>%s</div>
-			%s
-		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, controls, content, keepReading)
-		items = append(items, listItem{ID: post.ID, AuthorID: post.AuthorID, HTML: item, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
+		item := fmt.Sprintf(`<article class="editorial-entry"><div class="metadata-row"><time datetime="%s">%s</time><span>%s</span></div><h2><a href="/blog/post?id=%s">%s</a></h2><p>%s</p></article>`, post.CreatedAt.Format(time.RFC3339), post.CreatedAt.Format("2 January 2006"), author, url.QueryEscape(post.ID), stdhtml.EscapeString(title), postExcerpt(post.Content))
+		items = append(items, listItem{Editorial: post.Editorial, ID: post.ID, AuthorID: post.AuthorID, HTML: item, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
 	}
 
 	postsItems = items
@@ -726,6 +660,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleGetBlog handles GET /blog - returns posts as JSON or HTML
 func handleGetBlog(w http.ResponseWriter, r *http.Request) {
+	archive := r.URL.Query().Get("view") == "archive"
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	matches := func(text string) bool {
 		for _, word := range strings.Fields(strings.ToLower(query)) {
@@ -770,6 +705,13 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	// What this viewer has hidden or blocked comes out of the list, and then one
 	// page of what is left is joined. Hiding first, paging second: the other way
 	// round gives a page of nineteen because one of the twenty was blocked.
+	var selected []listItem
+	for _, item := range items {
+		if item.Editorial != archive {
+			selected = append(selected, item)
+		}
+	}
+	items = selected
 	written := len(items)
 	if _, acc := auth.TrySession(r); acc != nil {
 		items = visibleTo(acc.ID, items)
@@ -787,13 +729,27 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	list := joinItems(items[pager.From:pager.To])
 	switch {
 	case list != "":
-		list += pager.Nav("/blog")
+		navURL := "/blog"
+		params := url.Values{}
+		if archive {
+			params.Set("view", "archive")
+		}
+		if query != "" {
+			params.Set("q", query)
+		}
+		if len(params) > 0 {
+			navURL += "?" + params.Encode()
+		}
+		list += pager.Nav(navURL)
 	case query != "":
 		list = "<p>No matching posts.</p>"
 	case written > 0:
 		list = "<p>Nothing to show — you have hidden everything here.</p>"
 	default:
-		list = "<p>No blog posts yet. Write something below!</p>"
+		list = `<p class="text-muted">No editorial posts yet.</p>`
+		if archive {
+			list = `<p class="text-muted">No archived posts.</p>`
+		}
 	}
 
 	// Check if write mode is requested
@@ -942,37 +898,29 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			</script>
 		</div>`
 	} else {
-		// Show posts list with conditional write link
 		var actions string
 		_, acc := auth.TrySession(r)
-		if acc != nil {
-			// Everybody who can post sees the same thing.
-			//
-			// An admin used to get a Moderate link here too. Moderation is not a
-			// blog feature: readers flag a post from the post itself, and the
-			// queue that lands in is at /admin/moderate, linked from /admin
-			// where the rest of the operator's work is. A second door to it on
-			// a reading page put the operator's job in front of everybody
-			// else's page, and made the one place moderation lives two.
-			actions = `<div class="page-action">
-				<a href="/blog?write=true" class="btn">New</a>
-			</div>`
-		} else {
-			// Guest user, show login prompt
-			actions = `<div class="mb-4 text-muted text-sm">
-				<a href="/login?redirect=/blog" class="text-muted">Login</a> to write a post
-			</div>`
+		if acc != nil && (acc.Admin || archive) {
+			actions = `<a href="/blog?write=true">Write a post</a>`
 		}
-		actions += `<form method="GET" action="/blog" class="search-bar"><input type="search" name="q" class="grow" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
-		content = fmt.Sprintf(`<div id="blog" class="page-stack">
-			%s
-			<div id="posts-list">
-				%s
-			</div>
-		</div>`, `<div class="page-stack">`+actions+`</div>`, list)
+		nav := `<a href="/blog" aria-current="page">Editorial</a><a href="/blog?view=archive">Archive</a>`
+		description := "Writing about Micro and the ideas behind it."
+		if archive {
+			nav = `<a href="/blog">Editorial</a><a href="/blog?view=archive" aria-current="page">Archive</a>`
+			description = "Earlier posts, generated digests and community writing. These are separate from Micro’s editorial publication."
+		}
+		search := ""
+		if written > 0 || query != "" {
+			hidden := ""
+			if archive {
+				hidden = `<input type="hidden" name="view" value="archive">`
+			}
+			search = `<form method="GET" action="/blog" class="search-bar">` + hidden + `<input type="search" name="q" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
+		}
+		content = `<div id="blog" class="editorial-page"><p class="text-muted">` + description + `</p><nav class="section-actions" aria-label="Blog">` + nav + actions + `</nav>` + search + `<div id="posts-list">` + list + `</div></div>`
 	}
 
-	app.Respond(w, r, app.Response{Title: "Blog", Description: "Share your thoughts", HTML: content})
+	app.Respond(w, r, app.Response{Title: "Blog", Description: "Writing about Micro and the ideas behind it.", BodyClass: "reading-page editorial-reading", HTML: content})
 }
 
 // CreatePost creates a new post and returns error if any
@@ -1159,6 +1107,8 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 	}
 	previous := *post
 	post.Title, post.Content, post.Tags, post.Private = title, content, tags, private
+	// Changed copy must be explicitly selected again, including edits through tools.
+	post.Editorial = false
 	post.UpdatedAt = time.Now()
 	if err := save(); err != nil {
 		*post = previous
@@ -1343,7 +1293,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, "/blog", http.StatusSeeOther)
+		http.Redirect(w, r, "/blog?view=archive", http.StatusSeeOther)
 		return
 	}
 
@@ -1356,6 +1306,29 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	post := GetPost(id)
 	if post == nil {
 		http.Error(w, "Post not found", 404)
+		return
+	}
+
+	if r.Method == http.MethodPost && r.FormValue("publication") != "" {
+		_, acc := auth.TrySession(r)
+		if acc == nil || !acc.Admin {
+			app.Forbidden(w, r, "Only admins can select editorial posts")
+			return
+		}
+		if !auth.StrictCSRF(r) {
+			app.Forbidden(w, r, "This form could not be verified. Reopen the page and try again.")
+			return
+		}
+		selection := r.FormValue("publication")
+		if selection != "editorial" && selection != "archive" {
+			app.BadRequest(w, r, "Invalid publication")
+			return
+		}
+		if err := selectEditorial(id, selection == "editorial"); err != nil {
+			app.BadRequest(w, r, err.Error())
+			return
+		}
+		http.Redirect(w, r, "/blog/post?id="+url.QueryEscape(id), http.StatusSeeOther)
 		return
 	}
 
@@ -1468,7 +1441,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, "/blog", http.StatusSeeOther)
+		http.Redirect(w, r, "/blog?view=archive", http.StatusSeeOther)
 		return
 	}
 
@@ -1494,7 +1467,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Check if user is the author
-		if post.AuthorID != acc.ID {
+		if post.AuthorID != acc.ID && !acc.Admin {
 			app.Forbidden(w, r, "You can only edit your own posts")
 			return
 		}
@@ -1531,7 +1504,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 					<a href="/blog/post?id=%s" class="btn btn-secondary">Cancel</a>
 				</div>
 			</form>
-		</div>`, post.ID, post.Title, post.Content, post.Tags, publicSelected, privateSelected, post.ID)
+		</div>`, post.ID, stdhtml.EscapeString(post.Title), stdhtml.EscapeString(post.Content), stdhtml.EscapeString(post.Tags), publicSelected, privateSelected, post.ID)
 
 		app.Respond(w, r, app.Response{Title: pageTitle, Description: "", HTML: content})
 		return
@@ -1545,9 +1518,9 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	// Render the full post, preserving its inline citations.
 	contentHTML := Linkify(post.Content)
 
-	authorLink := post.Author
+	authorLink := stdhtml.EscapeString(post.Author)
 	if post.AuthorID != "" {
-		authorLink = fmt.Sprintf(`<a href="/@%s" class="text-muted">%s</a>`, post.AuthorID, post.Author)
+		authorLink = fmt.Sprintf(`<a href="/@%s" class="text-muted">%s</a>`, url.PathEscape(post.AuthorID), stdhtml.EscapeString(post.Author))
 	}
 
 	// Admin controls (edit/delete for author or admin)
@@ -1560,54 +1533,39 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	editButton := app.ItemControls(userID, isAdmin, "post", post.ID, post.AuthorID, "/blog/post?id="+post.ID+"&edit=true", "/blog/post?id="+post.ID)
 
-	tagsHtml := ""
-	if post.Tags != "" {
-		var tagSpans []string
-		for _, tag := range strings.Split(post.Tags, ",") {
-			tag = strings.TrimSpace(tag)
-			if tag != "" {
-				tagSpans = append(tagSpans, fmt.Sprintf(`<span class="category">%s</span>`, tag))
-			}
-		}
-		tagsHtml = strings.Join(tagSpans, " · ")
-	}
-
-	// Add private badge if post is private
-	if post.Private {
-		tagsHtml += `<span class="category badge-private">Private</span>`
-	}
-
-	// Format tags for display (on separate line if present)
-	tagsDisplay := ""
-	if tagsHtml != "" {
-		tagsDisplay = fmt.Sprintf(`<div class="form-actions">%s</div>`, tagsHtml)
-	}
-
-	timeInfo := app.TimeAgo(post.CreatedAt)
-	if !post.UpdatedAt.IsZero() {
-		timeInfo = "Updated " + app.TimeAgo(post.UpdatedAt)
-	}
-
 	var contentSB strings.Builder
-	contentSB.WriteString(`<div id="blog" class="reading-list page-stack">`)
-	contentSB.WriteString(tagsDisplay)
-	contentSB.WriteString(`<div class="metadata-row">` + timeInfo + ` · ` + authorLink + editButton + `</div><div class="reading-actions">`)
+	back, backLabel := "/blog", "Editorial"
+	if !post.Editorial {
+		back, backLabel = "/blog?view=archive", "Archive"
+	}
+	contentSB.WriteString(`<div id="blog" class="editorial-page"><a class="editorial-back" href="` + back + `">← ` + backLabel + `</a>`)
+	contentSB.WriteString(`<div class="metadata-row"><time datetime="` + post.CreatedAt.Format(time.RFC3339) + `">` + post.CreatedAt.Format("2 January 2006") + `</time><span>` + authorLink + `</span></div>`)
+	if !post.UpdatedAt.IsZero() {
+		contentSB.WriteString(`<p class="text-muted text-sm">Updated ` + post.UpdatedAt.Format("2 January 2006") + `</p>`)
+	}
+	if post.Private {
+		contentSB.WriteString(`<p class="text-muted text-sm">Private · Admins only</p>`)
+	}
+	if !post.Editorial {
+		contentSB.WriteString(`<p class="editorial-notice">Archive · This post is not part of Micro’s editorial publication.</p>`)
+	}
+	contentSB.WriteString(`<article class="reader-content">` + contentHTML + `</article><div class="reading-actions">`)
 	if !post.Private {
 		w.Header().Set("Cache-Control", "private, no-store")
 		contentSB.WriteString(app.ReadingActionItems(r, post.ID))
 	}
-	contentSB.WriteString(`</div>`)
-
-	contentSB.WriteString(`<hr>`)
-	contentSB.WriteString(`<article class="reader-content">` + contentHTML + `</article>`)
-	contentSB.WriteString(`<hr>`)
-	contentSB.WriteString(`<h3>Comments</h3>`)
-	contentSB.WriteString(renderComments(post.ID, r))
-	contentSB.WriteString(`<div class="mt-6"><a href="/blog" class="text-muted">Back to posts</a></div>`)
-	contentSB.WriteString(`</div>`)
+	contentSB.WriteString(editButton + `</div>`)
+	if isAdmin {
+		action, label := "editorial", "Add to editorial"
+		if post.Editorial {
+			action, label = "archive", "Move to archive"
+		}
+		contentSB.WriteString(`<form method="POST" action="/blog/post?id=` + url.QueryEscape(post.ID) + `" class="form-actions"><input type="hidden" name="_csrf" value="` + stdhtml.EscapeString(auth.CSRFToken(r)) + `"><button type="submit" name="publication" value="` + action + `">` + label + `</button></form>`)
+	}
+	contentSB.WriteString(`<details class="disclosure"><summary>Comments</summary>` + renderComments(post.ID, r) + `</details></div>`)
 	content := contentSB.String()
 
-	app.Respond(w, r, app.Response{Title: title, Description: post.Content[:min(len(post.Content), 150)], BodyClass: "reading-page", HTML: content})
+	app.Respond(w, r, app.Response{Title: title, Description: post.Content[:min(len(post.Content), 150)], BodyClass: "reading-page editorial-reading", HTML: content})
 }
 
 func min(a, b int) int {
@@ -1706,7 +1664,7 @@ func returnTo(asked string) string {
 	u, err := url.Parse(to)
 	if err != nil || u.Scheme != "" || u.Host != "" || u.Opaque != "" ||
 		!strings.HasPrefix(u.Path, "/") || strings.HasPrefix(to, "//") {
-		return "/blog"
+		return "/blog?view=archive"
 	}
 	return to
 }
@@ -1931,4 +1889,46 @@ func DeletePostsByAuthor(authorID string) {
 	}
 	mutex.Unlock()
 	event.Publish(event.Event{Type: "blog_updated"})
+}
+
+func postExcerpt(markdown string) string {
+	z := html.NewTokenizer(strings.NewReader(string(app.RenderNoImages([]byte(markdown)))))
+	var text strings.Builder
+	for {
+		t := z.Next()
+		if t == html.ErrorToken {
+			break
+		}
+		if t == html.TextToken {
+			text.Write(z.Text())
+			text.WriteByte(' ')
+		}
+	}
+	runes := []rune(strings.Join(strings.Fields(text.String()), " "))
+	if len(runes) > 260 {
+		runes = append(runes[:260], '…')
+	}
+	return stdhtml.EscapeString(string(runes))
+}
+
+// Editorial selection is an operator decision, never inferred from a tag,
+// author or tool call. Existing posts stay in the archive until selected.
+func selectEditorial(id string, selected bool) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	post := postsMap[id]
+	if post == nil {
+		return fmt.Errorf("post not found")
+	}
+	if selected && post.Private {
+		return fmt.Errorf("make the post public before adding it to editorial")
+	}
+	previous := post.Editorial
+	post.Editorial = selected
+	if err := save(); err != nil {
+		post.Editorial = previous
+		return err
+	}
+	updateCacheUnlocked()
+	return nil
 }
