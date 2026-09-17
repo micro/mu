@@ -18,6 +18,12 @@ import (
 var rateQueue = make(chan struct{}, 64)
 
 func rateGate(w http.ResponseWriter, r *http.Request, static []string) bool {
+	// Ending a session must remain possible when a shared IP has exhausted its
+	// allowance. This skips admission only; the normal request/auth gates and
+	// logout handler still run. Never exempt login or other account operations.
+	if (r.URL.Path == "/logout" || r.URL.Path == "/logout/") && (r.Method == http.MethodGet || r.Method == http.MethodPost) {
+		return true
+	}
 	// Only known asset paths bypass protection, never an arbitrary .css suffix.
 	if r.Method == "GET" || r.Method == "HEAD" {
 		switch r.URL.Path {
