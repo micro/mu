@@ -17,9 +17,11 @@ import (
 	gmai "go-micro.dev/v6/model"
 	"go-micro.dev/v6/store"
 
+	"mu/internal/abuse"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/internal/settings"
 )
@@ -658,6 +660,22 @@ type StreamHooks struct {
 // This is the agent. There is no second one — see the note on ErrNoProvider,
 // and AGENTS.md for the rule that says so.
 func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr error) {
+	if accountID == "" {
+		if settings.Get("ALLOW_GUEST_AI") != "true" {
+			return "", fmt.Errorf("sign in to talk to Micro")
+		}
+	} else if !api.IsWalletIdentity(accountID) {
+		acc, err := auth.GetAccount(accountID)
+		if err != nil || acc.Banned || (!acc.Agent && !acc.Admin && !acc.Approved && !acc.EmailVerified) {
+			return "", fmt.Errorf("a verified or approved account is required")
+		}
+	}
+	release, err := abuse.Start(accountID, "assistant", abuse.Limit("ASSISTANT_MAX_PER_HOUR", 60), abuse.Limit("ASSISTANT_MAX_PER_DAY", 300), abuse.Limit("ASSISTANT_MAX_CONCURRENT", 2))
+	if err != nil {
+		return "", err
+	}
+	defer release()
+
 	started := time.Now()
 	defer func() {
 		app.Log("timing", "phase=agent_total caller=%s duration_ms=%.3f failed=%t", costCaller(opts), float64(time.Since(started))/float64(time.Millisecond), runErr != nil)

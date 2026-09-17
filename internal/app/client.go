@@ -153,16 +153,24 @@ func PeerIP(r *http.Request) string {
 
 // forwardedIP is the client address a trusted proxy reported, or "".
 //
-// The first entry in X-Forwarded-For is the original client; the rest are the
-// hops. X-Real-If is checked second because some proxies set only that one.
+// Walk from the nearest hop to the first untrusted address. A client-supplied
+// leftmost entry must not bypass limits when the trusted proxy appends to it.
 func forwardedIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.Index(xff, ","); i > 0 {
-			xff = xff[:i]
+		hops := strings.Split(xff, ",")
+		for i := len(hops) - 1; i >= 0; i-- {
+			ip := net.ParseIP(strings.TrimSpace(hops[i]))
+			if ip == nil {
+				return ""
+			}
+			hop := &http.Request{RemoteAddr: net.JoinHostPort(ip.String(), "0")}
+			if !fromTrustedProxy(hop) {
+				return ip.String()
+			}
 		}
-		if ip := strings.TrimSpace(xff); ip != "" && net.ParseIP(ip) != nil {
-			return ip
-		}
+		// Never accept a caller-controlled leftmost address when the entire
+		// forwarded chain claims to be trusted proxies.
+		return ""
 	}
 	if xr := strings.TrimSpace(r.Header.Get("X-Real-IP")); xr != "" && net.ParseIP(xr) != nil {
 		return xr

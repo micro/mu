@@ -33,7 +33,7 @@ import (
 // there — you open /usage because something is happening now. A card is read in
 // passing, and an hour of quiet on a two-hour chart looks like nothing is
 // working. Seven days always has a shape.
-var CardWindow = Windows[1]
+var CardWindow = WindowFor("week")
 
 // Card is one account's recent activity: the graph, a total, and the way to the
 // page that explains it.

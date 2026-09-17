@@ -185,3 +185,47 @@ the instance per hour (`GUEST_MAX_PER_CLIENT`, `GUEST_MAX_PER_IP`,
 not individual model/tool calls, and reset on restart. Public pages remain
 readable; these controls do not prevent all scraping. Configure `TRUSTED_PROXY`
 correctly so client addresses are resolved at the intended boundary.
+
+### Request protection
+
+Dynamic HTTP routes are limited before page handling. Public reading stays open;
+priced service operations require an authenticated, verified/approved account or
+an authenticated x402 wallet using the existing payment gate. Assistant runs have
+separate account budgets, including failed attempts. Account and operator billing
+exemptions do not bypass these attempt budgets.
+
+| Setting | Default |
+| --- | --- |
+| `HTTP_MAX_PER_MINUTE` | 300 per IP, including authenticated traffic |
+| `HTTP_GUEST_MAX_PER_MINUTE` | 60 per IP |
+| `HTTP_GUEST_MAX_PER_HOUR` | 300 per IP |
+| `AUTH_MAX_PER_15_MINUTES` | 20 non-GET authentication requests per IP |
+| `ASSISTANT_MAX_PER_HOUR` | 60 runs per account |
+| `ASSISTANT_MAX_PER_DAY` | 300 runs per account |
+| `ASSISTANT_MAX_CONCURRENT` | 2 runs per account |
+| `PAID_MAX_PER_HOUR` | 300 priced service attempts per account |
+| `PAID_MAX_PER_DAY` | 1,000 priced service attempts per account |
+
+These are fixed windows beginning with the first attempt, not monetary spending
+caps. Positive settings override defaults; zero does not disable protection.
+Known `/mu.css`, `/mu.js`, manifest, favicon, robots and `/static/` assets bypass
+HTTP limits. IPv6 clients share a /64 limit. Configure `TRUSTED_PROXY` for your
+actual reverse proxies; forwarded chains are read from the trusted end.
+
+Attempt counters are committed to `abuse.db` before work starts. They survive a
+process restart when the same data directory is retained. Expired rows are
+pruned; the store caps identities at 20,000 and refuses new ones when full.
+Storage failure refuses protected requests. Daily successful-operation counts
+are also persisted. This supports one server process per data directory, not
+multiple independent replicas. Existing credit billing remains separate.
+
+HTTP limits return 429 and `Retry-After`; protection-storage or admission-queue
+failures return 503 and `Retry-After`. Tool protocol errors retain their native
+format. `/admin/traffic?window=day` includes a 24-hour view, HTTP status/endpoint
+counts and instrumented model call counts. Requests rejected before identity
+validation appear under `unattributed` and `http-refused`, not under a guessed
+account. New counters start at deployment;
+2xx HTTP responses can still contain application or MCP errors. Agent model
+counts are reported when the run records its usage; an interrupted run may not
+report them. These application limits bound ordinary abuse, not distributed
+volumetric attacks or all copying of public content.

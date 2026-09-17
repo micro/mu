@@ -29,10 +29,11 @@ type Window struct {
 	Format string
 }
 
-// Windows are the three spans a usage page offers: what is happening now, when
+// Windows are the spans a usage page offers: what is happening now, when
 // it is busy, and whether it is growing.
 var Windows = []Window{
 	{"live", "Last 2 hours", Minute, 120, "15:04"},
+	{"day", "Last 24 hours", Hour, 24, "15:04"},
 	{"week", "Last 7 days", Hour, 24 * 7, "Mon 15:00"},
 	{"quarter", "Last 90 days", Day, 90, "2 Jan"},
 }

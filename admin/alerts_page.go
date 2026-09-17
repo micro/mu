@@ -78,7 +78,7 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 	rows := []struct{ what, now, when, key string }{
 		{
 			"Calls an hour, whole instance",
-			usage.HumanCount(usage.TotalOver(usage.Hour, 1)),
+			usage.HumanCount(usage.TotalOver(usage.Minute, 60)),
 			usage.HumanCount(number(settings.Get("ALERT_CALLS_PER_HOUR"), 5000)) + " or more",
 			"ALERT_CALLS_PER_HOUR",
 		},
@@ -138,7 +138,7 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 func busiestAccount() int {
 	most := 0
 	for _, acc := range auth.AllAccounts() {
-		if n := usage.TotalForOver(acc.ID, usage.Hour, 1); n > most {
+		if n := usage.TotalForOver(acc.ID, usage.Minute, 60); n > most {
 			most = n
 		}
 	}

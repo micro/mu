@@ -56,6 +56,7 @@ import (
 	"sync"
 
 	"mu/internal/app"
+	"mu/internal/usage"
 )
 
 // modelPricing is what one model costs, per million tokens.
@@ -214,6 +215,7 @@ type UsageTiming struct {
 }
 
 func RecordAgentUsage(caller, model string, inputTokens, outputTokens, calls int, timing ...UsageTiming) {
+	usage.RecordModels(calls)
 	details := map[string]any{"model": model, "input_tokens": inputTokens, "output_tokens": outputTokens, "model_calls": calls}
 	if len(timing) > 0 {
 		details["run_id"] = timing[0].RunID

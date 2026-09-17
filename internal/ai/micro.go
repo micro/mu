@@ -16,6 +16,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/settings"
+	"mu/internal/usage"
 )
 
 // resolveProvider picks the go-micro ai provider and credentials for a model,
@@ -194,6 +195,7 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 	defer func() { logModelCall(provider, useModel, caller, "generate", started, err, used) }()
 	ctx, cancel := context.WithTimeout(context.Background(), llmTimeout)
 	defer cancel()
+	usage.RecordModels(1)
 	resp, err := m.Generate(ctx, &gmai.Request{
 		SystemPrompt: systemPrompt,
 		Messages:     history,
@@ -274,6 +276,7 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), llmTimeout)
 	defer cancel()
+	usage.RecordModels(1)
 	stream, err := m.Stream(ctx, req)
 	if err != nil {
 		// Provider can't stream — fall back to a single Generate.

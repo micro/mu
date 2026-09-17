@@ -281,16 +281,19 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(id) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(renderLogin(redirectParam, `<p class="text-error">Username is required</p>`)))
 			return
 		}
 		if len(secret) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(renderLogin(redirectParam, `<p class="text-error">Password is required</p>`)))
 			return
 		}
 
 		sess, err := auth.Login(id, secret)
 		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(renderLogin(redirectParam, `<p class="text-error">Invalid username or password</p>`)))
 			return
 		}
