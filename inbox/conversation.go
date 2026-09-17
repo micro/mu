@@ -1,19 +1,6 @@
 package inbox
 
-// Reading a conversation that did not happen here.
-//
-// There is one list of conversations and it is the rail on /agent. There was
-// briefly a second page listing the same conversations under the heading
-// Threads, beside a third listing the workflow records behind them under the
-// heading Runs, and a tab strip switching between the three. Four names —
-// chat, threads, runs, connect — for what is one thing: you, an agent, and
-// what you have said to each other.
-//
-// So the rail lists everything, whichever client it happened on. A conversation
-// from the web opens in the chat and can be continued. One that happened by
-// email or on WhatsApp opens here instead: the same messages, read-only, with a
-// line saying where it took place and how to carry it on — which is by replying
-// there, not by typing into a box on this page that would send nothing.
+// One reader for assistant conversations and correspondence across channels.
 
 import (
 	"html"
@@ -134,8 +121,10 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 		b.WriteString(`<div class="message-list sms-transcript">`)
 	case thread.ChatClient:
 		b.WriteString(`<div class="message-list chat-transcript">`)
+	case thread.WebClient:
+		b.WriteString(`<div class="message-list assistant-transcript">`)
 	default:
-		b.WriteString(`<div class="card-list">`)
+		b.WriteString(`<div class="card-list mail-transcript">`)
 	}
 	for _, m := range msgs {
 		b.WriteString(messageBlock(accountID, t, m, subject))
@@ -161,7 +150,7 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	// the sentence would be repeating a button six pixels above it, with the
 	// same link inside it. Everything else that cannot be answered here still
 	// needs saying.
-	if to == "" && room(t) == "" {
+	if to == "" && room(t) == "" && t.Client != thread.WebClient {
 		b.WriteString(`<p class="ib-note text-sm text-muted">This happened on ` +
 			html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
 			`the way it arrived and the agent picks it up in the same thread.` +
@@ -296,7 +285,7 @@ func actionBar(t *thread.Thread, to string, canAssign bool, inline ...bool) stri
 	// The button only opens the dialog, so it carries no state and needs no
 	// form — and it is drawn only where there is a dialog to open. See
 	// conversationPane's assign parameter.
-	if canAssign {
+	if canAssign && t.Client != thread.WebClient {
 		b.WriteString(`<button type="button" class="ib-assign-open btn" ` +
 			`onclick="muAssignOpen()">Assign to agent</button>`)
 	}
@@ -519,7 +508,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 
 // Text conversations keep every typed line, without email subject/quote handling.
 func textConversation(t *thread.Thread) bool {
-	return t.Client == thread.ChatClient || onAPhone(t.Client)
+	return t.Client == thread.WebClient || t.Client == thread.ChatClient || onAPhone(t.Client)
 }
 
 func messageOpen(t *thread.Thread, m thread.Message, accountID, role string) string {
@@ -571,7 +560,7 @@ func quotedBlock(quoted string) string {
 // it, so a thread reads down its left edge.
 func fromLine(who string, at time.Time) string {
 	return `<div class="ib-from metadata-row"><span class="ib-who-l">` + html.EscapeString(who) +
-		`</span><span class="ib-at">` + html.EscapeString(app.TimeAgo(at)) + `</span></div>`
+		`</span><time class="ib-at" datetime="` + at.Format(time.RFC3339) + `" title="` + at.Format("2 Jan 2006, 15:04 MST") + `">` + html.EscapeString(app.TimeAgo(at)) + `</time></div>`
 }
 
 // Tools renders which tools produced an answer, and is filled in by the agent
