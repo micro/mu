@@ -49,6 +49,7 @@ type AddRequest struct {
 }
 
 type AddResponse struct {
+	URL    string `json:"url" description:"Open the saved note"`
 	Result string `json:"result" description:"Confirmation"`
 }
 
@@ -68,7 +69,14 @@ func (Server) Add(ctx context.Context, req *AddRequest, rsp *AddResponse) error 
 		source = ""
 	}
 	notes.AddFrom(owner, title, text, source)
-	rsp.Result = "saved"
+	rsp.URL = "/notes"
+	for _, e := range notes.All(owner) {
+		if strings.EqualFold(e.Title, title) {
+			rsp.URL = "/notes?id=" + e.ID
+			break
+		}
+	}
+	rsp.Result = "Saved. Open: " + rsp.URL
 	return nil
 }
 
