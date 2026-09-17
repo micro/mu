@@ -38,6 +38,11 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 		return
 	}
 	body := `<div class="page-col page-stack"><article class="card page-stack"><p><time datetime="` + e.When.Format(time.RFC3339) + `" data-event-time>` + html.EscapeString(e.When.Format("Mon 2 Jan, 15:04")) + `</time></p>`
+	if e.Prompt != "" {
+		body += `<p>Micro will attempt this instruction at the scheduled time and deliver the outcome to your inbox:</p><div class="pre-wrap">` + html.EscapeString(e.Prompt) + `</div>`
+	} else {
+		body += `<p>A reminder will be sent to your subscribed devices. No agent work is scheduled.</p>`
+	}
 	if e.Note != "" {
 		body += `<div class="pre-wrap">` + html.EscapeString(e.Note) + `</div>`
 	}
