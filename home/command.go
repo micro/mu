@@ -6,9 +6,11 @@ import (
 	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/client"
 	"mu/internal/thread"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // ConsoleHandler is the web front door. Nothing runs until a request is sent.
@@ -72,7 +74,18 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
 	if acc == nil {
-		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1>`+description+`<p><a class="btn" href="/login">Sign in to talk to Micro</a></p></div></div></div>`, acc))
+		var channels strings.Builder
+		for _, c := range client.Personal() {
+			if c.ID == thread.WebClient || c.Href == "" {
+				continue
+			}
+			label := c.Label
+			if label == "SMS" {
+				label = "Text"
+			}
+			channels.WriteString(`<a href="` + html.EscapeString(c.Href) + `">` + html.EscapeString(label) + `</a>`)
+		}
+		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant. Talk here, or use the apps you already use.</p><div class="form-actions landing-actions"><a class="btn" href="/login">Sign in</a><a href="/signup">Create an account</a></div><div class="form-actions landing-channels">`+channels.String()+`</div><p class="text-small">Use a verified email address or phone number from your account.</p></div></div></div>`, acc))
 		return
 	}
 	newConversation := "/"
