@@ -132,10 +132,6 @@ func All() []Client {
 	}
 	out = append(out, web)
 
-	if n := sms.From(); n != "" && sms.Configured() {
-		out = append(out, Client{ID: thread.SMSClient, Label: "SMS", Address: n,
-			Href: "sms:" + n, Note: "text it like a person"})
-	}
 	if w := sms.SendersFor(sms.ChannelWhatsApp); len(w) > 0 && sms.ConfiguredFor(sms.ChannelWhatsApp) {
 		out = append(out, Client{ID: thread.WhatsAppClient, Label: "WhatsApp", Address: w[0],
 			Href: "https://wa.me/" + strings.TrimPrefix(w[0], "+"),
@@ -155,6 +151,14 @@ func All() []Client {
 				Href: "mailto:" + addr, Note: "write to it and it writes back"})
 		}
 	}
+	if n := sms.From(); n != "" && sms.Configured() {
+		label := "Text"
+		if strings.HasPrefix(n, "+44") {
+			label = "Text (UK)"
+		}
+		out = append(out, Client{ID: thread.SMSClient, Label: label, Address: n,
+			Href: "sms:" + n, Note: "text it like a person"})
+	}
 	// Match the XMPP listener and its domain precedence. This advertises a
 	// configured transport, not a claim that federation has been verified.
 	if _, on := app.ListenAddr("XMPP_PORT", app.XMPPPort); on {
@@ -164,7 +168,7 @@ func All() []Client {
 		}
 		if d != "" && d != "localhost" {
 			address := "agent@" + d
-			out = append(out, Client{ID: thread.ChatClient, Label: "Chat", Address: address,
+			out = append(out, Client{ID: thread.ChatClient, Label: "XMPP", Address: address,
 				Href: "xmpp:" + address + "?message",
 				Note: "XMPP: sign in to this server with your username and a Chat token from Account"})
 		}
