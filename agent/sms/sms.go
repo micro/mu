@@ -6,9 +6,8 @@ package sms
 // may not call an agent, so it announces what arrived on event.SMSForAgent and
 // this answers.
 //
-// The gate is upstream. service/sms publishes only for a sender the account
-// knows — a verified number, or one this instance texted first — so nothing
-// here has to decide whether a stranger deserves a model call.
+// Only the verified owner of a number may use their assistant through it.
+// Correspondents may reply to messages but cannot act as the account owner.
 
 import (
 	"strings"
@@ -82,6 +81,10 @@ func textedIn(data map[string]interface{}) (texted, bool) {
 
 // answer asks, then texts back.
 func answer(t texted) {
+	owner, verified := svcsms.KnownSender(t.From)
+	if !verified || owner != t.Owner {
+		return
+	}
 	res, err := agent.Ask(agent.AskRequest{
 		Account: t.Owner,
 		Client:  clientFor(t.Channel),
