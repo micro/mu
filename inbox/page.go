@@ -335,13 +335,6 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 		return
 	}
 
-	// Web conversations resume in the shared composer, preserving the owned thread.
-	if t.Client == thread.WebClient {
-		thread.MarkSeen(accountID, t.ID)
-		http.Redirect(w, r, "/?session="+url.QueryEscape(t.ID), http.StatusSeeOther)
-		return
-	}
-
 	subject := strings.TrimSpace(t.Subject)
 	if subject == "" {
 		subject = "Untitled"
@@ -355,7 +348,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 	var b strings.Builder
 	// The same width as the list. It was wider to hold a second column, and
 	// there is no second column.
-	b.WriteString(`<div class="ib page-stack">`)
+	b.WriteString(`<div class="ib page-stack" data-inbox-watch="` + html.EscapeString(t.Updated.Format(time.RFC3339Nano)) + `">`)
 	// Where you came from, and what you can do to this — one bar rather than
 	// three loose things stacked above the conversation. See app.Actions.
 	toolbar := []string{unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)}
@@ -379,6 +372,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 	}
 
 	b.WriteString(app.Actions(app.TextLink("Inbox", inboxURL(r, "")), toolbar...))
+	b.WriteString(`<div data-inbox-update hidden><a class="btn" href="` + html.EscapeString(inboxURL(r, t.ID)) + `">New messages — refresh</a></div>`)
 
 	// One column, and the agent's answers in it.
 	//
