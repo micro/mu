@@ -9,7 +9,6 @@ import (
 	"mu/internal/client"
 	"mu/internal/thread"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
@@ -75,7 +74,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var channels strings.Builder
 	for _, c := range client.Personal() {
-		if c.ID == thread.WebClient || c.Href == "" {
+		if c.ID == thread.WebClient || c.ID == thread.ChatClient || c.Href == "" {
 			continue
 		}
 		label := c.Label
@@ -88,13 +87,9 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant. Talk here, or use the apps you already use.</p><div class="form-actions landing-actions"><a class="btn" href="/signup">Create an account</a></div><div class="form-actions landing-channels">`+channels.String()+`</div><p class="text-small">Use a verified email address or phone number from your account.</p></div></div></div>`, acc))
 		return
 	}
-	newConversation := "/?new=1"
-	if selected != "" && acc != nil {
-		newConversation = "/?new=1&agent=" + url.QueryEscape(agent.SlugFor(acc.ID, selected))
-	}
 	state := "conversation"
 	if session != "" || r.URL.Query().Get("new") == "1" {
 		state += " is-active"
 	}
-	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="conversation-actions"><span>`+html.EscapeString(agentName)+`</span><a href="`+html.EscapeString(newConversation)+`">New conversation</a></div><div class="prompt-welcome"><h1>`+html.EscapeString(agentName)+`</h1>`+description+`</div><form id="command-form" data-agent="`+html.EscapeString(selected)+`"><label class="sr-only" for="command-input">Message</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="Write a message…" autocomplete="off" required><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form><div class="form-actions landing-channels">`+channels.String()+`</div></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
+	fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="`+state+`"><div class="prompt-panel"><div class="prompt-welcome"><h1>`+html.EscapeString(agentName)+`</h1>`+description+`</div><form id="command-form" data-agent="`+html.EscapeString(selected)+`"><label class="sr-only" for="command-input">Message</label><div class="composer"><input type="text" id="command-input" maxlength="8000" placeholder="Write a message…" autocomplete="off" required><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form><div class="form-actions landing-channels">`+channels.String()+`</div></div><div id="responses" role="log" aria-label="Requests and responses">`+initial+`</div></div>`, acc))
 }
