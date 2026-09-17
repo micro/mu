@@ -106,7 +106,7 @@ dialog.modal .form-actions>button{margin:0}
 .ib-ask-note{font-size:.8rem;color:#666;margin:0}
 .ib-ask-problem{color:#a22424;margin:0}
 .landing-actions{justify-content:center;margin-top:20px}
-.landing-channels{justify-content:center;margin-top:16px}
+.landing-channels{justify-content:center;margin:16px 0 12px}
 .text-muted,.text-small,small{color:#666}
 .text-sm{font-size:.875rem}
 .text-error,.error{color:#a22424}
