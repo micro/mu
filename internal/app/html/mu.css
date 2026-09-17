@@ -702,3 +702,8 @@ body.nav-open{overflow:hidden}
 .conversation.is-active .landing-channels{display:none}
 .command-page .conversation.is-active #command-form{max-width:none}
 
+
+#profile-status{margin-block:16px;gap:8px}
+#profile-status .form-actions{align-items:center}
+#profile-status input[name="status"]{flex:1 1 180px;min-width:0;max-width:100%}
+

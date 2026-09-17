@@ -653,12 +653,9 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("linked") == "google" {
 			notice = app.Notice("Google connected.") + notice
 		}
-		content = googleCard + renderPhoneCard(acc.ID) +
-			app.SectionID("connections", "Messaging and clients", `<div class="form-actions"><a href="/contact">Reach Micro</a><a href="/token">Client access</a><a href="/inbox/imap">Mail clients</a><a href="/inbox?view=scheduled">Scheduled</a></div>`+xmppConnectionDetails(acc))
-		if acc.EmailVerified {
-			content += app.Section("Email delivery", forwardingToggle(acc))
-		}
-		content += push.Card(r, acc.ID)
+		content = renderEmailCard(acc) + renderPhoneCard(acc.ID) + googleCard
+		content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
+		content += `<details class="disclosure"><summary>Advanced client setup</summary><p>Connect a mail or XMPP client using an access token.</p><div class="form-actions"><a href="/token">Access tokens</a><a href="/inbox/imap">Mail connection details</a></div>` + xmppConnectionDetails(acc) + `</details>`
 	case "/account/usage":
 		content = usage.Card(acc.ID) + LedgerSection(acc.ID) +
 			app.Section("Billing", `<div class="form-actions"><a href="/account/topup">Add credit</a><a href="/account/transfer">Transfer credit</a></div>`+app.Note("1 credit = 1¢"))
@@ -674,7 +671,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		}
 		sort.Slice(langs, func(i, j int) bool { return langs[i].Label < langs[j].Label })
 
-		profile := app.SectionID("profile", "Profile",
+		profile := app.SectionID("profile", "Name",
 			`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
 				htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
 				` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
@@ -691,7 +688,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 				Fields: []app.Field{{Name: "language", Options: langs}},
 				Submit: "Save"}.HTML())
 
-		content = profile + passwordCard(acc) + renderEmailCard(acc) + language + PlaceCard(r, acc.ID) + PasskeyListHTML(acc.ID)
+		content = profile + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
 	}
 	// Forms return to their owning tab; credentials and mutations stay in POST.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
@@ -943,7 +940,7 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 		return
 	}
 	app.Log("auth", "Sent verification email to %s for account %s", email, acc.ID)
-	http.Redirect(w, r, "/account", http.StatusSeeOther)
+	http.Redirect(w, r, "/account/connections", http.StatusSeeOther)
 }
 
 // Preserve non-secret form fields on errors and the destination between auth pages.
@@ -1042,30 +1039,19 @@ func renderPhoneCard(accountID string) string {
 }
 
 func forwardingToggle(acc *auth.Account) string {
-	on := MailForwardingOn(acc.ID)
-	state, submit := "off", "Turn off"
-	note := "Mail sent to your Micro address is also copied to you here."
-	if !on {
-		state, submit = "on", "Turn on"
-		note = "Mail sent to your Micro address is not copied to you here."
+	if !acc.EmailVerified || strings.TrimSpace(acc.Email) == "" {
+		return app.Note("Verify your email address above to receive email.")
 	}
-	// Posted to /account with a named field, the same as every other control on
-	// this page — submit, land back here, see the result.
-	return app.Note(note) +
-		`<form method="POST" action="/account" class="d-inline">` +
-		`<input type="hidden" name="forwarding" value="` + state + `">` +
-		`<button type="submit" class="btn-link">` + submit + `</button></form>`
+	on := MailForwardingOn(acc.ID)
+	state, label, checked := "on", "Off", "false"
+	if on {
+		state, label, checked = "off", "On", "true"
+	}
+	return `<p>Email to <strong>` + htmlpkg.EscapeString(acc.Email) + `</strong>.</p><form method="POST" action="/account" class="form-actions"><input type="hidden" name="forwarding" value="` + state + `"><button type="submit" role="switch" aria-checked="` + checked + `" aria-label="Send email">Send email · ` + label + `</button></form>` +
+		app.Note("Sends a copy of incoming mail, including Micro’s emailed replies and briefs. Other Inbox updates are not emailed yet.")
 }
 
 func renderEmailCard(acc *auth.Account) string {
-	if acc.Admin || acc.Approved {
-		// Admins/approved users don't need verification.
-		if acc.EmailVerified {
-			return app.Section("Email",
-				`<p>`+htmlpkg.EscapeString(acc.Email)+` — verified</p>`)
-		}
-		return ""
-	}
 
 	if app.EmailSender == nil {
 		return app.Section("Email",
@@ -1141,7 +1127,7 @@ func xmppConnectionDetails(acc *auth.Account) string {
 		if !ok {
 			continue
 		}
-		return `<details class="disclosure"><summary>XMPP connection details</summary><p>Use an XMPP client signed in to this server.</p><dl><dt>Your address</dt><dd><code>` + htmlpkg.EscapeString(acc.ID+"@"+domain) + `</code></dd><dt>Password</dt><dd>A token with Chat (XMPP) access.</dd><dt>Micro's address</dt><dd><code>` + htmlpkg.EscapeString(c.Address) + `</code></dd></dl><div class="form-actions"><a href="/token">Manage tokens</a><a href="` + htmlpkg.EscapeString(c.Href) + `">Open XMPP client</a></div></details>`
+		return `<div class="record-card"><h3>XMPP</h3><p>Use an XMPP client signed in to this server.</p><dl><dt>Your address</dt><dd><code>` + htmlpkg.EscapeString(acc.ID+"@"+domain) + `</code></dd><dt>Password</dt><dd>A token with Chat (XMPP) access.</dd><dt>Micro's address</dt><dd><code>` + htmlpkg.EscapeString(c.Address) + `</code></dd></dl><div class="form-actions"><a href="/token">Manage tokens</a><a href="` + htmlpkg.EscapeString(c.Href) + `">Open XMPP client</a></div></div>`
 	}
 	return ""
 }
