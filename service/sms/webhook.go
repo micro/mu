@@ -68,27 +68,14 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
-	// Verification is right and it is not worth losing every message over. An
-	// instance authenticating with an API key has no account auth token, so
-	// there is nothing a signature can be checked against — and rejecting is
-	// then a choice to receive nothing at all, made on the operator's behalf
-	// without asking. They can say otherwise.
-	if !verifyInbound() {
-		// No signature to check, so check what the message says about itself.
-		// None of it is proof — every field is forgeable by whoever knows the
-		// URL — but a message claiming to be for a number this instance does
-		// not own, or from an account it does not use, is not worth the benefit
-		// of any doubt.
-		if why := implausible(r); why != "" {
-			app.Log("sms", "unverified inbound message refused: %s", why)
-			http.Error(w, "forbidden: "+why, http.StatusForbidden)
-			return
-		}
-	} else if !validSignature(r, signedURLs(r), r.PostForm) {
+	// Provider authentication is required before accepting identity or changing state.
+	// An API key can send messages but cannot authenticate inbound webhooks.
+	if !validSignature(r, signedURLs(r), r.PostForm) {
 		// Terse to the caller — anything more is a hint to whoever is probing —
 		// and loud in the log, because the two reasons this happens look
 		// identical from outside. Either somebody is poking at the endpoint, or
@@ -166,13 +153,10 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	owner := OwnerOf(from)
+	owner := OwnerOn(channel, from)
 	if owner == "" {
-		// Nobody to file it under at all. OwnerOf falls back to the operator, so
-		// this is an instance with no operator configured — there is no account
-		// this could belong to, and inventing one is worse than losing it.
-		app.Log("sms", "message from %s belongs to no account, dropped", from)
-		twiml(w, "")
+		// No operator fallback. New visitors must link their own account first.
+		twiml(w, welcomeReply(channel, from))
 		return
 	}
 
@@ -180,37 +164,19 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	known, isKnown := KnownSender(from)
 
-	// It arrived. Said with no gate on it, the way mail says MailReceived.
-	//
-	// This did not exist, and its absence is why an unsolicited text vanished:
-	// the only path into the record was the side effect of an agent answering,
-	// so the one thing a stranger must not be able to do was also the only thing
-	// that could file what they said. A subscriber decides what to do with an
-	// arrival from somebody unknown — agent/sms records it held — and that is a
-	// judgement about trust, which is not this service's to make.
+	// Verified owners and explicit correspondents are recorded, not auto-triaged.
 	event.Publish(event.Event{
 		Type: event.SMSReceived,
 		Data: map[string]interface{}{
 			"owner":   owner,
 			"from":    from,
 			"text":    body,
-			"known":   isKnown,
+			"known":   true,
 			"channel": string(channel),
 		},
 	})
 
-	// And wake an agent, for a sender the account knows.
-	//
-	// OwnerOf above falls back to the operator so nothing is lost, which is
-	// right for filing and wrong for this: the fallback is a real account with
-	// real credits, and any stranger who dialled the number would be talking to
-	// their agent. KnownSender is the same lookup without that step — verified,
-	// or a number this instance texted first, which are the two things a
-	// stranger cannot arrange.
-	//
-	// Announced rather than answered here. A service does not call an agent;
-	// agent/sms subscribes and replies through Send, which is where every rule
-	// about what a text costs already lives.
+	// A reply route permits correspondence, never access to the recipient's tools.
 	if isKnown {
 		event.Publish(event.Event{
 			Type: event.SMSForAgent,
@@ -223,9 +189,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Empty, always. The reply goes out as its own message so it is charged,
-	// recorded and capped like any other — a body in the TwiML response would
-	// be a second send path that skipped all three.
+	// Assistant replies use the normal charged send path. Only the bounded
+	// onboarding reply above uses TwiML.
 	twiml(w, "")
 }
 
