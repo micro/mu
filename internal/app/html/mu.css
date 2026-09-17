@@ -297,8 +297,6 @@ footer{gap:16px}
 }
 
 /* Conversation navigation shares the compact page shell. */
-.conversation-actions{display:none;justify-content:flex-end;font-size:.8rem;padding-top:4px}
-.conversation.is-active .conversation-actions{display:flex}
 .conversation-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;padding:12px 0;border-bottom:1px solid #eee;text-decoration:none;color:inherit}
 .conversation-row:hover .conversation-title{text-decoration:underline}
 .conversation-title{overflow-wrap:anywhere}
@@ -352,7 +350,6 @@ html:has(>body.command-page)::-webkit-scrollbar,.command-page::-webkit-scrollbar
 .answer-details .form-actions{margin-top:4px}
 .answer-details .mini-btn{font-size:inherit;min-height:26px;padding:2px 8px}
 
-.conversation-actions{gap:12px;justify-content:space-between}
 .detail-row{row-gap:6px}
 .detail-row>code,.detail-row>.detail-value{min-width:0;overflow-wrap:anywhere}
 
@@ -700,4 +697,8 @@ body.nav-open{overflow:hidden}
 .command-page .composer{border:1px solid var(--border,#ddd);border-radius:6px;padding:3px;gap:4px}
 .command-page .composer input{border:0;background:transparent}
 .command-page .composer button{margin:0;border:0;background:#f4f4f4;border-radius:4px}
+
+
+.conversation.is-active .landing-channels{display:none}
+.command-page .conversation.is-active #command-form{max-width:none}
 

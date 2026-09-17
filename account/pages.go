@@ -29,6 +29,7 @@ import (
 	"sort"
 
 	"mu/internal/auth"
+	"mu/internal/client"
 	"mu/service/sms"
 )
 
@@ -698,7 +699,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// remain shared, including old profile and billing links.
 	content := profile + passwordCard(acc) + PlaceCard(r, acc.ID) + emailCard +
 		renderPhoneCard(acc.ID) + googleCard + language + PasskeyListHTML(acc.ID) +
-		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/contact">Reach Micro</a><a class="btn" href="/token">Client access</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`) + push.Card(r, acc.ID)
+		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/contact">Reach Micro</a><a class="btn" href="/token">Client access</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`+xmppConnectionDetails(acc)) + push.Card(r, acc.ID)
 	content += `<section id="billing" class="section-stack"><h2>Billing</h2>` + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) + `</section>`
 	content = `<nav class="view-switch" aria-label="Settings"><a href="#profile">Profile</a><a href="#connections">Connections</a><a href="#billing">Billing</a></nav>` + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
@@ -1130,4 +1131,19 @@ func passwordCard(acc *auth.Account) string {
 			},
 			Submit: "Save"}.HTML(),
 		app.Note(note))
+}
+
+// XMPP belongs with connection setup, not the main message composer.
+func xmppConnectionDetails(acc *auth.Account) string {
+	for _, c := range client.Personal() {
+		if c.ID != "chat" {
+			continue
+		}
+		_, domain, ok := strings.Cut(c.Address, "@")
+		if !ok {
+			continue
+		}
+		return `<details class="disclosure"><summary>XMPP connection details</summary><p>Use an XMPP client signed in to this server.</p><dl><dt>Your address</dt><dd><code>` + htmlpkg.EscapeString(acc.ID+"@"+domain) + `</code></dd><dt>Password</dt><dd>A token with Chat (XMPP) access.</dd><dt>Micro's address</dt><dd><code>` + htmlpkg.EscapeString(c.Address) + `</code></dd></dl><div class="form-actions"><a href="/token">Manage tokens</a><a href="` + htmlpkg.EscapeString(c.Href) + `">Open XMPP client</a></div></details>`
+	}
+	return ""
 }
