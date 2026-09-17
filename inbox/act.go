@@ -210,8 +210,8 @@ func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho 
 	// It opens on a press and is otherwise not on the page at all. Rendered
 	// last, outside the conversation, because a dialog inside a flex row
 	// inherits that row's layout.
-	b.WriteString(`<dialog id="ib-assign" class="ib-assign">`)
-	b.WriteString(`<h3 class="ib-assign-head">Assign to agent</h3>`)
+	b.WriteString(`<dialog id="ib-assign" class="modal ib-assign" aria-labelledby="ib-assign-title">`)
+	b.WriteString(`<h3 id="ib-assign-title" class="ib-assign-head">Assign to agent</h3>`)
 	b.WriteString(`<form class="form" method="post" action="/inbox">`)
 	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
