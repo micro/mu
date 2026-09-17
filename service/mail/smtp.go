@@ -431,7 +431,7 @@ func (s *Session) Data(r io.Reader) error {
 	// Verify DKIM signature before parsing consumes the reader
 	dkimPass := false
 	var signedDomains []string
-	if !s.isLocalhost {
+	{
 		verifications, err := dkim.Verify(bytes.NewReader(buf.Bytes()))
 		if err == nil && len(verifications) > 0 {
 			for _, v := range verifications {
@@ -448,8 +448,6 @@ func (s *Session) Data(r io.Reader) error {
 		} else {
 			app.Log("mail", "No DKIM signature found")
 		}
-	} else {
-		dkimPass = true // Trust localhost
 	}
 
 	// Parse the email
