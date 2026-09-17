@@ -1,7 +1,6 @@
 package inbox
 
 import (
-	_ "embed"
 	"encoding/json"
 	"html"
 	"net/http"
@@ -46,24 +45,10 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/@"+acc.ID, http.StatusSeeOther)
 }
 
-//go:embed status.js
-var statusJS string
-
+// A normal compact form works without page-local scripts or save-on-blur.
 func statusForm(r *http.Request, id string) string {
 	if id == "" {
 		return ""
 	}
-	text := user.Status(id)
-	label := "“" + text + "”"
-	if text == "" {
-		label = "Set status"
-	}
-	return `<div id="profile-status" class="page-stack" data-url="/@` + html.EscapeString(id) + `" data-csrf="` + html.EscapeString(auth.CSRFToken(r)) + `">` + `<div class="form-actions inline-edit"><button type="button" class="link-button inline-edit-value" data-status-label aria-label="Change your public profile status">` + html.EscapeString(label) + `</button><button type="button" class="link-button inline-edit-action" data-status-edit` + editHidden(text) + `>Set status</button><input data-status-input hidden maxlength="160" aria-label="Your public profile status" value="` + html.EscapeString(text) + `"></div><small class="inline-edit-feedback" data-status-feedback role="status" aria-live="polite"></small></div><script>` + statusJS + `</script>`
-}
-
-func editHidden(text string) string {
-	if text == "" {
-		return " hidden"
-	}
-	return ""
+	return `<form id="profile-status" method="post" action="/@` + html.EscapeString(id) + `" class="page-stack"><input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `"><input type="hidden" name="action" value="status"><label for="profile-status-text">Public status</label><div class="form-actions"><input id="profile-status-text" name="status" maxlength="160" placeholder="Set a status" value="` + html.EscapeString(user.Status(id)) + `"><button type="submit">Save</button><button type="submit" name="clear" value="1">Clear</button></div></form>`
 }
