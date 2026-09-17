@@ -239,14 +239,23 @@ func wireHooks() {
 			return
 		}
 		when := e.When.Local().Format("Mon 2 Jan 2006, 15:04 MST")
-		body := fmt.Sprintf(`<p>You asked Mu to remind you:</p><p class="status-icon"><strong>%s</strong><br>%s</p>`,
+		body := fmt.Sprintf(`<p>Scheduled with Micro:</p><p class="status-icon"><strong>%s</strong><br>%s</p>`,
 			html.EscapeString(e.Title), html.EscapeString(when))
 		if e.Note != "" {
 			body += `<p>` + html.EscapeString(e.Note) + `</p>`
 		}
-		body += `<p class="text-muted text-sm">Added to your calendar from the attached invite.</p>`
+		if e.Prompt != "" {
+			body += `<p>At this time, Micro will attempt the following instruction and send the outcome to your inbox:</p><p>` + html.EscapeString(e.Prompt) + `</p>`
+		} else {
+			body += `<p>At this time, Micro will send a reminder to your subscribed devices. This does not schedule agent work.</p>`
+		}
+		if e.Repeat != "" {
+			body += `<p>Repeats: ` + html.EscapeString(e.Repeat) + `</p>`
+		}
+		body += `<p><a href="` + html.EscapeString(strings.TrimRight(origin.Self(), "/")+"/events?id="+e.ID) + `">View schedule</a></p>`
+		body += `<p class="text-muted text-sm">You can add a copy to your calendar using the attached invite. Changes in that calendar do not change Micro's schedule.</p>`
 		ics := events.ICS(e, acc.Email)
-		if _, err := mail.SendCalendarInvite("Mu Events", "no-reply@"+domain, acc.Email, "Event: "+e.Title, body, ics); err != nil {
+		if _, err := mail.SendCalendarInvite("Micro", "no-reply@"+domain, acc.Email, "Event: "+e.Title, body, ics); err != nil {
 			app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)
 		}
 	}
@@ -856,7 +865,7 @@ func wireHooks() {
 	if domain := mail.ConfiguredDomain(); domain != "" && domain != "localhost" {
 		app.EmailSender = func(to, subject, plain, html, replyTo string) error {
 			from := "no-reply@" + domain
-			_, err := mail.SendExternalEmailAs("Mu", from, replyTo, to, subject, plain, html, "")
+			_, err := mail.SendExternalEmailAs("Micro", from, replyTo, to, subject, plain, html, "")
 			return err
 		}
 	}
