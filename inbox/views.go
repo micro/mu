@@ -131,6 +131,7 @@ type savedItem struct {
 func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	var b strings.Builder
 	b.WriteString(viewNavigation("saved"))
+	b.WriteString(`<p class="text-muted">Things you and Micro have saved. To create something, <a href="/?new=1">start a conversation</a>.</p>`)
 	filter := r.URL.Query().Get("type")
 	switch filter {
 	case "", "note", "document", "app", "file":
