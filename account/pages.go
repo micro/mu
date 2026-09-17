@@ -495,34 +495,28 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Real destinations share the same authenticated mutation and JSON handling.
+	accountPath := "/account"
+	switch r.URL.Path {
+	case "/account/connections":
+		accountPath = "/account/connections"
+	case "/account/usage", "/account/billing":
+		accountPath = "/account/usage"
+	}
 	if r.Method == http.MethodGet && !app.WantsJSON(r) {
-		target, fragment := "", ""
-		switch r.URL.Path {
-		case "/account/usage", "/account/billing":
-			target, fragment = "/account", "#billing"
-		case "/account/profile":
-			target, fragment = "/account", "#profile"
-		case "/account/connections":
-			target, fragment = "/account", "#connections"
-
+		if r.URL.Query().Get("linked") == "google" || r.URL.Query().Get("connection") != "" {
+			accountPath = "/account/connections"
 		}
-		if target != "" {
+		if r.URL.Path != accountPath {
+			target := accountPath
 			if r.URL.RawQuery != "" {
 				target += "?" + r.URL.RawQuery
 			}
-			http.Redirect(w, r, target+fragment, http.StatusSeeOther)
+			http.Redirect(w, r, target, http.StatusSeeOther)
 			return
 		}
 	}
-	// These authenticated views share mutation handling, not duplicated settings forms.
-	accountPath := "/account"
 	title := "Account"
-	switch r.URL.Path {
-	case "/account/profile":
-		accountPath, title = r.URL.Path, "Profile"
-	case "/account/billing", "/account/usage":
-		accountPath, title = "/account/billing", "Billing"
-	}
 	// Handle account settings and email verification.
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -637,40 +631,14 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		clientAccount(w, r, acc)
 		return
 	}
-	// The languages this instance speaks, as options rather than as markup.
-	currentLang := acc.Language
-	if currentLang == "" {
-		currentLang = "en"
-	}
-	langs := make([]app.Option, 0, len(app.SupportedLanguages))
-	for code, name := range app.SupportedLanguages {
-		langs = append(langs, app.Option{Value: code, Label: name, On: code == currentLang})
-	}
-	sort.Slice(langs, func(i, j int) bool { return langs[i].Label < langs[j].Label })
-
-	emailCard := renderEmailCard(acc)
-
-	// One card for Google: signing in with it, and what of it this account has
-	// handed over. The asks live on the pages that earn them — the calendar on
-	// /events, contacts on /contacts — and the audit belongs where somebody goes
-	// to check. It was two cards, "Google" and "Connected accounts", stacked,
-	// and the first one's name claimed the subject of the second.
-	googleCard := renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
-	if r.URL.Query().Get("linked") == "google" {
-		googleCard = app.Notice("Google connected. You can now sign in with Google.") + googleCard
-	}
-
-	// No Clients card. It offered a link code to send to a Mu bot on Discord,
-	// Telegram or WhatsApp, and all three are gone — 2,100 lines and three
-	// third-party APIs carrying no traffic. Mail is the client that matters and
-	// needs no linking: the address is the account.
-
 	notice := ""
 	switch r.URL.Query().Get("saved") {
 	case "converted":
 		notice = app.Notice("USDC converted to account credits.")
 	case "name":
 		notice = app.Notice("Name saved.")
+	case "password":
+		notice = app.Notice("Password saved.")
 	case "address":
 		notice = app.Notice("Address removed.")
 	}
@@ -678,30 +646,67 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		notice = app.Problem(msg)
 	}
 
-	profile := app.SectionID("profile", "Profile",
-		`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
-			htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
-			` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
-		app.Form{Action: "/account", Inline: true,
-			Hidden: map[string]string{"save_name": "1"},
-			Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
-				Placeholder: "Display name"}},
-			Submit: "Save"}.HTML(),
-		app.Note("Shown on your posts and your profile. Your username, @"+acc.ID+
-			", is the one in addresses and links and does not change."))
+	content := ""
+	switch accountPath {
+	case "/account/connections":
+		googleCard := renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
+		if r.URL.Query().Get("linked") == "google" {
+			notice = app.Notice("Google connected.") + notice
+		}
+		content = googleCard + renderPhoneCard(acc.ID) +
+			app.SectionID("connections", "Messaging and clients", `<div class="form-actions"><a href="/contact">Reach Micro</a><a href="/token">Client access</a><a href="/inbox/imap">Mail clients</a><a href="/inbox?view=scheduled">Scheduled</a></div>`+xmppConnectionDetails(acc))
+		if acc.EmailVerified {
+			content += app.Section("Email delivery", forwardingToggle(acc))
+		}
+		content += push.Card(r, acc.ID)
+	case "/account/usage":
+		content = usage.Card(acc.ID) + LedgerSection(acc.ID) +
+			app.Section("Billing", `<div class="form-actions"><a href="/account/topup">Add credit</a><a href="/account/transfer">Transfer credit</a></div>`+app.Note("1 credit = 1¢"))
+	default:
+		// The languages this instance speaks, as options rather than as markup.
+		currentLang := acc.Language
+		if currentLang == "" {
+			currentLang = "en"
+		}
+		langs := make([]app.Option, 0, len(app.SupportedLanguages))
+		for code, name := range app.SupportedLanguages {
+			langs = append(langs, app.Option{Value: code, Label: name, On: code == currentLang})
+		}
+		sort.Slice(langs, func(i, j int) bool { return langs[i].Label < langs[j].Label })
 
-	language := app.Section("Language",
-		app.Form{Action: "/account", Inline: true,
-			Fields: []app.Field{{Name: "language", Options: langs}},
-			Submit: "Save"}.HTML())
+		profile := app.SectionID("profile", "Profile",
+			`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
+				htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
+				` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
+			app.Form{Action: "/account", Inline: true,
+				Hidden: map[string]string{"save_name": "1"},
+				Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
+					Placeholder: "Display name"}},
+				Submit: "Save"}.HTML(),
+			app.Note("Shown on your posts and your profile. Your username, @"+acc.ID+
+				", is the one in addresses and links and does not change."))
 
-	// Each destination renders only its own sections. Mutation and JSON contracts
-	// remain shared, including old profile and billing links.
-	content := profile + passwordCard(acc) + PlaceCard(r, acc.ID) + emailCard +
-		renderPhoneCard(acc.ID) + googleCard + language + PasskeyListHTML(acc.ID) +
-		app.SectionID("connections", "Connections", `<div class="form-actions"><a class="btn" href="/contact">Reach Micro</a><a class="btn" href="/token">Client access</a><a class="btn" href="/inbox/imap">Mail clients</a><a class="btn" href="/inbox/settings">Scheduled brief</a></div>`+xmppConnectionDetails(acc)) + push.Card(r, acc.ID)
-	content += `<section id="billing" class="section-stack"><h2>Billing</h2>` + BalanceCard(acc.ID) + usage.Card(acc.ID) + LedgerSection(acc.ID) + `</section>`
-	content = `<nav class="view-switch" aria-label="Settings"><a href="#profile">Profile</a><a href="#connections">Connections</a><a href="#billing">Billing</a></nav>` + notice + `<div class="page-stack settings-sections">` + content + `</div>`
+		language := app.Section("Language",
+			app.Form{Action: "/account", Inline: true,
+				Fields: []app.Field{{Name: "language", Options: langs}},
+				Submit: "Save"}.HTML())
+
+		content = profile + passwordCard(acc) + renderEmailCard(acc) + language + PlaceCard(r, acc.ID) + PasskeyListHTML(acc.ID)
+	}
+	// Forms return to their owning tab; credentials and mutations stay in POST.
+	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
+	var nav strings.Builder
+	nav.WriteString(`<nav class="view-switch" aria-label="Account settings">`)
+	for _, tab := range []struct{ path, label string }{{"/account", "Profile"}, {"/account/connections", "Connections"}, {"/account/usage", "Usage"}} {
+		current := ""
+		if accountPath == tab.path {
+			current = ` aria-current="page"`
+		}
+		nav.WriteString(`<a href="` + tab.path + `"` + current + `>` + tab.label + `</a>`)
+	}
+	nav.WriteString(`</nav>`)
+	balance := `<div class="section-actions"><span>Balance: <strong>` + thousands(CreditsOf(acc.ID).Balance) + ` credits</strong></span><a href="/account/topup">Add credit</a></div>`
+	content = balance + nav.String() + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
@@ -1039,10 +1044,10 @@ func renderPhoneCard(accountID string) string {
 func forwardingToggle(acc *auth.Account) string {
 	on := MailForwardingOn(acc.ID)
 	state, submit := "off", "Turn off"
-	note := "Mail sent to your Mu address is also copied to you here."
+	note := "Mail sent to your Micro address is also copied to you here."
 	if !on {
 		state, submit = "on", "Turn on"
-		note = "Mail sent to your Mu address is not copied to you here."
+		note = "Mail sent to your Micro address is not copied to you here."
 	}
 	// Posted to /account with a named field, the same as every other control on
 	// this page — submit, land back here, see the result.
@@ -1056,14 +1061,8 @@ func renderEmailCard(acc *auth.Account) string {
 	if acc.Admin || acc.Approved {
 		// Admins/approved users don't need verification.
 		if acc.EmailVerified {
-			// The toggle here too. An admin gets forwarded mail like anybody
-			// else and had no way to turn it off from this page — only the link
-			// at the bottom of a message, which is the way out for somebody who
-			// does not want to come here and the wrong only way for somebody
-			// who is already on the page.
 			return app.Section("Email",
-				`<p>`+htmlpkg.EscapeString(acc.Email)+` — verified</p>`,
-				forwardingToggle(acc))
+				`<p>`+htmlpkg.EscapeString(acc.Email)+` — verified</p>`)
 		}
 		return ""
 	}
@@ -1082,7 +1081,6 @@ func renderEmailCard(acc *auth.Account) string {
 		return app.Section("Email",
 			`<p><strong>`+htmlpkg.EscapeString(acc.Email)+`</strong> — verified ✓</p>`,
 			app.Note("Where a password reset goes. Verifying a different one replaces it."),
-			forwardingToggle(acc),
 			app.Form{Action: "/account", Inline: true,
 				Fields: []app.Field{{Name: "email", Type: "email", Required: true,
 					Placeholder: "you@example.com"}},
