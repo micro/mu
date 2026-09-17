@@ -185,7 +185,7 @@ const pageScript = `<script>
   function load(query,seq){
    fetch('/transit?'+query).then(function(r){if(!r.ok)throw Error();return r.json();}).then(function(d){
     if(seq!==request)return;
-    out.replaceChildren();
+    delete out.dataset.selectedStop;out.replaceChildren();
     if(!d.stops||!d.stops.length){out.textContent='No matching stops found. Try another London stop or station.';return;}
     d.stops.forEach(function(s){
      var row=document.createElement('div');row.className='xstop';
@@ -193,13 +193,20 @@ const pageScript = `<script>
      var meta=document.createElement('span');meta.className='xaway';meta.textContent=' '+s.modes+(s.away?' · '+s.away:'');
      row.append(button,meta);out.appendChild(row);
      button.addEventListener('click',function(){
-      button.disabled=true;var box=document.createElement('div');box.className='xarr';box.textContent='Loading arrivals…';row.appendChild(box);
+      out.dataset.selectedStop=s.id;button.disabled=true;var box=document.createElement('div');box.className='xarr';box.textContent='Loading arrivals…';row.appendChild(box);
       fetch('/transit?stop='+encodeURIComponent(s.id)).then(function(r){if(!r.ok)throw Error();return r.json();}).then(function(a){
        box.textContent=a.arrivals&&a.arrivals.length?a.arrivals.map(function(x){return x.line+' to '+x.to+' — '+x['in'];}).join('\n'):'Nothing due.';box.style.whiteSpace='pre-line';
       }).catch(function(){box.textContent='Could not load arrivals. Try again.';button.disabled=false;});
      });
     });
    }).catch(function(){if(seq===request)out.textContent='Could not reach transport data. Please try again.';});
+  }
+  var shared=new URLSearchParams(location.hash.slice(1));
+  if(shared.get('q')&&!shared.get('stop')){document.getElementById('xquery').value=shared.get('q');load('q='+encodeURIComponent(shared.get('q')),++request);}
+  if(shared.get('stop')){
+   var selected=shared.get('stop');out.dataset.selectedStop=selected;
+   var box=document.createElement('div');box.className='xarr';box.textContent='Loading shared stop…';out.appendChild(box);
+   fetch('/transit?stop='+encodeURIComponent(selected)).then(function(r){if(!r.ok)throw Error();return r.json();}).then(function(a){box.textContent=(a.arrivals||[]).map(function(x){return x.line+' to '+x.to+' — '+x['in'];}).join('\n')||'Nothing due.';box.style.whiteSpace='pre-line';}).catch(function(){box.textContent='Could not load this stop.';});
   }
   form.addEventListener('submit',function(e){e.preventDefault();var q=document.getElementById('xquery').value.trim();if(!q)return;out.textContent='Searching…';load('q='+encodeURIComponent(q),++request);});
   near.addEventListener('click',function(){

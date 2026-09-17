@@ -1025,9 +1025,16 @@ if (typeof document !== "undefined") {
   if(!el||!layer) return;
   var SIZE=256, style=el.dataset.style, where=document.getElementById('map-where');
   var z=+el.dataset.zoom, minZ=+el.dataset.min, maxZ=+el.dataset.max;
-  var routeShape=[];
+  var routeShape=[], locationPin=null;
+  var shared=new URLSearchParams(location.hash.slice(1));
+  function validPoint(a,b){return Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a)<=85&&Math.abs(b)<=180;}
+  if(shared.has('lat')&&shared.has('lon')&&validPoint(+shared.get('lat'),+shared.get('lon'))){
+    el.dataset.lat=shared.get('lat');el.dataset.lon=shared.get('lon');
+    var sharedZoom=Number(shared.get('z'));if(Number.isFinite(sharedZoom)&&shared.has('z'))z=Math.max(minZ,Math.min(maxZ,Math.round(sharedZoom)));
+  }
+  if(shared.has('pinlat')&&shared.has('pinlon')&&validPoint(+shared.get('pinlat'),+shared.get('pinlon')))locationPin={lat:+shared.get('pinlat'),lon:+shared.get('pinlon')};
  var overlay=document.createElementNS('http://www.w3.org/2000/svg','svg');overlay.classList.add('map-overlay');el.appendChild(overlay);
- el.addEventListener('map-route',function(e){routeShape=e.detail.filter(function(p){return Number.isFinite(p.Lat)&&Number.isFinite(p.Lon);});if(!routeShape.length){overlay.replaceChildren();return;}var lat=routeShape.reduce(function(a,p){return a+p.Lat;},0)/routeShape.length,lon=routeShape.reduce(function(a,p){return a+p.Lon;},0)/routeShape.length;z=Math.min(maxZ,15);while(z>minZ){var xs=routeShape.map(function(p){return xOf(p.Lon,z)*SIZE;}),ys=routeShape.map(function(p){return yOf(p.Lat,z)*SIZE;});if(Math.max.apply(null,xs)-Math.min.apply(null,xs)<el.clientWidth-40&&Math.max.apply(null,ys)-Math.min.apply(null,ys)<el.clientHeight-40)break;z--;}cx=xOf(lon,z);cy=yOf(lat,z);layer.innerHTML='';live={};render();});
+ el.addEventListener('map-route',function(e){routeShape=e.detail.filter(function(p){return Number.isFinite(p.Lat)&&Number.isFinite(p.Lon);});if(!routeShape.length){render();return;}var lat=routeShape.reduce(function(a,p){return a+p.Lat;},0)/routeShape.length,lon=routeShape.reduce(function(a,p){return a+p.Lon;},0)/routeShape.length;z=Math.min(maxZ,15);while(z>minZ){var xs=routeShape.map(function(p){return xOf(p.Lon,z)*SIZE;}),ys=routeShape.map(function(p){return yOf(p.Lat,z)*SIZE;});if(Math.max.apply(null,xs)-Math.min.apply(null,xs)<el.clientWidth-40&&Math.max.apply(null,ys)-Math.min.apply(null,ys)<el.clientHeight-40)break;z--;}cx=xOf(lon,z);cy=yOf(lat,z);layer.innerHTML='';live={};render();});
  var live={}, arrived=0, missing=0, asked=0;
   function done(){ say(); }
 
@@ -1076,6 +1083,9 @@ if (typeof document !== "undefined") {
       if(!seen[have]){ layer.removeChild(live[have]); delete live[have]; }
     }
     overlay.replaceChildren();if(routeShape.length){var line=document.createElementNS('http://www.w3.org/2000/svg','polyline');line.setAttribute('points',routeShape.map(function(p){return (xOf(p.Lon,z)*SIZE-left)+','+(yOf(p.Lat,z)*SIZE-top);}).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke','#2563eb');line.setAttribute('stroke-width','4');overlay.appendChild(line);}
+ if(locationPin){var dot=document.createElementNS('http://www.w3.org/2000/svg','circle');dot.setAttribute('cx',xOf(locationPin.lon,z)*SIZE-left);dot.setAttribute('cy',yOf(locationPin.lat,z)*SIZE-top);dot.setAttribute('r','7');dot.setAttribute('fill','#2563eb');dot.setAttribute('stroke','white');dot.setAttribute('stroke-width','3');var title=document.createElementNS('http://www.w3.org/2000/svg','title');title.textContent='Selected location';dot.appendChild(title);overlay.appendChild(dot);}
+ el.dataset.viewLat=latOf(cy,z);el.dataset.viewLon=((lonOf(cx,z)+180)%360+360)%360-180;el.dataset.viewZoom=z;
+ if(locationPin){el.dataset.pinLat=locationPin.lat;el.dataset.pinLon=locationPin.lon;}
  asked=Object.keys(live).length;
     say();
   }
@@ -1138,6 +1148,7 @@ if (typeof document !== "undefined") {
     here.disabled=true;
     navigator.geolocation.getCurrentPosition(function(p){
       here.disabled=false;
+      locationPin={lat:p.coords.latitude,lon:p.coords.longitude};
       z=Math.max(z,14);
       cx=xOf(p.coords.longitude,z); cy=yOf(p.coords.latitude,z);
       layer.innerHTML=''; live={}; arrived=0; missing=0; render();
@@ -1263,4 +1274,29 @@ function deleteApp() {
 
 const actions={deleteApp,copyCode,updatePreview,saveApp};
 document.querySelectorAll('[data-app-action]').forEach(button=>button.addEventListener('click',()=>actions[button.dataset.appAction]?.()));
+}
+
+if(typeof document!=='undefined'){
+ const path=location.pathname;
+ if(['/maps','/routes','/transit','/web'].includes(path)){
+  const main=document.querySelector('main');
+  if(main){
+   const bar=document.createElement('div');bar.className='view-share';
+   const button=document.createElement('button');button.type='button';button.textContent='Share link';
+   const status=document.createElement('span');status.setAttribute('role','status');bar.append(button,status);main.appendChild(bar);
+   const shared=new URLSearchParams(location.hash.slice(1));
+   const form=path==='/maps'?document.getElementById('map-directions'):path==='/routes'?document.querySelector('form[action="/routes"]'):null;
+   if(form)for(const key of ['from','to','mode'])if(shared.has(key)&&form.elements[key])form.elements[key].value=shared.get(key);
+   button.addEventListener('click',async()=>{
+    const url=new URL(location.href);url.hash='';const state=new URLSearchParams();
+    if(form){url.search='';for(const key of ['from','to','mode'])if(form.elements[key]?.value)state.set(key,form.elements[key].value);}
+    if(path==='/maps'){
+     const map=document.getElementById('map');if(map){url.search='';url.searchParams.set('style',map.dataset.style);for(const [key,attr] of [['lat','viewLat'],['lon','viewLon'],['z','viewZoom'],['pinlat','pinLat'],['pinlon','pinLon']])if(map.dataset[attr])state.set(key,map.dataset[attr]);}
+    }
+    if(path==='/transit'){url.search='';const q=document.getElementById('xquery')?.value.trim();if(q)state.set('q',q);const stop=document.getElementById('xstops')?.dataset.selectedStop;if(stop)state.set('stop',stop);}
+    url.hash=state.toString();
+    try{if(navigator.share)await navigator.share({title:document.title,url:url.href});else{await navigator.clipboard.writeText(url.href);status.textContent='Link copied';}}catch(error){if(error.name!=='AbortError'){status.textContent='Copy this link: ';const a=document.createElement('a');a.href=url.href;a.textContent=url.href;status.append(a);}}
+   });
+  }
+ }
 }

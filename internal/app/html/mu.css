@@ -553,7 +553,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 #chat-form{flex-shrink:0;margin:0;padding:12px;border-top:1px solid var(--border);background:white}
 #chat-form input{flex:1 1 0;width:0;min-width:0}
 .room-about{margin-block:12px;max-width:var(--reading-width)}
-.thread-message{padding:16px 0;border-bottom:1px solid var(--border)}
+.thread-message{padding:18px 0;border:0}
 .thread-message-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
 .thread-message-header-text{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;min-width:0}
 .thread-message-author{font-weight:600;overflow-wrap:anywhere}
@@ -644,3 +644,14 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .social-post>.action-menu{align-self:flex-start}
 .link-card{display:block;border:1px solid var(--border);border-radius:6px;overflow:hidden;text-decoration:none;margin-block:8px}
 .so-pad,.link-card-pad{padding:12px}
+
+.mail-tags,.markets-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-block:12px}
+.mail-tag,.markets-tab{display:inline-flex;align-items:center;gap:8px;padding:4px 9px;border:1px solid var(--border);border-radius:5px;text-decoration:none;font-size:.85rem}
+.mail-tag.on,.markets-tab.active{background:var(--surface);font-weight:600}
+.mail-tag span{color:var(--text-muted);font-variant-numeric:tabular-nums}
+.thread-preview .list-link{display:flex;flex-direction:column;gap:5px}
+.thread-preview .metadata-time{font-size:.8rem;color:var(--text-muted);white-space:nowrap}
+.markets-table th,.markets-table td{padding:6px 8px;line-height:1.4;border-bottom:1px solid var(--border)}
+.markets-table .markets-chart-link{padding:0}
+.markets-table .markets-name{font-weight:400;color:var(--text-muted)}
+.view-share{display:flex;align-items:center;gap:10px;margin-block:12px;font-size:.85rem}
