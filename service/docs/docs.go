@@ -89,6 +89,7 @@ type WriteRequest struct {
 
 // WriteResponse confirms the write.
 type WriteResponse struct {
+	URL  string `json:"url" description:"Open the saved document"`
 	Text string `json:"text" description:"Confirmation, with the document's id"`
 	Doc  *Doc   `json:"doc" description:"The stored document"`
 }
@@ -105,7 +106,8 @@ func (Server) Write(ctx context.Context, req *WriteRequest, rsp *WriteResponse) 
 		return err
 	}
 	rsp.Doc = doc
-	rsp.Text = fmt.Sprintf("Saved %q [id: %s]", doc.Title, doc.ID)
+	rsp.URL = "/docs?id=" + doc.ID
+	rsp.Text = fmt.Sprintf("Saved %q [id: %s]. Open: %s", doc.Title, doc.ID, rsp.URL)
 	return nil
 }
 
