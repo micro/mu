@@ -48,6 +48,10 @@ func clientData(w http.ResponseWriter, r *http.Request, owner string) {
 			app.NotFound(w, r, "Conversation not found")
 			return
 		}
+		if r.URL.Query().Get("updates") == "1" {
+			app.RespondJSON(w, map[string]any{"updated": t.Updated})
+			return
+		}
 		row := summary(owner, *t)
 		offset, _ := strconv.Atoi(r.URL.Query().Get("before"))
 		ms, hasOlder := thread.MessageWindow(owner, id, offset, MessagesShown)

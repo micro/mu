@@ -138,7 +138,7 @@ func Count(n int) string {
 func ClientName(client string) string {
 	switch client {
 	case "web":
-		return "Web"
+		return "Assistant"
 	case "mail":
 		// "Mail", not "Email". The service is mail, the route is /inbox, the
 		// address is a mail address, and the docs say Mail — a second word for

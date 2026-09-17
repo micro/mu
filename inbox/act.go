@@ -152,6 +152,9 @@ func hand(accountID string, t *thread.Thread, ask, agentID string) error {
 	if err != nil {
 		return err
 	}
+	if t.Client == thread.WebClient {
+		thread.Add(thread.Message{Account: accountID, Thread: t.ID, Role: thread.RolePerson, From: accountID, Text: ask})
+	}
 	// Said on the conversation, because a task made silently is a task nobody
 	// knows was made — and because inferring that somebody wanted work rather
 	// than an answer is a claim about what they meant, which they should be

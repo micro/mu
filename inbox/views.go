@@ -141,7 +141,7 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	var items []savedItem
 	if filter == "" || filter == "note" {
 		for _, n := range notes.All(acc.ID) {
-			items = append(items, savedItem{n.Title, "note", "/notes?id=" + url.QueryEscape(n.ID), "", n.UpdatedAt})
+			items = append(items, savedItem{n.Title, "note", "/inbox?view=saved&kind=note&id=" + url.QueryEscape(n.ID), "", n.UpdatedAt})
 		}
 	}
 	if filter == "" || filter == "document" {

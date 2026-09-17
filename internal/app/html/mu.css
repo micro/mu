@@ -738,3 +738,28 @@ body.nav-open{overflow:hidden}
 
 
 .editorial-reading main>h1{font-size:clamp(1.65rem,4vw,2.25rem);line-height:1.2;letter-spacing:-.025em;font-weight:600;margin-bottom:20px;overflow-wrap:anywhere}
+
+
+/* One Inbox reader, with channel-specific transcripts rather than separate pages. */
+.conversation-context{grid-column:1/-1;display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;font-size:.8rem;color:#666}
+.conversation-title,.conversation-context>span{min-width:0;overflow-wrap:anywhere}
+.ib-conv{gap:16px;min-width:0}
+.ib-head,.ib-from{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 16px}
+.ib-who-l{font-weight:600;color:#222;overflow-wrap:anywhere}
+.ib-at,.ib-started{font-size:.75rem;color:#777;white-space:nowrap}
+.ib-conv :is(.message-list,.bubble-list,.card-list){display:flex;flex-direction:column;gap:20px;min-width:0}
+.ib-conv .ib-msg{min-width:0;margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
+.ib-body{min-width:0;line-height:1.6;overflow-wrap:anywhere}
+.ib-body>:first-child{margin-top:0}.ib-body>:last-child{margin-bottom:0}
+.ib-typed{white-space:pre-wrap}
+.ib-addrs{gap:4px 12px;font-size:.8rem;overflow-wrap:anywhere}
+.ib-conv .whatsapp-transcript,.ib-conv .sms-transcript{align-items:flex-start;gap:14px}
+.ib-conv .bubble,.sms-transcript .ib-msg{width:fit-content;max-width:88%;padding:10px 14px;border-radius:12px;background:#f5f5f5;min-width:min(220px,100%)}
+.ib-conv .bubble{background:#f0f6f1}
+.ib-conv .bubble-outgoing{align-self:flex-end;background:#e6f0e8}
+.ib-conv .sms-transcript .ib-agent{background:#edf2f7}
+.ib-conv .mail-transcript{gap:28px}
+.ib-conv .assistant-transcript .ib-person{padding:12px 14px;background:#f6f6f6;border-radius:6px}
+.ib-compose{margin-top:8px}.ib-compose textarea{width:100%;min-height:64px;resize:vertical}
+.ib-note-body{max-width:70ch;white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
+@media(max-width:480px){.ib-conv .bubble,.sms-transcript .ib-msg{max-width:96%}.ib-conv .ib-from{gap:4px 10px}.ib-addrs .ib-addr-sep{display:none}}
