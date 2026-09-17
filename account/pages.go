@@ -680,7 +680,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 				Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
 					Placeholder: "Display name"}},
 				Submit: "Save"}.HTML(),
-			app.Note("Shown on your posts and your profile. Your username, @"+acc.ID+
+			app.Note("Your display name. Your username, @"+acc.ID+
 				", is the one in addresses and links and does not change."))
 
 		language := app.Section("Language",
@@ -688,13 +688,13 @@ func Account(w http.ResponseWriter, r *http.Request) {
 				Fields: []app.Field{{Name: "language", Options: langs}},
 				Submit: "Save"}.HTML())
 
-		content = profile + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
+		content = profile + language + PlaceCard(r, acc.ID) + `<section class="settings-signin" aria-labelledby="signin-heading"><h2 id="signin-heading">Sign-in</h2>` + passwordCard(acc) + PasskeyListHTML(acc.ID) + `</section>`
 	}
 	// Forms return to their owning tab; credentials and mutations stay in POST.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
 	var nav strings.Builder
 	nav.WriteString(`<nav class="view-switch" aria-label="Account settings">`)
-	for _, tab := range []struct{ path, label string }{{"/account", "Profile"}, {"/account/connections", "Connections"}, {"/account/usage", "Usage"}} {
+	for _, tab := range []struct{ path, label string }{{"/account", "Account"}, {"/account/connections", "Connections"}, {"/account/usage", "Usage & billing"}} {
 		current := ""
 		if accountPath == tab.path {
 			current = ` aria-current="page"`
@@ -743,7 +743,7 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 
 	body := fmt.Sprintf(`<div class="card">
 <h4>Email verified ✓</h4>
-<p>Thanks, <strong>%s</strong>. Your email is verified and you can now post.</p>
+<p>Thanks, <strong>%s</strong>. Your email is verified. Micro can now recognise email from you.</p>
 <p><a href="/" class="btn">Go home</a> &nbsp; <a href="/account">Account</a></p>
 </div>`, htmlpkg.EscapeString(acc.Name))
 	app.Respond(w, r, app.Response{Title: "Verified", Description: "Email verified", HTML: body})
@@ -931,8 +931,8 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 	}
 
 	link := app.PublicURL() + "/verify?token=" + tok
-	plain := fmt.Sprintf("Hi %s,\n\nClick the link below to verify your email and unlock posting on Micro:\n\n%s\n\nThis link expires in 24 hours. If you didn't request this, you can ignore this email.\n\n— Micro", acc.Name, link)
-	html := fmt.Sprintf(`<p>Hi %s,</p><p>Click the link below to verify your email and unlock posting on Micro:</p><p><a href="%s">%s</a></p><p>This link expires in 24 hours. If you didn't request this, you can ignore this email.</p><p>— Micro</p>`, htmlpkg.EscapeString(acc.Name), link, link)
+	plain := fmt.Sprintf("Hi %s,\n\nClick the link below to verify your email address for Micro:\n\n%s\n\nThis link expires in 24 hours. If you didn't request this, you can ignore this email.\n\n— Micro", acc.Name, link)
+	html := fmt.Sprintf(`<p>Hi %s,</p><p>Click the link below to verify your email address for Micro:</p><p><a href="%s">%s</a></p><p>This link expires in 24 hours. If you didn't request this, you can ignore this email.</p><p>— Micro</p>`, htmlpkg.EscapeString(acc.Name), link, link)
 
 	if err := app.EmailSender(email, "Verify your Micro account", plain, html, ""); err != nil {
 		app.Log("auth", "Failed to send verification email to %s: %v", email, err)
@@ -995,15 +995,14 @@ func renderPhoneCard(accountID string) string {
 	if len(mine) > 0 {
 		var b strings.Builder
 		for _, n := range mine {
-			b.WriteString(`<p><strong>` + htmlpkg.EscapeString(n) + `</strong> — verified ✓ ` +
+			b.WriteString(`<div class="form-actions"><span><strong>` + htmlpkg.EscapeString(n) + `</strong> — verified</span>` +
 				app.Form{Action: "/account", Inline: true,
 					Hidden: map[string]string{"forget_number": n},
-					Submit: "Forget"}.HTML() + `</p>`)
+					Submit: "Forget"}.HTML() + `</div>`)
 		}
 		return app.SectionID("phone", "Phone",
 			b.String(),
-			app.Note("A text from here reaches your agent, and it answers. "+
-				"Texts from anywhere else are filed and answered by nobody."),
+			app.Note("Micro recognises messages from this number as yours, on SMS or WhatsApp."),
 			// The other direction, which this card never mentioned.
 			//
 			// Every section on this page asks the same question — prove this is
@@ -1030,8 +1029,7 @@ func renderPhoneCard(accountID string) string {
 	}
 
 	return app.SectionID("phone", "Phone",
-		app.Note("Prove a number is yours and you can text your agent from it, "+
-			"like any other contact. It replies on the same number."),
+		app.Note("Verify your number so Micro can recognise you on SMS or WhatsApp."),
 		app.Form{Action: "/account", Inline: true,
 			Fields: []app.Field{{Name: "verify_number", Type: "tel", Required: true,
 				Placeholder: "+447700900123"}},
@@ -1047,7 +1045,7 @@ func forwardingToggle(acc *auth.Account) string {
 	if on {
 		state, label, checked = "off", "On", "true"
 	}
-	return `<p>Email to <strong>` + htmlpkg.EscapeString(acc.Email) + `</strong>.</p><form method="POST" action="/account" class="form-actions"><input type="hidden" name="forwarding" value="` + state + `"><button type="submit" role="switch" aria-checked="` + checked + `" aria-label="Send email">Send email · ` + label + `</button></form>` +
+	return `<p>Email to <strong>` + htmlpkg.EscapeString(acc.Email) + `</strong>.</p><form method="POST" action="/account" class="form-actions"><input type="hidden" name="forwarding" value="` + state + `"><button type="submit" role="switch" aria-checked="` + checked + `" aria-label="Email me incoming mail">Email me incoming mail · ` + label + `</button></form>` +
 		app.Note("Sends a copy of incoming mail, including Micro’s emailed replies and briefs. Other Inbox updates are not emailed yet.")
 }
 
@@ -1066,7 +1064,7 @@ func renderEmailCard(acc *auth.Account) string {
 		// one somebody needs to be able to move.
 		return app.Section("Email",
 			`<p><strong>`+htmlpkg.EscapeString(acc.Email)+`</strong> — verified ✓</p>`,
-			app.Note("Where a password reset goes. Verifying a different one replaces it."),
+			app.Note("Micro recognises email from this address as yours. It is also used for password recovery. Verifying a different address replaces it."),
 			app.Form{Action: "/account", Inline: true,
 				Fields: []app.Field{{Name: "email", Type: "email", Required: true,
 					Placeholder: "you@example.com"}},
@@ -1077,13 +1075,12 @@ func renderEmailCard(acc *auth.Account) string {
 	pending := ""
 	if acc.Email != "" {
 		pending = app.NoteHTML(`A verification link was sent to <strong>` +
-			htmlpkg.EscapeString(acc.Email) + `</strong>. Click it to unlock posting. ` +
+			htmlpkg.EscapeString(acc.Email) + `</strong>. Open it to verify your address. ` +
 			`Submit again to resend.`)
 	}
 
-	return app.Section("Verify your email to post",
-		`<p>Verifying your email unlocks status updates, replies, comments and blog posts. `+
-			`We do not share or sell your address.</p>`,
+	return app.Section("Email",
+		`<p>Verify your address to talk to Micro by email and recover your account.</p>`,
 		pending,
 		app.Form{Action: "/account", Inline: true,
 			Fields: []app.Field{{Name: "email", Type: "email", Value: acc.Email,
@@ -1092,9 +1089,7 @@ func renderEmailCard(acc *auth.Account) string {
 }
 
 func passwordCard(acc *auth.Account) string {
-	note := "Signing up with Google or a passkey leaves no password you could type. " +
-		"Setting one here lets you sign in with your username, and unlocks exporting " +
-		"your wallet key. If you already have a password, this replaces it."
+	note := "Set a password to sign in with your username. You can also use Google or a passkey."
 	if auth.HasSecret(acc.ID) {
 		note = "Replaces the one you have. You stay signed in here; other devices are unaffected."
 	}

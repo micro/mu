@@ -763,3 +763,19 @@ body.nav-open{overflow:hidden}
 .ib-compose{margin-top:8px}.ib-compose textarea{width:100%;min-height:64px;resize:vertical}
 .ib-note-body{max-width:70ch;white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
 @media(max-width:480px){.ib-conv .bubble,.sms-transcript .ib-msg{max-width:96%}.ib-conv .ib-from{gap:4px 10px}.ib-addrs .ib-addr-sep{display:none}}
+
+
+/* The same compact composer for visitors and signed-in conversations. */
+.command-page #guest-command-form{width:100%;max-width:600px;margin:0 auto;padding:16px 0 8px}
+.composer-note{text-align:center;font-size:.8rem;color:#777;margin:8px 0 0}
+.prompt-welcome .landing-example{font-size:.875rem;margin-top:8px}
+.command-page .turn .ib-from{margin-bottom:8px}
+.command-page .turn .message-body{min-width:0;overflow-wrap:anywhere}
+.settings-signin{padding-block:12px;border-top:1px solid var(--border,#ddd)}
+.settings-signin>h2{font-size:1rem;margin:0 0 8px}
+.connection-list{display:grid;gap:12px;margin-block:16px}
+.connection-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.connection-row>div{flex:1 1 180px;min-width:0}
+.connection-row p{margin:2px 0 0;color:#777;font-size:.875rem}
+.connection-state{font-size:.8rem;color:#777}
+@media(max-width:600px){.command-page #guest-command-form{padding-block:8px}}
