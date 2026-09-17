@@ -278,6 +278,20 @@ async function apiCall(url, options = {}) {
 
 if (typeof document !== "undefined") {
 
+// A landing draft stays in this tab through sign-in. It is never submitted automatically.
+(()=>{'use strict';
+ const key='micro-message-draft', ttl=30*60*1000;
+ const guest=document.querySelector('#guest-command-form');
+ const input=document.querySelector('#guest-command-input')||document.querySelector('#command-input');
+ function read(){try{const d=JSON.parse(sessionStorage.getItem(key)||'null');if(d&&typeof d.text==='string'&&d.text.length<=8000&&Number.isFinite(d.at)&&Date.now()-d.at>=0&&Date.now()-d.at<ttl)return d.text;sessionStorage.removeItem(key);}catch{}return '';}
+ if(input&&!new URLSearchParams(location.search).has('session')&&!new URLSearchParams(location.search).has('continue')){
+  const draft=read();if(draft&&!input.value){input.value=draft;if(!guest)document.querySelector('#status').textContent='Your message is ready to send.';}
+ }
+ if(guest){guest.addEventListener('submit',e=>{e.preventDefault();const text=input.value.trim();if(!text)return;try{sessionStorage.setItem(key,JSON.stringify({text,at:Date.now()}));location.assign('/signup');}catch{document.querySelector('#guest-status').textContent='This browser cannot keep your draft. Copy your message, then use Login to create an account or sign in.';}});}
+ const form=document.querySelector('#command-form');
+ if(form)form.addEventListener('submit',()=>{try{sessionStorage.removeItem(key);}catch{}});
+})();
+
 // Command surface
 (()=>{'use strict';
 const form=document.querySelector('#command-form'),input=document.querySelector('#command-input'),log=document.querySelector('#responses'),send=document.querySelector('#send'),status=document.querySelector('#status');
@@ -297,14 +311,15 @@ async function assistant(command,answer){
  if(!done)throw Error('The connection closed before the response completed. Your request may still be running; check inbox before submitting it again.');
 }
 async function failure(response){try{const j=await response.json();return typeof j.error==='string'?j.error:(j.error?.message||'Request failed.');}catch{return 'Request failed ('+response.status+').';}}
+function byline(name){const row=document.createElement('div');row.className='ib-from metadata-row';const who=document.createElement('span');who.className='ib-who-l';who.textContent=name;const at=document.createElement('time');at.className='ib-at';const now=new Date();at.dateTime=now.toISOString();at.title=now.toLocaleString();at.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});row.append(who,at);return row;}
 async function run(command){
  if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
  const first=!conversation.classList.contains('is-active'),before=form.getBoundingClientRect().top;
  if(first)conversation.classList.add('is-active');
  if(first&&!reducedMotion.matches)panel.animate([{transform:'translateY('+(before-form.getBoundingClientRect().top)+'px)'},{transform:'translateY(0)'}],{duration:320,easing:'cubic-bezier(.2,.7,.2,1)'});
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
- q.textContent=command;
- const answer=document.createElement('div');answer.className='answer';turn.append(q,answer);log.append(turn);
+ q.append(byline('You'),document.createTextNode(command));
+ const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));const answer=document.createElement('div');answer.className='message-body';response.append(answer);turn.append(q,response);log.append(turn);
  log.querySelectorAll('.turn').forEach(item=>item.style.minHeight='');
  turn.style.minHeight=log.clientHeight+'px';
  requestAnimationFrame(()=>{
@@ -1342,3 +1357,4 @@ if(typeof document!=='undefined'){
   }
   setTimeout(check, 15000);
 })();
+
