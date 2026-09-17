@@ -1,34 +1,10 @@
 package mail
 
-// Who is allowed to wake an agent by writing to it, and where they can write.
-//
-// An agent's address was protected by nothing but being hard to guess. The
-// guard on the trigger asked three questions — is there a tag, is it spam, is
-// it our own reply coming back — and never asked who wrote in. Anyone holding
-// you+research@ could drive that agent, with its scope and its tools, spending
-// the owner's credits. A tag is not a credential.
-//
-// Two things now have to be true. The sender has to *be* who the From header
-// claims, which is what SPF and DKIM are for and which this server has been
-// checking all along — the results went into the spam score and nowhere else.
-// And the account has to know them: its own verified address, or somebody in
-// its address book. A stranger who passes DKIM is still a stranger.
-//
-// Unknown senders are dropped silently, never bounced. The message is stored
-// before any of this runs, so the mail is in the inbox either way; a bounce
-// would only confirm the address exists to whoever probed it.
-//
-// There is also one address nobody has to remember. you+research@ requires
-// knowing the plus convention and which agent you named what, from a phone,
-// while driving. agent@<domain> takes neither: it works out whose it is from
-// who sent it, and answers with that account's default agent. It is the
-// address agents already reply *from*, so it is also what makes replying to
-// your agent continue the conversation rather than bounce.
+// Only an account owner may instruct Micro by email. Personal addresses and
+// plus aliases receive correspondence; knowing a sender is not authorisation.
 
 import (
 	"strings"
-
-	"mu/internal/contacts"
 )
 
 // AgentMailbox is the local part of the shared address: agent@<domain>. A
@@ -39,13 +15,8 @@ const AgentMailbox = "agent"
 // SharedAgentAddress is the address itself, for display and comparison.
 func SharedAgentAddress() string { return SharedAgentAddressFor("") }
 
-// SharedAgentAddressFor is the shared address naming one agent:
-// agent+research@<domain>. Empty tag gives the plain address, which is the
-// default assistant.
-//
-// The tag carries the agent's name and not the owner's, which is the whole
-// difference from you+research@ — one thing to remember instead of two, and the
-// one you actually chose.
+// SharedAgentAddressFor formats a tagged address. Tags classify incoming mail;
+// only the untagged shared address may invoke the assistant.
 func SharedAgentAddressFor(tag string) string {
 	domain := strings.TrimSpace(ConfiguredDomain())
 	// localhost is not an address somebody can write to.
@@ -90,20 +61,6 @@ func fromSharedAgent(addr string) bool {
 	return strings.EqualFold(account, AgentMailbox)
 }
 
-// KnownSender reports whether an address is one this account corresponds with.
-//
-// It was a hook the server filled in from service/contacts, on the grounds that
-// contacts is a different domain and mail must not import it. That was the
-// right rule and the wrong conclusion: the address book itself is
-// internal/contacts, and service/contacts is the tools, the page and the Google
-// bridge over it. A service may import the substrate freely, so this is an
-// import — the sideways rule was never in the way.
-//
-// It stays a variable because the tests override it, and because an instance
-// can still turn the address book off by setting it nil, which leaves the
-// owner's own verified address as the only way in — the safe direction to fail.
-var KnownSender = contacts.HasEmail
-
 // wakeRequest is everything the rule needs. A struct rather than six
 // positional arguments, three of which would be bools in a row.
 type wakeRequest struct {
@@ -114,9 +71,8 @@ type wakeRequest struct {
 	To     string
 	IsSpam bool
 
-	// Authenticated is SPF or DKIM having passed. Either is enough: plenty of
-	// legitimate mail has only one, and requiring both would drop more real
-	// mail than it stops.
+	// Authenticated means the visible From address passed aligned SPF/DKIM
+	// checks, or the sender authenticated through local submission.
 	Authenticated bool
 
 	// Owned is the sender having signed in as this account, rather than the
@@ -139,9 +95,8 @@ func mayDispatch(r wakeRequest) bool {
 	if r.IsSpam {
 		return false
 	}
-	// Either a tagged address or the shared one. Untagged mail to your own
-	// address is just mail — every newsletter would otherwise start a run.
-	if r.Tag == "" && !r.Shared {
+	// Only agent@ is an instruction endpoint. All plus aliases are filters.
+	if !r.Shared || r.Tag != "" {
 		return false
 	}
 	// Our own reply coming back. An agent answering its own answer is a model
@@ -172,7 +127,7 @@ func mayDispatch(r wakeRequest) bool {
 	}
 	// Signed in as this account, rather than claiming to be it.
 	//
-	// senderKnownTo answers "is the From header really this account's owner"
+	// SenderIsAccountOwner answers "is the From header really this account's owner"
 	// for mail arriving off the network, where From is only a claim and a
 	// verified external address is the strongest evidence available. Over
 	// submission the question was already answered, by a token, before the
@@ -184,17 +139,7 @@ func mayDispatch(r wakeRequest) bool {
 	if r.Owned {
 		return true
 	}
-	return senderKnownTo(r.Owner, r.From)
-}
-
-// senderKnownTo: the account's own verified address, or somebody it has in its
-// address book. Deliberately narrow — this is the list of people who can spend
-// your credits and act as you.
-func senderKnownTo(owner, from string) bool {
-	if SenderIsAccountOwner(owner, from) {
-		return true
-	}
-	return KnownSender != nil && KnownSender(owner, from)
+	return SenderIsAccountOwner(r.Owner, r.From)
 }
 
 // machineMail reports whether a message was sent by a machine on its own
