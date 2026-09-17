@@ -262,7 +262,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	}
 
 	b.WriteString(googleSignIn(acc))
-	b.WriteString(`<p class="text-sm text-muted">Connect only what you want your assistant to use. Read-only lookups happen when requested; mail and files are not bulk imported. Results used in a conversation are sent to this instance's configured AI provider.</p><div class="form-actions">`)
+	b.WriteString(`<p class="text-sm text-muted">Connect only what you want your assistant to use. Your assistant and scheduled tasks can use these read-only connections. Mail and files are not bulk imported. Tool results are sent to this instance's configured AI provider. Gmail is limited to messages received in the last seven days; searches return headers, and reading a message shares up to 8,000 characters. Recent messages may quote older correspondence.</p><div class="form-actions">`)
 	for _, what := range []string{"calendar", "contacts", "gmail", "drive"} {
 		g := grants[what]
 		if !google.HasScope(acc.ID, g.scope) {

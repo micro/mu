@@ -4,17 +4,25 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"golang.org/x/net/html"
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const GmailScope = "https://www.googleapis.com/auth/gmail.readonly"
 const DriveScope = "https://www.googleapis.com/auth/drive.readonly"
 const contentLimit = 1 << 20
+
+const gmailWindow = 7 * 24 * time.Hour
+const gmailTextLimit = 8000
+
+var errGmailOutsideWindow = errors.New("Gmail access is limited to messages received in the last seven days; open older messages in Gmail")
 
 // readAPI keeps credentials within this package and bounds provider responses.
 // The endpoint is constructed here, never supplied by a caller or a file URL.
@@ -86,7 +94,7 @@ type GmailMessage struct {
 	From     string `json:"from"`
 	To       string `json:"to"`
 	Date     string `json:"date"`
-	Snippet  string `json:"snippet"`
+	Snippet  string `json:"snippet,omitempty"`
 	Text     string `json:"text,omitempty"`
 	URL      string `json:"url"`
 }
@@ -170,12 +178,17 @@ func gmailMessage(ctx context.Context, owner, id, format string) (GmailMessage, 
 		return result, fmt.Errorf("invalid Gmail message id")
 	}
 	var raw struct {
-		ID       string    `json:"id"`
-		ThreadID string    `json:"threadId"`
-		Snippet  string    `json:"snippet"`
-		Payload  gmailPart `json:"payload"`
+		InternalDate string    `json:"internalDate"`
+		ID           string    `json:"id"`
+		ThreadID     string    `json:"threadId"`
+		Snippet      string    `json:"snippet"`
+		Payload      gmailPart `json:"payload"`
 	}
 	q := url.Values{"format": {format}}
+	// Search returns headers only, never snippets or message bodies.
+	if format == "metadata" {
+		q.Set("fields", "id,threadId,internalDate,payload/headers")
+	}
 	if format == "metadata" {
 		q["metadataHeaders"] = []string{"Subject", "From", "To", "Date"}
 	}
@@ -183,7 +196,11 @@ func gmailMessage(ctx context.Context, owner, id, format string) (GmailMessage, 
 	if err != nil {
 		return result, err
 	}
-	result = GmailMessage{ID: raw.ID, ThreadID: raw.ThreadID, Snippet: raw.Snippet, URL: "https://mail.google.com/mail/u/0/#all/" + url.PathEscape(raw.ThreadID)}
+	received, dateErr := strconv.ParseInt(raw.InternalDate, 10, 64)
+	if dateErr != nil || received <= 0 || time.UnixMilli(received).Before(time.Now().Add(-gmailWindow)) {
+		return result, errGmailOutsideWindow
+	}
+	result = GmailMessage{ID: raw.ID, ThreadID: raw.ThreadID, URL: "https://mail.google.com/mail/u/0/#all/" + url.PathEscape(raw.ThreadID)}
 	for _, h := range raw.Payload.Headers {
 		switch strings.ToLower(h.Name) {
 		case "subject":
@@ -204,25 +221,25 @@ func gmailMessage(ctx context.Context, owner, id, format string) (GmailMessage, 
 		if result.Text == "" {
 			result.Text = raw.Snippet + "\n[No plain-text body. Open this message in Gmail to read its full formatted contents.]"
 		}
+		text := []rune(result.Text)
+		if len(text) > gmailTextLimit {
+			result.Text = string(text[:gmailTextLimit]) + "\n[Message truncated. Open Gmail for the remainder.]"
+		}
 	}
 	return result, nil
 }
 
-// Default to recent mail. An explicit date range can reach older messages.
+// The provider query reduces work; the internalDate check on every result is
+// the enforcement boundary, including queries with OR/date operators or paging.
 func recentGmailQuery(query string) string {
 	query = strings.TrimSpace(query)
-	for _, term := range []string{"after:", "before:", "older:", "newer:", "older_than:", "newer_than:"} {
-		if strings.Contains(strings.ToLower(query), term) {
-			return query
-		}
-	}
 	if query == "" {
-		return "newer_than:30d"
+		return "newer_than:7d"
 	}
-	return "(" + query + ") newer_than:30d"
+	return "(" + query + ") newer_than:7d"
 }
 
-// SearchGmail reads summaries on demand; nothing is imported or marked read.
+// SearchGmail reads recent headers on demand; nothing is imported or marked read.
 func SearchGmail(ctx context.Context, owner, query, page string, limit int) (GmailPage, error) {
 	out := GmailPage{Messages: []GmailMessage{}}
 	query = recentGmailQuery(query)
@@ -242,6 +259,9 @@ func SearchGmail(ctx context.Context, owner, query, page string, limit int) (Gma
 	out.NextPage = list.Next
 	for _, m := range list.Messages {
 		entry, err := gmailMessage(ctx, owner, m.ID, "metadata")
+		if errors.Is(err, errGmailOutsideWindow) {
+			continue
+		}
 		if err != nil {
 			return out, err
 		}
@@ -250,6 +270,20 @@ func SearchGmail(ctx context.Context, owner, query, page string, limit int) (Gma
 	return out, nil
 }
 func ReadGmail(ctx context.Context, owner, id string) (GmailMessage, error) {
+	// Check age before fetching a body, even when a caller already knows its ID.
+	if !validID(id) {
+		return GmailMessage{}, fmt.Errorf("invalid Gmail message id")
+	}
+	var stamp struct {
+		InternalDate string `json:"internalDate"`
+	}
+	if err := readJSON(ctx, owner, GmailScope, "https://gmail.googleapis.com/gmail/v1/users/me/messages/"+id+"?format=minimal&fields=internalDate", &stamp); err != nil {
+		return GmailMessage{}, err
+	}
+	received, err := strconv.ParseInt(stamp.InternalDate, 10, 64)
+	if err != nil || received <= 0 || time.UnixMilli(received).Before(time.Now().Add(-gmailWindow)) {
+		return GmailMessage{}, errGmailOutsideWindow
+	}
 	return gmailMessage(ctx, owner, id, "full")
 }
 
