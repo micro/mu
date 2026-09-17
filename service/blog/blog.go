@@ -1607,7 +1607,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	contentSB.WriteString(`</div>`)
 	content := contentSB.String()
 
-	app.Respond(w, r, app.Response{Title: title, Description: post.Content[:min(len(post.Content), 150)], HTML: content})
+	app.Respond(w, r, app.Response{Title: title, Description: post.Content[:min(len(post.Content), 150)], BodyClass: "reading-page", HTML: content})
 }
 
 func min(a, b int) int {

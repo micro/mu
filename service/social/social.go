@@ -626,7 +626,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	if p.AuthorID == "_system" {
 		threadAuthorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
 	}
-	sb.WriteString(fmt.Sprintf(`<div class="headline so-rule">
+	sb.WriteString(fmt.Sprintf(`<div class="headline social-post so-rule">
   %s
   <div class="d-flex between so-head">
     <div>%s</div>
@@ -785,7 +785,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		if len(content) > 300 {
 			content = content[:300] + "..."
 		}
-		sb.WriteString(fmt.Sprintf(`<div class="headline">
+		sb.WriteString(fmt.Sprintf(`<div class="headline social-post">
   <div><b>%s</b></div>
   <div class="mt-1 text-sm">%s</div>
 </div>`, htmlpkg.EscapeString(entry.Title), htmlpkg.EscapeString(content)))
@@ -890,7 +890,7 @@ func generateCardHTML(allMessages []*Message) string {
 		if p.AuthorID == "_system" {
 			authorHTML = fmt.Sprintf(`<span class="category">%s</span>`, authorHTML)
 		}
-		sb.WriteString(fmt.Sprintf(`<div class="headline">
+		sb.WriteString(fmt.Sprintf(`<div class="headline social-post">
   <a href="/social/thread?id=%s"><span class="title">%s</span></a>
   <span class="description breakable">%s</span>%s
   <div class="summary"><span data-timestamp="%d">%s</span>%s</div>
@@ -986,7 +986,7 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
 		if p.AuthorID == "_system" {
 			authorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
 		}
-		sb.WriteString(fmt.Sprintf(`<div class="headline">
+		sb.WriteString(fmt.Sprintf(`<div class="headline social-post">
   %s
   <div class="d-flex between so-head">
     <div>%s</div>
