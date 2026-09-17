@@ -96,6 +96,17 @@ dd{margin:0 0 12px;overflow-wrap:anywhere}
 .settings-sections .form{max-width:100%}
 .disclosure summary{cursor:pointer}
 .disclosure[open]>summary{margin-bottom:16px}
+dialog.modal{width:min(480px,calc(100% - 32px));max-height:calc(100dvh - 32px);margin:auto;padding:20px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#222;overflow-y:auto}
+dialog.modal::backdrop{background:rgb(0 0 0 / 20%)}
+dialog.modal>h3{margin:0 0 16px}
+dialog.modal .form{gap:12px}
+dialog.modal textarea{width:100%;min-height:72px;resize:vertical}
+dialog.modal .form-actions{gap:8px;flex-wrap:wrap}
+dialog.modal .form-actions>button{margin:0}
+.ib-ask-note{font-size:.8rem;color:#666;margin:0}
+.ib-ask-problem{color:#a22424;margin:0}
+.landing-actions{justify-content:center;margin-top:20px}
+.landing-channels{justify-content:center;margin-top:16px}
 .text-muted,.text-small,small{color:#666}
 .text-sm{font-size:.875rem}
 .text-error,.error{color:#a22424}
