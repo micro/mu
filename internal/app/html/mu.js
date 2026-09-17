@@ -1314,3 +1314,28 @@ if(typeof document!=='undefined'){
   window.addEventListener('pagehide',close);
  }
 }
+
+
+// Notice new replies without replacing a draft or moving the reader's scroll.
+(function () {
+  var reader = document.querySelector('[data-inbox-watch]');
+  if (!reader) return;
+  var updated = Date.parse(reader.dataset.inboxWatch), attempts = 0;
+  async function check() {
+    if (++attempts > 40) return;
+    if (!document.hidden) {
+      try {
+        var response = await fetch(location.href, {headers: {Accept: 'application/json'}, cache: 'no-store'});
+        if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return;
+        var data = await response.json();
+        if (data.thread && Date.parse(data.thread.updated) > updated) {
+          var notice = reader.querySelector('[data-inbox-update]');
+          if (notice) notice.hidden = false;
+          return;
+        }
+      } catch (_) {}
+    }
+    setTimeout(check, 15000);
+  }
+  setTimeout(check, 15000);
+})();
