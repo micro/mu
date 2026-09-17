@@ -6,7 +6,6 @@ import (
 	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/settings"
 	"mu/internal/thread"
 	"net/http"
 	"net/url"
@@ -72,7 +71,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if agentDescription != "" {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
-	if acc == nil && settings.Get("ALLOW_GUEST_AI") != "true" {
+	if acc == nil {
 		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="command-page"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1>`+description+`<p><a class="btn" href="/login">Sign in to talk to Micro</a></p></div></div></div>`, acc))
 		return
 	}

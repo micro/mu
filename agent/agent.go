@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"mu/internal/ai"
-	"mu/internal/settings"
 	"net/http"
 	"net/url"
 
@@ -611,7 +610,7 @@ func agentErrorMessage(err error) string {
 
 func handleQuery(w http.ResponseWriter, r *http.Request) {
 	_, caller := auth.TrySession(r)
-	if caller == nil && settings.Get("ALLOW_GUEST_AI") != "true" {
+	if caller == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"error":"Sign in to talk to Micro."}`))
