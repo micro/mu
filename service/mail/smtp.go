@@ -20,6 +20,8 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/onboarding"
+	"mu/internal/origin"
 
 	"github.com/emersion/go-msgauth/dkim"
 	smtpd "github.com/emersion/go-smtp"
@@ -430,12 +432,14 @@ func (s *Session) Data(r io.Reader) error {
 
 	// Verify DKIM signature before parsing consumes the reader
 	dkimPass := false
+	dkimDomain := ""
 	if !s.isLocalhost {
 		verifications, err := dkim.Verify(bytes.NewReader(buf.Bytes()))
 		if err == nil && len(verifications) > 0 {
 			for _, v := range verifications {
 				if v.Err == nil {
 					dkimPass = true
+					dkimDomain = v.Domain
 					app.Log("mail", "DKIM verification passed for domain %s", v.Domain)
 					break
 				}
@@ -519,11 +523,24 @@ func (s *Session) Data(r io.Reader) error {
 		}
 	}
 
+	// First-contact verification is restricted to the shared agent address and
+	// an authenticated From identity. Never send challenges to forged senders.
+	fromParts := strings.Split(strings.ToLower(fromAddr.Address), "@")
+	aligned := s.spfPass && strings.EqualFold(s.from, fromAddr.Address)
+	if len(fromParts) == 2 && dkimPass && strings.EqualFold(dkimDomain, fromParts[1]) {
+		aligned = true
+	}
+	firstContact := false
+	if len(s.to) == 1 && aligned && origin.Self() != "" && msg.Header.Get("Auto-Submitted") == "" && msg.Header.Get("List-Id") == "" {
+		if recipient, err := mail.ParseAddress(s.to[0]); err == nil {
+			firstContact = strings.EqualFold(recipient.Address, SharedAgentAddress())
+		}
+	}
 	// ── Strict inbound filter ──────────────────────────────────
 	// The whole policy is at the top of inbound_filter.go.
 	if !s.isLocalhost {
 		reason, allowed := CheckInboundAllowed(fromAddr.Address, s.to, inReplyTo, references)
-		if !allowed {
+		if !allowed && !firstContact {
 			app.Log("mail", "Rejected inbound from %s: %s", fromAddr.Address, reason)
 			return &smtpd.SMTPError{
 				Code:    550,
@@ -644,6 +661,19 @@ func (s *Session) Data(r io.Reader) error {
 		if sharedAgentMail {
 			toAcc = AccountForVerifiedEmail(fromAddr.Address)
 			if toAcc == nil {
+				if firstContact {
+					token, err := onboarding.Begin(onboarding.Request{Channel: "mail", Address: strings.ToLower(fromAddr.Address), Text: subject + "\n\n" + stripHTMLTags(body), Subject: subject, MessageID: messageID})
+					if err != nil {
+						app.Log("mail", "Could not start verification: %v", err)
+					} else if token != "" {
+						link := origin.Self() + "/welcome?token=" + token
+						_, err = SendExternalEmail("Micro", SharedAgentAddress(), fromAddr.Address, "Get started with Micro", "Your question is saved. Confirm your address and create your account here:\n\n"+link+"\n\nThis link expires in 30 minutes. Micro will answer your original question by email after verification.", "", messageID)
+						if err != nil {
+							app.Log("mail", "Could not deliver verification: %v", err)
+						}
+					}
+					continue
+				}
 				// Somebody nobody here has heard of, writing to the address the
 				// front page advertises. Dropped, silently, so a probe cannot
 				// learn the address is live.
