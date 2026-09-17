@@ -262,20 +262,27 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	}
 
 	b.WriteString(googleSignIn(acc))
-	b.WriteString(`<p class="text-sm text-muted">Connect only what you want your assistant to use. Your assistant and scheduled tasks can use these read-only connections. Mail and files are not bulk imported. Tool results are sent to this instance's configured AI provider. Gmail is limited to messages received in the last seven days; searches return headers, and reading a message shares up to 8,000 characters. Recent messages may quote older correspondence.</p><div class="form-actions">`)
-	for _, what := range []string{"calendar", "contacts", "gmail", "drive"} {
-		g := grants[what]
-		if !google.HasScope(acc.ID, g.scope) {
-			b.WriteString(`<a class="btn" href="/oauth2/google/` + what + `">Connect ` + htmlpkg.EscapeString(google.Label(g.scope)) + `</a>`)
+	b.WriteString(`<p>Choose what Micro can use to help you. Each connection is read-only.</p><div class="connection-list">`)
+	for _, item := range []struct{ key, label, purpose string }{
+		{"gmail", "Gmail", "Find and read recent email."},
+		{"calendar", "Calendar", "Check your plans and availability."},
+		{"contacts", "Contacts", "Look up people you know."},
+		{"drive", "Drive", "Find and read documents."},
+	} {
+		b.WriteString(`<div class="connection-row"><div><strong>` + item.label + `</strong><p>` + item.purpose + `</p></div>`)
+		if google.HasScope(acc.ID, grants[item.key].scope) {
+			b.WriteString(`<span class="connection-state">Connected</span>`)
+		} else {
+			b.WriteString(`<a class="btn" aria-label="Connect ` + item.label + `" href="/oauth2/google/` + item.key + `">Connect</a>`)
 		}
+		b.WriteString(`</div>`)
 	}
-	b.WriteString(`</div>`)
+	b.WriteString(`</div><p class="text-sm text-muted">Information used to answer you is sent to this instance’s configured AI provider.</p><details class="disclosure"><summary>What Micro can access</summary><p>Your assistant and scheduled tasks can use these connections. Mail and files are not bulk imported. Gmail is limited to messages received in the last seven days; searches return headers, and reading a message shares up to 8,000 characters. Recent messages may quote older correspondence.</p></details>`)
 
 	list := google.Grants(acc.ID)
 	if len(list) == 0 {
 		b.WriteString(`<p class="text-sm text-muted mt-2">Micro has no access to anything else in ` +
-			`your Google account. Choose a connection above. ` +
-			`Your permissions will be listed here.</p></div>`)
+			`your Google account.</p></div>`)
 		return b.String()
 	}
 
@@ -287,19 +294,13 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 		b.WriteString(`<p class="text-sm text-muted mt-2">Granted from <strong>` +
 			htmlpkg.EscapeString(who) + `</strong>. All read-only.</p>`)
 	}
-	b.WriteString(`<ul class="mt-2 mb-3 indent">`)
-	for _, g := range list {
-		b.WriteString(`<li class="text-sm">` + htmlpkg.EscapeString(google.Label(g.Scope)) + `</li>`)
-	}
-	b.WriteString(`</ul>`)
 
 	b.WriteString(`<div class="action-block"><form method="POST" action="/oauth2/google/disconnect" class="form-action m-0">` +
 		`<input type="hidden" name="_csrf" value="` + htmlpkg.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<input type="hidden" name="return" value="/account/connections">` +
 		`<button type="submit" class="btn-plain text-sm">Disconnect Google</button>` +
 		`</form>`)
-	b.WriteString(`<p class="action-note">Revoking takes all of it: ` +
-		`Google withdraws the whole grant at once, so there is no way to hand back one and keep another.</p></div>`)
+	b.WriteString(`<p class="action-note">Disconnecting removes all Google connections above.</p></div>`)
 	b.WriteString(`</div>`)
 	return b.String()
 }
