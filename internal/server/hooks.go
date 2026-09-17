@@ -33,6 +33,7 @@ import (
 	"mu/agent/work"
 	help "mu/docs"
 	"mu/inbox"
+	"mu/internal/abuse"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -611,6 +612,38 @@ func wireHooks() {
 	// internal/service/gateway.go for what it replaced: four different places a
 	// charge could live, and most operations landing in none of them.
 	service.Gate.Allow = func(account, op string) (bool, error) {
+		if account == "" {
+			if quota.OperationCost(op) > 0 {
+				return false, fmt.Errorf("authentication or verified payment required for paid operations")
+			}
+			return false, nil
+		}
+
+		if quota.OperationCost(op) > 0 {
+			if !api.IsWalletIdentity(account) {
+				acc, err := auth.GetAccount(account)
+				if err != nil || acc.Banned || (!acc.Agent && !acc.Admin && !acc.Approved && !acc.EmailVerified) {
+					return false, fmt.Errorf("a verified or approved account is required")
+				}
+			}
+			for _, b := range []struct {
+				key    string
+				max    int
+				window time.Duration
+			}{
+				{"paid:hour:", abuse.Limit("PAID_MAX_PER_HOUR", 300), time.Hour},
+				{"paid:day:", abuse.Limit("PAID_MAX_PER_DAY", 1000), 24 * time.Hour},
+			} {
+				wait, err := abuse.Take(b.key+account, b.max, b.window)
+				if err != nil {
+					return false, err
+				}
+				if wait > 0 {
+					return false, fmt.Errorf("paid operation limit reached; retry in %d seconds", int(wait.Seconds()))
+				}
+			}
+		}
+
 		// Somebody who paid in USDC has already paid, at the door, for this
 		// exact operation — VerifyAndSettle runs before the tool does, and the
 		// free trial is counted there too. There is no account behind a wallet

@@ -31,12 +31,12 @@ import (
 // nobody notices; short enough that a stuck slot cannot hold a caller for ever.
 const maxWait = 30 * time.Second
 
-// Concurrency is how many calls this account may have in flight, or 0 for no
-// limit. Filled in by internal/server/hooks.go, from how accountable the
+// Concurrency supplies this account's requested number of in-flight calls.
+// Filled in by internal/server/hooks.go, from how accountable the
 // account is.
 //
-// Nil on a build with no billing linked in — a self-hosted instance sells
-// nothing, so it limits nothing.
+// Nil uses four slots. Unlimited billing tiers use eight, with a hard ceiling
+// of sixteen: credit exemptions do not exempt resource protection.
 var Concurrency func(account string) int
 
 var (
@@ -61,12 +61,19 @@ func slotFor(account string, size int) chan struct{} {
 // acquire takes a slot, waiting if the account is at its limit. The returned
 // function gives it back and must always be called.
 func acquire(ctx context.Context, account string) (func(), error) {
-	if Concurrency == nil || account == "" {
+	if account == "" {
 		return func() {}, nil
 	}
-	size := Concurrency(account)
+	size := 4
+	if Concurrency != nil {
+		size = Concurrency(account)
+	}
+	// Billing exemptions must not turn into unbounded provider fan-out.
 	if size <= 0 {
-		return func() {}, nil
+		size = 8
+	}
+	if size > 16 {
+		size = 16
 	}
 	c := slotFor(account, size)
 

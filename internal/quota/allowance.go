@@ -4,18 +4,24 @@ package quota
 // Buying credits never bypasses outbound messaging limits.
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"mu/internal/data"
 )
 
 // used counts calls per account per operation for the current day. One map so
 // there is one mutex and one midnight.
 var used struct {
 	sync.Mutex
-	day   string
-	count map[string]int
+	day    string
+	count  map[string]int
+	loaded bool
+	err    error
 }
 
 // today is the date the counters belong to. A string rather than a timer: the
@@ -28,6 +34,9 @@ func UsedToday(account, operation string) int {
 	used.Lock()
 	defer used.Unlock()
 	rollLocked()
+	if used.err != nil {
+		return int(^uint(0) >> 1)
+	}
 	return used.count[account+"\x00"+operation]
 }
 
@@ -41,6 +50,9 @@ func Done(account, operation string) {
 	defer used.Unlock()
 	rollLocked()
 	used.count[account+"\x00"+operation]++
+	if used.err == nil {
+		used.err = data.SaveJSON("quota/allowances.json", allowanceState{used.day, used.count})
+	}
 }
 
 // LeftToday is how many more of an operation this account may do, and whether
@@ -84,8 +96,28 @@ func Describe(operation string) string {
 	return operation
 }
 
-// rollLocked throws the counters away when the date changes.
+type allowanceState struct {
+	Day   string
+	Count map[string]int
+}
+
+// rollLocked restores the counters once, then rolls them at UTC midnight.
 func rollLocked() {
+	if !used.loaded {
+		used.loaded = true
+		var saved allowanceState
+		err := data.LoadJSON("quota/allowances.json", &saved)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			used.err = err
+		}
+		if err == nil {
+			used.day, used.count = saved.Day, saved.Count
+		}
+	}
+	if used.count == nil {
+		used.count = map[string]int{}
+	}
+
 	if d := today(); d != used.day {
 		used.day, used.count = d, map[string]int{}
 	}
@@ -97,4 +129,6 @@ func ResetAllowances() {
 	used.Lock()
 	defer used.Unlock()
 	used.day, used.count = today(), map[string]int{}
+	used.loaded = true
+	used.err = data.SaveJSON("quota/allowances.json", allowanceState{used.day, used.count})
 }

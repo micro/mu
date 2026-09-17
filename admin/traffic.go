@@ -103,6 +103,10 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 		})
 
 	usage.Table(&sb, "Surface", usage.Top(win.Res, win.Points, usage.BySurface, 10))
+	usage.Table(&sb, "HTTP responses", usage.Top(win.Res, win.Points, usage.ByOutcome, 20))
+	usage.Stat(&sb, "Model calls (selected window)", usage.ModelsOver(win.Res, win.Points))
+	sb.WriteString(`<p class="text-sm text-muted">HTTP response and model counters start with this update. HTTP counts include rejected requests; tool counts are separate. A 2xx response means HTTP success, not necessarily application success.</p>`)
+
 	sb.WriteString(`</div>`)
 
 	// The drill-down below the grid, not inside it.

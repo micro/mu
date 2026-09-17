@@ -101,6 +101,7 @@ func gateway(spec Spec) server.HandlerWrapper {
 				}
 			}
 			op := spec.Operation(methodName(req.Method()))
+
 			if op == "" || Gate.Allow == nil {
 				// Free, or nothing here can charge. Straight through — and
 				// deliberately without asking who is calling, because a free
@@ -109,11 +110,13 @@ func gateway(spec Spec) server.HandlerWrapper {
 			}
 
 			// Who is paying. An empty account is an unauthenticated caller: the
-			// door it came through decides whether that is allowed, and by the
-			// time a priced call reaches here it has already been let in, so
-			// there is nobody to bill and nothing to refuse.
+			// shared gate must still reject paid operations. Free public tools
+			// remain available without creating an account.
 			who := AccountFrom(ctx)
 			if who == "" {
+				if _, err := Gate.Allow(who, op); err != nil {
+					return err
+				}
 				return next(ctx, req, rsp)
 			}
 

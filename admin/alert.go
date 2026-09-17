@@ -174,7 +174,7 @@ func instanceRate() {
 	if limit <= 0 {
 		return
 	}
-	n := usage.TotalOver(usage.Hour, 1)
+	n := usage.TotalOver(usage.Minute, 60)
 	if n < limit {
 		return
 	}
@@ -182,9 +182,9 @@ func instanceRate() {
 		Key:  "rate:instance",
 		What: fmt.Sprintf("Busy: %s calls in the last hour", usage.HumanCount(n)),
 		Why: fmt.Sprintf("The threshold is %s an hour (ALERT_CALLS_PER_HOUR). This is "+
-			"the whole instance, so it is either real traffic or one caller in a loop — "+
-			"the per-account list says which.", usage.HumanCount(limit)),
-		Where: "/admin/usage",
+			"web requests and tool calls, including rejected requests, not a count of paid model calls — "+
+			"check the caller and endpoint breakdowns.", usage.HumanCount(limit)),
+		Where: "/admin/traffic?window=day",
 	})
 }
 
@@ -199,7 +199,7 @@ func accountRates() {
 		return
 	}
 	for _, acc := range auth.AllAccounts() {
-		n := usage.TotalForOver(acc.ID, usage.Hour, 1)
+		n := usage.TotalForOver(acc.ID, usage.Minute, 60)
 		if n < limit {
 			continue
 		}
@@ -209,7 +209,7 @@ func accountRates() {
 			Why: fmt.Sprintf("The threshold is %s an hour per account "+
 				"(ALERT_ACCOUNT_CALLS_PER_HOUR). One account at this rate is usually a "+
 				"loop rather than a person.", usage.HumanCount(limit)),
-			Where: "/admin/usage",
+			Where: "/admin/traffic?window=day",
 		})
 	}
 }

@@ -82,6 +82,8 @@ type Bucket struct {
 	Users    map[string]int `json:"users,omitempty"`
 	Surfaces map[string]int `json:"surfaces,omitempty"`
 	Pairs    map[string]int `json:"pairs,omitempty"`
+	Outcomes map[string]int `json:"outcomes,omitempty"`
+	Models   int            `json:"models,omitempty"`
 }
 
 // pairKey is one caller and one thing they called.
@@ -174,6 +176,42 @@ func Record(surface, name, account string) {
 		addPair(b.Pairs, account, name)
 	}
 	dirty = true
+}
+
+// RecordOutcome records HTTP status classes separately from logical tool calls.
+// It does not increase Total: MCP may dispatch several tools in one HTTP request.
+func RecordOutcome(name string) {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, r := range []*ring{rings.Minute, rings.Hour, rings.Day} {
+		b := r.current(now().UTC())
+		if b.Outcomes == nil {
+			b.Outcomes = map[string]int{}
+		}
+		add(b.Outcomes, name)
+	}
+	dirty = true
+}
+
+// RecordModels counts provider attempts reported by model instrumentation.
+func RecordModels(n int) {
+	if n <= 0 {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, r := range []*ring{rings.Minute, rings.Hour, rings.Day} {
+		r.current(now().UTC()).Models += n
+	}
+	dirty = true
+}
+
+func ModelsOver(res Resolution, n int) int {
+	total := 0
+	for _, b := range Series(res, n) {
+		total += b.Models
+	}
+	return total
 }
 
 // Endpoint reduces a request path to something worth counting: the service it
@@ -325,9 +363,13 @@ func Series(res Resolution, n int) []Bucket {
 }
 
 func copyBucket(b Bucket) Bucket {
-	out := Bucket{At: b.At, Total: b.Total,
-		Names: map[string]int{}, Users: map[string]int{}, Surfaces: map[string]int{},
+	out := Bucket{At: b.At, Total: b.Total, Models: b.Models,
+		Outcomes: map[string]int{},
+		Names:    map[string]int{}, Users: map[string]int{}, Surfaces: map[string]int{},
 		Pairs: map[string]int{}}
+	for k, v := range b.Outcomes {
+		out.Outcomes[k] = v
+	}
 	for k, v := range b.Pairs {
 		out.Pairs[k] = v
 	}
@@ -356,6 +398,7 @@ const (
 	ByName    Dimension = "name"
 	ByUser    Dimension = "user"
 	BySurface Dimension = "surface"
+	ByOutcome Dimension = "outcome"
 )
 
 // TopFor is what one caller called, over the same window Top uses, with
@@ -405,6 +448,8 @@ func Top(res Resolution, n int, dim Dimension, limit int) []Count {
 	for _, b := range Series(res, n) {
 		var m map[string]int
 		switch dim {
+		case ByOutcome:
+			m = b.Outcomes
 		case ByUser:
 			m = b.Users
 		case BySurface:
@@ -465,9 +510,9 @@ func Save() {
 		return
 	}
 	snapshot := store{
-		Minute: &ring{Step: rings.Minute.Step, Keep: rings.Minute.Keep, Buckets: append([]Bucket{}, rings.Minute.Buckets...)},
-		Hour:   &ring{Step: rings.Hour.Step, Keep: rings.Hour.Keep, Buckets: append([]Bucket{}, rings.Hour.Buckets...)},
-		Day:    &ring{Step: rings.Day.Step, Keep: rings.Day.Keep, Buckets: append([]Bucket{}, rings.Day.Buckets...)},
+		Minute: &ring{Step: rings.Minute.Step, Keep: rings.Minute.Keep, Buckets: cloneBuckets(rings.Minute.Buckets)},
+		Hour:   &ring{Step: rings.Hour.Step, Keep: rings.Hour.Keep, Buckets: cloneBuckets(rings.Hour.Buckets)},
+		Day:    &ring{Step: rings.Day.Step, Keep: rings.Day.Keep, Buckets: cloneBuckets(rings.Day.Buckets)},
 	}
 	dirty = false
 	mu.Unlock()
@@ -494,6 +539,8 @@ func SeriesFor(account string, res Resolution, n int) []Bucket {
 	for i := range out {
 		out[i].Total = out[i].Users[account]
 		out[i].Names, out[i].Users, out[i].Surfaces = nil, nil, nil
+		out[i].Pairs, out[i].Outcomes = nil, nil
+		out[i].Models = 0
 	}
 	return out
 }
@@ -505,4 +552,12 @@ func TotalForOver(account string, res Resolution, n int) int {
 		sum += b.Total
 	}
 	return sum
+}
+
+func cloneBuckets(in []Bucket) []Bucket {
+	out := make([]Bucket, len(in))
+	for i, b := range in {
+		out[i] = copyBucket(b)
+	}
+	return out
 }
