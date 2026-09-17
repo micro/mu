@@ -743,5 +743,9 @@ func ValidEmail(s string) bool {
 }
 
 func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path, here string) string {
-	return ConsoleHTML(title, `<h1 id="page-title">`+htmlpkg.EscapeString(title)+`</h1>`+body, acc)
+	page := ConsoleHTML(title, `<h1 id="page-title">`+htmlpkg.EscapeString(title)+`</h1>`+body, acc)
+	if bodyAttr != "" {
+		page = strings.Replace(page, `class="document-page"`, `class="document-page `+htmlpkg.EscapeString(bodyAttr)+`"`, 1)
+	}
+	return page
 }

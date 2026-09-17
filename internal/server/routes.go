@@ -44,6 +44,7 @@ import (
 	"mu/service/food"
 	"mu/service/hazards"
 	"mu/service/images"
+	"mu/service/islam"
 	"mu/service/mail"
 	"mu/service/maps"
 	"mu/service/markets"
@@ -580,9 +581,7 @@ func registerRoutes() {
 	// JSON only. The page is /services/weather; this no longer bounces there.
 	http.HandleFunc("/weather", weather.Handler)
 	http.HandleFunc("/prayer", prayer.Handler)
-	http.HandleFunc("/islam", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/services/islam", http.StatusSeeOther)
-	})
+	http.HandleFunc("/islam", islam.Handler)
 
 	// Every service answers at its own name. This was the one that did not —
 	// see service/hazards/page.go for how the route went missing.

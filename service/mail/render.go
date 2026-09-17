@@ -15,7 +15,7 @@ func renderThreadPreview(rootID string, latestMsg *Message, viewerID string, has
 	rowClass := "thread-preview"
 	if hasUnread {
 		rowClass += " mail-unread"
-		unreadIndicator = `<span class="unread-dot">● </span>`
+		unreadIndicator = `<span class="unread-dot" aria-label="Unread"></span>`
 	}
 
 	// Format sender name/email

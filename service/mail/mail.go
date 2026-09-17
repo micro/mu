@@ -1983,7 +1983,7 @@ func RecentThreadsPreview(userID string, limit int) string {
 		msg := thread.Latest
 		unreadDot := ""
 		if thread.HasUnread {
-			unreadDot = `<span class="unread-dot mr-1">●</span>`
+			unreadDot = `<span class="unread-dot" aria-label="Unread"></span>`
 		}
 		// Strip HTML and truncate body for preview
 		body := stripHTMLTags(msg.Body)

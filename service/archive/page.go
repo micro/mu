@@ -145,7 +145,7 @@ func row(e *data.IndexEntry) string {
 		// When it happened, not when this instance indexed it. See
 		// data.PostedAt — IndexedAt is a fact about the index, and on a fresh
 		// install it stamps every row with the moment the instance booted.
-		html.EscapeString(app.TimeAgo(data.PostedAt(e))) + `</div>` + head +
+		`<span>` + html.EscapeString(app.TimeAgo(data.PostedAt(e))) + `</span></div>` + head +
 		`<div class="ar-body">` + html.EscapeString(trim(e.Content, 260)) + `</div></div>`
 }
 

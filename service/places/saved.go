@@ -74,7 +74,7 @@ func getUserSavedSearches(userID string) []SavedSearch {
 	for _, item := range src {
 		duplicate := false
 		for _, old := range out {
-			if sameSearch(old, item) {
+			if sameSearch(old, item) || (strings.EqualFold(strings.TrimSpace(old.Label), strings.TrimSpace(item.Label)) && strings.TrimSpace(item.Label) != "") {
 				duplicate = true
 				break
 			}

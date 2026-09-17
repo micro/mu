@@ -98,6 +98,25 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 	csrf := auth.CSRFToken(r)
 	filter := strings.TrimSpace(r.URL.Query().Get("status"))
 	list := List(sess.Account, filter)
+	if id := r.URL.Query().Get("id"); id != "" {
+		for _, t := range List(sess.Account, "") {
+			if t.ID != id {
+				continue
+			}
+			label := ""
+			if len(names) > 0 && names[0] != nil {
+				label = names[0](t.Owner, t.Agent)
+			}
+			body := `<div class="section-actions"><a href="/tasks">All tasks</a></div>` + taskRow(t, csrf, label)
+			if Running(t) {
+				body += taskPollJS
+			}
+			app.Respond(w, r, app.Response{Title: t.Title, HTML: body})
+			return
+		}
+		app.NotFound(w, r, "Task not found")
+		return
+	}
 
 	var b strings.Builder
 	b.WriteString(`<div class="page-section">`)
@@ -149,7 +168,14 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 		if len(names) > 0 && names[0] != nil {
 			label = names[0](t.Owner, t.Agent)
 		}
-		b.WriteString(taskRow(t, csrf, label))
+		meta := t.Status
+		if label != "" {
+			meta += " · " + label
+		}
+		if !t.Due.IsZero() {
+			meta += " · due " + t.Due.Format("2 Jan 15:04")
+		}
+		fmt.Fprintf(&b, `<a class="collection-item" href="/tasks?id=%s" data-task-id="%s" data-task-status="%s"><span class="collection-title">%s</span><span class="collection-preview">%s</span><span class="collection-when">%s</span></a>`, neturl.QueryEscape(t.ID), html.EscapeString(t.ID), html.EscapeString(t.Status), html.EscapeString(t.Title), html.EscapeString(meta), html.EscapeString(app.TimeAgo(t.Updated)))
 	}
 	b.WriteString(`</div>`)
 

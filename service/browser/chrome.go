@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/emulation"
+	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 
 	"mu/internal/app"
@@ -199,8 +200,17 @@ func capture(parent context.Context, target, selector string, full bool) (shot, 
 	}
 	err := chromedp.Run(ctx,
 		emulation.SetUserAgentOverride(userAgent),
+		emulation.SetDeviceMetricsOverride(viewWide, viewTall, 1, false),
 		chromedp.Navigate(target),
 		settle(selector),
+		chromedp.Evaluate(`(async () => {
+          await Promise.race([Promise.all([
+            document.fonts ? document.fonts.ready : Promise.resolve(),
+            ...Array.from(document.images).filter(i => i.getBoundingClientRect().top < innerHeight).map(i => i.decode ? i.decode().catch(() => {}) : Promise.resolve())
+          ]), new Promise(resolve => setTimeout(resolve, 3000))]);
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          return true;
+        })()`, nil, func(p *runtime.EvaluateParams) *runtime.EvaluateParams { return p.WithAwaitPromise(true) }),
 		chromedp.Title(&title),
 		grab,
 	)

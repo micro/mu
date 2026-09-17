@@ -552,7 +552,7 @@ func updateCacheUnlocked() {
 			previewTimeLabel = "Updated " + app.TimeAgo(previewTime)
 		}
 
-		item := fmt.Sprintf(`<div class="post-item reading-row">
+		item := fmt.Sprintf(`<div class="post-item record-card">
 		%s
 		<h3><a href="/blog/post?id=%s">%s</a></h3>
 		<div class="metadata-row"><span data-timestamp="%d">%s</span> · %s%s</div>
@@ -656,7 +656,7 @@ func updateCacheUnlocked() {
 		}
 
 		controls := app.StaticControls("post", post.ID)
-		item := fmt.Sprintf(`<div class="post-item reading-row">
+		item := fmt.Sprintf(`<div class="post-item record-card">
 			%s
 			<h3><a href="/blog/post?id=%s">%s</a></h3>
 			<div class="metadata-row"><span data-timestamp="%d">%s</span> · %s%s%s</div>

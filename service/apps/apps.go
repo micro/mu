@@ -6,7 +6,6 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
-	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -549,27 +548,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// Tag filter
 	tag := r.URL.Query().Get("tag")
 
-	// Collect known tags from public apps for filter pills
-	tagSet := map[string]bool{}
-	for _, a := range list {
-		for _, t := range splitTags(a.Tags) {
-			tagSet[t] = true
-		}
-	}
-	if len(tagSet) > 0 {
-		sb.WriteString(`<div class="view-switch">`)
-		sb.WriteString(app.PillLink("All", "/apps", tag == ""))
-		var sortedTags []string
-		for t := range tagSet {
-			sortedTags = append(sortedTags, t)
-		}
-		sort.Strings(sortedTags)
-		for _, t := range sortedTags {
-			sb.WriteString(app.PillLink(t, "/apps?tag="+url.QueryEscape(t), strings.EqualFold(tag, t)))
-		}
-		sb.WriteString(`</div>`)
-	}
-
 	// Pricing filter pills
 	hasPaid := false
 	hasFree := false
@@ -732,8 +710,8 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<input type="text" name="description" maxlength="200" class="form-input w-full" placeholder="A simple 25-minute focus timer"></label>`)
 	sb.WriteString(`<label class="field-label">Tags <span class="text-muted text-xs">(comma-separated, optional)</span>`)
 	sb.WriteString(`<input type="text" name="tags" maxlength="200" class="form-input w-full" placeholder="productivity, timer"></label>`)
-	sb.WriteString(`<label class="field-label">HTML (your app — max 256KB)`)
-	sb.WriteString(`<textarea name="html" required class="form-input w-full text-sm mono-tall" placeholder="<h1>Hello World</h1>"></textarea></label>`)
+	sb.WriteString(`<div class="editor-layout"><label class="field-label">HTML (your app — max 256KB)`)
+	sb.WriteString(`<textarea id="new-app-code" data-preview-target="new-app-preview" name="html" required class="code-editor" placeholder="<h1>Hello World</h1>"></textarea></label><div><h3 class="m-0 mb-2">Preview</h3><iframe id="new-app-preview" title="App preview" class="preview-frame" sandbox="allow-scripts"></iframe><p class="note">Preview is isolated. Connected services are available when you open the saved app.</p></div></div>`)
 	sb.WriteString(`<label class="field-label">Price per use <span class="text-muted text-xs">(credits, 0 = free)</span>`)
 	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" class="form-input w-full" placeholder="0"></label>`)
 	sb.WriteString(`<label class="check-label"><input type="checkbox" name="public" value="1" checked class="w-auto m-0"> Public</label>`)

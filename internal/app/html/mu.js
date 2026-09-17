@@ -953,3 +953,314 @@ if (typeof document !== 'undefined') {
   updateConsent();
  }
 }
+
+if (typeof document !== 'undefined') {
+ // Shared live HTML preview. An opaque sandbox isolates authored code from
+ // account cookies and the editor; do not add allow-same-origin here.
+ document.querySelectorAll('[data-preview-target]').forEach(source => {
+  const frame = document.getElementById(source.dataset.previewTarget);
+  if (!frame) return;
+  let timer;
+  const refresh = () => { frame.srcdoc = source.value || '<p style="font:14px system-ui;color:#666;padding:12px">Your app preview appears here.</p>'; };
+  source.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(refresh,350); });
+  refresh();
+ });
+ // Public web/video queries only. Places uses its account-scoped server store.
+ document.querySelectorAll('[data-recent-searches]').forEach(host => {
+  const form = document.getElementById(host.dataset.recentSearches);
+  if (!form) return;
+  const input = form.querySelector('input[name="query"],input[name="q"]');
+  if (!input) return;
+  const key = host.dataset.storageKey;
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(key)||'[]'); } catch (_) {}
+  recent = (Array.isArray(recent)?recent:[]).map(v=>typeof v==='string'?v:(v&&v.query||'')).filter(v=>typeof v==='string'&&v.trim()).slice(0,10);
+  const save = () => { try { localStorage.setItem(key,JSON.stringify(recent)); } catch (_) {} };
+  form.addEventListener('submit', () => { const q=input.value.trim(); if(q){ recent=[q,...recent.filter(v=>v.toLowerCase()!==q.toLowerCase())].slice(0,10);save();} });
+  if(!recent.length)return;
+  const heading=document.createElement('h3');heading.textContent='Recent searches';
+  const row=document.createElement('div');row.className='form-actions';
+  [...new Set(recent)].forEach(q=>{const button=document.createElement('button');button.type='button';button.className='pill';button.textContent=q;button.addEventListener('click',()=>{input.value=q;form.requestSubmit();});row.appendChild(button);});
+  const clear=document.createElement('button');clear.type='button';clear.className='mini-btn';clear.textContent='Clear';clear.addEventListener('click',()=>{recent=[];save();host.replaceChildren();});row.appendChild(clear);
+  host.replaceChildren(heading,row);
+ });
+ // In-memory terminal history: commands may contain secrets and must not be
+ // persisted in localStorage or shared with another signed-in account.
+ const terminal=document.getElementById('shell-command');
+ const output=document.getElementById('shell-result');
+ if(terminal&&output){
+  const input=terminal.elements.command,button=terminal.querySelector('button[type="submit"]');
+  let busy=false,history=[],cursor=0,draft='';
+  input.addEventListener('keydown',e=>{if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;e.preventDefault();if(cursor===history.length)draft=input.value;cursor=Math.max(0,Math.min(history.length,cursor+(e.key==='ArrowUp'?-1:1)));input.value=cursor===history.length?draft:history[cursor];});
+  terminal.addEventListener('submit',async e=>{
+   e.preventDefault();const command=input.value.trim();if(busy||!command)return;
+   const body=new URLSearchParams(new FormData(terminal));
+   history.push(command);history=history.slice(-50);cursor=history.length;draft='';input.value='';busy=true;button.disabled=true;
+   const entry=document.createElement('section');entry.className='shell-entry';
+   const label=document.createElement('div');label.className='shell-command';label.textContent='$ '+command;
+   const result=document.createElement('div');result.textContent='Running…';entry.append(label,result);output.appendChild(entry);entry.scrollIntoView({block:'nearest'});
+   try{
+    const response=await fetch(terminal.action,{method:'POST',body,credentials:'same-origin',headers:{Accept:'text/html'}});
+    const doc=new DOMParser().parseFromString(await response.text(),'text/html'),fragment=doc.getElementById('shell-result');
+    if(!response.ok||!fragment)throw new Error('Could not retrieve the result. The command may have run; it has not been retried.');
+    result.replaceChildren(...Array.from(fragment.childNodes));
+   }catch(error){result.textContent=error.message;result.className='text-error';}
+   finally{busy=false;button.disabled=false;while(output.querySelectorAll('.shell-entry').length>50)output.querySelector('.shell-entry').remove();input.focus();entry.scrollIntoView({block:'nearest'});}
+  });
+ }
+ // Collapse citation sections without hiding the article itself.
+ document.querySelectorAll('.reader-content').forEach(article=>{
+  Array.from(article.querySelectorAll('h2,h3,h4')).filter(h=>/^(references|sources|further reading)\s*:?$/i.test(h.textContent.trim())).forEach(heading=>{
+   const details=document.createElement('details');details.className='references';const summary=document.createElement('summary');summary.textContent=heading.textContent;details.appendChild(summary);heading.before(details);
+   const rank=Number(heading.tagName.slice(1));let next=heading.nextElementSibling;heading.remove();
+   while(next&&!(/^H[1-6]$/.test(next.tagName)&&Number(next.tagName.slice(1))<=rank)){const after=next.nextElementSibling;details.appendChild(next);next=after;}
+  });
+ });
+}
+
+if (typeof document !== "undefined") {
+
+(function(){
+  var el=document.getElementById('map'), layer=document.getElementById('map-layer');
+  if(!el||!layer) return;
+  var SIZE=256, style=el.dataset.style, where=document.getElementById('map-where');
+  var z=+el.dataset.zoom, minZ=+el.dataset.min, maxZ=+el.dataset.max;
+  var routeShape=[];
+ var overlay=document.createElementNS('http://www.w3.org/2000/svg','svg');overlay.classList.add('map-overlay');el.appendChild(overlay);
+ el.addEventListener('map-route',function(e){routeShape=e.detail.filter(function(p){return Number.isFinite(p.Lat)&&Number.isFinite(p.Lon);});if(!routeShape.length){overlay.replaceChildren();return;}var lat=routeShape.reduce(function(a,p){return a+p.Lat;},0)/routeShape.length,lon=routeShape.reduce(function(a,p){return a+p.Lon;},0)/routeShape.length;z=Math.min(maxZ,15);while(z>minZ){var xs=routeShape.map(function(p){return xOf(p.Lon,z)*SIZE;}),ys=routeShape.map(function(p){return yOf(p.Lat,z)*SIZE;});if(Math.max.apply(null,xs)-Math.min.apply(null,xs)<el.clientWidth-40&&Math.max.apply(null,ys)-Math.min.apply(null,ys)<el.clientHeight-40)break;z--;}cx=xOf(lon,z);cy=yOf(lat,z);layer.innerHTML='';live={};render();});
+ var live={}, arrived=0, missing=0, asked=0;
+  function done(){ say(); }
+
+  // Web Mercator, the same formula the service uses server-side. Kept as a
+  // float so the centre can sit anywhere in a tile rather than snapping.
+  function xOf(lon,z){ return (lon+180)/360*Math.pow(2,z); }
+  function yOf(lat,z){ var r=lat*Math.PI/180;
+    return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z); }
+  function lonOf(x,z){ return x/Math.pow(2,z)*360-180; }
+  function latOf(y,z){ var n=Math.PI-2*Math.PI*y/Math.pow(2,z);
+    return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))); }
+
+  var cx=xOf(+el.dataset.lon,z), cy=yOf(+el.dataset.lat,z);
+
+  function render(){
+    var w=el.clientWidth, h=el.clientHeight, n=Math.pow(2,z);
+    // The pixel at the top-left of the viewport, in world pixels.
+    var left=cx*SIZE-w/2, top=cy*SIZE-h/2;
+    var x0=Math.floor(left/SIZE), y0=Math.floor(top/SIZE);
+    var x1=Math.floor((left+w)/SIZE), y1=Math.floor((top+h)/SIZE);
+    var seen={};
+    for(var y=y0;y<=y1;y++){
+      for(var x=x0;x<=x1;x++){
+        if(y<0||y>=n) continue;
+        var wx=((x%n)+n)%n;            // wrap east-west, so a pan does not run out
+        var k=z+'/'+wx+'/'+y;
+        seen[k]=true;
+        var img=live[k];
+        if(!img){
+          img=new Image();
+          img.className='map-tile';
+          img.alt='';
+          img.src='/maps/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png';
+          // A tile outside Britain is a 404 and that is normal here, so it
+          // fades out rather than showing a broken image.
+          img.onerror=function(){ this.classList.add('map-gap'); missing++; done(); };
+          img.onload=function(){ arrived++; done(); };
+          layer.appendChild(img);
+          live[k]=img;
+        }
+        img.style.left=(x*SIZE-left)+'px';
+        img.style.top=(y*SIZE-top)+'px';
+      }
+    }
+    for(var have in live){
+      if(!seen[have]){ layer.removeChild(live[have]); delete live[have]; }
+    }
+    overlay.replaceChildren();if(routeShape.length){var line=document.createElementNS('http://www.w3.org/2000/svg','polyline');line.setAttribute('points',routeShape.map(function(p){return (xOf(p.Lon,z)*SIZE-left)+','+(yOf(p.Lat,z)*SIZE-top);}).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke','#2563eb');line.setAttribute('stroke-width','4');overlay.appendChild(line);}
+ asked=Object.keys(live).length;
+    say();
+  }
+
+  // What the map is looking at, and — when nothing came back — why that might
+  // be. A tile that fails is hidden, which is right for the sea around Britain
+  // and wrong when every tile fails: a map where nothing loaded then looks
+  // exactly like a map still loading, which is how "tiles do not load" becomes
+  // a report with nothing in it. So it says so.
+  function say(){
+    if(!where) return;
+    var at=latOf(cy,z).toFixed(4)+', '+lonOf(cx,z).toFixed(4)+'  ·  zoom '+z;
+    if(asked>0 && arrived===0 && missing>=asked){
+      where.textContent=at+(style==='world'?' · Map tiles could not be loaded.':' · No tiles loaded. This layer covers Britain and requires an Ordnance Survey key.');
+      return;
+    }
+    where.textContent=at;
+  }
+
+  function zoomTo(next){
+    next=Math.max(minZ,Math.min(maxZ,next));
+    if(next===z) return;
+    var lat=latOf(cy,z), lon=lonOf(cx,z);
+    z=next; cx=xOf(lon,z); cy=yOf(lat,z);
+    // Every tile is the wrong size now, so start again rather than reposition.
+    layer.innerHTML=''; live={}; arrived=0; missing=0;
+    render();
+  }
+
+  // Dragging. Pointer events, so a finger and a mouse are the same code.
+  var dragging=false, lastX=0, lastY=0;
+  el.addEventListener('pointerdown',function(e){
+    dragging=true; lastX=e.clientX; lastY=e.clientY;
+    el.setPointerCapture(e.pointerId); el.classList.add('map-dragging');
+  });
+  el.addEventListener('pointermove',function(e){
+    if(!dragging) return;
+    cx-=(e.clientX-lastX)/SIZE; cy-=(e.clientY-lastY)/SIZE;
+    lastX=e.clientX; lastY=e.clientY;
+    render();
+  });
+  function stop(e){ dragging=false; el.classList.remove('map-dragging');
+    if(e&&e.pointerId!==undefined&&el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId); }
+  el.addEventListener('pointerup',stop);
+  el.addEventListener('pointercancel',stop);
+
+  el.addEventListener('wheel',function(e){ e.preventDefault(); zoomTo(z+(e.deltaY<0?1:-1)); },{passive:false});
+  el.addEventListener('dblclick',function(){ zoomTo(z+1); });
+
+  var zin=document.getElementById('map-in'), zout=document.getElementById('map-out');
+  if(zin) zin.onclick=function(){ zoomTo(z+1); };
+  if(zout) zout.onclick=function(){ zoomTo(z-1); };
+
+  // Where you are, asked for rather than taken. The browser prompts, and a
+  // refusal leaves the map where it was rather than saying anything: somebody
+  // who declines has answered the question.
+  var here=document.getElementById('map-here');
+  if(here) here.onclick=function(){
+    if(!navigator.geolocation) return;
+    here.disabled=true;
+    navigator.geolocation.getCurrentPosition(function(p){
+      here.disabled=false;
+      z=Math.max(z,14);
+      cx=xOf(p.coords.longitude,z); cy=yOf(p.coords.latitude,z);
+      layer.innerHTML=''; live={}; arrived=0; missing=0; render();
+    },function(){ here.disabled=false; },{timeout:10000});
+  };
+
+  window.addEventListener('resize',render);
+  render();
+})();
+
+}
+
+if (typeof document !== "undefined") {
+(function(){var form=document.getElementById('map-directions'),out=document.getElementById('map-directions-result');if(!form||form.dataset.wired)return;form.dataset.wired='1';var request=0;
+document.getElementById('map-start-here').onclick=function(){if(!navigator.geolocation){out.textContent='Location is unavailable. Enter a starting point.';return;}navigator.geolocation.getCurrentPosition(function(p){form.elements.from.value=p.coords.latitude+','+p.coords.longitude;},function(){out.textContent='Could not get your location. Enter a starting point.';},{timeout:10000});};
+form.onsubmit=async function(e){e.preventDefault();var id=++request;document.getElementById('map').dispatchEvent(new CustomEvent('map-route',{detail:[]}));out.textContent='Finding directions…';try{var q=new URLSearchParams(new FormData(form)),r=await fetch('/routes',{method:'POST',body:q,headers:{Accept:'application/json'}}),d=await r.json();if(id!==request)return;if(!r.ok)throw new Error(d.error||'Directions are unavailable.');out.replaceChildren();if(d.estimate){out.textContent='Road directions are unavailable on this instance. A straight-line estimate is not navigation.';return;}var summary=document.createElement('p');summary.textContent=d.summary;out.appendChild(summary);var list=document.createElement('ol');(d.steps||[]).forEach(function(s){var item=document.createElement('li');item.textContent=s.Text;list.appendChild(item);});out.appendChild(list);document.getElementById('map').dispatchEvent(new CustomEvent('map-route',{detail:d.shape||[]}));}catch(e){if(id===request)out.textContent=e.message||'Could not load directions.';}};
+})();
+}
+
+if (typeof document !== "undefined" && document.getElementById("app-editor-state")) {
+const initial=JSON.parse(document.getElementById("app-editor-state").textContent);
+
+var codeEl = document.getElementById('code');
+var preview = document.getElementById('preview');
+var appIcon = initial.icon;
+var editSlug = initial.slug;
+
+// Pre-populate fields
+codeEl.value = initial.html;
+document.getElementById('appName').value = initial.name;
+document.getElementById('appSlugInput').value = editSlug;
+document.getElementById('appDesc').value = initial.description;
+document.getElementById('appTags').value = initial.tags;
+document.getElementById('appPublic').checked = initial.public;
+document.getElementById('appPrice').value = initial.price;
+showPreview();
+
+codeEl.addEventListener('keydown', function(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    var start = this.selectionStart, end = this.selectionEnd;
+    this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+    this.selectionStart = this.selectionEnd = start + 2;
+  }
+});
+
+function showPreview() {
+  var html = codeEl.value;
+  if (!html.trim()) return;
+  preview.style.display = '';
+  preview.srcdoc = html;
+}
+
+function updatePreview() { showPreview(); }
+
+function saveApp() {
+  var name = document.getElementById('appName').value.trim();
+  var newSlug = document.getElementById('appSlugInput').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'').replace(/^-|-$/g,'');
+  var desc = document.getElementById('appDesc').value.trim();
+  var tags = (document.getElementById('appTags').value || '').trim();
+  var html = codeEl.value.trim();
+  if (!name) { document.getElementById('statusMsg').textContent = 'App name is required'; return; }
+  if (!html) { document.getElementById('statusMsg').textContent = 'No code to save'; return; }
+
+  // If slug changed, rename first
+  if (newSlug && newSlug !== editSlug) {
+    document.getElementById('statusMsg').textContent = 'Renaming...';
+    fetch('/apps/' + editSlug, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: newSlug })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
+      editSlug = data.slug || newSlug;
+      document.getElementById('appSlugInput').value = editSlug;
+      doSave();
+    }).catch(function(e){ document.getElementById('statusMsg').textContent = e.message; });
+    return;
+  }
+  doSave();
+  function doSave() {
+  document.getElementById('statusMsg').textContent = 'Saving...';
+  fetch('/apps/' + editSlug, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, icon: appIcon, description: desc, tags: tags, html: html, public: document.getElementById('appPublic').checked, price: parseInt(document.getElementById('appPrice').value)||0 })
+  })
+  .then(function(r) {
+    if (!r.ok) {
+      return r.text().then(function(t) {
+        try { var j = JSON.parse(t); throw new Error(j.error || 'Save failed'); }
+        catch(e) { if (e.message) throw e; throw new Error('Save failed (status ' + r.status + ')'); }
+      });
+    }
+    return r.json();
+  })
+  .then(function(data) {
+    if (data.error) { document.getElementById('statusMsg').textContent = data.error; return; }
+    var now = new Date();
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var ts = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('savedAt').textContent = 'Last saved ' + ts;
+    document.getElementById('statusMsg').textContent = 'Saved!';
+    setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 3000);
+  })
+  .catch(function(e) { document.getElementById('statusMsg').textContent = e.message || 'Save failed'; });
+  } // end doSave
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(codeEl.value).then(function() {
+    document.getElementById('statusMsg').textContent = 'Copied!';
+    setTimeout(function() { document.getElementById('statusMsg').textContent = ''; }, 2000);
+  });
+}
+
+function deleteApp() {
+  if (!confirm('Delete this app? This cannot be undone.')) return;
+  fetch('/apps/' + editSlug + '/delete', { method: 'POST' })
+  .then(function(r) { if (r.ok) window.location.href = '/apps'; else throw new Error('Delete failed'); })
+  .catch(function(e) { document.getElementById('statusMsg').textContent = e.message; });
+}
+
+const actions={deleteApp,copyCode,updatePreview,saveApp};
+document.querySelectorAll('[data-app-action]').forEach(button=>button.addEventListener('click',()=>actions[button.dataset.appAction]?.()));
+}
