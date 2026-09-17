@@ -940,7 +940,7 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 		return
 	}
 	app.Log("auth", "Sent verification email to %s for account %s", email, acc.ID)
-	http.Redirect(w, r, "/account", http.StatusSeeOther)
+	http.Redirect(w, r, "/account/connections", http.StatusSeeOther)
 }
 
 // Preserve non-secret form fields on errors and the destination between auth pages.
