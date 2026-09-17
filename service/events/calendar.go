@@ -31,7 +31,7 @@ func ICS(e *Event, organizerEmail string) string {
 	var b strings.Builder
 	b.WriteString("BEGIN:VCALENDAR\r\n")
 	b.WriteString("VERSION:2.0\r\n")
-	b.WriteString("PRODID:-//Mu//Events//EN\r\n")
+	b.WriteString("PRODID:-//Micro//Events//EN\r\n")
 	b.WriteString("METHOD:PUBLISH\r\n")
 	b.WriteString("BEGIN:VEVENT\r\n")
 	fmt.Fprintf(&b, "UID:%s@mu\r\n", e.ID)

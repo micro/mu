@@ -34,6 +34,7 @@ type CreateRequest struct {
 // CreateResponse confirms the scheduled event.
 type CreateResponse struct {
 	Item   *Event `json:"item"`
+	URL    string `json:"url" description:"Open the saved schedule"`
 	Result string `json:"result" description:"Confirmation of the scheduled event"`
 }
 
@@ -53,16 +54,17 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 		return err
 	}
 	rsp.Item = e
+	rsp.URL = eventURL(e.ID)
 	if e.Prompt != "" {
-		rsp.Result = fmt.Sprintf("Standing instruction set: %s. The answer will be mailed to you each time.", Describe(e))
+		rsp.Result = fmt.Sprintf("Standing instruction set: %s. Micro will attempt this instruction and deliver the outcome to your inbox each time. View schedule: %s", Describe(e), rsp.URL)
 		return nil
 	}
 	if e.Repeat != RepeatNone {
-		rsp.Result = fmt.Sprintf("Scheduled: %s.", Describe(e))
+		rsp.Result = fmt.Sprintf("Reminder scheduled: %s. This sends a reminder to subscribed devices; it does not run agent work. View schedule: %s", Describe(e), rsp.URL)
 		return nil
 	}
-	rsp.Result = fmt.Sprintf("Scheduled %q for %s. Add to Google Calendar: %s",
-		e.Title, e.When.Format("Mon 2 Jan 2006 15:04 MST"), GoogleCalendarURL(e.Title, e.When, e.Note))
+	rsp.Result = fmt.Sprintf("Reminder scheduled %q for %s. This sends a reminder to subscribed devices; it does not run agent work. View schedule: %s. Add a copy to Google Calendar: %s",
+		e.Title, e.When.Format("Mon 2 Jan 2006 15:04 MST"), rsp.URL, GoogleCalendarURL(e.Title, e.When, e.Note))
 	return nil
 }
 

@@ -80,7 +80,7 @@ func greet(accountID, name string) {
 		time.Now().UnixNano(), accountID, mail.ConfiguredDomain())
 
 	if err := mail.DeliverHere(mail.Local{
-		Display:   "Mu",
+		Display:   "Micro",
 		From:      mail.SharedAgentAddress(),
 		To:        accountID,
 		Subject:   "Welcome — you can reply to this",
