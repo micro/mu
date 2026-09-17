@@ -36,7 +36,7 @@ func ReadingActionItems(r *http.Request, ref string) string {
 	} else if strings.HasPrefix(r.URL.Path, "/blog") {
 		path = "/blog/post?id=" + url.QueryEscape(ref)
 	}
-	return SaveControl(r, ref) + `<button class="mini-btn" type="button" data-url="` + html.EscapeString(path) + `" onclick="const u=new URL(this.dataset.url,location.href).href;if(navigator.share){navigator.share({url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).catch(()=>{})}">Share</button>` + AskControl(ref)
+	return SaveControl(r, ref) + `<button class="mini-btn" type="button" data-url="` + html.EscapeString(path) + `" onclick="const u=new URL(this.dataset.url,location.href).href;if(navigator.share){navigator.share({url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).catch(()=>{})}">Share</button>`
 }
 func ReadingFilters(path, active string, categories []string) string {
 	sort.Strings(categories)
@@ -75,10 +75,4 @@ func ReadingPages(path, category string, page, total, size int) string {
 		link("Next", page+1)
 	}
 	return b.String() + `</nav>`
-}
-
-// AskControl opens a private conversation with public reading material attached.
-// Only its opaque reference travels in the URL; questions stay in the chat body.
-func AskControl(ref string) string {
-	return `<a class="mini-btn" href="/?item=` + url.QueryEscape(ref) + `">Discuss</a>`
 }

@@ -614,10 +614,6 @@ func renderPrayerPage(rd *ReminderData, view string) string {
 	if view == "verse" || view == "reflection" {
 		section("Reflection", rd.Message, "", "")
 	}
-	ref := "reminder-" + reflectionKey(rd.Updated)
-	if entry := data.ByID(ref); entry != nil && entry.Type == data.KindReminder && entry.Owner == "" {
-		b.WriteString(`<div class="section-actions">` + app.AskControl(ref) + `</div>`)
-	}
 	b.WriteString(`<p class="text-xs text-muted">From <a href="https://reminder.dev">reminder.dev</a>. Ask Micro about this reminder using its Quran and hadith tools.</p>`)
 	b.WriteString(app.Close())
 	return b.String()

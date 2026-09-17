@@ -762,6 +762,8 @@ func renderSavedSearchesSection(userID string) string {
 	var sb strings.Builder
 	sb.WriteString(`<div class="page-stack compact-stack"><h3>Recent searches</h3><div class="form-actions">`)
 	for _, s := range searches {
+		options := normalizedSearch(s)
+		label := fmt.Sprintf("%s · %g km · %s", s.Label, float64(options.Radius)/1000, options.SortBy)
 		latStr := fmt.Sprintf("%f", s.Lat)
 		lonStr := fmt.Sprintf("%f", s.Lon)
 		if s.Lat == 0 {
@@ -778,7 +780,7 @@ func renderSavedSearchesSection(userID string) string {
 			escapeHTML(jsonStr(s.Type)), escapeHTML(jsonStr(s.Query)), escapeHTML(jsonStr(s.Location)),
 			escapeHTML(jsonStr(latStr)), escapeHTML(jsonStr(lonStr)),
 			escapeHTML(jsonStr(fmt.Sprintf("%d", s.Radius))), escapeHTML(jsonStr(s.SortBy)),
-			escapeHTML(s.Label), escapeHTML(s.ID),
+			escapeHTML(label), escapeHTML(s.ID),
 		))
 	}
 	sb.WriteString(`</div></div>`)

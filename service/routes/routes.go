@@ -118,7 +118,7 @@ type when struct {
 }
 
 // computeRoute asks Google about the journey.
-func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when, d detail) (route, error) {
+func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when, d detail, addresses ...string) (route, error) {
 	key := googleAPIKey()
 	if key == "" {
 		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
@@ -128,6 +128,16 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when, d
 		"origin":      latLng(fromLat, fromLon),
 		"destination": latLng(toLat, toLon),
 		"travelMode":  mode,
+	}
+	// Let the configured routing provider resolve natural-language destinations
+	// instead of rejecting them at a separate exact-name geocoder first.
+	if len(addresses) == 2 {
+		if addresses[0] != "" {
+			payload["origin"] = map[string]any{"address": addresses[0]}
+		}
+		if addresses[1] != "" {
+			payload["destination"] = map[string]any{"address": addresses[1]}
+		}
 	}
 	// Traffic-aware routing is only valid for driving; sending it for a walk is
 	// rejected outright rather than ignored.

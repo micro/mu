@@ -56,7 +56,7 @@ func (Server) ETA(_ context.Context, req *ETARequest, rsp *ETAResponse) error {
 		rsp.Text = msg
 		return nil
 	}
-	r, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, summary)
+	r, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, summary, j.fromAddress, j.toAddress)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (Server) Directions(_ context.Context, req *DirectionsRequest, rsp *Directi
 		rsp.Text = msg
 		return nil
 	}
-	r, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full)
+	r, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full, j.fromAddress, j.toAddress)
 	if err != nil {
 		return err
 	}
@@ -254,23 +254,24 @@ func (Server) Nearest(_ context.Context, req *NearestRequest, rsp *NearestRespon
 // journey is a request that has been read: both ends found, mode understood,
 // times parsed.
 type journey struct {
-	fromLat, fromLon float64
-	toLat, toLon     float64
-	fromLabel        string
-	toLabel          string
-	mode             string
-	when             when
+	fromLat, fromLon       float64
+	toLat, toLon           float64
+	fromAddress, toAddress string
+	fromLabel              string
+	toLabel                string
+	mode                   string
+	when                   when
 }
 
 // plan reads a request, or returns the sentence to say instead. Every refusal
 // here is something the caller can fix, so it comes back as an answer rather
 // than an error.
 func plan(req *ETARequest) (journey, string) {
-	fromLat, fromLon, ok := locate(req.From, req.FromLat, req.FromLon)
+	fromLat, fromLon, fromAddress, ok := waypoint(req.From, req.FromLat, req.FromLon)
 	if !ok {
 		return journey{}, "Please say where the journey starts (a place name or coordinates)."
 	}
-	toLat, toLon, ok := locate(req.To, req.ToLat, req.ToLon)
+	toLat, toLon, toAddress, ok := waypoint(req.To, req.ToLat, req.ToLon)
 	if !ok {
 		return journey{}, "Please say where the journey ends (a place name or coordinates)."
 	}
@@ -284,6 +285,7 @@ func plan(req *ETARequest) (journey, string) {
 	}
 	return journey{
 		fromLat: fromLat, fromLon: fromLon, toLat: toLat, toLon: toLon,
+		fromAddress: fromAddress, toAddress: toAddress,
 		fromLabel: locationLabel(req.From, fromLat, fromLon),
 		toLabel:   locationLabel(req.To, toLat, toLon),
 		mode:      mode, when: w,
@@ -421,4 +423,22 @@ var Spec = service.Spec{
 			Cost: quota.OpRoutesETA,
 		},
 	},
+}
+
+// waypoint preserves coordinates and lets Google resolve an entered address.
+// Without a configured routing provider, the existing geocoder supplies the
+// coordinates required for the explicitly labelled straight-line estimate.
+func waypoint(name string, lat, lon float64) (float64, float64, string, bool) {
+	n := strings.TrimSpace(name)
+	if lat != 0 || lon != 0 {
+		return lat, lon, "", true
+	}
+	if a, b, ok := coords(n); ok {
+		return a, b, "", true
+	}
+	if googleAPIKey() != "" && n != "" && len(n) <= 500 {
+		return 0, 0, n, true
+	}
+	a, b, ok := locate(n, lat, lon)
+	return a, b, "", ok
 }

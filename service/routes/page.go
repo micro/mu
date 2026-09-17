@@ -1,21 +1,7 @@
 package routes
 
-// The page: two ends, a way to travel, and the road drawn.
-//
-// The drawing is the reason this page exists rather than being a paragraph.
-// Google returns the route's shape as an encoded polyline in the same response
-// that gives the time, so the line is already paid for — and drawing it as SVG
-// costs nothing more, where a map tile would be another product, another key
-// and another bill. It is the flights radar's trick again: we have the
-// coordinates, so draw them.
-//
-// It is not a map. There is no coastline, no street, no north arrow — just the
-// shape of the journey with its ends marked. That is honest about what we have,
-// and it answers the thing a shape can answer: does this route go the way I
-// expected, or does it loop out to a motorway.
-//
-// No sign-in. A journey between two public places is public, and the page is a
-// second door onto the same tools rather than a different service.
+// The page shows a route after an explicit, CSRF-protected POST.
+// GET only displays or prefills the form and never calls the paid provider.
 
 import (
 	"fmt"
@@ -30,6 +16,16 @@ import (
 
 // Handler serves /routes.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		w.Header().Set("Allow", "GET, POST")
+		app.MethodNotAllowed(w, r)
+		return
+	}
+	if app.WantsJSON(r) && r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		app.MethodNotAllowed(w, r)
+		return
+	}
 	from := strings.TrimSpace(r.URL.Query().Get("from"))
 	to := strings.TrimSpace(r.URL.Query().Get("to"))
 	mode := strings.TrimSpace(r.URL.Query().Get("mode"))
@@ -65,7 +61,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondError(w, 400, msg)
 			return
 		}
-		route, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full)
+		route, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full, j.fromAddress, j.toAddress)
 		if err != nil {
 			app.RespondError(w, 502, "Could not load directions")
 			return
@@ -81,23 +77,36 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var b strings.Builder
-	b.WriteString(form(from, to, mode))
+	b.WriteString(form(from, to, mode, auth.CSRFToken(r)))
 
-	if from != "" && to != "" {
-		b.WriteString(journeyCard(from, to, mode))
+	if r.Method == http.MethodPost && from != "" && to != "" {
+		owner, ok := app.BillableCaller(w, r, quota.OpRoutesDirections)
+		if !ok {
+			return
+		}
+		if owner != "" {
+			if err := auth.CheckPostRate(owner); err != nil {
+				app.RespondError(w, 429, "Please wait before another lookup.")
+				return
+			}
+		}
+		b.WriteString(journeyCard(from, to, mode, owner))
 	} else {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">` +
 			`Two places, and how you are travelling. You get the time, how much of it ` +
-			`is traffic, the turns, and the shape of the road — which is the part that ` +
-			`tells you whether the route goes the way you expected.</p></div>`)
+			`is traffic, the turns, and the route on a map — which ` +
+			`helps you check that it goes where you expected. Include the city for ambiguous place names.</p></div>`)
 	}
 	app.Respond(w, r, app.Response{Title: "Routes", Description: "How to get from one place to another", HTML: b.String()})
 }
 
 // form is the two ends and the mode.
-func form(from, to, mode string) string {
+func form(from, to, mode string, csrf ...string) string {
 	var b strings.Builder
-	b.WriteString(`<form method="GET" action="/routes" class="card form form-inline">`)
+	b.WriteString(`<form method="POST" action="/routes" class="card form form-inline">`)
+	if len(csrf) > 0 {
+		b.WriteString(app.CSRFField(csrf[0]))
+	}
 	b.WriteString(`<input name="from" value="` + html.EscapeString(from) +
 		`" placeholder="From — e.g. King's Cross, London" autocomplete="off" aria-label="Starting point">`)
 	b.WriteString(`<input name="to" value="` + html.EscapeString(to) +
@@ -117,17 +126,22 @@ func form(from, to, mode string) string {
 }
 
 // journeyCard is the answer: the summary, the drawing, and the turns.
-func journeyCard(from, to, mode string) string {
+func journeyCard(from, to, mode string, owners ...string) string {
 	j, msg := plan(&ETARequest{From: from, To: to, Mode: mode})
 	if msg != "" {
 		return `<div class="card"><p class="text-sm text-muted">` + html.EscapeString(msg) + `</p></div>`
 	}
-	r, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full)
+	r, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full, j.fromAddress, j.toAddress)
 	if err != nil {
 		return `<div class="card"><p class="text-sm text-muted">` +
 			html.EscapeString(err.Error()) + `.</p></div>`
 	}
 
+	if len(owners) > 0 && owners[0] != "" && !r.Estimate {
+		if err := quota.Charge(owners[0], quota.OpRoutesDirections, nil); err != nil {
+			return `<p class="notice">Could not charge for directions.</p>`
+		}
+	}
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
 	fmt.Fprintf(&b, `<h3 class="rt-head">%s → %s</h3>`, html.EscapeString(j.fromLabel), html.EscapeString(j.toLabel))

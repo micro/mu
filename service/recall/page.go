@@ -120,7 +120,7 @@ func hitRow(h thread.Hit, query string) string {
 		html.EscapeString(app.TimeAgo(h.At)) + ` · ` +
 		`<span class="rc-where">` + html.EscapeString(app.ClientName(h.Client)) + `</span></div>` +
 		`<div class="rc-text">` + highlight(snippet(h.Text, query), query) + `</div>` +
-		`<div class="rc-subject">in “` + html.EscapeString(subject) + `”</div></a>`
+		`<div class="rc-subject">Open conversation: “` + html.EscapeString(subject) + `”</div></a>`
 }
 
 // clientChips narrows a search to where it was said.

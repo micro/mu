@@ -543,3 +543,29 @@ The command shell has one stylesheet; service results share one renderer.
 Backend tests and the browser layout gate must pass before merge. Inspect real
 desktop and mobile screenshots of populated/empty command results, login,
 signup and footer destinations alongside browser assertions.
+
+
+### Shared service layout contract
+
+Service pages use `/mu.css` and `/mu.js` through the shared shell. Add shared
+component rules there; do not introduce a second stylesheet, executable inline
+scripts, or page-local spacing fixes. Bind behaviour with data attributes; use
+inert JSON for server-provided state.
+
+Use `collection-list` / `collection-item` for linked records, `record-card` for
+vertical content, `metadata-row` for secondary labels and timestamps, and
+`form-actions` for groups of controls. A `reading-row` is a horizontal media row,
+not a wrapper for an article's title, metadata and paragraphs. Wrap separate
+metadata values in elements so layout gaps can separate them. Use `search-bar`
+and labelled fields for forms; never depend on whitespace between inline links.
+
+Keep reading text narrow, while desktop lists, editors and maps use the wider
+page container. All grid/flex children must shrink and long content must wrap.
+Mobile forms wrap, tables scroll or stack, previews fit their container, and
+conversation composers remain reachable. Bound images and give SVG shapes
+explicit fills and strokes. Keep optional references in a collapsed disclosure.
+
+When changing a shared primitive, inspect its populated and empty uses across
+services at narrow and wide widths, including long titles and action groups.
+Record any unavailable browser verification explicitly; a successful build does
+not establish that a page renders correctly.

@@ -101,7 +101,7 @@ func RouteMap(points []result.Point) string {
 			if x < 0 || y < 0 || x >= 1<<z || y >= 1<<z {
 				continue
 			}
-			fmt.Fprintf(&b, `<image x="%.1f" y="%.1f" width="256" height="256" href="/maps/world/%d/%d/%d.png"/>`, float64(x*256)-left, float64(y*256)-top, z, x, y)
+			fmt.Fprintf(&b, `<image x="%.1f" y="%.1f" width="256" height="256" href="/maps/tiles/world/%d/%d/%d.png"/>`, float64(x*256)-left, float64(y*256)-top, z, x, y)
 		}
 	}
 	var path strings.Builder
