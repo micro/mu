@@ -192,9 +192,8 @@ func contactBody(acc *auth.Account) string {
 	// than a wall: there is something you can try right now, and the rest is
 	// what an account is for.
 	if acc == nil {
-		b.WriteString(`<p class="text-muted">These answer once it knows who you are. ` +
-			`The box on the <a href="/">front page</a> works without an account — ` +
-			`for the rest, <a href="/signup">make one</a> and verify your number.</p>`)
+		b.WriteString(`<p class="text-muted"><a href="/login">Sign in</a> or <a href="/signup">create an account</a>. ` +
+			`Verify your email address or phone number in Account settings to use the same assistant by email, text or WhatsApp.</p>`)
 	} else if !numberVerified(acc.ID) {
 		b.WriteString(`<p class="text-muted">It will not recognise you by phone until you have ` +
 			`<a href="/account#phone">verified a number</a> as yours. Mail and the web already know you.</p>`)
