@@ -694,3 +694,10 @@ body.nav-open{overflow:hidden}
 .inbox-views{gap:12px 20px;margin-block:0 16px}
 .view-switch a[aria-current="page"]{font-weight:600;text-decoration:underline;text-underline-offset:4px}
 
+
+/* One compact message composer on the landing and conversation views. */
+.command-page #command-form{width:100%;max-width:600px;margin-inline:auto}
+.command-page .composer{border:1px solid var(--border,#ddd);border-radius:6px;padding:3px;gap:4px}
+.command-page .composer input{border:0;background:transparent}
+.command-page .composer button{margin:0;border:0;background:#f4f4f4;border-radius:4px}
+
