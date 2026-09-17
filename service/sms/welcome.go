@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"mu/internal/origin"
+	"mu/internal/quota"
 	"mu/internal/userdb"
 )
 
@@ -17,7 +18,10 @@ var welcomeMu sync.Mutex
 // survives restarts and limits paid replies without limiting shared visitor IPs.
 func welcomeReply(channel Channel, number string) string {
 	base := origin.Self()
-	if base == "" || OptedOut(number) {
+	if base == "" || OptedOut(number) || !ConfiguredFor(channel) || defaultLimitOn(channel) == 0 || quota.DailyLimit(opFor(channel)) == 0 {
+		return ""
+	}
+	if channel == ChannelSMS && !countryAllowed(number) {
 		return ""
 	}
 	welcomeMu.Lock()
@@ -34,7 +38,13 @@ func welcomeReply(channel Channel, number string) string {
 			seen = saved
 		}
 	}
-	if _, sent := seen[key]; sent || len(seen) >= 200 {
+	cap := 200
+	for _, limit := range []int{defaultLimitOn(channel), quota.DailyLimit(opFor(channel))} {
+		if limit > 0 && limit < cap {
+			cap = limit
+		}
+	}
+	if _, sent := seen[key]; sent || len(seen) >= cap {
 		return ""
 	}
 	seen[key] = true

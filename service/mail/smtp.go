@@ -430,14 +430,16 @@ func (s *Session) Data(r io.Reader) error {
 
 	// Verify DKIM signature before parsing consumes the reader
 	dkimPass := false
-	if !s.isLocalhost {
+	var signedDomains []string
+	{
 		verifications, err := dkim.Verify(bytes.NewReader(buf.Bytes()))
 		if err == nil && len(verifications) > 0 {
 			for _, v := range verifications {
 				if v.Err == nil {
 					dkimPass = true
+					signedDomains = append(signedDomains, v.Domain)
 					app.Log("mail", "DKIM verification passed for domain %s", v.Domain)
-					break
+					continue
 				}
 				app.Log("mail", "DKIM verification failed for domain %s: %v", v.Domain, v.Err)
 			}
@@ -446,8 +448,6 @@ func (s *Session) Data(r io.Reader) error {
 		} else {
 			app.Log("mail", "No DKIM signature found")
 		}
-	} else {
-		dkimPass = true // Trust localhost
 	}
 
 	// Parse the email
@@ -519,9 +519,29 @@ func (s *Session) Data(r io.Reader) error {
 		}
 	}
 
+	// Authenticate the visible sender, not an unrelated envelope or DKIM domain.
+	aligned := s.spfPass && strings.EqualFold(s.from, fromAddr.Address)
+	if _, domain, ok := strings.Cut(fromAddr.Address, "@"); ok {
+		for _, signed := range signedDomains {
+			if strings.EqualFold(signed, domain) {
+				aligned = true
+			}
+		}
+	}
+	sharedOnly := len(s.to) == 1 && sharedRecipient(s.to[0])
+	if sharedOnly && AccountForVerifiedEmail(fromAddr.Address) == nil {
+		if !aligned || machineMail(msg.Header) || strings.TrimSpace(s.from) == "" {
+			return &smtpd.SMTPError{Code: 550, Message: "Create an account and verify your email address before writing to Micro"}
+		}
+		if err := sendRegistrationReply(fromAddr.Address, messageID); err != nil {
+			return &smtpd.SMTPError{Code: 451, Message: "Registration reply temporarily unavailable; please try again later"}
+		}
+		return nil
+	}
+
 	// ── Strict inbound filter ──────────────────────────────────
 	// The whole policy is at the top of inbound_filter.go.
-	if !s.isLocalhost {
+	if !s.isLocalhost && !(sharedOnly && aligned) {
 		reason, allowed := CheckInboundAllowed(fromAddr.Address, s.to, inReplyTo, references)
 		if !allowed {
 			app.Log("mail", "Rejected inbound from %s: %s", fromAddr.Address, reason)
@@ -641,28 +661,13 @@ func (s *Session) Data(r io.Reader) error {
 		// username to reach it.
 		var toAcc *auth.Account
 		sharedAgentMail := !isExternal && strings.EqualFold(toUsername, AgentMailbox)
+		if sharedAgentMail && !aligned {
+			continue // Never file a spoofed sender under a verified account.
+		}
 		if sharedAgentMail {
 			toAcc = AccountForVerifiedEmail(fromAddr.Address)
 			if toAcc == nil {
-				// Somebody nobody here has heard of, writing to the address the
-				// front page advertises. Dropped, silently, so a probe cannot
-				// learn the address is live.
-				//
-				// They used to get an account: unclaimed, no password, holding
-				// the conversation with a small allowance of turns until they
-				// signed up and claimed it. It read well — the landing said
-				// "write to it and it answers" — and it was a free front door
-				// with no way to say what was behind it. An allowance per
-				// sender address is unbounded in aggregate, so it needed a
-				// second instance-wide ceiling to be a budget rather than an
-				// open tab, and between them two settings configured a give-away
-				// nobody had decided the size or the purpose of.
-				//
-				// The product is simpler than that: the agent is free and the
-				// tools are paid, and both start with an account. So a stranger
-				// signs up, which takes less than writing the email did.
-				app.Log("mail", "Shared agent mail from %s, who has no account: dropped",
-					fromAddr.Address)
+				// Mixed-recipient messages must not trigger unsolicited onboarding.
 				continue
 			} else {
 				app.Log("mail", "Shared agent mail from %s resolved to account %s", fromAddr.Address, toAcc.ID)
@@ -829,7 +834,7 @@ func (s *Session) Data(r io.Reader) error {
 			From:          fromAddr.Address,
 			To:            toAddr.Address,
 			IsSpam:        spamResult.IsSpam,
-			Authenticated: dkimPass || s.spfPass,
+			Authenticated: aligned,
 			Machine:       machineMail(msg.Header),
 		})
 	}

@@ -179,13 +179,12 @@ func cleanSubject(s string) string {
 // Charged like any other agent run, checked before the model is asked so a
 // run that cannot be paid for does not spend one first — and the sender is
 // told, because silence is what this looked like before.
-// Who may wake one. The sender has to pass SPF or DKIM and be somebody this
-// account knows — its own verified address, checked inside mail, or a name
-// in its address book, which is this hook because contacts is a different
-// domain and mail should not import it.
-// Registered rather than assigned: mail no longer knows what an agent is,
-// it knows that something asked for mail at these addresses.
+// Only the account owner's authenticated mail to the shared assistant address
+// may wake it. Personal addresses and their plus aliases are receive-only.
 func answerMail(m mail.InboundMail) {
+	if !m.Shared || m.Tag != "" {
+		return // Personal aliases receive mail; they do not invoke an agent.
+	}
 	// Which agent answers, and the two addresses answer it from two
 	// different namespaces — see agent/platform.go.
 	//
