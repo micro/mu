@@ -47,6 +47,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/internal/app"
@@ -383,12 +384,6 @@ func Known(owner, number string) bool {
 // Verify marks a number as the owner's own.
 func Verify(owner, number string) error { return phone.Verify(owner, number) }
 
-// Fallback is who an arriving message goes to when nobody has a claim on the
-// number it came from: whoever runs this instance. That is auth.Operator now,
-// because it says nothing about phones and service/whatsapp needed the same
-// answer.
-func Fallback() string { return auth.Operator() }
-
 // Verified reports whether this number belongs to this owner.
 func Verified(owner, number string) bool { return phone.Verified(owner, number) }
 
@@ -608,7 +603,7 @@ func RecordOn(channel Channel, owner, direction, number, text string, segments i
 // names are the ones every other caller wants.
 func recordOn(channel Channel, owner, direction, number, text string, segments int, sid string) *Message {
 	if direction == "out" {
-		route(owner, e164(number))
+		route(channel, owner, e164(number))
 	}
 	m := &Message{
 		Direction: direction,
@@ -699,27 +694,39 @@ func messagesFrom(recs []userdb.Record) []Message {
 // belongs to its owner and one account cannot read another's — which is the
 // right rule, and leaves the router with nothing to search. This is the one
 // fact the instance itself needs to know, so the instance owns it.
-func route(owner, number string) {
+var routeMu sync.Mutex
+
+func route(channel Channel, owner, number string) {
+	routeMu.Lock()
+	defer routeMu.Unlock()
 	recs, err := userdb.List(ns, instance, routes, "mine",
-		map[string]interface{}{"number": number}, "", "", 1)
+		map[string]interface{}{"number": number, "channel": string(channel)}, "", "", 1)
 	data := map[string]interface{}{
-		"number": number, "owner": owner, "at": time.Now().Format(time.RFC3339),
+		"number": number, "channel": string(channel), "owner": owner, "at": time.Now().Format(time.RFC3339),
 	}
-	if err == nil && len(recs) == 1 {
+	if err != nil {
+		return
+	}
+	if len(recs) == 1 {
+		// A shared number cannot identify which account a reply is for when
+		// several accounts have written. Never let the last sender take it.
+		if previous, _ := recs[0].Data["owner"].(string); previous != owner {
+			data["owner"] = ""
+		}
 		userdb.Update(ns, instance, routes, recs[0].ID, data, false) //nolint:errcheck
 		return
 	}
 	userdb.Create(ns, instance, routes, data, false) //nolint:errcheck
 }
 
-// OwnerOf finds which account an inbound message belongs to.
-//
-// One number serves the whole instance, so an arriving message has to be given
-// to somebody. It goes to the account that most recently texted that number —
-// the only defensible answer, because that is the conversation it is a reply
-// to. A message from a number nobody here has texted belongs to nobody and is
-// dropped rather than handed to whoever happens to be first in a list.
-func OwnerOf(number string) string {
+// OwnerOf resolves an SMS reply without an operator fallback.
+func OwnerOf(number string) string { return OwnerOn(ChannelSMS, number) }
+
+// OwnerOn scopes reply routes to their transport. Legacy unscoped routes are
+// not trusted: they may have been created by replying to misrouted strangers.
+func OwnerOn(channel Channel, number string) string {
+	routeMu.Lock()
+	defer routeMu.Unlock()
 	number = e164(number)
 	if number == "" {
 		return ""
@@ -730,41 +737,24 @@ func OwnerOf(number string) string {
 		return owner
 	}
 	recs, err := userdb.List(ns, instance, routes, "mine",
-		map[string]interface{}{"number": number}, "", "", 1)
+		map[string]interface{}{"number": number, "channel": string(channel)}, "", "", 1)
 	if err == nil && len(recs) > 0 {
 		if owner, _ := recs[0].Data["owner"].(string); owner != "" {
 			return owner
 		}
 	}
-	return Fallback()
+	return ""
 }
 
-// KnownSender is who a number belongs to, and whether it proved it.
-//
-// OwnerOf answers "whose history does this go in" and falls back to the
-// operator so that nothing is lost. That is the right answer for filing and
-// the wrong one for waking an agent: the fallback is a real account with real
-// credits, and a number nobody here has ever heard of would be talking to it.
-//
-// So this is the same lookup without the fallback. Known means the number was
-// verified by its owner, or this instance texted it first — the two ways a
-// stranger cannot arrange for themselves.
+// KnownSender identifies only a verified account owner. Sending somebody a
+// message permits correspondence; it never grants access to the sender's agent.
 func KnownSender(number string) (owner string, known bool) {
 	number = e164(number)
 	if number == "" {
 		return "", false
 	}
-	if owner := phone.Owner(number); owner != "" {
-		return owner, true
-	}
-	recs, err := userdb.List(ns, instance, routes, "mine",
-		map[string]interface{}{"number": number}, "", "", 1)
-	if err == nil && len(recs) > 0 {
-		if owner, _ := recs[0].Data["owner"].(string); owner != "" {
-			return owner, true
-		}
-	}
-	return "", false
+	owner = phone.Owner(number)
+	return owner, owner != ""
 }
 
 // DeleteAll removes everything sms holds for an owner (account deletion).
