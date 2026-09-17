@@ -167,3 +167,21 @@ the release. A version-tag push or manual workflow dispatch is also supported.
 ## License
 
 AGPL 3.0
+
+App builds are queued and return an ID immediately. Use Apps.BuildStatus with
+that ID, Apps.Read with the returned slug, or the build status URL to follow the
+result. Reuse `request_key` when retrying a submission; without one, identical
+requests by the same account resolve to the same build. Build records and model
+output are checkpointed under the data directory. Recovery retains the same ID,
+counts interrupted model calls against the three-attempt limit, and never
+restarts a completed model call just to retry saving. Generated apps start private.
+An interrupted provider request can still incur a charge. This queue assumes one
+server process owns the data directory; it is not a distributed worker queue.
+
+Anonymous model prompts are disabled by default. `ALLOW_GUEST_AI=true` explicitly
+re-enables them with guest limits: 10 calls per browser, 30 per IP and 100 across
+the instance per hour (`GUEST_MAX_PER_CLIENT`, `GUEST_MAX_PER_IP`,
+`GUEST_MAX_TOTAL`, `GUEST_WINDOW_MINUTES`). These count admitted guest requests,
+not individual model/tool calls, and reset on restart. Public pages remain
+readable; these controls do not prevent all scraping. Configure `TRUSTED_PROXY`
+correctly so client addresses are resolved at the intended boundary.

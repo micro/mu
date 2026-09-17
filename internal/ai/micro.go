@@ -192,7 +192,9 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 	started := time.Now()
 	var used gmai.Usage
 	defer func() { logModelCall(provider, useModel, caller, "generate", started, err, used) }()
-	resp, err := m.Generate(context.Background(), &gmai.Request{
+	ctx, cancel := context.WithTimeout(context.Background(), llmTimeout)
+	defer cancel()
+	resp, err := m.Generate(ctx, &gmai.Request{
 		SystemPrompt: systemPrompt,
 		Messages:     history,
 		Prompt:       question,
@@ -270,7 +272,9 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 			logModelCall(provider, useModel, caller, "stream", started, err, used)
 		}
 	}()
-	stream, err := m.Stream(context.Background(), req)
+	ctx, cancel := context.WithTimeout(context.Background(), llmTimeout)
+	defer cancel()
+	stream, err := m.Stream(ctx, req)
 	if err != nil {
 		// Provider can't stream — fall back to a single Generate.
 		if errors.Is(err, gmai.ErrStreamingUnsupported) {

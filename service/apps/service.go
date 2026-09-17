@@ -15,15 +15,18 @@ type Server struct{}
 // BuildRequest describes an app to generate. The owner is the authenticated
 // caller, taken from the call context — never a model-supplied author.
 type BuildRequest struct {
-	Prompt string `json:"prompt" required:"true" description:"Description of the app to build, e.g. 'an expense tracker', 'a packing checklist', 'a water intake counter'"`
+	RequestKey string `json:"request_key" description:"Reuse this key when retrying the same request. Omit to deduplicate identical descriptions."`
+	Prompt     string `json:"prompt" required:"true" description:"Description of the app to build, e.g. 'an expense tracker', 'a packing checklist', 'a water intake counter'"`
 }
 
 // BuildResponse is the saved app's identity and URLs.
 type BuildResponse struct {
-	Name string `json:"name"`
-	Slug string `json:"slug"`
-	URL  string `json:"url"`
-	Run  string `json:"run"`
+	ID    string `json:"id"`
+	State string `json:"state"`
+	Name  string `json:"name"`
+	Slug  string `json:"slug"`
+	URL   string `json:"url"`
+	Run   string `json:"run"`
 }
 
 // Build generates a self-contained HTML app from a natural
@@ -34,14 +37,21 @@ func (Server) Build(ctx context.Context, req *BuildRequest, rsp *BuildResponse) 
 	if strings.TrimSpace(account) == "" {
 		return fmt.Errorf("authentication required to build an app")
 	}
-	a, err := BuildApp(req.Prompt, account, AuthorNameFor(account))
+	j, err := submitBuild(req.Prompt, account, req.RequestKey)
 	if err != nil {
 		return err
 	}
-	rsp.Name = a.Name
-	rsp.Slug = a.Slug
-	rsp.URL = "/apps/" + a.Slug
-	rsp.Run = "/apps/" + a.Slug
+	rsp.ID = j.ID
+	rsp.Slug = "build-" + j.ID
+	rsp.State = j.State
+	rsp.URL = "/apps/builds/" + j.ID
+	if j.State == "complete" && j.App != nil {
+		rsp.Name = j.App.Name
+		rsp.Slug = j.App.Slug
+		rsp.URL = "/apps/" + j.App.Slug
+		rsp.Run = rsp.URL
+	}
+
 	return nil
 }
 
@@ -105,9 +115,17 @@ type AppReadResponse struct {
 
 // Read returns the details of a specific app by its slug.
 // @example {"slug": "expense-tracker"}
-func (Server) Read(_ context.Context, req *AppReadRequest, rsp *AppReadResponse) error {
+func (Server) Read(ctx context.Context, req *AppReadRequest, rsp *AppReadResponse) error {
+	if strings.HasPrefix(req.Slug, "build-") {
+		if j, err := readBuild(strings.TrimPrefix(req.Slug, "build-"), service.AccountFrom(ctx)); err == nil {
+			status := buildStatus(j)
+			rsp.Text = fmt.Sprintf("Build %s: %s. Attempts: %d. Recoveries: %d. %s %s", status.ID, status.State, status.Attempts, status.Recoveries, status.Error, status.URL)
+			return nil
+		}
+	}
+
 	a := GetApp(req.Slug)
-	if a == nil {
+	if a == nil || (!a.Public && a.AuthorID != service.AccountFrom(ctx)) {
 		return fmt.Errorf("app not found: %s", req.Slug)
 	}
 	rsp.Text = a.Name + " (" + a.Slug + ") by " + a.Author + "\n" + a.Description + "\nTags: " + a.Tags + "\nOpen: /apps/" + a.Slug
@@ -122,7 +140,8 @@ var Spec = service.Spec{
 	Icon:        "apps.svg",
 	Card:        service.Glance(Preview),
 	Endpoints: map[string]service.Endpoint{
-		"Build": {Writes: true, Doc: "Build a small app from a description, save it, and return its details and URL. An app is a self-contained HTML page with JavaScript and CSS that implements the requested behaviour, keeps its own store, and runs in the browser",
+		"BuildStatus": {Doc: "Read your saved app build status by ID. Poll until complete or failed; the same ID survives restarts.", Needs: service.Caller},
+		"Build": {Writes: true, Doc: "Queue a durable app build and immediately return its ID and status URL. Use BuildStatus to retrieve progress and the completed app. Reuse request_key on retries. Builds survive server restarts",
 			Cost: quota.OpAppBuild, Needs: service.Caller},
 		"Read":   {Doc: "Read the details of one app by its slug"},
 		"Search": {Doc: "Search the apps directory for small, useful tools, by name, description or tag"},

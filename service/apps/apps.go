@@ -261,16 +261,17 @@ func Load() {
 	ensureBuiltins()
 
 	data.RegisterDeleter("app", DeleteApp)
+	loadBuilds()
 }
 
 // save persists all apps to disk.
 func save() {
 	mutex.RLock()
+	defer mutex.RUnlock()
 	list := make([]*App, 0, len(apps))
 	for _, a := range apps {
 		list = append(list, a)
 	}
-	mutex.RUnlock()
 
 	sort.Slice(list, func(i, j int) bool {
 		return list[i].CreatedAt.Before(list[j].CreatedAt)
@@ -354,6 +355,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleList(w, r)
 	case path == "/new":
 		handleNew(w, r)
+	case strings.HasPrefix(path, "/builds/"):
+		buildPage(w, r)
 	case path == "/generate":
 		handleMicroGenerate(w, r)
 	case path == "/services.js" || path == "/services.d.ts":
