@@ -151,6 +151,7 @@ func authRequired() map[string]bool {
 		"/account":           true,
 		"/report":            true,  // Telling an operator about somebody else's item
 		"/verify":            false, // Public — token in URL is the credential
+		"/welcome":           false, // One-time channel possession proof
 		"/token":             true,  // PAT token management
 		"/passkey":           false, // Passkey login/register (auth checked in handler)
 		"/session":           false, // Public - used to check auth status
@@ -627,6 +628,7 @@ func registerRoutes() {
 	http.HandleFunc("/account/usage", account.Account) // Previous billing URL.
 	http.HandleFunc("/account/connections", account.Account)
 	http.HandleFunc("/verify", account.Verify)
+	http.HandleFunc("/welcome", account.ChannelWelcome)
 	http.HandleFunc("/session", account.Session)
 
 	http.HandleFunc("/token", account.TokenHandler)
