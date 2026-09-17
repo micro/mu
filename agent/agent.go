@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"mu/internal/ai"
-	"mu/internal/settings"
 	"net/http"
 	"net/url"
 
