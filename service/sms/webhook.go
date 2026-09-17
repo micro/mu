@@ -25,6 +25,8 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/event"
+	"mu/internal/onboarding"
+	"mu/internal/origin"
 	"mu/internal/settings"
 )
 
@@ -166,6 +168,22 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Only a signed provider event can start onboarding. Never attach an
+	// unknown sender's first question to the operator's private account.
+	if _, known := KnownSender(from); !known && verifyInbound() && !OptedOut(from) && countryAllowed(from) && body != "" && origin.Self() != "" {
+		token, err := onboarding.Begin(onboarding.Request{Channel: string(channel), Address: from, Text: body, MessageID: r.PostForm.Get("MessageSid")})
+		if err != nil {
+			app.Log("sms", "Could not start verification: %v", err)
+			twiml(w, "")
+			return
+		}
+		if token == "" {
+			twiml(w, "")
+			return
+		}
+		twiml(w, "Welcome to Micro. Verify to create your account; your question is saved: "+origin.Self()+"/welcome?token="+token+" (expires in 30 minutes).")
+		return
+	}
 	owner := OwnerOf(from)
 	if owner == "" {
 		// Nobody to file it under at all. OwnerOf falls back to the operator, so
