@@ -659,3 +659,19 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 /* Reading pages align the whole page, not just the article body. */
 .document-page.reading-page main,.reading-page>.page>header{width:min(calc(100% - 40px),var(--reading-width));margin-inline:auto}
 .reading-page>.page>header{padding-inline:0}
+
+/* The same navigation links become a simple left drawer on small screens. */
+.nav-toggle{display:none}
+.nav-drawer{position:fixed;inset:0 auto 0 0;margin:0;width:min(280px,85vw);max-width:none;height:100dvh;max-height:none;padding:20px;border:0;border-right:1px solid var(--border);background:#fff;color:inherit;overflow-y:auto}
+.nav-drawer::backdrop{background:rgb(0 0 0 / .25)}
+.nav-drawer[open]{animation:nav-enter .16s ease-out}
+.nav-drawer-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.nav-close{font-size:24px;width:36px;height:36px;padding:0}
+.nav-drawer nav{display:flex;flex-direction:column;gap:4px}
+.nav-drawer nav a{display:block;padding:12px 8px;text-decoration:none;border-radius:4px}
+.nav-drawer nav a:hover{background:var(--surface)}
+.nav-drawer a:focus-visible,.nav-close:focus-visible,.nav-toggle:focus-visible{outline:2px solid #333;outline-offset:2px}
+body.nav-open{overflow:hidden}
+@keyframes nav-enter{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+@media(max-width:700px){.nav-ready .nav-toggle{display:inline-flex;flex:none;width:36px;height:36px;padding:7px}.nav-ready .desktop-navigation{display:none}.nav-ready>.page>header{justify-content:flex-start;gap:12px}}
+@media(prefers-reduced-motion:reduce){.nav-drawer[open]{animation:none}}
