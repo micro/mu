@@ -21,7 +21,8 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 	// render them and enforce their own session and administrator checks.
 	if path == "inbox" || strings.HasPrefix(path, "inbox/") ||
 		path == "admin" || strings.HasPrefix(path, "admin/") ||
-		path == "agents" || path == "services" || path == "tools" || path == "apps" {
+		path == "agents" || path == "services" || path == "tools" || path == "apps" ||
+		path == "blog" || strings.HasPrefix(path, "blog/") {
 		return false
 	}
 	if _, acc := auth.TrySession(r); acc != nil && acc.Admin {
