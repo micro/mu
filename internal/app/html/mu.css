@@ -460,6 +460,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .reader-content :is(h2,h3){margin-block:28px 12px}
 .page-col{display:flex;flex-direction:column;gap:16px;min-width:0;max-width:var(--reading-width);width:100%}
 .page-col>*{min-width:0}
+.page-col:has(>.editor-layout){max-width:none}
 .mini-btn,.btn-sm,.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #bbb;border-radius:6px;background:white;padding:4px 10px;min-height:32px;text-decoration:none;font-size:.875rem;line-height:1.4}
 .btn-quiet,.btn-plain{background:transparent}
 .danger,.btn-danger{color:#962323}
@@ -497,9 +498,11 @@ img[width="16"],img[width="20"],img[width="24"],.stream-icon{object-fit:contain}
 .search-bar input{flex:1 1 240px;width:auto}
 .search-bar select{flex:0 1 180px;width:auto}
 .form :is(label,.field){min-width:0}
-.field{display:flex;flex-direction:column;gap:6px;flex:1 1 180px}
-.field-wide{flex:2 1 280px}
-.form-row>.field,.form-inline>.field{margin:0}
+/* Field classes decorate controls too: a flex basis in a stacked label becomes height. */
+.field{min-width:0}
+.field-label>:is(input,select,textarea),.form>:is(input,select,textarea),.form-group>:is(input,select,textarea){flex:0 0 auto}
+.form-row>.field,.form-inline>.field{flex:1 1 180px;margin:0}
+.form-row>.field-wide,.form-inline>.field-wide{flex:2 1 280px}
 .form-row>button,.form-inline>button,.search-bar>button{flex:0 0 auto}
 form:not(.form-action)>:is(button,.btn)+p{margin-top:10px}
 :is(.form-actions,.section-actions,.action-grid,.reading-actions) form{margin:0}
