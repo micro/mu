@@ -689,3 +689,8 @@ body.nav-open{overflow:hidden}
 @keyframes nav-enter{from{transform:translateX(-100%)}to{transform:translateX(0)}}
 @media(max-width:700px){.nav-ready .nav-toggle{display:inline-flex;flex:none;width:40px;height:40px;padding:8px}.nav-ready .mobile-account{display:block;margin-left:auto;font-size:.875rem;padding-block:10px}.nav-ready .desktop-navigation{display:none}.nav-ready>.page>header{justify-content:flex-start;gap:12px}}
 @media(prefers-reduced-motion:reduce){.nav-drawer[open]{animation:none}}
+
+/* Text navigation shared by the three Inbox views. */
+.inbox-views{gap:12px 20px;margin-block:0 16px}
+.view-switch a[aria-current="page"]{font-weight:600;text-decoration:underline;text-underline-offset:4px}
+

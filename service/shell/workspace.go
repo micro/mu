@@ -29,6 +29,7 @@ package shell
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -72,6 +73,9 @@ const workspaceShown = 40
 // machine nobody has used today.
 func WorkspaceOf(ctx context.Context, accountID string) (Workspace, error) {
 	ws := Workspace{Home: home(accountID)}
+	if shared() {
+		return ws, fmt.Errorf("shared workspaces are disabled")
+	}
 	if strings.TrimSpace(accountID) == "" || !Configured() {
 		return ws, nil
 	}
@@ -142,6 +146,9 @@ func WorkspaceOf(ctx context.Context, accountID string) (Workspace, error) {
 // The truncation is reported so the page can say so rather than quietly
 // showing part of something.
 func ReadFile(ctx context.Context, accountID, name string, limit int) (text string, truncated bool, err error) {
+	if strings.TrimSpace(accountID) == "" || !Configured() || shared() {
+		return "", false, fmt.Errorf("workspace unavailable")
+	}
 	path, err := under(accountID, name)
 	if err != nil {
 		return "", false, err
@@ -154,13 +161,16 @@ func ReadFile(ctx context.Context, accountID, name string, limit int) (text stri
 		Shell: "bash",
 		// head -c, so a single-line minified file is bounded too. A line-based
 		// bound is no bound at all on the files this agent writes.
-		Command: "head -c " + strconv.Itoa(limit+1) + " -- " + quoted(path),
+		Command: "p=$(realpath -e -- " + quoted(path) + ") && case \"$p\" in " + quoted(home(accountID)+"/") + "*) test -f \"$p\" && head -c " + strconv.Itoa(limit+1) + " -- \"$p\";; *) exit 1;; esac",
 		Dir:     home(accountID),
 		User:    runAs(accountID),
 		Wait:    quickWait,
 	})
 	if err != nil {
 		return "", false, err
+	}
+	if res.Code != 0 {
+		return "", false, fmt.Errorf("cannot read workspace file")
 	}
 	out := res.Out
 	if len(out) > limit {

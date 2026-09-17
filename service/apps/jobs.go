@@ -315,3 +315,32 @@ func buildPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(app.RenderHTML("App build", "", body, acc)))
 }
+
+// BuildSummary is the owner's progress entry, without prompts or candidates.
+type BuildSummary struct {
+	ID      string
+	Title   string
+	State   string
+	Updated time.Time
+}
+
+// BuildsFor returns unfinished and failed builds for this account only.
+func BuildsFor(owner string) []BuildSummary {
+	buildMu.Lock()
+	defer buildMu.Unlock()
+	var out []BuildSummary
+	for _, j := range buildJobs {
+		if owner == "" || j.Account != owner || j.State == "complete" {
+			continue
+		}
+		title := []rune(strings.Join(strings.Fields(j.Prompt), " "))
+		if len(title) > 80 {
+			title = append(title[:80], '…')
+		}
+		if len(title) == 0 {
+			title = []rune("App build")
+		}
+		out = append(out, BuildSummary{ID: j.ID, Title: string(title), State: j.State, Updated: j.Updated})
+	}
+	return out
+}
