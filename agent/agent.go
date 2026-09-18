@@ -27,8 +27,6 @@ import (
 
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
-var ChargeQuota func(r *http.Request, op string)
-
 func Load() {
 	adoptAll()
 

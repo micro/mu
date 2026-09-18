@@ -142,10 +142,12 @@ func statusPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	flights, err := flightStatus(&in)
-	if err == nil && owner != "" {
-		err = quota.Charge(owner, statusCost, nil)
-	}
+	var flights []FlightStatus
+	err := quota.Run(owner, statusCost, func() error {
+		var e error
+		flights, e = flightStatus(&in)
+		return e
+	})
 	b := statusForm(r)
 	if err != nil {
 		b += `<p role="alert">` + html.EscapeString(err.Error()) + `</p>`

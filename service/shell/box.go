@@ -185,25 +185,13 @@ func exec(ctx context.Context, accountID, command, dir string, wait time.Duratio
 // For the page only. The page is not a way round the price — it does the work
 // the tool does, so it costs what the tool costs.
 func paidRun(ctx context.Context, accountID, command, dir string) (container.Result, error) {
-	ok, _, cost, qerr := quota.CheckQuota(accountID, quota.OpShellRun)
-	if qerr != nil {
-		return container.Result{}, qerr
-	}
-	if !ok {
-		return container.Result{}, fmt.Errorf("that would cost %d credits and this "+
-			"account cannot cover it", cost)
-	}
-	res, err := exec(ctx, accountID, command, dir, 0)
-	if err != nil {
-		// Nothing ran, so nothing is owed. The failures that reach here are this
-		// instance's — a daemon that went away, a container that would not start
-		// — and charging for them would bill somebody for our outage.
-		return container.Result{}, err
-	}
-	quota.Charge(accountID, quota.OpShellRun, map[string]interface{}{ //nolint:errcheck
-		"command": trimTo(command, 200),
+	var res container.Result
+	err := quota.Run(accountID, quota.OpShellRun, func() error {
+		var err error
+		res, err = exec(ctx, accountID, command, dir, 0)
+		return err
 	})
-	return res, nil
+	return res, err
 }
 
 // under is a path inside the caller's own directory, or why it is not one.

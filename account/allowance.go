@@ -12,13 +12,37 @@ import (
 	"github.com/google/uuid"
 )
 
+const includedPool = "\x00included-pool"
+
 // IncludedToday is an account's remaining daily budget. Usage lives in the
 // transaction ledger, so a restart cannot grant a second day's allowance.
 func IncludedToday(id string) int {
 	return withLedger(func(l *ledger) int { return includedToday(l, id, time.Now().UTC()) })
 }
 
-func includedToday(_ *ledger, id string, now time.Time) int {
+func includedToday(l *ledger, id string, now time.Time) int {
+	remaining := max(0, quota.DailyCredits()-includedUsed(id, now))
+	if cap := quota.DailyPoolCredits(); cap > 0 {
+		remaining = min(remaining, max(0, cap-poolUsed(now)))
+	}
+	return remaining
+}
+
+func poolUsed(now time.Time) int {
+	total := 0
+	for id := range transactions {
+		total += includedUsed(id, now)
+	}
+	return total
+}
+
+// IncludedUsage is included credit consumed today, across the instance. These
+// are product credits, not a measurement of the provider's invoice.
+func IncludedUsage() int {
+	return withLedger(func(l *ledger) int { return poolUsed(time.Now().UTC()) })
+}
+
+func includedUsed(id string, now time.Time) int {
 	used := 0
 	day := now.Format("2006-01-02")
 	for _, tx := range transactions[id] {
@@ -46,7 +70,7 @@ func includedToday(_ *ledger, id string, now time.Time) int {
 			used += sign * max(0, int(v))
 		}
 	}
-	return max(0, quota.DailyCredits()-used)
+	return max(0, used)
 }
 
 // reserveIncluded writes the debit before returning permission to call a

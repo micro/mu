@@ -1,7 +1,10 @@
 {
   "daily_credits": 200,
+  "daily_pool_credits": 0,
   "_comment": [
     "What each operation costs, in credits. One credit is one cent.",
+    "daily_pool_credits caps included credit across all accounts per UTC day; 0 means uncapped.",
+    "Override with DAILY_POOL_CREDITS. This is a retail-credit budget, not measured provider dollars.",
     "",
     "An operation is charged when it costs this instance something to run: a",
     "model call to somebody we pay, or a third party billed per request.",

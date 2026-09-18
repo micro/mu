@@ -732,9 +732,11 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	quota.Charge(sess.Account, quota.OpSocialSearch, nil)
-
-	results := data.Search(query, 50)
+	var results []*data.IndexEntry
+	if err := quota.Run(sess.Account, quota.OpSocialSearch, func() error { results = data.Search(query, 50); return nil }); err != nil {
+		app.RespondError(w, 402, err.Error())
+		return
+	}
 	var socialResults []map[string]interface{}
 	for _, entry := range results {
 		if entry.Type == "social" && !flag.IsHidden("social", strings.TrimPrefix(entry.ID, "social_")) {
@@ -769,9 +771,11 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	quota.Charge(sess.Account, quota.OpSocialSearch, nil)
-
-	results := data.Search(query, 50)
+	var results []*data.IndexEntry
+	if err := quota.Run(sess.Account, quota.OpSocialSearch, func() error { results = data.Search(query, 50); return nil }); err != nil {
+		app.RespondError(w, 402, err.Error())
+		return
+	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(`<h4>Results for "%s"</h4>`, htmlpkg.EscapeString(query)))
 

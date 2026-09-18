@@ -10,7 +10,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -311,6 +310,7 @@ func serve(addr string) {
 			// and moderated from ONE place. Individual handlers do
 			// NOT call CheckQuota/ConsumeQuota — the middleware does
 			// it so nothing can be forgotten.
+			writeCompleted := false
 			if op := chargedWriteOp(r); op != "" {
 				// Refusals go through app.Error, not http.Error: this is a
 				// person who just pressed a button in a browser, and a bare
@@ -329,22 +329,18 @@ func serve(addr string) {
 					app.TooManyRequests(w, r, err.Error())
 					return
 				}
-				canProceed, _, cost, _ := quota.CheckQuota(sess.Account, op)
-				if !canProceed {
-					app.Error(w, r, http.StatusPaymentRequired,
-						fmt.Sprintf("This costs %d credit(s). Top up at /account/topup", cost))
-					return
-				}
-				// Charge up-front. The handler runs only if the
-				// user can afford it. Failed handler calls (panics,
-				// 5xx) are rare enough that the lost credit is
-				// acceptable — and it's the only way to guarantee
-				// we never forget to charge.
-				if err := quota.Charge(sess.Account, op, nil); err != nil {
+				settle, err := quota.Reserve(sess.Account, op)
+				if err != nil {
 					app.Error(w, r, http.StatusPaymentRequired, err.Error())
 					return
 				}
-				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, quota.OperationCost(op), r.Method, r.URL.Path)
+				tracked := &chargedResponse{ResponseWriter: w}
+				w = tracked
+				defer func() {
+					if err := settle(writeCompleted && tracked.status < 400); err != nil {
+						app.Log("account", "settling write for %s: %v", sess.Account, err)
+					}
+				}()
 			}
 
 			// MCP authorization: an unauthenticated call to a tool that needs an
@@ -452,6 +448,7 @@ func serve(addr string) {
 				return
 			}
 			http.DefaultServeMux.ServeHTTP(w, r)
+			writeCompleted = true
 		}),
 	}
 
@@ -594,3 +591,34 @@ func serve(addr string) {
 // Ten seconds is longer than any request here except an agent run, and an agent
 // run that has not finished in ten seconds is not going to finish in thirty.
 const drainFor = 10 * time.Second
+
+// Preserve the downstream status so failed writes refund their reservation.
+type chargedResponse struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *chargedResponse) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+func (w *chargedResponse) WriteHeader(status int) {
+	if status >= 100 && status < 200 {
+		w.ResponseWriter.WriteHeader(status)
+		return
+	}
+	if w.status != 0 {
+		return
+	}
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+func (w *chargedResponse) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(b)
+}
+func (w *chargedResponse) Flush() {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	_ = http.NewResponseController(w.ResponseWriter).Flush()
+}

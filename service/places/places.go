@@ -469,12 +469,15 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	// Perform search: use keyword search near the given location when provided,
 	// otherwise fall back to a global Nominatim search.
 	var results []*Place
-	var err error
-	if hasNearLoc {
-		results, err = searchNearbyKeyword(query, nearLat, nearLon, radiusM)
-	} else {
-		results, err = searchNominatim(query)
-	}
+	err := quota.Run(caller, quota.OpPlacesSearch, func() error {
+		var err error
+		if hasNearLoc {
+			results, err = searchNearbyKeyword(query, nearLat, nearLon, radiusM)
+		} else {
+			results, err = searchNominatim(query)
+		}
+		return err
+	})
 	if err != nil {
 		app.Log("places", "Search error: %v", err)
 		app.ServerError(w, r, fmt.Sprintf("Search failed: %v", err))
@@ -486,9 +489,6 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	sortPlaces(results, sortBy)
 
 	// Charge, if there is anything to charge and anyone to charge it to.
-	if caller != "" && quota.Metered(quota.OpPlacesSearch) {
-		quota.Charge(caller, quota.OpPlacesSearch, map[string]interface{}{"query": query})
-	}
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{
@@ -593,7 +593,12 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	results, err := findNearbyPlaces(lat, lon, radius)
+	var results []*Place
+	err = quota.Run(caller, quota.OpPlacesNearby, func() error {
+		var e error
+		results, e = findNearbyPlaces(lat, lon, radius)
+		return e
+	})
 	if err != nil {
 		app.Log("places", "Nearby error: %v", err)
 		app.ServerError(w, r, fmt.Sprintf("Nearby search failed: %v", err))
@@ -605,11 +610,6 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	sortPlaces(results, sortBy)
 
 	// Deduct credits
-	if caller != "" && quota.Metered(quota.OpPlacesNearby) {
-		quota.Charge(caller, quota.OpPlacesNearby, map[string]interface{}{
-			"lat": lat, "lon": lon, "radius": radius,
-		})
-	}
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{

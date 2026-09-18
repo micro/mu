@@ -159,21 +159,6 @@ func OursOn(c Channel, number string) bool {
 	return false
 }
 
-// chargeSend debits one unit of whatever this channel is billed in.
-//
-// The branch is here, naming both operations, rather than a quota.Charge called
-// with an operation picked by opFor. Charging through a variable works and is
-// invisible: test/charging_test.go scans for the constant beside the call, and
-// an operation nothing appears to charge is reported as free in practice. It
-// was right to complain — a price nobody can find the charge site for is a
-// price that quietly stops being taken.
-func chargeSend(c Channel, owner string, meta map[string]interface{}) error {
-	if c == ChannelWhatsApp {
-		return quota.Charge(owner, quota.OpWhatsAppSend, meta)
-	}
-	return quota.Charge(owner, quota.OpSMSSend, meta)
-}
-
 // opFor is what a message on this channel is charged as.
 //
 // A second operation rather than a multiplier on the first, because the two are

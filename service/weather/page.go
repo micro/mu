@@ -42,6 +42,8 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
+	"mu/internal/service"
 )
 
 // Place is one geocoding result.
@@ -114,6 +116,12 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 	// going. Either is a fact about them and not one to leave in a URL — see
 	// AGENTS.md, "What may travel in a URL".
 	q := strings.TrimSpace(r.PostFormValue("q"))
+	_, _, located := auth.Located(accountID)
+	if q != "" || r.PostFormValue("lat") != "" || r.PostFormValue("lon") != "" || located {
+		if _, ok := app.BillableCaller(w, r, quota.OpWeatherForecast); !ok {
+			return
+		}
+	}
 	var b strings.Builder
 	b.WriteString(`<div class="wx-page">`)
 	b.WriteString(searchForm(q, auth.CSRFToken(r)))
@@ -125,7 +133,7 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 		if e1 != nil || e2 != nil || !validCoordinates(lat, lon) {
 			b.WriteString(`<p role="alert">Invalid location. Try again or enter a town.</p>`)
 		} else {
-			f, err := FetchWeather(r.Context(), lat, lon)
+			f, err := paidForecast(r.Context(), accountID, lat, lon)
 			if err != nil || f == nil || f.Current == nil {
 				b.WriteString(`<p role="status">Weather is unavailable for your current location. Please try again.</p>`)
 			} else {
@@ -133,7 +141,7 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case q != "":
-		b.WriteString(forPlace(r.Context(), q))
+		b.WriteString(forPlace(r.Context(), q, accountID))
 	default:
 		b.WriteString(forYou(r.Context(), accountID))
 	}
@@ -183,7 +191,7 @@ func forYou(ctx context.Context, accountID string) string {
 			`"here" to forecast. ` + app.TextLink("Set where you are", "/account/place") +
 			`, or look up any place above.</p>`
 	}
-	f, err := FetchWeather(ctx, lat, lon)
+	f, err := paidForecast(ctx, accountID, lat, lon)
 	if err != nil || f == nil || f.Current == nil {
 		where := strings.TrimSpace(auth.PlaceName(accountID))
 		if where == "" {
@@ -197,7 +205,11 @@ func forYou(ctx context.Context, accountID string) string {
 }
 
 // forPlace is the forecast somewhere else, with the other matches offered.
-func forPlace(ctx context.Context, q string) string {
+func forPlace(ctx context.Context, q string, accounts ...string) string {
+	accountID := ""
+	if len(accounts) > 0 {
+		accountID = accounts[0]
+	}
 	found, err := geocode(ctx, q)
 	if err != nil {
 		return `<p class="wx-note">Could not look that up: ` +
@@ -209,7 +221,7 @@ func forPlace(ctx context.Context, q string) string {
 	}
 
 	first := found[0]
-	f, err := FetchWeather(ctx, first.Lat, first.Lon)
+	f, err := paidForecast(ctx, accountID, first.Lat, first.Lon)
 	var b strings.Builder
 	if err != nil || f == nil || f.Current == nil {
 		b.WriteString(`<p class="wx-note">Found ` + html.EscapeString(first.Label()) +
@@ -381,4 +393,14 @@ func airFor(lat, lon float64) *AirQuality {
 		return nil
 	}
 	return air
+}
+
+func paidForecast(ctx context.Context, accountID string, lat, lon float64) (forecast *WeatherForecast, err error) {
+	ctx, cached := service.Measure(ctx)
+	err = quota.Run(accountID, quota.OpWeatherForecast, func() error {
+		var e error
+		forecast, e = FetchWeather(ctx, lat, lon)
+		return e
+	}, cached)
+	return forecast, err
 }

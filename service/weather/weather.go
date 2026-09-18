@@ -239,13 +239,11 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch weather
-	forecast, err := FetchWeather(r.Context(), lat, lon)
+	forecast, err := paidForecast(r.Context(), caller, lat, lon)
 	if err != nil {
 		app.RespondError(w, http.StatusServiceUnavailable, weatherUnavailableMessage)
 		return
 	}
-
-	quota.Charge(caller, quota.OpWeatherForecast, nil) //nolint:errcheck
 
 	result := map[string]interface{}{
 		"forecast": forecast,
@@ -274,15 +272,14 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 	// Pollen is a second charge and a second question, asked only if the first
 	// one was answered. A caller who cannot afford it still keeps the forecast.
 	if includePollen {
-		affordable := caller == "" || !quota.Metered(quota.OpWeatherPollen)
-		if !affordable {
-			affordable, _, _, _ = quota.CheckQuota(caller, quota.OpWeatherPollen)
-		}
-		if affordable {
-			if pollen, err := FetchPollen(r.Context(), lat, lon); err == nil {
-				result["pollen"] = pollen
-				quota.Charge(caller, quota.OpWeatherPollen, nil) //nolint:errcheck
-			}
+		ctx, cached := service.Measure(r.Context())
+		var pollen []PollenForecast
+		if err := quota.Run(caller, quota.OpWeatherPollen, func() error {
+			var e error
+			pollen, e = FetchPollen(ctx, lat, lon)
+			return e
+		}, cached); err == nil {
+			result["pollen"] = pollen
 		}
 	}
 

@@ -46,11 +46,12 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch and extract — use HTML-preserving extraction with proxied links
-	title, body, fetchErr := FetchAndExtractHTMLProxied(rawURL)
-
-	if fetchErr == nil {
-		quota.Charge(caller, quota.OpWebFetch, nil) //nolint:errcheck
-	}
+	var title, body string
+	fetchErr := quota.Run(caller, quota.OpWebFetch, func() error {
+		var e error
+		title, body, e = FetchAndExtractHTMLProxied(rawURL)
+		return e
+	})
 
 	// JSON response for API callers
 	if app.WantsJSON(r) {

@@ -137,11 +137,15 @@ func shooting(r *http.Request, target string, full bool) string {
 		return quota.ExceededPage(cost)
 	}
 
-	pic, err := capture(r.Context(), checkedURL, "", full)
+	var pic shot
+	err = quota.Run(acc.ID, quota.OpBrowserShot, func() error {
+		var e error
+		pic, e = capture(r.Context(), checkedURL, "", full)
+		return e
+	})
 	if err != nil {
 		return `<p class="browser-problem">` + html.EscapeString(err.Error()) + `</p>`
 	}
-	quota.Charge(acc.ID, quota.OpBrowserShot, map[string]interface{}{"url": checkedURL}) //nolint:errcheck
 
 	title := pic.Title
 	if strings.TrimSpace(title) == "" {
@@ -204,13 +208,17 @@ func reading(r *http.Request, target string) string {
 		return quota.ExceededPage(cost)
 	}
 
-	page, err := read(r.Context(), checkedURL, "")
+	var page page
+	err = quota.Run(acc.ID, quota.OpBrowserRead, func() error {
+		var e error
+		page, e = read(r.Context(), checkedURL, "")
+		return e
+	})
 	if err != nil {
 		return `<p class="browser-problem">` + html.EscapeString(err.Error()) + `</p>`
 	}
 	// Charged after it worked. A page that would not load is not a page anybody
 	// should pay for, and the browser is the part that can fail.
-	quota.Charge(acc.ID, quota.OpBrowserRead, map[string]interface{}{"url": checkedURL}) //nolint:errcheck
 
 	var b strings.Builder
 	b.WriteString(`<div class="browser-out">`)

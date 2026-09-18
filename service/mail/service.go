@@ -246,45 +246,13 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	return nil
 }
 
-// charge takes the price of whichever route Send took.
-//
-// The service charges rather than the gateway, because the gateway applies one
-// flat Cost per endpoint and this endpoint has two prices. sms_send does the
-// same for the same reason — a text is priced per segment — so a price settled
-// at run time is a shape this codebase already has rather than a reason to
-// split an endpoint in two.
-//
-// Before the send, unlike the gateway, which charges after. Mail that has left
-// cannot be recalled if the charge then fails, and refusing up front is the
-// only point at which "there is not enough on this account" is still true.
-func charge(owner, op string) error {
-	// The daily cap first, because it is not about money.
-	//
-	// service/email checked this and service/mail did not, for the same
-	// operation — so email_send was capped at ten a day and a reply sent from
-	// the inbox, which comes through here, was bounded only by the balance. Two
-	// paths to one operation with two enforcement stories, and the uncapped one
-	// was the path a person actually uses.
-	//
-	// What a loop spends here is a sending domain's reputation, which no balance
-	// repairs. See the limit block in quota.json.
+// charge reserves delivery credit after checking the outbound daily cap.
+// A failed local delivery or failed outbox enqueue refunds the reservation.
+func charge(owner, op string, send func() error) error {
 	if over, why := quota.OverLimit(owner, op); over {
 		return fmt.Errorf("%s", why)
 	}
-	if !quota.Metered(op) {
-		return nil
-	}
-	ok, _, price, err := quota.CheckQuota(owner, op)
-	if err != nil {
-		return err
-	}
-	if price == 0 {
-		return nil
-	}
-	if !ok || quota.Available(owner) < price {
-		return fmt.Errorf("sending that costs %d credits and there are not enough on this account", price)
-	}
-	return quota.Charge(owner, op, nil)
+	return quota.Run(owner, op, send)
 }
 
 // sender resolves the caller and checks the message is complete.

@@ -1656,8 +1656,11 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload := newsSearchPayload(query, 20)
-	quota.Charge(caller, quota.OpNewsSearch, nil) //nolint:errcheck
+	var payload map[string]interface{}
+	if err := quota.Run(caller, quota.OpNewsSearch, func() error { payload = newsSearchPayload(query, 20); return nil }); err != nil {
+		app.RespondError(w, 402, err.Error())
+		return
+	}
 
 	app.RespondJSON(w, payload)
 }
@@ -2540,8 +2543,14 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	results := data.Search(query, 20, data.WithType(data.KindNews), data.WithKeywordOnly())
-	quota.Charge(caller, quota.OpNewsSearch, nil) //nolint:errcheck
+	var results []*data.IndexEntry
+	if err := quota.Run(caller, quota.OpNewsSearch, func() error {
+		results = data.Search(query, 20, data.WithType(data.KindNews), data.WithKeywordOnly())
+		return nil
+	}); err != nil {
+		app.RespondError(w, 402, err.Error())
+		return
+	}
 
 	var searchResults []byte
 	searchResults = append(searchResults, []byte(`<form id="news-search" class="search-bar" action="/news" method="GET">

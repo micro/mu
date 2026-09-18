@@ -363,3 +363,24 @@ func Available(account string) int {
 	}
 	return n
 }
+
+// Run reserves an operation before calling its provider and settles its result.
+// Page handlers use this just as service endpoints use the shared gateway.
+func Run(account, operation string, work func() error, cached ...func() bool) (err error) {
+	settle, err := Reserve(account, operation)
+	if err != nil {
+		return err
+	}
+	completed := false
+	defer func() {
+		if e := settle(completed); e != nil {
+			err = fmt.Errorf("could not settle usage: %w", e)
+		}
+	}()
+	err = work()
+	completed = err == nil
+	if completed && len(cached) > 0 && cached[0]() {
+		completed = false
+	}
+	return err
+}
