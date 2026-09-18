@@ -59,7 +59,7 @@ func AppPasswordHandler(w http.ResponseWriter, r *http.Request) {
 			app.ServerError(w, r, "Could not disconnect this app.")
 			return
 		}
-		http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
 		return
 	}
 	if err = auth.CheckCredentialAccess(acc.ID); err != nil {
@@ -81,6 +81,6 @@ func AppPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		app.ServerError(w, r, "Could not create the app password: "+err.Error())
 		return
 	}
-	body := Navigation("/account/clients") + `<div class="page-col"><h2>Connect ` + html.EscapeString(name) + `</h2><p>Copy this app password into your app. It is shown only once and works until you disconnect it.</p><label class="field-label">App password<input id="app-password" readonly autocomplete="off" value="` + html.EscapeString(raw) + `"></label><div class="form-actions"><button type="button" data-copy-password>Copy password</button><a href="/account/clients">Done</a></div><p data-copy-status role="status"></p>` + inbox.ClientSettings(acc.ID, kind) + `</div>`
+	body := Navigation("/account/tokens") + `<div class="page-col"><h2>Connect ` + html.EscapeString(name) + `</h2><p>Copy this app password into your app. It is shown only once and works until you disconnect it.</p><label class="field-label">App password<input id="app-password" readonly autocomplete="off" value="` + html.EscapeString(raw) + `"></label><div class="form-actions"><button type="button" data-copy-password>Copy password</button><a href="/account/tokens">Done</a></div><p data-copy-status role="status"></p>` + inbox.ClientSettings(acc.ID, kind) + `</div>`
 	app.Respond(w, r, app.Response{Title: "App password", HTML: body})
 }

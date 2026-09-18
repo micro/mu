@@ -29,9 +29,9 @@ func createOAuthClient(w http.ResponseWriter, r *http.Request, accountID string)
 		app.BadRequest(w, r, err.Error())
 		return
 	}
-	http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
+	http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
 }
 
 func oauthClientForm(r *http.Request) string {
-	return `<h2>OAuth client</h2><form method="POST" action="/account/clients?create_client=1" class="form">` + app.CSRFField(auth.CSRFToken(r)) + `<label class="field-label">Name<input name="client_name" maxlength="80" required></label><label class="field-label">Callback URLs<textarea name="redirect_uris" rows="3" required></textarea></label><p>One URL per line. HTTPS or localhost.</p><button type="submit">Register</button></form>`
+	return `<h3>Register OAuth client</h3><form method="POST" action="/account/tokens?create_client=1" class="form">` + app.CSRFField(auth.CSRFToken(r)) + `<label class="field-label">Name<input name="client_name" maxlength="80" required></label><label class="field-label">Callback URLs<textarea name="redirect_uris" rows="3" required></textarea></label><p>One URL per line. HTTPS or localhost.</p><button type="submit">Register</button></form>`
 }

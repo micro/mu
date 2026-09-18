@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
@@ -35,8 +36,8 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "private, no-store")
-	if r.Method == http.MethodGet && r.URL.Path != "/account/clients" && !app.WantsJSON(r) {
-		target := "/account/clients"
+	if r.Method == http.MethodGet && r.URL.Path != "/account/tokens" && !app.WantsJSON(r) {
+		target := "/account/tokens"
 		if r.URL.RawQuery != "" {
 			target += "?" + r.URL.RawQuery
 		}
@@ -60,7 +61,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodPost && (r.FormValue("sshkey") != "" || r.FormValue("removekey") != "") {
 		if !auth.ValidCSRF(r) {
-			app.Forbidden(w, r, "Reopen Clients and try again.")
+			app.Forbidden(w, r, "Reopen Tokens and try again.")
 			return
 		}
 		var keyErr error
@@ -73,7 +74,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 			app.RespondError(w, http.StatusBadRequest, keyErr.Error())
 			return
 		}
-		http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
 		return
 	}
 	// Handle OAuth client actions
@@ -92,7 +93,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 				app.Forbidden(w, r, err.Error())
 				return
 			}
-			http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
+			http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
 			return
 		}
 		if r.FormValue("_method") == "DELETE" {
@@ -118,7 +119,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func apiTokenForm(r *http.Request) string {
+func apiTokenForm(r *http.Request, accountID string) string {
 	var sb strings.Builder
 	sb.WriteString(`<div id="token-result" class="success-panel d-none" role="status"><strong>Token created</strong><p>Copy it now. It is shown only once.</p><pre id="new-token"></pre></div>`)
 	// Every field says what it is.
@@ -128,7 +129,8 @@ func apiTokenForm(r *http.Request) string {
 	// — read as one, it is the wrong word. A placeholder is not a label either:
 	// it disappears the moment you type, and "e.g. CI/CD" over an empty box is
 	// the only thing that ever said what the box was for.
-	agentAccess := r.URL.Query().Get("access") != "services"
+	kind := r.URL.Query().Get("add")
+	agentAccess := r.URL.Query().Get("access") != "services" && kind != "mail" && kind != "xmpp"
 	serviceAccess := r.URL.Query().Get("access") == "services"
 	checked := ""
 	if agentAccess {
@@ -139,13 +141,16 @@ func apiTokenForm(r *http.Request) string {
 	sb.WriteString(app.Field{
 		Name: "name", Label: "Name", Placeholder: "e.g. My script", Required: true, Wide: true,
 	}.HTML())
-	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "api", Label: "Assistant API / MCP", On: agentAccess}, {Value: "services", Label: "Selected services API / MCP", On: serviceAccess}}}.HTML())
+	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "mail", Label: "Mail", On: kind == "mail"}, {Value: "chat", Label: "Chat (XMPP)", On: kind == "xmpp"}, {Value: "api", Label: "Assistant API / MCP", On: agentAccess}, {Value: "services", Label: "Selected services API / MCP", On: serviceAccess}}}.HTML())
 	sb.WriteString(`<fieldset class="scope-fields" data-token-access="api" hidden><legend>API capabilities</legend><div class="choices"><label class="choice"><input type="checkbox" name="capability" value="api:agent"` + checked + `>Agents</label><label class="choice"><input type="checkbox" name="capability" value="api:inbox">Inbox</label><label class="choice"><input type="checkbox" name="capability" value="api:work">Background jobs</label></div><p class="text-muted text-sm">Agent access can run any of your account’s agents with their configured tools; it is not limited to one named agent. Choose Services instead to restrict a client to specific capabilities.</p><label class="choice"><input type="checkbox" name="api_write"` + checked + `>Allow actions (required to ask agents or start jobs)</label></fieldset>`)
 	sb.WriteString(`<fieldset class="scope-fields" data-token-access="services" hidden><legend>Allowed services</legend><p class="text-muted text-sm">Only selected services are accessible, including their actions. This does not grant agent execution or Inbox API access.</p><div class="choices">`)
 	for _, spec := range service.Specs() {
 		sb.WriteString(`<label class="choice"><input type="checkbox" name="services" value="` + htmlpkg.EscapeString(spec.Name) + `">` + htmlpkg.EscapeString(spec.NavLabel()) + `</label>`)
 	}
 	sb.WriteString(`</div></fieldset>`)
+	for _, protocol := range []string{"mail", "chat"} {
+		sb.WriteString(`<fieldset data-token-access="` + protocol + `" hidden><legend>Connection settings</legend><p>Use the token as your app password.</p>` + inbox.ClientSettings(accountID, protocol) + `</fieldset>`)
+	}
 	sb.WriteString(app.Field{
 		Name: "expires_in", Label: "Expires", Options: []app.Option{
 			{Value: "0", Label: "Never"},
@@ -405,7 +410,7 @@ func handleDeleteToken(w http.ResponseWriter, r *http.Request, accountID string)
 		})
 	} else {
 		// Redirect back to token page for form submission
-		http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
 	}
 }
 

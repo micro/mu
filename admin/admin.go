@@ -77,7 +77,15 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		app.Forbidden(w, r, "Admin access required")
 		return
 	}
-	if r.Method == "POST" {
+	query := ""
+	if r.Method == http.MethodPost && r.FormValue("action") == "search" {
+		if !auth.StrictCSRF(r) {
+			app.Forbidden(w, r, "Invalid token")
+			return
+		}
+		query = strings.TrimSpace(r.PostFormValue("q"))
+	}
+	if r.Method == "POST" && r.FormValue("action") != "search" {
 		r.ParseForm()
 		action := r.FormValue("action")
 		userID := r.FormValue("user_id")
@@ -155,6 +163,9 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var filtered []*auth.Account
 		for _, u := range users {
+			if !matchesUser(u, query) {
+				continue
+			}
 			switch tab {
 			case "banned":
 				if u.Banned {
@@ -198,8 +209,12 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id, t.id == tab))
 	}
 	sb.WriteString(`</div>`)
+	sb.WriteString(userSearchForm(r, tab, query, 1, "Search"))
 	var filtered []*auth.Account
 	for _, u := range users {
+		if !matchesUser(u, query) {
+			continue
+		}
 		switch tab {
 		case "banned":
 			if u.Banned {
@@ -287,8 +302,30 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			`<details class="action-menu"><summary>Manage <span class="sr-only">` + html.EscapeString(u.ID) + `</span></summary><div class="action-grid">` + actionsHTML + `</div></details></div></article>`)
 	}
 	sb.WriteString(`</div>`)
-	sb.WriteString(page.Nav("/admin/users?tab=" + tab))
+	if query == "" {
+		sb.WriteString(page.Nav("/admin/users?tab=" + tab))
+	} else {
+		if page.Page > 1 {
+			sb.WriteString(userSearchForm(r, tab, query, page.Page-1, "Previous"))
+		}
+		if page.Page < page.Pages {
+			sb.WriteString(userSearchForm(r, tab, query, page.Page+1, "Next"))
+		}
+	}
 	app.Respond(w, r, app.Response{Title: "Users", Description: "Accounts on this instance", HTML: sb.String()})
+}
+
+func matchesUser(u *auth.Account, query string) bool {
+	query = strings.ToLower(query)
+	return query == "" || strings.Contains(strings.ToLower(u.ID), query) || strings.Contains(strings.ToLower(u.Name), query)
+}
+
+func userSearchForm(r *http.Request, tab, query string, page int, label string) string {
+	kind := "hidden"
+	if label == "Search" {
+		kind = "search"
+	}
+	return fmt.Sprintf(`<form class="search-bar" method="POST" action="/admin/users?tab=%s&amp;page=%d">%s<input type="hidden" name="action" value="search"><input type="%s" name="q" aria-label="Search users" placeholder="Search users" value="%s"><button type="submit">%s</button></form>`, tab, page, app.CSRFField(auth.CSRFToken(r)), kind, html.EscapeString(query), label)
 }
 
 // back is the way up, in the same words and the same place on every page.

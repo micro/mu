@@ -1016,11 +1016,12 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				// When multiple users are present, micro only responds to explicit @micro mentions
 				inActiveConvo := isAlone && client.InMicroConvo && time.Since(client.LastMicroReply) < 2*time.Minute
 
-				if mentionedMicro || isAlone || isItemRoom {
+				directToMicro := microDM(room.ID, client.UserID)
+				if mentionedMicro || isAlone || isItemRoom || directToMicro {
 					client.InMicroConvo = true
 				}
 
-				if mentionedMicro || inActiveConvo || isAlone || isItemRoom {
+				if mentionedMicro || inActiveConvo || isAlone || isItemRoom || directToMicro {
 					// Deterministic lookups first, with no model involved.
 					// Answering "what is the weather" from a table is a service
 					// answering a question about state, which is this package's

@@ -769,7 +769,6 @@ body.nav-open{overflow:hidden}
 /* The same compact composer for visitors and signed-in conversations. */
 .command-page #guest-command-form{width:100%;max-width:600px;margin:0 auto;padding:16px 0 8px}
 .composer-note{text-align:center;font-size:.8rem;color:#777;margin:8px 0 0}
-.prompt-welcome .landing-example{font-size:.875rem;margin-top:8px}
 .command-page .turn .ib-from{margin-bottom:8px}
 .command-page .turn .message-body{min-width:0;overflow-wrap:anywhere}
 .settings-signin{padding-block:12px;border-top:1px solid var(--border,#ddd)}

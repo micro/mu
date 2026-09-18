@@ -47,7 +47,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 	box := strings.Trim(strings.TrimPrefix(r.URL.Path, "/inbox"), "/")
 	var b strings.Builder
 	b.WriteString(viewNavigation("conversations"))
-	b.WriteString(`<div class="section-actions"><a href="/?new=1">New conversation</a></div>`)
+	b.WriteString(`<div class="section-actions"><a href="/inbox/new">New message</a></div>`)
 	b.WriteString(searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r)))
 	if r.Method == http.MethodGet {
 		b.WriteString(`<div data-inbox-list>`)

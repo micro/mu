@@ -527,8 +527,7 @@ The web front door is a single request-driven command interface. Simple service
 commands use registered endpoints directly. Complex questions use the selected
 model and its tools. Admin commands require the caller's operator authorization
 and never enter model context. Do not add a page or navigation item for a service.
-The public editorial Blog is the explicit exception: link it immediately after
-Home in the shared desktop navigation and mobile menu.
+The public editorial Blog belongs in the shared footer.
 
 Keep authentication and informational pages sparse, using the shared console
 shell in `internal/app`. Preserve backend APIs, protocols, account isolation,

@@ -498,11 +498,11 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	accountPath := "/account"
 	switch r.URL.Path {
 	case "/account/connections":
-		accountPath = "/account/clients"
+		accountPath = "/account/tokens"
 	case "/account/billing":
 		accountPath = "/account/billing"
 	case "/account/developer":
-		accountPath = "/account/clients"
+		accountPath = "/account/tokens"
 	}
 	if r.Method == http.MethodGet && !app.WantsJSON(r) {
 		if r.URL.Query().Get("linked") == "google" || r.URL.Query().Get("connection") != "" {
@@ -686,7 +686,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("linked") == "google" {
 			notice = app.Notice("Google connected.") + notice
 		}
-		content = profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
+		content = billingSummary(acc) + profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
 		content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
 		content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
 
@@ -696,7 +696,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	active := accountPath
 	links := Navigation(active)
 	if active == "/account" {
-		links = `<div class="form-actions"><a href="/account/billing">Billing</a><a href="/account/clients">Clients</a></div>`
+		links = ""
+		content += `<p><a href="/account/tokens">Tokens</a></p>`
 	}
 	content = links + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 

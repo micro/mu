@@ -358,9 +358,11 @@ func onThisInstance(addr string) bool {
 // the messages is furniture.
 func partyLine(accountID string, t *thread.Thread) string {
 	people := 0
+	hasAgent := false
 	var names []string
 	for _, p := range thread.Parties(accountID, t.ID) {
 		if p.Kind == thread.RoleAgent {
+			hasAgent = true
 			continue
 		}
 		people++
@@ -369,8 +371,10 @@ func partyLine(accountID string, t *thread.Thread) string {
 	if people < 2 {
 		return ""
 	}
-	return `<div class="ib-parties text-sm text-muted">Between ` + html.EscapeString(strings.Join(names, ", ")) +
-		` and the agent</div>`
+	if hasAgent {
+		names = append(names, "the agent")
+	}
+	return `<div class="ib-parties text-sm text-muted">Between ` + html.EscapeString(strings.Join(names, ", ")) + `</div>`
 }
 
 // withoutSubject drops a leading line that is only the conversation's subject.

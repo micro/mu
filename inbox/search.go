@@ -62,7 +62,7 @@ func searchBox(box, q, csrf string) string {
 	}
 	return `<form class="search-bar" method="POST" action="` + html.EscapeString(action) + `">` +
 		app.CSRFField(csrf) +
-		`<input type="search" name="q" placeholder="Search your conversations" ` +
+		`<input type="search" name="q" placeholder="Search your inbox" ` +
 		`value="` + html.EscapeString(q) + `" autocomplete="off">` +
 		`<button type="submit">Search</button>` +
 		clearSearch(action, q) +

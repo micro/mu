@@ -40,13 +40,13 @@ func runLogin(args []string, cfg *ResolvedConfig) int {
 	fmt.Fprintf(os.Stdout, "Logging in to %s\n", url)
 	fmt.Fprintln(os.Stdout)
 	fmt.Fprintln(os.Stdout, "1. Sign in and create a Personal Access Token at:")
-	fmt.Fprintf(os.Stdout, "   %s/account/clients?add=api#add-client\n", url)
+	fmt.Fprintf(os.Stdout, "   %s/account/tokens?add=api#create-token-form\n", url)
 	fmt.Fprintln(os.Stdout)
 
 	// Try to open the token page in a browser, but don't fail the
 	// command when there is no browser available (SSH sessions,
 	// containers, etc.).
-	if err := openBrowser(url + "/account/clients?add=api#add-client"); err != nil {
+	if err := openBrowser(url + "/account/tokens?add=api#create-token-form"); err != nil {
 		fmt.Fprintf(os.Stdout, "   (couldn't open browser automatically — open the URL manually)\n")
 	}
 
