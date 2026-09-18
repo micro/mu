@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
@@ -107,6 +106,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionID string) {
 
 	var sb strings.Builder
+	sb.WriteString(Navigation("/account/developer"))
 
 	// API credentials contains tokens and registered OAuth clients. Tokens come
 	// first because they are the usual reason to open this page.
@@ -138,6 +138,13 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// squashed to a few characters each.
 	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>Access</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
 	tokens := auth.ListTokens(accountID)
+	var developerTokens []*auth.Token
+	for _, token := range tokens {
+		if !appPassword(token) {
+			developerTokens = append(developerTokens, token)
+		}
+	}
+	tokens = developerTokens
 	if len(tokens) == 0 {
 		sb.WriteString(`<tr><td colspan="6" class="p-5 text-center text-secondary">No tokens yet.</td></tr>`)
 	}
@@ -168,7 +175,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// — read as one, it is the wrong word. A placeholder is not a label either:
 	// it disappears the moment you type, and "e.g. CI/CD" over an empty box is
 	// the only thing that ever said what the box was for.
-	agentAccess := r.URL.Query().Get("access") == "agent"
+	agentAccess := r.URL.Query().Get("access") != "services"
 	serviceAccess := r.URL.Query().Get("access") == "services"
 	checked := ""
 	if agentAccess {
@@ -179,7 +186,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(app.Field{
 		Name: "name", Label: "Name", Placeholder: "e.g. My phone", Required: true, Wide: true,
 	}.HTML())
-	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "mail", Label: "Mail (IMAP and SMTP)", On: !agentAccess && !serviceAccess}, {Value: "chat", Label: "Chat (XMPP)"}, {Value: "both", Label: "Mail and chat"}, {Value: "api", Label: "Assistant API / MCP", On: agentAccess}, {Value: "services", Label: "Selected services API / MCP", On: serviceAccess}}}.HTML())
+	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "api", Label: "Assistant API / MCP", On: agentAccess}, {Value: "services", Label: "Selected services API / MCP", On: serviceAccess}}}.HTML())
 	sb.WriteString(`<fieldset class="scope-fields" data-token-access="api" hidden><legend>API capabilities</legend><div class="choices"><label class="choice"><input type="checkbox" name="capability" value="api:agent"` + checked + `>Agents</label><label class="choice"><input type="checkbox" name="capability" value="api:inbox">Inbox</label><label class="choice"><input type="checkbox" name="capability" value="api:work">Background jobs</label></div><p class="text-muted text-sm">Agent access can run any of your account’s agents with their configured tools; it is not limited to one named agent. Choose Services instead to restrict a client to specific capabilities.</p><label class="choice"><input type="checkbox" name="api_write"` + checked + `>Allow actions (required to ask agents or start jobs)</label></fieldset>`)
 	sb.WriteString(`<fieldset class="scope-fields" data-token-access="services" hidden><legend>Allowed services</legend><p class="text-muted text-sm">Only selected services are accessible, including their actions. This does not grant agent execution or Inbox API access.</p><div class="choices">`)
 	for _, spec := range service.Specs() {
@@ -198,14 +205,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
 
-	sb.WriteString(inbox.ClientSettings(accountID))
+	sb.WriteString(`<p>For mail and chat apps, use <a href="/account/connections">Connections</a>.</p>`)
 	sb.WriteString(sshaccess.Card(r, accountID, "/token", "SSH and SFTP", "SSH and SFTP use an SSH key, not an access token. Add your public key below. Use sftp in place of ssh and -P in place of -p to connect to files.", "ssh"))
 
 	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
 	// part of the chrome that depends on knowing who is signed in — the nav,
 	// the account menu, the balance — went missing on a page you can only
 	// reach by being signed in. Same bug /account had.
-	app.Respond(w, r, app.Response{Title: "Client access", Description: "Scoped tokens and connection details", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Developer access", Description: "API tokens and developer connections", HTML: sb.String()})
 }
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {

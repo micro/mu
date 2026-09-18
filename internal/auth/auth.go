@@ -986,7 +986,11 @@ func CreateToken(accountID, name string, permissions []string, expiresAt time.Ti
 
 	tokens[tokenID] = token
 	indexToken(token)
-	data.SaveJSON("tokens.json", tokens)
+	if err := data.SaveJSON("tokens.json", tokens); err != nil {
+		delete(tokens, tokenID)
+		delete(tokenBy, token.Lookup)
+		return nil, "", err
+	}
 
 	// Return the unhashed token only once (user must save it)
 	return token, rawToken, nil
@@ -1118,7 +1122,11 @@ func DeleteToken(tokenID, accountID string) error {
 
 	delete(tokens, tokenID)
 	delete(tokenBy, token.Lookup)
-	data.SaveJSON("tokens.json", tokens)
+	if err := data.SaveJSON("tokens.json", tokens); err != nil {
+		tokens[tokenID] = token
+		indexToken(token)
+		return err
+	}
 
 	return nil
 }

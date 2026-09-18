@@ -85,10 +85,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(imapRow("Port", port))
 	b.WriteString(imapRow("Security", secure))
 	b.WriteString(imapRow("Username", acc.ID))
-	b.WriteString(`<tr><th>Password</th><td>An access token — ` +
-		app.TextLink("mint one at /token", "/token") + `. Not your sign-in: there is ` +
-		`no password on this account, and a token is revoked on its own without ` +
-		`touching how you sign in.</td></tr>`)
+	b.WriteString(`<tr><th>Password</th><td>An app password from <a href="/account/connections">Account → Connections</a>.</td></tr>`)
 	b.WriteString(`</tbody></table>`)
 
 	// Sending, because a client that can only read is a client that cannot
@@ -96,7 +93,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	if addr, sport, ssecure, son := submissionReach(); son {
 		b.WriteString(`<h3 class="lead-15">Sending</h3>`)
 		b.WriteString(`<p class="ib-imap-note">So the client can reply as you. Same ` +
-			`username, same token.</p>`)
+			`username, same app password.</p>`)
 		b.WriteString(`<table class="ib-imap-table"><tbody>`)
 		b.WriteString(imapRow("Server", addr))
 		b.WriteString(imapRow("Port", sport))
@@ -216,7 +213,7 @@ func splitHostPort(addr string) (host, port string) {
 // ClientSettings shows the connection details beside account credentials.
 func ClientSettings(accountID string) string {
 	var b strings.Builder
-	b.WriteString(`<h3>Connection details</h3><p>Use the token as the password for mail and chat.</p><table class="data-table stacked"><thead><tr><th>Client</th><th>Server</th><th>Port</th><th>Security</th><th>Username</th></tr></thead><tbody>`)
+	b.WriteString(`<h3>Connection details</h3><p>Use your app password when your mail or chat app asks for a password.</p><table class="data-table stacked"><thead><tr><th>Client</th><th>Server</th><th>Port</th><th>Security</th><th>Username</th></tr></thead><tbody>`)
 	row := func(label, host, port, security, user string) {
 		b.WriteString(`<tr>`)
 		for i, value := range []string{label, host, port, security, user} {
