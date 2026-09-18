@@ -12,11 +12,11 @@ func ConsoleHTML(title, body string, acc *auth.Account) string {
 	accountLink := `<a class="mobile-account" href="/login">Login</a>`
 	if acc != nil {
 		accountLink = `<a class="mobile-account" href="/account">Account</a>`
-		links += `<a href="/inbox">Inbox</a><a href="/account">Account</a>`
+		links += `<a href="/account">Account</a>`
 		if acc.Admin {
 			links += `<a href="/admin">Admin</a>`
 		}
-		links += `<a href="/logout">Logout</a>`
+		links += `<a href="/inbox">Inbox</a><a href="/logout">Logout</a>`
 	} else {
 		links += `<a href="/login">Login</a>`
 	}
