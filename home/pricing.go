@@ -19,20 +19,20 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(app.Column())
 
 	description := "Usage pricing"
-	b.WriteString(`<section class="section-stack"><h2>Daily quota</h2>`)
+	b.WriteString(`<section class="section-stack"><h2>Free</h2><p>Ask Micro questions and get help with tasks.</p>`)
 	if !account.PaymentsEnabled() {
 		b.WriteString(`<p>No usage charges on this instance.</p></section></div>`)
 		app.Respond(w, r, app.Response{Title: "Pricing", HTML: b.String()})
 		return
 	} else if daily := quota.DailyCredits(); daily > 0 {
-		b.WriteString(`<p>` + strconv.Itoa(daily) + ` credits per day · resets 00:00 UTC</p><p>Used before prepaid credit. Unused daily credit expires.</p>`)
+		b.WriteString(`<p>` + strconv.Itoa(daily) + ` credits per day for assistant calls and tools · resets 00:00 UTC</p>`)
 		if quota.DailyPoolCredits() > 0 {
 			b.WriteString(`<p>Subject to a shared daily limit.</p>`)
 		}
 	} else {
 		b.WriteString(`<p>` + creditsInWords() + ` on signup.</p>`)
 	}
-	b.WriteString(`</section><section class="section-stack"><h2>Top up</h2><p>1 credit = 1 US cent.</p>`)
+	b.WriteString(`</section><section class="section-stack"><h2>Top up</h2><p>Extra use: 1 credit = 1 US cent.</p>`)
 	if account.TopUpConfigured() {
 		b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
 	}

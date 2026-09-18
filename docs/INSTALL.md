@@ -318,16 +318,13 @@ replies appear in the thread there.
 | Incoming (IMAP) | `IMAP_PORT`, `1143` by default; set it to `143` in production |
 | Outgoing (SMTP) | `SUBMISSION_PORT`, `1587` by default; set it to `587` in production |
 | Username | your Mu username, or your full address |
-| Password | an access token from `/token` |
+| Password | an app password from `/account/clients` |
 
 Signed in, `/inbox/imap` says all of this filled in for the account reading it.
 Set `IMAP_PUBLIC` and `SUBMISSION_PUBLIC` to `host:port` if what you put in
 front of these listeners answers somewhere other than the defaults below.
 
-Mu has no password — sign-in is a passkey or a link — so an access token is what
-goes in the password field. That is the app-password pattern, and it has the
-property that matters: a client is revoked on its own without touching how you
-sign in. The same token is both halves; a client asks twice.
+Create a mail app password in Clients. Use the same app password for IMAP and SMTP. Revoking it disconnects that app without changing your account password.
 
 **Outgoing is a separate listener from the MTA.** `MAIL_PORT` is the server that
 receives mail from the internet and authenticates nobody, which is what port 25
@@ -1199,11 +1196,11 @@ install arbitrary executable code or start a separate operating-system process.
 ### Programs using Mu
 
 Programs call Agent, Work and Inbox through JSON POST operations at `/api/v1`
-or the same operations as MCP tools at `/mcp`. `/api` documents the current
+or the same operations as MCP tools at `/mcp`. `/developers` documents the current
 contract and `/api/v1` lists its operations. Mu owns agent execution and tool
 use; clients submit goals and read results.
 
-Create a token at `/token`. Select the needed API capabilities; these apply
+Create an API token at `/account/clients`. Select the needed API capabilities; these apply
 across the token owner's account. They do not isolate an application's
 conversations or disable memory. Service-scoped tokens are refused at the
 outcome API. The first-party service playground and sandboxed app SDK continue

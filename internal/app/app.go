@@ -512,7 +512,7 @@ func navBottom(acc *auth.Account, here string) string {
 	username := htmlpkg.EscapeString(acc.ID)
 
 	return `<details class="nav-account-disclosure"><summary class="nav-me-who" aria-label="Account menu"><img src="/account.png" alt="" aria-hidden="true"><span id="nav-username">@` + username + `</span></summary><div class="nav-account-menu">
-          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Settings</span></a>
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
 ` + navAdmin(acc) + `
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a></div></details>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`

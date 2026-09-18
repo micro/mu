@@ -53,7 +53,7 @@ func RESTPageHandler(w http.ResponseWriter, r *http.Request) {
 		`</pre>`)
 	b.WriteString(`<p class="card-meta">` +
 		`<a href="` + RESTRoot + `">Machine-readable catalogue</a> &middot; ` +
-		`<a href="/account/tokens">Get a token</a> &middot; ` +
+		`<a href="/account/clients">Get a token</a> &middot; ` +
 		`<a href="/tools">What calls cost</a></p>`)
 	b.WriteString(`<p class="card-meta">Building an AI agent instead? ` +
 		`<a href="/mcp">The MCP endpoint</a> serves the same methods as tools, with a ` +
@@ -78,7 +78,7 @@ func restAuthCard(base string) string {
 	b.WriteString(`<p class="card-desc">Public methods need nothing. Anything holding ` +
 		`your own data needs to know who you are.</p>`)
 
-	b.WriteString(`<p><b>A token.</b> Make one at <a href="/account/tokens">/token</a> and send it ` +
+	b.WriteString(`<p><b>A token.</b> Make one at <a href="/account/clients">Clients</a> and send it ` +
 		`as a header. A token can be scoped to named services, and the scope is enforced ` +
 		`on every call.</p>`)
 	b.WriteString(`<pre class="bg-soft p-2 text-xs scroll-x">` +

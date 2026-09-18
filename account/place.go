@@ -140,7 +140,7 @@ func PlaceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/account/profile#place", http.StatusSeeOther)
+		http.Redirect(w, r, "/account#place", http.StatusSeeOther)
 		return
 	}
 	if !auth.StrictCSRF(r) {
@@ -152,7 +152,7 @@ func PlaceHandler(w http.ResponseWriter, r *http.Request) {
 	if err := SetPlace(acc.ID, r.FormValue("place"), lat, lon, r.FormValue("zone")); err != nil {
 		app.Log("account", "setting a place for %s: %v", acc.ID, err)
 	}
-	http.Redirect(w, r, "/account/profile#place", http.StatusSeeOther)
+	http.Redirect(w, r, "/account#place", http.StatusSeeOther)
 }
 
 func PlaceCard(r *http.Request, accountID string) string {

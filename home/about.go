@@ -23,7 +23,7 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 		`the web, checks the weather and the markets, keeps your notes and your calendar. ` +
 		`Same assistant and the same memory whichever way you reach it, so a conversation ` +
 		`you start on your phone is one you can carry on in a browser.</p>` +
-		`<p>Micro runs on Mu, the open source runtime behind the assistant: the services, ` +
+		`<p>Micro runs on <a href="https://github.com/micro/mu">Mu</a>, the open source runtime behind the assistant: the services, ` +
 		`archive, inbox and agent system that make those capabilities available. You can ` +
 		`run Mu yourself and Micro remains the default agent and front door.</p>` +
 		`</div>`)

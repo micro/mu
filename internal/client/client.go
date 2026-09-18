@@ -170,7 +170,7 @@ func All() []Client {
 			address := "agent@" + d
 			out = append(out, Client{ID: thread.ChatClient, Label: "XMPP", Address: address,
 				Href: "xmpp:" + address + "?message",
-				Note: "XMPP: sign in to this server with your username and a Chat token from Account"})
+				Note: "XMPP: sign in to this server with your username and a app password from Clients"})
 		}
 	}
 	// The command line, which was forgotten and is a real way in.
@@ -195,7 +195,7 @@ func All() []Client {
 	if host != "" {
 		out = append(out, Client{Label: "API", Dev: true,
 			Address: "https://" + host + "/api/v1/agent/ask",
-			Href:    "/token", Note: "for a program — needs a token",
+			Href:    "/account/clients#api-tokens", Note: "for a program — needs a token",
 			Example: "curl -X POST https://" + host + "/api/v1/agent/ask \\\n" +
 				`  -H "Authorization: Bearer $MU_TOKEN" \` + "\n" +
 				`  -d '{"prompt": "what is on my calendar?"}'`})

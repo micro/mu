@@ -23,9 +23,8 @@ func TestAccountDestinations(t *testing.T) {
 		want   []string
 		absent []string
 	}{
-		{"/account", []string{"Settings", "Email", "Password", "Notifications", "App passwords", "API access"}, []string{"Your mail and chat apps", "Developer billing"}},
+		{"/account", []string{"Account", "Email", "Password", "Notifications", "Clients"}, []string{"Your mail and chat apps", "Developer billing"}},
 		{"/account/billing", []string{"Balance", "Transaction history", "No transactions yet."}, []string{"API tokens"}},
-		{"/account/connections", []string{"App passwords", "App name"}, []string{"Send verification", "Notifications"}},
 	} {
 		r := httptest.NewRequest("GET", tc.path, nil)
 		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
