@@ -1375,8 +1375,10 @@ if(typeof document!=='undefined'){
   const reader = document.querySelector('[data-inbox-watch]');
   const list = document.querySelector('[data-inbox-list]');
   if (!reader && !list) return;
-  let stopped = false, timer;
+  let stopped = false, busy = false, timer;
   async function check() {
+    if (busy || stopped) return;
+    busy = true;
     try {
       if (stopped || document.hidden || !navigator.onLine) return;
       if (window.getSelection()?.toString()) return;
@@ -1398,7 +1400,7 @@ if(typeof document!=='undefined'){
         if (state && nextState) state.textContent = nextState.textContent;
         const old = new Map(Array.from(region.children).map(node => [node.dataset.messageId, node]));
         // Reuse unchanged messages so open disclosures and embedded media survive.
-        const nodes = Array.from(incoming.children).map(node => old.get(node.dataset.messageId) || node);
+        const nodes = Array.from(incoming.children).map(node => (old.get(node.dataset.messageId)?.innerHTML === node.innerHTML ? old.get(node.dataset.messageId) : node));
         if (nodes.length !== region.children.length || nodes.some((node,i) => node !== region.children[i])) {
           region.replaceChildren(...nodes);
           const notice = reader.querySelector('[data-inbox-update]');
@@ -1411,10 +1413,12 @@ if(typeof document!=='undefined'){
     } catch (_) {
       // A failed poll never discards the last usable page or the draft.
     } finally {
-      if (!stopped) timer = setTimeout(check, 10000);
+      busy = false;
+      if (!stopped) timer = setTimeout(check, reader ? 3000 : 10000);
     }
   }
-  timer = setTimeout(check, 10000);
+  timer = setTimeout(check, reader ? 3000 : 10000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { clearTimeout(timer); check(); } });
   window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
   window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; clearTimeout(timer); check(); } });
 })();

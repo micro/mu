@@ -40,6 +40,8 @@ package inbox
 // find it.
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"html"
 	"net/http"
 	"net/url"
@@ -182,8 +184,9 @@ type form struct {
 // composition over those, and a second copy here would be a second answer to
 // what a note says.
 func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
-	if f.Mode == "assistant" && f.On == "" {
-		f.To = mail.AgentMailbox
+	if f.Mode == "assistant" && (f.On == "" || (replyTarget(accountID, f) != nil && replyTarget(accountID, f).Client == thread.WebClient)) {
+		sendAssistant(w, r, accountID, f)
+		return
 	}
 	switch f.Kind {
 	case kindNote:
@@ -510,7 +513,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	// on both ends, so printing it says nothing and reads like posting a letter
 	// to your flatmate. It is the identity the moment the message leaves, and
 	// then it is shown.
-	if writing != kindMessage || (f.Mode == "assistant" && f.On == "") {
+	if writing != kindMessage || f.Mode == "assistant" {
 		// Nowhere to send it, so nothing to say about where it is from.
 	} else if texting {
 		// Said above, with the number it goes to.
@@ -520,7 +523,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	} else if from := mail.EmailForUser(accountID, mail.ConfiguredDomain()); from != "" {
 		b.WriteString(`<p class="ib-from-line">From <code>` + html.EscapeString(from) + `</code></p>`)
 	}
-	if f.On != "" && !texting {
+	if f.On != "" && !texting && f.Mode != "assistant" {
 		b.WriteString(`<p class="ib-from-line">Replying to <code>` +
 			html.EscapeString(f.To) + `</code> — this lands on the same conversation.</p>`)
 	}
@@ -531,7 +534,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	b.WriteString(`<form class="form" data-inbox-compose method="post" action="/inbox/new">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	if f.On != "" {
-		b.WriteString(`<input type="hidden" name="on" value="` + html.EscapeString(f.On) + `">`)
+		b.WriteString(`<input type="hidden" name="on" value="` + html.EscapeString(f.On) + `"><input type="hidden" name="mode" value="` + html.EscapeString(f.Mode) + `">`)
 	}
 	// text, not email. The field takes a handle as readily as an address —
 	// addressOfPerson resolves one — and type=email calls a handle invalid,
@@ -568,7 +571,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		b.WriteString(`<input type="hidden" name="to" value="` + html.EscapeString(f.To) + `">`)
 	} else {
 		state := ""
-		if f.Mode == "assistant" && f.On == "" {
+		if f.Mode == "assistant" {
 			state = " hidden disabled"
 		}
 		b.WriteString(`<input class="ib-field" type="text" name="to" aria-label="To" required` + state + ` placeholder="To" ` +
@@ -693,4 +696,37 @@ func saveTask(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		return
 	}
 	http.Redirect(w, r, "/inbox?kind="+kindTask, http.StatusSeeOther)
+}
+
+// Use the same durable queue as the assistant, without mailing the owner.
+func sendAssistant(w http.ResponseWriter, r *http.Request, accountID string, f form) {
+	fail := func(message string) { f.Problem = message; writeOne(w, r, accountID, f) }
+	if Continue == nil {
+		fail("Assistant unavailable. Please try again later.")
+		return
+	}
+	if len([]rune(strings.TrimSpace(f.Body))) == 0 || len([]rune(f.Body)) > 8000 {
+		fail("Write a message of up to 8,000 characters.")
+		return
+	}
+	th := replyTarget(accountID, f)
+	if th == nil {
+		var key [16]byte
+		if _, err := rand.Read(key[:]); err != nil {
+			fail("Could not start the conversation.")
+			return
+		}
+		th = thread.Open(accountID, thread.WebClient, hex.EncodeToString(key[:]))
+	}
+	if th == nil {
+		fail("Could not start the conversation.")
+		return
+	}
+	f.On = th.ID
+	thread.Name(accountID, th.ID, f.Subject)
+	if err := Continue(accountID, th.ID, f.Body, "compose:"+th.ID); err != nil {
+		fail(err.Error())
+		return
+	}
+	http.Redirect(w, r, "/inbox?id="+url.QueryEscape(th.ID), http.StatusSeeOther)
 }

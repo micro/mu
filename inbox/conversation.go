@@ -360,24 +360,33 @@ func onThisInstance(addr string) bool {
 // started here is — because a line naming the two people already obvious from
 // the messages is furniture.
 func partyLine(accountID string, t *thread.Thread) string {
-	people := 0
-	hasAgent := false
-	var names []string
-	for _, p := range thread.Parties(accountID, t.ID) {
-		if p.Kind == thread.RoleAgent {
-			hasAgent = true
-			continue
-		}
-		people++
-		names = append(names, partyName(p))
-	}
-	if people < 2 {
+
+	if t.Client == thread.WebClient {
 		return ""
 	}
-	if hasAgent {
-		names = append(names, "the agent")
+	seen := map[string]bool{}
+	var names []string
+	for _, p := range thread.Parties(accountID, t.ID) {
+		key, name := strings.ToLower(p.Key), partyName(p)
+		switch {
+		case p.Kind == thread.RoleAgent && p.Agent == "":
+			key, name = "assistant", auth.MicroName
+		case p.Key == "" || ownAddress(accountID, p.Key):
+			key, name = "owner", "You"
+		case assistantRecipient(p.Key):
+			key, name = "assistant", auth.MicroName
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		names = append(names, name)
+	}
+	if len(names) < 2 || (len(names) == 2 && seen["owner"] && seen["assistant"]) {
+		return ""
 	}
 	return `<div class="ib-parties text-sm text-muted">Between ` + html.EscapeString(strings.Join(names, ", ")) + `</div>`
+
 }
 
 // withoutSubject drops a leading line that is only the conversation's subject.
