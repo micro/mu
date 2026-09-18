@@ -1419,3 +1419,10 @@ document.querySelector('[data-copy-password]')?.addEventListener('click',async()
  const field=document.querySelector('#app-password'),status=document.querySelector('[data-copy-status]');
  try{await navigator.clipboard.writeText(field.value);status.textContent='Copied.';}catch{field.select();status.textContent='Select and copy the password.';}
 });
+
+// Keep bookmarked setup sections useful after the unified Clients page.
+(function(){
+ if(location.pathname!=='/account/clients') return;
+ const kind=location.hash==='#app-passwords'?'mail':location.hash==='#api-tokens'?'api':'';
+ if(kind) { const url=new URL(location.href);url.searchParams.set('add',kind);url.hash='add-client';location.replace(url.pathname+url.search+url.hash); }
+})();

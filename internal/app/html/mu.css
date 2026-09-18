@@ -783,8 +783,10 @@ body.nav-open{overflow:hidden}
 
 .account-access{min-width:0}
 .account-access .form{max-width:var(--form-width)}
-.credential-table{width:100%;display:table;table-layout:fixed;margin-block:16px}
-.credential-table th,.credential-table td{padding:10px 8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
-.credential-table th:nth-child(2){width:34%}
-.credential-table th:nth-child(n+3){width:12%}
-@media(max-width:700px){.credential-table{table-layout:auto}.credential-table td{padding:5px 0}}
+.clients-table{width:100%;display:table;table-layout:fixed;margin-block:16px}
+.clients-table th,.clients-table td{padding:10px 8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.clients-table th:nth-child(1){width:24%}
+.clients-table th:nth-child(2){width:14%}
+.clients-table th:nth-child(3){width:16%}
+.clients-table th:last-child{width:14%}
+@media(max-width:700px){.clients-table{table-layout:auto}.clients-table td{padding:5px 0}}
