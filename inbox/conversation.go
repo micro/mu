@@ -118,16 +118,16 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	case "whatsapp":
 		b.WriteString(`<div class="bubble-list whatsapp-transcript">`)
 	case "sms":
-		b.WriteString(`<div class="message-list sms-transcript">`)
+		b.WriteString(`<div data-inbox-messages class="message-list sms-transcript">`)
 	case thread.ChatClient:
-		b.WriteString(`<div class="message-list chat-transcript">`)
+		b.WriteString(`<div data-inbox-messages class="message-list chat-transcript">`)
 	case thread.WebClient:
-		b.WriteString(`<div class="message-list assistant-transcript">`)
+		b.WriteString(`<div data-inbox-messages class="message-list assistant-transcript">`)
 	default:
-		b.WriteString(`<div class="card-list mail-transcript">`)
+		b.WriteString(`<div data-inbox-messages class="card-list mail-transcript">`)
 	}
 	for _, m := range msgs {
-		b.WriteString(messageBlock(accountID, t, m, subject))
+		b.WriteString(`<div data-message-id="` + html.EscapeString(m.ID) + `">` + messageBlock(accountID, t, m, subject) + `</div>`)
 	}
 	b.WriteString(`</div>`)
 
@@ -287,7 +287,7 @@ func actionBar(t *thread.Thread, to string, canAssign bool, inline ...bool) stri
 	// conversationPane's assign parameter.
 	if canAssign && t.Client != thread.WebClient {
 		b.WriteString(`<button type="button" class="ib-assign-open btn" ` +
-			`onclick="muAssignOpen()">Assign to agent</button>`)
+			`onclick="muAssignOpen()">Ask Micro</button>`)
 	}
 	// Where the reply goes, and only when that is not obvious.
 	//

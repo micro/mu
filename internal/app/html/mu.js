@@ -1353,30 +1353,49 @@ if(typeof document!=='undefined'){
 }
 
 
-// Notice new replies without replacing a draft or moving the reader's scroll.
+// Update only message/list regions. Composers, focus and drafts stay mounted.
 (function () {
   if (typeof document === 'undefined') return;
-  var reader = document.querySelector('[data-inbox-watch]');
-  if (!reader) return;
-  var updated = Date.parse(reader.dataset.inboxWatch), attempts = 0;
+  const reader = document.querySelector('[data-inbox-watch]');
+  const list = document.querySelector('[data-inbox-list]');
+  if (!reader && !list) return;
+  let stopped = false, timer;
   async function check() {
-    if (++attempts > 40) return;
-    if (!document.hidden) {
-      try {
-        var url = new URL(location.href);
-        url.searchParams.set('updates', '1');
-        var response = await fetch(url, {headers: {Accept: 'application/json'}, cache: 'no-store'});
-        if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return;
-        var data = await response.json();
-        if (data.updated && Date.parse(data.updated) > updated) {
-          var notice = reader.querySelector('[data-inbox-update]');
-          if (notice) notice.hidden = false;
-          return;
+    try {
+      if (stopped || document.hidden || !navigator.onLine) return;
+      if (window.getSelection()?.toString()) return;
+      const region = reader ? reader.querySelector('[data-inbox-messages]') : list;
+      if (!region || region.contains(document.activeElement)) return;
+      // Never replace messages while an existing synchronous streaming client
+      // is writing into the same reader.
+      if (reader?.querySelector('button[type="submit"]:disabled')) return;
+      const response = await fetch(location.href, {headers: {Accept: 'text/html'}, cache: 'no-store'});
+      if (!response.ok || response.redirected || !response.headers.get('content-type')?.includes('text/html')) return;
+      const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+      const incoming = page.querySelector(reader ? '[data-inbox-messages]' : '[data-inbox-list]');
+      if (!incoming || stopped || document.hidden || window.getSelection()?.toString()) return;
+      if (region.contains(document.activeElement)) return;
+      const y = window.scrollY;
+      if (reader) {
+        const old = new Map(Array.from(region.children).map(node => [node.dataset.messageId, node]));
+        // Reuse unchanged messages so open disclosures and embedded media survive.
+        const nodes = Array.from(incoming.children).map(node => old.get(node.dataset.messageId) || node);
+        if (nodes.length !== region.children.length || nodes.some((node,i) => node !== region.children[i])) {
+          region.replaceChildren(...nodes);
+          const notice = reader.querySelector('[data-inbox-update]');
+          if (notice) { notice.textContent = 'Conversation updated'; notice.hidden = false; }
         }
-      } catch (_) {}
+      } else if (region.innerHTML !== incoming.innerHTML) {
+        region.replaceChildren(...incoming.childNodes);
+      }
+      window.scrollTo(window.scrollX, y);
+    } catch (_) {
+      // A failed poll never discards the last usable page or the draft.
+    } finally {
+      if (!stopped) timer = setTimeout(check, 10000);
     }
-    setTimeout(check, 15000);
   }
-  setTimeout(check, 15000);
+  timer = setTimeout(check, 10000);
+  window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
+  window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; clearTimeout(timer); check(); } });
 })();
-

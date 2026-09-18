@@ -66,16 +66,10 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	// store worth pointing it at is the record every channel writes to. See
 	// inbox/imapbridge.go. The sentence is true again, and this time the server
 	// is what made it true.
-	b.WriteString(`<p class="svc-lead">Every thread in one place. Email, sms, chats, etc. ` +
-		`Agents reply to <code>agent@</code> or <code>you+agent@</code>.</p>`)
-	b.WriteString(`<p class="ib-imap-note">Conversations that are not mail show a sender ` +
-		`built from where they came from — a text from <code>+447700900123</code> reads as ` +
-		`<code>447700900123.sms@…</code> — so a client has an address to show, to thread ` +
-		`on, and to reply to. Answering one goes back out the way it came in.</p>`)
-	b.WriteString(`<p class="ib-imap-note">Those addresses answer a conversation and cannot ` +
-		`start one. They are composed from the parts, so anybody who has seen one could ` +
-		`write another — if the address were enough to send, knowing the pattern would be ` +
-		`permission to text any number in the world from this instance's number.</p>`)
+	b.WriteString(`<p class="svc-lead">Read your mail and recent conversations in your mail app, including conversations started on the web.</p>`)
+	b.WriteString(`<p>Your messages appear in Sent. Micro’s answers appear in Inbox. Reply to Micro using this account’s outgoing mail settings to continue the same conversation.</p>`)
+	b.WriteString(`<p class="text-sm text-muted">Text and WhatsApp replies to a person go back through that channel. XMPP replies continue in your chat client. Notes, documents and schedules remain in the web Inbox’s Saved and Scheduled views.</p>`)
+	b.WriteString(`<p class="text-sm text-muted">For non-email conversations, read flags and deletions apply to the mail-client view. Deleting one of these messages does not erase its source conversation from the web Inbox.</p>`)
 
 	host, port, secure, on := imapReach()
 	if !on {
@@ -114,14 +108,14 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<ul class="ib-imap-list">`)
 	b.WriteString(`<li>Read, reply, mark read, delete. A reply to the agent runs it, ` +
 		`the same as replying on this page — and a reply to a text goes out as a text.</li>`)
-	b.WriteString(`<li>Each agent is a folder — mail to <code>you+research@</code> ` +
+	b.WriteString(`<li>Tags appear as folders — mail to <code>you+research@</code> ` +
 		`is the Research folder.</li>`)
 	b.WriteString(`<li>New mail shows up while the client sits open, within about ` +
-		`twenty seconds. A text or a chat appears on the next refresh.</li>`)
+		`twenty seconds. Conversation updates appear there too.</li>`)
 	// Said rather than left to be discovered. A client that offers a verb the
 	// server refuses looks broken; a reader told why does not go looking.
 	b.WriteString(`<li>You cannot make, rename or delete folders. They are your ` +
-		`agents and your spam, both worked out from what has arrived, so there is ` +
+		`tags and your spam, both worked out from what has arrived, so there is ` +
 		`nothing for those to change.</li>`)
 	b.WriteString(`</ul>`)
 

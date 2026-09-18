@@ -218,7 +218,7 @@ func (s *submissionSession) Data(r io.Reader) error {
 			if strings.TrimSpace(body) == "" {
 				body = html
 			}
-			if handled, ferr := BridgedReply(s.acc.ID, to, body); handled {
+			if handled, ferr := BridgedReply(s.acc.ID, to, body, strings.TrimSpace(msg.Header.Get("Message-ID"))); handled {
 				if ferr != nil {
 					app.Log("mail", "submission: %s -> %s failed: %v", s.acc.ID, to, ferr)
 					failed = append(failed, fmt.Sprintf("%s (%v)", to, ferr))

@@ -68,11 +68,6 @@ func Bridge(accountID string) []*mail.Message {
 		if t.Client == mailClient {
 			continue
 		}
-		// What arrived, not what you started here — the same rule the inbox
-		// list follows, so the two agree about what an inbox is.
-		if !thread.Arrived(t) {
-			continue
-		}
 		// And nothing held. Held means somebody nobody here has heard of has
 		// not been let in; pushing it to a phone through Gmail is precisely
 		// what being held is meant to prevent.
@@ -111,6 +106,7 @@ func asMessages(accountID string, t thread.Thread, domain string) []*mail.Messag
 		messageID := "<" + id + "@" + domain + ">"
 
 		one := &mail.Message{
+			Bridged:   true,
 			ID:        id,
 			Subject:   subject,
 			Body:      m.Text,
@@ -125,17 +121,18 @@ func asMessages(accountID string, t thread.Thread, domain string) []*mail.Messag
 			Read: !m.At.After(t.Seen),
 		}
 
-		if said := strings.TrimSpace(m.From); said != "" && m.Role != thread.RoleAgent &&
+		if m.Role == thread.RoleAgent {
+			one.ToID = accountID
+			one.From = messageAgentName(accountID, &t, m)
+			one.FromID = t.ID + ".conversation@" + domain
+		} else if said := strings.TrimSpace(m.From); said != "" &&
 			!strings.EqualFold(said, accountID) {
 			// Somebody else wrote it, so it is a message that arrived.
 			one.ToID = accountID
 			one.From = said
 			one.FromID = bridgeAddress(said, t.Client, domain)
 		} else {
-			// You or your agent wrote it. FromID is the account, which is what
-			// files it under Sent rather than in the inbox — see sentBy. A
-			// client that showed your own replies as new mail would ring for
-			// every answer the agent gave.
+			// Only the person's outgoing messages belong in Sent.
 			one.FromID = accountID
 			one.From = accountID
 			one.ToID = accountID
@@ -209,7 +206,25 @@ func bridgeID(id string) string {
 // That is the same rule the inbound side already keeps — service/sms wakes an
 // agent only for a sender the account knows — arrived at from the other
 // direction, which is the sign it is the right rule rather than a convenience.
+// Continue accepts an owner-authenticated assistant reply through the shared queue.
+var Continue func(accountID, threadID, text, ref string) error
+
 func Reply(accountID, to, text string) (bool, error) {
+	return ReplyWithRef(accountID, to, text, "")
+}
+
+func ReplyWithRef(accountID, to, text, ref string) (bool, error) {
+	if at := strings.LastIndex(to, "@"); at > 0 && strings.EqualFold(to[at+1:], mail.ConfiguredDomain()) && strings.HasSuffix(to[:at], ".conversation") {
+		id := strings.TrimSuffix(to[:at], ".conversation")
+		t := thread.Get(accountID, id)
+		if t == nil || thread.IsHeld(*t) {
+			return true, fmt.Errorf("conversation not available")
+		}
+		if Continue == nil {
+			return true, fmt.Errorf("assistant replies are unavailable")
+		}
+		return true, Continue(accountID, id, quotedOff(text), ref)
+	}
 	client, key, ok := bridgeParse(to, mail.ConfiguredDomain())
 	if !ok {
 		return false, nil

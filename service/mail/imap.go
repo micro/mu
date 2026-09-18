@@ -193,9 +193,12 @@ func (s *imapSession) command(line string) bool {
 		s.send("* CAPABILITY " + imapCapability(s.account != ""))
 		s.ok(tag, "CAPABILITY completed")
 	case "NOOP", "CHECK":
+		if s.folder != "" {
+			s.changed()
+		}
 		s.ok(tag, name+" completed")
 	case "LOGOUT":
-		s.send("* BYE Mu IMAP signing off")
+		s.send("* BYE Micro IMAP signing off")
 		s.ok(tag, "LOGOUT completed")
 		return false
 	case "ID":
@@ -203,7 +206,7 @@ func (s *imapSession) command(line string) bool {
 		// Thunderbird sends it again after login, so a server that does not
 		// answer it makes a BAD the first thing a client ever hears. Nothing is
 		// kept from what the client says about itself; answering is the point.
-		s.send(`* ID ("name" "Mu")`)
+		s.send(`* ID ("name" "Micro")`)
 		s.ok(tag, "ID completed")
 	case "NAMESPACE":
 		// RFC 2342. One personal namespace and no others: an account here has
@@ -236,7 +239,10 @@ func (s *imapSession) command(line string) bool {
 	case "EXPUNGE":
 		s.expunge(tag)
 	case "CLOSE":
-		s.expungeQuietly()
+		if _, err := s.expungeQuietly(); err != nil {
+			s.no(tag, "could not save all deletions")
+			return true
+		}
 		s.folder, s.msgs, s.uids = "", nil, nil
 		s.ok(tag, "CLOSE completed")
 	case "UNSELECT":
@@ -590,7 +596,6 @@ func (s *imapSession) idle(tag string) bool {
 		}
 	}()
 
-	was := len(s.msgs)
 	ticker := time.NewTicker(imapIdleTick)
 	defer ticker.Stop()
 	for {
@@ -602,10 +607,7 @@ func (s *imapSession) idle(tag string) bool {
 			s.ok(tag, "IDLE terminated")
 			return true
 		case <-ticker.C:
-			if n := s.refresh(); n != was {
-				was = n
-				s.send(fmt.Sprintf("* %d EXISTS", n))
-			}
+			s.changed()
 		}
 	}
 }
@@ -695,4 +697,34 @@ func (s *imapSession) flagsOf(m *Message) string {
 		f = append(f, `\Deleted`)
 	}
 	return "(" + strings.Join(f, " ") + ")"
+}
+
+// Tell a selected client about removals as well as arrivals. A replacement can
+// leave the same count, so EXISTS alone cannot synchronise the mailbox.
+func (s *imapSession) changed() {
+	old := append([]*Message(nil), s.msgs...)
+	s.refresh()
+	oldRead := map[string]bool{}
+	for _, m := range old {
+		oldRead[m.ID] = m.Read
+	}
+	present := map[string]bool{}
+	for _, m := range s.msgs {
+		present[m.ID] = true
+	}
+	removed := 0
+	for i := len(old) - 1; i >= 0; i-- {
+		if !present[old[i].ID] {
+			s.send(fmt.Sprintf("* %d EXPUNGE", i+1))
+			removed++
+		}
+	}
+	if len(s.msgs) != len(old)-removed {
+		s.send(fmt.Sprintf("* %d EXISTS", len(s.msgs)))
+	}
+	for i, m := range s.msgs {
+		if before, existed := oldRead[m.ID]; m.Bridged && existed && before != m.Read {
+			s.send(fmt.Sprintf("* %d FETCH (UID %d FLAGS %s)", i+1, s.uids[i], s.flagsOf(m)))
+		}
+	}
 }

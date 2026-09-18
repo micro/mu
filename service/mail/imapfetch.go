@@ -145,7 +145,7 @@ func (s *imapSession) markRead(m *Message) {
 	if s.readOnly || m.Read {
 		return
 	}
-	MarkAsRead(m.ID, s.account) //nolint:errcheck
+	s.setRead(m, true) //nolint:errcheck
 }
 
 // imapSplitMessage divides a rendered message into its headers and its body.
@@ -589,18 +589,27 @@ func (s *imapSession) store(tag, args string, byUID bool) {
 		m := s.msgs[i]
 		switch {
 		case replace:
-			s.setRead(m, wantSeen)
+			if err := s.setRead(m, wantSeen); err != nil {
+				s.no(tag, "could not save read state")
+				return
+			}
 			s.deleted[m.ID] = wantDeleted
 		case add:
 			if wantSeen {
-				s.setRead(m, true)
+				if err := s.setRead(m, true); err != nil {
+					s.no(tag, "could not save read state")
+					return
+				}
 			}
 			if wantDeleted {
 				s.deleted[m.ID] = true
 			}
 		default:
 			if wantSeen {
-				s.setRead(m, false)
+				if err := s.setRead(m, false); err != nil {
+					s.no(tag, "could not save read state")
+					return
+				}
 			}
 			if wantDeleted {
 				delete(s.deleted, m.ID)
@@ -617,15 +626,17 @@ func (s *imapSession) store(tag, args string, byUID bool) {
 	s.ok(tag, "STORE completed")
 }
 
-func (s *imapSession) setRead(m *Message, read bool) {
+func (s *imapSession) setRead(m *Message, read bool) error {
 	if read == m.Read {
-		return
+		return nil
+	}
+	if m.Bridged {
+		return imapBridgeChange(s.account, m, &read, false)
 	}
 	if read {
-		MarkAsRead(m.ID, s.account) //nolint:errcheck
-		return
+		return MarkAsRead(m.ID, s.account)
 	}
-	MarkAsUnread(m.ID, s.account) //nolint:errcheck
+	return MarkAsUnread(m.ID, s.account)
 }
 
 // expunge removes what STORE marked \Deleted, and tells the client which
@@ -641,8 +652,13 @@ func (s *imapSession) expunge(tag string) {
 		s.no(tag, "this mailbox is open read-only")
 		return
 	}
-	for _, n := range s.expungeQuietly() {
+	gone, err := s.expungeQuietly()
+	for _, n := range gone {
 		s.send(fmt.Sprintf("* %d EXPUNGE", n))
+	}
+	if err != nil {
+		s.no(tag, "could not save all deletions")
+		return
 	}
 	s.ok(tag, "EXPUNGE completed")
 }
@@ -650,23 +666,32 @@ func (s *imapSession) expunge(tag string) {
 // expungeQuietly does the removal and reports the sequence numbers, highest
 // first. CLOSE does the same thing without saying anything, which is the one
 // difference between CLOSE and EXPUNGE.
-func (s *imapSession) expungeQuietly() []int {
+func (s *imapSession) expungeQuietly() ([]int, error) {
 	if s.folder == "" || s.readOnly || len(s.deleted) == 0 {
-		return nil
+		return nil, nil
 	}
+	var failure error
 	var gone []int
 	for i := len(s.msgs) - 1; i >= 0; i-- {
 		m := s.msgs[i]
 		if !s.deleted[m.ID] {
 			continue
 		}
-		if err := DeleteMessage(m.ID, s.account); err == nil {
+		var err error
+		if m.Bridged {
+			err = imapBridgeChange(s.account, m, nil, true)
+		} else {
+			err = DeleteMessage(m.ID, s.account)
+		}
+		if err == nil {
 			gone = append(gone, i+1)
+			delete(s.deleted, m.ID)
+		} else {
+			failure = err
 		}
 	}
-	s.deleted = map[string]bool{}
 	s.refresh()
-	return gone
+	return gone, failure
 }
 
 // ---- the wire format ----

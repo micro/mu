@@ -185,7 +185,7 @@ func wireHooks() {
 	// And answering one from that client. A reply and only a reply: the address
 	// is composed and therefore guessable, so it names a conversation rather
 	// than granting permission to start one.
-	mail.BridgedReply = inbox.Reply
+	mail.BridgedReply = inbox.ReplyWithRef
 
 	// And a room is a client too. service/chat decides who is in a room and
 	// whether the agent was named; this is what answers when it was. It used to
