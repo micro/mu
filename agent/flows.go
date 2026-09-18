@@ -371,6 +371,13 @@ func adopt(accountID string, chain []*Flow) string {
 		return ""
 	}
 	root := chain[0]
+	// New turns already belong to the shared record. A queued reply has its
+	// own workflow ID, which must not become a new conversation on restart.
+	if root.Via.Thread != "" {
+		if th := thread.Find(accountID, root.Via.Client, root.Via.Thread); th != nil {
+			return th.ID
+		}
+	}
 	if th := thread.Find(accountID, thread.WebClient, root.ID); th != nil {
 		return th.ID
 	}

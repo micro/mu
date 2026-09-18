@@ -331,7 +331,7 @@ func Ask(r AskRequest) (Answer, error) {
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
 
 	via := r.Via
-	via.Client, via.Thread = r.Client, r.Thread
+	via.Client, via.Thread = th.Client, th.Key
 
 	// The workflow record: how the answer was produced, which is a different
 	// question with a different lifetime from what was said.

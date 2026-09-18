@@ -150,7 +150,7 @@ func SubmitReply(accountID, threadID, text, ref string) error {
 		return err
 	}
 	// The worker cannot start until the message is visible and flushed.
-	if thread.Add(thread.Message{Account: accountID, Thread: threadID, Role: thread.RolePerson, From: accountID, Text: text, Ref: "reply:" + id}) == "" {
+	if thread.Add(thread.Message{Account: accountID, Thread: threadID, Role: thread.RolePerson, Text: text, Ref: "reply:" + id}) == "" {
 		return errNoConversation
 	}
 	return thread.Flush()
@@ -190,7 +190,7 @@ func runReply() {
 		switch original {
 		case "queued":
 			// Recheck the captured specialist; never silently replace it on execution.
-			_, err := Ask(AskRequest{Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, From: job.Account, MessageRef: "reply:" + job.ID})
+			_, err := Ask(AskRequest{Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: "reply:" + job.ID})
 			if err != nil {
 				app.Log("agent", "queued reply %s failed: %v", job.ID, err)
 				if err = AnsweredOnce(job.Account, job.Thread, "The reply could not be completed. Review the conversation before trying again.", "", "reply-error:"+job.ID); err != nil {
