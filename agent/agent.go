@@ -174,6 +174,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		servePage(w, r)
 	case "POST":
+		if path == "/agent" && strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+			inboxReply(w, r)
+			return
+		}
 		if strings.TrimPrefix(path, "/agent/") != "" && path != "/agent" {
 			APIHandler(w, r)
 			return
