@@ -53,6 +53,7 @@ var postsPreviewHtml string
 // author next to each item costs nothing and lets a viewer who has hidden or
 // blocked something get a list without it.
 type listItem struct {
+	Community bool
 	Editorial bool
 	ID        string
 	AuthorID  string
@@ -94,6 +95,7 @@ func loadTopics() []string {
 }
 
 type Post struct {
+	Community bool       `json:"community,omitempty"`
 	Editorial bool       `json:"editorial,omitempty"`
 	ID        string     `json:"id"`
 	Title     string     `json:"title"`
@@ -597,7 +599,7 @@ func updateCacheUnlocked() {
 			author = `<a href="/@` + url.PathEscape(post.AuthorID) + `">` + author + `</a>`
 		}
 		item := fmt.Sprintf(`<article class="editorial-entry"><div class="metadata-row"><time datetime="%s">%s</time><span>%s</span></div><h2><a href="/blog/post?id=%s">%s</a></h2><p>%s</p></article>`, post.CreatedAt.Format(time.RFC3339), post.CreatedAt.Format("2 January 2006"), author, url.QueryEscape(post.ID), stdhtml.EscapeString(title), postExcerpt(post.Content))
-		items = append(items, listItem{Editorial: post.Editorial, ID: post.ID, AuthorID: post.AuthorID, HTML: item, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
+		items = append(items, listItem{Community: post.Community, Editorial: post.Editorial, ID: post.ID, AuthorID: post.AuthorID, HTML: item, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
 	}
 
 	postsItems = items
@@ -660,7 +662,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleGetBlog handles GET /blog - returns posts as JSON or HTML
 func handleGetBlog(w http.ResponseWriter, r *http.Request) {
-	archive := r.URL.Query().Get("view") == "archive"
+	view := r.URL.Query().Get("view")
+	if view != "community" && view != "archive" {
+		view = "editorial"
+	}
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	matches := func(text string) bool {
 		for _, word := range strings.Fields(strings.ToLower(query)) {
@@ -680,6 +685,9 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Filter out flagged posts and private posts (unless admin)
 		var visiblePosts []*Post
 		for _, post := range posts {
+			if r.URL.Query().Has("view") && publication(post.Editorial, post.Community) != view {
+				continue
+			}
 			if !flag.IsHidden("post", post.ID) && !auth.IsBanned(post.AuthorID) && matches(post.Title+" "+post.Content+" "+post.Tags+" "+post.Author) {
 				// Skip private posts for non-admins
 				if post.Private && !isAdmin {
@@ -707,7 +715,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	// round gives a page of nineteen because one of the twenty was blocked.
 	var selected []listItem
 	for _, item := range items {
-		if item.Editorial != archive {
+		if publication(item.Editorial, item.Community) == view {
 			selected = append(selected, item)
 		}
 	}
@@ -731,8 +739,8 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	case list != "":
 		navURL := "/blog"
 		params := url.Values{}
-		if archive {
-			params.Set("view", "archive")
+		if view != "editorial" {
+			params.Set("view", view)
 		}
 		if query != "" {
 			params.Set("q", query)
@@ -747,7 +755,9 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		list = "<p>Nothing to show — you have hidden everything here.</p>"
 	default:
 		list = `<p class="text-muted">No editorial posts yet.</p>`
-		if archive {
+		if view == "community" {
+			list = `<p class="text-muted">No community posts yet.</p>`
+		} else if view == "archive" {
 			list = `<p class="text-muted">No archived posts.</p>`
 		}
 	}
@@ -900,20 +910,28 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	} else {
 		var actions string
 		_, acc := auth.TrySession(r)
-		if acc != nil && (acc.Admin || archive) {
+		if acc != nil {
 			actions = `<a href="/blog?write=true">Write a post</a>`
 		}
-		nav := `<a href="/blog" aria-current="page">Editorial</a><a href="/blog?view=archive">Archive</a>`
+		var nav string
+		for _, tab := range []struct{ view, label, href string }{{"editorial", "Editorial", "/blog"}, {"community", "Community", "/blog?view=community"}, {"archive", "Archive", "/blog?view=archive"}} {
+			current := ""
+			if view == tab.view {
+				current = ` aria-current="page"`
+			}
+			nav += `<a href="` + tab.href + `"` + current + `>` + tab.label + `</a>`
+		}
 		description := "Writing about Micro and the ideas behind it."
-		if archive {
-			nav = `<a href="/blog">Editorial</a><a href="/blog?view=archive" aria-current="page">Archive</a>`
-			description = "Earlier posts, generated digests and community writing. These are separate from Micro’s editorial publication."
+		if view == "community" {
+			description = "Posts from the community."
+		} else if view == "archive" {
+			description = "Earlier posts and generated digests."
 		}
 		search := ""
 		if written > 0 || query != "" {
 			hidden := ""
-			if archive {
-				hidden = `<input type="hidden" name="view" value="archive">`
+			if view != "editorial" {
+				hidden = `<input type="hidden" name="view" value="` + view + `">`
 			}
 			search = `<form method="GET" action="/blog" class="search-bar">` + hidden + `<input type="search" name="q" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
 		}
@@ -927,6 +945,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 func CreatePost(title, content, author, authorID, tags string, private bool) error {
 	// Create new post
 	post := &Post{
+		Community: true,
 		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
 		Title:     title,
 		Content:   content,
@@ -1293,7 +1312,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, "/blog?view=archive", http.StatusSeeOther)
+		http.Redirect(w, r, "/blog?view=community", http.StatusSeeOther)
 		return
 	}
 
@@ -1441,7 +1460,11 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, "/blog?view=archive", http.StatusSeeOther)
+		destination := "/blog"
+		if view := publication(post.Editorial, post.Community); view != "editorial" {
+			destination += "?view=" + view
+		}
+		http.Redirect(w, r, destination, http.StatusSeeOther)
 		return
 	}
 
@@ -1537,6 +1560,9 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	back, backLabel := "/blog", "Editorial"
 	if !post.Editorial {
 		back, backLabel = "/blog?view=archive", "Archive"
+		if post.Community {
+			back, backLabel = "/blog?view=community", "Community"
+		}
 	}
 	contentSB.WriteString(`<div id="blog" class="editorial-page"><a class="editorial-back" href="` + back + `">← ` + backLabel + `</a>`)
 	contentSB.WriteString(`<div class="metadata-row"><time datetime="` + post.CreatedAt.Format(time.RFC3339) + `">` + post.CreatedAt.Format("2 January 2006") + `</time><span>` + authorLink + `</span></div>`)
@@ -1547,7 +1573,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		contentSB.WriteString(`<p class="text-muted text-sm">Private · Admins only</p>`)
 	}
 	if !post.Editorial {
-		contentSB.WriteString(`<p class="editorial-notice">Archive · This post is not part of Micro’s editorial publication.</p>`)
+		contentSB.WriteString(`<p class="editorial-notice">` + backLabel + ` · This post is not part of Micro’s editorial publication.</p>`)
 	}
 	contentSB.WriteString(`<article class="reader-content">` + contentHTML + `</article><div class="reading-actions">`)
 	if !post.Private {
@@ -1664,7 +1690,7 @@ func returnTo(asked string) string {
 	u, err := url.Parse(to)
 	if err != nil || u.Scheme != "" || u.Host != "" || u.Opaque != "" ||
 		!strings.HasPrefix(u.Path, "/") || strings.HasPrefix(to, "//") {
-		return "/blog?view=archive"
+		return "/blog?view=community"
 	}
 	return to
 }
@@ -1923,12 +1949,27 @@ func selectEditorial(id string, selected bool) error {
 	if selected && post.Private {
 		return fmt.Errorf("make the post public before adding it to editorial")
 	}
-	previous := post.Editorial
+	previous, previousCommunity := post.Editorial, post.Community
 	post.Editorial = selected
+	if !selected {
+		post.Community = false
+	}
 	if err := save(); err != nil {
-		post.Editorial = previous
+		post.Editorial, post.Community = previous, previousCommunity
 		return err
 	}
 	updateCacheUnlocked()
 	return nil
+}
+
+// Missing community metadata keeps legacy content archived without a migration.
+// Editorial selection takes precedence over a post's original community placement.
+func publication(editorial, community bool) string {
+	if editorial {
+		return "editorial"
+	}
+	if community {
+		return "community"
+	}
+	return "archive"
 }
