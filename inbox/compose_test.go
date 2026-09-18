@@ -48,3 +48,13 @@ func TestComposeChoiceAndReply(t *testing.T) {
 		}
 	}
 }
+
+func TestAssistantReplyIgnoresOwnersMailAddress(t *testing.T) {
+	owner := "compose_owner"
+	address := mail.EmailForUser(owner, mail.ConfiguredDomain())
+	th := &thread.Thread{Client: mailClient, Parties: []thread.Party{{Kind: thread.RolePerson, Key: address}, {Kind: thread.RolePerson, Key: mail.AgentMailbox}}}
+	msgs := []thread.Message{{Role: thread.RolePerson, From: address, To: mail.AgentMailbox}}
+	if got := replyTo(owner, th, msgs); got != mail.AgentMailbox {
+		t.Fatalf("reply addressed to %q", got)
+	}
+}

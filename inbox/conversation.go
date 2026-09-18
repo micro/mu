@@ -188,9 +188,12 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 	for i := len(msgs) - 1; i >= 0; i-- {
 		m := msgs[i]
 		if m.Role == thread.RoleAgent {
+			if assistantRecipient(m.From) {
+				return m.From
+			}
 			continue
 		}
-		if from := strings.TrimSpace(m.From); from != "" && from != accountID {
+		if from := strings.TrimSpace(m.From); from != "" && !ownAddress(accountID, from) {
 			return from
 		}
 	}
@@ -213,12 +216,12 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 		if p.Kind == thread.RoleAgent {
 			continue
 		}
-		if k := strings.TrimSpace(p.Key); k != "" && !strings.EqualFold(k, accountID) {
+		if k := strings.TrimSpace(p.Key); k != "" && !ownAddress(accountID, k) {
 			return k
 		}
 	}
 	for i := len(msgs) - 1; i >= 0; i-- {
-		if to := strings.TrimSpace(msgs[i].To); to != "" && !strings.EqualFold(to, accountID) {
+		if to := strings.TrimSpace(msgs[i].To); to != "" && !ownAddress(accountID, to) {
 			return to
 		}
 	}
@@ -695,4 +698,8 @@ func assistantRecipient(to string) bool {
 		to = to[:at]
 	}
 	return to == mail.AgentMailbox || (to == auth.MicroID && auth.IsAgent(auth.MicroID))
+}
+
+func ownAddress(accountID, address string) bool {
+	return strings.EqualFold(address, accountID) || strings.EqualFold(address, "@"+accountID) || strings.EqualFold(address, mail.EmailForUser(accountID, mail.ConfiguredDomain()))
 }
