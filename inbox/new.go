@@ -462,7 +462,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="ib">`)
+	b.WriteString(`<div class="ib page-col">`)
 	// Back where you came from. A reply reached from a conversation that offers
 	// "← Inbox" sends you to the list, which is one step past where you were.
 	back := app.TextLink("Inbox", "/inbox")
@@ -548,7 +548,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		} else {
 			email = " checked"
 		}
-		b.WriteString(`<fieldset class="choices"><legend class="sr-only">Send to</legend><label class="choice"><input type="radio" name="mode" value="assistant"` + assistant + `>Assistant</label><label class="choice"><input type="radio" name="mode" value="email"` + email + `>Email</label></fieldset>`)
+		b.WriteString(`<fieldset class="segmented-control"><legend class="sr-only">Send to</legend><label><input class="sr-only" type="radio" name="mode" value="assistant"` + assistant + `>Assistant</label><label><input class="sr-only" type="radio" name="mode" value="email"` + email + `>Email</label></fieldset>`)
 	}
 
 	if writing != kindMessage {
