@@ -46,8 +46,8 @@ type grant struct {
 // grants are the capabilities that can be asked for, keyed by the path segment
 // that asks for them.
 var grants = map[string]grant{
-	"gmail":    {scope: google.GmailScope, ret: "/account/connections", verb: "Gmail"},
-	"drive":    {scope: google.DriveScope, ret: "/account/connections", verb: "Drive"},
+	"gmail":    {scope: google.GmailScope, ret: "/account", verb: "Gmail"},
+	"drive":    {scope: google.DriveScope, ret: "/account", verb: "Drive"},
 	"calendar": {scope: google.CalendarScope, ret: "/events", verb: "calendar"},
 	"contacts": {scope: google.ContactsScope, ret: "/contacts", verb: "contacts"},
 }
@@ -114,7 +114,7 @@ func GoogleGrantConnect(w http.ResponseWriter, r *http.Request) {
 // worse than saying so.
 func GoogleGrantDisconnect(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/account/connections", http.StatusSeeOther)
+		http.Redirect(w, r, "/account", http.StatusSeeOther)
 		return
 	}
 	_, acc, err := auth.RequireSession(r)
@@ -128,7 +128,7 @@ func GoogleGrantDisconnect(w http.ResponseWriter, r *http.Request) {
 	}
 	google.Disconnect(acc.ID)
 
-	ret := "/account/connections"
+	ret := "/account"
 	if v := strings.TrimSpace(r.FormValue("return")); strings.HasPrefix(v, "/") && !strings.HasPrefix(v, "//") {
 		ret = v
 	}
@@ -139,7 +139,7 @@ func GoogleGrantDisconnect(w http.ResponseWriter, r *http.Request) {
 func finishGoogleGrant(w http.ResponseWriter, r *http.Request, what, code string) {
 	g, ok := grants[what]
 	if !ok {
-		http.Redirect(w, r, "/account/connections", http.StatusSeeOther)
+		http.Redirect(w, r, "/account", http.StatusSeeOther)
 		return
 	}
 	_, acc, err := auth.RequireSession(r)
@@ -297,7 +297,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 
 	b.WriteString(`<div class="action-block"><form method="POST" action="/oauth2/google/disconnect" class="form-action m-0">` +
 		`<input type="hidden" name="_csrf" value="` + htmlpkg.EscapeString(auth.CSRFToken(r)) + `">` +
-		`<input type="hidden" name="return" value="/account/connections">` +
+		`<input type="hidden" name="return" value="/account">` +
 		`<button type="submit" class="btn-plain text-sm">Disconnect Google</button>` +
 		`</form>`)
 	b.WriteString(`<p class="action-note">Disconnecting removes all Google connections above.</p></div>`)

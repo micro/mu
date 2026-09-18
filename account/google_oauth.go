@@ -346,7 +346,7 @@ func linkGoogleToCurrentAccount(w http.ResponseWriter, r *http.Request, info *go
 		http.Error(w, "Could not link your Google account, please try again", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/account/connections?linked=google", http.StatusFound)
+	http.Redirect(w, r, "/account?linked=google", http.StatusFound)
 }
 
 // googleGlyph is the multicolour Google "G" mark.
