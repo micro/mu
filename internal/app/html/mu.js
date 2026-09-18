@@ -309,11 +309,26 @@ async function failure(response){try{const j=await response.json();return typeof
 (()=>{'use strict';
 const form=document.querySelector('#command-form'),input=document.querySelector('#command-input'),log=document.querySelector('#responses'),send=document.querySelector('#send'),status=document.querySelector('#status');
 if(!form)return;
-const conversation=form.closest('.conversation'),panel=form.closest('.prompt-panel');
+const conversation=form.closest('.conversation');
+const historyPanel=document.querySelector('#assistant-history');
+document.querySelectorAll('[data-history-toggle]').forEach(button=>button.addEventListener('click',()=>{historyPanel.hidden=!historyPanel.hidden;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded',String(!historyPanel.hidden)));}));
+function sizeInput(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,160)+'px';}
+input.addEventListener('input',sizeInput);sizeInput();
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
-if(conversation.classList.contains('is-active'))log.scrollTop=log.scrollHeight;
+if(conversation.classList.contains('is-active'))requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});
 let busy=false,thread=new URLSearchParams(location.search).get('session')||new URLSearchParams(location.search).get('continue')||'';
-function remember(){if(thread)history.replaceState(null,'','/?session='+encodeURIComponent(thread));}
+function remember(title){
+ if(!thread)return;
+ history.replaceState(null,'','/?session='+encodeURIComponent(thread));
+ let heading=conversation.querySelector('.assistant-thread-title');
+ if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
+ heading.textContent=title||'Conversation';
+ const nav=historyPanel.querySelector('nav'),href='/?session='+encodeURIComponent(thread);
+ let row=Array.from(nav.querySelectorAll('a')).find(link=>link.getAttribute('href')===href);
+ if(!row){row=document.createElement('a');row.className='conversation-row';row.href=href;const label=document.createElement('span');label.className='conversation-title';row.append(label,document.createElement('time'));}
+ row.querySelector('.conversation-title').textContent=title||'Conversation';row.querySelector('time').textContent='Just now';
+ nav.querySelector('p')?.remove();nav.querySelectorAll('[aria-current]').forEach(link=>link.removeAttribute('aria-current'));row.setAttribute('aria-current','page');nav.prepend(row);
+}
 let receipt=null;
 async function waitForAnswer(answer,messageID){
  while(true){
@@ -324,12 +339,12 @@ async function waitForAnswer(answer,messageID){
     response=await fetch('/agent/pending?thread='+encodeURIComponent(thread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
     if(response.ok&&!response.redirected)result=await response.json();
    }catch{}
-   if(response&&response.status===404)throw Error('Open Inbox to see this conversation.');
-   if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to see the reply in Inbox.');
+   if(response&&response.status===404)throw Error('Conversation not found.');
+   if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to continue.');
    if(result){
-    if(!result.waiting){if(result.error)throw Error(result.error);answer.innerHTML=result.answer_html||'';return;}
-    status.textContent=result.status||'Working. You can leave this page; the reply will appear here.';
-   }else status.textContent='Reconnecting. Your message is saved; you can also find it in Inbox.';
+    if(!result.waiting){if(result.error)throw Error(result.error);const follow=log.scrollHeight-log.scrollTop-log.clientHeight<80;answer.innerHTML=result.answer_html||'';if(follow)requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});return;}
+    status.textContent='Working…';
+   }else status.textContent='Reconnecting…';
   }
   await new Promise(resolve=>setTimeout(resolve,3000));
  }
@@ -338,29 +353,23 @@ async function assistant(command,answer){
  if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt={text:command,thread,id:crypto.randomUUID()};
  const response=await fetch('/agent',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json',Accept:'application/vnd.micro.queued+json','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt:command,context_id:thread,agent:form.dataset.agent||'',message_id:receipt.id})});
  if(!response.ok)throw Error(await failure(response));
- const result=await response.json(),messageID=receipt.id;thread=result.thread;remember();receipt=null;form.dispatchEvent(new Event('message-accepted'));
- status.textContent='Queued. You can leave this page; the reply will appear here.';
+ const result=await response.json(),messageID=receipt.id;thread=result.thread;remember(result.title);receipt=null;form.dispatchEvent(new Event('message-accepted'));
+ status.textContent='Working…';
  await waitForAnswer(answer,messageID);
 }
 function byline(name){const row=document.createElement('div');row.className='ib-from metadata-row';const who=document.createElement('span');who.className='ib-who-l';who.textContent=name;const at=document.createElement('time');at.className='ib-at';const now=new Date();at.dateTime=now.toISOString();at.title=now.toLocaleString();at.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});row.append(who,at);return row;}
 async function run(command){
  if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
- const first=!conversation.classList.contains('is-active'),before=form.getBoundingClientRect().top;
+ const first=!conversation.classList.contains('is-active');sizeInput();
  if(first)conversation.classList.add('is-active');
- if(first&&!reducedMotion.matches)panel.animate([{transform:'translateY('+(before-form.getBoundingClientRect().top)+'px)'},{transform:'translateY(0)'}],{duration:320,easing:'cubic-bezier(.2,.7,.2,1)'});
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
  q.append(byline('You'),document.createTextNode(command));
  const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));const answer=document.createElement('div');answer.className='message-body';response.append(answer);turn.append(q,response);log.append(turn);
- log.querySelectorAll('.turn').forEach(item=>item.style.minHeight='');
- turn.style.minHeight=log.clientHeight+'px';
- requestAnimationFrame(()=>{
-  const top=log.scrollTop+turn.getBoundingClientRect().top-log.getBoundingClientRect().top;
-  log.scrollTo({top:Math.max(0,top),behavior:first||reducedMotion.matches?'instant':'smooth'});
- });
- try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Check Inbox before sending again if the connection was lost.';if(receipt&&!input.value)input.value=command;}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
+ requestAnimationFrame(()=>{log.scrollTo({top:log.scrollHeight,behavior:first||reducedMotion.matches?'instant':'smooth'});});
+ try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Message not confirmed.';if(receipt&&!input.value)input.value=command;}finally{busy=false;send.disabled=false;sizeInput();}
 }
 if(thread&&form.dataset.pending==='true'){
- busy=true;send.disabled=true;status.textContent='Checking for the reply…';
+ busy=true;send.disabled=true;status.textContent='Working…';
  const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));
  const answer=document.createElement('div');answer.className='message-body';response.append(answer);
  const turn=document.createElement('section');turn.className='turn';turn.append(response);log.append(turn);
@@ -1403,8 +1412,6 @@ if(typeof document!=='undefined'){
         const nodes = Array.from(incoming.children).map(node => (old.get(node.dataset.messageId)?.innerHTML === node.innerHTML ? old.get(node.dataset.messageId) : node));
         if (nodes.length !== region.children.length || nodes.some((node,i) => node !== region.children[i])) {
           region.replaceChildren(...nodes);
-          const notice = reader.querySelector('[data-inbox-update]');
-          if (notice) { notice.textContent = 'Conversation updated'; notice.hidden = false; }
         }
       } else if (region.innerHTML !== incoming.innerHTML) {
         region.replaceChildren(...incoming.childNodes);
