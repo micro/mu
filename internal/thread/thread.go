@@ -280,6 +280,13 @@ func ensure() {
 		}
 		for id := range messages {
 			sortByTime(messages[id])
+			if t := threads[id]; t != nil {
+				for _, m := range messages[id] {
+					if m.Account == t.Account && m.At.After(t.Updated) {
+						t.Updated = m.At
+					}
+				}
+			}
 		}
 	}
 
@@ -470,7 +477,14 @@ func Add(m Message) string {
 	stored := m
 	messages[m.Thread] = append(messages[m.Thread], &stored)
 	held[m.Account]++
-	t.Updated = stored.At
+	if stored.At.After(t.Updated) {
+		t.Updated = stored.At
+	}
+	// Imported older messages must not move a conversation down the inbox,
+	// or become its apparent newest message until the next restart.
+	if len(messages[m.Thread]) > 1 && stored.At.Before(messages[m.Thread][len(messages[m.Thread])-2].At) {
+		sortByTime(messages[m.Thread])
+	}
 	// What the conversation is about, from whatever opened it.
 	//
 	// This took the subject from a person's message only, so a conversation the
@@ -493,7 +507,9 @@ func Add(m Message) string {
 	// else writing to an address they own, which is exactly the case a mailbox
 	// exists for.
 	if stored.Role == RolePerson && stored.From == "" {
-		t.Seen = stored.At
+		if stored.At.After(t.Seen) {
+			t.Seen = stored.At
+		}
 	}
 	trim(m.Account)
 	save()
@@ -637,7 +653,15 @@ func List(account string, limit int) []Thread {
 
 // sortByUpdated is newest first, which every list of these is.
 func sortByUpdated(out []Thread) {
-	sort.Slice(out, func(i, j int) bool { return out[i].Updated.After(out[j].Updated) })
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Updated.Equal(out[j].Updated) {
+			if out[i].Started.Equal(out[j].Started) {
+				return out[i].ID > out[j].ID
+			}
+			return out[i].Started.After(out[j].Started)
+		}
+		return out[i].Updated.After(out[j].Updated)
+	})
 }
 
 // trim keeps an account's record within bounds, oldest first. Caller holds mu.
