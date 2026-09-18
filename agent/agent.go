@@ -183,7 +183,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			APIHandler(w, r)
 			return
 		}
-		if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+		if strings.Contains(r.Header.Get("Accept"), "text/event-stream") || strings.Contains(r.Header.Get("Accept"), "application/vnd.micro.queued+json") {
 			handleQuery(w, r)
 			return
 		}
@@ -632,7 +632,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Prompt     string        `json:"prompt"`
 		Attachment string        `json:"attachment"`
 		Model      string        `json:"model"`
-		Agent      string        `json:"agent"`       // optional: user-defined agent id to answer as
+		Agent      string        `json:"agent"` // optional: user-defined agent id to answer as
+		MessageID  string        `json:"message_id"`
 		ContextID  string        `json:"context_id"`  // optional: prior flow to continue from
 		StreamText bool          `json:"stream_text"` // opt-in answer deltas, followed by the final response
 		History    []struct {
@@ -700,6 +701,24 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			}
 			reading = "The material previously attached to this conversation is no longer available."
 		}
+	}
+
+	if strings.Contains(r.Header.Get("Accept"), "application/vnd.micro.queued+json") {
+		if !auth.StrictCSRF(r) {
+			app.RespondError(w, http.StatusForbidden, "This form could not be verified. Reopen the page and try again.")
+			return
+		}
+		id, err := queuePrompt(accountID, threadID, req.Prompt, req.MessageID, req.Agent, attachment, req.Context)
+		if err != nil {
+			app.RespondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		RememberClientConversation(w, r, id)
+		w.Header().Set("Cache-Control", "private, no-store")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		app.RespondJSON(w, map[string]any{"thread": id})
+		return
 	}
 
 	var conversationHistory []*Flow

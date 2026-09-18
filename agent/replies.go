@@ -19,14 +19,15 @@ import (
 )
 
 type pendingReply struct {
-	Digest  string    `json:"digest"`
-	ID      string    `json:"id"`
-	Account string    `json:"account"`
-	Thread  string    `json:"thread"`
-	Text    string    `json:"text,omitempty"`
-	Agent   string    `json:"agent,omitempty"`
-	State   string    `json:"state"`
-	Created time.Time `json:"created"`
+	Context ClientContext `json:"context,omitempty"`
+	Digest  string        `json:"digest"`
+	ID      string        `json:"id"`
+	Account string        `json:"account"`
+	Thread  string        `json:"thread"`
+	Text    string        `json:"text,omitempty"`
+	Agent   string        `json:"agent,omitempty"`
+	State   string        `json:"state"`
+	Created time.Time     `json:"created"`
 }
 
 const repliesFile = "agent_replies.json"
@@ -85,6 +86,10 @@ func loadReplies() {
 // SubmitReply acknowledges only a durable job and message. The optional client
 // reference deduplicates SMTP retries within the retained seven-day receipt window.
 func SubmitReply(accountID, threadID, text, ref string) error {
+	return submitReply(accountID, threadID, text, ref, ClientContext{})
+}
+
+func submitReply(accountID, threadID, text, ref string, context ClientContext) error {
 	loadReplies()
 	text = strings.TrimSpace(text)
 	if text == "" || len([]rune(text)) > 8000 {
@@ -105,8 +110,7 @@ func SubmitReply(accountID, threadID, text, ref string) error {
 	}
 	id := newFlowID()
 	if ref != "" {
-		sum := sha256.Sum256([]byte(accountID + "\x00" + threadID + "\x00" + ref))
-		id = hex.EncodeToString(sum[:])
+		id = replyID(accountID, threadID, ref)
 	}
 	replies.Lock()
 	defer replies.Unlock()
@@ -142,8 +146,12 @@ func SubmitReply(accountID, threadID, text, ref string) error {
 	if reason, ok := affordable(accountID); !ok {
 		return fmt.Errorf("%s", reason)
 	}
+	// Persist the conversation before a queued job can survive a restart.
+	if err := thread.Flush(); err != nil {
+		return err
+	}
 	digest := sha256.Sum256([]byte(text))
-	j := pendingReply{Digest: hex.EncodeToString(digest[:]), ID: id, Account: accountID, Thread: threadID, Text: text, Agent: t.Agent, State: "queued", Created: time.Now().UTC()}
+	j := pendingReply{Context: context, Digest: hex.EncodeToString(digest[:]), ID: id, Account: accountID, Thread: threadID, Text: text, Agent: t.Agent, State: "queued", Created: time.Now().UTC()}
 	replies.jobs[id] = j
 	if err := data.SaveJSON(repliesFile, replies.jobs); err != nil {
 		delete(replies.jobs, id)
@@ -190,7 +198,7 @@ func runReply() {
 		switch original {
 		case "queued":
 			// Recheck the captured specialist; never silently replace it on execution.
-			_, err := Ask(AskRequest{Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: "reply:" + job.ID})
+			_, err := Ask(AskRequest{Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: "reply:" + job.ID})
 			if err != nil {
 				app.Log("agent", "queued reply %s failed: %v", job.ID, err)
 				if err = AnsweredOnce(job.Account, job.Thread, "The reply could not be completed. Review the conversation before trying again.", "", "reply-error:"+job.ID); err != nil {
@@ -221,6 +229,7 @@ func markReply(job pendingReply, state string) {
 	job.State = state
 	if state == "done" {
 		job.Text = ""
+		job.Context = ClientContext{}
 	}
 	replies.jobs[job.ID] = job
 	if err := data.SaveJSON(repliesFile, replies.jobs); err != nil {
@@ -250,4 +259,41 @@ func replyStatus(accountID, threadID string) string {
 		}
 	}
 	return ""
+}
+
+// Serialize opening and submitting so a retried first message keeps its agent
+// and conversation, even when the acceptance response was lost.
+var promptMu sync.Mutex
+
+func queuePrompt(account, id, text, ref, agent, attachment string, context ClientContext) (string, error) {
+	if len(ref) < 16 || len(ref) > 128 || strings.TrimSpace(text) == "" || len([]rune(text)) > 8000 {
+		return "", fmt.Errorf("a message identifier and up to 8,000 characters are required")
+	}
+	promptMu.Lock()
+	defer promptMu.Unlock()
+	if id == "" {
+		sum := sha256.Sum256([]byte(ref))
+		key := "prompt:" + hex.EncodeToString(sum[:])
+		if t := thread.Find(account, thread.WebClient, key); t != nil {
+			if t.Agent != agent || thread.Attachment(account, t.ID) != attachment {
+				return "", fmt.Errorf("message identifier already used")
+			}
+			id = t.ID
+		} else {
+			if reason, ok := affordable(account); !ok {
+				return "", fmt.Errorf("%s", reason)
+			}
+			id = Opened(account, thread.WebClient, key, "", agent)
+			thread.SetAttachment(account, id, attachment)
+		}
+	}
+	if err := submitReply(account, id, text, ref, context); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+func replyID(accountID, threadID, ref string) string {
+	sum := sha256.Sum256([]byte(accountID + "\x00" + threadID + "\x00" + ref))
+	return hex.EncodeToString(sum[:])
 }
