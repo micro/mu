@@ -76,7 +76,6 @@ var LoginTemplate = `
 
 	  <button>Log in</button>
 	</form>
-	<details class="disclosure auth-help"><summary>Having trouble signing in?</summary><p>If you joined with Google, use Continue with Google. If you still have a signed-in device, you can set a password in Account. Otherwise, <a href="/contact">contact the server operator</a> for help. Automatic password reset is not available.</p></details>
 	<div id="passkey-login" class="d-none text-center mt-5">
 	  <p class="text-muted">or</p>
 	  <button onclick="loginWithPasskey()">Login with Passkey</button>
