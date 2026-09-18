@@ -1,4 +1,4 @@
-package home
+package account
 
 // What you have used, and what it cost.
 //
@@ -24,13 +24,12 @@ import (
 	"sort"
 	"strings"
 
-	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/usage"
 )
 
-// UsageHandler serves /usage: one caller's own activity.
+// UsageHandler serves /account/usage: one caller's own activity.
 func UsageHandler(w http.ResponseWriter, r *http.Request) {
 	sess, acc, err := auth.RequireSession(r)
 	if err != nil || acc == nil {
@@ -38,10 +37,15 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	account := sess.Account
+	w.Header().Set("Cache-Control", "private, no-store")
+	if app.WantsJSON(r) {
+		clientAccount(w, r, acc)
+		return
+	}
 	win := usage.WindowFor(r.URL.Query().Get("window"))
 
 	var sb strings.Builder
-	sb.WriteString(usage.CSS)
+	sb.WriteString(Navigation("/account/billing") + `<div class="page-col">` + usage.CSS)
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
 	usage.Stat(&sb, "Last hour", usage.TotalForOver(account, usage.Minute, 60))
@@ -51,7 +55,7 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div></div>`)
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(usage.Tabs("/usage", win))
+	sb.WriteString(usage.Tabs("/account/usage", win))
 	sb.WriteString(usage.ChartSVG(usage.SeriesFor(account, win.Res, win.Points), win))
 	sb.WriteString(`</div>`)
 
@@ -60,7 +64,7 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 		`2 hours by the minute, 7 days by the hour and 90 days by the day — nothing about ` +
 		`a request itself is stored.</p>`)
 
-	app.Respond(w, r, app.Response{Title: "Usage", Description: "What you have used, and what it cost", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Usage", Description: "What you have used, and what it cost", HTML: sb.String() + `</div>`})
 }
 
 // spendSection breaks the ledger down by operation, so "what is costing me" has
@@ -70,7 +74,7 @@ func spendSection(id string, admin bool) string {
 
 	// 500 is enough to cover a heavy month and short enough to stay quick; the
 	// ledger on /account is the full record.
-	txs := account.Transactions(id, 500)
+	txs := Transactions(id, 500)
 
 	spentBy := map[string]int{}
 	spent, topped := 0, 0
@@ -96,7 +100,7 @@ func spendSection(id string, admin bool) string {
 	})
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
-	usage.Stat(&sb, "Credits now", account.Balance(id))
+	usage.Stat(&sb, "Credits now", Balance(id))
 	usage.Stat(&sb, "Credits spent", spent)
 	usage.Stat(&sb, "Credits added", topped)
 	sb.WriteString(`</div>`)
@@ -124,6 +128,6 @@ func spendSection(id string, admin bool) string {
 		return sb.String()
 	}
 	usage.Table(&sb, "What you spent on", rows)
-	sb.WriteString(`<p class="text-sm text-muted"><a href="/account#ledger">Every charge, in order</a></p>`)
+	sb.WriteString(`<p class="text-sm text-muted"><a href="/account/billing#ledger">Transaction history</a></p>`)
 	return sb.String()
 }

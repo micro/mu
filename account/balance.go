@@ -265,6 +265,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sb strings.Builder
+	sb.WriteString(Navigation("/account/billing") + `<div class="page-col settings-sections">`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, html.EscapeString(msg)))
@@ -273,12 +274,12 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(renderStripeDeposit(sess.Account, ""))
 	}
 	if x402.TopUpRequirement(100) != nil {
-		sb.WriteString(wallet.Page(sess.Account))
+		sb.WriteString(`<details class="disclosure"><summary>Pay with crypto</summary>` + wallet.Page(sess.Account) + `</details>`)
 	} else if !StripeEnabled() {
 		sb.WriteString(`<div class="card"><p>No payment methods available.</p></div>`)
 	}
 
-	app.Respond(w, r, app.Response{Title: "Top up", Description: "Buy credits", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Top up", Description: "Buy credits", HTML: sb.String() + `</div>`})
 }
 
 func renderStripeDeposit(userID, errMsg string) string {
@@ -333,6 +334,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	successMsg := r.URL.Query().Get("success")
 
 	var sb strings.Builder
+	sb.WriteString(Navigation("/account/billing") + `<div class="page-col settings-sections">`)
 
 	sb.WriteString(`<div class="card">`)
 	sb.WriteString(`<h3>Transfer Credits</h3>`)
@@ -387,7 +389,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted mt-0 mb-0">1 credit = 1¢. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
 	sb.WriteString(`</div>`)
 
-	app.Respond(w, r, app.Response{Title: "Transfer", Description: "Send credits to somebody else", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Transfer", Description: "Send credits to somebody else", HTML: sb.String() + `</div>`})
 }
 
 func handleTransfer(w http.ResponseWriter, r *http.Request) {
@@ -830,9 +832,9 @@ func LedgerSection(userID string) string {
 				transactionAmount(tx), tx.Balance))
 		}
 		rows.WriteString(`</table>`)
-		sb.WriteString(app.SectionID("ledger", "History", rows.String()))
+		sb.WriteString(app.SectionID("ledger", "Transaction history", rows.String()))
 	} else {
-		sb.WriteString(`<p>No transactions yet.</p>`)
+		sb.WriteString(app.SectionID("ledger", "Transaction history", `<p>No transactions yet.</p>`))
 	}
 
 	return sb.String()

@@ -33,7 +33,7 @@ func init() {
 
 	http.HandleFunc("GET /tools", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
-			api.PublicPageHandler(w, r)
+			http.Redirect(w, r, "/developers#reference", http.StatusSeeOther)
 			return
 		}
 		base := strings.TrimRight(origin.URL(r), "/")
@@ -51,7 +51,7 @@ func init() {
 	// canonical schema-bearing catalogue instead.
 	http.HandleFunc("GET /tools/", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
-			api.PublicPageHandler(w, r)
+			http.Redirect(w, r, "/developers#reference", http.StatusSeeOther)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -122,5 +122,5 @@ func publicReferenceHandler(w http.ResponseWriter, r *http.Request) {
 		api.RESTPageHandler(w, r)
 		return
 	}
-	api.PublicPageHandler(w, r)
+	http.Redirect(w, r, "/developers#reference", http.StatusSeeOther)
 }

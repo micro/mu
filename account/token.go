@@ -35,6 +35,15 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "private, no-store")
+	if r.Method == http.MethodGet && r.URL.Path == "/token" && !app.WantsJSON(r) {
+		target := "/account/tokens"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusSeeOther)
+		return
+	}
 	// Credential creation requires a verified or explicitly approved account.
 	if r.Method == http.MethodPost {
 		r.ParseForm()
@@ -65,19 +74,26 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 			app.RespondError(w, http.StatusBadRequest, keyErr.Error())
 			return
 		}
-		http.Redirect(w, r, "/token", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
 		return
 	}
 	// Handle OAuth client actions
 	if r.Method == "POST" {
 		r.ParseForm()
 		if r.URL.Query().Get("create_client") == "1" {
-			http.NotFound(w, r)
+			createOAuthClient(w, r, acc.ID)
 			return
 		}
 		if clientID := r.URL.Query().Get("delete_client"); clientID != "" && r.FormValue("_method") == "DELETE" {
-			auth.DeleteOAuthClient(clientID, acc.ID) //nolint:errcheck — a refused delete redirects to a list that still shows it
-			http.Redirect(w, r, "/token", http.StatusSeeOther)
+			if !auth.StrictCSRF(r) {
+				app.Forbidden(w, r, "Reload and try again.")
+				return
+			}
+			if err := auth.DeleteOAuthClient(clientID, acc.ID); err != nil {
+				app.Forbidden(w, r, err.Error())
+				return
+			}
+			http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
 			return
 		}
 		if r.FormValue("_method") == "DELETE" {
@@ -106,19 +122,19 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionID string) {
 
 	var sb strings.Builder
-	sb.WriteString(Navigation("/account") + `<div class="page-col">`)
+	sb.WriteString(Navigation("/account") + `<div class="account-access">`)
 
 	// API credentials contains tokens and registered OAuth clients. Tokens come
 	// first because they are the usual reason to open this page.
 	sb.WriteString(`<h2>API tokens</h2>`)
-	sb.WriteString(`<p class="text-secondary text-sm">Call your assistant from a script or MCP client. Usage draws from the same account allowance and balance as the app. <a href="/developers">Setup instructions</a> · <a href="/account/billing">Billing</a></p>`)
+	sb.WriteString(`<p class="text-secondary text-sm"><a href="/developers">API and MCP reference</a> · <a href="/account/billing">Billing</a></p>`)
 
 	sb.WriteString(`<div id="token-result" class="success-panel d-none">`)
 	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
 	sb.WriteString(`<pre id="new-token" ></pre></div>`)
 
 	// Keep permissions and dates readable at every width.
-	sb.WriteString(`<div class="collection-list">`)
+	sb.WriteString(`<table class="data-table stacked credential-table"><thead><tr><th>Name</th><th>Access</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead><tbody>`)
 	tokens := auth.ListTokens(accountID)
 	var developerTokens []*auth.Token
 	for _, token := range tokens {
@@ -128,7 +144,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	}
 	tokens = developerTokens
 	if len(tokens) == 0 {
-		sb.WriteString(`<p class="text-muted">No API tokens yet.</p>`)
+		sb.WriteString(`<tr><td colspan="6">No API tokens yet.</td></tr>`)
 	}
 	for _, token := range tokens {
 		expires := "Never"
@@ -143,12 +159,12 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		if !token.Created.IsZero() {
 			created = app.TimeAgo(token.Created)
 		}
-		sb.WriteString(fmt.Sprintf(`<div class="record-card"><strong>%s</strong><p>%s</p><div class="metadata-row"><span>Created %s</span><span>Last used %s</span><span>Expires %s</span></div>
-			<form method="POST" action="/token?id=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Delete</button></form></div>`,
+		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Access">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
+			<form method="POST" action="/account/tokens?id=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
+			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Revoke</button></form></td></tr>`,
 			htmlpkg.EscapeString(token.Name), tokenScope(token), created, lastUsed, expires, token.ID, app.CSRFField(auth.CSRFToken(r))))
 	}
-	sb.WriteString(`</div>`)
+	sb.WriteString(`</tbody></table>`)
 
 	// Every field says what it is.
 	//
@@ -188,7 +204,8 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
 
 	sb.WriteString(`<p>For mail and chat apps, use <a href="/account/connections">App passwords</a>.</p>`)
-	sb.WriteString(sshaccess.Card(r, accountID, "/token", "SSH and SFTP", "SSH and SFTP use an SSH key, not an access token. Add your public key below. Use sftp in place of ssh and -P in place of -p to connect to files.", "ssh"))
+	sb.WriteString(oauthClients(r, accountID))
+	sb.WriteString(sshaccess.Card(r, accountID, "/account/tokens", "SSH and SFTP", "SSH and SFTP use an SSH key, not an access token. Add your public key below. Use sftp in place of ssh and -P in place of -p to connect to files.", "ssh"))
 
 	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
 	// part of the chrome that depends on knowing who is signed in — the nav,
@@ -441,7 +458,7 @@ func handleDeleteToken(w http.ResponseWriter, r *http.Request, accountID string)
 		})
 	} else {
 		// Redirect back to token page for form submission
-		http.Redirect(w, r, "/token", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
 	}
 }
 

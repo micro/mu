@@ -24,7 +24,7 @@ func TestAccountDestinations(t *testing.T) {
 		absent []string
 	}{
 		{"/account", []string{"Settings", "Email", "Password", "Notifications", "App passwords", "API access"}, []string{"Your mail and chat apps", "Developer billing"}},
-		{"/account/billing", []string{"Credit balance:", "Transaction history", "No transactions yet."}, []string{"API tokens"}},
+		{"/account/billing", []string{"Balance", "Transaction history", "No transactions yet."}, []string{"API tokens"}},
 		{"/account/connections", []string{"App passwords", "App name"}, []string{"Send verification", "Notifications"}},
 	} {
 		r := httptest.NewRequest("GET", tc.path, nil)

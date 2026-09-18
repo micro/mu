@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1102,6 +1103,12 @@ func ListTokens(accountID string) []*Token {
 			result = append(result, token)
 		}
 	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Created.Equal(result[j].Created) {
+			return result[i].ID < result[j].ID
+		}
+		return result[i].Created.After(result[j].Created)
+	})
 	return result
 }
 
