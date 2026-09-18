@@ -292,36 +292,7 @@ if (typeof document !== "undefined") {
  if(form)form.addEventListener('submit',()=>{try{sessionStorage.removeItem(key);}catch{}});
 })();
 
-async function sendAssistantMessage(command,thread,agent,onEvent){
- const response=await fetch('/agent',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'text/event-stream','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt:command,context_id:thread,agent:agent||'',stream_text:true})});
- if(!response.ok)throw Error(response.status===401?'Log in to ask the assistant.':await failure(response));
- const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',done=false;
- function event(line){if(!line.startsWith('data: '))return;const e=JSON.parse(line.slice(6));if(e.type==='error')throw Error(e.message||'Request failed.');if(e.type==='response')done=true;onEvent(e);}
-
- try{while(true){const chunk=await reader.read();buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});const lines=buffer.split('\n');buffer=lines.pop();for(const line of lines)event(line);if(chunk.done){if(buffer)event(buffer);break;}}}finally{reader.releaseLock();}
- if(!done)throw Error('The connection closed before the response completed. Your request may still be running; check inbox before submitting it again.');
-}
 async function failure(response){try{const j=await response.json();return typeof j.error==='string'?j.error:(j.error?.message||'Request failed.');}catch{return 'Request failed ('+response.status+').';}}
-// Replies in the inbox use the same endpoint and persisted conversation as the landing.
-(()=>{
- const form=document.querySelector('[data-assistant-reply]');if(!form)return;
- const input=form.querySelector('[name="ask"]'),send=form.querySelector('button[type="submit"]'),status=form.querySelector('[role="status"]');
- let busy=false;
- form.addEventListener('submit',async e=>{
-  e.preventDefault();const text=input.value.trim();if(busy||!text)return;
-  busy=true;send.disabled=true;input.readOnly=true;status.textContent='Working…';
-  let accepted=false;
-  try{
-   await sendAssistantMessage(text,form.querySelector('[name="id"]').value,'',event=>{
-    if(event.type==='flow_id'){accepted=true;input.value='';}
-    if(event.type==='working'||event.type==='tool_start')status.textContent=event.message||'Working…';
-    if(event.type==='stream_token')status.textContent='Writing…';
-   });
-   location.reload();
-  }catch(error){status.textContent=error.message+(accepted?' Your message is saved in this conversation. Reload before sending again.':'');}
-  finally{busy=false;send.disabled=false;input.readOnly=false;}
- });
-})();
 
 // Command surface
 (()=>{'use strict';
@@ -332,7 +303,34 @@ const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 if(conversation.classList.contains('is-active'))log.scrollTop=log.scrollHeight;
 let busy=false,thread=new URLSearchParams(location.search).get('session')||new URLSearchParams(location.search).get('continue')||'';
 function remember(){if(thread)history.replaceState(null,'','/?session='+encodeURIComponent(thread));}
-async function assistant(command,answer){return sendAssistantMessage(command,thread,form.dataset.agent,e=>{if(e.type==='flow_id'){thread=e.thread||thread;remember();}if(e.type==='working'||e.type==='tool_start')status.textContent=e.message||'Working…';if(e.type==='stream_token')status.textContent='Writing…';if(e.type==='response')answer.innerHTML=e.html;});}
+let receipt=null;
+async function waitForAnswer(answer,messageID){
+ while(true){
+  let result=null;
+  if(!document.hidden&&navigator.onLine){
+   let response;
+   try{
+    response=await fetch('/agent/pending?thread='+encodeURIComponent(thread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+    if(response.ok&&!response.redirected)result=await response.json();
+   }catch{}
+   if(response&&response.status===404)throw Error('Open Inbox to see this conversation.');
+   if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to see the reply in Inbox.');
+   if(result){
+    if(!result.waiting){if(result.error)throw Error(result.error);answer.innerHTML=result.answer_html||'';return;}
+    status.textContent=result.status||'Working. You can leave this page; the reply will appear here.';
+   }else status.textContent='Reconnecting. Your message is saved; you can also find it in Inbox.';
+  }
+  await new Promise(resolve=>setTimeout(resolve,3000));
+ }
+}
+async function assistant(command,answer){
+ if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt={text:command,thread,id:crypto.randomUUID()};
+ const response=await fetch('/agent',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json',Accept:'application/vnd.micro.queued+json','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt:command,context_id:thread,agent:form.dataset.agent||'',message_id:receipt.id})});
+ if(!response.ok)throw Error(await failure(response));
+ const result=await response.json(),messageID=receipt.id;thread=result.thread;remember();receipt=null;
+ status.textContent='Queued. You can leave this page; the reply will appear here.';
+ await waitForAnswer(answer,messageID);
+}
 function byline(name){const row=document.createElement('div');row.className='ib-from metadata-row';const who=document.createElement('span');who.className='ib-who-l';who.textContent=name;const at=document.createElement('time');at.className='ib-at';const now=new Date();at.dateTime=now.toISOString();at.title=now.toLocaleString();at.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});row.append(who,at);return row;}
 async function run(command){
  if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
@@ -348,7 +346,14 @@ async function run(command){
   const top=log.scrollTop+turn.getBoundingClientRect().top-log.getBoundingClientRect().top;
   log.scrollTo({top:Math.max(0,top),behavior:first||reducedMotion.matches?'instant':'smooth'});
  });
- try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Request stopped.';}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
+ try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Check Inbox before sending again if the connection was lost.';if(receipt&&!input.value)input.value=command;}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
+}
+if(thread&&form.dataset.pending==='true'){
+ busy=true;send.disabled=true;status.textContent='Checking for the reply…';
+ const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));
+ const answer=document.createElement('div');answer.className='message-body';response.append(answer);
+ const turn=document.createElement('section');turn.className='turn';turn.append(response);log.append(turn);
+ waitForAnswer(answer).then(()=>{status.textContent='';}).catch(error=>{status.textContent=error.message;}).finally(()=>{busy=false;send.disabled=false;});
 }
 form.addEventListener('submit',e=>{e.preventDefault();run(input.value.trim());});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});

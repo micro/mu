@@ -11,8 +11,8 @@ import (
 	"mu/internal/thread"
 )
 
-// inboxReply is the form fallback for the same conversation used by /agent.
-// JavaScript uses the normal streaming endpoint; neither path assigns a task.
+// inboxReply submits to the same durable queue as the landing prompt.
+// Neither path creates a separate user-visible task.
 func inboxReply(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {

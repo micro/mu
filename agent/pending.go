@@ -77,6 +77,7 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "private, no-store")
 	id := strings.TrimSpace(r.URL.Query().Get("thread"))
 	if id == "" {
 		app.RespondJSON(w, map[string]any{"waiting": false})
@@ -124,6 +125,28 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	end := len(msgs)
+	if ref := r.URL.Query().Get("message"); ref != "" {
+		wanted := "reply:" + replyID(acc.ID, id, ref)
+		cut = -1
+		for i, m := range msgs {
+			if m.Ref == wanted {
+				cut = i
+				break
+			}
+		}
+		if cut < 0 {
+			app.RespondError(w, http.StatusNotFound, "Open Inbox to see this conversation.")
+			return
+		}
+		for i := cut + 1; i < len(msgs); i++ {
+			if msgs[i].Role != thread.RoleAgent {
+				end = i
+				break
+			}
+		}
+	}
+
 	// Who is answering in this conversation. The thread records it — see
 	// thread.Thread.Agent — so the poll and the page agree without either
 	// guessing from the message.
@@ -131,9 +154,10 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 	if th := thread.Get(acc.ID, id); th != nil {
 		who = agentTitle(acc.ID, th.Agent)
 	}
-	var b strings.Builder
-	for _, m := range msgs[cut+1:] {
+	var b, answer strings.Builder
+	for _, m := range msgs[cut+1 : end] {
 		b.WriteString(renderTurn(m, who))
+		answer.WriteString(app.RenderString(m.Text) + app.Results(m.Results))
 	}
 	steps := flowProgress(acc.ID, id)
 	type progressStep struct {
@@ -150,18 +174,24 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 			progress = append(progress, progressStep{Label: label, Status: step.Status})
 		}
 	}
-	waiting := msgs[len(msgs)-1].Role != thread.RoleAgent
+	waiting := end == cut+1
 	runError := ""
-	if waiting {
+	status := replyStatus(acc.ID, id)
+	if status != "" && end == len(msgs) {
+		waiting = true
+	}
+	if waiting && status == "" {
 		runError = flowError(acc.ID, id)
 		waiting = runError == ""
 	}
 
 	app.RespondJSON(w, map[string]any{
-		"waiting": waiting,
-		"html":    b.String(),
-		"steps":   progress,
-		"error":   runError,
+		"waiting":     waiting,
+		"status":      status,
+		"answer_html": answer.String(),
+		"html":        b.String(),
+		"steps":       progress,
+		"error":       runError,
 	})
 }
 
