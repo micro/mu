@@ -221,7 +221,7 @@ func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho 
 	// last, outside the conversation, because a dialog inside a flex row
 	// inherits that row's layout.
 	b.WriteString(`<dialog id="ib-assign" class="modal ib-assign" aria-labelledby="ib-assign-title">`)
-	b.WriteString(`<h3 id="ib-assign-title" class="ib-assign-head">Assign to agent</h3>`)
+	b.WriteString(`<h3 id="ib-assign-title" class="ib-assign-head">Ask Micro</h3>`)
 	b.WriteString(`<form class="form" method="post" action="/inbox"><input type="hidden" name="action" value="assign">`)
 	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
@@ -280,11 +280,11 @@ func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho 
 	// — disabling a submit button in its own handler would stop the POST — so
 	// the click goes through and the second one has nothing to click.
 	press := `onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
-		`function(b){b.disabled=true});this.textContent='Assigned'}.bind(this),0)"`
+		`function(b){b.disabled=true});this.textContent='Sent'}.bind(this),0)"`
 	// Cancel is inside the form and is formmethod=dialog, which closes without
 	// submitting — the one native way to have a button in a form that is not a
 	// submit and needs no script.
-	b.WriteString(`<div class="form-actions"><button type="submit" ` + press + `>Assign</button>` +
+	b.WriteString(`<div class="form-actions"><button type="submit" ` + press + `>Send</button>` +
 		`<button type="submit" formmethod="dialog" class="ib-assign-cancel">Cancel</button></div>`)
 	b.WriteString(`</form></dialog>`)
 	b.WriteString(assignJS)

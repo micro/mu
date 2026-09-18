@@ -66,6 +66,8 @@ const (
 
 // imapUIDs is the assignment, per account and folder.
 type imapUIDs struct {
+	Read     map[string]bool   `json:"read,omitempty"`
+	Hidden   map[string]bool   `json:"hidden,omitempty"`
 	Validity uint32            `json:"validity"`
 	Next     uint32            `json:"next"`
 	Assigned map[string]uint32 `json:"assigned"` // message id -> uid
@@ -105,18 +107,14 @@ func flushUIDs() {
 		uidMu.Unlock()
 		return
 	}
-	uidDirty = false
-	snapshot := make(map[string]*imapUIDs, len(uidState))
-	for k, v := range uidState {
-		copied := *v
-		copied.Assigned = make(map[string]uint32, len(v.Assigned))
-		for id, uid := range v.Assigned {
-			copied.Assigned[id] = uid
-		}
-		snapshot[k] = &copied
+	// Keep the lock through persistence so an older snapshot cannot overwrite
+	// an acknowledged flag change.
+	defer uidMu.Unlock()
+	if err := data.SaveJSON(uidFile, uidState); err != nil {
+		app.Log("mail", "saving IMAP state: %v", err)
+		return
 	}
-	uidMu.Unlock()
-	data.SaveJSON(uidFile, snapshot) //nolint:errcheck
+	uidDirty = false
 }
 
 // uidsFor returns the assignment for one folder, starting one if there is none.
@@ -176,6 +174,12 @@ func imapAssign(accountID, folder string, msgs []*Message) (uids []uint32, next 
 			uidDirty = true
 		}
 		uids[i] = uid
+	}
+	// Newly exposed historical messages receive new UIDs. Sequence order must
+	// follow those UIDs, even when their timestamps precede existing mail.
+	sort.SliceStable(msgs, func(i, j int) bool { return s.Assigned[msgs[i].ID] < s.Assigned[msgs[j].ID] })
+	for i, m := range msgs {
+		uids[i] = s.Assigned[m.ID]
 	}
 	return uids, s.Next
 }
@@ -261,7 +265,7 @@ var Bridged func(accountID string) []*Message
 //
 // Nil on an instance that has not wired it, which answers "not mine" to every
 // address and leaves local delivery to decide.
-var BridgedReply func(accountID, to, text string) (bool, error)
+var BridgedReply func(accountID, to, text, ref string) (bool, error)
 
 // imapFolder returns a folder's messages, oldest first, and whether the name
 // names a folder at all.
@@ -279,6 +283,7 @@ func imapFolder(accountID, name string) ([]*Message, bool) {
 		bridged = Bridged(accountID)
 	}
 
+	bridged = imapVisible(accountID, bridged)
 	mutex.RLock()
 	var out []*Message
 	for _, m := range append(bridged, messages...) {
@@ -433,7 +438,7 @@ func imapRender(m *Message) []byte {
 	body := strings.ReplaceAll(clientBody(m), "\r\n", "\n")
 	body = strings.ReplaceAll(body, "\n", "\r\n")
 	bodyType := "text/plain; charset=utf-8"
-	if imapLooksHTML(clientBody(m)) {
+	if !m.Bridged && imapLooksHTML(clientBody(m)) {
 		bodyType = "text/html; charset=utf-8"
 	}
 
@@ -633,7 +638,7 @@ func imapQuoted(s string) string {
 // about a part that is not there will ask for it and get nothing back.
 func imapBodyStructure(m *Message) string {
 	sub := "PLAIN"
-	if imapLooksHTML(clientBody(m)) {
+	if !m.Bridged && imapLooksHTML(clientBody(m)) {
 		sub = "HTML"
 	}
 	body := strings.ReplaceAll(clientBody(m), "\n", "\r\n")
@@ -659,4 +664,62 @@ func clientBody(m *Message) string {
 		return app.RenderString(m.Body)
 	}
 	return m.Body
+}
+
+// Bridged flags belong to the mail-client view. Expunge hides that message from
+// IMAP without destroying the source conversation used by the other clients.
+func imapVisible(account string, messages []*Message) []*Message {
+	loadUIDs()
+	uidMu.Lock()
+	defer uidMu.Unlock()
+	state := uidsFor(account, "bridge")
+	out := make([]*Message, 0, len(messages))
+	for _, m := range messages {
+		if state.Hidden[m.ID] {
+			continue
+		}
+		if read, ok := state.Read[m.ID]; ok {
+			m.Read = read
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+func imapBridgeChange(account string, m *Message, read *bool, hide bool) error {
+	loadUIDs()
+	uidMu.Lock()
+	defer uidMu.Unlock()
+	state := uidsFor(account, "bridge")
+	if state.Read == nil {
+		state.Read = map[string]bool{}
+	}
+	if state.Hidden == nil {
+		state.Hidden = map[string]bool{}
+	}
+	previousRead, hadRead := state.Read[m.ID]
+	previousHidden := state.Hidden[m.ID]
+	if read != nil {
+		state.Read[m.ID] = *read
+	}
+	if hide {
+		state.Hidden[m.ID] = true
+	}
+	if err := data.SaveJSON(uidFile, uidState); err != nil {
+		if hadRead {
+			state.Read[m.ID] = previousRead
+		} else {
+			delete(state.Read, m.ID)
+		}
+		if previousHidden {
+			state.Hidden[m.ID] = true
+		} else {
+			delete(state.Hidden, m.ID)
+		}
+		return err
+	}
+	if read != nil {
+		m.Read = *read
+	}
+	return nil
 }

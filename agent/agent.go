@@ -31,6 +31,9 @@ func Load() {
 	adoptAll()
 
 	inbox.Tools = runTools
+	inbox.Continue = SubmitReply
+	inbox.ReplyStatus = replyStatus
+	loadReplies()
 }
 
 func runTools(workflow string) string {

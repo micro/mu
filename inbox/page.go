@@ -372,7 +372,12 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 	}
 
 	b.WriteString(app.Actions(app.TextLink("Inbox", inboxURL(r, "")), toolbar...))
-	b.WriteString(`<div data-inbox-update hidden><a class="btn" href="` + html.EscapeString(inboxURL(r, t.ID)) + `">New messages — refresh</a></div>`)
+	b.WriteString(`<p class="text-muted text-sm" data-inbox-update role="status" hidden></p>`)
+	status := ""
+	if ReplyStatus != nil {
+		status = ReplyStatus(accountID, t.ID)
+	}
+	b.WriteString(`<p class="text-muted text-sm" data-inbox-state role="status">` + html.EscapeString(status) + `</p>`)
 
 	// One column, and the agent's answers in it.
 	//

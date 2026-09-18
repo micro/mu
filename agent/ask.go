@@ -267,7 +267,7 @@ func Ask(r AskRequest) (Answer, error) {
 		Context: r.Context,
 		Thread:  threadID(th),
 		Public:  r.Public,
-		History: History(r.Account, threadID(th), historyTurns),
+		History: requestHistory(r.Account, threadID(th), r.MessageRef),
 		Stream:  r.Stream,
 	}
 	if !r.Public {
@@ -331,7 +331,7 @@ func Ask(r AskRequest) (Answer, error) {
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
 
 	via := r.Via
-	via.Client, via.Thread = r.Client, r.Thread
+	via.Client, via.Thread = th.Client, th.Key
 
 	// The workflow record: how the answer was produced, which is a different
 	// question with a different lifetime from what was said.
@@ -468,4 +468,24 @@ func threadID(th *thread.Thread) string {
 		return ""
 	}
 	return th.ID
+}
+
+// An accepted queued message is already recorded; it is the new prompt, not
+// another history turn. Exclude that exact client reference, not matching text.
+func requestHistory(account, id, ref string) []QueryMessage {
+	if ref == "" {
+		return History(account, id, historyTurns)
+	}
+	var out []QueryMessage
+	for _, m := range thread.Messages(account, id, historyTurns) {
+		if m.Ref == ref {
+			continue
+		}
+		role := "user"
+		if m.Role == thread.RoleAgent {
+			role = "assistant"
+		}
+		out = append(out, QueryMessage{Role: role, Text: m.Text})
+	}
+	return out
 }

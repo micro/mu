@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"html"
 	"net/http"
 	"net/url"
 	"strings"
@@ -41,10 +42,16 @@ func inboxReply(w http.ResponseWriter, r *http.Request) {
 		app.BadRequest(w, r, "Write a message of up to 8,000 characters")
 		return
 	}
-	_, err = Ask(AskRequest{Account: acc.ID, Client: thread.WebClient, On: t.ID, Agent: t.Agent, Text: text})
+	err = SubmitReply(acc.ID, t.ID, text, r.PostFormValue("message_id"))
 	if err != nil {
 		app.Log("agent", "inbox reply failed: %v", err)
-		app.Respond(w, r, app.Response{Title: "Reply interrupted", HTML: app.Problem("The reply could not be completed. Check the conversation before sending again.") + `<a href="/inbox?id=` + url.QueryEscape(t.ID) + `">Back to conversation</a>`})
+		body := app.Problem("The message could not be confirmed as queued. Your draft is below; check the conversation before retrying.") +
+			`<form class="form" method="POST" action="/agent">` + app.CSRFField(auth.CSRFToken(r)) +
+			`<input type="hidden" name="inbox_reply" value="1"><input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">` +
+			`<input type="hidden" name="message_id" value="` + html.EscapeString(r.PostFormValue("message_id")) + `">` +
+			`<label class="field-label">Message Micro<textarea name="ask" rows="2" maxlength="8000" required>` + html.EscapeString(text) + `</textarea></label>` +
+			`<div class="form-actions"><button type="submit">Try again</button><a href="/inbox?id=` + url.QueryEscape(t.ID) + `">Back to conversation</a></div></form>`
+		app.Respond(w, r, app.Response{Title: "Message not confirmed", HTML: body})
 		return
 	}
 	http.Redirect(w, r, "/inbox?id="+url.QueryEscape(t.ID), http.StatusSeeOther)
