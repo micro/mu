@@ -1413,3 +1413,9 @@ if(typeof document!=='undefined'){
   window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
   window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; clearTimeout(timer); check(); } });
 })();
+
+// App passwords are displayed once; copying never sends them elsewhere.
+document.querySelector('[data-copy-password]')?.addEventListener('click',async()=>{
+ const field=document.querySelector('#app-password'),status=document.querySelector('[data-copy-status]');
+ try{await navigator.clipboard.writeText(field.value);status.textContent='Copied.';}catch{field.select();status.textContent='Select and copy the password.';}
+});

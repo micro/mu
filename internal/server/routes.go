@@ -72,6 +72,7 @@ import (
 // authRequired reports, per path, whether a caller must be signed in.
 func authRequired() map[string]bool {
 	authenticated := map[string]bool{
+		"/developers":  false,
 		"/tools":       false, // Public — the catalogue, agent lens
 		"/tools/":      false, // Public — one tool, same as the catalogue
 		"/services":    false, // Public — the catalogue, person lens
@@ -626,6 +627,8 @@ func registerRoutes() {
 	http.HandleFunc("/account/billing", account.Account)
 	http.HandleFunc("/account/usage", account.Account) // Previous billing URL.
 	http.HandleFunc("/account/connections", account.Account)
+	http.HandleFunc("/account/developer", account.Account)
+	http.HandleFunc("/account/app-password", account.AppPasswordHandler)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)
 
@@ -752,6 +755,7 @@ func registerRoutes() {
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	// One catalogue, two lenses — see internal/api/tools_page.go.
+	http.HandleFunc("/developers", home.DevelopersHandler)
 	http.HandleFunc("/tools", api.ServiceToolsPageHandler)
 
 	// /tools/<name> — one tool. The smallest unit in the catalogue, and until

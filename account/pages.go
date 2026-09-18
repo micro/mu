@@ -502,7 +502,9 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	case "/account/connections":
 		accountPath = "/account/connections"
 	case "/account/usage", "/account/billing":
-		accountPath = "/account/usage"
+		accountPath = "/account/billing"
+	case "/account/developer":
+		accountPath = "/account/developer"
 	}
 	if r.Method == http.MethodGet && !app.WantsJSON(r) {
 		if r.URL.Query().Get("linked") == "google" || r.URL.Query().Get("connection") != "" {
@@ -656,10 +658,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		}
 		content = renderEmailCard(acc) + renderPhoneCard(acc.ID) + googleCard
 		content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
-		content += `<details class="disclosure"><summary>Advanced client setup</summary><p>Connect a mail or XMPP client using an access token.</p><div class="form-actions"><a href="/token">Access tokens</a><a href="/inbox/imap">Mail connection details</a></div>` + xmppConnectionDetails(acc) + `</details>`
-	case "/account/usage":
-		content = usage.Card(acc.ID) + LedgerSection(acc.ID) +
-			app.Section("Billing", `<div class="form-actions"><a href="/account/topup">Add credit</a><a href="/account/transfer">Transfer credit</a></div>`+app.Note("1 credit = 1¢"))
+		content = connectionApps(r, acc.ID) + content
+	case "/account/billing":
+		content = usage.Card(acc.ID) + app.Section("Billing", `<p>Your account includes a daily assistant allowance. Extra use currently uses prepaid credit.</p><div class="form-actions"><a href="/account/topup">Add credit</a><a href="/pricing">Pricing</a></div>`)
+	case "/account/developer":
+		content = app.Section("Build with Micro", `<p>Use the assistant, background jobs and Inbox, or call selected services directly through API or MCP.</p><div class="form-actions"><a href="/developers">Documentation</a><a href="/token?access=agent">API tokens</a></div>`) + app.Section("Developer billing", `<p>Tokens grant access. Prepaid credits pay for billable operations.</p><div class="form-actions"><a href="/account/topup">Add credit</a><a href="/account/transfer">Transfer credit</a></div>`) + LedgerSection(acc.ID)
+
 	default:
 		// The languages this instance speaks, as options rather than as markup.
 		currentLang := acc.Language
@@ -693,18 +697,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 	// Forms return to their owning tab; credentials and mutations stay in POST.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
-	var nav strings.Builder
-	nav.WriteString(`<nav class="view-switch" aria-label="Account settings">`)
-	for _, tab := range []struct{ path, label string }{{"/account", "Account"}, {"/account/connections", "Connections"}, {"/account/usage", "Usage & billing"}} {
-		current := ""
-		if accountPath == tab.path {
-			current = ` aria-current="page"`
-		}
-		nav.WriteString(`<a href="` + tab.path + `"` + current + `>` + tab.label + `</a>`)
-	}
-	nav.WriteString(`</nav>`)
+	nav := Navigation(accountPath)
+
 	balance := ""
-	if PaymentsEnabled() && !acc.Admin && !acc.Agent {
+	if PaymentsEnabled() && !acc.Admin && !acc.Agent && (accountPath == "/account/billing" || accountPath == "/account/developer") {
 		balance = `<div class="metadata-row">`
 		if daily := quota.DailyCredits(); daily > 0 {
 			balance += `<span>Today: <strong>` + thousands(IncludedToday(acc.ID)) + ` of ` + thousands(daily) + ` credits left</strong> · renews at 00:00 UTC</span>`
@@ -719,7 +715,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	content = balance + nav.String() + notice + `<div class="page-stack settings-sections">` + content + `</div>`
+	content = nav + balance + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
