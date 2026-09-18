@@ -1426,3 +1426,12 @@ document.querySelector('[data-copy-password]')?.addEventListener('click',async()
  const kind=location.hash==='#app-passwords'?'mail':location.hash==='#api-tokens'?'api':'';
  if(kind) { const url=new URL(location.href);url.searchParams.set('add',kind);url.hash='create-token-form';location.replace(url.pathname+url.search+url.hash); }
 })();
+
+// Recipient choice stays in the composer; replies retain their existing destination.
+document.querySelectorAll('[data-inbox-compose]').forEach(function(form){
+ const choices=form.querySelectorAll('[name="mode"]');
+ const to=form.querySelector('[name="to"]');
+ if(!choices.length || !to)return;
+ function update(){const email=form.querySelector('[name="mode"]:checked').value==='email';to.hidden=!email;to.disabled=!email;}
+ choices.forEach(choice=>choice.addEventListener('change',update));update();
+});

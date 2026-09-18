@@ -188,9 +188,12 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 	for i := len(msgs) - 1; i >= 0; i-- {
 		m := msgs[i]
 		if m.Role == thread.RoleAgent {
+			if assistantRecipient(m.From) {
+				return m.From
+			}
 			continue
 		}
-		if from := strings.TrimSpace(m.From); from != "" && from != accountID {
+		if from := strings.TrimSpace(m.From); from != "" && !ownAddress(accountID, from) {
 			return from
 		}
 	}
@@ -213,12 +216,12 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 		if p.Kind == thread.RoleAgent {
 			continue
 		}
-		if k := strings.TrimSpace(p.Key); k != "" && !strings.EqualFold(k, accountID) {
+		if k := strings.TrimSpace(p.Key); k != "" && !ownAddress(accountID, k) {
 			return k
 		}
 	}
 	for i := len(msgs) - 1; i >= 0; i-- {
-		if to := strings.TrimSpace(msgs[i].To); to != "" && !strings.EqualFold(to, accountID) {
+		if to := strings.TrimSpace(msgs[i].To); to != "" && !ownAddress(accountID, to) {
 			return to
 		}
 	}
@@ -285,7 +288,7 @@ func actionBar(t *thread.Thread, to string, canAssign bool, inline ...bool) stri
 	// The button only opens the dialog, so it carries no state and needs no
 	// form — and it is drawn only where there is a dialog to open. See
 	// conversationPane's assign parameter.
-	if canAssign && t.Client != thread.WebClient {
+	if canAssign && t.Client != thread.WebClient && !assistantRecipient(to) {
 		b.WriteString(`<button type="button" class="ib-assign-open btn" ` +
 			`onclick="muAssignOpen()">Ask Micro</button>`)
 	}
@@ -682,4 +685,21 @@ func room(t *thread.Thread) string {
 // inbox asks about them is the same question, so it asks it once.
 func onAPhone(client string) bool {
 	return client == thread.SMSClient || client == thread.WhatsAppClient
+}
+
+// Only local assistant addresses suppress delegation; external namesakes do not.
+func assistantRecipient(to string) bool {
+	to = strings.ToLower(strings.TrimSpace(to))
+	to = strings.TrimPrefix(to, "@")
+	if at := strings.LastIndex(to, "@"); at >= 0 {
+		if !strings.EqualFold(to[at+1:], mail.ConfiguredDomain()) {
+			return false
+		}
+		to = to[:at]
+	}
+	return to == mail.AgentMailbox || (to == auth.MicroID && auth.IsAgent(auth.MicroID))
+}
+
+func ownAddress(accountID, address string) bool {
+	return strings.EqualFold(address, accountID) || strings.EqualFold(address, "@"+accountID) || strings.EqualFold(address, mail.EmailForUser(accountID, mail.ConfiguredDomain()))
 }

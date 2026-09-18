@@ -606,7 +606,7 @@ func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
 	}
 	content := `<div class="card">
 		<h2>Payment complete</h2>` + body + `
-		<p><a href="/account/billing" class="btn">View your balance</a></p>
+		<p><a href="/account" class="btn">View your balance</a></p>
 	</div>`
 	app.Respond(w, r, app.Response{Title: "Payment complete", Description: "Credits added", HTML: content})
 }
@@ -832,9 +832,9 @@ func LedgerSection(userID string) string {
 				transactionAmount(tx), tx.Balance))
 		}
 		rows.WriteString(`</table>`)
-		sb.WriteString(app.SectionID("ledger", "Transaction history", rows.String()))
+		sb.WriteString(app.SectionID("ledger", "History", rows.String()))
 	} else {
-		sb.WriteString(app.SectionID("ledger", "Transaction history", `<p>No transactions yet.</p>`))
+		sb.WriteString(app.SectionID("ledger", "History", `<p>No transactions yet.</p>`))
 	}
 
 	return sb.String()

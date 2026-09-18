@@ -75,6 +75,7 @@ func NewHandler(w http.ResponseWriter, r *http.Request) {
 
 	f := form{
 		To:      strings.TrimSpace(r.FormValue("to")),
+		Mode:    r.FormValue("mode"),
 		Subject: strings.TrimSpace(r.FormValue("subject")),
 		Body:    r.FormValue("body"),
 		On:      strings.TrimSpace(r.FormValue("on")),
@@ -83,6 +84,18 @@ func NewHandler(w http.ResponseWriter, r *http.Request) {
 		// gets typed into the boxes is not, and does not travel that way.
 		Kind: kindOf(r.FormValue("kind")),
 	}
+	if f.Mode == "" {
+		if f.To == "" && f.On == "" {
+			f.Mode = "assistant"
+		} else {
+			f.Mode = "email"
+		}
+	}
+	if f.Mode != "assistant" && f.Mode != "email" {
+		app.BadRequest(w, r, "Choose Assistant or Email")
+		return
+	}
+
 	if f.Kind != kindNote && f.Kind != kindTask {
 		f.Kind = kindMessage
 	}
@@ -138,6 +151,7 @@ func NewHandler(w http.ResponseWriter, r *http.Request) {
 // A struct rather than four arguments because every one of them survives that:
 // a form that empties itself on a bad address is a form that eats your work.
 type form struct {
+	Mode    string
 	To      string
 	Subject string
 	Body    string
@@ -168,6 +182,9 @@ type form struct {
 // composition over those, and a second copy here would be a second answer to
 // what a note says.
 func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
+	if f.Mode == "assistant" && f.On == "" {
+		f.To = mail.AgentMailbox
+	}
 	switch f.Kind {
 	case kindNote:
 		saveNote(w, r, accountID, f)
@@ -253,7 +270,7 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		return
 	}
 
-	record(accountID, messageID, f)
+	id := record(accountID, messageID, f)
 	// Back to the conversation when there was one, because that is where the
 	// answer now is. Sending from a reply and landing on the inbox list means
 	// looking for the thread you were just reading.
@@ -261,7 +278,7 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		http.Redirect(w, r, "/inbox?id="+url.QueryEscape(f.On), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/inbox?sent="+url.QueryEscape(f.To), http.StatusSeeOther)
+	http.Redirect(w, r, "/inbox?id="+url.QueryEscape(id), http.StatusSeeOther)
 }
 
 // addressOfPerson turns @someone into the address their mail arrives at.
@@ -326,7 +343,7 @@ func whoIsHere(accountID string) string {
 }
 
 // record files what was sent as a conversation, keyed so the reply joins it.
-func record(accountID, messageID string, f form) {
+func record(accountID, messageID string, f form) string {
 	th := replyTarget(accountID, f)
 	if th == nil {
 		key := messageID
@@ -338,7 +355,7 @@ func record(accountID, messageID string, f form) {
 		th = thread.Open(accountID, mailClient, key)
 	}
 	if th == nil {
-		return
+		return ""
 	}
 	// The body alone. The subject went in front of it, so a conversation showed
 	// its subject as the heading and again at the top of every message — see
@@ -350,6 +367,7 @@ func record(accountID, messageID string, f form) {
 	// a bounce or a copy of this arriving back and being recorded twice.
 	thread.Add(thread.Message{Thread: th.ID, Account: accountID, Text: f.Body, Ref: messageID})
 	thread.Join(accountID, th.ID, thread.Party{Kind: thread.RolePerson, Key: f.To})
+	return th.ID
 }
 
 // threadChain is what a reply has to name to be threaded by the other side:
@@ -492,7 +510,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	// on both ends, so printing it says nothing and reads like posting a letter
 	// to your flatmate. It is the identity the moment the message leaves, and
 	// then it is shown.
-	if writing != kindMessage {
+	if writing != kindMessage || (f.Mode == "assistant" && f.On == "") {
 		// Nowhere to send it, so nothing to say about where it is from.
 	} else if texting {
 		// Said above, with the number it goes to.
@@ -510,7 +528,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		b.WriteString(`<p class="ib-ask-problem">` + html.EscapeString(f.Problem) + `</p>`)
 	}
 
-	b.WriteString(`<form class="form" method="post" action="/inbox/new">`)
+	b.WriteString(`<form class="form" data-inbox-compose method="post" action="/inbox/new">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	if f.On != "" {
 		b.WriteString(`<input type="hidden" name="on" value="` + html.EscapeString(f.On) + `">`)
@@ -523,6 +541,15 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	//
 	// And shown without the @, because inside one instance a name is a name.
 	b.WriteString(`<input type="hidden" name="kind" value="` + html.EscapeString(writing) + `">`)
+	if writing == kindMessage && f.On == "" {
+		assistant, email := "", ""
+		if f.Mode == "assistant" {
+			assistant = " checked"
+		} else {
+			email = " checked"
+		}
+		b.WriteString(`<fieldset class="choices"><legend class="sr-only">Send to</legend><label class="choice"><input type="radio" name="mode" value="assistant"` + assistant + `>Assistant</label><label class="choice"><input type="radio" name="mode" value="email"` + email + `>Email</label></fieldset>`)
+	}
 
 	if writing != kindMessage {
 		// A note and a task go to nobody, so there is no address to ask for. The
@@ -540,7 +567,11 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		// and capped there.
 		b.WriteString(`<input type="hidden" name="to" value="` + html.EscapeString(f.To) + `">`)
 	} else {
-		b.WriteString(`<input class="ib-field" type="text" name="to" required placeholder="To" ` +
+		state := ""
+		if f.Mode == "assistant" && f.On == "" {
+			state = " hidden disabled"
+		}
+		b.WriteString(`<input class="ib-field" type="text" name="to" aria-label="To" required` + state + ` placeholder="To" ` +
 			`list="ib-to-list" autocomplete="off" value="` +
 			html.EscapeString(strings.TrimPrefix(f.To, "@")) + `">`)
 		b.WriteString(whoIsHere(accountID))
@@ -569,7 +600,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 
 	// Named for what is being written. "New message" over a note form is the
 	// page telling you it is doing something other than what it is doing.
-	title, desc := "New mail", "Write an email"
+	title, desc := "New message", "Write a message"
 	switch writing {
 	case kindNote:
 		title, desc = "New note", "Write something down"

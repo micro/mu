@@ -45,7 +45,7 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 	win := usage.WindowFor(r.URL.Query().Get("window"))
 
 	var sb strings.Builder
-	sb.WriteString(Navigation("/account/billing") + `<div class="page-col">` + usage.CSS)
+	sb.WriteString(Navigation("/account/usage") + `<div class="page-col">` + usage.CSS)
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
 	usage.Stat(&sb, "Last hour", usage.TotalForOver(account, usage.Minute, 60))
@@ -60,6 +60,7 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(spendSection(account, acc.Admin))
+	sb.WriteString(LedgerSection(account))
 	sb.WriteString(`<p class="text-sm text-muted">Your calls only. Counts are kept for ` +
 		`2 hours by the minute, 7 days by the hour and 90 days by the day — nothing about ` +
 		`a request itself is stored.</p>`)
@@ -128,6 +129,5 @@ func spendSection(id string, admin bool) string {
 		return sb.String()
 	}
 	usage.Table(&sb, "What you spent on", rows)
-	sb.WriteString(`<p class="text-sm text-muted"><a href="/account/billing#ledger">Transaction history</a></p>`)
 	return sb.String()
 }
