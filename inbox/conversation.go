@@ -116,7 +116,7 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 
 	switch t.Client {
 	case "whatsapp":
-		b.WriteString(`<div class="bubble-list whatsapp-transcript">`)
+		b.WriteString(`<div data-inbox-messages class="bubble-list whatsapp-transcript">`)
 	case "sms":
 		b.WriteString(`<div data-inbox-messages class="message-list sms-transcript">`)
 	case thread.ChatClient:
@@ -127,7 +127,7 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 		b.WriteString(`<div data-inbox-messages class="card-list mail-transcript">`)
 	}
 	for _, m := range msgs {
-		b.WriteString(`<div data-message-id="` + html.EscapeString(m.ID) + `">` + messageBlock(accountID, t, m, subject) + `</div>`)
+		b.WriteString(strings.Replace(messageBlock(accountID, t, m, subject), `<div `, `<div data-message-id="`+html.EscapeString(m.ID)+`" `, 1))
 	}
 	b.WriteString(`</div>`)
 

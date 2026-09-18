@@ -150,7 +150,9 @@ func SubmitReply(accountID, threadID, text, ref string) error {
 		return err
 	}
 	// The worker cannot start until the message is visible and flushed.
-	thread.Add(thread.Message{Account: accountID, Thread: threadID, Role: thread.RolePerson, From: accountID, Text: text, Ref: "reply:" + id})
+	if thread.Add(thread.Message{Account: accountID, Thread: threadID, Role: thread.RolePerson, From: accountID, Text: text, Ref: "reply:" + id}) == "" {
+		return errNoConversation
+	}
 	return thread.Flush()
 }
 
@@ -229,4 +231,23 @@ func markReply(job pendingReply, state string) {
 		}
 		app.Log("agent", "persisting reply %s: %v", job.ID, err)
 	}
+}
+
+func replyStatus(accountID, threadID string) string {
+	replies.Lock()
+	defer replies.Unlock()
+	for _, j := range replies.jobs {
+		if j.Account != accountID || j.Thread != threadID {
+			continue
+		}
+		switch j.State {
+		case "queued":
+			return "Queued. You can leave this page; the reply will appear here."
+		case "running":
+			return "Working. You can leave this page; the reply will appear here."
+		case "interrupted", "finishing":
+			return "Saving the outcome."
+		}
+	}
+	return ""
 }

@@ -32,6 +32,7 @@ func Load() {
 
 	inbox.Tools = runTools
 	inbox.Continue = SubmitReply
+	inbox.ReplyStatus = replyStatus
 	loadReplies()
 }
 

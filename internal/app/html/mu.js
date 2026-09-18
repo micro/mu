@@ -1377,6 +1377,9 @@ if(typeof document!=='undefined'){
       if (region.contains(document.activeElement)) return;
       const y = window.scrollY;
       if (reader) {
+        const state = reader.querySelector('[data-inbox-state]');
+        const nextState = page.querySelector('[data-inbox-state]');
+        if (state && nextState) state.textContent = nextState.textContent;
         const old = new Map(Array.from(region.children).map(node => [node.dataset.messageId, node]));
         // Reuse unchanged messages so open disclosures and embedded media survive.
         const nodes = Array.from(incoming.children).map(node => old.get(node.dataset.messageId) || node);

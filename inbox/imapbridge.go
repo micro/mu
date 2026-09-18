@@ -209,6 +209,9 @@ func bridgeID(id string) string {
 // Continue accepts an owner-authenticated assistant reply through the shared queue.
 var Continue func(accountID, threadID, text, ref string) error
 
+// ReplyStatus describes accepted work without exposing its payload.
+var ReplyStatus func(accountID, threadID string) string
+
 func Reply(accountID, to, text string) (bool, error) {
 	return ReplyWithRef(accountID, to, text, "")
 }
