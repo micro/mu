@@ -28,7 +28,7 @@ func TestAssistantComposerUsesQueue(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	sent(w, httptest.NewRequest("POST", "/inbox/new", nil), "compose_queue_owner", form{Mode: "assistant", Kind: kindMessage, Subject: "Plan", Body: "Help me plan", To: "unused@example.com"})
-	if calls != 1 || w.Code != 303 || w.Header().Get("Location") != "/inbox?id="+id {
+	if calls != 1 || w.Code != 303 || w.Header().Get("Location") != "/?session="+id {
 		t.Fatalf("not queued: %d %s", w.Code, w.Body.String())
 	}
 	// On failure the draft and conversation remain available for a retry.
@@ -59,5 +59,21 @@ func TestAssistantPartyAliases(t *testing.T) {
 	got := partyLine(owner, th)
 	if !strings.Contains(got, "Other") || strings.Count(got, "Micro") != 1 || strings.Count(got, "You") != 1 {
 		t.Fatalf("lost real participant or duplicated identities: %s", got)
+	}
+}
+
+func TestInboxAssistantOpensHome(t *testing.T) {
+	owner := "inbox_home_redirect"
+	th := thread.Open(owner, thread.WebClient, "redirect-test")
+	r := httptest.NewRequest("GET", "/inbox?id="+th.ID, nil)
+	w := httptest.NewRecorder()
+	conversation(w, r, owner, th.ID)
+	if w.Code != 303 || w.Header().Get("Location") != "/?session="+th.ID {
+		t.Fatal("assistant still has a second inbox reader")
+	}
+	w = httptest.NewRecorder()
+	conversation(w, r, "someone_else", th.ID)
+	if w.Code != 404 {
+		t.Fatal("redirect bypassed thread ownership")
 	}
 }

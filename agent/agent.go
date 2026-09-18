@@ -717,7 +717,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "private, no-store")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
-		app.RespondJSON(w, map[string]any{"thread": id})
+		title := ""
+		if th := thread.Get(accountID, id); th != nil {
+			title = th.Subject
+		}
+		app.RespondJSON(w, map[string]any{"thread": id, "title": title})
 		return
 	}
 

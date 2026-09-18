@@ -81,6 +81,9 @@ func conversationRow(r *http.Request, owner string, t thread.Thread, preview str
 		title = "Untitled conversation"
 	}
 	destination := inboxURL(r, t.ID)
+	if t.Client == thread.WebClient {
+		destination = "/?session=" + url.QueryEscape(t.ID)
+	}
 	unread := ""
 	if thread.Unread(t) {
 		unread = `<span class="unread-dot" aria-label="Unread"></span>`

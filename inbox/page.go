@@ -335,6 +335,11 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 		return
 	}
 
+	if t.Client == thread.WebClient && r.Method == http.MethodGet && !app.WantsJSON(r) {
+		http.Redirect(w, r, "/?session="+url.QueryEscape(t.ID), http.StatusSeeOther)
+		return
+	}
+
 	subject := strings.TrimSpace(t.Subject)
 	if subject == "" {
 		subject = "Untitled"
@@ -372,7 +377,6 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 	}
 
 	b.WriteString(app.Actions(app.TextLink("Inbox", inboxURL(r, "")), toolbar...))
-	b.WriteString(`<p class="text-muted text-sm" data-inbox-update role="status" hidden></p>`)
 	status := ""
 	if ReplyStatus != nil {
 		status = ReplyStatus(accountID, t.ID)

@@ -50,9 +50,9 @@ func inboxReply(w http.ResponseWriter, r *http.Request) {
 			`<input type="hidden" name="inbox_reply" value="1"><input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">` +
 			`<input type="hidden" name="message_id" value="` + html.EscapeString(r.PostFormValue("message_id")) + `">` +
 			`<label class="field-label">Message Micro<textarea name="ask" rows="2" maxlength="8000" required>` + html.EscapeString(text) + `</textarea></label>` +
-			`<div class="form-actions"><button type="submit">Try again</button><a href="/inbox?id=` + url.QueryEscape(t.ID) + `">Back to conversation</a></div></form>`
+			`<div class="form-actions"><button type="submit">Try again</button><a href="/?session=` + url.QueryEscape(t.ID) + `">Back to conversation</a></div></form>`
 		app.Respond(w, r, app.Response{Title: "Message not confirmed", HTML: body})
 		return
 	}
-	http.Redirect(w, r, "/inbox?id="+url.QueryEscape(t.ID), http.StatusSeeOther)
+	http.Redirect(w, r, "/?session="+url.QueryEscape(t.ID), http.StatusSeeOther)
 }

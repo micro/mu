@@ -728,5 +728,5 @@ func sendAssistant(w http.ResponseWriter, r *http.Request, accountID string, f f
 		fail(err.Error())
 		return
 	}
-	http.Redirect(w, r, "/inbox?id="+url.QueryEscape(th.ID), http.StatusSeeOther)
+	http.Redirect(w, r, "/?session="+url.QueryEscape(th.ID), http.StatusSeeOther)
 }
