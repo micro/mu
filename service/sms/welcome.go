@@ -57,5 +57,5 @@ func welcomeReply(channel Channel, number string) string {
 	if err != nil {
 		return ""
 	}
-	return "Welcome to Micro. Create an account or sign in at " + base + "/account/connections#phone, then verify this phone number. Once connected, send your message again here to speak to your assistant."
+	return "Welcome to Micro. Create an account or sign in at " + base + "/account#phone, then verify this phone number. Once connected, send your message again here to speak to your assistant."
 }
