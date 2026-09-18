@@ -52,7 +52,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodPost && (r.FormValue("sshkey") != "" || r.FormValue("removekey") != "") {
 		if !auth.ValidCSRF(r) {
-			app.Forbidden(w, r, "Reopen Client access and try again.")
+			app.Forbidden(w, r, "Reopen API access and try again.")
 			return
 		}
 		var keyErr error
@@ -106,37 +106,19 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionID string) {
 
 	var sb strings.Builder
-	sb.WriteString(Navigation("/account/developer"))
+	sb.WriteString(Navigation("/account") + `<div class="page-col">`)
 
 	// API credentials contains tokens and registered OAuth clients. Tokens come
 	// first because they are the usual reason to open this page.
-	sb.WriteString(`<h3>Client tokens</h3>`)
-	sb.WriteString(`<p class="text-secondary text-sm">Use your username and a token as the password in your IMAP or XMPP client.</p>`)
+	sb.WriteString(`<h2>API tokens</h2>`)
+	sb.WriteString(`<p class="text-secondary text-sm">Call your assistant from a script or MCP client. Usage draws from the same account allowance and balance as the app. <a href="/developers">Setup instructions</a> · <a href="/account/billing">Billing</a></p>`)
 
 	sb.WriteString(`<div id="token-result" class="success-panel d-none">`)
 	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
 	sb.WriteString(`<pre id="new-token" ></pre></div>`)
 
-	// Created, beside Last Used.
-	//
-	// The table showed a name and three dates, none of them the one people
-	// reach for: "when did this appear". So a token whose Last Used had just
-	// moved read as a token that had just been issued, which is an alarming
-	// thing to misread about a credential.
-	// "May reach", not "Permissions".
-	//
-	// The column read Permissions and rendered token.Permissions verbatim,
-	// which is two different things in one field: a hardcoded ["read","write"]
-	// the create form always sent and nothing on the instance enforces, and the
-	// real scope, stored with a service: prefix — so the cell said
-	// "read, write, service:news, service:markets" and the only settable half
-	// was the one whose prefix was showing. Nothing could set the other half,
-	// which is exactly what it looked like.
-	// .data-table.stacked, not .token-table. There is no .token-table anywhere
-	// in mu.css — it was a class name invented at the call site, so both tables
-	// on this page were unstyled browser defaults, and on a phone six columns
-	// squashed to a few characters each.
-	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>Access</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
+	// Keep permissions and dates readable at every width.
+	sb.WriteString(`<div class="collection-list">`)
 	tokens := auth.ListTokens(accountID)
 	var developerTokens []*auth.Token
 	for _, token := range tokens {
@@ -146,7 +128,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	}
 	tokens = developerTokens
 	if len(tokens) == 0 {
-		sb.WriteString(`<tr><td colspan="6" class="p-5 text-center text-secondary">No tokens yet.</td></tr>`)
+		sb.WriteString(`<p class="text-muted">No API tokens yet.</p>`)
 	}
 	for _, token := range tokens {
 		expires := "Never"
@@ -161,12 +143,12 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		if !token.Created.IsZero() {
 			created = app.TimeAgo(token.Created)
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Access">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
+		sb.WriteString(fmt.Sprintf(`<div class="record-card"><strong>%s</strong><p>%s</p><div class="metadata-row"><span>Created %s</span><span>Last used %s</span><span>Expires %s</span></div>
 			<form method="POST" action="/token?id=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Delete</button></form></td></tr>`,
+			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Delete</button></form></div>`,
 			htmlpkg.EscapeString(token.Name), tokenScope(token), created, lastUsed, expires, token.ID, app.CSRFField(auth.CSRFToken(r))))
 	}
-	sb.WriteString(`</tbody></table>`)
+	sb.WriteString(`</div>`)
 
 	// Every field says what it is.
 	//
@@ -184,7 +166,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<h4 class="mt-5">Create a token</h4>`)
 	sb.WriteString(`<form id="create-token-form" class="form" onsubmit="createToken(event)">`)
 	sb.WriteString(app.Field{
-		Name: "name", Label: "Name", Placeholder: "e.g. My phone", Required: true, Wide: true,
+		Name: "name", Label: "Name", Placeholder: "e.g. My script", Required: true, Wide: true,
 	}.HTML())
 	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "api", Label: "Assistant API / MCP", On: agentAccess}, {Value: "services", Label: "Selected services API / MCP", On: serviceAccess}}}.HTML())
 	sb.WriteString(`<fieldset class="scope-fields" data-token-access="api" hidden><legend>API capabilities</legend><div class="choices"><label class="choice"><input type="checkbox" name="capability" value="api:agent"` + checked + `>Agents</label><label class="choice"><input type="checkbox" name="capability" value="api:inbox">Inbox</label><label class="choice"><input type="checkbox" name="capability" value="api:work">Background jobs</label></div><p class="text-muted text-sm">Agent access can run any of your account’s agents with their configured tools; it is not limited to one named agent. Choose Services instead to restrict a client to specific capabilities.</p><label class="choice"><input type="checkbox" name="api_write"` + checked + `>Allow actions (required to ask agents or start jobs)</label></fieldset>`)
@@ -205,14 +187,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
 
-	sb.WriteString(`<p>For mail and chat apps, use <a href="/account/connections">Connections</a>.</p>`)
+	sb.WriteString(`<p>For mail and chat apps, use <a href="/account/connections">App passwords</a>.</p>`)
 	sb.WriteString(sshaccess.Card(r, accountID, "/token", "SSH and SFTP", "SSH and SFTP use an SSH key, not an access token. Add your public key below. Use sftp in place of ssh and -P in place of -p to connect to files.", "ssh"))
 
 	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
 	// part of the chrome that depends on knowing who is signed in — the nav,
 	// the account menu, the balance — went missing on a page you can only
 	// reach by being signed in. Same bug /account had.
-	app.Respond(w, r, app.Response{Title: "Developer access", Description: "API tokens and developer connections", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "API access", Description: "API tokens and developer connections", HTML: sb.String() + `</div>`})
 }
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {

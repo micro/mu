@@ -831,6 +831,8 @@ func LedgerSection(userID string) string {
 		}
 		rows.WriteString(`</table>`)
 		sb.WriteString(app.SectionID("ledger", "History", rows.String()))
+	} else {
+		sb.WriteString(`<p>No transactions yet.</p>`)
 	}
 
 	return sb.String()

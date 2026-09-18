@@ -25,7 +25,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/push"
-	"mu/internal/quota"
 	"mu/internal/usage"
 	"sort"
 
@@ -504,11 +503,11 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	case "/account/usage", "/account/billing":
 		accountPath = "/account/billing"
 	case "/account/developer":
-		accountPath = "/account/developer"
+		accountPath = "/token"
 	}
 	if r.Method == http.MethodGet && !app.WantsJSON(r) {
 		if r.URL.Query().Get("linked") == "google" || r.URL.Query().Get("connection") != "" {
-			accountPath = "/account/connections"
+			accountPath = "/account"
 		}
 		if r.URL.Path != accountPath {
 			target := accountPath
@@ -652,17 +651,11 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	content := ""
 	switch accountPath {
 	case "/account/connections":
-		googleCard := renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
-		if r.URL.Query().Get("linked") == "google" {
-			notice = app.Notice("Google connected.") + notice
-		}
-		content = renderEmailCard(acc) + renderPhoneCard(acc.ID) + googleCard
-		content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
-		content = connectionApps(r, acc.ID) + content
+		title = "App passwords"
+		content = connectionApps(r, acc.ID)
 	case "/account/billing":
-		content = usage.Card(acc.ID) + app.Section("Billing", `<p>Your account includes a daily assistant allowance. Extra use currently uses prepaid credit.</p><div class="form-actions"><a href="/account/topup">Add credit</a><a href="/pricing">Pricing</a></div>`)
-	case "/account/developer":
-		content = app.Section("Build with Micro", `<p>Use the assistant, background jobs and Inbox, or call selected services directly through API or MCP.</p><div class="form-actions"><a href="/developers">Documentation</a><a href="/token?access=agent">API tokens</a></div>`) + app.Section("Developer billing", `<p>Tokens grant access. Prepaid credits pay for billable operations.</p><div class="form-actions"><a href="/account/topup">Add credit</a><a href="/account/transfer">Transfer credit</a></div>`) + LedgerSection(acc.ID)
+		title = "Billing"
+		content = billingSummary(acc) + usage.Card(acc.ID) + `<details class="disclosure"><summary>Transaction history</summary>` + LedgerSection(acc.ID) + `</details>`
 
 	default:
 		// The languages this instance speaks, as options rather than as markup.
@@ -693,29 +686,23 @@ func Account(w http.ResponseWriter, r *http.Request) {
 				Fields: []app.Field{{Name: "language", Options: langs}},
 				Submit: "Save"}.HTML())
 
-		content = profile + language + PlaceCard(r, acc.ID) + `<section class="settings-signin" aria-labelledby="signin-heading"><h2 id="signin-heading">Sign-in</h2>` + passwordCard(acc) + PasskeyListHTML(acc.ID) + `</section>`
+		title = "Settings"
+		if r.URL.Query().Get("linked") == "google" {
+			notice = app.Notice("Google connected.") + notice
+		}
+		content = profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
+		content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
+		content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
+		content += app.Section("Access", `<div class="collection-list"><a class="collection-item" href="/account/connections"><span><strong>App passwords</strong><p>Use your Micro account in a mail or XMPP app.</p></span></a><a class="collection-item" href="/token"><span><strong>API access</strong><p>Create or revoke tokens for scripts and MCP clients.</p></span></a></div>`)
+
 	}
 	// Forms return to their owning tab; credentials and mutations stay in POST.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
-	nav := Navigation(accountPath)
-
-	balance := ""
-	if PaymentsEnabled() && !acc.Admin && !acc.Agent && (accountPath == "/account/billing" || accountPath == "/account/developer") {
-		balance = `<div class="metadata-row">`
-		if daily := quota.DailyCredits(); daily > 0 {
-			balance += `<span>Today: <strong>` + thousands(IncludedToday(acc.ID)) + ` of ` + thousands(daily) + ` credits left</strong> · renews at 00:00 UTC</span>`
-		}
-		balance += `<span>Credit balance: <strong>` + thousands(CreditsOf(acc.ID).Balance) + ` credits</strong></span>`
-		if TopUpConfigured() {
-			balance += `<a href="/account/topup">Add credit</a>`
-		}
-		balance += `</div>`
-		if cap := quota.DailyPoolCredits(); cap > 0 && IncludedUsage() >= cap {
-			balance += `<p class="text-sm text-muted">The shared free allowance is used up for today. It renews at 00:00 UTC; your credit balance is still available.</p>`
-		}
+	active := accountPath
+	if active == "/account/connections" {
+		active = "/account"
 	}
-
-	content = nav + balance + notice + `<div class="page-stack settings-sections">` + content + `</div>`
+	content = Navigation(active) + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
@@ -952,7 +939,7 @@ func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account
 		return
 	}
 	app.Log("auth", "Sent verification email to %s for account %s", email, acc.ID)
-	http.Redirect(w, r, "/account/connections", http.StatusSeeOther)
+	http.Redirect(w, r, "/account", http.StatusSeeOther)
 }
 
 // Preserve non-secret form fields on errors and the destination between auth pages.

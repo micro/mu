@@ -106,7 +106,7 @@ func publicRESTHandler(w http.ResponseWriter, r *http.Request) {
 }
 func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
 	if !origin.IsX402Host(r) && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
-		http.NotFound(w, r)
+		http.Redirect(w, r, "/developers?setup=mcp#mcp", http.StatusSeeOther)
 		return
 	}
 	if origin.IsX402Host(r) || serviceAccess(r) {

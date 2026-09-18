@@ -16,7 +16,7 @@ import (
 func Navigation(active string) string {
 	var b strings.Builder
 	b.WriteString(`<nav class="view-switch" aria-label="Account settings">`)
-	for _, tab := range []struct{ path, label string }{{"/account", "Profile"}, {"/account/connections", "Connections"}, {"/account/billing", "Billing"}, {"/account/developer", "Developer"}} {
+	for _, tab := range []struct{ path, label string }{{"/account", "Settings"}, {"/account/billing", "Billing"}} {
 		current := ""
 		if active == tab.path {
 			current = ` aria-current="page"`
@@ -50,7 +50,7 @@ func AppPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	if sess.Type != "account" || r.Method != http.MethodPost || !auth.StrictCSRF(r) {
-		app.Forbidden(w, r, "Reopen Connections and try again.")
+		app.Forbidden(w, r, "Reopen App passwords and try again.")
 		return
 	}
 	if err = r.ParseForm(); err != nil {
@@ -81,7 +81,7 @@ func AppPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	kind := r.FormValue("client")
 	if name == "" || len(name) > 80 || (kind != "mail" && kind != "chat") {
-		app.BadRequest(w, r, "Enter a device name and choose Mail or XMPP.")
+		app.BadRequest(w, r, "Enter an app name and choose Mail or XMPP.")
 		return
 	}
 	_, raw, err := auth.CreateToken(acc.ID, name, []string{"read", "write", "protocol:" + kind}, time.Time{})
@@ -89,14 +89,14 @@ func AppPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		app.ServerError(w, r, "Could not create the app password: "+err.Error())
 		return
 	}
-	body := Navigation("/account/connections") + `<div class="page-col"><h2>Connect ` + html.EscapeString(name) + `</h2><p>Copy this app password into your app. It is shown only once and works until you disconnect it.</p><label class="field-label">App password<input id="app-password" readonly autocomplete="off" value="` + html.EscapeString(raw) + `"></label><div class="form-actions"><button type="button" data-copy-password>Copy password</button><a href="/account/connections">Done</a></div><p data-copy-status role="status"></p>` + inbox.ClientSettings(acc.ID) + `</div>`
+	body := Navigation("/account") + `<div class="page-col"><h2>Connect ` + html.EscapeString(name) + `</h2><p>Copy this app password into your app. It is shown only once and works until you disconnect it.</p><label class="field-label">App password<input id="app-password" readonly autocomplete="off" value="` + html.EscapeString(raw) + `"></label><div class="form-actions"><button type="button" data-copy-password>Copy password</button><a href="/account/connections">Done</a></div><p data-copy-status role="status"></p>` + inbox.ClientSettings(acc.ID) + `</div>`
 	app.Respond(w, r, app.Response{Title: "App password", HTML: body})
 }
 
 func connectionApps(r *http.Request, accountID string) string {
 	csrf := html.EscapeString(auth.CSRFToken(r))
 	var b strings.Builder
-	b.WriteString(`<section class="section-stack"><h2>Your mail and chat apps</h2><p>Give each app its own password. Disconnecting one does not change how you sign in to Micro.</p><form method="POST" action="/account/app-password" class="form"><input type="hidden" name="_csrf" value="` + csrf + `"><label class="field-label">Device name<input name="name" maxlength="80" placeholder="e.g. Mail on my phone" required></label><div class="form-actions"><button name="client" value="mail">Connect a mail app</button><button name="client" value="chat">Connect an XMPP app</button></div></form><div class="collection-list">`)
+	b.WriteString(`<section class="section-stack"><h2>App passwords</h2><p>Read and send your Micro mail in a mail app, or chat through an XMPP app. Create a password for each app, then enter it with the server settings below. Revoking it only disconnects that app.</p><form method="POST" action="/account/app-password" class="form"><input type="hidden" name="_csrf" value="` + csrf + `"><label class="field-label">App name<input name="name" maxlength="80" placeholder="e.g. Mail on my phone" required></label><div class="form-actions"><button name="client" value="mail">Connect a mail app</button><button name="client" value="chat">Connect an XMPP app</button></div></form><div class="collection-list">`)
 	count := 0
 	for _, t := range auth.ListTokens(accountID) {
 		if !appPassword(t) {
@@ -118,7 +118,7 @@ func connectionApps(r *http.Request, accountID string) string {
 		if !t.ExpiresAt.IsZero() {
 			expiry = " · expires " + t.ExpiresAt.Format("2 Jan 2006")
 		}
-		fmt.Fprintf(&b, `<div class="collection-item"><strong>%s</strong><p class="metadata-row">%s · %s%s</p><form method="POST" action="/account/app-password" class="form-actions"><input type="hidden" name="_csrf" value="%s"><button name="disconnect" value="%s">Disconnect</button></form></div>`, html.EscapeString(t.Name), label, last, expiry, csrf, html.EscapeString(t.ID))
+		fmt.Fprintf(&b, `<div class="record-card"><strong>%s</strong><p class="metadata-row">%s · %s%s</p><form method="POST" action="/account/app-password" class="form-actions"><input type="hidden" name="_csrf" value="%s"><button name="disconnect" value="%s">Disconnect</button></form></div>`, html.EscapeString(t.Name), label, last, expiry, csrf, html.EscapeString(t.ID))
 	}
 	if count == 0 {
 		b.WriteString(`<p class="text-muted">No apps connected yet.</p>`)
