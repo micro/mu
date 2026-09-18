@@ -41,7 +41,7 @@ func sendRegistrationReply(to, messageID string) error {
 	if err != nil || !allowed {
 		return err
 	}
-	body := "Welcome to Micro.\n\nCreate an account or sign in at " + base + "/account/connections, then verify the email address you are writing from.\n\nOnce connected, send your message again to " + SharedAgentAddress() + " to speak to your assistant. Your original request has not been processed."
+	body := "Welcome to Micro.\n\nCreate an account or sign in at " + base + "/account, then verify the email address you are writing from.\n\nOnce connected, send your message again to " + SharedAgentAddress() + " to speak to your assistant. Your original request has not been processed."
 	message, _ := buildExternal("Micro", SharedAgentAddress(), "", to, "Get started with Micro", body, "", messageID, "")
 	message = append([]byte("Auto-Submitted: auto-replied\r\nX-Auto-Response-Suppress: All\r\n"), message...)
 	// Null envelope sender prevents bounces from starting another exchange.
