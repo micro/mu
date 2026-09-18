@@ -517,7 +517,7 @@ async function createToken(e) {
 	e.preventDefault();
 	var form = e.target;
 
-	var res = await fetch('/account/clients', {
+	var res = await fetch('/account/tokens', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
 		body: JSON.stringify({client: form.client.value, name: form.name.value, expires_in: parseInt(form.expires_in.value), services:form.client.value==='services'?Array.from(form.querySelectorAll('[name="services"]:checked'),el=>el.value):[], permissions:form.client.value==='api'?['read',...Array.from(form.querySelectorAll('[name="capability"]:checked'),el=>el.value),...(form.api_write.checked?['write']:[])]:[]})
@@ -1420,9 +1420,9 @@ document.querySelector('[data-copy-password]')?.addEventListener('click',async()
  try{await navigator.clipboard.writeText(field.value);status.textContent='Copied.';}catch{field.select();status.textContent='Select and copy the password.';}
 });
 
-// Keep bookmarked setup sections useful after the unified Clients page.
+// Keep bookmarked setup sections useful on the Tokens page.
 (function(){
- if(location.pathname!=='/account/clients') return;
+ if(location.pathname!=='/account/tokens') return;
  const kind=location.hash==='#app-passwords'?'mail':location.hash==='#api-tokens'?'api':'';
- if(kind) { const url=new URL(location.href);url.searchParams.set('add',kind);url.hash='add-client';location.replace(url.pathname+url.search+url.hash); }
+ if(kind) { const url=new URL(location.href);url.searchParams.set('add',kind);url.hash='create-token-form';location.replace(url.pathname+url.search+url.hash); }
 })();

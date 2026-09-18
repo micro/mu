@@ -221,7 +221,7 @@ func connectBannerFor(acc *auth.Account, path string) string {
 	switch {
 	case strings.HasPrefix(path, "/tools"),
 		strings.HasPrefix(path, "/token"),
-		strings.HasPrefix(path, "/account/clients"),
+		strings.HasPrefix(path, "/account/tokens"),
 		strings.HasPrefix(path, "/mcp"):
 		return ""
 	}

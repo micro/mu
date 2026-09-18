@@ -134,7 +134,7 @@ func (s *submissionSession) Auth(mech string) (sasl.Server, error) {
 // which is what makes it show the password box rather than an error.
 var errNotAuthenticated = &smtpd.SMTPError{
 	Code:    530,
-	Message: "authenticate first — your username and an app password from /account/clients",
+	Message: "authenticate first — your username and an app password from /account/tokens",
 }
 
 func (s *submissionSession) Mail(from string, opts *smtpd.MailOptions) error {

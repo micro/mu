@@ -14,13 +14,13 @@ func TestClientSetupForms(t *testing.T) {
 		query, want string
 		absent      []string
 	}{
-		{"", "Add client", []string{`id="create-token-form"`, `name="redirect_uris"`, `name="client" value="mail"`}},
-		{"?add=mail", `name="client" value="mail"`, []string{`id="create-token-form"`, `name="redirect_uris"`, `<td data-label="Client">XMPP</td>`}},
-		{"?add=xmpp", `name="client" value="chat"`, []string{`id="create-token-form"`, `name="redirect_uris"`, `<td data-label="Client">IMAP</td>`}},
-		{"?add=api", `id="create-token-form"`, []string{`name="redirect_uris"`, `name="client" value="mail"`}},
-		{"?add=oauth", `name="redirect_uris"`, []string{`id="create-token-form"`, `name="client" value="mail"`}},
+		{"", "Create token", []string{"Add client", "Change type"}},
+		{"?add=mail", `value="mail"`, []string{"Add client"}},
+		{"?add=xmpp", `value="chat"`, []string{"Add client"}},
+		{"?add=api", `id="create-token-form"`, []string{"Add client"}},
+		{"?add=oauth", `name="redirect_uris"`, []string{"Add client"}},
 	} {
-		r := httptest.NewRequest("GET", "/account/clients"+tc.query, nil)
+		r := httptest.NewRequest("GET", "/account/tokens"+tc.query, nil)
 		w := httptest.NewRecorder()
 		handleTokenPage(w, r, "setup_view_owner", "")
 		body := w.Body.String()

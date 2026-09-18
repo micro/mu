@@ -32,18 +32,18 @@ func TestAccessCompatibilityAndOAuth(t *testing.T) {
 	r := request("GET", "/token?access=services", nil, false)
 	w := httptest.NewRecorder()
 	TokenHandler(w, r)
-	if w.Code != 303 || w.Header().Get("Location") != "/account/clients?access=services" {
+	if w.Code != 303 || w.Header().Get("Location") != "/account/tokens?access=services" {
 		t.Fatalf("legacy HTML: %d %s", w.Code, w.Header())
 	}
 	alias := httptest.NewRecorder()
-	TokenHandler(alias, request("GET", "/account/tokens", nil, false))
-	if alias.Code != 303 || alias.Header().Get("Location") != "/account/clients" {
-		t.Fatal("old token page did not redirect to Clients")
+	TokenHandler(alias, request("GET", "/account/clients", nil, false))
+	if alias.Code != 303 || alias.Header().Get("Location") != "/account/tokens" {
+		t.Fatal("old token page did not redirect to Tokens")
 	}
 	alias = httptest.NewRecorder()
 	Account(alias, request("GET", "/account/connections", nil, false))
-	if alias.Code != 303 || alias.Header().Get("Location") != "/account/clients" {
-		t.Fatal("old connections page did not redirect to Clients")
+	if alias.Code != 303 || alias.Header().Get("Location") != "/account/tokens" {
+		t.Fatal("old connections page did not redirect to Tokens")
 	}
 	r.Header.Set("Accept", "application/json")
 	w = httptest.NewRecorder()
@@ -53,32 +53,32 @@ func TestAccessCompatibilityAndOAuth(t *testing.T) {
 	}
 	values := url.Values{"client_name": {"My app"}, "redirect_uris": {"https://example.com/callback"}}
 	w = httptest.NewRecorder()
-	TokenHandler(w, request("POST", "/account/clients?create_client=1", values, false))
+	TokenHandler(w, request("POST", "/account/tokens?create_client=1", values, false))
 	if w.Code != 403 || len(auth.OAuthClientsFor(owner)) != 0 {
 		t.Fatal("OAuth creation accepted missing CSRF")
 	}
 	values.Set("redirect_uris", "http://example.com/callback")
 	w = httptest.NewRecorder()
-	TokenHandler(w, request("POST", "/account/clients?create_client=1", values, true))
+	TokenHandler(w, request("POST", "/account/tokens?create_client=1", values, true))
 	if w.Code != 400 {
 		t.Fatal("accepted insecure remote redirect")
 	}
 	values.Set("redirect_uris", "https://example.com/callback")
 	w = httptest.NewRecorder()
-	TokenHandler(w, request("POST", "/account/clients?create_client=1", values, true))
+	TokenHandler(w, request("POST", "/account/tokens?create_client=1", values, true))
 	clients := auth.OAuthClientsFor(owner)
 	if w.Code != 303 || len(clients) != 1 {
 		t.Fatalf("OAuth registration: %d %s", w.Code, w.Body.String())
 	}
 	foreign := auth.RegisterOAuthClient("another_account", "Foreign", []string{"https://example.com/callback"})
 	w = httptest.NewRecorder()
-	TokenHandler(w, request("POST", "/account/clients?delete_client="+foreign.ClientID, url.Values{"_method": {"DELETE"}}, true))
+	TokenHandler(w, request("POST", "/account/tokens?delete_client="+foreign.ClientID, url.Values{"_method": {"DELETE"}}, true))
 	if w.Code != 403 || auth.GetOAuthClient(foreign.ClientID) == nil {
 		t.Fatal("cross-account deletion allowed")
 	}
 	w = httptest.NewRecorder()
-	TokenHandler(w, request("GET", "/account/clients", nil, false))
-	if !strings.Contains(w.Body.String(), "OAuth") || !strings.Contains(w.Body.String(), clients[0].ClientID) || strings.Contains(w.Body.String(), foreign.ClientID) || strings.Contains(w.Body.String(), clients[0].ClientSecret) || !strings.Contains(w.Body.String(), "Add client") || !strings.Contains(w.Body.String(), "Callback URL:") || !strings.Contains(w.Body.String(), ">Clients</h1>") {
+	TokenHandler(w, request("GET", "/account/tokens", nil, false))
+	if !strings.Contains(w.Body.String(), "OAuth") || !strings.Contains(w.Body.String(), clients[0].ClientID) || strings.Contains(w.Body.String(), foreign.ClientID) || strings.Contains(w.Body.String(), clients[0].ClientSecret) || !strings.Contains(w.Body.String(), "Create token") || !strings.Contains(w.Body.String(), "Callback URL:") || !strings.Contains(w.Body.String(), ">Tokens</h1>") {
 		t.Fatal("OAuth listing leaks or omits clients")
 	}
 	for i := 0; i < 3; i++ {

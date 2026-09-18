@@ -318,7 +318,7 @@ replies appear in the thread there.
 | Incoming (IMAP) | `IMAP_PORT`, `1143` by default; set it to `143` in production |
 | Outgoing (SMTP) | `SUBMISSION_PORT`, `1587` by default; set it to `587` in production |
 | Username | your Mu username, or your full address |
-| Password | an app password from `/account/clients` |
+| Password | an app password from `/account/tokens` |
 
 Signed in, `/inbox/imap` says all of this filled in for the account reading it.
 Set `IMAP_PUBLIC` and `SUBMISSION_PUBLIC` to `host:port` if what you put in
@@ -1200,7 +1200,7 @@ or the same operations as MCP tools at `/mcp`. `/developers` documents the curre
 contract and `/api/v1` lists its operations. Mu owns agent execution and tool
 use; clients submit goals and read results.
 
-Create an API token at `/account/clients`. Select the needed API capabilities; these apply
+Create an API token at `/account/tokens`. Select the needed API capabilities; these apply
 across the token owner's account. They do not isolate an application's
 conversations or disable memory. Service-scoped tokens are refused at the
 outcome API. The first-party service playground and sandboxed app SDK continue

@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/data"
 )
 
@@ -382,4 +383,14 @@ func (room *Room) arrival(account, what string) {
 	}:
 	default:
 	}
+}
+
+// microDM is a private conversation addressed to the instance agent.
+// Presence alone must never invite the assistant into a human conversation.
+func microDM(roomID, sender string) bool {
+	if !Private(roomID) || sender == auth.MicroID || !auth.IsAgent(auth.MicroID) {
+		return false
+	}
+	who := Members(roomID)
+	return len(who) == 2 && Member(roomID, sender) && Member(roomID, auth.MicroID)
 }

@@ -268,7 +268,7 @@ func PublicMCPHandler(w http.ResponseWriter, r *http.Request) {
 // publicMCPPage documents the protocol served at this endpoint.
 func publicMCPPage(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
-	b.WriteString(`<p>Connect an MCP client to Micro to ask questions, manage work and read your inbox.</p><h2>Connect</h2><p>Server URL: <code>` + html.EscapeString(app.BaseURL(r)+"/mcp") + `</code></p><p>Choose HTTP in your client. Sign in when prompted, or use an access token from <a href="/account/clients?access=agent">Clients</a> as <code>Authorization: Bearer &lt;token&gt;</code>.</p><h2>Tools</h2><p>The client discovers tools with <code>tools/list</code> and invokes them with <code>tools/call</code>. Access follows your account and token permissions.</p>`)
+	b.WriteString(`<p>Connect an MCP client to Micro to ask questions, manage work and read your inbox.</p><h2>Connect</h2><p>Server URL: <code>` + html.EscapeString(app.BaseURL(r)+"/mcp") + `</code></p><p>Choose HTTP in your client. Sign in when prompted, or use an access token from <a href="/account/tokens?access=agent">Tokens</a> as <code>Authorization: Bearer &lt;token&gt;</code>.</p><h2>Tools</h2><p>The client discovers tools with <code>tools/list</code> and invokes them with <code>tools/call</code>. Access follows your account and token permissions.</p>`)
 	for _, op := range Operations {
 		b.WriteString(`<section class="page-section"><h3>` + html.EscapeString(op.Name) + `</h3><p>` + html.EscapeString(op.Description) + `</p><dl>`)
 		for _, p := range op.Params {

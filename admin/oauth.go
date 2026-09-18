@@ -59,7 +59,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p class="text-muted text-sm">Anything that speaks MCP can register ` +
 		`itself at <code>/oauth/register</code> without signing in — that is what the ` +
 		`protocol asks for — so most of these belong to nobody. A client registered from ` +
-		`somebody's <a href="/account/clients">token page</a> carries their account, and only they ` +
+		`somebody's <a href="/account/tokens">token page</a> carries their account, and only they ` +
 		`can remove it. Removing one here stops it signing anybody in until it registers ` +
 		`again, which it will do the next time it connects.</p>`)
 	b.WriteString(`<p class="text-muted text-sm">A code is only ever sent to an address ` +

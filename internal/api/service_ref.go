@@ -152,11 +152,11 @@ func refAuthCard(spec service.Spec, base string) string {
 			`no account, no payment.</p>`)
 	case needsAuth:
 		b.WriteString(`<p class="card-desc">This is your own data, so a call has to say who ` +
-			`you are. Make a token at <a href="/account/clients">Clients</a> and send it as a header.</p>`)
+			`you are. Make a token at <a href="/account/tokens">Tokens</a> and send it as a header.</p>`)
 	default:
 		b.WriteString(`<p class="card-desc">Metered methods answer an unauthenticated call ` +
 			`with <code>402</code> and an x402 challenge — pay it and the same request ` +
-			`succeeds, with no account at all. A <a href="/account/clients">token</a> works too.</p>`)
+			`succeeds, with no account at all. A <a href="/account/tokens">token</a> works too.</p>`)
 	}
 
 	// One real method, always. Read-only where there is one, because an example
