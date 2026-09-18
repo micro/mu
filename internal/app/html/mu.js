@@ -153,6 +153,11 @@ document.addEventListener('submit', function(e) {
   if (!form || form.tagName !== 'FORM') return;
   var method = (form.method || 'GET').toUpperCase();
   if (method !== 'POST') return;
+  if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return;
+  }
   if (form.querySelector('input[name="_csrf"]')) return;
   var token = getCsrfToken();
   if (!token) return;
