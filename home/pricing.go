@@ -18,47 +18,25 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(app.Column())
 
-	// An instance nobody can pay charges nobody. Saying that is the whole page:
-	// the operator of a box with no Stripe keys has not decided to be cheap,
-	// they have decided not to charge, and printing a table of prices that
-	// cannot be applied invites somebody to worry about a bill that does not
-	// exist.
+	description := "Usage pricing"
+	b.WriteString(`<section class="section-stack"><h2>Daily quota</h2>`)
 	if !account.PaymentsEnabled() {
-		b.WriteString(`<div class="card"><h3>What this costs</h3>` +
-			`<p>Nothing. This instance is not set up to take payments, so nothing on it ` +
-			`is metered — whoever runs it is paying for the models and the searches it ` +
-			`makes.</p>` +
-			`<p class="text-sm"><a href="/install">Run your own &rarr;</a> · ` +
-			`<a href="/about">What this is</a></p></div>`)
-		b.WriteString(`</div>`)
-		app.Respond(w, r, app.Response{
-			Title:       "Pricing",
-			Description: "This instance does not charge for anything.",
-			HTML:        b.String(),
-		})
+		b.WriteString(`<p>No usage charges on this instance.</p></section></div>`)
+		app.Respond(w, r, app.Response{Title: "Pricing", HTML: b.String()})
 		return
-	}
-
-	description := "Pay for what you use, with no subscription."
-	b.WriteString(`<div class="card"><h3>Everyday use</h3>`)
-	if daily := quota.DailyCredits(); daily > 0 {
-		description = "A free daily allowance, with optional credit for more use."
-		b.WriteString(`<p>Every account includes ` + strconv.Itoa(daily) + ` credits each day. No payment or card is needed. The allowance renews at 00:00 UTC and is used before any credit you add.</p>` +
-			`<p>Unused daily credit does not carry over. Your conversations and saved items remain available when you reach the allowance.</p>`)
+	} else if daily := quota.DailyCredits(); daily > 0 {
+		b.WriteString(`<p>` + strconv.Itoa(daily) + ` credits per day · resets 00:00 UTC</p><p>Used before prepaid credit. Unused daily credit expires.</p>`)
 		if quota.DailyPoolCredits() > 0 {
-			b.WriteString(`<p>Free use also shares an instance-wide daily budget. If that is used up, it renews at 00:00 UTC; added credit remains available.</p>`)
+			b.WriteString(`<p>Subject to a shared daily limit.</p>`)
 		}
 	} else {
-		b.WriteString(`<p>A new account includes ` + creditsInWords() + `. No card is needed to start.</p>`)
+		b.WriteString(`<p>` + creditsInWords() + ` on signup.</p>`)
 	}
-	b.WriteString(`</div>`)
+	b.WriteString(`</section><section class="section-stack"><h2>Top up</h2><p>1 credit = 1 US cent.</p>`)
 	if account.TopUpConfigured() {
-		b.WriteString(`<div class="card"><h3>If you need more</h3><p>You can add credit for more use. One credit is one US cent. There is no subscription, and an idle account is charged nothing.</p>` +
-			`<div class="form-actions"><a href="/signup" class="btn">Create an account</a><a href="/account/topup">Add credit</a></div></div>`)
+		b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
 	}
-	b.WriteString(`<details class="card"><summary>Usage costs</summary><p>An assistant reply uses ` +
-		strconv.Itoa(quota.OperationCost(quota.OpAgentRun)) + ` credits. Paid tools and message delivery may use additional credit. These come from your daily allowance first, then your balance. Messaging limits still apply.</p>` +
-		`<p>Reading your conversations, mail and saved items is free.</p>` + account.PricingTableHTML() + `</details>`)
+	b.WriteString(`</section><section id="costs" class="section-stack"><h2>Usage costs</h2><p>Assistant calls and paid tools are charged separately.</p>` + account.PricingTableHTML() + `</section>`)
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Pricing", Description: description, HTML: b.String()})
 }

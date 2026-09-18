@@ -311,13 +311,7 @@ func registerRoutes() {
 	http.HandleFunc("/admin/backup", admin.BackupHandler)
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
-	// Money: top-up, transfer, Stripe and the price list, all under /wallet with
-	// the balance they change. The handler lives in account/ because that is
-	// where credits are kept; the destination is /wallet because that is the
-	// word somebody already has for the place their money is.
-	//
-	// /account/ and /billing/ stay registered and only redirect. Both were the
-	// money prefix at some point and somebody has each bookmarked.
+	// Billing pages belong to Account; provider callbacks keep their stable URLs.
 	http.HandleFunc("/account/", account.BalanceHandler)
 
 	// Stripe posts here. Named for the provider, at the top level, and that is
@@ -625,13 +619,14 @@ func registerRoutes() {
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/account/profile", account.Account)
 	http.HandleFunc("/account/billing", account.Account)
-	http.HandleFunc("/account/usage", account.Account) // Previous billing URL.
+	http.HandleFunc("/account/usage", account.UsageHandler)
 	http.HandleFunc("/account/connections", account.Account)
 	http.HandleFunc("/account/developer", account.Account)
 	http.HandleFunc("/account/app-password", account.AppPasswordHandler)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)
 
+	http.HandleFunc("/account/tokens", account.TokenHandler)
 	http.HandleFunc("/token", account.TokenHandler)
 	http.HandleFunc("/passkey/", account.PasskeyHandler)
 
@@ -830,7 +825,8 @@ func registerRoutes() {
 	http.HandleFunc("/card", api.CardHandler)
 	http.HandleFunc("/card/", api.CardHandler)
 	// Your own usage — the caller-facing half of /admin/traffic.
-	http.HandleFunc("/usage", home.UsageHandler)
+	http.HandleFunc("/usage", account.UsageMoved)
+	http.HandleFunc("/billing", account.BillingMoved)
 	http.HandleFunc("/mcp", publicMCPHandler)
 
 	// serve the app

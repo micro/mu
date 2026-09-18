@@ -73,7 +73,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	section("Tokens and connected agents",
 		`A token, or a client you signed in through the MCP
 		 authorization flow, acts as you: it reaches the same tools and the same
-		 data. Revoke either at <a href="/token">/token</a>. Anything an agent did
+		 data. Revoke either at <a href="/account/tokens">/token</a>. Anything an agent did
 		 with a token is attributed to your account, which is why
 		 <code>mail_send</code> is available only to a signed-in account and never
 		 to an anonymous caller.`)

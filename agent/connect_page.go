@@ -143,7 +143,7 @@ func connEndpoint(base, path string) string {
   -H "Authorization: Bearer $MU_TOKEN" \
   -H "Content-Type: application/json" \
   -d '` + string(payload) + "'"
-	return `<h3 class="conn-head">HTTP endpoint</h3><p class="conn-note">Ask this agent through the <a href="/api">API reference</a>. Create an API token at <a href="/token?access=agent">Client access</a>; service-scoped credentials cannot run an agent.</p><pre class="conn-pre">` + html.EscapeString(example) + `</pre><p class="conn-note">The response contains <code>data.text</code> and <code>data.thread</code>. Send <code>thread</code> back to continue.</p>`
+	return `<h3 class="conn-head">HTTP endpoint</h3><p class="conn-note">Ask this agent through the <a href="/api">API reference</a>. Create an API token at <a href="/account/tokens?access=agent">API access</a>; service-scoped credentials cannot run an agent.</p><pre class="conn-pre">` + html.EscapeString(example) + `</pre><p class="conn-note">The response contains <code>data.text</code> and <code>data.thread</code>. Send <code>thread</code> back to continue.</p>`
 
 }
 
@@ -198,7 +198,7 @@ func defaultPanel(base string) string {
 
 	b.WriteString(connChat(base, "/agent/"+DefaultPlatformAgent))
 
-	b.WriteString(`<div class="detail-row"><span class="text-muted">API token</span><span class="detail-value">` + app.TextLink("Create a token", "/token?access=agent") + `. Allows calls to your account’s agents, using each agent’s configured tools.</span></div>`)
+	b.WriteString(`<div class="detail-row"><span class="text-muted">API token</span><span class="detail-value">` + app.TextLink("Create a token", "/account/tokens?access=agent") + `. Allows calls to your account’s agents, using each agent’s configured tools.</span></div>`)
 
 	// What this block is, said once, because it is not what the page is
 	// otherwise about.
@@ -212,7 +212,7 @@ func defaultPanel(base string) string {
 	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
-	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Create a token with Agent API access in <a href="/token?access=agent">Client access</a>.</p>`)
+	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Create a token with Agent API access in <a href="/account/tokens?access=agent">API access</a>.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "mu": {
@@ -297,7 +297,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	// now, because every agent is something you can talk to.
 	b.WriteString(connChat(base, Path(a.Owner, a.ID)))
 
-	b.WriteString(`<div class="detail-row"><span class="text-muted">Token</span><span class="detail-value"><a href="/token?access=agent">Create a token</a></span></div>`)
+	b.WriteString(`<div class="detail-row"><span class="text-muted">Token</span><span class="detail-value"><a href="/account/tokens?access=agent">Create a token</a></span></div>`)
 
 	b.WriteString(connModel(a.Model))
 
@@ -314,7 +314,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	b.WriteString(connEndpoint(base, Path(a.Owner, a.ID)))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
-	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Create a token with Agent API access in <a href="/token?access=agent">Client access</a>.</p>`)
+	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Create a token with Agent API access in <a href="/account/tokens?access=agent">API access</a>.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "`+strings.ToLower(a.Name)+`": {

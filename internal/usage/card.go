@@ -1,26 +1,6 @@
 package usage
 
-// What this account has been doing, on the page about the account.
-//
-// Usage was a sidebar entry, and before that it was in the top group beside
-// Inbox, Agents, Tools and Services — where it closed the product's own three
-// levels as though it were a fourth thing you do. It is not a thing you do. It
-// is what this account has spent, and the reasoning that moved it down to sit
-// with the account did not go far enough: the balance it spends from is a card
-// on /account, so the picture of it belongs there too, not in a rail beside it.
-//
-// So this is the card, and /usage is still the page. The card answers "is
-// anything happening, and roughly how much" at a glance; the page answers "on
-// what, and what did it cost", which needs the ledger and a window switcher and
-// is worth a click. A card that tried to be the page would be the page.
-//
-// # Why it lives here
-//
-// /account is served by account/ and /usage by home/, and home/ already imports
-// account/ for the ledger. A card in either would be a sideways product import
-// and, in one direction, a cycle. It reads nothing but the counters, which are
-// here — so here is where it goes, and neither product package learns about the
-// other.
+// Shared activity chart for account billing.
 
 import (
 	"strconv"
@@ -52,7 +32,7 @@ func Card(account string) string {
 		total += b.Total
 	}
 	if total == 0 {
-		return ""
+		return `<section class="card"><h2>Usage</h2><p>No activity yet.</p><p><a href="/account/usage">View usage</a></p></section>`
 	}
 
 	var sb strings.Builder
@@ -62,7 +42,7 @@ func Card(account string) string {
 	sb.WriteString(`<p class="card-meta usage-card-total">` + HumanCount(total) +
 		` calls in the last 7 days</p>`)
 	sb.WriteString(ChartSVG(series, CardWindow))
-	sb.WriteString(`<p class="card-meta"><a href="/usage?window=` + CardWindow.Slug +
+	sb.WriteString(`<p class="card-meta"><a href="/account/usage?window=` + CardWindow.Slug +
 		`">View usage</a></p>`)
 	sb.WriteString(`</div>`)
 	return sb.String()

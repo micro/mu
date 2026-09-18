@@ -500,10 +500,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/account/connections":
 		accountPath = "/account/connections"
-	case "/account/usage", "/account/billing":
+	case "/account/billing":
 		accountPath = "/account/billing"
 	case "/account/developer":
-		accountPath = "/token"
+		accountPath = "/account/tokens"
 	}
 	if r.Method == http.MethodGet && !app.WantsJSON(r) {
 		if r.URL.Query().Get("linked") == "google" || r.URL.Query().Get("connection") != "" {
@@ -655,7 +655,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		content = connectionApps(r, acc.ID)
 	case "/account/billing":
 		title = "Billing"
-		content = billingSummary(acc) + usage.Card(acc.ID) + `<details class="disclosure"><summary>Transaction history</summary>` + LedgerSection(acc.ID) + `</details>`
+		content = billingSummary(acc) + usage.Card(acc.ID) + LedgerSection(acc.ID)
 
 	default:
 		// The languages this instance speaks, as options rather than as markup.
@@ -693,7 +693,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		content = profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
 		content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
 		content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
-		content += app.Section("Access", `<div class="collection-list"><a class="collection-item" href="/account/connections"><span><strong>App passwords</strong><p>Use your Micro account in a mail or XMPP app.</p></span></a><a class="collection-item" href="/token"><span><strong>API access</strong><p>Create or revoke tokens for scripts and MCP clients.</p></span></a></div>`)
+		content += app.Section("Access", `<div class="collection-list"><a class="collection-item" href="/account/connections"><span><strong>App passwords</strong><p>Use your Micro account in a mail or XMPP app.</p></span></a><a class="collection-item" href="/account/tokens"><span><strong>API access</strong><p>Create or revoke tokens for scripts and MCP clients.</p></span></a></div>`)
 
 	}
 	// Forms return to their owning tab; credentials and mutations stay in POST.
@@ -1121,7 +1121,7 @@ func xmppConnectionDetails(acc *auth.Account) string {
 		if !ok {
 			continue
 		}
-		return `<div class="record-card"><h3>XMPP</h3><p>Use an XMPP client signed in to this server.</p><dl><dt>Your address</dt><dd><code>` + htmlpkg.EscapeString(acc.ID+"@"+domain) + `</code></dd><dt>Password</dt><dd>A token with Chat (XMPP) access.</dd><dt>Micro's address</dt><dd><code>` + htmlpkg.EscapeString(c.Address) + `</code></dd></dl><div class="form-actions"><a href="/token">Manage tokens</a><a href="` + htmlpkg.EscapeString(c.Href) + `">Open XMPP client</a></div></div>`
+		return `<div class="record-card"><h3>XMPP</h3><p>Use an XMPP client signed in to this server.</p><dl><dt>Your address</dt><dd><code>` + htmlpkg.EscapeString(acc.ID+"@"+domain) + `</code></dd><dt>Password</dt><dd>A token with Chat (XMPP) access.</dd><dt>Micro's address</dt><dd><code>` + htmlpkg.EscapeString(c.Address) + `</code></dd></dl><div class="form-actions"><a href="/account/tokens">Manage tokens</a><a href="` + htmlpkg.EscapeString(c.Href) + `">Open XMPP client</a></div></div>`
 	}
 	return ""
 }
