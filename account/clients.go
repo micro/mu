@@ -55,7 +55,7 @@ func tokenList(r *http.Request, accountID string, oauth bool) string {
 			expiry = t.ExpiresAt.Format("2 Jan 2006")
 		}
 		detail := `<details><summary>Details</summary><p>` + tokenScope(t) + `</p><p>Created ` + t.Created.Format("2 Jan 2006") + `</p><p>Expires: ` + expiry + `</p></details>`
-		action := `<form method="POST" action="/account/tokens?id=` + html.EscapeString(t.ID) + `" class="form-action">` + csrf + `<input type="hidden" name="_method" value="DELETE"><button type="submit">Revoke</button></form>`
+		action := `<form method="POST" action="/account/tokens?id=` + html.EscapeString(t.ID) + `" class="form-action" data-confirm="` + html.EscapeString("Delete token \""+t.Name+"\"? Apps using it will lose access.") + `">` + csrf + `<input type="hidden" name="_method" value="DELETE"><button type="submit">Delete</button></form>`
 		rows = append(rows, row{t.ID, t.Name, kind, used, detail, action, t.Created})
 	}
 	for _, c := range auth.OAuthClientsFor(accountID) {
@@ -67,7 +67,7 @@ func tokenList(r *http.Request, accountID string, oauth bool) string {
 			detail += `<p>Callback URL: <code>` + html.EscapeString(u) + `</code></p>`
 		}
 		detail += `</details>`
-		action := `<form method="POST" action="/account/tokens?delete_client=` + html.EscapeString(c.ClientID) + `" class="form-action">` + csrf + `<input type="hidden" name="_method" value="DELETE"><button type="submit">Delete</button></form>`
+		action := `<form method="POST" action="/account/tokens?delete_client=` + html.EscapeString(c.ClientID) + `" class="form-action" data-confirm="` + html.EscapeString("Delete OAuth client \""+c.Name+"\"? Apps using it will lose access.") + `">` + csrf + `<input type="hidden" name="_method" value="DELETE"><button type="submit">Delete</button></form>`
 		rows = append(rows, row{c.ClientID, c.Name, "OAuth", "Not tracked", detail, action, c.CreatedAt})
 	}
 	sort.Slice(rows, func(i, j int) bool {
