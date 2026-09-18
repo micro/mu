@@ -34,10 +34,11 @@ const repliesFile = "agent_replies.json"
 
 var replies = struct {
 	sync.Mutex
-	once sync.Once
-	jobs map[string]pendingReply
-	err  error
-}{jobs: map[string]pendingReply{}}
+	once   sync.Once
+	jobs   map[string]pendingReply
+	active map[string]string // job -> account; never persisted
+	err    error
+}{jobs: map[string]pendingReply{}, active: map[string]string{}}
 
 func init() {
 	auth.AccountDeleteHooks = append(auth.AccountDeleteHooks, func(accountID string) {
@@ -74,12 +75,15 @@ func loadReplies() {
 				replies.jobs[id] = j
 			}
 		}
-		go func() {
-			for {
-				runReply()
-				time.Sleep(time.Second)
-			}
-		}()
+		// Keep one execution per account, with capacity for other people to work.
+		for i := 0; i < 4; i++ {
+			go func() {
+				for {
+					runReply()
+					time.Sleep(time.Second)
+				}
+			}()
+		}
 	})
 }
 
@@ -170,9 +174,13 @@ func runReply() {
 		replies.Unlock()
 		return
 	}
+	busy := map[string]bool{}
+	for _, account := range replies.active {
+		busy[account] = true
+	}
 	var job pendingReply
 	for _, j := range replies.jobs {
-		if j.State != "done" && (job.ID == "" || j.Created.Before(job.Created)) {
+		if !busy[j.Account] && j.State != "done" && (job.ID == "" || j.Created.Before(job.Created)) {
 			job = j
 		}
 	}
@@ -191,14 +199,23 @@ func runReply() {
 			return
 		}
 	}
+	replies.active[job.ID] = job.Account
 	replies.Unlock()
+	defer func() {
+		replies.Lock()
+		delete(replies.active, job.ID)
+		replies.Unlock()
+	}()
 	t := thread.Get(job.Account, job.Thread)
 	acc, accErr := auth.GetAccount(job.Account)
 	if t != nil && accErr == nil && acc != nil && !acc.Banned && !thread.IsHeld(*t) && (acc.Admin || acc.Approved || acc.EmailVerified) {
 		switch original {
 		case "queued":
 			// Recheck the captured specialist; never silently replace it on execution.
-			_, err := Ask(AskRequest{Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: "reply:" + job.ID})
+			answer, err := Ask(AskRequest{Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: "reply:" + job.ID})
+			if err == nil && strings.TrimSpace(answer.Text) == "" {
+				err = fmt.Errorf("no answer was recorded")
+			}
 			if err != nil {
 				app.Log("agent", "queued reply %s failed: %v", job.ID, err)
 				if err = AnsweredOnce(job.Account, job.Thread, "The reply could not be completed. Review the conversation before trying again.", "", "reply-error:"+job.ID); err != nil {

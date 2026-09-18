@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"mu/internal/result"
 	"strings"
+	"sync"
 
 	"mu/internal/notes"
 	"mu/internal/quota"
@@ -328,7 +329,17 @@ func Ask(r AskRequest) (Answer, error) {
 		return Answer{Text: reason, Thread: threadID(th)}, nil
 	}
 
+	var resultMu sync.Mutex
+	var results []result.Item
+	opts.OnStep = func(step Step) {
+		resultMu.Lock()
+		defer resultMu.Unlock()
+		results = mergeResults(results, resultItems(step))
+	}
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
+	resultMu.Lock()
+	items := append([]result.Item(nil), results...)
+	resultMu.Unlock()
 
 	via := r.Via
 	via.Client, via.Thread = th.Client, th.Key
@@ -345,7 +356,7 @@ func Ask(r AskRequest) (Answer, error) {
 		ID: rootID,
 	})
 
-	AnsweredAs(r.Account, threadID(th), answer, id, r.As)
+	AnsweredAs(r.Account, threadID(th), answer, id, r.As, items...)
 
 	return Answer{Text: answer, Flow: id, Thread: threadID(th)}, err
 }
@@ -394,11 +405,7 @@ func SaidTo(account, threadID, text, ref, from, to string) {
 
 // Answered records what the agent replied, and which workflow produced it.
 func Answered(account, threadID, text, workflow string, results ...result.Item) {
-	if len(results) > 0 {
-		thread.Add(thread.Message{Account: account, Thread: threadID, Role: thread.RoleAgent, Text: text, Workflow: workflow, Results: results})
-		return
-	}
-	AnsweredAs(account, threadID, text, workflow, "")
+	AnsweredAs(account, threadID, text, workflow, "", results...)
 }
 
 // AnsweredAs is Answered, recording which address answered.
@@ -411,13 +418,13 @@ func Answered(account, threadID, text, workflow string, results ...result.Item) 
 // ran first would otherwise silence the other, because the rule that keeps an
 // agent from interrupting a conversation it has already joined would read the
 // other agent's answer as its own.
-func AnsweredAs(account, threadID, text, workflow, from string) {
-	if threadID == "" || strings.TrimSpace(text) == "" {
+func AnsweredAs(account, threadID, text, workflow, from string, results ...result.Item) {
+	if threadID == "" || (strings.TrimSpace(text) == "" && len(results) == 0) {
 		return
 	}
 	thread.Add(thread.Message{
 		Thread: threadID, Account: account, Role: thread.RoleAgent,
-		Text: text, Workflow: workflow, From: from,
+		Text: text, Workflow: workflow, From: from, Results: results,
 	})
 }
 
