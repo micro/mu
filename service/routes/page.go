@@ -191,11 +191,7 @@ func paidRoute(owner string, j journey) (result route, err error) {
 		return result, err
 	}
 	completed := false
-	defer func() {
-		if e := settle(completed); e != nil {
-			err = e
-		}
-	}()
+	defer func() { _ = settle(completed) }()
 	result, err = computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full, j.fromAddress, j.toAddress)
 	completed = err == nil && !result.Estimate
 	return result, err

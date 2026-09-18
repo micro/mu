@@ -97,7 +97,11 @@ func reserveIncluded(id, operation string, amount int) (func(bool) error, error)
 		return nil, err
 	}
 	return func(success bool) error {
-		return withLedger(func(l *ledger) error { return settleIncluded(l, id, receipt, success) })
+		err := withLedger(func(l *ledger) error { return settleIncluded(l, id, receipt, success) })
+		if err != nil {
+			app.Log("account", "reservation %s settlement pending: %v", receipt, err)
+		}
+		return err
 	}, nil
 }
 

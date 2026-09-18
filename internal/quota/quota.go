@@ -372,11 +372,10 @@ func Run(account, operation string, work func() error, cached ...func() bool) (e
 		return err
 	}
 	completed := false
-	defer func() {
-		if e := settle(completed); e != nil {
-			err = fmt.Errorf("could not settle usage: %w", e)
-		}
-	}()
+	// The ledger logs settlement failures and leaves a durable pending entry.
+	// Never turn completed work into a retryable error: it may have sent mail
+	// or changed files. Recovery reconciles pending reservations separately.
+	defer func() { _ = settle(completed) }()
 	err = work()
 	completed = err == nil
 	if completed && len(cached) > 0 && cached[0]() {

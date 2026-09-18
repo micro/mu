@@ -117,7 +117,7 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 	// AGENTS.md, "What may travel in a URL".
 	q := strings.TrimSpace(r.PostFormValue("q"))
 	_, _, located := auth.Located(accountID)
-	if q != "" || r.PostFormValue("lat") != "" || r.PostFormValue("lon") != "" || located {
+	if googleAPIKey() != "" && (q != "" || r.PostFormValue("lat") != "" || r.PostFormValue("lon") != "" || located) {
 		if _, ok := app.BillableCaller(w, r, quota.OpWeatherForecast); !ok {
 			return
 		}
@@ -396,6 +396,9 @@ func airFor(lat, lon float64) *AirQuality {
 }
 
 func paidForecast(ctx context.Context, accountID string, lat, lon float64) (forecast *WeatherForecast, err error) {
+	if googleAPIKey() == "" {
+		return FetchWeather(ctx, lat, lon)
+	}
 	ctx, cached := service.Measure(ctx)
 	err = quota.Run(accountID, quota.OpWeatherForecast, func() error {
 		var e error

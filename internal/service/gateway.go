@@ -167,11 +167,7 @@ func gateway(spec Spec) server.HandlerWrapper {
 				if err != nil {
 					return err
 				}
-				defer func() {
-					if err := settle(paid); err != nil {
-						retErr = fmt.Errorf("could not settle usage: %w", err)
-					}
-				}()
+				defer func() { _ = settle(paid) }()
 			}
 
 			// Reserved above, settled below, and in between the handler gets a

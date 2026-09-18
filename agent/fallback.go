@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"mu/internal/quota"
 	"strings"
 )
@@ -14,11 +13,7 @@ func queryWithFallback(account, prompt string, opts QueryOpts) (answer string, e
 		return "", err
 	}
 	completed := false
-	defer func() {
-		if settleErr := settle(completed); settleErr != nil {
-			err = fmt.Errorf("could not settle usage: %w", settleErr)
-		}
-	}()
+	defer func() { _ = settle(completed) }()
 	answer, err = tryModels(account, prompt, opts, runNative)
 	completed = err == nil && strings.TrimSpace(answer) != ""
 	return answer, err

@@ -233,9 +233,16 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 	// Who pays, if anybody does. A forecast is free on an instance that cannot
 	// charge, so a guest gets one rather than a sign-in page.
-	caller, ok := app.BillableCaller(w, r, quota.OpWeatherForecast)
-	if !ok {
-		return
+	caller := ""
+	if _, acc := auth.TrySession(r); acc != nil {
+		caller = acc.ID
+	}
+	if googleAPIKey() != "" {
+		var ok bool
+		caller, ok = app.BillableCaller(w, r, quota.OpWeatherForecast)
+		if !ok {
+			return
+		}
 	}
 
 	// Fetch weather

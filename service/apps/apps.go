@@ -1677,8 +1677,10 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 		system += "\n\nApp context: " + req.Options.Context
 	}
 
+	started := false
 	var result string
 	err = quota.Run(acc.ID, quota.OpAgentRun, func() error {
+		started = true
 		result, err = ai.Ask(&ai.Prompt{
 			System:   system,
 			Question: req.Prompt,
@@ -1689,7 +1691,11 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 		return err
 	})
 	if err != nil {
-		app.RespondError(w, http.StatusInternalServerError, err.Error())
+		status := http.StatusInternalServerError
+		if !started {
+			status = http.StatusPaymentRequired
+		}
+		app.RespondError(w, status, err.Error())
 		return
 	}
 
