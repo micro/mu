@@ -13,10 +13,10 @@ import (
 // inlineReply uses the existing send handler and keeps failed drafts in the reader.
 func inlineReply(r *http.Request, owner string, t *thread.Thread, messages []thread.Message, draft ...form) string {
 	if t.Client == thread.WebClient {
-		return `<form class="form ib-compose" method="POST" action="` + html.EscapeString(inboxURL(r, t.ID)) + `">` + app.CSRFField(auth.CSRFToken(r)) +
-			`<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">` +
-			`<label class="field-label">Message Micro<textarea name="ask" rows="2" maxlength="2000" required></textarea></label>` +
-			`<div class="form-actions"><button type="submit">Send</button><span class="text-muted text-sm">The reply will appear in this conversation.</span></div></form>`
+		return `<form class="form ib-compose" data-assistant-reply method="POST" action="/agent">` + app.CSRFField(auth.CSRFToken(r)) +
+			`<input type="hidden" name="inbox_reply" value="1"><input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">` +
+			`<label class="field-label">Message Micro<textarea name="ask" rows="2" maxlength="8000" required></textarea></label>` +
+			`<div class="form-actions"><button type="submit">Send</button><span class="text-muted text-sm" role="status">The reply will appear in this conversation.</span></div></form>`
 	}
 	to := replyTo(owner, t, messages)
 	if to == "" {

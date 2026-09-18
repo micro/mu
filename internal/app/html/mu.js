@@ -292,6 +292,37 @@ if (typeof document !== "undefined") {
  if(form)form.addEventListener('submit',()=>{try{sessionStorage.removeItem(key);}catch{}});
 })();
 
+async function sendAssistantMessage(command,thread,agent,onEvent){
+ const response=await fetch('/agent',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'text/event-stream','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt:command,context_id:thread,agent:agent||'',stream_text:true})});
+ if(!response.ok)throw Error(response.status===401?'Log in to ask the assistant.':await failure(response));
+ const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',done=false;
+ function event(line){if(!line.startsWith('data: '))return;const e=JSON.parse(line.slice(6));if(e.type==='error')throw Error(e.message||'Request failed.');if(e.type==='response')done=true;onEvent(e);}
+
+ try{while(true){const chunk=await reader.read();buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});const lines=buffer.split('\n');buffer=lines.pop();for(const line of lines)event(line);if(chunk.done){if(buffer)event(buffer);break;}}}finally{reader.releaseLock();}
+ if(!done)throw Error('The connection closed before the response completed. Your request may still be running; check inbox before submitting it again.');
+}
+async function failure(response){try{const j=await response.json();return typeof j.error==='string'?j.error:(j.error?.message||'Request failed.');}catch{return 'Request failed ('+response.status+').';}}
+// Replies in the inbox use the same endpoint and persisted conversation as the landing.
+(()=>{
+ const form=document.querySelector('[data-assistant-reply]');if(!form)return;
+ const input=form.querySelector('[name="ask"]'),send=form.querySelector('button[type="submit"]'),status=form.querySelector('[role="status"]');
+ let busy=false;
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();const text=input.value.trim();if(busy||!text)return;
+  busy=true;send.disabled=true;input.readOnly=true;status.textContent='Working…';
+  let accepted=false;
+  try{
+   await sendAssistantMessage(text,form.querySelector('[name="id"]').value,'',event=>{
+    if(event.type==='flow_id'){accepted=true;input.value='';}
+    if(event.type==='working'||event.type==='tool_start')status.textContent=event.message||'Working…';
+    if(event.type==='stream_token')status.textContent='Writing…';
+   });
+   location.reload();
+  }catch(error){status.textContent=error.message+(accepted?' Your message is saved in this conversation. Reload before sending again.':'');}
+  finally{busy=false;send.disabled=false;input.readOnly=false;}
+ });
+})();
+
 // Command surface
 (()=>{'use strict';
 const form=document.querySelector('#command-form'),input=document.querySelector('#command-input'),log=document.querySelector('#responses'),send=document.querySelector('#send'),status=document.querySelector('#status');
@@ -301,16 +332,7 @@ const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 if(conversation.classList.contains('is-active'))log.scrollTop=log.scrollHeight;
 let busy=false,thread=new URLSearchParams(location.search).get('session')||new URLSearchParams(location.search).get('continue')||'';
 function remember(){if(thread)history.replaceState(null,'','/?session='+encodeURIComponent(thread));}
-function headers(accept){const token=(document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'';return {'Content-Type':'application/json','Accept':accept,'X-CSRF-Token':decodeURIComponent(token)};}
-async function assistant(command,answer){
- const response=await fetch('/agent',{method:'POST',credentials:'same-origin',headers:headers('text/event-stream'),body:JSON.stringify({prompt:command,context_id:thread,agent:form.dataset.agent||'',stream_text:true})});
- if(!response.ok)throw Error(response.status===401?'Log in to ask the assistant.':await failure(response));
- const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',done=false;
- function event(line){if(!line.startsWith('data: '))return;const e=JSON.parse(line.slice(6));if(e.type==='flow_id'){thread=e.thread||thread;remember();}if(e.type==='working'||e.type==='tool_start')status.textContent=e.message||'Working…';if(e.type==='stream_token'){status.textContent='Writing…';}if(e.type==='response'){answer.innerHTML=e.html;done=true;}if(e.type==='error'){throw Error(e.message||'Request failed.');}}
- try{while(true){const chunk=await reader.read();buffer+=decoder.decode(chunk.value||new Uint8Array(),{stream:!chunk.done});const lines=buffer.split('\n');buffer=lines.pop();for(const line of lines)event(line);if(chunk.done){if(buffer)event(buffer);break;}}}finally{reader.releaseLock();}
- if(!done)throw Error('The connection closed before the response completed. Your request may still be running; check inbox before submitting it again.');
-}
-async function failure(response){try{const j=await response.json();return typeof j.error==='string'?j.error:(j.error?.message||'Request failed.');}catch{return 'Request failed ('+response.status+').';}}
+async function assistant(command,answer){return sendAssistantMessage(command,thread,form.dataset.agent,e=>{if(e.type==='flow_id'){thread=e.thread||thread;remember();}if(e.type==='working'||e.type==='tool_start')status.textContent=e.message||'Working…';if(e.type==='stream_token')status.textContent='Writing…';if(e.type==='response')answer.innerHTML=e.html;});}
 function byline(name){const row=document.createElement('div');row.className='ib-from metadata-row';const who=document.createElement('span');who.className='ib-who-l';who.textContent=name;const at=document.createElement('time');at.className='ib-at';const now=new Date();at.dateTime=now.toISOString();at.title=now.toLocaleString();at.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});row.append(who,at);return row;}
 async function run(command){
  if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';

@@ -21,7 +21,7 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 	// render them and enforce their own session and administrator checks.
 	if path == "inbox" || strings.HasPrefix(path, "inbox/") ||
 		path == "admin" || strings.HasPrefix(path, "admin/") ||
-		path == "agents" || path == "services" || path == "tools" || path == "apps" ||
+		path == "work" || path == "agents" || path == "services" || path == "tools" || path == "apps" ||
 		path == "blog" || strings.HasPrefix(path, "blog/") {
 		return false
 	}
@@ -43,11 +43,6 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	case "wallet":
 		command = "account"
-	case "work":
-		command = "work"
-		if id := r.URL.Query().Get("id"); id != "" {
-			command += " get " + id
-		}
 	default:
 		for _, spec := range service.Specs() {
 			if path == spec.Name {
