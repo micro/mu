@@ -85,7 +85,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(imapRow("Port", port))
 	b.WriteString(imapRow("Security", secure))
 	b.WriteString(imapRow("Username", acc.ID))
-	b.WriteString(`<tr><th>Password</th><td>An app password from <a href="/account/clients#app-passwords">Clients → App passwords</a>.</td></tr>`)
+	b.WriteString(`<tr><th>Password</th><td>An app password from <a href="/account/clients?add=mail#add-client">Clients → App passwords</a>.</td></tr>`)
 	b.WriteString(`</tbody></table>`)
 
 	// Sending, because a client that can only read is a client that cannot
@@ -211,10 +211,13 @@ func splitHostPort(addr string) (host, port string) {
 }
 
 // ClientSettings shows the connection details beside account credentials.
-func ClientSettings(accountID string) string {
+func ClientSettings(accountID string, protocols ...string) string {
 	var b strings.Builder
 	b.WriteString(`<h3>Connection details</h3><p>Use your app password when your mail or chat app asks for a password.</p><table class="data-table stacked"><thead><tr><th>Client</th><th>Server</th><th>Port</th><th>Security</th><th>Username</th></tr></thead><tbody>`)
 	row := func(label, host, port, security, user string) {
+		if len(protocols) > 0 && ((protocols[0] == "mail" && label == "XMPP") || (protocols[0] == "chat" && label != "XMPP")) {
+			return
+		}
 		b.WriteString(`<tr>`)
 		for i, value := range []string{label, host, port, security, user} {
 			b.WriteString(`<td data-label="` + []string{"Client", "Server", "Port", "Security", "Username"}[i] + `">` + html.EscapeString(value) + `</td>`)

@@ -689,13 +689,16 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		content = profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
 		content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
 		content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
-		content += app.Section("Clients", `<p><a href="/account/clients">Manage app passwords, API tokens and OAuth clients</a></p>`)
 
 	}
 	// Forms return to their owning tab; credentials and mutations stay in POST.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
 	active := accountPath
-	content = Navigation(active) + notice + `<div class="page-stack settings-sections">` + content + `</div>`
+	links := Navigation(active)
+	if active == "/account" {
+		links = `<div class="form-actions"><a href="/account/billing">Billing</a><a href="/account/clients">Clients</a></div>`
+	}
+	content = links + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went

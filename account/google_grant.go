@@ -257,10 +257,23 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	switch status {
 	case "disconnected":
 		b.WriteString(`<p class="text-sm text-success">Disconnected. Local access was removed and revocation was requested from Google.</p>`)
+	case "failed", "declined":
+		b.WriteString(`<p>Google access was not connected. Please try again.</p>`)
 	case "connected":
 		b.WriteString(`<p class="text-sm text-success">Connected.</p>`)
 	}
 
+	grantsCount := len(google.Grants(acc.ID))
+	if grantsCount == 0 {
+		b.WriteString(`<p>No services connected</p>`)
+	} else {
+		fmt.Fprintf(&b, `<p>%d services connected</p>`, grantsCount)
+	}
+	open := ""
+	if status != "" {
+		open = " open"
+	}
+	b.WriteString(`<details class="disclosure"` + open + `><summary>Manage</summary>`)
 	b.WriteString(googleSignIn(acc))
 	b.WriteString(`<p>Choose what Micro can use to help you. Each connection is read-only.</p><div class="connection-list">`)
 	for _, item := range []struct{ key, label, purpose string }{
@@ -282,7 +295,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	list := google.Grants(acc.ID)
 	if len(list) == 0 {
 		b.WriteString(`<p class="text-sm text-muted mt-2">Micro has no access to anything else in ` +
-			`your Google account.</p></div>`)
+			`your Google account.</p></details></div>`)
 		return b.String()
 	}
 
@@ -301,6 +314,6 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 		`<button type="submit" class="btn-plain text-sm">Disconnect Google</button>` +
 		`</form>`)
 	b.WriteString(`<p class="action-note">Disconnecting removes all Google connections above.</p></div>`)
-	b.WriteString(`</div>`)
+	b.WriteString(`</details></div>`)
 	return b.String()
 }

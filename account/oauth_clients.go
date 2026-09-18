@@ -1,7 +1,6 @@
 package account
 
 import (
-	"html"
 	"net/http"
 	"strings"
 
@@ -30,23 +29,9 @@ func createOAuthClient(w http.ResponseWriter, r *http.Request, accountID string)
 		app.BadRequest(w, r, err.Error())
 		return
 	}
-	http.Redirect(w, r, "/account/clients#oauth", http.StatusSeeOther)
+	http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
 }
 
-func oauthClients(r *http.Request, accountID string) string {
-	var b strings.Builder
-	b.WriteString(`<section id="oauth" class="section-stack"><h2>OAuth clients</h2>`)
-	clients := auth.OAuthClientsFor(accountID)
-	if len(clients) == 0 {
-		b.WriteString(`<p>No registered clients.</p>`)
-	}
-	for _, c := range clients {
-		b.WriteString(`<div class="record-card"><strong>` + html.EscapeString(c.Name) + `</strong><p>Client ID: <code>` + html.EscapeString(c.ClientID) + `</code></p>`)
-		for _, uri := range c.RedirectURIs {
-			b.WriteString(`<p>Callback URL: <code>` + html.EscapeString(uri) + `</code></p>`)
-		}
-		b.WriteString(`<form method="POST" action="/account/clients?delete_client=` + html.EscapeString(c.ClientID) + `" class="form-actions">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="_method" value="DELETE"><button type="submit">Delete client</button></form></div>`)
-	}
-	b.WriteString(`<details class="disclosure"><summary>Register an OAuth client</summary><form method="POST" action="/account/clients?create_client=1" class="form">` + app.CSRFField(auth.CSRFToken(r)) + `<label class="field-label">Name<input name="client_name" maxlength="80" required></label><label class="field-label">Callback URLs<textarea name="redirect_uris" rows="3" required></textarea></label><p>One URL per line. HTTPS or localhost.</p><button type="submit">Register</button></form></details></section>`)
-	return b.String()
+func oauthClientForm(r *http.Request) string {
+	return `<h2>OAuth client</h2><form method="POST" action="/account/clients?create_client=1" class="form">` + app.CSRFField(auth.CSRFToken(r)) + `<label class="field-label">Name<input name="client_name" maxlength="80" required></label><label class="field-label">Callback URLs<textarea name="redirect_uris" rows="3" required></textarea></label><p>One URL per line. HTTPS or localhost.</p><button type="submit">Register</button></form>`
 }

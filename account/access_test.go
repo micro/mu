@@ -78,7 +78,7 @@ func TestAccessCompatibilityAndOAuth(t *testing.T) {
 	}
 	w = httptest.NewRecorder()
 	TokenHandler(w, request("GET", "/account/clients", nil, false))
-	if !strings.Contains(w.Body.String(), "OAuth clients") || !strings.Contains(w.Body.String(), clients[0].ClientID) || strings.Contains(w.Body.String(), foreign.ClientID) || strings.Contains(w.Body.String(), clients[0].ClientSecret) || !strings.Contains(w.Body.String(), "App passwords") || !strings.Contains(w.Body.String(), "Callback URL:") || !strings.Contains(w.Body.String(), ">Clients</h1>") {
+	if !strings.Contains(w.Body.String(), "OAuth") || !strings.Contains(w.Body.String(), clients[0].ClientID) || strings.Contains(w.Body.String(), foreign.ClientID) || strings.Contains(w.Body.String(), clients[0].ClientSecret) || !strings.Contains(w.Body.String(), "Add client") || !strings.Contains(w.Body.String(), "Callback URL:") || !strings.Contains(w.Body.String(), ">Clients</h1>") {
 		t.Fatal("OAuth listing leaks or omits clients")
 	}
 	for i := 0; i < 3; i++ {

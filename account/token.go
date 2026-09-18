@@ -3,7 +3,6 @@ package account
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	htmlpkg "html"
 	"net/http"
 	"sort"
@@ -119,54 +118,9 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionID string) {
-
+func apiTokenForm(r *http.Request) string {
 	var sb strings.Builder
-	sb.WriteString(Navigation("/account") + `<div class="account-access">`)
-
-	// API credentials contains tokens and registered OAuth clients. Tokens come
-	// first because they are the usual reason to open this page.
-	sb.WriteString(connectionApps(r, accountID))
-	sb.WriteString(`<section id="api-tokens" class="section-stack"><h2>API tokens</h2>`)
-	sb.WriteString(`<p class="text-secondary text-sm"><a href="/developers">Developers</a></p>`)
-
-	sb.WriteString(`<div id="token-result" class="success-panel d-none">`)
-	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
-	sb.WriteString(`<pre id="new-token" ></pre></div>`)
-
-	// Keep permissions and dates readable at every width.
-	sb.WriteString(`<table class="data-table stacked credential-table"><thead><tr><th>Name</th><th>Access</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead><tbody>`)
-	tokens := auth.ListTokens(accountID)
-	var developerTokens []*auth.Token
-	for _, token := range tokens {
-		if !appPassword(token) {
-			developerTokens = append(developerTokens, token)
-		}
-	}
-	tokens = developerTokens
-	if len(tokens) == 0 {
-		sb.WriteString(`<tr><td colspan="6">No API tokens yet.</td></tr>`)
-	}
-	for _, token := range tokens {
-		expires := "Never"
-		if !token.ExpiresAt.IsZero() {
-			expires = app.TimeAgo(token.ExpiresAt)
-		}
-		lastUsed := "Never"
-		if !token.LastUsed.IsZero() {
-			lastUsed = app.TimeAgo(token.LastUsed)
-		}
-		created := "Unknown"
-		if !token.Created.IsZero() {
-			created = app.TimeAgo(token.Created)
-		}
-		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Access">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
-			<form method="POST" action="/account/clients?id=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Revoke</button></form></td></tr>`,
-			htmlpkg.EscapeString(token.Name), tokenScope(token), created, lastUsed, expires, token.ID, app.CSRFField(auth.CSRFToken(r))))
-	}
-	sb.WriteString(`</tbody></table>`)
-
+	sb.WriteString(`<div id="token-result" class="success-panel d-none" role="status"><strong>Token created</strong><p>Copy it now. It is shown only once.</p><pre id="new-token"></pre></div>`)
 	// Every field says what it is.
 	//
 	// The form was a heading and then three unlabelled controls, so "Create
@@ -204,15 +158,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
 
-	sb.WriteString(`</section>`)
-	sb.WriteString(oauthClients(r, accountID))
-	sb.WriteString(sshaccess.Card(r, accountID, "/account/clients", "SSH and SFTP", "SSH and SFTP use an SSH key, not an access token. Add your public key below. Use sftp in place of ssh and -P in place of -p to connect to files.", "ssh"))
-
-	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
-	// part of the chrome that depends on knowing who is signed in — the nav,
-	// the account menu, the balance — went missing on a page you can only
-	// reach by being signed in. Same bug /account had.
-	app.Respond(w, r, app.Response{Title: "Clients", Description: "Apps connected to your account", HTML: sb.String() + `</div>`})
+	return sb.String()
 }
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {
