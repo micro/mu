@@ -547,6 +547,13 @@ signup and footer destinations alongside browser assertions.
 
 ### Shared service layout contract
 
+Keep the product and its code Spartan: one clear home for each capability,
+shared renderers and layout primitives, and no parallel implementations of the
+same flow. Admin links to Services; service destinations such as Apps belong in
+that directory, not as duplicate entries in the admin menu. Prefer removing
+obsolete code to adding another abstraction. Preserve authorisation and existing
+URLs when consolidating implementations.
+
 Service pages use `/mu.css` and `/mu.js` through the shared shell. Add shared
 component rules there; do not introduce a second stylesheet, executable inline
 scripts, or page-local spacing fixes. Bind behaviour with data attributes; use
