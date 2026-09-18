@@ -762,7 +762,7 @@ func wireHooks() {
 			// signed-in caller is already accountable.
 			if _, err := auth.GetSession(r); err != nil && !app.GuestAllowed(r) {
 				return false, 0, fmt.Errorf("too many free calls from this address — " +
-					"sign in at /token to keep going, or wait a few minutes")
+					"sign in at /account/clients to keep going, or wait a few minutes")
 			}
 			return true, 0, nil
 		}

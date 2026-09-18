@@ -476,7 +476,7 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 	for _, cap := range []string{"agent", "inbox", "work"} {
 		b.WriteString(`<label class="choice"><input type="checkbox" name="capability" value="` + cap + `"` + checked(requested["api:"+cap]) + `>` + cap + `</label>`)
 	}
-	b.WriteString(`</div></fieldset></div></details><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow changes and actions</label><p class="text-muted text-sm">Expires in 24 hours. Revoke anytime in <a href="/account/tokens">API access</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
+	b.WriteString(`</div></fieldset></div></details><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow changes and actions</label><p class="text-muted text-sm">Expires in 24 hours. Revoke anytime in <a href="/account/clients">Clients</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(b.String()))
 }

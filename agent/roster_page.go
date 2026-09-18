@@ -234,7 +234,7 @@ func newAgentAction(owner string) string {
 	}
 	return app.ActionLink("/account/topup", "Top up to lift the limit") +
 		fmt.Sprintf(`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and `+
-			`you have %d. Verify your address or put credit on <a href="/account">your account</a>, `+
+			`you have %d. <a href="/account">Verify your address</a> or <a href="/account/topup">top up</a>, `+
 			`or delete one first.</p>`, max, plural(max), have)
 }
 

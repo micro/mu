@@ -36,8 +36,8 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "private, no-store")
-	if r.Method == http.MethodGet && r.URL.Path == "/token" && !app.WantsJSON(r) {
-		target := "/account/tokens"
+	if r.Method == http.MethodGet && r.URL.Path != "/account/clients" && !app.WantsJSON(r) {
+		target := "/account/clients"
 		if r.URL.RawQuery != "" {
 			target += "?" + r.URL.RawQuery
 		}
@@ -61,7 +61,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodPost && (r.FormValue("sshkey") != "" || r.FormValue("removekey") != "") {
 		if !auth.ValidCSRF(r) {
-			app.Forbidden(w, r, "Reopen API access and try again.")
+			app.Forbidden(w, r, "Reopen Clients and try again.")
 			return
 		}
 		var keyErr error
@@ -74,7 +74,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 			app.RespondError(w, http.StatusBadRequest, keyErr.Error())
 			return
 		}
-		http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
 		return
 	}
 	// Handle OAuth client actions
@@ -93,7 +93,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 				app.Forbidden(w, r, err.Error())
 				return
 			}
-			http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
+			http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
 			return
 		}
 		if r.FormValue("_method") == "DELETE" {
@@ -126,8 +126,9 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	// API credentials contains tokens and registered OAuth clients. Tokens come
 	// first because they are the usual reason to open this page.
-	sb.WriteString(`<h2>API tokens</h2>`)
-	sb.WriteString(`<p class="text-secondary text-sm"><a href="/developers">API and MCP reference</a> · <a href="/account/billing">Billing</a></p>`)
+	sb.WriteString(connectionApps(r, accountID))
+	sb.WriteString(`<section id="api-tokens" class="section-stack"><h2>API tokens</h2>`)
+	sb.WriteString(`<p class="text-secondary text-sm"><a href="/developers">Developers</a></p>`)
 
 	sb.WriteString(`<div id="token-result" class="success-panel d-none">`)
 	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
@@ -160,7 +161,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 			created = app.TimeAgo(token.Created)
 		}
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Access">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
-			<form method="POST" action="/account/tokens?id=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
+			<form method="POST" action="/account/clients?id=%s" class="form-action d-inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE">%s<button type="submit" class="text-sm">Revoke</button></form></td></tr>`,
 			htmlpkg.EscapeString(token.Name), tokenScope(token), created, lastUsed, expires, token.ID, app.CSRFField(auth.CSRFToken(r))))
 	}
@@ -203,15 +204,15 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
 
-	sb.WriteString(`<p>For mail and chat apps, use <a href="/account/connections">App passwords</a>.</p>`)
+	sb.WriteString(`</section>`)
 	sb.WriteString(oauthClients(r, accountID))
-	sb.WriteString(sshaccess.Card(r, accountID, "/account/tokens", "SSH and SFTP", "SSH and SFTP use an SSH key, not an access token. Add your public key below. Use sftp in place of ssh and -P in place of -p to connect to files.", "ssh"))
+	sb.WriteString(sshaccess.Card(r, accountID, "/account/clients", "SSH and SFTP", "SSH and SFTP use an SSH key, not an access token. Add your public key below. Use sftp in place of ssh and -P in place of -p to connect to files.", "ssh"))
 
 	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
 	// part of the chrome that depends on knowing who is signed in — the nav,
 	// the account menu, the balance — went missing on a page you can only
 	// reach by being signed in. Same bug /account had.
-	app.Respond(w, r, app.Response{Title: "API access", Description: "API tokens and developer connections", HTML: sb.String() + `</div>`})
+	app.Respond(w, r, app.Response{Title: "Clients", Description: "Apps connected to your account", HTML: sb.String() + `</div>`})
 }
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {
@@ -458,7 +459,7 @@ func handleDeleteToken(w http.ResponseWriter, r *http.Request, accountID string)
 		})
 	} else {
 		// Redirect back to token page for form submission
-		http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/clients", http.StatusSeeOther)
 	}
 }
 

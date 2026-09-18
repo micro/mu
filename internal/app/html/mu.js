@@ -517,7 +517,7 @@ async function createToken(e) {
 	e.preventDefault();
 	var form = e.target;
 
-	var res = await fetch('/account/tokens', {
+	var res = await fetch('/account/clients', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
 		body: JSON.stringify({client: form.client.value, name: form.name.value, expires_in: parseInt(form.expires_in.value), services:form.client.value==='services'?Array.from(form.querySelectorAll('[name="services"]:checked'),el=>el.value):[], permissions:form.client.value==='api'?['read',...Array.from(form.querySelectorAll('[name="capability"]:checked'),el=>el.value),...(form.api_write.checked?['write']:[])]:[]})

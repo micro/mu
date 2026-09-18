@@ -85,7 +85,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(imapRow("Port", port))
 	b.WriteString(imapRow("Security", secure))
 	b.WriteString(imapRow("Username", acc.ID))
-	b.WriteString(`<tr><th>Password</th><td>An app password from <a href="/account/connections">Settings → App passwords</a>.</td></tr>`)
+	b.WriteString(`<tr><th>Password</th><td>An app password from <a href="/account/clients#app-passwords">Clients → App passwords</a>.</td></tr>`)
 	b.WriteString(`</tbody></table>`)
 
 	// Sending, because a client that can only read is a client that cannot
