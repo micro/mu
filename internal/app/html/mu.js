@@ -346,7 +346,7 @@ async function run(command){
   const top=log.scrollTop+turn.getBoundingClientRect().top-log.getBoundingClientRect().top;
   log.scrollTo({top:Math.max(0,top),behavior:first||reducedMotion.matches?'instant':'smooth'});
  });
- try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Check Inbox before sending again if the connection was lost.';if(!input.value)input.value=command;}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
+ try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Check Inbox before sending again if the connection was lost.';if(receipt&&!input.value)input.value=command;}finally{busy=false;send.disabled=false;input.focus({preventScroll:true});}
 }
 if(thread&&form.dataset.pending==='true'){
  busy=true;send.disabled=true;status.textContent='Checking for the reply…';
