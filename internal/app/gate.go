@@ -75,12 +75,16 @@ func BillableCaller(w http.ResponseWriter, r *http.Request, op string) (id strin
 		return "", false
 	}
 
-	canProceed, _, cost, _ := quota.CheckQuota(id, op)
+	canProceed, _, cost, err := quota.CheckQuota(id, op)
 	if !canProceed {
 		if WantsJSON(r) {
-			RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
+			message := quota.Shortfall(cost, quota.Available(id))
+			if err != nil {
+				message = err.Error()
+			}
+			RespondError(w, http.StatusPaymentRequired, message)
 		} else {
-			Respond(w, r, Response{Title: "Out of credits", HTML: quota.ExceededPage(cost)})
+			Respond(w, r, Response{Title: "Usage allowance", HTML: quota.ExceededPage(cost)})
 		}
 		return "", false
 	}

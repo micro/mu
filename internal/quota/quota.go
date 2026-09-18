@@ -363,3 +363,23 @@ func Available(account string) int {
 	}
 	return n
 }
+
+// Run reserves an operation before calling its provider and settles its result.
+// Page handlers use this just as service endpoints use the shared gateway.
+func Run(account, operation string, work func() error, cached ...func() bool) (err error) {
+	settle, err := Reserve(account, operation)
+	if err != nil {
+		return err
+	}
+	completed := false
+	// The ledger logs settlement failures and leaves a durable pending entry.
+	// Never turn completed work into a retryable error: it may have sent mail
+	// or changed files. Recovery reconciles pending reservations separately.
+	defer func() { _ = settle(completed) }()
+	err = work()
+	completed = err == nil
+	if completed && len(cached) > 0 && cached[0]() {
+		completed = false
+	}
+	return err
+}

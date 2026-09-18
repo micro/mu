@@ -223,6 +223,9 @@ type googlePollenTypeInfo struct {
 // FetchWeather retrieves weather forecast from the Google Weather API.
 // Returns an error when GOOGLE_API_KEY is not set.
 func FetchWeather(ctx context.Context, lat, lon float64) (*WeatherForecast, error) {
+	if googleAPIKey() == "" {
+		service.ServedFromCache(ctx)
+	}
 	// Paid call. Reuse a recent one for the same place first — see cache.go.
 	//
 	// And say so, because a hit costs this instance nothing and the caller

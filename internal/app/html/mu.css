@@ -470,6 +470,8 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .page-col{display:flex;flex-direction:column;gap:16px;min-width:0;max-width:var(--reading-width);width:100%}
 .page-col>*{min-width:0}
 .page-col:has(>.editor-layout){max-width:none}
+/* Centre bounded page content and its title as one column. */
+.document-page main:has(>.page-col):not(:has(>.page-col>.editor-layout)){max-width:var(--reading-width)}
 .mini-btn,.btn-sm,.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #bbb;border-radius:6px;background:white;padding:4px 10px;min-height:32px;text-decoration:none;font-size:.875rem;line-height:1.4}
 .btn-quiet,.btn-plain{background:transparent}
 .danger,.btn-danger{color:#962323}

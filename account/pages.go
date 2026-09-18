@@ -714,6 +714,9 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			balance += `<a href="/account/topup">Add credit</a>`
 		}
 		balance += `</div>`
+		if cap := quota.DailyPoolCredits(); cap > 0 && IncludedUsage() >= cap {
+			balance += `<p class="text-sm text-muted">The shared free allowance is used up for today. It renews at 00:00 UTC; your credit balance is still available.</p>`
+		}
 	}
 
 	content = balance + nav.String() + notice + `<div class="page-stack settings-sections">` + content + `</div>`

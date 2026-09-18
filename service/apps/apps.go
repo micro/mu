@@ -18,6 +18,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/service/apps/micro"
 
@@ -108,12 +109,6 @@ type App struct {
 
 // QuotaCheck is set by main.go to check wallet credits before a metered call.
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
-
-// ChargeQuota is set by main.go to deduct credits from the session user's wallet
-// after a successful metered call (mu.ai, mu.web.fetch). Charging the acting user
-// — not the app's owner — is deliberate: an app author never pays for other
-// people's usage, so universal apps scale.
-var ChargeQuota func(r *http.Request, op string)
 
 // ChargeUse is set by main.go to bill a paid app's price to whoever opened it
 // and pay the author their share.
@@ -1656,7 +1651,7 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
-	_, _, err := auth.RequireSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.RespondError(w, http.StatusUnauthorized, "Authentication required")
 		return
@@ -1682,19 +1677,26 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 		system += "\n\nApp context: " + req.Options.Context
 	}
 
-	result, err := ai.Ask(&ai.Prompt{
-		System:   system,
-		Question: req.Prompt,
-		Model:    ai.BackgroundModel(),
-		Priority: ai.PriorityHigh,
-		Caller:   "app-sdk-ai-" + slug,
+	started := false
+	var result string
+	err = quota.Run(acc.ID, quota.OpAgentRun, func() error {
+		started = true
+		result, err = ai.Ask(&ai.Prompt{
+			System:   system,
+			Question: req.Prompt,
+			Model:    ai.BackgroundModel(),
+			Priority: ai.PriorityHigh,
+			Caller:   "app-sdk-ai-" + slug,
+		})
+		return err
 	})
 	if err != nil {
-		app.RespondError(w, http.StatusInternalServerError, err.Error())
+		status := http.StatusInternalServerError
+		if !started {
+			status = http.StatusPaymentRequired
+		}
+		app.RespondError(w, status, err.Error())
 		return
-	}
-	if ChargeQuota != nil {
-		ChargeQuota(r, "chat_query")
 	}
 
 	app.RespondJSON(w, map[string]string{"result": result})

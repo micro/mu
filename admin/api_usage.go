@@ -3,9 +3,10 @@ package admin
 import (
 	"fmt"
 	"strings"
-	"time"
 
+	"mu/account"
 	"mu/internal/app"
+	"mu/internal/quota"
 )
 
 // spendCard is what this instance has paid third parties: a total, a breakdown
@@ -15,12 +16,23 @@ import (
 // one page.
 func spendCard() string {
 	summary := app.GetUsageSummary()
-	uptime := time.Since(summary.Since).Round(time.Minute)
+	since, days := app.DailyCosts()
 
 	var sb strings.Builder
-	sb.WriteString(``)
-	sb.WriteString(fmt.Sprintf(`<p>Tracking since %s (%s ago)</p>`, summary.Since.Format("2006-01-02 15:04"), uptime))
-	sb.WriteString(fmt.Sprintf(`<p><strong>Total: %d calls, est $%.4f</strong></p>`, summary.TotalCalls, summary.TotalCost/100))
+	sb.WriteString(`<h3>Included usage today</h3>`)
+	fmt.Fprintf(&sb, `<p>%d credits used across accounts. `, account.IncludedUsage())
+	if cap := quota.DailyPoolCredits(); cap > 0 {
+		fmt.Fprintf(&sb, `Shared daily limit: %d credits.`, cap)
+	} else {
+		sb.WriteString(`No shared daily limit is configured.`)
+	}
+	sb.WriteString(` Renews at 00:00 UTC. Funded credit remains available.</p><p class="text-sm text-muted">Set DAILY_POOL_CREDITS or daily_pool_credits in quota.json. This limits free product credit, not provider invoices. Provider estimates below include paid and operator use too.</p>`)
+	fmt.Fprintf(&sb, `<h3>Daily provider estimates</h3><p class="text-sm text-muted">Collected since %s UTC; the first day may be partial. Up to 90 days. Estimates are not invoices; recent activity may take a few seconds to save.</p>`, since.UTC().Format("2006-01-02 15:04"))
+	sb.WriteString(`<div class="scroll-x"><table><thead><tr><th>UTC day</th><th>Calls</th><th>Estimated cost</th></tr></thead><tbody>`)
+	for _, d := range days {
+		fmt.Fprintf(&sb, `<tr><td>%s</td><td>%d</td><td>$%.4f</td></tr>`, d.Day, d.Calls, d.CostCents/100)
+	}
+	sb.WriteString(`</tbody></table></div><h3>Recent recorded activity</h3><p class="text-sm text-muted">The breakdown below covers only the latest 2,000 recorded calls.</p>`)
 
 	// Usage by service table
 	sb.WriteString(`<h3>By Service</h3>`)

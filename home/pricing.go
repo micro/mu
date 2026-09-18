@@ -30,6 +30,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 			`makes.</p>` +
 			`<p class="text-sm"><a href="/install">Run your own &rarr;</a> · ` +
 			`<a href="/about">What this is</a></p></div>`)
+		b.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{
 			Title:       "Pricing",
 			Description: "This instance does not charge for anything.",
@@ -44,6 +45,9 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		description = "A free daily allowance, with optional credit for more use."
 		b.WriteString(`<p>Every account includes ` + strconv.Itoa(daily) + ` credits each day. No payment or card is needed. The allowance renews at 00:00 UTC and is used before any credit you add.</p>` +
 			`<p>Unused daily credit does not carry over. Your conversations and saved items remain available when you reach the allowance.</p>`)
+		if quota.DailyPoolCredits() > 0 {
+			b.WriteString(`<p>Free use also shares an instance-wide daily budget. If that is used up, it renews at 00:00 UTC; added credit remains available.</p>`)
+		}
 	} else {
 		b.WriteString(`<p>A new account includes ` + creditsInWords() + `. No card is needed to start.</p>`)
 	}
@@ -55,6 +59,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<details class="card"><summary>Usage costs</summary><p>An assistant reply uses ` +
 		strconv.Itoa(quota.OperationCost(quota.OpAgentRun)) + ` credits. Paid tools and message delivery may use additional credit. These come from your daily allowance first, then your balance. Messaging limits still apply.</p>` +
 		`<p>Reading your conversations, mail and saved items is free.</p>` + account.PricingTableHTML() + `</details>`)
+	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Pricing", Description: description, HTML: b.String()})
 }
 

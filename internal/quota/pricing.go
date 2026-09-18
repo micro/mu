@@ -72,15 +72,17 @@ type Price struct {
 }
 
 type priceFile struct {
-	DailyCredits *int    `json:"daily_credits,omitempty"`
-	Operations   []Price `json:"operations"`
+	DailyCredits     *int    `json:"daily_credits,omitempty"`
+	DailyPoolCredits *int    `json:"daily_pool_credits,omitempty"`
+	Operations       []Price `json:"operations"`
 }
 
 var (
-	priceMu      sync.RWMutex
-	prices       = map[string]Price{}
-	ordered      []Price
-	dailyCredits int
+	priceMu          sync.RWMutex
+	prices           = map[string]Price{}
+	ordered          []Price
+	dailyCredits     int
+	dailyPoolCredits int
 )
 
 // defaults are the bytes of quota.json as main handed them over. Kept so
@@ -129,6 +131,9 @@ func apply(f priceFile) {
 			if override.DailyCredits != nil {
 				f.DailyCredits = override.DailyCredits
 			}
+			if override.DailyPoolCredits != nil {
+				f.DailyPoolCredits = override.DailyPoolCredits
+			}
 			at := map[string]int{}
 			for i, p := range f.Operations {
 				at[p.Op] = i
@@ -168,6 +173,13 @@ func apply(f priceFile) {
 	dailyCredits = 0
 	if f.DailyCredits != nil {
 		dailyCredits = max(0, *f.DailyCredits)
+	}
+	dailyPoolCredits = 0
+	if f.DailyPoolCredits != nil {
+		dailyPoolCredits = max(0, *f.DailyPoolCredits)
+	}
+	if n, err := strconv.Atoi(os.Getenv("DAILY_POOL_CREDITS")); err == nil {
+		dailyPoolCredits = max(0, n)
 	}
 	priceMu.Unlock()
 }
@@ -333,3 +345,7 @@ func LoadFromTree() error {
 
 // DailyCredits is the included budget per account, resetting at midnight UTC.
 func DailyCredits() int { priceMu.RLock(); defer priceMu.RUnlock(); return dailyCredits }
+
+// DailyPoolCredits bounds the included credits spent by the whole instance in
+// one UTC day. Zero leaves the pool uncapped; it is not a provider-dollar limit.
+func DailyPoolCredits() int { priceMu.RLock(); defer priceMu.RUnlock(); return dailyPoolCredits }

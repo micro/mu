@@ -86,12 +86,14 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch the page
-	title, body, fetchErr := FetchAndExtract(rawURL)
+	var title, body string
+	fetchErr := quota.Run(caller, quota.OpWebFetch, func() error {
+		var e error
+		title, body, e = FetchAndExtract(rawURL)
+		return e
+	})
 
 	// Only charge on success
-	if fetchErr == nil {
-		quota.Charge(caller, quota.OpWebFetch, nil) //nolint:errcheck
-	}
 
 	// JSON response for API/MCP callers
 	if app.WantsJSON(r) {

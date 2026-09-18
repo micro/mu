@@ -19,7 +19,8 @@ func handleSDKFetch(w http.ResponseWriter, r *http.Request, slug string) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
-	if _, _, err := auth.RequireSession(r); err != nil {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
 		app.RespondError(w, http.StatusUnauthorized, "Authentication required")
 		return
 	}
@@ -52,17 +53,18 @@ func handleSDKFetch(w http.ResponseWriter, r *http.Request, slug string) {
 		}
 	}
 
-	resp, err := safefetch.Fetch(r.Context(), req.URL, safefetch.Options{
-		Method:  req.Method,
-		Headers: req.Headers,
-		Body:    req.Body,
+	var resp *safefetch.Response
+	err = quota.Run(acc.ID, quota.OpWebFetch, func() error {
+		resp, err = safefetch.Fetch(r.Context(), req.URL, safefetch.Options{
+			Method:  req.Method,
+			Headers: req.Headers,
+			Body:    req.Body,
+		})
+		return err
 	})
 	if err != nil {
 		app.RespondError(w, http.StatusBadGateway, err.Error())
 		return
-	}
-	if ChargeQuota != nil {
-		ChargeQuota(r, "web_fetch")
 	}
 	app.RespondJSON(w, resp)
 }

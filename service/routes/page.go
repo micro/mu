@@ -61,16 +61,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondError(w, 400, msg)
 			return
 		}
-		route, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full, j.fromAddress, j.toAddress)
+		route, err := paidRoute(owner, j)
 		if err != nil {
 			app.RespondError(w, 502, "Could not load directions")
 			return
-		}
-		if owner != "" && !route.Estimate {
-			if err := quota.Charge(owner, quota.OpRoutesDirections, nil); err != nil {
-				app.RespondError(w, 402, "Could not charge for directions")
-				return
-			}
 		}
 
 		app.RespondJSON(w, map[string]any{"summary": j.fromLabel + " → " + j.toLabel + ": " + humanDuration(route.Duration) + ", " + humanDistance(route.Metres), "estimate": route.Estimate, "shape": route.Shape, "steps": route.Steps})
@@ -131,17 +125,16 @@ func journeyCard(from, to, mode string, owners ...string) string {
 	if msg != "" {
 		return `<div class="card"><p class="text-sm text-muted">` + html.EscapeString(msg) + `</p></div>`
 	}
-	r, err := computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full, j.fromAddress, j.toAddress)
+	owner := ""
+	if len(owners) > 0 {
+		owner = owners[0]
+	}
+	r, err := paidRoute(owner, j)
 	if err != nil {
 		return `<div class="card"><p class="text-sm text-muted">` +
 			html.EscapeString(err.Error()) + `.</p></div>`
 	}
 
-	if len(owners) > 0 && owners[0] != "" && !r.Estimate {
-		if err := quota.Charge(owners[0], quota.OpRoutesDirections, nil); err != nil {
-			return `<p class="notice">Could not charge for directions.</p>`
-		}
-	}
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
 	fmt.Fprintf(&b, `<h3 class="rt-head">%s → %s</h3>`, html.EscapeString(j.fromLabel), html.EscapeString(j.toLabel))
@@ -190,3 +183,16 @@ const (
 // Britain comes out stretched sideways. Over the length of a journey somebody
 // might drive, flat is indistinguishable from correct.
 func draw(shape []point) string { return app.RouteMap(shape) }
+
+// Estimates do not reach a paid provider and refund the reservation.
+func paidRoute(owner string, j journey) (result route, err error) {
+	settle, err := quota.Reserve(owner, quota.OpRoutesDirections)
+	if err != nil {
+		return result, err
+	}
+	completed := false
+	defer func() { _ = settle(completed) }()
+	result, err = computeRoute(j.fromLat, j.fromLon, j.toLat, j.toLon, j.mode, j.when, full, j.fromAddress, j.toAddress)
+	completed = err == nil && !result.Estimate
+	return result, err
+}

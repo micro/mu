@@ -33,9 +33,18 @@ type UsageSummary struct {
 	RecentCalls []UsageRecord  `json:"recent_calls"`
 }
 
+// DailyCost keeps provider estimates beyond the bounded recent-call log.
+type DailyCost struct {
+	Day       string  `json:"day"`
+	Calls     int     `json:"calls"`
+	CostCents float64 `json:"cost_cents"`
+}
+
 type persistedUsage struct {
-	Since   time.Time     `json:"since"`
-	Records []UsageRecord `json:"records"`
+	DailySince time.Time            `json:"daily_since"`
+	Daily      map[string]DailyCost `json:"daily"`
+	Since      time.Time            `json:"since"`
+	Records    []UsageRecord        `json:"records"`
 }
 
 const usageFile = "usage.json"
@@ -49,6 +58,8 @@ var (
 	usageRecords []UsageRecord
 	usageStarted time.Time
 	usageDirty   bool
+	dailySince   time.Time
+	dailyCosts   = map[string]DailyCost{}
 )
 
 func init() {
@@ -67,6 +78,16 @@ func init() {
 		flushUsage()
 	} else {
 		usageStarted = time.Now()
+	}
+
+	// Do not reconstruct whole days from a truncated recent-call log.
+	dailySince = stored.DailySince
+	if stored.Daily != nil {
+		dailyCosts = stored.Daily
+	}
+	if dailySince.IsZero() {
+		dailySince = time.Now().UTC()
+		usageDirty = true
 	}
 
 	go func() {
@@ -89,6 +110,18 @@ func RecordUsage(service, caller string, costCents float64, details map[string]a
 	usageMu.Lock()
 	defer usageMu.Unlock()
 
+	day := record.Timestamp.UTC().Format("2006-01-02")
+	d := dailyCosts[day]
+	d.Day = day
+	d.Calls++
+	d.CostCents += costCents
+	dailyCosts[day] = d
+	cutoff := record.Timestamp.UTC().AddDate(0, 0, -89).Format("2006-01-02")
+	for key := range dailyCosts {
+		if key < cutoff {
+			delete(dailyCosts, key)
+		}
+	}
 	usageRecords = append(usageRecords, record)
 	if len(usageRecords) > maxUsageRecords {
 		usageRecords = usageRecords[len(usageRecords)-maxUsageRecords:]
@@ -111,14 +144,23 @@ func flushUsage() {
 		usageMu.Unlock()
 		return
 	}
+	days := make(map[string]DailyCost, len(dailyCosts))
+	for day, cost := range dailyCosts {
+		days[day] = cost
+	}
 	snapshot := persistedUsage{
+		DailySince: dailySince, Daily: days,
 		Since:   usageStarted,
 		Records: append([]UsageRecord(nil), usageRecords...),
 	}
 	usageDirty = false
 	usageMu.Unlock()
 
-	data.SaveJSON(usageFile, snapshot) //nolint:errcheck — a spend record is not worth failing a request over
+	if err := data.SaveJSON(usageFile, snapshot); err != nil {
+		usageMu.Lock()
+		usageDirty = true
+		usageMu.Unlock()
+	}
 }
 
 // GetUsageSummary returns a summary of all usage across services.
@@ -165,4 +207,16 @@ func GetUsageSummary() UsageSummary {
 		ByService:   byService,
 		RecentCalls: recent,
 	}
+}
+
+// DailyCosts returns up to 90 UTC days of recorded provider estimates, newest
+// first. Since marks when this collection began; its first day can be partial.
+func DailyCosts() (since time.Time, days []DailyCost) {
+	usageMu.Lock()
+	defer usageMu.Unlock()
+	for _, d := range dailyCosts {
+		days = append(days, d)
+	}
+	sort.Slice(days, func(i, j int) bool { return days[i].Day > days[j].Day })
+	return dailySince, days
 }

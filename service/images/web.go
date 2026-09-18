@@ -30,10 +30,12 @@ func webSearchPage(w http.ResponseWriter, r *http.Request) {
 	if query == "" {
 		query = r.PostFormValue("q")
 	}
-	results, err := imagesearch.Search(r.Context(), query)
-	if err == nil && owner != "" {
-		err = quota.Charge(owner, quota.OpWebSearch, nil)
-	}
+	var results []imagesearch.WebImage
+	err := quota.Run(owner, quota.OpWebSearch, func() error {
+		var e error
+		results, e = imagesearch.Search(r.Context(), query)
+		return e
+	})
 	b := `<p><a href="/images">Images</a></p>`
 	if err != nil {
 		b += `<p role="alert">` + html.EscapeString(err.Error()) + `</p>`

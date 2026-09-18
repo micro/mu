@@ -832,15 +832,7 @@ func wireHooks() {
 
 	apps.QuotaCheck = agent.QuotaCheck
 
-	// Deduct credits from the acting user for a metered call (SDK or the agent).
-	chargeUser := func(r *http.Request, op string) {
-		if sess, err := auth.GetSession(r); err == nil {
-			_ = quota.Charge(sess.Account, op, nil)
-		}
-	}
-	apps.ChargeQuota = chargeUser
 	apps.ChargeUse = account.ChargeAppUse
-	agent.ChargeQuota = chargeUser
 
 	// Inline visual cards now come from the capability registry (core), which
 	// each service self-registers into from its Load(). No central wiring here.

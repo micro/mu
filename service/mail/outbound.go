@@ -141,16 +141,17 @@ func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, r
 	if ok, why := MaySendOut(owner, to); !ok {
 		return "", fmt.Errorf("%s", why)
 	}
-	if err := charge(owner, quota.OpMailSend); err != nil {
-		return "", err
-	}
 
 	if bodyHTML == "" {
 		bodyHTML = convertPlainTextToHTML(bodyPlain)
 	}
 	from := EmailForUser(owner, ConfiguredDomain())
-	messageID, err := queueReply(owner, displayName, from, to, nil, subject, bodyPlain, bodyHTML,
-		inReplyTo, references)
+	var messageID string
+	err := charge(owner, quota.OpMailSend, func() error {
+		var err error
+		messageID, err = queueReply(owner, displayName, from, to, nil, subject, bodyPlain, bodyHTML, inReplyTo, references)
+		return err
+	})
 	if err != nil {
 		return "", err
 	}
@@ -226,25 +227,21 @@ func DeliverHere(m Local) error {
 	// charge people for the thing they came for.
 	own := m.FromID != "" && strings.EqualFold(m.FromID, acc.ID)
 
-	switch {
-	case own:
-	case m.FromID == "":
-		// Nobody to charge and nobody to hold responsible. The instance's own
-		// notices come through here and are the only legitimate case, so
-		// anything else arriving without a sender is worth seeing in the log.
-		app.Log("mail", "delivering to %s with no sender to charge", acc.ID)
-	default:
-		if err := charge(m.FromID, quota.OpMailSend); err != nil {
-			return err
-		}
+	send := func() error {
+		return SendMessageTo(Delivery{
+			From: m.Display, FromID: m.From,
+			To: acc.Name, ToID: acc.ID, Tag: m.Tag,
+			Subject: m.Subject, Body: m.Body,
+			ReplyTo: m.ReplyTo, MessageID: m.MessageID,
+			InReplyTo: m.InReplyTo, References: m.References,
+			SenderIP: m.SenderIP,
+		})
 	}
-
-	return SendMessageTo(Delivery{
-		From: m.Display, FromID: m.From,
-		To: acc.Name, ToID: acc.ID, Tag: m.Tag,
-		Subject: m.Subject, Body: m.Body,
-		ReplyTo: m.ReplyTo, MessageID: m.MessageID,
-		InReplyTo: m.InReplyTo, References: m.References,
-		SenderIP: m.SenderIP,
-	})
+	if own || m.FromID == "" {
+		if m.FromID == "" {
+			app.Log("mail", "delivering to %s with no sender to charge", acc.ID)
+		}
+		return send()
+	}
+	return charge(m.FromID, quota.OpMailSend, send)
 }

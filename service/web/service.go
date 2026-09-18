@@ -42,11 +42,11 @@ type SearchResponse struct {
 
 // Search searches the web for current information and news.
 // @example {"query": "latest AI news"}
-func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse) error {
+func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchResponse) error {
 	if req.Limit <= 0 || req.Limit > 10 {
 		req.Limit = 6
 	}
-	results, err := SearchBraveCached(req.Query, req.Limit)
+	results, err := searchBraveCached(ctx, req.Query, req.Limit, braveCacheTTL)
 	if err != nil {
 		return err
 	}

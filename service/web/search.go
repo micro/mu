@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
+	"mu/internal/service"
 	"mu/internal/settings"
 )
 
@@ -99,10 +101,15 @@ func SearchBraveCached(query string, limit int) ([]BraveResult, error) {
 }
 
 func searchBraveCachedWithTTL(query string, limit int, ttl time.Duration) ([]BraveResult, error) {
+	return searchBraveCached(context.Background(), query, limit, ttl)
+}
+
+func searchBraveCached(ctx context.Context, query string, limit int, ttl time.Duration) ([]BraveResult, error) {
 	key := strings.ToLower(strings.TrimSpace(query))
 	braveCache.RLock()
 	if e, ok := braveCache.entries[key]; ok && time.Since(e.fetched) < ttl {
 		braveCache.RUnlock()
+		service.ServedFromCache(ctx)
 		return e.results, nil
 	}
 	braveCache.RUnlock()
@@ -301,13 +308,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	braveResults, braveErr := SearchBraveCached(query, 10)
+	ctx, cached := service.Measure(r.Context())
+	var braveResults []BraveResult
+	braveErr := quota.Run(caller, quota.OpWebSearch, func() error {
+		var e error
+		braveResults, e = searchBraveCached(ctx, query, 10, braveCacheTTL)
+		return e
+	}, cached)
 
 	// Only charge on success, so a provider outage is not something the caller
 	// pays for.
-	if braveErr == nil {
-		quota.Charge(caller, quota.OpWebSearch, nil) //nolint:errcheck
-	}
 
 	// JSON response for API/MCP callers
 	if app.WantsJSON(r) {

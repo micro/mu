@@ -189,6 +189,9 @@ func rebuildFromTransactions() {
 	// and the slice is not guaranteed to be in order.
 	latest := map[string]*Transaction{}
 	for id, list := range transactions {
+		if id == includedPool {
+			continue
+		}
 		for _, t := range list {
 			if t == nil {
 				continue
@@ -831,6 +834,14 @@ func DeleteCredits(userID string) {
 
 // deleteCredits is DeleteCredits with the lock held.
 func deleteCredits(l *ledger, userID string) {
+	// Retain only an anonymous daily total so deleting an account cannot
+	// replenish the shared free pool. No identity or content is retained.
+	if userID != includedPool {
+		now := time.Now().UTC()
+		used := includedUsed(userID, now) + includedUsed(includedPool, now)
+		transactions[includedPool] = []*Transaction{{ID: uuid.New().String(), Type: TxSpend,
+			CreatedAt: now, Metadata: map[string]interface{}{"daily_credits": used}}}
+	}
 	delete(balances, userID)
 	delete(transactions, userID)
 	data.SaveJSON("wallets.json", balances)

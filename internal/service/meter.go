@@ -70,3 +70,10 @@ func ServedFromCache(ctx context.Context) {
 
 // servedFromCache reports what the handler said.
 func (m *meter) servedFromCache() bool { return m != nil && m.free.Load() }
+
+// Measure lets a page reuse the provider cache signal used by the gateway.
+// The returned predicate is true only if this call incurred no provider cost.
+func Measure(ctx context.Context) (context.Context, func() bool) {
+	ctx, m := withMeter(ctx)
+	return ctx, m.servedFromCache
+}
