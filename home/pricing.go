@@ -38,50 +38,24 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The headline number in the prose, and read from the price list rather
-	// than written into the sentence.
-	//
-	// The table below is sorted cheapest first, so the one price nearly
-	// everybody is here to know sits somewhere in the middle of twenty rows
-	// looking like the cost of a pollen forecast. Saying it in the paragraph is
-	// the answer; hardcoding it there would be a lie on the day an operator
-	// changes it, and this file is served by every instance.
-	b.WriteString(`<div class="card"><h3>What this costs</h3>` +
-		`<p>A question to the agent is ` + strconv.Itoa(quota.OperationCost(quota.OpAgentRun)) +
-		`¢. This instance charges for what it has to buy from somebody else: a question is a ` +
-		`model call, a search is a search company's, a text message is a carrier's. ` +
-		`Anything that only touches this server — reading the news, your mail, your ` +
-		`notes, the archive — is free, because serving it costs nothing.</p>` +
-		account.PricingTableHTML() +
-		`</div>`)
-
-	// The two facts somebody actually needs, and they are about the money
-	// rather than about any one operation: what you get for nothing, and what a
-	// credit is. The table above answers neither.
-	start := `<div class="card"><h3>Starting</h3>` +
-		`<p>A new account gets ` + creditsInWords() + ` to find out whether this is ` +
-		`useful — about thirty questions. Nothing is asked for up front and there is ` +
-		`no card to leave.</p>`
-	if account.TopUpConfigured() {
-		start += `<p>After that you top up: $5, $10, $25 or $50, or any amount you type. ` +
-			`A credit is a cent, and it is spent on what you use rather than on a plan — ` +
-			`there is no subscription, and an account that sits idle is charged nothing.</p>` +
-			`<p class="text-sm"><a href="/signup" class="btn">Sign up</a> ` +
-			`<a href="/account/topup" class="btn btn-secondary">Top up</a></p>`
+	description := "Pay for what you use, with no subscription."
+	b.WriteString(`<div class="card"><h3>Everyday use</h3>`)
+	if daily := quota.DailyCredits(); daily > 0 {
+		description = "A free daily allowance, with optional credit for more use."
+		b.WriteString(`<p>Every account includes ` + strconv.Itoa(daily) + ` credits each day. No payment or card is needed. The allowance renews at 00:00 UTC and is used before any credit you add.</p>` +
+			`<p>Unused daily credit does not carry over. Your conversations and saved items remain available when you reach the allowance.</p>`)
 	} else {
-		// Metered but with no card route configured — x402 only. Real, and the
-		// page must not offer a top-up form that is not there.
-		start += `<p>This instance takes payment over x402 rather than by card, so an ` +
-			`agent pays per request from its own wallet.</p>`
+		b.WriteString(`<p>A new account includes ` + creditsInWords() + `. No card is needed to start.</p>`)
 	}
-	start += `</div>`
-	b.WriteString(start)
-
-	app.Respond(w, r, app.Response{
-		Title:       "Pricing",
-		Description: "What this instance costs: a dollar of credit to start, then a credit is a cent.",
-		HTML:        b.String(),
-	})
+	b.WriteString(`</div>`)
+	if account.TopUpConfigured() {
+		b.WriteString(`<div class="card"><h3>If you need more</h3><p>You can add credit for more use. One credit is one US cent. There is no subscription, and an idle account is charged nothing.</p>` +
+			`<div class="form-actions"><a href="/signup" class="btn">Create an account</a><a href="/account/topup">Add credit</a></div></div>`)
+	}
+	b.WriteString(`<details class="card"><summary>Usage costs</summary><p>An assistant reply uses ` +
+		strconv.Itoa(quota.OperationCost(quota.OpAgentRun)) + ` credits. Paid tools and message delivery may use additional credit. These come from your daily allowance first, then your balance. Messaging limits still apply.</p>` +
+		`<p>Reading your conversations, mail and saved items is free.</p>` + account.PricingTableHTML() + `</details>`)
+	app.Respond(w, r, app.Response{Title: "Pricing", Description: description, HTML: b.String()})
 }
 
 func pricingHandlerJSON(w http.ResponseWriter, r *http.Request) {

@@ -171,9 +171,12 @@ func ownedWork(account, id string) (*tasks.Task, error) {
 }
 func workCredits(account string) error {
 	if quota.Metered(quota.OpAgentRun) {
-		ok, _, _, _ := quota.CheckQuota(account, quota.OpAgentRun)
+		ok, _, cost, err := quota.CheckQuota(account, quota.OpAgentRun)
 		if !ok {
-			return api.Fail(402, "insufficient_credits", "Add credits before starting work")
+			if err != nil {
+				return api.Fail(402, "insufficient_credits", err.Error())
+			}
+			return api.Fail(402, "insufficient_credits", quota.Shortfall(cost, quota.Available(account)))
 		}
 	}
 	return nil

@@ -684,11 +684,11 @@ func wireHooks() {
 			return false, err
 		}
 		if !ok {
-			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /account/topup",
-				cost, quota.BalanceOf(account))
+			return false, fmt.Errorf("%s", quota.Shortfall(cost, quota.Available(account)))
 		}
 		return true, nil
 	}
+	service.Gate.Reserve = quota.Reserve
 	service.Gate.Charge = func(account, op string) {
 		if err := quota.Charge(account, op, nil); err != nil {
 			app.Log("wallet", "charging %s for %s: %v", account, op, err)

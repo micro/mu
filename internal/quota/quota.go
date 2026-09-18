@@ -44,6 +44,10 @@ var (
 	// Record notes a call that cost nothing, so free and exempt use still
 	// appears in the caller's history.
 	Record func(account, operation string)
+
+	// Hold atomically reserves the allowance and funded balance before work.
+	// The returned function commits success or refunds failure, durably.
+	Hold func(account, operation string, amount int) (func(bool) error, error)
 )
 
 // Charging reports whether this instance can bill anybody for anything. False
@@ -221,8 +225,48 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// Where to go is a whole address when this instance knows its own. The
 	// reader here is often a program on another machine, and "/account/topup"
 	// is only a destination if you already know what it is relative to.
-	return false, false, cost, fmt.Errorf(
-		"this costs %d credits and your balance is %d — top up at %s", cost, balance, TopupURL())
+	return false, false, cost, errors.New(Shortfall(cost, balance))
+}
+
+// Shortfall explains the recurring allowance as well as optional paid use.
+func Shortfall(cost, available int) string {
+	message := fmt.Sprintf("This needs %d credits; %d are available.", cost, available)
+	if DailyCredits() > 0 {
+		message += " Your free allowance renews at 00:00 UTC."
+	}
+	return message + " You can add credit at " + TopupURL() + "."
+}
+
+// Reserve secures a call's budget before any paid work starts. Settle must be
+// called once with whether it succeeded; failed and cached calls are refunded.
+func Reserve(userID, operation string) (func(bool) error, error) {
+	if !Metered(operation) {
+		return func(success bool) error {
+			if success && userID != "" {
+				record(userID, operation)
+			}
+			return nil
+		}, nil
+	}
+	ok, _, cost, err := CheckQuota(userID, operation)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, errors.New(Shortfall(cost, Available(userID)))
+	}
+	if cost == 0 {
+		return func(success bool) error {
+			if success {
+				record(userID, operation)
+			}
+			return nil
+		}, nil
+	}
+	if Hold == nil {
+		return nil, errors.New("usage accounting is unavailable; try again later")
+	}
+	return Hold(userID, operation, cost)
 }
 
 // TopupURL is where to add credits, absolute when this instance knows its own
@@ -298,11 +342,15 @@ func ExceededPage(cost int) string {
 	if cost == 1 {
 		plural = ""
 	}
+	renewal := ""
+	if DailyCredits() > 0 {
+		renewal = "Daily allowances renew at 00:00 UTC. "
+	}
 	return `<div class="card center-card-md">` +
-		`<h2>Credits Required</h2>` +
+		`<h2>Usage allowance</h2>` +
 		fmt.Sprintf(`<p>This costs %d credit%s. `, cost, plural) +
-		`<a href="/account/topup">Top up</a> to continue.</p>` +
-		`<p class="text-sm text-muted">1 credit = 1¢ · <a href="/account/billing#balance">Your balance</a></p>` +
+		`<a href="/account">Check your allowance</a> or <a href="/account/topup">add credit</a> to continue.</p>` +
+		`<p class="text-sm text-muted">` + renewal + `1 credit = 1¢.</p>` +
 		`</div>`
 }
 

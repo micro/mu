@@ -72,17 +72,16 @@ func StartVerify(owner, number string) error {
 		return err
 	}
 
-	cost := 0
-	if quota.Metered(quota.OpSMSSend) {
-		ok, _, per, err := quota.CheckQuota(owner, quota.OpSMSSend)
-		if err != nil {
-			return err
-		}
-		cost = per
-		if !ok || quota.Available(owner) < cost {
-			return fmt.Errorf("a verification text costs %d credits and there are not enough on this account", cost)
-		}
+	settle, err := quota.Reserve(owner, quota.OpSMSSend)
+	if err != nil {
+		return err
 	}
+	sent := false
+	defer func() {
+		if err := settle(sent); err != nil {
+			logCharge(owner, err)
+		}
+	}()
 
 	// Counted before the message goes out. Counting after would let a caller
 	// who keeps hitting a provider error retry without limit.
@@ -91,11 +90,7 @@ func StartVerify(owner, number string) error {
 	if _, err := send(number, intro(code)); err != nil {
 		return err
 	}
-	if err := quota.Charge(owner, quota.OpSMSSend, map[string]interface{}{
-		"to": number, "verification": true,
-	}); err != nil {
-		logCharge(owner, err)
-	}
+	sent = true
 
 	// One live code per number, so asking again replaces rather than adds — two
 	// valid codes doubles the guessing surface for no benefit.

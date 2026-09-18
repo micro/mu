@@ -25,6 +25,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/push"
+	"mu/internal/quota"
 	"mu/internal/usage"
 	"sort"
 
@@ -702,7 +703,19 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		nav.WriteString(`<a href="` + tab.path + `"` + current + `>` + tab.label + `</a>`)
 	}
 	nav.WriteString(`</nav>`)
-	balance := `<div class="section-actions"><span>Balance: <strong>` + thousands(CreditsOf(acc.ID).Balance) + ` credits</strong></span><a href="/account/topup">Add credit</a></div>`
+	balance := ""
+	if PaymentsEnabled() && !acc.Admin && !acc.Agent {
+		balance = `<div class="metadata-row">`
+		if daily := quota.DailyCredits(); daily > 0 {
+			balance += `<span>Today: <strong>` + thousands(IncludedToday(acc.ID)) + ` of ` + thousands(daily) + ` credits left</strong> · renews at 00:00 UTC</span>`
+		}
+		balance += `<span>Credit balance: <strong>` + thousands(CreditsOf(acc.ID).Balance) + ` credits</strong></span>`
+		if TopUpConfigured() {
+			balance += `<a href="/account/topup">Add credit</a>`
+		}
+		balance += `</div>`
+	}
+
 	content = balance + nav.String() + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,

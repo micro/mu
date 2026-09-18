@@ -61,13 +61,14 @@ func affordable(accountID string) (string, bool) {
 	// Admin, agent accounts and an instance that does not charge all come back
 	// ok from inside CheckQuota, so this only ever stops an ordinary account
 	// on a paying instance.
-	ok, _, cost, _ := quota.CheckQuota(accountID, quota.OpAgentRun)
+	ok, _, cost, err := quota.CheckQuota(accountID, quota.OpAgentRun)
 	if ok {
 		return "", true
 	}
-	return fmt.Sprintf("That needs %d credits and there are %d on this account. "+
-		"Top up from your Wallet and ask me again.",
-		cost, quota.BalanceOf(accountID)), false
+	if err != nil {
+		return err.Error(), false
+	}
+	return quota.Shortfall(cost, quota.Available(accountID)), false
 }
 
 // errNoConversation is a caller naming a conversation that is not theirs, or is
@@ -328,18 +329,6 @@ func Ask(r AskRequest) (Answer, error) {
 	}
 
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
-
-	// Charged on the way out, and only for an answer.
-	//
-	// A run that failed cost us the model call and is not the caller's fault —
-	// a provider timing out is our problem, and billing for it teaches people
-	// to distrust the number. The same reasoning as service/web, which charges
-	// only when the fetch came back.
-	if err == nil && strings.TrimSpace(answer) != "" {
-		quota.Charge(r.Account, quota.OpAgentRun, map[string]interface{}{
-			"agent": r.Agent, "client": r.Client,
-		}) //nolint:errcheck
-	}
 
 	via := r.Via
 	via.Client, via.Thread = r.Client, r.Thread
