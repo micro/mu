@@ -2,11 +2,13 @@
 
 The runtime for **Micro, a personal assistant**.
 
+## Overview
+
 Ask on the web, send an email, or message it from your phone. Mu runs the
 assistant, its tools, and your saved conversations in one Go binary that you
 can host yourself. Try the hosted instance at [micro.mu](https://micro.mu).
 
-## A small interface
+## Features
 
 The web starts with one input. Ask a question or give an instruction; the answer
 appears below it. The prompt moves up on the first request and stays there while
@@ -22,7 +24,7 @@ One shared stylesheet (`/mu.css`) and browser script (`/mu.js`) serve the pages.
 HTML is rendered in Go. There is no frontend build step. The site includes a
 manifest and service worker so it can be installed as a PWA.
 
-## Reach the same assistant in different ways
+## Clients
 
 Open **Contact** in the footer, or **Account → Reach Micro**, for the addresses
 and numbers configured on your instance. Add Micro to your phone's contacts
@@ -48,11 +50,13 @@ automatically continue that exact thread. Replies retain their channel context.
 Forwarding mail to your own mailbox stores it; addressing an agent asks it to
 act. WhatsApp replies are subject to the provider's messaging window.
 
-## Agents and services
+## Agents
 
 **Micro** is the default agent. Agents have instructions and a permitted set of
 tools. Services provide those tools: mail, files, calendar, search, weather,
 notes, shell, and more. You ask for an outcome; the agent chooses the tools.
+
+## Google
 
 Optional Google connections provide access to Gmail, Calendar, Contacts, and
 Drive with your consent. User-created agents can have different instructions
@@ -65,12 +69,14 @@ history budget. Older conversations and saved notes are read through permitted
 tools when needed, rather than automatically added to every question. Disconnecting
 Google stops new reads; it does not erase answers already saved in your Inbox.
 
+## Work
+
 An explicitly requested job can run in the background and return its result to
 the originating conversation. Execution lives under `agent/work`; task records
 live in `service/tasks`. The personal daily brief remains available. Other
 unsolicited model-generated feeds are disabled.
 
-## Use your existing clients
+## Protocols
 
 **Account → Client access** shows connection details and creates tokens with an
 explicit choice of Mail, Chat, or both.
@@ -118,7 +124,7 @@ Or run `docker compose up` from the checkout. See the
 [installation guide](docs/INSTALL.md) for domains, TLS, mail, messaging,
 sandbox configuration, and deployment.
 
-## CLI and programmatic access
+## CLI
 
 The binary also acts as a client. It defaults to the hosted instance; set
 `MU_URL` or use `mu login https://your.host` for your own server.
@@ -136,6 +142,8 @@ selected services. Protocol tokens do **not** grant CLI, agent API, or MCP acces
 Agent API access can execute your account’s agents with their configured tools;
 use service scopes when a client should reach only specific capabilities.
 
+## API
+
 The JSON API at `/api/v1` and MCP protocol at `/mcp` retain Agent, Work, and Inbox
 operations. Service-scoped credentials select service operations instead. The
 old browser API and MCP documentation pages have been removed.
@@ -151,7 +159,7 @@ The response includes `data.text` and `data.thread`; send the thread identifier
 back to continue. Requests and credentials belong in request bodies and headers.
 A separately configured x402 host provides paid service calls.
 
-## Development and releases
+## Development
 
 ```bash
 go build ./...
@@ -186,7 +194,7 @@ not individual model/tool calls, and reset on restart. Public pages remain
 readable; these controls do not prevent all scraping. Configure `TRUSTED_PROXY`
 correctly so client addresses are resolved at the intended boundary.
 
-### Request protection
+### Rate limits
 
 Dynamic HTTP routes are limited before page handling. Public reading stays open;
 priced service operations require an authenticated, verified/approved account or
