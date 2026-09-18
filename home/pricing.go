@@ -32,7 +32,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		b.WriteString(`<p>` + creditsInWords() + ` on signup.</p>`)
 	}
-	b.WriteString(`</section><section class="section-stack"><h2>Top up</h2><p>Extra use: 1 credit = 1 US cent.</p>`)
+	b.WriteString(`</section><section class="section-stack"><h2>Credits</h2><p>Top up prepaid credits for additional usage. 1 credit = 1 US cent.</p>`)
 	if account.TopUpConfigured() {
 		b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
 	}

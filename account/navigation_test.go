@@ -24,12 +24,16 @@ func TestAccountDestinations(t *testing.T) {
 		absent []string
 	}{
 		{"/account", []string{"Account", "Email", "Password", "Notifications", "Tokens", "Balance", "Usage"}, []string{"Your mail and chat apps", "Developer billing"}},
-		{"/account/billing", []string{"Balance", "Transaction history", "No transactions yet."}, []string{"API tokens"}},
+		{"/account/usage", []string{"Usage", "History", "No transactions yet."}, []string{"API tokens"}},
 	} {
 		r := httptest.NewRequest("GET", tc.path, nil)
 		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
 		w := httptest.NewRecorder()
-		Account(w, r)
+		if tc.path == "/account/usage" {
+			UsageHandler(w, r)
+		} else {
+			Account(w, r)
+		}
 		if w.Code != 200 {
 			t.Fatalf("%s: %d", tc.path, w.Code)
 		}

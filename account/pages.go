@@ -25,7 +25,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/push"
-	"mu/internal/usage"
 	"sort"
 
 	"mu/internal/auth"
@@ -500,7 +499,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	case "/account/connections":
 		accountPath = "/account/tokens"
 	case "/account/billing":
-		accountPath = "/account/billing"
+		accountPath = "/account/usage"
 	case "/account/developer":
 		accountPath = "/account/tokens"
 	}
@@ -648,49 +647,42 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := ""
-	switch accountPath {
-	case "/account/billing":
-		title = "Billing"
-		content = billingSummary(acc) + usage.Card(acc.ID) + LedgerSection(acc.ID)
-
-	default:
-		// The languages this instance speaks, as options rather than as markup.
-		currentLang := acc.Language
-		if currentLang == "" {
-			currentLang = "en"
-		}
-		langs := make([]app.Option, 0, len(app.SupportedLanguages))
-		for code, name := range app.SupportedLanguages {
-			langs = append(langs, app.Option{Value: code, Label: name, On: code == currentLang})
-		}
-		sort.Slice(langs, func(i, j int) bool { return langs[i].Label < langs[j].Label })
-
-		profile := app.SectionID("profile", "Name",
-			`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
-				htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
-				` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
-			app.Form{Action: "/account", Inline: true,
-				Hidden: map[string]string{"save_name": "1"},
-				Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
-					Placeholder: "Display name"}},
-				Submit: "Save"}.HTML(),
-			app.Note("Your display name. Your username, @"+acc.ID+
-				", is the one in addresses and links and does not change."))
-
-		language := app.Section("Language",
-			app.Form{Action: "/account", Inline: true,
-				Fields: []app.Field{{Name: "language", Options: langs}},
-				Submit: "Save"}.HTML())
-
-		title = "Account"
-		if r.URL.Query().Get("linked") == "google" {
-			notice = app.Notice("Google connected.") + notice
-		}
-		content = billingSummary(acc) + profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
-		content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
-		content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
-
+	// The languages this instance speaks, as options rather than as markup.
+	currentLang := acc.Language
+	if currentLang == "" {
+		currentLang = "en"
 	}
+	langs := make([]app.Option, 0, len(app.SupportedLanguages))
+	for code, name := range app.SupportedLanguages {
+		langs = append(langs, app.Option{Value: code, Label: name, On: code == currentLang})
+	}
+	sort.Slice(langs, func(i, j int) bool { return langs[i].Label < langs[j].Label })
+
+	profile := app.SectionID("profile", "Name",
+		`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
+			htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
+			` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
+		app.Form{Action: "/account", Inline: true,
+			Hidden: map[string]string{"save_name": "1"},
+			Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
+				Placeholder: "Display name"}},
+			Submit: "Save"}.HTML(),
+		app.Note("Your display name. Your username, @"+acc.ID+
+			", is the one in addresses and links and does not change."))
+
+	language := app.Section("Language",
+		app.Form{Action: "/account", Inline: true,
+			Fields: []app.Field{{Name: "language", Options: langs}},
+			Submit: "Save"}.HTML())
+
+	title = "Account"
+	if r.URL.Query().Get("linked") == "google" {
+		notice = app.Notice("Google connected.") + notice
+	}
+	content = billingSummary(acc) + profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
+	content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
+	content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
+
 	// Forms return to their owning tab; credentials and mutations stay in POST.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
 	active := accountPath

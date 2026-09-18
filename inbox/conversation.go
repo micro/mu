@@ -285,7 +285,7 @@ func actionBar(t *thread.Thread, to string, canAssign bool, inline ...bool) stri
 	// The button only opens the dialog, so it carries no state and needs no
 	// form — and it is drawn only where there is a dialog to open. See
 	// conversationPane's assign parameter.
-	if canAssign && t.Client != thread.WebClient {
+	if canAssign && t.Client != thread.WebClient && !assistantRecipient(to) {
 		b.WriteString(`<button type="button" class="ib-assign-open btn" ` +
 			`onclick="muAssignOpen()">Ask Micro</button>`)
 	}
@@ -682,4 +682,17 @@ func room(t *thread.Thread) string {
 // inbox asks about them is the same question, so it asks it once.
 func onAPhone(client string) bool {
 	return client == thread.SMSClient || client == thread.WhatsAppClient
+}
+
+// Only local assistant addresses suppress delegation; external namesakes do not.
+func assistantRecipient(to string) bool {
+	to = strings.ToLower(strings.TrimSpace(to))
+	to = strings.TrimPrefix(to, "@")
+	if at := strings.LastIndex(to, "@"); at >= 0 {
+		if !strings.EqualFold(to[at+1:], mail.ConfiguredDomain()) {
+			return false
+		}
+		to = to[:at]
+	}
+	return to == mail.AgentMailbox || (to == auth.MicroID && auth.IsAgent(auth.MicroID))
 }
