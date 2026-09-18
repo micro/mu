@@ -82,6 +82,13 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 		return
 	}
 
+	// Old cached reply forms also continue the assistant conversation.
+	// Only an explicit Assign action may turn a web conversation into work.
+	if t.Client == thread.WebClient && r.PostFormValue("action") != "assign" {
+		http.Redirect(w, r, "/agent", http.StatusTemporaryRedirect)
+		return
+	}
+
 	// Which agent, validated against the roster before anything is stored.
 	if err := hand(accountID, t, ask, chosenAgent(accountID, r.FormValue("agent"))); err != nil {
 		app.Log("inbox", "handing a conversation to an agent failed: %v", err)
@@ -215,7 +222,7 @@ func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho 
 	// inherits that row's layout.
 	b.WriteString(`<dialog id="ib-assign" class="modal ib-assign" aria-labelledby="ib-assign-title">`)
 	b.WriteString(`<h3 id="ib-assign-title" class="ib-assign-head">Assign to agent</h3>`)
-	b.WriteString(`<form class="form" method="post" action="/inbox">`)
+	b.WriteString(`<form class="form" method="post" action="/inbox"><input type="hidden" name="action" value="assign">`)
 	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	if problem := strings.TrimSpace(r.URL.Query().Get("problem")); problem != "" {
