@@ -93,7 +93,8 @@ dd{margin:0 0 12px;overflow-wrap:anywhere}
 .card,.page-section,.settings-sections>section,.settings-sections>.section-stack{padding:16px 0;border-top:1px solid #e5e5e5}
 .card h2,.card h3,.card h4,section>h2:first-child{margin-top:0}
 .card p:last-child{margin-bottom:0}
-.settings-sections .form{max-width:100%}
+.settings-sections{max-width:var(--reading-width)}
+.settings-sections .form{width:100%;max-width:var(--form-width)}
 .disclosure summary{cursor:pointer}
 .disclosure[open]>summary{margin-bottom:16px}
 dialog.modal{width:min(480px,calc(100% - 32px));max-height:calc(100dvh - 32px);margin:auto;padding:20px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#222;overflow-y:auto}
@@ -459,7 +460,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 
 /* Service UI contract: a wide workspace, readable prose, vertical records,
    wrapping metadata/actions, and bounded media. New pages use these primitives. */
-:root{--page-width:1200px;--reading-width:760px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
+:root{--page-width:1200px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
 .document-page main{width:min(calc(100% - 48px),var(--page-width))}
 .command-page main{max-width:760px}
 .reader-content,.prose,.content-narrow{max-width:var(--reading-width);line-height:1.7}
@@ -469,8 +470,8 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .page-col{display:flex;flex-direction:column;gap:16px;min-width:0;max-width:var(--reading-width);width:100%}
 .page-col>*{min-width:0}
 .page-col:has(>.editor-layout){max-width:none}
-/* Centre bounded page content and its title as one column. */
-.document-page main:has(>.page-col):not(:has(>.page-col>.editor-layout)){max-width:var(--reading-width)}
+/* Keep forms close to their actions without shrinking wide workspaces. */
+.document-page main>.form,.document-page main>.search-bar,.document-page .page-col>.form{width:100%;max-width:var(--form-width)}
 .mini-btn,.btn-sm,.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #bbb;border-radius:6px;background:white;padding:4px 10px;min-height:32px;text-decoration:none;font-size:.875rem;line-height:1.4}
 .btn-quiet,.btn-plain{background:transparent}
 .danger,.btn-danger{color:#962323}
@@ -677,9 +678,9 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .markets-table .markets-name{font-weight:400;color:var(--text-muted)}
 .view-share{display:flex;align-items:center;gap:10px;margin-block:12px;font-size:.85rem}
 
-/* Reading pages align the whole page, not just the article body. */
-.document-page.reading-page main,.reading-page>.page>header{width:min(calc(100% - 40px),var(--reading-width));margin-inline:auto}
-.reading-page>.page>header{padding-inline:0}
+/* Reading content uses the same page origin and header as every service. */
+.reading-page main>.editorial-page{max-width:var(--reading-width)}
+.reading-page main>h1{max-width:var(--reading-width)}
 
 /* The same navigation links become a simple left drawer on small screens. */
 .nav-toggle{display:none;border:0;background:transparent;border-radius:0;box-shadow:none}
@@ -737,7 +738,7 @@ body.nav-open{overflow:hidden}
 @media(max-width:600px){.editorial-entry{padding-block:22px}.editorial-page>.reader-content{margin-block:22px}}
 
 
-.editorial-reading main>h1{font-size:clamp(1.65rem,4vw,2.25rem);line-height:1.2;letter-spacing:-.025em;font-weight:600;margin-bottom:20px;overflow-wrap:anywhere}
+.editorial-reading main>h1{overflow-wrap:anywhere}
 
 
 /* One Inbox reader, with channel-specific transcripts rather than separate pages. */

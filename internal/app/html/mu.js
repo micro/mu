@@ -278,18 +278,24 @@ async function apiCall(url, options = {}) {
 
 if (typeof document !== "undefined") {
 
-// A landing draft stays in this tab through sign-in. It is never submitted automatically.
+// Drafts stay in this tab, scoped to the account and conversation, until accepted.
 (()=>{'use strict';
- const key='micro-message-draft', ttl=30*60*1000;
- const guest=document.querySelector('#guest-command-form');
+ const guest=document.querySelector('#guest-command-form'),form=document.querySelector('#command-form');
  const input=document.querySelector('#guest-command-input')||document.querySelector('#command-input');
- function read(){try{const d=JSON.parse(sessionStorage.getItem(key)||'null');if(d&&typeof d.text==='string'&&d.text.length<=8000&&Number.isFinite(d.at)&&Date.now()-d.at>=0&&Date.now()-d.at<ttl)return d.text;sessionStorage.removeItem(key);}catch{}return '';}
- if(input&&!new URLSearchParams(location.search).has('session')&&!new URLSearchParams(location.search).has('continue')){
-  const draft=read();if(draft&&!input.value){input.value=draft;if(!guest)document.querySelector('#status').textContent='Your message is ready to send.';}
+ if(!input)return;
+ const guestKey='micro-message-draft',ttl=(guest?30*60:24*60*60)*1000;
+ const params=new URLSearchParams(location.search),thread=params.get('session')||params.get('continue')||'';
+ let key=guest?guestKey:'micro-message-draft:'+JSON.stringify([form.dataset.account,thread]);
+ function read(k){try{const d=JSON.parse(sessionStorage.getItem(k)||'null');if(d&&typeof d.text==='string'&&d.text.length<=8000&&Number.isFinite(d.at)&&Date.now()-d.at>=0&&Date.now()-d.at<ttl)return d.text;sessionStorage.removeItem(k);}catch{}return '';}
+ function save(){try{if(input.value)sessionStorage.setItem(key,JSON.stringify({text:input.value,at:Date.now()}));else sessionStorage.removeItem(key);return true;}catch{return false;}}
+ const draft=read(key)||(!guest&&!thread?read(guestKey):'');
+ if(draft&&!input.value){input.value=draft;save();if(!guest){document.querySelector('#status').textContent='Your message is ready to send.';try{sessionStorage.removeItem(guestKey);}catch{}}}
+ input.addEventListener('input',save);
+ if(guest){guest.addEventListener('submit',e=>{e.preventDefault();if(!input.value.trim())return;if(save())location.assign('/signup');else document.querySelector('#guest-status').textContent='This browser cannot keep your draft. Copy your message, then use Login to create an account or sign in.';});}
+ if(form){
+  form.addEventListener('submit',()=>{if(!document.querySelector('#send').disabled)save();});
+  form.addEventListener('message-accepted',()=>{try{sessionStorage.removeItem(key);}catch{}const p=new URLSearchParams(location.search);key='micro-message-draft:'+JSON.stringify([form.dataset.account,p.get('session')||p.get('continue')||'']);if(input.value)save();});
  }
- if(guest){guest.addEventListener('submit',e=>{e.preventDefault();const text=input.value.trim();if(!text)return;try{sessionStorage.setItem(key,JSON.stringify({text,at:Date.now()}));location.assign('/signup');}catch{document.querySelector('#guest-status').textContent='This browser cannot keep your draft. Copy your message, then use Login to create an account or sign in.';}});}
- const form=document.querySelector('#command-form');
- if(form)form.addEventListener('submit',()=>{try{sessionStorage.removeItem(key);}catch{}});
 })();
 
 async function failure(response){try{const j=await response.json();return typeof j.error==='string'?j.error:(j.error?.message||'Request failed.');}catch{return 'Request failed ('+response.status+').';}}
@@ -327,7 +333,7 @@ async function assistant(command,answer){
  if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt={text:command,thread,id:crypto.randomUUID()};
  const response=await fetch('/agent',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json',Accept:'application/vnd.micro.queued+json','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt:command,context_id:thread,agent:form.dataset.agent||'',message_id:receipt.id})});
  if(!response.ok)throw Error(await failure(response));
- const result=await response.json(),messageID=receipt.id;thread=result.thread;remember();receipt=null;
+ const result=await response.json(),messageID=receipt.id;thread=result.thread;remember();receipt=null;form.dispatchEvent(new Event('message-accepted'));
  status.textContent='Queued. You can leave this page; the reply will appear here.';
  await waitForAnswer(answer,messageID);
 }
