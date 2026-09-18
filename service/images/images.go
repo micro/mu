@@ -196,18 +196,6 @@ func Generate(owner, prompt string) (string, error) {
 		app.Log("images", "refused a generation for %s", owner)
 		return "", fmt.Errorf("%s", reason)
 	}
-	// Affordability, before spending time on the model. The charge itself is
-	// not here any more: a tool call is charged by the gateway every service
-	// call goes through (internal/service/gateway.go), and the page below
-	// charges its own, because a page still reaches past the endpoint into
-	// this function. When pages call endpoints, the line below goes too.
-	canProceed, _, cost, err := quota.CheckQuota(owner, quota.OpImageGenerate)
-	if err != nil {
-		return "", err
-	}
-	if !canProceed {
-		return "", fmt.Errorf("this costs %d credits — top up at /account/topup", cost)
-	}
 
 	url, err := ai.GenerateImage(prompt)
 	if err != nil {
@@ -424,17 +412,25 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	settle, err := quota.Reserve(acc.ID, quota.OpImageGenerate)
+	if err != nil {
+		app.RespondError(w, http.StatusPaymentRequired, err.Error())
+		return
+	}
+	completed := false
+	defer func() {
+		if err := settle(completed); err != nil {
+			app.Log("images", "settling generation: %v", err)
+		}
+	}()
 	url, err := Generate(acc.ID, req.Prompt)
 	if err != nil {
 		w.WriteHeader(http.StatusPaymentRequired)
 		app.RespondJSON(w, map[string]string{"error": err.Error()})
 		return
 	}
-	// Charged here rather than inside Generate, which the tool door also calls
-	// and which the gateway now charges for. Only once we have an image.
-	if err := quota.Charge(acc.ID, quota.OpImageGenerate, nil); err != nil {
-		app.Log("images", "image generated but not charged: %v", err)
-	}
+	completed = true
+
 	// id lets the page show the new image with its share button without
 	// reloading — the reload is what used to throw the result away.
 	app.RespondJSON(w, map[string]string{

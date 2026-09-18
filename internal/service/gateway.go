@@ -47,6 +47,9 @@ import (
 // every call passes, which is the same answer a self-hosted instance with no
 // payments configured gives anyway.
 var Gate struct {
+	// Reserve secures the budget; settle(false) refunds failure or a cache hit.
+	Reserve func(account, operation string) (func(bool) error, error)
+
 	// Allow reports whether this account may perform this operation now, and
 	// whether the call should be charged for when it succeeds. Called before
 	// the handler runs.
@@ -157,6 +160,20 @@ func gateway(spec Spec) server.HandlerWrapper {
 				return retErr
 			}
 
+			var settle func(bool) error
+			paid := false
+			if charge && Gate.Reserve != nil {
+				settle, err = Gate.Reserve(who, op)
+				if err != nil {
+					return err
+				}
+				defer func() {
+					if err := settle(paid); err != nil {
+						retErr = fmt.Errorf("could not settle usage: %w", err)
+					}
+				}()
+			}
+
 			// Reserved above, settled below, and in between the handler gets a
 			// meter to say what the call actually cost us. See meter.go.
 			ctx, m := withMeter(ctx)
@@ -179,6 +196,8 @@ func gateway(spec Spec) server.HandlerWrapper {
 				if Gate.Free != nil {
 					Gate.Free(who, op)
 				}
+			case charge && settle != nil:
+				paid = true
 			case charge && Gate.Charge != nil:
 				Gate.Charge(who, op)
 			}

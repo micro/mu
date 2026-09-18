@@ -151,16 +151,21 @@ func SendOn(channel Channel, owner, to, text string) (*Message, error) {
 	// Priced per segment, because that is how it is billed to us. A caller who
 	// writes a long message pays for a long message.
 	op := opFor(channel)
-	cost := 0
-	if quota.Metered(op) {
-		ok, _, per, err := quota.CheckQuota(owner, op)
+	var reservations []func(bool) error
+	sent := false
+	defer func() {
+		for _, settle := range reservations {
+			if err := settle(sent); err != nil {
+				logCharge(owner, err)
+			}
+		}
+	}()
+	for i := 0; i < segments; i++ {
+		settle, err := quota.Reserve(owner, op)
 		if err != nil {
 			return nil, err
 		}
-		cost = per * segments
-		if !ok || quota.Available(owner) < cost {
-			return nil, fmt.Errorf("sending that costs %d credits and there are not enough on this account", cost)
-		}
+		reservations = append(reservations, settle)
 	}
 
 	id, err := sendOn(channel, number, text)
@@ -168,16 +173,7 @@ func SendOn(channel Channel, owner, to, text string) (*Message, error) {
 		return nil, err
 	}
 
-	for i := 0; i < segments; i++ {
-		if err := chargeSend(channel, owner, map[string]interface{}{
-			"to": number, "segments": segments, "channel": string(channel),
-		}); err != nil {
-			// The message is gone; refusing now would only hide that. Say so in
-			// the log and let the caller have the message they paid for.
-			logCharge(owner, err)
-			break
-		}
-	}
+	sent = true
 
 	// The provider's id goes on the record beside this record's own, rather
 	// than on top of it. It used to be assigned to m.ID on the way out and

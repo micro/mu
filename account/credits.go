@@ -137,6 +137,7 @@ func init() {
 	quota.Balance = Balance
 	quota.Included = IncludedToday
 	quota.Record = RecordUsage
+	quota.Hold = reserveIncluded
 	quota.Deduct = func(account, operation string, amount int, meta map[string]interface{}) error {
 		return chargeIncluded(account, amount, operation, meta)
 	}
@@ -165,6 +166,7 @@ func init() {
 	json.Unmarshal(b, &dailyUsage)
 
 	rebuildFromTransactions()
+	recoverIncluded()
 }
 
 // rebuildFromTransactions restores balances the ledger file no longer has.
@@ -343,25 +345,8 @@ func settled(l *ledger, userID, key string) bool {
 	return false
 }
 
-// AddCredits adds credits to a user's wallet
-// WelcomeCredits is what a new account starts with, in credits. One credit is
-// one cent, so this is a pound.
-//
-// It exists because talking to the agent is charged now, and an account that
-// starts at zero cannot ask the question it signed up to ask. That was the
-// objection that kept the agent free, and it was right — what was wrong was
-// the old answer to it: a daily grant of credits that cancelled the charge
-// back out, two mechanisms doing nothing between them, leaving a number a
-// person had to understand before they could ask anything.
-//
-// A balance is different from a grant that renews. It is spent once, it is
-// visible on Home and on /account, and running out is a thing that happens for
-// a legible reason with a Top up next to it. Nobody has to reason about a
-// daily reset.
-//
-// A pound is roughly thirty questions at the current price. Enough to find out
-// whether the thing is useful, not enough to run on for ever, which is the
-// shape a trial should have.
+// WelcomeCredits is a one-off funded grant (one US dollar), separate from
+// the nontransferable daily allowance. Keep existing balances intact.
 const WelcomeCredits = 100
 
 // OpWelcome is what the welcome grant is called on the ledger.

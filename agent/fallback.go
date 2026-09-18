@@ -1,9 +1,27 @@
 package agent
 
+import (
+	"fmt"
+	"mu/internal/quota"
+	"strings"
+)
+
 // A configured credential is not permission to switch providers.
 // Return failures from the selected model to the caller without replaying work.
-func queryWithFallback(account, prompt string, opts QueryOpts) (string, error) {
-	return tryModels(account, prompt, opts, runNative)
+func queryWithFallback(account, prompt string, opts QueryOpts) (answer string, err error) {
+	settle, err := quota.Reserve(account, quota.OpAgentRun)
+	if err != nil {
+		return "", err
+	}
+	completed := false
+	defer func() {
+		if settleErr := settle(completed); settleErr != nil {
+			err = fmt.Errorf("could not settle usage: %w", settleErr)
+		}
+	}()
+	answer, err = tryModels(account, prompt, opts, runNative)
+	completed = err == nil && strings.TrimSpace(answer) != ""
+	return answer, err
 }
 
 func tryModels(account, prompt string, opts QueryOpts, run func(string, string, QueryOpts) (string, error)) (string, error) {
