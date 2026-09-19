@@ -312,10 +312,12 @@ const form=document.querySelector('#command-form'),input=document.querySelector(
 if(!form)return;
 const conversation=form.closest('.conversation');
 const historyPanel=document.querySelector('#assistant-history');
-// Reuse the site navigation inside the thread sidebar on small screens.
+// Share the same navigation groups with the assistant sidebar.
 if(historyPanel){
- const siteNav=document.querySelector('.desktop-navigation');
- if(siteNav){const mobileNav=siteNav.cloneNode(true);mobileNav.className='mobile-thread-navigation';mobileNav.setAttribute('aria-label','Navigation');historyPanel.prepend(mobileNav);}
+ const primary=document.querySelector('.nav-drawer .sidebar-primary');
+ const secondary=document.querySelector('.nav-drawer .sidebar-secondary');
+ if(primary)historyPanel.prepend(primary.cloneNode(true));
+ if(secondary)historyPanel.append(secondary.cloneNode(true));
 }
 
 document.querySelectorAll('[data-history-toggle]').forEach(button=>button.addEventListener('click',()=>{historyPanel.hidden=!historyPanel.hidden;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded',String(!historyPanel.hidden)));}));

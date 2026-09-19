@@ -825,12 +825,10 @@ body.nav-open{overflow:hidden}
 
 /* One mobile menu holds site navigation and threads. */
 .command-page:has(.assistant-workspace) header{padding-left:6px}
-.mobile-thread-navigation{display:none}
 @media(max-width:700px){
  .command-page:has(.assistant-workspace) header{padding-left:4px}
  .command-page:has(.assistant-workspace) .nav-toggle{display:none}
  .history-toggle{width:40px;height:40px;padding:8px}
- .mobile-thread-navigation{display:flex;flex-wrap:wrap;gap:12px 20px;padding:8px 0 20px;margin-bottom:12px;border-bottom:1px solid var(--border)}
 }
 
 /* Linked records share a row highlight without moving their content. */
@@ -843,3 +841,18 @@ body.nav-open{overflow:hidden}
 .assistant-thread-title>button:hover{background:var(--surface)}
 .thread-title-editor{display:flex;flex-wrap:wrap;gap:8px;margin:0}
 .thread-title-editor input{flex:1 1 200px;width:auto}
+
+/* The same quiet header and grouped sidebar on every signed-in page. */
+.signed-in header{justify-content:flex-start;padding-left:6px}
+.signed-in header>.brand{display:none}
+.signed-in:has(.assistant-history:not([hidden])) header>.brand{display:block}
+.signed-in .desktop-navigation{display:flex;margin-left:auto}
+.signed-in .nav-toggle{display:inline-flex;flex:none;width:36px;height:36px;padding:6px}
+.signed-in:has(.assistant-workspace) .nav-toggle{display:none}
+.sidebar-primary,.sidebar-secondary{display:flex;flex-direction:column;gap:4px}
+.sidebar-primary{margin-bottom:20px}
+.assistant-history nav[aria-label="Threads"]{max-height:45dvh;overflow-y:auto;overscroll-behavior:contain}
+.sidebar-secondary{margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+:is(.sidebar-primary,.sidebar-secondary) a{display:block;padding:8px;text-decoration:none;border-radius:4px}
+:is(.sidebar-primary,.sidebar-secondary) a:hover{background:var(--surface)}
+@media(max-width:700px){.signed-in header{padding-left:4px}.signed-in .nav-toggle{width:40px;height:40px;padding:8px}.signed-in .desktop-navigation{gap:16px}}
