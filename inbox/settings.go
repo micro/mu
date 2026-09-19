@@ -92,7 +92,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		return ""
 	}
 	zone := fmt.Sprint(state["timezone"])
-	body := `<form class="form" method="post" action="/inbox/settings">` + app.CSRFField(auth.CSRFToken(r)) +
+	body := viewNavigation("settings") + `<h2>Morning brief</h2><form class="form" method="post" action="/inbox/settings">` + app.CSRFField(auth.CSRFToken(r)) +
 		`<label class="check-label"><input type="checkbox" name="enabled" value="1"` + checked(state["enabled"]) + `> Morning brief</label>` +
 		`<p class="note">A brief at ` + html.EscapeString(fmt.Sprint(state["time"])) + `. Reply to its email or open its notification to continue the conversation.</p>` +
 		`<label class="check-label"><input type="checkbox" name="include_world_news" value="1"` + checked(state["include_world_news"]) + `> Include world news</label>`
@@ -101,7 +101,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		body += `<p class="note">Timezone: ` + html.EscapeString(zone) + `</p>`
 	}
-	body += `<div class="form-actions"><button type="submit">Save</button><a href="/account">Account</a></div></form>`
+	body += `<div class="form-actions"><button type="submit">Save</button><a href="/inbox">Inbox</a></div></form>`
 	body += app.Section("Mail clients", `<p>Read and reply to your conversations in your own mail app.</p><div class="form-actions"><a href="/account/clients">Client setup</a><a href="/inbox/imap">Mail settings</a></div>`)
 	app.Respond(w, r, app.Response{Title: "Inbox settings", HTML: body})
 }

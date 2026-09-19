@@ -860,3 +860,5 @@ body.nav-open{overflow:hidden}
 .assistant-history .assistant-toolbar{padding-inline:8px}
 .assistant-history .conversation-row{padding-inline:8px}
 .assistant-history nav>p{padding-inline:8px}
+
+@media(max-width:480px){.inbox-views{gap:8px 12px;font-size:.875rem}}
