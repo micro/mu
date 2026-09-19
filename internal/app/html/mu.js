@@ -285,18 +285,17 @@ if (typeof document !== "undefined") {
 
 // Drafts stay in this tab, scoped to the account and conversation, until accepted.
 (()=>{'use strict';
- const guest=document.querySelector('#guest-command-form'),form=document.querySelector('#command-form');
- const input=document.querySelector('#guest-command-input')||document.querySelector('#command-input');
- if(!input)return;
- const guestKey='micro-message-draft',ttl=(guest?30*60:24*60*60)*1000;
+ const form=document.querySelector('#command-form');
+ const input=document.querySelector('#command-input');
+ if(!form||!input)return;
+ const guestKey='micro-message-draft',ttl=24*60*60*1000;
  const params=new URLSearchParams(location.search),thread=params.get('session')||params.get('continue')||'';
- let key=guest?guestKey:'micro-message-draft:'+JSON.stringify([form.dataset.account,thread]);
+ let key='micro-message-draft:'+JSON.stringify([form.dataset.account,thread]);
  function read(k){try{const d=JSON.parse(sessionStorage.getItem(k)||'null');if(d&&typeof d.text==='string'&&d.text.length<=8000&&Number.isFinite(d.at)&&Date.now()-d.at>=0&&Date.now()-d.at<ttl)return d.text;sessionStorage.removeItem(k);}catch{}return '';}
  function save(){try{if(input.value)sessionStorage.setItem(key,JSON.stringify({text:input.value,at:Date.now()}));else sessionStorage.removeItem(key);return true;}catch{return false;}}
- const draft=read(key)||(!guest&&!thread?read(guestKey):'');
- if(draft&&!input.value){input.value=draft;save();if(!guest){document.querySelector('#status').textContent='Your message is ready to send.';try{sessionStorage.removeItem(guestKey);}catch{}}}
+ const draft=read(key)||(!thread?read(guestKey):'');
+ if(draft&&!input.value){input.value=draft;save();document.querySelector('#status').textContent='Your message is ready to send.';try{sessionStorage.removeItem(guestKey);}catch{}}
  input.addEventListener('input',save);
- if(guest){guest.addEventListener('submit',e=>{e.preventDefault();if(!input.value.trim())return;if(save())location.assign('/signup');else document.querySelector('#guest-status').textContent='This browser cannot keep your draft. Copy your message, then use Login to create an account or sign in.';});}
  if(form){
   form.addEventListener('submit',()=>{if(!document.querySelector('#send').disabled)save();});
   form.addEventListener('thread-leaving',save);
@@ -313,6 +312,12 @@ const form=document.querySelector('#command-form'),input=document.querySelector(
 if(!form)return;
 const conversation=form.closest('.conversation');
 const historyPanel=document.querySelector('#assistant-history');
+// Reuse the site navigation inside the thread sidebar on small screens.
+if(historyPanel){
+ const siteNav=document.querySelector('.desktop-navigation');
+ if(siteNav){const mobileNav=siteNav.cloneNode(true);mobileNav.className='mobile-thread-navigation';mobileNav.setAttribute('aria-label','Navigation');historyPanel.prepend(mobileNav);}
+}
+
 document.querySelectorAll('[data-history-toggle]').forEach(button=>button.addEventListener('click',()=>{historyPanel.hidden=!historyPanel.hidden;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded',String(!historyPanel.hidden)));}));
 function sizeInput(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,160)+'px';}
 input.addEventListener('input',sizeInput);sizeInput();
@@ -327,7 +332,7 @@ function remember(title){
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
  heading.textContent=title||'Thread';
- const nav=historyPanel.querySelector('nav'),href='/?session='+encodeURIComponent(thread);
+ const nav=historyPanel.querySelector('nav[aria-label="Threads"]'),href='/?session='+encodeURIComponent(thread);
  let row=Array.from(nav.querySelectorAll('a')).find(link=>link.getAttribute('href')===href);
  if(!row){row=document.createElement('a');row.className='conversation-row';row.href=href;const label=document.createElement('span');label.className='conversation-title';row.append(label,document.createElement('time'));}
  row.querySelector('.conversation-title').textContent=title||'Thread';row.querySelector('time').textContent='Just now';
@@ -414,7 +419,7 @@ async function navigateThread(url,push=true){
   const welcome=conversation.querySelector('.prompt-welcome');welcome.replaceChildren(...page.querySelector('.prompt-welcome').childNodes);
   conversation.classList.toggle('is-active',!!thread);status.textContent='';
   form.dispatchEvent(new CustomEvent('thread-changed',{detail:{thread}}));sizeInput();
-  historyPanel.querySelectorAll('nav a').forEach(link=>{if(new URL(link.href).searchParams.get('session')===thread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
+  historyPanel.querySelectorAll('nav[aria-label="Threads"] a').forEach(link=>{if(new URL(link.href).searchParams.get('session')===thread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
   if(window.matchMedia('(max-width:700px)').matches){historyPanel.hidden=true;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded','false'));}
   resumePending();
   requestAnimationFrame(()=>{log.scrollTop=scrollPositions.get(currentURL)??log.scrollHeight;});
