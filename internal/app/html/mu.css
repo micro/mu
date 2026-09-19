@@ -458,16 +458,16 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .oauth-consent [hidden]{display:none!important}
 #oauth-access-summary{overflow-wrap:anywhere}
 
-/* Service UI contract: a wide workspace, readable prose, vertical records,
+/* Service UI contract: centered content, readable prose, vertical records,
    wrapping metadata/actions, and bounded media. New pages use these primitives. */
-:root{--page-width:1200px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
+:root{--page-width:760px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
 .document-page main{width:min(calc(100% - 48px),var(--page-width))}
 .command-page main{max-width:760px}
 .reader-content,.prose,.content-narrow{max-width:var(--reading-width);line-height:1.7}
 .reader-content{margin-inline:auto;width:100%;overflow-wrap:anywhere}
 .reader-content :is(p,ul,ol,blockquote){margin-block:0 16px}
 .reader-content :is(h2,h3){margin-block:28px 12px}
-.page-col{display:flex;flex-direction:column;gap:16px;min-width:0;max-width:var(--reading-width);width:100%}
+.page-col{display:flex;flex-direction:column;gap:16px;min-width:0;max-width:var(--reading-width);width:100%;margin-inline:auto}
 .page-col>*{min-width:0}
 .page-col:has(>.editor-layout){max-width:none}
 /* Keep forms close to their actions without shrinking wide workspaces. */
@@ -797,23 +797,23 @@ body.nav-open{overflow:hidden}
 .segmented-control label:has(input:focus-visible){outline:2px solid currentColor;outline-offset:2px}
 
 /* Assistant history and transcript share one workspace. */
-.assistant-workspace{display:flex;flex:1;gap:24px;min-height:0;min-width:0}
+.assistant-workspace{position:relative;display:flex;flex:1;min-height:0;min-width:0}
 .command-page main:has(.assistant-workspace){width:calc(100% - 48px);max-width:none}
-.assistant-workspace>.conversation{flex:1;min-width:0}
+.assistant-workspace>.conversation{flex:1;min-width:0;max-width:760px;margin-inline:auto}
 .assistant-workspace .conversation>.assistant-toolbar,.assistant-workspace .assistant-thread-title,.assistant-workspace .prompt-panel{width:100%;max-width:760px;box-sizing:border-box;margin-inline:auto}
-.assistant-workspace .conversation.is-active .prompt-panel{margin-inline:auto}
 .assistant-workspace #responses>.turn{width:100%;max-width:760px;box-sizing:border-box;margin-inline:auto}
-.assistant-history{flex:0 0 260px;min-width:0;overflow-y:auto;padding-right:16px;border-right:1px solid #eee}
+.assistant-history{position:absolute;inset:0 auto 0 0;z-index:3;width:260px;max-width:100%;box-sizing:border-box;min-width:0;overflow-y:auto;padding-right:16px;border-right:1px solid #eee;background:#fff}
 .assistant-history .conversation-row{display:block}.assistant-history time{display:block;margin-top:4px}
 .assistant-history [aria-current="page"]{font-weight:600}
 .assistant-toolbar{display:flex;align-items:center;gap:16px;flex-shrink:0;padding:8px 0 16px;font-size:.875rem}
 .assistant-toolbar button{font:inherit;margin:0;padding:0;background:none;border:0;color:inherit}
 .assistant-thread-title{font-size:1rem;font-weight:500;margin:0 0 12px;flex-shrink:0;overflow-wrap:anywhere}
-.assistant-workspace .conversation.is-active .prompt-panel{margin:0;order:2;padding-bottom:env(safe-area-inset-bottom)}
+.assistant-workspace .conversation.is-active .prompt-panel{margin:0 auto;order:2;padding-bottom:env(safe-area-inset-bottom)}
 .assistant-workspace #responses{order:1}
 .assistant-workspace .composer textarea{flex:1;min-width:0;width:0;min-height:36px;max-height:160px;resize:none;overflow-y:auto;box-sizing:border-box;margin:0;padding:7px 10px;border:0;background:transparent;font:inherit;font-size:16px;line-height:22px}
 .assistant-workspace #status{min-height:1.4em;margin:4px 0 0;font-size:.8rem;color:#777}
-@media(max-width:700px){.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}.assistant-workspace:has(.assistant-history:not([hidden]))>.conversation{display:none}.assistant-history{flex:1;border:0;padding:0}.assistant-workspace{gap:0}}
+@media(min-width:701px) and (max-width:1360px){.assistant-history{padding:0 16px;box-shadow:8px 0 20px #0001}}
+@media(max-width:700px){.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}.assistant-workspace:has(.assistant-history:not([hidden]))>.conversation{display:none}.assistant-history{position:static;flex:1;width:100%;border:0;padding:0}.assistant-workspace{gap:0}}
 
 .command-page:has(.assistant-workspace){height:100svh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .command-page:has(.assistant-workspace) .page{height:auto;flex:1;min-height:0}

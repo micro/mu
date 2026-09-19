@@ -30,7 +30,7 @@ func viewNavigation(active string) string {
 		}
 		fmt.Fprintf(&b, `<a href="%s"%s>%s</a>`, html.EscapeString(v.href), current, v.name)
 	}
-	b.WriteString(`</nav>`)
+	b.WriteString(`<a href="/inbox/new">New message</a></nav>`)
 	return b.String()
 }
 
