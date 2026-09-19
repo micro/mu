@@ -239,6 +239,12 @@ func ClientSettings(accountID string, protocols ...string) string {
 	} else {
 		row("XMPP", "Disabled", "—", "—", "—")
 	}
-	b.WriteString(`</tbody></table><p class="text-sm text-secondary">Public ports depend on the server’s proxy configuration. XMPP does not support STARTTLS. <a href="/inbox/imap">More mail settings</a>.</p>`)
+	b.WriteString(`</tbody></table>`)
+	if len(protocols) == 0 || protocols[0] == "mail" {
+		b.WriteString(`<p class="text-sm text-secondary">Public ports depend on the server’s proxy configuration. <a href="/inbox/imap">More mail settings</a>.</p>`)
+	}
+	if len(protocols) == 0 || protocols[0] == "chat" {
+		b.WriteString(`<p class="text-sm text-secondary">XMPP requires a direct TLS proxy and does not support STARTTLS.</p>`)
+	}
 	return b.String()
 }

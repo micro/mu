@@ -36,9 +36,9 @@ func TestAccessCompatibilityAndOAuth(t *testing.T) {
 		t.Fatalf("legacy HTML: %d %s", w.Code, w.Header())
 	}
 	alias := httptest.NewRecorder()
-	TokenHandler(alias, request("GET", "/account/clients", nil, false))
-	if alias.Code != 303 || alias.Header().Get("Location") != "/account/tokens" {
-		t.Fatal("old token page did not redirect to Tokens")
+	ClientsHandler(alias, request("GET", "/account/clients", nil, false))
+	if alias.Code != 200 || !strings.Contains(alias.Body.String(), "Assistant API") || !strings.Contains(alias.Body.String(), "Connection details") {
+		t.Fatal("client setup is unavailable")
 	}
 	alias = httptest.NewRecorder()
 	Account(alias, request("GET", "/account/connections", nil, false))

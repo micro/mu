@@ -102,6 +102,6 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		body += `<p class="note">Timezone: ` + html.EscapeString(zone) + `</p>`
 	}
 	body += `<div class="form-actions"><button type="submit">Save</button><a href="/account">Account</a></div></form>`
-	body += app.Section("Mail clients", `<p>Read and reply to your conversations in your own mail app.</p><div class="form-actions"><a class="btn" href="/account/tokens?add=mail#create-token-form">Create app password</a><a href="/inbox/imap">Mail settings</a></div>`)
+	body += app.Section("Mail clients", `<p>Read and reply to your conversations in your own mail app.</p><div class="form-actions"><a href="/account/clients">Client setup</a><a href="/inbox/imap">Mail settings</a></div>`)
 	app.Respond(w, r, app.Response{Title: "Inbox settings", HTML: body})
 }
