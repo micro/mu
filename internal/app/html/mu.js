@@ -312,12 +312,10 @@ const form=document.querySelector('#command-form'),input=document.querySelector(
 if(!form)return;
 const conversation=form.closest('.conversation');
 const historyPanel=document.querySelector('#assistant-history');
-// Share the same navigation groups with the assistant sidebar.
+// Share navigation with the assistant sidebar.
 if(historyPanel){
  const primary=document.querySelector('.nav-drawer .sidebar-primary');
- const secondary=document.querySelector('.nav-drawer .sidebar-secondary');
  if(primary)historyPanel.prepend(primary.cloneNode(true));
- if(secondary)historyPanel.append(secondary.cloneNode(true));
 }
 
 document.querySelectorAll('[data-history-toggle]').forEach(button=>button.addEventListener('click',()=>{historyPanel.hidden=!historyPanel.hidden;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded',String(!historyPanel.hidden)));}));
@@ -334,11 +332,11 @@ function remember(title){
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
  heading.replaceChildren();const titleButton=document.createElement('button');titleButton.type='button';titleButton.dataset.editThread='';titleButton.title='Rename thread';titleButton.textContent=title||'Thread';heading.append(titleButton);
- const nav=historyPanel.querySelector('nav[aria-label="Threads"]'),href=(form.dataset.path||'/')+'?session='+encodeURIComponent(thread);
+ const nav=historyPanel.querySelector('nav[aria-label="Recent"]'),href=(form.dataset.path||'/')+'?session='+encodeURIComponent(thread);
  let row=Array.from(nav.querySelectorAll('a')).find(link=>link.getAttribute('href')===href);
  if(!row){row=document.createElement('a');row.className='conversation-row';row.href=href;const label=document.createElement('span');label.className='conversation-title';row.append(label,document.createElement('time'));}
  row.querySelector('.conversation-title').textContent=title||'Thread';row.querySelector('time').textContent='Just now';
- nav.querySelector('p')?.remove();nav.querySelectorAll('[aria-current]').forEach(link=>link.removeAttribute('aria-current'));row.setAttribute('aria-current','page');nav.prepend(row);
+ nav.querySelector('p')?.remove();nav.querySelectorAll('[aria-current]').forEach(link=>link.removeAttribute('aria-current'));row.setAttribute('aria-current','page');nav.prepend(row);Array.from(nav.querySelectorAll('a')).slice(10).forEach(link=>link.remove());
 }
 conversation.addEventListener('click',event=>{
  const button=event.target.closest('[data-edit-thread]');if(!button||!thread)return;
@@ -440,7 +438,7 @@ async function navigateThread(url,push=true){
   const welcome=conversation.querySelector('.prompt-welcome');welcome.replaceChildren(...page.querySelector('.prompt-welcome').childNodes);
   conversation.classList.toggle('is-active',!!thread);status.textContent='';
   form.dispatchEvent(new CustomEvent('thread-changed',{detail:{thread}}));sizeInput();
-  historyPanel.querySelectorAll('nav[aria-label="Threads"] a').forEach(link=>{if(new URL(link.href).searchParams.get('session')===thread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
+  historyPanel.querySelectorAll('nav[aria-label="Recent"] a').forEach(link=>{if(new URL(link.href).searchParams.get('session')===thread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
   if(window.matchMedia('(max-width:700px)').matches){historyPanel.hidden=true;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded','false'));}
   resumePending();
   requestAnimationFrame(()=>{log.scrollTop=scrollPositions.get(currentURL)??log.scrollHeight;});
