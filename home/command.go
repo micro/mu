@@ -9,7 +9,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
-	"mu/service/mail"
 	"net/http"
 	"net/url"
 	"strings"
@@ -108,11 +107,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if acc == nil {
-		introduction := ""
-		if address := mail.HelloAddress(); address != "" {
-			introduction = `<p class="landing-action">Email<br><a href="mailto:` + html.EscapeString(address) + `">` + html.EscapeString(address) + `</a></p>`
-		}
-		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div>`+introduction+`</div></div>`, acc))
+		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div></div></div>`, acc))
 		return
 	}
 
