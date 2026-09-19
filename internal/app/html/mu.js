@@ -331,13 +331,32 @@ function remember(title){
  history.replaceState(null,'','/?session='+encodeURIComponent(thread));currentURL=location.pathname+location.search;
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
- heading.textContent=title||'Thread';
+ heading.replaceChildren();const titleButton=document.createElement('button');titleButton.type='button';titleButton.dataset.editThread='';titleButton.title='Rename thread';titleButton.textContent=title||'Thread';heading.append(titleButton);
  const nav=historyPanel.querySelector('nav[aria-label="Threads"]'),href='/?session='+encodeURIComponent(thread);
  let row=Array.from(nav.querySelectorAll('a')).find(link=>link.getAttribute('href')===href);
  if(!row){row=document.createElement('a');row.className='conversation-row';row.href=href;const label=document.createElement('span');label.className='conversation-title';row.append(label,document.createElement('time'));}
  row.querySelector('.conversation-title').textContent=title||'Thread';row.querySelector('time').textContent='Just now';
  nav.querySelector('p')?.remove();nav.querySelectorAll('[aria-current]').forEach(link=>link.removeAttribute('aria-current'));row.setAttribute('aria-current','page');nav.prepend(row);
 }
+conversation.addEventListener('click',event=>{
+ const button=event.target.closest('[data-edit-thread]');if(!button||!thread)return;
+ const heading=button.parentElement,original=button.textContent,version=viewVersion,target=thread;
+ const editor=document.createElement('form');editor.className='thread-title-editor';
+ const field=document.createElement('input');field.value=original;field.maxLength=160;field.required=true;field.setAttribute('aria-label','Thread title');
+ const save=document.createElement('button');save.type='submit';save.textContent='Save';
+ const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';
+ const restore=()=>{if(heading.isConnected)heading.replaceChildren(button);};
+ cancel.addEventListener('click',restore);field.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();restore();}});
+ editor.append(field,save,cancel);heading.replaceChildren(editor);field.focus();field.select();
+ editor.addEventListener('submit',async e=>{
+  e.preventDefault();const title=field.value.trim();if(!title)return;save.disabled=true;
+  try{const response=await fetch('/',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'rename-thread',thread:target,title,_csrf:decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')})});
+   if(!response.ok)throw Error('Could not save the title. Try again.');
+   const data=await response.json();if(version===viewVersion){remember(data.title);status.textContent='';}
+  }catch(error){if(version===viewVersion)status.textContent=error.message;}
+  finally{save.disabled=false;}
+ });
+});
 let receipt=null;
 async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=thread){
  while(version===viewVersion){

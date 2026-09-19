@@ -1,6 +1,7 @@
 package home
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"mu/agent"
@@ -11,10 +12,15 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // ConsoleHandler is the web front door. Nothing runs until a request is sent.
 func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		renameThread(w, r)
+		return
+	}
 	if r.Method != http.MethodGet {
 		app.MethodNotAllowed(w, r)
 		return
@@ -25,6 +31,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
 	initial := ""
 	selected, agentName := "", "Micro"
+	agentDescription := "A personal assistant"
 
 	if ref := r.URL.Query().Get("agent"); ref != "" {
 		if acc == nil {
@@ -76,8 +83,10 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if acc != nil {
 		if a := agent.For(acc.ID, selected); a != nil {
 			agentName = a.Name
+			agentDescription = strings.TrimSpace(a.Description)
 		} else if a := agent.Platform(selected); a != nil {
 			agentName = a.Name
+			agentDescription = strings.TrimSpace(a.Description)
 		}
 	}
 	if acc == nil {
@@ -91,10 +100,14 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	heading := ""
 	if session != "" {
-		heading = `<h1 class="assistant-thread-title">` + html.EscapeString(thread.Get(acc.ID, session).Subject) + `</h1>`
+		heading = `<h1 class="assistant-thread-title"><button type="button" data-edit-thread title="Rename thread">` + html.EscapeString(thread.Get(acc.ID, session).Subject) + `</button></h1>`
+	}
+	description := ""
+	if agentDescription != "" {
+		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
 	history := assistantHistory(acc.ID, session)
-	body := `<div class="assistant-workspace">` + history + `<div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1></div><form id="command-form" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="Write a message…" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
+	body := `<div class="assistant-workspace">` + history + `<div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
 	fmt.Fprint(w, app.ConsoleHTML("Micro", body, acc))
 }
 
@@ -122,4 +135,30 @@ func assistantHistory(owner, selected string) string {
 	}
 	b.WriteString(`</nav></aside>`)
 	return b.String()
+}
+
+// renameThread changes only the signed-in owner's web thread.
+func renameThread(w http.ResponseWriter, r *http.Request) {
+	_, acc := auth.TrySession(r)
+	if acc == nil {
+		http.Error(w, "Sign in required", http.StatusUnauthorized)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	if err := r.ParseForm(); err != nil || !auth.StrictCSRF(r) {
+		http.Error(w, "Invalid request", http.StatusForbidden)
+		return
+	}
+	title := strings.TrimSpace(r.PostForm.Get("title"))
+	if r.PostForm.Get("action") != "rename-thread" || title == "" || utf8.RuneCountInString(title) > 160 {
+		http.Error(w, "Enter a title of 1–160 characters", http.StatusBadRequest)
+		return
+	}
+	if !thread.RetitleWeb(acc.ID, r.PostForm.Get("thread"), title) {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(map[string]string{"title": title})
 }

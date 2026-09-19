@@ -1064,3 +1064,21 @@ func Attachment(account, id string) string {
 	}
 	return ""
 }
+
+// RetitleWeb changes the subject of a web thread owned by account.
+func RetitleWeb(account, id, subject string) bool {
+	ensure()
+	subject = strings.TrimSpace(subject)
+	if subject == "" {
+		return false
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	t := threads[id]
+	if t == nil || t.Account != account || t.Client != WebClient {
+		return false
+	}
+	t.Subject = subject
+	save()
+	return true
+}
