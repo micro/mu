@@ -7,10 +7,12 @@ package home
 // page a stranger may read before using the product.
 
 import (
+	"html"
 	"net/http"
 	"strings"
 
 	"mu/internal/app"
+	"mu/service/mail"
 )
 
 func AboutHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +29,10 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 		`archive, inbox and agent system that make those capabilities available. You can ` +
 		`run Mu yourself and Micro remains the default agent and front door.</p>` +
 		`</div>`)
+
+	if address := mail.HelloAddress(); address != "" {
+		b.WriteString(`<p>Say hello: <a href="mailto:` + html.EscapeString(address) + `">` + html.EscapeString(address) + `</a></p>`)
+	}
 
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{
