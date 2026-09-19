@@ -160,20 +160,56 @@ func writeFailure(w http.ResponseWriter, r *http.Request, err error) {
 	json.NewEncoder(w).Encode(map[string]any{"error": e})
 }
 
+// ProductPath names an operation under the package that owns it.
+func ProductPath(name string) string {
+	parts := strings.SplitN(name, "_", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+	return "/" + parts[0] + "/api/" + parts[1]
+}
+
+// ProductRequest identifies product protocol routes, never service calls.
+func ProductRequest(path string) bool {
+	if path == "/agent/mcp" {
+		return true
+	}
+	for _, owner := range []string{"agent", "inbox", "work"} {
+		if path == "/"+owner+"/api" || strings.HasPrefix(path, "/"+owner+"/api/") {
+			return true
+		}
+	}
+	return false
+}
+
 // PublicRESTHandler accepts JSON POST for every operation. Only discovery is a
 // GET, so prompts and private queries cannot leak into URLs or caches.
 func PublicRESTHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	if r.URL.Path == RESTRoot || r.URL.Path == RESTPrefix {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if !ProductRequest(r.URL.Path) || len(parts) < 2 || parts[1] != "api" {
+		writeFailure(w, r, Fail(404, "not_found", "Unknown product endpoint"))
+		return
+	}
+	if len(parts) == 2 {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", "GET")
 			writeFailure(w, r, Fail(405, "method_not_allowed", "Use GET for discovery"))
 			return
 		}
-		app.RespondJSON(w, map[string]any{"operations": Operations})
+		ops := []Operation{}
+		for _, op := range Operations {
+			if strings.HasPrefix(op.Name, parts[0]+"_") {
+				ops = append(ops, op)
+			}
+		}
+		app.RespondJSON(w, map[string]any{"operations": ops})
 		return
 	}
-	name := RESTToolName(r.URL.Path)
+	name := ""
+	if len(parts) == 3 {
+		name = parts[0] + "_" + parts[2]
+	}
 	if operation(name) == nil {
 		writeFailure(w, r, Fail(404, "not_found", "Unknown public operation"))
 		return
@@ -268,7 +304,7 @@ func PublicMCPHandler(w http.ResponseWriter, r *http.Request) {
 // publicMCPPage documents the protocol served at this endpoint.
 func publicMCPPage(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
-	b.WriteString(`<p>Connect an MCP client to Micro to ask questions, manage work and read your inbox.</p><h2>Connect</h2><p>Server URL: <code>` + html.EscapeString(app.BaseURL(r)+"/mcp") + `</code></p><p>Choose HTTP in your client. Sign in when prompted, or use an access token from <a href="/account/tokens?access=agent">Tokens</a> as <code>Authorization: Bearer &lt;token&gt;</code>.</p><h2>Tools</h2><p>The client discovers tools with <code>tools/list</code> and invokes them with <code>tools/call</code>. Access follows your account and token permissions.</p>`)
+	b.WriteString(`<p>Connect an MCP client to Micro to ask questions, manage work and read your inbox.</p><h2>Connect</h2><p>Server URL: <code>` + html.EscapeString(app.BaseURL(r)+"/agent/mcp") + `</code></p><p>Choose HTTP in your client. Sign in when prompted, or use an access token from <a href="/account/tokens?access=agent">Tokens</a> as <code>Authorization: Bearer &lt;token&gt;</code>.</p><h2>Tools</h2><p>The client discovers tools with <code>tools/list</code> and invokes them with <code>tools/call</code>. Access follows your account and token permissions.</p>`)
 	for _, op := range Operations {
 		b.WriteString(`<section class="page-section"><h3>` + html.EscapeString(op.Name) + `</h3><p>` + html.EscapeString(op.Description) + `</p><dl>`)
 		for _, p := range op.Params {
@@ -300,4 +336,11 @@ func ServiceCallHandler(w http.ResponseWriter, r *http.Request) {
 	clone.URL = &u
 	clone.URL.Path = RESTPrefix + strings.TrimPrefix(r.URL.Path, "/services/call/")
 	RESTHandler(w, clone)
+}
+
+// WriteProductMigration refuses obsolete product calls without executing a service.
+func WriteProductMigration(w http.ResponseWriter, target string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusGone)
+	json.NewEncoder(w).Encode(map[string]any{"error": map[string]string{"code": "endpoint_moved", "message": "Product operations moved to " + target + ". Service operations remain at /api/v1.", "endpoint": target}})
 }

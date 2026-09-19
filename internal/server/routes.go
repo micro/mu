@@ -197,16 +197,20 @@ func authRequired() map[string]bool {
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
 		// Public at the door, decided per tool inside. The same answer /mcp
 		// gives, for the same reason: news and weather must not need an account.
-		"/api/v1":  false,
-		"/api/v1/": false,
-		"/agent":   false, // Redirects to the named page; auth checked in handler
-		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
-		"/push/":   true,  // Subscribing this device to notifications (old name)
-		"/notify/": true,  // The same, under the name the feature actually has
-		"/work":    true,
-		"/inbox":   true,  // The mailbox — yours, so it needs a session
-		"/inbox/":  true,  // One alias's mail
-		"/setup":   false, // First-run setup (open only until an admin exists)
+		"/inbox/api":  false,
+		"/inbox/api/": false,
+		"/work/api":   false,
+		"/work/api/":  false,
+		"/api/v1":     false,
+		"/api/v1/":    false,
+		"/agent":      false, // Redirects to the named page; auth checked in handler
+		"/agent/":     false, // /agent/<name> — one agent's page; auth checked in handler
+		"/push/":      true,  // Subscribing this device to notifications (old name)
+		"/notify/":    true,  // The same, under the name the feature actually has
+		"/work":       true,
+		"/inbox":      true,  // The mailbox — yours, so it needs a session
+		"/inbox/":     true,  // One alias's mail
+		"/setup":      false, // First-run setup (open only until an admin exists)
 	}
 	return authenticated
 }
@@ -735,13 +739,7 @@ func registerRoutes() {
 		json.NewEncoder(w).Encode(versionInfo())
 	})
 
-	// /api is the HTTP API reference. It was a redirect to /mcp, on the
-	// argument that two documented doors is a decision the reader has to make
-	// before they can start — right when the second door was another way for an
-	// agent to call tools, wrong now. Somebody building a desktop client is not
-	// choosing between two things, and being sent to a tool-calling protocol
-	// reads as "not for you". The two pages say different things and link to
-	// each other.
+	// The runtime service API reference.
 	http.HandleFunc("/api", publicReferenceHandler)
 
 	// /api/v1/<service>/<method> — the door for a program that is not an agent.
@@ -755,9 +753,13 @@ func registerRoutes() {
 	http.HandleFunc(api.RESTRoot, publicRESTHandler)
 	http.HandleFunc(api.RESTPrefix, publicRESTHandler)
 
-	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
-	// One catalogue, two lenses — see internal/api/tools_page.go.
+	// Product operations have separate routes; runtime tools never switch by token.
 	http.HandleFunc("/developers", home.DevelopersHandler)
+	for _, owner := range []string{"agent", "inbox", "work"} {
+		http.HandleFunc("/"+owner+"/api", api.PublicRESTHandler)
+		http.HandleFunc("/"+owner+"/api/", api.PublicRESTHandler)
+	}
+	http.HandleFunc("/agent/mcp", api.PublicMCPHandler)
 	http.HandleFunc("/tools", api.ServiceToolsPageHandler)
 
 	// /tools/<name> — one tool. The smallest unit in the catalogue, and until

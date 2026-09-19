@@ -144,12 +144,22 @@ use service scopes when a client should reach only specific capabilities.
 
 ## API
 
-The JSON API at `/api/v1` and MCP protocol at `/mcp` retain Agent, Work, and Inbox
-operations. Service-scoped credentials select service operations instead. The
-old browser API and MCP documentation pages have been removed.
+Service operations remain at `/api/v1/<service>/<method>` and `/mcp`, documented
+at `/api` and `/tools`. The x402 host exposes the same service contract with
+payment handling. Credentials restrict access; they do not switch catalogues.
+
+Product operations live separately at `/agent/api/<operation>`,
+`/inbox/api/<operation>` and `/work/api/<operation>`, with product MCP at
+`/agent/mcp`. `/developers` documents these operations. Direct `POST /agent` and
+`POST /agent/<name>` remain supported.
+
+Migration: clients of the briefly shared product surface must change their
+product HTTP URLs from `/api/v1/<owner>/<operation>` to `/<owner>/api/<operation>`
+and their product MCP URL from `/mcp` to `/agent/mcp`. Existing service clients
+keep their URLs. Product tokens and response formats remain the same.
 
 ```bash
-curl "$MU_URL/api/v1/agent/ask" \
+curl "$MU_URL/agent/api/ask" \
   -H "Authorization: Bearer $MU_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"What needs my attention?"}'

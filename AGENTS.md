@@ -9,17 +9,19 @@ sign into, and that other programs can call.
 
 ## What is in the binary
 
-The public HTTP API and MCP share a curated outcome surface: Agent, Work and
-Inbox. Services and their derived tools are internal building blocks for agent
-execution, the CLI and sandboxed apps. They are not automatically public API
-operations. Explicit Services tokens select the service contract on the same
-HTTP/MCP endpoints. A separately configured x402 host retains its tools contract.
+The runtime service contract is `/api/v1/<service>/<method>` and `/mcp`.
+Both hosts expose the same service tools; x402 adds payment handling. Tokens
+restrict permissions, never select a different catalogue.
+
+Product operations belong to Agent, Work and Inbox at `/<owner>/api/<operation>`.
+Their separate MCP carrier is `/agent/mcp`. `/developers` documents this product
+surface; `/api` and `/tools` document the service contract.
 
 | Door | Where | For |
 |---|---|---|
 | Web app | `/` | a person, signed in |
 | PWA | `manifest.webmanifest`, `mu.js` | the same app, installed on a phone |
-| API | `/api/v1/<capability>/<operation>` | a program somebody wrote |
+| API | `/api/v1/<service>/<method>` | a program somebody wrote |
 | MCP | `/mcp` | somebody else's agent, holding a token |
 | CLI | `mu <service> <method>`, `mu ask` | a terminal, a script, a cron job |
 
@@ -42,7 +44,7 @@ caller is spared a signup, not whether we wrote the backend.
 
 **Agents** are defined one way: a name, a prompt, and a scoped set of those
 tools. Talk to one interactively on the web, by mail, over XMPP or from the CLI;
-or take an API token and call `agent_ask` through `/mcp`, where Mu runs the
+or take an API token and call `agent_ask` through `/agent/mcp`, where Mu runs the
 agent and manages its tools. Built-in agents also run without anybody present: the
 digest, the brief, moderation and work.
 
@@ -115,14 +117,14 @@ how much we supply.
 | the occasion too | a policy, once | **initiative** | nobody — it acts |
 
 **A layer is what you reach. A carrier is how you get there, and it is a
-detail.** The public outcome API has two carriers (`/api/v1` and `/mcp`); the agent also
+detail.** The product API has two carriers (`/<owner>/api/<operation>` and `/agent/mcp`); the agent also
 answers through the web app, CLI, mail, XMPP and legacy `POST /agent/<name>`. Listing carriers beside layers is what makes the model
 read as inconsistent when it is a gradient with an uneven fan-out. Which
 protocol carries you is the caller's business, which is the only way "an address
 is the smallest interface" means anything.
 
-HTTP and MCP expose the same curated operations. Internal service tools do
-not become public merely because an agent can use them.
+The product HTTP API and product MCP expose the same operations. Service HTTP and
+MCP expose the service registry with its existing scope checks.
 
 ## What may travel in a URL
 

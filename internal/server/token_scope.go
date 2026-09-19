@@ -5,13 +5,14 @@ import (
 	"path"
 	"strings"
 
+	"mu/internal/api"
 	"mu/internal/auth"
 )
 
 // Service scopes are enforced by the MCP/REST tool dispatcher. Other doors
 // authenticate an account, but cannot preserve a restricted caller's grant.
 func scopedRequestAllowed(r *http.Request) bool {
-	token := auth.TokenFromRequest(r)
+	token := auth.TokenFromRequest(api.CredentialRequest(r))
 	if token == nil || !token.Scoped() {
 		return true
 	}
@@ -19,5 +20,5 @@ func scopedRequestAllowed(r *http.Request) bool {
 	if path.Clean(p) != p {
 		return false
 	}
-	return p == "/mcp" || p == "/api/v1" || strings.HasPrefix(p, "/api/v1/")
+	return api.ProductRequest(p) || p == "/mcp" || p == "/api/v1" || strings.HasPrefix(p, "/api/v1/")
 }

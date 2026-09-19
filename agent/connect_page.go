@@ -216,7 +216,7 @@ func defaultPanel(base string) string {
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "mu": {
-      "url": "`+strings.TrimSuffix(base, "/")+`/mcp",
+      "url": "`+strings.TrimSuffix(base, "/")+`/agent/mcp",
       "headers": { "Authorization": "Bearer YOUR_TOKEN" }
     }
   }
@@ -318,7 +318,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "`+strings.ToLower(a.Name)+`": {
-      "url": "`+strings.TrimRight(base, "/")+"/mcp"+`",
+      "url": "`+strings.TrimRight(base, "/")+"/agent/mcp"+`",
       "headers": { "Authorization": "Bearer YOUR_TOKEN" }
     }
   }
