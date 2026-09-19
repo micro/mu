@@ -324,8 +324,6 @@ if(window.visualViewport){
 if(historyPanel){
  const primary=document.querySelector('.nav-drawer .sidebar-primary');
  if(primary)historyPanel.prepend(primary.cloneNode(true));
- const footer=document.querySelector('body>footer');
- if(footer){const information=document.createElement('nav');information.className='sidebar-information';information.setAttribute('aria-label','Site information');Array.from(footer.children).forEach(link=>information.append(link.cloneNode(true)));historyPanel.append(information);}
 }
 
 document.querySelectorAll('[data-history-toggle]').forEach(button=>button.addEventListener('click',()=>{historyPanel.hidden=!historyPanel.hidden;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded',String(!historyPanel.hidden)));}));
