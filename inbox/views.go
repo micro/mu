@@ -22,15 +22,15 @@ import (
 
 func viewNavigation(active string) string {
 	var b strings.Builder
-	b.WriteString(`<nav class="view-switch inbox-views" aria-label="Inbox views">`)
-	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"scheduled", "Scheduled", "/inbox?view=scheduled"}, {"saved", "Saved", "/inbox?view=saved"}} {
+	b.WriteString(`<div class="form-actions"><a href="/inbox/new">New message</a></div><nav class="view-switch inbox-views" aria-label="Inbox views">`)
+	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"scheduled", "Scheduled", "/inbox?view=scheduled"}, {"saved", "Saved", "/inbox?view=saved"}, {"settings", "Settings", "/inbox/settings"}} {
 		current := ""
 		if active == v.key {
 			current = ` aria-current="page"`
 		}
 		fmt.Fprintf(&b, `<a href="%s"%s>%s</a>`, html.EscapeString(v.href), current, v.name)
 	}
-	b.WriteString(`<a href="/inbox/new">New message</a><a href="/inbox/settings">Settings</a></nav>`)
+	b.WriteString(`</nav>`)
 	return b.String()
 }
 
@@ -96,24 +96,23 @@ func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		if e.Prompt != "" {
 			kind, detail = "Agent work", e.Prompt
 		}
+		destination := "/events?id=" + url.QueryEscape(e.ID)
 		if e.Kind == "brief" {
-			kind = "Brief"
+			kind, detail = "Brief", "Morning brief. Manage delivery and content in Inbox settings."
+			destination = "/inbox/settings"
 		}
 		state := "Scheduled"
 		if e.Paused {
 			state = "Paused"
 		}
-		fmt.Fprintf(&b, `<section class="record-card"><a class="record-title" href="/events?id=%s">%s</a><div class="metadata-row"><span>%s</span><span>%s</span><time datetime="%s">%s</time>`, url.QueryEscape(e.ID), html.EscapeString(e.Title), kind, state, e.When.Format(time.RFC3339), html.EscapeString(e.When.In(loc).Format("Mon 2 Jan, 15:04 MST")))
+		fmt.Fprintf(&b, `<section class="record-card"><a class="record-title" href="%s">%s</a><div class="metadata-row"><span>%s</span><span>%s</span><time datetime="%s">%s</time>`, html.EscapeString(destination), html.EscapeString(e.Title), kind, state, e.When.Format(time.RFC3339), html.EscapeString(e.When.In(loc).Format("Mon 2 Jan, 15:04 MST")))
 		if e.Repeat != "" {
 			b.WriteString(`<span>` + html.EscapeString(e.Repeat) + `</span>`)
 		}
 		b.WriteString(`</div><p class="collection-preview">` + html.EscapeString(trimTo(detail, 200)) + `</p>`)
-		b.WriteString(`<div class="form-actions"><a href="/events?id=` + url.QueryEscape(e.ID) + `">Details</a>`)
-		if !e.Paused {
+		b.WriteString(`<div class="form-actions">`)
+		if !e.Paused && e.Kind != "brief" {
 			label := "Cancel"
-			if e.Kind == "brief" {
-				label = "Pause"
-			}
 			fmt.Fprintf(&b, `<form method="post" action="/inbox?view=scheduled"><input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="cancel"><input type="hidden" name="id" value="%s"><button type="submit">%s</button></form>`, html.EscapeString(auth.CSRFToken(r)), html.EscapeString(e.ID), label)
 		}
 		b.WriteString(`</div></section>`)
