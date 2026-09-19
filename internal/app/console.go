@@ -17,7 +17,7 @@ func ConsoleHTML(title, body string, acc *auth.Account) string {
 		if acc.Admin {
 			secondary += `<a href="/admin">Admin</a>`
 		}
-		sidebar = `<nav class="sidebar-primary" aria-label="Main navigation"><a href="/inbox">Inbox</a>` + secondary + `<a href="/logout">Logout</a></nav>`
+		sidebar = `<nav class="sidebar-primary" aria-label="Main navigation">` + secondary + `<a href="/inbox">Inbox</a><a href="/logout">Logout</a></nav>`
 	} else {
 		links += `<a href="/login">Login</a>`
 		sidebar = `<nav aria-label="Navigation">` + links + `</nav>`
