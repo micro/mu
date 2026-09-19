@@ -818,8 +818,6 @@ body.nav-open{overflow:hidden}
 .command-page:has(.assistant-workspace) .page{height:auto;flex:1;min-height:0}
 .command-page:has(.assistant-workspace)>footer{display:none}
 .assistant-workspace #status:empty{display:none}
-.sidebar-information{display:flex;flex-wrap:wrap;gap:8px 16px;padding:20px 8px max(16px,env(safe-area-inset-bottom));font-size:.8rem;color:#666}
-.sidebar-information a{text-decoration:none}
 
 /* Thread history lives in the header; opening it never shifts the transcript. */
 .history-toggle{flex:none;width:36px;height:36px;padding:6px;border:0;background:transparent}
@@ -855,7 +853,6 @@ body.nav-open{overflow:hidden}
 .signed-in:has(.assistant-workspace) .nav-toggle{display:none}
 .sidebar-primary{display:flex;flex-direction:column;gap:4px}
 .sidebar-primary{margin-bottom:20px}
-.assistant-history nav[aria-label="Recent"]{max-height:45dvh;overflow-y:auto;overscroll-behavior:contain}
 .sidebar-primary a{display:block;padding:8px;text-decoration:none;border-radius:4px}
 .sidebar-primary a:hover{background:var(--surface)}
 @media(max-width:700px){.signed-in header{padding-left:4px}.signed-in .nav-toggle{width:40px;height:40px;padding:8px}.signed-in .desktop-navigation{gap:16px}}
