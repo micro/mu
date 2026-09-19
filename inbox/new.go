@@ -94,7 +94,7 @@ func NewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if f.Mode != "assistant" && f.Mode != "email" {
-		app.BadRequest(w, r, "Choose Assistant or Email")
+		app.BadRequest(w, r, "Choose Assistant or Mail")
 		return
 	}
 
@@ -551,7 +551,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		} else {
 			email = " checked"
 		}
-		b.WriteString(`<fieldset class="segmented-control"><legend class="sr-only">Send to</legend><label><input class="sr-only" type="radio" name="mode" value="assistant"` + assistant + `>Assistant</label><label><input class="sr-only" type="radio" name="mode" value="email"` + email + `>Email</label></fieldset>`)
+		b.WriteString(`<fieldset class="segmented-control"><legend class="sr-only">Send to</legend><label><input class="sr-only" type="radio" name="mode" value="assistant"` + assistant + `>Assistant</label><label><input class="sr-only" type="radio" name="mode" value="email"` + email + `>Mail</label></fieldset>`)
 	}
 
 	if writing != kindMessage {
@@ -574,7 +574,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		if f.Mode == "assistant" {
 			state = " hidden disabled"
 		}
-		b.WriteString(`<input class="ib-field" type="text" name="to" aria-label="To" required` + state + ` placeholder="To" ` +
+		b.WriteString(`<input class="ib-field" type="text" name="to" aria-label="To" required` + state + ` placeholder="To: @username or name@example.com" ` +
 			`list="ib-to-list" autocomplete="off" value="` +
 			html.EscapeString(strings.TrimPrefix(f.To, "@")) + `">`)
 		b.WriteString(whoIsHere(accountID))

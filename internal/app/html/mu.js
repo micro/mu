@@ -290,7 +290,7 @@ if (typeof document !== "undefined") {
  if(!form||!input)return;
  const guestKey='micro-message-draft',ttl=24*60*60*1000;
  const params=new URLSearchParams(location.search),thread=params.get('session')||params.get('continue')||'';
- let key='micro-message-draft:'+JSON.stringify([form.dataset.account,thread]);
+ let key='micro-message-draft:'+JSON.stringify([form.dataset.account,thread||form.dataset.agent||'']);
  function read(k){try{const d=JSON.parse(sessionStorage.getItem(k)||'null');if(d&&typeof d.text==='string'&&d.text.length<=8000&&Number.isFinite(d.at)&&Date.now()-d.at>=0&&Date.now()-d.at<ttl)return d.text;sessionStorage.removeItem(k);}catch{}return '';}
  function save(){try{if(input.value)sessionStorage.setItem(key,JSON.stringify({text:input.value,at:Date.now()}));else sessionStorage.removeItem(key);return true;}catch{return false;}}
  const draft=read(key)||(!thread?read(guestKey):'');
@@ -299,8 +299,8 @@ if (typeof document !== "undefined") {
  if(form){
   form.addEventListener('submit',()=>{if(!document.querySelector('#send').disabled)save();});
   form.addEventListener('thread-leaving',save);
-  form.addEventListener('thread-changed',event=>{key='micro-message-draft:'+JSON.stringify([form.dataset.account,event.detail.thread]);input.value=read(key);});
-  form.addEventListener('message-accepted',()=>{try{sessionStorage.removeItem(key);}catch{}const p=new URLSearchParams(location.search);key='micro-message-draft:'+JSON.stringify([form.dataset.account,p.get('session')||p.get('continue')||'']);if(input.value)save();});
+  form.addEventListener('thread-changed',event=>{key='micro-message-draft:'+JSON.stringify([form.dataset.account,event.detail.thread||form.dataset.agent||'']);input.value=read(key);});
+  form.addEventListener('message-accepted',()=>{try{sessionStorage.removeItem(key);}catch{}const p=new URLSearchParams(location.search);key='micro-message-draft:'+JSON.stringify([form.dataset.account,p.get('session')||p.get('continue')||form.dataset.agent||'']);if(input.value)save();});
  }
 })();
 
@@ -328,11 +328,11 @@ let viewVersion=0,navigationVersion=0,navigating=false,submission=null,currentUR
 const scrollPositions=new Map();
 function remember(title){
  if(!thread)return;
- history.replaceState(null,'','/?session='+encodeURIComponent(thread));currentURL=location.pathname+location.search;
+ history.replaceState(null,'',(form.dataset.path||'/')+'?session='+encodeURIComponent(thread));currentURL=location.pathname+location.search;
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
  heading.replaceChildren();const titleButton=document.createElement('button');titleButton.type='button';titleButton.dataset.editThread='';titleButton.title='Rename thread';titleButton.textContent=title||'Thread';heading.append(titleButton);
- const nav=historyPanel.querySelector('nav[aria-label="Threads"]'),href='/?session='+encodeURIComponent(thread);
+ const nav=historyPanel.querySelector('nav[aria-label="Threads"]'),href=(form.dataset.path||'/')+'?session='+encodeURIComponent(thread);
  let row=Array.from(nav.querySelectorAll('a')).find(link=>link.getAttribute('href')===href);
  if(!row){row=document.createElement('a');row.className='conversation-row';row.href=href;const label=document.createElement('span');label.className='conversation-title';row.append(label,document.createElement('time'));}
  row.querySelector('.conversation-title').textContent=title||'Thread';row.querySelector('time').textContent='Just now';
@@ -431,7 +431,7 @@ async function navigateThread(url,push=true){
   thread=url.searchParams.get('session')||url.searchParams.get('continue')||'';
   if(push)history.pushState(null,'',url.pathname+url.search);else history.replaceState(null,'',url.pathname+url.search);
   currentURL=url.pathname+url.search;
-  form.dataset.pending=nextForm.dataset.pending;form.dataset.agent=nextForm.dataset.agent;form.dataset.agentName=nextForm.dataset.agentName;
+  form.dataset.path=nextForm.dataset.path||'/';form.dataset.pending=nextForm.dataset.pending;form.dataset.agent=nextForm.dataset.agent;form.dataset.agentName=nextForm.dataset.agentName;
   log.replaceChildren(...nextLog.childNodes);
   conversation.querySelector('.assistant-thread-title')?.remove();
   const heading=page.querySelector('.assistant-thread-title');if(heading)log.before(heading);
@@ -448,10 +448,10 @@ document.querySelector('.assistant-workspace').addEventListener('click',event=>{
  const link=event.target.closest('a');
  if(!link||event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||link.target||link.hasAttribute('download'))return;
  const url=new URL(link.href);
- if(url.origin!==location.origin||url.pathname!=='/'||!(url.searchParams.has('session')||url.searchParams.get('new')==='1'))return;
+ if(url.origin!==location.origin||url.pathname!==(form.dataset.path||'/')||!(url.searchParams.has('session')||url.searchParams.get('new')==='1'))return;
  event.preventDefault();navigateThread(url);
 });
-window.addEventListener('popstate',()=>{if(location.pathname==='/')navigateThread(new URL(location.href),false);});
+window.addEventListener('popstate',()=>{if(location.pathname===(form.dataset.path||'/'))navigateThread(new URL(location.href),false);});
 form.addEventListener('submit',e=>{e.preventDefault();run(input.value.trim());});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
 try{if(location.hash){input.value=decodeURIComponent(location.hash.slice(1));history.replaceState(null,'','/');}}catch{}

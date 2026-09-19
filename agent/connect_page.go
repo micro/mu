@@ -137,13 +137,13 @@ func connEndpoint(base, path string) string {
 		return ""
 	}
 
-	name := strings.TrimPrefix(path, "/agent/")
-	payload, _ := json.Marshal(map[string]string{"prompt": "What needs my attention?", "agent": name})
-	example := "curl -X POST " + strings.TrimRight(base, "/") + `/api/v1/agent/ask \
+	path = "/agent/" + strings.TrimPrefix(path, "/agent/")
+	payload, _ := json.Marshal(map[string]string{"prompt": "What needs my attention?"})
+	example := "curl -X POST " + strings.TrimRight(base, "/") + path + ` \
   -H "Authorization: Bearer $MU_TOKEN" \
   -H "Content-Type: application/json" \
   -d '` + string(payload) + "'"
-	return `<h3 class="conn-head">HTTP endpoint</h3><p class="conn-note">Ask this agent through the <a href="/developers#reference">API reference</a>. Create an API token at <a href="/account/tokens?add=api#create-token-form">Tokens</a>; service-scoped credentials cannot run an agent.</p><pre class="conn-pre">` + html.EscapeString(example) + `</pre><p class="conn-note">The response contains <code>data.text</code> and <code>data.thread</code>. Send <code>thread</code> back to continue.</p>`
+	return `<h3 class="conn-head">HTTP endpoint</h3><p class="conn-note">Post directly to this agent’s address. The <a href="/developers#reference">shared API</a> also supports selecting an agent. Create an API token at <a href="/account/tokens?add=api#create-token-form">Tokens</a>; service-scoped credentials cannot run an agent.</p><pre class="conn-pre">` + html.EscapeString(example) + `</pre><p class="conn-note">The response contains <code>text</code> and <code>thread</code>. Send <code>thread</code> back to continue.</p>`
 
 }
 

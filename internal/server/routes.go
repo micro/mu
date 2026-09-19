@@ -471,7 +471,13 @@ func registerRoutes() {
 		http.Redirect(w, r, to, http.StatusFound)
 	})
 	http.HandleFunc("/agent/handoff", agent.HandoffHandler)
-	http.HandleFunc("/agent/", agent.Handler)
+	http.HandleFunc("/agent/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && !strings.HasPrefix(r.URL.Path, "/agent/flow/") && !app.WantsJSON(r) && r.URL.Query().Get("bookmark") == "" && r.URL.Query().Get("saved") == "" {
+			home.ConsoleHandler(w, r)
+			return
+		}
+		agent.Handler(w, r)
+	})
 	http.HandleFunc("/agents/data", agent.AgentsHandler)
 	// The old path, so a page cached with the previous script keeps working.
 	http.HandleFunc("/agent/agents", agent.AgentsHandler)
