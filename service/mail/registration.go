@@ -21,7 +21,7 @@ func sharedRecipient(raw string) bool {
 		return false
 	}
 	local, domain, ok := strings.Cut(a.Address, "@")
-	return ok && strings.EqualFold(local, AgentMailbox) && strings.EqualFold(domain, ConfiguredDomain())
+	return ok && sharedMailbox(local) && strings.EqualFold(domain, ConfiguredDomain())
 }
 
 // Registration replies never whitelist a sender or create an account. Only

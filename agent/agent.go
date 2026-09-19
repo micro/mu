@@ -76,6 +76,7 @@ type QueryOpts struct {
 	System            string // optional custom system prompt (user-defined agent)
 	Extra             string
 	Tools             []string // optional tool allow-list (user-defined agent); empty = all
+	NoTools           bool
 	Model             string
 	Stream            StreamHooks
 	OnStep            func(Step)
@@ -120,7 +121,7 @@ func Routed(prompt string, opts QueryOpts) (string, QueryOpts) {
 		return prompt, opts
 	}
 	if o := PlatformOpts(Platform(id)); o.System != "" {
-		opts.System, opts.Tools = o.System, o.Tools
+		opts.System, opts.Tools, opts.NoTools, opts.Model = o.System, o.Tools, o.NoTools, o.Model
 	}
 	return prompt, opts
 }

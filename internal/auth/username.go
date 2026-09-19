@@ -62,7 +62,7 @@ var bannedAsWord = []string{
 // to be able to receive at to run a domain at all.
 var reserved = []string{
 	"admin", "administrator", "system", "root", "moderator", "support",
-	"agent", "noreply", "no_reply", "mailer", "postmaster", "abuse",
+	"hello", "agent", "noreply", "no_reply", "mailer", "postmaster", "abuse",
 	"webmaster", "hostmaster", "security", "info", "help", "contact",
 	"www", "api", "mail", "mu",
 }

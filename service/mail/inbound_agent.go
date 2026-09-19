@@ -58,7 +58,7 @@ func fromSharedAgent(addr string) bool {
 		return false
 	}
 	account, _ := SplitAlias(local)
-	return strings.EqualFold(account, AgentMailbox)
+	return sharedMailbox(account)
 }
 
 // wakeRequest is everything the rule needs. A struct rather than six

@@ -267,7 +267,7 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	// support@ used to be the other one, delivering to the first admin. It was
 	// the only address here the whitelist did not apply to, which made it the
 	// only address a spammer could reach, and that is what it filled up with.
-	if strings.EqualFold(username, AgentMailbox) {
+	if sharedMailbox(username) {
 		s.to = append(s.to, to)
 		app.Log("mail", "Accepting mail for reserved mailbox %s", to)
 		return nil
@@ -529,14 +529,9 @@ func (s *Session) Data(r io.Reader) error {
 		}
 	}
 	sharedOnly := len(s.to) == 1 && sharedRecipient(s.to[0])
-	if sharedOnly && AccountForVerifiedEmail(fromAddr.Address) == nil {
-		if !aligned || machineMail(msg.Header) || strings.TrimSpace(s.from) == "" {
-			return &smtpd.SMTPError{Code: 550, Message: "Create an account and verify your email address before writing to Micro"}
-		}
-		if err := sendRegistrationReply(fromAddr.Address, messageID); err != nil {
-			return &smtpd.SMTPError{Code: 451, Message: "Registration reply temporarily unavailable; please try again later"}
-		}
-		return nil
+	unknownShared := sharedOnly && AccountForVerifiedEmail(fromAddr.Address) == nil
+	if unknownShared && (!aligned || machineMail(msg.Header) || strings.TrimSpace(s.from) == "" || fromSharedAgent(fromAddr.Address) || len(headerTo) != 1 || len(headerCc) != 0 || !sharedRecipient(headerTo[0])) {
+		return &smtpd.SMTPError{Code: 550, Message: "An authenticated personal email is required"}
 	}
 
 	// ── Strict inbound filter ──────────────────────────────────
@@ -615,6 +610,26 @@ func (s *Session) Data(r io.Reader) error {
 		}
 	}
 
+	if unknownShared {
+		var err error
+		if helloRecipient(s.to[0]) && Introduction != nil {
+			err = Introduction(fromAddr.Address, messageID, subject, body)
+		} else {
+			err = sendRegistrationReply(fromAddr.Address, messageID)
+		}
+		if err != nil {
+			return &smtpd.SMTPError{Code: 451, Message: "Introduction temporarily unavailable; please try again later"}
+		}
+		return nil
+	}
+	if sharedOnly && aligned && !machineMail(msg.Header) && ClaimIntroduction != nil {
+		if acc := AccountForVerifiedEmail(fromAddr.Address); acc != nil {
+			if err := ClaimIntroduction(acc.ID, fromAddr.Address); err != nil {
+				return &smtpd.SMTPError{Code: 451, Message: "Your introduction is being connected; please try again shortly"}
+			}
+		}
+	}
+
 	// Process each recipient
 	for _, recipient := range s.to {
 		// Parse recipient email
@@ -660,7 +675,7 @@ func (s *Session) Data(r io.Reader) error {
 		// called the thing, and you should not also have to spell your own
 		// username to reach it.
 		var toAcc *auth.Account
-		sharedAgentMail := !isExternal && strings.EqualFold(toUsername, AgentMailbox)
+		sharedAgentMail := !isExternal && sharedMailbox(toUsername)
 		if sharedAgentMail && !aligned {
 			continue // Never file a spoofed sender under a verified account.
 		}

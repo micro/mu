@@ -31,6 +31,7 @@ type Agent struct {
 	// Model is which model this agent answers with; empty is the instance's
 	// choice. What an agent does decides what it needs — a lookup is one round,
 	// a build is many — so this is per agent rather than per instance.
+	NoTools     bool // Explicitly disable tools for bounded introductions.
 	Model       string
 	MemoryScope string // Memory namespace prefix
 	// Examples are things worth asking this agent, in its own words.
