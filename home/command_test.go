@@ -1,6 +1,7 @@
 package home
 
 import (
+	"mu/agent"
 	"mu/internal/auth"
 	"mu/internal/thread"
 	"net/http"
@@ -86,5 +87,50 @@ func TestThreadTitleOwnershipAndCSRF(t *testing.T) {
 	}
 	if thread.Get(owner, own.ID).Subject != "My project" {
 		t.Fatal("title not preserved")
+	}
+}
+
+func TestAgentPageFiltersHistoryAndKeepsAddress(t *testing.T) {
+	const owner = "agent_history_owner"
+	if err := auth.Create(&auth.Account{ID: owner, Admin: true}); err != nil {
+		t.Fatal(err)
+	}
+	session, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, _, err := agent.CreateAgent(owner, "Malten", agent.Hosted, "Help", "A specialist", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	own := thread.Open(owner, thread.WebClient, "malten-thread")
+	thread.SetAgent(owner, own.ID, a.ID)
+	thread.Name(owner, own.ID, "Malten only")
+	other := thread.Open(owner, thread.WebClient, "micro-thread")
+	thread.Name(owner, other.ID, "Micro only")
+	get := func(path string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("GET", path, nil)
+		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
+		w := httptest.NewRecorder()
+		ConsoleHandler(w, r)
+		return w
+	}
+	path := agent.Path(owner, a.ID)
+	w := get(path)
+	body := w.Body.String()
+	if w.Code != 200 || !strings.Contains(body, "Malten only") || strings.Contains(body, "Micro only") || !strings.Contains(body, `data-path="`+path+`"`) || !strings.Contains(body, path+"?new=1") || !strings.Contains(body, "A specialist") {
+		t.Fatal("agent page lost identity or mixed history")
+	}
+	w = get("/")
+	if strings.Contains(w.Body.String(), "Malten only") || !strings.Contains(w.Body.String(), "Micro only") {
+		t.Fatal("home history mixed agents")
+	}
+	w = get("/?session=" + own.ID)
+	if w.Code != 303 || w.Header().Get("Location") != path+"?session="+own.ID {
+		t.Fatal("old thread link lost agent address")
+	}
+	w = get("/agent/micro?session=" + own.ID)
+	if w.Code != 303 || w.Header().Get("Location") != path+"?session="+own.ID {
+		t.Fatal("wrong agent thread accepted")
 	}
 }

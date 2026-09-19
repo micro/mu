@@ -33,7 +33,11 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	selected, agentName := "", "Micro"
 	agentDescription := "A personal assistant"
 
-	if ref := r.URL.Query().Get("agent"); ref != "" {
+	ref := r.URL.Query().Get("agent")
+	if strings.HasPrefix(r.URL.Path, "/agent/") {
+		ref = strings.TrimPrefix(r.URL.Path, "/agent/")
+	}
+	if ref != "" {
 		if acc == nil {
 			app.RedirectToLogin(w, r)
 			return
@@ -44,6 +48,10 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			app.NotFound(w, r, "Agent not found")
 			return
 		}
+	}
+	if r.URL.Path == "/" && ref != "" && r.URL.Query().Get("session") == "" && r.URL.Query().Get("continue") == "" {
+		http.Redirect(w, r, agent.Path(acc.ID, selected), http.StatusSeeOther)
+		return
 	}
 	session := r.URL.Query().Get("session")
 	if session == "" {
@@ -59,6 +67,14 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		selected = thread.Get(acc.ID, session).Agent
+		if selected == agent.DefaultPlatformAgent {
+			selected = ""
+		}
+		target := agent.Path(acc.ID, selected)
+		if (r.URL.Path != "/" && r.URL.Path != target) || (r.URL.Path == "/" && selected != "") {
+			http.Redirect(w, r, target+"?session="+url.QueryEscape(session), http.StatusSeeOther)
+			return
+		}
 		thread.MarkSeen(acc.ID, session)
 		for _, message := range thread.Messages(acc.ID, session, 100) {
 			class := "answer"
@@ -102,21 +118,29 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if session != "" {
 		heading = `<h1 class="assistant-thread-title"><button type="button" data-edit-thread title="Rename thread">` + html.EscapeString(thread.Get(acc.ID, session).Subject) + `</button></h1>`
 	}
+	basePath := "/"
+	if strings.HasPrefix(r.URL.Path, "/agent/") || selected != "" {
+		basePath = agent.Path(acc.ID, selected)
+	}
 	description := ""
 	if agentDescription != "" {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
-	history := assistantHistory(acc.ID, session)
-	body := `<div class="assistant-workspace">` + history + `<div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
-	fmt.Fprint(w, app.ConsoleHTML("Micro", body, acc))
+	history := assistantHistory(acc.ID, session, selected, basePath)
+	body := `<div class="assistant-workspace">` + history + `<div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
+	fmt.Fprint(w, app.ConsoleHTML(agentName, body, acc))
 }
 
-func assistantHistory(owner, selected string) string {
+func assistantHistory(owner, selected, agentID, basePath string) string {
 	var b strings.Builder
-	b.WriteString(`<aside id="assistant-history" class="assistant-history" hidden><div class="assistant-toolbar"><strong>Threads</strong><a href="/?new=1">New message</a></div><nav aria-label="Threads">`)
+	b.WriteString(`<aside id="assistant-history" class="assistant-history" hidden><div class="assistant-toolbar"><strong>Threads</strong><a href="` + html.EscapeString(basePath) + `?new=1">New message</a></div><nav aria-label="Threads">`)
 	count := 0
 	for _, t := range thread.List(owner, 0) {
-		if t.Client != thread.WebClient {
+		target := t.Agent
+		if target == agent.DefaultPlatformAgent {
+			target = ""
+		}
+		if t.Client != thread.WebClient || target != agentID {
 			continue
 		}
 		count++
@@ -128,7 +152,7 @@ func assistantHistory(owner, selected string) string {
 		if title == "" {
 			title = "Untitled"
 		}
-		b.WriteString(`<a class="conversation-row" href="/?session=` + url.QueryEscape(t.ID) + `"` + current + `><span class="conversation-title">` + html.EscapeString(title) + `</span><time>` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time></a>`)
+		b.WriteString(`<a class="conversation-row" href="` + html.EscapeString(basePath) + `?session=` + url.QueryEscape(t.ID) + `"` + current + `><span class="conversation-title">` + html.EscapeString(title) + `</span><time>` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time></a>`)
 	}
 	if count == 0 {
 		b.WriteString(`<p class="text-muted">No threads yet.</p>`)
