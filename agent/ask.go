@@ -281,7 +281,7 @@ func Ask(r AskRequest) (Answer, error) {
 		// read on the Execute path and dropped on this one. See PlatformOpts,
 		// which returns the pair for exactly this reason.
 		o := PlatformOpts(plat)
-		opts.System, opts.Tools = o.System, o.Tools
+		opts.System, opts.Tools, opts.NoTools, opts.Model = o.System, o.Tools, o.NoTools, o.Model
 		// And what this agent knows about you, which is the thing that made
 		// eleven agents worth having rather than one prompt eleven ways. The
 		// scope was declared in the registry and read in one place — the

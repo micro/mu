@@ -325,7 +325,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		facts = append(facts, client)
 	}
 	facts = append(facts, "The current date and time is "+today+" ("+nowRFC+").")
-	if !opts.Public && UserContextFunc != nil {
+	if !opts.Public && !opts.NoTools && UserContextFunc != nil {
 		if uc := UserContextFunc(accountID); uc != "" {
 			facts = append(facts, "User context:\n"+uc)
 		}
@@ -344,6 +344,9 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// rather than tuning: a question answered from here is one model call
 	// instead of three.
 	services := filterServices(nativeServices(opts.Public), opts.Tools)
+	if opts.NoTools {
+		services = nil
+	}
 	if now := nowContext(services); now != "" {
 		facts = append(facts, now)
 	}
@@ -351,7 +354,10 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// The question, on its own. What was said before it goes to the model as
 	// turns rather than as prose — see memory.go, which is also where the
 	// reason the whole conversation used to be sent twice is written down.
-	retrieved := retrievedContext(accountID, prompt, opts, services)
+	retrieved := ""
+	if !opts.NoTools {
+		retrieved = retrievedContext(accountID, prompt, opts, services)
+	}
 	sys += "\n\n" + retrievalInstructions
 	question := prompt
 
@@ -408,6 +414,13 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		agentOpts = append(agentOpts, gmagent.BaseURL(baseURL))
 	}
 	agentOpts = append(agentOpts, managementTools(accountID, opts)...)
+	if opts.NoTools {
+		agentOpts = append(agentOpts, gmagent.WrapTool(func(next gmai.ToolHandler) gmai.ToolHandler {
+			return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+				return gmai.ToolResult{ID: call.ID, Refused: "not_permitted", Content: `{"error":"This agent has no tools."}`}
+			}
+		}))
+	}
 	name := nativeAgentInstanceName()
 	a := service.NewAgent(name, sys, provider, key, services, agentOpts...)
 	return nativeRun{agent: a, question: question, name: name, runs: runs, provider: provider, baseURL: baseURL}, true

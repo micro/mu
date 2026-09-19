@@ -25,6 +25,7 @@ import (
 	chatagent "mu/agent/chat"
 	"mu/agent/digest"
 	"mu/agent/gate"
+	"mu/agent/hello"
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
 	"mu/agent/moderate"
@@ -83,6 +84,9 @@ const mailHistoryTurns = 6
 
 // wireHooks connects the building blocks to each other.
 func wireHooks() {
+	mail.Introduction = hello.Receive
+	mail.ClaimIntroduction = hello.Claim
+	hello.Start()
 	// Attach the calendar somebody already keeps. events owns scheduling and
 	// knows nothing about Google; this is the only place the two meet, and it
 	// stays unset on an instance with no Google credentials — one calendar

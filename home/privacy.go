@@ -61,6 +61,10 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 		`<b>Operational logs</b> — requests, errors and IP addresses, kept short-term
 		 to run the service and stop abuse.`)
 
+	section("Email introductions",
+		`Emailing hello starts a short AI conversation without creating an account. Your messages are sent to the configured model provider. Introductory content is kept for up to 30 days; a hashed sender identifier and usage counts remain to enforce the trial limit.`,
+		`If you create an account and verify the same email address, the introduction is moved into your account’s conversation history after verification. No account or wallet is created just because you emailed.`)
+
 	section("Agents and third parties",
 		`Some tools reach outside this instance, and when they do, the request goes
 		 to that provider: web search to Brave, places and travel time to Google,

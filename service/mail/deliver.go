@@ -107,7 +107,7 @@ func deliverHere(m Outgoing, to string) (string, error) {
 	// because agent@ resolves to whoever wrote to it. Same rule as inbound —
 	// see smtp.go, where sharedAgentMail does this for mail off the network —
 	// and the reason agent@ is not an account and must not be looked up as one.
-	shared := strings.EqualFold(account, AgentMailbox)
+	shared := sharedMailbox(account)
 	owner := m.FromID
 	if !shared {
 		acc, err := auth.AccountByUsername(account)
