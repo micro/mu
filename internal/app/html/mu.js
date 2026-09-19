@@ -299,6 +299,8 @@ if (typeof document !== "undefined") {
  if(guest){guest.addEventListener('submit',e=>{e.preventDefault();if(!input.value.trim())return;if(save())location.assign('/signup');else document.querySelector('#guest-status').textContent='This browser cannot keep your draft. Copy your message, then use Login to create an account or sign in.';});}
  if(form){
   form.addEventListener('submit',()=>{if(!document.querySelector('#send').disabled)save();});
+  form.addEventListener('thread-leaving',save);
+  form.addEventListener('thread-changed',event=>{key='micro-message-draft:'+JSON.stringify([form.dataset.account,event.detail.thread]);input.value=read(key);});
   form.addEventListener('message-accepted',()=>{try{sessionStorage.removeItem(key);}catch{}const p=new URLSearchParams(location.search);key='micro-message-draft:'+JSON.stringify([form.dataset.account,p.get('session')||p.get('continue')||'']);if(input.value)save();});
  }
 })();
@@ -317,9 +319,11 @@ input.addEventListener('input',sizeInput);sizeInput();
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 if(conversation.classList.contains('is-active'))requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});
 let busy=false,thread=new URLSearchParams(location.search).get('session')||new URLSearchParams(location.search).get('continue')||'';
+let viewVersion=0,navigationVersion=0,navigating=false,submission=null,currentURL=location.pathname+location.search;
+const scrollPositions=new Map();
 function remember(title){
  if(!thread)return;
- history.replaceState(null,'','/?session='+encodeURIComponent(thread));
+ history.replaceState(null,'','/?session='+encodeURIComponent(thread));currentURL=location.pathname+location.search;
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
  heading.textContent=title||'Conversation';
@@ -330,15 +334,16 @@ function remember(title){
  nav.querySelector('p')?.remove();nav.querySelectorAll('[aria-current]').forEach(link=>link.removeAttribute('aria-current'));row.setAttribute('aria-current','page');nav.prepend(row);
 }
 let receipt=null;
-async function waitForAnswer(answer,messageID){
- while(true){
+async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=thread){
+ while(version===viewVersion){
   let result=null;
   if(!document.hidden&&navigator.onLine){
    let response;
    try{
-    response=await fetch('/agent/pending?thread='+encodeURIComponent(thread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+    response=await fetch('/agent/pending?thread='+encodeURIComponent(targetThread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
     if(response.ok&&!response.redirected)result=await response.json();
    }catch{}
+   if(version!==viewVersion)return;
    if(response&&response.status===404)throw Error('Conversation not found.');
    if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to continue.');
    if(result){
@@ -349,32 +354,80 @@ async function waitForAnswer(answer,messageID){
   await new Promise(resolve=>setTimeout(resolve,3000));
  }
 }
-async function assistant(command,answer){
+async function assistant(command,answer,version){
  if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt={text:command,thread,id:crypto.randomUUID()};
- const response=await fetch('/agent',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json',Accept:'application/vnd.micro.queued+json','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt:command,context_id:thread,agent:form.dataset.agent||'',message_id:receipt.id})});
- if(!response.ok)throw Error(await failure(response));
- const result=await response.json(),messageID=receipt.id;thread=result.thread;remember(result.title);receipt=null;form.dispatchEvent(new Event('message-accepted'));
+ const pendingReceipt=receipt;
+ submission=(async()=>{
+  const response=await fetch('/agent',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json',Accept:'application/vnd.micro.queued+json','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt:command,context_id:pendingReceipt.thread,agent:form.dataset.agent||'',message_id:pendingReceipt.id})});
+  if(!response.ok)throw Error(await failure(response));
+  const result=await response.json();thread=result.thread;remember(result.title);receipt=null;form.dispatchEvent(new Event('message-accepted'));
+ })();
+ try{await submission;}finally{submission=null;}
+ if(version!==viewVersion)return;
  status.textContent='Working…';
- await waitForAnswer(answer,messageID);
+ await waitForAnswer(answer,pendingReceipt.id,version,thread);
 }
 function byline(name){const row=document.createElement('div');row.className='ib-from metadata-row';const who=document.createElement('span');who.className='ib-who-l';who.textContent=name;const at=document.createElement('time');at.className='ib-at';const now=new Date();at.dateTime=now.toISOString();at.title=now.toLocaleString();at.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});row.append(who,at);return row;}
 async function run(command){
- if(busy||!command.trim())return;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
+ if(busy||navigating||!command.trim())return;const version=viewVersion;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
  const first=!conversation.classList.contains('is-active');sizeInput();
  if(first)conversation.classList.add('is-active');
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
  q.append(byline('You'),document.createTextNode(command));
  const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));const answer=document.createElement('div');answer.className='message-body';response.append(answer);turn.append(q,response);log.append(turn);
  requestAnimationFrame(()=>{log.scrollTo({top:log.scrollHeight,behavior:first||reducedMotion.matches?'instant':'smooth'});});
- try{await assistant(command,answer);status.textContent='';}catch(error){answer.textContent=error.message;answer.classList.add('error');status.textContent='Message not confirmed.';if(receipt&&!input.value)input.value=command;}finally{busy=false;send.disabled=false;sizeInput();}
+ try{await assistant(command,answer,version);if(version===viewVersion)status.textContent='';}catch(error){if(version===viewVersion){answer.textContent=error.message;answer.classList.add('error');status.textContent='Message not confirmed.';if(receipt&&!input.value)input.value=command;}}finally{if(version===viewVersion){busy=false;send.disabled=false;sizeInput();}}
 }
+function resumePending(){
 if(thread&&form.dataset.pending==='true'){
+ const version=viewVersion;
  busy=true;send.disabled=true;status.textContent='Working…';
  const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));
  const answer=document.createElement('div');answer.className='message-body';response.append(answer);
  const turn=document.createElement('section');turn.className='turn';turn.append(response);log.append(turn);
- waitForAnswer(answer).then(()=>{status.textContent='';}).catch(error=>{status.textContent=error.message;}).finally(()=>{busy=false;send.disabled=false;});
+ waitForAnswer(answer,undefined,version,thread).then(()=>{if(version===viewVersion)status.textContent='';}).catch(error=>{if(version===viewVersion)status.textContent=error.message;}).finally(()=>{if(version===viewVersion){busy=false;send.disabled=false;}});
 }
+}
+resumePending();
+async function navigateThread(url,push=true){
+ const navigation=++navigationVersion;
+ navigating=true;send.disabled=true;
+ try{
+  if(submission)try{await submission;}catch{}
+  if(navigation!==navigationVersion)return;
+  const response=await fetch(url.pathname+url.search,{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:AbortSignal.timeout(15000)});
+  if(!response.ok||response.redirected)throw Error('Could not open the conversation. Try again.');
+  const page=new DOMParser().parseFromString(await response.text(),'text/html');
+  if(navigation!==navigationVersion)return;
+  const nextForm=page.querySelector('#command-form'),nextLog=page.querySelector('#responses');
+  if(!nextForm||!nextLog||nextForm.dataset.account!==form.dataset.account)throw Error('Sign in again to continue.');
+  form.dispatchEvent(new Event('thread-leaving'));
+  scrollPositions.set(currentURL,log.scrollTop);
+  viewVersion++;busy=false;send.disabled=false;receipt=null;
+  thread=url.searchParams.get('session')||url.searchParams.get('continue')||'';
+  if(push)history.pushState(null,'',url.pathname+url.search);else history.replaceState(null,'',url.pathname+url.search);
+  currentURL=url.pathname+url.search;
+  form.dataset.pending=nextForm.dataset.pending;form.dataset.agent=nextForm.dataset.agent;form.dataset.agentName=nextForm.dataset.agentName;
+  log.replaceChildren(...nextLog.childNodes);
+  conversation.querySelector('.assistant-thread-title')?.remove();
+  const heading=page.querySelector('.assistant-thread-title');if(heading)log.before(heading);
+  const welcome=conversation.querySelector('.prompt-welcome');welcome.replaceChildren(...page.querySelector('.prompt-welcome').childNodes);
+  conversation.classList.toggle('is-active',!!thread);status.textContent='';
+  form.dispatchEvent(new CustomEvent('thread-changed',{detail:{thread}}));sizeInput();
+  historyPanel.querySelectorAll('nav a').forEach(link=>{if(new URL(link.href).searchParams.get('session')===thread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
+  if(window.matchMedia('(max-width:700px)').matches){historyPanel.hidden=true;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded','false'));}
+  resumePending();
+  requestAnimationFrame(()=>{log.scrollTop=scrollPositions.get(currentURL)??log.scrollHeight;});
+ }catch(error){if(navigation===navigationVersion){if(!push)history.replaceState(null,'',currentURL);status.textContent=error.message;}}finally{if(navigation===navigationVersion){navigating=false;send.disabled=busy;}}
+}
+document.querySelector('.assistant-workspace').addEventListener('click',event=>{
+ const link=event.target.closest('a');
+ if(!link||event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||link.target||link.hasAttribute('download'))return;
+ const url=new URL(link.href);
+ if(url.origin!==location.origin||url.pathname!=='/'||!(url.searchParams.has('session')||url.searchParams.get('new')==='1'))return;
+ event.preventDefault();navigateThread(url);
+});
+window.addEventListener('popstate',()=>{if(location.pathname==='/')navigateThread(new URL(location.href),false);});
 form.addEventListener('submit',e=>{e.preventDefault();run(input.value.trim());});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
 try{if(location.hash){input.value=decodeURIComponent(location.hash.slice(1));history.replaceState(null,'','/');}}catch{}
