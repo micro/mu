@@ -849,10 +849,13 @@ body.nav-open{overflow:hidden}
 .signed-in .desktop-navigation{display:flex;margin-left:auto}
 .signed-in .nav-toggle{display:inline-flex;flex:none;width:36px;height:36px;padding:6px}
 .signed-in:has(.assistant-workspace) .nav-toggle{display:none}
-.sidebar-primary,.sidebar-secondary{display:flex;flex-direction:column;gap:4px}
+.sidebar-primary{display:flex;flex-direction:column;gap:4px}
 .sidebar-primary{margin-bottom:20px}
-.assistant-history nav[aria-label="Threads"]{max-height:45dvh;overflow-y:auto;overscroll-behavior:contain}
-.sidebar-secondary{margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
-:is(.sidebar-primary,.sidebar-secondary) a{display:block;padding:8px;text-decoration:none;border-radius:4px}
-:is(.sidebar-primary,.sidebar-secondary) a:hover{background:var(--surface)}
+.assistant-history nav[aria-label="Recent"]{max-height:45dvh;overflow-y:auto;overscroll-behavior:contain}
+.sidebar-primary a{display:block;padding:8px;text-decoration:none;border-radius:4px}
+.sidebar-primary a:hover{background:var(--surface)}
 @media(max-width:700px){.signed-in header{padding-left:4px}.signed-in .nav-toggle{width:40px;height:40px;padding:8px}.signed-in .desktop-navigation{gap:16px}}
+
+.assistant-history .assistant-toolbar{padding-inline:8px}
+.assistant-history .conversation-row{padding-inline:8px}
+.assistant-history nav>p{padding-inline:8px}

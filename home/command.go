@@ -135,7 +135,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 
 func assistantHistory(owner, selected, agentID, basePath string) string {
 	var b strings.Builder
-	b.WriteString(`<aside id="assistant-history" class="assistant-history" hidden><div class="assistant-toolbar"><strong>Threads</strong><a href="` + html.EscapeString(basePath) + `?new=1">New message</a></div><nav aria-label="Threads">`)
+	b.WriteString(`<aside id="assistant-history" class="assistant-history" hidden><div class="assistant-toolbar"><strong>Recent</strong><a href="` + html.EscapeString(basePath) + `?new=1">New</a></div><nav aria-label="Recent">`)
 	count := 0
 	for _, t := range thread.List(owner, 0) {
 		target := t.Agent
@@ -144,6 +144,9 @@ func assistantHistory(owner, selected, agentID, basePath string) string {
 		}
 		if t.Client != thread.WebClient || target != agentID {
 			continue
+		}
+		if count == 10 {
+			break
 		}
 		count++
 		current := ""
