@@ -838,3 +838,8 @@ body.nav-open{overflow:hidden}
 :is(a.conversation-row,a.collection-item,a.directory-content,a.rc-hit,a.list-link):is(:hover,:focus-visible){background:var(--surface);box-shadow:8px 0 var(--surface),-8px 0 var(--surface);color:inherit;text-decoration:none}
 
 .landing-action{text-align:center;margin:24px 0 0}
+
+.assistant-thread-title>button{font:inherit;text-align:left;padding:0;border:0;background:transparent;max-width:100%;overflow-wrap:anywhere}
+.assistant-thread-title>button:hover{background:var(--surface)}
+.thread-title-editor{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.thread-title-editor input{flex:1 1 200px;width:auto}
