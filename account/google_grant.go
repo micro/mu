@@ -252,7 +252,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>Google</h4>`)
+	b.WriteString(`<div class="card"><h4>Google</h4><p>Choose what Micro can use to help you. Each connection is read-only.</p>`)
 
 	switch status {
 	case "disconnected":
@@ -275,7 +275,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	}
 	b.WriteString(`<details class="disclosure"` + open + `><summary>Manage</summary>`)
 	b.WriteString(googleSignIn(acc))
-	b.WriteString(`<p>Choose what Micro can use to help you. Each connection is read-only.</p><div class="connection-list">`)
+	b.WriteString(`<div class="connection-list">`)
 	for _, item := range []struct{ key, label, purpose string }{
 		{"gmail", "Gmail", "Find and read recent email."},
 		{"calendar", "Calendar", "Check your plans and availability."},

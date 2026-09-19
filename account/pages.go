@@ -688,7 +688,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	links := Navigation(active)
 	if active == "/account" {
 		links = ""
-		content += `<p><a href="/account/tokens">Tokens</a></p>`
+		content += app.Section("Clients", `<p>Use Micro from a mail app, chat app or your own code.</p><div class="form-actions"><a href="/account/clients">Client setup</a><a href="/account/tokens">Tokens</a></div><p>Tokens are passwords for your apps and programs.</p>`)
 	}
 	content = links + notice + `<div class="page-stack settings-sections">` + content + `</div>`
 
