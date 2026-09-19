@@ -298,7 +298,7 @@ footer{gap:16px}
 
 /* Conversation navigation shares the compact page shell. */
 .conversation-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;padding:12px 0;border-bottom:1px solid #eee;text-decoration:none;color:inherit}
-.conversation-row:hover .conversation-title{text-decoration:underline}
+
 .conversation-title{overflow-wrap:anywhere}
 .conversation-row time{font-size:.8rem;color:#777;white-space:nowrap}
 .conversation-preview{grid-column:1/-1;color:#777;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:.85rem}
@@ -325,7 +325,7 @@ main{overflow-wrap:anywhere}
 .directory-heading{display:flex;align-items:center;gap:8px;font-weight:600}
 .directory-heading img,.directory-icon{width:24px;height:24px;flex:none;object-fit:contain}
 .directory-description{display:block;color:#666;margin-top:4px}
-a.directory-content:hover .directory-heading{text-decoration:underline}
+
 .view-switch{margin-block:8px}
 
 .directory-heading{flex-wrap:wrap}
@@ -486,7 +486,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .collection-title,.record-title{font-weight:600;overflow-wrap:anywhere}
 .collection-preview{grid-column:1;color:var(--text-muted);font-size:.875rem;overflow-wrap:anywhere}
 .collection-when{grid-column:2;grid-row:1}
-.collection-item:hover .collection-title{text-decoration:underline}
+
 .record-card,.record-editor{display:flex;flex-direction:column;gap:12px;padding-block:16px;border-top:1px solid var(--border);min-width:0}
 .record-card>*{margin-block:0}
 .record-card .record-title{font-size:1rem}
@@ -502,7 +502,7 @@ img[width="16"],img[width="20"],img[width="24"],.stream-icon{object-fit:contain}
 .ar-title,.notify-title,.task-title,.so-title{font-weight:600}
 .ar-body,.rc-text,.notify-body,.task-context,.so-body{line-height:1.6;overflow-wrap:anywhere}
 .rc-hit{text-decoration:none}
-.rc-hit:hover .rc-subject{text-decoration:underline}
+
 .rc-subject,.notify-from{font-size:.8rem;color:var(--text-muted)}
 .form-row,.form-inline,.search-bar{gap:8px;min-width:0}
 .search-bar{flex-wrap:wrap;align-items:end}
@@ -728,7 +728,7 @@ body.nav-open{overflow:hidden}
 .editorial-entry:first-child{padding-top:16px}
 .editorial-entry h2{font-size:clamp(1.2rem,3vw,1.55rem);line-height:1.3;font-weight:600;letter-spacing:-.02em;margin:10px 0}
 .editorial-entry h2 a{text-decoration:none}
-.editorial-entry h2 a:hover{text-decoration:underline;text-underline-offset:4px}
+
 .editorial-entry p{margin:0;color:var(--text-secondary);line-height:1.65;overflow-wrap:anywhere}
 .editorial-back{display:inline-block;margin-bottom:20px}
 .editorial-notice{font-size:.8rem;color:var(--text-muted);margin-block:16px 24px}
@@ -767,7 +767,6 @@ body.nav-open{overflow:hidden}
 
 
 /* The same compact composer for visitors and signed-in conversations. */
-.command-page #guest-command-form{width:100%;max-width:600px;margin:0 auto;padding:16px 0 8px}
 .composer-note{text-align:center;font-size:.8rem;color:#777;margin:8px 0 0}
 .command-page .turn .ib-from{margin-bottom:8px}
 .command-page .turn .message-body{min-width:0;overflow-wrap:anywhere}
@@ -778,7 +777,6 @@ body.nav-open{overflow:hidden}
 .connection-row>div{flex:1 1 180px;min-width:0}
 .connection-row p{margin:2px 0 0;color:#777;font-size:.875rem}
 .connection-state{font-size:.8rem;color:#777}
-@media(max-width:600px){.command-page #guest-command-form{padding-block:8px}}
 
 .account-access{min-width:0}
 .account-access .form{max-width:var(--form-width)}
@@ -824,3 +822,19 @@ body.nav-open{overflow:hidden}
 .command-page:has(.assistant-workspace) header{justify-content:flex-start}
 .command-page:has(.assistant-workspace) header .desktop-navigation{margin-left:auto}
 .command-page:has(.assistant-history[hidden]) header>.brand{display:none}
+
+/* One mobile menu holds site navigation and threads. */
+.command-page:has(.assistant-workspace) header{padding-left:6px}
+.mobile-thread-navigation{display:none}
+@media(max-width:700px){
+ .command-page:has(.assistant-workspace) header{padding-left:4px}
+ .command-page:has(.assistant-workspace) .nav-toggle{display:none}
+ .history-toggle{width:40px;height:40px;padding:8px}
+ .mobile-thread-navigation{display:flex;flex-wrap:wrap;gap:12px 20px;padding:8px 0 20px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+}
+
+/* Linked records share a row highlight without moving their content. */
+:is(a.conversation-row,a.collection-item,a.directory-content,a.rc-hit,a.list-link){text-decoration:none}
+:is(a.conversation-row,a.collection-item,a.directory-content,a.rc-hit,a.list-link):is(:hover,:focus-visible){background:var(--surface);box-shadow:8px 0 var(--surface),-8px 0 var(--surface);color:inherit;text-decoration:none}
+
+.landing-action{text-align:center;margin:24px 0 0}

@@ -81,7 +81,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if acc == nil {
-		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div><form id="guest-command-form" action="/signup" method="get"><label class="sr-only" for="guest-command-input">Message</label><div class="composer"><input type="text" id="guest-command-input" maxlength="8000" placeholder="Write a message…" autocomplete="off" aria-describedby="guest-status" required><button type="submit">Continue</button></div><p id="guest-status" class="composer-note" role="status">Create an account to send your message.</p></form></div></div>`, acc))
+		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div><p class="landing-action"><a class="btn" href="/signup">Create an account</a></p></div></div>`, acc))
 		return
 	}
 
