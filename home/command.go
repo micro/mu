@@ -110,9 +110,9 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if acc == nil {
 		introduction := ""
 		if address := mail.HelloAddress(); address != "" {
-			introduction = `<p class="landing-action"><a href="mailto:` + html.EscapeString(address) + `">` + html.EscapeString(address) + `</a></p>`
+			introduction = `<p class="landing-action">Email<br><a href="mailto:` + html.EscapeString(address) + `">` + html.EscapeString(address) + `</a></p>`
 		}
-		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div>`+introduction+`<p class="landing-action"><a class="btn" href="/signup">Create an account</a></p></div></div>`, acc))
+		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div>`+introduction+`</div></div>`, acc))
 		return
 	}
 
