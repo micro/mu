@@ -107,7 +107,6 @@ dialog.modal .form-actions{gap:8px;flex-wrap:wrap}
 dialog.modal .form-actions>button{margin:0}
 .ib-ask-note{font-size:.8rem;color:#666;margin:0}
 .ib-ask-problem{color:#a22424;margin:0}
-.landing-actions{justify-content:center;margin-top:20px}
 .text-muted,.text-small,small{color:#666}
 .text-sm{font-size:.875rem}
 .text-error,.error{color:#a22424}
@@ -837,7 +836,6 @@ body.nav-open{overflow:hidden}
 :is(a.conversation-row,a.collection-item,a.directory-content,a.rc-hit,a.list-link){text-decoration:none}
 :is(a.conversation-row,a.collection-item,a.directory-content,a.rc-hit,a.list-link):is(:hover,:focus-visible){background:var(--surface);box-shadow:8px 0 var(--surface),-8px 0 var(--surface);color:inherit;text-decoration:none}
 
-.landing-action{text-align:center;margin:24px 0 0}
 
 .assistant-thread-title>button{font:inherit;text-align:left;padding:0;border:0;background:transparent;max-width:100%;overflow-wrap:anywhere}
 .assistant-thread-title>button:hover{background:var(--surface)}

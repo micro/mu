@@ -433,7 +433,7 @@ func deliver(r request, answer string, err error) {
 	if e := events.Brief(r.Account); e != nil && e.ID == r.ID {
 		isBrief = true
 		tag = "brief"
-		body += "\n\n---\n[Disable or manage your morning brief](" + origin.Self() + "/inbox/settings)."
+		body += "\n\n---\n[Disable or manage your morning brief](" + origin.Self() + "/events?view=brief)."
 	}
 	messageID := "<" + uuid.NewString() + "@" + mail.ConfiguredDomain() + ">"
 	sender := agent.NameOf(r.Account, r.Agent)

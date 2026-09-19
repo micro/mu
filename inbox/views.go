@@ -23,7 +23,7 @@ import (
 func viewNavigation(active string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="form-actions"><a href="/inbox/new">New message</a></div><nav class="view-switch inbox-views" aria-label="Inbox views">`)
-	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"scheduled", "Scheduled", "/inbox?view=scheduled"}, {"saved", "Saved", "/inbox?view=saved"}, {"settings", "Settings", "/inbox/settings"}} {
+	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"scheduled", "Scheduled", "/inbox?view=scheduled"}, {"saved", "Saved", "/inbox?view=saved"}} {
 		current := ""
 		if active == v.key {
 			current = ` aria-current="page"`
@@ -98,8 +98,7 @@ func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		}
 		destination := "/events?id=" + url.QueryEscape(e.ID)
 		if e.Kind == "brief" {
-			kind, detail = "Brief", "Morning brief. Manage delivery and content in Inbox settings."
-			destination = "/inbox/settings"
+			kind, detail = "Brief", "Your scheduled email brief."
 		}
 		state := "Scheduled"
 		if e.Paused {

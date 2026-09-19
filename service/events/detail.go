@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 func eventURL(id string) string { return "/events?id=" + url.QueryEscape(id) }
@@ -37,6 +38,10 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 		http.NotFound(w, r)
 		return
 	}
+	if e.Kind == "brief" {
+		app.Respond(w, r, app.Response{Title: e.Title, HTML: `<p><a href="/inbox?view=scheduled">Scheduled</a> · <a href="/events">Events</a></p>` + briefScheduleHTML(owner, auth.CSRFToken(r))})
+		return
+	}
 	body := `<div class="page-col page-stack"><article class="card page-stack"><p><time datetime="` + e.When.Format(time.RFC3339) + `" data-event-time>` + html.EscapeString(e.When.Format("Mon 2 Jan, 15:04")) + `</time></p>`
 	if e.Prompt != "" {
 		body += `<p>Micro will attempt this instruction at the scheduled time and deliver the outcome to your inbox:</p><div class="pre-wrap">` + html.EscapeString(e.Prompt) + `</div>`
@@ -50,6 +55,5 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 		body += `<p>Repeats: ` + html.EscapeString(e.Repeat) + `</p>`
 	}
 	body += `<a class="btn" href="` + html.EscapeString(GoogleCalendarURL(e.Title, e.When, e.Note)) + `" target="_blank" rel="noopener">Add to calendar</a></article><a class="link" href="/events">Back to events</a></div>`
-	body += `<script>document.querySelectorAll('time[data-event-time]').forEach(function(el){var d=new Date(el.dateTime);if(!isNaN(d.getTime()))el.textContent=d.toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});});</script>`
 	app.Respond(w, r, app.Response{Title: e.Title, HTML: body})
 }

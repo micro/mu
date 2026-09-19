@@ -1,8 +1,6 @@
 package inbox
 
 import (
-	"fmt"
-	"html"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/service/events"
@@ -11,7 +9,7 @@ import (
 	"time"
 )
 
-// SettingsHandler controls only the caller's built-in delivery preferences.
+// SettingsHandler preserves the legacy brief API; browser setup belongs to Events.
 func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
@@ -56,7 +54,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !app.SendsJSON(r) && !app.WantsJSON(r) {
-			http.Redirect(w, r, "/inbox/settings", http.StatusSeeOther)
+			http.Redirect(w, r, "/events?view=brief", http.StatusSeeOther)
 			return
 		}
 	} else if r.Method != http.MethodGet {
@@ -64,11 +62,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	e := events.Brief(acc.ID)
-	effectiveDefault := !acc.Agent && !acc.Unclaimed && !acc.Banned && acc.Zone != "" && acc.Zone != "Local"
-	if _, err := time.LoadLocation(acc.Zone); err != nil {
-		effectiveDefault = false
-	}
-	state := map[string]any{"enabled": effectiveDefault, "include_world_news": true, "time": "06:00", "timezone": acc.Zone}
+	state := map[string]any{"enabled": false, "include_world_news": true, "time": "06:00", "timezone": acc.Zone}
 	if e != nil {
 		state["enabled"] = !e.Paused
 		state["include_world_news"] = events.BriefWorldNews(e)
@@ -85,23 +79,5 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, state)
 		return
 	}
-	checked := func(value any) string {
-		if value == true {
-			return " checked"
-		}
-		return ""
-	}
-	zone := fmt.Sprint(state["timezone"])
-	body := viewNavigation("settings") + `<h2>Morning brief</h2><form class="form" method="post" action="/inbox/settings">` + app.CSRFField(auth.CSRFToken(r)) +
-		`<label class="check-label"><input type="checkbox" name="enabled" value="1"` + checked(state["enabled"]) + `> Morning brief</label>` +
-		`<p class="note">A brief at ` + html.EscapeString(fmt.Sprint(state["time"])) + `. Reply to its email or open its notification to continue the conversation.</p>` +
-		`<label class="check-label"><input type="checkbox" name="include_world_news" value="1"` + checked(state["include_world_news"]) + `> Include world news</label>`
-	if zone == "" || zone == "Local" {
-		body += app.Field{Name: "timezone", Label: "Timezone", Placeholder: "Europe/London", Required: true}.HTML()
-	} else {
-		body += `<p class="note">Timezone: ` + html.EscapeString(zone) + `</p>`
-	}
-	body += `<div class="form-actions"><button type="submit">Save</button><a href="/inbox">Inbox</a></div></form>`
-	body += app.Section("Mail clients", `<p>Read and reply to your conversations in your own mail app.</p><div class="form-actions"><a href="/account/clients">Client setup</a><a href="/inbox/imap">Mail settings</a></div>`)
-	app.Respond(w, r, app.Response{Title: "Inbox settings", HTML: body})
+	http.Redirect(w, r, "/events?view=brief", http.StatusSeeOther)
 }
