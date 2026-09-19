@@ -372,8 +372,8 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
    if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to continue.');
    if(result){
     if(!result.waiting){if(result.error)throw Error(result.error);const follow=log.scrollHeight-log.scrollTop-log.clientHeight<80;answer.innerHTML=result.answer_html||'';if(follow)requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});return;}
-    status.textContent='Working…';
-   }else status.textContent='Reconnecting…';
+    answer.textContent='Working…';
+   }else answer.textContent='Reconnecting…';
   }
   await new Promise(resolve=>setTimeout(resolve,3000));
  }
@@ -388,28 +388,28 @@ async function assistant(command,answer,version){
  })();
  try{await submission;}finally{submission=null;}
  if(version!==viewVersion)return;
- status.textContent='Working…';
+ status.textContent='';
  await waitForAnswer(answer,pendingReceipt.id,version,thread);
 }
 function byline(name){const row=document.createElement('div');row.className='ib-from metadata-row';const who=document.createElement('span');who.className='ib-who-l';who.textContent=name;const at=document.createElement('time');at.className='ib-at';const now=new Date();at.dateTime=now.toISOString();at.title=now.toLocaleString();at.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});row.append(who,at);return row;}
 async function run(command){
- if(busy||navigating||!command.trim())return;const version=viewVersion;busy=true;send.disabled=true;status.textContent='Working…';input.value='';
+ if(busy||navigating||!command.trim())return;const version=viewVersion;busy=true;send.disabled=true;status.textContent='';input.value='';
  const first=!conversation.classList.contains('is-active');sizeInput();
  if(first)conversation.classList.add('is-active');
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
  q.append(byline('You'),document.createTextNode(command));
- const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));const answer=document.createElement('div');answer.className='message-body';response.append(answer);turn.append(q,response);log.append(turn);
+ const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));const answer=document.createElement('div');answer.className='message-body';answer.setAttribute('aria-live','polite');answer.textContent='Working…';response.append(answer);turn.append(q,response);log.append(turn);
  requestAnimationFrame(()=>{log.scrollTo({top:log.scrollHeight,behavior:first||reducedMotion.matches?'instant':'smooth'});});
  try{await assistant(command,answer,version);if(version===viewVersion)status.textContent='';}catch(error){if(version===viewVersion){answer.textContent=error.message;answer.classList.add('error');status.textContent='Message not confirmed.';if(receipt&&!input.value)input.value=command;}}finally{if(version===viewVersion){busy=false;send.disabled=false;sizeInput();}}
 }
 function resumePending(){
 if(thread&&form.dataset.pending==='true'){
  const version=viewVersion;
- busy=true;send.disabled=true;status.textContent='Working…';
+ busy=true;send.disabled=true;status.textContent='';
  const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));
- const answer=document.createElement('div');answer.className='message-body';response.append(answer);
+ const answer=document.createElement('div');answer.className='message-body';answer.setAttribute('aria-live','polite');answer.textContent='Working…';response.append(answer);
  const turn=document.createElement('section');turn.className='turn';turn.append(response);log.append(turn);
- waitForAnswer(answer,undefined,version,thread).then(()=>{if(version===viewVersion)status.textContent='';}).catch(error=>{if(version===viewVersion)status.textContent=error.message;}).finally(()=>{if(version===viewVersion){busy=false;send.disabled=false;}});
+ waitForAnswer(answer,undefined,version,thread).then(()=>{if(version===viewVersion)status.textContent='';}).catch(error=>{if(version===viewVersion){answer.textContent=error.message;answer.classList.add('error');status.textContent='';}}).finally(()=>{if(version===viewVersion){busy=false;send.disabled=false;}});
 }
 }
 resumePending();
