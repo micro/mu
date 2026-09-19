@@ -181,7 +181,7 @@ func All() []Client {
 	// a way in that nothing enumerates is a way in that quietly stops being
 	// maintained.
 	out = append(out, Client{ID: thread.CLIClient, Label: "CLI", Dev: true,
-		Address: `mu ask "…"`, Href: "/api",
+		Address: `mu ask "…"`, Href: "/developers",
 		Note: "the same agent from a terminal, after mu login"})
 
 	// The API, which is what a program arrives on.
@@ -194,9 +194,9 @@ func All() []Client {
 
 	if host != "" {
 		out = append(out, Client{Label: "API", Dev: true,
-			Address: "https://" + host + "/api/v1/agent/ask",
+			Address: "https://" + host + "/agent/api/ask",
 			Href:    "/account/tokens?add=api#create-token-form", Note: "for a program — needs a token",
-			Example: "curl -X POST https://" + host + "/api/v1/agent/ask \\\n" +
+			Example: "curl -X POST https://" + host + "/agent/api/ask \\\n" +
 				`  -H "Authorization: Bearer $MU_TOKEN" \` + "\n" +
 				`  -d '{"prompt": "what is on my calendar?"}'`})
 	}

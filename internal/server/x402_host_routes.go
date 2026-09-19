@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"mu/internal/api"
-	"mu/internal/auth"
 	"mu/internal/origin"
 	"mu/internal/settings"
 )
@@ -33,7 +32,7 @@ func init() {
 
 	http.HandleFunc("GET /tools", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
-			http.Redirect(w, r, "/developers#reference", http.StatusSeeOther)
+			api.ServiceToolsPageHandler(w, r)
 			return
 		}
 		base := strings.TrimRight(origin.URL(r), "/")
@@ -51,7 +50,7 @@ func init() {
 	// canonical schema-bearing catalogue instead.
 	http.HandleFunc("GET /tools/", func(w http.ResponseWriter, r *http.Request) {
 		if !origin.IsX402Host(r) {
-			http.Redirect(w, r, "/developers#reference", http.StatusSeeOther)
+			api.ToolPageHandler(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -82,45 +81,26 @@ func x402HostName() string {
 	return "Mu"
 }
 
-// Services credentials select the service contract on either host. API credentials
-// and unauthenticated discovery retain the curated outcome catalogue.
-func serviceAccess(r *http.Request) bool {
-	t := auth.TokenFromRequest(api.CredentialRequest(r))
-	if t == nil || len(t.Services()) == 0 {
-		return false
-	}
-	for _, p := range t.Permissions {
-		if strings.HasPrefix(p, "api:") {
-			return false
+// Runtime endpoints always serve services, on both the primary and x402 hosts.
+func publicRESTHandler(w http.ResponseWriter, r *http.Request) {
+	name := api.RESTToolName(r.URL.Path)
+	for _, op := range api.Operations {
+		if op.Name == name {
+			target := api.ProductPath(name)
+			w.Header().Set("Link", "<"+target+">; rel=\"successor-version\"")
+			api.WriteProductMigration(w, target)
+			return
 		}
 	}
-	return true
-}
-func publicRESTHandler(w http.ResponseWriter, r *http.Request) {
-	if origin.IsX402Host(r) || serviceAccess(r) {
-		r = api.CredentialRequest(r)
-		api.RESTHandler(w, r)
-		return
-	}
-	api.PublicRESTHandler(w, r)
+	api.RESTHandler(w, api.CredentialRequest(r))
 }
 func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
-	if !origin.IsX402Host(r) && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
-		http.Redirect(w, r, "/developers?setup=mcp#mcp", http.StatusSeeOther)
+	if r.Method == http.MethodHead {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if origin.IsX402Host(r) || serviceAccess(r) {
-		r = api.CredentialRequest(r)
-		api.MCPHandler(w, r)
-		return
-	}
-	api.PublicMCPHandler(w, r)
+	api.MCPHandler(w, api.CredentialRequest(r))
 }
-
 func publicReferenceHandler(w http.ResponseWriter, r *http.Request) {
-	if origin.IsX402Host(r) {
-		api.RESTPageHandler(w, r)
-		return
-	}
-	http.Redirect(w, r, "/developers#reference", http.StatusSeeOther)
+	api.RESTPageHandler(w, r)
 }
