@@ -24,7 +24,7 @@ func ScheduleBrief(owner, clock, zone, repeat, period string, paused bool) error
 	return scheduleBrief(owner, clock, zone, repeat, period, paused, false)
 }
 
-func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bool) error {
+func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bool, news ...bool) error {
 	if owner == "" {
 		return fmt.Errorf("sign in to schedule a brief")
 	}
@@ -74,6 +74,10 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	}
 	if period == "morning" {
 		e.Title = "Morning brief"
+	}
+	if len(news) > 0 {
+		value := news[0]
+		e.WorldNews = &value
 	}
 	e.Sequence++
 	events[e.ID] = e

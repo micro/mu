@@ -18,7 +18,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		token = csrf[0]
 	}
 	clock, zone, repeat, period := "06:00", "", "daily", "morning"
-	label, status := "Manage", "Daily at 06:00 once your timezone is set"
+	status := "Not scheduled"
 	if acc, err := auth.GetAccount(owner); err == nil && acc != nil {
 		zone = acc.Zone
 	}
@@ -34,7 +34,6 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		if strings.Contains(e.Prompt, "today") {
 			period = "morning"
 		}
-		label = "Manage"
 		status = strings.Title(repeat) + " at " + clock + " (" + zone + ")"
 		if e.Paused {
 			status = "Disabled"
@@ -45,7 +44,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		title = "Evening brief"
 	}
 	var b strings.Builder
-	b.WriteString(`<section id="morning-brief" class="card page-stack"><h3>` + title + `</h3><p>Your email brief, with calendar, weather and relevant updates.</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><details class="disclosure"><summary>` + label + `</summary><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
+	b.WriteString(`<section id="morning-brief" class="card page-stack"><h3>` + title + `</h3><p>Your email brief, with calendar, weather and relevant updates.</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {
 		b.WriteString(`<label class="field-label">` + title + `<select class="form-input" name="` + name + `">`)
 		for _, v := range values {
@@ -58,9 +57,14 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		b.WriteString(`</select></label>`)
 	}
 	selectField("period", "Brief", period, "evening", "morning")
-	b.WriteString(`<label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label>`)
+	b.WriteString(`<label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label>`)
 	selectField("repeat", "Frequency", repeat, "daily", "weekdays")
-	b.WriteString(`<p class="text-muted">Evening looks ahead to tomorrow; morning covers today. The brief is delivered to your Micro mail, using your connected calendar, email and saved location where available. Normal usage charges apply. <a href="/account">Manage connections and email delivery</a>.</p><div class="form-actions"><button name="state" value="active">`)
+	checked := ""
+	if BriefWorldNews(e) {
+		checked = " checked"
+	}
+	b.WriteString(`<input type="hidden" name="news_present" value="1"><label class="check-label"><input type="checkbox" name="include_world_news" value="1"` + checked + `> Include world news</label>`)
+	b.WriteString(`<p class="text-muted">Evening looks ahead to tomorrow; morning covers today. The brief is delivered to your Micro mail, using your connected calendar, email and saved location where available. Normal usage charges apply. <a href="/account">Account and email delivery</a>.</p><div class="form-actions"><button name="state" value="active">`)
 	if e == nil {
 		b.WriteString("Schedule")
 	} else if e.Paused {
@@ -72,7 +76,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if e != nil && !e.Paused {
 		b.WriteString(`<button name="state" value="paused" class="btn-secondary">Disable</button>`)
 	}
-	b.WriteString(`</div></form></details></div><script>(function(){var f=document.querySelector('form input[name="action"][value="brief-schedule"]');if(f){var z=f.form.elements.zone;if(!z.value){try{z.value=Intl.DateTimeFormat().resolvedOptions().timeZone}catch(e){}}}})();</script></section>`)
+	b.WriteString(`</div></form></div></section>`)
 	return b.String()
 }
 
@@ -91,10 +95,14 @@ func briefScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid schedule action", http.StatusBadRequest)
 		return
 	}
-	err := ScheduleBrief(sess.Account, r.FormValue("clock"), r.FormValue("zone"), r.FormValue("repeat"), r.FormValue("period"), state == "paused")
+	var news []bool
+	if r.FormValue("news_present") == "1" {
+		news = []bool{r.FormValue("include_world_news") == "1"}
+	}
+	err := scheduleBrief(sess.Account, r.FormValue("clock"), r.FormValue("zone"), r.FormValue("repeat"), r.FormValue("period"), state == "paused", false, news...)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/events", http.StatusSeeOther)
+	http.Redirect(w, r, eventURL(Brief(sess.Account).ID), http.StatusSeeOther)
 }

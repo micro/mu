@@ -1536,3 +1536,12 @@ document.querySelectorAll('[data-inbox-compose]').forEach(function(form){
  function update(){const email=form.querySelector('[name="mode"]:checked').value==='email';to.hidden=!email;to.disabled=!email;}
  choices.forEach(choice=>choice.addEventListener('change',update));update();
 });
+
+// Event pages share formatting and timezone defaults with the main client.
+document.querySelectorAll('[data-local-timezone]').forEach(field=>{
+ if(!field.value){try{field.value=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch{}}
+});
+document.querySelectorAll('time[data-event-time]').forEach(el=>{
+ const date=new Date(el.dateTime);
+ if(!isNaN(date.getTime()))el.textContent=date.toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+});

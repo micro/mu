@@ -71,6 +71,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Query().Get("view") == "brief" {
+		if e := Brief(owner); e != nil {
+			http.Redirect(w, r, eventURL(e.ID), http.StatusSeeOther)
+			return
+		}
+	}
 	if id := r.URL.Query().Get("id"); id != "" {
 		detailHandler(w, r, owner, id)
 		return
@@ -83,7 +89,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
-	b.WriteString(briefScheduleHTML(owner, csrf))
+	if e := Brief(owner); e != nil {
+		status := "Scheduled"
+		if e.Paused {
+			status = "Disabled"
+		}
+		b.WriteString(`<section id="morning-brief" class="record-card"><a href="` + eventURL(e.ID) + `">` + html.EscapeString(e.Title) + `</a><p>` + status + `</p></section>`)
+	} else {
+		b.WriteString(briefScheduleHTML(owner, csrf))
+	}
 
 	up := Upcoming(owner)
 	ext := Overview(owner, 0)
