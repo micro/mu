@@ -326,11 +326,11 @@ function remember(title){
  history.replaceState(null,'','/?session='+encodeURIComponent(thread));currentURL=location.pathname+location.search;
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
- heading.textContent=title||'Conversation';
+ heading.textContent=title||'Thread';
  const nav=historyPanel.querySelector('nav'),href='/?session='+encodeURIComponent(thread);
  let row=Array.from(nav.querySelectorAll('a')).find(link=>link.getAttribute('href')===href);
  if(!row){row=document.createElement('a');row.className='conversation-row';row.href=href;const label=document.createElement('span');label.className='conversation-title';row.append(label,document.createElement('time'));}
- row.querySelector('.conversation-title').textContent=title||'Conversation';row.querySelector('time').textContent='Just now';
+ row.querySelector('.conversation-title').textContent=title||'Thread';row.querySelector('time').textContent='Just now';
  nav.querySelector('p')?.remove();nav.querySelectorAll('[aria-current]').forEach(link=>link.removeAttribute('aria-current'));row.setAttribute('aria-current','page');nav.prepend(row);
 }
 let receipt=null;

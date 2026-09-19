@@ -818,3 +818,9 @@ body.nav-open{overflow:hidden}
 .command-page:has(.assistant-workspace){height:100svh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .command-page:has(.assistant-workspace) .page{height:auto;flex:1;min-height:0}
 .command-page:has(.assistant-workspace)>footer{flex-shrink:0;padding:8px 12px;gap:8px 16px}
+
+/* Thread history lives in the header; opening it never shifts the transcript. */
+.history-toggle{flex:none;width:36px;height:36px;padding:6px;border:0;background:transparent}
+.command-page:has(.assistant-workspace) header{justify-content:flex-start}
+.command-page:has(.assistant-workspace) header .desktop-navigation{margin-left:auto}
+.command-page:has(.assistant-history[hidden]) header>.brand{display:none}
