@@ -94,14 +94,13 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		heading = `<h1 class="assistant-thread-title">` + html.EscapeString(thread.Get(acc.ID, session).Subject) + `</h1>`
 	}
 	history := assistantHistory(acc.ID, session)
-	toolbar := `<div class="assistant-toolbar"><button type="button" class="btn-quiet" data-history-toggle aria-controls="assistant-history" aria-expanded="false">Conversations</button><a href="/?new=1">New message</a></div>`
-	body := `<div class="assistant-workspace">` + history + `<div class="` + state + `">` + toolbar + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1></div><form id="command-form" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="Write a message…" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
+	body := `<div class="assistant-workspace">` + history + `<div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1></div><form id="command-form" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="Write a message…" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
 	fmt.Fprint(w, app.ConsoleHTML("Micro", body, acc))
 }
 
 func assistantHistory(owner, selected string) string {
 	var b strings.Builder
-	b.WriteString(`<aside id="assistant-history" class="assistant-history" hidden><div class="assistant-toolbar"><strong>Conversations</strong><button type="button" class="btn-quiet" data-history-toggle aria-label="Close conversations">Close</button></div><nav aria-label="Conversations">`)
+	b.WriteString(`<aside id="assistant-history" class="assistant-history" hidden><div class="assistant-toolbar"><strong>Threads</strong><a href="/?new=1">New message</a></div><nav aria-label="Threads">`)
 	count := 0
 	for _, t := range thread.List(owner, 0) {
 		if t.Client != thread.WebClient {
@@ -119,7 +118,7 @@ func assistantHistory(owner, selected string) string {
 		b.WriteString(`<a class="conversation-row" href="/?session=` + url.QueryEscape(t.ID) + `"` + current + `><span class="conversation-title">` + html.EscapeString(title) + `</span><time>` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time></a>`)
 	}
 	if count == 0 {
-		b.WriteString(`<p class="text-muted">No conversations yet.</p>`)
+		b.WriteString(`<p class="text-muted">No threads yet.</p>`)
 	}
 	b.WriteString(`</nav></aside>`)
 	return b.String()
