@@ -798,7 +798,11 @@ body.nav-open{overflow:hidden}
 
 /* Assistant history and transcript share one workspace. */
 .assistant-workspace{display:flex;flex:1;gap:24px;min-height:0;min-width:0}
-.command-page main:has(.assistant-history:not([hidden])){max-width:1100px}
+.command-page main:has(.assistant-workspace){width:calc(100% - 48px);max-width:none}
+.assistant-workspace>.conversation{flex:1;min-width:0}
+.assistant-workspace .conversation>.assistant-toolbar,.assistant-workspace .assistant-thread-title,.assistant-workspace .prompt-panel{width:100%;max-width:760px;box-sizing:border-box;margin-inline:auto}
+.assistant-workspace .conversation.is-active .prompt-panel{margin-inline:auto}
+.assistant-workspace #responses>.turn{width:100%;max-width:760px;box-sizing:border-box;margin-inline:auto}
 .assistant-history{flex:0 0 260px;min-width:0;overflow-y:auto;padding-right:16px;border-right:1px solid #eee}
 .assistant-history .conversation-row{display:block}.assistant-history time{display:block;margin-top:4px}
 .assistant-history [aria-current="page"]{font-weight:600}
@@ -809,7 +813,7 @@ body.nav-open{overflow:hidden}
 .assistant-workspace #responses{order:1}
 .assistant-workspace .composer textarea{flex:1;min-width:0;width:0;min-height:36px;max-height:160px;resize:none;overflow-y:auto;box-sizing:border-box;margin:0;padding:7px 10px;border:0;background:transparent;font:inherit;font-size:16px;line-height:22px}
 .assistant-workspace #status{min-height:1.4em;margin:4px 0 0;font-size:.8rem;color:#777}
-@media(max-width:700px){.assistant-workspace:has(.assistant-history:not([hidden]))>.conversation{display:none}.assistant-history{flex:1;border:0;padding:0}.assistant-workspace{gap:0}}
+@media(max-width:700px){.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}.assistant-workspace:has(.assistant-history:not([hidden]))>.conversation{display:none}.assistant-history{flex:1;border:0;padding:0}.assistant-workspace{gap:0}}
 
 .command-page:has(.assistant-workspace){height:100svh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 .command-page:has(.assistant-workspace) .page{height:auto;flex:1;min-height:0}
