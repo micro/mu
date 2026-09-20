@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
+	stdhtml "html"
 	"io"
 	"strings"
 
@@ -64,8 +65,8 @@ func extractZipContents(data []byte, senderEmail string) string {
 		}
 		defer reader.Close()
 
-		content, err := io.ReadAll(reader)
-		if err != nil {
+		content, err := io.ReadAll(io.LimitReader(reader, 5*1024*1024+1))
+		if err != nil || len(content) > 5*1024*1024 {
 			app.Log("mail", "Failed to read gzip: %v", err)
 			return ""
 		}
@@ -116,8 +117,11 @@ func extractZipContents(data []byte, senderEmail string) string {
 			continue
 		}
 
-		content, err := io.ReadAll(rc)
+		content, err := io.ReadAll(io.LimitReader(rc, 5*1024*1024+1))
 		rc.Close()
+		if len(content) > 5*1024*1024 {
+			return ""
+		}
 		if err != nil {
 			if i > 0 {
 				result.WriteString("\n\n" + strings.Repeat("=", 80) + "\n\n")
@@ -261,11 +265,11 @@ func renderDMARCReport(xmlData string) string {
 
 	// Report metadata
 	html.WriteString(`<div class="mb-5">`)
-	html.WriteString(fmt.Sprintf(`<h4 class="m-0 mb-3">DMARC Report from %s</h4>`, report.ReportMetadata.OrgName))
+	html.WriteString(fmt.Sprintf(`<h4 class="m-0 mb-3">DMARC Report from %s</h4>`, stdhtml.EscapeString(report.ReportMetadata.OrgName)))
 	html.WriteString(`<table class="grid-table">`)
-	html.WriteString(fmt.Sprintf(`<tr><td><strong>Report ID:</strong></td><td>%s</td></tr>`, report.ReportMetadata.ReportID))
-	html.WriteString(fmt.Sprintf(`<tr><td><strong>Domain:</strong></td><td>%s</td></tr>`, report.PolicyPublished.Domain))
-	html.WriteString(fmt.Sprintf(`<tr><td><strong>Policy:</strong></td><td>%s</td></tr>`, report.PolicyPublished.P))
+	html.WriteString(fmt.Sprintf(`<tr><td><strong>Report ID:</strong></td><td>%s</td></tr>`, stdhtml.EscapeString(report.ReportMetadata.ReportID)))
+	html.WriteString(fmt.Sprintf(`<tr><td><strong>Domain:</strong></td><td>%s</td></tr>`, stdhtml.EscapeString(report.PolicyPublished.Domain)))
+	html.WriteString(fmt.Sprintf(`<tr><td><strong>Policy:</strong></td><td>%s</td></tr>`, stdhtml.EscapeString(report.PolicyPublished.P)))
 	html.WriteString(`</table></div>`)
 
 	// Records table
@@ -298,15 +302,15 @@ func renderDMARCReport(xmlData string) string {
 				if result == "pass" {
 					cls = "cell-pass"
 				}
-				return fmt.Sprintf(`<td class="%s">%s</td>`, cls, result)
+				return fmt.Sprintf(`<td class="%s">%s</td>`, cls, stdhtml.EscapeString(result))
 			}
 
 			html.WriteString(`<tr>`)
-			html.WriteString(fmt.Sprintf(`<td>%s</td>`, record.Row.SourceIP))
+			html.WriteString(fmt.Sprintf(`<td>%s</td>`, stdhtml.EscapeString(record.Row.SourceIP)))
 			html.WriteString(fmt.Sprintf(`<td>%d</td>`, record.Row.Count))
 			html.WriteString(cell(dkimResult))
 			html.WriteString(cell(spfResult))
-			html.WriteString(fmt.Sprintf(`<td>%s</td>`, record.Row.PolicyEvaluated.Disposition))
+			html.WriteString(fmt.Sprintf(`<td>%s</td>`, stdhtml.EscapeString(record.Row.PolicyEvaluated.Disposition)))
 			html.WriteString(`</tr>`)
 		}
 
@@ -344,7 +348,7 @@ func renderStoredAttachment(msg *Message) (html string, name string) {
 		return "", ""
 	}
 	raw, err := base64.StdEncoding.DecodeString(msg.Attachment)
-	if err != nil || len(raw) == 0 {
+	if err != nil || len(raw) == 0 || len(raw) > 10*1024*1024 {
 		return "", ""
 	}
 
@@ -358,8 +362,8 @@ func renderStoredAttachment(msg *Message) (html string, name string) {
 			return "", ""
 		}
 		defer r.Close()
-		out, err := io.ReadAll(r)
-		if err != nil {
+		out, err := io.ReadAll(io.LimitReader(r, 5*1024*1024+1))
+		if err != nil || len(out) > 5*1024*1024 {
 			return "", ""
 		}
 		xml = string(out)
