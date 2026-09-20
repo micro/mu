@@ -1522,3 +1522,13 @@ document.querySelectorAll('time[data-event-time]').forEach(el=>{
  const date=new Date(el.dateTime);
  if(!isNaN(date.getTime()))el.textContent=date.toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 });
+
+// Native disclosure keeps account links usable without JavaScript.
+if(typeof document!=='undefined'){
+ const accountMenu=document.querySelector('.account-menu');
+ if(accountMenu){
+  document.addEventListener('click',event=>{if(!accountMenu.contains(event.target))accountMenu.open=false;});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&accountMenu.open){accountMenu.open=false;accountMenu.querySelector('summary').focus();}});
+  document.addEventListener('focusin',event=>{if(!accountMenu.contains(event.target))accountMenu.open=false;});
+ }
+}
