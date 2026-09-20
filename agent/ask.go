@@ -132,6 +132,8 @@ type AskRequest struct {
 	// alone, and two answers to one message shared a "ref" that identified
 	// neither.
 	MessageRef string
+	// AnswerRef is an internal idempotency key for a durable queued outcome.
+	AnswerRef string
 	// From is who wrote in, where that is not simply the account: a message
 	// somebody else sent to an address this account owns.
 	From string
@@ -313,7 +315,7 @@ func Ask(r AskRequest) (Answer, error) {
 	// page, a message from somebody else. Refusing to answer because that text
 	// mentions something is how an inbox stops working.
 	if reason, refused := safety.NeverAllowed(r.Text); refused {
-		Answered(r.Account, threadID(th), reason, "")
+		recordAnswer(r.Account, threadID(th), reason, "", r.As, r.AnswerRef)
 		return Answer{Text: reason, Thread: threadID(th)}, nil
 	}
 
@@ -325,7 +327,7 @@ func Ask(r AskRequest) (Answer, error) {
 	// question on their phone should read why nothing happened in the place
 	// they asked, not find out by opening a wallet page.
 	if reason, ok := affordable(r.Account); !ok {
-		Answered(r.Account, threadID(th), reason, "")
+		recordAnswer(r.Account, threadID(th), reason, "", r.As, r.AnswerRef)
 		return Answer{Text: reason, Thread: threadID(th)}, nil
 	}
 
@@ -356,7 +358,12 @@ func Ask(r AskRequest) (Answer, error) {
 		ID: rootID,
 	})
 
-	AnsweredAs(r.Account, threadID(th), answer, id, r.As, items...)
+	answerRef := r.AnswerRef
+	if err != nil {
+		// Partial text is not a completed outcome after an interrupted run.
+		answerRef = ""
+	}
+	recordAnswer(r.Account, threadID(th), answer, id, r.As, answerRef, items...)
 
 	return Answer{Text: answer, Flow: id, Thread: threadID(th)}, err
 }
@@ -419,12 +426,16 @@ func Answered(account, threadID, text, workflow string, results ...result.Item) 
 // agent from interrupting a conversation it has already joined would read the
 // other agent's answer as its own.
 func AnsweredAs(account, threadID, text, workflow, from string, results ...result.Item) {
+	recordAnswer(account, threadID, text, workflow, from, "", results...)
+}
+
+func recordAnswer(account, threadID, text, workflow, from, ref string, results ...result.Item) {
 	if threadID == "" || (strings.TrimSpace(text) == "" && len(results) == 0) {
 		return
 	}
 	thread.Add(thread.Message{
 		Thread: threadID, Account: account, Role: thread.RoleAgent,
-		Text: text, Workflow: workflow, From: from, Results: results,
+		Text: text, Workflow: workflow, From: from, Ref: ref, Results: results,
 	})
 }
 

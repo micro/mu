@@ -68,6 +68,19 @@ func StartForwarding() {
 	}()
 }
 
+// FromOwner identifies an owner's own mail for notification suppression only.
+// It grants no authentication or authority to the supplied From address.
+func FromOwner(m InboundMail) bool {
+	from, owner := strings.TrimSpace(m.From), strings.TrimSpace(m.Owner)
+	if from == "" || owner == "" {
+		return false
+	}
+	if strings.EqualFold(from, owner) || strings.EqualFold(from, EmailForUser(owner, ConfiguredDomain())) {
+		return true
+	}
+	return auth.OwnsAddress(owner, from)
+}
+
 // forward sends one arriving message on to the recipient's own address.
 func forward(m InboundMail) {
 	if app.EmailSender == nil {
@@ -79,7 +92,7 @@ func forward(m InboundMail) {
 	// Your own mail coming back to you is not mail arriving. Writing to your
 	// own agent files a copy in your own inbox — see SendMessageTo — and
 	// forwarding that would mail you a copy of what you just typed.
-	if strings.EqualFold(strings.TrimSpace(m.From), strings.TrimSpace(m.Owner)) {
+	if FromOwner(m) {
 		return
 	}
 
