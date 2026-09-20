@@ -287,7 +287,7 @@ func wireHooks() {
 				continue
 			}
 			accountID, from, subject := m.Owner, m.From, m.Subject
-			if accountID == "" || strings.EqualFold(from, mail.EmailForUser(accountID, mail.ConfiguredDomain())) {
+			if accountID == "" || mail.FromOwner(m) {
 				continue
 			}
 			// Nothing goes to the public timeline.

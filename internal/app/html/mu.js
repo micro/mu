@@ -354,6 +354,9 @@ conversation.addEventListener('click',event=>{
  });
 });
 let receipt=null;
+function receiptKey(){return 'micro-message-receipt:'+JSON.stringify([form.dataset.account,form.dataset.agent||'',thread]);}
+function savedReceipt(key){try{const r=JSON.parse(sessionStorage.getItem(key)||'null');if(r&&typeof r.id==='string'&&r.id.length>=16&&r.id.length<=128&&typeof r.text==='string'&&r.text.length<=8000&&r.thread===thread&&Number.isFinite(r.at)&&Date.now()-r.at>=0&&Date.now()-r.at<86400000)return r;sessionStorage.removeItem(key);}catch{}return null;}
+
 async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=thread){
  while(version===viewVersion){
   let result=null;
@@ -375,12 +378,15 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
  }
 }
 async function assistant(command,answer,version){
- if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt={text:command,thread,id:crypto.randomUUID()};
+ const key=receiptKey();
+ if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt=savedReceipt(key);
+ if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt={text:command,thread,id:crypto.randomUUID(),at:Date.now()};
+ try{sessionStorage.setItem(key,JSON.stringify(receipt));}catch{}
  const pendingReceipt=receipt;
  submission=(async()=>{
   const response=await fetch('/agent',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json',Accept:'application/vnd.micro.queued+json','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt:command,context_id:pendingReceipt.thread,agent:form.dataset.agent||'',message_id:pendingReceipt.id})});
   if(!response.ok)throw Error(await failure(response));
-  const result=await response.json();thread=result.thread;remember(result.title);receipt=null;form.dispatchEvent(new Event('message-accepted'));
+  const result=await response.json();thread=result.thread;remember(result.title);receipt=null;try{sessionStorage.removeItem(key);}catch{}form.dispatchEvent(new Event('message-accepted'));
  })();
  try{await submission;}finally{submission=null;}
  if(version!==viewVersion)return;

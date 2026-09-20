@@ -61,19 +61,9 @@ func init() {
 
 func loadReplies() {
 	replies.once.Do(func() {
-		err := data.LoadJSON(repliesFile, &replies.jobs)
-		if err != nil && !os.IsNotExist(err) {
+		if err := restoreReplies(); err != nil {
 			replies.err = err
 			return
-		}
-		if replies.jobs == nil {
-			replies.jobs = map[string]pendingReply{}
-		}
-		for id, j := range replies.jobs {
-			if j.State == "running" {
-				j.State = "interrupted"
-				replies.jobs[id] = j
-			}
 		}
 		// Keep one execution per account, with capacity for other people to work.
 		for i := 0; i < 4; i++ {
@@ -85,6 +75,42 @@ func loadReplies() {
 			}()
 		}
 	})
+}
+
+// restoreReplies never replays an execution that may have performed side effects.
+// "finishing" only says persistence was being retried; it does not prove that
+// the outcome reached disk before the process stopped.
+func restoreReplies() error {
+	if err := data.LoadJSON(repliesFile, &replies.jobs); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if replies.jobs == nil {
+		replies.jobs = map[string]pendingReply{}
+	}
+	for id, j := range replies.jobs {
+		if j.State == "running" || j.State == "finishing" {
+			j.State = "interrupted"
+			replies.jobs[id] = j
+		}
+	}
+	return nil
+}
+
+// A queued receipt can survive a crash between saving the job and its message.
+func persistReplyMessage(j pendingReply) error {
+	if thread.Add(thread.Message{Account: j.Account, Thread: j.Thread, Role: thread.RolePerson, Text: j.Text, Ref: "reply:" + j.ID, At: j.Created}) == "" {
+		return errNoConversation
+	}
+	return thread.Flush()
+}
+
+func replyOutcomeRecorded(j pendingReply) bool {
+	for _, m := range thread.Messages(j.Account, j.Thread, 0) {
+		if m.Role == thread.RoleAgent && (m.Ref == "reply-answer:"+j.ID || m.Ref == "reply-error:"+j.ID || m.Ref == "reply-interrupted:"+j.ID) {
+			return true
+		}
+	}
+	return false
 }
 
 // SubmitReply acknowledges only a durable job and message. The optional client
@@ -126,6 +152,9 @@ func submitReply(accountID, threadID, text, ref string, context ClientContext) e
 		if j.Digest != hex.EncodeToString(digest[:]) {
 			return fmt.Errorf("message identifier already used")
 		}
+		if j.State == "queued" {
+			return persistReplyMessage(j)
+		}
 		return thread.Flush()
 	}
 	total, own := 0, 0
@@ -162,13 +191,14 @@ func submitReply(accountID, threadID, text, ref string, context ClientContext) e
 		return err
 	}
 	// The worker cannot start until the message is visible and flushed.
-	if thread.Add(thread.Message{Account: accountID, Thread: threadID, Role: thread.RolePerson, Text: text, Ref: "reply:" + id}) == "" {
-		return errNoConversation
-	}
-	return thread.Flush()
+	return persistReplyMessage(j)
 }
 
 func runReply() {
+	processReply(Ask)
+}
+
+func processReply(ask func(AskRequest) (Answer, error)) {
 	replies.Lock()
 	if replies.err != nil {
 		replies.Unlock()
@@ -190,6 +220,12 @@ func runReply() {
 	}
 	original := job.State
 	if original == "queued" {
+		if thread.Get(job.Account, job.Thread) != nil {
+			if err := persistReplyMessage(job); err != nil {
+				replies.Unlock()
+				return
+			}
+		}
 		job.State = "running"
 		replies.jobs[job.ID] = job
 		if err := data.SaveJSON(repliesFile, replies.jobs); err != nil {
@@ -212,7 +248,7 @@ func runReply() {
 		switch original {
 		case "queued":
 			// Recheck the captured specialist; never silently replace it on execution.
-			answer, err := Ask(AskRequest{Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: "reply:" + job.ID})
+			answer, err := ask(AskRequest{Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: "reply:" + job.ID, AnswerRef: "reply-answer:" + job.ID})
 			if err == nil && strings.TrimSpace(answer.Text) == "" {
 				err = fmt.Errorf("no answer was recorded")
 			}
@@ -224,6 +260,14 @@ func runReply() {
 				}
 			}
 		case "interrupted":
+			if replyOutcomeRecorded(job) {
+				break
+			}
+			if job.Text != "" {
+				if err := persistReplyMessage(job); err != nil {
+					return
+				}
+			}
 			if err := AnsweredOnce(job.Account, job.Thread, "The server stopped while processing this reply. It has not been retried because an action may already have happened. Please review before asking again.", "", "reply-interrupted:"+job.ID); err != nil {
 				return
 			}
