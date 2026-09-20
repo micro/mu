@@ -807,6 +807,6 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 
 /* Navigation stays visible above the content on desktop and mobile. */
 .desktop-navigation{display:flex;margin-left:auto}
-@media(max-width:700px){header{flex-wrap:wrap;gap:4px 16px;padding:12px;min-height:64px}.signed-in header>.brand{display:none}.desktop-navigation{gap:8px 16px}header nav a{padding-block:8px}.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}}
+@media(max-width:700px){header{flex-wrap:wrap;gap:4px 16px;padding:12px;min-height:64px}.desktop-navigation{gap:8px 16px}header nav a{padding-block:8px}.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}}
 
 @media(max-width:480px){.inbox-views{gap:8px 12px;font-size:.875rem}}
