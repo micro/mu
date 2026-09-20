@@ -36,8 +36,8 @@ package mail
 // other than a way to download your mail repeatedly.
 
 import (
-	"encoding/base64"
 	"fmt"
+	"html"
 	"mu/internal/app"
 	"sort"
 	"strings"
@@ -435,18 +435,13 @@ func imapRender(m *Message) []byte {
 	header("In-Reply-To", m.ReplyTo)
 	b.WriteString("MIME-Version: 1.0\r\n")
 
-	body := strings.ReplaceAll(clientBody(m), "\r\n", "\n")
-	body = strings.ReplaceAll(body, "\n", "\r\n")
-	bodyType := "text/plain; charset=utf-8"
-	if !m.Bridged && imapLooksHTML(clientBody(m)) {
-		bodyType = "text/html; charset=utf-8"
-	}
+	body, sub := imapTextBody(m)
+	bodyType := "text/" + strings.ToLower(sub) + "; charset=utf-8"
 
 	if m.Attachment == "" {
 		b.WriteString("Content-Type: " + bodyType + "\r\n")
 		b.WriteString("Content-Transfer-Encoding: 8bit\r\n\r\n")
 		b.WriteString(body)
-		b.WriteString("\r\n")
 		return []byte(b.String())
 	}
 
@@ -637,13 +632,9 @@ func imapQuoted(s string) string {
 // One part or two, matching what imapRender builds — a client that is told
 // about a part that is not there will ask for it and get nothing back.
 func imapBodyStructure(m *Message) string {
-	sub := "PLAIN"
-	if !m.Bridged && imapLooksHTML(clientBody(m)) {
-		sub = "HTML"
-	}
-	body := strings.ReplaceAll(clientBody(m), "\n", "\r\n")
+	body, sub := imapTextBody(m)
 	text := fmt.Sprintf(`("TEXT" %q ("CHARSET" "UTF-8") NIL NIL "8BIT" %d %d)`,
-		sub, len(body), strings.Count(body, "\r\n")+1)
+		sub, len(body), strings.Count(body, "\r\n"))
 	if m.Attachment == "" {
 		return text
 	}
@@ -652,14 +643,41 @@ func imapBodyStructure(m *Message) string {
 		kind = strings.ToUpper(m.AttachmentType[:i])
 		subtype = strings.ToUpper(m.AttachmentType[i+1:])
 	}
-	size := base64.StdEncoding.DecodedLen(len(m.Attachment))
+	size := len(imapWrap(m.Attachment))
 	att := fmt.Sprintf(`(%q %q ("NAME" %s) NIL NIL "BASE64" %d)`,
 		kind, subtype, imapQuoted(m.AttachmentName), size)
 	return "(" + text + att + ` "MIXED")`
 }
 
-// clientBody formats generated scheduled mail for ordinary email clients.
+// imapTextBody is shared by MIME output and BODYSTRUCTURE so clients fetch
+// precisely the bytes and content type advertised.
+func imapTextBody(m *Message) (string, string) {
+	body := clientBody(m)
+	sub := "PLAIN"
+	if !m.Bridged && imapLooksHTML(body) {
+		sub = "HTML"
+	}
+	body = strings.ReplaceAll(strings.ReplaceAll(body, "\r\n", "\n"), "\n", "\r\n")
+	if m.Attachment == "" {
+		body += "\r\n"
+	}
+	return body, sub
+}
+
+// clientBody formats stored reports and generated mail for email clients.
 func clientBody(m *Message) string {
+	if !m.Bridged {
+		if report, _ := renderStoredAttachment(m); report != "" {
+			// Email clients do not load the web stylesheet.
+			report = strings.ReplaceAll(report, `<table class="grid-table">`, `<table cellpadding="6" cellspacing="0">`)
+			report = strings.ReplaceAll(report, `<table class="grid-table tight">`, `<table cellpadding="6" cellspacing="0" border="1">`)
+			body := strings.TrimSpace(m.Body)
+			if body != "" && !strings.HasSuffix(body, "— not shown]") {
+				report = "<pre>" + html.EscapeString(body) + "</pre>" + report
+			}
+			return "<!doctype html><html><body>" + report + "</body></html>"
+		}
+	}
 	if (m.Tag == "brief" || m.Tag == "scheduled") && m.FromID == "agent@"+ConfiguredDomain() && !imapLooksHTML(m.Body) {
 		return app.RenderString(m.Body)
 	}
