@@ -110,11 +110,11 @@ func ClientsHandler(w http.ResponseWriter, r *http.Request) {
 	body := Navigation("/account/clients") + `<p>Use your Micro account from a mail app, chat app or your own code. Tokens act as passwords for these clients.</p>
  <h2>Mail</h2><p>Read and send Micro mail in your own mail app. This opens your Micro mailbox; it does not import another email account.</p><p><a href="/account/tokens?add=mail#create-token-form">Create mail token</a> and use it as the app’s password.</p>` + inbox.ClientSettings(acc.ID, "mail") +
 		`<h2>Chat (XMPP)</h2><p>Send and receive messages using an XMPP chat app.</p><p><a href="/account/tokens?add=xmpp#create-token-form">Create chat token</a> and use it as the app’s password.</p>` + inbox.ClientSettings(acc.ID, "chat") +
-		`<h2>Assistant API</h2><p>Call your assistant from a script using your account’s allowance and balance. <a href="/account/tokens?add=api#create-token-form">Create an API token</a> with Agents and Allow actions selected. Set it as MICRO_TOKEN, then run:</p><pre>curl '` + base + `/agent/api/ask' \
+		`<h2>Assistant API</h2><p>Call your assistant from a script using your account’s allowance and balance. <a href="/account/tokens?add=api#create-token-form">Create an API token</a> with Agents and Allow actions selected. Set it as MICRO_TOKEN, then run:</p><pre>curl '` + base + `/agent' \
   -H "Authorization: Bearer $MICRO_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"prompt":"Help me plan my week"}'</pre><p>The reply is in <code>data.text</code>. Include the returned <code>data.thread</code> as <code>thread</code> in your next request to continue. Keep tokens out of browser code and source control.</p>
- <h2>MCP</h2><p>In a compatible app, add this remote HTTP server:</p><pre>` + base + `/agent/mcp</pre><p>Use your API token in the header <code>Authorization: Bearer YOUR_TOKEN</code>. Call <code>agent_ask</code> with a <code>prompt</code> to talk to your assistant.</p>
+  -d '{"prompt":"Help me plan my week"}'</pre><p>The reply is in <code>text</code>. Include the returned <code>thread</code> as <code>thread</code> in your next request to continue. Keep tokens out of browser code and source control.</p>
+ <h2>Service tools (MCP)</h2><p>Connect your own agent to Micro’s services using <code>` + base + `/mcp</code> and a <a href="/account/tokens?access=services#create-token-form">Services token</a>. This gives your client tools; it does not talk to your Micro assistant. <a href="/tools">Tool reference</a>.</p>
  <h2>OAuth and SSH</h2><p>For apps you build, register an OAuth client. For terminal and file access, add an SSH public key. Setup and credentials are on <a href="/account/tokens#oauth">Tokens</a>.</p>`
 	app.Respond(w, r, app.Response{Title: "Clients", HTML: body})
 }

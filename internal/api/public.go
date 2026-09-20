@@ -4,15 +4,12 @@ package api
 // implementation and the app bridge's capability catalogue.
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
-	"html"
 	"io"
 	"net/http"
 	"strings"
 
-	gwmcp "go-micro.dev/v6/gateway/mcp"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/usage"
@@ -122,7 +119,7 @@ func Call(r *http.Request, name string, args map[string]any) (any, error) {
 	if !permitted(auth.TokenFromRequest(r), op) {
 		return nil, Fail(403, "forbidden", "This token does not grant this operation")
 	}
-	if r.Header.Get("Authorization") == "" && r.Header.Get(TokenHeader) == "" && !auth.StrictCSRF(r) {
+	if r.Header.Get("Authorization") == "" && r.Header.Get(TokenHeader) == "" && op.Writes && !auth.StrictCSRF(r) {
 		return nil, Fail(403, "csrf", "A session call needs X-CSRF-Token")
 	}
 	allowed := map[string]bool{}
@@ -160,159 +157,57 @@ func writeFailure(w http.ResponseWriter, r *http.Request, err error) {
 	json.NewEncoder(w).Encode(map[string]any{"error": e})
 }
 
-// ProductPath names an operation under the package that owns it.
-func ProductPath(name string) string {
-	parts := strings.SplitN(name, "_", 2)
-	if len(parts) != 2 {
-		return ""
+// AuthorizeProduct applies product scopes before a resource handler serves a client.
+func AuthorizeProduct(w http.ResponseWriter, r *http.Request, capability string, writes bool) bool {
+	r = CredentialRequest(r)
+	if _, _, err := auth.RequireSession(r); err != nil {
+		writeFailure(w, r, Fail(401, "unauthenticated", "Authentication required"))
+		return false
 	}
-	return "/" + parts[0] + "/api/" + parts[1]
+	if !permitted(auth.TokenFromRequest(r), &Operation{Name: capability + "_resource", Writes: writes}) {
+		writeFailure(w, r, Fail(403, "forbidden", "This token does not grant this operation"))
+		return false
+	}
+	if writes && r.Header.Get("Authorization") == "" && r.Header.Get(TokenHeader) == "" && !auth.StrictCSRF(r) {
+		writeFailure(w, r, Fail(403, "csrf", "A session write needs X-CSRF-Token"))
+		return false
+	}
+	return true
 }
 
-// ProductRequest identifies product protocol routes, never service calls.
-func ProductRequest(path string) bool {
-	if path == "/agent/mcp" {
-		return true
-	}
-	for _, owner := range []string{"agent", "inbox", "work"} {
-		if path == "/"+owner+"/api" || strings.HasPrefix(path, "/"+owner+"/api/") {
-			return true
-		}
-	}
-	return false
-}
-
-// PublicRESTHandler accepts JSON POST for every operation. Only discovery is a
-// GET, so prompts and private queries cannot leak into URLs or caches.
-func PublicRESTHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if !ProductRequest(r.URL.Path) || len(parts) < 2 || parts[1] != "api" {
-		writeFailure(w, r, Fail(404, "not_found", "Unknown product endpoint"))
-		return
-	}
-	if len(parts) == 2 {
-		if r.Method != http.MethodGet {
-			w.Header().Set("Allow", "GET")
-			writeFailure(w, r, Fail(405, "method_not_allowed", "Use GET for discovery"))
-			return
-		}
-		ops := []Operation{}
-		for _, op := range Operations {
-			if strings.HasPrefix(op.Name, parts[0]+"_") {
-				ops = append(ops, op)
-			}
-		}
-		app.RespondJSON(w, map[string]any{"operations": ops})
-		return
-	}
-	name := ""
-	if len(parts) == 3 {
-		name = parts[0] + "_" + parts[2]
-	}
-	if operation(name) == nil {
-		writeFailure(w, r, Fail(404, "not_found", "Unknown public operation"))
-		return
-	}
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		writeFailure(w, r, Fail(405, "method_not_allowed", "Use POST with JSON arguments"))
-		return
-	}
-	if r.URL.RawQuery != "" {
-		writeFailure(w, r, Fail(400, "invalid_arguments", "Send arguments in the JSON body"))
-		return
-	}
-	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxRequestBytes))
-	if err != nil {
-		writeFailure(w, r, Fail(413, "too_large", "Request too large"))
-		return
-	}
-	var args map[string]any
-	if len(raw) == 0 {
-		raw = []byte("{}")
-	}
-	if err := Decode(raw, &args); err != nil || args == nil {
-		writeFailure(w, r, Fail(400, "invalid_arguments", "Send a JSON object"))
-		return
-	}
+// RespondOperation reuses domain operations from a resource's JSON representation.
+func RespondOperation(w http.ResponseWriter, r *http.Request, name string, args map[string]any) {
 	result, err := Call(r, name, args)
 	if err != nil {
 		writeFailure(w, r, err)
 		return
 	}
-	app.RespondJSON(w, map[string]any{"data": result})
-}
-func publicResolver(r *http.Request) gwmcp.Resolver {
-	res := gwmcp.NewManualResolver()
-	for _, op := range Operations {
-		op := op
-		props := map[string]any{}
-		required := []string{}
-		for _, p := range op.Params {
-			props[p.Name] = map[string]any{"type": p.Type, "description": p.Description}
-			if p.Required {
-				required = append(required, p.Name)
-			}
-		}
-		res.Add(gwmcp.Tool{Name: op.Name, Description: op.Description, InputSchema: map[string]any{"type": "object", "properties": props, "required": required, "additionalProperties": false}}, func(ctx context.Context, args map[string]any) (*gwmcp.CallResult, error) {
-			result, err := Call(r, op.Name, args)
-			var payload any = map[string]any{"data": result}
-			if err != nil {
-				payload = map[string]any{"error": failure(err)}
-			}
-			raw, _ := json.Marshal(payload)
-			if len(raw) > maxResultBytes {
-				raw, _ = json.Marshal(map[string]any{"error": &Failure{413, "result_too_large", "Request fewer items or use HTTP to read the full result. The operation may already have completed; do not repeat a write."}})
-				err = errors.New("result too large")
-			}
-			return &gwmcp.CallResult{Text: string(raw), IsError: err != nil}, nil
-		})
-	}
-	return res
-}
-func PublicMCPHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
-	if r.Method == http.MethodGet {
-		publicMCPPage(w, r)
-		return
-	}
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "GET, POST")
-		writeFailure(w, r, Fail(405, "method_not_allowed", "Use POST for MCP"))
-		return
-	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxRequestBytes))
-	if err != nil {
-		writeFailure(w, r, Fail(413, "too_large", "Request too large"))
-		return
-	}
-	r.Body = io.NopCloser(bytes.NewReader(body))
-	var call struct {
-		Method string `json:"method"`
-	}
-	_ = json.Unmarshal(body, &call)
-	if call.Method == "tools/call" {
-		if _, _, err := auth.RequireSession(CredentialRequest(r)); err != nil {
-			writeFailure(w, r, Fail(401, "unauthenticated", "Authentication required"))
-			return
-		}
-	}
-	gwmcp.NewHandler(publicResolver(r), gwmcp.WithServerInfo("micro", "1.0.0"), gwmcp.WithProtocolVersion(MCPVersion)).ServeHTTP(w, r)
+	app.RespondJSON(w, result)
 }
 
-// publicMCPPage documents the protocol served at this endpoint.
-func publicMCPPage(w http.ResponseWriter, r *http.Request) {
-	var b strings.Builder
-	b.WriteString(`<p>Connect an MCP client to Micro to ask questions, manage work and read your inbox.</p><h2>Connect</h2><p>Server URL: <code>` + html.EscapeString(app.BaseURL(r)+"/agent/mcp") + `</code></p><p>Choose HTTP in your client. Sign in when prompted, or use an access token from <a href="/account/tokens?access=agent">Tokens</a> as <code>Authorization: Bearer &lt;token&gt;</code>.</p><h2>Tools</h2><p>The client discovers tools with <code>tools/list</code> and invokes them with <code>tools/call</code>. Access follows your account and token permissions.</p>`)
-	for _, op := range Operations {
-		b.WriteString(`<section class="page-section"><h3>` + html.EscapeString(op.Name) + `</h3><p>` + html.EscapeString(op.Description) + `</p><dl>`)
-		for _, p := range op.Params {
-			b.WriteString(`<dt><code>` + html.EscapeString(p.Name) + `</code> (` + html.EscapeString(p.Type) + `)</dt><dd>` + html.EscapeString(p.Description) + `</dd>`)
-		}
-		b.WriteString(`</dl></section>`)
+// JSONAction reads an explicit action from a resource's JSON request body.
+func JSONAction(w http.ResponseWriter, r *http.Request, owner, defaultAction string) {
+	var args map[string]any
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBytes))
+	if err := decoder.Decode(&args); err != nil || args == nil {
+		writeFailure(w, r, Fail(400, "invalid_arguments", "Send a JSON object"))
+		return
 	}
-	app.Respond(w, r, app.Response{Title: "MCP", HTML: b.String()})
+	if decoder.Decode(new(any)) != io.EOF {
+		writeFailure(w, r, Fail(400, "invalid_arguments", "Send one JSON object"))
+		return
+	}
+	action := defaultAction
+	if v, ok := args["action"]; ok {
+		action, _ = v.(string)
+		delete(args, "action")
+	}
+	op := operation(owner + "_" + action)
+	if op == nil || !op.Writes {
+		writeFailure(w, r, Fail(400, "invalid_arguments", "Unknown action"))
+		return
+	}
+	RespondOperation(w, r, op.Name, args)
 }
 
 // ServiceCallHandler is the first-party service playground, not a public API.
@@ -336,11 +231,4 @@ func ServiceCallHandler(w http.ResponseWriter, r *http.Request) {
 	clone.URL = &u
 	clone.URL.Path = RESTPrefix + strings.TrimPrefix(r.URL.Path, "/services/call/")
 	RESTHandler(w, clone)
-}
-
-// WriteProductMigration refuses obsolete product calls without executing a service.
-func WriteProductMigration(w http.ResponseWriter, target string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusGone)
-	json.NewEncoder(w).Encode(map[string]any{"error": map[string]string{"code": "endpoint_moved", "message": "Product operations moved to " + target + ". Service operations remain at /api/v1.", "endpoint": target}})
 }

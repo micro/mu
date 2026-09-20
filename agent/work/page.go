@@ -17,6 +17,24 @@ import (
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if app.WantsJSON(r) || app.SendsJSON(r) {
+		r = api.CredentialRequest(r)
+		if !api.AuthorizeProduct(w, r, "work", r.Method != "GET") {
+			return
+		}
+		if r.Method == "POST" && app.SendsJSON(r) {
+			api.JSONAction(w, r, "work", "submit")
+			return
+		}
+		if r.Method == "GET" && r.URL.Query().Get("id") == "" {
+			args := map[string]any{}
+			if status := r.URL.Query().Get("status"); status != "" {
+				args["status"] = status
+			}
+			api.RespondOperation(w, r, "work_list", args)
+			return
+		}
+	}
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)
@@ -46,7 +64,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		body := workDetail(t, auth.CSRFToken(r))
 		if app.WantsJSON(r) {
-			app.RespondJSON(w, map[string]any{"html": body, "status": t.Status})
+			app.RespondJSON(w, map[string]any{"html": body, "status": t.Status, "work": publicTask(t)})
 			return
 		}
 		app.Respond(w, r, app.Response{Title: "Work", HTML: `<div id="work-detail" class="page-stack">` + body + `</div>` + workPollJS})

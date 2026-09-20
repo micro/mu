@@ -197,20 +197,16 @@ func authRequired() map[string]bool {
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
 		// Public at the door, decided per tool inside. The same answer /mcp
 		// gives, for the same reason: news and weather must not need an account.
-		"/inbox/api":  false,
-		"/inbox/api/": false,
-		"/work/api":   false,
-		"/work/api/":  false,
-		"/api/v1":     false,
-		"/api/v1/":    false,
-		"/agent":      false, // Redirects to the named page; auth checked in handler
-		"/agent/":     false, // /agent/<name> — one agent's page; auth checked in handler
-		"/push/":      true,  // Subscribing this device to notifications (old name)
-		"/notify/":    true,  // The same, under the name the feature actually has
-		"/work":       true,
-		"/inbox":      true,  // The mailbox — yours, so it needs a session
-		"/inbox/":     true,  // One alias's mail
-		"/setup":      false, // First-run setup (open only until an admin exists)
+		"/api/v1":  false,
+		"/api/v1/": false,
+		"/agent":   false, // Redirects to the named page; auth checked in handler
+		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
+		"/push/":   true,  // Subscribing this device to notifications (old name)
+		"/notify/": true,  // The same, under the name the feature actually has
+		"/work":    true,
+		"/inbox":   true,  // The mailbox — yours, so it needs a session
+		"/inbox/":  true,  // One alias's mail
+		"/setup":   false, // First-run setup (open only until an admin exists)
 	}
 	return authenticated
 }
@@ -452,7 +448,7 @@ func registerRoutes() {
 	// URL to tidy a parameter is a bad trade — they redirect to the name, which
 	// is one hop and leaves the address bar saying something true.
 	http.HandleFunc("/agent", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
+		if r.Method != http.MethodGet || app.WantsJSON(r) {
 			agent.Handler(w, r)
 			return
 		}
@@ -755,11 +751,7 @@ func registerRoutes() {
 
 	// Product operations have separate routes; runtime tools never switch by token.
 	http.HandleFunc("/developers", home.DevelopersHandler)
-	for _, owner := range []string{"agent", "inbox", "work"} {
-		http.HandleFunc("/"+owner+"/api", api.PublicRESTHandler)
-		http.HandleFunc("/"+owner+"/api/", api.PublicRESTHandler)
-	}
-	http.HandleFunc("/agent/mcp", api.PublicMCPHandler)
+
 	http.HandleFunc("/tools", api.ServiceToolsPageHandler)
 
 	// /tools/<name> — one tool. The smallest unit in the catalogue, and until
