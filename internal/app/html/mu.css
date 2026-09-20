@@ -814,9 +814,10 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 /* Account controls stay compact at every screen width. */
 .desktop-navigation{align-items:center;flex-wrap:nowrap}
 .account-menu{position:relative;flex:none}
-.account-menu>summary{width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#f5f5f5;font-weight:600;line-height:1}
+.account-menu>summary{width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;font-weight:600;line-height:1}
+.account-menu>summary>span{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#f5f5f5}
 .account-menu>summary::before{display:none}
-.account-menu>summary:hover,.account-menu[open]>summary{background:#e8e8e8}
+.account-menu>summary:hover>span,.account-menu[open]>summary>span{background:#e8e8e8}
 .account-menu>.account-menu-links{position:absolute;right:0;top:100%;z-index:100;margin:8px 0 0;padding:6px;min-width:160px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 16px #00000012}
 .account-menu-links>a{display:flex;align-items:center;min-height:44px;padding:8px 12px;border-radius:4px;white-space:nowrap;text-decoration:none}
 .account-menu-links>a:hover,.account-menu-links>a:focus-visible{background:#f5f5f5;color:inherit}
