@@ -682,24 +682,6 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .reading-page main>.editorial-page{max-width:var(--reading-width)}
 .reading-page main>h1{max-width:var(--reading-width)}
 
-/* The same navigation links become a simple left drawer on small screens. */
-.nav-toggle{display:none;border:0;background:transparent;border-radius:0;box-shadow:none}
-.nav-toggle:hover{background:transparent}
-.mobile-account{display:none}
-.nav-drawer{position:fixed;inset:0 auto 0 0;margin:0;width:min(280px,85vw);max-width:none;height:100dvh;max-height:none;padding:20px;border:0;border-right:1px solid var(--border);background:#fff;color:inherit;overflow-y:auto}
-.nav-drawer::backdrop{background:rgb(0 0 0 / .25)}
-.nav-drawer[open]{animation:nav-enter .16s ease-out}
-.nav-drawer-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
-.nav-close{font-size:24px;width:36px;height:36px;padding:0}
-.nav-drawer nav{display:flex;flex-direction:column;gap:4px}
-.nav-drawer nav a{display:block;padding:12px 8px;text-decoration:none;border-radius:4px}
-.nav-drawer nav a:hover{background:var(--surface)}
-.nav-drawer a:focus-visible,.nav-close:focus-visible,.nav-toggle:focus-visible{outline:2px solid #333;outline-offset:2px}
-body.nav-open{overflow:hidden}
-@keyframes nav-enter{from{transform:translateX(-100%)}to{transform:translateX(0)}}
-@media(max-width:700px){.nav-ready .nav-toggle{display:inline-flex;flex:none;width:40px;height:40px;padding:8px}.nav-ready .mobile-account{display:block;margin-left:auto;font-size:.875rem;padding-block:10px}.nav-ready .desktop-navigation{display:none}.nav-ready>.page>header{justify-content:flex-start;gap:12px}}
-@media(prefers-reduced-motion:reduce){.nav-drawer[open]{animation:none}}
-
 /* Text navigation shared by the three Inbox views. */
 .inbox-views{gap:12px 20px;margin-block:0 16px}
 .view-switch a[aria-current="page"]{font-weight:600;text-decoration:underline;text-underline-offset:4px}
@@ -800,9 +782,6 @@ body.nav-open{overflow:hidden}
 .assistant-workspace>.conversation{flex:1;min-width:0;max-width:760px;margin-inline:auto}
 .assistant-workspace .conversation>.assistant-toolbar,.assistant-workspace .assistant-thread-title,.assistant-workspace .prompt-panel{width:100%;max-width:760px;box-sizing:border-box;margin-inline:auto}
 .assistant-workspace #responses>.turn{width:100%;max-width:760px;box-sizing:border-box;margin-inline:auto}
-.assistant-history{position:absolute;inset:0 auto 0 0;z-index:3;width:260px;max-width:100%;box-sizing:border-box;min-width:0;overflow-y:auto;padding-right:16px;border-right:1px solid #eee;background:#fff}
-.assistant-history .conversation-row{display:block}.assistant-history time{display:block;margin-top:4px}
-.assistant-history [aria-current="page"]{font-weight:600}
 .assistant-toolbar{display:flex;align-items:center;gap:16px;flex-shrink:0;padding:8px 0 16px;font-size:.875rem}
 .assistant-toolbar button{font:inherit;margin:0;padding:0;background:none;border:0;color:inherit}
 .assistant-thread-title{font-size:1rem;font-weight:500;margin:0 0 12px;flex-shrink:0;overflow-wrap:anywhere}
@@ -810,27 +789,11 @@ body.nav-open{overflow:hidden}
 .assistant-workspace #responses{order:1}
 .assistant-workspace .composer textarea{flex:1;min-width:0;width:0;min-height:36px;max-height:160px;resize:none;overflow-y:auto;box-sizing:border-box;margin:0;padding:7px 10px;border:0;background:transparent;font:inherit;font-size:16px;line-height:22px}
 .assistant-workspace #status{min-height:1.4em;margin:4px 0 0;font-size:.8rem;color:#777}
-@media(min-width:701px) and (max-width:1360px){.assistant-history{padding:0 16px;box-shadow:8px 0 20px #0001}}
-@media(max-width:700px){.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}.assistant-workspace:has(.assistant-history:not([hidden]))>.conversation{display:none}.assistant-history{position:static;flex:1;width:100%;border:0;padding:0}.assistant-workspace{gap:0}}
 
 .command-page:has(.assistant-workspace){height:100svh;height:var(--workspace-height,100dvh);min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .command-page:has(.assistant-workspace) .page{height:auto;flex:1;min-height:0}
 .command-page:has(.assistant-workspace)>footer{display:none}
 .assistant-workspace #status:empty{display:none}
-
-/* Thread history lives in the header; opening it never shifts the transcript. */
-.history-toggle{flex:none;width:36px;height:36px;padding:6px;border:0;background:transparent}
-.command-page:has(.assistant-workspace) header{justify-content:flex-start}
-.command-page:has(.assistant-workspace) header .desktop-navigation{margin-left:auto}
-.command-page:has(.assistant-history[hidden]) header>.brand{display:none}
-
-/* One mobile menu holds site navigation and threads. */
-.command-page:has(.assistant-workspace) header{padding-left:6px}
-@media(max-width:700px){
- .command-page:has(.assistant-workspace) header{padding-left:4px}
- .command-page:has(.assistant-workspace) .nav-toggle{display:none}
- .history-toggle{width:40px;height:40px;padding:8px}
-}
 
 /* Linked records share a row highlight without moving their content. */
 :is(a.conversation-row,a.collection-item,a.directory-content,a.rc-hit,a.list-link){text-decoration:none}
@@ -842,21 +805,8 @@ body.nav-open{overflow:hidden}
 .thread-title-editor{display:flex;flex-wrap:wrap;gap:8px;margin:0}
 .thread-title-editor input{flex:1 1 200px;width:auto}
 
-/* The same quiet header and grouped sidebar on every signed-in page. */
-.signed-in header{justify-content:flex-start;padding-left:6px}
-.signed-in header>.brand{display:none}
-.signed-in:has(.assistant-history:not([hidden])) header>.brand{display:block}
-.signed-in .desktop-navigation{display:flex;margin-left:auto}
-.signed-in .nav-toggle{display:inline-flex;flex:none;width:36px;height:36px;padding:6px}
-.signed-in:has(.assistant-workspace) .nav-toggle{display:none}
-.sidebar-primary{display:flex;flex-direction:column;gap:4px}
-.sidebar-primary{margin-bottom:20px}
-.sidebar-primary a{display:block;padding:8px;text-decoration:none;border-radius:4px}
-.sidebar-primary a:hover{background:var(--surface)}
-@media(max-width:700px){.signed-in header{padding-left:4px}.signed-in .nav-toggle{width:40px;height:40px;padding:8px}.signed-in .desktop-navigation{gap:16px}}
-
-.assistant-history .assistant-toolbar{padding-inline:8px}
-.assistant-history .conversation-row{padding-inline:8px}
-.assistant-history nav>p{padding-inline:8px}
+/* Navigation stays visible above the content on desktop and mobile. */
+.desktop-navigation{display:flex;margin-left:auto}
+@media(max-width:700px){header{flex-wrap:wrap;gap:4px 16px;padding:12px;min-height:64px}.signed-in header>.brand{display:none}.desktop-navigation{gap:8px 16px}header nav a{padding-block:8px}.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}}
 
 @media(max-width:480px){.inbox-views{gap:8px 12px;font-size:.875rem}}

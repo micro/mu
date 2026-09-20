@@ -128,42 +128,8 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if agentDescription != "" {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
-	history := assistantHistory(acc.ID, session, selected, basePath)
-	body := `<div class="assistant-workspace">` + history + `<div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
+	body := `<div class="assistant-workspace"><div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
 	fmt.Fprint(w, app.ConsoleHTML(agentName, body, acc))
-}
-
-func assistantHistory(owner, selected, agentID, basePath string) string {
-	var b strings.Builder
-	b.WriteString(`<aside id="assistant-history" class="assistant-history" hidden><div class="assistant-toolbar"><strong>Recent</strong><a href="` + html.EscapeString(basePath) + `?new=1">New</a></div><nav aria-label="Recent">`)
-	count := 0
-	for _, t := range thread.List(owner, 0) {
-		target := t.Agent
-		if target == agent.DefaultPlatformAgent {
-			target = ""
-		}
-		if t.Client != thread.WebClient || target != agentID {
-			continue
-		}
-		if count == 10 {
-			break
-		}
-		count++
-		current := ""
-		if t.ID == selected {
-			current = ` aria-current="page"`
-		}
-		title := strings.TrimSpace(t.Subject)
-		if title == "" {
-			title = "Untitled"
-		}
-		b.WriteString(`<a class="conversation-row" href="` + html.EscapeString(basePath) + `?session=` + url.QueryEscape(t.ID) + `"` + current + `><span class="conversation-title">` + html.EscapeString(title) + `</span><time>` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time></a>`)
-	}
-	if count == 0 {
-		b.WriteString(`<p class="text-muted">No threads yet.</p>`)
-	}
-	b.WriteString(`</nav></aside>`)
-	return b.String()
 }
 
 // renameThread changes only the signed-in owner's web thread.
