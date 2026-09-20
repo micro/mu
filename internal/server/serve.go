@@ -96,7 +96,7 @@ func serve(addr string) {
 				r.URL.Path = r.URL.Path[:v-1]
 			}
 
-			if api.ToolDispatch(r.URL.Path) || api.ProductRequest(r.URL.Path) {
+			if api.ToolDispatch(r.URL.Path) || productClientRequest(r) {
 				r = api.CredentialRequest(r)
 			}
 

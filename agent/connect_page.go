@@ -212,11 +212,11 @@ func defaultPanel(base string) string {
 	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
-	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Create a token with Agent API access in <a href="/account/tokens?add=api#create-token-form">Tokens</a>.</p>`)
+	b.WriteString(`<p class="conn-note">Give your own agent access to service tools. This does not talk to the Micro agent above. Create a <a href="/account/tokens?access=services#create-token-form">Services token</a> for the tools your client needs.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "mu": {
-      "url": "`+strings.TrimSuffix(base, "/")+`/agent/mcp",
+      "url": "`+strings.TrimSuffix(base, "/")+`/mcp",
       "headers": { "Authorization": "Bearer YOUR_TOKEN" }
     }
   }
@@ -314,11 +314,11 @@ func connectPanel(a *Agent, base, csrf string) string {
 	b.WriteString(connEndpoint(base, Path(a.Owner, a.ID)))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
-	b.WriteString(`<p class="conn-note">Connect a client to Agent, Work and Inbox. Call <code>agent_ask</code> with the agent name to talk to it. Create a token with Agent API access in <a href="/account/tokens?add=api#create-token-form">Tokens</a>.</p>`)
+	b.WriteString(`<p class="conn-note">Give your own agent access to service tools. This does not talk to the Micro agent above. Create a <a href="/account/tokens?access=services#create-token-form">Services token</a> for the tools your client needs.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "`+strings.ToLower(a.Name)+`": {
-      "url": "`+strings.TrimRight(base, "/")+"/agent/mcp"+`",
+      "url": "`+strings.TrimRight(base, "/")+"/mcp"+`",
       "headers": { "Authorization": "Bearer YOUR_TOKEN" }
     }
   }

@@ -33,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
@@ -92,6 +93,10 @@ const askLimit = 8000
 // /api/agent/<name> — would be a second name for one thing, and the address of
 // an agent is the address of an agent.
 func APIHandler(w http.ResponseWriter, r *http.Request) {
+	r = api.CredentialRequest(r)
+	if !api.AuthorizeProduct(w, r, "agent", true) {
+		return
+	}
 	// Bearer token or session. RequireSession takes both, which is what makes
 	// the same endpoint work from a program and from the page's own script.
 	sess, acc, err := auth.RequireSession(r)

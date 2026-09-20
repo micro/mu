@@ -43,6 +43,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -81,7 +82,7 @@ func runAsk(args []string, rc *ResolvedConfig) int {
 	}
 
 	a := &asker{
-		url:   strings.TrimRight(rc.URL, "/") + "/agent/api/ask",
+		url:   strings.TrimRight(rc.URL, "/") + "/agent/" + url.PathEscape(agent),
 		token: rc.Token,
 		agent: agent,
 		http:  &http.Client{Timeout: 180 * time.Second},
@@ -120,7 +121,7 @@ type asker struct {
 
 // ask sends one question and returns the answer, remembering the thread.
 func (a *asker) ask(text string) (string, error) {
-	body, err := json.Marshal(map[string]string{"prompt": text, "thread": a.thread, "agent": a.agent})
+	body, err := json.Marshal(map[string]string{"prompt": text, "thread": a.thread})
 	if err != nil {
 		return "", err
 	}
@@ -151,7 +152,7 @@ func (a *asker) ask(text string) (string, error) {
 		return "", fmt.Errorf("not signed in — run `mu login` or set MU_TOKEN")
 	case resp.StatusCode == http.StatusPaymentRequired:
 		return "", fmt.Errorf("out of credits — top up at %s",
-			strings.SplitN(a.url, "/agent/api/", 2)[0]+"/account/topup")
+			strings.SplitN(a.url, "/agent/", 2)[0]+"/account/topup")
 	case resp.StatusCode == http.StatusNotFound:
 		return "", fmt.Errorf("no agent at %s", a.url)
 	case resp.StatusCode >= 400:
@@ -161,16 +162,13 @@ func (a *asker) ask(text string) (string, error) {
 		return "", fmt.Errorf("HTTP %d from %s", resp.StatusCode, a.url)
 	}
 
-	var envelope struct {
-		Data struct {
-			Text   string `json:"text"`
-			Thread string `json:"thread"`
-		} `json:"data"`
+	var out struct {
+		Text   string `json:"text"`
+		Thread string `json:"thread"`
 	}
-	if err := json.Unmarshal(raw, &envelope); err != nil {
+	if err := json.Unmarshal(raw, &out); err != nil {
 		return "", fmt.Errorf("could not read the answer: %w", err)
 	}
-	out := envelope.Data
 	if out.Thread != "" {
 		a.thread = out.Thread
 	}

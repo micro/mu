@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 
@@ -96,6 +97,16 @@ func boxTag(accountID, agentID string) string {
 
 // Handler serves /inbox and /inbox/<box>.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/inbox" && (app.WantsJSON(r) || app.SendsJSON(r)) {
+		r = api.CredentialRequest(r)
+		if !api.AuthorizeProduct(w, r, "inbox", r.Method != "GET") {
+			return
+		}
+		if r.Method == "POST" && app.SendsJSON(r) {
+			api.JSONAction(w, r, "inbox", "")
+			return
+		}
+	}
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)

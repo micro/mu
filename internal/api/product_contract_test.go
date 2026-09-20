@@ -1,23 +1,14 @@
 package api
 
 import (
-	"encoding/json"
 	"mu/internal/auth"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 )
 
-func TestProductRoutesAndScopeIsolation(t *testing.T) {
-	old := Operations
-	defer func() { Operations = old }()
-	called := false
-	Operations = []Operation{{Name: "agent_contract_test", Writes: true, Handle: func(owner string, raw json.RawMessage) (any, error) {
-		called = true
-		return map[string]string{"owner": owner}, nil
-	}}}
-	const owner = "product_contract_owner"
+func TestResourceScopeIsolation(t *testing.T) {
+	const owner = "resource_contract_owner"
 	if err := auth.Create(&auth.Account{ID: owner, Name: "Test", Admin: true, Created: time.Now()}); err != nil {
 		t.Fatal(err)
 	}
@@ -29,19 +20,21 @@ func TestProductRoutesAndScopeIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, readOnly, err := auth.CreateToken(owner, "read", []string{"read", "api:agent"}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct {
-		path, token string
-		status      int
-	}{{"/agent/api/contract_test", product, 200}, {"/agent/api/contract_test", services, 403}, {"/agent/api/contract_test", "", 401}, {"/api/v1/agent/contract_test", product, 404}, {"/inbox/api/contract_test", product, 404}} {
-		called = false
-		r := httptest.NewRequest("POST", tc.path, strings.NewReader(`{}`))
+		token, capability string
+		write, allowed    bool
+	}{{product, "agent", true, true}, {product, "inbox", false, false}, {services, "agent", true, false}, {readOnly, "agent", true, false}, {readOnly, "agent", false, true}, {"", "agent", true, false}} {
+		r := httptest.NewRequest("POST", "/agent", nil)
 		if tc.token != "" {
 			r.Header.Set("Authorization", "Bearer "+tc.token)
 		}
 		w := httptest.NewRecorder()
-		PublicRESTHandler(w, r)
-		if w.Code != tc.status || called != (tc.status == 200) {
-			t.Fatalf("%s status %d called %v: %s", tc.path, w.Code, called, w.Body.String())
+		if got := AuthorizeProduct(w, r, tc.capability, tc.write); got != tc.allowed {
+			t.Fatalf("%s write %v: %d %s", tc.capability, tc.write, w.Code, w.Body.String())
 		}
 	}
 	r := httptest.NewRequest("POST", "/mcp", nil)
@@ -49,14 +42,16 @@ func TestProductRoutesAndScopeIsolation(t *testing.T) {
 	if err := checkTokenScope(r, "news_list"); err == nil {
 		t.Fatal("product token gained service access")
 	}
-	for _, owner := range []string{"agent", "inbox", "work"} {
-		w := httptest.NewRecorder()
-		PublicRESTHandler(w, httptest.NewRequest("GET", "/"+owner+"/api", nil))
-		if w.Code != 200 {
-			t.Fatal(w.Code)
-		}
-		if strings.Contains(w.Body.String(), "agent_contract_test") != (owner == "agent") {
-			t.Fatal("discovery crossed owner boundary")
-		}
+	session, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r = httptest.NewRequest("POST", "/agent", nil)
+	r.Header.Set("Cookie", "session="+session.Token)
+	if AuthorizeProduct(httptest.NewRecorder(), r, "agent", true) {
+		t.Fatal("cookie write bypassed CSRF")
+	}
+	if !AuthorizeProduct(httptest.NewRecorder(), r, "agent", false) {
+		t.Fatal("cookie read required CSRF")
 	}
 }

@@ -83,15 +83,6 @@ func x402HostName() string {
 
 // Runtime endpoints always serve services, on both the primary and x402 hosts.
 func publicRESTHandler(w http.ResponseWriter, r *http.Request) {
-	name := api.RESTToolName(r.URL.Path)
-	for _, op := range api.Operations {
-		if op.Name == name {
-			target := api.ProductPath(name)
-			w.Header().Set("Link", "<"+target+">; rel=\"successor-version\"")
-			api.WriteProductMigration(w, target)
-			return
-		}
-	}
 	api.RESTHandler(w, api.CredentialRequest(r))
 }
 func publicMCPHandler(w http.ResponseWriter, r *http.Request) {

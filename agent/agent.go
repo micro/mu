@@ -17,6 +17,7 @@ import (
 	"mu/agent/micro"
 	"mu/inbox"
 
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/bookmarks"
@@ -140,6 +141,12 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	r = api.CredentialRequest(r)
+	if tok := auth.TokenFromRequest(r); tok != nil && tok.Scoped() {
+		if !api.AuthorizeProduct(w, r, "agent", r.Method != "GET") {
+			return
+		}
+	}
 	path := r.URL.Path
 	if strings.HasPrefix(path, "/agent/flow/") {
 		id := strings.TrimPrefix(path, "/agent/flow/")

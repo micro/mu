@@ -136,7 +136,7 @@ mu help
 ```
 
 CLI and API operations require a credential with the appropriate API or service
-permissions. Client access offers separate Mail/Chat protocol tokens, Assistant API / MCP
+permissions. Client access offers separate Mail/Chat protocol tokens, product
 tokens with selected capabilities and optional actions, and tokens restricted to
 selected services. Protocol tokens do **not** grant CLI, agent API, or MCP access.
 Agent API access can execute your account’s agents with their configured tools;
@@ -148,24 +148,19 @@ Service operations remain at `/api/v1/<service>/<method>` and `/mcp`, documented
 at `/api` and `/tools`. The x402 host exposes the same service contract with
 payment handling. Credentials restrict access; they do not switch catalogues.
 
-Product operations live separately at `/agent/api/<operation>`,
-`/inbox/api/<operation>` and `/work/api/<operation>`, with product MCP at
-`/agent/mcp`. `/developers` documents these operations. Direct `POST /agent` and
-`POST /agent/<name>` remain supported.
-
-Migration: clients of the briefly shared product surface must change their
-product HTTP URLs from `/api/v1/<owner>/<operation>` to `/<owner>/api/<operation>`
-and their product MCP URL from `/mcp` to `/agent/mcp`. Existing service clients
-keep their URLs. Product tokens and response formats remain the same.
+Product clients use the existing resource URLs: `/agent`, `/agent/<name>`,
+`/inbox` and `/work`. Content-Type selects JSON or form input; Accept selects
+JSON or HTML output. `/developers` documents the supported requests.
+There are no separate product API or MCP endpoints.
 
 ```bash
-curl "$MU_URL/agent/api/ask" \
+curl "$MU_URL/agent" \
   -H "Authorization: Bearer $MU_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"What needs my attention?"}'
 ```
 
-The response includes `data.text` and `data.thread`; send the thread identifier
+The response includes `text` and `thread`; send the thread identifier
 back to continue. Requests and credentials belong in request bodies and headers.
 A separately configured x402 host provides paid service calls.
 

@@ -13,9 +13,9 @@ The runtime service contract is `/api/v1/<service>/<method>` and `/mcp`.
 Both hosts expose the same service tools; x402 adds payment handling. Tokens
 restrict permissions, never select a different catalogue.
 
-Product operations belong to Agent, Work and Inbox at `/<owner>/api/<operation>`.
-Their separate MCP carrier is `/agent/mcp`. `/developers` documents this product
-surface; `/api` and `/tools` document the service contract.
+Product clients use `/agent`, `/agent/<name>`, `/inbox` and `/work` with content
+negotiation, not separate API routes. `/developers` documents those requests;
+`/api` and `/tools` document the runtime service contract.
 
 | Door | Where | For |
 |---|---|---|
@@ -44,7 +44,7 @@ caller is spared a signup, not whether we wrote the backend.
 
 **Agents** are defined one way: a name, a prompt, and a scoped set of those
 tools. Talk to one interactively on the web, by mail, over XMPP or from the CLI;
-or take an API token and call `agent_ask` through `/agent/mcp`, where Mu runs the
+or POST JSON to `/agent/<name>` with a product token, where Mu runs the
 agent and manages its tools. Built-in agents also run without anybody present: the
 digest, the brief, moderation and work.
 
@@ -117,13 +117,13 @@ how much we supply.
 | the occasion too | a policy, once | **initiative** | nobody — it acts |
 
 **A layer is what you reach. A carrier is how you get there, and it is a
-detail.** The product API has two carriers (`/<owner>/api/<operation>` and `/agent/mcp`); the agent also
-answers through the web app, CLI, mail, XMPP and legacy `POST /agent/<name>`. Listing carriers beside layers is what makes the model
+detail.** Product JSON and HTML share the owning resource URL; the agent also
+answers through the web app, CLI, mail, XMPP and `POST /agent/<name>`. Listing carriers beside layers is what makes the model
 read as inconsistent when it is a gradient with an uneven fan-out. Which
 protocol carries you is the caller's business, which is the only way "an address
 is the smallest interface" means anything.
 
-The product HTTP API and product MCP expose the same operations. Service HTTP and
+Product resource handlers serve both people and programs. Service HTTP and
 MCP expose the service registry with its existing scope checks.
 
 ## What may travel in a URL
