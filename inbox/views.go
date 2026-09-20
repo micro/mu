@@ -22,7 +22,7 @@ import (
 
 func viewNavigation(active string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="form-actions"><a href="/inbox/new">New message</a></div><nav class="view-switch inbox-views" aria-label="Inbox views">`)
+	b.WriteString(`<nav class="view-switch inbox-views" aria-label="Inbox views">`)
 	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"scheduled", "Scheduled", "/inbox?view=scheduled"}, {"saved", "Saved", "/inbox?view=saved"}} {
 		current := ""
 		if active == v.key {
@@ -30,7 +30,7 @@ func viewNavigation(active string) string {
 		}
 		fmt.Fprintf(&b, `<a href="%s"%s>%s</a>`, html.EscapeString(v.href), current, v.name)
 	}
-	b.WriteString(`</nav>`)
+	b.WriteString(`<a href="/inbox/new">New message</a></nav>`)
 	return b.String()
 }
 
