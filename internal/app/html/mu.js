@@ -311,7 +311,6 @@ async function failure(response){try{const j=await response.json();return typeof
 const form=document.querySelector('#command-form'),input=document.querySelector('#command-input'),log=document.querySelector('#responses'),send=document.querySelector('#send'),status=document.querySelector('#status');
 if(!form)return;
 const conversation=form.closest('.conversation');
-const historyPanel=document.querySelector('#assistant-history');
 // Track the visible height when mobile keyboards resize only the visual viewport.
 if(window.visualViewport){
  const viewport=window.visualViewport;
@@ -320,13 +319,6 @@ if(window.visualViewport){
  window.addEventListener('resize',fitWorkspace);
  fitWorkspace();
 }
-// Share navigation with the assistant sidebar.
-if(historyPanel){
- const primary=document.querySelector('.nav-drawer .sidebar-primary');
- if(primary)historyPanel.prepend(primary.cloneNode(true));
-}
-
-document.querySelectorAll('[data-history-toggle]').forEach(button=>button.addEventListener('click',()=>{historyPanel.hidden=!historyPanel.hidden;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded',String(!historyPanel.hidden)));}));
 function sizeInput(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,160)+'px';}
 input.addEventListener('input',sizeInput);sizeInput();
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -340,11 +332,7 @@ function remember(title){
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
  heading.replaceChildren();const titleButton=document.createElement('button');titleButton.type='button';titleButton.dataset.editThread='';titleButton.title='Rename thread';titleButton.textContent=title||'Thread';heading.append(titleButton);
- const nav=historyPanel.querySelector('nav[aria-label="Recent"]'),href=(form.dataset.path||'/')+'?session='+encodeURIComponent(thread);
- let row=Array.from(nav.querySelectorAll('a')).find(link=>link.getAttribute('href')===href);
- if(!row){row=document.createElement('a');row.className='conversation-row';row.href=href;const label=document.createElement('span');label.className='conversation-title';row.append(label,document.createElement('time'));}
- row.querySelector('.conversation-title').textContent=title||'Thread';row.querySelector('time').textContent='Just now';
- nav.querySelector('p')?.remove();nav.querySelectorAll('[aria-current]').forEach(link=>link.removeAttribute('aria-current'));row.setAttribute('aria-current','page');nav.prepend(row);Array.from(nav.querySelectorAll('a')).slice(10).forEach(link=>link.remove());
+
 }
 conversation.addEventListener('click',event=>{
  const button=event.target.closest('[data-edit-thread]');if(!button||!thread)return;
@@ -446,8 +434,6 @@ async function navigateThread(url,push=true){
   const welcome=conversation.querySelector('.prompt-welcome');welcome.replaceChildren(...page.querySelector('.prompt-welcome').childNodes);
   conversation.classList.toggle('is-active',!!thread);status.textContent='';
   form.dispatchEvent(new CustomEvent('thread-changed',{detail:{thread}}));sizeInput();
-  historyPanel.querySelectorAll('nav[aria-label="Recent"] a').forEach(link=>{if(new URL(link.href).searchParams.get('session')===thread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
-  if(window.matchMedia('(max-width:700px)').matches){historyPanel.hidden=true;document.querySelectorAll('[data-history-toggle]').forEach(control=>control.setAttribute('aria-expanded','false'));}
   resumePending();
   requestAnimationFrame(()=>{log.scrollTop=scrollPositions.get(currentURL)??log.scrollHeight;});
  }catch(error){if(navigation===navigationVersion){if(!push)history.replaceState(null,'',currentURL);status.textContent=error.message;}}finally{if(navigation===navigationVersion){navigating=false;send.disabled=busy;}}
@@ -1447,21 +1433,6 @@ if(typeof document!=='undefined'){
   }
  }
 }
-
-if(typeof document!=='undefined'){
- const drawer=document.querySelector('[data-nav-drawer]'),toggle=document.querySelector('[data-nav-toggle]');
- if(drawer&&toggle&&typeof drawer.showModal==='function'){
-  document.body.classList.add('nav-ready');
-  const close=()=>{if(drawer.open)drawer.close();};
-  toggle.addEventListener('click',()=>{drawer.showModal();toggle.setAttribute('aria-expanded','true');document.body.classList.add('nav-open');});
-  drawer.querySelector('[data-nav-close]').addEventListener('click',close);
-  drawer.addEventListener('click',event=>{if(event.target.closest('a'))close();if(event.target===drawer){const r=drawer.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)close();}});
-  drawer.addEventListener('close',()=>{toggle.setAttribute('aria-expanded','false');document.body.classList.remove('nav-open');});
-  const desktop=matchMedia('(min-width:701px)');desktop.addEventListener('change',event=>{if(event.matches)close();});
-  window.addEventListener('pagehide',close);
- }
-}
-
 
 // Update only message/list regions. Composers, focus and drafts stay mounted.
 (function () {

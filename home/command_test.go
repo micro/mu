@@ -35,7 +35,7 @@ func TestAssistantHomeOwnsWebThreads(t *testing.T) {
 	}
 	w := request("/?session=" + chat.ID)
 	body := w.Body.String()
-	if w.Code != 200 || !strings.Contains(body, "My saved conversation") || !strings.Contains(body, `id="assistant-history"`) || !strings.Contains(body, `<textarea id="command-input"`) {
+	if w.Code != 200 || !strings.Contains(body, "My saved conversation") || strings.Contains(body, `id="assistant-history"`) || !strings.Contains(body, `<textarea id="command-input"`) {
 		t.Fatal("missing workspace")
 	}
 	if strings.Contains(body, "Private mail") || strings.Contains(body, "Foreign conversation") {
@@ -90,7 +90,7 @@ func TestThreadTitleOwnershipAndCSRF(t *testing.T) {
 	}
 }
 
-func TestAgentPageFiltersHistoryAndKeepsAddress(t *testing.T) {
+func TestAgentPageKeepsAddressWithoutHistory(t *testing.T) {
 	const owner = "agent_history_owner"
 	if err := auth.Create(&auth.Account{ID: owner, Admin: true}); err != nil {
 		t.Fatal(err)
@@ -118,11 +118,11 @@ func TestAgentPageFiltersHistoryAndKeepsAddress(t *testing.T) {
 	path := agent.Path(owner, a.ID)
 	w := get(path)
 	body := w.Body.String()
-	if w.Code != 200 || !strings.Contains(body, "Malten only") || strings.Contains(body, "Micro only") || !strings.Contains(body, `data-path="`+path+`"`) || !strings.Contains(body, path+"?new=1") || !strings.Contains(body, "A specialist") {
+	if w.Code != 200 || strings.Contains(body, "Malten only") || strings.Contains(body, "Micro only") || !strings.Contains(body, `data-path="`+path+`"`) || !strings.Contains(body, "A specialist") {
 		t.Fatal("agent page lost identity or mixed history")
 	}
 	w = get("/")
-	if strings.Contains(w.Body.String(), "Malten only") || !strings.Contains(w.Body.String(), "Micro only") {
+	if strings.Contains(w.Body.String(), "Malten only") || strings.Contains(w.Body.String(), "Micro only") {
 		t.Fatal("home history mixed agents")
 	}
 	w = get("/?session=" + own.ID)
