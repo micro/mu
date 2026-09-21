@@ -693,7 +693,7 @@ func renderCitiesSection() string {
 			c.Lat, c.Lon, defaultRadiusM,
 			url.QueryEscape(c.Name+", "+c.Country))
 		sb.WriteString(fmt.Sprintf(
-			`<a href="%s" class="list-link list-row">%s <span class="text-muted text-08">%s</span></a>`,
+			`<a href="%s" class="collection-item">%s <span class="text-muted text-08">%s</span></a>`,
 			escapeHTML(href), escapeHTML(c.Name), escapeHTML(c.Country),
 		))
 	}
@@ -766,17 +766,14 @@ func renderSavedSearchesSection(userID string) string {
 		label := fmt.Sprintf("%s · %g km · %s", s.Label, float64(options.Radius)/1000, options.SortBy)
 		latStr := fmt.Sprintf("%f", s.Lat)
 		lonStr := fmt.Sprintf("%f", s.Lon)
-		if s.Lat == 0 {
-			latStr = ""
-		}
-		if s.Lon == 0 {
-			lonStr = ""
+		if s.Lat == 0 && s.Lon == 0 {
+			latStr, lonStr = "", ""
 		}
 		sb.WriteString(fmt.Sprintf(
-			`<span class="form-actions no-wrap"><button type="button" class="recent-search-label" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);">%s</button> `+
+			`<div class="recent-search-item"><button type="button" class="recent-search-label" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);">%s</button> `+
 				`<form class="form-action d-inline" action="/places/save/delete" method="POST">`+
 				`<input type="hidden" name="id" value="%s">`+
-				`<button type="submit" class="btn-link recent-search-close" aria-label="Remove search" title="Remove">&times;</button></form></span>`,
+				`<button type="submit" class="btn-link recent-search-close" aria-label="Remove search" title="Remove">&times;</button></form></div>`,
 			escapeHTML(jsonStr(s.Type)), escapeHTML(jsonStr(s.Query)), escapeHTML(jsonStr(s.Location)),
 			escapeHTML(jsonStr(latStr)), escapeHTML(jsonStr(lonStr)),
 			escapeHTML(jsonStr(fmt.Sprintf("%d", s.Radius))), escapeHTML(jsonStr(s.SortBy)),

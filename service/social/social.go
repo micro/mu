@@ -627,17 +627,16 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		threadAuthorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
 	}
 	sb.WriteString(fmt.Sprintf(`<div class="headline social-post so-rule">
-  %s
   <div class="d-flex between so-head">
     <div>%s</div>
-    <div><span data-timestamp="%d" class="text-muted text-sm">%s</span></div>
+    <div class="metadata-row"><span data-timestamp="%d" class="text-muted text-sm">%s</span>%s</div>
   </div>
   <div class="mt-2 so-body breakable">%s</div>%s
 </div>`,
-		controls,
 		threadAuthorHTML,
 		ts,
 		app.TimeAgo(p.PostedAt),
+		controls,
 		content,
 		linkCard,
 	))
@@ -692,7 +691,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		sb.WriteString(fmt.Sprintf(`<div class="feed-row">
   <div class="d-flex between so-head">
     <div class="text-sm"><b>%s</b></div>
-    <div><span data-timestamp="%d" class="text-muted text-sm">%s</span>%s</div>
+    <div class="metadata-row"><span data-timestamp="%d" class="text-muted text-sm">%s</span>%s</div>
   </div>
   <div class="mt-1 breakable">%s</div>
 </div>`,
@@ -991,18 +990,17 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
 			authorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline social-post">
-  %s
-  <div class="d-flex between so-head">
+  <div class="so-head">
     <div>%s</div>
-    <div><span data-timestamp="%d" class="text-muted text-sm">%s</span></div>
+    <div class="metadata-row"><span data-timestamp="%d" class="text-muted text-sm">%s</span>%s</div>
   </div>
   <div class="mt-1 breakable">%s</div>%s
   <div class="mt-1">%s</div>
 </div>`,
-			controls,
 			authorHTML,
 			ts,
 			app.TimeAgo(p.PostedAt),
+			controls,
 			content,
 			linkCard,
 			replyLink,

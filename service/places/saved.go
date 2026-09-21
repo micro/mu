@@ -19,6 +19,7 @@ package places
 // it is written, not where.
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -128,8 +129,7 @@ func sameSearch(a, b SavedSearch) bool {
 	a, b = normalizedSearch(a), normalizedSearch(b)
 	return a.Type == b.Type &&
 		strings.EqualFold(strings.TrimSpace(a.Query), strings.TrimSpace(b.Query)) &&
-		strings.EqualFold(strings.TrimSpace(a.Location), strings.TrimSpace(b.Location)) &&
-		a.Lat == b.Lat && a.Lon == b.Lon &&
+		sameSearchLocation(a, b) &&
 		a.Radius == b.Radius && a.SortBy == b.SortBy
 }
 
@@ -145,18 +145,24 @@ func normalizedSearch(s SavedSearch) SavedSearch {
 	if s.Type == "" {
 		s.Type = "search"
 	}
-	// Named locations are replayed by name; geocoding them again can shift coordinates.
+	// Coordinate labels and explicit coordinates describe the same location.
 	parts := strings.Split(s.Location, ",")
-	coordinates := false
 	if len(parts) == 2 {
-		_, e1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
-		_, e2 := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
-		coordinates = e1 == nil && e2 == nil
-	}
-	if s.Location != "" && !coordinates {
-		s.Lat, s.Lon = 0, 0
+		lat, e1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+		lon, e2 := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+		if e1 == nil && e2 == nil {
+			s.Lat, s.Lon, s.Location = lat, lon, ""
+		}
 	}
 	return s
+}
+
+func sameSearchLocation(a, b SavedSearch) bool {
+	if (a.Lat != 0 || a.Lon != 0) && (b.Lat != 0 || b.Lon != 0) {
+		// Ignore geocoder labels and sub-metre coordinate formatting differences.
+		return math.Round(a.Lat*1e5) == math.Round(b.Lat*1e5) && math.Round(a.Lon*1e5) == math.Round(b.Lon*1e5)
+	}
+	return a.Location == b.Location && a.Lat == b.Lat && a.Lon == b.Lon
 }
 
 // Remember records a search that just ran.
