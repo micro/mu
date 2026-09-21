@@ -74,7 +74,11 @@ func init() {
 
 func saveSubscription(id string, s subscription) error {
 	old, existed := subscriptions[id]
-	subscriptions[id] = s
+	if s.ID == "" && s.Attempt == "" && s.AccountCreated == "" {
+		delete(subscriptions, id)
+	} else {
+		subscriptions[id] = s
+	}
 	if err := data.SaveJSON("subscriptions.json", subscriptions); err != nil {
 		if existed {
 			subscriptions[id] = old

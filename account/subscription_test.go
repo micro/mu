@@ -34,6 +34,16 @@ func stripeResponse(v any) *http.Response {
 
 func subscriptionFixture(t *testing.T) *auth.Account {
 	t.Helper()
+	priorQuota, _ := json.Marshal(map[string]any{"daily_credits": quota.DailyCredits(), "daily_pool_credits": quota.DailyPoolCredits(), "operations": quota.Prices()})
+	testQuota, _ := json.Marshal(map[string]any{"daily_credits": 5, "daily_pool_credits": 0, "operations": quota.Prices()})
+	if err := quota.Load(testQuota); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := quota.Load(priorQuota); err != nil {
+			t.Error(err)
+		}
+	})
 	t.Setenv("STRIPE_SECRET_KEY", "sk_test_fixture")
 	t.Setenv("STRIPE_WEBHOOK_SECRET", "whsec_fixture")
 	t.Setenv("SUBSCRIPTION_CENTS", "4000")
@@ -81,6 +91,9 @@ func TestMonthlyLedgerLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	daily := IncludedToday(acc.ID)
+	if daily != 5 {
+		t.Fatalf("expected a real daily allowance, got %d", daily)
+	}
 	settle, err := reserveIncluded(acc.ID, "test", daily+4050)
 	if err != nil {
 		t.Fatal(err)
