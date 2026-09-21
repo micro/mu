@@ -22,6 +22,7 @@ func clientAccount(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		state["admin"] = acc.Admin
 		state["daily_credits"] = quota.DailyCredits()
 		state["included_today"] = IncludedToday(acc.ID)
+		state["monthly"] = Monthly(acc.ID)
 		rows := make([]map[string]any, 0)
 		for _, tx := range Transactions(acc.ID, 20) {
 			rows = append(rows, map[string]any{

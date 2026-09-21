@@ -626,6 +626,7 @@ func registerRoutes() {
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/account/profile", account.Account)
 	http.HandleFunc("/account/billing", account.Account)
+	http.HandleFunc("/account/subscription", account.SubscriptionHandler)
 	http.HandleFunc("/account/usage", account.UsageHandler)
 	http.HandleFunc("/account/connections", account.Account)
 	http.HandleFunc("/account/developer", account.Account)

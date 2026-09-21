@@ -135,7 +135,7 @@ func init() {
 	// lets everything through because a hook stayed nil.
 	quota.Enabled = PaymentsEnabled
 	quota.Balance = Balance
-	quota.Included = IncludedToday
+	quota.Included = includedAvailable
 	quota.Record = RecordUsage
 	quota.Hold = reserveIncluded
 	quota.Deduct = func(account, operation string, amount int, meta map[string]interface{}) error {
@@ -432,6 +432,9 @@ func isWelcome(tx *Transaction) bool {
 func Paid(userID string) bool {
 	return withLedger(func(l *ledger) bool {
 		for _, tx := range transactions[userID] {
+			if tx != nil && tx.Type == txAllowance {
+				return true
+			}
 			if tx == nil || tx.Type != TxTopup || tx.Amount <= 0 {
 				continue
 			}
@@ -467,6 +470,7 @@ func addCredits(l *ledger, userID string, amount int, operation string, metadata
 		balances[userID] = w
 	}
 
+	previous := *w
 	w.Balance += amount
 	w.UpdatedAt = time.Now()
 
@@ -484,8 +488,17 @@ func addCredits(l *ledger, userID string, amount int, operation string, metadata
 	transactions[userID] = append(transactions[userID], tx)
 
 	// Persist
-	data.SaveJSON("wallets.json", balances)
-	data.SaveJSON("transactions.json", transactions)
+	if err := data.SaveJSON("transactions.json", transactions); err != nil {
+		*w = previous
+		transactions[userID] = transactions[userID][:len(transactions[userID])-1]
+		if !exists {
+			delete(balances, userID)
+		}
+		return err
+	}
+	if err := data.SaveJSON("wallets.json", balances); err != nil {
+		app.Log("account", "top-up balance cache: %v", err)
+	}
 
 	return nil
 }

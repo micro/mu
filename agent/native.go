@@ -734,7 +734,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	// has still been paid for: a provider error on the ninth step is nine model
 	// calls of tokens, and accounting for only the runs that worked would
 	// under-report exactly the runs worth knowing about.
-	defer recordRunCost(run.runs, run.name, costCaller(opts))
+	defer recordRunCost(run.runs, run.name, costCaller(opts), accountID)
 
 	// Streaming when somebody is watching.
 	//

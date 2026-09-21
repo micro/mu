@@ -678,7 +678,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("linked") == "google" {
 		notice = app.Notice("Google connected.") + notice
 	}
-	content = billingSummary(acc) + profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
+	content = billingSummary(acc) + subscriptionSummary(r, acc) + profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
 	content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
 	content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
 

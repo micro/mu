@@ -78,16 +78,15 @@ func includedUsed(id string, now time.Time) int {
 func reserveIncluded(id, operation string, amount int) (func(bool) error, error) {
 	var receipt string
 	err := withLedger(func(l *ledger) error {
-		included := min(amount, includedToday(l, id, time.Now().UTC()))
+		meta := map[string]interface{}{"pending": true}
+		funded := allowanceDebit(l, id, amount, meta)
 		if balances[id] == nil {
 			balances[id] = &Credits{UserID: id, Currency: "USD"}
 		}
-		if balances[id].Balance < amount-included {
-			return errors.New(quota.Shortfall(amount, balances[id].Balance+included))
+		if balances[id].Balance < funded {
+			return errors.New(quota.Shortfall(amount, balances[id].Balance+amount-funded))
 		}
-		if err := deductCredits(l, id, amount-included, operation, map[string]interface{}{
-			"daily_credits": included, "pending": true,
-		}); err != nil {
+		if err := deductCredits(l, id, funded, operation, meta); err != nil {
 			return err
 		}
 		receipt = transactions[id][len(transactions[id])-1].ID
@@ -127,7 +126,8 @@ func settleIncluded(_ *ledger, id, receipt string, success bool) error {
 				Amount: -tx.Amount, Balance: w.Balance, Operation: tx.Operation,
 				CreatedAt: w.UpdatedAt, Metadata: map[string]interface{}{
 					"reservation": receipt, "daily_credits": tx.Metadata["daily_credits"],
-					"allowance_day": tx.CreatedAt.UTC().Format("2006-01-02"),
+					"allowance_day":   tx.CreatedAt.UTC().Format("2006-01-02"),
+					"monthly_credits": tx.Metadata["monthly_credits"], "allowance_invoice": tx.Metadata["allowance_invoice"],
 				},
 			})
 		}
@@ -168,18 +168,17 @@ func recoverIncluded() {
 // app-author payments and escrow continue to require a funded balance.
 func chargeIncluded(id string, amount int, operation string, metadata map[string]interface{}) error {
 	return withLedger(func(l *ledger) error {
-		included := min(amount, includedToday(l, id, time.Now().UTC()))
 		meta := make(map[string]interface{}, len(metadata)+1)
 		for k, v := range metadata {
 			meta[k] = v
 		}
-		meta["daily_credits"] = included
+		funded := allowanceDebit(l, id, amount, meta)
 		if balances[id] == nil {
 			balances[id] = &Credits{UserID: id, Currency: "USD"}
 		}
-		if balances[id].Balance < amount-included {
-			return errors.New(quota.Shortfall(amount, balances[id].Balance+included))
+		if balances[id].Balance < funded {
+			return errors.New(quota.Shortfall(amount, balances[id].Balance+amount-funded))
 		}
-		return deductCredits(l, id, amount-included, operation, meta)
+		return deductCredits(l, id, funded, operation, meta)
 	})
 }

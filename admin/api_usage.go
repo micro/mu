@@ -2,6 +2,8 @@ package admin
 
 import (
 	"fmt"
+	"html"
+	"sort"
 	"strings"
 
 	"mu/account"
@@ -31,6 +33,25 @@ func spendCard() string {
 	sb.WriteString(`<div class="scroll-x"><table><thead><tr><th>UTC day</th><th>Calls</th><th>Estimated cost</th></tr></thead><tbody>`)
 	for _, d := range days {
 		fmt.Fprintf(&sb, `<tr><td>%s</td><td>%d</td><td>$%.4f</td></tr>`, d.Day, d.Calls, d.CostCents/100)
+	}
+	sb.WriteString(`</tbody></table></div><h3>Model cost by account</h3><p class="text-sm text-muted">Last 30 UTC days of attributed model estimates, including failed runs. Collection starts with this release. Excludes unattributed calls, tools, hosting and payment fees.</p><div class="scroll-x"><table><thead><tr><th>Account</th><th>Model records</th><th>Estimated cost</th></tr></thead><tbody>`)
+	costs := app.AccountCosts()
+	ids := make([]string, 0, len(costs))
+	for id := range costs {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		if costs[ids[i]].CostCents == costs[ids[j]].CostCents {
+			return ids[i] < ids[j]
+		}
+		return costs[ids[i]].CostCents > costs[ids[j]].CostCents
+	})
+	for _, id := range ids {
+		d := costs[id]
+		fmt.Fprintf(&sb, `<tr><td>%s</td><td>%d</td><td>$%.4f</td></tr>`, html.EscapeString(id), d.Calls, d.CostCents/100)
+	}
+	if len(ids) == 0 {
+		sb.WriteString(`<tr><td colspan="3">No attributed model costs yet.</td></tr>`)
 	}
 	sb.WriteString(`</tbody></table></div><h3>Recent recorded activity</h3><p class="text-sm text-muted">The breakdown below covers only the latest 2,000 recorded calls.</p>`)
 

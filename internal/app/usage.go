@@ -41,10 +41,11 @@ type DailyCost struct {
 }
 
 type persistedUsage struct {
-	DailySince time.Time            `json:"daily_since"`
-	Daily      map[string]DailyCost `json:"daily"`
-	Since      time.Time            `json:"since"`
-	Records    []UsageRecord        `json:"records"`
+	Accounts   map[string]map[string]DailyCost `json:"accounts,omitempty"`
+	DailySince time.Time                       `json:"daily_since"`
+	Daily      map[string]DailyCost            `json:"daily"`
+	Since      time.Time                       `json:"since"`
+	Records    []UsageRecord                   `json:"records"`
 }
 
 const usageFile = "usage.json"
@@ -60,6 +61,7 @@ var (
 	usageDirty   bool
 	dailySince   time.Time
 	dailyCosts   = map[string]DailyCost{}
+	accountCosts = map[string]map[string]DailyCost{}
 )
 
 func init() {
@@ -78,6 +80,10 @@ func init() {
 		flushUsage()
 	} else {
 		usageStarted = time.Now()
+	}
+
+	if stored.Accounts != nil {
+		accountCosts = stored.Accounts
 	}
 
 	// Do not reconstruct whole days from a truncated recent-call log.
@@ -122,6 +128,26 @@ func RecordUsage(service, caller string, costCents float64, details map[string]a
 			delete(dailyCosts, key)
 		}
 	}
+	if id, ok := details["account"].(string); ok && id != "" {
+		if accountCosts[id] == nil {
+			accountCosts[id] = map[string]DailyCost{}
+		}
+		d := accountCosts[id][day]
+		d.Day = day
+		d.Calls++
+		d.CostCents += costCents
+		accountCosts[id][day] = d
+	}
+	for id, days := range accountCosts {
+		for key := range days {
+			if key < cutoff {
+				delete(days, key)
+			}
+		}
+		if len(days) == 0 {
+			delete(accountCosts, id)
+		}
+	}
 	usageRecords = append(usageRecords, record)
 	if len(usageRecords) > maxUsageRecords {
 		usageRecords = usageRecords[len(usageRecords)-maxUsageRecords:]
@@ -148,7 +174,15 @@ func flushUsage() {
 	for day, cost := range dailyCosts {
 		days[day] = cost
 	}
+	accounts := make(map[string]map[string]DailyCost, len(accountCosts))
+	for id, days := range accountCosts {
+		accounts[id] = make(map[string]DailyCost, len(days))
+		for day, d := range days {
+			accounts[id][day] = d
+		}
+	}
 	snapshot := persistedUsage{
+		Accounts:   accounts,
 		DailySince: dailySince, Daily: days,
 		Since:   usageStarted,
 		Records: append([]UsageRecord(nil), usageRecords...),
@@ -219,4 +253,44 @@ func DailyCosts() (since time.Time, days []DailyCost) {
 	}
 	sort.Slice(days, func(i, j int) bool { return days[i].Day > days[j].Day })
 	return dailySince, days
+}
+
+// AccountCosts reports attributed model cost, not the complete cost to serve an
+// account. Tool invoices, infrastructure, fees and tax are separate.
+func AccountCosts() map[string]DailyCost {
+	usageMu.Lock()
+	defer usageMu.Unlock()
+	out := map[string]DailyCost{}
+	cutoff := time.Now().UTC().AddDate(0, 0, -29).Format("2006-01-02")
+	for id, days := range accountCosts {
+		d := DailyCost{}
+		for day, cost := range days {
+			if day >= cutoff {
+				d.Calls += cost.Calls
+				d.CostCents += cost.CostCents
+			}
+		}
+		if d.Calls > 0 {
+			out[id] = d
+		}
+	}
+	return out
+}
+
+func ForgetAccountCosts(id string) {
+	usageMu.Lock()
+	defer usageMu.Unlock()
+	delete(accountCosts, id)
+	for i := range usageRecords {
+		if usageRecords[i].Details["account"] == id {
+			details := make(map[string]any, len(usageRecords[i].Details))
+			for k, v := range usageRecords[i].Details {
+				if k != "account" {
+					details[k] = v
+				}
+			}
+			usageRecords[i].Details = details
+		}
+	}
+	usageDirty = true
 }

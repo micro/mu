@@ -112,6 +112,10 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		case "delete":
 			if userID != acc.ID {
+				if err := account.EndSubscription(r.Context(), userID); err != nil {
+					app.BadRequest(w, r, "Cancel billing before deleting this account: "+err.Error())
+					return
+				}
 				auth.DeleteAccount(userID)
 			}
 		case "ban":
