@@ -80,18 +80,24 @@ func spendSection(id string, admin bool) string {
 	spentBy := map[string]int{}
 	spent, topped := 0, 0
 	for _, tx := range txs {
-		switch {
-		case tx.Amount < 0:
-			spentBy[tx.Operation] += -tx.Amount
-			spent += -tx.Amount
-		case tx.Amount > 0:
+		included := metadataInt(tx.Metadata["daily_credits"]) + metadataInt(tx.Metadata["monthly_credits"])
+		switch tx.Type {
+		case TxSpend:
+			used := -tx.Amount + included
+			spentBy[tx.Operation] += used
+			spent += used
+		case TxRefund:
+			refunded := tx.Amount + included
+			spentBy[tx.Operation] -= refunded
+			spent -= refunded
+		case TxTopup:
 			topped += tx.Amount
 		}
 	}
 
 	rows := make([]usage.Count, 0, len(spentBy))
 	for k, v := range spentBy {
-		rows = append(rows, usage.Count{Key: k, Count: v})
+		rows = append(rows, usage.Count{Key: k, Count: max(0, v)})
 	}
 	sort.Slice(rows, func(i, j int) bool {
 		if rows[i].Count != rows[j].Count {
@@ -102,7 +108,7 @@ func spendSection(id string, admin bool) string {
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
 	usage.Stat(&sb, "Credits now", Balance(id))
-	usage.Stat(&sb, "Credits spent", spent)
+	usage.Stat(&sb, "Usage credits", max(0, spent))
 	usage.Stat(&sb, "Credits added", topped)
 	sb.WriteString(`</div>`)
 	if admin {

@@ -521,6 +521,7 @@ func wireHooks() {
 		mail.DeleteInbox,
 		chat.Forget,
 		func(id string) { account.DeleteCredits(id) },
+		app.ForgetAccountCosts,
 		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
 		// The devices they told us to notify, and the record of what they were

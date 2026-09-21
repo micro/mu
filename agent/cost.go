@@ -64,7 +64,7 @@ func costCaller(opts QueryOpts) string {
 //
 // caller is what the spend log files it under: the name of the agent that ran,
 // so a bill can be read by which agent earned it.
-func recordRunCost(st store.Store, agentName, caller string) {
+func recordRunCost(st store.Store, agentName, caller, account string) {
 	if st == nil || agentName == "" {
 		return
 	}
@@ -96,7 +96,7 @@ func recordRunCost(st store.Store, agentName, caller string) {
 				})
 				continue
 			}
-			ai.RecordAgentUsage(caller, m.model, m.input, m.output, m.calls, ai.UsageTiming{RunID: s.RunID, ModelMS: m.latency})
+			ai.RecordAgentUsage(caller, m.model, m.input, m.output, m.calls, ai.UsageTiming{Account: account, RunID: s.RunID, ModelMS: m.latency})
 		}
 	}
 }

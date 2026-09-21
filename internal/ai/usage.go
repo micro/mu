@@ -210,6 +210,7 @@ func providerName(model string) string {
 // high bill on a provider that caches, which is the safe direction.
 // UsageTiming connects a cost entry to the model timeline.
 type UsageTiming struct {
+	Account string
 	RunID   string
 	ModelMS int64
 }
@@ -218,6 +219,7 @@ func RecordAgentUsage(caller, model string, inputTokens, outputTokens, calls int
 	usage.RecordModels(calls)
 	details := map[string]any{"model": model, "input_tokens": inputTokens, "output_tokens": outputTokens, "model_calls": calls}
 	if len(timing) > 0 {
+		details["account"] = timing[0].Account
 		details["run_id"] = timing[0].RunID
 		details["model_duration_ms"] = timing[0].ModelMS
 	}

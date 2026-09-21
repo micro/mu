@@ -28,11 +28,10 @@ func stripeSecret() string { return settings.Get("STRIPE_SECRET_KEY") }
 // balance could ever be increased by. An instance somebody runs themselves has
 // none, and a wallet there is a page about a number that cannot move.
 func TopUpConfigured() bool { return strings.TrimSpace(stripeSecret()) != "" }
-func stripePublic() string  { return settings.Get("STRIPE_PUBLISHABLE_KEY") }
 func stripeWebhook() string { return settings.Get("STRIPE_WEBHOOK_SECRET") }
 
 func StripeEnabled() bool {
-	return stripeSecret() != "" && stripePublic() != ""
+	return TopUpConfigured()
 }
 
 // StripeTopupTier is one preset top-up amount.
@@ -82,14 +81,14 @@ type checkoutSession struct {
 // how is only for the log — knowing whether the money landed by webhook or by
 // somebody coming back to the page is the difference between "Stripe is fine"
 // and "Stripe has never once called us".
-func settleSession(s checkoutSession, how string) {
+func settleSession(s checkoutSession, how string) error {
 	if s.PaymentStatus != "paid" || s.ID == "" {
-		return
+		return nil
 	}
 
 	if s.UserID == "" {
 		app.Log("stripe", "session %s (%s) names no account, so nothing can be credited", s.ID, how)
-		return
+		return nil
 	}
 
 	var credits int
@@ -113,7 +112,7 @@ func settleSession(s checkoutSession, how string) {
 		switch {
 		case err != nil:
 			app.Log("stripe", "failed to credit user %s for session %s: %v", s.UserID, s.ID, err)
-			return
+			return err
 		case !credited:
 			app.Log("stripe", "session %s already settled; %s changed nothing", s.ID, how)
 		default:
@@ -123,6 +122,7 @@ func settleSession(s checkoutSession, how string) {
 	// Kept because a top-up creates a Stripe customer, and having the id means a
 	// card saved on one purchase is recognisable on the next.
 	setCustomer(s.UserID, s.Customer)
+	return nil
 }
 
 // SettleCheckout reads a session back from Stripe and applies it.
@@ -173,7 +173,7 @@ func SettleCheckout(sessionID, forAccount string) error {
 		return fmt.Errorf("that payment belongs to another account")
 	}
 
-	settleSession(checkoutSession{
+	return settleSession(checkoutSession{
 		ID:            out.ID,
 		PaymentStatus: out.PaymentStatus,
 		Customer:      out.Customer,
@@ -181,7 +181,6 @@ func SettleCheckout(sessionID, forAccount string) error {
 		UserID:        out.Metadata.UserID,
 		Credits:       out.Metadata.Credits,
 	}, "return from checkout")
-	return nil
 }
 
 // setCustomer records who Stripe thinks an account is.
@@ -341,7 +340,7 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
 	if err != nil {
 		http.Error(w, "read error", http.StatusBadRequest)
 		return
@@ -376,7 +375,7 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	app.Log("stripe", "webhook received: %s", event.Type)
 
 	// Handle checkout.session.completed
-	if event.Type == "checkout.session.completed" {
+	if event.Type == "checkout.session.completed" || event.Type == "checkout.session.async_payment_succeeded" {
 		var session struct {
 			ID            string `json:"id"`
 			PaymentStatus string `json:"payment_status"`
@@ -398,7 +397,7 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		settleSession(checkoutSession{
+		err := settleSession(checkoutSession{
 			ID:            session.ID,
 			PaymentStatus: session.PaymentStatus,
 			Customer:      session.Customer,
@@ -406,8 +405,17 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			UserID:        session.Metadata.UserID,
 			Credits:       session.Metadata.Credits,
 		}, "webhook")
+		if err != nil {
+			http.Error(w, "settlement failed", http.StatusInternalServerError)
+			return
+		}
 	}
 
+	if err := subscriptionEvent(r.Context(), event.Type, event.Data.Object); err != nil {
+		app.Log("stripe", "subscription settlement: %v", err)
+		http.Error(w, "settlement failed", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

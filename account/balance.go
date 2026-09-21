@@ -75,6 +75,8 @@ func transactionLabel(tx *Transaction) string {
 		// Not "Deposit". Nobody deposited it, and the first line of somebody's
 		// history should say where the money they did not pay for came from.
 		return "Welcome credit"
+	case tx.Type == txAllowance:
+		return "Monthly allowance"
 	case tx.Type == TxTopup:
 		return "Deposit"
 	case tx.Type == TxTransfer:
@@ -109,6 +111,8 @@ func transactionLabel(tx *Transaction) string {
 // was free rather than uncharged.
 func transactionAmount(tx *Transaction) string {
 	switch {
+	case tx.Type == txAllowance:
+		return fmt.Sprintf("%d included", metadataInt(tx.Metadata["monthly_credits"]))
 	case tx.Amount == 0:
 		return "included"
 	case tx.Amount > 0:

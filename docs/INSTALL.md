@@ -649,8 +649,54 @@ Callers pay in credits, prepaid against an account. Set the `STRIPE_*` keys to
 let people buy them by card; without those keys your instance runs with no
 metering, which is usually what you want for one you run for yourself.
 
-Costs are per operation and are set in code — see the cost block in
-`internal/quota/quota.go` for what is charged and why.
+Operation prices and the free daily allowance are in `quota.json`. Provider
+estimates are under Admin → Traffic → Spend; product credits are not a provider
+spending limit.
+
+### Monthly subscriptions
+
+Subscriptions are off until both `SUBSCRIPTION_CENTS` (monthly price in US cents)
+and `SUBSCRIPTION_CREDITS` (monthly usage allowance) are set, together with
+`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`. Choose the price and allowance
+from measured provider costs; there is deliberately no default paid plan.
+A publishable key is not required for hosted Checkout. Account and Pricing use
+these same settings. Stripe creates the recurring product/price during Checkout;
+no manual catalogue setup is needed. Changed settings apply to new subscribers,
+not existing contracts.
+
+At `https://<your domain>/stripe/webhook`, enable:
+
+- `checkout.session.completed` and `checkout.session.async_payment_succeeded`
+- `invoice.paid`, `invoice.payment_failed`, `invoice.payment_action_required`
+- `customer.subscription.created`, `customer.subscription.updated`,
+  `customer.subscription.deleted`
+
+Requests retrieve canonical objects with Stripe API version `2024-06-20`, so
+webhook delivery order and the endpoint's event version do not change parsing.
+Keep invoice/payment notifications and retry rules configured in Stripe.
+The first implementation uses card payments and hosted Checkout. It does not
+configure tax collection; configure applicable tax handling before live sales.
+
+Usage consumes daily quota, monthly allowance, then prepaid balance. Only paid
+full-period invoices grant monthly credits, once per invoice. They expire at the
+invoice line's period end and cannot be transferred. No automatic overage charges
+or top-ups. Payment failure grants no new month. Cancellation in Account stops
+renewal; already paid usage remains until expiry. Failed reservations refund the
+original allowance period. App, product API and authenticated service tools use
+the same quota gate; x402 pay-per-call remains separate.
+
+Preserve `transactions.json` and `subscriptions.json` with backups. The former is
+the authoritative grant/debit ledger; the latter keeps checkout attempts and
+current subscription state. A checkout response lost for more than 23 hours
+requires operator reconciliation in Stripe before another attempt: do not erase
+its record and risk creating a second subscription. Refunds/disputes and manual
+plan changes currently require operator reconciliation; do not assume they revoke
+allowances automatically.
+
+Before enabling live sales, run Stripe test-mode purchases, renewal/test-clock,
+failed-card recovery, cancellation, duplicate/reordered delivery, process restart
+and deletion checks. Confirm model/tool margins and provider-side spending limits,
+and verify authenticated Account/Pricing on desktop and mobile.
 
 ## ActivityPub (optional)
 
@@ -1041,7 +1087,7 @@ token.
 | `TILE_FETCH_PER_HOUR` | Optional, default 2000. How many tiles one account may make this instance fetch from Ordnance Survey in an hour. Tiles already held are served without limit and without a session, because serving one again costs nothing — this bounds only what is spent upstream. Raise it to seed a region on purpose |
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
-| `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. Point the endpoint at `https://<your domain>/stripe/webhook` and subscribe it to `checkout.session.completed`. It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
+| `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. Point the endpoint at `https://<your domain>/stripe/webhook` and subscribe it to `checkout.session.completed` (plus the events under Monthly subscriptions when enabled). It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
 | `BASE_RPC_URL` | The node balances are read from. Optional: unset, it uses the public Base endpoint, which is rate-limited but on the right chain. Point it at a Base node and nothing else — an Alchemy key is per-chain, so an Ethereum endpoint here finds no USDC contract at the address, returns nothing, and reports every wallet on the instance as empty with no error at all |
 
 The webhook used to be at `/wallet/stripe/webhook`, and that path still answers

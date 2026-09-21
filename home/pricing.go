@@ -32,7 +32,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		b.WriteString(`<p>` + creditsInWords() + ` on signup.</p>`)
 	}
-	b.WriteString(`</section><section class="section-stack"><h2>Credits</h2><p>Top up prepaid credits for additional usage. 1 credit = 1 US cent.</p>`)
+	b.WriteString(`</section>` + account.MonthlyPricingHTML() + `<section class="section-stack"><h2>Credits</h2><p>Top up prepaid credits for additional usage. 1 credit = 1 US cent. No automatic top-ups.</p>`)
 	if account.TopUpConfigured() {
 		b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
 	}
@@ -57,6 +57,13 @@ func pricingHandlerJSON(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{
 		"payments": account.PaymentsEnabled(), "topup": account.TopUpConfigured(),
 		"question_cost": quota.OperationCost(quota.OpAgentRun), "welcome": account.WelcomeCredits,
+		"monthly": func() any {
+			p, ok := account.MonthlyPlan()
+			if ok {
+				return p
+			}
+			return nil
+		}(),
 		"daily": quota.DailyCredits(), "prices": account.Pricing(), "limits": limits,
 	})
 }
