@@ -1121,3 +1121,11 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .shell-terminal .xterm{height:100%}
 .shell-terminal .xterm-helper-textarea{min-height:0;padding:0;border:0}
 .shell-terminal-actions{margin-bottom:12px}
+
+/* Home is a starting point; an open conversation keeps its pinned composer. */
+.assistant-workspace .conversation:not(.is-active):has(.home-index){overflow-y:auto;display:block;padding-block:clamp(24px,6vh,64px) 24px}
+.assistant-workspace .conversation:has(.home-index) .prompt-panel{margin-block:0}
+.home-index{width:100%;max-width:600px;margin:24px auto 0;padding-inline:8px;box-sizing:border-box}
+.home-index .view-switch{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 24px}
+.home-index h2{font-size:1rem;margin:24px 0 0}
+.conversation.is-active .home-index{display:none}

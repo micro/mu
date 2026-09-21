@@ -30,7 +30,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<p>Subject to a shared daily limit.</p>`)
 		}
 	} else {
-		b.WriteString(`<p>` + creditsInWords() + ` on signup.</p>`)
+		b.WriteString(`<p>No daily allowance on this instance.</p>`)
 	}
 	b.WriteString(`</section>` + account.MonthlyPricingHTML() + `<section class="section-stack"><h2>Credits</h2><p>Top up prepaid credits for additional usage. 1 credit = 1 US cent. No automatic top-ups.</p>`)
 	if account.TopUpConfigured() {
@@ -56,7 +56,7 @@ func pricingHandlerJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	json.NewEncoder(w).Encode(map[string]any{
 		"payments": account.PaymentsEnabled(), "topup": account.TopUpConfigured(),
-		"question_cost": quota.OperationCost(quota.OpAgentRun), "welcome": account.WelcomeCredits,
+		"question_cost": quota.OperationCost(quota.OpAgentRun), "welcome": 0,
 		"monthly": func() any {
 			p, ok := account.MonthlyPlan()
 			if ok {
@@ -66,12 +66,4 @@ func pricingHandlerJSON(w http.ResponseWriter, r *http.Request) {
 		}(),
 		"daily": quota.DailyCredits(), "prices": account.Pricing(), "limits": limits,
 	})
-}
-
-func creditsInWords() string {
-	c := account.WelcomeCredits
-	if c%100 == 0 {
-		return "$" + strconv.Itoa(c/100) + " of credit"
-	}
-	return strconv.Itoa(c) + " credits"
 }
