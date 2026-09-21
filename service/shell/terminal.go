@@ -111,7 +111,7 @@ func terminalHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, acc, err := auth.RequireSession(r)
-	if err != nil || acc.Banned || !auth.Trusted(acc.ID) {
+	if err != nil || auth.CheckCredentialAccess(acc.ID) != nil {
 		http.Error(w, "Verify your account to open a terminal", http.StatusForbidden)
 		return
 	}
@@ -223,7 +223,7 @@ func terminalHandler(w http.ResponseWriter, r *http.Request) {
 
 func terminalCSRF(r *http.Request, token string) bool {
 	sess, acc, err := auth.RequireSession(r)
-	if token == "" || err != nil || sess.Type != "account" || acc.Banned || !auth.Trusted(acc.ID) {
+	if token == "" || err != nil || sess.Type != "account" || auth.CheckCredentialAccess(acc.ID) != nil {
 		return false
 	}
 	r = r.Clone(r.Context())

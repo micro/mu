@@ -56,6 +56,23 @@ func TestTerminalCSRFIsBoundToSession(t *testing.T) {
 	if !terminalCSRF(requests[0], csrf) || terminalCSRF(requests[1], csrf) || terminalCSRF(requests[0], "") || terminalCSRF(requests[0], "forged") {
 		t.Fatal("CSRF not bound to the browser session")
 	}
+	auth.SetAccountForTest(&auth.Account{ID: "terminal-test-a", Banned: true, Approved: true})
+	if terminalCSRF(requests[0], csrf) {
+		t.Fatal("banned account retained terminal access")
+	}
+	auth.SetAccountForTest(&auth.Account{ID: "terminal-test-a"})
+	if terminalCSRF(requests[0], csrf) {
+		t.Fatal("unverified account can mint terminal credentials")
+	}
+	auth.SetAccountForTest(&auth.Account{ID: "terminal-test-a", Approved: true})
+	cookie, _ := requests[0].Cookie("session")
+	if err := auth.Logout(cookie.Value); err != nil {
+		t.Fatal(err)
+	}
+	if terminalCSRF(requests[0], csrf) {
+		t.Fatal("revoked session retained terminal access")
+	}
+
 }
 
 func TestTerminalLeaseReleased(t *testing.T) {
