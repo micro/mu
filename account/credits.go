@@ -348,36 +348,12 @@ func settled(l *ledger, userID, key string) bool {
 	return false
 }
 
-// WelcomeCredits is a one-off funded grant (one US dollar), separate from
-// the nontransferable daily allowance. Keep existing balances intact.
-const WelcomeCredits = 100
-
 // OpWelcome is what the welcome grant is called on the ledger.
 //
 // Its own name rather than "topup", because everything downstream needs to be
 // able to tell a gift from a payment — see Paid — and a receipt that reads
 // "Deposit" for money nobody deposited is the first thing that goes wrong.
 const OpWelcome = "welcome"
-
-// Welcome grants a new account its starting balance.
-//
-// Called from the signup paths rather than from auth.Create, because credits
-// are the product's and internal/auth may not reach up into them — see
-// AGENTS.md on the direction things point.
-//
-// Silent when the instance does not charge: on a self-hosted build with no
-// payments configured, a balance is a number that means nothing and a
-// transaction on the ledger is a receipt for nothing.
-func Welcome(userID string) {
-	if strings.TrimSpace(userID) == "" || !PaymentsEnabled() {
-		return
-	}
-	if err := AddCredits(userID, WelcomeCredits, OpWelcome, map[string]interface{}{
-		"welcome": true,
-	}); err != nil {
-		app.Log("credits", "welcome grant for %s failed: %v", userID, err)
-	}
-}
 
 // isWelcome reports whether a movement is the grant rather than a payment.
 //

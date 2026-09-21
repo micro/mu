@@ -277,8 +277,6 @@ func findOrCreateGoogleAccount(info *googleUser) *auth.Account {
 		return nil
 	}
 
-	// Something to spend, so the first question can be asked. See Welcome.
-	Welcome(id)
 	acc, _ := auth.GetAccount(id)
 	return acc
 }

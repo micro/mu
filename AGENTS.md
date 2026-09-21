@@ -74,7 +74,7 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is a personal overview; the assistant owns the saved conversation. Inbox keeps conversations from every channel, including the web. Agents and Services are operator references; authoring is handled by operators and assistant tools. Keep standalone utilities such as Mail useful and directly accessible. Do not turn Home into a service catalogue or feed. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
+**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is a personal overview; the assistant owns the saved conversation. Inbox keeps conversations from every channel, including the web. Agents and Services are operator references; authoring is handled by operators and assistant tools. Keep standalone utilities such as Mail useful and directly accessible. Home may show a compact index of the account’s upcoming events and recent work, notes, documents, files and apps, linking to their owning surfaces. Keep the assistant composer primary; hide the index in open conversations. Do not turn Home into a general service catalogue or public feed. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
 
 **Extend through stable patterns.** Services, agents and inbox records should
 scale through their existing registries and shared components. Use apps to
