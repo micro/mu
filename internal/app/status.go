@@ -200,7 +200,7 @@ func buildStatus() StatusResponse {
 
 	// Check Payments. Credits are the one thing a caller pays in, so this
 	// reports whether they can be bought rather than enumerating rails.
-	stripeConfigured := os.Getenv("STRIPE_SECRET_KEY") != "" && os.Getenv("STRIPE_PUBLISHABLE_KEY") != ""
+	stripeConfigured := TopUpConfigured != nil && TopUpConfigured()
 	paymentsConfigured := stripeConfigured
 	quotaMode := "Unlimited (self-hosted)"
 	if stripeConfigured {

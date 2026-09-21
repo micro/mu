@@ -126,8 +126,9 @@ var settingGroups = []settingGroup{
 		Needs: nil,
 		Vars: []string{
 			"STRIPE_SECRET_KEY",
-			"STRIPE_PUBLISHABLE_KEY",
 			"STRIPE_WEBHOOK_SECRET",
+			"SUBSCRIPTION_CENTS",
+			"SUBSCRIPTION_CREDITS",
 			"X402_PAY_TO",
 			"X402_NETWORK",
 			"X402_VERSION",
