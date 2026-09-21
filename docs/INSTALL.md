@@ -58,7 +58,6 @@ export BRAVE_API_KEY="your-key"
 
 # Card top-ups for credits
 # export STRIPE_SECRET_KEY="sk_live_..."
-# export STRIPE_PUBLISHABLE_KEY="pk_live_..."
 # export STRIPE_WEBHOOK_SECRET="whsec_..."
 ```
 
@@ -1087,7 +1086,7 @@ token.
 | `TILE_FETCH_PER_HOUR` | Optional, default 2000. How many tiles one account may make this instance fetch from Ordnance Survey in an hour. Tiles already held are served without limit and without a session, because serving one again costs nothing — this bounds only what is spent upstream. Raise it to seed a region on purpose |
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
-| `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. Point the endpoint at `https://<your domain>/stripe/webhook` and subscribe it to `checkout.session.completed` (plus the events under Monthly subscriptions when enabled). It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
+| `STRIPE_SECRET_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. Point the endpoint at `https://<your domain>/stripe/webhook` and subscribe it to `checkout.session.completed` (plus the events under Monthly subscriptions when enabled). It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
 | `BASE_RPC_URL` | The node balances are read from. Optional: unset, it uses the public Base endpoint, which is rate-limited but on the right chain. Point it at a Base node and nothing else — an Alchemy key is per-chain, so an Ethereum endpoint here finds no USDC contract at the address, returns nothing, and reports every wallet on the instance as empty with no error at all |
 
 The webhook used to be at `/wallet/stripe/webhook`, and that path still answers
