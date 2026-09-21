@@ -347,6 +347,7 @@ func registerRoutes() {
 	// the pictures it takes are at /browser/shot/<id>.png. See service/browser.
 	// A machine of your own, in a container. See service/shell.
 	http.HandleFunc("/shell", shell.Handler)
+	http.HandleFunc("/shell/terminal.js", shell.TerminalScriptHandler)
 	// The address this had until it was renamed. Kept because links to it
 	// exist — in mail this instance has already sent, and in anybody's
 	// bookmarks — and breaking a URL to tidy a name is a bad trade.

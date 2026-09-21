@@ -661,7 +661,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 <div class="directory-content">
 <h3 class="m-0 mb-1"><a href="/apps/%s">%s</a></h3>
 <p class="m-0 mb-1 text-secondary">%s</p>
-<p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s/embed">Embed</a>%s</p>
+<div class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s/embed">Embed</a>%s</div>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),

@@ -382,7 +382,7 @@ func be32(b []byte) uint32 {
 
 // sessionToken mints a credential that lives as long as this session.
 //
-// Named for what it is, so an account looking at /token sees "ssh session"
+// Named for what it is, so an account looking at /token sees "shell session"
 // rather than a mystery — and since it is revoked on disconnect, that list
 // shows the sessions open right now, which is a better answer than a
 // permanent token nobody remembers making.
@@ -391,7 +391,7 @@ func be32(b []byte) uint32 {
 // process killed mid-session never reaches the defer, and a token with no
 // expiry would then outlive the shell it was made for.
 func sessionToken(accountID string) (raw, id string) {
-	t, secret, err := auth.CreateToken(accountID, "ssh session", nil,
+	t, secret, err := auth.CreateToken(accountID, "shell session", nil,
 		time.Now().Add(sessionLimit))
 	if err != nil {
 		// A shell with no credential still works — the CLI is on the path and

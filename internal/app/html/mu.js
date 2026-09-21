@@ -1123,29 +1123,44 @@ if (typeof document !== 'undefined') {
   const clear=document.createElement('button');clear.type='button';clear.className='mini-btn';clear.textContent='Clear';clear.addEventListener('click',()=>{recent=[];save();host.replaceChildren();});row.appendChild(clear);
   host.replaceChildren(heading,row);
  });
- // In-memory terminal history: commands may contain secrets and must not be
- // persisted in localStorage or shared with another signed-in account.
- const terminal=document.getElementById('shell-command');
- const output=document.getElementById('shell-result');
- if(terminal&&output){
-  const input=terminal.elements.command,button=terminal.querySelector('button[type="submit"]');
-  let busy=false,history=[],cursor=0,draft='';
-  input.addEventListener('keydown',e=>{if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;e.preventDefault();if(cursor===history.length)draft=input.value;cursor=Math.max(0,Math.min(history.length,cursor+(e.key==='ArrowUp'?-1:1)));input.value=cursor===history.length?draft:history[cursor];});
-  terminal.addEventListener('submit',async e=>{
-   e.preventDefault();const command=input.value.trim();if(busy||!command)return;
-   const body=new URLSearchParams(new FormData(terminal));
-   history.push(command);history=history.slice(-50);cursor=history.length;draft='';input.value='';busy=true;button.disabled=true;
-   const entry=document.createElement('section');entry.className='shell-entry';
-   const label=document.createElement('div');label.className='shell-command';label.textContent='$ '+command;
-   const result=document.createElement('div');result.textContent='Running…';entry.append(label,result);output.appendChild(entry);entry.scrollIntoView({block:'nearest'});
+ // A live PTY, loaded only on Shell. Commands and output stay in memory.
+ const terminalHost=document.getElementById('shell-terminal');
+ if(terminalHost){
+  const connect=document.getElementById('shell-connect'),disconnect=document.getElementById('shell-disconnect'),status=document.getElementById('shell-status'),controls=document.getElementById('shell-terminal-controls');
+  const keys=controls.querySelectorAll('[data-terminal-key]');
+  let term,fit,socket,loading;
+  const send=message=>{if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(message));};
+  const ready=()=>{
+   if(window.Terminal&&window.FitAddon)return Promise.resolve();
+   if(!loading)loading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/shell/terminal.js?v=6.0.0';script.onload=resolve;script.onerror=()=>{script.remove();loading=null;reject(new Error('Could not load terminal. Try again.'));};document.head.appendChild(script);});
+   return loading;
+  };
+  const setConnected=active=>{connect.hidden=active;connect.disabled=false;disconnect.hidden=!active;keys.forEach(k=>k.disabled=!active);};
+  connect.addEventListener('click',async()=>{
+   connect.disabled=true;status.textContent='Connecting…';
    try{
-    const response=await fetch(terminal.action,{method:'POST',body,credentials:'same-origin',headers:{Accept:'text/html'}});
-    const doc=new DOMParser().parseFromString(await response.text(),'text/html'),fragment=doc.getElementById('shell-result');
-    if(!response.ok||!fragment)throw new Error('Could not retrieve the result. The command may have run; it has not been retried.');
-    result.replaceChildren(...Array.from(fragment.childNodes));
-   }catch(error){result.textContent=error.message;result.className='text-error';}
-   finally{busy=false;button.disabled=false;while(output.querySelectorAll('.shell-entry').length>50)output.querySelector('.shell-entry').remove();input.focus();entry.scrollIntoView({block:'nearest'});}
+    await ready();
+    if(!term){
+     term=new Terminal({cursorBlink:true,fontSize:14,fontFamily:'ui-monospace, monospace',scrollback:2000,screenReaderMode:true,theme:{background:'#111',foreground:'#eee'}});
+     fit=new FitAddon.FitAddon();term.loadAddon(fit);term.open(terminalHost);fit.fit();
+     term.onData(data=>{for(let i=0;i<data.length;i+=4096)send({type:'input',data:data.slice(i,i+4096)});});term.onResize(({rows,cols})=>send({type:'resize',rows,cols}));
+     new ResizeObserver(()=>fit.fit()).observe(terminalHost);
+    }else{term.reset();fit.fit();}
+    const url=new URL('/shell',location.href);url.protocol=location.protocol==='https:'?'wss:':'ws:';
+    const current=new WebSocket(url);socket=current;current.binaryType='arraybuffer';
+    let reported=false;
+    current.onopen=()=>{send({type:'open',csrf:controls.dataset.csrf,rows:term.rows,cols:term.cols});setConnected(true);term.focus();};
+    current.onmessage=event=>{
+     if(event.data instanceof ArrayBuffer){term.write(new Uint8Array(event.data));return;}
+     try{const m=JSON.parse(event.data);if(m.type==='status'){status.textContent=m.message;reported=m.message!=='Connected';}}catch(_){}
+    };
+    current.onclose=()=>{if(socket!==current)return;socket=null;setConnected(false);if(!reported)status.textContent='Disconnected. Open a terminal to reconnect.';};
+    current.onerror=()=>{reported=true;status.textContent='Could not connect. Check your session or close another open terminal.';};
+   }catch(error){status.textContent=error.message;setConnected(false);}
   });
+  disconnect.addEventListener('click',()=>{if(socket)socket.close();});
+  keys.forEach(button=>button.addEventListener('click',()=>{send({type:'input',data:{'ctrl-c':'\x03',tab:'\t',escape:'\x1b',up:'\x1b[A',down:'\x1b[B',right:'\x1b[C',left:'\x1b[D'}[button.dataset.terminalKey]});term.focus();}));
+  window.addEventListener('pagehide',()=>{if(socket)socket.close();});
  }
  // Collapse citation sections without hiding the article itself.
  document.querySelectorAll('.reader-content').forEach(article=>{

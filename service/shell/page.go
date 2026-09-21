@@ -1,21 +1,15 @@
 package shell
 
-// The page: a prompt, and what came back.
-//
-// A working machine rather than a description of one, for the same reason
-// /browser puts a URL box on the screen and /maps draws a map. The claim here
-// is that you get a computer; the only way to show that is to let somebody run
-// something on it and see the output.
-//
-// It is the same shell the tool reaches, through the same gate and the same
-// charge — see exec in box.go. A page that ran commands for free would be a way
-// round the price, and one that ran them somewhere else would be a demo.
+// The page opens an interactive session in the account's existing container.
+// Legacy command POSTs remain supported and use the tool's per-command charge.
 
 import (
 	"html"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/gorilla/websocket"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -26,6 +20,10 @@ import (
 
 // Handler serves /shell.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if websocket.IsWebSocketUpgrade(r) {
+		terminalHandler(w, r)
+		return
+	}
 	var b strings.Builder
 	b.WriteString(`<div class="sbx">`)
 
@@ -77,14 +75,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	b.WriteString(`<form id="shell-command" class="form" method="post" action="/shell">`)
-	b.WriteString(`<input type="hidden" name="csrf_token" value="` +
-		html.EscapeString(auth.CSRFToken(r)) + `">`)
-	b.WriteString(`<label class="field-label" for="shell-input">Command</label><div class="form-row"><span class="action-note">/work $</span>` +
-		`<input id="shell-input" type="text" aria-label="Command" name="command" autofocus autocomplete="off" ` +
-		`spellcheck="false" placeholder="ls -la" value="` + html.EscapeString(command) + `">`)
-	b.WriteString(`<button type="submit">Run</button></div>`)
-	b.WriteString(`</form>`)
+	b.WriteString(`<div id="shell-terminal-controls" class="form-actions shell-terminal-actions" data-csrf="` + html.EscapeString(auth.CSRFToken(r)) + `"><button type="button" id="shell-connect">Open terminal</button><button type="button" id="shell-disconnect" hidden>Disconnect</button><button type="button" data-terminal-key="ctrl-c" disabled>Ctrl+C</button><button type="button" data-terminal-key="tab" disabled>Tab</button><button type="button" data-terminal-key="escape" disabled>Esc</button><button type="button" data-terminal-key="up" aria-label="Up arrow" disabled>↑</button><button type="button" data-terminal-key="down" aria-label="Down arrow" disabled>↓</button><button type="button" data-terminal-key="left" aria-label="Left arrow" disabled>←</button><button type="button" data-terminal-key="right" aria-label="Right arrow" disabled>→</button><span id="shell-status" role="status">Disconnected</span></div><div id="shell-terminal" class="shell-terminal" aria-label="Terminal"></div><noscript>JavaScript is needed for the terminal. You can also connect using SSH below.</noscript>`)
 
 	b.WriteString(`<div id="shell-result" aria-live="polite">`)
 	if command != "" {
@@ -95,9 +86,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// the defaults would be wrong on most machines — and "why did my build
 		// get killed" is answered by the number, not by the feature.
 		l := limits()
-		note := `Running a command costs ` +
-			credits(quota.OperationCost(quota.OpShellRun)) + `, because it is CPU and ` +
-			`memory here. Keeping and reading files is free. `
+		note := `Opening a terminal costs ` +
+			credits(quota.OperationCost(quota.OpShellRun)) + `. Sessions last up to four hours. Keeping and reading files is free. `
 		if shared() {
 			note = `Shared shell execution is disabled. Existing files are preserved; an administrator must migrate the workspaces to per-account containers before enabling shell access.`
 		} else {
