@@ -193,7 +193,7 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		}
 		fmt.Fprintf(&b, `<div class="collection-item"><a class="collection-title" href="%s">%s</a><span class="collection-preview metadata-row"><span>%s</span><span>%s</span></span>`, html.EscapeString(item.href), html.EscapeString(item.title), html.EscapeString(kind), html.EscapeString(item.state))
 		if item.preview != "" {
-			b.WriteString(`<div class="collection-preview">` + string(app.RenderNoImages([]byte(item.preview))) + `</div>`)
+			b.WriteString(`<div class="collection-preview">` + string(app.RenderLinesNoImages([]byte(item.preview))) + `</div>`)
 		}
 		if !item.updated.IsZero() {
 			fmt.Fprintf(&b, `<time class="collection-when" datetime="%s">%s</time>`, item.updated.Format(time.RFC3339), html.EscapeString(app.TimeAgo(item.updated)))

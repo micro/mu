@@ -262,6 +262,11 @@ func RenderNoImages(md []byte) []byte {
 	return render(md, false, true, 0)
 }
 
+// RenderLinesNoImages preserves note line breaks without loading embedded images.
+func RenderLinesNoImages(md []byte) []byte {
+	return render(md, false, true, parser.HardLineBreak)
+}
+
 func RenderLines(md []byte) []byte {
 	return render(md, false, false, parser.HardLineBreak)
 }

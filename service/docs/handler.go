@@ -144,7 +144,7 @@ func view(r *http.Request, d *Doc) string {
 	b.WriteString(`<article class="card record-card doc-view">`)
 	b.WriteString(`<h2>` + html.EscapeString(d.Title) + `</h2>`)
 	// Untrusted: this is one account's content and may be published to others.
-	b.WriteString(string(app.Render([]byte(d.Content))))
+	b.WriteString(string(app.RenderLines([]byte(d.Content))))
 	b.WriteString(`</article>`)
 	fmt.Fprintf(&b, `<div class="doc-meta"><span>%s · %s</span>`, html.EscapeString(app.TimeAgo(d.Updated)),
 		map[bool]string{true: "public", false: "private"}[d.Public])
