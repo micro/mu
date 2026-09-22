@@ -1121,3 +1121,19 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .shell-terminal .xterm{height:100%}
 .shell-terminal .xterm-helper-textarea{min-height:0;padding:0;border:0}
 .shell-terminal-actions{margin-bottom:12px}
+
+/* Section navigation keeps the content column centered and leaves Home quiet. */
+.page-menu{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 24px}
+.page-menu a{padding:4px 6px;border-radius:4px;text-decoration:none}
+.page-menu a:hover,.page-menu a[aria-current="page"]{background:#f3f3f3;text-decoration:none}
+.plan-section{padding:28px 0;border-top:1px solid #ddd;gap:12px}
+.plan-section:first-child{padding-top:0;border-top:0}
+.account-sections{gap:0}
+.account-sections>.card,.account-sections>.account-group{padding:28px 0;border-top:1px solid #ddd;scroll-margin-top:24px}
+.account-sections>.card:first-child{border-top:0;padding-top:0}
+.account-sections>.card>h4,.account-group>h2{font-size:1.25rem;margin:0 0 16px}
+.account-group>.card{border:0;padding:12px 0}
+.account-group>.card>h4{margin:0 0 8px}
+@media(min-width:1160px){
+ .page-menu{position:fixed;top:112px;left:calc(50% - 570px);width:160px;max-height:calc(100dvh - 144px);overflow-y:auto;flex-direction:column;align-items:stretch;gap:4px;margin:0}
+}

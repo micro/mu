@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"net/url"
 	"slices"
 	"strconv"
@@ -21,7 +22,16 @@ var subscriptionEvents = []string{
 // Existing top-up installations may only subscribe to Checkout events. Add the
 // renewal events to this site's enabled endpoint before accepting a subscription.
 // Never replace its signing secret or alter another site's endpoint.
+var errSubscriptionWebhook = errors.New("subscription webhook setup is unavailable")
+
 func ensureSubscriptionWebhook(ctx context.Context, origin string) error {
+	if err := configureSubscriptionWebhook(ctx, origin); err != nil {
+		return fmt.Errorf("%w: %w", errSubscriptionWebhook, err)
+	}
+	return nil
+}
+
+func configureSubscriptionWebhook(ctx context.Context, origin string) error {
 	target := strings.TrimRight(origin, "/") + "/stripe/webhook"
 	cursor, found := "", false
 	for {

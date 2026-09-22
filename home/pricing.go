@@ -19,8 +19,8 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(app.Column())
 
-	description := "Free and Pro"
-	b.WriteString(`<section class="section-stack"><h2>Free</h2><p>Ask Micro questions and get help with tasks.</p>`)
+	description := "Free, PAYG and Pro"
+	b.WriteString(`<section class="plan-section section-stack"><h2>Free</h2><p>Ask Micro questions and get help with tasks.</p>`)
 	if !account.PaymentsEnabled() {
 		b.WriteString(`<p>No usage charges on this instance.</p></section></div>`)
 		app.Respond(w, r, app.Response{Title: "Pricing", HTML: b.String()})
@@ -38,11 +38,11 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	if _, _, err := auth.RequireSession(r); err != nil {
 		b.WriteString(`<p><a class="btn" href="/signup">Create account</a></p>`)
 	}
-	b.WriteString(`</section>` + account.MonthlyPricingHTML(r) + `<section class="section-stack"><h2>Credits</h2><p>Top up prepaid credits for additional usage. 1 credit = 1 US cent. No automatic top-ups.</p>`)
+	b.WriteString(`</section><section class="plan-section section-stack"><h2>PAYG</h2><p>Pay as you go. Top up credits when you need more.</p><p><strong>1 credit = 1 US cent.</strong> No monthly commitment or automatic top-ups.</p>`)
 	if account.TopUpConfigured() {
 		b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
 	}
-	b.WriteString(`</section><section id="costs" class="section-stack"><h2>Usage costs</h2><p>Assistant calls and paid tools are charged separately.</p>` + account.PricingTableHTML() + `</section>`)
+	b.WriteString(`</section>` + account.MonthlyPricingHTML(r) + `<section id="costs" class="plan-section section-stack"><h2>Usage costs</h2><p>Assistant calls and paid tools are charged separately.</p>` + account.PricingTableHTML() + `</section>`)
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Pricing", Description: description, HTML: b.String()})
 }
