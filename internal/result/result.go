@@ -4,6 +4,7 @@ package result
 
 type Point struct{ Lat, Lon float64 }
 type Item struct {
+	Body    string   `json:"body,omitempty"`
 	Kind    string   `json:"kind"`
 	ID      string   `json:"id,omitempty"`
 	URL     string   `json:"url,omitempty"`

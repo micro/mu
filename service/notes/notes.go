@@ -22,6 +22,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/notes"
+	"mu/internal/result"
 	"mu/internal/service"
 	"mu/internal/thread"
 	"time"
@@ -49,8 +50,9 @@ type AddRequest struct {
 }
 
 type AddResponse struct {
-	URL    string `json:"url" description:"Open the saved note"`
-	Result string `json:"result" description:"Confirmation"`
+	Item   *result.Item `json:"item,omitempty"`
+	URL    string       `json:"url" description:"Open the saved note"`
+	Result string       `json:"result" description:"Confirmation"`
 }
 
 // Add writes a note.
@@ -73,6 +75,7 @@ func (Server) Add(ctx context.Context, req *AddRequest, rsp *AddResponse) error 
 	for _, e := range notes.All(owner) {
 		if strings.EqualFold(e.Title, title) {
 			rsp.URL = "/notes?id=" + e.ID
+			rsp.Item = &result.Item{Kind: "note", ID: e.ID, Title: e.Title, URL: rsp.URL, Body: e.Text}
 			break
 		}
 	}
@@ -89,8 +92,9 @@ type GetRequest struct {
 
 // GetResponse is the note.
 type GetResponse struct {
-	Text string `json:"text" description:"What the note says, or empty if there is no note by that title"`
-	Note string `json:"note" description:"The title and its text, or a note that nothing is written under it"`
+	Item *result.Item `json:"item,omitempty"`
+	Text string       `json:"text" description:"What the note says, or empty if there is no note by that title"`
+	Note string       `json:"note" description:"The title and its text, or a note that nothing is written under it"`
 }
 
 // Get reads one note by title. Use notes_list when you do not know the title.
@@ -108,6 +112,12 @@ func (Server) Get(ctx context.Context, req *GetRequest, rsp *GetResponse) error 
 	if rsp.Text == "" {
 		rsp.Note = "Nothing written under " + title + "."
 		return nil
+	}
+	for _, e := range notes.All(owner) {
+		if strings.EqualFold(e.Title, title) {
+			rsp.Item = &result.Item{Kind: "note", ID: e.ID, Title: e.Title, URL: "/notes?id=" + e.ID, Body: e.Text}
+			break
+		}
 	}
 	rsp.Note = title + ": " + rsp.Text
 	return nil

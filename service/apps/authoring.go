@@ -23,6 +23,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/origin"
+	"mu/internal/result"
 	"mu/internal/service"
 
 	"github.com/google/uuid"
@@ -94,6 +95,7 @@ func author(ctx context.Context) (string, error) {
 // ── Create ──────────────────────────────────────────────────────
 
 type CreateRequest struct {
+	Private     bool   `json:"private" description:"Keep this app private to its owner; use true for personal widgets"`
 	Name        string `json:"name" required:"true" description:"App name, e.g. \"Pomodoro Timer\""`
 	HTML        string `json:"html" required:"true" description:"The app's HTML, inline CSS and JavaScript included, up to 256KB"`
 	Slug        string `json:"slug" description:"URL-friendly id, e.g. pomodoro-timer. Derived from the name if omitted"`
@@ -104,7 +106,8 @@ type CreateRequest struct {
 }
 
 type CreateResponse struct {
-	Result string `json:"result" description:"Confirmation, with the app's slug and URL"`
+	Item   *result.Item `json:"item,omitempty"`
+	Result string       `json:"result" description:"Confirmation, with the app's slug and URL"`
 }
 
 // Create saves a new app: a small, self-contained HTML tool hosted here.
@@ -114,10 +117,11 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	if err != nil {
 		return err
 	}
-	a, err := CreateApp(who, req.Name, req.Slug, req.Description, req.Tags, req.HTML, req.Icon, req.Price, true)
+	a, err := CreateApp(who, req.Name, req.Slug, req.Description, req.Tags, req.HTML, req.Icon, req.Price, !req.Private)
 	if err != nil {
 		return err
 	}
+	rsp.Item = appResult(a)
 	rsp.Result = fmt.Sprintf("Created %s at /apps/%s.", a.Name, a.Slug)
 	return nil
 }
@@ -135,7 +139,8 @@ type EditRequest struct {
 }
 
 type EditResponse struct {
-	Result string `json:"result" description:"Confirmation"`
+	Item   *result.Item `json:"item,omitempty"`
+	Result string       `json:"result" description:"Confirmation"`
 }
 
 // Edit updates an app the caller owns. Fields left out keep their value.
@@ -152,6 +157,7 @@ func (Server) Edit(ctx context.Context, req *EditRequest, rsp *EditResponse) err
 	if err != nil {
 		return err
 	}
+	rsp.Item = appResult(a)
 	rsp.Result = fmt.Sprintf("Updated %s — %s.", a.Name, edited(req))
 	return nil
 }

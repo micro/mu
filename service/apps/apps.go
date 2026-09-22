@@ -335,6 +335,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Route sub-paths
 	path := strings.TrimPrefix(r.URL.Path, "/apps")
 	path = strings.TrimSuffix(path, "/")
+	// Every representation of a private app belongs to its owner, including
+	// JSON, versions, icons and the raw document used by the sandbox.
+	slug := strings.Split(strings.TrimPrefix(path, "/"), "/")[0]
+	if a := GetApp(slug); a != nil && !a.Public {
+		_, acc := auth.TrySession(r)
+		if acc == nil || acc.ID != a.AuthorID {
+			http.NotFound(w, r)
+			return
+		}
+	}
 
 	if (path == "/new" || strings.HasSuffix(path, "/fork")) && !app.SendsJSON(r) {
 		_, acc := auth.TrySession(r)
@@ -1183,7 +1193,7 @@ func ForkApp(slug, newSlug, authorID, authorName string) (*App, error) {
 	mutex.RLock()
 	a, ok := apps[slug]
 	mutex.RUnlock()
-	if !ok {
+	if !ok || (!a.Public && a.AuthorID != authorID) {
 		return nil, fmt.Errorf("app not found: %s", slug)
 	}
 
@@ -1212,7 +1222,7 @@ func ForkApp(slug, newSlug, authorID, authorName string) (*App, error) {
 		Icon:        a.Icon,
 		HTML:        a.HTML,
 		Tags:        a.Tags,
-		Public:      true,
+		Public:      a.Public,
 		ForkedFrom:  slug,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -1242,8 +1252,28 @@ func handleApp(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
+	if !a.Public {
+		_, acc := auth.TrySession(r)
+		if acc == nil || acc.ID != a.AuthorID {
+			http.NotFound(w, r)
+			return
+		}
+	}
+
+	if r.URL.Query().Get("widget") == "1" {
+		_, acc := auth.TrySession(r)
+		if acc == nil || (!a.Public && acc.ID != a.AuthorID) {
+			http.NotFound(w, r)
+			return
+		}
+		if a.Price > 0 {
+			app.Error(w, r, http.StatusPaymentRequired, "Open this app to review its price.")
+			return
+		}
+	}
+
 	// Count launch (non-raw only, skip author's own launches)
-	if r.URL.Query().Get("raw") != "1" {
+	if r.URL.Query().Get("raw") != "1" && r.URL.Query().Get("widget") != "1" {
 		_, acc, _ := auth.RequireSession(r)
 		if acc == nil || acc.ID != a.AuthorID {
 			// Charge for paid apps

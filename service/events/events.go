@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/service"
 )
@@ -136,6 +137,15 @@ func CreateStanding(owner, title string, when time.Time, note string, minutes in
 		Prompt:  strings.TrimSpace(prompt),
 		Created: time.Now().UTC(),
 	}
+	// A recurring personal schedule follows local wall time across DST changes.
+	if e.Repeat != RepeatNone {
+		zone := recurringZone(owner)
+		if loc, err := time.LoadLocation(zone); zone != "" && err == nil {
+			e.Zone = zone
+			e.When = when.In(loc)
+		}
+	}
+
 	mu.Lock()
 	events[e.ID] = e
 	saveLocked()
@@ -302,4 +312,14 @@ func DeleteAll(owner string) {
 		saveLocked()
 		app.Log("events", "deleted %d events for %s", removed, owner)
 	}
+}
+
+func recurringZone(owner string) string {
+	if acc, err := auth.GetAccount(owner); err == nil && acc.Zone != "" {
+		return acc.Zone
+	}
+	if brief := Brief(owner); brief != nil {
+		return brief.Zone
+	}
+	return ""
 }

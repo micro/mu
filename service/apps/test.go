@@ -31,8 +31,8 @@ type APITestResult struct {
 // executing them server-side, and verifying field access patterns.
 func TestApp(slug, authorID string) *TestResult {
 	a := GetApp(slug)
-	if a == nil {
-		return &TestResult{Issues: []string{"App not found"}}
+	if a == nil || (!a.Public && a.AuthorID != authorID) {
+		return nil
 	}
 	return TestHTML(a.HTML, authorID)
 }

@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var appID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{2,49}$`)
+
 var videoID = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
 // VideoPlayer is shared by the standalone watch page and conversation results.
@@ -33,15 +35,52 @@ func Results(items []result.Item) string {
 		return ""
 	}
 	var b strings.Builder
+	var sources []result.Item
+	for _, item := range items {
+		switch item.Kind {
+		case "app":
+			if !appID.MatchString(item.ID) {
+				continue
+			}
+			path := "/apps/" + item.ID
+			b.WriteString(`<section class="result-card page-stack"><a class="record-title" href="` + path + `">` + html.EscapeString(item.Title) + `</a><iframe class="app-widget" loading="lazy" src="` + path + `?widget=1" title="` + html.EscapeString(item.Title) + `"></iframe></section>`)
+		case "note", "doc":
+			if item.ID == "" || len(item.ID) > 128 {
+				continue
+			}
+			path := "/notes?id="
+			if item.Kind == "doc" {
+				path = "/docs?id="
+			}
+			path += url.QueryEscape(item.ID)
+			b.WriteString(`<section class="result-card page-stack"><a class="record-title" href="` + html.EscapeString(path) + `">` + html.EscapeString(item.Title) + `</a><div class="result-preview">` + string(RenderLinesNoImages([]byte(item.Body))) + `</div></section>`)
+		case "video":
+			if !videoID.MatchString(item.ID) {
+				continue
+			}
+			b.WriteString(`<section class="result-card page-stack">` + VideoPlayer(item.ID, false) + `<a class="record-title" href="https://www.youtube.com/watch?v=` + url.QueryEscape(item.ID) + `">` + html.EscapeString(item.Title) + `</a></section>`)
+		case "route":
+			b.WriteString(`<section class="result-card page-stack">` + RouteMap(item.Shape) + `<p>` + html.EscapeString(item.Summary) + `</p>`)
+			if len(item.Steps) > 0 {
+				b.WriteString(`<details><summary>Directions</summary><ol>`)
+				for _, step := range item.Steps {
+					b.WriteString(`<li>` + html.EscapeString(step) + `</li>`)
+				}
+				b.WriteString(`</ol></details>`)
+			}
+			b.WriteString(`</section>`)
+		default:
+			sources = append(sources, item)
+		}
+	}
+
+	items = sources
+	if len(items) == 0 {
+		return b.String()
+	}
 	fmt.Fprintf(&b, `<details class="answer-details"><summary>Sources and results (%d)</summary><div class="answer-details-body">`, len(items))
 	for _, item := range items {
 		b.WriteString(`<section class="result-card page-stack">`)
-		switch item.Kind {
-		case "video":
-			b.WriteString(VideoPlayer(item.ID, false))
-		case "route":
-			b.WriteString(RouteMap(item.Shape))
-		}
 		b.WriteString(`<strong>` + html.EscapeString(item.Title) + `</strong>`)
 		if item.Summary != "" {
 			b.WriteString(`<p>` + html.EscapeString(item.Summary) + `</p>`)

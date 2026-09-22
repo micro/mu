@@ -17,6 +17,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/result"
 	"mu/internal/service"
 )
 
@@ -267,17 +268,19 @@ type BuildStatusRequest struct {
 	ID string `json:"id" required:"true"`
 }
 type BuildStatusResponse struct {
-	ID         string `json:"id"`
-	State      string `json:"state"`
-	Attempts   int    `json:"attempts"`
-	Recoveries int    `json:"recoveries"`
-	Error      string `json:"error,omitempty"`
-	URL        string `json:"url,omitempty"`
+	Item       *result.Item `json:"item,omitempty"`
+	ID         string       `json:"id"`
+	State      string       `json:"state"`
+	Attempts   int          `json:"attempts"`
+	Recoveries int          `json:"recoveries"`
+	Error      string       `json:"error,omitempty"`
+	URL        string       `json:"url,omitempty"`
 }
 
 func buildStatus(j *BuildJob) BuildStatusResponse {
 	r := BuildStatusResponse{ID: j.ID, State: j.State, Attempts: j.Attempts, Recoveries: j.Recoveries, Error: j.Error}
 	if j.State == "complete" && j.App != nil {
+		r.Item = appResult(j.App)
 		r.URL = "/apps/" + j.App.Slug
 	}
 	return r

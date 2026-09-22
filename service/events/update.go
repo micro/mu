@@ -30,6 +30,7 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 	if owner == "" {
 		return fmt.Errorf("sign in to change events")
 	}
+	zone := recurringZone(owner)
 	mu.Lock()
 	defer mu.Unlock()
 	old := events[strings.TrimSpace(req.ID)]
@@ -76,6 +77,12 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 		next.When, next.Fired, next.FiredAt = when.UTC(), false, time.Time{}
 	} else if next.Fired || !next.When.After(time.Now()) {
 		return fmt.Errorf("supply a new future time for an event already due or fired")
+	}
+	if next.Repeat != RepeatNone && next.Zone == "" {
+		if loc, err := time.LoadLocation(zone); zone != "" && err == nil {
+			next.Zone = zone
+			next.When = next.When.In(loc)
+		}
 	}
 	next.Sequence++
 	events[next.ID] = &next

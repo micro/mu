@@ -1252,6 +1252,7 @@ func nativeSystem(opts QueryOpts) string {
 		"the user's own mail inbox, recall across their news/mail, and scheduling reminders/events). " +
 		"To schedule a reminder or event (e.g. \"remind me in 10 minutes\" or \"schedule X for Friday 3pm\"), use the events Create tool: compute the absolute time from the current time above and pass it as an RFC3339 timestamp; use events List only to show what is already scheduled. " +
 		"To read, check or list the user's mail, use the mail Inbox tool (no search term needed); only search mail when they give a specific term. " +
+		"For a requested small interactive widget, use apps Create to save working self-contained HTML with private=true and price=0; use apps Edit to refine the same app. Prefer existing services when they already solve the request. Never put personal data in a public app. Successful app results appear in the web conversation; return the app link for other clients. For larger apps use apps Build and check BuildStatus; do not claim a queued build is finished. " +
 		"Quote exact values from tool results. Be concise and conversational. " +
 		"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one. " +
 		"When a tool returns an image URL (generating or searching images), embed it as markdown — ![description](url) — and also include the plain URL on its own line so clients that don’t render remote images still have a clickable link. " +
