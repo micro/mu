@@ -107,7 +107,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if acc == nil {
-		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p></div></div></div>`, acc))
+		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p><p><a class="btn" href="/signup">Get started</a></p><p><a href="/pricing">See pricing</a></p></div></div></div>`, acc))
 		return
 	}
 

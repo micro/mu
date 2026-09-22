@@ -145,7 +145,23 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		destination, err := startSubscription(r.Context(), acc, app.BaseURL(r))
 		if err != nil {
 			app.Log("stripe", "subscription checkout: %v", err)
-			http.Error(w, "Unable to start checkout. Please try again or contact support.", http.StatusServiceUnavailable)
+			message := "Checkout is temporarily unavailable. Please try again."
+			if errors.Is(err, errSubscriptionWebhook) {
+				message = "Pro payment setup needs attention. Please contact support."
+			}
+			var failure *stripeAPIError
+			if errors.As(err, &failure) && failure.Status >= 400 && failure.Status < 500 && failure.Status != 429 {
+				message = "Pro payment setup needs attention. Please contact support."
+			}
+			body := app.Problem(message)
+			if failure != nil && failure.RequestID != "" {
+				body += `<p>Payment reference: <code>` + htmlEsc(failure.RequestID) + `</code></p>`
+			}
+			body += `<div class="form-actions"><a href="/account#subscription">Back to Account</a><a href="/contact">Contact support</a></div>`
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-store")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			app.Respond(w, r, app.Response{Title: "Checkout unavailable", HTML: body})
 			return
 		}
 		http.Redirect(w, r, destination, http.StatusSeeOther)
@@ -195,5 +211,5 @@ func MonthlyPricingHTML(r *http.Request) string {
 			destination, label = "/account#subscription", "Your plan"
 		}
 	}
-	return `<section class="section-stack"><h2>Pro</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>Your daily brief, reminders and more assistant usage.</p><p>` + thousands(p.Credits) + ` credits each month, plus the daily allowance. Use them across Micro.</p><p>Renews monthly. Unused monthly credits expire. Cancel any time.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`
+	return `<section class="plan-section section-stack"><h2>Pro</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>Your daily brief, reminders and more assistant usage.</p><p>` + thousands(p.Credits) + ` credits each month, plus the daily allowance. Use them across Micro.</p><p>Renews monthly. Unused monthly credits expire. Cancel any time.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`
 }

@@ -252,7 +252,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>Google</h4>` + googleSignIn(r, acc) + `<h5>Service access</h5><p>Read-only access for your assistant.</p>`)
+	b.WriteString(`<div class="card" id="google"><h4>Google</h4>` + googleSignIn(r, acc) + `<h5>Service access</h5><p>Read-only access for your assistant.</p>`)
 
 	switch status {
 	case "disconnected":

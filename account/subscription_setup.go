@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"net/url"
 	"slices"
 	"strconv"
@@ -21,6 +22,8 @@ var subscriptionEvents = []string{
 // Existing top-up installations may only subscribe to Checkout events. Add the
 // renewal events to this site's enabled endpoint before accepting a subscription.
 // Never replace its signing secret or alter another site's endpoint.
+var errSubscriptionWebhook = errors.New("subscription webhook setup is unavailable")
+
 func ensureSubscriptionWebhook(ctx context.Context, origin string) error {
 	target := strings.TrimRight(origin, "/") + "/stripe/webhook"
 	cursor, found := "", false
@@ -66,7 +69,7 @@ func ensureSubscriptionWebhook(ctx context.Context, origin string) error {
 			}
 			for _, event := range subscriptionEvents {
 				if !slices.Contains(updated.Events, event) && !slices.Contains(updated.Events, "*") {
-					return errors.New("subscription webhook events are unavailable")
+					return fmt.Errorf("%w: subscription events are unavailable", errSubscriptionWebhook)
 				}
 			}
 		}
@@ -79,7 +82,7 @@ func ensureSubscriptionWebhook(ctx context.Context, origin string) error {
 		cursor = list.Data[len(list.Data)-1].ID
 	}
 	if !found {
-		return errors.New("enable this site's Stripe webhook endpoint before subscribing")
+		return fmt.Errorf("%w: enable this site's Stripe webhook endpoint before subscribing", errSubscriptionWebhook)
 	}
 	return nil
 }

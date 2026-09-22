@@ -95,6 +95,28 @@ func saveSubscription(id string, s subscription) error {
 	return nil
 }
 
+// Keep diagnostic identifiers, never Stripe's message (which can echo request values).
+type stripeAPIError struct {
+	Status                 int
+	Code, Param, RequestID string
+}
+
+func (e *stripeAPIError) Error() string {
+	return fmt.Sprintf("Stripe HTTP %d code=%s param=%s request=%s", e.Status, e.Code, e.Param, e.RequestID)
+}
+
+func stripeDiagnostic(s string) string {
+	if len(s) > 120 {
+		s = s[:120]
+	}
+	return strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("_[]-.", r) {
+			return r
+		}
+		return -1
+	}, s)
+}
+
 func stripeRequest(ctx context.Context, method, path string, form url.Values, key string, out any) error {
 	var body io.Reader
 	if form != nil {
@@ -118,7 +140,14 @@ func stripeRequest(ctx context.Context, method, path string, form url.Values, ke
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("Stripe returned %d", resp.StatusCode)
+		var failure struct {
+			Error struct {
+				Code  string `json:"code"`
+				Param string `json:"param"`
+			} `json:"error"`
+		}
+		_ = json.NewDecoder(io.LimitReader(resp.Body, 16<<10)).Decode(&failure)
+		return &stripeAPIError{Status: resp.StatusCode, Code: stripeDiagnostic(failure.Error.Code), Param: stripeDiagnostic(failure.Error.Param), RequestID: stripeDiagnostic(resp.Header.Get("Request-Id"))}
 	}
 	return json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(out)
 }

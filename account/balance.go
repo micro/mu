@@ -611,7 +611,7 @@ func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
 			Balance(account))
 	}
 	content := `<div class="card">
-		<h2>Payment complete</h2>` + body + `
+		` + body + `
 		<p><a href="/account" class="btn">View your balance</a></p>
 	</div>`
 	app.Respond(w, r, app.Response{Title: "Payment complete", Description: "Credits added", HTML: content})

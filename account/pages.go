@@ -701,7 +701,9 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("linked") == "google" {
 		notice = app.Notice("Google connected.") + notice
 	}
-	content = billingSummary(acc) + subscriptionSummary(r, acc) + profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + passwordCard(acc) + PasskeyListHTML(acc.ID) + language + PlaceCard(r, acc.ID)
+	content = billingSummary(acc) + subscriptionSummary(r, acc)
+	content += `<section id="details" class="account-group"><h2>Details</h2>` + profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + language + PlaceCard(r, acc.ID) + `</section>`
+	content += `<section id="security" class="account-group"><h2>Security</h2>` + passwordCard(acc) + PasskeyListHTML(acc.ID) + `</section>`
 	content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
 	content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
 
@@ -711,9 +713,18 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	links := Navigation(active)
 	if active == "/account" {
 		links = ""
-		content += app.Section("Clients", `<p>Use Micro from a mail app, chat app or your own code.</p><div class="form-actions"><a href="/account/clients">Client setup</a><a href="/account/tokens">Tokens</a></div><p>Tokens are passwords for your apps and programs.</p>`)
+		content += app.SectionID("clients", "Clients", `<p>Use Micro from a mail app, chat app or your own code.</p><div class="form-actions"><a href="/account/clients">Client setup</a><a href="/account/tokens">Tokens</a></div><p>Tokens are passwords for your apps and programs.</p>`)
 	}
-	content = links + notice + `<div class="page-stack settings-sections">` + content + `</div>`
+	sections := `<nav class="page-menu" aria-label="Account sections"><a href="#balance">Balance</a>`
+	if strings.Contains(content, `id="subscription"`) {
+		sections += `<a href="#subscription">Plan</a>`
+	}
+	sections += `<a href="#details">Details</a><a href="#security">Security</a><a href="#notifications">Notifications</a>`
+	if GoogleConfigured() {
+		sections += `<a href="#google">Google</a>`
+	}
+	sections += `<a href="#clients">Clients</a></nav>`
+	content = links + sections + notice + `<div class="page-stack settings-sections account-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
