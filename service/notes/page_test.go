@@ -14,7 +14,7 @@ func TestNoteReadFormattingAndOwnership(t *testing.T) {
 	if err := auth.Create(&auth.Account{ID: owner}); err != nil {
 		t.Fatal(err)
 	}
-	store.Add(owner, "Formatted", "## Heading\n\n- First\n- Second\n\n<script>alert(1)</script>")
+	store.Add(owner, "Formatted", "First line\nSecond line\n\n## Heading\n\n- First\n- Second\n\n<script>alert(1)</script>")
 	t.Cleanup(func() { store.Delete(owner, "Formatted") })
 	id := store.All(owner)[0].ID
 	session, err := auth.CreateSession(owner)
@@ -26,7 +26,7 @@ func TestNoteReadFormattingAndOwnership(t *testing.T) {
 	w := httptest.NewRecorder()
 	Handler(w, r)
 	body := w.Body.String()
-	if !strings.Contains(body, "<li>First</li>") || !strings.Contains(body, "<article") || strings.Contains(body, "<script>alert(1)</script>") {
+	if !strings.Contains(body, "First line<br") || !strings.Contains(body, "<li>First<br>") || !strings.Contains(body, "<article") || strings.Contains(body, "<script>alert(1)</script>") {
 		t.Fatal("note formatting is missing or unsafe")
 	}
 	other := "note_page_other"

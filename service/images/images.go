@@ -506,7 +506,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(imageGrid(res))
 		}
 		b.WriteString(`</div>`)
-		b.WriteString(`<p class="m-0 mb-3"><a href="/images">Back to Images</a></p>`)
+		b.WriteString(`<p class="m-0 mb-3"><a href="/images">All images</a></p>`)
 	}
 
 	// Daily image hero.

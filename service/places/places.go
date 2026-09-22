@@ -796,7 +796,7 @@ func renderSearchResults(query string, places []*Place, nearLocation bool, nearA
 	radiusStr := fmt.Sprintf("%d", radiusM)
 
 	sb.WriteString(`<div class="places-page page-stack">`)
-	sb.WriteString(`<p><a href="/places">Back to Places</a></p>`)
+	sb.WriteString(`<p><a href="/places">All places</a></p>`)
 	sb.WriteString(renderSearchFormHTML(query, nearAddr, nearLatStr, nearLonStr, radiusStr, sortBy))
 	sb.WriteString(renderPlacesPageJS())
 
@@ -843,7 +843,7 @@ func renderNearbyResults(label string, lat, lon float64, radius int, places []*P
 	lonStr := fmt.Sprintf("%f", lon)
 
 	sb.WriteString(`<div class="places-page page-stack">`)
-	sb.WriteString(`<p><a href="/places">Back to Places</a></p>`)
+	sb.WriteString(`<p><a href="/places">All places</a></p>`)
 	sb.WriteString(renderSearchFormHTML("", label, latStr, lonStr, radiusStr, ""))
 	sb.WriteString(renderPlacesPageJS())
 

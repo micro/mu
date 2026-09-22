@@ -483,7 +483,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .metadata-time,.collection-when,.notify-when{color:var(--text-muted);font-size:.8rem;white-space:nowrap}
 .collection-list,.record-list,.rooms,.rc-hits,.notify-list{display:grid;gap:0;min-width:0}
 .collection-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 16px;padding:14px 0;border-bottom:1px solid var(--border);text-decoration:none;min-width:0}
-.collection-title,.record-title{font-weight:600;overflow-wrap:anywhere}
+.collection-title,.record-title{font-weight:500;overflow-wrap:anywhere}
 .collection-preview{grid-column:1;color:var(--text-muted);font-size:.875rem;overflow-wrap:anywhere}
 .collection-when{grid-column:2;grid-row:1}
 
@@ -623,6 +623,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 #topics{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-block:16px}
 .record-card .form-actions,.post-item .metadata-row{margin-block:0}
 #map-directions{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) minmax(110px,.6fr) auto;align-items:end;gap:8px}
+#map-directions>:is(input,select,button){margin:0;min-height:36px;align-self:stretch}
 #map-directions-result:empty{display:none}#map-directions-result{padding-block:12px}#map-directions-result li{padding-block:4px}
 @media(max-width:700px){.contacts-table td.contact-meta{display:block}#map-directions{grid-template-columns:minmax(0,1fr) auto}#map-directions input[name=to]{grid-column:1/-1}#map-directions select{grid-column:1}#topics{gap:8px}}
 
@@ -724,7 +725,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .conversation-title,.conversation-context>span{min-width:0;overflow-wrap:anywhere}
 .ib-conv{gap:16px;min-width:0}
 .ib-head,.ib-from{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 16px}
-.ib-who-l{font-weight:600;color:#222;overflow-wrap:anywhere}
+.ib-who-l{font-weight:500;color:#222;overflow-wrap:anywhere}
 .ib-at,.ib-started{font-size:.75rem;color:#777;white-space:nowrap}
 .ib-conv :is(.message-list,.bubble-list,.card-list){display:flex;flex-direction:column;gap:20px;min-width:0}
 .ib-conv .ib-msg{min-width:0;margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
@@ -1143,3 +1144,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .status-badge::before,.status-heading::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
 .status-heading::before{margin-right:10px;vertical-align:middle}
 @media(max-width:480px){.status-item{align-items:flex-start;flex-wrap:wrap}}
+
+.app-return{padding:10px 16px;flex-shrink:0}
+.ib-subject,.conversation-title{font-weight:500}
+:is(.ib-body,.collection-preview) :is(strong,b){font-weight:600}

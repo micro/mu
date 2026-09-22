@@ -54,6 +54,6 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 	if e.Repeat != "" {
 		body += `<p>Repeats: ` + html.EscapeString(e.Repeat) + `</p>`
 	}
-	body += `<a class="btn" href="` + html.EscapeString(GoogleCalendarURL(e.Title, e.When, e.Note)) + `" target="_blank" rel="noopener">Add to calendar</a></article><a class="link" href="/events">Back to events</a></div>`
+	body += `<a class="btn" href="` + html.EscapeString(GoogleCalendarURL(e.Title, e.When, e.Note)) + `" target="_blank" rel="noopener">Add to calendar</a></article><a class="link" href="/events">All events</a></div>`
 	app.Respond(w, r, app.Response{Title: e.Title, HTML: body})
 }

@@ -72,7 +72,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			body := `<div class="collection-head"><a href="/notes">All notes</a></div>` + source +
-				`<article class="reading-body">` + string(app.RenderNoImages([]byte(text))) + `</article>` +
+				`<article class="reading-body">` + string(app.RenderLinesNoImages([]byte(text))) + `</article>` +
 				`<details class="disclosure"><summary>Edit</summary>` + editor(r, title, text) + `</details>`
 			render(w, r, title, body)
 			return

@@ -1286,7 +1286,20 @@ if (typeof document !== "undefined") {
   el.addEventListener('pointerup',stop);
   el.addEventListener('pointercancel',stop);
 
-  el.addEventListener('wheel',function(e){ e.preventDefault(); zoomTo(z+(e.deltaY<0?1:-1)); },{passive:false});
+  // Trackpads emit many small events. Accumulate distance and limit zoom steps.
+  var wheelDelta=0, wheelAt=0, zoomAt=-Infinity;
+  el.addEventListener('wheel',function(e){
+    e.preventDefault();
+    var now=performance.now(), delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?el.clientHeight:1);
+    if(!delta) return;
+    if(now-wheelAt>250 || Math.sign(delta)!==Math.sign(wheelDelta)) wheelDelta=0;
+    wheelAt=now;
+    if(now-zoomAt<250){ wheelDelta=0; return; }
+    wheelDelta+=delta;
+    if(Math.abs(wheelDelta)<100) return;
+    zoomTo(z+(wheelDelta<0?1:-1));
+    wheelDelta=0; zoomAt=now;
+  },{passive:false});
   el.addEventListener('dblclick',function(){ zoomTo(z+1); });
 
   var zin=document.getElementById('map-in'), zout=document.getElementById('map-out');

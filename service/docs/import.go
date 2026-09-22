@@ -15,7 +15,7 @@ import (
 // Import is a file-selection page. Reading a file opens an unsaved draft;
 // only the editor's Save action writes a document.
 func importPage(r *http.Request, message string) string {
-	return `<div class="collection-head"><a class="doc-back" href="/docs">Documents</a></div>` +
+	return `<div class="collection-head"><a class="doc-back" href="/docs">All docs</a></div>` +
 		`<form method="POST" action="/docs?import=1" enctype="multipart/form-data" class="form record-editor">` +
 		app.CSRFField(auth.CSRFToken(r)) +
 		`<label for="doc-file">Choose a Markdown or plain-text file</label>` +
