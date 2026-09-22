@@ -9,6 +9,7 @@ import (
 )
 
 func TestSignupAllowanceLifecycle(t *testing.T) {
+	t.Setenv("ADMIN", "operator")
 	acc := subscriptionFixture(t)
 	for range 2 {
 		if err := grantSignup(acc.ID); err != nil {
@@ -83,10 +84,10 @@ func TestSignupAllowanceLifecycle(t *testing.T) {
 	if successes != 1 || SignupRemaining(acc.ID) != 0 {
 		t.Fatal("concurrent calls overspent signup credit")
 	}
-
 }
 
 func TestSignupGrantPreservesLegacyBalance(t *testing.T) {
+	t.Setenv("ADMIN", "operator")
 	acc := subscriptionFixture(t)
 	if err := AddCredits(acc.ID, 100, OpWelcome, nil); err != nil {
 		t.Fatal(err)
@@ -100,12 +101,14 @@ func TestSignupGrantPreservesLegacyBalance(t *testing.T) {
 }
 
 func TestGoogleSignupGetsAllowanceOnlyOnce(t *testing.T) {
+	t.Setenv("ADMIN", "operator")
 	_ = subscriptionFixture(t)
 	info := &googleUser{Email: "launchgrant@example.test", Name: "Launch grant"}
 	acc := findOrCreateGoogleAccount(info)
 	if acc == nil {
 		t.Fatal("account not created")
 	}
+	t.Cleanup(func() { auth.RemoveAccountForTest(acc.ID) })
 	if SignupRemaining(acc.ID) != 100 {
 		t.Fatal("no signup allowance")
 	}
@@ -116,6 +119,7 @@ func TestGoogleSignupGetsAllowanceOnlyOnce(t *testing.T) {
 	if err := auth.Create(other); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { auth.RemoveAccountForTest(other.ID) })
 	_ = CreditsOf(other.ID)
 	if SignupRemaining(other.ID) != 0 {
 		t.Fatal("reading an existing account grants credits")
