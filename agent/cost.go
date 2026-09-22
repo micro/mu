@@ -1,38 +1,8 @@
 package agent
 
-// What a run cost.
-//
-// # The hole this fills
-//
-// mu priced every model call it made through internal/ai and none of the ones
-// the agent made, because the agent does not make them through internal/ai —
-// go-micro holds the loop and calls the provider itself. Every other cost in
-// the product was recorded: Google's places calls, Brave's searches, the
-// summariser, the brief. The agent, which is the product, was free.
-//
-// The number that says how bad it was: production believed it had spent
-// sixty-seven cents since March.
-//
-// # Why this reads a timeline rather than counting as it goes
-//
-// go-micro's agent already records what each model call used — provider, model
-// and tokens — as a run timeline, whether or not tracing is configured. The
-// tokens were there the whole time; nothing read them.
-//
-// So this reads them. After the run, from the run's own store, which is also
-// the fix for a second thing that timeline was doing: it was being written to
-// the shared bbolt store under a per-request agent name, so every question
-// anybody asked left a database file behind, on disk, forever, that nothing
-// ever opened. A run store that lives for the run is where a run's timeline
-// belongs, and it turns a disk write on the answer path into a map write.
-//
-// # What it does not see
-//
-// A delegated sub-agent runs under its own name and files its timeline under
-// that name, and the summaries here are looked up by the name of the agent that
-// was built. Nothing in mu delegates today. If something does, its model calls
-// will be unpriced in the same way this file exists to fix, so this comment is
-// the warning.
+// Provider HTTP responses account for spend on supported providers, including
+// follow-up calls hidden inside Generate. The run timeline still supplies
+// outcomes and is the fallback for providers without a wire meter.
 
 import (
 	"sort"
@@ -64,7 +34,9 @@ func costCaller(opts QueryOpts) string {
 //
 // caller is what the spend log files it under: the name of the agent that ran,
 // so a bill can be read by which agent earned it.
-func recordRunCost(st store.Store, agentName, caller, account string) {
+func recordRunCost(st store.Store, agentName, caller, account string, meter *ai.CallMeter) {
+	runID := agentName
+	defer func() { meter.Record(caller, account, runID) }()
 	if st == nil || agentName == "" {
 		return
 	}
@@ -73,6 +45,7 @@ func recordRunCost(st store.Store, agentName, caller, account string) {
 		return
 	}
 	for _, s := range summaries {
+		runID = s.RunID
 		events, err := gmagent.LoadRunEvents(st, agentName, s.RunID)
 		if err != nil {
 			continue
@@ -85,6 +58,9 @@ func recordRunCost(st store.Store, agentName, caller, account string) {
 		// product could say whether Micro was answering — only what it had
 		// spent trying. See outcome.go.
 		recordOutcome(events, agentName, caller)
+		if meter != nil {
+			continue // HTTP responses account for every provider tool round.
+		}
 		for _, m := range spendByModel(events) {
 			if m.input == 0 && m.output == 0 {
 				// A model call that reported no tokens. Priced at zero it would
