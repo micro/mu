@@ -38,7 +38,7 @@ func TestHomeIndexOwnershipAndDestinations(t *testing.T) {
 	if !strings.Contains(body, "/events?id="+e.ID) || !strings.Contains(body, "07:00 EST") {
 		t.Fatal("event destination or account timezone missing")
 	}
-	if strings.Count(body, `href="/notes?id=`) != 6 {
+	if strings.Count(body, `href="/notes?id=`) != 3 {
 		t.Fatal("recent list not limited")
 	}
 	items := recentItems(owner)

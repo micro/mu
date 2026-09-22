@@ -48,8 +48,8 @@ func recentItems(owner string) []homeItem {
 		}
 		return items[i].updated.After(items[j].updated)
 	})
-	if len(items) > 6 {
-		items = items[:6]
+	if len(items) > 3 {
+		items = items[:3]
 	}
 	return items
 }
