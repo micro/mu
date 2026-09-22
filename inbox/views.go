@@ -123,6 +123,7 @@ func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 
 type savedItem struct {
 	title, kind, href, state string
+	preview                  string
 	updated                  time.Time
 }
 
@@ -139,20 +140,20 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	var items []savedItem
 	if filter == "" || filter == "note" {
 		for _, n := range notes.All(acc.ID) {
-			items = append(items, savedItem{n.Title, "note", "/inbox?view=saved&kind=note&id=" + url.QueryEscape(n.ID), "", n.UpdatedAt})
+			items = append(items, savedItem{n.Title, "note", "/notes?id=" + url.QueryEscape(n.ID), "", trimTo(n.Text, 400), n.UpdatedAt})
 		}
 	}
 	if filter == "" || filter == "document" {
 		for _, d := range docs.All(acc.ID, "", 500) {
-			items = append(items, savedItem{d.Title, "document", "/docs?id=" + url.QueryEscape(d.ID), "", d.Updated})
+			items = append(items, savedItem{d.Title, "document", "/docs?id=" + url.QueryEscape(d.ID), "", "", d.Updated})
 		}
 	}
 	if filter == "" || filter == "app" {
 		for _, a := range apps.OwnedBy(acc.ID) {
-			items = append(items, savedItem{a.Name, "app", "/apps/" + url.PathEscape(a.Slug), "Saved", a.UpdatedAt})
+			items = append(items, savedItem{a.Name, "app", "/apps/" + url.PathEscape(a.Slug), "Saved", "", a.UpdatedAt})
 		}
 		for _, j := range apps.BuildsFor(acc.ID) {
-			items = append(items, savedItem{j.Title, "app", "/apps/builds/" + url.PathEscape(j.ID), j.State, j.Updated})
+			items = append(items, savedItem{j.Title, "app", "/apps/builds/" + url.PathEscape(j.ID), j.State, "", j.Updated})
 		}
 	}
 	// Filters remain small and textual; no dashboard or service catalogue.
@@ -165,7 +166,7 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	}
 	if len(kinds) > 1 || filter != "" {
 		b.WriteString(`<nav class="view-switch" aria-label="Saved type">`)
-		for _, f := range []struct{ key, label string }{{"", "All"}, {"note", "Notes"}, {"document", "Documents"}, {"app", "Apps"}, {"file", "Files"}} {
+		for _, f := range []struct{ key, label string }{{"", "All"}, {"note", "Notes"}, {"document", "Docs"}, {"app", "Apps"}, {"file", "Files"}} {
 			current := ""
 			if filter == f.key {
 				current = ` aria-current="page"`
@@ -186,15 +187,22 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	}
 	b.WriteString(`<div class="collection-list">`)
 	for _, item := range items[pager.From:pager.To] {
-		fmt.Fprintf(&b, `<a class="collection-item" href="%s"><span class="collection-title">%s</span><span class="collection-preview metadata-row"><span>%s</span><span>%s</span></span>`, html.EscapeString(item.href), html.EscapeString(item.title), html.EscapeString(item.kind), html.EscapeString(item.state))
+		kind := item.kind
+		if kind == "document" {
+			kind = "doc"
+		}
+		fmt.Fprintf(&b, `<div class="collection-item"><a class="collection-title" href="%s">%s</a><span class="collection-preview metadata-row"><span>%s</span><span>%s</span></span>`, html.EscapeString(item.href), html.EscapeString(item.title), html.EscapeString(kind), html.EscapeString(item.state))
+		if item.preview != "" {
+			b.WriteString(`<div class="collection-preview">` + string(app.RenderNoImages([]byte(item.preview))) + `</div>`)
+		}
 		if !item.updated.IsZero() {
 			fmt.Fprintf(&b, `<time class="collection-when" datetime="%s">%s</time>`, item.updated.Format(time.RFC3339), html.EscapeString(app.TimeAgo(item.updated)))
 		}
-		b.WriteString(`</a>`)
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>` + pager.Nav("/inbox?view=saved&type="+url.QueryEscape(filter)))
 	if filter == "document" {
-		b.WriteString(`<p><a href="/docs">All documents</a></p>`)
+		b.WriteString(`<p><a href="/docs">All docs</a></p>`)
 	}
 	if filter == "file" || (filter == "" && shell.Configured()) {
 		b.WriteString(workspaceFiles(r, acc.ID))
