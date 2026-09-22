@@ -680,7 +680,6 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .reading-page main>h1{max-width:var(--reading-width)}
 
 /* Text navigation shared by the three Inbox views. */
-.inbox-views{gap:12px 20px;margin-block:0 16px}
 .view-switch a[aria-current="page"]{font-weight:600;text-decoration:underline;text-underline-offset:4px}
 
 
@@ -806,7 +805,6 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .desktop-navigation{display:flex;margin-left:auto}
 @media(max-width:700px){header{flex-wrap:wrap;gap:4px 16px;padding:12px;min-height:64px}.desktop-navigation{gap:8px 16px}header nav a{padding-block:8px}.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}}
 
-@media(max-width:480px){.inbox-views{gap:8px 12px;font-size:.875rem}}
 
 /* Account controls stay compact at every screen width. */
 .desktop-navigation{align-items:center;flex-wrap:nowrap}
