@@ -30,11 +30,8 @@ type Plan struct {
 
 func MonthlyPlan() (Plan, bool) {
 	priceText, creditText := settings.Get("SUBSCRIPTION_CENTS"), settings.Get("SUBSCRIPTION_CREDITS")
-	if priceText == "" {
-		priceText = "4000"
-	}
-	if creditText == "" {
-		creditText = "4000"
+	if priceText == "" && creditText == "" {
+		priceText, creditText = "4000", "4000"
 	}
 	price, e1 := strconv.Atoi(priceText)
 	credits, e2 := strconv.Atoi(creditText)

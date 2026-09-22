@@ -26,6 +26,16 @@ func TestProDefaultsAndSignupDestination(t *testing.T) {
 	if p, ok := MonthlyPlan(); !ok || p.Cents != 4000 || p.Credits != 4000 {
 		t.Fatalf("plan=%+v enabled=%v", p, ok)
 	}
+	t.Setenv("SUBSCRIPTION_CENTS", "5000")
+	if _, ok := MonthlyPlan(); ok {
+		t.Fatal("partial price override was sold with a default allowance")
+	}
+	t.Setenv("SUBSCRIPTION_CENTS", "")
+	t.Setenv("SUBSCRIPTION_CREDITS", "10000")
+	if _, ok := MonthlyPlan(); ok {
+		t.Fatal("partial allowance override was sold at the default price")
+	}
+	t.Setenv("SUBSCRIPTION_CREDITS", "")
 	want := "/account?plan=pro#subscription"
 	r := httptest.NewRequest("GET", "/pricing", nil)
 	page := MonthlyPricingHTML(r)
@@ -54,6 +64,7 @@ func TestProDefaultsAndSignupDestination(t *testing.T) {
 		t.Fatal("operator cannot disable new subscriptions")
 	}
 	t.Setenv("SUBSCRIPTION_CENTS", "4000")
+	t.Setenv("SUBSCRIPTION_CREDITS", "4000")
 	t.Setenv("STRIPE_WEBHOOK_SECRET", "")
 	if _, ok := MonthlyPlan(); ok {
 		t.Fatal("plan enabled without signed webhooks")
