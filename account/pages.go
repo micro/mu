@@ -259,7 +259,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		// Preserve redirect parameter in form action
 		redirectParam := ""
-		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
+		if redirect := safeRedirect(r); redirect != "/" {
 			redirectParam = "?redirect=" + url.QueryEscape(redirect)
 		}
 		w.Write([]byte(renderLogin(redirectParam, "")))
@@ -274,7 +274,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 		// Preserve redirect parameter for error messages
 		redirectParam := ""
-		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
+		if redirect := safeRedirect(r); redirect != "/" {
 			redirectParam = "?redirect=" + url.QueryEscape(redirect)
 		}
 
@@ -857,7 +857,11 @@ type signupBucket struct {
 // finish the thing you were doing. Otherwise Home: the public front door has
 // become this person's place, with their assistant and context in it.
 func safeRedirect(r *http.Request) string {
-	return SafeRedirectTo(r.URL.Query().Get("redirect"))
+	to := r.URL.Query().Get("redirect")
+	if to == "" {
+		to = r.URL.Query().Get("next")
+	}
+	return SafeRedirectTo(to)
 }
 
 // SafeRedirectTo is where to send somebody after signing in: back where they
@@ -951,7 +955,7 @@ func accountFormValues(page string, r *http.Request) string {
 			page = strings.Replace(page, marker, marker+` value="`+htmlpkg.EscapeString(r.FormValue(name))+`"`, 1)
 		}
 	}
-	if to := r.URL.Query().Get("redirect"); to != "" {
+	if to := safeRedirect(r); to != "/" {
 		for _, route := range []string{"/login", "/signup", "/oauth2/google"} {
 			page = strings.ReplaceAll(page, `href="`+route+`"`, `href="`+route+`?redirect=`+htmlpkg.EscapeString(url.QueryEscape(SafeRedirectTo(to)))+`"`)
 		}
