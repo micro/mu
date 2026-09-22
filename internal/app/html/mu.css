@@ -789,7 +789,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 
 .command-page:has(.assistant-workspace){height:100svh;height:var(--workspace-height,100dvh);min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .command-page:has(.assistant-workspace) .page{height:auto;flex:1;min-height:0}
-.command-page:has(.assistant-workspace)>footer{display:none}
+.command-page:has(.assistant-workspace .conversation.is-active)>footer{display:none}
 .assistant-workspace #status:empty{display:none}
 
 /* Linked records share a row highlight without moving their content. */
