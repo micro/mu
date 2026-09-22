@@ -1148,3 +1148,5 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .app-return{padding:10px 16px;flex-shrink:0}
 .ib-subject,.conversation-title{font-weight:500}
 :is(.ib-body,.collection-preview) :is(strong,b){font-weight:600}
+
+.app-widget{display:block;width:100%;height:420px;max-height:70dvh;border:1px solid var(--border);border-radius:6px;background:var(--bg)}

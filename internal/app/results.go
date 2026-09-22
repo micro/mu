@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var appID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{2,49}$`)
+
 var videoID = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
 // VideoPlayer is shared by the standalone watch page and conversation results.
@@ -33,6 +35,22 @@ func Results(items []result.Item) string {
 		return ""
 	}
 	var b strings.Builder
+	var sources []result.Item
+	for _, item := range items {
+		if item.Kind != "app" {
+			sources = append(sources, item)
+			continue
+		}
+		if !appID.MatchString(item.ID) {
+			continue
+		}
+		path := "/apps/" + item.ID
+		b.WriteString(`<section class="result-card page-stack"><a href="` + path + `">` + html.EscapeString(item.Title) + `</a><iframe class="app-widget" loading="lazy" src="` + path + `?widget=1" title="` + html.EscapeString(item.Title) + `"></iframe></section>`)
+	}
+	items = sources
+	if len(items) == 0 {
+		return b.String()
+	}
 	fmt.Fprintf(&b, `<details class="answer-details"><summary>Sources and results (%d)</summary><div class="answer-details-body">`, len(items))
 	for _, item := range items {
 		b.WriteString(`<section class="result-card page-stack">`)

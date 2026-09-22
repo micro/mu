@@ -18,6 +18,12 @@ func resultItems(s Step) []result.Item {
 	}
 	raw := []byte(payload.Content)
 	switch s.Tool {
+	case "apps_create", "apps_edit", "apps_read", "apps_build", "apps_buildstatus":
+		var d struct{ Item *result.Item }
+		if json.Unmarshal(raw, &d) == nil && d.Item != nil && d.Item.Kind == "app" {
+			return []result.Item{*d.Item}
+		}
+		return nil
 	case "video_search", "video_list", "video_read", "bookmarks_list", "bookmarks_get":
 		var d struct {
 			Results []result.Item

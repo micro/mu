@@ -1242,8 +1242,28 @@ func handleApp(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
+	if !a.Public {
+		_, acc := auth.TrySession(r)
+		if acc == nil || acc.ID != a.AuthorID {
+			http.NotFound(w, r)
+			return
+		}
+	}
+
+	if r.URL.Query().Get("widget") == "1" {
+		_, acc := auth.TrySession(r)
+		if acc == nil || (!a.Public && acc.ID != a.AuthorID) {
+			http.NotFound(w, r)
+			return
+		}
+		if a.Price > 0 {
+			app.Error(w, r, http.StatusPaymentRequired, "Open this app to review its price.")
+			return
+		}
+	}
+
 	// Count launch (non-raw only, skip author's own launches)
-	if r.URL.Query().Get("raw") != "1" {
+	if r.URL.Query().Get("raw") != "1" && r.URL.Query().Get("widget") != "1" {
 		_, acc, _ := auth.RequireSession(r)
 		if acc == nil || acc.ID != a.AuthorID {
 			// Charge for paid apps

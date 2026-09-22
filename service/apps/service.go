@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mu/internal/quota"
+	"mu/internal/result"
 	"mu/internal/service"
 )
 
@@ -21,12 +22,13 @@ type BuildRequest struct {
 
 // BuildResponse is the saved app's identity and URLs.
 type BuildResponse struct {
-	ID    string `json:"id"`
-	State string `json:"state"`
-	Name  string `json:"name"`
-	Slug  string `json:"slug"`
-	URL   string `json:"url"`
-	Run   string `json:"run"`
+	Item  *result.Item `json:"item,omitempty"`
+	ID    string       `json:"id"`
+	State string       `json:"state"`
+	Name  string       `json:"name"`
+	Slug  string       `json:"slug"`
+	URL   string       `json:"url"`
+	Run   string       `json:"run"`
 }
 
 // Build generates a self-contained HTML app from a natural
@@ -46,6 +48,7 @@ func (Server) Build(ctx context.Context, req *BuildRequest, rsp *BuildResponse) 
 	rsp.State = j.State
 	rsp.URL = "/apps/builds/" + j.ID
 	if j.State == "complete" && j.App != nil {
+		rsp.Item = appResult(j.App)
 		rsp.Name = j.App.Name
 		rsp.Slug = j.App.Slug
 		rsp.URL = "/apps/" + j.App.Slug
@@ -110,7 +113,8 @@ type AppReadRequest struct {
 
 // AppReadResponse is a model-ready description of an app.
 type AppReadResponse struct {
-	Text string `json:"text"`
+	Item *result.Item `json:"item,omitempty"`
+	Text string       `json:"text"`
 }
 
 // Read returns the details of a specific app by its slug.
@@ -118,6 +122,9 @@ type AppReadResponse struct {
 func (Server) Read(ctx context.Context, req *AppReadRequest, rsp *AppReadResponse) error {
 	if strings.HasPrefix(req.Slug, "build-") {
 		if j, err := readBuild(strings.TrimPrefix(req.Slug, "build-"), service.AccountFrom(ctx)); err == nil {
+			if j.State == "complete" {
+				rsp.Item = appResult(j.App)
+			}
 			status := buildStatus(j)
 			rsp.Text = fmt.Sprintf("Build %s: %s. Attempts: %d. Recoveries: %d. %s %s", status.ID, status.State, status.Attempts, status.Recoveries, status.Error, status.URL)
 			return nil
@@ -128,6 +135,7 @@ func (Server) Read(ctx context.Context, req *AppReadRequest, rsp *AppReadRespons
 	if a == nil || (!a.Public && a.AuthorID != service.AccountFrom(ctx)) {
 		return fmt.Errorf("app not found: %s", req.Slug)
 	}
+	rsp.Item = appResult(a)
 	rsp.Text = a.Name + " (" + a.Slug + ") by " + a.Author + "\n" + a.Description + "\nTags: " + a.Tags + "\nOpen: /apps/" + a.Slug
 	return nil
 }
@@ -155,4 +163,12 @@ var Spec = service.Spec{
 		"Embed": {Needs: service.Caller, Doc: "Get the HTML that puts an app on another page — an iframe tag pointing at the app, which runs there sandboxed the same way it runs here. Apps that charge cannot be embedded, and an app that calls mu. only reaches this instance from a page on it"},
 		"Test":  {Writes: true, Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Needs: service.Caller},
 	},
+}
+
+// appResult contains identity only; the owning route checks access on each load.
+func appResult(a *App) *result.Item {
+	if a == nil || a.Price > 0 {
+		return nil
+	}
+	return &result.Item{Kind: "app", ID: a.Slug, URL: "/apps/" + a.Slug, Title: a.Name}
 }
