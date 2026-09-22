@@ -333,7 +333,13 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	// Keep referral state on this request, never shared between visitors.
 	render := func(errHTML, redirectParam string) string {
-		return accountFormValues(renderSignupInvite(errHTML, redirectParam, invCode), r)
+		page := renderSignupInvite(errHTML, redirectParam, invCode)
+		if safeRedirect(r) == "/account?plan=pro#subscription" {
+			if plan, ok := MonthlyPlan(); ok {
+				page = strings.Replace(page, `<h1 class="text-center">Create your account</h1>`, `<h1 class="text-center">Create your account</h1><p class="text-center">Pro · `+money(plan.Cents)+`/month. Payment follows signup.</p>`, 1)
+			}
+		}
+		return accountFormValues(page, r)
 	}
 
 	// Carried through every render so the POST keeps it — see renderSignupTo.
@@ -490,7 +496,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 func Account(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		app.RedirectToLogin(w, r)
 		return
 	}
 

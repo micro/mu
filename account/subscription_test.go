@@ -262,6 +262,9 @@ func TestCheckoutRetryAndOwnership(t *testing.T) {
 	var firstKey, firstBody string
 	remoteSession := subscriptionCheckout{ID: "cs_fixture", URL: "https://checkout.stripe.com/c/test", Status: "open", Mode: "subscription", Metadata: map[string]string{"user_id": acc.ID, "plan": planMarker}}
 	billingHTTP = &http.Client{Transport: stripeTransport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/v1/webhook_endpoints" {
+			return stripeResponse(map[string]any{"data": []any{map[string]any{"id": "we_test", "url": "https://micro.test/stripe/webhook", "status": "enabled", "enabled_events": []string{"*"}}}}), nil
+		}
 		if r.Method == "GET" {
 			return stripeResponse(remoteSession), nil
 		}

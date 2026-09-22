@@ -126,7 +126,7 @@ func submitReply(accountID, threadID, text, ref string, context ClientContext) e
 		return fmt.Errorf("write a message of up to 8,000 characters")
 	}
 	acc, err := auth.GetAccount(accountID)
-	if err != nil || acc == nil || acc.Banned || (!acc.Admin && !acc.Approved && !acc.EmailVerified) {
+	if err != nil || acc == nil || acc.Banned || !auth.Trusted(accountID) {
 		return fmt.Errorf("account verification required")
 	}
 	t := thread.Get(accountID, threadID)
@@ -244,7 +244,7 @@ func processReply(ask func(AskRequest) (Answer, error)) {
 	}()
 	t := thread.Get(job.Account, job.Thread)
 	acc, accErr := auth.GetAccount(job.Account)
-	if t != nil && accErr == nil && acc != nil && !acc.Banned && !thread.IsHeld(*t) && (acc.Admin || acc.Approved || acc.EmailVerified) {
+	if t != nil && accErr == nil && acc != nil && !acc.Banned && !thread.IsHeld(*t) && auth.Trusted(job.Account) {
 		switch original {
 		case "queued":
 			// Recheck the captured specialist; never silently replace it on execution.

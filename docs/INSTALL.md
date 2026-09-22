@@ -660,16 +660,21 @@ spending limit.
 
 ### Monthly subscriptions
 
-Subscriptions are off until both `SUBSCRIPTION_CENTS` (monthly price in US cents)
-and `SUBSCRIPTION_CREDITS` (monthly usage allowance) are set, together with
-`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`. Choose the price and allowance
-from measured provider costs; there is deliberately no default paid plan.
+Pro defaults to $40/month with 4,000 monthly usage credits when
+`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are configured. Override
+`SUBSCRIPTION_CENTS` and `SUBSCRIPTION_CREDITS` together for different terms;
+set `SUBSCRIPTION_CENTS=0` to stop new subscriptions. Existing subscriptions
+retain their purchased price and allowance. Monitor provider spend as usage grows.
 A publishable key is not required for hosted Checkout. Account and Pricing use
 these same settings. Stripe creates the recurring product/price during Checkout;
 no manual catalogue setup is needed. Changed settings apply to new subscribers,
 not existing contracts.
 
-At `https://<your domain>/stripe/webhook`, enable:
+Before the first subscription, Checkout finds this site's enabled
+`https://<your domain>/stripe/webhook` endpoint and adds the events below,
+preserving existing events and the signing secret. The API key needs webhook
+endpoint read/write access. An absent or disabled endpoint stops Checkout before
+payment. You can also configure these events yourself:
 
 - `checkout.session.completed` and `checkout.session.async_payment_succeeded`
 - `invoice.paid`, `invoice.payment_failed`, `invoice.payment_action_required`
@@ -686,7 +691,9 @@ Usage consumes daily quota, monthly allowance, signup credit, then prepaid balan
 full-period invoices grant monthly credits, once per invoice. They expire at the
 invoice line's period end and cannot be transferred. No automatic overage charges
 or top-ups. Payment failure grants no new month. Cancellation in Account stops
-renewal; already paid usage remains until expiry. Failed reservations refund the
+renewal; already paid usage remains until expiry. Resume Pro restores renewal
+before the period ends. Payment details opens Stripe for card changes and invoices;
+its limited portal configuration is created automatically. Failed reservations refund the
 original allowance period. App, product API and authenticated service tools use
 the same quota gate; x402 pay-per-call remains separate.
 
