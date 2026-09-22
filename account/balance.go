@@ -667,6 +667,10 @@ func PricingTableHTML() string {
 	var free []string
 	var charged []PricingItem
 	for _, it := range Pricing() {
+		// App authoring is not part of the consumer offer yet. Runtime pricing remains available through Pricing().
+		if strings.HasPrefix(it.Operation, "app_") || it.Operation == "db_write" {
+			continue
+		}
 		if it.Cost == 0 {
 			free = append(free, it.Description)
 			continue
@@ -697,13 +701,7 @@ func PricingTableHTML() string {
 		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td>`+price+`%d¢</td></tr>`,
 			htmlEsc(it.Description), it.Cost))
 	}
-	// Paid apps are charged per request at a price the app's author sets, so
-	// there is no fixed figure to list — but the mechanism exists (see
-	// ChargeAppUse) and a cost table that omits it is not the source of truth
-	// it claims to be.
-	sb.WriteString(`<tr><td>Using a paid app</td><td>set by its author</td></tr>`)
 	sb.WriteString(`</table>`)
-	sb.WriteString(`<p class="text-sm text-muted">Most apps are free. Paid ones show their price before you run them, and the author keeps all of it.</p>`)
 	return sb.String()
 }
 

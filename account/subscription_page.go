@@ -10,6 +10,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 )
 
 func subscriptionSummary(r *http.Request, acc *auth.Account) string {
@@ -211,5 +212,9 @@ func MonthlyPricingHTML(r *http.Request) string {
 			destination, label = "/account#subscription", "Your plan"
 		}
 	}
-	return `<section class="plan-section section-stack"><h2>Pro</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>Your daily brief, reminders and more assistant usage.</p><p>` + thousands(p.Credits) + ` credits each month, plus the daily allowance. Use them across Micro.</p><p>Renews monthly. Unused monthly credits expire. Cancel any time.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`
+	usage := thousands(p.Credits) + ` monthly credits, plus the daily allowance.`
+	if cost := quota.OperationCost(quota.OpAgentRun); cost > 0 && p.Credits >= cost {
+		usage = `Up to <strong>` + thousands(p.Credits/cost) + ` simple messages a month</strong>, plus the daily allowance.`
+	}
+	return `<section class="plan-section section-stack"><h2>Pro</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>Your daily brief, reminders and more assistant usage.</p><p>` + usage + `</p><p class="note">` + thousands(p.Credits) + ` monthly credits shared by messages and tools.</p><p>Renews monthly. Unused monthly credits expire. Cancel any time.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`
 }
