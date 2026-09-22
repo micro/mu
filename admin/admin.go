@@ -55,19 +55,13 @@ func alertBadge() string {
 	return fmt.Sprintf(` <span class="count row-danger">%d</span>`, n)
 }
 
-// balanceCell is what an account holds, on the row beside the button that adds
-// to it.
-//
-// Granting credits without seeing the balance is working blind: the question is
-// almost always "does this account have enough", and answering it meant leaving
-// the page for the console. Zero is shown as a dash rather than 0 — a list where
-// most rows read "0" is a column of noise around the few that matter.
+// balanceCell separates prepaid funds from the non-transferable signup allowance.
 func balanceCell(userID string) string {
-	n := account.Balance(userID)
-	if n == 0 {
-		return `<span class="text-muted text-xs">—</span>`
+	label := fmt.Sprintf("%d prepaid", account.Balance(userID))
+	if signup := account.SignupRemaining(userID); signup > 0 {
+		label += fmt.Sprintf(" · %d signup", signup)
 	}
-	return fmt.Sprintf(`<span class="text-sm">%d</span>`, n)
+	return `<span class="text-sm">` + label + `</span>`
 }
 
 // UsersHandler shows and manages users with tabs: All, Banned, New.
@@ -186,7 +180,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		page := app.Paginate(r, len(filtered), 25)
 		rows := make([]map[string]any, 0, page.To-page.From)
 		for _, u := range filtered[page.From:page.To] {
-			rows = append(rows, map[string]any{"id": u.ID, "name": u.Name, "created": u.Created, "admin": u.Admin, "agent": u.Agent, "banned": u.Banned, "approved": u.Approved, "verified": u.EmailVerified, "balance": account.Balance(u.ID), "self": u.ID == acc.ID})
+			rows = append(rows, map[string]any{"id": u.ID, "name": u.Name, "created": u.Created, "admin": u.Admin, "agent": u.Agent, "banned": u.Banned, "approved": u.Approved, "verified": u.EmailVerified, "balance": account.Balance(u.ID), "signup_remaining": account.SignupRemaining(u.ID), "self": u.ID == acc.ID})
 		}
 		app.RespondJSON(w, map[string]any{"items": rows, "page": page.Page, "total": len(filtered), "page_size": 25, "tab": tab})
 
