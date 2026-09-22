@@ -517,6 +517,19 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 
+		if r.PostForm.Get("disconnect_google_signin") != "" {
+			if !auth.StrictCSRF(r) {
+				app.Forbidden(w, r, "Invalid form token")
+				return
+			}
+			if err := auth.DisableGoogleSignIn(acc.ID); err != nil {
+				app.BadRequest(w, r, err.Error())
+				return
+			}
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+
 		// Copies of arriving mail, on or off. The way out is also in every
 		// forwarded message — see service/mail/unsubscribe.go — because somebody
 		// who wants them to stop should not have to find this page. This is the

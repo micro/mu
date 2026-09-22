@@ -252,11 +252,11 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>Google</h4><p>Choose what Micro can use to help you. Each connection is read-only.</p>`)
+	b.WriteString(`<div class="card"><h4>Google</h4>` + googleSignIn(r, acc) + `<h5>Service access</h5><p>Read-only access for your assistant.</p>`)
 
 	switch status {
 	case "disconnected":
-		b.WriteString(`<p class="text-sm text-success">Disconnected. Local access was removed and revocation was requested from Google.</p>`)
+		b.WriteString(`<p class="text-sm text-success">Service access removed. Revocation was requested from Google.</p>`)
 	case "failed", "declined":
 		b.WriteString(`<p>Google access was not connected. Please try again.</p>`)
 	case "connected":
@@ -273,8 +273,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	if status != "" {
 		open = " open"
 	}
-	b.WriteString(`<details class="disclosure"` + open + `><summary>Manage</summary>`)
-	b.WriteString(googleSignIn(acc))
+	b.WriteString(`<details class="disclosure"` + open + `><summary>Manage service access</summary>`)
 	b.WriteString(`<div class="connection-list">`)
 	for _, item := range []struct{ key, label, purpose string }{
 		{"gmail", "Gmail", "Find and read recent email."},
@@ -294,8 +293,7 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 
 	list := google.Grants(acc.ID)
 	if len(list) == 0 {
-		b.WriteString(`<p class="text-sm text-muted mt-2">Micro has no access to anything else in ` +
-			`your Google account.</p></details></div>`)
+		b.WriteString(`<p class="text-sm text-muted mt-2">No Gmail, Calendar, Contacts or Drive access.</p></details></div>`)
 		return b.String()
 	}
 
@@ -311,9 +309,9 @@ func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string 
 	b.WriteString(`<div class="action-block"><form method="POST" action="/oauth2/google/disconnect" class="form-action m-0">` +
 		`<input type="hidden" name="_csrf" value="` + htmlpkg.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<input type="hidden" name="return" value="/account">` +
-		`<button type="submit" class="btn-plain text-sm">Disconnect Google</button>` +
+		`<button type="submit" class="btn-plain text-sm">Disconnect services</button>` +
 		`</form>`)
-	b.WriteString(`<p class="action-note">Disconnecting removes all Google connections above.</p></div>`)
+	b.WriteString(`<p class="action-note">Removes all service connections above. Google sign-in is unchanged.</p></div>`)
 	b.WriteString(`</details></div>`)
 	return b.String()
 }

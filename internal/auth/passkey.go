@@ -122,6 +122,18 @@ func DeletePasskey(id, accountID string) error {
 		return errors.New("unauthorized")
 	}
 
+	if acc := accounts[accountID]; acc != nil && acc.GoogleSignInDisabled && !acc.SecretSet {
+		another := false
+		for otherID, other := range passkeys {
+			if otherID != id && other.Account == accountID {
+				another = true
+				break
+			}
+		}
+		if !another {
+			return errors.New("set a password or reconnect Google sign-in before deleting your last passkey")
+		}
+	}
 	delete(passkeys, id)
 	data.SaveJSON("passkeys.json", passkeys)
 	return nil
