@@ -465,14 +465,11 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	}
 
 	var b strings.Builder
+	b.WriteString(viewNavigation("new"))
 	b.WriteString(`<div class="ib page-col">`)
-	// Back where you came from. A reply reached from a conversation that offers
-	// "← Inbox" sends you to the list, which is one step past where you were.
-	back := app.TextLink("Inbox", "/inbox")
 	if f.On != "" {
-		back = app.TextLink("Back to the conversation", "/inbox?id="+url.QueryEscape(f.On))
+		b.WriteString(app.Actions(app.TextLink("Back to the conversation", "/inbox?id="+url.QueryEscape(f.On))))
 	}
-	b.WriteString(app.Actions(back))
 
 	// A text has no subject and no address on either end. The same screen, told
 	// what it is writing by the conversation it is answering — rather than a

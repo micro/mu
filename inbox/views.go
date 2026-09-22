@@ -22,15 +22,15 @@ import (
 
 func viewNavigation(active string) string {
 	var b strings.Builder
-	b.WriteString(`<nav class="view-switch inbox-views page-menu" aria-label="Inbox views">`)
-	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"scheduled", "Scheduled", "/inbox?view=scheduled"}, {"saved", "Saved", "/inbox?view=saved"}} {
+	b.WriteString(`<nav class="page-menu" aria-label="Inbox views">`)
+	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"scheduled", "Scheduled", "/inbox?view=scheduled"}, {"saved", "Saved", "/inbox?view=saved"}, {"new", "New message", "/inbox/new"}} {
 		current := ""
 		if active == v.key {
 			current = ` aria-current="page"`
 		}
 		fmt.Fprintf(&b, `<a href="%s"%s>%s</a>`, html.EscapeString(v.href), current, v.name)
 	}
-	b.WriteString(`<a href="/inbox/new">New message</a></nav>`)
+	b.WriteString(`</nav>`)
 	return b.String()
 }
 
