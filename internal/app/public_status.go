@@ -65,22 +65,26 @@ func publicStatusAt(now time.Time, entries []*APILogEntry) PublicStatusResponse 
 func renderPublicStatusHTML(status PublicStatusResponse) string {
 	var sb strings.Builder
 	title := "Micro is reachable"
+	statusClass := "status-unknown"
 	guidance := "There are no recent completed agent requests to assess yet."
 	switch status.State {
 	case "operational":
+		statusClass = "status-ok"
 		title = "Recent agent requests are succeeding"
 		guidance = "The website is reachable and recent recorded model calls completed successfully."
 	case "degraded":
+		statusClass = "status-warn"
 		title = "Some agent requests are failing"
 		guidance = "Replies may be interrupted. Reopen your conversation to check the result before retrying an action."
 	case "unavailable":
+		statusClass = "status-error"
 		title = "Agent requests are failing"
 		guidance = "All recently recorded model calls failed. You can still check your saved information; try Micro again later."
 	}
 	sb.WriteString(Column())
-	sb.WriteString(`<div class="page-stack"><section class="page-section"><h2>` + title + `</h2><p>` + html.EscapeString(guidance) + `</p><p class="status-details">Updated ` + html.EscapeString(status.CheckedAt.Format("15:04 UTC")) + `</p></section><section class="page-section">`)
+	sb.WriteString(`<div class="page-stack"><section class="page-section"><h2 class="status-heading ` + statusClass + `">` + title + `</h2><p>` + html.EscapeString(guidance) + `</p><p class="status-details">Updated ` + html.EscapeString(status.CheckedAt.Format("15:04 UTC")) + `</p></section><section class="page-section">`)
 	for _, c := range status.Capabilities {
-		label, class := "No recent activity", "status-details"
+		label, class := "No recent activity", "status-unknown"
 		switch c.State {
 		case "operational":
 			label, class = "Operational", "status-ok"
@@ -92,9 +96,9 @@ func renderPublicStatusHTML(status PublicStatusResponse) string {
 		if c.Name == "AI models" && c.State == "unknown" {
 			label = "No recent data"
 		}
-		fmt.Fprintf(&sb, `<div class="status-item"><div><span class="status-name">%s</span><p class="status-details">%s</p></div><span class="%s">%s</span></div>`, html.EscapeString(c.Name), html.EscapeString(c.Details), class, label)
+		fmt.Fprintf(&sb, `<div class="status-item"><div><span class="status-name">%s</span><p class="status-details">%s</p></div><span class="status-badge %s">%s</span></div>`, html.EscapeString(c.Name), html.EscapeString(c.Details), class, label)
 	}
-	sb.WriteString(`</section><section class="page-section"><p><a href="/">Micro</a> · <a href="/contact#support">Report a problem</a></p><details><summary>About these checks</summary><p class="status-details">Agent results cover recorded model calls in the last 15 minutes, within the latest 500 external calls. They include retries and background work. Call time is not the total time to receive an answer, and a slow successful call is not counted as a failure.</p><p class="status-details">These checks cover this page and recent model calls, not end-to-end mail delivery or scheduled execution. This page runs on the same server as Micro and may be unreachable during an outage.</p></details></section></div>`)
+	sb.WriteString(`</section><section class="page-section"><p><a href="https://github.com/micro/mu/issues/new">Report a problem</a></p><details><summary>About these checks</summary><p class="status-details">Agent results cover recorded model calls in the last 15 minutes, within the latest 500 external calls. They include retries and background work. Call time is not the total time to receive an answer, and a slow successful call is not counted as a failure.</p><p class="status-details">These checks cover this page and recent model calls, not end-to-end mail delivery or scheduled execution. This page runs on the same server as Micro and may be unreachable during an outage.</p></details></section></div>`)
 	sb.WriteString(Close())
 	return sb.String()
 }

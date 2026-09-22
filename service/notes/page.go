@@ -71,7 +71,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 			}
-			render(w, r, "Notes", source+editor(r, title, text))
+			body := `<div class="collection-head"><a href="/notes">All notes</a></div>` + source +
+				`<article class="reading-body">` + string(app.RenderNoImages([]byte(text))) + `</article>` +
+				`<details class="disclosure"><summary>Edit</summary>` + editor(r, title, text) + `</details>`
+			render(w, r, title, body)
 			return
 		}
 		// A note that is not there any more — deleted in another tab, or a
@@ -80,7 +83,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if q.Get("new") != "" {
-		render(w, r, "New note", editor(r, "", ""))
+		render(w, r, "New note", `<div class="collection-head"><a href="/notes">All notes</a></div>`+editor(r, "", ""))
 		return
 	}
 
@@ -118,7 +121,7 @@ func list(entries []*notes.Entry) string {
 		if when.IsZero() {
 			when = e.CreatedAt
 		}
-		b.WriteString(app.CollectionItem("/notes?note="+urlArg(e.Title), e.Title, preview(e.Text), app.TimeAgo(when)))
+		b.WriteString(app.CollectionItem("/notes?id="+urlArg(e.ID), e.Title, preview(e.Text), app.TimeAgo(when)))
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -140,8 +143,6 @@ func editor(r *http.Request, title, text string) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="collection-head">` +
-		`<a class="link" href="/notes">All notes</a></div>`)
 	b.WriteString(`<div class="page-stack"><form method="POST" action="/notes" class="form record-editor">` +
 		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 		`<input type="hidden" name="save" value="1">` +
@@ -178,8 +179,22 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 		if len(text) > maxText {
 			text = text[:maxText]
 		}
-		notes.Add(who, title, text)
-		http.Redirect(w, r, "/notes?note="+urlArg(title), http.StatusSeeOther)
+		source := ""
+		for _, entry := range notes.All(who) {
+			if strings.EqualFold(entry.Title, title) {
+				source = entry.SourceThread
+				break
+			}
+		}
+		notes.AddFrom(who, title, text, source)
+		destination := "/notes"
+		for _, entry := range notes.All(who) {
+			if strings.EqualFold(entry.Title, title) {
+				destination += "?id=" + urlArg(entry.ID)
+				break
+			}
+		}
+		http.Redirect(w, r, destination, http.StatusSeeOther)
 		return
 	case r.Form.Get("delete") != "":
 		notes.Delete(who, r.Form.Get("delete"))
