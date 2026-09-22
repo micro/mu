@@ -16,7 +16,7 @@ func TestStripeFailureKeepsOnlySafeDiagnostics(t *testing.T) {
 	})}
 	err := ensureSubscriptionWebhook(context.Background(), "https://micro.test")
 	var failure *stripeAPIError
-	if !errors.Is(err, errSubscriptionWebhook) || !errors.As(err, &failure) || failure.Status != 403 || failure.RequestID != "req_checkout" || failure.Code != "permission_denied" {
+	if !errors.As(err, &failure) || failure.Status != 403 || failure.RequestID != "req_checkout" || failure.Code != "permission_denied" {
 		t.Fatalf("missing checkout diagnostics: %v", err)
 	}
 	if strings.Contains(err.Error(), "secret_request_value") {

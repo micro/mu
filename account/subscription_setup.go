@@ -25,13 +25,6 @@ var subscriptionEvents = []string{
 var errSubscriptionWebhook = errors.New("subscription webhook setup is unavailable")
 
 func ensureSubscriptionWebhook(ctx context.Context, origin string) error {
-	if err := configureSubscriptionWebhook(ctx, origin); err != nil {
-		return fmt.Errorf("%w: %w", errSubscriptionWebhook, err)
-	}
-	return nil
-}
-
-func configureSubscriptionWebhook(ctx context.Context, origin string) error {
 	target := strings.TrimRight(origin, "/") + "/stripe/webhook"
 	cursor, found := "", false
 	for {
@@ -76,7 +69,7 @@ func configureSubscriptionWebhook(ctx context.Context, origin string) error {
 			}
 			for _, event := range subscriptionEvents {
 				if !slices.Contains(updated.Events, event) && !slices.Contains(updated.Events, "*") {
-					return errors.New("subscription webhook events are unavailable")
+					return fmt.Errorf("%w: subscription events are unavailable", errSubscriptionWebhook)
 				}
 			}
 		}
@@ -89,7 +82,7 @@ func configureSubscriptionWebhook(ctx context.Context, origin string) error {
 		cursor = list.Data[len(list.Data)-1].ID
 	}
 	if !found {
-		return errors.New("enable this site's Stripe webhook endpoint before subscribing")
+		return fmt.Errorf("%w: enable this site's Stripe webhook endpoint before subscribing", errSubscriptionWebhook)
 	}
 	return nil
 }

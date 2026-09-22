@@ -51,7 +51,7 @@ var ask = ai.Ask
 var send = mail.SendIntroductionReply
 
 func init() {
-	micro.Register(&micro.Agent{ID: "hello", Name: "Hello", Description: "A short introduction to Micro", SystemPrompt: instruction + " You are speaking inside the Micro app. For live information or actions, include [Open Micro](/?new=1) so the person can continue with the main assistant. Do not tell signed-in users to create another account.", Tools: []string{}, NoTools: true, Model: model()})
+	micro.Register(&micro.Agent{ID: "hello", Name: "Hello", Description: "A short introduction to Micro", SystemPrompt: instruction, Tools: []string{}, NoTools: true, Model: model()})
 }
 func model() string {
 	if m := strings.TrimSpace(settings.Get("HELLO_MODEL")); m != "" {

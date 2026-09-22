@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"mu/agent/micro"
+	"mu/internal/origin"
 	"mu/service/mail"
 )
 
@@ -88,7 +89,15 @@ func PlatformOpts(a *micro.Agent) QueryOpts {
 	if a == nil {
 		return QueryOpts{}
 	}
-	return QueryOpts{System: namedSystem(a.Name, a.SystemPrompt), Tools: a.Tools, Model: a.Model, NoTools: a.NoTools}
+	prompt := a.SystemPrompt
+	if a.ID == "hello" {
+		if address := origin.Self(); address != "" {
+			prompt += " To continue with the main assistant, give this absolute link: " + address + "/?new=1. Existing users can sign in; do not tell them to create another account."
+		} else {
+			prompt += " To continue with the main assistant, direct the person to Home in Micro. Do not invent a website address."
+		}
+	}
+	return QueryOpts{System: namedSystem(a.Name, prompt), Tools: a.Tools, Model: a.Model, NoTools: a.NoTools}
 }
 
 // platformName is a display name for a run record, so the runs page can say
