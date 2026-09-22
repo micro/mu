@@ -445,6 +445,10 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		if err := grantSignup(id); err != nil {
+			app.Log("account", "signup allowance for %s: %v", id, err)
+		}
+
 		// Consume invite code if present (marks it as used).
 		if invCode != "" {
 			auth.ConsumeInvite(invCode, id)

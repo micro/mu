@@ -24,7 +24,9 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p>No usage charges on this instance.</p></section></div>`)
 		app.Respond(w, r, app.Response{Title: "Pricing", HTML: b.String()})
 		return
-	} else if daily := quota.DailyCredits(); daily > 0 {
+	}
+	b.WriteString(`<p>` + strconv.Itoa(account.SignupCredits) + ` signup credits, once. No card required.</p>`)
+	if daily := quota.DailyCredits(); daily > 0 {
 		b.WriteString(`<p>` + strconv.Itoa(daily) + ` credits per day for assistant calls and tools · resets 00:00 UTC</p>`)
 		if quota.DailyPoolCredits() > 0 {
 			b.WriteString(`<p>Subject to a shared daily limit.</p>`)
@@ -56,7 +58,7 @@ func pricingHandlerJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	json.NewEncoder(w).Encode(map[string]any{
 		"payments": account.PaymentsEnabled(), "topup": account.TopUpConfigured(),
-		"question_cost": quota.OperationCost(quota.OpAgentRun), "welcome": 0,
+		"question_cost": quota.OperationCost(quota.OpAgentRun), "welcome": account.SignupCredits,
 		"monthly": func() any {
 			p, ok := account.MonthlyPlan()
 			if ok {

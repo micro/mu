@@ -126,6 +126,7 @@ func settleIncluded(_ *ledger, id, receipt string, success bool) error {
 				Amount: -tx.Amount, Balance: w.Balance, Operation: tx.Operation,
 				CreatedAt: w.UpdatedAt, Metadata: map[string]interface{}{
 					"reservation": receipt, "daily_credits": tx.Metadata["daily_credits"],
+					"signup_credits":  tx.Metadata["signup_credits"],
 					"allowance_day":   tx.CreatedAt.UTC().Format("2006-01-02"),
 					"monthly_credits": tx.Metadata["monthly_credits"], "allowance_invoice": tx.Metadata["allowance_invoice"],
 				},

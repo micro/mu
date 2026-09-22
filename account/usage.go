@@ -80,7 +80,7 @@ func spendSection(id string, admin bool) string {
 	spentBy := map[string]int{}
 	spent, topped := 0, 0
 	for _, tx := range txs {
-		included := metadataInt(tx.Metadata["daily_credits"]) + metadataInt(tx.Metadata["monthly_credits"])
+		included := metadataInt(tx.Metadata["daily_credits"]) + metadataInt(tx.Metadata["monthly_credits"]) + metadataInt(tx.Metadata["signup_credits"])
 		switch tx.Type {
 		case TxSpend:
 			used := -tx.Amount + included

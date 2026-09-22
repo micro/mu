@@ -61,7 +61,7 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 	} else {
 		body = `<p>` + money(plan.Cents) + ` / month · ` + thousands(plan.Credits) + ` monthly credits</p>` + form("subscribe", "Subscribe")
 	}
-	body += `<p class="text-sm text-muted">Daily quota, then monthly credits, then balance. No automatic top-ups.</p>`
+	body += `<p class="text-sm text-muted">Daily quota, then monthly credits, then signup credit, then balance. No automatic top-ups.</p>`
 	return app.SectionID("subscription", "Subscription", body)
 }
 
@@ -154,5 +154,5 @@ func MonthlyPricingHTML() string {
 	if !ok {
 		return ""
 	}
-	return `<section class="section-stack"><h2>Monthly</h2><p><strong>` + money(p.Cents) + ` / month</strong> · ` + thousands(p.Credits) + ` monthly credits, in addition to the daily quota.</p><p>One allowance for the assistant, tools and API. Unused monthly credits expire at renewal. Cancel any time; paid usage remains available until the period ends.</p><p><a class="btn" href="/account#subscription">Subscribe</a></p></section>`
+	return `<section class="section-stack"><h2>Subscription</h2><p><strong>` + money(p.Cents) + ` / month</strong> · ` + thousands(p.Credits) + ` monthly credits, in addition to the daily quota.</p><p>Shared across the assistant and tools, including API use. Monthly credits reset at renewal. Cancel any time. Top up to continue after your allowance runs out.</p><p><a class="btn" href="/account#subscription">Subscribe</a></p></section>`
 }

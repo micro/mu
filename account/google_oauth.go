@@ -281,6 +281,9 @@ func findOrCreateGoogleAccount(info *googleUser) *auth.Account {
 		return nil
 	}
 
+	if err := grantSignup(id); err != nil {
+		app.Log("account", "signup allowance for %s: %v", id, err)
+	}
 	acc, _ := auth.GetAccount(id)
 	return acc
 }
