@@ -2,6 +2,7 @@ package account
 
 import (
 	"github.com/google/uuid"
+	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"time"
@@ -17,7 +18,7 @@ func grantSignup(id string) error {
 	if err != nil {
 		return err
 	}
-	if !PaymentsEnabled() || acc.Admin || acc.Agent || acc.Unclaimed {
+	if !PaymentsEnabled() || acc.Admin || acc.Agent || acc.Unclaimed || acc.SignupCredits <= 0 {
 		return nil
 	}
 	return withLedger(func(l *ledger) error {
@@ -33,7 +34,7 @@ func grantSignup(id string) error {
 		transactions[id] = append(transactions[id], &Transaction{
 			ID: uuid.NewString(), UserID: id, Type: txSignup, Operation: OpWelcome,
 			Balance: balance, CreatedAt: time.Now().UTC(),
-			Metadata: map[string]interface{}{"signup_credits": SignupCredits},
+			Metadata: map[string]interface{}{"signup_credits": acc.SignupCredits},
 		})
 		if err := data.SaveJSON("transactions.json", transactions); err != nil {
 			transactions[id] = transactions[id][:len(transactions[id])-1]
@@ -65,4 +66,10 @@ func signupRemaining(_ *ledger, id string) int {
 // SignupRemaining reports unused signup credit without creating a grant.
 func SignupRemaining(id string) int {
 	return withLedger(func(l *ledger) int { return signupRemaining(l, id) })
+}
+
+func retrySignup(id string) {
+	if err := grantSignup(id); err != nil {
+		app.Log("account", "signup allowance for %s: %v", id, err)
+	}
 }

@@ -182,6 +182,7 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	retrySignup(acc.ID)
 	sess, err := auth.CreateSession(acc.ID)
 	if err != nil {
 		http.Error(w, "Session error, please try again", http.StatusInternalServerError)
@@ -275,6 +276,7 @@ func findOrCreateGoogleAccount(info *googleUser) *auth.Account {
 		EmailVerified:   true,
 		EmailVerifiedAt: time.Now(),
 		Created:         time.Now(),
+		SignupCredits:   SignupCredits,
 	})
 	if err != nil {
 		app.Log("auth", "google account create failed: %v", err)

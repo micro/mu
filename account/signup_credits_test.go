@@ -3,14 +3,21 @@ package account
 import (
 	"encoding/json"
 	"mu/internal/auth"
+	"mu/internal/data"
+	"mu/internal/dir"
 	"mu/internal/quota"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
 
 func TestSignupAllowanceLifecycle(t *testing.T) {
 	t.Setenv("ADMIN", "operator")
-	acc := subscriptionFixture(t)
+	acc := signupFixture(t)
 	for range 2 {
 		if err := grantSignup(acc.ID); err != nil {
 			t.Fatal(err)
@@ -88,7 +95,7 @@ func TestSignupAllowanceLifecycle(t *testing.T) {
 
 func TestSignupGrantPreservesLegacyBalance(t *testing.T) {
 	t.Setenv("ADMIN", "operator")
-	acc := subscriptionFixture(t)
+	acc := signupFixture(t)
 	if err := AddCredits(acc.ID, 100, OpWelcome, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -123,5 +130,54 @@ func TestGoogleSignupGetsAllowanceOnlyOnce(t *testing.T) {
 	_ = CreditsOf(other.ID)
 	if SignupRemaining(other.ID) != 0 {
 		t.Fatal("reading an existing account grants credits")
+	}
+}
+
+func signupFixture(t *testing.T) *auth.Account {
+	t.Helper()
+	acc := subscriptionFixture(t)
+	copy := *acc
+	copy.SignupCredits = SignupCredits
+	auth.SetAccountForTest(&copy)
+	return &copy
+}
+
+func TestSignupCreditRetriesOnLoginAfterWriteFailure(t *testing.T) {
+	t.Setenv("ADMIN", "operator")
+	_ = subscriptionFixture(t)
+	acc := &auth.Account{ID: "signupretry", Secret: "test-password", SignupCredits: SignupCredits}
+	if err := auth.Create(acc); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { auth.RemoveAccountForTest(acc.ID) })
+	file := filepath.Join(dir.Data(), "transactions.json")
+	if err := data.SaveJSON("transactions.json", transactions); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(file, file+".backup"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(file, 0700); err != nil {
+		t.Fatal(err)
+	}
+	var once sync.Once
+	restore := func() { once.Do(func() { os.Remove(file); os.Rename(file+".backup", file) }) }
+	t.Cleanup(restore)
+	if err := grantSignup(acc.ID); err == nil {
+		t.Fatal("expected ledger write failure")
+	}
+	if SignupRemaining(acc.ID) != 0 {
+		t.Fatal("failed grant remained in memory")
+	}
+	restore()
+	for range 2 {
+		form := url.Values{"id": {acc.ID}, "secret": {"test-password"}}
+		req := httptest.NewRequest("POST", "/login", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		res := httptest.NewRecorder()
+		Login(res, req)
+		if res.Code != 302 || SignupRemaining(acc.ID) != SignupCredits {
+			t.Fatalf("login retry: status=%d credit=%d", res.Code, SignupRemaining(acc.ID))
+		}
 	}
 }
