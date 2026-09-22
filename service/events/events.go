@@ -139,15 +139,7 @@ func CreateStanding(owner, title string, when time.Time, note string, minutes in
 	}
 	// A recurring personal schedule follows local wall time across DST changes.
 	if e.Repeat != RepeatNone {
-		zone := ""
-		if acc, err := auth.GetAccount(owner); err == nil {
-			zone = acc.Zone
-		}
-		if zone == "" {
-			if brief := Brief(owner); brief != nil {
-				zone = brief.Zone
-			}
-		}
+		zone := recurringZone(owner)
 		if loc, err := time.LoadLocation(zone); zone != "" && err == nil {
 			e.Zone = zone
 			e.When = when.In(loc)
@@ -320,4 +312,14 @@ func DeleteAll(owner string) {
 		saveLocked()
 		app.Log("events", "deleted %d events for %s", removed, owner)
 	}
+}
+
+func recurringZone(owner string) string {
+	if acc, err := auth.GetAccount(owner); err == nil && acc.Zone != "" {
+		return acc.Zone
+	}
+	if brief := Brief(owner); brief != nil {
+		return brief.Zone
+	}
+	return ""
 }

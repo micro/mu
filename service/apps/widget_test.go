@@ -45,6 +45,43 @@ func TestPersonalWidgetPrivacyAndPrice(t *testing.T) {
 			t.Fatalf("owner blocked: %s %d", suffix, w.Code)
 		}
 	}
+	for _, suffix := range []string{"", "/versions", "/icon.svg"} {
+		r := httptest.NewRequest("GET", "/apps/"+a.Slug+suffix, nil)
+		r.Header.Set("Accept", "application/json")
+		w := httptest.NewRecorder()
+		Handler(w, r)
+		if w.Code != 404 {
+			t.Fatalf("private JSON route exposed: %s %d", suffix, w.Code)
+		}
+	}
+	auth.SetAccountForTest(&auth.Account{ID: "widget_other_test"})
+	defer auth.RemoveAccountForTest("widget_other_test")
+	other, err := auth.CreateSession("widget_other_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rOther := httptest.NewRequest("GET", "/apps/"+a.Slug, nil)
+	rOther.Header.Set("Accept", "application/json")
+	rOther.AddCookie(&http.Cookie{Name: "session", Value: other.Token})
+	denied := httptest.NewRecorder()
+	Handler(denied, rOther)
+	if denied.Code != 404 {
+		t.Fatal("another account read private widget JSON")
+	}
+	if _, err := ForkApp(a.Slug, "stolen-widget", "widget_other_test", "Other"); err == nil {
+		t.Fatal("private app forked by another account")
+	}
+	if TestApp(a.Slug, "widget_other_test") != nil {
+		t.Fatal("private app tested by another account")
+	}
+	ownFork, err := ForkApp(a.Slug, "private-widget-copy", owner, "Owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { mutex.Lock(); delete(apps, ownFork.Slug); mutex.Unlock() }()
+	if ownFork.Public {
+		t.Fatal("private app fork became public")
+	}
 	a.Price = 5
 	r := httptest.NewRequest("GET", "/apps/"+a.Slug+"?widget=1", nil)
 	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
