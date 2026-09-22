@@ -1589,7 +1589,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 				%s
 			</div>
 			<div class="article-back">
-				<a href="/news">Back to news</a>
+				<a href="/news">All news</a>
 			</div>
 		</div>
 	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, htmlpkg.EscapeString(articleURL), app.ReadingActionItems(r, articleID))

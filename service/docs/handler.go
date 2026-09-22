@@ -139,7 +139,7 @@ func list(r *http.Request, docs []*Doc, query string) string {
 // view is one document, read.
 func view(r *http.Request, d *Doc) string {
 	var b strings.Builder
-	b.WriteString(`<div class="collection-head"><a class="section-link" href="/docs">Documents</a>`)
+	b.WriteString(`<div class="collection-head"><a class="section-link" href="/docs">All docs</a>`)
 	b.WriteString(`<a class="btn btn-quiet" href="/docs?id=` + html.EscapeString(d.ID) + `&amp;edit=1">Edit</a></div>`)
 	b.WriteString(`<article class="card record-card doc-view">`)
 	b.WriteString(`<h2>` + html.EscapeString(d.Title) + `</h2>`)
@@ -164,7 +164,7 @@ func editor(r *http.Request, d *Doc) string {
 	if d.Public {
 		checked = " checked"
 	}
-	back := `<a class="section-link" href="/docs">Documents</a>`
+	back := `<a class="section-link" href="/docs">All docs</a>`
 	if d.ID != "" {
 		back = `<a class="section-link" href="/docs?id=` + html.EscapeString(d.ID) + `">Back</a>`
 	}

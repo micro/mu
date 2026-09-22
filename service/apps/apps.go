@@ -698,7 +698,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	}
 	var sb strings.Builder
 
-	sb.WriteString(`<form method="POST" action="/apps/new" class="form page-col">`)
+	sb.WriteString(`<div class="collection-head"><a href="/apps">All apps</a></div><form method="POST" action="/apps/new" class="form page-col">`)
 	sb.WriteString(`<label class="field-label">Name`)
 	sb.WriteString(`<input type="text" name="name" required maxlength="60" class="form-input w-full" placeholder="Pomodoro Timer"></label>`)
 	sb.WriteString(`<label class="field-label">Description`)
@@ -891,6 +891,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 
 	var sb strings.Builder
+	sb.WriteString(`<div class="collection-head"><a href="/apps">All apps</a></div>`)
 	sb.WriteString(fmt.Sprintf(`<div class="d-flex gap-3 items-center mb-3"><img src="/apps/%s/icon.svg" width="32" height="32"><div><p class="card-desc m-0">%s</p></div></div>`,
 		htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Description)))
 	tagsInfo := ""
@@ -984,7 +985,7 @@ func handleEdit(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 	var sb strings.Builder
-	sb.WriteString(editPageHTML(a))
+	sb.WriteString(`<div class="collection-head"><a href="/apps">All apps</a></div>` + editPageHTML(a))
 
 	app.Respond(w, r, app.Response{
 		Title:       "Edit " + a.Name,
