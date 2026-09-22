@@ -124,6 +124,7 @@ func filterServices(all, allow []string) []string {
 func injectAccount(accountID string, restricted ...bool) gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			ctx = ai.WithoutModelTracking(ctx)
 			delete(call.Input, "account_id")
 			// And that this is the model reaching for a tool rather than a
 			// person doing something. Stamped here because this wrapper is the
@@ -273,6 +274,7 @@ type nativeRun struct {
 	agent    gmagent.Agent
 	question string
 	provider string
+	model    string
 	baseURL  string
 	// name is the per-request agent name the timeline is filed under.
 	name string
@@ -423,7 +425,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	}
 	name := nativeAgentInstanceName()
 	a := service.NewAgent(name, sys, provider, key, services, agentOpts...)
-	return nativeRun{agent: a, question: question, name: name, runs: runs, provider: provider, baseURL: baseURL}, true
+	return nativeRun{agent: a, question: question, name: name, runs: runs, provider: provider, model: model, baseURL: baseURL}, true
 }
 
 // nativeLLM picks the go-micro provider the native agent talks to.
@@ -728,14 +730,6 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	}
 	a, question := run.agent, run.question
 	defer a.Stop()
-	// What it cost, whichever way this returns.
-	//
-	// Deferred rather than written after the answer because a run that fails
-	// has still been paid for: a provider error on the ninth step is nine model
-	// calls of tokens, and accounting for only the runs that worked would
-	// under-report exactly the runs worth knowing about.
-	defer recordRunCost(run.runs, run.name, costCaller(opts), accountID)
-
 	// Streaming when somebody is watching.
 	//
 	// One function rather than two, because two drifted: the same construction,
@@ -765,6 +759,9 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	// rather than a policy.
 	ctx, cancel := context.WithTimeout(runContext(opts), turnTimeout)
 	defer cancel()
+	ctx, meter := ai.MeterCalls(ctx, run.provider, run.baseURL, run.model)
+	// Failed runs still incurred provider costs.
+	defer recordRunCost(run.runs, run.name, costCaller(opts), accountID, meter)
 
 	final := ""
 	if opts.Stream.Token != nil || opts.Stream.Start != nil {
@@ -880,7 +877,7 @@ func streamToolReporter(hooks StreamHooks) gmai.ToolWrapper {
 			if show && hooks.ToolStart != nil {
 				hooks.ToolStart(run)
 			}
-			result := next(ai.WithoutLiveTokens(ctx), call)
+			result := next(ctx, call)
 			if show && hooks.ToolEnd != nil {
 				hooks.ToolEnd(run)
 			}

@@ -28,23 +28,11 @@ type liveRequest struct {
 // LiveTokens opts one native run into live OpenAI-compatible completions.
 // Unsupported providers retain their existing streaming implementation.
 func LiveTokens(ctx context.Context, provider, baseURL string, start func(), token func(string)) (context.Context, bool) {
-	switch provider {
-	case "atlascloud":
-		if baseURL == "" {
-			baseURL = "https://api.atlascloud.ai"
-		}
-	case "openrouter":
-		if baseURL == "" {
-			baseURL = openRouterBaseURL
-		}
-	case "openai":
-		if baseURL == "" {
-			baseURL = "https://api.openai.com"
-		}
-	default:
+	endpoint := completionEndpoint(provider, baseURL)
+	if endpoint == "" || provider == "anthropic" {
 		return ctx, false
 	}
-	return context.WithValue(ctx, liveKey{}, &liveRequest{endpoint: strings.TrimRight(baseURL, "/") + "/v1/chat/completions", start: start, token: token}), true
+	return context.WithValue(ctx, liveKey{}, &liveRequest{endpoint: endpoint, start: start, token: token}), true
 }
 
 // LiveError reports a broken stream even if a provider swallowed its follow-up
@@ -59,9 +47,11 @@ func LiveError(ctx context.Context) error {
 	return live.err
 }
 
-// WithoutLiveTokens keeps HTTP calls made by tools outside the provider bridge.
-func WithoutLiveTokens(ctx context.Context) context.Context {
-	return context.WithValue(ctx, liveKey{}, (*liveRequest)(nil))
+// WithoutModelTracking keeps tool calls out of the parent model's stream and
+// spend. Tools that call a model record their own usage.
+func WithoutModelTracking(ctx context.Context) context.Context {
+	ctx = context.WithValue(ctx, liveKey{}, (*liveRequest)(nil))
+	return context.WithValue(ctx, meterKey{}, (*CallMeter)(nil))
 }
 
 func init() {
@@ -71,7 +61,7 @@ func init() {
 	if next == nil {
 		next = http.DefaultTransport
 	}
-	http.DefaultClient.Transport = liveTransport{next}
+	http.DefaultClient.Transport = meterTransport{liveTransport{next}}
 }
 
 type liveTransport struct{ next http.RoundTripper }
