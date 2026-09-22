@@ -128,11 +128,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if agentDescription != "" {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
-	index := ""
-	if basePath == "/" && session == "" {
-		index = homeIndex(acc.ID, acc.Zone)
-	}
-	body := `<div class="assistant-workspace"><div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div>` + index + `</div></div>`
+	body := `<div class="assistant-workspace"><div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
 	fmt.Fprint(w, app.ConsoleHTML(agentName, body, acc))
 }
 

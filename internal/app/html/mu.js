@@ -438,8 +438,6 @@ async function navigateThread(url,push=true){
   conversation.querySelector('.assistant-thread-title')?.remove();
   const heading=page.querySelector('.assistant-thread-title');if(heading)log.before(heading);
   const welcome=conversation.querySelector('.prompt-welcome');welcome.replaceChildren(...page.querySelector('.prompt-welcome').childNodes);
-  conversation.querySelector('.home-index')?.remove();
-  const nextIndex=page.querySelector('.home-index');if(nextIndex)conversation.appendChild(document.importNode(nextIndex,true));
   conversation.classList.toggle('is-active',!!thread);status.textContent='';
   form.dispatchEvent(new CustomEvent('thread-changed',{detail:{thread}}));sizeInput();
   resumePending();
