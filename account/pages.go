@@ -89,6 +89,7 @@ var SignupTemplate = `
 	  <h1 class="text-center">Create your account</h1>
 	  %s
 	  %s
+	  %s
 	  <label class="field-label">Username<input id="id" name="id" autocomplete="username" minlength="4" maxlength="24" pattern="[a-z][a-z0-9_]{3,23}" aria-describedby="username-help" required></label><small id="username-help" class="text-muted">4–24 characters. Start with a letter; use lowercase letters, numbers or underscores.</small>
 	  <label class="field-label">Password<input id="secret" name="secret" type="password" autocomplete="new-password" minlength="6" aria-describedby="password-help" required></label><small id="password-help" class="text-muted">At least 6 characters.</small>
 	  %s
@@ -125,7 +126,14 @@ func renderSignupInvite(errHTML, redirectParam, invite string) string {
 	// landing's copy — silently deleted Sign up with Google from the page. No
 	// error, no test, nothing in a diff to notice: the replace simply matched
 	// nothing and returned the string unchanged. A slot cannot miss.
-	return app.ConsoleHTML("Sign up", fmt.Sprintf(SignupTemplate, redirectParam,
+	planHint := ""
+	values, _ := url.ParseQuery(strings.TrimPrefix(redirectParam, "?"))
+	if values.Get("redirect") == "/account?plan=pro#subscription" {
+		if plan, ok := MonthlyPlan(); ok {
+			planHint = `<p class="text-center">Pro · ` + money(plan.Cents) + `/month. Payment follows signup.</p>`
+		}
+	}
+	return app.ConsoleHTML("Sign up", fmt.Sprintf(SignupTemplate, redirectParam, planHint,
 		googleButtonHTML("Sign up with Google"), errHTML, app.CaptchaHTML(c), inviteField), nil)
 }
 
@@ -333,13 +341,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	// Keep referral state on this request, never shared between visitors.
 	render := func(errHTML, redirectParam string) string {
-		page := renderSignupInvite(errHTML, redirectParam, invCode)
-		if safeRedirect(r) == "/account?plan=pro#subscription" {
-			if plan, ok := MonthlyPlan(); ok {
-				page = strings.Replace(page, `<h1 class="text-center">Create your account</h1>`, `<h1 class="text-center">Create your account</h1><p class="text-center">Pro · `+money(plan.Cents)+`/month. Payment follows signup.</p>`, 1)
-			}
-		}
-		return accountFormValues(page, r)
+		return accountFormValues(renderSignupInvite(errHTML, redirectParam, invCode), r)
 	}
 
 	// Carried through every render so the POST keeps it — see renderSignupTo.
