@@ -101,7 +101,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	pager := app.Paginate(r, len(filtered), 25)
 	for _, t := range filtered[pager.From:pager.To] {
-		b.WriteString(`<article class="list-row"><a href="/work?id=` + url.QueryEscape(t.ID) + `">` + html.EscapeString(t.Title) + `</a><div class="metadata">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><time datetime="` + t.Created.Format(time.RFC3339) + `" title="` + t.Created.Format(time.RFC1123) + `">Created ` + app.TimeAgo(t.Created) + `</time><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div></article>`)
+		b.WriteString(`<article class="record-card"><a class="record-title" href="/work?id=` + url.QueryEscape(t.ID) + `">` + html.EscapeString(t.Title) + `</a><div class="metadata-row">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><time datetime="` + t.Created.Format(time.RFC3339) + `" title="` + t.Created.Format(time.RFC1123) + `">Created ` + app.TimeAgo(t.Created) + `</time><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div></article>`)
 	}
 	b.WriteString(pager.Nav("/work?status=" + url.QueryEscape(filter) + "&view=" + url.QueryEscape(r.URL.Query().Get("view"))))
 	if len(filtered) == 0 {
@@ -237,7 +237,7 @@ func workDetail(t *tasks.Task, csrf string) string {
 	if t.Thread != "" {
 		b.WriteString(`<a href="/inbox?id=` + url.QueryEscape(t.Thread) + `">Conversation</a>`)
 	}
-	b.WriteString(`</div><h2>` + html.EscapeString(t.Title) + `</h2><div class="metadata">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div>`)
+	b.WriteString(`</div><h2>` + html.EscapeString(t.Title) + `</h2><div class="metadata-row">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div>`)
 	if t.Result != "" {
 		b.WriteString(`<section><h3>Outcome</h3>` + app.RenderString(t.Result) + `</section>`)
 	}
