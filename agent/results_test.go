@@ -21,3 +21,12 @@ func TestAppResultsRequireSuccessfulTypedOutput(t *testing.T) {
 		t.Fatal("queued app embedded")
 	}
 }
+
+func TestDocumentsBecomeBoundedPreviewResults(t *testing.T) {
+	raw, _ := json.Marshal(map[string]any{"doc": map[string]string{"id": "doc-id", "title": "A doc", "content": "First\nSecond"}})
+	envelope, _ := json.Marshal(map[string]string{"Content": string(raw)})
+	got := resultItems(Step{Tool: "docs_write", OK: true, Output: string(envelope)})
+	if len(got) != 1 || got[0].Kind != "doc" || got[0].Body != "First\nSecond" {
+		t.Fatalf("missing doc preview: %+v", got)
+	}
+}

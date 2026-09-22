@@ -467,7 +467,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 			ran = runTools(m.Workflow)
 		}
 		return messageOpen(t, m, accountID, "ib-agent") + messageFrom(t, messageAgentName(accountID, t, m), m.At) +
-			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
+			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + app.Results(m.Results) + ran + `</div>`
 	}
 	// The author, by the name the conversation knows them under rather than the
 	// address on the message. A thread where three people have written is three

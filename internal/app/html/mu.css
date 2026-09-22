@@ -1150,3 +1150,6 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 :is(.ib-body,.collection-preview) :is(strong,b){font-weight:600}
 
 .app-widget{display:block;width:100%;height:420px;max-height:70dvh;border:1px solid var(--border);border-radius:6px;background:var(--bg)}
+
+.result-preview{max-height:320px;overflow:auto;overflow-wrap:anywhere}
+.result-preview>:first-child{margin-top:0}.result-preview>:last-child{margin-bottom:0}

@@ -18,6 +18,21 @@ func resultItems(s Step) []result.Item {
 	}
 	raw := []byte(payload.Content)
 	switch s.Tool {
+	case "notes_add", "notes_get":
+		var d struct{ Item *result.Item }
+		if json.Unmarshal(raw, &d) == nil && d.Item != nil && d.Item.Kind == "note" {
+			d.Item.Body = truncate(d.Item.Body, 4000)
+			return []result.Item{*d.Item}
+		}
+		return nil
+	case "docs_write", "docs_read":
+		var d struct {
+			Doc *struct{ ID, Title, Content string }
+		}
+		if json.Unmarshal(raw, &d) == nil && d.Doc != nil {
+			return []result.Item{{Kind: "doc", ID: d.Doc.ID, Title: d.Doc.Title, Body: truncate(d.Doc.Content, 4000), URL: "/docs?id=" + url.QueryEscape(d.Doc.ID)}}
+		}
+		return nil
 	case "apps_create", "apps_edit", "apps_read", "apps_build", "apps_buildstatus":
 		var d struct{ Item *result.Item }
 		if json.Unmarshal(raw, &d) == nil && d.Item != nil && d.Item.Kind == "app" {
