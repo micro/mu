@@ -28,35 +28,22 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	messageCost := quota.OperationCost(quota.OpAgentRun)
 	_, _, sessionErr := auth.RequireSession(r)
+	b.WriteString(`<p>` + strconv.Itoa(account.SignupCredits) + ` credits when you sign up. No card required.</p>`)
 	if daily := quota.DailyCredits(); daily > 0 {
-		if messageCost > 0 && daily >= messageCost {
-			b.WriteString(`<p>Up to <strong>` + strconv.Itoa(daily/messageCost) + ` simple messages a day.</strong></p>`)
-		} else {
-			b.WriteString(`<p>` + strconv.Itoa(daily) + ` daily credits.</p>`)
-		}
+		b.WriteString(`<p>` + strconv.Itoa(daily) + ` free credits each day.</p>`)
 		if quota.DailyPoolCredits() > 0 {
 			b.WriteString(`<p>Subject to a shared daily limit.</p>`)
 		}
-	} else {
-		b.WriteString(`<p>No daily allowance on this instance.</p>`)
-	}
-	if messageCost > 0 && account.SignupCredits >= messageCost {
-		b.WriteString(`<p>Plus up to ` + strconv.Itoa(account.SignupCredits/messageCost) + ` extra simple messages when you join. No card required.</p>`)
-	} else {
-		b.WriteString(`<p>` + strconv.Itoa(account.SignupCredits) + ` signup credits. No card required.</p>`)
 	}
 	if sessionErr != nil {
 		b.WriteString(`<p><a class="btn" href="/signup">Create account</a></p>`)
 	}
 	b.WriteString(`</section><section class="plan-section section-stack"><h2>PAYG</h2><p>Pay as you go when you need more. No subscription.</p>`)
-	if messageCost > 0 && messageCost <= 500 {
-		b.WriteString(`<p><strong>$5</strong> covers up to <strong>` + strconv.Itoa(500/messageCost) + ` simple messages.</strong></p>`)
-	}
-	b.WriteString(`<p>Add credit in Account. You choose when to top up.</p>`)
+	b.WriteString(`<p>1 credit = 1 US cent.</p><p>Top up in Account.</p>`)
 	if sessionErr == nil && account.TopUpConfigured() {
 		b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
 	}
-	b.WriteString(`</section>` + account.MonthlyPricingHTML(r) + `<section id="costs" class="plan-section section-stack"><p>Message estimates are for assistant replies without paid tools. Briefs, searches and other paid tools use the same allowance, so you may get fewer messages.</p><details class="disclosure"><summary>Usage details</summary><p>1 credit = 1 US cent. A simple assistant reply costs ` + strconv.Itoa(messageCost) + ` credits.</p><p>Free includes ` + strconv.Itoa(account.SignupCredits) + ` signup credits and ` + strconv.Itoa(quota.DailyCredits()) + ` daily credits. Daily credits reset at 00:00 UTC and do not roll over.</p>` + account.PricingTableHTML() + `</details></section>`)
+	b.WriteString(`</section>` + account.MonthlyPricingHTML(r) + `<section id="costs" class="plan-section section-stack"><p>Credits cover assistant replies and paid tools. A simple reply costs ` + strconv.Itoa(messageCost) + ` credits; tools cost extra.</p><details class="disclosure"><summary>Usage details</summary><p>Signup credits are granted once. Daily credits reset at 00:00 UTC and do not roll over.</p>` + account.PricingTableHTML() + `</details></section>`)
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Pricing", Description: description, HTML: b.String()})
 }
