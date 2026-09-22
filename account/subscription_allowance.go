@@ -107,19 +107,21 @@ func grantMonthly(id, subscription, invoice string, credits int, from, to int64)
 func includedAvailable(id string) int {
 	return withLedger(func(l *ledger) int {
 		now := time.Now().UTC()
-		return includedToday(l, id, now) + monthly(l, id, now).Remaining
+		return includedToday(l, id, now) + monthly(l, id, now).Remaining + signupRemaining(l, id)
 	})
 }
 
-// Consume daily, then monthly, then prepaid. Both web and authenticated APIs
+// Consume daily, then monthly, then signup credit, then prepaid. Both web and authenticated APIs
 // reach this through quota; x402 settlement and transfers still use money only.
 func allowanceDebit(l *ledger, id string, amount int, meta map[string]interface{}) int {
 	now := time.Now().UTC()
 	daily := min(amount, includedToday(l, id, now))
 	plan := monthly(l, id, now)
 	monthly := min(amount-daily, plan.Remaining)
+	signup := min(amount-daily-monthly, signupRemaining(l, id))
+	meta["signup_credits"] = signup
 	meta["daily_credits"] = daily
 	meta["monthly_credits"] = monthly
 	meta["allowance_invoice"] = plan.Invoice
-	return amount - daily - monthly
+	return amount - daily - monthly - signup
 }

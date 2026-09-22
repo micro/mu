@@ -648,6 +648,12 @@ Callers pay in credits, prepaid against an account. Set the `STRIPE_*` keys to
 let people buy them by card; without those keys your instance runs with no
 metering, which is usually what you want for one you run for yourself.
 
+New personal signups receive 100 nontransferable usage credits once. Existing
+accounts and purchased/legacy balances are unchanged. The default daily allowance
+is 20 credits; an operator override in the data directory still takes precedence.
+Signup credits remain until spent and follow daily and monthly credit in the
+consumption order. Password and Google signup use the same grant.
+
 Operation prices and the free daily allowance are in `quota.json`. Provider
 estimates are under Admin → Traffic → Spend; product credits are not a provider
 spending limit.
@@ -676,7 +682,7 @@ Keep invoice/payment notifications and retry rules configured in Stripe.
 The first implementation uses card payments and hosted Checkout. It does not
 configure tax collection; configure applicable tax handling before live sales.
 
-Usage consumes daily quota, monthly allowance, then prepaid balance. Only paid
+Usage consumes daily quota, monthly allowance, signup credit, then prepaid balance. Only paid
 full-period invoices grant monthly credits, once per invoice. They expire at the
 invoice line's period end and cannot be transferred. No automatic overage charges
 or top-ups. Payment failure grants no new month. Cancellation in Account stops

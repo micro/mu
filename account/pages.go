@@ -296,6 +296,8 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		retrySignup(sess.Account)
+
 		var secure bool
 
 		if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
@@ -425,7 +427,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		claimed := false
 		if invCode != "" {
 			if existing := auth.UnclaimedFor(auth.InviteEmail(invCode)); existing != nil {
-				if err := auth.Claim(existing.ID, id, secret); err != nil {
+				if err := auth.Claim(existing.ID, id, secret, SignupCredits); err != nil {
 					w.Write([]byte(render(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
 					return
 				}
@@ -434,11 +436,12 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		}
 		if !claimed {
 			if err := auth.Create(&auth.Account{
-				ID:        id,
-				Secret:    secret,
-				SecretSet: true,
-				Name:      name,
-				Created:   time.Now(),
+				ID:            id,
+				Secret:        secret,
+				SecretSet:     true,
+				SignupCredits: SignupCredits,
+				Name:          name,
+				Created:       time.Now(),
 			}); err != nil {
 				w.Write([]byte(render(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
 				return
@@ -456,6 +459,8 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(render(`<p class="text-error">Account created but login failed. Please try logging in.</p>`, redirectParam)))
 			return
 		}
+
+		retrySignup(sess.Account)
 
 		var secure bool
 

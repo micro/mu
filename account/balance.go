@@ -111,6 +111,8 @@ func transactionLabel(tx *Transaction) string {
 // was free rather than uncharged.
 func transactionAmount(tx *Transaction) string {
 	switch {
+	case tx.Type == txSignup:
+		return fmt.Sprintf("%d included", metadataInt(tx.Metadata["signup_credits"]))
 	case tx.Type == txAllowance:
 		return fmt.Sprintf("%d included", metadataInt(tx.Metadata["monthly_credits"]))
 	case tx.Amount == 0:

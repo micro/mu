@@ -100,6 +100,9 @@ type Account struct {
 	// customer-side exit was a failed card or a chargeback. Recorded by the
 	// webhook, and looked up by email for anyone who paid before it was.
 	Customer string `json:"customer,omitempty"`
+	// SignupCredits records eligibility at creation, so an interrupted grant
+	// can be retried without granting credit to older accounts.
+	SignupCredits int `json:"signup_credits,omitempty"`
 }
 
 // legacyCardIDs maps retired card ids to their current name. Accounts saved
@@ -216,7 +219,10 @@ func Create(acc *Account) error {
 	}
 
 	accounts[acc.ID] = acc
-	data.SaveJSON("accounts.json", accounts)
+	if err := data.SaveJSON("accounts.json", accounts); err != nil {
+		delete(accounts, acc.ID)
+		return err
+	}
 
 	// Said, not sent. Whether anybody wants to know is not this package's
 	// question — see event.AccountCreated. Published after the save, so a

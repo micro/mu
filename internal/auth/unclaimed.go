@@ -37,7 +37,7 @@ import (
 // the instance and has to happen in one place. Renamed rather than copied
 // because copying would leave the conversation behind, which is the one thing
 // this design exists to keep.
-func Claim(oldID, newID, secret string) error {
+func Claim(oldID, newID, secret string, signupCredits ...int) error {
 	if newID == "" {
 		return errors.New("no username")
 	}
@@ -73,6 +73,10 @@ func Claim(oldID, newID, secret string) error {
 
 	mutex.Lock()
 	defer mutex.Unlock()
+	previous := *acc
+	if len(signupCredits) > 0 {
+		acc.SignupCredits = max(0, signupCredits[0])
+	}
 	acc.Secret = hashed
 	acc.SecretSet = true
 	acc.Unclaimed = false
@@ -82,7 +86,12 @@ func Claim(oldID, newID, secret string) error {
 		acc.ID = newID
 		accounts[newID] = acc
 	}
-	data.SaveJSON("accounts.json", accounts)
+	if err := data.SaveJSON("accounts.json", accounts); err != nil {
+		*acc = previous
+		delete(accounts, newID)
+		accounts[oldID] = acc
+		return err
+	}
 
 	// Everything filed under the old id follows it. Registered by the packages
 	// that own records rather than reached into from here, because this package

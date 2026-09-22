@@ -21,6 +21,7 @@ func clientAccount(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	if r.URL.Path == "/account/billing" || r.URL.Path == "/account/usage" {
 		state["admin"] = acc.Admin
 		state["daily_credits"] = quota.DailyCredits()
+		state["signup_remaining"] = SignupRemaining(acc.ID)
 		state["included_today"] = IncludedToday(acc.ID)
 		state["monthly"] = Monthly(acc.ID)
 		rows := make([]map[string]any, 0)

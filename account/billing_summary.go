@@ -15,5 +15,8 @@ func billingSummary(acc *auth.Account) string {
 	if PaymentsEnabled() && !acc.Admin && !acc.Agent && quota.DailyCredits() > 0 {
 		body += `<p>Daily quota: ` + thousands(IncludedToday(acc.ID)) + ` / ` + thousands(quota.DailyCredits()) + ` credits remaining · resets 00:00 UTC</p>`
 	}
+	if remaining := SignupRemaining(acc.ID); remaining > 0 {
+		body += `<p>Signup credit: ` + thousands(remaining) + ` remaining · for usage only</p>`
+	}
 	return app.SectionID("balance", "Balance", body)
 }
