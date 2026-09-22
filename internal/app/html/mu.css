@@ -1120,9 +1120,9 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .shell-terminal .xterm-helper-textarea{min-height:0;padding:0;border:0}
 .shell-terminal-actions{margin-bottom:12px}
 
-/* Section navigation keeps the content column centered and leaves Home quiet. */
-.page-menu{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 24px}
-.page-menu a{padding:4px 6px;border-radius:4px;text-decoration:none}
+/* Section navigation stays on one scrollable row at every screen width. */
+.page-menu{display:flex;flex-wrap:nowrap;gap:8px 16px;max-width:100%;overflow-x:auto;margin:0 0 24px}
+.page-menu a{flex:0 0 auto;white-space:nowrap;padding:4px 6px;border-radius:4px;text-decoration:none}
 .page-menu a:hover,.page-menu a[aria-current="page"]{background:#f3f3f3;text-decoration:none}
 .plan-section{padding:28px 0;border-top:1px solid #ddd;gap:12px}
 .plan-section:first-child{padding-top:0;border-top:0}
@@ -1132,9 +1132,6 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .account-sections>.card>h4,.account-group>h2{font-size:1.25rem;margin:0 0 16px}
 .account-group>.card{border:0;padding:12px 0}
 .account-group>.card>h4{margin:0 0 8px}
-@media(min-width:1160px){
- .page-menu{position:fixed;top:112px;left:calc(50% - 570px);width:160px;max-height:calc(100dvh - 144px);overflow-y:auto;flex-direction:column;align-items:stretch;gap:4px;margin:0}
-}
 
 .status-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0;border-bottom:1px solid #e5e5e5}
 .status-item:last-child{border-bottom:0}
