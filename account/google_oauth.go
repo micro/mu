@@ -173,6 +173,10 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Could not create your account", http.StatusInternalServerError)
 		return
 	}
+	if acc.GoogleSignInDisabled {
+		http.Error(w, "Google sign-in is disconnected. Use your password or passkey.", http.StatusForbidden)
+		return
+	}
 	if acc.Banned {
 		http.Error(w, "This account is not available", http.StatusForbidden)
 		return
@@ -336,6 +340,7 @@ func linkGoogleToCurrentAccount(w http.ResponseWriter, r *http.Request, info *go
 		http.Error(w, "That Google account ("+email+") is already linked to another Micro account (@"+other.ID+"). Delete or unlink that account first, then connect.", http.StatusConflict)
 		return
 	}
+	acc.GoogleSignInDisabled = false
 	acc.Email = email
 	acc.EmailVerified = true
 	acc.EmailVerifiedAt = time.Now()
@@ -370,13 +375,17 @@ func loginPage(redirectParam, errHTML string) string {
 		googleButtonHTML("Continue with Google"), errHTML), nil)
 }
 
-func googleSignIn(acc *auth.Account) string {
-	if acc.EmailVerified && acc.Email != "" {
-		return `<p class="text-sm text-muted">You can sign in with Google using <strong>` +
-			htmlpkg.EscapeString(acc.Email) + `</strong>.</p>`
+func googleSignIn(r *http.Request, acc *auth.Account) string {
+	b := `<div class="record-card"><strong>Google sign-in</strong>`
+	if acc.EmailVerified && acc.Email != "" && !acc.GoogleSignInDisabled {
+		b += `<p>Connected as <strong>` + htmlpkg.EscapeString(acc.Email) + `</strong>.</p>`
+		if auth.HasSecret(acc.ID) || len(auth.Passkeys(acc.ID)) > 0 {
+			b += `<form method="POST" action="/account" class="form-action">` + app.CSRFField(auth.CSRFToken(r)) + `<button name="disconnect_google_signin" value="1" type="submit">Disconnect sign-in</button></form>`
+		} else {
+			b += `<p class="text-sm text-muted">Set a password or add a passkey before disconnecting sign-in.</p>`
+		}
+	} else {
+		b += `<p>Not connected.</p><a href="/oauth2/google/connect" class="btn">Connect sign-in</a>`
 	}
-	return `<p class="text-sm text-muted">Link Google so you can sign in with it next time. ` +
-		`This just sets your verified email — it doesn't change your username or password.</p>` +
-		`<a href="/oauth2/google/connect" class="oauth-btn inline">` + googleGlyph() +
-		` Connect Google</a>`
+	return b + `<p class="text-sm text-muted">Sign-in is separate from service access below.</p></div>`
 }

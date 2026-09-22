@@ -35,7 +35,7 @@ func TestClientSetupForms(t *testing.T) {
 	}
 }
 
-func TestGoogleControlsStayInsideManage(t *testing.T) {
+func TestGoogleSignInSeparateFromServiceControls(t *testing.T) {
 	t.Setenv("GOOGLE_CLIENT_ID", "test")
 	t.Setenv("GOOGLE_CLIENT_SECRET", "test")
 	r := httptest.NewRequest("GET", "/account", nil)
@@ -59,8 +59,12 @@ func TestGoogleControlsStayInsideManage(t *testing.T) {
 			for _, a := range n.Attr {
 				if a.Key == "href" && strings.HasPrefix(a.Val, "/oauth2/google/") {
 					count++
-					if !inside {
-						t.Error("Google action outside Manage")
+					if a.Val == "/oauth2/google/connect" {
+						if inside {
+							t.Error("sign-in hidden inside service controls")
+						}
+					} else if !inside {
+						t.Error("service action outside Manage")
 					}
 				}
 			}

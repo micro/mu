@@ -57,15 +57,16 @@ type Account struct {
 	// see account.SetPlace. That is roughly 500 metres, which is right for a
 	// forecast, a prayer time and what is nearby, and is not somebody's
 	// address.
-	Place           string    `json:"place,omitempty"`
-	Lat             float64   `json:"lat,omitempty"`
-	Lon             float64   `json:"lon,omitempty"`
-	Zone            string    `json:"zone,omitempty"`
-	Pinned          []string  `json:"pinned"`             // Service names pinned to the sidebar, in the order shown
-	Approved        bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
-	Email           string    `json:"email,omitempty"`
-	EmailVerified   bool      `json:"email_verified,omitempty"`
-	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
+	Place                string    `json:"place,omitempty"`
+	Lat                  float64   `json:"lat,omitempty"`
+	Lon                  float64   `json:"lon,omitempty"`
+	Zone                 string    `json:"zone,omitempty"`
+	Pinned               []string  `json:"pinned"`             // Service names pinned to the sidebar, in the order shown
+	Approved             bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
+	Email                string    `json:"email,omitempty"`
+	EmailVerified        bool      `json:"email_verified,omitempty"`
+	EmailVerifiedAt      time.Time `json:"email_verified_at,omitempty"`
+	GoogleSignInDisabled bool      `json:"google_signin_disabled,omitempty"`
 	// Addresses are other email addresses this account has proved it can read,
 	// beyond the one above. See address.go: Email is the address the account
 	// signs in and recovers with, and there is exactly one; these are the rest.
