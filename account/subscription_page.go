@@ -19,50 +19,75 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 	if s.AccountCreated != strconv.FormatInt(acc.Created.UnixNano(), 10) {
 		s = subscription{}
 	}
-	if (acc.Admin || acc.Agent) && s.ID == "" {
-		return ""
-	}
 	plan, enabled := MonthlyPlan()
 	if !enabled && s.ID == "" {
 		return ""
+	}
+	if (acc.Admin || acc.Agent) && s.ID == "" {
+		return app.SectionID("subscription", "Plan", `<p>Included · no usage charges for this account.</p>`)
 	}
 	csrf := app.CSRFField(auth.CSRFToken(r))
 	form := func(action, label string) string {
 		confirm := ""
 		if action == "cancel" {
-			confirm = ` data-confirm="Cancel renewal? Your paid allowance remains until the period ends."`
+			confirm = ` data-confirm="Cancel Pro renewal? Your paid allowance remains until the period ends."`
+		}
+		if action == "resume" {
+			confirm = ` data-confirm="Resume Pro at ` + money(s.Cents) + ` per month?"`
 		}
 		return `<form method="POST" action="/account/subscription"` + confirm + `>` + csrf + `<input type="hidden" name="action" value="` + action + `"><button class="btn" type="submit">` + label + `</button></form>`
 	}
-	var body string
-	if s.ID != "" {
-		allowance := Monthly(acc.ID)
-		if allowance.Credits > 0 {
-			body = `<p>` + thousands(allowance.Remaining) + ` / ` + thousands(allowance.Credits) + ` monthly credits remaining · expires ` + allowance.EndsAt.Format("2 Jan 2006") + `</p>`
-		}
+	allowance := Monthly(acc.ID)
+	body := `<p><strong>Free</strong></p>`
+	if allowance.Credits > 0 {
+		body = `<p><strong>Pro</strong> · ` + money(s.Cents) + `/month</p><p>` + thousands(allowance.Remaining) + ` / ` + thousands(allowance.Credits) + ` credits remaining</p>`
+	}
+	ongoing := s.ID != "" && s.Status != "canceled" && s.Status != "incomplete_expired"
+	if ongoing {
 		switch {
-		case s.Status == "canceled" || s.Status == "incomplete_expired":
-			body += `<p>Subscription ended.</p>`
-			if enabled {
-				body += `<p>` + money(plan.Cents) + ` / month · ` + thousands(plan.Credits) + ` monthly credits</p>` + form("subscribe", "Subscribe")
-			}
 		case s.CancelAtEnd:
 			body += `<p>Ends ` + time.Unix(s.PeriodEnd, 0).UTC().Format("2 Jan 2006") + `.</p>`
+		case s.Status == "past_due" || s.Status == "unpaid" || s.Status == "incomplete":
+			body += `<p>Payment required to renew Pro.</p>`
+		case allowance.Credits > 0:
+			body += `<p>Renews ` + allowance.EndsAt.Format("2 Jan 2006") + `.</p>`
 		default:
-			body += `<p>` + money(s.Cents) + ` / month · ` + thousands(s.Credits) + ` monthly credits</p>`
-			if s.Status == "past_due" || s.Status == "unpaid" || s.Status == "incomplete" {
-				body += `<p>Payment required. Monthly credits renew after payment.</p>`
-			}
-			if strings.HasPrefix(s.PaymentURL, "https://invoice.stripe.com/") {
-				body += `<p><a class="btn" href="` + htmlEsc(s.PaymentURL) + `">Pay invoice</a></p>`
-			}
-			body += form("cancel", "Cancel subscription")
+			body += `<p>Pro payment is being confirmed.</p>`
 		}
-	} else {
-		body = `<p>` + money(plan.Cents) + ` / month · ` + thousands(plan.Credits) + ` monthly credits</p>` + form("subscribe", "Subscribe")
+		body += `<div class="form-actions">`
+		if strings.HasPrefix(s.PaymentURL, "https://invoice.stripe.com/") {
+			body += `<a class="btn" href="` + htmlEsc(s.PaymentURL) + `">Pay invoice</a>`
+		}
+		if s.Customer != "" {
+			body += form("manage", "Payment details")
+		}
+		if s.CancelAtEnd {
+			body += form("resume", "Resume Pro")
+		} else {
+			body += form("cancel", "Cancel renewal")
+		}
+		body += `</div>`
+	} else if enabled {
+		if allowance.Credits > 0 {
+			body += `<p>Ends ` + allowance.EndsAt.Format("2 Jan 2006") + `.</p>`
+		}
+		body += `<p>Pro · ` + money(plan.Cents) + `/month · ` + thousands(plan.Credits) + ` monthly credits</p>`
+		label := "Upgrade to Pro"
+		if r.URL.Query().Get("plan") == "pro" {
+			label = "Continue to payment"
+		}
+		body += `<div class="form-actions">` + form("subscribe", label)
+		if s.ID != "" && s.Customer != "" {
+			body += form("manage", "Payment details")
+		}
+		body += `</div>`
 	}
-	body += `<p class="text-sm text-muted">Daily quota, then monthly credits, then signup credit, then balance. No automatic top-ups.</p>`
-	return app.SectionID("subscription", "Subscription", body)
+	if allowance.Credits > 0 {
+		body += `<p><a href="/events?view=brief">Morning brief</a></p>`
+	} else if enabled {
+		body += `<p class="text-sm text-muted">For your daily brief and assistant. Renews monthly. Cancel any time.</p>`
+	}
+	return app.SectionID("subscription", "Plan", body)
 }
 
 // SubscriptionHandler owns checkout return and explicit authenticated billing
@@ -124,21 +149,29 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.Redirect(w, r, destination, http.StatusSeeOther)
-	case "cancel":
+	case "manage":
+		destination, err := subscriptionPortal(r.Context(), acc, app.BaseURL(r))
+		if err != nil {
+			app.Log("stripe", "payment details: %v", err)
+			http.Error(w, "Payment details are unavailable. Please try again.", http.StatusServiceUnavailable)
+			return
+		}
+		http.Redirect(w, r, destination, http.StatusSeeOther)
+	case "cancel", "resume":
 		subscriptionMu.Lock()
 		s := subscriptions[acc.ID]
-		if subscriptionsLoadError != nil || s.ID == "" {
+		if subscriptionsLoadError != nil || s.ID == "" || s.AccountCreated != strconv.FormatInt(acc.Created.UnixNano(), 10) {
 			err = errors.New("subscription unavailable")
 		} else {
 			var remote stripeSubscription
-			err = stripeRequest(r.Context(), "POST", "subscriptions/"+url.PathEscape(s.ID), url.Values{"cancel_at_period_end": {"true"}}, "", &remote)
+			err = stripeRequest(r.Context(), "POST", "subscriptions/"+url.PathEscape(s.ID), url.Values{"cancel_at_period_end": {strconv.FormatBool(r.PostForm.Get("action") == "cancel")}}, "", &remote)
 			if err == nil {
 				err = reconcileSubscription(r.Context(), s.ID, acc.ID)
 			}
 		}
 		subscriptionMu.Unlock()
 		if err != nil {
-			http.Error(w, "Cancellation could not be confirmed. Please try again.", http.StatusServiceUnavailable)
+			http.Error(w, "Plan change could not be confirmed. Please try again.", http.StatusServiceUnavailable)
 			return
 		}
 		http.Redirect(w, r, "/account#subscription", http.StatusSeeOther)
@@ -149,10 +182,18 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 
 // MonthlyPricingHTML uses the same configuration as Checkout, without claiming
 // that an unconfigured plan is available for purchase.
-func MonthlyPricingHTML() string {
+func MonthlyPricingHTML(r *http.Request) string {
 	p, ok := MonthlyPlan()
 	if !ok {
 		return ""
 	}
-	return `<section class="section-stack"><h2>Subscription</h2><p><strong>` + money(p.Cents) + ` / month</strong> · ` + thousands(p.Credits) + ` monthly credits, in addition to the daily quota.</p><p>Shared across the assistant and tools, including API use. Monthly credits reset at renewal. Cancel any time. Top up to continue after your allowance runs out.</p><p><a class="btn" href="/account#subscription">Subscribe</a></p></section>`
+	destination, label := "/account?plan=pro#subscription", "Get Pro"
+	if _, acc, err := auth.RequireSession(r); err != nil {
+		destination = "/signup?redirect=" + url.QueryEscape(destination)
+	} else {
+		if Monthly(acc.ID).Credits > 0 {
+			destination, label = "/account#subscription", "Your plan"
+		}
+	}
+	return `<section class="section-stack"><h2>Pro</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>Your daily brief, reminders and more assistant usage.</p><p>` + thousands(p.Credits) + ` credits each month, plus the daily allowance. Use them across Micro.</p><p>Renews monthly. Unused monthly credits expire. Cancel any time.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`
 }

@@ -681,8 +681,8 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 		}
 	} else if !api.IsWalletIdentity(accountID) {
 		acc, err := auth.GetAccount(accountID)
-		if err != nil || acc.Banned || (!acc.Agent && !acc.Admin && !acc.Approved && !acc.EmailVerified) {
-			return "", fmt.Errorf("a verified or approved account is required")
+		if err != nil || acc.Banned || (!acc.Agent && !auth.Trusted(accountID)) {
+			return "", fmt.Errorf("verify your email or add credit to use the assistant")
 		}
 	}
 	release, err := abuse.Start(accountID, "assistant", abuse.Limit("ASSISTANT_MAX_PER_HOUR", 60), abuse.Limit("ASSISTANT_MAX_PER_DAY", 300), abuse.Limit("ASSISTANT_MAX_CONCURRENT", 2))

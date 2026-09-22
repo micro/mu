@@ -28,8 +28,8 @@ func inboxReply(w http.ResponseWriter, r *http.Request) {
 		app.Forbidden(w, r, "Invalid form token")
 		return
 	}
-	if !acc.Admin && !acc.Approved && !acc.EmailVerified {
-		app.Forbidden(w, r, "Verify your email or ask the operator to approve your account")
+	if acc.Banned || !auth.Trusted(acc.ID) {
+		app.Forbidden(w, r, "Verify your email or add credit to use the assistant")
 		return
 	}
 	t := thread.Get(acc.ID, r.PostFormValue("id"))

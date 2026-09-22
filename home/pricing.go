@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"mu/account"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/quota"
 	"net/http"
 	"strconv"
@@ -18,7 +19,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(app.Column())
 
-	description := "Usage pricing"
+	description := "Free and Pro"
 	b.WriteString(`<section class="section-stack"><h2>Free</h2><p>Ask Micro questions and get help with tasks.</p>`)
 	if !account.PaymentsEnabled() {
 		b.WriteString(`<p>No usage charges on this instance.</p></section></div>`)
@@ -34,7 +35,10 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		b.WriteString(`<p>No daily allowance on this instance.</p>`)
 	}
-	b.WriteString(`</section>` + account.MonthlyPricingHTML() + `<section class="section-stack"><h2>Credits</h2><p>Top up prepaid credits for additional usage. 1 credit = 1 US cent. No automatic top-ups.</p>`)
+	if _, _, err := auth.RequireSession(r); err != nil {
+		b.WriteString(`<p><a class="btn" href="/signup">Create account</a></p>`)
+	}
+	b.WriteString(`</section>` + account.MonthlyPricingHTML(r) + `<section class="section-stack"><h2>Credits</h2><p>Top up prepaid credits for additional usage. 1 credit = 1 US cent. No automatic top-ups.</p>`)
 	if account.TopUpConfigured() {
 		b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
 	}

@@ -629,8 +629,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":"Sign in to talk to Micro."}`))
 		return
 	}
-	if caller != nil && !caller.Admin && !caller.Approved && !caller.EmailVerified {
-		http.Error(w, "Verify your email or ask the operator to approve your account", http.StatusForbidden)
+	if caller.Banned || !auth.Trusted(caller.ID) {
+		http.Error(w, "Verify your email or add credit to use the assistant", http.StatusForbidden)
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)

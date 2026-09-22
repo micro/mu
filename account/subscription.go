@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,16 +21,20 @@ import (
 	"mu/internal/settings"
 )
 
-// Plan has no production default: price and allowance must be chosen together
-// after observing provider costs. Changing it only affects new subscriptions.
+// Plan is the recurring allowance. Operators can override the launch terms;
+// changing them only affects new subscriptions, never existing contracts.
 type Plan struct {
 	Cents   int `json:"cents"`
 	Credits int `json:"credits"`
 }
 
 func MonthlyPlan() (Plan, bool) {
-	price, e1 := strconv.Atoi(settings.Get("SUBSCRIPTION_CENTS"))
-	credits, e2 := strconv.Atoi(settings.Get("SUBSCRIPTION_CREDITS"))
+	priceText, creditText := settings.Get("SUBSCRIPTION_CENTS"), settings.Get("SUBSCRIPTION_CREDITS")
+	if priceText == "" && creditText == "" {
+		priceText, creditText = "4000", "4000"
+	}
+	price, e1 := strconv.Atoi(priceText)
+	credits, e2 := strconv.Atoi(creditText)
 	p := Plan{Cents: price, Credits: credits}
 	return p, e1 == nil && e2 == nil && price >= 100 && price <= 100000 && credits > 0 && credits <= 1000000 && TopUpConfigured() && stripeWebhook() != ""
 }
@@ -274,6 +279,9 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string) (s
 	if acc.Admin || acc.Agent {
 		return "", errors.New("this account has unmetered access")
 	}
+	if acc.Banned {
+		return "", errors.New("this account is unavailable")
+	}
 	s := subscriptions[acc.ID]
 	if s.AccountCreated != strconv.FormatInt(acc.Created.UnixNano(), 10) {
 		s = subscription{}
@@ -320,6 +328,9 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string) (s
 		}
 	}
 	if s.Attempt == "" {
+		if err := ensureSubscriptionWebhook(ctx, origin); err != nil {
+			return "", err
+		}
 		s.Attempt, s.AttemptAt = uuid.NewString(), time.Now().Unix()
 		s.AccountCreated = strconv.FormatInt(acc.Created.UnixNano(), 10)
 		form := url.Values{
@@ -329,7 +340,7 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string) (s
 			"line_items[0][quantity]": {"1"}, "line_items[0][price_data][currency]": {"usd"},
 			"line_items[0][price_data][unit_amount]":               {strconv.Itoa(plan.Cents)},
 			"line_items[0][price_data][recurring][interval]":       {"month"},
-			"line_items[0][price_data][product_data][name]":        {"Micro monthly"},
+			"line_items[0][price_data][product_data][name]":        {"Micro Pro"},
 			"line_items[0][price_data][product_data][description]": {fmt.Sprintf("%d monthly usage credits. Unused monthly credits expire. Optional prepaid top-ups.", plan.Credits)},
 			"metadata[user_id]":                                    {acc.ID}, "metadata[plan]": {planMarker},
 			"subscription_data[metadata][account_created]":  {s.AccountCreated},
@@ -370,7 +381,7 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string) (s
 }
 
 func subscriptionEvent(ctx context.Context, kind string, raw json.RawMessage) error {
-	if kind != "invoice.paid" && kind != "invoice.payment_failed" && kind != "invoice.payment_action_required" && kind != "customer.subscription.created" && kind != "customer.subscription.updated" && kind != "customer.subscription.deleted" && kind != "checkout.session.completed" && kind != "checkout.session.async_payment_succeeded" {
+	if !slices.Contains(subscriptionEvents, kind) {
 		return nil
 	}
 	subscriptionMu.Lock()
