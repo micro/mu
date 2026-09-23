@@ -1,8 +1,0 @@
-{
-  "slug": "markets",
-  "name": "Markets",
-  "description": "Live crypto prices using mu.markets()",
-  "tags": "data",
-  "order": 12,
-  "seed": false
-}

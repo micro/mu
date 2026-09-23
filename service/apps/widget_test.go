@@ -67,7 +67,7 @@ func TestPersonalWidgetPrivacyAndPrice(t *testing.T) {
 		if w.Code != 200 {
 			t.Fatalf("owner blocked: %s %d", suffix, w.Code)
 		}
-		if suffix == "?widget=1" && strings.Contains(w.Body.String(), "app-return") {
+		if strings.Contains(w.Body.String(), "app-return") {
 			t.Fatal("widget includes app directory navigation")
 		}
 		if w.Header().Get("Cache-Control") != "private, no-store" {

@@ -39,9 +39,10 @@ func handleSDKService(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 
 	var req struct {
-		Service string         `json:"service"`
-		Method  string         `json:"method"`
-		Args    map[string]any `json:"args"`
+		Anonymous bool           `json:"anonymous"`
+		Service   string         `json:"service"`
+		Method    string         `json:"method"`
+		Args      map[string]any `json:"args"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
 		app.RespondError(w, http.StatusBadRequest, "Invalid request")
@@ -63,6 +64,13 @@ func handleSDKService(w http.ResponseWriter, r *http.Request, slug string) {
 	caller := ""
 	if _, acc := auth.TrySession(r); acc != nil {
 		caller = acc.ID
+	}
+	if req.Anonymous {
+		if !publicServiceRead(svc, req.Method) {
+			app.RespondError(w, http.StatusForbidden, "This operation requires account approval")
+			return
+		}
+		caller = ""
 	}
 	if service.AccountScoped(svc) && caller == "" {
 		app.RespondError(w, http.StatusUnauthorized, "Sign in to use this service")
@@ -198,4 +206,35 @@ func handleSDKServices(w http.ResponseWriter, r *http.Request, slug string) {
 		out = append(out, svcInfo{Name: name, Methods: methods, RequiresLogin: scoped})
 	}
 	app.RespondJSON(w, out)
+}
+
+// Public reads carry no viewer identity, incur no declared cost, and cannot
+// mutate state. Unknown methods fail closed, even if a client forges the flag.
+func publicServiceRead(name, method string) bool {
+	if !sdkServiceAllowed(name) {
+		return false
+	}
+	spec, ok := service.SpecFor(name)
+	if !ok {
+		return false
+	}
+	for m, ep := range spec.Endpoints {
+		if strings.EqualFold(m, method) {
+			return ep.Needs == service.Open && !ep.Writes && !ep.Destructive && ep.Cost == ""
+		}
+	}
+	return false
+}
+
+func publicServiceReads() string {
+	out := map[string]bool{}
+	for _, spec := range service.Specs() {
+		for method := range spec.Endpoints {
+			if publicServiceRead(spec.Name, method) {
+				out[spec.Name+"/"+strings.ToLower(method)] = true
+			}
+		}
+	}
+	b, _ := json.Marshal(out)
+	return string(b)
 }

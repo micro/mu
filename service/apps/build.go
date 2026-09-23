@@ -254,7 +254,10 @@ Beyond those two there is a window.mu API, for the things the web has no name fo
   mu.agent(prompt)                               the agent, with tools, returns an answer
   mu.agent.stream(prompt, {context_id, onEvent})   streamed answer; resolves {answer, flow_id, thread}. Continue with thread as context_id. onEvent receives stream_token.text and progress; final response replaces deltas
   mu.web.fetch(url,{method,headers,body})        fetch a page from the open web
+  mu.service(name, method, args)                 call a registered service; returns its JSON response directly
   mu.services()                                  what services exist here
+
+mu.api does not exist. Never invent SDK functions or response fields. A cached list is not a market-cap ranking, and fetching cached data does not make it live or offline. Preserve source timestamps and staleness.
 
 Every one returns a Promise. localStorage and fetch, and everything above, only work while the app is open on this site — an app meant to work anywhere should hold its state in memory and do its own work.
 

@@ -1,8 +1,0 @@
-{
-  "slug": "notes",
-  "name": "Notes",
-  "description": "Quick notes that save automatically",
-  "tags": "productivity, notes",
-  "order": 4,
-  "seed": true
-}

@@ -90,7 +90,7 @@ type App struct {
 	Blocks []Block     `json:"blocks,omitempty"` // Framework mode blocks
 	Tags   string      `json:"tags"`
 	// Official marks an app that ships with the instance. Set from the seed on
-	// every start and never from a request — see ensureBuiltins — because it
+	// older releases and never from a request, because it
 	// is the difference between "we wrote this" and "somebody did", and a flag
 	// a user can set says nothing.
 	Official bool `json:"official,omitempty"`
@@ -252,7 +252,6 @@ func Load() {
 
 	// Ensure the built-in apps exist. Runs every startup so newly-added
 	// built-ins reach existing instances too; it only fills gaps.
-	ensureBuiltins()
 
 	data.RegisterDeleter("app", DeleteApp)
 	loadBuilds()
@@ -489,7 +488,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	var list []*App
 	for _, a := range apps {
-		if a.Public || (owner != "" && a.AuthorID == owner) {
+		if !a.Official && (a.Public || (owner != "" && a.AuthorID == owner)) {
 			list = append(list, a)
 		}
 	}
@@ -604,34 +603,17 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	if len(list) == 0 {
 		sb.WriteString(`<p>No apps yet. Ask your assistant when you need a tool built for you.</p>`)
 	} else {
-		// Three sections now, in the order sortForReader put them: yours, then
-		// everybody else's, then the ones that ship with the instance.
-		//
-		// Yours is the new one and is the whole point. They were filed under
-		// "From the community" — your own apps, on your own server, described
-		// as somebody else's and listed below a fixed set you have already
-		// read.
-		//
-		// And the built-ins are Templates. "Built in" says where they came
-		// from, which is a fact about us; what they are for is being copied
-		// and changed, which is a fact about what you can do with them, and
-		// that is what a heading on a directory should say.
-		//
-		// Emitted from the run rather than by partitioning the slice, so a
-		// filter that leaves a section empty leaves out its heading too.
-		var saidMine, saidTheirs, saidOurs bool
+		// Show saved apps without the retired template collection.
+		var saidMine, saidTheirs bool
 		for _, a := range list {
 			switch {
 			case userID != "" && a.AuthorID == userID && !saidMine:
 				saidMine = true
 				sb.WriteString(`<h2 class="app-section">Yours</h2>`)
-			case a.Official && !saidOurs:
-				saidOurs = true
-				sb.WriteString(`<h2 class="app-section">Templates</h2>`)
 			case !a.Official && (userID == "" || a.AuthorID != userID) && !saidTheirs:
 				saidTheirs = true
 				heading := "From the community"
-				if !saidMine && !saidOurs {
+				if !saidMine {
 					heading = "Apps"
 				}
 				sb.WriteString(`<h2 class="app-section">` + heading + `</h2>`)
@@ -1818,6 +1800,9 @@ func GetApp(slug string) *App {
 // UpdateApp updates an existing app's fields. Only non-empty values are applied.
 // Returns the updated app or an error.
 func UpdateApp(slug, name, description, tags, html, icon string, price int) (*App, error) {
+	if issues := runtimeIssues(html); len(issues) > 0 {
+		return nil, fmt.Errorf("app cannot run: %s", strings.Join(issues, "; "))
+	}
 	mutex.Lock()
 	a, ok := apps[slug]
 	if !ok {
@@ -1895,7 +1880,7 @@ func Public() []*App {
 
 	var list []*App
 	for _, a := range apps {
-		if !a.Public {
+		if !a.Public || a.Official {
 			continue
 		}
 		// Hide apps from banned users and flagged apps.
@@ -1953,7 +1938,7 @@ func SearchApps(query string) []*App {
 
 	var results []*App
 	for _, a := range apps {
-		if !a.Public {
+		if !a.Public || a.Official {
 			continue
 		}
 		if strings.Contains(strings.ToLower(a.Name), query) ||

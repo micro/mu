@@ -1,8 +1,0 @@
-{
-  "slug": "weather",
-  "name": "Weather",
-  "description": "Weather forecast using mu.weather() with geolocation",
-  "tags": "data",
-  "order": 11,
-  "seed": false
-}
