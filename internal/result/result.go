@@ -3,7 +3,10 @@
 package result
 
 type Point struct{ Lat, Lon float64 }
-type Item struct {
+
+// Embed is a durable reference or safe preview rendered inside a conversation.
+// It never carries executable HTML or grants access to the underlying resource.
+type Embed struct {
 	Body    string   `json:"body,omitempty"`
 	Kind    string   `json:"kind"`
 	ID      string   `json:"id,omitempty"`
@@ -13,3 +16,6 @@ type Item struct {
 	Shape   []Point  `json:"shape,omitempty"`
 	Steps   []string `json:"steps,omitempty"`
 }
+
+// Item preserves existing callers and stored conversation JSON.
+type Item = Embed

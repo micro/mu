@@ -27,7 +27,7 @@ func BuildApp(description, authorID, authorName string) (*App, error) {
 	}
 
 	a, err := CreateApp(authorID, written.Title, "", strings.TrimSpace(description),
-		written.Tags, written.HTML, emojiSVG(written.Emoji), 0, true)
+		written.Tags, written.HTML, emojiSVG(written.Emoji), 0, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not save the generated app: %w", err)
 	}
@@ -224,7 +224,7 @@ var (
 // buildSystem is what the model is told. It carries the API surface, because
 // an app that invents mu.calendar() is one TestHTML will reject and a fault the
 // prompt could have prevented.
-const buildSystem = `You write small, self-contained web apps. Each one is a single HTML document that does one thing well.
+const buildSystem = `You write small, self-contained web apps. Each one is a private, single-page micro app embedded in a conversation that does one thing well. Do not build a website, landing page, navigation shell, marketplace or multi-page application. Keep the primary interaction immediately visible in a compact widget.
 
 Answer with the metadata line, then the document, and nothing else — no prose, no explanation, no markdown fences:
 
