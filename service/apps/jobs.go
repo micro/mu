@@ -19,11 +19,14 @@ import (
 	"mu/internal/data"
 	"mu/internal/result"
 	"mu/internal/service"
+	"mu/internal/thread"
 )
 
 // One durable record owns the request, candidate and final app. A process restart
 // never changes the ID or resets the paid-attempt budget.
 type BuildJob struct {
+	Thread     string    `json:"thread,omitempty"`
+	Delivered  bool      `json:"delivered,omitempty"`
 	ID         string    `json:"id"`
 	Account    string    `json:"account"`
 	Prompt     string    `json:"prompt"`
@@ -85,11 +88,19 @@ func loadBuilds() {
 	go func() {
 		for {
 			runNextBuild()
+			deliverBuilds()
 			time.Sleep(time.Second)
 		}
 	}()
 }
-func submitBuild(prompt, account, key string) (*BuildJob, error) {
+func submitBuild(prompt, account, key string, source ...string) (*BuildJob, error) {
+	sourceThread := ""
+	if len(source) > 0 {
+		sourceThread = source[0]
+	}
+	if sourceThread != "" && thread.Get(account, sourceThread) == nil {
+		return nil, fmt.Errorf("conversation not found")
+	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" || len(prompt) > 16000 || len(key) > 128 {
 		return nil, fmt.Errorf("provide an app description up to 16000 bytes and a request key up to 128 bytes")
@@ -98,7 +109,7 @@ func submitBuild(prompt, account, key string) (*BuildJob, error) {
 		return nil, err
 	}
 	if key == "" {
-		sum := sha256.Sum256([]byte(prompt))
+		sum := sha256.Sum256([]byte(sourceThread + "\x00" + prompt))
 		key = hex.EncodeToString(sum[:])
 	}
 	buildMu.Lock()
@@ -109,7 +120,7 @@ func submitBuild(prompt, account, key string) (*BuildJob, error) {
 	active, total := 0, 0
 	for _, j := range buildJobs {
 		if j.Account == account && j.Key == key {
-			if j.Prompt != prompt {
+			if j.Prompt != prompt || j.Thread != sourceThread {
 				return nil, fmt.Errorf("request key already belongs to another build")
 			}
 			copy := *j
@@ -125,7 +136,7 @@ func submitBuild(prompt, account, key string) (*BuildJob, error) {
 	if active >= 2 || total >= 32 {
 		return nil, fmt.Errorf("build queue is full; wait for an existing build")
 	}
-	j := &BuildJob{ID: uuid.New().String(), Account: account, Prompt: prompt, Key: key, State: "queued", Created: time.Now(), Question: "Build this app: " + prompt}
+	j := &BuildJob{Thread: sourceThread, ID: uuid.New().String(), Account: account, Prompt: prompt, Key: key, State: "queued", Created: time.Now(), Question: "Build this app: " + prompt}
 	if err := storeBuild(j); err != nil {
 		return nil, err
 	}
@@ -346,4 +357,36 @@ func BuildsFor(owner string) []BuildSummary {
 		out = append(out, BuildSummary{ID: j.ID, Title: string(title), State: j.State, Updated: j.Updated})
 	}
 	return out
+}
+
+// Delivery is retried after restarts. A stable Ref deduplicates the message if
+// the conversation was saved but the delivery checkpoint failed.
+func deliverBuilds() {
+	buildMu.Lock()
+	var pending []BuildJob
+	for _, j := range buildJobs {
+		if j.Thread != "" && !j.Delivered && (j.State == "complete" || j.State == "failed") {
+			pending = append(pending, *j)
+		}
+	}
+	buildMu.Unlock()
+	for _, j := range pending {
+		if thread.Get(j.Account, j.Thread) == nil {
+			continue
+		}
+		text := "Your app could not be built: " + j.Error
+		var results []result.Item
+		if j.State == "complete" && j.App != nil {
+			text = "Your app is ready: " + j.App.Name
+			results = []result.Item{*appResult(j.App)}
+		}
+		if thread.Add(thread.Message{Account: j.Account, Thread: j.Thread, Role: thread.RoleAgent, Text: text, Results: results, Ref: "app-build:" + j.ID}) == "" {
+			continue
+		}
+		if err := thread.Flush(); err != nil {
+			continue
+		}
+		j.Delivered = true
+		checkpointBuild(&j)
+	}
 }

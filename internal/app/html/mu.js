@@ -415,6 +415,29 @@ if(thread&&form.dataset.pending==='true'){
 }
 }
 resumePending();
+// Background outputs append to the originating conversation without replacing
+// interactive widgets, selection, or the draft being composed.
+let deliveryPolling=false;
+async function checkDeliveries(){
+ if(deliveryPolling||busy||navigating||!thread||document.hidden||!navigator.onLine||!log.querySelector("[data-build-id]"))return;
+ const version=viewVersion,target=thread;deliveryPolling=true;
+ try{
+  const response=await fetch((form.dataset.path||'/')+'?session='+encodeURIComponent(target),{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:AbortSignal.timeout(15000)});
+  if(!response.ok||response.redirected)return;
+  const page=new DOMParser().parseFromString(await response.text(),'text/html');
+  if(version!==viewVersion||busy||navigating||page.querySelector('#command-form')?.dataset.account!==form.dataset.account)return;
+  const seen=new Set(Array.from(log.querySelectorAll('[data-delivery-id]')).map(n=>n.dataset.deliveryId));
+  const follow=log.scrollHeight-log.scrollTop-log.clientHeight<80;
+  for(const node of page.querySelectorAll('#responses > [data-delivery-id]')){
+   if(!seen.has(node.dataset.deliveryId))log.append(node);
+   const id=node.dataset.deliveryId.replace(/^app-build:/,'');
+   for(const pending of log.querySelectorAll('[data-build-id]'))if(pending.dataset.buildId===id)pending.remove();
+  }
+  if(follow)requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});
+ }catch{}finally{deliveryPolling=false;}
+}
+setInterval(checkDeliveries,5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDeliveries();});
 async function navigateThread(url,push=true){
  const navigation=++navigationVersion;
  navigating=true;send.disabled=true;

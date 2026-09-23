@@ -39,10 +39,11 @@ func (Server) Build(ctx context.Context, req *BuildRequest, rsp *BuildResponse) 
 	if strings.TrimSpace(account) == "" {
 		return fmt.Errorf("authentication required to build an app")
 	}
-	j, err := submitBuild(req.Prompt, account, req.RequestKey)
+	j, err := submitBuild(req.Prompt, account, req.RequestKey, service.SourceThreadFrom(ctx))
 	if err != nil {
 		return err
 	}
+	rsp.Item = &result.Item{Kind: "app-build", ID: j.ID, Title: "Building your app", URL: "/apps/builds/" + j.ID}
 	rsp.ID = j.ID
 	rsp.Slug = "build-" + j.ID
 	rsp.State = j.State

@@ -4,18 +4,31 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"mu/internal/data"
+	"strings"
 	"time"
 	_ "time/tzdata"
 )
 
 // Brief returns the owner's Home brief schedule, including a paused one.
-func Brief(owner string) *Event {
+func Brief(owner string, period ...string) *Event {
+	wanted := "morning"
+	if len(period) > 0 {
+		wanted = period[0]
+	}
 	for _, e := range List(owner) {
-		if e.Kind == "brief" {
+		if e.Kind == "brief" && BriefPeriod(e) == wanted {
 			return e
 		}
 	}
 	return nil
+}
+
+// BriefPeriod identifies old schedules without changing their saved identity or time.
+func BriefPeriod(e *Event) string {
+	if e != nil && (e.Title == "Evening brief" || strings.Contains(e.Prompt, "tomorrow")) {
+		return "evening"
+	}
+	return "morning"
 }
 
 // ScheduleBrief updates one standing instruction atomically, without creating
@@ -39,9 +52,9 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	if repeat != "daily" && repeat != "weekdays" {
 		return fmt.Errorf("choose daily or weekdays")
 	}
-	prompt := "Give me a brief for tomorrow"
+	prompt := "Give me an evening brief: meaningful developments I may have missed during the day, and what I need to prepare for tomorrow. Do not repeat unchanged news or market information from the morning brief or other updates Micro already showed me. Explain only material changes. Keep it short when little has changed."
 	if period == "morning" {
-		prompt = "Give me a brief for today"
+		prompt = "Give me a morning brief: what happened overnight and what is relevant for today."
 	} else if period != "evening" {
 		return fmt.Errorf("choose morning or evening")
 	}
@@ -54,7 +67,7 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	defer mu.Unlock()
 	var old *Event
 	for _, e := range events {
-		if e.Owner == owner && e.Kind == "brief" {
+		if e.Owner == owner && e.Kind == "brief" && BriefPeriod(e) == period {
 			old = e
 			break
 		}
@@ -117,7 +130,14 @@ func legacyBrief(e *Event) bool {
 func BriefWorldNews(e *Event) bool { return e == nil || e.WorldNews == nil || *e.WorldNews }
 
 // ConfigureBrief changes one owned schedule atomically. Toggles preserve its identity and cadence.
-func ConfigureBrief(owner string, enabled, news bool, zone string) error {
+func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...string) error {
+	period := "morning"
+	if len(periods) > 0 {
+		period = periods[0]
+	}
+	if period != "morning" && period != "evening" {
+		return fmt.Errorf("choose morning or evening")
+	}
 	if owner == "" {
 		return fmt.Errorf("sign in to change your brief")
 	}
@@ -125,7 +145,7 @@ func ConfigureBrief(owner string, enabled, news bool, zone string) error {
 	defer mu.Unlock()
 	var old *Event
 	for _, e := range events {
-		if e.Owner == owner && e.Kind == "brief" {
+		if e.Owner == owner && e.Kind == "brief" && BriefPeriod(e) == period {
 			old = e
 			break
 		}
@@ -140,6 +160,11 @@ func ConfigureBrief(owner string, enabled, news bool, zone string) error {
 		}
 		now := time.Now().In(loc)
 		e = Event{ID: uuid.NewString(), Owner: owner, Kind: "brief", Builtin: true, Title: "Morning brief", Zone: zone, Repeat: "daily", Prompt: "Give me a brief for today", Created: time.Now().UTC(), When: time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, loc)}
+	}
+	if old == nil && period == "evening" {
+		e.Title, e.Prompt = "Evening brief", "Give me an evening brief for tomorrow"
+		at := e.When
+		e.When = time.Date(at.Year(), at.Month(), at.Day(), 20, 0, 0, 0, at.Location())
 	}
 	e.Builtin = false // An explicit preference, not automatic enrollment.
 	e.Paused = !enabled

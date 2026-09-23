@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var fileID = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
+
 var cardID = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
 var appID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{2,49}$`)
@@ -45,12 +47,26 @@ func Results(items []result.Item) string {
 				continue
 			}
 			b.WriteString(`<section class="result-card page-stack"><p class="text-muted">Live service view</p><iframe class="app-widget" loading="lazy" src="/card/` + item.ID + `?embed=1" title="` + html.EscapeString(item.Title) + `"></iframe></section>`)
+		case "app-build":
+			if !fileID.MatchString(item.ID) {
+				continue
+			}
+			b.WriteString(`<section class="result-card page-stack" data-build-id="` + item.ID + `"><a href="/apps/builds/` + item.ID + `">` + html.EscapeString(item.Title) + `</a><p class="text-muted">The result will return to this conversation. You can leave and come back.</p></section>`)
 		case "app":
 			if !appID.MatchString(item.ID) {
 				continue
 			}
 			path := "/apps/" + item.ID
 			b.WriteString(`<section class="result-card page-stack"><a class="record-title" href="` + path + `">` + html.EscapeString(item.Title) + `</a><iframe class="app-widget" loading="lazy" src="` + path + `?widget=1" title="` + html.EscapeString(item.Title) + `"></iframe></section>`)
+		case "file":
+			if !fileID.MatchString(item.ID) {
+				continue
+			}
+			b.WriteString(`<section class="result-card page-stack"><a class="record-title" href="/files/` + item.ID + `" download>` + html.EscapeString(item.Title) + `</a><p class="text-muted">` + html.EscapeString(item.Summary) + `</p>`)
+			if item.Body != "" {
+				b.WriteString(`<pre class="result-preview">` + html.EscapeString(item.Body) + `</pre>`)
+			}
+			b.WriteString(`</section>`)
 		case "note", "doc":
 			if item.ID == "" || len(item.ID) > 128 {
 				continue

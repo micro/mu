@@ -17,12 +17,19 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if len(csrf) > 0 {
 		token = csrf[0]
 	}
-	clock, zone, repeat, period := "06:00", "", "daily", "morning"
+	return briefPeriodHTML(owner, token, "morning") + briefPeriodHTML(owner, token, "evening") + `<p class="text-muted">Delivered to your Micro mail using your connected calendar, email and saved location where available. Normal usage charges apply. <a href="/account">Account and email delivery</a>.</p>`
+}
+
+func briefPeriodHTML(owner, token, period string) string {
+	clock, zone, repeat := "06:00", "", "daily"
+	if period == "evening" {
+		clock = "20:00"
+	}
 	status := "Not scheduled"
 	if acc, err := auth.GetAccount(owner); err == nil && acc != nil {
 		zone = acc.Zone
 	}
-	e := Brief(owner)
+	e := Brief(owner, period)
 	if e != nil {
 		zone, repeat = e.Zone, e.Repeat
 		loc, err := time.LoadLocation(zone)
@@ -30,10 +37,6 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 			loc = time.UTC
 		}
 		clock = e.When.In(loc).Format("15:04")
-		period = "evening"
-		if strings.Contains(e.Prompt, "today") {
-			period = "morning"
-		}
 		status = strings.Title(repeat) + " at " + clock + " (" + zone + ")"
 		if e.Paused {
 			status = "Disabled"
@@ -43,8 +46,12 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if period == "evening" {
 		title = "Evening brief"
 	}
+	description := "Overnight developments and what matters today."
+	if period == "evening" {
+		description = "New developments during the day and preparation for tomorrow, without repeating unchanged news or markets."
+	}
 	var b strings.Builder
-	b.WriteString(`<section id="morning-brief" class="card page-stack"><h3>` + title + `</h3><p>Your email brief, with calendar, weather and relevant updates.</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
+	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h3>` + title + `</h3><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {
 		b.WriteString(`<label class="field-label">` + title + `<select class="form-input" name="` + name + `">`)
 		for _, v := range values {
@@ -56,7 +63,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		}
 		b.WriteString(`</select></label>`)
 	}
-	selectField("period", "Brief", period, "evening", "morning")
+	b.WriteString(`<input type="hidden" name="period" value="` + period + `">`)
 	b.WriteString(`<label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label>`)
 	selectField("repeat", "Frequency", repeat, "daily", "weekdays")
 	checked := ""
@@ -64,7 +71,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 		checked = " checked"
 	}
 	b.WriteString(`<input type="hidden" name="news_present" value="1"><label class="check-label"><input type="checkbox" name="include_world_news" value="1"` + checked + `> Include world news</label>`)
-	b.WriteString(`<p class="text-muted">Evening looks ahead to tomorrow; morning covers today. The brief is delivered to your Micro mail, using your connected calendar, email and saved location where available. Normal usage charges apply. <a href="/account">Account and email delivery</a>.</p><div class="form-actions"><button name="state" value="active">`)
+	b.WriteString(`<div class="form-actions"><button name="state" value="active">`)
 	if e == nil {
 		b.WriteString("Schedule")
 	} else if e.Paused {
@@ -104,5 +111,5 @@ func briefScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, eventURL(Brief(sess.Account).ID), http.StatusSeeOther)
+	http.Redirect(w, r, "/events?view=brief", http.StatusSeeOther)
 }

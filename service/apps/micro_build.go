@@ -57,7 +57,7 @@ func BuildMicroApp(description, authorID, authorName string) (*App, error) {
 		HTML:        html,
 		Spec:        spec,
 		Tags:        spec.Type,
-		Public:      true,
+		Public:      false,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}

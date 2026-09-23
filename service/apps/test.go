@@ -54,6 +54,10 @@ func TestHTML(html, authorID string) *TestResult {
 		result.Issues = append(result.Issues, "Remove <script src=\"/apps/sdk.js\"> — SDK is auto-injected")
 	}
 
+	if !strings.Contains(lower, "</script>") || !strings.Contains(lower, "</html>") {
+		result.Issues = append(result.Issues, "Incomplete document: close the script and HTML tags")
+	}
+
 	// Extract and test SDK calls
 	sdkCalls := extractSDKCalls(html)
 	for _, sc := range sdkCalls {
@@ -76,6 +80,9 @@ func TestHTML(html, authorID string) *TestResult {
 		}
 	}
 
+	if len(result.Issues) > 0 {
+		result.OK = false
+	}
 	return result
 }
 
