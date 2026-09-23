@@ -40,6 +40,7 @@ func TestApp(slug, authorID string) *TestResult {
 // TestHTML tests raw HTML without requiring a saved app.
 func TestHTML(html, authorID string) *TestResult {
 	result := &TestResult{OK: true}
+	result.Issues = append(result.Issues, runtimeIssues(html)...)
 	lower := strings.ToLower(html)
 
 	// Structural checks

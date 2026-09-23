@@ -1,8 +1,0 @@
-{
-  "slug": "place-explorer",
-  "name": "Place Explorer",
-  "description": "Find places nearby + local weather",
-  "tags": "composite",
-  "order": 1,
-  "seed": true
-}

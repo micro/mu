@@ -367,6 +367,7 @@ func appBridgeJS(slug string) string {
 	return `<script>
 (function(){
   ` + bridgeTable() + `
+  var PUBLIC_READS=` + publicServiceReads() + `;
   var SLUG=` + jsString(slug) + `;
   var frame=document.getElementById('app-frame');
   var j='application/json';
@@ -429,7 +430,8 @@ func appBridgeJS(slug string) string {
     // All other account operations still require their own approval.
     var agentOp=op==='agent'||op==='agent.stream';
     if(agentOp&&csrf()!==pageCSRF){revokeAgent();reply(target,m.id,null,'Your sign-in changed. Reload this app before continuing.');return;}
-    var personal=op==='user'||(OPS[op]&&OPS[op].m==='POST')||op==='sdk:service'||op==='sdk:ai'||op==='sdk:fetch';
+    var publicRead=op==='sdk:service'&&PUBLIC_READS[String(args.service||'').toLowerCase()+'/'+String(args.method||'').toLowerCase()]===true;
+    var personal=op==='user'||(OPS[op]&&OPS[op].m==='POST')||(op==='sdk:service'&&!publicRead)||op==='sdk:ai'||op==='sdk:fetch';
     if(personal&&!(agentOp&&agentAllowed)){
       var detail=JSON.stringify(args);
       if(detail.length>16000){reply(target,m.id,null,'Request too large to review');return;}
@@ -449,8 +451,8 @@ func appBridgeJS(slug string) string {
       if(PROXY.indexOf(sub)<0){ reply(target,m.id,null,'unknown operation'); return; }
       fetch('/apps/'+encodeURIComponent(SLUG)+'/sdk/'+sub,{
         method:'POST',headers:{'Content-Type':j,'Accept':j,'X-CSRF-Token':csrf()},
-        body:JSON.stringify(args)})
-        .then(function(r){return r.json()})
+        body:JSON.stringify(Object.assign({},args,op==='sdk:service'?{anonymous:publicRead}:{}))})
+        .then(function(r){return r.json().then(function(d){if(!r.ok) throw new Error(d.error&&d.error.message||d.error||'Request failed');return d})})
         .then(function(d){reply(target,m.id,d,null)})
         .catch(function(err){reply(target,m.id,null,String(err))});
       return;
@@ -517,9 +519,6 @@ func sandboxPage(slug, title string, widget ...bool) string {
 body{display:flex;flex-direction:column}
 #app-frame{display:block;width:100%;flex:1;min-height:0;border:0;background:Canvas}</style>`)
 	b.WriteString(`</head><body>`)
-	if len(widget) == 0 || !widget[0] {
-		b.WriteString(`<nav class="app-return" aria-label="Apps"><a href="/apps">Apps</a></nav>`)
-	}
 	b.WriteString(`<div id="app-agent-access" class="access-notice section-actions" hidden><span>Agent access allowed for this page.</span><button id="app-agent-revoke" class="btn btn-quiet" type="button">Revoke access</button></div>`)
 	// The app itself, not /run. That word is retired — see embed.go — and the
 	// document is at the app's own address with raw=1.

@@ -51,6 +51,9 @@ func CreateApp(authorID, name, slug, description, tags, html, icon string, price
 	if len(html) > MaxHTMLSize {
 		return nil, fmt.Errorf("html exceeds the 256KB limit")
 	}
+	if issues := runtimeIssues(html); len(issues) > 0 {
+		return nil, fmt.Errorf("app cannot run: %s", strings.Join(issues, "; "))
+	}
 	if price < 0 {
 		price = 0
 	}
@@ -295,7 +298,7 @@ type TestResponse struct {
 	Text string `json:"text" description:"Which of the app's API calls work and which fail"`
 }
 
-// Test checks an app's HTML and runs its mu.api calls server-side, so an
+// Test checks an app's HTML and checks supported SDK calls server-side, so an
 // author finds out what is broken without opening it.
 // @example {"slug": "pomodoro-timer"}
 func (Server) Test(ctx context.Context, req *TestRequest, rsp *TestResponse) error {
@@ -309,7 +312,7 @@ func (Server) Test(ctx context.Context, req *TestRequest, rsp *TestResponse) err
 	}
 	var b strings.Builder
 	if result.OK {
-		b.WriteString("No problems found.\n")
+		b.WriteString("Static checks passed. This is not a browser execution test; interactions and dynamic network calls remain unverified.\n")
 	}
 	for _, issue := range result.Issues {
 		b.WriteString("- " + issue + "\n")

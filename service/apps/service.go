@@ -169,13 +169,13 @@ var Spec = service.Spec{
 		"Search": {Doc: "Find your saved private micro apps by name, description or tag", Needs: service.Caller},
 
 		// Where an app comes from. Implemented in authoring.go.
-		"Create": {Writes: true, Doc: "Create an app — a small, self-contained HTML tool hosted here. Takes the HTML; apps_build writes it for you from a description",
+		"Create": {Writes: true, Doc: "Create an app — a small, self-contained HTML tool hosted here. Takes the HTML; apps_build writes it for you from a description" + authoringContract,
 			Cost: quota.OpAppCreate, Needs: service.Caller},
-		"Edit": {Writes: true, Doc: "Edit an app you own — its name, description, tags, icon, HTML or price. Fields left out keep their value",
+		"Edit": {Writes: true, Doc: "Edit an app you own — its name, description, tags, icon, HTML or price. Fields left out keep their value" + authoringContract,
 			Cost: quota.OpAppEdit, Needs: service.Caller},
 		"Fork":  {Writes: true, Doc: "Fork an app into your own account, to change independently of the original", Needs: service.Caller},
 		"Embed": {Needs: service.Caller, Doc: "Show a saved micro app in the conversation. Embedding preserves access permissions and does not publish the app"},
-		"Test":  {Writes: true, Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Needs: service.Caller},
+		"Test":  {Writes: true, Doc: "Test an app by checking its HTML and checking supported SDK calls; this is not browser execution, so an author finds out what is broken without opening it", Needs: service.Caller},
 	},
 }
 
