@@ -50,6 +50,7 @@ type Thread struct {
 var inboxes map[string]*Inbox
 
 type Message struct {
+	Markdown    bool     `json:"-"` // Generated body requiring safe Markdown rendering for mail clients.
 	Bridged     bool     `json:"-"` // Read from the unified conversation record.
 	ID          string   `json:"id"`
 	From        string   `json:"from"`    // Sender username

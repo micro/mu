@@ -17,6 +17,7 @@ import (
 	"mu/service/apps"
 	"mu/service/docs"
 	"mu/service/events"
+	"mu/service/files"
 	"mu/service/shell"
 )
 
@@ -169,6 +170,11 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 			items = append(items, savedItem{j.Title, "app", "/apps/builds/" + url.PathEscape(j.ID), j.State, "", j.Updated})
 		}
 	}
+	if filter == "" || filter == "file" {
+		for _, f := range files.List(acc.ID) {
+			items = append(items, savedItem{f.Name, "file", f.URL, "Saved", "", f.Created})
+		}
+	}
 	// Filters remain small and textual; no dashboard or service catalogue.
 	kinds := map[string]bool{}
 	for _, item := range items {
@@ -195,7 +201,7 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		return items[i].updated.After(items[j].updated)
 	})
 	pager := app.Paginate(r, len(items), shown)
-	if len(items) == 0 && filter != "file" {
+	if len(items) == 0 {
 		b.WriteString(`<p class="text-muted">Nothing saved here yet.</p>`)
 	}
 	b.WriteString(`<div class="collection-list">`)
@@ -217,7 +223,7 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	if filter == "document" {
 		b.WriteString(`<p><a href="/docs">All docs</a></p>`)
 	}
-	if filter == "file" || (filter == "" && shell.Configured()) {
+	if shell.Configured() && (filter == "file" || filter == "") {
 		b.WriteString(workspaceFiles(r, acc.ID))
 	}
 	app.Respond(w, r, app.Response{Title: "Inbox", HTML: b.String()})
