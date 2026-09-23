@@ -25,7 +25,7 @@ func Brief(owner string, period ...string) *Event {
 
 // BriefPeriod identifies old schedules without changing their saved identity or time.
 func BriefPeriod(e *Event) string {
-	if e != nil && (e.Title == "Evening brief" || strings.Contains(e.Prompt, "tomorrow")) {
+	if e != nil && ((e.Title == "Evening brief" || e.Title == "Evening Debrief") || strings.Contains(e.Prompt, "tomorrow")) {
 		return "evening"
 	}
 	return "morning"
@@ -52,7 +52,7 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	if repeat != "daily" && repeat != "weekdays" {
 		return fmt.Errorf("choose daily or weekdays")
 	}
-	prompt := "Give me an evening brief: meaningful developments I may have missed during the day, and what I need to prepare for tomorrow. Do not repeat unchanged news or market information from the morning brief or other updates Micro already showed me. Explain only material changes. Keep it short when little has changed."
+	prompt := "Give me an evening debrief: meaningful developments I may have missed during the day, and what I need to prepare for tomorrow. Do not repeat unchanged news or market information from the morning brief or other updates Micro already showed me. Explain only material changes. Keep it short when little has changed."
 	if period == "morning" {
 		prompt = "Give me a morning brief: what happened overnight and what is relevant for today."
 	} else if period != "evening" {
@@ -79,7 +79,7 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	if old != nil {
 		*e = *old
 	}
-	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Prompt, e.Paused = "brief", "Evening brief", next, zone, repeat, prompt, paused
+	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Prompt, e.Paused = "brief", "Evening Debrief", next, zone, repeat, prompt, paused
 	e.Fired, e.FiredAt = false, time.Time{}
 	e.Builtin = builtin
 	if builtin && old != nil {
@@ -162,7 +162,7 @@ func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...st
 		e = Event{ID: uuid.NewString(), Owner: owner, Kind: "brief", Builtin: true, Title: "Morning brief", Zone: zone, Repeat: "daily", Prompt: "Give me a brief for today", Created: time.Now().UTC(), When: time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, loc)}
 	}
 	if old == nil && period == "evening" {
-		e.Title, e.Prompt = "Evening brief", "Give me an evening brief for tomorrow"
+		e.Title, e.Prompt = "Evening Debrief", "Give me an evening debrief for tomorrow"
 		at := e.When
 		e.When = time.Date(at.Year(), at.Month(), at.Day(), 20, 0, 0, 0, at.Location())
 	}

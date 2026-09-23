@@ -167,6 +167,9 @@ func List(owner string) []*Event {
 	for _, e := range events {
 		if e.Owner == owner {
 			cp := *e
+			if cp.Kind == "brief" && BriefPeriod(&cp) == "evening" && cp.Title == "Evening brief" {
+				cp.Title = "Evening Debrief"
+			}
 			out = append(out, &cp)
 		}
 	}
