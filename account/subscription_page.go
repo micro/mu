@@ -83,7 +83,7 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 		body += `</div>`
 	}
 	if allowance.Credits > 0 {
-		body += `<p><a href="/events?view=brief">Morning brief</a></p>`
+		body += `<p><a href="/events?view=brief">Daily briefs</a></p>`
 	} else if enabled {
 		body += `<p class="text-sm text-muted">For your daily brief and assistant. Renews monthly. Cancel any time.</p>`
 	}
