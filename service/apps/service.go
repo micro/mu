@@ -120,6 +120,7 @@ type AppReadRequest struct {
 
 // AppReadResponse is a model-ready description of an app.
 type AppReadResponse struct {
+	HTML string       `json:"html,omitempty"`
 	Item *result.Item `json:"item,omitempty"`
 	Text string       `json:"text"`
 }
@@ -131,6 +132,9 @@ func (Server) Read(ctx context.Context, req *AppReadRequest, rsp *AppReadRespons
 		if j, err := readBuild(strings.TrimPrefix(req.Slug, "build-"), service.AccountFrom(ctx)); err == nil {
 			if j.State == "complete" {
 				rsp.Item = appResult(j.App)
+				if j.App != nil && j.App.AuthorID == service.AccountFrom(ctx) {
+					rsp.HTML = j.App.RenderHTML()
+				}
 			}
 			status := buildStatus(j)
 			rsp.Text = fmt.Sprintf("Build %s: %s. Attempts: %d. Recoveries: %d. %s %s", status.ID, status.State, status.Attempts, status.Recoveries, status.Error, status.URL)
@@ -143,6 +147,9 @@ func (Server) Read(ctx context.Context, req *AppReadRequest, rsp *AppReadRespons
 		return fmt.Errorf("app not found: %s", req.Slug)
 	}
 	rsp.Item = appResult(a)
+	if a.AuthorID == service.AccountFrom(ctx) {
+		rsp.HTML = a.RenderHTML()
+	}
 	rsp.Text = a.Name + " (" + a.Slug + ") by " + a.Author + "\n" + a.Description + "\nTags: " + a.Tags + "\nOpen: /apps/" + a.Slug
 	return nil
 }
@@ -158,7 +165,7 @@ var Spec = service.Spec{
 		"BuildStatus": {Doc: "Read your saved app build status by ID. Poll until complete or failed; the same ID survives restarts.", Needs: service.Caller},
 		"Build": {Writes: true, Doc: "Queue a durable app build and immediately return its ID and status URL. Use BuildStatus to retrieve progress and the completed app. Reuse request_key on retries. Builds survive server restarts",
 			Cost: quota.OpAppBuild, Needs: service.Caller},
-		"Read":   {Doc: "Read the details of one app by its slug"},
+		"Read":   {Doc: "Read an app or build status by slug, including source HTML for apps you own", Needs: service.Caller},
 		"Search": {Doc: "Find your saved private micro apps by name, description or tag", Needs: service.Caller},
 
 		// Where an app comes from. Implemented in authoring.go.
