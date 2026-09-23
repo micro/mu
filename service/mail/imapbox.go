@@ -654,7 +654,7 @@ func imapBodyStructure(m *Message) string {
 func imapTextBody(m *Message) (string, string) {
 	body := clientBody(m)
 	sub := "PLAIN"
-	if !m.Bridged && imapLooksHTML(body) {
+	if m.Markdown || (!m.Bridged && imapLooksHTML(body)) {
 		sub = "HTML"
 	}
 	body = strings.ReplaceAll(strings.ReplaceAll(body, "\r\n", "\n"), "\n", "\r\n")
@@ -666,6 +666,9 @@ func imapTextBody(m *Message) (string, string) {
 
 // clientBody formats stored reports and generated mail for email clients.
 func clientBody(m *Message) string {
+	if m.Markdown {
+		return string(app.RenderNoImages([]byte(m.Body)))
+	}
 	if !m.Bridged {
 		if report, _ := renderStoredAttachment(m); report != "" {
 			// Email clients do not load the web stylesheet.

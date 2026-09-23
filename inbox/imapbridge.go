@@ -52,8 +52,8 @@ const (
 	bridgeMessages = 50
 )
 
-// Bridge is every conversation this account has had somewhere other than mail,
-// rendered as messages a mail client can read.
+// Bridge exposes incoming non-mail channels to mail clients. Local web and CLI
+// conversations stay in their original surface and never become synthetic mail.
 //
 // Filled into mail.Bridged at boot. See internal/server/hooks.go.
 func Bridge(accountID string) []*mail.Message {
@@ -64,8 +64,9 @@ func Bridge(accountID string) []*mail.Message {
 
 	var out []*mail.Message
 	for _, t := range thread.List(accountID, bridgeThreads) {
-		// Mail comes from mail, or every message arrives twice.
-		if t.Client == mailClient {
+		// Mail comes from mail. Web and CLI conversations are already visible
+		// where the person is working; they are not incoming correspondence.
+		if t.Client == mailClient || !thread.Arrived(t) {
 			continue
 		}
 		// And nothing held. Held means somebody nobody here has heard of has
@@ -122,6 +123,7 @@ func asMessages(accountID string, t thread.Thread, domain string) []*mail.Messag
 		}
 
 		if m.Role == thread.RoleAgent {
+			one.Markdown = true
 			one.ToID = accountID
 			one.From = messageAgentName(accountID, &t, m)
 			one.FromID = t.ID + ".conversation@" + domain
