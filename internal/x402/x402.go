@@ -177,23 +177,6 @@ func acceptedAssets() []x402Asset {
 // Enabled reports whether x402 payments are configured.
 func Enabled() bool { return payTo() != "" }
 
-// x402 free trial — first N calls per wallet address are free. Tracked in
-// memory (resets on restart, which is acceptable for a trial).
-var (
-	x402TrialLimit = 10
-	x402TrialUsage = map[string]int{}
-)
-
-// UseTrialCall records a free trial call, returning false when exhausted.
-func UseTrialCall(walletAddr string) bool {
-	if walletAddr == "" || x402TrialUsage[walletAddr] >= x402TrialLimit {
-		return false
-	}
-	x402TrialUsage[walletAddr]++
-	app.Log("x402", "Free trial call %d/%d for %s", x402TrialUsage[walletAddr], x402TrialLimit, walletAddr)
-	return true
-}
-
 // PaymentRequirements is a single accepted way to pay, matching the x402
 // "exact" scheme. Amounts are in the asset's atomic units.
 //
@@ -839,7 +822,7 @@ func succeeded(code int, body []byte) bool {
 // service that holds per-caller data.
 //
 // It is deliberately not read from the X-Wallet-Address header. That header
-// exists for the free-trial counter and is unauthenticated: anyone can claim
+// is unauthenticated: anyone can claim
 // any address. Using it for identity would let one caller read another's
 // records by typing their address.
 func PayerFrom(ctx context.Context) string {

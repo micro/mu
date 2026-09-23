@@ -263,6 +263,10 @@ func serve(addr string) {
 			// Check if this is a user profile request (/@username)
 			if strings.HasPrefix(r.URL.Path, "/@") {
 				rest := r.URL.Path[2:]
+				if strings.HasPrefix(strings.ToLower(rest), "x402:") && !strings.Contains(rest, "/") {
+					blog.WalletAuthorHandler(w, r)
+					return
+				}
 
 				// Handle ActivityPub sub-endpoints: /@username/outbox, /@username/inbox
 				if strings.HasSuffix(rest, "/outbox") {

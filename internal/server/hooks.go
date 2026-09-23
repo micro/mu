@@ -772,14 +772,9 @@ func wireHooks() {
 			return true, 0, nil
 		}
 		// Check for x402 payment (bypasses auth + credits).
-		// Free trial: first 10 calls per wallet address are free —
-		// no payment header needed if within the trial.
+		// A wallet hint header is not proof of identity or payment.
+		// Every priced x402 request must pass verification before execution.
 		if r.Context().Value(x402.X402ContextKey) != nil {
-			// Try free trial first (by wallet address from payment header).
-			payAddr := r.Header.Get("X-Wallet-Address")
-			if payAddr != "" && x402.UseTrialCall(payAddr) {
-				return true, 0, nil
-			}
 			// Verify, do not settle. The money moves once there is an answer
 			// to hand back — see x402.Finish. Everything that can refuse a
 			// caller happens here, so a verified payment is a promise that

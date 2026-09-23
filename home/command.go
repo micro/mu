@@ -77,9 +77,23 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		thread.MarkSeen(acc.ID, session)
-		for _, message := range thread.Messages(acc.ID, session, 100) {
+		messages := thread.Messages(acc.ID, session, 100)
+		delivered := map[string]bool{}
+		for _, message := range messages {
+			if strings.HasPrefix(message.Ref, "app-build:") {
+				delivered[strings.TrimPrefix(message.Ref, "app-build:")] = true
+			}
+		}
+		for _, message := range messages {
+			results := message.Results[:0:0]
+			for _, item := range message.Results {
+				if item.Kind != "app-build" || !delivered[item.ID] {
+					results = append(results, item)
+				}
+			}
+
 			class := "answer"
-			content := app.RenderString(message.Text) + app.Results(message.Results)
+			content := app.RenderString(message.Text) + app.Results(results)
 			if message.Role == thread.RolePerson {
 				class = "request"
 				content = html.EscapeString(message.Text)
@@ -94,7 +108,11 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			content = `<div class="ib-from metadata-row"><span class="ib-who-l">` + html.EscapeString(who) + `</span><time class="ib-at" datetime="` + message.At.Format(time.RFC3339) + `" title="` + message.At.Format("2 Jan 2006, 15:04 MST") + `">` + html.EscapeString(app.TimeAgo(message.At)) + `</time></div><div class="message-body">` + content + `</div>`
-			initial += `<section class="turn"><div class="` + class + `">` + content + `</div></section>`
+			delivery := ""
+			if strings.HasPrefix(message.Ref, "app-build:") {
+				delivery = ` data-delivery-id="` + html.EscapeString(message.Ref) + `"`
+			}
+			initial += `<section class="turn"` + delivery + `><div class="` + class + `">` + content + `</div></section>`
 		}
 	}
 	if acc != nil {

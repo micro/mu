@@ -46,6 +46,11 @@ func requestWork(e *Event) {
 		return
 	}
 	if e.Kind == "brief" {
+		if BriefPeriod(e) == "evening" {
+			prompt += "\nCover new developments during the day and preparation for tomorrow. Do not repeat unchanged news or markets already covered by Micro. Compare with earlier delivered updates. Do not claim to know what the person read outside Micro."
+		} else {
+			prompt += "\nCover overnight developments and what matters today."
+		}
 		if BriefWorldNews(e) {
 			prompt += "\nInclude a short world news section with current sources."
 		} else {

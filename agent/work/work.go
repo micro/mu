@@ -303,6 +303,9 @@ func runWithQuery(r request, query func(string, string, agent.QueryOpts) (string
 // actually send, while a summary or draft remains a private result.
 func workPrompt(r request) string {
 	var context strings.Builder
+	if r.Kind == events.Kind {
+		context.WriteString(briefContext(r))
+	}
 	if r.Kind == tasks.Kind {
 		fmt.Fprintf(&context, "You are already executing task %q. Do the requested work now; do not create or reassign another task for this same work. Verify the requested outcome and return the structured report required by your instructions; the runner records its status. Do not claim completion from inspection or successful tool transport alone. Read shell exit codes; missing interpreters are not successful edits. Use available tools such as shell Write rather than repeatedly invoking unavailable programs.\n\n", r.ID)
 	}
@@ -430,10 +433,10 @@ func deliver(r request, answer string, err error) {
 	}
 	tag := "scheduled"
 	isBrief := false
-	if e := events.Brief(r.Account); e != nil && e.ID == r.ID {
+	if e := scheduledBrief(r); e != nil {
 		isBrief = true
 		tag = "brief"
-		body += "\n\n---\n[Disable or manage your morning brief](" + origin.Self() + "/events?view=brief)."
+		body += "\n\n---\n[Disable or manage your daily briefs](" + origin.Self() + "/events?view=brief)."
 	}
 	messageID := "<" + uuid.NewString() + "@" + mail.ConfiguredDomain() + ">"
 	sender := agent.NameOf(r.Account, r.Agent)

@@ -19,6 +19,23 @@ func resultItems(s Step) []result.Item {
 	}
 	raw := []byte(payload.Content)
 	switch s.Tool {
+	case "files_put", "files_get":
+		var d struct {
+			File *struct {
+				ID, Name, Type string
+				Size           int
+			}
+			Content string
+			Binary  bool
+		}
+		if json.Unmarshal(raw, &d) != nil || d.File == nil {
+			return nil
+		}
+		item := result.Item{Kind: "file", ID: d.File.ID, Title: d.File.Name, Summary: d.File.Type, URL: "/files/" + url.PathEscape(d.File.ID)}
+		if !d.Binary && strings.HasPrefix(d.File.Type, "text/") {
+			item.Body = truncate(d.Content, 4000)
+		}
+		return []result.Item{item}
 	case "notes_add", "notes_get":
 		var d struct{ Item *result.Item }
 		if json.Unmarshal(raw, &d) == nil && d.Item != nil && d.Item.Kind == "note" {
@@ -36,7 +53,7 @@ func resultItems(s Step) []result.Item {
 		return nil
 	case "apps_embed", "apps_create", "apps_edit", "apps_read", "apps_build", "apps_buildstatus":
 		var d struct{ Item *result.Item }
-		if json.Unmarshal(raw, &d) == nil && d.Item != nil && d.Item.Kind == "app" {
+		if json.Unmarshal(raw, &d) == nil && d.Item != nil && (d.Item.Kind == "app" || d.Item.Kind == "app-build") {
 			return []result.Item{*d.Item}
 		}
 		return nil

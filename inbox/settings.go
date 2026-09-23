@@ -22,6 +22,10 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	auth.SetCSRFCookie(w, r)
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "morning"
+	}
 	if r.Method == http.MethodPost {
 		r.Body = http.MaxBytesReader(w, r.Body, 4096)
 		if !auth.StrictCSRF(r) {
@@ -29,6 +33,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var req struct {
+			Period    string `json:"period"`
 			Enabled   *bool  `json:"enabled"`
 			WorldNews *bool  `json:"include_world_news"`
 			Zone      string `json:"timezone"`
@@ -40,16 +45,21 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
 			enabled, news := r.FormValue("enabled") == "1", r.FormValue("include_world_news") == "1"
+			req.Period = r.FormValue("period")
 			req.Enabled, req.WorldNews, req.Zone = &enabled, &news, r.FormValue("timezone")
 		} else {
 			app.BadRequest(w, r, "Use the settings form or send JSON")
 			return
 		}
+		if req.Period == "" {
+			req.Period = "morning"
+		}
+		period = req.Period
 		zone := acc.Zone
 		if zone == "" || zone == "Local" {
 			zone = req.Zone
 		}
-		if err := events.ConfigureBrief(acc.ID, *req.Enabled, *req.WorldNews, zone); err != nil {
+		if err := events.ConfigureBrief(acc.ID, *req.Enabled, *req.WorldNews, zone, req.Period); err != nil {
 			app.BadRequest(w, r, err.Error())
 			return
 		}
@@ -61,8 +71,16 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
-	e := events.Brief(acc.ID)
+	if period != "morning" && period != "evening" {
+		app.BadRequest(w, r, "choose morning or evening")
+		return
+	}
+	e := events.Brief(acc.ID, period)
 	state := map[string]any{"enabled": false, "include_world_news": true, "time": "06:00", "timezone": acc.Zone}
+	if period == "evening" {
+		state["time"] = "20:00"
+	}
+	state["period"] = period
 	if e != nil {
 		state["enabled"] = !e.Paused
 		state["include_world_news"] = events.BriefWorldNews(e)

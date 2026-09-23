@@ -33,3 +33,28 @@ func TestBriefSchedulePreservesIdentityAndPreferences(t *testing.T) {
 		t.Fatal("invalid edit changed settings")
 	}
 }
+
+func TestMorningAndEveningSchedulesAreIndependent(t *testing.T) {
+	const owner = "brief_independent_test"
+	defer DeleteAll(owner)
+	if err := scheduleBrief(owner, "06:00", "Europe/London", "weekdays", "morning", false, false, false); err != nil {
+		t.Fatal(err)
+	}
+	morning := Brief(owner)
+	if err := scheduleBrief(owner, "20:00", "Europe/London", "daily", "evening", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	evening := Brief(owner, "evening")
+	if evening == nil || evening.ID == morning.ID {
+		t.Fatal("evening replaced morning")
+	}
+	if err := ConfigureBrief(owner, false, false, "Europe/London", "evening"); err != nil {
+		t.Fatal(err)
+	}
+	if Brief(owner).Paused || !Brief(owner, "evening").Paused || BriefWorldNews(Brief(owner)) {
+		t.Fatal("evening toggle affected morning")
+	}
+	if Brief(owner).Repeat != "weekdays" || Brief(owner, "evening").Repeat != "daily" {
+		t.Fatal("cadence changed")
+	}
+}
