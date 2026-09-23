@@ -73,7 +73,8 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 
 // SearchRequest asks YouTube, through this instance's key.
 type SearchRequest struct {
-	Query string `json:"query" required:"true" description:"What to search for"`
+	Channel string `json:"channel,omitempty" description:"Exact YouTube channel ID when the user requests a particular channel; obtain it from search results"`
+	Query   string `json:"query" required:"true" description:"What to search for"`
 }
 
 // SearchResponse is a model-ready list of matches.
@@ -105,7 +106,7 @@ func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchRespons
 		return err
 	}
 
-	_, results, err := getResults(q, "")
+	_, results, err := getResults(q, strings.TrimSpace(req.Channel))
 	if err != nil {
 		return err
 	}

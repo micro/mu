@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"mu/internal/data"
+	"mu/internal/flag"
 	"strings"
 )
 
@@ -24,6 +25,9 @@ func (Server) Read(_ context.Context, req *ReadRequest, rsp *ReadResponse) error
 	e := data.ByID("video_" + id)
 	if e == nil || e.Type != data.KindVideo || e.Owner != "" {
 		return fmt.Errorf("video not found; search for it first")
+	}
+	if flag.UnsuitableVideo(e.Title, e.Content) {
+		return fmt.Errorf("video unavailable under the content policy")
 	}
 	field := func(k string) string { v, _ := e.Metadata[k].(string); return v }
 	rsp.Item = &Result{ID: id, Type: "video", Title: e.Title, Description: e.Content, URL: "https://youtube.com/watch?v=" + id, Published: data.PostedAt(e), Channel: field("channel"), ChannelID: field("channel_id"), Category: field("category"), Thumbnail: field("thumbnail")}

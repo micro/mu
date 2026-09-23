@@ -39,7 +39,10 @@ func resultItems(s Step) []result.Item {
 			return []result.Item{*d.Item}
 		}
 		return nil
-	case "video_search", "video_list", "video_read", "bookmarks_list", "bookmarks_get":
+	case "video_search", "video_list":
+		// Candidates must be selected with Read before becoming visible players.
+		return nil
+	case "video_read", "bookmarks_list", "bookmarks_get":
 		var d struct {
 			Results []result.Item
 			Items   []result.Item
