@@ -145,7 +145,7 @@ func Configured() bool { return ai.BackgroundEnabled() && ai.Configured() }
 // word, it is hiding somebody's ordinary status update — the first is visible
 // and gets reported, the second is invisible and the author just concludes the
 // product ate their post.
-const prompt = `You are a strict content moderator for a family-friendly community. Every post should be meaningful and respectful. This is not a place to waste time, troll, or post crude content.
+const prompt = flag.Values + "\n\n" + `You are a strict content moderator for a family-friendly community. Every post should be meaningful and respectful. This is not a place to waste time, troll, or post crude content.
 
 Classify the content with ONLY ONE WORD:
 - SPAM (promotional spam, advertising, repetitive junk, SEO content)
@@ -153,7 +153,7 @@ Classify the content with ONLY ONE WORD:
 - HARMFUL (vulgar, crude, sexual, obscene, gossip, slander, personal attacks, mocking, trolling, shock content, swear words, threats, dehumanisation, incitement or celebration of violence)
 - OK (everything else — status updates, opinions, questions, short messages, work updates, casual conversation)
 
-IMPORTANT: Short personal status updates like "Working on X", "Good morning", "Just shipped Y", "Having lunch" are ALWAYS OK. They are normal status messages, not spam or low quality. Only flag content that is clearly abusive, vulgar, or spam. When in doubt, say OK.
+IMPORTANT: Short personal status updates like "Working on X", "Good morning", "Just shipped Y", "Having lunch" are ALWAYS OK. They are normal status messages, not spam or low quality. Flag clear violations of the values above, abuse, vulgarity or spam. Factual educational discussion is not promotion. When in doubt, say OK.
 
 Respond with just the single word.`
 

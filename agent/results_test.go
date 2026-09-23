@@ -5,6 +5,20 @@ import (
 	"testing"
 )
 
+func TestVideoCandidatesDoNotBecomePlayers(t *testing.T) {
+	payload, _ := json.Marshal(map[string]string{"Content": `{"items":[{"id":"abcdefghijk","title":"Candidate"}]}`})
+	for _, tool := range []string{"video_search", "video_list"} {
+		if got := resultItems(Step{Tool: tool, OK: true, Output: string(payload)}); len(got) != 0 {
+			t.Fatalf("unselected candidate embedded by %s", tool)
+		}
+	}
+	payload, _ = json.Marshal(map[string]string{"Content": `{"item":{"id":"abcdefghijk","title":"Selected video"}}`})
+	got := resultItems(Step{Tool: "video_read", OK: true, Output: string(payload)})
+	if len(got) != 1 || got[0].Kind != "video" || got[0].ID != "abcdefghijk" {
+		t.Fatalf("selected video missing: %+v", got)
+	}
+}
+
 func TestAppResultsRequireSuccessfulTypedOutput(t *testing.T) {
 	payload, _ := json.Marshal(map[string]string{"Content": `{"item":{"kind":"app","id":"my-widget","title":"My widget"}}`})
 	for _, tool := range []string{"apps_create", "apps_edit", "apps_read", "apps_build", "apps_buildstatus"} {

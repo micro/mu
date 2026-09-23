@@ -23,6 +23,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/internal/flag"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/snapshot"
@@ -220,6 +221,13 @@ func Load() {
 	// videos.json holds the videos, not their markup, so render it now against
 	// whatever the current code produces.
 	for name, ch := range videos {
+		filtered := make([]*Result, 0, len(ch.Videos))
+		for _, v := range ch.Videos {
+			if suitable(v) {
+				filtered = append(filtered, v)
+			}
+		}
+		ch.Videos = filtered
 		ch.Html = renderChannel(ch)
 		videos[name] = ch
 	}
@@ -231,18 +239,8 @@ func Load() {
 		regenerateHTML()
 		app.Log("video", "Regenerated HTML from cached data")
 	} else {
-		// load saved HTML files if no JSON data
-		b, _ = data.LoadFile("latest.html")
-		latestHtml = ProxyThumbnails(string(b))
-
-		b, _ = data.LoadFile("videos.html")
-		// Builds before the body/chrome split saved a whole page here. Nesting
-		// that inside a fresh page would render two navs, so drop it and let
-		// the next refresh write a body.
-		if saved := string(b); !strings.Contains(saved, "<html") {
-			videosHtml = ProxyThumbnails(saved)
-		}
-		app.Log("video", "No cached JSON, loaded HTML files")
+		// Legacy rendered HTML has no metadata to screen. Rebuild from fresh data.
+		latestHtml, videosHtml = "", ""
 	}
 
 	// Read plane: start the snapshot channel and warm the mirror with the
@@ -257,13 +255,15 @@ func Load() {
 	go loadVideos()
 }
 
-// regenerateHTML creates HTML from cached video data
-// renderItem is the only place a feed item's markup is written.
-//
-// Everything it needs is already on the Result, which is the point: markup
-// derived from stored fields can be regenerated whenever the code changes,
-// where markup that is itself stored goes stale and needs rewriting in place.
+func suitable(res *Result) bool {
+	return res != nil && !flag.UnsuitableVideo(res.Title, res.Description)
+}
+
+// renderItem rebuilds markup from screened metadata rather than cached HTML.
 func renderItem(res *Result) string {
+	if !suitable(res) {
+		return ""
+	}
 	channel := channelLink(res.Channel, res.ChannelID)
 	category := ""
 	if res.Category != "" {
@@ -280,9 +280,10 @@ func renderItem(res *Result) string {
 func renderChannel(ch Channel) string {
 	var b strings.Builder
 	for _, res := range ch.Videos {
-		if res.Html == "" {
-			res.Html = renderItem(res)
+		if !suitable(res) {
+			continue
 		}
+		res.Html = renderItem(res)
 		b.WriteString(res.Html)
 	}
 	return b.String()
@@ -332,6 +333,7 @@ func regenerateHTML() {
 	})
 
 	// Generate latest HTML
+	latestHtml = ""
 	if len(latest) > 0 {
 		res := latest[0]
 
@@ -566,6 +568,9 @@ func getChannel(category, handle string) (string, []*Result, error) {
 	var sb strings.Builder
 
 	for _, item := range resp.Items {
+		if item.Snippet == nil || flag.UnsuitableVideo(item.Snippet.Title, item.Snippet.Description) {
+			continue
+		}
 		var id, url string
 		kind := strings.Split(item.Kind, "#")[1]
 
@@ -654,6 +659,9 @@ func getResults(query, channel string) (string, []*Result, error) {
 	var sb strings.Builder
 
 	for _, item := range resp.Items {
+		if item.Snippet == nil || flag.UnsuitableVideo(item.Snippet.Title, item.Snippet.Description) {
+			continue
+		}
 		var id, url, desc string
 		kind := strings.Split(item.Id.Kind, "#")[1]
 
@@ -746,7 +754,11 @@ func LatestVideos(n int) []*Result {
 
 	var all []*Result
 	for _, ch := range videos {
-		all = append(all, ch.Videos...)
+		for _, v := range ch.Videos {
+			if suitable(v) {
+				all = append(all, v)
+			}
+		}
 	}
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].Published.After(all[j].Published)
@@ -951,6 +963,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		var resultsSB strings.Builder
 		for _, item := range resp.Items {
+			if item.Snippet == nil || flag.UnsuitableVideo(item.Snippet.Title, item.Snippet.Description) {
+				continue
+			}
 			if item.Snippet == nil || item.Snippet.ResourceId == nil {
 				continue
 			}
@@ -1028,6 +1043,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		var resultsSB strings.Builder
 		for _, item := range resp.Items {
+			if item.Snippet == nil || flag.UnsuitableVideo(item.Snippet.Title, item.Snippet.Description) {
+				continue
+			}
 			if item.Snippet == nil || item.Snippet.ResourceId == nil {
 				continue
 			}
@@ -1068,6 +1086,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(id) > 0 {
 		if !validVideoID.MatchString(id) {
 			app.BadRequest(w, r, "Invalid video ID")
+			return
+		}
+		if e := data.ByID("video_" + id); e != nil && e.Type == data.KindVideo && e.Owner == "" && flag.UnsuitableVideo(e.Title, e.Content) {
+			app.BadRequest(w, r, "Video unavailable under the content policy")
 			return
 		}
 		// Check if autoplay is requested

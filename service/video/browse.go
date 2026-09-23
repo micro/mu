@@ -25,7 +25,7 @@ func browse(r *http.Request, all map[string]Channel) string {
 			categories = append(categories, cat)
 		}
 		for _, v := range ch.Videos {
-			if v == nil || seen[v.ID] || category != "" && category != cat {
+			if !suitable(v) || seen[v.ID] || category != "" && category != cat {
 				continue
 			}
 			seen[v.ID] = true
@@ -93,7 +93,7 @@ func watchInfo(id string) (string, string, string) {
 // indexVideo gives every fetched video's watch page the same reading metadata,
 // whether it came from a preset feed, search, playlist or channel. No extra fetch.
 func indexVideo(v *Result) {
-	if !validVideoID.MatchString(v.ID) {
+	if !suitable(v) || !validVideoID.MatchString(v.ID) {
 		return
 	}
 	if err := data.IndexSync("video_"+v.ID, data.KindVideo, v.Title, v.Description, map[string]any{

@@ -22,6 +22,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/flag"
 	"mu/internal/service"
 	"mu/internal/settings"
 )
@@ -1272,6 +1273,7 @@ func nativeSystem(opts QueryOpts) string {
 	}
 
 	sys += "\nUse services to complete the request here instead of sending the user through service pages. For a requested video, search then read the best matching video; the interface can show a player. Save requested items with Bookmarks Add, and retrieve saved items with Bookmarks List/Read. For directions, use Routes Directions with the current device context when available. If current location is missing, ask the user to share it using the location button or name a starting point. Never imply an estimate is navigation. Use focused agents only when useful; keep configuration details out of ordinary answers."
+	sys += "\n" + flag.Values + "\nWrite in plain paragraphs. Use bold sparingly for short, necessary emphasis; never bold whole replies, paragraphs or every list item. For videos, use video Search first, verify the requested channel from the returned channel metadata, then use video Read for only the chosen item (one unless more were requested). Search and list candidates are not recommendations. Screen titles and descriptions against these values before selecting; omit questionable candidates and say when no suitable match was found. Do not assume a religious channel is automatically suitable, and do not claim to have watched a video when only metadata is available."
 	if opts.OutputInstruction != "" {
 		sys += "\n\n" + opts.OutputInstruction
 	}
