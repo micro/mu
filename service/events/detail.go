@@ -39,12 +39,15 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 		return
 	}
 	if e.Kind == "brief" {
-		app.Respond(w, r, app.Response{Title: e.Title, HTML: `<p><a href="/inbox?view=scheduled">Scheduled</a> · <a href="/events">Events</a></p>` + briefScheduleHTML(owner, auth.CSRFToken(r))})
+		if BriefPeriod(e) == "evening" {
+			e.Title = "Evening Debrief"
+		}
+		app.Respond(w, r, app.Response{Title: e.Title, HTML: `<p><a href="/events">Events</a></p>` + briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
 	}
 	body := `<div class="page-col page-stack"><article class="card page-stack"><p><time datetime="` + e.When.Format(time.RFC3339) + `" data-event-time>` + html.EscapeString(e.When.Format("Mon 2 Jan, 15:04")) + `</time></p>`
 	if e.Prompt != "" {
-		body += `<p>Micro will attempt this instruction at the scheduled time and deliver the outcome to your inbox:</p><div class="pre-wrap">` + html.EscapeString(e.Prompt) + `</div>`
+		body += `<p>Micro will attempt this instruction at the scheduled time and deliver the outcome:</p><div class="pre-wrap">` + html.EscapeString(e.Prompt) + `</div>`
 	} else {
 		body += `<p>A reminder will be sent to your subscribed devices. No agent work is scheduled.</p>`
 	}

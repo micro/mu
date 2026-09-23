@@ -72,7 +72,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Query().Get("view") == "brief" {
-		app.Respond(w, r, app.Response{Title: "Daily briefs", HTML: briefScheduleHTML(owner, auth.CSRFToken(r))})
+		app.Respond(w, r, app.Response{Title: "Morning Brief and Evening Debrief", HTML: briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
 	}
 
@@ -88,7 +88,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
-	b.WriteString(`<a href="/events?view=brief">Morning and evening briefs</a>`)
+	b.WriteString(`<a href="/events?view=brief">Morning Brief and Evening Debrief</a>`)
 
 	up := Upcoming(owner)
 	ext := Overview(owner, 0)
@@ -235,8 +235,6 @@ func calendarCard(owner, status, csrf string) string {
 		// everything granted — Google revokes the whole grant at once — so it
 		// belongs with the rest of the inventory rather than repeated on every
 		// page that happens to use a piece of it.
-		b.WriteString(`<p class="text-sm text-muted m-0">Manage it in ` +
-			`<a href="/account">your account</a>.</p>`)
 	} else {
 		b.WriteString(`<h4 class="m-0 mb-2 text-base">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
 		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now "when am I free" only counts what you scheduled here. Connect Google Calendar and choose which calendars to include. Read-only — Mu can see what's on it, and cannot change it.</p>`)

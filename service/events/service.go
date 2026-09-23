@@ -56,7 +56,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	rsp.Item = e
 	rsp.URL = eventURL(e.ID)
 	if e.Prompt != "" {
-		rsp.Result = fmt.Sprintf("Standing instruction set: %s. Micro will attempt this instruction and deliver the outcome to your inbox each time. View schedule: %s", Describe(e), rsp.URL)
+		rsp.Result = fmt.Sprintf("Standing instruction set: %s. Micro will attempt this instruction and deliver the outcome each time. View schedule: %s", Describe(e), rsp.URL)
 		return nil
 	}
 	if e.Repeat != RepeatNone {

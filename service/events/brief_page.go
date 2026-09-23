@@ -17,7 +17,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if len(csrf) > 0 {
 		token = csrf[0]
 	}
-	return briefPeriodHTML(owner, token, "morning") + briefPeriodHTML(owner, token, "evening") + `<p class="text-muted">Delivered to your Micro mail using your connected calendar, email and saved location where available. Normal usage charges apply. <a href="/account">Account and email delivery</a>.</p>`
+	return briefPeriodHTML(owner, token, "morning") + briefPeriodHTML(owner, token, "evening") + `<p class="text-muted">Delivered to your Micro mail using your connected calendar, email and saved location where available. Normal usage charges apply.</p>`
 }
 
 func briefPeriodHTML(owner, token, period string) string {
@@ -44,7 +44,7 @@ func briefPeriodHTML(owner, token, period string) string {
 	}
 	title := "Morning brief"
 	if period == "evening" {
-		title = "Evening brief"
+		title = "Evening Debrief"
 	}
 	description := "Overnight developments and what matters today."
 	if period == "evening" {
