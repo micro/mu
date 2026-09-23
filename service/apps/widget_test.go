@@ -15,7 +15,7 @@ func TestPersonalWidgetPrivacyAndPrice(t *testing.T) {
 	auth.SetAccountForTest(&auth.Account{ID: owner, Name: "Widget owner"})
 	defer auth.RemoveAccountForTest(owner)
 	var out CreateResponse
-	err := (Server{}).Create(service.WithAccount(context.Background(), owner), &CreateRequest{Name: "Private widget", Slug: "private-widget-test", HTML: "<p>private widget content</p>", Private: true}, &out)
+	err := (Server{}).Create(service.WithAccount(context.Background(), owner), &CreateRequest{Name: "Private widget", Slug: "private-widget-test", HTML: "<p>private widget content</p>"}, &out)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,6 +26,22 @@ func TestPersonalWidgetPrivacyAndPrice(t *testing.T) {
 	defer func() { mutex.Lock(); delete(apps, a.Slug); mutex.Unlock() }()
 	if a.Public {
 		t.Fatal("personal widget is public")
+	}
+	var found AppSearchResponse
+	if err := (Server{}).Search(service.WithAccount(context.Background(), owner), &AppSearchRequest{Query: "Private widget"}, &found); err != nil || !strings.Contains(found.Text, a.Slug) {
+		t.Fatal("owner cannot find private app")
+	}
+	var hidden AppSearchResponse
+	_ = (Server{}).Search(service.WithAccount(context.Background(), "another-owner"), &AppSearchRequest{Query: "Private widget"}, &hidden)
+	if strings.Contains(hidden.Text, a.Slug) {
+		t.Fatal("search leaked private app")
+	}
+	var embed EmbedResponse
+	if err := (Server{}).Embed(service.WithAccount(context.Background(), owner), &EmbedRequest{Slug: a.Slug}, &embed); err != nil || embed.Item == nil || embed.Item.ID != a.Slug {
+		t.Fatal("no typed private embed")
+	}
+	if GetApp(a.Slug).Public {
+		t.Fatal("embedding published the app")
 	}
 	sess, err := auth.CreateSession(owner)
 	if err != nil {
@@ -43,6 +59,12 @@ func TestPersonalWidgetPrivacyAndPrice(t *testing.T) {
 		Handler(w, r)
 		if w.Code != 200 {
 			t.Fatalf("owner blocked: %s %d", suffix, w.Code)
+		}
+		if suffix == "?widget=1" && strings.Contains(w.Body.String(), "app-return") {
+			t.Fatal("widget includes app directory navigation")
+		}
+		if w.Header().Get("Cache-Control") != "private, no-store" {
+			t.Fatal("app response may be shared cached")
 		}
 	}
 	for _, suffix := range []string{"", "/versions", "/icon.svg"} {

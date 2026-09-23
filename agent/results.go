@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"mu/internal/result"
+	"mu/internal/service"
 	"net/url"
 	"strings"
 )
@@ -33,7 +34,7 @@ func resultItems(s Step) []result.Item {
 			return []result.Item{{Kind: "doc", ID: d.Doc.ID, Title: d.Doc.Title, Body: truncate(d.Doc.Content, 4000), URL: "/docs?id=" + url.QueryEscape(d.Doc.ID)}}
 		}
 		return nil
-	case "apps_create", "apps_edit", "apps_read", "apps_build", "apps_buildstatus":
+	case "apps_embed", "apps_create", "apps_edit", "apps_read", "apps_build", "apps_buildstatus":
 		var d struct{ Item *result.Item }
 		if json.Unmarshal(raw, &d) == nil && d.Item != nil && d.Item.Kind == "app" {
 			return []result.Item{*d.Item}
@@ -125,6 +126,16 @@ func resultItems(s Step) []result.Item {
 			return nil
 		}
 		return []result.Item{{Kind: "route", Title: "Directions", Summary: d.Summary, Shape: d.Shape, Steps: d.Instructions}}
+	}
+	// A list may show its registered service card. Search results must retain
+	// their query-specific representation rather than an unrelated overview.
+	if strings.HasSuffix(s.Tool, "_list") {
+		name := strings.TrimSuffix(s.Tool, "_list")
+		for _, spec := range service.Cards() {
+			if spec.Name == name {
+				return []result.Item{{Kind: "card", ID: name, Title: spec.NavLabel(), URL: "/card/" + name + "?embed=1"}}
+			}
+		}
 	}
 	return nil
 }

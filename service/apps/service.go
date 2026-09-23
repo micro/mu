@@ -71,8 +71,14 @@ type AppSearchResponse struct {
 
 // Search searches the apps directory for small, useful tools.
 // @example {"query": "tracker"}
-func (Server) Search(_ context.Context, req *AppSearchRequest, rsp *AppSearchResponse) error {
-	results := SearchApps(req.Query)
+func (Server) Search(ctx context.Context, req *AppSearchRequest, rsp *AppSearchResponse) error {
+	results := []*App{}
+	query := strings.ToLower(strings.TrimSpace(req.Query))
+	for _, a := range OwnedBy(service.AccountFrom(ctx)) {
+		if strings.Contains(strings.ToLower(a.Name+" "+a.Description+" "+a.Tags), query) {
+			results = append(results, a)
+		}
+	}
 
 	// A tag narrows the result rather than being a second kind of search: an
 	// empty query with a tag lists everything carrying it, which is what
@@ -152,7 +158,7 @@ var Spec = service.Spec{
 		"Build": {Writes: true, Doc: "Queue a durable app build and immediately return its ID and status URL. Use BuildStatus to retrieve progress and the completed app. Reuse request_key on retries. Builds survive server restarts",
 			Cost: quota.OpAppBuild, Needs: service.Caller},
 		"Read":   {Doc: "Read the details of one app by its slug"},
-		"Search": {Doc: "Search the apps directory for small, useful tools, by name, description or tag"},
+		"Search": {Doc: "Find your saved private micro apps by name, description or tag", Needs: service.Caller},
 
 		// Where an app comes from. Implemented in authoring.go.
 		"Create": {Writes: true, Doc: "Create an app — a small, self-contained HTML tool hosted here. Takes the HTML; apps_build writes it for you from a description",
@@ -160,7 +166,7 @@ var Spec = service.Spec{
 		"Edit": {Writes: true, Doc: "Edit an app you own — its name, description, tags, icon, HTML or price. Fields left out keep their value",
 			Cost: quota.OpAppEdit, Needs: service.Caller},
 		"Fork":  {Writes: true, Doc: "Fork an app into your own account, to change independently of the original", Needs: service.Caller},
-		"Embed": {Needs: service.Caller, Doc: "Get the HTML that puts an app on another page — an iframe tag pointing at the app, which runs there sandboxed the same way it runs here. Apps that charge cannot be embedded, and an app that calls mu. only reaches this instance from a page on it"},
+		"Embed": {Needs: service.Caller, Doc: "Show a saved micro app in the conversation. Embedding preserves access permissions and does not publish the app"},
 		"Test":  {Writes: true, Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Needs: service.Caller},
 	},
 }

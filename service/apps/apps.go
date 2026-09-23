@@ -719,7 +719,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<textarea id="new-app-code" data-preview-target="new-app-preview" name="html" required class="code-editor" placeholder="<h1>Hello World</h1>"></textarea></label><div><h3 class="m-0 mb-2">Preview</h3><iframe id="new-app-preview" title="App preview" class="preview-frame" sandbox="allow-scripts"></iframe><p class="note">Preview is isolated. Connected services are available when you open the saved app.</p></div></div>`)
 	sb.WriteString(`<label class="field-label">Price per use <span class="text-muted text-xs">(credits, 0 = free)</span>`)
 	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" class="form-input w-full" placeholder="0"></label>`)
-	sb.WriteString(`<label class="check-label"><input type="checkbox" name="public" value="1" checked class="w-auto m-0"> Public</label>`)
+	sb.WriteString(`<label class="check-label"><input type="checkbox" name="public" value="1" class="w-auto m-0"> Public</label>`)
 	sb.WriteString(`<p class="note">Set a price and keep all of it. Free apps cost nothing to use.</p>`)
 	sb.WriteString(`<div class="form-actions"><button type="submit" class="btn">Create</button></div>`)
 	sb.WriteString(`</form>`)
@@ -771,7 +771,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		if req.Public != nil {
 			public = *req.Public
 		} else {
-			public = true
+			public = false
 		}
 		price = req.Price
 	} else {
@@ -1168,7 +1168,7 @@ func handleFork(w http.ResponseWriter, r *http.Request, slug string) {
 		Icon:        a.Icon,
 		HTML:        a.HTML,
 		Tags:        a.Tags,
-		Public:      true,
+		Public:      false,
 		ForkedFrom:  slug,
 		Installs:    0,
 		CreatedAt:   now,
@@ -1244,6 +1244,8 @@ func ForkApp(slug, newSlug, authorID, authorName string) (*App, error) {
 // URL. The second is gone — see embed.go — and this one is not running
 // anything either. These are static pages; the browser runs them.
 func handleApp(w http.ResponseWriter, r *http.Request, slug string) {
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	mutex.RLock()
 	a, ok := apps[slug]
 	mutex.RUnlock()
@@ -1340,7 +1342,7 @@ func handleApp(w http.ResponseWriter, r *http.Request, slug string) {
 	// The frame around it, on this origin, holding the bridge. This page is
 	// ours; the app cannot reach into it.
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(sandboxPage(a.Slug, a.Name)))
+	w.Write([]byte(sandboxPage(a.Slug, a.Name, r.URL.Query().Get("widget") == "1")))
 }
 
 // injectSDK injects a script/HTML block after <head> or at the top of the document.

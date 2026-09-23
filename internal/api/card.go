@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
 )
 
@@ -56,6 +57,25 @@ func CardHandler(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		app.RespondJSON(w, map[string]any{"cards": out})
+		return
+	}
+
+	// Conversation embeds render for the authenticated viewer and are never shared-cached.
+	if r.URL.Query().Get("embed") == "1" {
+		w.Header().Set("Cache-Control", "private, no-store")
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		_, account := auth.TrySession(r)
+		if account == nil {
+			http.Error(w, "Sign in to view this card", http.StatusUnauthorized)
+			return
+		}
+		body := wrapCard(service.Label(name), service.CardFor(name, service.For(account.ID)).HTML)
+		if body == "" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/mu.css?v=layout-63"><script defer src="/mu.js?v=prompt-60"></script></head><body><main>` + body + `</main></body></html>`))
 		return
 	}
 

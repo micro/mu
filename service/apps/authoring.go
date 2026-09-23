@@ -22,7 +22,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/origin"
 	"mu/internal/result"
 	"mu/internal/service"
 
@@ -95,6 +94,7 @@ func author(ctx context.Context) (string, error) {
 // ── Create ──────────────────────────────────────────────────────
 
 type CreateRequest struct {
+	Public      bool   `json:"public" description:"Publish only when explicitly requested by the owner. Personal apps are private by default."`
 	Private     bool   `json:"private" description:"Keep this app private to its owner; use true for personal widgets"`
 	Name        string `json:"name" required:"true" description:"App name, e.g. \"Pomodoro Timer\""`
 	HTML        string `json:"html" required:"true" description:"The app's HTML, inline CSS and JavaScript included, up to 256KB"`
@@ -117,7 +117,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	if err != nil {
 		return err
 	}
-	a, err := CreateApp(who, req.Name, req.Slug, req.Description, req.Tags, req.HTML, req.Icon, req.Price, !req.Private)
+	a, err := CreateApp(who, req.Name, req.Slug, req.Description, req.Tags, req.HTML, req.Icon, req.Price, req.Public && !req.Private)
 	if err != nil {
 		return err
 	}
@@ -256,15 +256,11 @@ type EmbedRequest struct {
 }
 
 type EmbedResponse struct {
-	Result string `json:"result" description:"An <iframe> tag that puts the app on another page, and a note where the app will not work off this site"`
+	Item   *result.Embed `json:"item,omitempty"`
+	Result string        `json:"result" description:"Confirmation of the in-conversation embed; access permissions remain unchanged"`
 }
 
-// Embed returns the markup that puts an app on somebody else's page.
-//
-// This replaced Run, which took a snippet of JavaScript, kept it in memory for
-// an hour and handed back an id while promising a URL. Nothing ran — these are
-// static pages, the browser runs them — so the verb was wrong about what the
-// service does. Create and embed are the two things you do with an app.
+// Embed returns the existing app as a typed conversation object without publishing it.
 // @example {"slug": "pomodoro-timer"}
 func (Server) Embed(ctx context.Context, req *EmbedRequest, rsp *EmbedResponse) error {
 	who, err := author(ctx)
@@ -284,13 +280,8 @@ func (Server) Embed(ctx context.Context, req *EmbedRequest, rsp *EmbedResponse) 
 		return fmt.Errorf("%s charges %d credits a use and cannot be embedded: "+
 			"the embedded copy would not charge anything", a.Slug, a.Price)
 	}
-	out := EmbedHTML(origin.Self(), a.Slug, a.Name)
-	if bridged(a.RenderHTML()) {
-		out += "\n\nThis app calls mu. — the store, a service, the agent. Those " +
-			"work on this site, where the page around the frame answers them, and " +
-			"nowhere else: elsewhere they wait and then fail."
-	}
-	rsp.Result = out
+	rsp.Item = appResult(a)
+	rsp.Result = "Open " + a.Name + " in this conversation. Its existing access permissions still apply."
 	return nil
 }
 

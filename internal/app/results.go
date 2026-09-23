@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var cardID = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+
 var appID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{2,49}$`)
 
 var videoID = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
@@ -38,6 +40,11 @@ func Results(items []result.Item) string {
 	var sources []result.Item
 	for _, item := range items {
 		switch item.Kind {
+		case "card":
+			if !cardID.MatchString(item.ID) {
+				continue
+			}
+			b.WriteString(`<section class="result-card page-stack"><p class="text-muted">Live service view</p><iframe class="app-widget" loading="lazy" src="/card/` + item.ID + `?embed=1" title="` + html.EscapeString(item.Title) + `"></iframe></section>`)
 		case "app":
 			if !appID.MatchString(item.ID) {
 				continue
