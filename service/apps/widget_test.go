@@ -24,6 +24,13 @@ func TestPersonalWidgetPrivacyAndPrice(t *testing.T) {
 	}
 	a := GetApp(out.Item.ID)
 	defer func() { mutex.Lock(); delete(apps, a.Slug); mutex.Unlock() }()
+	if Spec.Endpoints["Read"].Needs != service.Caller {
+		t.Fatal("Read must bind the authenticated caller")
+	}
+	var read AppReadResponse
+	if err := (Server{}).Read(service.WithAccount(context.Background(), owner), &AppReadRequest{Slug: a.Slug}, &read); err != nil || read.HTML == "" {
+		t.Fatal("owner cannot inspect private app source", err)
+	}
 	if a.Public {
 		t.Fatal("personal widget is public")
 	}
