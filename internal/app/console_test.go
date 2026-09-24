@@ -21,3 +21,12 @@ func TestAppShellKeepsPublicFooterOutOfSignedInPages(t *testing.T) {
 		t.Fatal("public website lost its footer")
 	}
 }
+
+func TestPublicPagesRetainFooterForSignedInReaders(t *testing.T) {
+	for _, path := range []string{"/", "/about", "/contact", "/pricing", "/privacy", "/status", "/blog", "/blog/post?id=123"} {
+		page := ConsoleHTML("Public page", "<p>Content</p>", &auth.Account{ID: "reader"}, path)
+		if !strings.Contains(page, `aria-label="Site information"`) {
+			t.Fatalf("missing public footer on %s", path)
+		}
+	}
+}

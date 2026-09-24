@@ -54,12 +54,14 @@ func browse(r *http.Request, posts []*Post) string {
 	}
 	for _, p := range items[start:end] {
 		articleURL := "/news?id=" + url.QueryEscape(p.ID)
-		b.WriteString(`<article id="reading-` + htmlpkg.EscapeString(p.ID) + `" class="reading-row news-reading-row">`)
-		b.WriteString(`<a class="news-reading-image" href="` + articleURL + `" aria-label="` + htmlpkg.EscapeString(p.Title) + `">`)
+		class := "record-card"
 		if p.Image != "" {
-			b.WriteString(`<img src="` + htmlpkg.EscapeString(imageproxy.URL(p.Image)) + `" alt="" loading="lazy" onerror="this.hidden=true">`)
+			class = "reading-row news-reading-row"
 		}
-		b.WriteString(`</a>`)
+		b.WriteString(`<article id="reading-` + htmlpkg.EscapeString(p.ID) + `" class="` + class + `">`)
+		if p.Image != "" {
+			b.WriteString(`<a class="news-reading-image" href="` + articleURL + `" aria-label="` + htmlpkg.EscapeString(p.Title) + `"><img src="` + htmlpkg.EscapeString(imageproxy.URL(p.Image)) + `" alt="" loading="lazy" onerror="this.hidden=true"></a>`)
+		}
 
 		b.WriteString(`<div class="news-reading-content">`)
 		b.WriteString(`<h3><a href="` + articleURL + `">` + htmlpkg.EscapeString(p.Title) + `</a></h3><div class="reading-meta">`)

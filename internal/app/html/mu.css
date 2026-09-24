@@ -516,6 +516,8 @@ img[width="16"],img[width="20"],img[width="24"],.stream-icon{object-fit:contain}
 .search-bar{flex-wrap:nowrap;align-items:center}
 .search-bar input{flex:1 1 0;width:0;margin:0}
 .search-bar select{flex:0 1 180px;width:auto}
+.search-bar:has(input):has(select){flex-wrap:wrap}
+.search-bar:has(select) input{flex:1 1 220px}
 .form :is(label,.field){min-width:0}
 /* Field classes decorate controls too: a flex basis in a stacked label becomes height. */
 .field{min-width:0}

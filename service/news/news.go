@@ -2513,10 +2513,12 @@ func formatSearchResult(entry *data.IndexEntry) string {
 	}
 
 	var media string
+	class := "record-card"
 	if image != "" {
+		class = "reading-row news-reading-row"
 		media = `<a class="news-reading-image" href="` + htmlpkg.EscapeString(url) + `"><img src="` + htmlpkg.EscapeString(imageproxy.URL(image)) + `" alt="" loading="lazy"></a>`
 	}
-	return `<article class="reading-row news-reading-row">` + media + `<div class="reading-body"><h3><a href="` + htmlpkg.EscapeString(url) + `" rel="noopener noreferrer" target="_blank">` + htmlpkg.EscapeString(title) + `</a></h3>` + categoryBadge + `<p>` + htmlpkg.EscapeString(string(description)) + `</p><div class="summary">` + summary + `</div></div></article>`
+	return `<article class="` + class + `">` + media + `<div class="reading-body"><h3><a href="` + htmlpkg.EscapeString(url) + `" rel="noopener noreferrer" target="_blank">` + htmlpkg.EscapeString(title) + `</a></h3>` + categoryBadge + `<p>` + htmlpkg.EscapeString(string(description)) + `</p><div class="summary">` + summary + `</div></div></article>`
 
 }
 
