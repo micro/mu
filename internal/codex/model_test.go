@@ -143,3 +143,11 @@ func TestProviderNameDoesNotGrantPreviewAccess(t *testing.T) {
 		t.Fatalf("provider bypassed account gate: %v", e)
 	}
 }
+
+func TestToolArraysHaveItemsWithoutChangingRegistry(t *testing.T) {
+	original := map[string]any{"type": "array"}
+	got := toolSchema(original).(map[string]any)
+	if got["items"] == nil || original["items"] != nil {
+		t.Fatal("array adaptation missing or registry mutated")
+	}
+}

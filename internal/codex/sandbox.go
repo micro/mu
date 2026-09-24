@@ -155,7 +155,7 @@ func Check(ctx context.Context) error {
 		calls++
 		return gmai.ToolResult{ID: c.ID, Content: "MICRO_CODEX_OK"}
 	}))}
-	response, e := p.generate(ctx, client, &gmai.Request{SystemPrompt: "Follow the user's instruction exactly.", Prompt: "Call micro_probe once, then reply with exactly the text it returns.", Tools: []gmai.Tool{{Name: "micro_probe", Description: "Return the installation check result.", Properties: map[string]any{}}}})
+	response, e := p.generate(ctx, client, &gmai.Request{SystemPrompt: "Follow the user's instruction exactly.", Prompt: "Call micro_probe once, then reply with exactly the text it returns.", Tools: []gmai.Tool{{Name: "micro_probe", Description: "Return the installation check result.", Properties: map[string]any{"values": map[string]any{"type": "array", "description": "Optional test values; leave empty."}}}}})
 	close()
 	if e != nil {
 		return e

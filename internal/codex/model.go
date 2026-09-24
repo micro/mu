@@ -88,7 +88,11 @@ func (p *provider) generate(ctx context.Context, c *rpc, req *gmai.Request) (*gm
 			return nil, fmt.Errorf("duplicate Codex tool name")
 		}
 		allowed[t.Name] = true
-		tools = append(tools, map[string]any{"type": "function", "name": t.Name, "description": t.Description, "inputSchema": map[string]any{"type": "object", "properties": t.Properties}})
+		properties := make(map[string]any, len(t.Properties))
+		for name, property := range t.Properties {
+			properties[name] = toolSchema(property)
+		}
+		tools = append(tools, map[string]any{"type": "function", "name": t.Name, "description": t.Description, "inputSchema": map[string]any{"type": "object", "properties": properties}})
 	}
 	model := p.opts.Model
 	if model == "" {
@@ -275,4 +279,28 @@ func (p *provider) generate(ctx context.Context, c *rpc, req *gmai.Request) (*gm
 		return nil, fmt.Errorf("Codex returned no final answer")
 	}
 	return res, nil
+}
+
+// Registry schemas omit array item detail. Preserve that permissive contract
+// while supplying the items member required by OpenAI's tool schema validator.
+func toolSchema(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for k, x := range v {
+			out[k] = toolSchema(x)
+		}
+		if out["type"] == "array" && out["items"] == nil {
+			out["items"] = map[string]any{}
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, x := range v {
+			out[i] = toolSchema(x)
+		}
+		return out
+	default:
+		return value
+	}
 }
