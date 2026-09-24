@@ -297,6 +297,13 @@ Pages read this local view. Never synchronously fetch source records, external
 services or models when rendering Inbox or switching conversations. Build and
 refresh views in the background; retain usable cached content while doing so.
 The same instant-load requirement applies to Home and other product pages.
+Start the HTTP listener before restoring stores and registering services. During
+restoration, return a fast, retryable loading response; never run mutations on
+partially loaded stores or show missing history as an empty account. Publish
+readiness only after storage and hooks are initialized. Secondary projections
+and reindexing continue in the background after that. Shutdown during loading
+must not flush uninitialized stores over saved data.
+
 
 `internal/event.Commit` persists a service mutation and its factual event in
 one recoverable commit. Named consumers checkpoint only after saving their

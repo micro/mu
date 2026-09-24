@@ -37,7 +37,10 @@ import (
 )
 
 // serve builds the handler and runs the server until interrupted.
-func serve(addr string) {
+func serve(addr string, initialize func()) {
+	initialized := make(chan struct{})
+	stopped := make(chan struct{})
+	assets := app.Serve()
 	// Resolved once rather than per request: the auth map and the static
 	// suffixes are fixed for the life of the process.
 	authenticated := authRequired()
@@ -47,6 +50,9 @@ func serve(addr string) {
 	server := &http.Server{
 		Addr: addr,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if startingResponse(w, r, initialized, assets) {
+				return
+			}
 			w, finishTiming := app.TimeRequest(w, r)
 			defer finishTiming()
 			// Block known bot paths silently
@@ -460,31 +466,41 @@ func serve(addr string) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start SMTP server if enabled (disabled by default)
-	mail.StartSMTPServerIfEnabled()
+	// Protocols can mutate their stores immediately after accepting a client.
+	// Start them only after restoration and hooks are complete.
+	go func() {
+		select {
+		case <-initialized:
+		case <-stopped:
+			return
+		}
+		// Start SMTP server if enabled (disabled by default)
+		mail.StartSMTPServerIfEnabled()
 
-	// And IMAP, so the mail this instance receives can be read in whatever
-	// client somebody already has open. See service/mail/imap.go.
-	mail.StartIMAPServerIfEnabled()
+		// And IMAP, so the mail this instance receives can be read in whatever
+		// client somebody already has open. See service/mail/imap.go.
+		mail.StartIMAPServerIfEnabled()
 
-	// And submission, so that client can reply. IMAP on its own is a mailbox
-	// you can read and not answer, which is half an address.
-	mail.StartSubmissionServerIfEnabled()
+		// And submission, so that client can reply. IMAP on its own is a mailbox
+		// you can read and not answer, which is half an address.
+		mail.StartSubmissionServerIfEnabled()
 
-	// And XMPP, which is the same address in real time. asim@here is a mailbox
-	// and a chat address — one account, one local part, reachable two ways —
-	// so Conversations, Dino or Gajim is a client for this instance the same
-	// way Thunderbird already is. See service/chat/xmpp.go.
-	chat.StartXMPPServerIfEnabled()
-	// And the federated port. Separate because it is a separate decision: an
-	// operator may want their own people on XMPP without accepting connections
-	// from every other server on the internet.
-	chat.StartS2SIfEnabled()
+		// And XMPP, which is the same address in real time. asim@here is a mailbox
+		// and a chat address — one account, one local part, reachable two ways —
+		// so Conversations, Dino or Gajim is a client for this instance the same
+		// way Thunderbird already is. See service/chat/xmpp.go.
+		chat.StartXMPPServerIfEnabled()
+		// And the federated port. Separate because it is a separate decision: an
+		// operator may want their own people on XMPP without accepting connections
+		// from every other server on the internet.
+		chat.StartS2SIfEnabled()
 
-	// Log initial memory usage
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	app.Log("main", "Startup complete. Memory: Alloc=%dMB Sys=%dMB NumGC=%d", m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC)
+		// Log initial memory usage
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		app.Log("main", "Startup complete. Memory: Alloc=%dMB Sys=%dMB NumGC=%d", m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC)
+
+	}()
 
 	// Start memory monitoring goroutine
 	go func() {
@@ -512,9 +528,18 @@ func serve(addr string) {
 		} else {
 			app.Log("main", "Starting server on %s", addr)
 		}
-		// And on the screen, which is a different audience with a different
-		// question — see ready.go.
-		ready(addr, activated)
+		app.Announce("  Mu is listening; restoring saved data in the background.")
+		go func() {
+			initialize()
+			close(initialized)
+			select {
+			case <-stopped:
+				return
+			default:
+			}
+			ready(addr, activated)
+		}()
+
 		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			app.Log("main", "Server error: %v", err)
 		}
@@ -522,13 +547,18 @@ func serve(addr string) {
 
 	// Wait for interrupt signal
 	<-quit
+	close(stopped)
 	stopping := time.Now()
 	app.Log("main", "Shutting down server...")
 
 	// Flush the usage counters. They are saved on a slow cadence to keep the
 	// request path cheap, so without this a deploy — which is a restart every
 	// time — would drop the last minute of counts on every push.
-	usage.Save()
+	select {
+	case <-initialized:
+		usage.Save()
+	default: // Never replace saved counters with an uninitialized store.
+	}
 
 	// How long to let in-flight requests finish.
 	//
@@ -574,7 +604,11 @@ func serve(addr string) {
 	// After Shutdown, not before: an agent run finishing during the drain
 	// records its answer, and flushing first would write the file and then let
 	// that answer land in memory only.
-	thread.Flush()
+	select {
+	case <-initialized:
+		thread.Flush()
+	default: // An unfinished loader owns no writable conversation view yet.
+	}
 
 	// How long it took, because this is the other half of a slow restart and
 	// the half nobody measures. Shutdown waits for in-flight requests to
