@@ -2,8 +2,10 @@
 
 *{box-sizing:border-box}
 body{margin:0;min-height:100svh;min-height:100dvh;display:flex;flex-direction:column}
-a{color:inherit;text-decoration:none;text-underline-offset:3px}
+a{color:inherit;text-decoration:underline;text-underline-offset:3px}
 a:hover{color:#555;text-decoration:underline}
+:is(nav,header,h1,h2,h3,h4,.form-actions,.section-actions,.home-date,.home-card-heading,.home-resume,.metadata-row,.reading-meta) a{text-decoration:none}
+a:has(>.title){text-decoration:none}
 :is(.prose,.reader-content,.answer,.ib-body) a{text-decoration:underline}
 button,input,textarea,select{font:inherit;color:inherit}
 button,.btn,.oauth-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:5px 10px;min-height:32px;line-height:20px;border:1px solid #bbb;border-radius:6px;background:#f5f5f5;text-decoration:none;cursor:pointer;width:auto}
@@ -572,7 +574,7 @@ details>summary+*{margin-top:12px}
 body:has(.room-layout,.conversation-layout){height:var(--workspace-height,100dvh);min-height:0;overflow:hidden}
 body:has(.room-layout,.conversation-layout)>.page{display:flex;flex-direction:column;overflow:hidden}
 main:has(.room-layout,.conversation-layout){display:flex;flex-direction:column;flex:1;min-height:0;padding-bottom:12px}
-body:has(.room-layout,.conversation-layout)>footer{display:none}
+body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .room-toolbar{flex-shrink:0;max-height:30dvh;overflow:auto}
 .room-main{display:flex;flex-direction:column;flex:1;min-height:0;border:1px solid var(--border);border-radius:6px;overflow:hidden}
 header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(--border);font-size:.85rem}
