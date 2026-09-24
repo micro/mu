@@ -73,6 +73,7 @@ type AppTab struct {
 }
 
 type App struct {
+	Source      string `json:"source,omitempty"` // Opaque provenance supplied by the authenticated caller.
 	ID          string `json:"id"`
 	Slug        string `json:"slug"`
 	Name        string `json:"name"`
@@ -878,7 +879,11 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 
 	// JSON requests get the full app data
 	if app.WantsJSON(r) {
-		app.RespondJSON(w, a)
+		copy := *a
+		if _, viewer := auth.TrySession(r); viewer == nil || viewer.ID != a.AuthorID {
+			copy.Source = ""
+		}
+		app.RespondJSON(w, &copy)
 		return
 	}
 

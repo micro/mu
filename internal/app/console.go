@@ -23,7 +23,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 		if letters := []rune(name); len(letters) > 0 {
 			initial = strings.ToUpper(string(letters[0]))
 		}
-		links = `<a href="/">Home</a><a href="/inbox">Inbox</a><details class="account-menu"><summary aria-label="Account menu" title="` + html.EscapeString(name) + `"><span aria-hidden="true">` + html.EscapeString(initial) + `</span></summary><div class="account-menu-links"><a href="/account">Account</a>`
+		links = `<a href="/">Home</a><a href="/inbox">Inbox</a><a href="/work">Work</a><a href="/home/apps">Apps</a><details class="account-menu"><summary aria-label="Account menu" title="` + html.EscapeString(name) + `"><span aria-hidden="true">` + html.EscapeString(initial) + `</span></summary><div class="account-menu-links"><a href="/account">Account</a>`
 		if acc.Admin {
 			links += `<a href="/admin">Admin</a>`
 		}

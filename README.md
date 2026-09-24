@@ -77,6 +77,49 @@ from saved checkpoints. Agent and Work reserve execution before running tools;
 interrupted actions require review rather than automatic repetition. Transient
 notifications remain separate from this durable processing path.
 
+## Personal apps
+
+Ask Micro to build a small app in a conversation. The request runs in the
+background and appears in **Work** with its status and result. A completed app
+returns to the originating conversation once, including after a restart.
+**Apps** in the signed-in navigation opens your own saved collection. Open an
+app to use it; **Continue with Micro** returns to its conversation to request
+changes. Older apps without an originating conversation get a persistent one
+when you first continue them. Apps remain owned by their service; Home composes
+the collection and Work consumes committed build events through the service API.
+No model or external source is fetched to render these pages.
+
+### Marketplace direction — not yet implemented
+
+The first product to validate is a useful personal app that someone returns to.
+Marketplace acquisition is a separate lifecycle from generating or opening one:
+
+- An installation belongs to its user and refers to an immutable app release.
+  Personal data belongs to that user, separate from the creator and other users.
+- Installation shows the price and requested capabilities. Installing grants
+  neither unrestricted service access nor permission to spend or send messages.
+- Updates are explicit. Existing installations keep their release until the
+  owner accepts an update and any new permissions. Data migration must be
+  reversible before an update becomes active.
+- A paid acquisition requires confirmation and a durable entitlement linked to
+  an idempotent ledger transaction. Opening, embedding or refreshing an installed
+  app must not buy it again. Service usage charges must be disclosed separately.
+- Uninstalling removes access and shortcuts; deleting personal app data is a
+  separate explicit action. A creator cannot remove a purchased release merely
+  by changing the public listing.
+
+These are release requirements, not claims about the current app directory.
+Existing app prices are per-use and the directory does not yet provide durable
+purchase entitlements, pinned installations or seller payouts. Do not run a paid
+marketplace pilot until acquisition, access checks and ledger recovery are
+implemented and verified together.
+
+Start a curated pilot with a few small, usable apps. Observe whether people can
+create, reopen, retain their data and request an improvement without assistance;
+then measure repeat use and whether anyone actually chooses to pay. Publishing
+more listings is not evidence of demand. Shared groups and seller features follow
+that validation, with explicit shared ownership, permissions and billing.
+
 ## Google
 
 Optional Google connections provide access to Gmail, Calendar, Contacts, and

@@ -120,15 +120,16 @@ type AppReadRequest struct {
 
 // AppReadResponse is a model-ready description of an app.
 type AppReadResponse struct {
-	HTML string       `json:"html,omitempty"`
-	Item *result.Item `json:"item,omitempty"`
-	Text string       `json:"text"`
+	Source string       `json:"source,omitempty"`
+	HTML   string       `json:"html,omitempty"`
+	Item   *result.Item `json:"item,omitempty"`
+	Text   string       `json:"text"`
 }
 
 // Read returns the details of a specific app by its slug.
 // @example {"slug": "expense-tracker"}
 func (Server) Read(ctx context.Context, req *AppReadRequest, rsp *AppReadResponse) error {
-	if strings.HasPrefix(req.Slug, "build-") {
+	if GetApp(req.Slug) == nil && strings.HasPrefix(req.Slug, "build-") {
 		if j, err := readBuild(strings.TrimPrefix(req.Slug, "build-"), service.AccountFrom(ctx)); err == nil {
 			if j.State == "complete" {
 				rsp.Item = appResult(j.App)
@@ -149,6 +150,7 @@ func (Server) Read(ctx context.Context, req *AppReadRequest, rsp *AppReadRespons
 	rsp.Item = appResult(a)
 	if a.AuthorID == service.AccountFrom(ctx) {
 		rsp.HTML = a.RenderHTML()
+		rsp.Source = a.Source
 	}
 	rsp.Text = a.Name + " (" + a.Slug + ") by " + a.Author + "\n" + a.Description + "\nTags: " + a.Tags + "\nOpen: /apps/" + a.Slug
 	return nil
@@ -162,6 +164,8 @@ var Spec = service.Spec{
 	Icon:        "apps.svg",
 	Card:        service.Glance(Preview),
 	Endpoints: map[string]service.Endpoint{
+		"Collection":  {Needs: service.Caller, Doc: "List your saved apps and their source references"},
+		"Builds":      {Needs: service.Caller, Doc: "List your app build jobs and outcomes"},
 		"BuildStatus": {Doc: "Read your saved app build status by ID. Poll until complete or failed; the same ID survives restarts.", Needs: service.Caller},
 		"Build": {Writes: true, Doc: "Queue a durable app build and immediately return its ID and status URL. Use BuildStatus to retrieve progress and the completed app. Reuse request_key on retries. Builds survive server restarts",
 			Cost: quota.OpAppBuild, Needs: service.Caller},

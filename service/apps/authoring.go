@@ -31,7 +31,7 @@ import (
 // CreateApp saves a new app owned by author. It is the whole of what creating
 // an app is, extracted from the form handler so that a caller who is not a form
 // can do it.
-func CreateApp(authorID, name, slug, description, tags, html, icon string, price int, public bool) (*App, error) {
+func CreateApp(authorID, name, slug, description, tags, html, icon string, price int, public bool, source ...string) (*App, error) {
 	acc, err := auth.GetAccount(authorID)
 	if err != nil {
 		return nil, fmt.Errorf("account not found")
@@ -78,6 +78,9 @@ func CreateApp(authorID, name, slug, description, tags, html, icon string, price
 		CreatedAt: now, UpdatedAt: now,
 	}
 	mutex.Lock()
+	if len(source) > 0 {
+		a.Source = source[0]
+	}
 	snapshotVersion(a, "Initial version")
 	apps[slug] = a
 	mutex.Unlock()
@@ -120,7 +123,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	if err != nil {
 		return err
 	}
-	a, err := CreateApp(who, req.Name, req.Slug, req.Description, req.Tags, req.HTML, req.Icon, req.Price, req.Public && !req.Private)
+	a, err := CreateApp(who, req.Name, req.Slug, req.Description, req.Tags, req.HTML, req.Icon, req.Price, req.Public && !req.Private, service.SourceThreadFrom(ctx))
 	if err != nil {
 		return err
 	}
@@ -138,7 +141,7 @@ type EditRequest struct {
 	Tags        string `json:"tags" description:"New comma-separated tags. Left alone if omitted"`
 	HTML        string `json:"html" description:"New HTML, up to 256KB. Left alone if omitted"`
 	Icon        string `json:"icon" description:"New SVG icon. Left alone if omitted"`
-	Price       int    `json:"price" description:"Credits charged per use, 0 for free, up to 1000"`
+	Price       *int   `json:"price,omitempty" description:"Credits charged per use, 0 for free, up to 1000. Left alone if omitted"`
 }
 
 type EditResponse struct {
@@ -156,7 +159,11 @@ func (Server) Edit(ctx context.Context, req *EditRequest, rsp *EditResponse) err
 	if strings.TrimSpace(req.Slug) == "" {
 		return fmt.Errorf("slug is required")
 	}
-	a, err := UpdateAppOwned(who, req.Slug, req.Name, req.Description, req.Tags, req.HTML, req.Icon, req.Price)
+	price := -1
+	if req.Price != nil {
+		price = *req.Price
+	}
+	a, err := UpdateAppOwned(who, req.Slug, req.Name, req.Description, req.Tags, req.HTML, req.Icon, price)
 	if err != nil {
 		return err
 	}
@@ -202,8 +209,8 @@ func edited(req *EditRequest) string {
 			what = append(what, f.name)
 		}
 	}
-	if req.Price > 0 {
-		what = append(what, fmt.Sprintf("%d credits/use", req.Price))
+	if req.Price != nil {
+		what = append(what, fmt.Sprintf("%d credits/use", *req.Price))
 	}
 	if len(what) == 0 {
 		// Every field empty is a call that changed nothing, and saying so is

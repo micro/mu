@@ -66,6 +66,7 @@ import (
 
 // Load subscribes to the work agents are asked to do.
 func Load() {
+	loadAppBuilds()
 	go retryDeliveries()
 	for _, topic := range []string{event.TaskStarted, event.ScheduleDue} {
 		go func(topic string) {

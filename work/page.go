@@ -26,7 +26,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			api.JSONAction(w, r, "work", "submit")
 			return
 		}
-		if r.Method == "GET" && r.URL.Query().Get("id") == "" {
+		if r.Method == "GET" && r.URL.Query().Get("id") == "" && r.URL.Query().Get("build") == "" {
 			args := map[string]any{}
 			if status := r.URL.Query().Get("status"); status != "" {
 				args["status"] = status
@@ -50,6 +50,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	auth.SetCSRFCookie(w, r)
+	if id := r.URL.Query().Get("build"); id != "" {
+		for _, build := range buildsFor(acc.ID) {
+			if build.ID == id {
+				app.Respond(w, r, app.Response{Title: "App build", HTML: buildDetail(build), Data: build})
+				return
+			}
+		}
+		app.NotFound(w, r, "No app build with that ID")
+		return
+	}
 	if id := r.URL.Query().Get("id"); id != "" {
 		t, e := tasks.Get(acc.ID, id)
 		if e != nil {
@@ -91,20 +101,44 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<a href="/work?status=` + f.value + `"` + current + `>` + f.label + `</a>`)
 	}
 	b.WriteString(`<a href="/work?view=archived">Archived</a></nav>`)
-	rows := tasks.List(acc.ID, filter)
-	sort.SliceStable(rows, func(i, j int) bool { return rows[i].Created.After(rows[j].Created) })
-	filtered := rows[:0:0]
-	for _, t := range rows {
-		if t.Archived == archived {
-			filtered = append(filtered, t)
+	type entry struct {
+		title, target, status, kind string
+		created, updated            time.Time
+	}
+	var entries []entry
+	if !archived {
+		for _, build := range buildsFor(acc.ID) {
+			status := "doing"
+			switch build.State {
+			case "queued":
+				status = "todo"
+			case "complete":
+				status = "done"
+			case "failed":
+				status = "failed"
+			}
+			if filter != "" && filter != status {
+				continue
+			}
+			title := []rune(build.Prompt)
+			if len(title) > 100 {
+				title = append(title[:100], '…')
+			}
+			entries = append(entries, entry{string(title), "/work?build=" + url.QueryEscape(build.ID), status, "App build", build.Created, build.Updated})
 		}
 	}
-	pager := app.Paginate(r, len(filtered), 25)
-	for _, t := range filtered[pager.From:pager.To] {
-		b.WriteString(`<article class="record-card"><a class="record-title" href="/work?id=` + url.QueryEscape(t.ID) + `">` + html.EscapeString(t.Title) + `</a><div class="metadata-row">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><time datetime="` + t.Created.Format(time.RFC3339) + `" title="` + t.Created.Format(time.RFC1123) + `">Created ` + app.TimeAgo(t.Created) + `</time><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div></article>`)
+	for _, task := range tasks.List(acc.ID, filter) {
+		if task.Archived == archived {
+			entries = append(entries, entry{task.Title, "/work?id=" + url.QueryEscape(task.ID), task.Status, assignee(task), task.Created, task.Updated})
+		}
+	}
+	sort.SliceStable(entries, func(i, j int) bool { return entries[i].created.After(entries[j].created) })
+	pager := app.Paginate(r, len(entries), 25)
+	for _, item := range entries[pager.From:pager.To] {
+		b.WriteString(`<article class="record-card"><a class="record-title" href="` + item.target + `">` + html.EscapeString(item.title) + `</a><div class="metadata-row">` + badge(item.status) + `<span>` + html.EscapeString(item.kind) + `</span><time datetime="` + item.created.Format(time.RFC3339) + `" title="` + item.created.Format(time.RFC1123) + `">Created ` + app.TimeAgo(item.created) + `</time><span>Updated ` + app.TimeAgo(item.updated) + `</span></div></article>`)
 	}
 	b.WriteString(pager.Nav("/work?status=" + url.QueryEscape(filter) + "&view=" + url.QueryEscape(r.URL.Query().Get("view"))))
-	if len(filtered) == 0 {
+	if len(entries) == 0 {
 		b.WriteString(`<p>No work here.</p>`)
 	}
 	app.Respond(w, r, app.Response{Title: "Work", HTML: b.String()})
