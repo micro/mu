@@ -52,12 +52,10 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	if repeat != "daily" && repeat != "weekdays" {
 		return fmt.Errorf("choose daily or weekdays")
 	}
-	prompt := "Give me an evening debrief: meaningful developments I may have missed during the day, and what I need to prepare for tomorrow. Do not repeat unchanged news or market information from the morning brief or other updates Micro already showed me. Explain only material changes. Keep it short when little has changed."
-	if period == "morning" {
-		prompt = "Give me a morning brief: what happened overnight and what is relevant for today."
-	} else if period != "evening" {
-		return fmt.Errorf("choose morning or evening")
+	if period != "morning" {
+		return fmt.Errorf("only the morning brief is available")
 	}
+	prompt := "Give me a morning brief: what happened overnight and what is relevant for today."
 	now := time.Now().In(loc)
 	next := time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), 0, 0, loc)
 	for !next.After(now) || (repeat == "weekdays" && (next.Weekday() == time.Saturday || next.Weekday() == time.Sunday)) {
@@ -79,14 +77,11 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	if old != nil {
 		*e = *old
 	}
-	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Prompt, e.Paused = "brief", "Evening Debrief", next, zone, repeat, prompt, paused
+	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Prompt, e.Paused = "brief", "Morning brief", next, zone, repeat, prompt, paused
 	e.Fired, e.FiredAt = false, time.Time{}
 	e.Builtin = builtin
 	if builtin && old != nil {
 		e.Paused = old.Paused
-	}
-	if period == "morning" {
-		e.Title = "Morning brief"
 	}
 	if len(news) > 0 {
 		value := news[0]
@@ -109,8 +104,11 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	return nil
 }
 
-// Existing daily briefs remain intact. New accounts are not enrolled implicitly.
-func ensureDefaultBriefs() {}
+// Retired evening schedules are never shown or executed. Keep recognition of
+// legacy records so old persisted schedules cannot resume after a restart.
+func retiredBrief(e *Event) bool {
+	return e != nil && e.Kind == "brief" && BriefPeriod(e) == "evening"
+}
 
 // The first shipped brief default was a tomorrow brief at 20:00. Migrate that
 // exact legacy preset once; renamed schedules and other times stay untouched.
@@ -135,8 +133,8 @@ func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...st
 	if len(periods) > 0 {
 		period = periods[0]
 	}
-	if period != "morning" && period != "evening" {
-		return fmt.Errorf("choose morning or evening")
+	if period != "morning" {
+		return fmt.Errorf("only the morning brief is available")
 	}
 	if owner == "" {
 		return fmt.Errorf("sign in to change your brief")
@@ -160,11 +158,6 @@ func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...st
 		}
 		now := time.Now().In(loc)
 		e = Event{ID: uuid.NewString(), Owner: owner, Kind: "brief", Builtin: true, Title: "Morning brief", Zone: zone, Repeat: "daily", Prompt: "Give me a brief for today", Created: time.Now().UTC(), When: time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, loc)}
-	}
-	if old == nil && period == "evening" {
-		e.Title, e.Prompt = "Evening Debrief", "Give me an evening debrief for tomorrow"
-		at := e.When
-		e.When = time.Date(at.Year(), at.Month(), at.Day(), 20, 0, 0, 0, at.Location())
 	}
 	e.Builtin = false // An explicit preference, not automatic enrollment.
 	e.Paused = !enabled

@@ -1,6 +1,10 @@
 package events
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestBriefSchedulePreservesIdentityAndPreferences(t *testing.T) {
 	const owner = "brief_schedule_preferences_test"
@@ -34,27 +38,41 @@ func TestBriefSchedulePreservesIdentityAndPreferences(t *testing.T) {
 	}
 }
 
-func TestMorningAndEveningSchedulesAreIndependent(t *testing.T) {
-	const owner = "brief_independent_test"
+func TestEveningBriefRetired(t *testing.T) {
+	const owner = "retired_brief_test"
 	defer DeleteAll(owner)
-	if err := scheduleBrief(owner, "06:00", "Europe/London", "weekdays", "morning", false, false, false); err != nil {
+	if err := ScheduleBrief(owner, "06:00", "Europe/London", "weekdays", "morning", false); err != nil {
 		t.Fatal(err)
 	}
 	morning := Brief(owner)
-	if err := scheduleBrief(owner, "20:00", "Europe/London", "daily", "evening", false, false, true); err != nil {
-		t.Fatal(err)
+	if err := ScheduleBrief(owner, "20:00", "Europe/London", "daily", "evening", false); err == nil {
+		t.Fatal("evening schedule accepted")
 	}
-	evening := Brief(owner, "evening")
-	if evening == nil || evening.ID == morning.ID {
-		t.Fatal("evening replaced morning")
+	if err := ConfigureBrief(owner, true, true, "Europe/London", "evening"); err == nil {
+		t.Fatal("evening preference accepted")
 	}
-	if err := ConfigureBrief(owner, false, false, "Europe/London", "evening"); err != nil {
-		t.Fatal(err)
+	mu.Lock()
+	for _, title := range []string{"Evening brief", "Evening Debrief", "Daily brief"} {
+		id := owner + title
+		events[id] = &Event{ID: id, Owner: owner, Kind: "brief", Title: title, Prompt: "Give me a brief for tomorrow", When: time.Now().Add(-time.Hour), Repeat: "daily"}
 	}
-	if Brief(owner).Paused || !Brief(owner, "evening").Paused || BriefWorldNews(Brief(owner)) {
-		t.Fatal("evening toggle affected morning")
+	mu.Unlock()
+	if len(List(owner)) != 1 {
+		t.Fatal("retired briefs visible")
 	}
-	if Brief(owner).Repeat != "weekdays" || Brief(owner, "evening").Repeat != "daily" {
-		t.Fatal("cadence changed")
+	fireDue()
+	mu.RLock()
+	for _, title := range []string{"Evening brief", "Evening Debrief", "Daily brief"} {
+		if events[owner+title] != nil {
+			t.Error("retired brief retained", title)
+		}
+	}
+	mu.RUnlock()
+	after := Brief(owner)
+	if after == nil || after.ID != morning.ID || after.Paused || after.Repeat != morning.Repeat || !after.When.Equal(morning.When) {
+		t.Fatal("morning schedule changed")
+	}
+	if strings.Contains(strings.ToLower(briefScheduleHTML(owner)), "evening") {
+		t.Fatal("evening option remains")
 	}
 }

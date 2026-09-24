@@ -80,15 +80,8 @@ func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		loc = z
 	}
 	b.WriteString(`<p class="text-muted">Reminders and work scheduled with Micro. Times shown in ` + html.EscapeString(loc.String()) + `.</p>`)
-	for _, period := range []string{"morning", "evening"} {
-		if events.Brief(acc.ID, period) != nil {
-			continue
-		}
-		title := "Morning brief"
-		if period == "evening" {
-			title = "Evening Debrief"
-		}
-		fmt.Fprintf(&b, `<section class="record-card"><a class="record-title" href="/events?view=brief#%s-brief">%s</a><p class="text-muted">Not scheduled</p></section>`, period, title)
+	if events.Brief(acc.ID) == nil {
+		b.WriteString(`<section class="record-card"><a class="record-title" href="/events?view=brief#morning-brief">Morning brief</a><p class="text-muted">Not scheduled</p></section>`)
 	}
 	items := events.List(acc.ID)
 	active := items[:0]
@@ -110,9 +103,6 @@ func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		destination := "/events?id=" + url.QueryEscape(e.ID)
 		if e.Kind == "brief" {
 			kind, detail = "Brief", "Overnight developments and what matters today."
-			if events.BriefPeriod(e) == "evening" {
-				kind, detail = "Debrief", "Developments during the day and preparation for tomorrow."
-			}
 		}
 		state := "Scheduled"
 		if e.Paused {
