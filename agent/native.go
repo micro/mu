@@ -827,7 +827,7 @@ func nativeAnswer(final string, recorder *nativeToolRecorder, opts QueryOpts) (s
 //
 // QueryOpts.OnStep was fired from one place — inside the hand-rolled planner —
 // so every caller asking for steps got them only on the path that had already
-// stopped being the one that runs. agent/work is the caller, and the steps it
+// stopped being the one that runs. work is the caller, and the steps it
 // records against a task were empty for that reason: not a missing feature, a
 // hook wired to the wrong half.
 //

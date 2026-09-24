@@ -13,6 +13,7 @@ import (
 
 	"mu/internal/dir"
 	"mu/internal/event"
+	"mu/internal/persist"
 )
 
 // SearchOptions configures search behavior
@@ -77,42 +78,7 @@ func dataPath(key string) (string, error) {
 // balance in it. Mode is 0600 throughout: these files hold credentials,
 // sessions, tokens, passkeys and wallet state.
 func writeAtomic(file string, b []byte) error {
-	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		return err
-	}
-	tmp, err := os.CreateTemp(filepath.Dir(file), "."+filepath.Base(file)+".tmp*")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	// Best-effort cleanup if we fail before the rename succeeds.
-	defer func() {
-		if tmpName != "" {
-			os.Remove(tmpName)
-		}
-	}()
-
-	if err := tmp.Chmod(0600); err != nil {
-		tmp.Close()
-		return err
-	}
-	if _, err := tmp.Write(b); err != nil {
-		tmp.Close()
-		return err
-	}
-	// fsync before rename so the data is on disk, not just in the page cache.
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(tmpName, file); err != nil {
-		return err
-	}
-	tmpName = "" // renamed; nothing to clean up
-	return nil
+	return persist.WritePath(file, b)
 }
 
 // SaveFile saves data to disk
@@ -126,11 +92,11 @@ func SaveFile(key, val string) error {
 
 // LoadFile loads a file from disk
 func LoadFile(key string) ([]byte, error) {
-	file, err := dataPath(key)
+	_, err := dataPath(key)
 	if err != nil {
 		return nil, err
 	}
-	return os.ReadFile(file)
+	return persist.Read(key)
 }
 
 // ListKeys returns the file names directly under a key prefix, without their
@@ -231,7 +197,7 @@ func LoadJSON(key string, val interface{}) error {
 	if err != nil {
 		return err
 	}
-	b, err := os.ReadFile(file)
+	b, err := persist.Read(key)
 	if err != nil {
 		// No file is not a failure: a store that has never been written to
 		// starts empty, which is correct and is the common case on first run.

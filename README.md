@@ -72,7 +72,7 @@ Google stops new reads; it does not erase answers already saved in your Inbox.
 ## Work
 
 An explicitly requested job can run in the background and return its result to
-the originating conversation. Execution lives under `agent/work`; task records
+the originating conversation. Execution lives under `work`; task records
 live in `service/tasks`. The personal daily brief remains available. Other
 unsolicited model-generated feeds are disabled.
 

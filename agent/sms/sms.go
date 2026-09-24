@@ -3,7 +3,7 @@ package sms
 // Answering a text.
 //
 // The same seam as agent/mail and agent/chat: service/sms owns the number and
-// may not call an agent, so it announces what arrived on event.SMSForAgent and
+// may not call an agent, so it announces what arrived on event.SMSVerified and
 // this answers.
 //
 // Only the verified owner of a number may use their assistant through it.
@@ -36,12 +36,12 @@ func clientFor(channel svcsms.Channel) string {
 
 // Load subscribes to texts that want an answer.
 func Load() {
-	sub := event.Subscribe(event.SMSForAgent)
+	sub := event.Subscribe(event.SMSVerified)
 	go func() {
 		for e := range sub.Chan {
 			t, ok := textedIn(e.Data)
 			if !ok {
-				app.Log("sms", "%s carried no message", event.SMSForAgent)
+				app.Log("sms", "%s carried no message", event.SMSVerified)
 				continue
 			}
 			// One goroutine per text, recovered: answering is a model call and
@@ -60,6 +60,7 @@ func Load() {
 
 // texted is one message that is expecting an answer.
 type texted struct {
+	ID      string
 	Owner   string
 	From    string
 	Text    string
@@ -71,7 +72,7 @@ func textedIn(data map[string]interface{}) (texted, bool) {
 		v, _ := data[k].(string)
 		return v
 	}
-	t := texted{Owner: str("owner"), From: str("from"), Text: str("text"),
+	t := texted{ID: str("id"), Owner: str("owner"), From: str("from"), Text: str("text"),
 		Channel: svcsms.Channel(str("channel"))}
 	if t.Owner == "" || t.From == "" || strings.TrimSpace(t.Text) == "" {
 		return texted{}, false
@@ -86,8 +87,9 @@ func answer(t texted) {
 		return
 	}
 	res, err := agent.Ask(agent.AskRequest{
-		Account: t.Owner,
-		Client:  clientFor(t.Channel),
+		Account:    t.Owner,
+		MessageRef: t.ID,
+		Client:     clientFor(t.Channel),
 		// The number is the conversation, so a second text continues the first.
 		// A phone has no threads; the person on the other end is the thread.
 		Thread:  t.From,

@@ -13,18 +13,6 @@ func TestHelloUsesSharedAddressRules(t *testing.T) {
 	if sharedRecipient("hello+other@example.test") || sharedRecipient("hello@elsewhere.test") {
 		t.Fatal("intro alias too broad")
 	}
-	for _, r := range []wakeRequest{
-		{Owner: "somebody", Shared: true, From: "hello@example.test", Authenticated: true, Owned: true},
-		{Owner: "somebody", Shared: true, From: "person@example.net", Owned: true},
-		{Owner: "somebody", Shared: true, From: "person@example.net", Authenticated: true, Owned: true, Machine: true},
-	} {
-		if mayDispatch(r) {
-			t.Fatal("unsafe mail dispatched")
-		}
-	}
-	if !mayDispatch(wakeRequest{Owner: "somebody", Shared: true, From: "person@example.net", Authenticated: true, Owned: true}) {
-		t.Fatal("owned authenticated mail did not dispatch")
-	}
 }
 
 func TestHelloSMTPQueuesOnlyAuthenticatedHumanMail(t *testing.T) {

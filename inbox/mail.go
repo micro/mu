@@ -1,4 +1,5 @@
-package mail
+// Inbox owns the projection of incoming correspondence. Services keep the source records.
+package inbox
 
 // Every delivery goes in the record.
 //
@@ -19,24 +20,19 @@ package mail
 // be one function and must not double-record. thread.Add settles that on the
 // Message-ID: the same arrival described twice is one message.
 //
-// Through the agent's own door rather than around it — agent.Said is what every
-// other client uses to write down what a person wrote, and there is no version
-// of this that is special enough to reach past it.
-
 import (
 	"net/url"
 	"strings"
 
-	"mu/agent"
 	"mu/internal/thread"
 	"mu/service/mail"
 )
 
-// recordDelivery writes an arriving message into the system of record.
+// recordMail writes an arriving message into the system of record.
 //
 // Keyed the same way answerMail keys it, so a chain that gets answered and a
 // chain that does not are the same conversation rather than two — see chainKey.
-func recordDelivery(m mail.InboundMail) {
+func recordMail(m mail.InboundMail) {
 	// The body, not the subject and the body.
 	//
 	// asked() joins them because that is what the *agent* is handed: to a model
@@ -45,7 +41,7 @@ func recordDelivery(m mail.InboundMail) {
 	// meant a reader saw it as the heading and again at the top of every message
 	// in the thread. thread.Name is how a client says what a conversation is
 	// about without writing it into what somebody said.
-	text := body(m)
+	text := incomingMailBody(m)
 	if m.Owner == "" {
 		return
 	}
@@ -70,13 +66,13 @@ func recordDelivery(m mail.InboundMail) {
 	}
 	th := thread.ByRef(m.Owner, append(thread.Refs(m.InReplyTo), thread.Refs(m.References)...)...)
 	if th == nil {
-		th = thread.Open(m.Owner, Client, chainKey(m))
+		th = thread.Open(m.Owner, "mail", mailKey(m))
 	}
 	if th == nil {
 		return
 	}
-	thread.Name(m.Owner, th.ID, cleanSubject(m.Subject))
-	agent.SaidTo(m.Owner, th.ID, text, m.MessageID, m.From, m.To)
+	thread.Name(m.Owner, th.ID, mailSubject(m.Subject))
+	thread.Add(thread.Message{Account: m.Owner, Thread: th.ID, Role: thread.RolePerson, Text: text, Ref: m.MessageID, From: m.From, To: m.To})
 	// The name behind the address, which a message cannot carry — it belongs to
 	// whoever wrote in, not to each line they wrote.
 	if name := strings.TrimSpace(m.FromName); name != "" && m.From != "" {
@@ -85,12 +81,52 @@ func recordDelivery(m mail.InboundMail) {
 	}
 }
 
-// InboxURL records a delivery before returning its owner-scoped conversation link.
+// MailURL records a delivery before returning its owner-scoped conversation link.
 // Recording is idempotent by Message-ID, including when the subscriber runs first.
-func InboxURL(m mail.InboundMail) string {
-	recordDelivery(m)
+func MailURL(m mail.InboundMail) string {
+	recordMail(m)
 	if th := thread.ByRef(m.Owner, m.MessageID); th != nil {
 		return "/inbox?id=" + url.QueryEscape(th.ID)
 	}
 	return "/inbox"
+}
+
+func mailKey(m mail.InboundMail) string {
+	if refs := thread.Refs(m.References); len(refs) > 0 {
+		return refs[0]
+	}
+	if refs := thread.Refs(m.InReplyTo); len(refs) > 0 {
+		return refs[0]
+	}
+	if m.MessageID != "" {
+		return m.MessageID
+	}
+	// Nothing to key on at all. The address is a poor thread — everyone who
+	// writes to it lands in one — so it is scoped by sender, which at least
+	// keeps two strangers apart.
+	return m.To + " " + m.From
+}
+
+func mailSubject(s string) string {
+	s = strings.TrimSpace(s)
+	for {
+		l := strings.ToLower(s)
+		switch {
+		case strings.HasPrefix(l, "re:"):
+			s = strings.TrimSpace(s[3:])
+		case strings.HasPrefix(l, "fwd:"):
+			s = strings.TrimSpace(s[4:])
+		case strings.HasPrefix(l, "fw:"):
+			s = strings.TrimSpace(s[3:])
+		default:
+			return s
+		}
+	}
+}
+
+func incomingMailBody(m mail.InboundMail) string {
+	if b := strings.TrimSpace(m.Text); b != "" {
+		return b
+	}
+	return strings.TrimSpace(m.Body)
 }

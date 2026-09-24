@@ -28,7 +28,7 @@
 // worked only because chat.Load() happens to be unconditional in boot.go.
 //
 // So the services announce and this subscribes, which is the same shape as
-// service/mail and agent/mail, and as event.RequestWork and agent/work. The
+// service/mail and agent/mail, and as durable service events and work. The
 // direction is the one the layering asks for.
 //
 // # What it does not decide

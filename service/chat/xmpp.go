@@ -36,7 +36,7 @@ package chat
 // # What the agent is here
 //
 // A participant, not a gateway. The agent is reachable at a JID like anything
-// else, and a message to it is announced on event.ChatForAgent for agent/chat
+// else, and a message to it is announced on event.ChatAddressed for agent/chat
 // to answer — the same seam the websocket rooms now use, so this door needed no
 // second one. A room with no agent in it is just a room, and everything here
 // works with the model switched off, which is the test for whether a protocol

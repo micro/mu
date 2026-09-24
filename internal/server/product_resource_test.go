@@ -3,10 +3,10 @@ package server
 import (
 	"encoding/json"
 	"mu/agent"
-	"mu/agent/work"
 	"mu/inbox"
 	"mu/internal/api"
 	"mu/internal/auth"
+	"mu/work"
 	"net/http/httptest"
 	"strings"
 	"testing"

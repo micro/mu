@@ -10,7 +10,7 @@ package events
 // Thursday that is actually full is not a smaller version of being useful.
 //
 // These hooks let main.go attach an outside calendar without this package
-// importing a client for it. Same pattern as OnFire and OnCreate: events stays
+// importing a client for it. The host supplies the integration: events stays
 // the thing that owns scheduling, and knows nothing about who else keeps one.
 //
 // Unset hooks are the normal case — a self-hosted Mu with no Google credentials

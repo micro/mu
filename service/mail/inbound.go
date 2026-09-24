@@ -1,26 +1,8 @@
 package mail
 
-// Saying that mail arrived.
-//
-// This service used to know what an agent was. There was a `var InboundAgent
-// func(InboundMail)` here, filled in from the server's wiring, and a rule
-// called shouldWakeAgent — a mail server with a special case for one feature of
-// the product on top of it. That became a registration: something said it
-// handled mail at an address and this dispatched to it.
-//
-// A registration is still a call, and it left two mechanisms for one fact —
-// this registry, and event.MailReceived on the bus, which internal/event
-// already describes correctly: "Mail arriving is a fact, not a call. Anything
-// that wants to act on it subscribes." So the registry is gone and there is one
-// mechanism. Nothing here knows whether anything is listening.
-//
-// What stays is the part that is genuinely mail's business: whether the person
-// who wrote in is entitled to be listened to at all. That guard is not a
-// subscriber's to make — it needs the SPF and DKIM results, which exist only
-// inside the SMTP session, and it is the same question whoever is listening.
-//
-// It is enforced by which topic a message is published on rather than by a
-// field on it. See event.MailForAgent for why.
+// The transport publishes acceptance and authentication facts. Subscribers
+// decide whether to respond; the durable stored-message event independently
+// maintains Inbox's view.
 
 import (
 	"encoding/json"
@@ -33,38 +15,19 @@ import (
 // Kept as the name of that shape, which cc.go and the agent roster both read.
 const Tagged = "+"
 
-// deliverInbound says a message arrived, and separately says whether it may
-// wake an agent.
-//
-// Called after the message is saved, so the mail is in the inbox whether or not
-// anything acts on it.
-//
-// Two publications, not one with a flag. The first is a fact — this arrived,
-// it is theirs — and has no gate on it, because mail from somebody you have
-// never met is still mail you were sent. Conflating the two is how the inbox
-// came to hold only the conversations you had started: nothing but
-// agent-addressed mail was ever handed on, so nothing else was ever recorded,
-// and a page whose whole claim is that things turn up in it showed an empty
-// list to an account with a full mailbox.
-//
-// Spam is the one exclusion and it is made here rather than by each subscriber:
-// it was refused at the door in every sense that matters, and a record full of
-// it is not a record of anything.
+// deliverInbound publishes facts after storage, excluding refused spam.
 func deliverInbound(m InboundMail, r wakeRequest) {
 	if r.IsSpam {
 		return
 	}
-	// Only the second of the two. "It arrived" is announced by SendMessageTo,
-	// which is the one place a message is stored and so the one place every
-	// delivery path reaches — this was announcing it as well, for the SMTP
-	// path alone, which is how mail delivered locally came to be absent from
-	// the record while mail from outside was in it. See SendMessageTo.
-	//
-	// What is left here is the fact only this path knows: the sender passed
-	// SPF or DKIM, and this account has heard of them.
-	if mayDispatch(r) {
-		announce(event.MailForAgent, m)
+	b, err := json.Marshal(m)
+	if err != nil {
+		return
 	}
+	event.Publish(event.Event{Type: event.MailAccepted, Data: map[string]interface{}{
+		"message": string(b), "authenticated": r.Authenticated, "owned": r.Owned, "machine": r.Machine,
+	}})
+
 }
 
 // deliveredTo is the address a local delivery arrived at, which a Delivery

@@ -22,7 +22,7 @@ package inbox
 // panel that held it, which went with it.
 //
 // So what is left is the async half, which was always the better one and was
-// already built: the conversation travels into the task, agent/work picks it up,
+// already built: the conversation travels into the task, work picks it up,
 // and the answer arrives on this thread like any other message. Nothing to watch.
 //
 // It is not a reply. Nothing typed here is sent to anybody: the conversation is
@@ -101,7 +101,7 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 // hand turns the conversation into work and gives it away.
 //
 // No hook and no agent. tasks.Run announces that work was asked for and
-// agent/work subscribes, so starting work needs nothing from agent/ — which is
+// work subscribes, so starting work needs nothing from agent/ — which is
 // what inverting those three hooks bought. The import is the plain one this
 // package's doc already argues for with service/mail: a service is neither
 // internal/ nor a consumer of tools, so there is no cycle and no hook to
@@ -357,7 +357,7 @@ var DefaultAgentName string
 //
 // A form field is chosen by whoever posts it, so an id that is not one of this
 // account's agents is not an agent — it becomes the default rather than an
-// error, which is what agent/work does with an unknown name for the same
+// error, which is what work does with an unknown name for the same
 // reason. Nothing downstream could reach somebody else's agent with it either
 // (AskAs is account-scoped), but a task should not be stored carrying a value
 // that means nothing.

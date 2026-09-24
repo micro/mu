@@ -113,6 +113,8 @@ func Run(args []string) int {
 		return runLogout(rest, &rc)
 	case "config":
 		return runConfig(rest, &rc)
+	case "codex":
+		return runCodex(rest)
 	case "setup":
 		return runSetup(rest)
 	case "x402":

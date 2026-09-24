@@ -85,63 +85,6 @@ type wakeRequest struct {
 	Machine bool
 }
 
-// mayDispatch is the whole rule, in one place, so it can be read and tested
-// without standing up an SMTP session.
-//
-// It asks whether this message is entitled to wake anything at all — not what
-// will be woken, which is the registry's business and used to be a special case
-// for agents right here.
-func mayDispatch(r wakeRequest) bool {
-	if r.IsSpam {
-		return false
-	}
-	// Only agent@ is an instruction endpoint. All plus aliases are filters.
-	if !r.Shared || r.Tag != "" {
-		return false
-	}
-	// Our own reply coming back. An agent answering its own answer is a model
-	// call per turn, forever. Two forms: the shared address an agent replies
-	// from — tagged or not, see fromSharedAgent — and any address writing to
-	// itself.
-	if fromSharedAgent(r.From) {
-		return false
-	}
-	if r.To != "" && strings.EqualFold(r.From, r.To) {
-		return false
-	}
-	if !r.Authenticated {
-		return false
-	}
-	// Nothing a machine sent on its own. RFC 3834 exists because two automatic
-	// responders will talk to each other until somebody notices, and an agent
-	// is the most expensive possible participant in that: a model call per
-	// turn, forever. A DMARC report is the case that made this obvious — it is
-	// DKIM-signed by Google, so it authenticates, and there is nobody on the
-	// other end to answer.
-	//
-	// After the authentication check rather than before, because the headers
-	// are a claim like any other and cost nothing to forge — this narrows what
-	// authenticated mail may do, it is not a filter on its own.
-	if r.Machine {
-		return false
-	}
-	// Signed in as this account, rather than claiming to be it.
-	//
-	// SenderIsAccountOwner answers "is the From header really this account's owner"
-	// for mail arriving off the network, where From is only a claim and a
-	// verified external address is the strongest evidence available. Over
-	// submission the question was already answered, by a token, before the
-	// message was accepted at all — and asking it again returns no, because
-	// the From on a submitted message is necessarily the *instance* address
-	// (ownsAddress requires it) while a verified address is somebody's
-	// external one. So writing to agent@ from a mail client filed the mail and
-	// woke nothing, which is the same silence as not having built it.
-	if r.Owned {
-		return true
-	}
-	return SenderIsAccountOwner(r.Owner, r.From)
-}
-
 // machineMail reports whether a message was sent by a machine on its own
 // account, from the headers standardised for exactly this question.
 //

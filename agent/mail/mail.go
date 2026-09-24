@@ -1,23 +1,8 @@
 package mail
 
-// The agent's mail behaviour: what it does when a message arrives.
-//
-// It was client/mail, a top-level directory called client with one member in
-// it, and the package comment argued with its own name — a client connects to
-// somebody else's network, and here this instance runs the server. What it
-// actually does is react: which agent answers, how much of the thread it is
-// reminded of, what it says when it has been copied into somebody else's
-// conversation, and that every delivery reaches the record. That is agent
-// behaviour parameterised by a channel, so it lives under the agent.
-//
-// It reacts by subscribing. service/mail publishes two facts — one that a
-// message arrived, one that a message may wake an agent — and knows nothing
-// about who listens. There used to be a registry there as well as the bus,
-// which is two mechanisms for one fact; see service/mail/inbound.go.
-//
-// The gate is not this package's to apply and it never sees a message that
-// failed it: EventMailForAgent is only published when mayDispatch passes. See
-// event.MailForAgent for why that is a topic rather than a flag.
+// Mail response policy belongs to the agent. The mail service publishes
+// transport facts; this subscriber checks authentication, ownership and loop
+// prevention before invoking Agent. Inbox records arrivals independently.
 
 import (
 	"fmt"
@@ -79,11 +64,10 @@ func Load() {
 	// What arrived, whoever sent it. No gate: mail from somebody you have never
 	// met is still mail you were sent, and leaving it out of the record is how
 	// /inbox came to show an empty list to an account with a full mailbox.
-	react(event.MailReceived, recordDelivery)
 
 	// And what may be answered. A separate topic, so this cannot see a message
 	// the gate refused.
-	react(event.MailForAgent, answerMail)
+	react(event.MailAccepted, answerMail)
 }
 
 // react runs f for every message on a topic.
@@ -107,6 +91,9 @@ func react(topic string, f func(mail.InboundMail)) {
 						app.Log("mail", "reacting to %s panicked: %v", topic, rec)
 					}
 				}()
+				if topic == event.MailAccepted && !acceptedInstruction(m, e.Data) {
+					return
+				}
 				f(m)
 			}(m)
 		}
@@ -142,29 +129,6 @@ func body(m mail.InboundMail) string {
 		return b
 	}
 	return strings.TrimSpace(m.Body)
-}
-
-// cleanSubject is the subject with the reply and forward markers off the front,
-// so a thread is named once and not renamed "Re: Re: Lunch" on the third turn.
-//
-// thread.Name keeps the first name a conversation is given, so this only
-// matters when the first message in is itself a reply — mail forwarded into an
-// agent, or a chain this instance joined halfway.
-func cleanSubject(s string) string {
-	s = strings.TrimSpace(s)
-	for {
-		l := strings.ToLower(s)
-		switch {
-		case strings.HasPrefix(l, "re:"):
-			s = strings.TrimSpace(s[3:])
-		case strings.HasPrefix(l, "fwd:"):
-			s = strings.TrimSpace(s[4:])
-		case strings.HasPrefix(l, "fw:"):
-			s = strings.TrimSpace(s[3:])
-		default:
-			return s
-		}
-	}
 }
 
 // Mail addressed to an agent wakes it, and it answers in the thread.

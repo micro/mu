@@ -48,9 +48,11 @@ or POST JSON to `/agent/<name>` with a product token, where Mu runs the
 agent and manages its tools. Built-in agents also run without anybody present: the
 digest, the brief, moderation and work.
 
-**The inbox** is one record of everything said, on whichever channel it arrived:
-mail, chat, SMS, WhatsApp, the web. It is `internal/thread`, not an email
-folder, and a new channel joins that record rather than starting a second one.
+**Inbox** owns the local view of incoming correspondence and agent conversations.
+Mail, chat and SMS retain their own service records. Inbox projects committed
+service events into `internal/thread`, caching content, previews and source
+references alongside local read state. Recording arrivals does not depend on an
+agent deciding to answer. Agent conversations are written directly by Agent.
 
 **Home** is the signed-in personal overview: assistant prompt, brief, inbox and relevant context.
 
@@ -97,7 +99,7 @@ anything else; chat was the protocol that did not. The claim stands when a
 message from here lands on a Prosody account and one comes back.
 
 Background work now has a dedicated public surface.
-`service/tasks`, `agent/work` and `event.WorkForAgent` run work nobody is
+`service/tasks`, top-level `work` and durable `tasks.started` events run work nobody is
 present for; `/work` and the public Work operations expose its state and outcome. Outbound is the same gap from the other
 side — mail leaving, an x402 payment to another server — and `X402_SERVERS` is
 read by a client no tool exposes. Inbound has three good rungs; outbound has
@@ -283,31 +285,35 @@ Three words that are not the same thing:
 - **Context** — what is assembled for one run out of both, plus live tool data.
   Assembled fresh each time, never stored.
 
-### The system of record is not a service
+### Conversations and service-owned records
 
-`internal/thread` holds what was said: a message, on a thread, on a client, for
-an account. It is written on every turn whether or not anybody asks.
+Agent owns persistent conversations; `internal/thread` supplies their storage.
+It also holds Inbox's derived correspondence view. Mail, chat and SMS own their
+original messages and expose them through service interfaces. Cached copies
+carry source references and are updated or invalidated by the Inbox consumer.
+The cache is not an alternative source of truth for those services.
 
-**A service is something a caller may choose to use. A system of record is not a
-choice.** The core of the product must not sit behind a decision an agent takes,
-because an agent that forgot to call it would simply stop remembering. It keeps
-the company of the others nobody chooses: `internal/quota`, `internal/x402`,
-`internal/auth`.
+Pages read this local view. Never synchronously fetch source records, external
+services or models when rendering Inbox or switching conversations. Build and
+refresh views in the background; retain usable cached content while doing so.
+The same instant-load requirement applies to Home and other product pages.
 
-Reading is a different question and a service over it is welcome, because
-searching your own past *is* something an agent decides to do. That service is
-`service/recall`, and the test for whether it is built in the right place:
-**delete the service and nothing breaks.** Clients still record, the agent still
-gets its history, the pages still render; you lose only the ability to go
-looking on purpose.
+`internal/event.Commit` persists a service mutation and its factual event in
+one recoverable commit. Named consumers checkpoint only after saving their
+results. Delivery is at least once; consumers must deduplicate by event or
+source identity. Work receipts prevent blindly replaying model/tool actions
+after a crash. External notification attempts are reserved before sending;
+a crash during delivery may require manual review rather than automatic replay.
+`Publish` remains the transient broker for existing integrations and hints;
+not all older publications have migrated to the durable outbox.
 
-One thing recall does own, and it is worth knowing why: deleting an account.
-Nothing else in the catalogue knows the record exists — it is written by the
-machinery, so no service claimed it and no deletion hook cleared it.
-
-Messages, not events. An event log that accepts anything has no schema and
-cannot be queried a year later, and there are already two event-shaped things:
-`service/stream` is the public timeline, `internal/usage` the counters.
+Events carry resource identity, version and necessary arrival facts, rather
+than becoming a second store of private message bodies. Background consumers
+resolve contents via the service API. Home commands still call Agent directly.
+`service/recall` provides optional search over conversations; removing recall
+does not stop the Agent or Inbox from recording and displaying messages.
+Stored conversation history is retained until explicitly deleted; bounded
+model context must not silently evict it.
 
 ### A thread is not a workflow
 
@@ -322,10 +328,11 @@ eviction limit governed both, which is why it was wrong for each.
 
 ## Layering
 
-The top level is the product — `home/`, `agent/`, `service/`, `admin/`,
-`account/` and `inbox/`. Background execution lives under `agent/work/`. Each is a staple: it owns something nothing else owns, and a user
-can name it. Underneath is `internal/`, which is everything with no name a user
-would recognise.
+The fixed product packages are `account/`, `admin/`, `home/`, `agent/`,
+`inbox/`, `work/` and `service/`. They evolve deliberately and slowly; do not
+add top-level packages or navigation for implementation infrastructure.
+`main.go` is the front door; `internal/server` assembles the product.
+Internal event delivery and persistence belong under `internal/`.
 
 **The product may import `internal/`. `internal/` may never import the
 product.** The two exceptions are the programs: `internal/server` and
@@ -381,12 +388,11 @@ not re-derived from each call site, and pins the count so it cannot go up
 quietly. Two are debt today — `service/blog` and `service/chat` — tracked in
 #1469, and chat in #89 where moving it out also unblocks serving XMPP.
 
-Four things ask an agent for work: a chat message, an email arriving, a task
-assigned, a schedule firing. Three of the four used to reach upward through a
-function variable filled in at boot. They are one fact now —
-`event.WorkForAgent`, published by whichever service holds the record,
-subscribed by `agent/work`, which knows where the answer goes because a task
-keeps its result and a standing instruction is mailed.
+Services publish facts; subscribers own response policy. Mail and chat do not
+invoke the agent. Tasks publish `tasks.started` and schedules publish
+`events.due`; top-level `work` reads their current state through service APIs,
+executes the requested instruction and delivers the outcome. Schedule invites
+and device notifications have their own subscriber in the server composition.
 
 **A function variable is an import the compiler cannot see.** Every rule above
 is checked by reading import statements, and every edge they forbid has been

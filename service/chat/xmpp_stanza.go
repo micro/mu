@@ -193,10 +193,15 @@ func (s *session) message(st stanza) {
 	local, domain := splitJID(to)
 
 	// An agent. Announced rather than answered here, because a service does
-	// not run an agent — see event.ChatForAgent and agent/chat, which is the
+	// not run an agent — see event.ChatAddressed and agent/chat, which is the
 	// same seam the websocket rooms use.
 	if agentAddressed(local) {
-		event.RequestChatReply(xmppRoom(s.bare(), to), "", "", "", s.acc.ID, text)
+		id, err := KeepSaved(s.acc.ID, Said{Conv: xmppRoom(s.bare(), to), From: s.bare(), To: to, Text: text})
+		if err != nil {
+			s.stanzaError(st.To, "wait", "internal-server-error")
+			return
+		}
+		event.AddressedChat(xmppRoom(s.bare(), to), "", "", "", s.acc.ID, text, id)
 		return
 	}
 

@@ -15,7 +15,7 @@ package tasks
 // own answer should be.
 //
 // So it says what happened instead. The task moves to "doing" and the fact goes
-// on the bus; agent/work is subscribed, runs it, and writes the result back
+// on the bus; work is subscribed, runs it, and writes the result back
 // through Update like any other caller. Nothing here knows an agent exists.
 //
 // That is the same inversion service/mail made — see internal/event, where mail
@@ -27,8 +27,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"sync"
-
-	"mu/internal/event"
 )
 
 // Kind is what a task is called on the bus, so a subscriber can tell a task
@@ -77,7 +75,6 @@ func Run(owner, id string) error {
 		return err
 	}
 
-	event.RequestWork(t.Owner, Kind, t.ID, t.Title, prompt(*t), t.Thread, t.Agent)
 	return nil
 }
 

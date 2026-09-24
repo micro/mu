@@ -275,6 +275,8 @@ var Spec = service.Spec{
 	Icon:        "chat.png",
 	Card:        service.Glance(Card),
 	Endpoints: map[string]service.Endpoint{
+		"Sources":  {Needs: service.Account, Doc: "List stored message ids owned by the caller"},
+		"Source":   {Needs: service.Account, Doc: "Read one stored message owned by the caller, by id"},
 		"Messages": {Doc: "Read the recent conversation in a discussion room"},
 		"Send":     {Writes: true, Doc: "Say something in a discussion room, as the caller. Use chat_rooms to find the room id", Needs: service.Caller},
 		"Rooms":    {Doc: "List discussion rooms that currently have activity"},

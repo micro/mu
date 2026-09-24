@@ -180,6 +180,8 @@ var Spec = service.Spec{
 	Icon:        "sms.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
+		"Sources": {Needs: service.Account, Doc: "List stored message ids owned by the caller"},
+		"Source":  {Needs: service.Account, Doc: "Read one stored message owned by the caller, by id"},
 		// AccountOnly, not merely priced. Every other paid tool can be reached
 		// by an anonymous caller who pays over x402, and that is right for a
 		// search: the money covers the cost and nobody else is affected. A text

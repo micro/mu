@@ -1,16 +1,7 @@
 package chat
 
-// Writing down what went over the wire.
-//
-// One line of substance, and the interesting part is where it does *not* go.
-// This used to write into internal/thread — the record every client's prose
-// copy lives in — which made a message between two people, with no agent
-// anywhere near it, turn up in an inbox. service/mail has never done that:
-// it owns mail and agent/mail writes the prose copy above it. This is the same
-// arrangement, arrived at a day late.
-//
-// See store.go for what it writes to, and agent/chat for the half that reaches
-// the record.
+// The chat service owns the protocol archive. Its committed records publish
+// facts that Inbox can project without involving an agent.
 
 import "strings"
 

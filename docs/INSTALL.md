@@ -1330,3 +1330,20 @@ Receiving a message does not give its sender permission to use an account's assi
 - Automatic emails, mailing lists, bounces and unauthenticated senders do not receive registration replies. Mail registration replies do not create an outbound allowlist relationship. Email replies are limited to one successful welcome per sender per UTC day, within 200 send attempts per instance per day; failed deliveries use that budget too. The budget survives restarts and does not use visitor IP addresses.
 
 Aliases are receive-only by default. User-defined actions such as notifying, drafting a reply or replying automatically are not implemented; they would require an explicit account-owned rule and scope. Existing agent creation routes are separate from mail aliases and are not removed by this policy.
+
+### Checking Codex availability
+
+On the machine and OS account that will run Micro, install the Codex CLI and
+sign in with `codex login`. Then run `mu codex status`. This starts a temporary
+local App Server over stdio, checks the authentication type and lists models
+available to that account. It does not run a prompt or change Micro's provider.
+Use the returned model identifiers; a model name shown in ChatGPT does not by
+itself establish availability through Codex.
+
+Codex App Server owns an agent session, rather than providing a drop-in
+Chat Completions endpoint. Production integration still needs account-scoped
+thread mapping, streamed turn handling and a constrained bridge from dynamic
+tool calls into Micro's service dispatcher. Do not expose an unauthenticated
+App Server socket or give a hosted user's agent access to the server shell.
+See the [App Server protocol](https://learn.chatgpt.com/docs/app-server) and
+[authentication guide](https://learn.chatgpt.com/docs/auth).

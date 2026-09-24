@@ -12,7 +12,6 @@ package server
 
 import (
 	"fmt"
-	"html"
 	"net/http"
 	"strings"
 	"time"
@@ -31,7 +30,6 @@ import (
 	"mu/agent/moderate"
 	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
-	"mu/agent/work"
 	help "mu/docs"
 	"mu/inbox"
 	"mu/internal/abuse"
@@ -73,6 +71,7 @@ import (
 	"mu/service/tasks"
 	"mu/service/wallet"
 	"mu/service/web"
+	"mu/work"
 )
 
 // mailHistoryTurns is how much of an email thread an agent is reminded of.
@@ -148,23 +147,14 @@ func wireHooks() {
 		}
 	}
 
-	events.OnFire = func(accountID, title, note string) {
-		// Nothing goes to the public timeline.
-		//
-		// This posted the reminder's title and the owner's account id once, so
-		// "Dentist about the biopsy results" was published to the open internet
-		// the moment it fired. That was cut back to a contentless line, which
-		// was the wrong repair: /stream is served with no session, so even a
-		// bare "a reminder fired" tells anybody watching that somebody here was
-		// reminded of something, at that minute.
-		push.Send(accountID, push.Notification{Title: "⏰ " + title, Body: note, URL: "/events"})
-	}
+	watchScheduleEvents()
+
 	// Work an agent is asked to do — a task assigned, a standing instruction
 	// falling due — reaches it on the bus rather than through this file.
 	//
 	// tasks.RunAgent, events.RunAgent and events.OnFireEvent were three
 	// function variables filled in here, which is a service running an agent
-	// with the import hidden from the compiler. They are gone; agent/work
+	// with the import hidden from the compiler. They are gone; work
 	// subscribes, and both services announce and know nothing about who
 	// listens.
 	//
@@ -207,7 +197,7 @@ func wireHooks() {
 	// answering. Without it a text from a number nobody here knows was dropped
 	// with a log line, because the only path into the record was the side
 	// effect of an agent replying.
-	startupStep("smsagent.LoadRecord", smsagent.LoadRecord)
+	startupStep("inbox.Load", inbox.Load)
 
 	// Whether an arrival from a stranger should be let in at all. One judge for
 	// every channel, because a text from an unknown number and a federated chat
@@ -233,36 +223,7 @@ func wireHooks() {
 	// When an event is scheduled, email the owner an .ics invite so it also
 	// lands in their real calendar. Only for users with a verified email (e.g.
 	// via Google sign-in) and only when this instance can send mail.
-	events.OnCreate = func(e *events.Event) {
-		domain := mail.ConfiguredDomain()
-		if domain == "" || domain == "localhost" {
-			return
-		}
-		acc, err := auth.GetAccount(e.Owner)
-		if err != nil || acc.Email == "" || !acc.EmailVerified {
-			return
-		}
-		when := e.When.Local().Format("Mon 2 Jan 2006, 15:04 MST")
-		body := fmt.Sprintf(`<p>Scheduled with Micro:</p><p class="status-icon"><strong>%s</strong><br>%s</p>`,
-			html.EscapeString(e.Title), html.EscapeString(when))
-		if e.Note != "" {
-			body += `<p>` + html.EscapeString(e.Note) + `</p>`
-		}
-		if e.Prompt != "" {
-			body += `<p>At this time, Micro will attempt the following instruction and send the outcome to your inbox:</p><p>` + html.EscapeString(e.Prompt) + `</p>`
-		} else {
-			body += `<p>At this time, Micro will send a reminder to your subscribed devices. This does not schedule agent work.</p>`
-		}
-		if e.Repeat != "" {
-			body += `<p>Repeats: ` + html.EscapeString(e.Repeat) + `</p>`
-		}
-		body += `<p><a href="` + html.EscapeString(strings.TrimRight(origin.Self(), "/")+"/events?id="+e.ID) + `">View schedule</a></p>`
-		body += `<p class="text-muted text-sm">You can add a copy to your calendar using the attached invite. Changes in that calendar do not change Micro's schedule.</p>`
-		ics := events.ICS(e, acc.Email)
-		if _, err := mail.SendCalendarInvite("Micro", "no-reply@"+domain, acc.Email, "Event: "+e.Title, body, ics); err != nil {
-			app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)
-		}
-	}
+
 	app.ToolCountFunc = api.ToolCount
 
 	// Mail arriving is a fact on the bus, not a call into the agent.
@@ -308,7 +269,7 @@ func wireHooks() {
 			push.Send(accountID, push.Notification{
 				Title: title,
 				Body:  "From " + from,
-				URL:   mailagent.InboxURL(m),
+				URL:   inbox.MailURL(m),
 				Tag:   "mail-" + from,
 			})
 		}
