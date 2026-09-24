@@ -576,7 +576,7 @@ func registerRoutes() {
 	http.HandleFunc("/stream", stream.Handler)
 	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
 
-	// JSON only. The page is /services/weather; this no longer bounces there.
+	// Weather negotiates its forecast page and the existing JSON response.
 	http.HandleFunc("/weather", weather.Handler)
 	http.HandleFunc("/prayer", prayer.Handler)
 	http.HandleFunc("/islam", islam.Handler)

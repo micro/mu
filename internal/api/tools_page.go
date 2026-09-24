@@ -32,8 +32,8 @@ import (
 // does it cost", not parameter types. Each card links through to its entry on
 // /mcp, which already carries the schema, an example request and a playground.
 func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
-	if _, _, err := auth.RequireAdmin(r); err != nil {
-		app.Forbidden(w, r, "Admin access required")
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		app.MethodNotAllowed(w, r)
 		return
 	}
 
@@ -74,7 +74,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		// once by somebody new and read past on every visit after that — and
 		// this is a catalogue somebody comes to in order to reach one of the
 		// things in it. The grid says what it is by being a grid of them.
-		b.WriteString(`<p class="text-muted">Services are the capabilities your agents use. Open a service below to manage its data and settings.</p>`)
+		b.WriteString(`<p class="text-muted">Open a service directly, or ask Micro to use it for you. Pin services to keep them on Home.</p>`)
 		b.WriteString(serviceGrid(r))
 	} else {
 		b.WriteString(`<p class="lens-lead">What an agent can call. Your agents here reach all ` +
@@ -102,7 +102,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: b.String()})
 }
 
-// togglePin adds or removes a service from the caller's sidebar and returns
+// togglePin adds or removes a service from the caller's Home and returns
 // them to where they were. Signed-out callers are sent to sign in: a pin is a
 // preference and there is nowhere to keep one without an account.
 //
@@ -120,6 +120,10 @@ func togglePin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pin, unpin := r.FormValue("pin"), r.FormValue("unpin")
+	if !auth.StrictCSRF(r) {
+		app.Forbidden(w, r, "Invalid CSRF token")
+		return
+	}
 	name := strings.ToLower(strings.TrimSpace(pin + unpin))
 	if _, ok := service.SpecFor(name); ok {
 		if unpin != "" {
@@ -139,9 +143,9 @@ func pinControl(r *http.Request, name string, pinned bool) string {
 	if _, acc := auth.TrySession(r); acc == nil {
 		return ""
 	}
-	label, cls, field := "Pin to sidebar", "pin-btn", "pin"
+	label, cls, field := "Pin to Home", "pin-btn", "pin"
 	if pinned {
-		label, cls, field = "Unpin from sidebar", "pin-btn pinned", "unpin"
+		label, cls, field = "Unpin from Home", "pin-btn pinned", "unpin"
 	}
 	return `<form method="POST" action="/services" class="form-action pin-form">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
@@ -167,8 +171,7 @@ func pinControl(r *http.Request, name string, pinned bool) string {
 // the others should do. They are in the Tools lens, where index_search is a
 // thing an agent can actually call.
 //
-// Each tile carries a pin, which is how a service gets into the sidebar. The
-// sidebar shows what you chose; this shows everything there is to choose.
+// Each entry carries a pin for Home; the directory shows everything available.
 func serviceGrid(r *http.Request) string {
 
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -195,6 +198,16 @@ func serviceGrid(r *http.Request) string {
 		b.WriteString(`<span class="directory-description">` + html.EscapeString(s.Description) + `</span>`)
 
 		b.WriteString(close)
+		if _, acc := auth.TrySession(r); acc != nil {
+			pinned := false
+			for _, name := range acc.PinnedServices() {
+				if name == s.Name {
+					pinned = true
+					break
+				}
+			}
+			b.WriteString(pinControl(r, s.Name, pinned))
+		}
 
 		b.WriteString(`</div>`)
 	}

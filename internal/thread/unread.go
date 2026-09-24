@@ -86,3 +86,17 @@ func HandleAt(account, id string, reviewed time.Time) {
 		save()
 	}
 }
+
+// Visit records which conversation the owner opened, independent of whether
+// they subsequently mark it unread. Background replies do not change it.
+func Visit(account, id string) {
+	mu.Lock()
+	defer mu.Unlock()
+	t := threads[id]
+	if t == nil || t.Account != account {
+		return
+	}
+	t.Visited = time.Now().UTC()
+	t.Seen = t.Visited
+	save()
+}

@@ -31,6 +31,7 @@ import (
 	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
 	help "mu/docs"
+	"mu/home"
 	"mu/inbox"
 	"mu/internal/abuse"
 	"mu/internal/ai"
@@ -325,7 +326,8 @@ func wireHooks() {
 	// sign up and find nothing, which is the one thing the invitation promises.
 	auth.Renamed(thread.Rename)
 
-	// load the home cards
+	// Home refreshes selected cards in the background, never during startup.
+	home.Load()
 	// What the inbox needs from packages it must not import. It renders the
 	// record; the roster is the agent's and the mail domain is the mail
 	// service's, and neither is a reason for a page over internal/thread to
@@ -483,6 +485,7 @@ func wireHooks() {
 		chat.Forget,
 		func(id string) { account.DeleteCredits(id) },
 		app.ForgetAccountCosts,
+		home.Forget,
 		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
 		// The devices they told us to notify, and the record of what they were

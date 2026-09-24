@@ -76,12 +76,25 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Micro is a personal AI agent; Mu is its runtime.** The signed-in front door is a personal overview; the assistant owns the saved conversation. Inbox keeps conversations from every channel, including the web. Agent is the conversation destination; Services is an operator and developer capability reference. Authoring is handled by operators and assistant tools. Keep standalone utilities such as Mail useful and directly accessible. Home owns the authenticated overview, existing daily brief and personal collections. Agent owns the conversation UI. Public landing and informational pages belong to internal/server; `/` redirects signed-in visitors to `/home`. Do not add a recent-items index, service catalogue or feed beneath the composer. Do not put task or note collections into Inbox or duplicate chat implementations. Preserve protocols, API responses, authorisation, mutations and shared links.
+**Mu is the runtime; Micro is the assistant it hosts.** The five primary
+product destinations are Home, Inbox, Agents, Work and Services. They use bottom
+navigation on phones, a narrow rail on tablets and a left navigation on desktop.
+Account and Admin stay in the account menu. Keep the styling sparse.
 
-**Extend through stable patterns.** Services, agents and inbox records should
-scale through their existing registries and shared components. Use apps to
-build and test different experiences on the runtime. Adding a capability does
-not imply redesigning Home or adding a primary navigation item. Home shows your overview. Services is the capability reference directory.
+Home owns the authenticated overview, prompt, personal collections and pinned
+service cards. Its short brief uses local facts; it does not repeat the full
+scheduled daily brief. Agent owns the conversation UI and explicit new/resume
+controls. Services are directly usable by people as well as callable by agents;
+the directory is not admin-only. Each service retains its permissions. Apps are
+small tools that can be opened or embedded, not additional primary destinations.
+Public landing and informational pages belong to internal/server; `/` redirects
+signed-in visitors to `/home`. Preserve protocols, API responses, authorisation,
+mutations and shared links.
+
+**Extend through stable patterns.** Compose existing service interfaces and
+card renderers. Refresh external context in bounded background work and render
+cached views instantly. Personal previews stay account-scoped. Do not restart
+automatic model content generation as a side effect of restoring Home.
 
 ## What is true today, and what is not
 
@@ -545,17 +558,13 @@ cost; rate limits stop bots.
 
 ## UI composition
 
-The web front door is a single request-driven command interface. Simple service
-commands use registered endpoints directly. Complex questions use the selected
-model and its tools. Admin commands require the caller's operator authorization
-and never enter model context. Do not add a page or navigation item for a service.
-The public editorial Blog belongs in the shared footer.
-
-Keep authentication and informational pages sparse, using the shared console
-shell in `internal/app`. Preserve backend APIs, protocols, account isolation,
-CSRF checks, payments and stored conversations. Legacy browser destinations
-prefill commands without executing them. Requests and credentials belong in POST
+The signed-in front door is Home. Its prompt calls Agent directly, while
+service pages and small apps remain independently usable. Share navigation,
+renderers and controls across the product; keep one stylesheet and one browser
+script. Preserve backend APIs, protocols, account isolation, CSRF checks,
+payments and stored conversations. Requests and credentials belong in POST
 bodies, never URLs. Only opaque conversation IDs may be used to resume a session.
+The public editorial Blog belongs in the shared footer.
 
 Personal daily brief schedules remain available. No other automatic model
 content generation: no daily images, public digests, summaries, tagging, topic

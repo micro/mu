@@ -121,6 +121,8 @@ type Thread struct {
 	// describes. This is also why marking a conversation unread again is one
 	// assignment rather than a second piece of state.
 	Seen time.Time `json:"seen,omitempty"`
+	// Visited records navigation independently of read/unread state.
+	Visited time.Time `json:"visited,omitempty"`
 }
 
 // Party is somebody on a conversation.
@@ -522,6 +524,9 @@ func Add(m Message) string {
 	if stored.Role == RolePerson && stored.From == "" {
 		if stored.At.After(t.Seen) {
 			t.Seen = stored.At
+		}
+		if t.Client == WebClient && stored.At.After(t.Visited) {
+			t.Visited = stored.At
 		}
 	}
 	save()

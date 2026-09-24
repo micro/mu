@@ -134,3 +134,40 @@ func TestAgentPageKeepsAddressWithoutHistory(t *testing.T) {
 		t.Fatal("wrong agent thread accepted")
 	}
 }
+
+func TestAgentResumesVisitedThreadAndNewIsExplicit(t *testing.T) {
+	owner := "resume-visited-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	sess, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	th := thread.Open(owner, thread.WebClient, "visited")
+	thread.MarkSeen(owner, th.ID)
+	other := thread.Open("resume-other-owner", thread.WebClient, "foreign")
+	thread.MarkSeen("resume-other-owner", other.ID)
+	request := func(path string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("GET", path, nil)
+		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		w := httptest.NewRecorder()
+		agent.ConsoleHandler(w, r)
+		return w
+	}
+	w := request("/agent/micro")
+	if w.Code != 303 || w.Header().Get("Location") != "/agent/micro?session="+th.ID {
+		t.Fatalf("resume: %d %s", w.Code, w.Header().Get("Location"))
+	}
+	if opened := request("/agent/micro?session=" + th.ID); opened.Code != 200 {
+		t.Fatal("cannot visit")
+	}
+	thread.MarkUnread(owner, th.ID)
+	w = request("/agent/micro")
+	if w.Header().Get("Location") != "/agent/micro?session="+th.ID {
+		t.Fatal("marking unread lost the visited conversation")
+	}
+	w = request("/agent/micro?new=1")
+	if w.Code != 200 || strings.Contains(w.Body.String(), `conversation is-active`) || !strings.Contains(w.Body.String(), `New conversation`) {
+		t.Fatal("cannot explicitly start new conversation")
+	}
+}

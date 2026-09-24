@@ -4,8 +4,12 @@ import (
 	"io"
 	"mu/agent"
 	"mu/home"
+	"mu/internal/api"
 	"mu/internal/auth"
+	"mu/internal/service"
 	"mu/internal/thread"
+	"mu/service/news"
+	"mu/service/video"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -76,5 +80,73 @@ func TestNavigationRedirectsTerminateThroughLegacyMiddleware(t *testing.T) {
 		if strings.Contains(tc.path, "session=") && !strings.Contains(string(body), "Existing conversation") {
 			t.Fatalf("lost conversation at %s", tc.path)
 		}
+	}
+}
+
+// Exercise the middleware before real service handlers with an ordinary account.
+func TestServiceNavigationIsNotAnAdminOrAgentDetour(t *testing.T) {
+	if err := service.Register(news.Spec); err != nil {
+		t.Fatal(err)
+	}
+	owner := "ordinary-service-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	sess, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		path    string
+		handler http.HandlerFunc
+	}{
+		{"/services", api.ToolsPageHandler}, {"/news", news.Handler}, {"/video", video.Handler},
+	} {
+		r := httptest.NewRequest("GET", tc.path, nil)
+		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		w := httptest.NewRecorder()
+		if consoleRedirect(w, r) {
+			t.Fatalf("service redirected: %s", tc.path)
+		}
+		tc.handler(w, r)
+		if w.Code != 200 {
+			t.Fatalf("%s: %d %s", tc.path, w.Code, w.Body.String())
+		}
+	}
+}
+
+func TestHomePinsRequireOwnerSessionAndCSRF(t *testing.T) {
+	owner, other := "pin-owner", "pin-other"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true, Pinned: []string{}})
+	auth.SetAccountForTest(&auth.Account{ID: other, Approved: true, Pinned: []string{}})
+	defer auth.RemoveAccountForTest(owner)
+	defer auth.RemoveAccountForTest(other)
+	sess, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Register(news.Spec); err != nil {
+		t.Fatal(err)
+	}
+	for _, csrf := range []bool{false, true} {
+		r := httptest.NewRequest("POST", "/services", strings.NewReader("pin=news&account=pin-other"))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		if csrf {
+			r.Header.Set("X-CSRF-Token", auth.CSRFToken(r))
+		}
+		w := httptest.NewRecorder()
+		api.ToolsPageHandler(w, r)
+		want := 403
+		if csrf {
+			want = 303
+		}
+		if w.Code != want {
+			t.Fatalf("pin csrf=%v: %d", csrf, w.Code)
+		}
+	}
+	own, _ := auth.GetAccount(owner)
+	foreign, _ := auth.GetAccount(other)
+	if len(own.PinnedServices()) != 1 || own.PinnedServices()[0] != "news" || len(foreign.PinnedServices()) != 0 {
+		t.Fatal("pin ownership violated")
 	}
 }
