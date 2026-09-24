@@ -17,29 +17,30 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/result"
 	"mu/internal/service"
-	"mu/internal/thread"
 )
 
 // One durable record owns the request, candidate and final app. A process restart
 // never changes the ID or resets the paid-attempt budget.
 type BuildJob struct {
-	Thread     string    `json:"thread,omitempty"`
-	Delivered  bool      `json:"delivered,omitempty"`
-	ID         string    `json:"id"`
-	Account    string    `json:"account"`
-	Prompt     string    `json:"prompt"`
-	Key        string    `json:"key"`
-	State      string    `json:"state"`
-	Attempts   int       `json:"attempts"`
-	Recoveries int       `json:"recoveries"`
-	Created    time.Time `json:"created"`
-	Updated    time.Time `json:"updated"`
-	Error      string    `json:"error,omitempty"`
-	Question   string    `json:"question"`
-	Candidate  *written  `json:"candidate,omitempty"`
-	App        *App      `json:"app,omitempty"`
+	Thread      string    `json:"thread,omitempty"`
+	Delivered   bool      `json:"delivered,omitempty"` // Legacy delivery marker.
+	EventStored bool      `json:"event_stored,omitempty"`
+	ID          string    `json:"id"`
+	Account     string    `json:"account"`
+	Prompt      string    `json:"prompt"`
+	Key         string    `json:"key"`
+	State       string    `json:"state"`
+	Attempts    int       `json:"attempts"`
+	Recoveries  int       `json:"recoveries"`
+	Created     time.Time `json:"created"`
+	Updated     time.Time `json:"updated"`
+	Error       string    `json:"error,omitempty"`
+	Question    string    `json:"question"`
+	Candidate   *written  `json:"candidate,omitempty"`
+	App         *App      `json:"app,omitempty"`
 }
 
 var buildMu sync.Mutex
@@ -48,7 +49,8 @@ var buildLoadError error
 
 func storeBuild(j *BuildJob) error {
 	j.Updated = time.Now()
-	return data.SaveJSON("app-builds/"+j.ID+".json", j)
+	j.EventStored = true
+	return data.CommitJSON("app-builds/"+j.ID+".json", j, event.Record{Type: "apps.build.changed", Service: "apps", Account: j.Account, Resource: j.ID, Version: j.Updated.UTC().Format(time.RFC3339Nano)})
 }
 func loadBuilds() {
 	keys, err := data.ListKeys("app-builds")
@@ -78,6 +80,14 @@ func loadBuilds() {
 				continue
 			}
 		}
+		// Upgrade pending legacy completions once; the owning product consumer
+		// deduplicates delivery by build ID.
+		if !j.EventStored && !j.Delivered {
+			if err := storeBuild(&j); err != nil {
+				buildLoadError = err
+				continue
+			}
+		}
 		buildJobs[j.ID] = &j
 	}
 	if buildLoadError != nil {
@@ -88,7 +98,6 @@ func loadBuilds() {
 	go func() {
 		for {
 			runNextBuild()
-			deliverBuilds()
 			time.Sleep(time.Second)
 		}
 	}()
@@ -97,9 +106,6 @@ func submitBuild(prompt, account, key string, source ...string) (*BuildJob, erro
 	sourceThread := ""
 	if len(source) > 0 {
 		sourceThread = source[0]
-	}
-	if sourceThread != "" && thread.Get(account, sourceThread) == nil {
-		return nil, fmt.Errorf("conversation not found")
 	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" || len(prompt) > 16000 || len(key) > 128 {
@@ -215,7 +221,7 @@ func runNextBuild() {
 		return
 	}
 	out := j.Candidate
-	j.App = &App{ID: j.ID, Slug: "build-" + j.ID, Name: out.Title, Description: j.Prompt, AuthorID: j.Account, Author: AuthorNameFor(j.Account), HTML: out.HTML, Tags: out.Tags, Icon: emojiSVG(out.Emoji), Public: false, CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	j.App = &App{Source: j.Thread, ID: j.ID, Slug: "build-" + j.ID, Name: out.Title, Description: j.Prompt, AuthorID: j.Account, Author: AuthorNameFor(j.Account), HTML: out.HTML, Tags: out.Tags, Icon: emojiSVG(out.Emoji), Public: false, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 	j.State = "saving"
 	if !checkpointBuild(&j) {
 		return
@@ -279,6 +285,10 @@ type BuildStatusRequest struct {
 	ID string `json:"id" required:"true"`
 }
 type BuildStatusResponse struct {
+	Thread     string       `json:"thread,omitempty"`
+	Prompt     string       `json:"prompt"`
+	Created    time.Time    `json:"created"`
+	Updated    time.Time    `json:"updated"`
 	Item       *result.Item `json:"item,omitempty"`
 	ID         string       `json:"id"`
 	State      string       `json:"state"`
@@ -289,7 +299,7 @@ type BuildStatusResponse struct {
 }
 
 func buildStatus(j *BuildJob) BuildStatusResponse {
-	r := BuildStatusResponse{ID: j.ID, State: j.State, Attempts: j.Attempts, Recoveries: j.Recoveries, Error: j.Error}
+	r := BuildStatusResponse{Thread: j.Thread, Prompt: j.Prompt, Created: j.Created, Updated: j.Updated, ID: j.ID, State: j.State, Attempts: j.Attempts, Recoveries: j.Recoveries, Error: j.Error}
 	if j.State == "complete" && j.App != nil {
 		r.Item = appResult(j.App)
 		r.URL = "/apps/" + j.App.Slug
@@ -357,36 +367,4 @@ func BuildsFor(owner string) []BuildSummary {
 		out = append(out, BuildSummary{ID: j.ID, Title: string(title), State: j.State, Updated: j.Updated})
 	}
 	return out
-}
-
-// Delivery is retried after restarts. A stable Ref deduplicates the message if
-// the conversation was saved but the delivery checkpoint failed.
-func deliverBuilds() {
-	buildMu.Lock()
-	var pending []BuildJob
-	for _, j := range buildJobs {
-		if j.Thread != "" && !j.Delivered && (j.State == "complete" || j.State == "failed") {
-			pending = append(pending, *j)
-		}
-	}
-	buildMu.Unlock()
-	for _, j := range pending {
-		if thread.Get(j.Account, j.Thread) == nil {
-			continue
-		}
-		text := "Your app could not be built: " + j.Error
-		var results []result.Item
-		if j.State == "complete" && j.App != nil {
-			text = "Your app is ready: " + j.App.Name
-			results = []result.Item{*appResult(j.App)}
-		}
-		if thread.Add(thread.Message{Account: j.Account, Thread: j.Thread, Role: thread.RoleAgent, Text: text, Results: results, Ref: "app-build:" + j.ID}) == "" {
-			continue
-		}
-		if err := thread.Flush(); err != nil {
-			continue
-		}
-		j.Delivered = true
-		checkpointBuild(&j)
-	}
 }
