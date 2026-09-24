@@ -45,7 +45,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	resume := ""
 	if th := agent.RecentConversation(acc.ID, ""); th != nil {
-		resume = `<p class="home-resume"><a href="` + html.EscapeString(agent.Path(acc.ID, th.Agent)+"?session="+url.QueryEscape(th.ID)) + `">Continue: ` + html.EscapeString(th.Subject) + `</a></p>`
+		resume = `<p class="home-resume" data-home-overview><a href="` + html.EscapeString(agent.Path(acc.ID, th.Agent)+"?session="+url.QueryEscape(th.ID)) + `">Continue: ` + html.EscapeString(th.Subject) + `</a></p>`
 	}
 	body := `<div data-home-overview>` + `<div class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time>` + `<span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + `</div>` + agent.Prompt(acc.ID) + resume + `<div data-home-overview id="home-overview-content" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
 	app.Respond(w, r, app.Response{Title: "Home", HTML: body})
@@ -94,14 +94,14 @@ func shortBrief(owner string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return `<h2>Brief</h2><p class="home-summary">` + strings.Join(parts, " ") + `</p>`
+	return `<section class="section-card section-block" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + strings.Join(parts, " ") + `</p></section>`
 }
 
 func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
 	var b strings.Builder
 	b.WriteString(shortBrief(acc.ID))
-	b.WriteString(`<div class="home-grid"><div>`)
-	b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
+	b.WriteString(`<div class="card-grid">`)
+	b.WriteString(`<section class="record-card"><div class="section-card-head"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
 	for i, a := range snapshot.apps {
 		if i == 3 {
 			break
@@ -113,14 +113,14 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	}
 	b.WriteString(`</div></section>`)
 
-	b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>Your things</h2></div><div class="form-actions"><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a></div></section>`)
+	b.WriteString(`<section class="record-card"><div class="section-card-head"><h2>Saved</h2></div><div class="shortcut-grid"><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a></div></section>`)
 	b.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
 	if preview := inbox.Preview(acc.ID); preview != "" {
 		b.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
-	b.WriteString(`</div><div><div class="home-card-heading"><h2>Services</h2><a href="/services">Choose services</a></div>`)
+	b.WriteString(`</div><div class="section-heading"><h2>Services</h2><a href="/services">Choose services</a></div><div class="card-grid">`)
 	for _, spec := range service.Pinned(acc.PinnedServices()) {
-		b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2><a href="` + html.EscapeString(spec.Page) + `">` + html.EscapeString(spec.NavLabel()) + `</a></h2></div>`)
+		b.WriteString(`<section class="record-card"><div class="section-card-head"><h2><a href="` + html.EscapeString(spec.Page) + `">` + html.EscapeString(spec.NavLabel()) + `</a></h2></div>`)
 		if card := snapshot.cards[spec.Name]; card != "" {
 			b.WriteString(`<div class="home-card-content">` + card + `</div>`)
 		} else {
@@ -129,8 +129,8 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 		b.WriteString(`</section>`)
 	}
 	if len(acc.PinnedServices()) == 0 {
-		b.WriteString(`<p class="text-muted">Pin services to see them here.</p>`)
+		b.WriteString(`<section class="record-card"><h2>Your services</h2><p class="text-muted">Pin services to see them here.</p><a href="/services">Browse services</a></section>`)
 	}
-	b.WriteString(`</div></div>`)
+	b.WriteString(`</div>`)
 	return b.String()
 }

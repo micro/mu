@@ -481,7 +481,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       "Social",
 		Description: "Threads and conversations",
-		HTML:        `<div class="content-narrow">` + body + `</div>`,
+		HTML:        `<div class="page-stack">` + body + `</div>`,
 	})
 }
 
@@ -530,7 +530,7 @@ func ThreadHandler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       "Thread by " + p.Author,
 		Description: truncate(p.Content, 160),
-		HTML:        `<div class="content-narrow">` + body + `</div>`,
+		HTML:        `<div class="page-stack">` + body + `</div>`,
 	})
 }
 
@@ -765,7 +765,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		content := quota.ExceededPage(cost)
 		app.Respond(w, r, app.Response{
 			Title: "Social - Search",
-			HTML:  `<div class="content-narrow">` + content + `</div>`,
+			HTML:  `<div class="page-stack">` + content + `</div>`,
 		})
 		return
 	}
@@ -800,7 +800,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 
 	app.Respond(w, r, app.Response{
 		Title: "Social - Search",
-		HTML:  `<div class="content-narrow">` + sb.String() + `</div>`,
+		HTML:  `<div class="page-stack">` + sb.String() + `</div>`,
 	})
 }
 

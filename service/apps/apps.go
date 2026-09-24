@@ -604,6 +604,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	if len(list) == 0 {
 		sb.WriteString(`<p>No apps yet. Ask your assistant when you need a tool built for you.</p>`)
 	} else {
+		sb.WriteString(`<div class="card-grid">`)
 		// Show saved apps without the retired template collection.
 		var saidMine, saidTheirs bool
 		for _, a := range list {
@@ -669,6 +670,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				controls,
 			))
 		}
+		sb.WriteString(`</div>`)
 	}
 
 	app.Respond(w, r, app.Response{

@@ -77,9 +77,10 @@ func AppsHandler(w http.ResponseWriter, r *http.Request) {
 		body += `<p>Your saved apps will appear here. Ask Micro to build a small tool you need.</p>`
 	}
 	pager := app.Paginate(r, len(collection.Items), 25)
+	body += `<div class="card-grid">`
 	for _, a := range collection.Items[pager.From:pager.To] {
 		body += `<article class="record-card"><a class="record-title" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a><p>` + html.EscapeString(a.Description) + `</p><p class="text-muted">Updated ` + app.TimeAgo(a.Updated) + `</p><div class="form-actions"><a class="btn" href="/apps/` + url.PathEscape(a.Slug) + `">Open</a><form method="POST" action="/home/apps">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="slug" value="` + html.EscapeString(a.Slug) + `"><button>Continue with Micro</button></form></div></article>`
 	}
-	body += pager.Nav("/home/apps")
+	body += `</div>` + pager.Nav("/home/apps")
 	app.Respond(w, r, app.Response{Title: "My apps", HTML: body, Data: collection})
 }
