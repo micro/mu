@@ -54,7 +54,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet && r.URL.Query().Get("view") == "brief" && app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]any{"brief": Brief(owner), "evening_brief": Brief(owner, "evening")})
+		app.RespondJSON(w, map[string]any{"brief": Brief(owner)})
 		return
 	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
@@ -72,7 +72,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Query().Get("view") == "brief" {
-		app.Respond(w, r, app.Response{Title: "Morning Brief and Evening Debrief", HTML: briefScheduleHTML(owner, auth.CSRFToken(r))})
+		app.Respond(w, r, app.Response{Title: "Morning Brief", HTML: briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
 	}
 
@@ -88,7 +88,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
-	b.WriteString(`<a href="/events?view=brief">Morning Brief and Evening Debrief</a>`)
+	b.WriteString(`<a href="/events?view=brief">Morning Brief</a>`)
 
 	up := Upcoming(owner)
 	ext := Overview(owner, 0)

@@ -17,14 +17,11 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if len(csrf) > 0 {
 		token = csrf[0]
 	}
-	return briefPeriodHTML(owner, token, "morning") + briefPeriodHTML(owner, token, "evening") + `<p class="text-muted">Delivered to your Micro mail using your connected calendar, email and saved location where available. Normal usage charges apply.</p>`
+	return briefPeriodHTML(owner, token, "morning") + `<p class="text-muted">Delivered to your Micro mail using your connected calendar, email and saved location where available. Normal usage charges apply.</p>`
 }
 
 func briefPeriodHTML(owner, token, period string) string {
 	clock, zone, repeat := "06:00", "", "daily"
-	if period == "evening" {
-		clock = "20:00"
-	}
 	status := "Not scheduled"
 	if acc, err := auth.GetAccount(owner); err == nil && acc != nil {
 		zone = acc.Zone
@@ -43,13 +40,7 @@ func briefPeriodHTML(owner, token, period string) string {
 		}
 	}
 	title := "Morning brief"
-	if period == "evening" {
-		title = "Evening Debrief"
-	}
 	description := "Overnight developments and what matters today."
-	if period == "evening" {
-		description = "New developments during the day and preparation for tomorrow, without repeating unchanged news or markets."
-	}
 	var b strings.Builder
 	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h3>` + title + `</h3><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {

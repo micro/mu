@@ -25,7 +25,7 @@ func ownedEvent(owner, id string) *Event {
 	mu.RLock()
 	defer mu.RUnlock()
 	e := events[id]
-	if e == nil || e.Owner != owner {
+	if e == nil || e.Owner != owner || retiredBrief(e) {
 		return nil
 	}
 	copy := *e
@@ -39,9 +39,6 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 		return
 	}
 	if e.Kind == "brief" {
-		if BriefPeriod(e) == "evening" {
-			e.Title = "Evening Debrief"
-		}
 		app.Respond(w, r, app.Response{Title: e.Title, HTML: `<p><a href="/events">Events</a></p>` + briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
 	}

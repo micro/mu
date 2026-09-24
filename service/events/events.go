@@ -77,7 +77,7 @@ func Load() {
 	var list []*Event
 	if err := data.LoadJSON(storeKey, &list); err == nil {
 		for _, e := range list {
-			if e != nil && e.ID != "" {
+			if e != nil && e.ID != "" && !retiredBrief(e) {
 				events[e.ID] = e
 			}
 		}
@@ -165,11 +165,8 @@ func List(owner string) []*Event {
 	defer mu.RUnlock()
 	var out []*Event
 	for _, e := range events {
-		if e.Owner == owner {
+		if e.Owner == owner && !retiredBrief(e) {
 			cp := *e
-			if cp.Kind == "brief" && BriefPeriod(&cp) == "evening" && cp.Title == "Evening brief" {
-				cp.Title = "Evening Debrief"
-			}
 			out = append(out, &cp)
 		}
 	}
@@ -219,13 +216,17 @@ func scheduler() {
 // fireDue marks every due event fired (under lock, persisting once) then
 // delivers them outside the lock so a slow channel can't block the store.
 func fireDue() {
-	ensureDefaultBriefs()
 	now := time.Now().UTC()
 	var due []*Event
 
 	mu.Lock()
 	changed := false
 	for id, e := range events {
+		if retiredBrief(e) {
+			delete(events, id)
+			changed = true
+			continue
+		}
 		if !e.Fired && !e.Paused && !e.When.After(now) {
 			e.Fired = true
 			e.FiredAt = now

@@ -71,15 +71,12 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
-	if period != "morning" && period != "evening" {
-		app.BadRequest(w, r, "choose morning or evening")
+	if period != "morning" {
+		app.BadRequest(w, r, "only the morning brief is available")
 		return
 	}
 	e := events.Brief(acc.ID, period)
 	state := map[string]any{"enabled": false, "include_world_news": true, "time": "06:00", "timezone": acc.Zone}
-	if period == "evening" {
-		state["time"] = "20:00"
-	}
 	state["period"] = period
 	if e != nil {
 		state["enabled"] = !e.Paused
