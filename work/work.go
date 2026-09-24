@@ -51,7 +51,7 @@ import (
 
 	"github.com/google/uuid"
 	"mu/agent"
-	mailagent "mu/agent/mail"
+	"mu/inbox"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -66,32 +66,21 @@ import (
 
 // Load subscribes to the work agents are asked to do.
 func Load() {
-	sub := event.Subscribe(event.WorkForAgent)
 	go retryDeliveries()
-	go func() {
-		for e := range sub.Chan {
-			r, ok := requestFrom(e.Data)
-			if !ok {
-				app.Log("work", "a work request carried no account or prompt")
-				continue
+	for _, topic := range []string{event.TaskStarted, event.ScheduleDue} {
+		go func(topic string) {
+			for {
+				err := event.Consume(context.Background(), "work-"+strings.ReplaceAll(topic, ".", "-"), []string{topic}, consumeWork)
+				app.Log("work", "event consumer stopped: %v", err)
+				time.Sleep(5 * time.Second)
 			}
-			// One goroutine per request: a run takes seconds to a minute, and
-			// the scheduler fires everything due in the same pass. One slow
-			// briefing must not hold up the rest.
-			go func(r request) {
-				defer func() {
-					if rec := recover(); rec != nil {
-						app.Log("work", "running %s %s panicked: %v", r.Kind, r.ID, rec)
-					}
-				}()
-				run(r)
-			}(r)
-		}
-	}()
+		}(topic)
+	}
 }
 
 // request is one piece of work, off the bus.
 type request struct {
+	EventID string
 	Account string
 	Kind    string
 	ID      string
@@ -104,18 +93,6 @@ type request struct {
 	// instance runs by default. See run, which is where a name becomes an
 	// instruction and a tool scope.
 	Agent string
-}
-
-// requestFrom reads a work request, and reports false when there is nothing to
-// run — which is what a subscriber on the wrong topic gets.
-func requestFrom(data map[string]interface{}) (request, bool) {
-	str := func(k string) string { s, _ := data[k].(string); return s }
-	r := request{
-		Account: str("account"), Kind: str("kind"), ID: str("id"),
-		Title: str("title"), Prompt: str("prompt"), Thread: str("thread"),
-		Agent: str("agent"),
-	}
-	return r, r.Account != "" && r.Prompt != ""
 }
 
 // run does the work and puts the answer where it belongs.
@@ -436,6 +413,9 @@ func deliver(r request, answer string, err error) {
 		body += "\n\n---\n[Disable or manage your daily briefs](" + origin.Self() + "/events?view=brief)."
 	}
 	messageID := "<" + uuid.NewString() + "@" + mail.ConfiguredDomain() + ">"
+	if r.EventID != "" {
+		messageID = "<schedule-" + r.EventID + "@" + mail.ConfiguredDomain() + ">"
+	}
 	sender := agent.NameOf(r.Account, r.Agent)
 	if sender == "" {
 		sender = agent.DefaultName()
@@ -453,7 +433,7 @@ func deliver(r request, answer string, err error) {
 		return
 	}
 	if isBrief && err == nil {
-		link := mailagent.InboxURL(mail.InboundMail{Owner: acc.ID, From: delivery.FromID, FromName: delivery.From, To: acc.ID + "+" + tag + "@" + mail.ConfiguredDomain(), Subject: r.Title, Body: delivery.Body, MessageID: messageID, Tag: tag})
+		link := inbox.MailURL(mail.InboundMail{Owner: acc.ID, From: delivery.FromID, FromName: delivery.From, To: acc.ID + "+" + tag + "@" + mail.ConfiguredDomain(), Subject: r.Title, Body: delivery.Body, MessageID: messageID, Tag: tag})
 		event.Announce("brief", strings.TrimSpace(answer), link, r.Account)
 	}
 }

@@ -39,6 +39,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/event"
 )
 
 // newID is a message's own identifier, which is what a client pages from.
@@ -130,7 +131,7 @@ func KeepSaved(account string, m Said) (string, error) {
 		next = next[len(next)-heldPerAccount:]
 	}
 	said[account] = next
-	if err := data.SaveJSON("chat.json", said); err != nil {
+	if err := data.CommitJSON("chat.json", said, event.Record{Type: event.ChatRecorded, Service: "chat", Account: account, Resource: m.ID, Version: m.At.UTC().Format(time.RFC3339Nano)}); err != nil {
 		said[account] = previous
 		return "", err
 	}

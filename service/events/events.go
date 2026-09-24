@@ -1,8 +1,7 @@
 // Package events is Mu's personal scheduling service. A user asks — via the
 // agent ("remind me to call the dentist at 3pm") or the /events page — and Mu
-// stores the event and fires it at the appointed time, delivering the reminder
-// over the user's linked channels (mail, the web) via the OnFire
-// hook. "Schedule a reminder" and "create an event" are the same thing here.
+// stores the event and publishes a durable fact at the appointed time.
+// Subscribers deliver reminders and execute requested work. "Schedule a reminder" and "create an event" are the same thing here.
 package events
 
 import (
@@ -17,6 +16,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/service"
 )
 
@@ -58,17 +58,6 @@ var (
 	mu     sync.RWMutex
 	events = map[string]*Event{}
 )
-
-// OnFire is called when an event comes due. main.go sets it to deliver the
-// reminder over the user's linked channels; kept as a hook so this package does
-// not import the client packages (and to avoid an import cycle).
-var OnFire func(accountID, title, note string)
-
-// OnCreate is called when an event is scheduled. main.go sets it to email the
-// owner an .ics calendar invite (if they have a verified email — e.g. from
-// Google sign-in), so the event also lands in their real calendar. Kept as a
-// hook so this package doesn't import mail/auth.
-var OnCreate func(e *Event)
 
 // Load reads persisted events, registers the go-micro service (which makes
 // Create/List available to the agent, MCP and REST), and starts the scheduler.
@@ -148,14 +137,18 @@ func CreateStanding(owner, title string, when time.Time, note string, minutes in
 
 	mu.Lock()
 	events[e.ID] = e
-	saveLocked()
+	list := make([]*Event, 0, len(events))
+	for _, v := range events {
+		list = append(list, v)
+	}
+	err := data.CommitJSON(storeKey, list, event.Record{Type: "events.changed", Service: "events", Account: owner, Resource: e.ID, Version: fmt.Sprint(e.Sequence)})
+	if err != nil {
+		delete(events, e.ID)
+		mu.Unlock()
+		return nil, err
+	}
 	snapshot := *e
 	mu.Unlock()
-
-	if OnCreate != nil {
-		cp := snapshot
-		go OnCreate(&cp)
-	}
 	return &snapshot, nil
 }
 
@@ -221,6 +214,11 @@ func fireDue() {
 
 	mu.Lock()
 	changed := false
+	previous := make(map[string]*Event, len(events))
+	for id, e := range events {
+		cp := *e
+		previous[id] = &cp
+	}
 	for id, e := range events {
 		if retiredBrief(e) {
 			delete(events, id)
@@ -244,19 +242,23 @@ func fireDue() {
 		}
 	}
 	if changed {
-		saveLocked()
+		list := make([]*Event, 0, len(events))
+		for _, e := range events {
+			list = append(list, e)
+		}
+		var facts []event.Record
+		for _, e := range due {
+			facts = append(facts, event.Record{Type: event.ScheduleDue, Service: "events", Account: e.Owner, Resource: e.ID, Version: fmt.Sprint(e.Sequence), Data: map[string]interface{}{"when": e.When, "title": e.Title, "note": e.Note, "kind": e.Kind}})
+		}
+		if err := data.CommitJSON(storeKey, list, facts...); err != nil {
+			events = previous
+			mu.Unlock()
+			app.Log("events", "could not commit due schedules: %v", err)
+			return
+		}
 	}
 	mu.Unlock()
 
-	for _, e := range due {
-		if OnFire != nil && e.Kind != "brief" {
-			OnFire(e.Owner, e.Title, e.Note)
-		}
-		// And the work, where the event carries an instruction. Announced
-		// rather than called: see run.go. OnFire stays as it was, so being
-		// told a reminder fired does not depend on any of this.
-		requestWork(e)
-	}
 }
 
 // Remove cancels an event the caller owns.

@@ -148,13 +148,15 @@ type Party struct {
 
 // Message is one thing said.
 type Message struct {
-	Results []result.Item `json:"results,omitempty"`
-	ID      string        `json:"id"`
-	Thread  string        `json:"thread"`
-	Account string        `json:"account"`
-	Role    string        `json:"role"`
-	Text    string        `json:"text"`
-	At      time.Time     `json:"at"`
+	SourceHTML string        `json:"source_html,omitempty"`
+	Source     *Source       `json:"source,omitempty"`
+	Results    []result.Item `json:"results,omitempty"`
+	ID         string        `json:"id"`
+	Thread     string        `json:"thread"`
+	Account    string        `json:"account"`
+	Role       string        `json:"role"`
+	Text       string        `json:"text"`
+	At         time.Time     `json:"at"`
 	// Ref is the client's own identifier for this message, where it has one —
 	// a mail Message-ID. It is how a reply finds the conversation it continues
 	// when the client knows better than the store does: answering something
@@ -178,20 +180,14 @@ type Message struct {
 	To string `json:"to,omitempty"`
 }
 
-// maxPerAccount bounds one account's record.
-//
-// High, and deliberately much higher than the workflow store's 200: this is
-// what an agent knows about somebody, and trimming it is forgetting. It exists
-// because unbounded is not a plan, not because these are cheap to lose — when
-// it starts binding, the answer is to distil old messages into memory before
-// dropping them rather than to raise the number again.
-const maxPerAccount = 5000
+// Conversation history is retained until explicitly deleted. Model context
+// limits live in agent/memory.go and must never evict stored conversations.
 
 // One lock over everything, and an index so that everything is not what gets
 // walked.
 //
 // The lock is shared by every account, which is fine while the work under it is
-// bounded and was not: List, Search, ByRef, findUnlocked and trim each walked
+// bounded and was not: List, Search, ByRef, findUnlocked each walked
 // every thread on the instance to answer a question about one account. On a
 // single-user instance that is invisible. On a busy one it is the whole store
 // scanned to draw one sidebar, with every writer queued behind it.
@@ -205,7 +201,7 @@ var (
 	threads  = map[string]*Thread{}            // id → thread
 	messages = map[string][]*Message{}         // thread id → messages, oldest first
 	owned    = map[string]map[string]*Thread{} // account → id → thread
-	held     = map[string]int{}                // account → messages, for trim
+	held     = map[string]int{}                // account → message count
 )
 
 // The record follows $HOME, and is read the first time somebody asks for it.
@@ -239,6 +235,9 @@ var (
 	loadedFrom string // the $HOME it was read from
 	flushOnce  sync.Once
 )
+
+// Load warms the local view during server startup, before pages are served.
+func Load() { ensure() }
 
 func ensure() {
 	home := os.Getenv("HOME")
@@ -323,6 +322,11 @@ func dropUnlocked(t *Thread) {
 // somebody else's service chose — a phone number is not a secret, and two
 // accounts may well be handed the same channel id.
 func Open(account, client, key string) *Thread {
+	return OpenAt(account, client, key, time.Now().UTC())
+}
+
+// OpenAt preserves source timestamps when rebuilding an incoming-message index.
+func OpenAt(account, client, key string, at time.Time) *Thread {
 	ensure()
 	if account == "" || client == "" || key == "" {
 		return nil
@@ -333,7 +337,10 @@ func Open(account, client, key string) *Thread {
 	if t := findUnlocked(account, client, key); t != nil {
 		return t
 	}
-	now := time.Now().UTC()
+	if at.IsZero() {
+		at = time.Now().UTC()
+	}
+	now := at
 	t := &Thread{ID: newID(), Account: account, Client: client, Key: key,
 		Started: now, Updated: now}
 	threads[t.ID] = t
@@ -461,6 +468,12 @@ func Add(m Message) string {
 	if m.Ref != "" {
 		for _, have := range messages[m.Thread] {
 			if have.Ref == m.Ref {
+				if m.Source != nil {
+					have.Source = m.Source
+					have.Text = m.Text
+					have.SourceHTML = m.SourceHTML
+					save()
+				}
 				return have.ID
 			}
 		}
@@ -511,7 +524,6 @@ func Add(m Message) string {
 			t.Seen = stored.At
 		}
 	}
-	trim(m.Account)
 	save()
 	return stored.ID
 }
@@ -662,28 +674,6 @@ func sortByUpdated(out []Thread) {
 		}
 		return out[i].Updated.After(out[j].Updated)
 	})
-}
-
-// trim keeps an account's record within bounds, oldest first. Caller holds mu.
-//
-// Whole conversations rather than the oldest messages across all of them: half
-// a conversation is worse than none, because what survives reads as the whole
-// of it.
-func trim(account string) {
-	if held[account] <= maxPerAccount {
-		return
-	}
-	mine := make([]*Thread, 0, len(owned[account]))
-	for _, t := range owned[account] {
-		mine = append(mine, t)
-	}
-	sort.Slice(mine, func(i, j int) bool { return mine[i].Updated.Before(mine[j].Updated) })
-	for _, t := range mine {
-		if held[account] <= maxPerAccount {
-			return
-		}
-		dropUnlocked(t)
-	}
 }
 
 // save marks the store dirty. Caller holds mu.

@@ -2,12 +2,14 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/internal/userdb"
 )
 
 // Server is the go-micro service handler for tasks.
@@ -216,10 +218,31 @@ var Spec = service.Spec{
 	Icon:        "tasks.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
+		"Read":   {Doc: "Read one task owned by the caller"},
 		"Create": {Writes: true, Doc: "Add a task. Assign it to the agent and it can pick the task up itself"},
 		"List":   {Doc: "List the caller's tasks, open ones first; optionally filtered by state"},
 		"Next":   {Doc: "The next task assigned to the agent — what to work on now"},
 		"Update": {Writes: true, Doc: "Change a task: its state, or the result of doing it"},
 		"Delete": {Doc: "Remove a task", Destructive: true},
 	},
+}
+
+// Read returns one owned task, including its execution state.
+func (Server) Read(ctx context.Context, req *DeleteRequest, rsp *TaskResponse) error {
+	owner := service.AccountFrom(ctx)
+	if owner == "" {
+		return fmt.Errorf("sign in to use tasks")
+	}
+	rec, err := userdb.Get(ns, owner, collection, req.ID)
+	if errors.Is(err, userdb.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if rec.Owner != owner {
+		return nil
+	}
+	rsp.Item = toTask(rec.ID, rec.Owner, rec.Data)
+	return nil
 }

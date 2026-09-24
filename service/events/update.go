@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/service"
 	"strings"
 	"time"
@@ -90,16 +91,13 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 	for _, e := range events {
 		list = append(list, e)
 	}
-	if err := data.SaveJSON(storeKey, list); err != nil {
+	if err := data.CommitJSON(storeKey, list, event.Record{Type: "events.changed", Service: "events", Account: owner, Resource: next.ID, Version: fmt.Sprint(next.Sequence)}); err != nil {
 		events[next.ID] = old
 		return err
 	}
 	cp := next
 	rsp.Item = &cp
 	rsp.Text = "Updated: " + Describe(&next)
-	if OnCreate != nil {
-		invite := next
-		go OnCreate(&invite)
-	}
+
 	return nil
 }

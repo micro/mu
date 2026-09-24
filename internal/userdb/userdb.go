@@ -13,6 +13,7 @@ package userdb
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"time"
 
 	"mu/internal/data"
+	"mu/internal/event"
 
 	"github.com/google/uuid"
 )
@@ -73,7 +75,7 @@ func key(ns, collection string) (string, error) {
 }
 
 // Create stores a new record owned by owner. owner must be non-empty.
-func Create(ns, owner, collection string, dataObj map[string]interface{}, public bool) (*Record, error) {
+func Create(ns, owner, collection string, dataObj map[string]interface{}, public bool, facts ...event.Record) (*Record, error) {
 	if owner == "" {
 		return nil, ErrAuth
 	}
@@ -102,7 +104,7 @@ func Create(ns, owner, collection string, dataObj map[string]interface{}, public
 	now := time.Now()
 	rec := Record{ID: uuid.New().String(), Owner: owner, Public: public, Data: dataObj, Created: now, Updated: now}
 	recs = append(recs, rec)
-	if err := data.SaveJSON(k, recs); err != nil {
+	if err := data.CommitJSON(k, recs, append(facts, recordEvent(ns, collection, rec, "created"))...); err != nil {
 		return nil, err
 	}
 	return &rec, nil
@@ -116,8 +118,11 @@ func Get(ns, caller, collection, id string) (*Record, error) {
 		return nil, err
 	}
 	mu.Lock()
-	recs := load(k)
+	recs, err := loadChecked(k)
 	mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
 	for i := range recs {
 		if recs[i].ID == id {
 			if recs[i].Public || (caller != "" && recs[i].Owner == caller) {
@@ -250,7 +255,7 @@ func LatestBy(ns, caller, collection string, fields []string, sortField string, 
 }
 
 // Update replaces a record's data (and public flag). Owner only.
-func Update(ns, caller, collection, id string, dataObj map[string]interface{}, public bool) (*Record, error) {
+func Update(ns, caller, collection, id string, dataObj map[string]interface{}, public bool, facts ...event.Record) (*Record, error) {
 	if caller == "" {
 		return nil, ErrAuth
 	}
@@ -276,7 +281,7 @@ func Update(ns, caller, collection, id string, dataObj map[string]interface{}, p
 		}
 		recs[i].Public = public
 		recs[i].Updated = time.Now()
-		if err := data.SaveJSON(k, recs); err != nil {
+		if err := data.CommitJSON(k, recs, append(facts, recordEvent(ns, collection, recs[i], "updated"))...); err != nil {
 			return nil, err
 		}
 		r := recs[i]
@@ -302,23 +307,32 @@ func Delete(ns, caller, collection, id string) error {
 			if recs[i].Owner != caller {
 				return ErrForbidden
 			}
+			deleted := recs[i]
 			recs = append(recs[:i], recs[i+1:]...)
-			return data.SaveJSON(k, recs)
+			return data.CommitJSON(k, recs, recordEvent(ns, collection, deleted, "deleted"))
 		}
 	}
 	return ErrNotFound
 }
 
 func load(k string) []Record {
+	recs, _ := loadChecked(k)
+	return recs
+}
+
+func loadChecked(k string) ([]Record, error) {
 	b, err := data.LoadFile(k)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	var recs []Record
 	if err := json.Unmarshal(b, &recs); err != nil {
-		return nil
+		return nil, err
 	}
-	return recs
+	return recs, nil
 }
 
 func filter(recs []Record, scope, caller string, where map[string]interface{}) []Record {
@@ -591,4 +605,10 @@ func DeleteOwner(ns, owner string) (int, error) {
 		}
 	}
 	return removed, nil
+}
+
+// recordEvent describes storage facts without including private record bodies.
+func recordEvent(ns, collection string, r Record, change string) event.Record {
+	serviceName := strings.Split(ns, "/")[0]
+	return event.Record{Type: serviceName + "." + change, Service: serviceName, Account: r.Owner, Resource: r.ID, Version: r.Updated.UTC().Format(time.RFC3339Nano), Data: map[string]interface{}{"namespace": ns, "collection": collection}}
 }

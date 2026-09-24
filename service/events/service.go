@@ -269,10 +269,23 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "events.svg",
 	Endpoints: map[string]service.Endpoint{
+		"Read":   {Doc: "Read one schedule owned by the caller"},
 		"Update": {Writes: true, Doc: "Update one of your scheduled events without changing its id. Omitted fields stay unchanged; empty notes, prompts or recurrence clear them"},
 		"Create": {Writes: true, Doc: "Schedule a reminder or event at a given time; optionally repeating, and optionally running a prompt through the agent when it fires"},
 		"Free":   {Doc: "Find when the caller has nothing booked — open slots of a given length, within working hours"},
 		"List":   {Doc: "List the caller's upcoming events and reminders, each with its id"},
 		"Delete": {Doc: "Cancel an event by id", Destructive: true},
 	},
+}
+
+type ReadRequest struct {
+	ID string `json:"id" required:"true"`
+}
+type ReadResponse struct {
+	Item *Event `json:"item"`
+}
+
+func (Server) Read(ctx context.Context, req *ReadRequest, rsp *ReadResponse) error {
+	rsp.Item = ownedEvent(service.AccountFrom(ctx), req.ID)
+	return nil
 }

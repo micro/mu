@@ -160,7 +160,11 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RecordOn(channel, owner, "in", from, body, Segments(body))
+	stored := recordOn(channel, owner, "in", from, body, Segments(body), r.PostForm.Get("MessageSid"))
+	if stored.ID == "" {
+		http.Error(w, "could not store message", http.StatusServiceUnavailable)
+		return
+	}
 
 	known, isKnown := KnownSender(from)
 
@@ -179,8 +183,9 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// A reply route permits correspondence, never access to the recipient's tools.
 	if isKnown {
 		event.Publish(event.Event{
-			Type: event.SMSForAgent,
+			Type: event.SMSVerified,
 			Data: map[string]interface{}{
+				"id":      stored.ID,
 				"owner":   known,
 				"from":    from,
 				"text":    body,

@@ -28,7 +28,7 @@
 // # Why it subscribes
 //
 // The same inversion service/mail made. service/chat publishes on
-// event.ChatForAgent only once its own gate has passed, and knows nothing
+// event.ChatAddressed only once its own gate has passed, and knows nothing
 // about who listens; this subscribes. A hook would have been the other
 // direction — a service reaching up into the agent through a function variable
 // filled in at boot — which is how that rule gets avoided rather than kept.
@@ -54,12 +54,20 @@ const Client = thread.ChatClient
 
 // Load subscribes to the rooms.
 func Load() {
-	sub := event.Subscribe(event.ChatForAgent)
+	watch("chat.posted")
+	watch(event.ChatAddressed)
+}
+
+func watch(topic string) {
+	sub := event.Subscribe(topic)
 	go func() {
 		for e := range sub.Chan {
+			if topic == "chat.posted" && !shouldAnswer(e.Data) {
+				continue
+			}
 			said, ok := spokenIn(e.Data)
 			if !ok {
-				app.Log("chat", "%s carried no message", event.ChatForAgent)
+				app.Log("chat", "%s carried no message", event.ChatAddressed)
 				continue
 			}
 			// One goroutine per message: answering is a model call and several
@@ -80,6 +88,7 @@ func Load() {
 
 // spoken is one message that is expecting an answer.
 type spoken struct {
+	Ref     string
 	Room    string
 	Title   string
 	Summary string
@@ -94,7 +103,7 @@ func spokenIn(data map[string]interface{}) (spoken, bool) {
 		return v
 	}
 	s := spoken{
-		Room: str("room"), Title: str("title"), Summary: str("summary"),
+		Ref: str("ref"), Room: str("room"), Title: str("title"), Summary: str("summary"),
 		URL: str("url"), Account: str("account"), Text: str("text"),
 	}
 	if s.Room == "" || s.Text == "" {
@@ -106,8 +115,9 @@ func spokenIn(data map[string]interface{}) (spoken, bool) {
 // answer asks the agent and puts what it says back in the room.
 func answer(s spoken) {
 	res, err := agent.Ask(agent.AskRequest{
-		Account: s.Account,
-		Client:  Client,
+		Account:    s.Account,
+		MessageRef: s.Ref,
+		Client:     Client,
 		// The room is the conversation, so the room id is the thread key. That
 		// is what makes a second message in the same room a second turn rather
 		// than a fresh question — which the old path did not have at all: it
@@ -257,4 +267,15 @@ func about(s spoken) string {
 		b.WriteString(" (Source: " + s.URL + ")")
 	}
 	return b.String()
+}
+
+func shouldAnswer(data map[string]interface{}) bool {
+	room, _ := data["room"].(string)
+	text, _ := data["text"].(string)
+	direct, _ := data["direct"].(bool)
+	participants, _ := data["participants"].(float64)
+	return direct || strings.Contains(strings.ToLower(text), "@micro") ||
+		strings.HasPrefix(room, "news_") || strings.HasPrefix(room, "video_") ||
+		strings.HasPrefix(room, "post_") || strings.HasPrefix(room, "reminder_") ||
+		(strings.HasPrefix(room, "chat_") && participants == 1)
 }

@@ -995,69 +995,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 					return
 				}
 
-				// Check if micro should respond:
-				// For item-specific rooms (news_, video_, post_), ALWAYS respond - these are AI discussions
-				// For topic chat rooms (chat_), respond when mentioned or alone (public room behavior)
-				contentLower := strings.ToLower(content)
-				mentionedMicro := strings.Contains(contentLower, "@micro")
-
-				// Item-specific rooms always get AI responses (this is "discuss with AI")
-				isItemRoom := strings.HasPrefix(room.ID, "news_") ||
-					strings.HasPrefix(room.ID, "video_") ||
-					strings.HasPrefix(room.ID, "post_") ||
-					strings.HasPrefix(room.ID, "reminder_")
-
-				// Check if user is alone in a topic chat room
 				room.mutex.RLock()
-				isAlone := strings.HasPrefix(room.ID, "chat_") && len(room.Clients) == 1
+				title, summary, url, count := room.Title, room.Summary, room.URL, len(room.Clients)
 				room.mutex.RUnlock()
+				event.Publish(event.Event{Type: "chat.posted", Data: map[string]interface{}{
+					"room": room.ID, "title": title, "summary": summary, "url": url, "account": client.UserID, "text": content, "participants": count, "direct": microDM(room.ID, client.UserID),
+				}})
 
-				// inActiveConvo only applies when the user is alone
-				// When multiple users are present, micro only responds to explicit @micro mentions
-				inActiveConvo := isAlone && client.InMicroConvo && time.Since(client.LastMicroReply) < 2*time.Minute
-
-				directToMicro := microDM(room.ID, client.UserID)
-				if mentionedMicro || isAlone || isItemRoom || directToMicro {
-					client.InMicroConvo = true
-				}
-
-				if mentionedMicro || inActiveConvo || isAlone || isItemRoom || directToMicro {
-					// Deterministic lookups first, with no model involved.
-					// Answering "what is the weather" from a table is a service
-					// answering a question about state, which is this package's
-					// job and cheaper than a model call.
-					if response := handlePatternMatch(content, room); response != "" {
-						app.Log("chat", "pattern match, no agent needed")
-						client.LastMicroReply = time.Now()
-						Say(room.ID, agentName, response)
-						continue
-					}
-
-					// Otherwise say what happened and let whoever answers
-					// answer. This used to be a hundred and ninety lines here:
-					// its own RAG over the index, its own decision about
-					// whether to search the web, its own history assembled
-					// from the room, and a model call, all inside a websocket
-					// goroutine.
-					//
-					// That was a hand-rolled agent inside a service. The rule
-					// it broke is the one with a reason rather than a
-					// convention behind it — a service answers a question
-					// about state, an agent decides which question to ask —
-					// and the cost of breaking it was that the agent in a room
-					// could reach two sources while the agent everywhere else
-					// in this product reaches a hundred and eighteen tools.
-					//
-					// The gate above stays here, because who is in the room
-					// and whether the agent was named are facts about the
-					// room. What is published is only what passed it. See
-					// event.ChatForAgent, and agent/chat, which subscribes.
-					room.mutex.RLock()
-					title, summary, url := room.Title, room.Summary, room.URL
-					room.mutex.RUnlock()
-					client.LastMicroReply = time.Now()
-					event.RequestChatReply(room.ID, title, summary, url, client.UserID, content)
-				}
 			}
 		}
 	}()

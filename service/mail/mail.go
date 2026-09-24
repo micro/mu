@@ -542,7 +542,7 @@ func addMessageToInbox(inbox *Inbox, msg *Message, userID string) {
 }
 
 // Save messages to disk (caller must hold mutex)
-func save() error {
+func save(facts ...event.Record) error {
 	// Make copies with encrypted fields for storage
 	encrypted := make([]*Message, len(messages))
 	for i, m := range messages {
@@ -560,6 +560,9 @@ func save() error {
 		return err
 	}
 
+	if len(facts) > 0 {
+		return event.Commit(map[string][]byte{"mail.json": b}, facts...)
+	}
 	return data.SaveFile("mail.json", string(b))
 }
 
@@ -1579,10 +1582,22 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 
 	// This message, not every message: added and indexed, then filed into the
 	// inboxes it belongs to. See addMessage and fileMessage.
+	previous := messages
 	addMessage(msg)
 	fileMessage(msg)
-	err := save()
+	var facts []event.Record
+	if !msg.Spam && msg.ToID != "" {
+		facts = append(facts, event.Record{Type: "mail.received", Service: "mail", Account: msg.ToID, Resource: msg.ID, Version: msg.CreatedAt.UTC().Format(time.RFC3339Nano)})
+	}
+	err := save(facts...)
+	if err != nil {
+		setMessages(previous)
+		rebuildInboxes()
+	}
 	mutex.Unlock()
+	if err != nil {
+		return err
+	}
 
 	// Update stats (outside lock)
 	updateStats(msg)
@@ -1736,10 +1751,22 @@ func SendMessageTo(d Delivery) error {
 
 	// This message, not every message: added and indexed, then filed into the
 	// inboxes it belongs to. See addMessage and fileMessage.
+	previous := messages
 	addMessage(msg)
 	fileMessage(msg)
-	err := save()
+	var facts []event.Record
+	if !msg.Spam && msg.ToID != "" {
+		facts = append(facts, event.Record{Type: "mail.received", Service: "mail", Account: msg.ToID, Resource: msg.ID, Version: msg.CreatedAt.UTC().Format(time.RFC3339Nano)})
+	}
+	err := save(facts...)
+	if err != nil {
+		setMessages(previous)
+		rebuildInboxes()
+	}
 	mutex.Unlock()
+	if err != nil {
+		return err
+	}
 
 	// Update stats (outside lock) — only for non-spam
 	if !d.Spam {
@@ -1895,11 +1922,17 @@ func NotSpamMessage(userID, msgID string) error {
 
 	for _, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID && msg.Spam {
+			previous := *msg
 			msg.Spam = false
 			msg.SpamScore = 0
 			msg.SpamReasons = nil
 			rebuildInboxes()
-			return save()
+			if err := save(event.Record{Type: "mail.received", Service: "mail", Account: userID, Resource: msg.ID}); err != nil {
+				*msg = previous
+				rebuildInboxes()
+				return err
+			}
+			return nil
 		}
 	}
 	return fmt.Errorf("spam message not found")
@@ -2098,10 +2131,16 @@ func DeleteMessage(msgID, userID string) error {
 	for i, msg := range messages {
 		// Allow deletion if user is sender or recipient
 		if msg.ID == msgID && (sentBy(msg, userID) || msg.ToID == userID) {
+			previous := messages
 			setMessages(append(messages[:i:i], messages[i+1:]...))
 			rebuildInboxes()
+			if err := save(deletedFacts([]*Message{msg})...); err != nil {
+				setMessages(previous)
+				rebuildInboxes()
+				return err
+			}
 			unindexMessage(msg)
-			return save()
+			return nil
 		}
 	}
 	return fmt.Errorf("message not found")
@@ -2134,7 +2173,7 @@ func DeleteThread(msgID, userID string) error {
 	// Delete all messages in this thread
 	var remaining, gone []*Message
 	for _, m := range messages {
-		if m.ThreadID != threadID {
+		if m.ThreadID != threadID || (m.ToID != userID && !sentBy(m, userID)) {
 			remaining = append(remaining, m)
 			continue
 		}
@@ -2146,13 +2185,19 @@ func DeleteThread(msgID, userID string) error {
 		return fmt.Errorf("no messages to delete")
 	}
 
+	previous := messages
 	setMessages(remaining)
 	rebuildInboxes()
+	if err := save(deletedFacts(gone)...); err != nil {
+		setMessages(previous)
+		rebuildInboxes()
+		return err
+	}
 	for _, m := range gone {
 		unindexMessage(m)
 	}
 	app.Log("mail", "Deleted %d messages from thread for user %s", deleted, userID)
-	return save()
+	return nil
 }
 
 // IsExternalAddress reports whether an address is somewhere other than here.
@@ -2406,4 +2451,14 @@ func mailSearchBar(q, csrf string) string {
 		`<input type="text" name="q" value="` + html.EscapeString(q) + `" ` +
 		`placeholder="Search mail...">` +
 		`<button type="submit" class="btn">Search</button></form>`
+}
+
+func deletedFacts(messages []*Message) []event.Record {
+	var facts []event.Record
+	for _, m := range messages {
+		if m.ToID != "" {
+			facts = append(facts, event.Record{Type: "mail.deleted", Service: "mail", Account: m.ToID, Resource: m.ID})
+		}
+	}
+	return facts
 }

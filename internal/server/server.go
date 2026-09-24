@@ -7,6 +7,7 @@ import (
 	gmlogger "go-micro.dev/v6/logger"
 
 	"mu/internal/app"
+	"mu/internal/persist"
 	"mu/internal/service"
 	"mu/internal/tool"
 )
@@ -35,6 +36,9 @@ import (
 // thousand lines: every tool that could not be derived because its capability
 // was not declared on a service. They all are now.
 func Run(addr string) {
+	if err := persist.Recover(); err != nil {
+		panic("could not recover stored state: " + err.Error())
+	}
 	// Before anything logs, because the point of it is that the log stops
 	// going to the screen — a service that boots first and logs first would
 	// otherwise print to the surface this is clearing. See

@@ -486,20 +486,8 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 		return messageOpen(t, m, accountID, "ib-person") + messageFrom(t, who, m.At) +
 			`<div class="ib-body ib-typed">` + app.Linkify(html.EscapeString(m.Text)) + `</div></div>`
 	}
-	// Mail is rendered by the mail service, not by this page.
-	//
-	// A message that arrived as mail is MIME: HTML, quoted-printable, base64, a
-	// gzipped XML report in a zip. The record holds the prose version, because
-	// prose is what an agent should be handed and what a search should look
-	// through — see body() in agent/mail, where the agent was being asked
-	// `<div dir="auto">What&#39;s happening </div>`. But prose is not what a
-	// reader should be shown: a DMARC report *is* a table, and escaping it
-	// produces the word "table" and some angle brackets.
-	//
-	// So the record says what was said and the mail store says what it looked
-	// like, and this asks the second for the mail it already has. mail.Rendered
-	// is the same function /mail renders through — there is exactly one, and a
-	// test holds that — so the two pages cannot drift.
+	// Mail HTML is prepared by the background projection. Rendering never
+	// joins back to the source store, including while old records are migrating.
 	rendered := mailBody(accountID, m)
 	if rendered == "" && t.Client == "mail" {
 		// Older local mail has no Message-ID to join to its stored body.
@@ -626,32 +614,13 @@ func addressLine(m thread.Message) string {
 	return `<div class="ib-addrs section-actions text-muted">` + strings.Join(parts, `<span class="ib-addr-sep">·</span>`) + `</div>`
 }
 
-// mailBody is the stored mail for a recorded message, rendered — or empty when
-// there is none.
-//
-// Ref is the client's own identifier, which for mail is the Message-ID, so it
-// is the join between the record and the mailbox. Empty for everything that did
-// not arrive as mail, which is how chat and the web fall through to the plain
-// path below without being asked about.
-//
-// Ownership is checked rather than assumed. The Message-ID comes from the
-// caller's own thread so it is already theirs, but FindMessageByMessageID
-// searches every message on the instance, and a lookup that trusts its input
-// because of where it was called from is one refactor away from not being true.
+// mailBody returns only locally cached HTML. Older transcripts use their
+// existing text until the background migration prepares the richer view.
 func mailBody(accountID string, m thread.Message) string {
-	if m.Ref == "" {
+	if m.Account != accountID {
 		return ""
 	}
-	stored := mail.FindMessageByMessageID(m.Ref)
-	if stored == nil {
-		// Deleted from the mailbox, or older than the store. The record still
-		// has what was said, so the reader still gets the message.
-		return ""
-	}
-	if stored.ToID != accountID && stored.FromID != accountID {
-		return ""
-	}
-	return mail.Rendered(stored)
+	return m.SourceHTML
 }
 
 // backTo is the way back to where a conversation is still happening.

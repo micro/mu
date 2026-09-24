@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/event"
 	"mu/internal/userdb"
 )
 
@@ -310,7 +311,17 @@ func update(owner, id, title, detail, status, assignee, result string, extra map
 			fields[key] = value
 		}
 	}
-	rec, err := userdb.Update(ns, owner, collection, existing.ID, fields, false)
+	var facts []event.Record
+	if status == StatusDoing && existing.Status != StatusDoing {
+		encoded, _ := fields["attempts"].(string)
+		attempts := decodeAttempts(encoded)
+		version := ""
+		if len(attempts) > 0 {
+			version = attempts[len(attempts)-1].ID
+		}
+		facts = append(facts, event.Record{Type: event.TaskStarted, Service: "tasks", Account: owner, Resource: existing.ID, Version: version})
+	}
+	rec, err := userdb.Update(ns, owner, collection, existing.ID, fields, false, facts...)
 	if err != nil {
 		return nil, err
 	}

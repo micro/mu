@@ -122,6 +122,8 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
+		"Sources":     {Needs: service.Account, Doc: "List stored message ids owned by the caller"},
+		"Source":      {Needs: service.Account, Doc: "Read one stored message owned by the caller, by id"},
 		"GmailSearch": {Needs: service.Account, Doc: "Search the caller's connected Gmail. Read-only; connect in Account first."},
 		"GmailRead":   {Needs: service.Account, Doc: "Read the caller's connected Gmail. Read-only; connect in Account first."},
 
