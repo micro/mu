@@ -104,9 +104,7 @@ mu --serve
 Open **http://localhost:8080**. Initial administrator setup depends on the
 instance's bootstrap configuration; see the installation guide.
 
-Configure an AI provider with `mu setup`. Supported settings include
-`ANTHROPIC_API_KEY`, `ATLASCLOUD_API_KEY`, `GEMINI_API_KEY`,
-`OPENROUTER_API_KEY`, or an OpenAI-compatible `OPENAI_BASE_URL`.
+Configure an AI provider with `mu setup`, or use the settings below.
 Individual tools may need provider keys, such as `BRAVE_API_KEY` for web search
 or `YOUTUBE_API_KEY` for video. Google sign-in and payments are optional.
 
@@ -123,6 +121,75 @@ mu --serve
 Or run `docker compose up` from the checkout. See the
 [installation guide](docs/INSTALL.md) for domains, TLS, mail, messaging,
 sandbox configuration, and deployment.
+
+## Models and providers
+
+Mu supports these model providers. Available models depend on the provider
+credentials and model IDs configured on your instance; the agent requires a
+model with tool-calling support.
+
+| Provider | Models | Configuration |
+|---|---|---|
+| Anthropic | Claude Opus, Sonnet and Haiku | `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`; optional `ANTHROPIC_MODEL` |
+| Atlas Cloud | DeepSeek, Qwen and GLM | `AI_PROVIDER=atlascloud`, `ATLASCLOUD_API_KEY`; optional `ATLAS_MODEL` |
+| Google | Gemini | `AI_PROVIDER=gemini`, `GEMINI_API_KEY`; optional `GEMINI_MODEL` |
+| OpenRouter | Models available through its catalogue, including GPT, Claude, Gemini and GLM | `AI_PROVIDER=openrouter`, `OPENROUTER_API_KEY`; optional `OPENROUTER_MODEL` |
+| OpenAI-compatible endpoint | Models served by your endpoint, including Ollama, vLLM or llama.cpp | `AI_PROVIDER=local`, `OPENAI_BASE_URL`, `OPENAI_MODEL`; `OPENAI_API_KEY` if required |
+| Codex admin preview | GPT-6-Astra (`gpt-6-astra`) through a ChatGPT login | Separate host setup and per-account opt-in below; do not set `AI_PROVIDER=codex` |
+
+Set `AI_PROVIDER` explicitly when keeping credentials for multiple providers.
+`AGENT_MODEL` can override the agent's model; explicitly named models can also
+select their provider. Settings come from environment variables first, then
+stored configuration in **Admin → Settings**. For example, a local endpoint:
+
+```sh
+export AI_PROVIDER=local
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=your-installed-model
+mu --serve
+```
+
+Use the model ID actually served by your endpoint. See the
+[AI configuration reference](docs/INSTALL.md#ai-provider) for provider settings.
+
+### Configure Codex
+
+Codex is an opt-in preview for an administrator's direct conversations, using
+the existing Micro agent. Other accounts and scheduled/background work keep
+the site provider. The preview is currently pinned to GPT-6-Astra; it does not
+expose every model listed by `mu codex status`.
+
+1. On the server, install Bubblewrap and the standalone native Codex **0.156.1**
+   executable. Linux with permitted unprivileged user namespaces is required.
+   On Debian/Ubuntu, install Bubblewrap with `sudo apt install bubblewrap`.
+2. As the OS user running Micro, use the same Mu data directory and executable
+   configuration as the server:
+
+   ```sh
+   # If the native executable is not named codex on PATH:
+   export CODEX_BINARY=/absolute/path/to/native/codex
+   mu codex login
+   mu codex check
+   ```
+
+   Set `CODEX_BINARY` in the server environment too if you use it here. An npm
+   JavaScript launcher is not the native executable. Login creates a separate
+   credential profile; check verifies the sandbox and makes a small, real
+   GPT-6-Astra request with a harmless tool, using your ChatGPT allowance.
+3. After the check succeeds, sign in as an admin and open **Account → Codex
+   preview → Enable for my conversations**. Continue in the normal conversation
+   UI. Select **Use the site provider** in the same section to turn it off.
+
+Each request uses fresh sandboxed state and an ephemeral Codex thread. Personal
+Codex history, configuration, memories and connectors are excluded; Micro
+supplies conversation context and retains its account-scoped tool permissions.
+The login still uses the chosen ChatGPT account and its allowance. Networking
+remains available; the sandbox is not an outbound-network firewall.
+
+A failed check blocks activation, with no unsandboxed fallback. `mu codex status`
+only inspects the existing personal CLI login; it does not configure or validate
+this preview. See the [Codex installation guide](docs/INSTALL.md#checking-codex-availability)
+for isolation details and host requirements.
 
 ## CLI
 
