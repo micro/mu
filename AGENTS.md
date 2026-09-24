@@ -602,8 +602,13 @@ not a wrapper for an article's title, metadata and paragraphs. Wrap separate
 metadata values in elements so layout gaps can separate them. Use `search-bar`
 and labelled fields for forms; never depend on whitespace between inline links.
 
-Keep reading text narrow, while desktop lists, editors and maps use the wider
-page container. All grid/flex children must shrink and long content must wrap.
+The shared app canvas fills the space beside navigation on every page. Do not
+add route-specific width fixes or constrain whole app pages to reading width.
+Services, agents and app collections use the shared responsive card grid;
+messages and tables use rows. Sections share borders, padding and spacing.
+Keep only prose and ordinary forms narrow; editors and maps use the canvas.
+The Micro brand sits above desktop sidebar navigation and returns to the
+header on smaller screens. All grid/flex children must shrink and long content must wrap.
 Mobile forms wrap, tables scroll or stack, previews fit their container, and
 conversation composers remain reachable. Bound images and give SVG shapes
 explicit fills and strokes. Keep optional references in a collapsed disclosure.

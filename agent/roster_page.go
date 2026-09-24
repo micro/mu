@@ -107,7 +107,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// The button is the standard one, in the standard place: the top, where
 	// every other page in this product puts its primary action.
 	b.WriteString(`<div class="page-action">` + newAgentAction(owner) + `</div>`)
-	b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>Conversations</h2><a href="/agent/micro?new=1">New conversation</a></div><div class="collection-list">`)
+	b.WriteString(`<section class="record-card"><div class="section-card-head"><h2>Conversations</h2><a href="/agent/micro?new=1">New conversation</a></div><div class="collection-list">`)
 	count := 0
 	for _, th := range thread.List(owner, 0) {
 		if th.Client != thread.WebClient {
