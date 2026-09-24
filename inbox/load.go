@@ -11,6 +11,7 @@ import (
 	"mu/internal/thread"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,8 +19,8 @@ import (
 // The checkpoint follows Flush, so a restart cannot acknowledge an unsaved index.
 func Load() {
 	thread.Load()
+	go reconcileSources()
 	go func() {
-		reconcileSources()
 		for {
 			err := event.Consume(context.Background(), "inbox", []string{"mail.received", event.ChatRecorded, "sms.created", "sms.updated", "sms.deleted", "mail.deleted"}, indexArrival)
 			app.Log("inbox", "arrival consumer stopped: %v", err)
@@ -30,7 +31,11 @@ func Load() {
 
 func indexArrival(e event.Record) error { return projectArrival(e, true) }
 
+var projectionMu sync.Mutex
+
 func projectArrival(e event.Record, flush bool) error {
+	projectionMu.Lock()
+	defer projectionMu.Unlock()
 	if strings.HasSuffix(e.Type, ".deleted") {
 		thread.InvalidateSource(e.Account, e.Service, e.Resource)
 		return thread.Flush()

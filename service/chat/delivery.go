@@ -2,7 +2,9 @@ package chat
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -40,7 +42,19 @@ func (room *Room) keepMessage(message RoomMessage) error {
 	if len(next) > 20 {
 		next = next[len(next)-20:]
 	}
-	if err := saveRoomMessages(room.ID, next); err != nil {
+	var err error
+	if !message.System && !message.IsLLM {
+		var b []byte
+		b, err = json.Marshal(next)
+		if err == nil {
+			_, err = keepSaved(message.UserID, Said{Conv: room.ID, From: message.UserID, Text: message.Content, At: message.Timestamp,
+				Facts: map[string]interface{}{"transport": message.transport, "room": room.ID, "title": room.Title, "summary": room.Summary, "url": room.URL, "participants": len(room.Clients), "direct": microDM(room.ID, message.UserID)}},
+				map[string][]byte{"room_" + strings.ReplaceAll(room.ID, "/", "_") + ".json": b}, "chat.posted")
+		}
+	} else {
+		err = saveRoomMessages(room.ID, next)
+	}
+	if err != nil {
 		return fmt.Errorf("chat message could not be saved: %w", err)
 	}
 	room.Messages = next

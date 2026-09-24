@@ -18,7 +18,6 @@ const (
 	ScheduleDue   = "events.due"
 	ChatRecorded  = "chat.recorded"
 	MailAccepted  = "mail.accepted"
-	SMSVerified   = "sms.verified"
 	ChatAddressed = "chat.addressed"
 )
 

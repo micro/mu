@@ -770,11 +770,12 @@ func (s *Session) Data(r io.Reader) error {
 		}
 
 		if err := SendMessageTo(Delivery{
-			From:   senderName,
-			FromID: fromAddr.Address, // the address it came from is the sender's id
-			To:     toAcc.Name,
-			ToID:   toAcc.ID,
-			Tag:    toTag,
+			arrival: &arrival{To: toAddr.Address, Shared: sharedAgentMail, Authenticated: aligned, Machine: machineMail(msg.Header), Others: Others(headerTo, headerCc, fromAddr.Address, toAddr.Address), ToAgent: inList(headerTo, toAddr.Address), InReplyTo: inReplyTo, References: references},
+			From:    senderName,
+			FromID:  fromAddr.Address, // the address it came from is the sender's id
+			To:      toAcc.Name,
+			ToID:    toAcc.ID,
+			Tag:     toTag,
 
 			Subject: subject,
 			Body:    body,
@@ -813,45 +814,6 @@ func (s *Session) Data(r io.Reader) error {
 			}
 		}
 
-		// Anything registered for this address gets the message.
-		//
-		// Every agent already had an address — you+name@ — and writing to one
-		// put a message in the owner's inbox and did nothing else. An agent
-		// with an address that cannot answer is a mailbox with a name on it,
-		// and "email your agent" is the first thing anyone tries.
-		//
-		// The whole rule is mayDispatch, in inbound_agent.go: not spam, not our
-		// own reply coming back, the sender authenticated by SPF or DKIM, and
-		// known to this account. Those last two matter — the address used to be
-		// protected by nothing but being hard to guess. A handler resolves the
-		// tag itself and returns quietly when it names nothing, so plain tagged
-		// mail — you+receipts@ — still just files.
-		deliverInbound(InboundMail{
-			Owner:      toAcc.ID,
-			Tag:        toTag,
-			Shared:     sharedAgentMail,
-			From:       fromAddr.Address,
-			To:         toAddr.Address,
-			FromName:   senderName,
-			Subject:    subject,
-			Body:       body,
-			Text:       stripHTMLTags(body),
-			Attachment: attachmentName(inboundAttachment),
-			Others:     Others(headerTo, headerCc, fromAddr.Address, toAddr.Address),
-			ToAgent:    inList(headerTo, toAddr.Address),
-			MessageID:  messageID,
-			InReplyTo:  inReplyTo,
-			References: references,
-		}, wakeRequest{
-			Owner:         toAcc.ID,
-			Tag:           toTag,
-			Shared:        sharedAgentMail,
-			From:          fromAddr.Address,
-			To:            toAddr.Address,
-			IsSpam:        spamResult.IsSpam,
-			Authenticated: aligned,
-			Machine:       machineMail(msg.Header),
-		})
 	}
 
 	app.Log("mail", "Email processed successfully")

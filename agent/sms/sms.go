@@ -3,14 +3,17 @@ package sms
 // Answering a text.
 //
 // The same seam as agent/mail and agent/chat: service/sms owns the number and
-// may not call an agent, so it announces what arrived on event.SMSVerified and
-// this answers.
+// may not call an agent, so it commits arrival facts with its own record. This consumer reads
+// through the service API, checks ownership, and decides whether to answer.
 //
 // Only the verified owner of a number may use their assistant through it.
 // Correspondents may reply to messages but cannot act as the account owner.
 
 import (
+	"context"
+	"mu/internal/service"
 	"strings"
+	"time"
 
 	"mu/agent"
 	"mu/internal/app"
@@ -34,28 +37,30 @@ func clientFor(channel svcsms.Channel) string {
 	return Client
 }
 
-// Load subscribes to texts that want an answer.
-func Load() {
-	sub := event.Subscribe(event.SMSVerified)
-	go func() {
-		for e := range sub.Chan {
-			t, ok := textedIn(e.Data)
-			if !ok {
-				app.Log("sms", "%s carried no message", event.SMSVerified)
-				continue
-			}
-			// One goroutine per text, recovered: answering is a model call and
-			// several tool calls, and a panic on one must not stop the next.
-			go func(t texted) {
-				defer func() {
-					if rec := recover(); rec != nil {
-						app.Log("sms", "answering %s panicked: %v", t.From, rec)
-					}
-				}()
-				answer(t)
-			}(t)
-		}
-	}()
+// Load consumes stored arrivals. The trust fact is captured at receipt and
+// ownership is checked again before the account's assistant is invoked.
+func Load() { agent.WatchEvents("agent-sms", []string{"sms.created"}, prepareText) }
+
+func prepareText(e event.Record) (func(), error) {
+	if e.Data["collection"] != "messages" {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var rsp service.SourceResponse
+	if err := service.Call(service.WithAccount(ctx, e.Account), "sms", "Server.Source", &service.SourceRequest{ID: e.Resource}, &rsp); err != nil {
+		return nil, err
+	}
+	m := rsp.Item
+	if m == nil || m.Direction != "in" || m.Facts["verified_owner"] != true {
+		return nil, nil
+	}
+	owner, verified := svcsms.KnownSender(m.From)
+	if !verified || owner != e.Account {
+		return nil, nil
+	}
+	t := texted{ID: m.ID, Owner: e.Account, From: m.From, Text: m.Text, Channel: svcsms.Channel(m.Channel)}
+	return func() { answer(t) }, nil
 }
 
 // texted is one message that is expecting an answer.
@@ -65,19 +70,6 @@ type texted struct {
 	From    string
 	Text    string
 	Channel svcsms.Channel
-}
-
-func textedIn(data map[string]interface{}) (texted, bool) {
-	str := func(k string) string {
-		v, _ := data[k].(string)
-		return v
-	}
-	t := texted{ID: str("id"), Owner: str("owner"), From: str("from"), Text: str("text"),
-		Channel: svcsms.Channel(str("channel"))}
-	if t.Owner == "" || t.From == "" || strings.TrimSpace(t.Text) == "" {
-		return texted{}, false
-	}
-	return t, true
 }
 
 // answer asks, then texts back.

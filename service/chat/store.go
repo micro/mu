@@ -1,31 +1,8 @@
 package chat
 
-// What was said here, kept here.
-//
-// # Why this exists
-//
-// service/mail owns mail: envelopes, MIME, folders, spam flags, Message-IDs.
-// It does not import internal/thread and never has. The prose copy an agent
-// remembers is written by agent/mail, above it, and joined back by the
-// Message-ID — so the service is self-contained and the thing built on top is
-// the thing that reaches into the record.
-//
-// Chat had that backwards for a day. xmpp_record.go wrote stanzas straight into
-// internal/thread, which no other protocol service does, and it meant two
-// things that were both wrong: a person-to-person message with no agent in it
-// turned up in an inbox nobody addressed, and the archive a client asks for was
-// a prose rendering rather than what was actually said.
-//
-// So: this is chat's record. Stanzas, with the ids and timestamps a client
-// gets back from MAM. agent/chat is what writes a prose copy into the record
-// for the agent to remember, which is the same seam agent/mail is.
-//
-// # What follows from being self-contained
-//
-// A conversation between two people never reaches internal/thread, because no
-// agent was in it and there is nothing for one to remember. That is not a
-// filter applied afterwards — it is what happens when the service keeps its own
-// record. Which is also the answer to why chat stopped appearing in /inbox.
+// Chat owns protocol and room records. Committed arrival events identify
+// those records; Inbox and Agent read them through Server.Source independently.
+// Recording a message does not depend on an agent choosing to answer.
 
 import (
 	"crypto/rand"
@@ -63,12 +40,13 @@ func newID() string {
 // and a role, which is the right shape for memory and the wrong one for a
 // protocol that addresses everything.
 type Said struct {
-	ID   string    `json:"id"`
-	Conv string    `json:"conv"` // the conversation key — see xmppRoom
-	From string    `json:"from"`
-	To   string    `json:"to"`
-	Text string    `json:"text"`
-	At   time.Time `json:"at"`
+	Facts map[string]interface{} `json:"facts,omitempty"`
+	ID    string                 `json:"id"`
+	Conv  string                 `json:"conv"` // the conversation key — see xmppRoom
+	From  string                 `json:"from"`
+	To    string                 `json:"to"`
+	Text  string                 `json:"text"`
+	At    time.Time              `json:"at"`
 }
 
 // heldPerAccount bounds one account's chat history.
@@ -114,6 +92,10 @@ func Keep(account string, m Said) string {
 // complete write with mutations also prevents an old snapshot overwriting a
 // newer one when two messages arrive together.
 func KeepSaved(account string, m Said) (string, error) {
+	return keepSaved(account, m, nil, "")
+}
+
+func keepSaved(account string, m Said, writes map[string][]byte, topic string) (string, error) {
 	if account == "" || strings.TrimSpace(m.Text) == "" || m.Conv == "" {
 		return "", fmt.Errorf("a chat message needs an account, conversation and text")
 	}
@@ -131,7 +113,19 @@ func KeepSaved(account string, m Said) (string, error) {
 		next = next[len(next)-heldPerAccount:]
 	}
 	said[account] = next
-	if err := data.CommitJSON("chat.json", said, event.Record{Type: event.ChatRecorded, Service: "chat", Account: account, Resource: m.ID, Version: m.At.UTC().Format(time.RFC3339Nano)}); err != nil {
+	facts := []event.Record{{Type: event.ChatRecorded, Service: "chat", Account: account, Resource: m.ID, Version: m.At.UTC().Format(time.RFC3339Nano)}}
+	if topic != "" {
+		facts = append(facts, event.Record{Type: topic, Service: "chat", Account: account, Resource: m.ID})
+	}
+	if writes == nil {
+		writes = map[string][]byte{}
+	}
+	b, err := json.Marshal(said)
+	if err == nil {
+		writes["chat.json"] = b
+		err = event.Commit(writes, facts...)
+	}
+	if err != nil {
 		said[account] = previous
 		return "", err
 	}
