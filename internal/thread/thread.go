@@ -236,6 +236,9 @@ var (
 	flushOnce  sync.Once
 )
 
+// Load warms the local view during server startup, before pages are served.
+func Load() { ensure() }
+
 func ensure() {
 	home := os.Getenv("HOME")
 

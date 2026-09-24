@@ -17,6 +17,7 @@ import (
 // Load owns the incoming-message projection, independent of agent execution.
 // The checkpoint follows Flush, so a restart cannot acknowledge an unsaved index.
 func Load() {
+	thread.Load()
 	go func() {
 		reconcileSources()
 		for {
