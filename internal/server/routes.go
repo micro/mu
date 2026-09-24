@@ -403,17 +403,17 @@ func registerRoutes() {
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
-	http.HandleFunc("/privacy", home.PrivacyHandler)
-	// Every way in, on one page. See home/contact.go.
-	http.HandleFunc("/contact", home.ContactHandler)
-	// And the same list as a file a phone will save. See home.VCardHandler.
-	http.HandleFunc("/contact.vcf", home.VCardHandler)
+	http.HandleFunc("/privacy", PrivacyHandler)
+	// Every way in, on one page. See contact.go.
+	http.HandleFunc("/contact", ContactHandler)
+	// And the same list as a file a phone will save. See VCardHandler.
+	http.HandleFunc("/contact.vcf", VCardHandler)
 	// And what it is, for somebody who has not worked it out from the page they
-	// landed on. See home/about.go.
-	http.HandleFunc("/about", home.AboutHandler)
+	// landed on. See about.go.
+	http.HandleFunc("/about", AboutHandler)
 	// And what it costs, which was a 404 while three comments described the page
-	// that rendered it. See home/pricing.go.
-	http.HandleFunc("/pricing", home.PricingHandler)
+	// that rendered it. See pricing.go.
+	http.HandleFunc("/pricing", PricingHandler)
 
 	// The Code agent, at the address two pages of /apps have been linking to
 	// since before there was a handler for it. See agent/code.
@@ -473,13 +473,8 @@ func registerRoutes() {
 		http.Redirect(w, r, to, http.StatusFound)
 	})
 	http.HandleFunc("/agent/handoff", agent.HandoffHandler)
-	http.HandleFunc("/agent/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && !strings.HasPrefix(r.URL.Path, "/agent/flow/") && !app.WantsJSON(r) && r.URL.Query().Get("bookmark") == "" && r.URL.Query().Get("saved") == "" {
-			home.ConsoleHandler(w, r)
-			return
-		}
-		agent.Handler(w, r)
-	})
+	http.HandleFunc("/agent/title", agent.TitleHandler)
+	http.HandleFunc("/agent/", agent.Handler)
 	http.HandleFunc("/agents/data", agent.AgentsHandler)
 	// The old path, so a page cached with the previous script keeps working.
 	http.HandleFunc("/agent/agents", agent.AgentsHandler)
@@ -719,7 +714,7 @@ func registerRoutes() {
 
 	// public status page - service health checks
 	app.HealthCheckFunc = runHealthChecks
-	http.HandleFunc("/status", home.StatusHandler)
+	http.HandleFunc("/status", app.StatusHandler)
 
 	// Documentation. One page: how to run your own. Every address the old nine
 	// answered on redirects to whatever replaced it — an exact pattern outranks
@@ -754,7 +749,7 @@ func registerRoutes() {
 	http.HandleFunc(api.RESTPrefix, publicRESTHandler)
 
 	// Product operations have separate routes; runtime tools never switch by token.
-	http.HandleFunc("/developers", home.DevelopersHandler)
+	http.HandleFunc("/developers", DevelopersHandler)
 
 	http.HandleFunc("/tools", api.ServiceToolsPageHandler)
 

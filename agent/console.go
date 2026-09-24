@@ -1,10 +1,9 @@
-package home
+package agent
 
 import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"mu/agent"
 	"mu/agent/hello"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -19,7 +18,7 @@ import (
 // ConsoleHandler is the web front door. Nothing runs until a request is sent.
 func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		renameThread(w, r)
+		TitleHandler(w, r)
 		return
 	}
 	if r.Method != http.MethodGet {
@@ -44,14 +43,14 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var ok bool
-		selected, ok = agent.BySlug(acc.ID, ref)
+		selected, ok = BySlug(acc.ID, ref)
 		if !ok {
 			app.NotFound(w, r, "Agent not found")
 			return
 		}
 	}
 	if r.URL.Path == "/" && ref != "" && r.URL.Query().Get("session") == "" && r.URL.Query().Get("continue") == "" {
-		http.Redirect(w, r, agent.Path(acc.ID, selected), http.StatusSeeOther)
+		http.Redirect(w, r, Path(acc.ID, selected), http.StatusSeeOther)
 		return
 	}
 	session := r.URL.Query().Get("session")
@@ -68,11 +67,11 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		selected = thread.Get(acc.ID, session).Agent
-		if selected == agent.DefaultPlatformAgent {
+		if selected == DefaultPlatformAgent {
 			selected = ""
 		}
-		target := agent.Path(acc.ID, selected)
-		if (r.URL.Path != "/" && r.URL.Path != target) || (r.URL.Path == "/" && selected != "") {
+		target := Path(acc.ID, selected)
+		if r.URL.Path != target {
 			http.Redirect(w, r, target+"?session="+url.QueryEscape(session), http.StatusSeeOther)
 			return
 		}
@@ -101,9 +100,9 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			who := "You"
 			if message.Role == thread.RoleAgent {
 				who = "Micro"
-				if a := agent.For(acc.ID, selected); a != nil {
+				if a := For(acc.ID, selected); a != nil {
 					who = a.Name
-				} else if a := agent.Platform(selected); a != nil {
+				} else if a := Platform(selected); a != nil {
 					who = a.Name
 				}
 			}
@@ -116,16 +115,16 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if acc != nil {
-		if a := agent.For(acc.ID, selected); a != nil {
+		if a := For(acc.ID, selected); a != nil {
 			agentName = a.Name
 			agentDescription = strings.TrimSpace(a.Description)
-		} else if a := agent.Platform(selected); a != nil {
+		} else if a := Platform(selected); a != nil {
 			agentName = a.Name
 			agentDescription = strings.TrimSpace(a.Description)
 		}
 	}
 	if acc == nil {
-		fmt.Fprint(w, app.ConsoleHTML("Micro", `<div class="conversation"><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant</p><p><a class="btn" href="/signup">Get started</a></p></div></div></div>`, acc))
+		app.RedirectToLogin(w, r)
 		return
 	}
 
@@ -138,20 +137,21 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		heading = `<h1 class="assistant-thread-title"><button type="button" data-edit-thread title="Rename thread">` + html.EscapeString(thread.Get(acc.ID, session).Subject) + `</button></h1>`
 	}
 	hello.ClaimAccount(acc.ID)
-	basePath := "/"
-	if strings.HasPrefix(r.URL.Path, "/agent/") || selected != "" {
-		basePath = agent.Path(acc.ID, selected)
-	}
+	basePath := Path(acc.ID, selected)
 	description := ""
 	if agentDescription != "" {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
-	body := `<div class="assistant-workspace"><div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(acc.ID) + `" data-pending="` + fmt.Sprint(session != "" && agent.Pending(acc.ID, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
+	body := consoleBody(acc.ID, selected, session, agentName, description, initial, heading, state, basePath)
 	fmt.Fprint(w, app.ConsoleHTML(agentName, body, acc))
 }
 
-// renameThread changes only the signed-in owner's web thread.
-func renameThread(w http.ResponseWriter, r *http.Request) {
+// TitleHandler changes only the signed-in owner's web thread.
+func TitleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		app.MethodNotAllowed(w, r)
+		return
+	}
 	_, acc := auth.TrySession(r)
 	if acc == nil {
 		http.Error(w, "Sign in required", http.StatusUnauthorized)
@@ -174,4 +174,13 @@ func renameThread(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	json.NewEncoder(w).Encode(map[string]string{"title": title})
+}
+
+// Prompt embeds the same request-driven composer on Home. Execution remains in Agent.
+func Prompt(owner string) string {
+	return consoleBody(owner, "", "", "Micro", "", "", "", "conversation", Path(owner, ""))
+}
+
+func consoleBody(owner, selected, session, agentName, description, initial, heading, state, basePath string) string {
+	return `<div class="assistant-workspace"><div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
 }

@@ -23,7 +23,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 		if letters := []rune(name); len(letters) > 0 {
 			initial = strings.ToUpper(string(letters[0]))
 		}
-		links = `<a href="/">Home</a><a href="/inbox">Inbox</a><a href="/work">Work</a><a href="/home/apps">Apps</a><details class="account-menu"><summary aria-label="Account menu" title="` + html.EscapeString(name) + `"><span aria-hidden="true">` + html.EscapeString(initial) + `</span></summary><div class="account-menu-links"><a href="/account">Account</a>`
+		links = `<a href="/home">Home</a><a href="/agent/micro">Agent</a><a href="/inbox">Inbox</a><a href="/work">Work</a><details class="account-menu"><summary aria-label="Account menu" title="` + html.EscapeString(name) + `"><span aria-hidden="true">` + html.EscapeString(initial) + `</span></summary><div class="account-menu-links"><a href="/account">Account</a>`
 		if acc.Admin {
 			links += `<a href="/admin">Admin</a>`
 		}
@@ -33,7 +33,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 		title += " | Micro"
 	}
 	pageClass := "document-page"
-	if title == "Micro" || strings.Contains(body, `class="assistant-workspace"`) {
+	if title == "Micro" || (strings.Contains(body, `class="assistant-workspace"`) && !strings.Contains(body, `data-home-overview`)) {
 		pageClass = "command-page"
 	}
 	if title == "Log in | Micro" || title == "Sign up | Micro" {
@@ -42,5 +42,5 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 	if acc != nil {
 		pageClass += " signed-in"
 	}
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=layout-63"><script defer src="/mu.js?v=prompt-61"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `"><div class="page"><header><a href="/" class="brand">Micro</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div><footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer></body></html>`
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=layout-64"><script defer src="/mu.js?v=prompt-62"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `"><div class="page"><header><a href="/" class="brand">Micro</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div><footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer></body></html>`
 }

@@ -1,4 +1,4 @@
-package home
+package server
 
 // How to reach the assistant.
 //
@@ -186,11 +186,7 @@ func contactBody(acc *auth.Account) string {
 	// not answered, because service/sms only wakes an agent for a sender the
 	// account knows.
 	//
-	// So the caveat covers every row except the web, which is the one door a
-	// guest really can walk through — the box on the front page answers without
-	// an account, bounded. Naming the exception is what keeps this a fact rather
-	// than a wall: there is something you can try right now, and the rest is
-	// what an account is for.
+	// Web conversations require sign-in; external channels also need a verified address.
 	if acc == nil {
 		b.WriteString(`<p class="text-muted"><a href="/login">Sign in</a> or <a href="/signup">create an account</a>. ` +
 			`Verify your email address or phone number in Account settings to use the same assistant by email, text or WhatsApp.</p>`)

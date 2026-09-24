@@ -1,4 +1,4 @@
-package home
+package agent_test
 
 import (
 	"mu/agent"
@@ -30,10 +30,10 @@ func TestAssistantHomeOwnsWebThreads(t *testing.T) {
 		r := httptest.NewRequest("GET", path, nil)
 		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
 		w := httptest.NewRecorder()
-		ConsoleHandler(w, r)
+		agent.ConsoleHandler(w, r)
 		return w
 	}
-	w := request("/?session=" + chat.ID)
+	w := request("/agent/micro?session=" + chat.ID)
 	body := w.Body.String()
 	if w.Code != 200 || !strings.Contains(body, "My saved conversation") || strings.Contains(body, `id="assistant-history"`) || !strings.Contains(body, `<textarea id="command-input"`) {
 		t.Fatal("missing workspace")
@@ -80,7 +80,7 @@ func TestThreadTitleOwnershipAndCSRF(t *testing.T) {
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
 		w := httptest.NewRecorder()
-		ConsoleHandler(w, r)
+		agent.ConsoleHandler(w, r)
 		if w.Code != tc.want {
 			t.Fatalf("got %d want %d: %s", w.Code, tc.want, w.Body.String())
 		}
@@ -112,7 +112,7 @@ func TestAgentPageKeepsAddressWithoutHistory(t *testing.T) {
 		r := httptest.NewRequest("GET", path, nil)
 		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
 		w := httptest.NewRecorder()
-		ConsoleHandler(w, r)
+		agent.ConsoleHandler(w, r)
 		return w
 	}
 	path := agent.Path(owner, a.ID)

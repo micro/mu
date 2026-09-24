@@ -58,8 +58,12 @@ notes, shell, and more. You ask for an outcome; the agent chooses the tools.
 
 ## Structure
 
-Home's command prompt submits directly to Agent. Agent owns the conversation
-and uses services through their tool interfaces. Mail, chat, SMS, files and
+The public root page redirects signed-in visitors to `/home`. Home shows the
+already-delivered daily brief, an assistant prompt and personal collections.
+Public landing and informational handlers live in `internal/server`; Agent owns
+the conversation UI at `/agent/<name>`. Home's command prompt submits directly
+to Agent, which owns the conversation and uses services through their tool
+interfaces. Mail, chat, SMS, files and
 other services own their records independently; they do not invoke Agent.
 
 Committed service events connect the product areas:
@@ -82,7 +86,7 @@ notifications remain separate from this durable processing path.
 Ask Micro to build a small app in a conversation. The request runs in the
 background and appears in **Work** with its status and result. A completed app
 returns to the originating conversation once, including after a restart.
-**Apps** in the signed-in navigation opens your own saved collection. Open an
+**Home → My apps** opens your own saved collection. Open an
 app to use it; **Continue with Micro** returns to its conversation to request
 changes. Older apps without an originating conversation get a persistent one
 when you first continue them. Apps remain owned by their service; Home composes
