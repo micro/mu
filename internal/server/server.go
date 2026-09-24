@@ -26,7 +26,8 @@ import (
 
 // Run brings the instance up and serves until interrupted.
 //
-// The order is the one thing here that is not arbitrary. Services load first so
+// HTTP listens first with a temporary readiness response. In the background,
+// services load first so
 // they are registered before anything asks for them; hooks are wired next,
 // because a service may be handed one before it is asked anything; the
 // catalogue is built from the Specs after that; routes come last, since a route
@@ -36,9 +37,6 @@ import (
 // thousand lines: every tool that could not be derived because its capability
 // was not declared on a service. They all are now.
 func Run(addr string) {
-	if err := persist.Recover(); err != nil {
-		panic("could not recover stored state: " + err.Error())
-	}
 	// Before anything logs, because the point of it is that the log stops
 	// going to the screen — a service that boots first and logs first would
 	// otherwise print to the surface this is clearing. See
@@ -57,41 +55,47 @@ func Run(addr string) {
 		app.Log("timing", "phase=service service=%s method=%s duration_ms=%.3f failed=%t", name, method, float64(elapsed)/float64(time.Millisecond), err != nil)
 	}
 
-	// Timed, per phase, because "the restart takes ages" is not answerable
-	// without it. Boot is a tenth of a second on an empty data directory and
-	// nobody deploys one of those — what scales is whatever reads what is on
-	// disk, and until this was here the only way to find out which phase that
-	// was is to guess. One log line per phase, at startup only.
-	started := time.Now()
-	phase := started
+	// Listen first. Storage restoration and service registration run behind a
+	// readiness gate, so incoming requests never queue behind disk work.
+	serve(addr, func() {
+		if err := persist.Recover(); err != nil {
+			panic("could not recover stored state: " + err.Error())
+		}
+		// Timed, per phase, because "the restart takes ages" is not answerable
+		// without it. Boot is a tenth of a second on an empty data directory and
+		// nobody deploys one of those — what scales is whatever reads what is on
+		// disk, and until this was here the only way to find out which phase that
+		// was is to guess. One log line per phase, at startup only.
+		started := time.Now()
+		phase := started
 
-	boot()
-	app.Log("main", "boot: services in %s", time.Since(phase).Round(time.Millisecond))
-	phase = time.Now()
+		boot()
+		app.Log("main", "boot: services in %s", time.Since(phase).Round(time.Millisecond))
+		phase = time.Now()
 
-	wireHooks()
-	app.Log("main", "boot: hooks in %s", time.Since(phase).Round(time.Millisecond))
-	phase = time.Now()
+		wireHooks()
+		app.Log("main", "boot: hooks in %s", time.Since(phase).Round(time.Millisecond))
+		phase = time.Now()
 
-	// The catalogue: everything declared on a Spec that was not written out by
-	// hand above. Six endpoints had drifted out of reach before this existed —
-	// see tool/derive.go. Hand-written registrations win, so this fills gaps and
-	// has to run after all of them.
-	//
-	// It also announces that the registry is complete. Surfaces that publish a
-	// command set built from it — the Discord slash commands, the Telegram menu
-	// — are waiting on that; without it they race the wiring and publish a
-	// partial one.
-	tool.Load(service.Specs())
-	app.Log("main", "boot: catalogue in %s", time.Since(phase).Round(time.Millisecond))
-	phase = time.Now()
+		// The catalogue: everything declared on a Spec that was not written out by
+		// hand above. Six endpoints had drifted out of reach before this existed —
+		// see tool/derive.go. Hand-written registrations win, so this fills gaps and
+		// has to run after all of them.
+		//
+		// It also announces that the registry is complete. Surfaces that publish a
+		// command set built from it — the Discord slash commands, the Telegram menu
+		// — are waiting on that; without it they race the wiring and publish a
+		// partial one.
+		tool.Load(service.Specs())
+		app.Log("main", "boot: catalogue in %s", time.Since(phase).Round(time.Millisecond))
+		phase = time.Now()
 
-	registerRoutes()
-	app.Log("main", "boot: routes in %s, ready in %s",
-		time.Since(phase).Round(time.Millisecond), time.Since(started).Round(time.Millisecond))
+		registerRoutes()
+		app.Log("main", "boot: routes in %s, ready in %s",
+			time.Since(phase).Round(time.Millisecond), time.Since(started).Round(time.Millisecond))
 
-	app.CompleteStartup(time.Since(started))
-	serve(addr)
+		app.CompleteStartup(time.Since(started))
+	})
 }
 
 // Env is the environment name from the --env flag, set by main before Run.
