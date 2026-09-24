@@ -706,6 +706,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	content += `<section id="security" class="account-group"><h2>Security</h2>` + passwordCard(acc) + PasskeyListHTML(acc.ID) + `</section>`
 	content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
 	content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
+	content += codexCard(acc)
 
 	// Forms return to their owning tab; credentials and mutations stay in POST.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)

@@ -13,6 +13,7 @@ import (
 
 	"mu/internal/ai"
 	"mu/internal/app"
+	"mu/internal/usage"
 )
 
 // costCaller is what the spend log files a run under.
@@ -34,7 +35,7 @@ func costCaller(opts QueryOpts) string {
 //
 // caller is what the spend log files it under: the name of the agent that ran,
 // so a bill can be read by which agent earned it.
-func recordRunCost(st store.Store, agentName, caller, account string, meter *ai.CallMeter) {
+func recordRunCost(st store.Store, agentName, caller, account, provider string, meter *ai.CallMeter) {
 	runID := agentName
 	defer func() { meter.Record(caller, account, runID) }()
 	if st == nil || agentName == "" {
@@ -62,6 +63,11 @@ func recordRunCost(st store.Store, agentName, caller, account string, meter *ai.
 			continue // HTTP responses account for every provider tool round.
 		}
 		for _, m := range spendByModel(events) {
+			if provider == "codex" {
+				usage.RecordModels(m.calls)
+				app.RecordUsage("codex", caller, 0, map[string]any{"model": m.model, "account": account, "run_id": s.RunID, "input_tokens": m.input, "output_tokens": m.output, "model_calls": m.calls, "model_duration_ms": m.latency, "billing": "ChatGPT allowance; no API token price applied"})
+				continue
+			}
 			if m.input == 0 && m.output == 0 {
 				// A model call that reported no tokens. Priced at zero it would
 				// be a row saying a run was free, which is the lie this file
