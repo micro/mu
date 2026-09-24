@@ -19,7 +19,9 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.Trim(r.URL.Path, "/")
 	// These pages are part of the restored navigation. Let their handlers
 	// render them and enforce their own session and administrator checks.
-	if path == "inbox" || strings.HasPrefix(path, "inbox/") ||
+	if path == "home" || strings.HasPrefix(path, "home/") ||
+		path == "agent" || strings.HasPrefix(path, "agent/") ||
+		path == "inbox" || strings.HasPrefix(path, "inbox/") ||
 		path == "admin" || strings.HasPrefix(path, "admin/") ||
 		path == "work" || path == "agents" || path == "services" || path == "tools" || path == "apps" ||
 		path == "blog" || strings.HasPrefix(path, "blog/") {
@@ -34,13 +36,20 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 	}
 	command := ""
 	switch path {
-	case "home", "assistant", "agent", "agent/micro":
-		if id := r.URL.Query().Get("session"); id != "" {
-			http.Redirect(w, r, "/?session="+url.QueryEscape(id), 303)
-			return true
+	case "assistant":
+		target := "/agent"
+		q := url.Values{}
+		for _, key := range []string{"session", "continue", "agent", "id"} {
+			if value := r.URL.Query().Get(key); value != "" {
+				q.Set(key, value)
+			}
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		if len(q) > 0 {
+			target += "?" + q.Encode()
+		}
+		http.Redirect(w, r, target, http.StatusSeeOther)
 		return true
+
 	case "wallet":
 		command = "account"
 	default:
@@ -55,6 +64,6 @@ func consoleRedirect(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	// Only prefill. Visiting a link must never execute a command or spend credits.
-	http.Redirect(w, r, "/#"+url.PathEscape(command), http.StatusSeeOther)
+	http.Redirect(w, r, "/agent/micro#"+url.PathEscape(command), http.StatusSeeOther)
 	return true
 }
