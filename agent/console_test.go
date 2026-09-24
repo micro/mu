@@ -158,6 +158,14 @@ func TestAgentResumesVisitedThreadAndNewIsExplicit(t *testing.T) {
 	if w.Code != 303 || w.Header().Get("Location") != "/agent/micro?session="+th.ID {
 		t.Fatalf("resume: %d %s", w.Code, w.Header().Get("Location"))
 	}
+	if opened := request("/agent/micro?session=" + th.ID); opened.Code != 200 {
+		t.Fatal("cannot visit")
+	}
+	thread.MarkUnread(owner, th.ID)
+	w = request("/agent/micro")
+	if w.Header().Get("Location") != "/agent/micro?session="+th.ID {
+		t.Fatal("marking unread lost the visited conversation")
+	}
 	w = request("/agent/micro?new=1")
 	if w.Code != 200 || strings.Contains(w.Body.String(), `conversation is-active`) || !strings.Contains(w.Body.String(), `New conversation`) {
 		t.Fatal("cannot explicitly start new conversation")

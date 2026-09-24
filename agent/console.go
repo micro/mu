@@ -81,7 +81,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, target+"?session="+url.QueryEscape(session), http.StatusSeeOther)
 			return
 		}
-		thread.MarkSeen(acc.ID, session)
+		thread.Visit(acc.ID, session)
 		messages := thread.Messages(acc.ID, session, 100)
 		delivered := map[string]bool{}
 		for _, message := range messages {
@@ -204,10 +204,22 @@ func RecentConversation(owner, selected string) *thread.Thread {
 		if id == DefaultPlatformAgent {
 			id = ""
 		}
-		if th.Client != thread.WebClient || id != selected || th.Seen.IsZero() {
+		if th.Client != thread.WebClient || id != selected || (th.Visited.IsZero() && th.Seen.IsZero()) {
 			continue
 		}
-		if recent == nil || th.Seen.After(recent.Seen) {
+		// Legacy threads have read state only until their first new visit.
+		visited := th.Visited
+		if visited.IsZero() {
+			visited = th.Seen
+		}
+		previous := time.Time{}
+		if recent != nil {
+			previous = recent.Visited
+			if previous.IsZero() {
+				previous = recent.Seen
+			}
+		}
+		if recent == nil || visited.After(previous) {
 			copy := th
 			recent = &copy
 		}
