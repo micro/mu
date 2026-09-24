@@ -49,7 +49,7 @@ func TestSavedAppContinuesOwnedConversation(t *testing.T) {
 	}
 	for i := 0; i < 2; i++ {
 		w := request("POST", a.Slug, true)
-		if w.Code != 303 || w.Header().Get("Location") != "/?session="+origin.ID {
+		if w.Code != 303 || w.Header().Get("Location") != "/agent/micro?session="+origin.ID {
 			t.Fatalf("continuation: %d %s", w.Code, w.Header().Get("Location"))
 		}
 	}

@@ -126,7 +126,7 @@ func All() []Client {
 	// The web, always, because you are looking at it. It is the only one that
 	// needs no configuration and the only one that cannot be switched off.
 	web := Client{ID: thread.WebClient, Label: "Web", Address: host, Href: "/",
-		Note: "the box on the front page"}
+		Note: "sign in to use your assistant"}
 	if host == "" {
 		web.Address = "this page"
 	}

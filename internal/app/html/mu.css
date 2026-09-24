@@ -1158,3 +1158,12 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 
 .result-preview{max-height:320px;overflow:auto;overflow-wrap:anywhere}
 .result-preview>:first-child{margin-top:0}.result-preview>:last-child{margin-bottom:0}
+
+/* Home embeds the Agent composer within a normally scrolling overview. */
+.document-page:has([data-home-overview]) .assistant-workspace{display:block;margin-block:20px}
+.document-page:has([data-home-overview]) .conversation{min-height:0;height:auto;display:block}
+.document-page:has([data-home-overview]) .prompt-panel{margin:0;padding:0}
+.document-page:has([data-home-overview]) .prompt-welcome{display:none}
+.document-page:has([data-home-overview]) #responses:empty{display:none}
+.document-page:has([data-home-overview]) .composer{display:flex;gap:4px;border:1px solid var(--border);border-radius:6px;padding:3px}
+.document-page:has([data-home-overview]) .composer button{margin:0;border:0;background:#f4f4f4;border-radius:4px}

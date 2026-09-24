@@ -20,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	"mu/home"
 	"mu/inbox"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -240,8 +239,8 @@ func serve(addr string, initialize func()) {
 					// The optional x402 hostname has its own machine-first front
 					// door. Resolve it before setup and the normal Mu page so a fresh
 					// instance presents the same x402 identity at this host.
-					if r.Method == http.MethodGet && home.IsX402Host(r) {
-						home.X402IndexHandler(w, r)
+					if r.Method == http.MethodGet && IsX402Host(r) {
+						X402IndexHandler(w, r)
 						return
 					}
 					// Fresh instance with no admin yet → guide the operator
@@ -260,8 +259,8 @@ func serve(addr string, initialize func()) {
 						}
 					}
 
-					// The same conversation before and after sign-in.
-					home.Index(w, r)
+					// Public landing and authenticated Home have separate owners.
+					IndexHandler(w, r)
 					return
 				}
 			}

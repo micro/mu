@@ -346,7 +346,7 @@ conversation.addEventListener('click',event=>{
  editor.append(field,save,cancel);heading.replaceChildren(editor);field.focus();field.select();
  editor.addEventListener('submit',async e=>{
   e.preventDefault();const title=field.value.trim();if(!title)return;save.disabled=true;
-  try{const response=await fetch('/',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'rename-thread',thread:target,title,_csrf:decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')})});
+  try{const response=await fetch('/agent/title',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'rename-thread',thread:target,title,_csrf:decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')})});
    if(!response.ok)throw Error('Could not save the title. Try again.');
    const data=await response.json();if(version===viewVersion){remember(data.title);status.textContent='';}
   }catch(error){if(version===viewVersion)status.textContent=error.message;}
@@ -397,7 +397,7 @@ function byline(name){const row=document.createElement('div');row.className='ib-
 async function run(command){
  if(busy||navigating||!command.trim())return;const version=viewVersion;busy=true;send.disabled=true;status.textContent='';input.value='';
  const first=!conversation.classList.contains('is-active');sizeInput();
- if(first)conversation.classList.add('is-active');
+ if(first){conversation.classList.add('is-active');if(document.querySelector('[data-home-overview]')){document.querySelectorAll('[data-home-overview]').forEach(el=>el.remove());document.querySelector('#page-title')?.remove();document.body.classList.replace('document-page','command-page');document.title='Micro';}}
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
  q.append(byline('You'),document.createTextNode(command));
  const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));const answer=document.createElement('div');answer.className='message-body';answer.setAttribute('aria-live','polite');answer.textContent='Working…';response.append(answer);turn.append(q,response);log.append(turn);
@@ -477,7 +477,7 @@ document.querySelector('.assistant-workspace').addEventListener('click',event=>{
 window.addEventListener('popstate',()=>{if(location.pathname===(form.dataset.path||'/'))navigateThread(new URL(location.href),false);});
 form.addEventListener('submit',e=>{e.preventDefault();run(input.value.trim());});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
-try{if(location.hash){input.value=decodeURIComponent(location.hash.slice(1));history.replaceState(null,'','/');}}catch{}
+try{if(location.hash){input.value=decodeURIComponent(location.hash.slice(1));history.replaceState(null,'',location.pathname+location.search);}}catch{}
 })();
 
 

@@ -3,6 +3,7 @@ package home
 import (
 	"context"
 	"html"
+	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/result"
@@ -61,7 +62,7 @@ func AppsHandler(w http.ResponseWriter, r *http.Request) {
 				app.Error(w, r, 503, "Could not save the conversation")
 				return
 			}
-			target := "/?session=" + url.QueryEscape(th.ID)
+			target := agent.Path(acc.ID, th.Agent) + "?session=" + url.QueryEscape(th.ID)
 			if th.Client != thread.WebClient {
 				target = "/inbox?id=" + url.QueryEscape(th.ID)
 			}
@@ -71,7 +72,7 @@ func AppsHandler(w http.ResponseWriter, r *http.Request) {
 		app.NotFound(w, r, "App not found")
 		return
 	}
-	body := `<div class="form-actions"><a href="/">Ask Micro</a><a href="/apps">Browse apps</a><a href="/work">Work</a></div>`
+	body := tabs(true) + `<div class="form-actions"><a href="/agent/micro">Ask Micro</a><a href="/apps">Browse apps</a><a href="/work">Work</a></div>`
 	if len(collection.Items) == 0 {
 		body += `<p>Your saved apps will appear here. Ask Micro to build a small tool you need.</p>`
 	}

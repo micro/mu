@@ -57,7 +57,7 @@ func Savable() bool {
 //
 // name is what it will be saved as — the agent's display name, passed in rather
 // than resolved here because this package does not know about agents: it knows
-// about the ways in. See home.ContactHandler, which has both.
+// about the ways in. See server.ContactHandler, which has both.
 func VCard(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {

@@ -1,4 +1,4 @@
-package home
+package server
 
 // What this is, in two paragraphs.
 //
