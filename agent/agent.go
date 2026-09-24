@@ -66,6 +66,7 @@ type QueryMessage struct {
 }
 
 type QueryOpts struct {
+	interactive       bool // Set by Ask, not scheduled QueryWithOpts callers.
 	RunContext        context.Context
 	OnStepStart       func(Step)
 	Context           ClientContext
@@ -787,7 +788,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	sse(w, map[string]any{"type": "working", "message": "Working"})
 
-	nopts := QueryOpts{Public: guest}
+	nopts := QueryOpts{Public: guest, interactive: true}
 	nopts.Context = req.Context
 	nopts.Extra = reading
 	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {

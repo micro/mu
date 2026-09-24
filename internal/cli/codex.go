@@ -6,16 +6,35 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mu/internal/codex"
 	"os"
 	"os/exec"
 	"time"
 )
 
-// This is a readiness probe, not a model provider. No thread, turn or tool call
-// is started, and credentials and account email are never printed.
+// Status remains a read-only probe of the existing CLI login. Login and check
+// prepare Micro's separate, sandboxed admin preview; neither changes a provider.
 func runCodex(args []string) int {
+	if len(args) == 1 && (args[0] == "login" || args[0] == "check") {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		var err error
+		if args[0] == "login" {
+			err = codex.Login(ctx)
+		} else {
+			err = codex.Check(ctx)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if args[0] == "check" {
+			fmt.Println("Codex sandbox and model check passed. Enable Codex preview in your admin Account page. The site provider has not changed.")
+		}
+		return 0
+	}
 	if len(args) != 1 || args[0] != "status" {
-		fmt.Fprintln(os.Stderr, "Usage: mu codex status")
+		fmt.Fprintln(os.Stderr, "Usage: mu codex status|login|check")
 		return 2
 	}
 	binary, err := exec.LookPath("codex")
@@ -56,6 +75,7 @@ func runCodex(args []string) int {
 		fmt.Printf("  %s (%s)\n", m.Model, m.DisplayName)
 	}
 	fmt.Println("Readiness check only; Micro's model provider has not changed.")
+	fmt.Println("Micro's isolated preview is configured separately with mu codex login and mu codex check.")
 	return 0
 }
 

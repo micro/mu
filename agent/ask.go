@@ -267,11 +267,12 @@ func Ask(r AskRequest) (Answer, error) {
 	}
 
 	opts := QueryOpts{
-		Context: r.Context,
-		Thread:  threadID(th),
-		Public:  r.Public,
-		History: requestHistory(r.Account, threadID(th), r.MessageRef),
-		Stream:  r.Stream,
+		interactive: true,
+		Context:     r.Context,
+		Thread:      threadID(th),
+		Public:      r.Public,
+		History:     requestHistory(r.Account, threadID(th), r.MessageRef),
+		Stream:      r.Stream,
 	}
 	if !r.Public {
 		opts.Extra = conversationReading(r.Account, threadID(th))

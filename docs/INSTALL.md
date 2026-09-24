@@ -1333,6 +1333,62 @@ Aliases are receive-only by default. User-defined actions such as notifying, dra
 
 ### Checking Codex availability
 
+#### Isolated admin preview
+
+Codex is an opt-in provider for an administrator's direct conversations. It
+does not replace the site provider, change scheduled work or require a separate
+agent. The Account page has a **Codex preview** section for admins only.
+
+The preview currently requires Linux, Bubblewrap (`apt install bubblewrap` on
+Debian/Ubuntu), permitted unprivileged user namespaces, and the standalone native
+Codex **0.156.1** executable. `CODEX_BINARY` can specify its absolute path; the
+default is `codex` on PATH. An npm JavaScript launcher is not a native executable.
+Set the same executable path in the server environment and the setup shell.
+
+As the OS user that runs Micro:
+
+```sh
+mu codex login
+mu codex check
+```
+
+Login uses a separate `~/.mu/codex-auth` credential store. It does not copy or
+modify `~/.codex`, its sessions, memories, skills or personal configuration.
+Check verifies the actual sandbox, the pinned protocol and a real GPT-6-Astra
+request with a harmless test tool. It consumes a small amount of the signed-in
+ChatGPT allowance. Only a successful check unlocks the Account setting. A failed
+check leaves the preview unavailable; there is no unsandboxed fallback. Do not
+disable system-wide security controls to work around a failed namespace check.
+
+After it passes, open **Account → Codex preview → Enable for my conversations**.
+Continue using the normal Micro conversation UI. Choose **Use the site provider**
+in the same section to revert. No other account is switched. Revoking admin
+access also disables the preview at dispatch time. The general `AI_PROVIDER`
+setting remains unchanged; Codex is not offered as a site-wide provider yet.
+
+Each request launches a fresh Bubblewrap filesystem/process sandbox and an
+ephemeral Codex thread. It mounts system runtime libraries, CA/DNS files, the
+Codex executable and a temporary state directory—not Micro's data, personal home
+directories, host sockets or personal Codex state. Only the separate login
+credential is copied into temporary state; refreshes are serialized and written
+back, and the temporary session is removed when the request ends. Codex memories,
+personal apps/connectors, plugins, native shell/browser/computer tools and
+environment access are disabled. Micro supplies history and handles only the
+advertised account-scoped service tools through its existing authorization chain.
+
+Networking remains available for OpenAI; Bubblewrap here is a filesystem and
+process boundary, not an outbound-network firewall. The authentication remains
+tied to the chosen ChatGPT account and its allowance. This preview is not a claim
+that a ChatGPT login is interchangeable with an API credential. A separate
+OpenAI account provides additional separation of account-level authority.
+
+No Codex process, model call or readiness check runs during server startup or
+page rendering. The pilot serializes requests sharing its credential to avoid
+refresh-token races. Upgrading Codex requires revalidating the integration and
+running the check again; an unexpected binary version is refused on each request.
+
+#### Existing personal CLI login
+
 On the machine and OS account that will run Micro, install the Codex CLI and
 sign in with `codex login`. Then run `mu codex status`. This starts a temporary
 local App Server over stdio, checks the authentication type and lists models
@@ -1340,10 +1396,8 @@ available to that account. It does not run a prompt or change Micro's provider.
 Use the returned model identifiers; a model name shown in ChatGPT does not by
 itself establish availability through Codex.
 
-Codex App Server owns an agent session, rather than providing a drop-in
-Chat Completions endpoint. Production integration still needs account-scoped
-thread mapping, streamed turn handling and a constrained bridge from dynamic
-tool calls into Micro's service dispatcher. Do not expose an unauthenticated
-App Server socket or give a hosted user's agent access to the server shell.
+This generic status probe does not validate the isolated preview. Use the setup
+and check above before enabling it. Do not expose an unauthenticated App Server
+socket or give a hosted user's agent access to the server shell.
 See the [App Server protocol](https://learn.chatgpt.com/docs/app-server) and
 [authentication guide](https://learn.chatgpt.com/docs/auth).

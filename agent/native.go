@@ -22,6 +22,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/codex"
 	"mu/internal/flag"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -287,7 +288,7 @@ type nativeRun struct {
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
 func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (run nativeRun, ok bool) {
-	provider, key, model, baseURL, ok := nativeLLMFor(opts.Model, opts.Public)
+	provider, key, model, baseURL, ok := nativeModelForAccount(accountID, opts)
 	if !ok {
 		return nativeRun{}, false
 	}
@@ -760,12 +761,31 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	// rather than a policy.
 	ctx, cancel := context.WithTimeout(runContext(opts), turnTimeout)
 	defer cancel()
+	if run.provider == "codex" {
+		var err error
+		ctx, err = codex.ForAccount(ctx, accountID)
+		if err != nil {
+			return "", err
+		}
+	}
 	ctx, meter := ai.MeterCalls(ctx, run.provider, run.baseURL, run.model)
 	// Failed runs still incurred provider costs.
-	defer recordRunCost(run.runs, run.name, costCaller(opts), accountID, meter)
+	defer recordRunCost(run.runs, run.name, costCaller(opts), accountID, run.provider, meter)
 
 	final := ""
 	if opts.Stream.Token != nil || opts.Stream.Start != nil {
+		if run.provider == "codex" {
+			ctx = codex.Live(ctx, opts.Stream.Start, func(tok string) {
+				if !shouldBufferNativeToken(recorder) && opts.Stream.Token != nil {
+					opts.Stream.Token(tok)
+				}
+			})
+			resp, err := a.Ask(ctx, question)
+			if err != nil {
+				return "", fmt.Errorf("agent: %w", err)
+			}
+			return nativeAnswer(resp.Reply, recorder, opts)
+		}
 		liveCtx, live := ai.LiveTokens(ctx, run.provider, run.baseURL, opts.Stream.Start, func(tok string) {
 			if !shouldBufferNativeToken(recorder) && opts.Stream.Token != nil {
 				opts.Stream.Token(tok)
@@ -795,6 +815,15 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	}
 
 	return nativeAnswer(final, recorder, opts)
+}
+
+func nativeModelForAccount(accountID string, opts QueryOpts) (provider, key, model, baseURL string, ok bool) {
+	if opts.interactive && !opts.Public {
+		if auth.CodexPreviewEnabled(accountID) {
+			return "codex", "", codex.Model, "", true
+		}
+	}
+	return nativeLLMFor(opts.Model, opts.Public)
 }
 
 func nativeAnswer(final string, recorder *nativeToolRecorder, opts QueryOpts) (string, error) {

@@ -33,12 +33,13 @@ var presenceMutex sync.RWMutex
 var userPresence = map[string]time.Time{} // username -> last seen time
 
 type Account struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
-	Secret   string    `json:"secret"`
-	Created  time.Time `json:"created"`
-	Admin    bool      `json:"admin"`
-	Language string    `json:"language"`
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Secret       string    `json:"secret"`
+	Created      time.Time `json:"created"`
+	Admin        bool      `json:"admin"`
+	Language     string    `json:"language"`
+	CodexPreview bool      `json:"codex_preview,omitempty"` // Admin-only, opt-in assistant provider test.
 	// Place is where this account is, in words — "London", "Lisbon,
 	// Portugal" — with Lat and Lon where they are known and Zone the IANA
 	// timezone.
