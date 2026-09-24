@@ -1437,28 +1437,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		title = fmt.Sprintf("Mail (%d new)", unreadCount)
 	}
 
-	// Build tab navigation
-	inboxClass := "mail-tab active"
-	sentClass := "mail-tab"
-	filteredClass := "mail-tab"
-	if view == "sent" {
-		inboxClass = "mail-tab"
-		sentClass = "mail-tab active"
-	} else if view == "filtered" {
-		inboxClass = "mail-tab"
-		filteredClass = "mail-tab active"
+	var navigation strings.Builder
+	navigation.WriteString(`<div class="form-actions"><form method="GET" action="/mail" class="form-inline"><select name="view" aria-label="Mail folder" data-submit-on-change>`)
+	for _, folder := range []struct{ value, label string }{{"", "Inbox"}, {"sent", "Sent"}, {"outbox", "Outbox"}, {"filtered", "Filtered"}} {
+		selected := ""
+		if view == folder.value {
+			selected = ` selected`
+		}
+		navigation.WriteString(`<option value="` + folder.value + `"` + selected + `>` + folder.label + `</option>`)
 	}
-	inboxLabel := "Inbox"
-	if unreadCount > 0 {
-		inboxLabel = fmt.Sprintf("Inbox (%d)", unreadCount)
-	}
-	spamMsgs := SpamMessages(acc.ID)
-	filteredLabel := "Filtered"
-	if len(spamMsgs) > 0 {
-		filteredLabel = fmt.Sprintf("Filtered (%d)", len(spamMsgs))
-	}
-	tabs := fmt.Sprintf(`<div class="mail-tabs"><a href="/mail" class="%s">%s</a><a href="/mail?view=sent" class="%s">Sent</a><a href="/mail?view=outbox" class="mail-tab">Outbox</a><a href="/mail?view=filtered" class="%s">%s</a></div>`,
-		inboxClass, inboxLabel, sentClass, filteredClass, filteredLabel)
+	navigation.WriteString(`</select><noscript><button>Open</button></noscript></form><a class="btn" href="/mail?compose=true">Compose</a></div>`)
 
 	readAction := ""
 	if unreadCount > 0 && view != "sent" && view != "filtered" {
@@ -1467,13 +1455,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Search bar
 	searchBar := mailSearchBar(searchTerm(r), auth.CSRFToken(r))
 
-	pageHTML := app.Page(app.PageOpts{
-		Action:  "/mail?compose=true",
-		Label:   "New",
-		Filters: tabs,
-		Content: `<div class="page-stack compact-stack">` + addressPanel(acc.ID) + tagFilter(userInbox, acc.ID, viewTag) + searchBar + readAction +
-			`<div id="mailbox" class="compact-list">` + content + `</div></div>`,
-	})
+	optionsOpen := ""
+	if viewTag != "" {
+		optionsOpen = " open"
+	}
+	pageHTML := navigation.String() + searchBar + `<details class="disclosure"` + optionsOpen + `><summary>Mail options</summary>` + tagFilter(userInbox, acc.ID, viewTag) + readAction + addressPanel(acc.ID) + `</details><div id="mailbox" class="compact-list">` + content + `</div>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Your messages", HTML: pageHTML})
 }

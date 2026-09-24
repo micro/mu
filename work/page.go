@@ -90,17 +90,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filter := r.URL.Query().Get("status")
-	archived := r.URL.Query().Get("view") == "archived"
+	archived := r.URL.Query().Get("view") == "archived" || filter == "archived"
 	var b strings.Builder
-	b.WriteString(`<div class="form-actions"><a class="btn" href="/work?view=new">New</a></div><nav class="view-switch" aria-label="Work status">`)
-	for _, f := range []struct{ value, label string }{{"", "All"}, {"todo", "Queued"}, {"doing", "Running"}, {"blocked", "Needs input"}, {"failed", "Failed"}, {"done", "Done"}, {"canceled", "Stopped"}} {
+	b.WriteString(`<div class="collection-head"><form class="search-bar" method="GET" action="/work"><label for="work-status">Status</label><select id="work-status" name="status" data-submit-on-change>`)
+	for _, f := range []struct{ value, label string }{{"", "All"}, {"todo", "Queued"}, {"doing", "Running"}, {"blocked", "Needs input"}, {"failed", "Failed"}, {"done", "Done"}, {"canceled", "Stopped"}, {"archived", "Archived"}} {
 		current := ""
-		if filter == f.value && !archived {
-			current = ` aria-current="page"`
+		if (filter == f.value && !archived) || (archived && f.value == "archived") {
+			current = ` selected`
 		}
-		b.WriteString(`<a href="/work?status=` + f.value + `"` + current + `>` + f.label + `</a>`)
+		b.WriteString(`<option value="` + f.value + `"` + current + `>` + f.label + `</option>`)
 	}
-	b.WriteString(`<a href="/work?view=archived">Archived</a></nav>`)
+	b.WriteString(`</select><noscript><button type="submit">Filter</button></noscript></form><div class="form-actions"><a class="btn" href="/work?view=new">New work</a></div></div>`)
 	type entry struct {
 		title, target, status, kind string
 		created, updated            time.Time
@@ -127,7 +127,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			entries = append(entries, entry{string(title), "/work?build=" + url.QueryEscape(build.ID), status, "App build", build.Created, build.Updated})
 		}
 	}
-	for _, task := range tasks.List(acc.ID, filter) {
+	taskFilter := filter
+	if archived {
+		taskFilter = ""
+	}
+	for _, task := range tasks.List(acc.ID, taskFilter) {
 		if task.Archived == archived {
 			entries = append(entries, entry{task.Title, "/work?id=" + url.QueryEscape(task.ID), task.Status, assignee(task), task.Created, task.Updated})
 		}

@@ -2478,9 +2478,9 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 // formatSearchResult formats a single search result entry as HTML
 func formatSearchResult(entry *data.IndexEntry) string {
 	title := entry.Title
-	description := htmlToText(entry.Content)
+	description := []rune(htmlToText(entry.Content))
 	if len(description) > 300 {
-		description = description[:300] + "..."
+		description = append(description[:300], '…')
 	}
 
 	// Extract metadata
@@ -2509,32 +2509,15 @@ func formatSearchResult(entry *data.IndexEntry) string {
 
 	categoryBadge := ""
 	if category != "" {
-		categoryBadge = fmt.Sprintf(`<div class="category-header"><span class="category">%s</span></div>`, category)
+		categoryBadge = fmt.Sprintf(`<div class="reading-meta"><span>%s</span></div>`, htmlpkg.EscapeString(category))
 	}
 
+	var media string
 	if image != "" {
-		return fmt.Sprintf(`
-<div id="%s" class="news">
-  <a href="%s" rel="noopener noreferrer" target="_blank"><img class="cover" src="%s">
-    <div class="blurb">
-      %s
-      <span class="title">%s</span>
-      <span class="description">%s</span>
-    </div></a>
-  <div class="summary">%s</div>
-</div>`, entry.ID, url, htmlpkg.EscapeString(imageproxy.URL(image)), categoryBadge, title, description, summary)
+		media = `<a class="news-reading-image" href="` + htmlpkg.EscapeString(url) + `"><img src="` + htmlpkg.EscapeString(imageproxy.URL(image)) + `" alt="" loading="lazy"></a>`
 	}
+	return `<article class="reading-row news-reading-row">` + media + `<div class="reading-body"><h3><a href="` + htmlpkg.EscapeString(url) + `" rel="noopener noreferrer" target="_blank">` + htmlpkg.EscapeString(title) + `</a></h3>` + categoryBadge + `<p>` + htmlpkg.EscapeString(string(description)) + `</p><div class="summary">` + summary + `</div></div></article>`
 
-	return fmt.Sprintf(`
-<div id="%s" class="news">
-  <a href="%s" rel="noopener noreferrer" target="_blank"><img class="cover">
-    <div class="blurb">
-      %s
-      <span class="title">%s</span>
-      <span class="description">%s</span>
-    </div></a>
-  <div class="summary">%s</div>
-</div>`, entry.ID, url, categoryBadge, title, description, summary)
 }
 
 func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
@@ -2559,6 +2542,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
   <a href="/news" class="ml-3 text-muted">Clear</a>
 </form>`)...)
 
+	searchResults = append(searchResults, []byte(app.RecentSearches("news-search", "mu-news-recent"))...)
 	if len(results) == 0 {
 		searchResults = append(searchResults, []byte("<p>No results found</p>")...)
 	} else {
