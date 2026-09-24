@@ -34,7 +34,7 @@ func path(key string) (string, error) {
 }
 
 func atomicFile(target string, b []byte) error {
-	if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
+	if err := durableDirectory(filepath.Dir(target)); err != nil {
 		return err
 	}
 	f, err := os.CreateTemp(filepath.Dir(target), ".commit-*")
@@ -59,6 +59,28 @@ func atomicFile(target string, b []byte) error {
 		return err
 	}
 	return syncDir(filepath.Dir(target))
+}
+
+// A synced file is not durable if a newly created ancestor directory can still
+// disappear after power loss. Persist each new directory's entry in its parent
+// before putting transaction files beneath it.
+func durableDirectory(name string) error {
+	if _, err := os.Stat(name); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	parent := filepath.Dir(name)
+	if parent == name {
+		return fmt.Errorf("missing filesystem root")
+	}
+	if err := durableDirectory(parent); err != nil {
+		return err
+	}
+	if err := os.Mkdir(name, 0700); err != nil && !os.IsExist(err) {
+		return err
+	}
+	return syncDir(parent)
 }
 
 func syncDir(name string) error {
