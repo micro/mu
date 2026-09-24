@@ -596,12 +596,44 @@ func RecordOn(channel Channel, owner, direction, number, text string, segments i
 	return recordOn(channel, owner, direction, number, text, segments, "")
 }
 
+var recordMu sync.Mutex
+
 // recordOn is RecordOn, also writing the provider's id for the message.
 //
 // Unexported and with the id last, because only one caller has one — the send
 // path, which learns it from the provider a line earlier — and the two public
 // names are the ones every other caller wants.
 func recordOn(channel Channel, owner, direction, number, text string, segments int, sid string) *Message {
+	return storeMessage(channel, owner, direction, number, text, segments, sid, false)
+}
+
+// receiveOn is used only after the provider webhook authenticates the request.
+// Importing or recording a message is not evidence of authenticated arrival.
+func receiveOn(channel Channel, owner, number, text string, segments int, sid string) *Message {
+	return storeMessage(channel, owner, "in", number, text, segments, sid, true)
+}
+
+func storeMessage(channel Channel, owner, direction, number, text string, segments int, sid string, authenticated bool) *Message {
+	recordMu.Lock()
+	defer recordMu.Unlock()
+	if sid != "" {
+		prior, err := userdb.List(ns, owner, msgs, "mine", map[string]interface{}{"sid": sid}, "", "", 1)
+		if err != nil {
+			return &Message{}
+		}
+		if len(prior) > 0 {
+			list := messagesFrom(prior)
+			if len(list) > 0 {
+				return &list[0]
+			}
+		}
+	}
+	verifiedOwner := false
+	if authenticated && direction == "in" {
+		known, verified := KnownSender(number)
+		verifiedOwner = verified && known == owner
+	}
+
 	if direction == "out" {
 		route(channel, owner, e164(number))
 	}
@@ -615,13 +647,14 @@ func recordOn(channel Channel, owner, direction, number, text string, segments i
 		At:        time.Now(),
 	}
 	rec, err := userdb.Create(ns, owner, msgs, map[string]interface{}{
-		"direction": m.Direction,
-		"number":    m.Number,
-		"text":      m.Text,
-		"segments":  m.Segments,
-		"channel":   m.Channel,
-		"sid":       m.SID,
-		"at":        m.At.Format(time.RFC3339),
+		"verified_owner": verifiedOwner,
+		"direction":      m.Direction,
+		"number":         m.Number,
+		"text":           m.Text,
+		"segments":       m.Segments,
+		"channel":        m.Channel,
+		"sid":            m.SID,
+		"at":             m.At.Format(time.RFC3339),
 	}, false)
 	if err != nil {
 		app.Log("sms", "storing %s message for %s: %v", direction, owner, err)

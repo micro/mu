@@ -50,6 +50,7 @@ type Thread struct {
 var inboxes map[string]*Inbox
 
 type Message struct {
+	Arrival     *arrival `json:"arrival,omitempty"`
 	Markdown    bool     `json:"-"` // Generated body requiring safe Markdown rendering for mail clients.
 	Bridged     bool     `json:"-"` // Read from the unified conversation record.
 	ID          string   `json:"id"`
@@ -1623,11 +1624,12 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 // it separately to the agent, which is why the record and the mailbox disagreed
 // about which conversation a reply belonged to.
 type Delivery struct {
-	From   string // what the sender called themselves
-	FromID string // where it actually came from: an address, or an account
-	To     string // the recipient's display name
-	ToID   string // the account it belongs to
-	Tag    string // the part after the plus, if the address carried one
+	arrival *arrival
+	From    string // what the sender called themselves
+	FromID  string // where it actually came from: an address, or an account
+	To      string // the recipient's display name
+	ToID    string // the account it belongs to
+	Tag     string // the part after the plus, if the address carried one
 
 	Subject string
 	Body    string
@@ -1671,6 +1673,7 @@ func SendMessageTo(d Delivery) error {
 	}
 	msg := &Message{
 		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
+		Arrival:     d.arrival,
 		From:        d.From,
 		FromID:      d.FromID,
 		To:          d.To,
@@ -1758,6 +1761,9 @@ func SendMessageTo(d Delivery) error {
 	if !msg.Spam && msg.ToID != "" {
 		facts = append(facts, event.Record{Type: "mail.received", Service: "mail", Account: msg.ToID, Resource: msg.ID, Version: msg.CreatedAt.UTC().Format(time.RFC3339Nano)})
 	}
+	if !msg.Spam && msg.ToID != "" && msg.Arrival != nil {
+		facts = append(facts, event.Record{Type: event.MailAccepted, Service: "mail", Account: msg.ToID, Resource: msg.ID})
+	}
 	err := save(facts...)
 	if err != nil {
 		setMessages(previous)
@@ -1776,29 +1782,8 @@ func SendMessageTo(d Delivery) error {
 	// out of Junk should be findable without waiting for a reindex.
 	indexMessage(msg)
 
-	// Say that mail arrived. Who cares about that is not this service's
-	// business — see internal/event.
-	//
-	// # One shape, and why there were two
-	//
-	// This published a bag of four strings — account, from, subject, body — and
-	// deliverInbound published the whole message as JSON under "message", both
-	// on event.MailReceived. Two shapes on one topic, and each subscriber
-	// understood exactly one of them: the push notifier read the bag, and the
-	// recorder that writes mail into internal/thread read the JSON and logged
-	// "carried no message" for everything else.
-	//
-	// So mail that arrived by SMTP was recorded, because that path publishes
-	// twice and one of the two was the right shape — and mail delivered
-	// locally was not. Admin alerts, invites and verification mails went to
-	// /mail and to IMAP and never appeared in /inbox, which is the page whose
-	// whole claim is that things turn up in it. announce says this will happen
-	// in its own comment: "one of them eventually spells a key differently".
-	//
-	// It is announced here now, from the one place a message is stored, so
-	// every delivery path reaches it by definition. deliverInbound keeps
-	// EventMailForAgent, which is the fact it alone knows — the sender passed
-	// SPF or DKIM and is somebody this account has heard of.
+	// Device notifications remain transient hints. Inbox projection and agent
+	// response use the durable source-reference events committed above.
 	if !d.Spam && d.ToID != "" {
 		announce(event.MailReceived, InboundMail{
 			Owner:    d.ToID,

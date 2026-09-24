@@ -129,7 +129,8 @@ func deliverHere(m Outgoing, to string) (string, error) {
 	messageID := fmt.Sprintf("<%d.local@%s>", time.Now().UnixNano(), domain)
 
 	if err := DeliverHere(Local{
-		FromID: m.FromID, Display: m.Display, From: from, To: owner, Tag: tag,
+		arrival: &arrival{To: arrivedAt, Shared: shared, Authenticated: true, Owned: strings.EqualFold(m.FromID, owner), InReplyTo: m.InReplyTo, References: m.References},
+		FromID:  m.FromID, Display: m.Display, From: from, To: owner, Tag: tag,
 		// The header goes in the field for headers and nowhere else. ReplyTo is
 		// this instance's own id for the parent, which a sender does not hold
 		// and must not be handed a header in place of — see parentOf.
@@ -140,44 +141,5 @@ func deliverHere(m Outgoing, to string) (string, error) {
 		return "", err
 	}
 
-	// Authenticated without asking SPF or DKIM. Those decide whether a sender
-	// off the network is who they say they are; this one signed in before
-	// being allowed to say anything at all, which answers the same question
-	// more strongly rather than going round it.
-	//
-	// Owned is a narrower claim and has to be checked rather than asserted: it
-	// means the sender signed in as *the account the mail is for*, and
-	// mayDispatch takes it as licence to skip asking whether that account has
-	// ever heard of them. True when writing to your own agent or to agent@,
-	// which resolves to you. Not true when writing to somebody else's — that
-	// wakes their agent and spends their credits, so it goes through
-	// senderKnownTo like mail from outside.
-	//
-	// It was passed as a constant, which was correct in submission where the
-	// only reachable case was your own, and became a hole the moment the rule
-	// was shared with the doors where it is not.
-	owned := strings.EqualFold(m.FromID, owner)
-	deliverInbound(InboundMail{
-		Owner:      owner,
-		Tag:        tag,
-		Shared:     shared,
-		From:       from,
-		To:         arrivedAt,
-		FromName:   m.Display,
-		Subject:    m.Subject,
-		Body:       m.Body,
-		Text:       stripHTMLTags(m.Body),
-		MessageID:  messageID,
-		InReplyTo:  m.InReplyTo,
-		References: m.References,
-	}, wakeRequest{
-		Owner:         owner,
-		Tag:           tag,
-		Shared:        shared,
-		From:          from,
-		To:            arrivedAt,
-		Authenticated: true,
-		Owned:         owned,
-	})
 	return messageID, nil
 }

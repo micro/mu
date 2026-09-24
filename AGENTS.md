@@ -308,8 +308,15 @@ must not flush uninitialized stores over saved data.
 `internal/event.Commit` persists a service mutation and its factual event in
 one recoverable commit. Named consumers checkpoint only after saving their
 results. Delivery is at least once; consumers must deduplicate by event or
-source identity. Work receipts prevent blindly replaying model/tool actions
-after a crash. External notification attempts are reserved before sending;
+source identity. Mail, SMS/WhatsApp and chat response consumers live under
+`agent/`, read source messages through `service.Call`, and reserve durable
+execution receipts before starting Agent. Trust is captured by authenticated
+transport entry points and checked again by the consumer. Importing a record or
+posting through a tool must not recursively start an agent. Work uses the same
+reserve-before-execution rule; neither path blindly repeats model/tool actions
+after a crash. Inbox's historical reconciliation runs independently of its live
+consumer; source reads and projection writes are serialized to prevent stale
+backfill from resurrecting a deleted message. External notification attempts are reserved before sending;
 a crash during delivery may require manual review rather than automatic replay.
 `Publish` remains the transient broker for existing integrations and hints;
 not all older publications have migrated to the durable outbox.

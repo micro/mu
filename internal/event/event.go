@@ -37,25 +37,6 @@ const (
 	// Data: message, holding the whole InboundMail as JSON.
 	MailReceived = "mail_received"
 
-	// SMSReceived is a text arriving, whoever it is from.
-	//
-	// The fact, with no gate on it, the way MailReceived is the fact and
-	// MailAccepted is the permission. SMS had only the second, so a text from a
-	// number nobody here knew was dropped with a log line: the only way it could
-	// have been recorded was the side effect of an agent answering it, and the
-	// agent is exactly what a stranger must not be able to start.
-	//
-	// Two topics rather than one with a flag, for the reason spelled out on
-	// MailAccepted — a subscriber cannot forget to check a topic it is not
-	// subscribed to.
-	//
-	// Known says whether the sender proved who they are. It is a fact about the
-	// sender rather than a permission: what a subscriber does with an arrival
-	// from a stranger is its own business, and holding it is one answer.
-	//
-	// Data: owner, from, text, known.
-	SMSReceived = "sms_received"
-
 	// ArrivalHeld is a conversation put in the record and not let in.
 	//
 	// Published by whatever recorded it, once, after the hold. A gatekeeper
@@ -158,28 +139,6 @@ func Announce(service, text, url, account string) {
 		"text":    text,
 		"url":     url,
 		"account": account,
-	}})
-}
-
-// AddressedChat reports a message explicitly addressed to the assistant.
-func AddressedChat(room, title, summary, url, account, text string, refs ...string) {
-	if room == "" || text == "" {
-		return
-	}
-	ref := ""
-	if len(refs) > 0 {
-		ref = refs[0]
-	}
-	Publish(Event{Type: ChatAddressed, Data: map[string]interface{}{
-		"room": room,
-		"ref":  ref,
-		// What the room is about, carried rather than looked up: a subscriber
-		// that fetched it would be importing the service it is decoupled from.
-		"title":   title,
-		"summary": summary,
-		"url":     url,
-		"account": account,
-		"text":    text,
 	}})
 }
 

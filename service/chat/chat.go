@@ -229,6 +229,7 @@ type Room struct {
 
 // RoomMessage represents a message in a chat room
 type RoomMessage struct {
+	transport string     // Ingress fact; tool/API posts must not recursively start an agent.
 	ack       chan error // optional acknowledgement after durable room storage
 	UserID    string     `json:"username"`
 	Content   string     `json:"content"`
@@ -979,6 +980,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 			if content, ok := msg["content"].(string); ok && len(content) > 0 {
 				// Broadcast user message
 				userMsg := RoomMessage{
+					transport: "web",
 					UserID:    client.UserID,
 					Content:   content,
 					Timestamp: time.Now(),
@@ -994,13 +996,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 					conn.Close()
 					return
 				}
-
-				room.mutex.RLock()
-				title, summary, url, count := room.Title, room.Summary, room.URL, len(room.Clients)
-				room.mutex.RUnlock()
-				event.Publish(event.Event{Type: "chat.posted", Data: map[string]interface{}{
-					"room": room.ID, "title": title, "summary": summary, "url": url, "account": client.UserID, "text": content, "participants": count, "direct": microDM(room.ID, client.UserID),
-				}})
 
 			}
 		}

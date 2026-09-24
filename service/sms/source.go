@@ -28,7 +28,7 @@ func (Server) Source(ctx context.Context, req *service.SourceRequest, rsp *servi
 		return nil
 	}
 	m := list[0]
-	rsp.Item = &service.SourceMessage{ID: m.ID, Ref: m.ID, Conversation: m.Number, Text: m.Text, From: m.Number, At: m.At, Channel: m.Channel, Direction: m.Direction}
+	rsp.Item = &service.SourceMessage{ID: m.ID, Ref: m.ID, Conversation: m.Number, Text: m.Text, From: m.Number, At: m.At, Channel: m.Channel, Direction: m.Direction, Facts: map[string]interface{}{"verified_owner": r.Data["verified_owner"]}}
 	return nil
 }
 

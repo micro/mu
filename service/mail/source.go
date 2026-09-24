@@ -33,6 +33,11 @@ func (Server) Source(ctx context.Context, req *service.SourceRequest, rsp *servi
 		conv = m.ThreadID
 	}
 	rsp.Item = &service.SourceMessage{ID: m.ID, Ref: m.MessageID, Conversation: conv, Subject: m.Subject, Text: text, HTML: Rendered(m), From: m.FromID, To: deliveredTo(owner, m.Tag), At: m.CreatedAt}
+	if a := m.Arrival; a != nil {
+		rsp.Item.To = a.To
+		rsp.Item.InReplyTo, rsp.Item.References = a.InReplyTo, a.References
+		rsp.Item.Facts = map[string]interface{}{"shared": a.Shared, "tag": m.Tag, "authenticated": a.Authenticated, "owned": a.Owned, "machine": a.Machine, "others": a.Others, "to_agent": a.ToAgent, "from_name": m.From, "attachment": m.AttachmentName}
+	}
 	return nil
 }
 

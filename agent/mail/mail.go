@@ -5,7 +5,9 @@ package mail
 // prevention before invoking Agent. Inbox records arrivals independently.
 
 import (
+	"context"
 	"fmt"
+	"mu/internal/service"
 	"strings"
 	"time"
 
@@ -52,52 +54,43 @@ func chainKey(m mail.InboundMail) string {
 	return m.To + " " + m.From
 }
 
-// Load registers the agent for mail arriving at an address that names one, and
-// the recorder for everything that arrives at all.
-//
-// Two addresses, one handler: you+research@ names one of the account's own
-// agents, agent+news@ names one of this instance's. See agent/platform.go.
-//
-// The recorder is registered separately and answers a different question — see
-// mail.Delivered and record.go.
-func Load() {
-	// What arrived, whoever sent it. No gate: mail from somebody you have never
-	// met is still mail you were sent, and leaving it out of the record is how
-	// /inbox came to show an empty list to an account with a full mailbox.
+// Load subscribes to durable mail arrivals; Inbox projects them independently.
+func Load() { agent.WatchEvents("agent-mail", []string{event.MailAccepted}, prepareMail) }
 
-	// And what may be answered. A separate topic, so this cannot see a message
-	// the gate refused.
-	react(event.MailAccepted, answerMail)
+func prepareMail(e event.Record) (func(), error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var rsp service.SourceResponse
+	if err := service.Call(service.WithAccount(ctx, e.Account), "mail", "Server.Source", &service.SourceRequest{ID: e.Resource}, &rsp); err != nil {
+		return nil, err
+	}
+	if rsp.Item == nil {
+		return nil, nil
+	}
+	m := inbound(e.Account, rsp.Item)
+	if !acceptedInstruction(m, rsp.Item.Facts) {
+		return nil, nil
+	}
+	return func() { answerMail(m) }, nil
 }
 
-// react runs f for every message on a topic.
-//
-// One goroutine per message, because answering takes a model call and the
-// subscription channel is small and drops when full. Recovered, because a
-// panic in here must not take the process down — it is the same guarantee the
-// registry's dispatch used to give.
-func react(topic string, f func(mail.InboundMail)) {
-	sub := event.Subscribe(topic)
-	go func() {
-		for e := range sub.Chan {
-			m, ok := mail.MessageFrom(e.Data)
-			if !ok {
-				app.Log("mail", "%s carried no message", topic)
-				continue
+func inbound(owner string, m *service.SourceMessage) mail.InboundMail {
+	str := func(k string) string { s, _ := m.Facts[k].(string); return s }
+	shared, _ := m.Facts["shared"].(bool)
+	toAgent, _ := m.Facts["to_agent"].(bool)
+	var others []string
+	// Service dispatch crosses a JSON boundary.
+	if values, ok := m.Facts["others"].([]interface{}); ok {
+		for _, value := range values {
+			if s, ok := value.(string); ok {
+				others = append(others, s)
 			}
-			go func(m mail.InboundMail) {
-				defer func() {
-					if rec := recover(); rec != nil {
-						app.Log("mail", "reacting to %s panicked: %v", topic, rec)
-					}
-				}()
-				if topic == event.MailAccepted && !acceptedInstruction(m, e.Data) {
-					return
-				}
-				f(m)
-			}(m)
 		}
-	}()
+	}
+	if values, ok := m.Facts["others"].([]string); ok {
+		others = append(others, values...)
+	}
+	return mail.InboundMail{Owner: owner, Tag: str("tag"), Shared: shared, From: m.From, To: m.To, FromName: str("from_name"), Subject: m.Subject, Body: m.Text, Text: m.Text, MessageID: m.Ref, InReplyTo: m.InReplyTo, References: m.References, Others: others, ToAgent: toAgent, Attachment: str("attachment")}
 }
 
 // asked is the message as a question: its subject and its text, in the shape

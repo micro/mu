@@ -15,19 +15,18 @@ import (
 // Kept as the name of that shape, which cc.go and the agent roster both read.
 const Tagged = "+"
 
-// deliverInbound publishes facts after storage, excluding refused spam.
-func deliverInbound(m InboundMail, r wakeRequest) {
-	if r.IsSpam {
-		return
-	}
-	b, err := json.Marshal(m)
-	if err != nil {
-		return
-	}
-	event.Publish(event.Event{Type: event.MailAccepted, Data: map[string]interface{}{
-		"message": string(b), "authenticated": r.Authenticated, "owned": r.Owned, "machine": r.Machine,
-	}})
-
+// arrival is transport metadata committed with the message. It carries no
+// duplicate body; subscribers read the message through Server.Source.
+type arrival struct {
+	To            string   `json:"to"`
+	Shared        bool     `json:"shared"`
+	Authenticated bool     `json:"authenticated"`
+	Owned         bool     `json:"owned"`
+	Machine       bool     `json:"machine"`
+	Others        []string `json:"others,omitempty"`
+	ToAgent       bool     `json:"to_agent"`
+	InReplyTo     string   `json:"in_reply_to,omitempty"`
+	References    string   `json:"references,omitempty"`
 }
 
 // deliveredTo is the address a local delivery arrived at, which a Delivery

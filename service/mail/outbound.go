@@ -193,6 +193,7 @@ func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, r
 // in, so a new field is a compile error at every call site rather than a
 // misaligned argument at one.
 type Local struct {
+	arrival *arrival
 	// FromID is the account sending. Empty only for the instance's own
 	// notices, which have nobody to charge.
 	FromID    string
@@ -229,7 +230,8 @@ func DeliverHere(m Local) error {
 
 	send := func() error {
 		return SendMessageTo(Delivery{
-			From: m.Display, FromID: m.From,
+			arrival: m.arrival,
+			From:    m.Display, FromID: m.From,
 			To: acc.Name, ToID: acc.ID, Tag: m.Tag,
 			Subject: m.Subject, Body: m.Body,
 			ReplyTo: m.ReplyTo, MessageID: m.MessageID,

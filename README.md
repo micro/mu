@@ -56,6 +56,27 @@ act. WhatsApp replies are subject to the provider's messaging window.
 tools. Services provide those tools: mail, files, calendar, search, weather,
 notes, shell, and more. You ask for an outcome; the agent chooses the tools.
 
+## Structure
+
+Home's command prompt submits directly to Agent. Agent owns the conversation
+and uses services through their tool interfaces. Mail, chat, SMS, files and
+other services own their records independently; they do not invoke Agent.
+
+Committed service events connect the product areas:
+
+- **Inbox** builds a local view of incoming correspondence through service APIs.
+  Pages read that cached view; historical reconciliation runs in the background.
+- **Agent** subscribes to relevant mail, chat and SMS/WhatsApp arrivals, checks
+  sender authorization, and decides whether to answer. Events identify stored
+  messages rather than copying their bodies into a second store.
+- **Work** consumes task-start and schedule-due events, runs explicitly requested
+  work, and delivers outcomes back to the relevant conversation.
+
+Source changes and their durable events are committed together. Consumers resume
+from saved checkpoints. Agent and Work reserve execution before running tools;
+interrupted actions require review rather than automatic repetition. Transient
+notifications remain separate from this durable processing path.
+
 ## Google
 
 Optional Google connections provide access to Gmail, Calendar, Contacts, and
