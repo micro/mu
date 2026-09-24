@@ -30,7 +30,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a class="section-link" href="/admin/moderate">Moderation</a>
 		<a class="section-link" href="/admin/oauth">OAuth</a>
 		<a class="section-link" href="/admin/server">Server</a>
-		<a class="section-link" href="/services">Services</a>
 		<a class="section-link" href="/admin/config">Settings</a>
 		<a class="section-link" href="/admin/spam">Spam</a>
 		<a class="section-link" href="/admin/status">Status</a>

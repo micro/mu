@@ -43,6 +43,7 @@ func browse(r *http.Request, posts []*Post) string {
 	page, start, end := app.ReadingPage(r, len(items), 20)
 	var b strings.Builder
 	b.WriteString(`<form id="news-search" class="search-bar" action="/news" method="GET"><input id="news-query" name="query" type="search" placeholder="Search news" aria-label="Search news" maxlength="256"><button type="submit">Search</button></form>`)
+	b.WriteString(app.RecentSearches("news-search", "mu-news-recent"))
 	b.WriteString(app.ReadingFilters("/news", category, categories))
 	if category == "" {
 		b.WriteString(`<h2>Headlines</h2>`)
@@ -53,18 +54,21 @@ func browse(r *http.Request, posts []*Post) string {
 	}
 	for _, p := range items[start:end] {
 		articleURL := "/news?id=" + url.QueryEscape(p.ID)
-		b.WriteString(`<article id="reading-` + htmlpkg.EscapeString(p.ID) + `" class="reading-row news-reading-row">`)
-		b.WriteString(`<a class="news-reading-image" href="` + articleURL + `" aria-label="` + htmlpkg.EscapeString(p.Title) + `">`)
+		class := "record-card"
 		if p.Image != "" {
-			b.WriteString(`<img src="` + htmlpkg.EscapeString(imageproxy.URL(p.Image)) + `" alt="" loading="lazy" onerror="this.hidden=true">`)
+			class = "reading-row news-reading-row"
 		}
-		b.WriteString(`</a>`)
+		b.WriteString(`<article id="reading-` + htmlpkg.EscapeString(p.ID) + `" class="` + class + `">`)
+		if p.Image != "" {
+			b.WriteString(`<a class="news-reading-image" href="` + articleURL + `" aria-label="` + htmlpkg.EscapeString(p.Title) + `"><img src="` + htmlpkg.EscapeString(imageproxy.URL(p.Image)) + `" alt="" loading="lazy" onerror="this.hidden=true"></a>`)
+		}
 
 		b.WriteString(`<div class="news-reading-content">`)
+		b.WriteString(`<h3><a href="` + articleURL + `">` + htmlpkg.EscapeString(p.Title) + `</a></h3><div class="reading-meta">`)
 		if p.Category != "" {
-			b.WriteString(`<div class="category-header"><a class="news-topic" href="/news?category=` + url.QueryEscape(p.Category) + `">` + htmlpkg.EscapeString(p.Category) + `</a></div>`)
+			b.WriteString(`<a href="/news?category=` + url.QueryEscape(p.Category) + `">` + htmlpkg.EscapeString(p.Category) + `</a>`)
 		}
-		b.WriteString(`<h3><a href="` + articleURL + `">` + htmlpkg.EscapeString(p.Title) + `</a></h3><div class="reading-meta">` + htmlpkg.EscapeString(getDomain(p.URL)+" · "+app.TimeAgo(p.PostedAt)) + `</div>`)
+		b.WriteString(`<span>` + htmlpkg.EscapeString(getDomain(p.URL)+" · "+app.TimeAgo(p.PostedAt)) + `</span></div>`)
 
 		description := []rune(htmlToText(p.Description))
 		if len(description) > 240 {

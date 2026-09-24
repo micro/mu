@@ -14,7 +14,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/service/apps"
 	"mu/service/events"
 	"mu/service/tasks"
 	"mu/service/weather"
@@ -48,7 +47,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if th := agent.RecentConversation(acc.ID, ""); th != nil {
 		resume = `<p class="home-resume"><a href="` + html.EscapeString(agent.Path(acc.ID, th.Agent)+"?session="+url.QueryEscape(th.ID)) + `">Continue: ` + html.EscapeString(th.Subject) + `</a></p>`
 	}
-	body := `<div data-home-overview>` + tabs(false) + `<div class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time>` + `<span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + resume + `<p class="text-muted">Start something new with Micro</p></div>` + agent.Prompt(acc.ID) + `<div data-home-overview id="home-overview-content" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
+	body := `<div data-home-overview>` + `<div class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time>` + `<span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + `</div>` + agent.Prompt(acc.ID) + resume + `<div data-home-overview id="home-overview-content" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
 	app.Respond(w, r, app.Response{Title: "Home", HTML: body})
 }
 
@@ -95,27 +94,26 @@ func shortBrief(owner string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return `<p class="home-summary">` + strings.Join(parts, " ") + `</p>`
+	return `<h2>Brief</h2><p class="home-summary">` + strings.Join(parts, " ") + `</p>`
 }
 
 func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
 	var b strings.Builder
 	b.WriteString(shortBrief(acc.ID))
 	b.WriteString(`<div class="home-grid"><div>`)
-	// Metadata is local and remains owned by the apps service.
-	var collection apps.CollectionResponse
-	err := service.Call(service.WithAccount(r.Context(), acc.ID), "apps", "Server.Collection", &apps.CollectionRequest{}, &collection)
-	if err == nil && len(collection.Items) > 0 {
-		b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
-		for i, a := range collection.Items {
-			if i == 3 {
-				break
-			}
-			b.WriteString(`<a class="collection-item" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a>`)
+	b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
+	for i, a := range snapshot.apps {
+		if i == 3 {
+			break
 		}
-		b.WriteString(`</div></section>`)
+		b.WriteString(`<a class="collection-item" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a>`)
 	}
-	b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>Your things</h2></div><div class="form-actions"><a href="/home/apps">My apps</a><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a></div></section>`)
+	if len(snapshot.apps) == 0 {
+		b.WriteString(`<p class="text-muted">Open your apps or ask Micro to build one.</p>`)
+	}
+	b.WriteString(`</div></section>`)
+
+	b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>Your things</h2></div><div class="form-actions"><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a></div></section>`)
 	b.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
 	if preview := inbox.Preview(acc.ID); preview != "" {
 		b.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))

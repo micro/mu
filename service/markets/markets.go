@@ -921,7 +921,7 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory, convert
 	sb.WriteString(converter)
 
 	// Market data table
-	sb.WriteString(`<table class="markets-table">`)
+	sb.WriteString(`<div class="table-scroll"><table class="markets-table">`)
 	sb.WriteString(`<thead><tr><th>Symbol</th><th>Price</th><th>24h Change</th><th>Chart</th></tr></thead>`)
 	sb.WriteString(`<tbody>`)
 
@@ -935,7 +935,7 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory, convert
 		sb.WriteString(generateMarketRow(symbol, pd.Price, pd.Change24h))
 	}
 
-	sb.WriteString(`</tbody></table>`)
+	sb.WriteString(`</tbody></table></div>`)
 
 	// Data source information
 	sb.WriteString(`<div class="markets-footer">`)

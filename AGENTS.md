@@ -76,7 +76,9 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Mu is the runtime; Micro is the assistant it hosts.** The five primary
+**Mu is the runtime; Micro is the assistant it hosts.** The consumer app uses
+Micro consistently in its header, page titles and PWA. Mu names the runtime in
+code and technical documentation. The five primary
 product destinations are Home, Inbox, Agents, Work and Services. They use bottom
 navigation on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
@@ -564,7 +566,9 @@ renderers and controls across the product; keep one stylesheet and one browser
 script. Preserve backend APIs, protocols, account isolation, CSRF checks,
 payments and stored conversations. Requests and credentials belong in POST
 bodies, never URLs. Only opaque conversation IDs may be used to resume a session.
-The public editorial Blog belongs in the shared footer.
+Public pages retain the shared website footer. Signed-in app pages omit it.
+Keep mobile content near the top: a title, a compact search row and the content;
+group secondary actions separately and collapse infrequent filters.
 
 Personal daily brief schedules remain available. No other automatic model
 content generation: no daily images, public digests, summaries, tagging, topic
@@ -581,8 +585,8 @@ signup and footer destinations alongside browser assertions.
 
 Keep the product and its code Spartan: one clear home for each capability,
 shared renderers and layout primitives, and no parallel implementations of the
-same flow. Admin links to Services; service destinations such as Apps belong in
-that directory, not as duplicate entries in the admin menu. Prefer removing
+same flow. Services has its own primary navigation entry; do not duplicate it
+in Admin. Service destinations such as Apps belong in that directory. Prefer removing
 obsolete code to adding another abstraction. Preserve authorisation and existing
 URLs when consolidating implementations.
 

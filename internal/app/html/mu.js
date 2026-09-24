@@ -306,11 +306,7 @@ if (typeof document !== "undefined") {
 
 async function failure(response){try{const j=await response.json();return typeof j.error==='string'?j.error:(j.error?.message||'Request failed.');}catch{return 'Request failed ('+response.status+').';}}
 
-// Command surface
-(()=>{'use strict';
-const form=document.querySelector('#command-form'),input=document.querySelector('#command-input'),log=document.querySelector('#responses'),send=document.querySelector('#send'),status=document.querySelector('#status');
-if(!form)return;
-const conversation=form.closest('.conversation');
+(()=>{
 // Track the visible height when mobile keyboards resize only the visual viewport.
 if(window.visualViewport){
  const viewport=window.visualViewport;
@@ -319,6 +315,14 @@ if(window.visualViewport){
  window.addEventListener('resize',fitWorkspace);
  fitWorkspace();
 }
+})();
+
+// Command surface
+(()=>{'use strict';
+const form=document.querySelector('#command-form'),input=document.querySelector('#command-input'),log=document.querySelector('#responses'),send=document.querySelector('#send'),status=document.querySelector('#status');
+if(!form)return;
+const conversation=form.closest('.conversation');
+
 function sizeInput(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,160)+'px';}
 input.addEventListener('input',sizeInput);sizeInput();
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -1140,12 +1144,22 @@ if (typeof document !== 'undefined') {
   recent = (Array.isArray(recent)?recent:[]).map(v=>typeof v==='string'?v:(v&&v.query||'')).filter(v=>typeof v==='string'&&v.trim()).slice(0,10);
   const save = () => { try { localStorage.setItem(key,JSON.stringify(recent)); } catch (_) {} };
   form.addEventListener('submit', () => { const q=input.value.trim(); if(q){ recent=[q,...recent.filter(v=>v.toLowerCase()!==q.toLowerCase())].slice(0,10);save();} });
-  if(!recent.length)return;
-  const heading=document.createElement('h3');heading.textContent='Recent searches';
-  const row=document.createElement('div');row.className='form-actions';
-  [...new Set(recent)].forEach(q=>{const button=document.createElement('button');button.type='button';button.className='pill';button.textContent=q;button.addEventListener('click',()=>{input.value=q;form.requestSubmit();});row.appendChild(button);});
-  const clear=document.createElement('button');clear.type='button';clear.className='mini-btn';clear.textContent='Clear';clear.addEventListener('click',()=>{recent=[];save();host.replaceChildren();});row.appendChild(clear);
-  host.replaceChildren(heading,row);
+  const render = () => {
+   host.replaceChildren();
+   if(!recent.length)return;
+   const heading=document.createElement('h3');heading.textContent='Recent searches';
+   const row=document.createElement('div');row.className='form-actions';
+   [...new Set(recent)].forEach(q=>{
+    const group=document.createElement('div');group.className='recent-search-item';
+    const button=document.createElement('button');button.type='button';button.className='recent-search-label';button.textContent=q;
+    button.addEventListener('click',()=>{input.value=q;form.requestSubmit();});
+    const remove=document.createElement('button');remove.type='button';remove.className='recent-search-close';remove.textContent='×';remove.setAttribute('aria-label','Remove search: '+q);
+    remove.addEventListener('click',()=>{const index=recent.indexOf(q);recent=recent.filter(v=>v!==q);save();render();const controls=host.querySelectorAll('.recent-search-close');(controls[Math.min(index,controls.length-1)]||input).focus();});
+    group.append(button,remove);row.append(group);
+   });
+   host.append(heading,row);
+  };
+  render();
  });
  // A live PTY, loaded only on Shell. Commands and output stay in memory.
  const terminalHost=document.getElementById('shell-terminal');
@@ -1159,13 +1173,13 @@ if (typeof document !== 'undefined') {
    if(!loading)loading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/shell/terminal.js?v=6.0.0';script.onload=resolve;script.onerror=()=>{script.remove();loading=null;reject(new Error('Could not load terminal. Try again.'));};document.head.appendChild(script);});
    return loading;
   };
-  const setConnected=active=>{connect.hidden=active;connect.disabled=false;disconnect.hidden=!active;keys.forEach(k=>k.disabled=!active);};
+  const setConnected=active=>{connect.hidden=active;connect.disabled=false;disconnect.hidden=!active;keys.forEach(k=>{k.disabled=!active;k.hidden=!active;});};
   connect.addEventListener('click',async()=>{
-   connect.disabled=true;status.textContent='Connecting…';
+   connect.disabled=true;status.textContent='Connecting…';terminalHost.hidden=false;
    try{
     await ready();
     if(!term){
-     term=new Terminal({cursorBlink:true,fontSize:14,fontFamily:'ui-monospace, monospace',scrollback:2000,screenReaderMode:true,theme:{background:'#111',foreground:'#eee'}});
+     term=new Terminal({cursorBlink:true,fontSize:14,fontFamily:'ui-monospace, monospace',scrollback:2000,screenReaderMode:true,theme:{background:'#ffffff',foreground:'#222222',cursor:'#222222',selectionBackground:'#dbe6ef'}});
      fit=new FitAddon.FitAddon();term.loadAddon(fit);term.open(terminalHost);fit.fit();
      term.onData(data=>{for(let i=0;i<data.length;i+=4096)send({type:'input',data:data.slice(i,i+4096)});});term.onResize(({rows,cols})=>send({type:'resize',rows,cols}));
      new ResizeObserver(()=>fit.fit()).observe(terminalHost);
@@ -1173,10 +1187,10 @@ if (typeof document !== 'undefined') {
     const url=new URL('/shell',location.href);url.protocol=location.protocol==='https:'?'wss:':'ws:';
     const current=new WebSocket(url);socket=current;current.binaryType='arraybuffer';
     let reported=false;
-    current.onopen=()=>{send({type:'open',csrf:controls.dataset.csrf,rows:term.rows,cols:term.cols});setConnected(true);term.focus();};
+    current.onopen=()=>{send({type:'open',csrf:controls.dataset.csrf,rows:term.rows,cols:term.cols});connect.hidden=true;disconnect.hidden=false;status.textContent='Starting your machine…';term.focus();};
     current.onmessage=event=>{
      if(event.data instanceof ArrayBuffer){term.write(new Uint8Array(event.data));return;}
-     try{const m=JSON.parse(event.data);if(m.type==='status'){status.textContent=m.message;reported=m.message!=='Connected';}}catch(_){}
+     try{const m=JSON.parse(event.data);if(m.type==='status'){status.textContent=m.message;reported=m.message!=='Connected';if(!reported)setConnected(true);}}catch(_){}
     };
     current.onclose=()=>{if(socket!==current)return;socket=null;setConnected(false);if(!reported)status.textContent='Disconnected. Open a terminal to reconnect.';};
     current.onerror=()=>{reported=true;status.textContent='Could not connect. Check your session or close another open terminal.';};
@@ -1604,3 +1618,52 @@ if(typeof document!=='undefined'){
  }
  setTimeout(refresh,1500);
 })();
+
+// Video controls share the app bundle; only the player API is loaded by Watch.
+if(typeof document !== "undefined" && document.querySelector(".video-embed") && document.getElementById("audioBtn")){
+
+  (function(){
+    var player, timer;
+    var embed=document.querySelector('.video-embed');
+    var audio=document.getElementById('audioBtn');
+    var play=document.getElementById('playBtn');
+    var time=document.getElementById('audioTime');
+    play.disabled=true;
+    function updateState(){
+      if(!player||!player.getPlayerState)return;
+      var playing=player.getPlayerState()===1;
+      play.textContent=playing?'⏸':'▶';
+      play.setAttribute('aria-label',playing?'Pause':'Play');
+    }
+    function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60),r=s%60;return m+':'+(r<10?'0':'')+r;}
+    audio.addEventListener('click',function(){
+      var on=embed.classList.toggle('audio-only');
+      document.getElementById('audioVis').style.display=on?'flex':'none';
+      audio.textContent=on?'▶ Show video':'♫ Audio only';
+      audio.setAttribute('aria-pressed',String(on));
+      play.classList.toggle('d-none',!on);
+      clearInterval(timer);
+      updateState();
+      if(on){
+        timer=setInterval(function(){
+          if(!player||!player.getCurrentTime)return;
+          time.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
+          updateState();
+        },500);
+      }else{time.textContent='';}
+    });
+    play.addEventListener('click',function(){
+      if(!player||!player.getPlayerState)return;
+      player.getPlayerState()===1?player.pauseVideo():player.playVideo();
+    });
+    window.onYouTubeIframeAPIReady=function(){
+      player=new YT.Player('ytplayer',{events:{onReady:function(){play.disabled=false;updateState();},onStateChange:updateState,onError:function(){time.textContent='Playback unavailable. Try opening the original video.';play.disabled=true;}}});
+    };
+  })();
+
+
+}
+
+if(typeof document !== "undefined"){
+ document.querySelectorAll("[data-submit-on-change]").forEach(select=>select.addEventListener("change",()=>select.form.requestSubmit()));
+}

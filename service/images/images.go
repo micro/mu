@@ -472,11 +472,12 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 
 	auth.SetCSRFCookie(w, r)
 	// One search box, with an explicit choice of library or web.
-	b.WriteString(`<form method="POST" action="/images?search=1" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images"><button type="submit">Search</button>`)
+	b.WriteString(`<div class="collection-head"><form id="image-search" method="POST" action="/images?search=1" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images"><button type="submit">Search</button>`)
+	b.WriteString(`</form><div class="form-actions">`)
 	if caller != "" {
-		b.WriteString(`<button type="submit" class="btn-secondary" formmethod="POST" formaction="/images?web=1">Search web</button>`)
+		b.WriteString(`<button type="submit" form="image-search" formaction="/images?web=1">Search web</button>`)
 	}
-	b.WriteString(`</form><div class="form-actions"><button type="button" aria-controls="image-import" aria-expanded="false" onclick="var p=document.getElementById('image-import');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))">Import</button><button type="button" aria-controls="image-generate" aria-expanded="false" onclick="var p=document.getElementById('image-generate');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))">Generate</button></div><div id="image-import" hidden>`)
+	b.WriteString(`<button type="button" aria-controls="image-import" aria-expanded="false" onclick="var p=document.getElementById('image-import');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))">Import</button><button type="button" aria-controls="image-generate" aria-expanded="false" onclick="var p=document.getElementById('image-generate');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden))">Generate</button></div></div><div id="image-import" hidden>`)
 	if caller != "" {
 		b.WriteString(uploadForm(r))
 	} else {
