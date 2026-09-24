@@ -10,15 +10,25 @@ can host yourself. Try the hosted instance at [micro.mu](https://micro.mu).
 
 ## Features
 
-The web starts with one input. Ask a question or give an instruction; the answer
-appears below it. The prompt moves up on the first request and stays there while
-you read and continue the conversation.
+Mu is the personal runtime; Micro is the assistant it hosts. Use a service or
+an app directly, or ask Micro to work with them on your behalf.
 
-- **Inbox** keeps saved conversations and incoming messages together. Return to
-  a web conversation and continue where you left off.
+- **Home** has a prompt, a short personal overview, weather, saved apps and
+  previews of the services you pin. The scheduled daily brief stays in Inbox.
+- **Inbox** brings incoming messages and saved conversations together.
+- **Agents** opens your conversations and agents. Returning to an agent resumes
+  its most recently visited web conversation; New conversation starts separately.
+- **Work** shows delegated tasks and app builds, with their progress and outcomes.
+- **Services** opens the built-in tools directly, including news, video, mail,
+  docs, files and notes. Pins appear on Home.
 - **Account** holds your profile, connections, client credentials, and billing.
 - **Admin**, visible to administrators, holds users, settings, logs, and server
   controls.
+
+The same five destinations use a bottom bar on phones, a narrow rail on tablets,
+and a left navigation on desktop. Account controls stay in the header. Apps are
+small tools that can be opened from Home or embedded in conversations; they do
+not each become a new primary destination.
 
 One shared stylesheet (`/mu.css`) and browser script (`/mu.js`) serve the pages.
 HTML is rendered in Go. There is no frontend build step. The site includes a
@@ -59,7 +69,9 @@ notes, shell, and more. You ask for an outcome; the agent chooses the tools.
 ## Structure
 
 The public root page redirects signed-in visitors to `/home`. Home shows the
-already-delivered daily brief, an assistant prompt and personal collections.
+short overview, an assistant prompt, personal collections and pinned service cards.
+Home reads local facts and cached previews. A bounded background queue refreshes
+cards and external context without blocking page rendering or server startup.
 Public landing and informational handlers live in `internal/server`; Agent owns
 the conversation UI at `/agent/<name>`. Home's command prompt submits directly
 to Agent, which owns the conversation and uses services through their tool

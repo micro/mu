@@ -314,7 +314,7 @@ const conversation=form.closest('.conversation');
 // Track the visible height when mobile keyboards resize only the visual viewport.
 if(window.visualViewport){
  const viewport=window.visualViewport;
- const fitWorkspace=()=>{if(viewport.scale===1)document.body.style.setProperty('--workspace-height',viewport.height+'px');};
+ const fitWorkspace=()=>{if(viewport.scale===1){document.body.style.setProperty('--workspace-height',viewport.height+'px');document.body.classList.toggle('keyboard-open',innerHeight-viewport.height>120 && /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||''));}};
  viewport.addEventListener('resize',fitWorkspace);
  window.addEventListener('resize',fitWorkspace);
  fitWorkspace();
@@ -329,6 +329,7 @@ const scrollPositions=new Map();
 function remember(title){
  if(!thread)return;
  history.replaceState(null,'',(form.dataset.path||'/')+'?session='+encodeURIComponent(thread));currentURL=location.pathname+location.search;
+ document.querySelectorAll('.runtime-navigation a').forEach(a=>{if(a.getAttribute('href')==='/agents')a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
  heading.replaceChildren();const titleButton=document.createElement('button');titleButton.type='button';titleButton.dataset.editThread='';titleButton.title='Rename thread';titleButton.textContent=title||'Thread';heading.append(titleButton);
@@ -1583,3 +1584,23 @@ if(typeof document!=='undefined'){
   document.addEventListener('focusin',event=>{if(!accountMenu.contains(event.target))accountMenu.open=false;});
  }
 }
+
+// Fill Home's cold cache after paint; leave its composer and draft untouched.
+(()=>{
+ const target=document.querySelector('#home-overview-content');
+ if(!target||target.dataset.pending!=='true')return;
+ let attempts=0;
+ async function refresh(){
+  if(!target.isConnected||document.hidden||attempts++>=15)return;
+  try{
+   const response=await fetch('/home?view=overview',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(10000)});
+   if(!response.ok)return;
+   const data=await response.json();
+   if(!target.isConnected)return;
+   target.innerHTML=data.html;
+   const weather=document.querySelector("#home-weather");if(weather)weather.innerHTML=data.weather;
+   if(data.pending)setTimeout(refresh,2000);
+  }catch{}
+ }
+ setTimeout(refresh,1500);
+})();

@@ -10,44 +10,43 @@ import (
 	"time"
 )
 
-func TestHomeReadsDeliveredBriefFromLocalProjection(t *testing.T) {
+func TestHomeOverviewIsPrivateAndDoesNotRepeatDailyBrief(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	owner := "home-brief-owner"
-	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	owner := "home-overview-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true, Pinned: []string{}})
 	defer auth.RemoveAccountForTest(owner)
 	sess, err := auth.CreateSession(owner)
 	if err != nil {
 		t.Fatal(err)
 	}
 	th := thread.Open(owner, "mail", "morning-brief")
-	at := time.Date(2026, 9, 23, 7, 0, 0, 0, time.UTC)
-	source := &thread.Source{Service: "mail", ID: "brief-source"}
-	thread.Add(thread.Message{Account: owner, Thread: th.ID, To: owner + "+brief@example.test", Text: "Your saved morning information.", At: at, Source: source})
-	thread.Add(thread.Message{Account: owner, Thread: th.ID, Text: "A later reply", At: at.Add(time.Hour)})
-	foreign := thread.Open("another-owner", "mail", "foreign-brief")
-	thread.Add(thread.Message{Account: "another-owner", Thread: foreign.ID, To: owner + "+brief@example.test", Text: "Foreign brief", At: at.Add(2 * time.Hour)})
-	r := httptest.NewRequest("GET", "/home", nil)
-	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	thread.Add(thread.Message{Account: owner, Thread: th.ID, To: owner + "+brief@example.test", Text: "Today’s scheduled brief. Detailed news and market information. Detailed news and market information. Detailed news and market information. Detailed news and market information. Detailed news and market information. Detailed news and market information. Detailed news and market information. Detailed news and market information. Detailed news and market information. Detailed news and market information.  The end of the daily brief.", At: time.Now()})
+	chat := thread.Open(owner, thread.WebClient, "project")
+	thread.Name(owner, chat.ID, "My little app")
+	thread.MarkSeen(owner, chat.ID)
+	foreign := thread.Open("home-other-owner", thread.WebClient, "foreign")
+	thread.Name("home-other-owner", foreign.ID, "Foreign secret")
+	thread.MarkSeen("home-other-owner", foreign.ID)
+	for _, path := range []string{"/home", "/home?view=overview"} {
+		r := httptest.NewRequest("GET", path, nil)
+		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		w := httptest.NewRecorder()
+		Handler(w, r)
+		body := w.Body.String()
+		if w.Code != 200 || strings.Contains(body, "The end of the daily brief.") || strings.Contains(body, "Foreign secret") {
+			t.Fatalf("incorrect overview at %s: %d", path, w.Code)
+		}
+		if path == "/home" {
+			for _, want := range []string{`data-path="/agent/micro"`, `Continue: My little app`, `href="/docs"`, `href="/services"`, `aria-label="Main navigation"`} {
+				if !strings.Contains(body, want) {
+					t.Fatalf("missing %q", want)
+				}
+			}
+		}
+	}
 	w := httptest.NewRecorder()
-	Handler(w, r)
-	body := w.Body.String()
-	for _, want := range []string{"Your saved morning information.", "23 September 2026 at 07:00 UTC", `href="/inbox?id=` + th.ID, `data-path="/agent/micro"`, `aria-label="Home"`} {
-		if !strings.Contains(body, want) {
-			t.Fatalf("missing %q", want)
-		}
-	}
-	for _, bad := range []string{"Foreign brief", "A later reply", `<a href="/home/apps">Apps</a>`} {
-		if strings.Contains(body, bad) {
-			t.Fatalf("unexpected %q", bad)
-		}
-	}
-	thread.InvalidateSource(owner, "mail", "brief-source")
-	if body, _, _ := latestBrief(owner); body != "" {
-		t.Fatal("deleted brief remains visible")
-	}
-	w = httptest.NewRecorder()
-	Handler(w, httptest.NewRequest("GET", "/home", nil))
+	Handler(w, httptest.NewRequest("GET", "/home?view=overview", nil))
 	if w.Code != 303 || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
-		t.Fatalf("home is not protected: %d", w.Code)
+		t.Fatal("private overview unprotected")
 	}
 }

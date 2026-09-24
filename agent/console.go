@@ -57,6 +57,12 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if session == "" {
 		session = r.URL.Query().Get("continue")
 	}
+	if session == "" && acc != nil && r.URL.Query().Get("new") != "1" {
+		if recent := RecentConversation(acc.ID, selected); recent != nil {
+			http.Redirect(w, r, Path(acc.ID, selected)+"?session="+url.QueryEscape(recent.ID), http.StatusSeeOther)
+			return
+		}
+	}
 	if session != "" {
 		if acc == nil || thread.Get(acc.ID, session) == nil {
 			http.Error(w, "Conversation not found", 404)
@@ -143,7 +149,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
 	body := consoleBody(acc.ID, selected, session, agentName, description, initial, heading, state, basePath)
-	fmt.Fprint(w, app.ConsoleHTML(agentName, body, acc))
+	fmt.Fprint(w, app.ConsoleHTML(agentName, body, acc, r.URL.RequestURI()))
 }
 
 // TitleHandler changes only the signed-in owner's web thread.
@@ -182,5 +188,29 @@ func Prompt(owner string) string {
 }
 
 func consoleBody(owner, selected, session, agentName, description, initial, heading, state, basePath string) string {
-	return `<div class="assistant-workspace"><div class="` + state + `">` + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
+	toolbar := `<div class="assistant-toolbar"><a href="/agents">Conversations</a><a href="` + html.EscapeString(basePath) + `?new=1">New conversation</a></div>`
+	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="What do you need?" required></textarea><button id="send" type="submit" aria-label="Send message">Send</button></div><p id="status" role="status"></p></form></div></div></div>`
+}
+
+// RecentConversation resumes the owner's most recently visited web conversation
+// for this agent. Replies in another thread do not displace a visited session.
+func RecentConversation(owner, selected string) *thread.Thread {
+	if selected == DefaultPlatformAgent {
+		selected = ""
+	}
+	var recent *thread.Thread
+	for _, th := range thread.List(owner, 0) {
+		id := th.Agent
+		if id == DefaultPlatformAgent {
+			id = ""
+		}
+		if th.Client != thread.WebClient || id != selected || th.Seen.IsZero() {
+			continue
+		}
+		if recent == nil || th.Seen.After(recent.Seen) {
+			copy := th
+			recent = &copy
+		}
+	}
+	return recent
 }

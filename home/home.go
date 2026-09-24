@@ -2,15 +2,22 @@
 package home
 
 import (
+	"fmt"
 	"html"
-	"mu/agent"
-	"mu/internal/app"
-	"mu/internal/auth"
-	"mu/internal/thread"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
+
+	"mu/account"
+	"mu/agent"
+	"mu/inbox"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/service"
+	"mu/service/apps"
+	"mu/service/events"
+	"mu/service/tasks"
+	"mu/service/weather"
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +36,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	auth.SetCSRFCookie(w, r)
 	w.Header().Set("Cache-Control", "private, no-store")
-	body := `<div data-home-overview>` + tabs(false) + `</div>` + agent.Prompt(acc.ID) + `<div data-home-overview>` + deliveredBrief(acc.ID) + `</div>`
+	snapshot, pending := overview(acc)
+	content := overviewHTML(r, acc, snapshot)
+	// The first visit can fill its cards after paint without replacing the prompt
+	// or draft. Subsequent visits render the cached overview immediately.
+	if r.URL.Query().Get("view") == "overview" {
+		app.RespondJSON(w, map[string]any{"html": content, "pending": pending, "weather": weatherLine(acc.ID)})
+		return
+	}
+	resume := ""
+	if th := agent.RecentConversation(acc.ID, ""); th != nil {
+		resume = `<p class="home-resume"><a href="` + html.EscapeString(agent.Path(acc.ID, th.Agent)+"?session="+url.QueryEscape(th.ID)) + `">Continue: ` + html.EscapeString(th.Subject) + `</a></p>`
+	}
+	body := `<div data-home-overview>` + tabs(false) + `<div class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time>` + `<span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + resume + `<p class="text-muted">Start something new with Micro</p></div>` + agent.Prompt(acc.ID) + `<div data-home-overview id="home-overview-content" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
 	app.Respond(w, r, app.Response{Title: "Home", HTML: body})
 }
 
@@ -41,27 +60,79 @@ func tabs(apps bool) string {
 	return `<nav class="view-switch form-actions" aria-label="Home"><a href="/home"` + overview + `>Overview</a><a href="/home/apps"` + currentApps + `>My apps</a></nav>`
 }
 
-func deliveredBrief(owner string) string {
-	body, id, at := latestBrief(owner)
-	if id == "" {
-		return `<section class="record-card"><h2>Daily brief</h2><p>Your latest delivered brief will appear here.</p><a href="/events?view=brief">Manage daily brief</a></section>`
+func weatherLine(owner string) string {
+	lat, lon, located := auth.Located(owner)
+	if located {
+		if temperature, description, ok := weather.Now(lat, lon); ok {
+			return `<a href="/weather">` + html.EscapeString(fmt.Sprintf("%s · %d°C, %s", auth.PlaceName(owner), temperature, description)) + `</a>`
+		}
+		return `<a href="/weather">Weather in ` + html.EscapeString(auth.PlaceName(owner)) + `</a>`
 	}
-	return `<section class="record-card"><h2>Daily brief</h2>` + briefDeliveredAt(at) + `<div class="markdown-content">` + app.RenderString(body) + `</div><div class="form-actions"><a href="/inbox?id=` + url.QueryEscape(id) + `">Open conversation</a><a href="/events?view=brief">Manage daily brief</a></div></section>`
+	return `<a href="/account#place">Set your location for weather</a>`
 }
 
-// Read Inbox's local projection only. Rendering never calls a source service,
-// fetches news or runs a model. The original message date survives replies.
-func latestBrief(owner string) (string, string, time.Time) {
-	m := thread.LatestTo(owner, owner+"+brief")
-	if m == nil {
-		return "", "", time.Time{}
+// Local facts, not another scheduled brief or a page-load model call.
+func shortBrief(owner string) string {
+	var parts []string
+	if n, newest := inbox.Waiting(owner); n > 0 {
+		noun := "conversations"
+		if n == 1 {
+			noun = "conversation"
+		}
+		text := fmt.Sprintf(`<a href="/inbox">%d %s</a> waiting`, n, noun)
+		if newest != "" && !strings.EqualFold(newest, "You") {
+			text += ", the newest from " + html.EscapeString(newest)
+		}
+		parts = append(parts, text+".")
 	}
-	return strings.SplitN(m.Text, "\n\n---\n", 2)[0], m.Thread, m.At
+	if doing := tasks.List(owner, tasks.StatusDoing); len(doing) > 0 {
+		noun := "tasks"
+		if len(doing) == 1 {
+			noun = "task"
+		}
+		parts = append(parts, fmt.Sprintf(`<a href="/work">%d %s</a> in progress.`, len(doing), noun))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return `<p class="home-summary">` + strings.Join(parts, " ") + `</p>`
 }
 
-func briefDeliveredAt(at time.Time) string {
-	if at.IsZero() {
-		return `<p class="text-muted">Delivery date unavailable</p>`
+func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
+	var b strings.Builder
+	b.WriteString(shortBrief(acc.ID))
+	b.WriteString(`<div class="home-grid"><div>`)
+	// Metadata is local and remains owned by the apps service.
+	var collection apps.CollectionResponse
+	err := service.Call(service.WithAccount(r.Context(), acc.ID), "apps", "Server.Collection", &apps.CollectionRequest{}, &collection)
+	if err == nil && len(collection.Items) > 0 {
+		b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
+		for i, a := range collection.Items {
+			if i == 3 {
+				break
+			}
+			b.WriteString(`<a class="collection-item" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a>`)
+		}
+		b.WriteString(`</div></section>`)
 	}
-	return `<p class="text-muted">Delivered <time datetime="` + at.UTC().Format(time.RFC3339) + `">` + html.EscapeString(at.UTC().Format("2 January 2006 at 15:04 UTC")) + `</time></p>`
+	b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2>Your things</h2></div><div class="form-actions"><a href="/home/apps">My apps</a><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a></div></section>`)
+	b.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
+	if preview := inbox.Preview(acc.ID); preview != "" {
+		b.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
+	}
+	b.WriteString(`</div><div><div class="home-card-heading"><h2>Services</h2><a href="/services">Choose services</a></div>`)
+	for _, spec := range service.Pinned(acc.PinnedServices()) {
+		b.WriteString(`<section class="record-card"><div class="home-card-heading"><h2><a href="` + html.EscapeString(spec.Page) + `">` + html.EscapeString(spec.NavLabel()) + `</a></h2></div>`)
+		if card := snapshot.cards[spec.Name]; card != "" {
+			b.WriteString(`<div class="home-card-content">` + card + `</div>`)
+		} else {
+			b.WriteString(`<p class="text-muted">` + html.EscapeString(spec.Description) + `</p>`)
+		}
+		b.WriteString(`</section>`)
+	}
+	if len(acc.PinnedServices()) == 0 {
+		b.WriteString(`<p class="text-muted">Pin services to see them here.</p>`)
+	}
+	b.WriteString(`</div></div>`)
+	return b.String()
 }

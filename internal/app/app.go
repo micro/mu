@@ -443,30 +443,6 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-func navMain(acc *auth.Account) string {
-	if acc == nil {
-		return ""
-	}
-	var b strings.Builder
-	for _, item := range []struct{ id, href, label, icon string }{
-		{"nav-home", "/home", "Home", "/home.png"},
-		{"nav-agent", "/agent/micro", "Agent", "/agent.svg"},
-		{"nav-inbox", "/inbox", "Inbox", "/mail.png"},
-		{"nav-work", "/work", "Work", "/tasks.svg"},
-	} {
-		b.WriteString(navigationLink(item.id, item.href, item.label, item.icon))
-	}
-	return b.String()
-}
-
-func navigationLink(id, href, label, icon string) string {
-	attr := ""
-	if id != "" {
-		attr = ` id="` + htmlpkg.EscapeString(id) + `"`
-	}
-	return `<a` + attr + ` href="` + htmlpkg.EscapeString(href) + `"><img src="` + icon + `" alt="" aria-hidden="true"><span>` + htmlpkg.EscapeString(label) + `</span></a>`
-}
-
 var TopUpConfigured func() bool
 
 func navAdmin(acc *auth.Account) string {

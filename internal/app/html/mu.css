@@ -1167,3 +1167,66 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .document-page:has([data-home-overview]) #responses:empty{display:none}
 .document-page:has([data-home-overview]) .composer{display:flex;gap:4px;border:1px solid var(--border);border-radius:6px;padding:3px}
 .document-page:has([data-home-overview]) .composer button{margin:0;border:0;background:#f4f4f4;border-radius:4px}
+
+/* Mu hosts the assistant and service pages within one responsive shell. */
+.runtime-navigation{position:fixed;z-index:30;inset:0 auto 0 0;width:168px;display:flex;flex-direction:column;gap:6px;padding:92px 12px 24px;border-right:1px solid var(--border);background:var(--bg,#fff)}
+.runtime-navigation a{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 12px;border-radius:6px;text-decoration:none;color:#666;font-size:.9rem}
+.runtime-navigation a[aria-current="page"]{color:#222;background:#f3f3f3}
+.runtime-navigation a:hover{background:#f6f6f6;color:#222}
+.runtime-navigation svg{flex:none}
+.signed-in>.page,.signed-in>footer{margin-left:168px}
+.signed-in header{padding-block:12px;min-height:72px;flex-wrap:nowrap}
+.home-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.home-grid>div,.home-grid section{min-width:0;overflow-wrap:anywhere}
+.home-grid .section-card,.home-grid .record-card{margin-top:0;margin-bottom:24px}
+.home-date{color:#666;display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px}
+.home-summary{line-height:1.7;margin-bottom:20px}
+.home-links{margin-bottom:24px}
+.home-card-heading{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:12px}
+.home-card-heading h2{margin:0;font-size:1.05rem}
+.home-card-heading>a{font-size:.85rem;color:#666}
+.home-card-content{min-width:0;max-height:420px;overflow:auto}
+.home-card-content>:first-child{margin-top:0}
+.home-card-content>:last-child{margin-bottom:0}
+.home-resume{margin:0 0 12px;overflow-wrap:anywhere}
+@media(min-width:701px) and (max-width:1100px){
+ .runtime-navigation{width:88px;padding-inline:6px}
+ .runtime-navigation a{flex-direction:column;gap:4px;padding:10px 4px;font-size:.75rem}
+ .signed-in>.page,.signed-in>footer{margin-left:88px}
+}
+@media(max-width:700px){
+ .runtime-navigation{inset:auto 0 0;width:auto;height:calc(64px + env(safe-area-inset-bottom));flex-direction:row;justify-content:space-around;gap:0;padding:4px max(4px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left));border-right:0;border-top:1px solid var(--border)}
+ .runtime-navigation a{flex:1;min-width:0;flex-direction:column;gap:3px;padding:7px 2px;font-size:.72rem;min-height:50px;border-radius:4px}
+ .signed-in{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+ .signed-in>.page,.signed-in>footer{margin-left:0}
+ .signed-in header{min-height:60px;padding:8px 12px}
+ .signed-in.keyboard-open{padding-bottom:0}
+ .keyboard-open>.runtime-navigation{display:none}
+ .home-grid{grid-template-columns:minmax(0,1fr);gap:0}
+ .assistant-workspace .conversation.is-active .prompt-panel{padding-bottom:0}
+}
+
+.document-page:has([data-home-overview]) .assistant-toolbar{display:none}
+
+.section-card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.section-card-head h4{margin:0;font-size:1.05rem}
+.section-card-head a{text-decoration:none}
+.section-more{font-size:.85rem;color:#666}
+.inbox-peek{display:flex;flex-direction:column}
+.peek-row{display:flex;flex-direction:column;gap:5px;min-width:0;padding:12px 0;border-bottom:1px solid #eee;text-decoration:none}
+.peek-head{display:flex;justify-content:space-between;gap:12px}
+.peek-title{min-width:0;overflow-wrap:anywhere}
+.peek-when{white-space:nowrap;font-size:.8rem;color:#666}
+.peek-line{font-size:.85rem;color:#666;overflow-wrap:anywhere}
+.peek-who{margin-right:4px}
+.peek-via{display:block;font-size:.8rem;margin-top:3px}
+.inbox-peek>.link{margin-top:12px}
+.pin-btn{min-width:44px;min-height:44px;background:transparent}
+.pin-btn svg{fill:none}
+.pin-btn.pinned svg{fill:currentColor}
+
+.home-card-content .headline{font-weight:400;padding:12px 0;border-bottom:1px solid #eee}
+.home-card-content .headline .title{display:block;font-weight:500}
+.home-card-content .headline .description{display:block;color:#666;font-size:.85rem;margin-top:6px}
+.home-card-content .headline .summary{display:none}
+.home-card-content .category-header{font-size:.8rem;color:#666;margin-bottom:6px}
