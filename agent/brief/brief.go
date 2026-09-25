@@ -57,7 +57,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
-	"mu/internal/event"
 )
 
 // sources are what the line is written from.
@@ -124,10 +123,11 @@ type Entry struct {
 }
 
 var (
-	mu      sync.Mutex
-	entries []Entry
-	running bool
-	failure string
+	mu        sync.Mutex
+	entries   []Entry
+	running   bool
+	attempted time.Time
+	failure   string
 )
 
 // Load restores the last line and starts writing new ones.
@@ -136,9 +136,7 @@ func Load() {
 	data.LoadJSON("brief.json", &entries) //nolint:errcheck
 	mu.Unlock()
 
-	if ai.BackgroundEnabled() {
-		go scheduler()
-	}
+	go scheduler()
 }
 
 // Line is what to show, or nothing.
@@ -193,7 +191,7 @@ func scheduler() {
 	time.Sleep(2 * time.Minute)
 
 	for {
-		if due() {
+		if ai.Configured() && due() {
 			write()
 		}
 		time.Sleep(10 * time.Minute)
@@ -205,8 +203,11 @@ func due() bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if running || len(entries) == 0 {
-		return !running
+	if running || time.Since(attempted) < gap {
+		return false
+	}
+	if len(entries) == 0 {
+		return true
 	}
 	last := entries[len(entries)-1]
 	return last.Day != today() || time.Since(last.Written) >= gap
@@ -220,6 +221,7 @@ func write() {
 		return
 	}
 	running = true
+	attempted = time.Now()
 	mu.Unlock()
 
 	defer func() {
@@ -258,7 +260,6 @@ func write() {
 		app.Log("brief", "nothing worth saying about today")
 		return
 	}
-	event.Announce("brief", text, "/services?view=feed", "")
 	app.Log("brief", "wrote: %s", text)
 }
 

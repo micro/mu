@@ -17,7 +17,7 @@ input[type=checkbox],input[type=radio]{width:auto}
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #426994;outline-offset:3px}
 
 .page{flex:1;min-height:0}
-header{min-height:80px;height:auto;padding:20px 32px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+header{min-height:80px;height:auto;padding:20px var(--page-gutter);display:flex;justify-content:space-between;align-items:center;gap:16px}
 header a{text-decoration:none}
 header nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 16px;font-size:.875rem}
 .brand{font-weight:500}
@@ -316,7 +316,7 @@ footer{gap:16px}
 .search-bar{display:flex;align-items:center;gap:8px;margin:12px 0}
 .search-bar input{flex:1;min-width:0;width:0}
 .search-bar button,.search-bar a{flex-shrink:0}
-@media(max-width:480px){header{padding-inline:12px;gap:8px}header nav{gap:12px;font-size:13px}.conversation-row{gap:4px 8px}}
+@media(max-width:480px){header{padding-inline:var(--page-gutter);gap:8px}header nav{gap:12px;font-size:13px}.conversation-row{gap:4px 8px}}
 
 .admin-navigation{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px}
 main,.section-stack,.page-stack,.form-actions,.section-actions{min-width:0}
@@ -324,7 +324,11 @@ main{overflow-wrap:anywhere}
 .form-actions>*,.section-actions>*{max-width:100%}
 @media(max-width:480px){header nav a{padding-block:4px}.form-row,.form-inline{align-items:stretch}pre{padding:12px}}
 
-/* Shared compact lists for Services, Apps, and Agents. */
+/* Mixed previews flow independently; uniform collections use a card grid. */
+.dashboard-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--section-gap);align-items:start}
+.dashboard-columns>.page-stack{min-width:0;gap:var(--section-gap)}
+.dashboard-columns>.page-stack>:is(.record-card,.section-card){margin:0}
+@media(max-width:900px){.dashboard-columns{grid-template-columns:minmax(0,1fr)}}
 .card-grid,.directory-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:var(--section-gap);min-width:0;align-items:start}
 :is(.card-grid,.directory-list)>*{min-width:0;margin:0}
 .card-grid>:is(h2,.section-heading){grid-column:1/-1}
@@ -472,7 +476,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 
 /* Shared canvas: available width, readable prose, vertical records,
    wrapping metadata/actions, and bounded media. New pages use these primitives. */
-:root{--page-gutter:24px;--section-gap:24px;--section-padding:20px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
+:root{--page-gutter:clamp(24px,4vw,64px);--section-gap:24px;--section-padding:24px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
 .document-page main{width:calc(100% - 2*var(--page-gutter));max-width:none}
 .document-page main>:is(p,ul,ol){max-width:var(--reading-width)}
 .command-page main{max-width:760px}
@@ -701,20 +705,17 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .view-share{display:flex;align-items:center;gap:10px;margin-block:12px;font-size:.85rem}
 
 /* Reading content uses the same page origin and header as every service. */
-.reading-page main>.editorial-page,.reading-page main>h1{width:100%;max-width:var(--reading-width);margin-inline:auto}
+.reading-page main>.editorial-page,.reading-page main>h1{width:100%;margin-inline:0}
 
 /* Text navigation shared by the three Inbox views. */
 .view-switch a[aria-current="page"]{font-weight:500;text-decoration:underline;text-underline-offset:4px}
 
 
 /* One compact message composer on the landing and conversation views. */
-.command-page #command-form{width:100%;max-width:600px;margin-inline:auto}
+.command-page #command-form{width:100%;margin-inline:0}
 .command-page .composer{border:1px solid var(--border,#ddd);border-radius:6px;padding:3px;gap:4px}
 .command-page .composer input{border:0;background:transparent}
 .command-page .composer button{margin:0;border:0;background:#f4f4f4;border-radius:4px}
-
-
-.command-page .conversation.is-active #command-form{max-width:none}
 
 
 #profile-status{margin-block:16px;gap:8px}
@@ -798,10 +799,10 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 
 /* Assistant history and transcript share one workspace. */
 .assistant-workspace{position:relative;display:flex;flex:1;min-height:0;min-width:0}
-.command-page main:has(.assistant-workspace){width:calc(100% - 48px);max-width:none}
+.command-page main:has(.assistant-workspace){width:calc(100% - 2*var(--page-gutter));max-width:none}
 .assistant-workspace>.conversation{flex:1;min-width:0;margin-inline:auto}
 .assistant-workspace .conversation>.assistant-toolbar,.assistant-workspace .assistant-thread-title,.assistant-workspace .prompt-panel{width:100%;box-sizing:border-box;margin-inline:auto}
-.assistant-workspace #responses>.turn{width:100%;max-width:760px;box-sizing:border-box;margin-inline:auto}
+.assistant-workspace #responses>.turn{width:100%;box-sizing:border-box;margin:0}
 .assistant-toolbar{display:flex;align-items:center;gap:16px;flex-shrink:0;padding:8px 0 16px;font-size:.875rem}
 .assistant-toolbar button{font:inherit;margin:0;padding:0;background:none;border:0;color:inherit}
 .assistant-thread-title{font-size:1rem;font-weight:500;margin:0 0 12px;flex-shrink:0;overflow-wrap:anywhere}
@@ -827,7 +828,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 
 /* Navigation stays visible above the content on desktop and mobile. */
 .desktop-navigation{display:flex;margin-left:auto}
-@media(max-width:700px){header{flex-wrap:wrap;gap:4px 16px;padding:12px;min-height:64px}.desktop-navigation{gap:8px 16px}header nav a{padding-block:8px}.command-page main:has(.assistant-workspace){width:calc(100% - 24px)}}
+@media(max-width:700px){header{flex-wrap:wrap;gap:4px 16px;padding:12px var(--page-gutter);min-height:64px}.desktop-navigation{gap:8px 16px}header nav a{padding-block:8px}}
 
 
 /* Account controls stay compact at every screen width. */
@@ -1205,8 +1206,8 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .shortcut-grid a:hover{background:var(--surface)}
 .conversation:not(.is-active) .assistant-toolbar{display:none}
 .home-date{color:#666;display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px}
-.home-summary{line-height:1.7;margin:0;max-width:var(--reading-width)}
-.home-card-content{min-width:0;max-height:420px;overflow:auto}
+.home-summary{line-height:1.7;margin:0}
+.home-card-content{min-width:0}
 .home-card-content>:first-child{margin-top:0}
 .home-card-content>:last-child{margin-bottom:0}
 .home-resume{margin:0 0 24px;overflow-wrap:anywhere}
@@ -1226,10 +1227,10 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
  .runtime-navigation a{flex:1;min-width:0;flex-direction:column;gap:3px;padding:7px 2px;font-size:.72rem;min-height:50px;border-radius:4px}
  .signed-in{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
  .signed-in>.page,.signed-in>footer{margin-left:0}
- .signed-in>.page>header{min-height:60px;padding:8px 12px}
+ .signed-in>.page>header{min-height:60px;padding:8px var(--page-gutter)}
  .signed-in.keyboard-open{padding-bottom:0}
  .keyboard-open>.runtime-navigation{display:none}
- :root{--page-gutter:14px;--section-gap:16px;--section-padding:16px}
+ :root{--page-gutter:20px;--section-gap:20px;--section-padding:16px}
  .card-grid,.directory-list{grid-template-columns:minmax(0,1fr)}
  .section-heading{margin-top:24px}
  .assistant-workspace .conversation.is-active .prompt-panel{padding-bottom:0}

@@ -84,8 +84,8 @@ navigation on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
 Home owns the authenticated overview, prompt, personal collections and pinned
-service cards. Its short brief uses local facts; it does not repeat the full
-scheduled daily brief. Agent owns the conversation UI and explicit new/resume
+service cards. Its short brief combines local personal facts with the cached generated world
+summary from agent/brief; it does not repeat the full scheduled daily brief. Agent owns the conversation UI and explicit new/resume
 controls. Services are directly usable by people as well as callable by agents;
 the directory is not admin-only. Each service retains its permissions. Apps are
 small tools that can be opened or embedded, not additional primary destinations.
@@ -95,8 +95,9 @@ mutations and shared links.
 
 **Extend through stable patterns.** Compose existing service interfaces and
 card renderers. Refresh external context in bounded background work and render
-cached views instantly. Personal previews stay account-scoped. Do not restart
-automatic model content generation as a side effect of restoring Home.
+cached views instantly. Personal previews stay account-scoped. Only the short Home summary is generated automatically, once per hour for the
+instance from public sources. It is read from cache, never generated during page
+rendering, and does not send notifications. Other automatic content stays disabled.
 
 ## What is true today, and what is not
 
@@ -570,8 +571,8 @@ Public pages retain the shared website footer. Signed-in app pages omit it.
 Keep mobile content near the top: a title, a compact search row and the content;
 group secondary actions separately and collapse infrequent filters.
 
-Personal daily brief schedules remain available. No other automatic model
-content generation: no daily images, public digests, summaries, tagging, topic
+Personal daily brief schedules and the cached short Home summary remain available.
+No other automatic model content generation: no daily images, public digests, summaries, tagging, topic
 suggestions, greetings or arrival triage. User-requested jobs remain explicit.
 
 Remove obsolete page renderers when separating them from backend handlers.
@@ -606,7 +607,12 @@ The shared app canvas fills the space beside navigation on every page. Do not
 add route-specific width fixes or constrain whole app pages to reading width.
 Services, agents and app collections use the shared responsive card grid;
 messages and tables use rows. Sections share borders, padding and spacing.
-Keep only prose and ordinary forms narrow; editors and maps use the canvas.
+Use a generous responsive outer gutter. Align chat turns with their composer,
+and article headings and controls with the shared page origin; never center an
+isolated inner column while its surrounding controls span the canvas. Only prose
+and ordinary forms retain a reading measure; editors and maps use the canvas.
+Mixed dashboard previews use two independently flowing columns, not the directory
+grid: a long Inbox card must not create empty space beneath its neighbours.
 The Micro brand sits above desktop sidebar navigation and returns to the
 header on smaller screens. All grid/flex children must shrink and long content must wrap.
 Mobile forms wrap, tables scroll or stack, previews fit their container, and

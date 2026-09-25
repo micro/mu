@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"mu/account"
 	"mu/agent"
+	"mu/agent/brief"
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -70,7 +72,7 @@ func weatherLine(owner string) string {
 	return `<a href="/account#place">Set your location for weather</a>`
 }
 
-// Local facts, not another scheduled brief or a page-load model call.
+// Personal facts and the cached world summary. Rendering never calls a model.
 func shortBrief(owner string) string {
 	var parts []string
 	if n, newest := inbox.Waiting(owner); n > 0 {
@@ -91,46 +93,76 @@ func shortBrief(owner string) string {
 		}
 		parts = append(parts, fmt.Sprintf(`<a href="/work">%d %s</a> in progress.`, len(doing), noun))
 	}
+	if line := nextEvent(owner); line != "" {
+		parts = append(parts, line)
+	}
+	if line := brief.Line(); line != "" {
+		parts = append(parts, html.EscapeString(line))
+	}
 	if len(parts) == 0 {
 		return ""
 	}
-	return `<section class="section-card section-block" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + strings.Join(parts, " ") + `</p></section>`
+	return `<section class="section-card" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + strings.Join(parts, " ") + `</p></section>`
+}
+
+// Read only the local calendar and its already cached external preview.
+func nextEvent(owner string) string {
+	now := account.LocalNow(owner)
+	var when time.Time
+	title := ""
+	consider := func(name string, at time.Time) {
+		at = at.In(now.Location())
+		if at.After(now) && at.Format("2006-01-02") == now.Format("2006-01-02") && (when.IsZero() || at.Before(when)) {
+			title, when = name, at
+		}
+	}
+	for _, e := range events.Upcoming(owner) {
+		if e.Kind != "brief" && e.Prompt == "" {
+			consider(e.Title, e.When)
+		}
+	}
+	for _, e := range events.CachedOverview(owner) {
+		if !e.AllDay {
+			consider(e.Title, e.Start)
+		}
+	}
+	if title == "" {
+		return ""
+	}
+	return `<a href="/events">` + html.EscapeString(title) + `</a> at ` + when.Format("15:04") + `.`
 }
 
 func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
-	var b strings.Builder
-	b.WriteString(shortBrief(acc.ID))
-	b.WriteString(`<div class="card-grid">`)
-	b.WriteString(`<section class="record-card"><div class="section-card-head"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
+	var left, right strings.Builder
+	if preview := inbox.Preview(acc.ID); preview != "" {
+		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
+	}
+	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
+	right.WriteString(`<section class="record-card"><div class="section-card-head"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
 	for i, a := range snapshot.apps {
 		if i == 3 {
 			break
 		}
-		b.WriteString(`<a class="collection-item" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a>`)
+		right.WriteString(`<a class="collection-item" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a>`)
 	}
 	if len(snapshot.apps) == 0 {
-		b.WriteString(`<p class="text-muted">Open your apps or ask Micro to build one.</p>`)
+		right.WriteString(`<p class="text-muted">Open your apps or ask Micro to build one.</p>`)
 	}
-	b.WriteString(`</div></section>`)
-
-	b.WriteString(`<section class="record-card"><div class="section-card-head"><h2>Saved</h2></div><div class="shortcut-grid"><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a></div></section>`)
-	b.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
-	if preview := inbox.Preview(acc.ID); preview != "" {
-		b.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
-	}
-	b.WriteString(`</div><div class="section-heading"><h2>Services</h2><a href="/services">Choose services</a></div><div class="card-grid">`)
-	for _, spec := range service.Pinned(acc.PinnedServices()) {
-		b.WriteString(`<section class="record-card"><div class="section-card-head"><h2><a href="` + html.EscapeString(spec.Page) + `">` + html.EscapeString(spec.NavLabel()) + `</a></h2></div>`)
-		if card := snapshot.cards[spec.Name]; card != "" {
-			b.WriteString(`<div class="home-card-content">` + card + `</div>`)
-		} else {
-			b.WriteString(`<p class="text-muted">` + html.EscapeString(spec.Description) + `</p>`)
+	right.WriteString(`</div><nav class="form-actions" aria-label="Saved items"><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a></nav></section>`)
+	for i, spec := range service.Pinned(acc.PinnedServices()) {
+		column := &left
+		if i%2 != 0 {
+			column = &right
 		}
-		b.WriteString(`</section>`)
+		body := snapshot.cards[spec.Name]
+		if body == "" {
+			body = `<p class="text-muted">` + html.EscapeString(spec.Description) + `</p>`
+		}
+		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
 	}
-	if len(acc.PinnedServices()) == 0 {
-		b.WriteString(`<section class="record-card"><h2>Your services</h2><p class="text-muted">Pin services to see them here.</p><a href="/services">Browse services</a></section>`)
+	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
+	if left.Len() == 0 {
+		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	b.WriteString(`</div>`)
-	return b.String()
+	return `<div class="page-col">` + shortBrief(acc.ID) + `<nav class="form-actions" aria-label="Home services"><a href="/services">Choose services</a></nav>` + columns + `</div>`
 }
