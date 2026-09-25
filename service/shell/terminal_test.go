@@ -4,6 +4,7 @@ import (
 	"mu/internal/auth"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -87,4 +88,50 @@ func TestTerminalLeaseReleased(t *testing.T) {
 		t.Fatal("disconnected session not released")
 	}
 	releaseTerminal("lease-test")
+}
+
+func TestTerminalCheckReportsSharedModeWithoutOpeningMachine(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("SHELL_SHARED", "true")
+	const owner = "terminal-check-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	sess, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer auth.Logout(sess.Token)
+	r := httptest.NewRequest("POST", "https://micro.example/shell?terminal=check", nil)
+	r.Header.Set("Origin", "https://micro.example")
+	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	r.Header.Set("X-CSRF-Token", auth.CSRFToken(r))
+	w := httptest.NewRecorder()
+	Handler(w, r)
+	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "shared machines") {
+		t.Fatalf("missing actual refusal: %d %s", w.Code, w.Body.String())
+	}
+	if !claimTerminal(owner) {
+		t.Fatal("preflight reserved a terminal")
+	}
+	releaseTerminal(owner)
+}
+
+func TestTerminalOriginBehindConfiguredTLSProxy(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "micro.example")
+	r := httptest.NewRequest("GET", "http://micro.example/shell", nil)
+	r.Header.Set("Origin", "https://micro.example")
+	if !terminalOrigin(r) {
+		t.Fatal("configured HTTPS origin rejected behind TLS proxy")
+	}
+	for _, value := range []string{"https://evil.example", "http://micro.example", "https://micro.example:8443"} {
+		r.Header.Set("Origin", value)
+		if terminalOrigin(r) {
+			t.Fatalf("accepted foreign origin %s", value)
+		}
+	}
+	r.Host = "other.example"
+	r.Header.Set("Origin", "https://micro.example")
+	if terminalOrigin(r) {
+		t.Fatal("configured origin must not authorize another host")
+	}
 }

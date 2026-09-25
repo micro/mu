@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-func TestSearchResultUsesMediaRowOnlyWithImage(t *testing.T) {
+func TestSearchResultAlwaysHasSourceCover(t *testing.T) {
 	for _, image := range []string{"", "https://example.test/news.jpg"} {
 		entry := &data.IndexEntry{ID: "layout-test", Title: "Headline <one>", Content: "Story", Metadata: map[string]interface{}{"url": "https://example.test/story", "category": "World", "image": image}}
 		got := formatSearchResult(entry)
-		if strings.Contains(got, `class="reading-row news-reading-row"`) != (image != "") {
-			t.Fatalf("wrong container for image %q", image)
+		if !strings.Contains(got, `class="reading-row news-reading-row"`) || !strings.Contains(got, `class="media-cover-label" aria-hidden="true">example.test</span>`) {
+			t.Fatal("missing consistent media row and source fallback")
 		}
-		if image == "" && !strings.Contains(got, `class="record-card"`) {
-			t.Fatal("missing vertical record layout")
+		if strings.Contains(got, `data-cover-image`) != (image != "") {
+			t.Fatal("unexpected publisher image")
 		}
 		if !strings.Contains(got, "Headline &lt;one&gt;") {
 			t.Fatal("headline not escaped")

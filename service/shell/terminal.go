@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/container"
+	"mu/internal/origin"
 	"mu/internal/quota"
 )
 
@@ -32,6 +34,11 @@ func terminalOrigin(r *http.Request) bool {
 	scheme := "http"
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
+	}
+	// TLS may terminate at the configured public host before reaching Mu.
+	// Trust only that exact configured host, never an arbitrary forwarded host.
+	if public, e := url.Parse(origin.Self()); e == nil && public.Host != "" && strings.EqualFold(public.Host, r.Host) {
+		scheme = public.Scheme
 	}
 	return err == nil && u.Scheme == scheme && u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment == "" && strings.EqualFold(u.Host, r.Host)
 }
@@ -93,13 +100,34 @@ func (o *terminalOutput) status(message string) {
 	_ = o.conn.WriteJSON(map[string]string{"type": "status", "message": message})
 }
 
-// The browser opens the same per-account PTY as SSH. Authentication precedes
-// upgrade; CSRF precedes container creation, credentials and quota reservation.
-func terminalHandler(w http.ResponseWriter, r *http.Request) {
+// Check availability without starting a machine, minting credentials or charging.
+func terminalCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
+	if r.Method != http.MethodPost {
+		app.MethodNotAllowed(w, r)
+		return
+	}
+	acc, status, message := terminalAccount(r)
+	if acc != nil && !terminalCSRF(r, r.Header.Get("X-CSRF-Token")) {
+		status, message = http.StatusForbidden, "Reload Shell before opening a terminal; this page's session check has expired."
+	}
+	if message == "" {
+		webTerminals.Lock()
+		busy := webTerminals.accounts[acc.ID] || len(webTerminals.accounts) >= machineBudget()
+		webTerminals.Unlock()
+		if busy {
+			status, message = http.StatusConflict, "A terminal is already open or all machines are busy. Disconnect the other terminal and try again."
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	app.RespondJSON(w, map[string]any{"ready": message == "", "error": message})
+}
+
+func terminalAccount(r *http.Request) (*auth.Account, int, string) {
 	cookie, err := r.Cookie("session")
 	if err != nil {
-		http.Error(w, "Sign in to open a terminal", http.StatusUnauthorized)
-		return
+		return nil, http.StatusUnauthorized, "Sign in again to open a terminal."
 	}
 	// Ignore header tokens: this interactive door requires a full browser session.
 	r = r.Clone(r.Context())
@@ -107,20 +135,30 @@ func terminalHandler(w http.ResponseWriter, r *http.Request) {
 	r.Header.Del("X-Micro-Token")
 	sess, err := auth.ParseToken(cookie.Value)
 	if err != nil || sess.Type != "account" {
-		http.Error(w, "Sign in to open a terminal", http.StatusUnauthorized)
-		return
+		return nil, http.StatusUnauthorized, "Sign in again to open a terminal."
 	}
 	_, acc, err := auth.RequireSession(r)
 	if err != nil || auth.CheckCredentialAccess(acc.ID) != nil {
-		http.Error(w, "Verify your account to open a terminal", http.StatusForbidden)
-		return
+		return nil, http.StatusForbidden, "Verify your account to open a terminal."
 	}
 	if !terminalOrigin(r) {
-		http.Error(w, "Invalid origin", http.StatusForbidden)
-		return
+		return nil, http.StatusForbidden, "The terminal origin does not match this server. Check the proxy Host and X-Forwarded-Proto headers."
 	}
-	if !Configured() || shared() {
-		http.Error(w, "Terminal unavailable", http.StatusServiceUnavailable)
+	if shared() {
+		return nil, http.StatusServiceUnavailable, "Terminal disabled: this server still uses shared machines. An administrator must migrate to isolated account machines."
+	}
+	if !Configured() {
+		return nil, http.StatusServiceUnavailable, "Terminal unavailable: " + container.Reason()
+	}
+	return acc, http.StatusOK, ""
+}
+
+// The browser opens the same per-account PTY as SSH. Authentication precedes
+// upgrade; CSRF precedes container creation, credentials and quota reservation.
+func terminalHandler(w http.ResponseWriter, r *http.Request) {
+	acc, status, message := terminalAccount(r)
+	if acc == nil {
+		http.Error(w, message, status)
 		return
 	}
 	if !claimTerminal(acc.ID) {
@@ -131,6 +169,7 @@ func terminalHandler(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{CheckOrigin: terminalOrigin, HandshakeTimeout: 10 * time.Second}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		app.Log("shell", "terminal upgrade failed: %v", err)
 		return
 	}
 	defer conn.Close()

@@ -54,14 +54,8 @@ func browse(r *http.Request, posts []*Post) string {
 	}
 	for _, p := range items[start:end] {
 		articleURL := "/news?id=" + url.QueryEscape(p.ID)
-		class := "record-card"
-		if p.Image != "" {
-			class = "reading-row news-reading-row"
-		}
-		b.WriteString(`<article id="reading-` + htmlpkg.EscapeString(p.ID) + `" class="` + class + `">`)
-		if p.Image != "" {
-			b.WriteString(`<a class="news-reading-image" href="` + articleURL + `" aria-label="` + htmlpkg.EscapeString(p.Title) + `"><img src="` + htmlpkg.EscapeString(imageproxy.URL(p.Image)) + `" alt="" loading="lazy" onerror="this.hidden=true"></a>`)
-		}
+		b.WriteString(`<article id="reading-` + htmlpkg.EscapeString(p.ID) + `" class="reading-row news-reading-row">`)
+		b.WriteString(articleCover(articleURL, p.URL, p.Image, p.Title))
 
 		b.WriteString(`<div class="news-reading-content">`)
 		b.WriteString(`<h3><a href="` + articleURL + `">` + htmlpkg.EscapeString(p.Title) + `</a></h3><div class="reading-meta">`)
@@ -88,4 +82,17 @@ func feedBody(r *http.Request, posts []*Post) string {
 		return newsBodyHtml
 	}
 	return browse(r, posts)
+}
+
+// articleCover preserves the media column even without a publisher image.
+func articleCover(href, source, image, title string) string {
+	domain := getDomain(source)
+	if domain == "" {
+		domain = "News"
+	}
+	cover := `<a class="news-reading-image media-cover" href="` + htmlpkg.EscapeString(href) + `" aria-label="` + htmlpkg.EscapeString(title) + `"><span class="media-cover-label" aria-hidden="true">` + htmlpkg.EscapeString(domain) + `</span>`
+	if image != "" {
+		cover += `<img src="` + htmlpkg.EscapeString(imageproxy.URL(image)) + `" alt="" loading="lazy" data-cover-image>`
+	}
+	return cover + `</a>`
 }
