@@ -135,7 +135,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="maps-page page-stack">`)
+	b.WriteString(`<div class="maps-page page-stack"><p class="text-muted">Explore an area, switch map layers and find your bearings. <a href="/routes">Plan a journey</a> or <a href="/places">discover places nearby</a>.</p>`)
 
 	if style != "world" && !Configured() {
 		b.WriteString(app.Problem("This instance has no Ordnance Survey key, so it can only " +

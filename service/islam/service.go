@@ -164,7 +164,7 @@ func (Server) Read(ctx context.Context, req *ReadRequest, rsp *ReadResponse) err
 }
 
 var Spec = service.Spec{
-	Name: "islam", Handler: new(Server), Description: "Search Islamic knowledge from Aslam.org",
+	Name: "islam", Page: "/islam", Handler: new(Server), Description: "Search Islamic knowledge from Aslam.org",
 	Endpoints: map[string]service.Endpoint{
 		"Search": {Doc: "Search Aslam.org's Quran, hadith, names of Allah, Seerah, Ghazali, IslamQA, adhkar and Riyad us-Salihin. Returns reference excerpts, not generated answers. Distinguish Quran and hadith from biography and scholarly interpretation; cite the source."},
 		"Read":   {Doc: "Read the full Islamic source passage from an islam_search result, with its source and reference. Preserve distinctions between original text, translation and commentary."},

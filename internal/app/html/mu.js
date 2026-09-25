@@ -1496,6 +1496,20 @@ if(typeof document!=='undefined'){
    const shared=new URLSearchParams(location.hash.slice(1));
    const form=path==='/maps'?document.getElementById('map-directions'):path==='/routes'?document.querySelector('form[action="/routes"]'):null;
    if(form)for(const key of ['from','to','mode'])if(shared.has(key)&&form.elements[key])form.elements[key].value=shared.get(key);
+   if(form && shared.get('from')?.trim() && shared.get('to')?.trim()){
+    const modes=['drive','walk','cycle','transit'];
+    if(!modes.includes(form.elements.mode.value))form.elements.mode.value='drive';
+    if(document.body.classList.contains('signed-in')){
+     status.textContent='Loading shared route…';
+     // Consume the journey once; refresh must not repeat a paid lookup.
+     // Keep independent map-view coordinates and zoom in the shared fragment.
+     const remaining=new URLSearchParams(location.hash.slice(1));
+     for(const key of ['from','to','mode'])remaining.delete(key);
+     const fragment=remaining.toString();
+     history.replaceState(history.state,'',location.pathname+location.search+(fragment?'#'+fragment:''));
+     setTimeout(()=>form.requestSubmit(),0);
+    }else status.textContent='Shared journey loaded. Sign in to get directions.';
+   }
    button.addEventListener('click',async()=>{
     const url=new URL(location.href);url.hash='';const state=new URLSearchParams();
     if(form){url.search='';for(const key of ['from','to','mode'])if(form.elements[key]?.value)state.set(key,form.elements[key].value);}

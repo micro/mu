@@ -94,7 +94,8 @@ dd{margin:0 0 12px;overflow-wrap:anywhere}
 .form small{font-size:.8rem}
 .form-row,.form-inline{display:flex;flex-direction:row;flex-wrap:wrap;align-items:end;gap:8px}
 .form-row>input,.form-row>select,.form-inline>input,.form-inline>select,.form-inline>.field-label{flex:1 1 200px;width:auto}
-.form-group,.page-stack,.section-stack,.section-body{display:flex;flex-direction:column;gap:8px}
+.form-group,.section-body{display:flex;flex-direction:column;gap:8px}
+.page-stack,.section-stack{display:flex;flex-direction:column;gap:var(--section-gap)}
 .form-actions,.section-actions,.view-switch{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
 .view-switch{margin-bottom:32px}
 .card,.section-card,.record-card,.record-editor,.page-section,.directory-row,.account-sections>.account-group,.settings-sections>section,.settings-sections>.section-stack{min-width:0;padding:var(--section-padding);border:1px solid var(--border);border-radius:8px;background:var(--bg,#fff);overflow-wrap:anywhere}
@@ -481,7 +482,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .document-page main>:is(p,ul,ol){max-width:var(--reading-width)}
 .command-page main{max-width:760px}
 .reader-content,.prose{max-width:var(--reading-width);line-height:1.7}
-.reader-content{margin-inline:auto;width:100%;overflow-wrap:anywhere}
+.reader-content{margin-inline:0;width:100%;overflow-wrap:anywhere}
 .reader-content :is(p,ul,ol,blockquote){margin-block:0 16px}
 .reader-content :is(h2,h3){margin-block:28px 12px}
 .page-col{display:flex;flex-direction:column;gap:var(--section-gap);min-width:0;width:100%}
@@ -531,8 +532,9 @@ img[width="16"],img[width="20"],img[width="24"],.stream-icon{object-fit:contain}
 /* Field classes decorate controls too: a flex basis in a stacked label becomes height. */
 .field{min-width:0}
 .field-label>:is(input,select,textarea),.form:not(.form-inline):not(.form-row)>:is(input,select,textarea),.form-group>:is(input,select,textarea){flex:0 0 auto}
-.form-row>.field,.form-inline>.field{flex:1 1 180px;margin:0}
-.form-row>.field-wide,.form-inline>.field-wide{flex:2 1 280px}
+.form-row>.field:not(select),.form-inline>.field:not(select){flex:1 1 180px;margin:0}
+.form-row>.field-wide:not(select),.form-inline>.field-wide:not(select){flex:2 1 280px}
+.form-row>select,.form-inline>select{flex:0 1 auto;width:auto;max-width:100%}
 .form-row>button,.form-inline>button,.search-bar>button{flex:0 0 auto;align-self:flex-end;min-height:36px;padding-block:7px}
 form:not(.form-action)>:is(button,.btn)+p{margin-top:10px}
 :is(.form-actions,.section-actions,.action-grid,.reading-actions) form{margin:0}
@@ -1278,3 +1280,9 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .audio-vis::after{content:"Audio playback";color:#aaa;font-size:1rem}
 .audio-only iframe{opacity:0;pointer-events:none}
 .video-info-panel{position:absolute;bottom:72px;right:16px;left:16px;padding:16px;background:#fff;color:#222;border:1px solid var(--border);border-radius:6px;max-height:50dvh;overflow:auto}
+
+/* Compact discovery choices, shared by category shortcuts and city links. */
+.discovery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px;margin-bottom:12px}
+.discovery-option{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);text-align:left;text-decoration:none}
+.discovery-option svg{flex:none}
+.discovery-option small{display:block;font-size:.8rem}

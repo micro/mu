@@ -1,6 +1,7 @@
 package routes
 
-// The page shows a route after an explicit, CSRF-protected POST.
+// The page shows a route after a CSRF-protected POST, including a shared journey
+// opened in the signed-in browser.
 // GET only displays or prefills the form and never calls the paid provider.
 
 import (
@@ -71,6 +72,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var b strings.Builder
+	b.WriteString(`<p class="text-muted">Plan a journey with directions and travel times. <a href="/maps">Explore the map</a> or <a href="/places">find places to visit</a>.</p>`)
 	b.WriteString(form(from, to, mode, auth.CSRFToken(r)))
 
 	if r.Method == http.MethodPost && from != "" && to != "" {
@@ -115,7 +117,7 @@ func form(from, to, mode string, csrf ...string) string {
 		}
 		b.WriteString(`<option value="` + m.value + `"` + sel + `>` + m.label + `</option>`)
 	}
-	b.WriteString(`</select><button type="submit">Go</button></form>`)
+	b.WriteString(`</select><button type="submit">Get directions</button></form>`)
 	return b.String()
 }
 
