@@ -39,13 +39,32 @@ func appIntroduction(w http.ResponseWriter, r *http.Request, protected bool) boo
 		if description == "" {
 			description = s.Description
 		}
+		subject := strings.ToLower(s.NavLabel())
+		switch s.Name {
+		case "events":
+			subject = "scheduling"
+		case "files":
+			subject = "file storage"
+		case "docs":
+			subject = "documents"
+		case "markets":
+			subject = "market updates"
+		case "video":
+			subject = "video discovery"
+		case "weather":
+			subject = "weather forecasts"
+		case "sms":
+			subject = "messaging"
+		case "islam":
+			subject = "access to Islamic knowledge"
+		}
 		var b strings.Builder
-		b.WriteString(`<section class="app-introduction"><span class="app-launcher-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" width="32" height="32" alt=""></span><div class="prompt-welcome"><h1>` + html.EscapeString(s.NavLabel()) + `</h1><p>A built-in app for your everyday life.</p></div><p>` + html.EscapeString(description) + `</p><p>Log in or create an account to use it with Micro.</p><div class="form-actions"><a class="btn" href="/login?redirect=` + url.QueryEscape(s.Page) + `">Log in</a><a class="btn" href="/signup?redirect=` + url.QueryEscape(s.Page) + `">Create an account</a></div>`)
+		b.WriteString(`<section class="app-introduction"><span class="app-launcher-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" width="32" height="32" alt=""></span><div class="prompt-welcome"><h1>` + html.EscapeString(s.NavLabel()) + `</h1><p>Simple ` + html.EscapeString(subject) + ` for everyday life.</p></div><p>` + html.EscapeString(description) + `</p><p>Log in or create an account to use it with Micro.</p><div class="form-actions"><a class="btn" href="/login?redirect=` + url.QueryEscape(s.Page) + `">Log in</a><a class="btn" href="/signup?redirect=` + url.QueryEscape(s.Page) + `">Create an account</a></div>`)
 		browse := s.Name == "news" || s.Name == "markets" || s.Name == "video" || s.Name == "weather" || s.Name == "maps"
 		if !protected && browse {
 			b.WriteString(`<a data-app-browse href="` + html.EscapeString(s.Page) + `?view=public">Browse ` + html.EscapeString(s.NavLabel()) + `</a>`)
 		}
-		b.WriteString(`<a href="/services">Explore all apps</a></section>`)
+		b.WriteString(`<a href="/services">Explore all services</a></section>`)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "private, no-store")
 		w.Header().Add("Vary", "Accept")

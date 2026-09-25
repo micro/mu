@@ -31,11 +31,11 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, app.ConsoleHTML("Micro", landingHTML(), nil))
 }
 
-// The existing service catalogue supplies built-in app destinations and icons.
+// The existing service catalogue supplies service destinations and icons.
 // Generated apps remain user-owned apps; this introduction does not duplicate them.
 func landingHTML() string {
 	var b strings.Builder
-	b.WriteString(`<section class="app-introduction"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant for your everyday life.</p></div><nav class="app-launcher" aria-label="Built-in apps">`)
+	b.WriteString(`<section class="app-introduction"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant for your everyday life.</p></div><nav class="app-launcher" aria-label="Services">`)
 	for _, s := range service.Pinned([]string{"mail", "events", "notes", "files", "docs", "news", "markets", "video", "weather", "maps"}) {
 		b.WriteString(`<a href="` + html.EscapeString(s.Page) + `"><span class="app-launcher-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" width="32" height="32" alt=""></span><span>` + html.EscapeString(s.NavLabel()) + `</span></a>`)
 	}
