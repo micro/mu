@@ -1486,10 +1486,11 @@ document.querySelectorAll('[data-app-action]').forEach(button=>button.addEventLi
 }
 
 if(typeof document!=='undefined'){
+ document.querySelectorAll('[data-app-browse]').forEach(link=>{link.hash=location.hash;});
  const path=location.pathname;
  if(['/maps','/routes','/transit','/web'].includes(path)){
   const main=document.querySelector('main');
-  if(main){
+  if(main && !main.querySelector('.app-introduction')){
    const bar=document.createElement('div');bar.className='view-share';
    const button=document.createElement('button');button.type='button';button.textContent='Share link';
    const status=document.createElement('span');status.setAttribute('role','status');bar.append(button,status);main.appendChild(bar);
