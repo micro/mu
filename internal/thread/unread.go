@@ -100,3 +100,29 @@ func Visit(account, id string) {
 	t.Seen = t.Visited
 	save()
 }
+
+// MarkSeenThrough marks a batch read only through the snapshot the owner saw.
+// Later arrivals stay unread. Save once, and never touch held or foreign threads.
+func MarkSeenThrough(account string, ids []string, reviewed time.Time) {
+	now := time.Now().UTC()
+	if reviewed.After(now) {
+		reviewed = now
+	}
+	if reviewed.IsZero() {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	changed := false
+	for _, id := range ids {
+		t := threads[id]
+		if t == nil || t.Account != account || t.Held || !reviewed.After(t.Seen) {
+			continue
+		}
+		t.Seen = reviewed
+		changed = true
+	}
+	if changed {
+		save()
+	}
+}

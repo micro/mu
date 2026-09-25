@@ -138,6 +138,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// carries ask or an action — rather than by a second route, because a second
 	// route under /inbox is a mailbox name somebody could claim.
 	if r.Method == http.MethodPost {
+		if r.FormValue("action") == "mark_read" {
+			markRead(w, r, acc.ID)
+			return
+		}
 		if r.FormValue("action") == "handled" {
 			if !auth.StrictCSRF(r) {
 				app.Forbidden(w, r, "Invalid CSRF token")
@@ -358,6 +362,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 
 	// Opening it is reading it. Before rendering, so a reload of the page you
 	// are already on does not still show it bold.
+	all := filterUnread(r, inboxThreads(accountID, r.URL.Path))
 	wasUnread := thread.Unread(*t)
 	thread.MarkSeen(accountID, t.ID)
 
@@ -369,7 +374,6 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 	// three loose things stacked above the conversation. See app.Actions.
 	toolbar := []string{unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)}
 
-	all := inboxThreads(accountID, r.URL.Path)
 	for i, item := range all {
 		if item.ID != id {
 			continue
