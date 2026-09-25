@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -29,6 +30,7 @@ type StatusCheck struct {
 	Name    string `json:"name"`
 	Status  bool   `json:"status"`
 	Details string `json:"details,omitempty"`
+	State   string `json:"state,omitempty"` // pending or unavailable; neither is a failed check
 }
 
 // StatusResponse represents the full status response
@@ -250,7 +252,10 @@ func buildStatus() StatusResponse {
 		Details: maskDomain(mailDomain),
 	})
 
-	mailSelector := os.Getenv("MAIL_SELECTOR")
+	mailSelector := settings.Get("MAIL_SELECTOR")
+	if mailSelector == "" {
+		mailSelector = "default"
+	}
 	config = append(config, StatusCheck{
 		Name:    "MAIL_SELECTOR",
 		Status:  mailSelector != "",
@@ -385,12 +390,14 @@ func maskDomain(domain string) string {
 const (
 	dnsTTL     = 15 * time.Minute
 	dnsTimeout = 5 * time.Second
+	dnsRetry   = time.Minute
 )
 
 type dnsAnswerState struct {
-	ok      bool
-	checked time.Time // zero until the first lookup returns
-	asking  bool
+	ok          bool
+	unavailable bool
+	checked     time.Time // zero until the first lookup returns
+	asking      bool
 }
 
 var (
@@ -400,7 +407,7 @@ var (
 
 // dnsAnswer reports whether a TXT record containing want is published at
 // question, and whether that has been established yet.
-func dnsAnswer(question, want string) (ok, known bool) {
+func dnsAnswer(question, want string) (ok, known, unavailable bool) {
 	dnsMu.Lock()
 	defer dnsMu.Unlock()
 
@@ -409,11 +416,15 @@ func dnsAnswer(question, want string) (ok, known bool) {
 		a = &dnsAnswerState{}
 		dnsAnswers[question] = a
 	}
-	if !a.asking && time.Since(a.checked) > dnsTTL {
+	ttl := dnsTTL
+	if a.unavailable {
+		ttl = dnsRetry
+	}
+	if !a.asking && time.Since(a.checked) > ttl {
 		a.asking = true
 		go lookupDNS(question, want)
 	}
-	return a.ok, !a.checked.IsZero()
+	return a.ok, !a.checked.IsZero(), a.unavailable
 }
 
 // lookupDNS asks, with a deadline, and records what came back.
@@ -439,6 +450,8 @@ func lookupDNS(question, want string) {
 		return
 	}
 	a.ok = found
+	var dnsErr *net.DNSError
+	a.unavailable = err != nil && !(errors.As(err, &dnsErr) && dnsErr.IsNotFound)
 	a.checked = time.Now()
 	a.asking = false
 }
@@ -448,10 +461,18 @@ func lookupDNS(question, want string) {
 // "not checked" and "not published" are different things and only one of them
 // is somebody's problem.
 func dnsStatus(name, question, want string) StatusCheck {
-	ok, known := dnsAnswer(question, want)
+	ok, known, unavailable := dnsAnswer(question, want)
 	c := StatusCheck{Name: name, Status: ok}
 	if !known {
 		c.Details = "checking…"
+		c.State = "pending"
+	} else if unavailable {
+		c.Details = "DNS lookup unavailable; will retry"
+		c.State = "unavailable"
+	} else if !ok {
+		c.Details = "Record not found"
+	} else {
+		c.Details = "Record published"
 	}
 	return c
 }
@@ -553,7 +574,10 @@ func renderStatusHTML(status StatusResponse) string {
 	for _, cfg := range status.Config {
 		icon := "✓"
 		class := "status-ok"
-		if !cfg.Status {
+		if cfg.State == "pending" || cfg.State == "unavailable" {
+			icon = "—"
+			class = "text-muted"
+		} else if !cfg.Status {
 			icon = "✗"
 			class = "status-error"
 		}

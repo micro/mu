@@ -687,14 +687,14 @@ func renderCitiesSection() string {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(`<h3>Browse by city</h3><div class="link-grid">`)
+	sb.WriteString(`<h3>Browse by city</h3><div class="discovery-grid">`)
 	for _, c := range cs {
 		href := fmt.Sprintf("/places/nearby?lat=%f&lon=%f&radius=%d&address=%s",
 			c.Lat, c.Lon, defaultRadiusM,
 			url.QueryEscape(c.Name+", "+c.Country))
 		sb.WriteString(fmt.Sprintf(
-			`<a href="%s" class="collection-item">%s <span class="text-muted text-08">%s</span></a>`,
-			escapeHTML(href), escapeHTML(c.Name), escapeHTML(c.Country),
+			`<a href="%s" class="discovery-option">%s<span>%s <small class="text-muted">%s</small></span></a>`,
+			escapeHTML(href), discoveryIcon("pin"), escapeHTML(c.Name), escapeHTML(c.Country),
 		))
 	}
 	sb.WriteString(`</div>`)
@@ -730,6 +730,7 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
 		sortDistSel, sortNameSel = "", " selected"
 	}
 	return fmt.Sprintf(`<form id="places-form" class="form" action="/places/search" method="POST">
+    %s
     <input type="text" class="field field-wide" name="q" id="places-q" placeholder="What are you looking for? (leave empty for whatever is nearby)" value="%s">
     <div class="form-row">
       <input type="text" class="field field-wide" name="near" id="places-near" placeholder="Location (optional)" value="%s">
@@ -749,7 +750,7 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
       <button type="submit" formaction="/places/nearby" class="btn-secondary">What is nearby</button>
     </div>
   </form>`,
-		escapeHTML(q), escapeHTML(near), escapeHTML(nearLat), escapeHTML(nearLon),
+		renderCategories(), escapeHTML(q), escapeHTML(near), escapeHTML(nearLat), escapeHTML(nearLon),
 		radiusOptions, sortDistSel, sortNameSel)
 }
 
@@ -1084,4 +1085,31 @@ func escapeHTML(s string) string { return html.EscapeString(s) }
 // anything.
 func billableCaller(w http.ResponseWriter, r *http.Request, op string) (string, bool) {
 	return app.BillableCaller(w, r, op)
+}
+
+// Category shortcuts submit the same location/radius form as a typed search.
+func renderCategories() string {
+	var b strings.Builder
+	b.WriteString(`<div class="discovery-grid" role="group" aria-label="Explore places">`)
+	for _, c := range []struct{ query, label, icon string }{
+		{"restaurants", "Restaurants", "food"}, {"coffee", "Coffee", "coffee"},
+		{"bakeries", "Bakeries", "food"}, {"shops", "Shopping", "shop"},
+		{"parks", "Parks", "park"}, {"museums", "Museums", "museum"},
+	} {
+		b.WriteString(`<button type="submit" class="discovery-option" name="query" value="` + c.query + `">` + discoveryIcon(c.icon) + `<span>` + c.label + `</span></button>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+func discoveryIcon(name string) string {
+	paths := map[string]string{
+		"pin":    `<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>`,
+		"food":   `<path d="M4 3v6a3 3 0 0 0 6 0V3M7 3v18M20 3c-4 3-5 7-5 10h5M20 3v18"/>`,
+		"coffee": `<path d="M3 8h14v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4ZM17 9h2a3 3 0 0 1 0 6h-2M6 2v3M10 2v3M14 2v3"/>`,
+		"shop":   `<path d="M4 7h16l1 14H3ZM8 7V5a4 4 0 0 1 8 0v2"/>`,
+		"park":   `<path d="m12 2-7 9h4l-5 6h16l-5-6h4ZM12 17v5"/>`,
+		"museum": `<path d="m2 8 10-6 10 6ZM4 10v9M9 10v9M15 10v9M20 10v9M2 22h20"/>`,
+	}
+	return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` + paths[name] + `</svg>`
 }
