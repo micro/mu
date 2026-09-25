@@ -2,6 +2,8 @@ package server
 
 import (
 	"mu/internal/service"
+	"mu/service/docs"
+	"mu/service/files"
 	"mu/service/mail"
 	"mu/service/news"
 	"net/http/httptest"
@@ -10,7 +12,7 @@ import (
 )
 
 func TestAppIntroductionPreservesResourceAndAPIRoutes(t *testing.T) {
-	for _, spec := range []service.Spec{mail.Spec, news.Spec} {
+	for _, spec := range []service.Spec{mail.Spec, news.Spec, files.Spec, docs.Spec} {
 		if _, ok := service.SpecFor(spec.Name); !ok {
 			if err := service.Register(spec); err != nil {
 				t.Fatal(err)
@@ -23,6 +25,8 @@ func TestAppIntroductionPreservesResourceAndAPIRoutes(t *testing.T) {
 	}{
 		{"GET", "/mail", "text/html", true, true},
 		{"GET", "/news", "text/html", false, true},
+		{"GET", "/files", "text/html", false, true},
+		{"GET", "/docs", "text/html", false, true},
 		{"GET", "/news?view=public", "text/html", false, false},
 		{"GET", "/mail?id=private", "text/html", true, false},
 		{"GET", "/mail", "application/json", true, false},
@@ -46,10 +50,11 @@ func TestAppIntroductionPreservesResourceAndAPIRoutes(t *testing.T) {
 		if !strings.Contains(body, "Create an account") || !strings.Contains(body, "/login?redirect=%2F") {
 			t.Fatal("missing sign-in destination")
 		}
-		if tc.protected && strings.Contains(body, "?view=public") {
+		public := tc.path == "/news"
+		if !public && strings.Contains(body, "?view=public") {
 			t.Fatal("private app offered public access")
 		}
-		if !tc.protected && !strings.Contains(body, "?view=public") {
+		if public && !strings.Contains(body, "?view=public") {
 			t.Fatal("public browsing no longer accessible")
 		}
 	}
