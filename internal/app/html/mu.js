@@ -1501,8 +1501,12 @@ if(typeof document!=='undefined'){
     if(!modes.includes(form.elements.mode.value))form.elements.mode.value='drive';
     if(document.body.classList.contains('signed-in')){
      status.textContent='Loading shared route…';
-     // Native Routes POST must not carry the fragment into its response and resubmit.
-     if(path==='/routes')history.replaceState(history.state,'',location.pathname+location.search);
+     // Consume the journey once; refresh must not repeat a paid lookup.
+     // Keep independent map-view coordinates and zoom in the shared fragment.
+     const remaining=new URLSearchParams(location.hash.slice(1));
+     for(const key of ['from','to','mode'])remaining.delete(key);
+     const fragment=remaining.toString();
+     history.replaceState(history.state,'',location.pathname+location.search+(fragment?'#'+fragment:''));
      setTimeout(()=>form.requestSubmit(),0);
     }else status.textContent='Shared journey loaded. Sign in to get directions.';
    }
