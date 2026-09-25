@@ -59,7 +59,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 			publicPage = true
 		}
 	}
-	if publicPage && acc == nil {
+	if acc == nil && (publicPage || strings.Contains(body, `class="app-introduction"`)) {
 		pageClass += " public-page"
 	}
 	if acc == nil || publicPage {

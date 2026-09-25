@@ -207,6 +207,10 @@ func serve(addr string, initialize func()) {
 					}
 				}
 
+				if auth.ValidateToken(token) != nil && appIntroduction(w, r, isAuthed) {
+					return
+				}
+
 				// check token
 				if isAuthed {
 					// deny access if invalid
