@@ -1,6 +1,7 @@
 package brief
 
 import (
+	"mu/internal/data"
 	"testing"
 	"time"
 )
@@ -27,5 +28,23 @@ func TestFailedOrEmptyBriefWaitsBeforeRetry(t *testing.T) {
 	}
 	if Line() != "Today's news" {
 		t.Fatal("current cached summary missing")
+	}
+}
+
+func TestAttemptReservationSurvivesRestart(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	oldEntries, oldAttempted, oldRunning := entries, attempted, running
+	defer func() { entries, attempted, running = oldEntries, oldAttempted, oldRunning }()
+	entries, attempted, running = nil, time.Time{}, false
+	if !reserve() {
+		t.Fatal("could not reserve first attempt")
+	}
+	// A crash after reservation produces no entry, but must still delay retry.
+	attempted, running = time.Time{}, false
+	if err := data.LoadJSON("brief-attempt.json", &attempted); err != nil {
+		t.Fatal(err)
+	}
+	if due() || reserve() {
+		t.Fatal("restart lost the hourly attempt limit")
 	}
 }

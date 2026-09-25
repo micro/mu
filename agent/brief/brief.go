@@ -133,7 +133,8 @@ var (
 // Load restores the last line and starts writing new ones.
 func Load() {
 	mu.Lock()
-	data.LoadJSON("brief.json", &entries) //nolint:errcheck
+	data.LoadJSON("brief.json", &entries)           //nolint:errcheck
+	data.LoadJSON("brief-attempt.json", &attempted) //nolint:errcheck
 	mu.Unlock()
 
 	go scheduler()
@@ -213,16 +214,28 @@ func due() bool {
 	return last.Day != today() || time.Since(last.Written) >= gap
 }
 
-// write reads the day and asks for a sentence about it.
-func write() {
+// reserve records an attempt before model work, including across restarts.
+// If it cannot be recorded, no paid call is made.
+func reserve() bool {
 	mu.Lock()
-	if running {
-		mu.Unlock()
-		return
+	defer mu.Unlock()
+	if running || time.Since(attempted) < gap {
+		return false
+	}
+	attempted = time.Now()
+	if err := data.SaveJSON("brief-attempt.json", attempted); err != nil {
+		failure = "Could not record attempt: " + err.Error()
+		return false
 	}
 	running = true
-	attempted = time.Now()
-	mu.Unlock()
+	return true
+}
+
+// write reads the day and asks for a sentence about it.
+func write() {
+	if !reserve() {
+		return
+	}
 
 	defer func() {
 		mu.Lock()
