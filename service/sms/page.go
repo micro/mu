@@ -342,6 +342,9 @@ func threads(r *http.Request, who string, history []Message) string {
 			if m.Direction == "out" {
 				cls = "sms-out-msg"
 			}
+			if channel == ChannelWhatsApp {
+				cls += " whatsapp-message"
+			}
 			when := app.TimeAgo(m.At)
 			// What became of it, where that is worth saying. Quiet on a message
 			// that arrived promptly, which is almost all of them — see

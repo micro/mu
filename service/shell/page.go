@@ -20,6 +20,10 @@ import (
 
 // Handler serves /shell.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("terminal") == "check" {
+		terminalCheck(w, r)
+		return
+	}
 	if websocket.IsWebSocketUpgrade(r) {
 		terminalHandler(w, r)
 		return

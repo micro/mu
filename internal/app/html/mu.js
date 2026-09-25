@@ -1175,8 +1175,12 @@ if (typeof document !== 'undefined') {
   };
   const setConnected=active=>{connect.hidden=active;connect.disabled=false;disconnect.hidden=!active;keys.forEach(k=>{k.disabled=!active;k.hidden=!active;});};
   connect.addEventListener('click',async()=>{
-   connect.disabled=true;status.textContent='Connecting…';terminalHost.hidden=false;
+   connect.disabled=true;status.textContent='Checking terminal…';
    try{
+    const check=await fetch('/shell?terminal=check',{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','X-CSRF-Token':controls.dataset.csrf},signal:AbortSignal.timeout(15000)});
+    const result=await check.json().catch(()=>null);
+    if(!check.ok || !result?.ready)throw new Error(result?.error || (check.status===401?'Sign in again to open a terminal.':check.status===403?'Reload Shell and try again; the session check failed.':'Could not check terminal availability. Try again.'));
+    status.textContent='Connecting…';terminalHost.hidden=false;
     await ready();
     if(!term){
      term=new Terminal({cursorBlink:true,fontSize:14,fontFamily:'ui-monospace, monospace',scrollback:2000,screenReaderMode:true,theme:{background:'#ffffff',foreground:'#222222',cursor:'#222222',selectionBackground:'#dbe6ef'}});
@@ -1193,8 +1197,8 @@ if (typeof document !== 'undefined') {
      try{const m=JSON.parse(event.data);if(m.type==='status'){status.textContent=m.message;reported=m.message!=='Connected';if(!reported)setConnected(true);}}catch(_){}
     };
     current.onclose=()=>{if(socket!==current)return;socket=null;setConnected(false);if(!reported)status.textContent='Disconnected. Open a terminal to reconnect.';};
-    current.onerror=()=>{reported=true;status.textContent='Could not connect. Check your session or close another open terminal.';};
-   }catch(error){status.textContent=error.message;setConnected(false);}
+    current.onerror=()=>{reported=true;status.textContent='Terminal checks passed, but the live connection failed. The reverse proxy may not be forwarding WebSocket connections.';};
+   }catch(error){status.textContent=error.message;terminalHost.hidden=true;setConnected(false);}
   });
   disconnect.addEventListener('click',()=>{if(socket)socket.close();});
   keys.forEach(button=>button.addEventListener('click',()=>{send({type:'input',data:{'ctrl-c':'\x03',tab:'\t',escape:'\x1b',up:'\x1b[A',down:'\x1b[B',right:'\x1b[C',left:'\x1b[D'}[button.dataset.terminalKey]});term.focus();}));
@@ -1666,4 +1670,13 @@ if(typeof document !== "undefined" && document.querySelector(".video-embed") && 
 
 if(typeof document !== "undefined"){
  document.querySelectorAll("[data-submit-on-change]").forEach(select=>select.addEventListener("change",()=>select.form.requestSubmit()));
+}
+
+// Keep the source cover visible when a publisher image cannot load.
+if(typeof document !== 'undefined'){
+ const revealCover = img => { if(img.matches?.('img[data-cover-image]'))img.hidden=true; };
+ document.addEventListener('error', event => revealCover(event.target), true);
+ document.querySelectorAll('img[data-cover-image]').forEach(img => {
+  if(img.complete && img.naturalWidth===0)revealCover(img);
+ });
 }
