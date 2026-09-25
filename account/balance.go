@@ -667,10 +667,6 @@ func PricingTableHTML() string {
 	var free []string
 	var charged []PricingItem
 	for _, it := range Pricing() {
-		// App authoring is not part of the consumer offer yet. Runtime pricing remains available through Pricing().
-		if strings.HasPrefix(it.Operation, "app_") || it.Operation == "db_write" {
-			continue
-		}
 		if it.Cost == 0 {
 			free = append(free, it.Description)
 			continue
