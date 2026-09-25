@@ -212,5 +212,5 @@ func MonthlyPricingHTML(r *http.Request) string {
 		}
 	}
 
-	return `<section class="plan-section section-stack"><h2>Pro</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>Your daily brief, reminders and more assistant usage.</p><p>` + thousands(p.Credits) + ` monthly credits for messages and tools, plus the free daily allowance.</p><p>Renews monthly. Unused monthly credits expire. Cancel any time.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`
+	return `<section class="plan-section section-stack"><h2>Pro</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>A recurring credit allowance for regular use of Micro and its services.</p><p>` + thousands(p.Credits) + ` monthly credits for assistant replies and paid service operations, in addition to any free daily credits.</p><p>The same services as Free and PAYG, with credits added each billing month. Unused monthly credits expire. Renews monthly; cancel any time.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`
 }
