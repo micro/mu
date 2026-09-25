@@ -80,7 +80,7 @@ func shortBrief(owner string) string {
 		if n == 1 {
 			noun = "conversation"
 		}
-		text := fmt.Sprintf(`<a href="/inbox">%d %s</a> waiting`, n, noun)
+		text := fmt.Sprintf(`<a href="/inbox?filter=unread">%d unread %s</a>`, n, noun)
 		if newest != "" && !strings.EqualFold(newest, "You") {
 			text += ", the newest from " + html.EscapeString(newest)
 		}

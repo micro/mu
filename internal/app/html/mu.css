@@ -1286,3 +1286,15 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .discovery-option{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);text-align:left;text-decoration:none}
 .discovery-option svg{flex:none}
 .discovery-option small{display:block;font-size:.8rem}
+
+/* A compact app launcher and introduction for the public front door. */
+.app-introduction{display:flex;flex-direction:column;align-items:center;gap:24px;width:100%;margin:auto;padding:28px 16px;text-align:center;overflow-y:auto}
+.app-introduction>p{max-width:52ch;margin:0}
+.app-launcher{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:20px 12px;width:100%;max-width:580px}
+.app-launcher a{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;font-size:.85rem;text-decoration:none}
+.app-launcher-icon{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.app-launcher-icon img{width:32px;height:32px;object-fit:contain}
+.app-launcher a:hover .app-launcher-icon{background:#eee}
+.selectable-row{display:grid;grid-template-columns:20px minmax(0,1fr);gap:12px;align-items:start;min-width:0}
+.selectable-row>input[type="checkbox"]{width:18px;height:18px;margin:16px 0 0}
+.bulk-read>.form-actions{margin-block:16px}

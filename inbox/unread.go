@@ -11,6 +11,7 @@ import (
 	"html"
 	"net/http"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -103,4 +104,38 @@ func UnreadHandler(w http.ResponseWriter, r *http.Request) {
 	// have not dealt with this, and returning you to it would mark it read
 	// again on the next render.
 	http.Redirect(w, r, "/inbox", http.StatusSeeOther)
+}
+
+// markRead uses the same local mailbox selection as the list. No service fetches.
+func markRead(w http.ResponseWriter, r *http.Request, owner string) {
+	if !auth.StrictCSRF(r) {
+		app.Forbidden(w, r, "Invalid CSRF token")
+		return
+	}
+	reviewed, err := time.Parse(time.RFC3339Nano, r.PostFormValue("reviewed"))
+	if err != nil || reviewed.IsZero() {
+		app.BadRequest(w, r, "Missing message timestamp")
+		return
+	}
+	scope := r.PostFormValue("scope")
+	if scope != "all" && scope != "selected" {
+		app.BadRequest(w, r, "Choose conversations to mark read")
+		return
+	}
+	selected := map[string]bool{}
+	for _, id := range r.PostForm["id"] {
+		selected[id] = true
+	}
+	var ids []string
+	for _, t := range inboxThreads(owner, r.URL.Path) {
+		if thread.Unread(t) && (scope == "all" || selected[t.ID]) {
+			ids = append(ids, t.ID)
+		}
+	}
+	thread.MarkSeenThrough(owner, ids, reviewed)
+	destination := r.URL.Path
+	if r.PostFormValue("filter") == "unread" {
+		destination += "?filter=unread"
+	}
+	http.Redirect(w, r, destination, http.StatusSeeOther)
 }

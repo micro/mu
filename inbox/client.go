@@ -37,7 +37,7 @@ func summary(owner string, t thread.Thread) clientRow {
 
 func clientData(w http.ResponseWriter, r *http.Request, owner string) {
 	w.Header().Set("Cache-Control", "private, no-store")
-	all := inboxThreads(owner, r.URL.Path)
+	all := filterUnread(r, inboxThreads(owner, r.URL.Path))
 	requests := r.URL.Query().Get("view") == "requests"
 	if requests {
 		all = thread.HeldFor(owner, held)

@@ -1538,7 +1538,7 @@ if(typeof document!=='undefined'){
       if (stopped || document.hidden || !navigator.onLine) return;
       if (window.getSelection()?.toString()) return;
       const region = reader ? reader.querySelector('[data-inbox-messages]') : list;
-      if (!region || region.contains(document.activeElement)) return;
+      if (!region || region.contains(document.activeElement) || region.querySelector('input[name="id"]:checked')) return;
       // Never replace messages while an existing synchronous streaming client
       // is writing into the same reader.
       if (reader?.querySelector('button[type="submit"]:disabled')) return;
@@ -1547,7 +1547,7 @@ if(typeof document!=='undefined'){
       const page = new DOMParser().parseFromString(await response.text(), 'text/html');
       const incoming = page.querySelector(reader ? '[data-inbox-messages]' : '[data-inbox-list]');
       if (!incoming || stopped || document.hidden || window.getSelection()?.toString()) return;
-      if (region.contains(document.activeElement)) return;
+      if (region.contains(document.activeElement) || region.querySelector('input[name="id"]:checked')) return;
       const y = window.scrollY;
       if (reader) {
         const state = reader.querySelector('[data-inbox-state]');

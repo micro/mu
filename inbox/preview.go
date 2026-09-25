@@ -128,15 +128,10 @@ func Preview(accountID string) string {
 // unusual message is worse than one that shows a stray character. A `#` in the
 // middle of a sentence is a `#`; only one at the start of a line is a heading.
 
-// Waiting is what has arrived and not been read: how many, and who the newest
-// is from.
-//
-// Exported because Home says it in a sentence and this package is what knows
-// what "arrived" means — see arrivals. A second definition on the front page
-// would drift from this one, and the two would disagree about a number sitting
-// six inches apart on the same screen.
+// Waiting counts unread conversations in the same local selection as Inbox.
+// Unread is read state, not a claim that a reply or action is needed.
 func Waiting(accountID string) (unread int, newest string) {
-	for _, t := range arrivals(accountID) {
+	for _, t := range inboxThreads(accountID, "/inbox") {
 		if !thread.Unread(t) {
 			continue
 		}
