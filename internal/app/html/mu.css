@@ -479,6 +479,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
    wrapping metadata/actions, and bounded media. New pages use these primitives. */
 :root{--page-gutter:clamp(24px,4vw,64px);--section-gap:24px;--section-padding:24px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
 .document-page main{width:calc(100% - 2*var(--page-gutter));max-width:none}
+.document-page.public-page main{max-width:var(--reading-width)}
 .document-page main>:is(p,ul,ol){max-width:var(--reading-width)}
 .command-page main{max-width:760px}
 .reader-content,.prose{max-width:var(--reading-width);line-height:1.7}

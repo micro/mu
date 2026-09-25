@@ -35,10 +35,10 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 // Generated apps remain user-owned apps; this introduction does not duplicate them.
 func landingHTML() string {
 	var b strings.Builder
-	b.WriteString(`<section class="app-introduction"><nav class="app-launcher" aria-label="Built-in apps">`)
+	b.WriteString(`<section class="app-introduction"><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant for your everyday life.</p></div><nav class="app-launcher" aria-label="Built-in apps">`)
 	for _, s := range service.Pinned([]string{"mail", "events", "notes", "files", "docs", "news", "markets", "video", "weather", "maps"}) {
 		b.WriteString(`<a href="` + html.EscapeString(s.Page) + `"><span class="app-launcher-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" width="32" height="32" alt=""></span><span>` + html.EscapeString(s.NavLabel()) + `</span></a>`)
 	}
-	b.WriteString(`</nav><div class="prompt-welcome"><h1>Micro</h1><p>A personal assistant for your everyday apps.</p></div><p>Small apps for your mail, plans, notes and the world around you. Use them directly, or ask Micro to work across them.</p><p><a class="btn" href="/signup">Get started</a></p><p class="text-muted">Ask Micro to plan a visit, add it to your calendar and find the way—all in one conversation.</p><a href="/services">Explore the built-in apps</a></section>`)
+	b.WriteString(`</nav><p>It has access to your mail, plans, notes and the world around you. Use them directly, or ask Micro to work across them.</p><p><a class="btn" href="/signup">Get started</a></p><p class="text-muted">Ask Micro to plan a visit, add it to your calendar and find the way—all in one conversation.</p><a href="/services">Explore the built-in apps</a></section>`)
 	return b.String()
 }
