@@ -28,7 +28,7 @@ import (
 //
 // Enough to show that something happened while you were away, not so many that
 // Home becomes the inbox. The page for reading them is one link below.
-const previewShown = 6
+const previewShown = 3
 
 // previewSnippet bounds the line of text under a subject.
 const previewSnippet = 90
@@ -99,19 +99,6 @@ func Preview(accountID string) string {
 			`</span><span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
 			`<span class="peek-line">` + line + where + `</span></a>`)
 	}
-	// In the card, not under it.
-	//
-	// It was under, on the argument that the card is the conversations and the
-	// way on is not one of them. That reasoning holds for what the link *is*
-	// and was wrong about what it looks like: a bare anchor floating below a
-	// bordered box belongs to nothing, and Home now has a rail of these boxes
-	// beside a grid of service cards which put their own More link inside the
-	// border. Two shapes for the same affordance on one screen.
-	//
-	// The row it might be confused with is the objection that put it outside,
-	// and the answer is that it does not look like one — .card-link is a bold
-	// link with an arrow after it, and the rows above are two lines of text.
-	b.WriteString(app.Link("Go to inbox", "/inbox"))
 	b.WriteString(`</div>`)
 	return b.String()
 }

@@ -57,7 +57,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
-	"mu/internal/event"
 )
 
 // sources are what the line is written from.
@@ -124,21 +123,21 @@ type Entry struct {
 }
 
 var (
-	mu      sync.Mutex
-	entries []Entry
-	running bool
-	failure string
+	mu        sync.Mutex
+	entries   []Entry
+	running   bool
+	attempted time.Time
+	failure   string
 )
 
 // Load restores the last line and starts writing new ones.
 func Load() {
 	mu.Lock()
-	data.LoadJSON("brief.json", &entries) //nolint:errcheck
+	data.LoadJSON("brief.json", &entries)           //nolint:errcheck
+	data.LoadJSON("brief-attempt.json", &attempted) //nolint:errcheck
 	mu.Unlock()
 
-	if ai.BackgroundEnabled() {
-		go scheduler()
-	}
+	go scheduler()
 }
 
 // Line is what to show, or nothing.
@@ -193,7 +192,7 @@ func scheduler() {
 	time.Sleep(2 * time.Minute)
 
 	for {
-		if due() {
+		if ai.Configured() && due() {
 			write()
 		}
 		time.Sleep(10 * time.Minute)
@@ -205,22 +204,38 @@ func due() bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if running || len(entries) == 0 {
-		return !running
+	if running || time.Since(attempted) < gap {
+		return false
+	}
+	if len(entries) == 0 {
+		return true
 	}
 	last := entries[len(entries)-1]
 	return last.Day != today() || time.Since(last.Written) >= gap
 }
 
-// write reads the day and asks for a sentence about it.
-func write() {
+// reserve records an attempt before model work, including across restarts.
+// If it cannot be recorded, no paid call is made.
+func reserve() bool {
 	mu.Lock()
-	if running {
-		mu.Unlock()
-		return
+	defer mu.Unlock()
+	if running || time.Since(attempted) < gap {
+		return false
+	}
+	attempted = time.Now()
+	if err := data.SaveJSON("brief-attempt.json", attempted); err != nil {
+		failure = "Could not record attempt: " + err.Error()
+		return false
 	}
 	running = true
-	mu.Unlock()
+	return true
+}
+
+// write reads the day and asks for a sentence about it.
+func write() {
+	if !reserve() {
+		return
+	}
 
 	defer func() {
 		mu.Lock()
@@ -258,7 +273,6 @@ func write() {
 		app.Log("brief", "nothing worth saying about today")
 		return
 	}
-	event.Announce("brief", text, "/services?view=feed", "")
 	app.Log("brief", "wrote: %s", text)
 }
 
