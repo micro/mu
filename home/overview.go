@@ -1,7 +1,6 @@
 package home
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -9,7 +8,6 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/service/apps"
 	"mu/service/events"
 	"mu/service/weather"
 )
@@ -17,7 +15,6 @@ import (
 type overviewSnapshot struct {
 	key   string
 	cards map[string]string
-	apps  []apps.SavedApp
 	at    time.Time
 }
 
@@ -70,13 +67,7 @@ func overview(acc *auth.Account) (overviewSnapshot, bool) {
 func refreshOverviews() {
 	for acc := range overviewCache.queue {
 		snapshot := overviewSnapshot{key: overviewKey(acc), cards: map[string]string{}}
-		var collection apps.CollectionResponse
-		ctx, cancel := context.WithTimeout(service.WithAccount(context.Background(), acc.ID), 10*time.Second)
-		if service.Call(ctx, "apps", "Server.Collection", &apps.CollectionRequest{}, &collection) == nil {
-			snapshot.apps = collection.Items
-		}
-		cancel()
-		for _, spec := range service.Pinned(acc.PinnedServices()) {
+		for _, spec := range overviewServices(acc) {
 			// The unlocated weather renderer requires an inline browser script.
 			// Home already offers the account location control instead.
 			if spec.Name == "weather" && acc.Lat == 0 && acc.Lon == 0 {
@@ -122,4 +113,16 @@ func Forget(owner string) {
 	delete(overviewCache.values, owner)
 	delete(overviewCache.pending, owner)
 	overviewCache.Unlock()
+}
+
+// Home keeps reading on the left and market/video previews on the right.
+// Additional pinned services follow these permanent cards without duplicates.
+func overviewServices(acc *auth.Account) []service.Spec {
+	names := []string{"news", "markets", "video"}
+	for _, name := range acc.PinnedServices() {
+		if name != "blog" && name != "apps" {
+			names = append(names, name)
+		}
+	}
+	return service.Pinned(names)
 }

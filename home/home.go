@@ -15,7 +15,6 @@ import (
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/service"
 	"mu/service/blog"
 	"mu/service/events"
 	"mu/service/tasks"
@@ -144,23 +143,19 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	}
 	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
-	if len(snapshot.apps) > 0 {
-		right.WriteString(`<section class="record-card"><div class="section-card-head"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
-		for i, a := range snapshot.apps {
-			if i == 3 {
-				break
-			}
-			right.WriteString(`<a class="collection-item" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a>`)
-		}
-		right.WriteString(`</div></section>`)
-	}
-	for i, spec := range service.Pinned(acc.PinnedServices()) {
-		if spec.Name == "blog" {
-			continue // Blog already has a permanent place below Inbox.
-		}
+	extra := 0
+	for _, spec := range overviewServices(acc) {
 		column := &left
-		if i%2 != 0 {
+		switch spec.Name {
+		case "markets", "video":
 			column = &right
+		case "news":
+			// Reading follows Inbox and Blog in the left column.
+		default:
+			if extra%2 != 0 {
+				column = &right
+			}
+			extra++
 		}
 		body := snapshot.cards[spec.Name]
 		if body == "" {
