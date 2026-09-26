@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"mu/internal/group"
 	"strings"
 	"time"
 )
@@ -38,12 +39,23 @@ func (room *Room) keepMessage(message RoomMessage) error {
 	if !message.System && !message.IsLLM && !Member(room.ID, message.UserID) {
 		return fmt.Errorf("no access to this chat room")
 	}
+	if isGroup(room.ID) && !message.System {
+		g, ok := group.Details(groupID(room.ID))
+		if !ok || !Member(room.ID, message.UserID) {
+			return fmt.Errorf("no access to this group")
+		}
+		if g.Encrypted != (message.OMEMO != "") {
+			return fmt.Errorf("message encryption does not match the group; use its selected chat mode")
+		}
+	}
 	next := append(append([]RoomMessage(nil), room.Messages...), message)
-	if len(next) > 20 {
+	if !isGroup(room.ID) && len(next) > 20 {
 		next = next[len(next)-20:]
 	}
 	var err error
-	if !message.System && !message.IsLLM {
+	if isGroup(room.ID) {
+		err = saveRoomMessages(room.ID, next)
+	} else if !message.System && !message.IsLLM {
 		var b []byte
 		b, err = json.Marshal(next)
 		if err == nil {

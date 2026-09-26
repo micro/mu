@@ -72,6 +72,13 @@ func (s *session) disco(st stanza) {
 // "none" is a true answer it can act on, where feature-not-implemented reads as
 // a broken server.
 func (s *session) discoItems(st stanza) {
-	s.send(`<iq type='result' id='%s' from='%s' to='%s'><query xmlns='%s'/></iq>`,
-		xmlAttr(st.ID), xmlAttr(Domain()), xmlAttr(s.jid()), nsDiscoItem) //nolint:errcheck
+	target := strings.ToLower(bareOf(st.To))
+	if target == "" {
+		target = Domain()
+	}
+	items := ""
+	if target == Domain() {
+		items = `<item jid='` + xmlAttr(mucDomain()) + `' name='Private groups'/>`
+	}
+	s.send(`<iq type='result' id='%s' from='%s' to='%s'><query xmlns='%s'>%s</query></iq>`, xmlAttr(st.ID), xmlAttr(target), xmlAttr(s.jid()), nsDiscoItem, items)
 }

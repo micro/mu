@@ -102,6 +102,9 @@ func (s *session) iq(st stanza) {
 	if st.Type == "result" || st.Type == "error" {
 		return
 	}
+	if s.mucIQ(st) {
+		return
+	}
 	if s.omemoIQ(st) {
 		return
 	}
@@ -169,6 +172,9 @@ func (s *session) sendRoster(id string) {
 // Minimal on purpose: the agent is always available, which is true and is the
 // thing worth saying. Presence between people follows once subscriptions do.
 func (s *session) presence(st stanza) {
+	if s.mucPresence(st) {
+		return
+	}
 	if st.Type == "unavailable" {
 		return
 	}
@@ -191,6 +197,9 @@ func (s *session) presence(st stanza) {
 // not a failure at all. Being offline is the ordinary case for chat, which is
 // exactly why the record has to be underneath it.
 func (s *session) message(st stanza) {
+	if s.mucMessage(st) {
+		return
+	}
 	if s.omemoMessage(st) {
 		return
 	}

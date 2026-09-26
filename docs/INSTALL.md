@@ -1430,8 +1430,8 @@ Keys are stored in `data/chat/omemo.json` with the same restrictive file permiss
 as other credentials. Preserve this file during deployment and backup; do not
 regenerate it on restart. Changing the XMPP domain requires explicit key migration.
 
-The initial scope is a local Micro account talking to `agent@<your domain>`.
-OMEMO forwarding between people, federation, and OMEMO 2 are not implemented;
+Direct OMEMO chats support a local Micro account talking to `agent@<your domain>`.
+Direct OMEMO forwarding between people, encrypted federation, and OMEMO 2 are not implemented;
 unsupported encrypted messages are rejected, never interpreted as plaintext.
 Device key changes under an existing device ID are refused. New devices publish
 a new ID; Conversations controls the user's trust in Micro's fingerprint. Once
@@ -1444,3 +1444,43 @@ Set `OMEMO_JAVA_CLASSPATH` to jars for `signal-protocol-java:2.6.2`,
 `curve25519-java:0.4.1`, `protobuf-java:2.5.0`, and `gson:2.11.0`, then run
 `go test ./service/chat -run OMEMO -count=1`. Without that variable, the Go-only
 OMEMO checks still run and the Java interoperability check is skipped.
+
+
+### Private groups and XMPP rooms
+
+Open **Services → Groups** (`/groups`) to create a group and invite existing local
+Micro usernames. Invitations expire after seven days and grant no access until
+accepted on the recipient's Groups page. Owners can promote admins, transfer
+ownership, remove members and delete the group. Admins can invite and remove
+ordinary members. An owner must transfer ownership before leaving.
+
+Each group has one persistent private chat at `/chat?id=group_<opaque group ID>`.
+The same room is available in Conversations at `<group ID>@groups.<your domain>`;
+use **Open in XMPP** from its chat page or the client's discovered group service.
+The authenticated local XMPP connection routes this component internally, so no
+extra listener or DNS record is needed for these local-account rooms. Create
+rooms and manage invitations in Micro; arbitrary XMPP room creation, external
+members, calls, and XMPP room administration are not supported in this version.
+Membership is checked on web, API and XMPP reads and sends, and before broadcasts.
+Leaving or removal revokes future server access; it cannot erase copies already
+received by a member's client.
+
+Choose the chat mode when creating a group:
+
+- **Web and XMPP chat:** ordinary private chat, readable and writable in Micro's
+  own UI and XMPP clients. Transport encryption does not hide stored messages
+  from the server. This mode rejects OMEMO payloads rather than displaying an
+  unreadable mixed transcript.
+- **End-to-end encrypted:** XMPP clients exchange legacy OMEMO envelopes. Micro
+  stores and relays ciphertext without decrypting it. Real member JIDs are
+  visible to group members for device discovery. Micro's web page manages the
+  group and displays encrypted-message placeholders; it cannot decrypt or send
+  to these rooms. Plaintext messages are refused. Newly invited members cannot
+  decrypt earlier messages that were not encrypted for their devices.
+
+Group history is persisted across restarts. XMPP joins replay the latest 20
+messages; clients can retrieve earlier messages through room MAM archive paging. Personal
+notes, tasks, calendars and assistant conversations are not shared by joining a
+group, and group messages do not trigger Micro or use a member's private context.
+Group membership is stored atomically in `data/groups.json`; include it alongside
+room records in backups. An unreadable membership file fails closed.

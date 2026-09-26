@@ -39,6 +39,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/group"
 )
 
 // privatePrefix marks the ids that are never public.
@@ -101,7 +102,8 @@ func savePrivate() error {
 // is the property that makes it safe: the check runs before anything has been
 // created, which is where the hole was.
 func Private(roomID string) bool {
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(roomID)), privatePrefix)
+	id := strings.ToLower(strings.TrimSpace(roomID))
+	return strings.HasPrefix(id, privatePrefix) || strings.HasPrefix(id, group.RoomPrefix)
 }
 
 // Listable reports whether a room may be named to somebody who is not in it.
@@ -127,6 +129,9 @@ func Listable(roomID string) bool {
 // and saying it here rather than at the call sites keeps one answer to "may I
 // go in".
 func Member(roomID, account string) bool {
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(roomID)), group.RoomPrefix) {
+		return group.Member(strings.TrimPrefix(roomID, group.RoomPrefix), account)
+	}
 	if !Private(roomID) {
 		return true
 	}
@@ -154,7 +159,7 @@ func Member(roomID, account string) bool {
 // person arriving, not a second room. Adding somebody to an existing one is an
 // invite, which is the same operation.
 func Open(roomID string, accounts ...string) {
-	if !Private(roomID) {
+	if !strings.HasPrefix(roomID, privatePrefix) {
 		return
 	}
 	memberMu.Lock()
@@ -182,6 +187,9 @@ func Open(roomID string, accounts ...string) {
 // "not in the list" as "may not enter", which is the opposite of what public
 // means.
 func Members(roomID string) []string {
+	if strings.HasPrefix(roomID, group.RoomPrefix) {
+		return groupMembers(roomID)
+	}
 	memberMu.RLock()
 	defer memberMu.RUnlock()
 	out := append([]string(nil), members[roomID]...)
@@ -207,6 +215,10 @@ func Mine(account string) []string {
 	memberMu.RLock()
 	defer memberMu.RUnlock()
 	var out []string
+	gs, _, _ := group.List(account)
+	for _, g := range gs {
+		out = append(out, group.RoomPrefix+g.ID)
+	}
 	for id, who := range members {
 		for _, m := range who {
 			if m == account {
@@ -388,7 +400,7 @@ func (room *Room) arrival(account, what string) {
 // microDM is a private conversation addressed to the instance agent.
 // Presence alone must never invite the assistant into a human conversation.
 func microDM(roomID, sender string) bool {
-	if !Private(roomID) || sender == auth.MicroID || !auth.IsAgent(auth.MicroID) {
+	if strings.HasPrefix(roomID, group.RoomPrefix) || !Private(roomID) || sender == auth.MicroID || !auth.IsAgent(auth.MicroID) {
 		return false
 	}
 	who := Members(roomID)

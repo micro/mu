@@ -203,6 +203,10 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	roomsMutex.RLock()
 	room, ok := rooms[id]
 	roomsMutex.RUnlock()
+	if !ok && isGroup(id) {
+		room = getOrCreateRoom(id)
+		ok = room != nil
+	}
 	if !ok {
 		return fmt.Errorf("no live discussion called %q — chat_rooms lists the ones there are", id)
 	}

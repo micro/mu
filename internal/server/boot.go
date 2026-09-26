@@ -25,6 +25,7 @@ import (
 	"mu/service/files"
 	"mu/service/flights"
 	"mu/service/food"
+	"mu/service/groups"
 	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/islam"
@@ -67,6 +68,8 @@ func boot() {
 
 	// load admin/flags
 	startupStep("admin.Load", admin.Load)
+
+	startupStep("groups.Load", groups.Load)
 
 	// load the chat
 	startupStep("chat.Load", chat.Load)

@@ -13,6 +13,7 @@ import (
 
 	omemo "github.com/jim-ww/omemo-go"
 	"mu/internal/data"
+	"mu/internal/group"
 )
 
 const (
@@ -311,7 +312,27 @@ func notifyOMEMODevices(jid string, ids []omemo.DeviceID) {
 		list.Devices = append(list.Devices, omemoDeviceXML{uint32(id)})
 	}
 	payload, _ := marshalOMEMO(list)
+	recipients := map[*session]bool{}
 	for _, s := range sessionsFor(jid) {
+		recipients[s] = true
+	}
+	// A member's additional device must become discoverable to the other group
+	// members; public keys only, and never a group's identity or transcript.
+	account, domain := splitJID(jid)
+	if domain == Domain() {
+		gs, _, _ := group.List(account)
+		for _, g := range gs {
+			if !g.Encrypted {
+				continue
+			}
+			for member := range g.Members {
+				for _, s := range sessionsFor(member + "@" + Domain()) {
+					recipients[s] = true
+				}
+			}
+		}
+	}
+	for s := range recipients {
 		s.send(`<message from='%s' to='%s'><event xmlns='http://jabber.org/protocol/pubsub#event'><items node='%s'><item id='current'>%s</item></items></event></message>`, xmlAttr(jid), xmlAttr(s.jid()), omemoDevices, payload)
 	}
 }
