@@ -1305,3 +1305,6 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .selectable-row{display:grid;grid-template-columns:20px minmax(0,1fr);gap:12px;align-items:start;min-width:0}
 .selectable-row>input[type="checkbox"]{width:18px;height:18px;margin:16px 0 0}
 .bulk-read>.form-actions{margin-block:16px}
+
+.collection-item>.form-actions{align-self:center}
+@media(max-width:700px){.collection-item>.form-actions{grid-column:1/-1}}

@@ -48,7 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	auth.SetCSRFCookie(w, r)
 	b.WriteString(statusForm(r))
 	b.WriteString(forms(q, near, radius, auth.CSRFToken(r)))
-	b.WriteString(`<div class="d-flex flex-wrap gap-2 mb-3">`)
+	b.WriteString(`<div class="form-actions">`)
 	for _, code := range []string{"LHR", "LGW", "MAN", "JFK", "CDG", "DXB"} {
 		b.WriteString(app.PillLink(code, "/flights?near="+code, false))
 	}
@@ -66,7 +66,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`here — an aeroplane that has not taken off is not transmitting, so it cannot ` +
 			`be found, and that is not the same as a flight being cancelled.</p></div>`)
 	}
-	app.Respond(w, r, app.Response{Title: "Flights", Description: "Live aircraft positions from ADS-B", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Flights", Description: "Live aircraft positions from ADS-B", HTML: `<div class="page-stack">` + b.String() + `</div>`})
 }
 
 func handleJSON(w http.ResponseWriter, r *http.Request, q, near string, lat, lon float64) {
