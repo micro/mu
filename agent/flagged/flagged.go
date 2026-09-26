@@ -1,4 +1,4 @@
-// Package moderate is the judgement about whether something published here
+// Package flagged is the judgement about whether something published here
 // should stay up.
 //
 // # Why it is an agent and not part of the record
@@ -24,7 +24,7 @@
 // It had the failure mode you would expect. CheckContent opened with
 // `if analyzer == nil { return }`, so moderation for the entire instance was
 // one unrelated service away from being silently off — no log line, nothing on
-// /admin/moderate to tell "nothing was bad" from "nothing was checked". It
+// /admin/flagged to tell "nothing was bad" from "nothing was checked". It
 // worked only because chat.Load() happens to be unconditional in boot.go.
 //
 // So the services announce and this subscribes, which is the same shape as
@@ -37,7 +37,7 @@
 // to the content afterwards. It calls flag.AdminFlag and stops. The record is
 // still the record; this only ever adds one more voice to it — the same voice
 // a person adds when they press the flag button, and by the same door.
-package moderate
+package flagged
 
 import (
 	"fmt"
@@ -74,7 +74,7 @@ func Load() {
 // Quiet when there is no model configured, and that is a real state rather
 // than a fault: an instance with no AI provider has no moderator, and the
 // three-user-flags rule in internal/flag still works without one. What it must
-// not do is pretend — see Configured below, which is what /admin/moderate
+// not do is pretend — see Configured below, which is what /admin/flagged
 // reads to say so on the page.
 func judge(kind, id, title, text string) {
 	if kind == "social" && flag.IsApproved(kind, id) {
@@ -87,7 +87,7 @@ func judge(kind, id, title, text string) {
 	}
 	verdict, err := classify(title, text)
 	if err != nil {
-		app.Log("moderate", "could not classify %s %s: %v", kind, id, err)
+		app.Log("flagged", "could not classify %s %s: %v", kind, id, err)
 		return
 	}
 
@@ -104,10 +104,10 @@ func judge(kind, id, title, text string) {
 	// straight to it: the alternative is spam that stays up until enough
 	// readers have seen it to report it, which is the wrong way round.
 	if err := flag.AdminFlag(kind, id, "system:"+strings.ToLower(verdict)); err != nil {
-		app.Log("moderate", "could not hide %s %s: %v", kind, id, err)
+		app.Log("flagged", "could not hide %s %s: %v", kind, id, err)
 		return
 	}
-	app.Log("moderate", "hid %s %s: %s", kind, id, verdict)
+	app.Log("flagged", "hid %s %s: %s", kind, id, verdict)
 }
 
 // Approved is the publication gate for externally selected content.
@@ -126,14 +126,14 @@ func classify(title, text string) (string, error) {
 	}
 	return ai.Ask(&ai.Prompt{
 		System: prompt, Question: "Title: " + title + "\n\nContent: " + text,
-		Model: ai.BackgroundModel(), Priority: ai.PriorityLow, Caller: "moderate",
+		Model: ai.BackgroundModel(), Priority: ai.PriorityLow, Caller: "flagged",
 	})
 }
 
 // Configured reports whether this instance can moderate at all.
 //
 // An adjective rather than a verb, and a question rather than an instruction —
-// see the naming rules. It exists so /admin/moderate can say "no model
+// see the naming rules. It exists so /admin/flagged can say "no model
 // configured, nothing is being classified" instead of showing an empty list
 // that reads as a clean bill of health.
 func Configured() bool { return ai.BackgroundEnabled() && ai.Configured() }

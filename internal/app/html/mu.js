@@ -1695,3 +1695,28 @@ if(typeof document !== 'undefined'){
   if(img.complete && img.naturalWidth===0)revealCover(img);
  });
 }
+
+// Filter the already rendered service directory without a round trip.
+if (typeof document !== 'undefined') {
+  const initServiceFilter = () => {
+    const form = document.querySelector('[data-service-filter]');
+    if (!form) return;
+    const input = form.querySelector('input[name="q"]');
+    const cards = Array.from(document.querySelectorAll('[data-service-search]'));
+    const empty = document.querySelector('[data-service-empty]');
+    const filter = () => {
+      const query = input.value.trim().toLowerCase();
+      let count = 0;
+      cards.forEach(card => {
+        card.hidden = !card.dataset.serviceSearch.includes(query);
+        if (!card.hidden) count++;
+      });
+      if (empty) empty.hidden = count !== 0;
+    };
+    input.addEventListener('input', filter);
+    form.addEventListener('submit', event => { event.preventDefault(); filter(); });
+    filter();
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initServiceFilter);
+  else initServiceFilter();
+}

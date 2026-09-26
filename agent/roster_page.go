@@ -20,8 +20,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/internal/thread"
-	"net/url"
 )
 
 // Handler serves /agents.
@@ -107,22 +105,6 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// The button is the standard one, in the standard place: the top, where
 	// every other page in this product puts its primary action.
 	b.WriteString(`<div class="page-action">` + newAgentAction(owner) + `</div>`)
-	b.WriteString(`<section class="record-card"><div class="section-card-head"><h2>Conversations</h2><a href="/agent/micro?new=1">New conversation</a></div><div class="collection-list">`)
-	count := 0
-	for _, th := range thread.List(owner, 0) {
-		if th.Client != thread.WebClient {
-			continue
-		}
-		b.WriteString(`<a class="collection-item" href="` + html.EscapeString(Path(owner, th.Agent)+"?session="+url.QueryEscape(th.ID)) + `">` + html.EscapeString(th.Subject) + `</a>`)
-		count++
-		if count == 8 {
-			break
-		}
-	}
-	if count == 0 {
-		b.WriteString(`<p class="text-muted">Your conversations with Micro and your other agents will appear here.</p>`)
-	}
-	b.WriteString(`</div><a href="/inbox">All conversations</a></section>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit

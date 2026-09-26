@@ -5,6 +5,7 @@ import (
 	"html"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,14 +24,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := `<nav aria-label="Admin" class="section-stack">
-		<a class="section-link" href="/agents">Agents</a>
 		<a class="section-link" href="/admin/alerts">Alerts</a>
 		<a class="section-link" href="/admin/backup">Backups</a>
+		<a class="section-link" href="/admin/config">Config</a>
+		<a class="section-link" href="/admin/flagged">Flagged</a>
 		<a class="section-link" href="/admin/log">Logs` + alertBadge() + `</a>
-		<a class="section-link" href="/admin/moderate">Moderation</a>
 		<a class="section-link" href="/admin/oauth">OAuth</a>
 		<a class="section-link" href="/admin/server">Server</a>
-		<a class="section-link" href="/admin/config">Config</a>
 		<a class="section-link" href="/admin/spam">Spam</a>
 		<a class="section-link" href="/admin/status">Status</a>
 		<a class="section-link" href="/admin/traffic">Usage</a>
@@ -70,6 +70,9 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		app.Forbidden(w, r, "Admin access required")
 		return
 	}
+	view := r.URL.Query()
+	view.Set("size", userPageChoice(r))
+	r.URL.RawQuery = view.Encode()
 	query := ""
 	if r.Method == http.MethodPost && r.FormValue("action") == "search" {
 		if !auth.StrictCSRF(r) {
@@ -144,9 +147,9 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		tab := r.FormValue("tab")
-		redir := "/admin/users"
+		redir := "/admin/users?size=" + userPageChoice(r)
 		if tab != "" {
-			redir += "?tab=" + tab
+			redir += "&tab=" + tab
 		}
 		http.Redirect(w, r, redir, http.StatusSeeOther)
 		return
@@ -176,12 +179,12 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 				filtered = append(filtered, u)
 			}
 		}
-		page := app.Paginate(r, len(filtered), 25)
+		page := app.Paginate(r, len(filtered), userPageSize(r, len(filtered)))
 		rows := make([]map[string]any, 0, page.To-page.From)
 		for _, u := range filtered[page.From:page.To] {
 			rows = append(rows, map[string]any{"id": u.ID, "name": u.Name, "created": u.Created, "admin": u.Admin, "agent": u.Agent, "banned": u.Banned, "approved": u.Approved, "verified": u.EmailVerified, "balance": account.Balance(u.ID), "signup_remaining": account.SignupRemaining(u.ID), "self": u.ID == acc.ID})
 		}
-		app.RespondJSON(w, map[string]any{"items": rows, "page": page.Page, "total": len(filtered), "page_size": 25, "tab": tab})
+		app.RespondJSON(w, map[string]any{"items": rows, "page": page.Page, "total": len(filtered), "page_size": userPageSize(r, len(filtered)), "tab": tab})
 
 		return
 	}
@@ -203,7 +206,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p><a href="/admin/invite">Invites` + pendingInvites() + ` &rarr;</a></p>`)
 	sb.WriteString(`<div class="view-switch">`)
 	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
-		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id, t.id == tab))
+		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id+"&size="+userPageChoice(r), t.id == tab))
 	}
 	sb.WriteString(`</div>`)
 	sb.WriteString(userSearchForm(r, tab, query, 1, "Search"))
@@ -226,8 +229,8 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%d users</p>`, len(filtered)))
-	page := app.Paginate(r, len(filtered), 25)
-	sb.WriteString(`<div class="directory-list">`)
+	page := app.Paginate(r, len(filtered), userPageSize(r, len(filtered)))
+	sb.WriteString(`<div class="collection-list">`)
 	if len(filtered) == 0 {
 		sb.WriteString(`<p class="text-muted">No users in this view.</p>`)
 	}
@@ -292,15 +295,15 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			u.ID, tab))
 
 		actionsHTML := strings.Join(actions, "")
-		actionsHTML = strings.ReplaceAll(actionsHTML, `<input type="hidden" name="action"`, app.CSRFField(auth.CSRFToken(r))+`<input type="hidden" name="action"`)
-		sb.WriteString(`<article class="directory-row"><div class="directory-content">` +
+		actionsHTML = strings.ReplaceAll(actionsHTML, `<input type="hidden" name="action"`, `<input type="hidden" name="size" value="`+userPageChoice(r)+`">`+app.CSRFField(auth.CSRFToken(r))+`<input type="hidden" name="action"`)
+		sb.WriteString(`<article class="collection-item"><div class="directory-content">` +
 			`<div class="directory-heading"><a href="/@` + html.EscapeString(u.ID) + `">` + html.EscapeString(u.ID) + `</a><span class="text-muted">` + html.EscapeString(u.Name) + `</span></div>` +
 			`<div class="metadata-row"><span>Joined ` + created + `</span><span>Credits: ` + balanceCell(u.ID) + `</span></div><div class="metadata-row">` + statusHTML + `</div>` +
-			`<details class="action-menu"><summary>Manage <span class="sr-only">` + html.EscapeString(u.ID) + `</span></summary><div class="action-grid">` + actionsHTML + `</div></details></div></article>`)
+			`</div><details class="action-menu"><summary>Manage <span class="sr-only">` + html.EscapeString(u.ID) + `</span></summary><div class="action-grid">` + actionsHTML + `</div></details></article>`)
 	}
 	sb.WriteString(`</div>`)
 	if query == "" {
-		sb.WriteString(page.Nav("/admin/users?tab=" + tab))
+		sb.WriteString(page.Nav("/admin/users?tab=" + tab + "&size=" + userPageChoice(r)))
 	} else {
 		if page.Page > 1 {
 			sb.WriteString(userSearchForm(r, tab, query, page.Page-1, "Previous"))
@@ -322,7 +325,19 @@ func userSearchForm(r *http.Request, tab, query string, page int, label string) 
 	if label == "Search" {
 		kind = "search"
 	}
-	return fmt.Sprintf(`<form class="search-bar" method="POST" action="/admin/users?tab=%s&amp;page=%d">%s<input type="hidden" name="action" value="search"><input type="%s" name="q" aria-label="Search users" placeholder="Search users" value="%s"><button type="submit">%s</button></form>`, tab, page, app.CSRFField(auth.CSRFToken(r)), kind, html.EscapeString(query), label)
+	var size strings.Builder
+	if label == "Search" {
+		size.WriteString(`<div class="form-action"><label for="user-page-size">Show</label><select id="user-page-size" name="size" data-submit-on-change>`)
+		for _, value := range []string{"25", "50", "100", "all"} {
+			selected := ""
+			if value == userPageChoice(r) {
+				selected = " selected"
+			}
+			size.WriteString(`<option value="` + value + `"` + selected + `>` + strings.Title(value) + `</option>`)
+		}
+		size.WriteString(`</select></div>`)
+	}
+	return fmt.Sprintf(`<form class="search-bar" method="POST" action="/admin/users?tab=%s&amp;page=%d&amp;size=%s">%s<input type="hidden" name="action" value="search"><input type="%s" name="q" aria-label="Search users" placeholder="Search users" value="%s"><button type="submit">%s</button>%s</form>`, tab, page, userPageChoice(r), app.CSRFField(auth.CSRFToken(r)), kind, html.EscapeString(query), label, size.String())
 }
 
 // back is the way up, in the same words and the same place on every page.
@@ -330,3 +345,22 @@ func userSearchForm(r *http.Request, tab, query string, page int, label string) 
 // It was "← Admin" on four pages and "← Back to Admin" on five, at the top on
 // some and the bottom on others, and on one page both. The top: a way out
 // belongs where you can see it without reading to the end.
+
+func userPageChoice(r *http.Request) string {
+	value := r.PostFormValue("size")
+	if value == "" {
+		value = r.URL.Query().Get("size")
+	}
+	switch value {
+	case "25", "50", "100", "all":
+		return value
+	}
+	return "100"
+}
+func userPageSize(r *http.Request, total int) int {
+	if userPageChoice(r) == "all" {
+		return max(total, 1)
+	}
+	size, _ := strconv.Atoi(userPageChoice(r))
+	return size
+}

@@ -159,6 +159,7 @@ func authRequired() map[string]bool {
 		"/admin/flag":        true,
 		"/admin":             true,
 		"/admin/users":       true,
+		"/admin/flagged":     true,
 		"/admin/moderate":    true,
 		"/admin/blocklist":   true,
 		"/admin/spam":        true,
@@ -276,7 +277,14 @@ func registerRoutes() {
 	http.HandleFunc("/admin/users", admin.UsersHandler)
 
 	// moderation queue
-	http.HandleFunc("/admin/moderate", admin.ModerateHandler)
+	http.HandleFunc("/admin/flagged", admin.FlaggedHandler)
+	http.HandleFunc("/admin/moderate", func(w http.ResponseWriter, r *http.Request) {
+		target := "/admin/flagged"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+	})
 
 	// mail blocklist management
 	http.HandleFunc("/admin/blocklist", admin.BlocklistMoved)

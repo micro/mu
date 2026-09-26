@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/agent/moderate"
+	"mu/agent/flagged"
 	"mu/internal/app"
 	"mu/internal/flag"
 	"mu/service/news"
@@ -32,7 +32,7 @@ func Start() {
 	// Only the deterministic rule is applied here; no model calls at boot.
 	for _, m := range socialsvc.Threads() {
 		if flag.Profane(m.Content) {
-			moderate.Check("social", m.ID, "", m.Content)
+			flagged.Check("social", m.ID, "", m.Content)
 		}
 	}
 	go detectBreakingStories()
@@ -41,7 +41,7 @@ func Start() {
 	// than imported inside the watcher so the filtering and the scoring can be
 	// tested without standing up social.
 	Surface = func(c *candidate) {
-		if moderate.Approved(c.Category, c.Text) {
+		if flagged.Approved(c.Category, c.Text) {
 			socialsvc.SurfaceBreaking(c.Category, c.display(), c.Link)
 		}
 	}
@@ -153,7 +153,7 @@ func extractKeywords(title string) map[string]bool {
 
 // Both network imports and news-derived threads pass the same content policy.
 func surfaceApproved(category, text, link string) {
-	if !moderate.Approved(category, text) {
+	if !flagged.Approved(category, text) {
 		return
 	}
 	socialsvc.SurfaceBreaking(category, text, link)

@@ -65,7 +65,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 	if acc == nil || publicPage {
 		footer = `<footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer>`
 	}
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=layout-75"><script defer src="/mu.js?v=prompt-68"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header><a href="/" class="brand">Micro</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=layout-76"><script defer src="/mu.js?v=prompt-69"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header><a href="/" class="brand">Micro</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
 }
 
 // The product destinations stay the same across screen sizes. Services retain
@@ -97,8 +97,8 @@ func runtimeNavigation(path string) string {
 		{"/home", "Home", `M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9`},
 		{"/inbox", "Inbox", `M4 4h16l2 11v5H2v-5L4 4ZM2 15h6l2 3h4l2-3h6`},
 		{"/agents", "Agents", `M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5`},
-		{"/work", "Work", `M8 6V3h8v3M3 7h18v14H3V7ZM3 12h18M10 12v3h4v-3`},
 		{"/services", "Services", `M3 3h7v7H3V3ZM14 3h7v7h-7V3ZM3 14h7v7H3v-7ZM14 14h7v7h-7v-7Z`},
+		{"/work", "Work", `M8 6V3h8v3M3 7h18v14H3V7ZM3 12h18M10 12v3h4v-3`},
 	} {
 		current := ""
 		if active == item.label {

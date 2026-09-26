@@ -92,7 +92,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	filter := r.URL.Query().Get("status")
 	archived := r.URL.Query().Get("view") == "archived" || filter == "archived"
 	var b strings.Builder
-	b.WriteString(`<div class="collection-head"><form class="search-bar" method="GET" action="/work"><label for="work-status">Status</label><select id="work-status" name="status" data-submit-on-change>`)
+	b.WriteString(`<p class="text-muted">Give Micro a task to carry out in the background, then track its progress and results here.</p><div class="page-action"><a class="btn" href="/work?view=new">New work</a></div><div class="collection-head"><form class="search-bar" method="GET" action="/work"><label for="work-status">Status</label><select id="work-status" name="status" data-submit-on-change>`)
 	for _, f := range []struct{ value, label string }{{"", "All"}, {"todo", "Queued"}, {"doing", "Running"}, {"blocked", "Needs input"}, {"failed", "Failed"}, {"done", "Done"}, {"canceled", "Stopped"}, {"archived", "Archived"}} {
 		current := ""
 		if (filter == f.value && !archived) || (archived && f.value == "archived") {
@@ -100,7 +100,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`<option value="` + f.value + `"` + current + `>` + f.label + `</option>`)
 	}
-	b.WriteString(`</select><noscript><button type="submit">Filter</button></noscript></form><div class="form-actions"><a class="btn" href="/work?view=new">New work</a></div></div>`)
+	b.WriteString(`</select><noscript><button type="submit">Filter</button></noscript></form></div>`)
 	type entry struct {
 		title, target, status, kind string
 		created, updated            time.Time

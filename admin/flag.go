@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/agent/flagged"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/flag"
@@ -27,7 +28,7 @@ var RefreshBlogCache func()
 // These exist only so admin's own handlers can call them.
 //
 // SetAnalyzer and CheckContent are gone with the analyzer: deciding that a
-// paragraph is spam is a judgement and lives in agent/moderate now, while this
+// paragraph is spam is a judgement and lives in agent/flagged now, while this
 // package and internal/flag keep the record. The comment above said
 // "internal/moderation", which no package has ever been called — a re-export
 // list is exactly where a name goes stale unnoticed.
@@ -39,7 +40,7 @@ var (
 // AdminFlag is not re-exported. It stuttered — admin.AdminFlag says the
 // package twice at the call site — and it had no callers at all: the only
 // thing that hides content without a person pressing a button is
-// agent/moderate, which calls flag.AdminFlag directly.
+// agent/flagged, which calls flag.AdminFlag directly.
 //
 // A re-export with no callers is the easiest kind of stutter to make and the
 // easiest to miss, because nothing reads it.
@@ -120,10 +121,10 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"success": true, "count": ` + fmt.Sprintf("%d", count) + `}`))
 }
 
-// ModerateHandler shows all flagged content
-func ModerateHandler(w http.ResponseWriter, r *http.Request) {
+// FlaggedHandler shows all flagged content
+func FlaggedHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		handleModeration(w, r)
+		handleFlagged(w, r)
 		return
 	}
 
@@ -138,9 +139,9 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 
 	flaggedItems := flag.All()
 
-	filter := `<a class="btn" href="/admin/moderate?source=social">Include imported social content</a>`
+	filter := `<a class="btn" href="/admin/flagged?source=social">Include imported social content</a>`
 	if r.URL.Query().Get("source") == "social" {
-		filter = `<a class="btn" href="/admin/moderate">Hide imported social content</a>`
+		filter = `<a class="btn" href="/admin/flagged">Hide imported social content</a>`
 	}
 	var itemsList []string
 	for _, item := range flaggedItems {
@@ -192,13 +193,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		actionButtons := fmt.Sprintf(`
-				<form class="form-action" method="POST" action="/admin/moderate">
+				<form class="form-action" method="POST" action="/admin/flagged">
 					<input type="hidden" name="action" value="approve">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
 					<button type="submit" class="btn">Approve</button>
 				</form>
-				<form class="form-action" method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Permanently delete this content?').then(function(ok){if(ok)event.target.submit()})">
+				<form class="form-action" method="POST" action="/admin/flagged" onsubmit="event.preventDefault(); muConfirm('Permanently delete this content?').then(function(ok){if(ok)event.target.submit()})">
 					<input type="hidden" name="action" value="delete">
 					<input type="hidden" name="type" value="%s">
 					<input type="hidden" name="id" value="%s">
@@ -269,13 +270,13 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 					%s by %s · New Account (&lt; 24h) · Hidden from homepage
 				</div>
 				<div class="form-actions">
-					<form class="form-action" method="POST" action="/admin/moderate">
+					<form class="form-action" method="POST" action="/admin/flagged">
 						<input type="hidden" name="action" value="approve_account">
 						<input type="hidden" name="type" value="post">
 						<input type="hidden" name="id" value="%s">
 						<button type="submit" class="btn">Approve</button>
 					</form>
-					<form class="form-action" method="POST" action="/admin/moderate" onsubmit="event.preventDefault(); muConfirm('Flag this post?').then(function(ok){if(ok){fetch('/admin/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{if(d.success){location.reload()}else{alert(d.message||'Failed')}}).catch(()=>alert('Error'))}});return false;">
+					<form class="form-action" method="POST" action="/admin/flagged" onsubmit="event.preventDefault(); muConfirm('Flag this post?').then(function(ok){if(ok){fetch('/admin/flag',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({type:'post',id:'%s'})}).then(r=>r.json()).then(d=>{if(d.success){location.reload()}else{alert(d.message||'Failed')}}).catch(()=>alert('Error'))}});return false;">
 						<button type="submit" class="btn-danger">Flag</button>
 					</form>
 					<a href="/blog/post?id=%s" target="_blank" class="btn">View</a>
@@ -305,16 +306,18 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 	// above it. The shell draws the title; what is left here is the one thing a
 	// reader does not already know — the rule that hides something at three
 	// flags — said once, in a sentence.
-	content := fmt.Sprintf(`<div class="page-action">`+filter+`</div><div id="moderation" class="page-stack">
-		<p class="text-sm text-muted">Flagged by other people. Three flags hides
-		something automatically; approving clears them, deleting is permanent.</p>
+	content := fmt.Sprintf(`<div class="page-action">`+filter+`</div><div id="flagged" class="page-stack">
+		<p class="text-sm text-muted">Reports from people and automatic checks appear here. Three reports hide an item; an admin flag or automatic profanity check hides it immediately. Approving restores it; deleting is permanent.</p>
 		<div id="flagged-content" class="page-stack">
 			%s
 		</div>
 		%s
 	</div>`, listHTML, newAccountPostsHTML)
 
-	app.Respond(w, r, app.Response{Title: "Moderation", Description: "Content other people flagged", HTML: content})
+	if !flagged.Configured() {
+		content = `<p class="text-sm text-muted">Automatic AI review is off. Report buttons and profanity checks remain active.</p>` + content
+	}
+	app.Respond(w, r, app.Response{Title: "Flagged", Description: "Review reported content", HTML: content})
 }
 
 func getViewPath(contentType string) string {
@@ -330,7 +333,7 @@ func getViewPath(contentType string) string {
 	}
 }
 
-func handleModeration(w http.ResponseWriter, r *http.Request) {
+func handleFlagged(w http.ResponseWriter, r *http.Request) {
 	action := r.FormValue("action")
 	contentType := r.FormValue("type")
 	contentID := r.FormValue("id")
@@ -349,11 +352,11 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 	switch action {
 	case "approve":
 		flag.Approve(contentType, contentID)
-		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/flagged", http.StatusSeeOther)
 
 	case "delete":
 		flag.Delete(contentType, contentID)
-		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/flagged", http.StatusSeeOther)
 
 	case "approve_account":
 		if err := auth.ApproveAccount(contentID); err != nil {
@@ -363,7 +366,7 @@ func handleModeration(w http.ResponseWriter, r *http.Request) {
 		if RefreshBlogCache != nil {
 			RefreshBlogCache()
 		}
-		http.Redirect(w, r, "/admin/moderate", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/flagged", http.StatusSeeOther)
 
 	default:
 		http.Error(w, "Invalid action", http.StatusBadRequest)

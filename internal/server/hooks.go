@@ -23,11 +23,11 @@ import (
 	"mu/agent/brief"
 	chatagent "mu/agent/chat"
 	"mu/agent/digest"
+	"mu/agent/flagged"
 	"mu/agent/gate"
 	"mu/agent/hello"
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
-	"mu/agent/moderate"
 	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
 	help "mu/docs"
@@ -214,8 +214,8 @@ func wireHooks() {
 	// And whether what people publish should stay up. A judgement, so it is an
 	// agent — it was a function variable inside internal/flag that service/chat
 	// filled in, which put content moderation for the whole instance behind an
-	// unrelated service loading. See agent/moderate.
-	startupStep("moderate.Load", moderate.Load)
+	// unrelated service loading. See agent/flagged.
+	startupStep("flagged.Load", flagged.Load)
 
 	// Telling the operator when something is worth knowing. After the mail
 	// agent, because it delivers to an inbox here. See admin/alert.go.

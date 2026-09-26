@@ -176,15 +176,18 @@ func serviceGrid(r *http.Request) string {
 
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	var b strings.Builder
-	b.WriteString(`<form class="search-bar" method="GET" action="/services"><input type="search" name="q" aria-label="Find a service" placeholder="Find a service" value="` + html.EscapeString(query) + `"><button type="submit">Search</button></form>`)
+	b.WriteString(`<form class="search-bar" data-service-filter method="GET" action="/services"><input type="search" name="q" aria-label="Find a service" placeholder="Find a service" value="` + html.EscapeString(query) + `"><button type="submit">Search</button></form>`)
 	count := 0
 	b.WriteString(`<div class="directory-list">`)
 	for _, s := range service.Nav() {
-		if query != "" && !strings.Contains(strings.ToLower(s.Name+" "+s.NavLabel()+" "+s.Description), strings.ToLower(query)) {
-			continue
+		search := strings.ToLower(s.Name + " " + s.NavLabel() + " " + s.Description)
+		hidden := ""
+		if query != "" && !strings.Contains(search, strings.ToLower(query)) {
+			hidden = " hidden"
+		} else {
+			count++
 		}
-		count++
-		b.WriteString(`<div class="directory-row">`)
+		b.WriteString(`<div class="directory-row directory-card" data-service-search="` + html.EscapeString(search) + `"` + hidden + `>`)
 		destination := s.Page
 		if destination == "" {
 			destination = "/services/" + url.PathEscape(s.Name)
@@ -212,9 +215,11 @@ func serviceGrid(r *http.Request) string {
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
+	hidden := " hidden"
 	if count == 0 {
-		b.WriteString(`<p class="text-muted">No matching services.</p>`)
+		hidden = ""
 	}
+	b.WriteString(`<p class="text-muted" data-service-empty role="status"` + hidden + `>No matching services.</p>`)
 	return b.String()
 }
 

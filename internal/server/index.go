@@ -39,6 +39,6 @@ func landingHTML() string {
 	for _, s := range service.Pinned([]string{"mail", "events", "notes", "files", "docs", "news", "markets", "video", "weather", "maps"}) {
 		b.WriteString(`<a href="` + html.EscapeString(s.Page) + `"><span class="app-launcher-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" width="32" height="32" alt=""></span><span>` + html.EscapeString(s.NavLabel()) + `</span></a>`)
 	}
-	b.WriteString(`</nav><p>Micro has built-in tools to find information, make plans and create things for you. It can work with information you create, share or choose to connect. You can also use its services directly.</p><p><a class="btn" href="/signup">Get started</a></p><p class="text-muted">Ask Micro to plan a visit, add it to your calendar and find the way—all in one conversation.</p><a href="/services">Explore services</a></section>`)
+	b.WriteString(`</nav><p>Micro has built-in tools to find information, make plans and create things for you. It can work with information you create, share or choose to connect. You can also use its services directly.</p><p><a class="btn" href="/signup">Get started</a></p><a href="/services">Explore services</a></section>`)
 	return b.String()
 }

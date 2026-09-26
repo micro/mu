@@ -1030,7 +1030,7 @@ func Load() {
 	// meant content moderation for the whole instance — social, blog, apps —
 	// depended on the chat service loading, and was silently off if it did
 	// not. Nothing about chat made it the right place; it was where somebody
-	// had an LLM call handy. See agent/moderate.
+	// had an LLM call handy. See agent/flagged.
 
 	// Load existing summaries from disk
 	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
