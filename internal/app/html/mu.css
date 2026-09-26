@@ -1224,6 +1224,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .home-date{color:#666;display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px}
 .home-summary{line-height:1.7;margin:0}
 .home-card-content{min-width:0}
+.home-card-content>.post-item{border:0;border-radius:0;padding:0}
 .home-card-content>:first-child{margin-top:0}
 .home-card-content>:last-child{margin-bottom:0}
 .home-resume{margin:0 0 24px;overflow-wrap:anywhere}
