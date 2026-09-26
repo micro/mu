@@ -38,7 +38,7 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 	if old == nil || old.Owner != owner {
 		return fmt.Errorf("event not found")
 	}
-	if old.Kind == "brief" || old.Kind == "research" {
+	if old.Kind == "brief" || old.Kind == "research" || old.Kind == "checkin" {
 		return fmt.Errorf("manage this included feature in Events settings")
 	}
 	if service.RestrictedCaller(ctx) && (old.Prompt != "" || (req.Prompt != nil && strings.TrimSpace(*req.Prompt) != "")) {

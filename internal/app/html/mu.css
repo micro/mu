@@ -1304,7 +1304,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .landing-introduction p{color:var(--text-muted);margin:0 0 20px}
 .landing-introduction .landing-tagline{color:var(--text-primary);font-size:1.1rem;margin-bottom:12px}
 .landing-capabilities{display:grid;gap:16px;text-align:left;margin:24px 0;padding:20px 0;border-block:1px solid var(--border)}
-.landing-capabilities>div{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px}
+.landing-capabilities>div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px}
 .landing-capabilities dt{color:var(--landing-accent);font-size:1rem;font-weight:500}
 .landing-capabilities dd{margin:0;color:var(--text-muted)}
 .landing-introduction .landing-access{font-size:.875rem;line-height:1.6}

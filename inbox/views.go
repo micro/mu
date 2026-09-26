@@ -83,6 +83,9 @@ func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	if events.Brief(acc.ID) == nil {
 		b.WriteString(`<section class="record-card"><a class="record-title" href="/events?view=brief#morning-brief">Morning brief</a><p class="text-muted">Not scheduled</p></section>`)
 	}
+	if events.Checkin(acc.ID) == nil {
+		b.WriteString(`<section class="record-card"><a class="record-title" href="/events?view=brief#checkin">Daily Checkin</a><p class="text-muted">Optional. Say what you need to get done in one or two sentences.</p></section>`)
+	}
 	items := events.List(acc.ID)
 	active := items[:0]
 	for _, e := range items {
@@ -103,6 +106,9 @@ func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		destination := "/events?id=" + url.QueryEscape(e.ID)
 		if e.Kind == "brief" {
 			kind, detail = "Brief", "Overnight developments and what matters today."
+		}
+		if e.Kind == "checkin" {
+			kind, detail = "Check-in", "Reply in one or two sentences to start planning your day."
 		}
 		state := "Scheduled"
 		if e.Paused {

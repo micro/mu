@@ -411,6 +411,11 @@ func deliver(r request, answer string, err error) {
 	}
 	tag := "scheduled"
 	isBrief := false
+	isCheckin := false
+	if e := events.Checkin(r.Account); e != nil && e.ID == r.ID {
+		tag = "checkin"
+		isCheckin = true
+	}
 	if e := scheduledBrief(r); e != nil {
 		isBrief = true
 		tag = "brief"
@@ -436,9 +441,13 @@ func deliver(r request, answer string, err error) {
 		app.Log("work", "delivering scheduled result for %s: %v", r.Account, sendErr)
 		return
 	}
-	if isBrief && err == nil {
+	if (isBrief || isCheckin) && err == nil {
 		link := inbox.MailURL(mail.InboundMail{Owner: acc.ID, From: delivery.FromID, FromName: delivery.From, To: acc.ID + "+" + tag + "@" + mail.ConfiguredDomain(), Subject: r.Title, Body: delivery.Body, MessageID: messageID, Tag: tag})
-		event.Announce("brief", strings.TrimSpace(answer), link, r.Account)
+		topic := "brief"
+		if isCheckin {
+			topic = "checkin"
+		}
+		event.Announce(topic, strings.TrimSpace(answer), link, r.Account)
 	}
 }
 

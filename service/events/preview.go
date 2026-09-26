@@ -24,7 +24,7 @@ func Preview(owner string, external []External) string {
 		href := externalURL(row.External)
 		title, when, allDay := row.External.Title, row.When, row.External.AllDay
 		if row.Event != nil {
-			if row.Event.Kind == "brief" || row.When.Before(now) {
+			if row.Event.Kind == "brief" || row.Event.Kind == "checkin" || row.When.Before(now) {
 				continue
 			}
 			title = row.Event.Title

@@ -91,7 +91,7 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 		body += `</div>`
 	}
 	if allowance.Credits > 0 {
-		body += `<nav class="form-actions"><a href="/events?view=brief">Brief and plan</a>`
+		body += `<nav class="form-actions"><a href="/events?view=brief">Brief and check-in</a>`
 		if Tier(acc.ID) == "pro" {
 			body += `<a href="/events?view=research">Research</a>`
 		}

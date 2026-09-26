@@ -17,7 +17,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if len(csrf) > 0 {
 		token = csrf[0]
 	}
-	return `<div class="page-stack">` + briefPeriodHTML(owner, token, "morning") + `<p class="text-muted">Delivered to your Micro inbox using your calendar, recent conversations and outstanding work. Your scheduled brief and optional Pro plan are included without using credits.</p></div>`
+	return `<div class="page-stack">` + briefPeriodHTML(owner, token, "morning") + checkinHTML(owner, token) + `<p class="text-muted">Delivered to your Micro inbox using your calendar, recent conversations and outstanding work. Your scheduled brief and optional Pro plan are included without using credits.</p></div>`
 }
 
 func briefPeriodHTML(owner, token, period string) string {
@@ -39,7 +39,7 @@ func briefPeriodHTML(owner, token, period string) string {
 			status = "Disabled"
 		}
 	}
-	title := "Morning brief"
+	title := "Morning Brief"
 	description := "Your commitments, outstanding work and what matters today."
 	if auth.Plan(owner) == "free" || repeat == "weekly" {
 		description = "A weekly look ahead at your commitments and outstanding work."

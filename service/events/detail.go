@@ -38,7 +38,7 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 		http.NotFound(w, r)
 		return
 	}
-	if e.Kind == "brief" {
+	if e.Kind == "brief" || e.Kind == "checkin" {
 		app.Respond(w, r, app.Response{Title: e.Title, HTML: `<p><a href="/events">Events</a></p>` + briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
 	}
