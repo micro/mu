@@ -122,7 +122,7 @@ func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	}
 	b.WriteString(`</div>` + pager.Nav("/inbox?view=scheduled"))
 	b.WriteString(`<div class="section-actions"><a href="/events">Calendar and schedule settings</a></div>`)
-	app.Respond(w, r, app.Response{Title: "Inbox", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Inbox", HTML: `<div class="page-stack">` + b.String() + `</div>`})
 }
 
 type savedItem struct {
@@ -216,7 +216,7 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	if shell.Configured() && (filter == "file" || filter == "") {
 		b.WriteString(workspaceFiles(r, acc.ID))
 	}
-	app.Respond(w, r, app.Response{Title: "Inbox", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Inbox", HTML: `<div class="page-stack">` + b.String() + `</div>`})
 }
 
 func workspaceFiles(r *http.Request, owner string) string {
@@ -274,5 +274,5 @@ func filePreview(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	if truncated {
 		body += `<p class="text-muted">Preview limited to 64 KB.</p>`
 	}
-	app.Respond(w, r, app.Response{Title: "Inbox", HTML: body})
+	app.Respond(w, r, app.Response{Title: "Inbox", HTML: `<div class="page-stack">` + body + `</div>`})
 }

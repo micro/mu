@@ -103,7 +103,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 		b.WriteString(pager.Nav(r.URL.Path))
 	}
 	b.WriteString(`</div>`)
-	app.Respond(w, r, app.Response{Title: "Inbox", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Inbox", HTML: `<div class="page-stack">` + b.String() + `</div>`})
 }
 
 func waitingHTML(r *http.Request, owner string) string { return waiting(r, owner) }
