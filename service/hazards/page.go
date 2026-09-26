@@ -74,23 +74,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	floods, fat, ffailed := floodCache.read()
 
 	var b strings.Builder
-	b.WriteString(`<div class="hz">`)
+	b.WriteString(`<div class="page-stack">`)
 	b.WriteString(`<p class="hz-lede">Earthquakes, disaster alerts and flood ` +
 		`warnings, from the USGS, GDACS and the Environment Agency. ` +
 		`Refreshed in the background every five minutes.</p>`)
 
+	b.WriteString(`<section class="record-card">`)
 	b.WriteString(quiet("Quake feed: " + freshness(qat, qfailed)))
 	if !qat.IsZero() {
 		b.WriteString(quakeSection(quakes))
 	}
+	b.WriteString(`</section>`)
+	b.WriteString(`<section class="record-card">`)
 	b.WriteString(quiet("Alert feed: " + freshness(aat, afailed)))
 	if !aat.IsZero() {
 		b.WriteString(alertSection(alertsFound))
 	}
+	b.WriteString(`</section>`)
+	b.WriteString(`<section class="record-card">`)
 	b.WriteString(quiet("Flood feed: " + freshness(fat, ffailed)))
 	if !fat.IsZero() {
 		b.WriteString(floodSection(floods))
 	}
+
+	b.WriteString(`</section>`)
 
 	// How to call it, at the foot, for the reader who has just seen the answer
 	// and wants it in their own program. That is the moment the reference is
@@ -124,7 +131,7 @@ func quakeSection(qs []quake) string {
 			fmt.Sprintf("%.1f", pageMinMagnitude)+" in the past day.")
 	}
 
-	b.WriteString(`<ul class="hz-list">`)
+	b.WriteString(`<ul class="record-list">`)
 	for i, q := range qs {
 		if i >= pageQuakes {
 			break
@@ -133,7 +140,7 @@ func quakeSection(qs []quake) string {
 		if q.Tsunami {
 			extra = `<span class="hz-tag hz-tsunami">tsunami</span>`
 		}
-		b.WriteString(`<li class="hz-row">` +
+		b.WriteString(`<li class="status-row">` +
 			`<span class="hz-mag ` + magClass(q.Magnitude) + `">M` +
 			fmt.Sprintf("%.1f", q.Magnitude) + `</span>` +
 			`<span class="hz-what">` + html.EscapeString(q.Place) + extra + `</span>` +
@@ -151,7 +158,7 @@ func alertSection(as []alert) string {
 		return b.String() + quiet("No alerts above green anywhere.")
 	}
 
-	b.WriteString(`<ul class="hz-list">`)
+	b.WriteString(`<ul class="record-list">`)
 	for i, a := range as {
 		if i >= pageAlerts {
 			break
@@ -160,7 +167,7 @@ func alertSection(as []alert) string {
 		// leaves Name empty for a lot of floods, and joining unconditionally
 		// rendered those as "— Nepal": a dash with nothing on the left of it.
 		where := describe(a.Name, a.Country)
-		b.WriteString(`<li class="hz-row">` +
+		b.WriteString(`<li class="status-row">` +
 			`<span class="hz-level ` + levelClass(a.Level) + `">` +
 			html.EscapeString(a.Kind) + `</span>` +
 			`<span class="hz-what">` + html.EscapeString(where) + `</span>` +
@@ -181,12 +188,12 @@ func floodSection(fs []flood) string {
 		return b.String() + quiet("No flood warnings in force in England.")
 	}
 
-	b.WriteString(`<ul class="hz-list">`)
+	b.WriteString(`<ul class="record-list">`)
 	for i, f := range fs {
 		if i >= pageFloods {
 			break
 		}
-		b.WriteString(`<li class="hz-row">` +
+		b.WriteString(`<li class="status-row">` +
 			`<span class="hz-level hz-warn">flood</span>` +
 			`<span class="hz-what">` + html.EscapeString(f.Area) + `</span>` +
 			`<span class="hz-when">` + html.EscapeString(when(f.Raised)) + `</span></li>`)
@@ -221,8 +228,8 @@ func when(t time.Time) string {
 }
 
 func section(title, note string) string {
-	return `<div class="hz-head"><h2>` + html.EscapeString(title) + `</h2>` +
-		`<span class="hz-note">` + html.EscapeString(note) + `</span></div>`
+	return `<div><h2>` + html.EscapeString(title) + `</h2>` +
+		`<p class="text-muted">` + html.EscapeString(note) + `</p></div>`
 }
 
 // quiet is a section with nothing in it, which is the good news and should read

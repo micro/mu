@@ -1308,3 +1308,8 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 
 .collection-item>.form-actions{align-self:center}
 @media(max-width:700px){.collection-item>.form-actions{grid-column:1/-1}}
+
+.record-list{list-style:none;padding:0;margin:0}
+.status-row{display:grid;grid-template-columns:7rem minmax(0,1fr) auto;align-items:start;gap:12px;padding-block:12px;border-bottom:1px solid var(--border)}
+.status-row>*{min-width:0;overflow-wrap:anywhere}
+@media(max-width:700px){.status-row{grid-template-columns:5rem minmax(0,1fr)}.status-row>:last-child{grid-column:2;font-size:.8rem;color:var(--text-muted)}}
