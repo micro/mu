@@ -40,13 +40,15 @@ func newID() string {
 // and a role, which is the right shape for memory and the wrong one for a
 // protocol that addresses everything.
 type Said struct {
-	Facts map[string]interface{} `json:"facts,omitempty"`
-	ID    string                 `json:"id"`
-	Conv  string                 `json:"conv"` // the conversation key — see xmppRoom
-	From  string                 `json:"from"`
-	To    string                 `json:"to"`
-	Text  string                 `json:"text"`
-	At    time.Time              `json:"at"`
+	OMEMO  string                 `json:"omemo,omitempty"`
+	WireID string                 `json:"wire_id,omitempty"`
+	Facts  map[string]interface{} `json:"facts,omitempty"`
+	ID     string                 `json:"id"`
+	Conv   string                 `json:"conv"` // the conversation key — see xmppRoom
+	From   string                 `json:"from"`
+	To     string                 `json:"to"`
+	Text   string                 `json:"text"`
+	At     time.Time              `json:"at"`
 }
 
 // heldPerAccount bounds one account's chat history.
@@ -170,6 +172,7 @@ func filtered(account string, limit int, keep func(*Said) bool) []Said {
 // person and cannot be told to stop is the thing every deletion hook exists to
 // prevent — see TestEveryScopedServiceCleansUpWhenAnAccountIsDeleted.
 func Forget(account string) {
+	forgetOMEMO(account)
 	forgetPrivate(account)
 	saidMu.Lock()
 	defer saidMu.Unlock()

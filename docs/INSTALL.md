@@ -1412,3 +1412,35 @@ and check above before enabling it. Do not expose an unauthenticated App Server
 socket or give a hosted user's agent access to the server shell.
 See the [App Server protocol](https://learn.chatgpt.com/docs/app-server) and
 [authentication guide](https://learn.chatgpt.com/docs/auth).
+
+### OMEMO in Conversations
+
+With a Micro account added to Conversations using a Chat (XMPP) token, messages
+with `agent@<your domain>` support legacy OMEMO
+(`eu.siacs.conversations.axolotl`, the version used by Conversations). Keep OMEMO
+enabled. The server publishes device lists and bundles, persists Micro's identity
+and ratchet state, and encrypts replies and their XMPP archive entries. Replies
+remain encrypted when the phone reconnects. The token's connection settings show
+Micro's fingerprint for comparison with Conversations.
+
+Micro is the receiving endpoint: it decrypts requests for assistant processing.
+This is not zero-knowledge hosting, encrypted-at-rest storage, or encryption
+against the model provider. Plaintext assistant context remains account-scoped.
+Keys are stored in `data/chat/omemo.json` with the same restrictive file permissions
+as other credentials. Preserve this file during deployment and backup; do not
+regenerate it on restart. Changing the XMPP domain requires explicit key migration.
+
+The initial scope is a local Micro account talking to `agent@<your domain>`.
+OMEMO forwarding between people, federation, and OMEMO 2 are not implemented;
+unsupported encrypted messages are rejected, never interpreted as plaintext.
+Device key changes under an existing device ID are refused. New devices publish
+a new ID; Conversations controls the user's trust in Micro's fingerprint. Once
+an account has established OMEMO with Micro, plain messages in that chat are
+refused and encryption failures never fall back to a plain reply.
+
+The optional interoperability check uses the same Signal library as Conversations
+(2.6.2), with a Java 17+ source launcher and independently implemented AES-GCM.
+Set `OMEMO_JAVA_CLASSPATH` to jars for `signal-protocol-java:2.6.2`,
+`curve25519-java:0.4.1`, `protobuf-java:2.5.0`, and `gson:2.11.0`, then run
+`go test ./service/chat -run OMEMO -count=1`. Without that variable, the Go-only
+OMEMO checks still run and the Java interoperability check is skipped.

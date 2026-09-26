@@ -99,6 +99,12 @@ func (s *session) route() {
 
 // iq answers the info/query stanzas a client needs to finish connecting.
 func (s *session) iq(st stanza) {
+	if st.Type == "result" || st.Type == "error" {
+		return
+	}
+	if s.omemoIQ(st) {
+		return
+	}
 	switch {
 	case strings.Contains(string(st.Inner), nsBind):
 		// The resource names this connection, so a phone and a laptop are two
@@ -185,6 +191,16 @@ func (s *session) presence(st stanza) {
 // not a failure at all. Being offline is the ordinary case for chat, which is
 // exactly why the record has to be underneath it.
 func (s *session) message(st stanza) {
+	if s.omemoMessage(st) {
+		return
+	}
+	if st.Type == "error" {
+		return
+	}
+	if strings.ToLower(bareOf(st.To)) == agentJID() && strings.TrimSpace(st.Body) != "" && omemoRequired(s.bare()) {
+		s.omemoMessageError(st, "not-acceptable", "This chat uses OMEMO. Enable OMEMO to send to Micro.")
+		return
+	}
 	text := strings.TrimSpace(st.Body)
 	if text == "" || st.To == "" {
 		return
@@ -293,6 +309,9 @@ func deliverXMPP(from, to, text string, ids ...string) bool {
 // rooms. The answer is saved for archive retrieval even when nobody is online.
 // Reports live delivery separately so an offline answer is not marked seen.
 func SayTo(accountID, from, text string) bool {
+	if handled, delivered := sayOMEMO(accountID, from, text); handled {
+		return delivered
+	}
 	to := strings.ToLower(accountID) + "@" + Domain()
 	id, err := KeepSaved(accountID, Said{Conv: xmppRoom(from, to), From: from, To: to, Text: text})
 	if err != nil {

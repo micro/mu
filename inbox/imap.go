@@ -245,6 +245,14 @@ func ClientSettings(accountID string, protocols ...string) string {
 	}
 	if len(protocols) == 0 || protocols[0] == "chat" {
 		b.WriteString(`<p class="text-sm text-secondary">XMPP requires a direct TLS proxy and does not support STARTTLS.</p>`)
+		b.WriteString(`<p class="text-sm text-secondary">Use OMEMO in Conversations to encrypt messages to <strong>` + html.EscapeString(chat.AgentAddress()) + `</strong>. Micro decrypts them to answer; this does not hide the content from Micro or its model provider.</p>`)
+		if fingerprint, err := chat.OMEMOFingerprint(); err == nil {
+			var groups []string
+			for i := 0; i < len(fingerprint); i += 8 {
+				groups = append(groups, fingerprint[i:i+8])
+			}
+			b.WriteString(`<details><summary>Verify Micro’s OMEMO fingerprint</summary><p>Compare this with the fingerprint shown for Micro in Conversations before trusting it.</p><pre>` + strings.Join(groups, " ") + `</pre></details>`)
+		}
 	}
 	return b.String()
 }

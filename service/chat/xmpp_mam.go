@@ -168,9 +168,18 @@ func (s *session) sendArchived(queryID string, m Said) {
 	b.WriteString(`<forwarded xmlns='` + nsForward + `'>`)
 	b.WriteString(`<delay xmlns='` + nsDelay + `' stamp='` +
 		xmlAttr(m.At.UTC().Format(time.RFC3339)) + `'/>`)
-	b.WriteString(`<message xmlns='jabber:client' type='chat' id='` + xmlAttr(m.ID) +
+	wireID := m.WireID
+	if wireID == "" {
+		wireID = m.ID
+	}
+	b.WriteString(`<message xmlns='jabber:client' type='chat' id='` + xmlAttr(wireID) +
 		`' from='` + xmlAttr(m.From) + `' to='` + xmlAttr(m.To) + `'>`)
-	b.WriteString(`<body>` + xmlText(m.Text) + `</body>`)
+	if m.OMEMO != "" {
+		b.WriteString(m.OMEMO)
+		b.WriteString(`<encryption xmlns="urn:xmpp:eme:0" namespace="` + nsOMEMO + `" name="OMEMO"/>`)
+	} else {
+		b.WriteString(`<body>` + xmlText(m.Text) + `</body>`)
+	}
 	b.WriteString(`</message></forwarded></result></message>`)
 	s.send("%s", b.String()) //nolint:errcheck
 }
