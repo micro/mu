@@ -16,6 +16,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/service/blog"
 	"mu/service/events"
 	"mu/service/tasks"
 	"mu/service/weather"
@@ -137,6 +138,11 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	if preview := inbox.Preview(acc.ID); preview != "" {
 		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
+	reading := blog.Preview()
+	if reading == "" {
+		reading = `<p class="text-muted">Published articles and topic digests will appear here.</p>`
+	}
+	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
 	if len(snapshot.apps) > 0 {
 		right.WriteString(`<section class="record-card"><div class="section-card-head"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
@@ -149,6 +155,9 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 		right.WriteString(`</div></section>`)
 	}
 	for i, spec := range service.Pinned(acc.PinnedServices()) {
+		if spec.Name == "blog" {
+			continue // Blog already has a permanent place below Inbox.
+		}
 		column := &left
 		if i%2 != 0 {
 			column = &right
