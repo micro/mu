@@ -1294,32 +1294,19 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .discovery-option svg{flex:none}
 .discovery-option small{display:block;font-size:.8rem}
 
-/* A compact app launcher and introduction for the public front door. */
-/* A quiet, warm public front door; shared app controls retain their layout. */
+/* A compact, lightly accented public introduction. */
 @font-face{font-family:"DM Sans";src:url("/dm-sans-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
-.landing-page{font-family:"DM Sans",system-ui,sans-serif;--landing-accent:#386350;--landing-soft:#f0f5ee}
-.landing-page main{max-width:1120px;padding-top:0}
-.landing-page .brand{color:var(--landing-accent);font-size:1.2rem;font-weight:600}
-.landing-hero{padding:68px 0 64px;max-width:760px}
-.landing-eyebrow{color:var(--landing-accent);font-size:.9rem;font-weight:500;margin:0 0 18px}
-.landing-hero h1{font-size:clamp(2.6rem,5.2vw,4.8rem);line-height:1.08;letter-spacing:-.045em;font-weight:500;margin:0 0 24px}
-.landing-lead{max-width:52ch;font-size:1.18rem;line-height:1.65;color:#59615a;margin-bottom:28px}
-.landing-page .landing-primary{background:var(--landing-accent);border-color:var(--landing-accent);color:#fff;padding:10px 18px;border-radius:24px}
+.landing-page{font-family:"DM Sans",system-ui,sans-serif;--landing-accent:#386350}
+.landing-page .page{display:flex;flex-direction:column}
+.landing-page main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 0}
+.landing-introduction{width:100%;max-width:440px;text-align:center;padding:24px 0}
+.landing-introduction h1{font-size:28px;margin:0 0 8px}
+.landing-introduction p{color:var(--text-muted);margin:0 0 20px}
+.landing-introduction .landing-tagline{color:var(--text-primary);font-size:1.1rem;margin-bottom:12px}
+.landing-introduction .form-actions{justify-content:center;margin:24px 0 16px}
+.landing-page .landing-primary{background:var(--landing-accent);border-color:var(--landing-accent);color:#fff}
 .landing-page .landing-primary:hover{background:#284c3b;border-color:#284c3b}
-.landing-note{font-size:.85rem;color:#647065}
-.landing-hero>.landing-note{margin:12px 0 0}
-.landing-outcomes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px;padding:36px 0;border-block:1px solid #dde5dc}
-.landing-label{display:inline-block;color:var(--landing-accent);font-size:.85rem;font-weight:500}
-.landing-outcomes h2{font-size:1.4rem;margin:14px 0 12px;letter-spacing:-.02em}
-.landing-outcomes p{margin:0;color:#59615a;line-height:1.7}
-.landing-followthrough{display:grid;grid-template-columns:1.2fr 1fr;align-items:center;gap:64px;padding:64px 0}
-.landing-followthrough h2,.landing-close h2{font-size:2rem;letter-spacing:-.03em;margin:0 0 16px}
-.landing-followthrough>div>p:not(.landing-eyebrow){color:#59615a;line-height:1.7}
-.landing-example{padding:32px;background:var(--landing-soft);border-radius:18px}
-.landing-example p{font-size:1.45rem;line-height:1.5;margin:18px 0 24px;letter-spacing:-.015em}
-.landing-close{padding:32px 0 24px;border-top:1px solid #dde5dc}
-.landing-close>p{color:#59615a;margin-bottom:24px}
-@media(max-width:700px){.landing-hero{padding:36px 0 40px}.landing-outcomes{grid-template-columns:1fr;gap:28px;padding:28px 0}.landing-followthrough{grid-template-columns:1fr;gap:20px;padding:36px 0}.landing-example{padding:24px}.landing-followthrough h2,.landing-close h2{font-size:1.7rem}.landing-outcomes h2{margin-top:8px}}
+.landing-services{font-size:.875rem;color:var(--text-muted)}
 
 .selectable-row{display:grid;grid-template-columns:20px minmax(0,1fr);gap:12px;align-items:start;min-width:0}
 .selectable-row>input[type="checkbox"]{width:18px;height:18px;margin:16px 0 0}
