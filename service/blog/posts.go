@@ -94,15 +94,23 @@ type ReadResponse struct {
 // Read returns one post in full, by id or by title. Use it after blog_list or
 // blog_list has found a candidate and the summary is not enough.
 // @example {"title": "on writing"}
-func (Server) Read(_ context.Context, req *ReadRequest, rsp *ReadResponse) error {
+func (Server) Read(ctx context.Context, req *ReadRequest, rsp *ReadResponse) error {
 	p, err := find(req.ID, req.Title)
 	if err != nil {
 		return err
+	}
+	if p.Private {
+		owner := service.AccountFrom(ctx)
+		acc, e := auth.GetAccount(owner)
+		if owner == "" || (owner != p.AuthorID && (e != nil || acc == nil || !acc.Admin)) {
+			return fmt.Errorf("post not found")
+		}
 	}
 	var b strings.Builder
 	b.WriteString(p.Title + "\n")
 	b.WriteString("by " + p.Author + ", " + p.CreatedAt.Format("2 January 2006") + "\n\n")
 	b.WriteString(p.Content)
+	fmt.Fprintf(&b, "\n\nOpen: /blog/post?id=%s\n", p.ID)
 	rsp.Text = b.String()
 	return nil
 }
