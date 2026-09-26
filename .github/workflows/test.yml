@@ -34,6 +34,11 @@ jobs:
           restore-keys: |
             go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-
 
+      - name: Verify image provider logging
+        run: |
+          test -z "$(gofmt -l internal/ai/image.go internal/ai/image_test.go service/images/images.go service/images/upload.go)"
+          go test ./internal/ai -run '^TestImageRequestsRecordOutcomes$' -count=1
+
       # PRs verify every release platform; main builds deployment artifacts only.
       - name: Build binaries
         env:

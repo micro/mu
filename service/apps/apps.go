@@ -645,7 +645,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			mine := userID != "" && (userID == a.AuthorID || isAdmin)
 			controls := ""
 			if mine {
-				controls = fmt.Sprintf(` · <a href="/apps/%s/edit">Edit</a> · %s`,
+				controls = fmt.Sprintf(`<a href="/apps/%s/edit">Edit</a>%s`,
 					htmlpkg.EscapeString(a.Slug), deleteLink(a.Slug, ""))
 			} else {
 				controls = app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "", "")
@@ -654,8 +654,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 <img src="/apps/%s/icon.svg" width="32" height="32" class="directory-icon">
 <div class="directory-content">
 <h3 class="m-0 mb-1"><a href="/apps/%s">%s</a></h3>
-<p class="m-0 mb-1 text-secondary">%s</p>
-<div class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s/embed">Embed</a>%s</div>
+<p class="card-summary text-secondary">%s</p>
+<div class="metadata-row card-summary">by %s%s%s · %d launches</div>
+<div class="form-actions directory-actions"><a href="/apps/%s/embed">Embed</a>%s</div>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),

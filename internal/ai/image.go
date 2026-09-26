@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/app"
 	"mu/internal/settings"
 )
 
@@ -58,7 +59,7 @@ func GenerateImage(prompt string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return pollImage(ctx, key, id)
+	return pollImage(ctx, key, id, prompt)
 }
 
 // submitImage POSTs the generation request and returns the prediction id.
@@ -75,36 +76,18 @@ func submitImage(ctx context.Context, key, prompt string) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+key)
 
-	resp, err := imageHTTPClient.Do(req)
+	out, err := imageRequest(req, key, prompt)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("image API error (%s): %s", resp.Status, strings.TrimSpace(string(raw)))
-	}
-	var out struct {
-		Code int    `json:"code"`
-		Msg  string `json:"msg"`
-		Data struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return "", fmt.Errorf("unexpected image API response: %s", strings.TrimSpace(string(raw)))
-	}
 	if out.Code != 200 || out.Data.ID == "" {
-		if out.Msg != "" {
-			return "", fmt.Errorf("image generation failed: %s", out.Msg)
-		}
-		return "", fmt.Errorf("image generation failed")
+		return "", fmt.Errorf("image generation failed: missing prediction id")
 	}
 	return out.Data.ID, nil
 }
 
 // pollImage waits for the prediction to complete and returns the first image URL.
-func pollImage(ctx context.Context, key, id string) (string, error) {
+func pollImage(ctx context.Context, key, id, prompt string) (string, error) {
 	url := atlasImageBase + "/api/v1/model/prediction/" + id
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
@@ -118,21 +101,9 @@ func pollImage(ctx context.Context, key, id string) (string, error) {
 				return "", err
 			}
 			req.Header.Set("Authorization", "Bearer "+key)
-			resp, err := imageHTTPClient.Do(req)
+			out, err := imageRequest(req, key, prompt)
 			if err != nil {
 				return "", err
-			}
-			raw, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			var out struct {
-				Data struct {
-					Status  string   `json:"status"`
-					Outputs []string `json:"outputs"`
-					Error   string   `json:"error"`
-				} `json:"data"`
-			}
-			if err := json.Unmarshal(raw, &out); err != nil {
-				continue // transient; keep polling until the deadline
 			}
 			switch out.Data.Status {
 			case "completed":
@@ -149,4 +120,101 @@ func pollImage(ctx context.Context, key, id string) (string, error) {
 			}
 		}
 	}
+}
+
+type imageResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		ID      string   `json:"id"`
+		Status  string   `json:"status"`
+		Outputs []string `json:"outputs"`
+		Error   string   `json:"error"`
+	} `json:"data"`
+}
+
+// imageRequest records submission and polling in the shared external-call log.
+// Keep diagnostic fields, never the prompt, bearer key or signed output URLs.
+func imageRequest(req *http.Request, key, prompt string) (out imageResponse, callErr error) {
+	start := time.Now()
+	entry := app.APILogEntry{
+		Service: "images", Kind: "image", Model: imageModel(),
+		Method: req.Method, URL: atlasImageBase + "/api/v1/model/generateImage",
+		Outcome: "done",
+	}
+	if req.Method == http.MethodGet {
+		entry.URL = atlasImageBase + "/api/v1/model/prediction/[id]"
+	}
+	clean := func(s string) string {
+		if key != "" {
+			s = strings.ReplaceAll(s, key, "[redacted]")
+		}
+		if prompt != "" {
+			s = strings.ReplaceAll(s, prompt, "[prompt omitted]")
+		}
+		s = ProviderErrorDetail(s)
+		if len(s) > 2048 {
+			s = s[:2048] + "..."
+		}
+		return s
+	}
+	defer func() {
+		entry.Duration = time.Since(start)
+		if callErr != nil {
+			entry.Outcome = "failed"
+			entry.Error = clean(callErr.Error())
+			callErr = fmt.Errorf("%s", entry.Error)
+			app.Log("images", "%s %s: %s", entry.Method, entry.URL, entry.Error)
+		}
+		app.RecordExternalCall(entry)
+	}()
+	resp, err := imageHTTPClient.Do(req)
+	if err != nil {
+		entry.ErrorKind = "transport"
+		return out, err
+	}
+	defer resp.Body.Close()
+	entry.Status = resp.StatusCode
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, (1<<20)+1))
+	if err != nil {
+		entry.ErrorKind = "read"
+		return out, fmt.Errorf("reading image API response: %w", err)
+	}
+	if len(raw) > 1<<20 {
+		entry.ErrorKind = "response"
+		return out, fmt.Errorf("image API response exceeds 1 MB")
+	}
+	decodeErr := json.Unmarshal(raw, &out)
+	// An allowlisted summary also makes successful/pending responses inspectable.
+	summary, _ := json.Marshal(map[string]any{"code": out.Code, "status": out.Data.Status})
+	entry.ResponseBody = string(summary)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		entry.ErrorKind = "http"
+		detail := clean(out.Msg)
+		if detail == "" {
+			detail = clean(out.Data.Error)
+		}
+		return out, fmt.Errorf("image API error (HTTP %d): %s", resp.StatusCode, detail)
+	}
+	if decodeErr != nil {
+		entry.ErrorKind = "decode"
+		return out, fmt.Errorf("unexpected image API response: invalid JSON")
+	}
+	if (out.Code != 0 && out.Code != 200) || out.Data.Status == "failed" ||
+		(req.Method == http.MethodPost && (out.Code != 200 || out.Data.ID == "")) {
+		entry.ErrorKind = "provider"
+		msg := out.Data.Error
+		if msg == "" {
+			msg = out.Msg
+		}
+		if msg == "" {
+			msg = "provider returned no prediction"
+		}
+		return out, fmt.Errorf("image generation failed: %s", clean(msg))
+	}
+	if out.Data.Status == "completed" && (len(out.Data.Outputs) == 0 || out.Data.Outputs[0] == "") {
+		entry.ErrorKind = "provider"
+		return out, fmt.Errorf("image generation returned no output")
+	}
+	return out, nil
 }

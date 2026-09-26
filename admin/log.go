@@ -170,6 +170,10 @@ func apiLogCard() string {
 			}
 		}
 
+		if e.Error != "" {
+			statusClass = "dir-out"
+		}
+
 		errStr := ""
 		if e.Error != "" {
 			errStr = truncate(e.Error, 60)
@@ -198,6 +202,9 @@ func apiLogCard() string {
 		}
 		if e.Kind == "model" {
 			fmt.Fprintf(&content, `<tr><td colspan="7">Model: %s · Run: %s · Attempt: %d · Tokens: %d in / %d out</td></tr>`, html.EscapeString(e.Model), html.EscapeString(e.RunID), e.Attempt, e.InputTokens, e.OutputTokens)
+		}
+		if e.Kind == "image" {
+			fmt.Fprintf(&content, `<tr><td colspan="7">Model: %s · Outcome: %s</td></tr>`, html.EscapeString(e.Model), html.EscapeString(e.Outcome))
 		}
 		if e.RequestBody != "" || e.ResponseBody != "" {
 			content.WriteString(`<tr><td colspan="7">`)

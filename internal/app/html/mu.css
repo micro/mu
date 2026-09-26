@@ -276,6 +276,7 @@ footer{gap:16px}
 
 /* Shared action spacing, including controls emitted directly by older cards. */
 .form-actions,.section-actions,.actions-set { gap:8px; }
+.form-actions-end{justify-content:flex-end}
 .card > :is(button,.btn),.card-body > :is(button,.btn) { margin-block:8px; }
 :is(button,.btn,.form-action) + :is(button,.btn,.form-action) { margin-inline-start:8px; }
 :is(.form-actions,.section-actions,.actions-set,.composer,.inline-row) > :is(button,.btn,.form-action) { margin:0; }
@@ -334,10 +335,14 @@ main{overflow-wrap:anywhere}
 :is(.card-grid,.directory-list)>*{min-width:0;margin:0}
 .card-grid>:is(h2,.section-heading){grid-column:1/-1}
 :is(.card-grid,.directory-list)>:is(.card,.section-card,.record-card,.record-editor,.page-section){margin:0}
-.directory-row{display:flex;align-items:flex-start;gap:12px;min-width:0;height:100%}
-.directory-content{display:block;flex:1;min-width:0;text-decoration:none}
+.directory-row{display:flex;align-items:stretch;align-self:stretch;gap:12px;min-width:0;height:100%}
+.directory-content{display:flex;flex-direction:column;flex:1;min-width:0;text-decoration:none}
 .directory-content h3{margin:0 0 4px}
 .directory-content .form-actions{margin-top:8px}
+.directory-content>.directory-actions{margin-top:auto;padding-top:16px}
+.directory-row>.directory-icon{align-self:flex-start}
+.card-summary{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;line-height:1.5;max-height:4.5em}
+.directory-content>p.card-summary{min-height:4.5em;margin-block:8px}
 .directory-heading{display:flex;align-items:center;gap:8px;font-weight:500}
 .directory-heading img,.directory-icon{width:24px;height:24px;flex:none;object-fit:contain}
 .directory-description{display:block;color:#666;margin-top:4px}
@@ -477,7 +482,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 
 /* Shared canvas: available width, readable prose, vertical records,
    wrapping metadata/actions, and bounded media. New pages use these primitives. */
-:root{--page-gutter:clamp(24px,4vw,64px);--section-gap:24px;--section-padding:24px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
+:root{--page-gutter:clamp(48px,8vw,128px);--section-gap:24px;--section-padding:24px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
 .document-page main{width:calc(100% - 2*var(--page-gutter));max-width:none}
 .document-page.public-page main{max-width:var(--reading-width)}
 .document-page main>:is(p,ul,ol){max-width:var(--reading-width)}
@@ -511,7 +516,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .record-card .record-title{font-size:1rem}
 .record-editor textarea{min-height:220px}
 .doc-toolbar,.doc-back,.doc-delete,.note-delete,.contact-actions,.file-actions,.action-footer,.article-actions,.article-meta,.mail-tabs,.markets-tabs,.rc-chips,.recent-searches-scroll,.here-strip{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-block:12px}
-.doc-view{max-width:var(--reading-width);line-height:1.7}
+.doc-view{line-height:1.7}
 .doc-view img,.reader-content img,.article-image,.media-preview,.img-full,.so-image{display:block;width:auto;max-width:100%;max-height:420px;object-fit:contain;border-radius:8px;margin-block:12px}
 img[width="16"],img[width="20"],img[width="24"],.stream-icon{object-fit:contain}
 .article-image{width:100%;object-fit:cover}
@@ -1241,7 +1246,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
  .signed-in>.page>header{min-height:60px;padding:8px var(--page-gutter)}
  .signed-in.keyboard-open{padding-bottom:0}
  .keyboard-open>.runtime-navigation{display:none}
- :root{--page-gutter:20px;--section-gap:20px;--section-padding:16px}
+ :root{--page-gutter:40px;--section-gap:20px;--section-padding:16px}
  .card-grid,.directory-list{grid-template-columns:minmax(0,1fr)}
  .section-heading{margin-top:24px}
  .assistant-workspace .conversation.is-active .prompt-panel{padding-bottom:0}
@@ -1300,3 +1305,11 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .selectable-row{display:grid;grid-template-columns:20px minmax(0,1fr);gap:12px;align-items:start;min-width:0}
 .selectable-row>input[type="checkbox"]{width:18px;height:18px;margin:16px 0 0}
 .bulk-read>.form-actions{margin-block:16px}
+
+.collection-item>.form-actions{align-self:center}
+@media(max-width:700px){.collection-item>.form-actions{grid-column:1/-1}}
+
+.record-list{list-style:none;padding:0;margin:0}
+.status-row{display:grid;grid-template-columns:7rem minmax(0,1fr) auto;align-items:start;gap:12px;padding-block:12px;border-bottom:1px solid var(--border)}
+.status-row>*{min-width:0;overflow-wrap:anywhere}
+@media(max-width:700px){.status-row{grid-template-columns:5rem minmax(0,1fr)}.status-row>:last-child{grid-column:2;font-size:.8rem;color:var(--text-muted)}}

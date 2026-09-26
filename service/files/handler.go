@@ -188,7 +188,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	// No heading here: the page is already titled Files by the shell, and a
 	// card that repeats the page title just costs a phone a line of screen.
-	b.WriteString(`<div class="page-action"><a class="btn" href="/files?new=1">New</a></div><div class="card">`)
+	b.WriteString(`<div class="page-stack"><div class="form-actions"><a class="btn" href="/files?new=1">New</a></div><div class="record-card">`)
 	b.WriteString(`<p class="text-sm text-muted">Using ` +
 		human(UsedBytes(sess.Account)) + ` of ` + human(MaxOwnerBytes) + `.</p>`)
 
@@ -209,23 +209,15 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	if len(stored) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">Nothing stored yet. ` +
-			`Upload something above, or an agent connected over <a href="/tools">service tools</a> can put a file here with <code>files_put</code>.</p></div>`)
+			`Upload a file above, or ask Micro to create one for you.</p></div>`)
 	} else {
-		b.WriteString(`<div class="card"><table class="data-table stacked files-table">`)
-		b.WriteString(`<thead><tr><th>Name</th><th>Size</th><th>Visibility</th><th>Stored</th><th></th></tr></thead><tbody>`)
+		b.WriteString(`<div class="collection-list">`)
 		for _, f := range stored {
 			visibility, shareTo, shareLabel := "Private", "1", "Share"
 			if f.Public {
 				visibility, shareTo, shareLabel = "Public", "0", "Make private"
 			}
-			// The cells are classed rather than positional because a phone does
-			// not render this as a table: the header goes, the row becomes a
-			// block, and size/visibility/date collapse onto one line under the
-			// name. Five columns at 375px would either overflow the screen or
-			// squeeze the name to nothing.
-			fmt.Fprintf(&b, `<tr><td class="file-name"><a href="%s">%s</a></td>`+
-				`<td class="file-meta" data-label="Size">%s</td><td class="file-meta" data-label="Visibility">%s</td><td class="file-meta" data-label="Stored">%s</td>`+
-				`<td class="file-actions">`,
+			fmt.Fprintf(&b, `<article class="collection-item"><div><a class="collection-title" href="%s">%s</a><div class="metadata-row"><span>%s</span><span>%s</span><span>%s</span></div></div><div class="form-actions">`,
 				html.EscapeString(f.URL), html.EscapeString(f.Name),
 				human(f.Size), visibility, f.Created.Format("2 Jan 15:04"))
 
@@ -242,15 +234,18 @@ func listPage(w http.ResponseWriter, r *http.Request) {
   <button type="submit" class="link-button danger">Delete</button>
 </form>`, html.EscapeString(f.ID), html.EscapeString(strings.ReplaceAll(f.Name, "'", "\\'")), html.EscapeString(csrf))
 
-			b.WriteString(`<a class="link-button" href="/files/` + html.EscapeString(f.ID) + `/edit">Edit text</a></td></tr>`)
+			if isText(f.Type) {
+				b.WriteString(`<a class="link-button" href="/files/` + html.EscapeString(f.ID) + `/edit">Edit text</a>`)
+			}
+			b.WriteString(`</div></article>`)
 		}
-		b.WriteString(`</tbody></table></div>`)
+		b.WriteString(`</div>`)
 	}
 
 	b.WriteString(sshaccess.Card(r, sess.Account, "/files", "SFTP",
 		"Use the same files from a terminal, script, or any standard SFTP client.",
 		"sftp"))
-	app.Respond(w, r, app.Response{Title: "Files", Description: "Your stored files", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Files", Description: "Your stored files", HTML: b.String() + `</div>`})
 }
 
 // "" styles the page, and on a narrow screen unmakes the table.
