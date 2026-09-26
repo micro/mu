@@ -276,6 +276,7 @@ footer{gap:16px}
 
 /* Shared action spacing, including controls emitted directly by older cards. */
 .form-actions,.section-actions,.actions-set { gap:8px; }
+.form-actions-end{justify-content:flex-end}
 .card > :is(button,.btn),.card-body > :is(button,.btn) { margin-block:8px; }
 :is(button,.btn,.form-action) + :is(button,.btn,.form-action) { margin-inline-start:8px; }
 :is(.form-actions,.section-actions,.actions-set,.composer,.inline-row) > :is(button,.btn,.form-action) { margin:0; }
@@ -515,7 +516,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 .record-card .record-title{font-size:1rem}
 .record-editor textarea{min-height:220px}
 .doc-toolbar,.doc-back,.doc-delete,.note-delete,.contact-actions,.file-actions,.action-footer,.article-actions,.article-meta,.mail-tabs,.markets-tabs,.rc-chips,.recent-searches-scroll,.here-strip{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-block:12px}
-.doc-view{max-width:var(--reading-width);line-height:1.7}
+.doc-view{line-height:1.7}
 .doc-view img,.reader-content img,.article-image,.media-preview,.img-full,.so-image{display:block;width:auto;max-width:100%;max-height:420px;object-fit:contain;border-radius:8px;margin-block:12px}
 img[width="16"],img[width="20"],img[width="24"],.stream-icon{object-fit:contain}
 .article-image{width:100%;object-fit:cover}

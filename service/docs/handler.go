@@ -139,8 +139,8 @@ func list(r *http.Request, docs []*Doc, query string) string {
 // view is one document, read.
 func view(r *http.Request, d *Doc) string {
 	var b strings.Builder
-	b.WriteString(`<div class="collection-head"><a class="section-link" href="/docs">All docs</a>`)
-	b.WriteString(`<a class="btn btn-quiet" href="/docs?id=` + html.EscapeString(d.ID) + `&amp;edit=1">Edit</a></div>`)
+	b.WriteString(`<nav class="form-actions" aria-label="Document actions"><a class="section-link" href="/docs">All docs</a>`)
+	b.WriteString(`<a class="btn btn-quiet" href="/docs?id=` + html.EscapeString(d.ID) + `&amp;edit=1">Edit</a></nav>`)
 	b.WriteString(`<article class="card record-card doc-view">`)
 	b.WriteString(`<h2>` + html.EscapeString(d.Title) + `</h2>`)
 	// Untrusted: this is one account's content and may be published to others.
@@ -168,18 +168,18 @@ func editor(r *http.Request, d *Doc) string {
 	if d.ID != "" {
 		back = `<a class="section-link" href="/docs?id=` + html.EscapeString(d.ID) + `">Back</a>`
 	}
-	return `<form method="POST" action="/docs" class="form record-editor">
+	return `<div class="page-stack"><nav class="form-actions" aria-label="Back">` + back + `</nav><form method="POST" action="/docs" class="form record-editor">
 <input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
 <input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">
 <div class="page-stack compact-stack">
-<div class="form-actions">` + back + `<button type="submit">Save</button></div>
 ` + editorTools + `</div>
 <div class="form">
 <input id="doc-title" class="record-title" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
 <textarea id="doc-body" class="record-body" name="content" rows="24" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
 </div>
 <label class="check-label"><input type="checkbox" name="public"` + checked + `> Anyone with the link can read it</label>
-</form>` + editorScript
+<div class="form-actions form-actions-end"><button type="submit">Save</button></div>
+</form></div>` + editorScript
 }
 
 func notice(msg string) string {
