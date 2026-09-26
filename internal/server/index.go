@@ -34,7 +34,7 @@ func landingHTML() string {
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant for your everyday life.</p>
 <p>Catch up on what matters, make a plan and get things done.</p>
-<div class="form-actions"><a class="btn landing-primary" href="/signup">Get started</a><a href="/pricing">Pricing</a></div>
+<div class="form-actions"><a class="btn landing-primary" href="/pricing">Get started</a></div>
 <a class="landing-services" href="/services">Explore services</a>
 </section>`
 }
