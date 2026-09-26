@@ -662,6 +662,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleGetBlog handles GET /blog - returns posts as JSON or HTML
 func handleGetBlog(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("view") == "drafts" {
+		draftsHandler(w, r)
+		return
+	}
 	view := r.URL.Query().Get("view")
 	if view != "community" && view != "archive" {
 		view = "editorial"
@@ -799,7 +803,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 					<div class="form-row">
 						<select id="post-visibility" name="visibility">
 							<option value="public" selected>Public</option>
-							<option value="private">Private (Admin only)</option>
+							<option value="private">Private (draft)</option>
 						</select>
 						<div class="form-actions">
 							<a href="/blog" class="btn btn-secondary">Cancel</a>
@@ -911,7 +915,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		var actions string
 		_, acc := auth.TrySession(r)
 		if acc != nil {
-			actions = `<a href="/blog?write=true">Write a post</a>`
+			actions = `<a href="/blog?view=drafts">Drafts</a><a href="/blog?write=true">Write a post</a>`
 		}
 		var nav string
 		for _, tab := range []struct{ view, label, href string }{{"editorial", "Editorial", "/blog"}, {"community", "Community", "/blog?view=community"}, {"archive", "Archive", "/blog?view=archive"}} {
@@ -1312,7 +1316,11 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, "/blog?view=community", http.StatusSeeOther)
+		destination := "/blog?view=community"
+		if private {
+			destination = "/blog?view=drafts"
+		}
+		http.Redirect(w, r, destination, http.StatusSeeOther)
 		return
 	}
 
@@ -1351,12 +1359,13 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if post is private and user is not admin
+	// Private drafts are readable by their author and instance administrators.
 	if post.Private {
+		w.Header().Set("Cache-Control", "private, no-store")
 		_, acc := auth.TrySession(r)
 		isAdmin := acc != nil && acc.Admin
-		if !isAdmin {
-			app.Forbidden(w, r, "This post is private and only visible to admins")
+		if acc == nil || (!isAdmin && acc.ID != post.AuthorID) {
+			app.Forbidden(w, r, "This post is private")
 			return
 		}
 	}
@@ -1517,7 +1526,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 				<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" value="%s">
 				<select name="visibility">
 					<option value="public" %s>Public</option>
-					<option value="private" %s>Private (Admin only)</option>
+					<option value="private" %s>Private (draft)</option>
 				</select>
 				<div class="note">
 					Supports markdown: **bold**, *italic**, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
@@ -1564,15 +1573,18 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			back, backLabel = "/blog?view=community", "Community"
 		}
 	}
+	if post.Private {
+		back, backLabel = "/blog?view=drafts", "Drafts"
+	}
 	contentSB.WriteString(`<div id="blog" class="editorial-page"><a class="editorial-back" href="` + back + `">← ` + backLabel + `</a>`)
 	contentSB.WriteString(`<div class="metadata-row"><time datetime="` + post.CreatedAt.Format(time.RFC3339) + `">` + post.CreatedAt.Format("2 January 2006") + `</time><span>` + authorLink + `</span></div>`)
 	if !post.UpdatedAt.IsZero() {
 		contentSB.WriteString(`<p class="text-muted text-sm">Updated ` + post.UpdatedAt.Format("2 January 2006") + `</p>`)
 	}
 	if post.Private {
-		contentSB.WriteString(`<p class="text-muted text-sm">Private · Admins only</p>`)
+		contentSB.WriteString(`<p class="text-muted text-sm">Private draft</p>`)
 	}
-	if !post.Editorial {
+	if !post.Editorial && !post.Private {
 		contentSB.WriteString(`<p class="editorial-notice">` + backLabel + ` · This post is not part of Micro’s editorial publication.</p>`)
 	}
 	contentSB.WriteString(`<article class="reader-content">` + contentHTML + `</article><div class="reading-actions">`)
@@ -1815,7 +1827,11 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	// Run async LLM-based content moderation (non-blocking)
 	event.Published("post", postID, title, content)
 
-	http.Redirect(w, r, returnTo(r.FormValue("return")), http.StatusSeeOther)
+	destination := returnTo(r.FormValue("return"))
+	if private {
+		destination = "/blog?view=drafts"
+	}
+	http.Redirect(w, r, destination, http.StatusSeeOther)
 }
 
 // CommentHandler handles comment submissions
