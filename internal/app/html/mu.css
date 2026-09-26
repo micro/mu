@@ -334,10 +334,14 @@ main{overflow-wrap:anywhere}
 :is(.card-grid,.directory-list)>*{min-width:0;margin:0}
 .card-grid>:is(h2,.section-heading){grid-column:1/-1}
 :is(.card-grid,.directory-list)>:is(.card,.section-card,.record-card,.record-editor,.page-section){margin:0}
-.directory-row{display:flex;align-items:flex-start;gap:12px;min-width:0;height:100%}
-.directory-content{display:block;flex:1;min-width:0;text-decoration:none}
+.directory-row{display:flex;align-items:stretch;align-self:stretch;gap:12px;min-width:0;height:100%}
+.directory-content{display:flex;flex-direction:column;flex:1;min-width:0;text-decoration:none}
 .directory-content h3{margin:0 0 4px}
 .directory-content .form-actions{margin-top:8px}
+.directory-content>.directory-actions{margin-top:auto;padding-top:16px}
+.directory-row>.directory-icon{align-self:flex-start}
+.card-summary{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;line-height:1.5;max-height:4.5em}
+.directory-content>p.card-summary{min-height:4.5em;margin-block:8px}
 .directory-heading{display:flex;align-items:center;gap:8px;font-weight:500}
 .directory-heading img,.directory-icon{width:24px;height:24px;flex:none;object-fit:contain}
 .directory-description{display:block;color:#666;margin-top:4px}
@@ -477,7 +481,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 
 /* Shared canvas: available width, readable prose, vertical records,
    wrapping metadata/actions, and bounded media. New pages use these primitives. */
-:root{--page-gutter:clamp(24px,4vw,64px);--section-gap:24px;--section-padding:24px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
+:root{--page-gutter:clamp(48px,8vw,128px);--section-gap:24px;--section-padding:24px;--reading-width:760px;--form-width:640px;--border:#dedede;--surface:#f7f7f7;--text-primary:#222;--text-secondary:#666;--link-color:#222}
 .document-page main{width:calc(100% - 2*var(--page-gutter));max-width:none}
 .document-page.public-page main{max-width:var(--reading-width)}
 .document-page main>:is(p,ul,ol){max-width:var(--reading-width)}
@@ -1241,7 +1245,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
  .signed-in>.page>header{min-height:60px;padding:8px var(--page-gutter)}
  .signed-in.keyboard-open{padding-bottom:0}
  .keyboard-open>.runtime-navigation{display:none}
- :root{--page-gutter:20px;--section-gap:20px;--section-padding:16px}
+ :root{--page-gutter:40px;--section-gap:20px;--section-padding:16px}
  .card-grid,.directory-list{grid-template-columns:minmax(0,1fr)}
  .section-heading{margin-top:24px}
  .assistant-workspace .conversation.is-active .prompt-panel{padding-bottom:0}
