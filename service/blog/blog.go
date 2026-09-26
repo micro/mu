@@ -557,7 +557,7 @@ func updateCacheUnlocked() {
 			previewTimeLabel = "Updated " + app.TimeAgo(previewTime)
 		}
 
-		item := fmt.Sprintf(`<div class="post-item record-card">
+		item := fmt.Sprintf(`<div class="post-item">
 		%s
 		<h3><a href="/blog/post?id=%s">%s</a></h3>
 		<div class="metadata-row"><span data-timestamp="%d">%s</span> · %s%s</div>
