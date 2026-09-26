@@ -17,6 +17,10 @@ import (
 // and cancel. GET with an Accept: application/json header returns the caller's
 // upcoming events as JSON.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.FormValue("action") == "checkin-schedule" {
+		checkinScheduleHandler(w, r)
+		return
+	}
 	if r.Method == http.MethodPost && r.FormValue("action") == "research-schedule" {
 		researchScheduleHandler(w, r)
 		return
@@ -58,7 +62,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet && r.URL.Query().Get("view") == "brief" && app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]any{"brief": Brief(owner)})
+		app.RespondJSON(w, map[string]any{"brief": Brief(owner), "checkin": Checkin(owner)})
 		return
 	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
@@ -80,7 +84,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Query().Get("view") == "brief" {
-		app.Respond(w, r, app.Response{Title: "Morning Brief", HTML: briefScheduleHTML(owner, auth.CSRFToken(r))})
+		app.Respond(w, r, app.Response{Title: "Brief and check-in", HTML: briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
 	}
 
@@ -96,7 +100,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
-	b.WriteString(`<nav class="form-actions"><a href="/events?view=brief">Brief and plan</a><a href="/events?view=research">Research</a></nav>`)
+	b.WriteString(`<nav class="form-actions"><a href="/events?view=brief">Brief and check-in</a><a href="/events?view=research">Research</a></nav>`)
 
 	up := Upcoming(owner)
 	ext := Overview(owner, 0)
@@ -108,7 +112,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div class="compact-list">`)
 		for _, row := range mergedRows(up, ext) {
 			if row.Event != nil {
-				if row.Event.Kind != "brief" {
+				if row.Event.Kind != "brief" && row.Event.Kind != "checkin" {
 					b.WriteString(eventRow(row.Event, csrf))
 				}
 			} else {

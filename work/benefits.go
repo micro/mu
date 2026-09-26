@@ -33,7 +33,7 @@ func benefitRun(r request) bool {
 			break
 		}
 	}
-	if schedule == nil || (schedule.Kind != "brief" && schedule.Kind != "research") {
+	if schedule == nil || (schedule.Kind != "brief" && schedule.Kind != "research" && schedule.Kind != "checkin") {
 		return false
 	}
 	if schedule.Paused {
@@ -46,7 +46,9 @@ func benefitRun(r request) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	var answer string
-	if schedule.Kind == "research" {
+	if schedule.Kind == "checkin" {
+		answer = checkinMessage(r.Account, schedule, time.Now())
+	} else if schedule.Kind == "research" {
 		if auth.Plan(r.Account) != "pro" {
 			return true
 		}

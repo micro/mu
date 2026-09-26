@@ -252,7 +252,7 @@ func TestProResumeAndPaymentPortal(t *testing.T) {
 		t.Fatal("resume changed allowance or failed")
 	}
 	page := subscriptionSummary(r, acc)
-	for _, text := range []string{">Pro<", "4,000 / 4,000", "Renews", "Payment details", "Cancel renewal", "Brief and plan"} {
+	for _, text := range []string{">Pro<", "4,000 / 4,000", "Renews", "Payment details", "Cancel renewal", "Brief and check-in"} {
 		if !strings.Contains(page, text) {
 			t.Fatalf("Account missing %s", text)
 		}

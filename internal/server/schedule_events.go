@@ -64,7 +64,7 @@ func watchScheduleEvents() {
 					return err
 				}
 				if e.Type == event.ScheduleDue {
-					if e.Data["kind"] == "brief" {
+					if e.Data["kind"] == "brief" || e.Data["kind"] == "checkin" {
 						return nil
 					}
 					title, _ := e.Data["title"].(string)

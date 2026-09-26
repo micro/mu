@@ -231,6 +231,12 @@ func fireDue() {
 			continue
 		}
 		if !e.Fired && !e.Paused && !e.When.After(now) {
+			// A missed morning check-in must not arrive at night after a restart.
+			if e.Kind == "checkin" && now.Sub(e.When) > time.Hour {
+				rescheduleLocked(e, now)
+				changed = true
+				continue
+			}
 			if e.Kind == "research" && auth.Plan(e.Owner) != "pro" {
 				e.Paused = true
 				changed = true
