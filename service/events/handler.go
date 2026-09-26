@@ -17,6 +17,10 @@ import (
 // and cancel. GET with an Accept: application/json header returns the caller's
 // upcoming events as JSON.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.FormValue("action") == "research-schedule" {
+		researchScheduleHandler(w, r)
+		return
+	}
 	if r.Method == http.MethodPost && r.FormValue("action") == "brief-schedule" {
 		briefScheduleHandler(w, r)
 		return
@@ -71,6 +75,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Query().Get("view") == "research" {
+		app.Respond(w, r, app.Response{Title: "Research", HTML: researchHTML(owner, auth.CSRFToken(r))})
+		return
+	}
 	if r.URL.Query().Get("view") == "brief" {
 		app.Respond(w, r, app.Response{Title: "Morning Brief", HTML: briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
@@ -88,7 +96,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
-	b.WriteString(`<a href="/events?view=brief">Morning Brief</a>`)
+	b.WriteString(`<nav class="form-actions"><a href="/events?view=brief">Brief and plan</a><a href="/events?view=research">Research</a></nav>`)
 
 	up := Upcoming(owner)
 	ext := Overview(owner, 0)

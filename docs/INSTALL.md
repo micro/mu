@@ -660,15 +660,26 @@ spending limit.
 
 ### Monthly subscriptions
 
-Pro defaults to $40/month with 4,000 monthly usage credits when
+Starter defaults to $12/month with 1,000 monthly usage credits; Pro defaults to
+$45/month with 4,000 monthly usage credits when
 `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are configured. Override
-`SUBSCRIPTION_CENTS` and `SUBSCRIPTION_CREDITS` together for different terms;
-set `SUBSCRIPTION_CENTS=0` to stop new subscriptions. Existing subscriptions
+`STARTER_CENTS` and `STARTER_CREDITS`, or `SUBSCRIPTION_CENTS` and
+`SUBSCRIPTION_CREDITS`, together for different terms;
+set the corresponding cents value to 0 to stop new subscriptions for that tier. Existing subscriptions
 retain their purchased price and allowance. Monitor provider spend as usage grows.
 A publishable key is not required for hosted Checkout. Account and Pricing use
 these same settings. Stripe creates the recurring product/price during Checkout;
 no manual catalogue setup is needed. Changed settings apply to new subscribers,
 not existing contracts.
+
+Free includes a weekly brief, Starter a daily brief, and Pro adds an optional
+daily plan in the same delivery and one recurring research topic. All schedules
+are opt-in in Events. Brief and plan use bounded context with no tool calls and
+do not spend credits. Research uses a metered search and summary, with a visible
+per-check credit limit; unchanged results skip the summary and delivery. Benefits
+follow the paid period even if monthly credits are exhausted or renewal canceled.
+Downgrades enforce weekly briefs and pause Pro research. No service surcharge is
+added. Operator margins must cover processing and included generation costs.
 
 Before the first subscription, Checkout finds this site's enabled
 `https://<your domain>/stripe/webhook` endpoint and adds the events below,

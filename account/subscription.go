@@ -24,19 +24,29 @@ import (
 // Plan is the recurring allowance. Operators can override the launch terms;
 // changing them only affects new subscriptions, never existing contracts.
 type Plan struct {
-	Cents   int `json:"cents"`
-	Credits int `json:"credits"`
+	Tier    string `json:"tier"`
+	Name    string `json:"name"`
+	Cents   int    `json:"cents"`
+	Credits int    `json:"credits"`
 }
 
-func MonthlyPlan() (Plan, bool) {
-	priceText, creditText := settings.Get("SUBSCRIPTION_CENTS"), settings.Get("SUBSCRIPTION_CREDITS")
+func MonthlyPlan() (Plan, bool) { return SubscriptionPlan("pro") }
+
+func SubscriptionPlan(tier string) (Plan, bool) {
+	prefix, cents, credits, name := "SUBSCRIPTION", "4500", "4000", "Pro"
+	if tier == "starter" {
+		prefix, cents, credits, name = "STARTER", "1200", "1000", "Starter"
+	} else if tier != "pro" {
+		return Plan{}, false
+	}
+	priceText, creditText := settings.Get(prefix+"_CENTS"), settings.Get(prefix+"_CREDITS")
 	if priceText == "" && creditText == "" {
-		priceText, creditText = "4000", "4000"
+		priceText, creditText = cents, credits
 	}
 	price, e1 := strconv.Atoi(priceText)
-	credits, e2 := strconv.Atoi(creditText)
-	p := Plan{Cents: price, Credits: credits}
-	return p, e1 == nil && e2 == nil && price >= 100 && price <= 100000 && credits > 0 && credits <= 1000000 && TopUpConfigured() && stripeWebhook() != ""
+	allowance, e2 := strconv.Atoi(creditText)
+	p := Plan{Tier: tier, Name: name, Cents: price, Credits: allowance}
+	return p, e1 == nil && e2 == nil && price >= 100 && price <= 100000 && allowance > 0 && allowance <= 1000000 && TopUpConfigured() && stripeWebhook() != ""
 }
 
 // subscriptionMu serialises Stripe reconciliation as well as checkout creation.
@@ -50,6 +60,7 @@ const planMarker = "micro_monthly_v1"
 const stripeVersion = "2024-06-20"
 
 type subscription struct {
+	Tier           string `json:"tier,omitempty"`
 	AccountCreated string `json:"account_created"`
 	ID             string `json:"id,omitempty"`
 	Customer       string `json:"customer,omitempty"`
@@ -201,6 +212,9 @@ func invoiceGrant(i stripeInvoice) error {
 	if i.BillingReason != "subscription_create" && i.BillingReason != "subscription_cycle" {
 		return nil
 	}
+	if tier := meta["tier"]; tier != "" && tier != "starter" && tier != "pro" {
+		return errors.New("unknown subscription tier")
+	}
 	credits, e1 := strconv.Atoi(meta["monthly_credits"])
 	price, e2 := strconv.Atoi(meta["monthly_cents"])
 	if e1 != nil || e2 != nil || credits <= 0 || price < 100 || i.Currency != "usd" || i.Lines.HasMore || len(i.Lines.Data) != 1 {
@@ -213,7 +227,7 @@ func invoiceGrant(i stripeInvoice) error {
 	if !subscriptionOwner(meta) {
 		return nil
 	}
-	return grantMonthly(meta["user_id"], i.Subscription, i.ID, credits, line.Period.Start, line.Period.End)
+	return grantMonthly(meta["user_id"], i.Subscription, i.ID, credits, line.Period.Start, line.Period.End, normalizedTier(meta["tier"]))
 }
 
 // Reconcile under subscriptionMu. Get the invoice through our pinned API
@@ -266,6 +280,7 @@ func reconcileSubscription(ctx context.Context, id, owner string) error {
 	s.AccountCreated = remote.Metadata["account_created"]
 	s.ID, s.Customer, s.Status = remote.ID, remote.Customer, remote.Status
 	s.Cents, s.Credits = cents, credits
+	s.Tier = normalizedTier(remote.Metadata["tier"])
 	s.CancelAtEnd, s.PeriodEnd = remote.CancelAtEnd, remote.PeriodEnd
 	s.PaymentURL = ""
 	if remote.LatestInvoice != "" {
@@ -295,13 +310,17 @@ type subscriptionCheckout struct {
 	Metadata     map[string]string `json:"metadata"`
 }
 
-func startSubscription(ctx context.Context, acc *auth.Account, origin string) (string, error) {
+func startSubscription(ctx context.Context, acc *auth.Account, origin string, tiers ...string) (string, error) {
 	subscriptionMu.Lock()
 	defer subscriptionMu.Unlock()
 	if subscriptionsLoadError != nil {
 		return "", errors.New("subscription records are unavailable")
 	}
-	plan, enabled := MonthlyPlan()
+	tier := "pro"
+	if len(tiers) > 0 {
+		tier = tiers[0]
+	}
+	plan, enabled := SubscriptionPlan(tier)
 	if !enabled {
 		return "", errors.New("subscriptions are not configured")
 	}
@@ -348,6 +367,9 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string) (s
 				return origin + "/account", nil
 			}
 			if session.Status == "open" {
+				if normalizedTier(s.Tier) != tier {
+					return "", errors.New("finish or wait for your previous checkout to expire before choosing another plan")
+				}
 				return session.URL, nil
 			}
 			if session.Status != "expired" {
@@ -362,6 +384,7 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string) (s
 		}
 		s.Attempt, s.AttemptAt = uuid.NewString(), time.Now().Unix()
 		s.AccountCreated = strconv.FormatInt(acc.Created.UnixNano(), 10)
+		s.Tier = tier
 		form := url.Values{
 			"mode": {"subscription"}, "payment_method_types[0]": {"card"},
 			"success_url": {origin + "/account/subscription?session_id={CHECKOUT_SESSION_ID}"}, "cancel_url": {origin + "/account"},
@@ -369,9 +392,11 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string) (s
 			"line_items[0][quantity]": {"1"}, "line_items[0][price_data][currency]": {"usd"},
 			"line_items[0][price_data][unit_amount]":               {strconv.Itoa(plan.Cents)},
 			"line_items[0][price_data][recurring][interval]":       {"month"},
-			"line_items[0][price_data][product_data][name]":        {"Micro Pro"},
+			"line_items[0][price_data][product_data][name]":        {"Micro " + plan.Name},
 			"line_items[0][price_data][product_data][description]": {fmt.Sprintf("%d monthly usage credits. Unused monthly credits expire. Optional prepaid top-ups.", plan.Credits)},
-			"metadata[user_id]":                                    {acc.ID}, "metadata[plan]": {planMarker},
+			"metadata[tier]":                    {tier},
+			"subscription_data[metadata][tier]": {tier},
+			"metadata[user_id]":                 {acc.ID}, "metadata[plan]": {planMarker},
 			"subscription_data[metadata][account_created]":  {s.AccountCreated},
 			"subscription_data[metadata][checkout_attempt]": {s.Attempt},
 			"subscription_data[metadata][user_id]":          {acc.ID}, "subscription_data[metadata][plan]": {planMarker},
@@ -387,6 +412,9 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string) (s
 		if err := saveSubscription(acc.ID, s); err != nil {
 			return "", err
 		}
+	}
+	if normalizedTier(s.Tier) != tier {
+		return "", errors.New("previous checkout needs reconciliation before choosing another plan")
 	}
 	form, err := url.ParseQuery(s.CheckoutForm)
 	if err != nil {

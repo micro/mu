@@ -98,6 +98,9 @@ type request struct {
 
 // run does the work and puts the answer where it belongs.
 func run(r request) {
+	if benefitRun(r) {
+		return
+	}
 	runWithQuery(r, agent.QueryWithOpts)
 }
 
@@ -411,7 +414,7 @@ func deliver(r request, answer string, err error) {
 	if e := scheduledBrief(r); e != nil {
 		isBrief = true
 		tag = "brief"
-		body += "\n\n---\n[Disable or manage your daily briefs](" + origin.Self() + "/events?view=brief)."
+		body += "\n\n---\n[Manage your brief and plan](" + origin.Self() + "/events?view=brief)."
 	}
 	messageID := "<" + uuid.NewString() + "@" + mail.ConfiguredDomain() + ">"
 	if r.EventID != "" {

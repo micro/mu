@@ -23,7 +23,7 @@ func TestProDefaultsAndSignupDestination(t *testing.T) {
 	t.Setenv("INVITE_ONLY", "false")
 	t.Setenv("GOOGLE_CLIENT_ID", "test")
 	t.Setenv("GOOGLE_CLIENT_SECRET", "test")
-	if p, ok := MonthlyPlan(); !ok || p.Cents != 4000 || p.Credits != 4000 {
+	if p, ok := MonthlyPlan(); !ok || p.Cents != 4500 || p.Credits != 4000 {
 		t.Fatalf("plan=%+v enabled=%v", p, ok)
 	}
 	t.Setenv("SUBSCRIPTION_CENTS", "5000")
@@ -39,13 +39,13 @@ func TestProDefaultsAndSignupDestination(t *testing.T) {
 	want := "/account?plan=pro#subscription"
 	r := httptest.NewRequest("GET", "/pricing", nil)
 	page := MonthlyPricingHTML(r)
-	if !strings.Contains(page, `href="/signup?redirect=`+url.QueryEscape(want)+`"`) || !strings.Contains(page, "$40/month") {
+	if !strings.Contains(page, `href="/signup?redirect=`+url.QueryEscape(want)+`"`) || !strings.Contains(page, "$45/month") {
 		t.Fatal("Pro purchase entry missing")
 	}
 	r = httptest.NewRequest("GET", "/signup?redirect="+url.QueryEscape(want), nil)
 	w := httptest.NewRecorder()
 	Signup(w, r)
-	for _, entry := range []string{"Pro · $40/month", `action="/signup?redirect=`, `href="/login?redirect=`, `href="/oauth2/google?redirect=`} {
+	for _, entry := range []string{"Pro · $45/month", `action="/signup?redirect=`, `href="/login?redirect=`, `href="/oauth2/google?redirect=`} {
 		if !strings.Contains(w.Body.String(), entry) {
 			t.Fatalf("signup lost %s", entry)
 		}
@@ -252,7 +252,7 @@ func TestProResumeAndPaymentPortal(t *testing.T) {
 		t.Fatal("resume changed allowance or failed")
 	}
 	page := subscriptionSummary(r, acc)
-	for _, text := range []string{">Pro<", "4,000 / 4,000", "Renews", "Payment details", "Cancel renewal", "Daily briefs"} {
+	for _, text := range []string{">Pro<", "4,000 / 4,000", "Renews", "Payment details", "Cancel renewal", "Brief and plan"} {
 		if !strings.Contains(page, text) {
 			t.Fatalf("Account missing %s", text)
 		}

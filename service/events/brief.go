@@ -3,6 +3,7 @@ package events
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"mu/internal/auth"
 	"mu/internal/data"
 	"strings"
 	"time"
@@ -49,9 +50,10 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 	if err != nil {
 		return fmt.Errorf("choose a valid time")
 	}
-	if repeat != "daily" && repeat != "weekdays" {
-		return fmt.Errorf("choose daily or weekdays")
+	if repeat != "daily" && repeat != "weekdays" && repeat != "weekly" {
+		return fmt.Errorf("choose daily, weekdays or weekly")
 	}
+	repeat = BriefFrequency(owner, repeat)
 	if period != "morning" {
 		return fmt.Errorf("only the morning brief is available")
 	}
@@ -161,6 +163,7 @@ func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...st
 	}
 	e.Builtin = false // An explicit preference, not automatic enrollment.
 	e.Paused = !enabled
+	e.Repeat = BriefFrequency(owner, e.Repeat)
 	e.WorldNews = &news
 	e.Sequence++
 	if enabled && !e.When.After(time.Now()) {
@@ -188,4 +191,12 @@ func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...st
 	}
 	events[e.ID] = &e
 	return nil
+}
+
+// Free accounts receive one included brief each week.
+func BriefFrequency(owner, requested string) string {
+	if auth.Plan(owner) == "free" {
+		return "weekly"
+	}
+	return requested
 }

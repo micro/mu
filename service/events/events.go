@@ -22,17 +22,22 @@ import (
 
 // Event is a scheduled reminder owned by a single user.
 type Event struct {
-	WorldNews *bool     `json:"world_news,omitempty"`
-	Builtin   bool      `json:"builtin,omitempty"`
-	Kind      string    `json:"kind,omitempty"`
-	Zone      string    `json:"zone,omitempty"`
-	Paused    bool      `json:"paused,omitempty"`
-	Sequence  int       `json:"sequence,omitempty"`
-	ID        string    `json:"id"`
-	Owner     string    `json:"owner"`
-	Title     string    `json:"title"`
-	When      time.Time `json:"when"`
-	Note      string    `json:"note,omitempty"`
+	ResearchDigest string    `json:"research_digest,omitempty"`
+	ResearchReport string    `json:"research_report,omitempty"`
+	Plan           bool      `json:"plan,omitempty"`
+	LastBrief      time.Time `json:"last_brief,omitempty"`
+	MaxCredits     int       `json:"max_credits,omitempty"`
+	WorldNews      *bool     `json:"world_news,omitempty"`
+	Builtin        bool      `json:"builtin,omitempty"`
+	Kind           string    `json:"kind,omitempty"`
+	Zone           string    `json:"zone,omitempty"`
+	Paused         bool      `json:"paused,omitempty"`
+	Sequence       int       `json:"sequence,omitempty"`
+	ID             string    `json:"id"`
+	Owner          string    `json:"owner"`
+	Title          string    `json:"title"`
+	When           time.Time `json:"when"`
+	Note           string    `json:"note,omitempty"`
 	// Minutes is how long the event lasts. Zero means the half hour the .ics
 	// export has always assumed, so events stored before this existed keep the
 	// meaning they were saved with.
@@ -226,6 +231,31 @@ func fireDue() {
 			continue
 		}
 		if !e.Fired && !e.Paused && !e.When.After(now) {
+			if e.Kind == "research" && auth.Plan(e.Owner) != "pro" {
+				e.Paused = true
+				changed = true
+				continue
+			}
+			if e.Kind == "brief" {
+				e.Repeat = BriefFrequency(e.Owner, e.Repeat)
+				if !e.LastBrief.IsZero() {
+					loc, err := time.LoadLocation(e.Zone)
+					if err != nil {
+						loc = time.UTC
+					}
+					days := 1
+					if auth.Plan(e.Owner) == "free" || e.Repeat == "weekly" {
+						days = 7
+					}
+					next := e.LastBrief.In(loc).AddDate(0, 0, days)
+					if now.Before(next) {
+						e.When = next
+						changed = true
+						continue
+					}
+				}
+				e.LastBrief = now
+			}
 			e.Fired = true
 			e.FiredAt = now
 			cp := *e

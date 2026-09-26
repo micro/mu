@@ -20,8 +20,8 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(app.Column())
 
-	description := "A personal assistant with built-in tools. Start free and pay for more usage when you need it."
-	b.WriteString(`<section class="plan-section section-stack"><h2>Start with Micro</h2><p>Ask your personal assistant to find information, make a plan or create something for you. Built-in services give Micro the tools to help, with information you create, share or choose to connect.</p><p>Start free, top up when you need more, or choose a monthly credit allowance.</p></section>`)
+	description := "A clearer day, a plan to follow, and help keeping up. Start free or choose a daily helping hand."
+	b.WriteString(`<section class="plan-section section-stack"><h2>Start with Micro</h2><p>Get a brief of what matters, work out what to do next, and keep up with the topics you care about.</p><p>Start free or make Micro part of your daily routine. You choose which scheduled updates to turn on.</p></section>`)
 	b.WriteString(`<section class="plan-section section-stack"><h2>Free</h2><p><strong>$0</strong></p>`)
 	if !account.PaymentsEnabled() {
 		b.WriteString(`<p>No usage charges on this instance.</p></section></div>`)
@@ -30,7 +30,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	messageCost := quota.OperationCost(quota.OpAgentRun)
 	_, _, sessionErr := auth.RequireSession(r)
-	b.WriteString(`<p>Try Micro with free credits. Its built-in tools are available from the start.</p><p>` + strconv.Itoa(account.SignupCredits) + ` credits when you sign up. No card required.</p>`)
+	b.WriteString(`<p>Ask questions, make plans and get help with everyday tasks.</p><p>` + strconv.Itoa(account.SignupCredits) + ` credits when you sign up. No card required.</p>`)
 	if daily := quota.DailyCredits(); daily > 0 {
 		b.WriteString(`<p>` + strconv.Itoa(daily) + ` free credits each day.</p>`)
 		if quota.DailyPoolCredits() > 0 {
@@ -40,7 +40,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	if sessionErr != nil {
 		b.WriteString(`<p><a class="btn" href="/signup">Create account</a></p>`)
 	}
-	b.WriteString(`</section><section class="plan-section section-stack"><h2>PAYG</h2><p>Pay as you go when you need more. No subscription.</p>`)
+	b.WriteString(`<p>A weekly brief is included. Top up when you need more usage, without a subscription.</p>`)
 	b.WriteString(`<p>1 credit = 1 US cent.</p><p>Top up in Account.</p>`)
 	if sessionErr == nil && account.TopUpConfigured() {
 		b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
@@ -63,7 +63,14 @@ func pricingHandlerJSON(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "private, no-store")
+	plans := []account.Plan{}
+	for _, tier := range []string{"starter", "pro"} {
+		if p, ok := account.SubscriptionPlan(tier); ok {
+			plans = append(plans, p)
+		}
+	}
 	json.NewEncoder(w).Encode(map[string]any{
+		"plans":    plans,
 		"payments": account.PaymentsEnabled(), "topup": account.TopUpConfigured(),
 		"question_cost": quota.OperationCost(quota.OpAgentRun), "welcome": account.SignupCredits,
 		"monthly": func() any {

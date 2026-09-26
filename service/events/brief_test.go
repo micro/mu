@@ -1,12 +1,16 @@
 package events
 
 import (
+	"mu/internal/auth"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestBriefSchedulePreservesIdentityAndPreferences(t *testing.T) {
+	old := auth.SubscriptionTier
+	auth.SubscriptionTier = func(string) string { return "starter" }
+	t.Cleanup(func() { auth.SubscriptionTier = old })
 	const owner = "brief_schedule_preferences_test"
 	if err := scheduleBrief(owner, "07:30", "Europe/London", "weekdays", "morning", false, false, false); err != nil {
 		t.Fatal(err)
