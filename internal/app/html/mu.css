@@ -1157,6 +1157,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 
 /* Section navigation stays on one scrollable row at every screen width. */
 .page-menu{display:flex;flex-wrap:nowrap;gap:8px 16px;max-width:100%;overflow-x:auto;margin:0 0 24px}
+.page-stack>.page-menu,.section-stack>.page-menu{margin-block:0}
 .page-menu a{flex:0 0 auto;white-space:nowrap;padding:4px 6px;border-radius:4px;text-decoration:none}
 .page-menu a:hover,.page-menu a[aria-current="page"]{background:#f3f3f3;text-decoration:none}
 .plan-section{padding:28px 0;border-top:1px solid #ddd;gap:12px}
