@@ -60,6 +60,7 @@ import (
 	"mu/service/docs"
 	"mu/service/events"
 	"mu/service/files"
+	"mu/service/groups"
 	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/news"
@@ -482,6 +483,7 @@ func wireHooks() {
 		stream.DeleteByAccount,
 		user.DeleteProfile,
 		mail.DeleteInbox,
+		groups.Forget,
 		chat.Forget,
 		func(id string) { account.DeleteCredits(id) },
 		app.ForgetAccountCosts,

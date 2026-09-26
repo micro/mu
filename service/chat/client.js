@@ -244,6 +244,7 @@ function initRoomChat() {
 
     const chatForm = document.getElementById('chat-form');
     if (chatForm) {
+      chatForm.hidden = !!currentRoomData.encrypted;
       chatForm.onsubmit = function(e) {
         e.preventDefault();
         sendRoomMessage(this);

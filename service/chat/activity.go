@@ -9,7 +9,7 @@ import (
 )
 
 func announceMessage(roomID string, message RoomMessage) {
-	if message.System || strings.TrimSpace(message.Content) == "" {
+	if isGroup(roomID) || message.System || strings.TrimSpace(message.Content) == "" {
 		return
 	}
 	link := "/chat?id=" + url.QueryEscape(roomID) + fmt.Sprintf("#message-%d", message.Timestamp.UnixNano())

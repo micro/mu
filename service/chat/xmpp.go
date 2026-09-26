@@ -154,6 +154,7 @@ func (socket) framed() bool { return false }
 
 // session is one connected client.
 type session struct {
+	writeMu  sync.Mutex
 	conn     carrier
 	dec      *xml.Decoder
 	acc      *auth.Account
@@ -187,6 +188,8 @@ func (s *session) bare() string {
 // needs the whole stanza in one call: a stanza split across two writes is two
 // messages, and RFC 7395 says one message is one stanza.
 func (s *session) send(format string, args ...interface{}) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	_ = s.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 	return s.conn.writeStanza(fmt.Sprintf(format, args...))
 }
@@ -320,6 +323,7 @@ func join(s *session) {
 }
 
 func leave(s *session) {
+	leaveMUC(s)
 	connectedMu.Lock()
 	defer connectedMu.Unlock()
 	list := connected[s.bare()]

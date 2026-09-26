@@ -19,6 +19,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/internal/group"
 )
 
 //go:embed *.json
@@ -229,6 +230,10 @@ type Room struct {
 
 // RoomMessage represents a message in a chat room
 type RoomMessage struct {
+	ID        string     `json:"id,omitempty"`
+	OMEMO     string     `json:"omemo,omitempty"`
+	WireID    string     `json:"wire_id,omitempty"`
+	Nick      string     `json:"nick,omitempty"`
 	transport string     // Ingress fact; tool/API posts must not recursively start an agent.
 	ack       chan error // optional acknowledgement after durable room storage
 	UserID    string     `json:"username"`
@@ -287,7 +292,7 @@ func loadRoomMessages(roomID string) []RoomMessage {
 		return nil
 	}
 
-	if len(messages) > 20 {
+	if !isGroup(roomID) && len(messages) > 20 {
 		messages = messages[len(messages)-20:]
 	}
 	app.Log("chat", "Loaded %d messages for room %s", len(messages), roomID)
@@ -479,6 +484,13 @@ func getOrCreateRoom(id string) *Room {
 
 	// Fetch item details based on type (OUTSIDE roomsMutex to avoid deadlocks)
 	switch itemType {
+	case "group":
+		g, ok := group.Details(itemID)
+		if !ok {
+			return nil
+		}
+		room.Title = g.Name
+		room.URL = "/groups?id=" + itemID
 	case "dm":
 		// A conversation between people has no item behind it to look up. Its
 		// subject is who is in it, which membership already knows — see
@@ -704,6 +716,9 @@ func getOrCreateRoom(id string) *Room {
 
 	// Subscribe to index complete events via channel
 	go func() {
+		if isGroup(room.ID) {
+			return
+		}
 		sub := event.Subscribe(event.IndexComplete)
 		defer sub.Close()
 
@@ -833,7 +848,10 @@ func (room *Room) broadcastUserList() {
 	}
 
 	room.mutex.RLock()
-	for conn := range room.Clients {
+	for conn, client := range room.Clients {
+		if !Member(room.ID, client.UserID) {
+			continue
+		}
 		conn.WriteJSON(userListMsg)
 	}
 	room.mutex.RUnlock()
@@ -864,6 +882,10 @@ func (room *Room) run() {
 			// registration so live broadcasts cannot race or overtake the replay.
 			failed := false
 			for _, msg := range room.Messages {
+				if !Member(room.ID, client.UserID) {
+					failed = true
+					break
+				}
 				client.Conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 				if err := client.Conn.WriteJSON(msg); err != nil {
 					failed = true
@@ -907,6 +929,12 @@ func (room *Room) run() {
 			room.broadcastUserList()
 
 		case message := <-room.Broadcast:
+			if isGroup(room.ID) {
+				message.ID = newID()
+				if message.WireID == "" {
+					message.WireID = message.ID
+				}
+			}
 			err := room.keepMessage(message)
 			if message.ack != nil {
 				message.ack <- err
@@ -916,12 +944,17 @@ func (room *Room) run() {
 				continue
 			}
 			announceMessage(room.ID, message)
+			broadcastMUC(room.ID, message)
 
 			// Snapshot under the lock; a failed or deleted connection can then be
 			// removed safely without keeping readers behind network IO.
 			room.mutex.RLock()
 			var clients []*websocket.Conn
-			for conn := range room.Clients {
+			for conn, client := range room.Clients {
+				if !Member(room.ID, client.UserID) {
+					conn.Close()
+					continue
+				}
 				clients = append(clients, conn)
 			}
 			room.mutex.RUnlock()
@@ -940,6 +973,14 @@ func (room *Room) run() {
 
 // handleWebSocket handles WebSocket connections for chat rooms
 func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
+	if isGroup(room.ID) {
+		origin, err := url.Parse(r.Header.Get("Origin"))
+		if err != nil || (r.Header.Get("Origin") != "" && !strings.EqualFold(origin.Host, r.Host)) {
+			http.Error(w, "Invalid origin", http.StatusForbidden)
+			return
+		}
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		app.Log("chat", "WebSocket upgrade error: %v", err)
@@ -953,6 +994,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 		return
 	}
 
+	conn.SetReadLimit(65536)
 	client := &Client{
 		Conn:   conn,
 		UserID: acc.ID,
@@ -1005,6 +1047,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 func Load() {
 	// Who is in which private room, before anything can be asked for one.
 	loadPrivate()
+	watchGroups()
 
 	// This service's own record, the way service/mail loads its mailbox.
 	LoadStore()
@@ -1068,6 +1111,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// confirms that asim and henrik are talking, which is most of what there was
 	// to learn.
 	if Private(roomID) {
+		w.Header().Set("Cache-Control", "private, no-store")
 		_, acc, err := auth.RequireSession(r)
 		if err != nil || !Member(roomID, acc.ID) {
 			app.NotFound(w, r, "no room here by that name")
@@ -1214,6 +1258,9 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 		return
 	}
 
+	if isGroup(roomID) {
+		roomData["title"] = groupTitle(roomID)
+	}
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]interface{}{"room": roomData})
 		return
@@ -1243,6 +1290,18 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	// no ordering to get right and nothing to leak into the next page. json
 	// escapes < as <, so a room title cannot close the tag.
 	about := aboutRoom(roomData)
+	if isGroup(roomID) {
+		g, _ := group.Details(groupID(roomID))
+		about = `<a href="/groups?id=` + g.ID + `">Group settings</a>`
+		if g.Encrypted {
+			guestNotice += `<p class="notice">This group uses end-to-end encryption. Read and send messages in your XMPP client; the web cannot decrypt them.</p>`
+			roomData["encrypted"] = true
+			roomJSON, _ = json.Marshal(roomData)
+		} else {
+			guestNotice += `<p class="text-muted">Private group chat. Messages are stored by Micro; personal notes and conversations are not shared.</p>`
+		}
+		guestNotice += `<p><a href="xmpp:` + htmlpkg.EscapeString(mucJID(roomID)) + `?join">Open in XMPP</a> · <span>` + htmlpkg.EscapeString(mucJID(roomID)) + `</span></p>`
+	}
 
 	content := fmt.Sprintf(Template, channels(roomID)+guestNotice, about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
@@ -1489,6 +1548,9 @@ func conversations(account string) []conversation {
 			}
 		}
 		title := strings.Join(who, ", ")
+		if isGroup(id) {
+			title = groupTitle(id)
+		}
 		if title == "" {
 			// A room with nobody else in it. Reachable if the other member was
 			// deleted; the room is still yours to read.
