@@ -28,12 +28,19 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, app.ConsoleHTML("Micro", landingHTML(), nil))
 }
 
-// Keep the public front door compact, with details on Pricing and Services.
+// Explain the everyday outcomes and available context before sending visitors
+// to Pricing or the full service directory.
 func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant for your everyday life.</p>
-<p>Catch up on what matters, make a plan and get things done.</p>
+<p>Spend less time looking things up and keeping track of everything.</p>
+<dl class="landing-capabilities">
+<div><dt>Brief</dt><dd>Catch up on your schedule, outstanding tasks and the news in one brief.</dd></div>
+<div><dt>Plan</dt><dd>Find time in your day, set reminders and turn a goal into next steps.</dd></div>
+<div><dt>Research</dt><dd>Look things up, compare options and save useful findings, with links to sources.</dd></div>
+</dl>
+<p class="landing-access">Web search, news, weather and maps are built in. Micro works with the notes, files, mail and tasks you keep here. Connect Google Calendar to include your calendar too.</p>
 <div class="form-actions"><a class="btn landing-primary" href="/pricing">Get started</a></div>
 <a class="landing-services" href="/services">Explore services</a>
 </section>`
