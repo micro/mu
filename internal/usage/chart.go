@@ -263,7 +263,7 @@ const CSS = `<style>
 .traffic-bar:hover{opacity:1}
 .traffic-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px}
 .traffic-drill{margin-top:16px}
-.traffic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 16px}
+.traffic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--section-gap)}
 .traffic-rows{display:flex;flex-direction:column}
 .traffic-row{position:relative;display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:3px;font-size:13px;color:inherit;text-decoration:none}
 .traffic-rowbar{position:absolute;left:0;top:0;bottom:0;background:var(--hover-background);border-radius:3px;z-index:0}

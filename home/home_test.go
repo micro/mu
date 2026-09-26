@@ -37,7 +37,7 @@ func TestHomeOverviewIsPrivateAndDoesNotRepeatDailyBrief(t *testing.T) {
 			t.Fatalf("incorrect overview at %s: %d", path, w.Code)
 		}
 		if path == "/home" {
-			for _, want := range []string{`data-path="/agent/micro"`, `Continue: My little app`, `href="/docs"`, `href="/services"`, `aria-label="Main navigation"`} {
+			for _, want := range []string{`data-path="/agent/micro"`, `Continue: My little app`, `href="/services"`, `aria-label="Main navigation"`} {
 				if !strings.Contains(body, want) {
 					t.Fatalf("missing %q", want)
 				}

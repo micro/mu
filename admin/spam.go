@@ -299,9 +299,9 @@ func spamSettings() string {
 				<td><strong>Score Threshold</strong></td>
 				<td>%d</td>
 				<td>
-					<form method="POST" class="form-action d-inline">
+					<form method="POST" class="form-action">
 						<input type="hidden" name="action" value="set_threshold">
-						<input type="number" name="value" value="%d" min="1" max="100" class="w-60">
+						<input type="number" name="value" value="%d" min="1" max="100" aria-label="Score threshold">
 						<button type="submit">Set</button>
 					</form>
 				</td>

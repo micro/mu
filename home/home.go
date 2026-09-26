@@ -138,7 +138,6 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
-	right.WriteString(`<section class="record-card"><div class="section-card-head"><h2>Saved items</h2></div><nav class="form-actions" aria-label="Saved items"><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a><a href="/home/apps">My apps</a></nav></section>`)
 	if len(snapshot.apps) > 0 {
 		right.WriteString(`<section class="record-card"><div class="section-card-head"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
 		for i, a := range snapshot.apps {

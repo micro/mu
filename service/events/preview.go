@@ -36,7 +36,7 @@ func Preview(owner string, external []External) string {
 			label = when.Format("Mon 2 Jan") + ", all day"
 			stamp = ""
 		}
-		b.WriteString(`<a href="` + html.EscapeString(href) + `" class="link compact-list-item"><span>` + html.EscapeString(title) + `</span><small class="text-muted"><time datetime="` + when.Format(time.RFC3339) + `"` + stamp + `>` + html.EscapeString(label) + `</time></small></a>`)
+		b.WriteString(`<a href="` + html.EscapeString(href) + `" class="link compact-list-item"><span>` + html.EscapeString(title) + `</span><small class="text-muted event-date"><time datetime="` + when.Format(time.RFC3339) + `"` + stamp + `>` + html.EscapeString(label) + `</time></small></a>`)
 		count++
 		if count == PreviewLimit {
 			break

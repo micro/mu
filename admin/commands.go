@@ -27,7 +27,7 @@ func Command(r *http.Request, input string) (any, error) {
 	}
 	words := strings.Fields(input)
 	if len(words) == 1 {
-		return []string{"admin logs", "admin config list", "admin config set KEY value", "admin users", "admin alerts", "admin status", "admin server", "admin backup", "admin moderate", "admin spam", "admin usage", "admin oauth", "admin work ID"}, nil
+		return []string{"admin logs", "admin config list", "admin config set KEY value", "admin users", "admin alerts", "admin status", "admin server", "admin backup", "admin flagged", "admin spam", "admin usage", "admin oauth", "admin work ID"}, nil
 	}
 	if len(words) == 3 && strings.EqualFold(words[1], "logs") {
 		switch strings.ToLower(words[2]) {
@@ -59,7 +59,7 @@ func Command(r *http.Request, input string) (any, error) {
 			return map[string]any{"status": app.InternalStatus(), "stores": data.Stores()}, nil
 		case "backup":
 			return backup.List(), nil
-		case "moderate":
+		case "flagged", "moderate":
 			return flag.All(), nil
 		case "spam":
 			return map[string]any{"filter": mail.GetSpamFilter(), "blocklist": mail.GetBlocklist()}, nil

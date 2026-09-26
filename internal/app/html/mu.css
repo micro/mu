@@ -733,7 +733,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .command-page .composer button{margin:0;border:0;background:#f4f4f4;border-radius:4px}
 
 
-#profile-status{margin-block:16px;gap:8px}
+#profile-status{margin:0;gap:4px;max-width:var(--reading-width)}
 #profile-status .form-actions{align-items:center}
 #profile-status input[name="status"]{flex:1 1 180px;min-width:0;max-width:100%}
 
@@ -1246,7 +1246,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
  .signed-in>.page>header{min-height:60px;padding:8px var(--page-gutter)}
  .signed-in.keyboard-open{padding-bottom:0}
  .keyboard-open>.runtime-navigation{display:none}
- :root{--page-gutter:40px;--section-gap:20px;--section-padding:16px}
+ :root{--page-gutter:16px;--section-gap:20px;--section-padding:16px}
  .card-grid,.directory-list{grid-template-columns:minmax(0,1fr)}
  .section-heading{margin-top:24px}
  .assistant-workspace .conversation.is-active .prompt-panel{padding-bottom:0}
@@ -1313,3 +1313,20 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .status-row{display:grid;grid-template-columns:7rem minmax(0,1fr) auto;align-items:start;gap:12px;padding-block:12px;border-bottom:1px solid var(--border)}
 .status-row>*{min-width:0;overflow-wrap:anywhere}
 @media(max-width:700px){.status-row{grid-template-columns:5rem minmax(0,1fr)}.status-row>:last-child{grid-column:2;font-size:.8rem;color:var(--text-muted)}}
+
+/* Linked directory cards include their padding; pin controls remain independent. */
+.directory-card{position:relative}
+.directory-card>a.directory-content::after{content:"";position:absolute;inset:0;border-radius:inherit}
+.directory-card:has(>a:hover),.directory-card:has(>a:focus-visible){background:var(--surface)}
+.directory-card>a.directory-content:is(:hover,:focus-visible){background:transparent;box-shadow:none}
+.directory-card>.pin-form{position:relative;z-index:1}
+.directory-card[hidden]{display:none}
+.compact-list-item>.event-date{margin-left:auto;text-align:right;flex-shrink:0;max-width:50%}
+
+.form-action>input[type="number"]:not([type=hidden]){width:5rem;flex:none}
+
+.form-action>button{flex-shrink:0;white-space:nowrap}
+.collection-item>.directory-content>.directory-heading{flex-wrap:wrap}
+.page-stack>.card{margin-block:0}
+
+.collection-item>.action-menu[open]{grid-column:1/-1}

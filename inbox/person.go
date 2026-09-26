@@ -138,9 +138,9 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p class="ib-person-sub">` + html.EscapeString(handle) + `</p>`)
 	b.WriteString(personFacts(them))
 	if you {
-		b.WriteString(app.Section("Status", statusForm(r, acc.ID), app.Note("A short update other people can see on your profile.")))
+		b.WriteString(statusForm(r, acc.ID))
 	} else if status := user.Status(them.ID); status != "" {
-		b.WriteString(app.Section("Status", `<p>`+html.EscapeString(status)+`</p>`))
+		b.WriteString(`<p class="text-muted">` + html.EscapeString(status) + `</p>`)
 	}
 	// New message belongs on a page that already has one.
 	//

@@ -59,7 +59,7 @@ func Load() {
 			}
 			// One goroutine per arrival: this is a model call and the
 			// subscription channel is small and drops when it is full. Same
-			// reason agent/moderate and agent/mail do it.
+			// reason agent/flagged and agent/mail do it.
 			go judge(account, id, from)
 		}
 	}()

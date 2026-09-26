@@ -42,6 +42,7 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 	sb.WriteString(usage.CSS)
+	sb.WriteString(`<div class="page-stack">`)
 	sb.WriteString(trafficTabs(spend))
 	if spend {
 		sb.WriteString(spendCard())
@@ -49,6 +50,7 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 		// agentHealthCard, and agent/outcome.go for why this had no reader
 		// until now.
 		sb.WriteString(agentHealthCard())
+		sb.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{Title: "Spend",
 			Description: "What this instance spends on third parties", HTML: sb.String()})
 		return
@@ -104,6 +106,7 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 
 	usage.Table(&sb, "Surface", usage.Top(win.Res, win.Points, usage.BySurface, 10))
 	usage.Table(&sb, "HTTP responses", usage.Top(win.Res, win.Points, usage.ByOutcome, 20))
+	sb.WriteString(`</div><div class="card">`)
 	usage.Stat(&sb, "Model calls (selected window)", usage.ModelsOver(win.Res, win.Points))
 	sb.WriteString(`<p class="text-sm text-muted">HTTP response and model counters start with this update. HTTP counts include rejected requests; tool counts are separate. A 2xx response means HTTP success, not necessarily application success.</p>`)
 
@@ -125,7 +128,7 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sb.WriteString(`<p class="text-sm text-muted">Counts only — no request is stored. ` +
-		`Minutes are kept for 2 hours, hours for 7 days, days for 90.</p>`)
+		`Minutes are kept for 2 hours, hours for 7 days, days for 90.</p></div>`)
 
 	app.Respond(w, r, app.Response{Title: "Usage",
 		Description: "What this instance is being asked to do", HTML: sb.String()})

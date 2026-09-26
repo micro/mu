@@ -96,7 +96,7 @@ const (
 	// services to a fourth, and moderation for the whole instance silently off
 	// if that fourth one ever failed to load.
 	//
-	// Now they say what happened and stop. agent/moderate subscribes.
+	// Now they say what happened and stop. agent/flagged subscribes.
 	//
 	// Data: kind (the content type — "post", "social", "app"), id, title, text.
 	ContentPublished = "content_published"
