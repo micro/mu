@@ -31,18 +31,33 @@ func features() []string {
 		nsDisco,
 		nsDiscoItem,
 		nsMAM,
+		nsPubsub + "#publish-options",
+		nsPubsub + "#access-open",
+		nsPubsub + "#persistent-items",
+		nsPubsub + "#retrieve-items",
+		nsPubsub + "#publish",
 	}
 }
 
 // disco answers "what can you do".
 func (s *session) disco(st stanza) {
+	target := strings.ToLower(bareOf(st.To))
+	if target == "" {
+		target = Domain()
+	}
 	var b strings.Builder
 	b.WriteString(`<iq type='result' id='` + xmlAttr(st.ID) + `' from='` +
-		xmlAttr(Domain()) + `' to='` + xmlAttr(s.jid()) + `'>`)
+		xmlAttr(target) + `' to='` + xmlAttr(s.jid()) + `'>`)
 	b.WriteString(`<query xmlns='` + nsDisco + `'>`)
 	// "im" rather than anything cleverer: this is an instant messaging server,
 	// and a client uses the identity to decide what icon to draw.
-	b.WriteString(`<identity category='server' type='im' name='Mu'/>`)
+	if target == agentJID() {
+		b.WriteString(`<identity category="client" type="bot" name="Micro"/><feature var="` + omemoDevices + `+notify"/>`)
+	} else if strings.Contains(target, "@") {
+		b.WriteString(`<identity category="pubsub" type="pep" name="Micro"/>`)
+	} else {
+		b.WriteString(`<identity category="server" type="im" name="Micro"/>`)
+	}
 	for _, f := range features() {
 		b.WriteString(`<feature var='` + f + `'/>`)
 	}

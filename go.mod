@@ -1,6 +1,6 @@
 module mu
 
-go 1.26
+go 1.26.4
 
 require (
 	github.com/ProtonMail/go-crypto v1.3.0
@@ -17,6 +17,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hablullah/go-prayer v1.1.1
+	github.com/jim-ww/omemo-go v0.1.3
+	github.com/jim-ww/xochimilco v0.0.0-20260805123812-e10aed621610
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/mrz1836/go-sanitize v1.5.3
 	github.com/piquette/finance-go v1.1.0
@@ -37,6 +39,7 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	dario.cat/mergo v1.0.2 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

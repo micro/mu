@@ -225,9 +225,14 @@ func (s *inStream) dialbackVerify(start xml.StartElement) {
 func (s *inStream) inboundMessage(start xml.StartElement) {
 	from, to := attrOf(start, "from"), attrOf(start, "to")
 	var body struct {
-		Body string `xml:"body"`
+		Body  string `xml:"body"`
+		Inner []byte `xml:",innerxml"`
 	}
 	if err := s.dec.DecodeElement(&body, &start); err != nil {
+		return
+	}
+	// Federated OMEMO is not implemented; never process its fallback body.
+	if _, encrypted := childElement(body.Inner, "", "encrypted"); encrypted {
 		return
 	}
 	text := strings.TrimSpace(body.Body)
