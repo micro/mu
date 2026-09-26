@@ -121,7 +121,6 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 
 func apiTokenForm(r *http.Request, accountID string) string {
 	var sb strings.Builder
-	sb.WriteString(`<div id="token-result" class="success-panel d-none" role="status"><strong>Token created</strong><p>Copy it now. It is shown only once.</p><pre id="new-token"></pre></div>`)
 	// Every field says what it is.
 	//
 	// The form was a heading and then three unlabelled controls, so "Create
@@ -162,6 +161,7 @@ func apiTokenForm(r *http.Request, accountID string) string {
 	}.HTML())
 
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
+	sb.WriteString(`<div id="token-result" class="success-panel d-none" role="status" tabindex="-1"><strong>Token created</strong><p>Copy it now. It is shown only once.</p><pre id="new-token"></pre><button type="button" data-copy-token>Copy token</button><span data-token-copy-status aria-live="polite"></span></div>`)
 
 	return sb.String()
 }

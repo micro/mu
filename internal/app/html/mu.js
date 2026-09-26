@@ -633,23 +633,36 @@ function muForgetLocation(btn){
 
 // account/token.go
 async function createToken(e) {
-	e.preventDefault();
-	var form = e.target;
-
-	var res = await fetch('/account/tokens', {
-		method: 'POST',
-		headers: {'Content-Type': 'application/json'},
-		body: JSON.stringify({client: form.client.value, name: form.name.value, expires_in: parseInt(form.expires_in.value), services:form.client.value==='services'?Array.from(form.querySelectorAll('[name="services"]:checked'),el=>el.value):[], permissions:form.client.value==='api'?['read',...Array.from(form.querySelectorAll('[name="capability"]:checked'),el=>el.value),...(form.api_write.checked?['write']:[])]:[]})
-	});
-	var result = await res.json();
-	if (result.success) {
-		document.getElementById('new-token').textContent = result.token;
-		document.getElementById('token-result').classList.remove('d-none');
-
-	} else {
-		alert(typeof result.error==='string'?result.error:(result.error?.message||'Failed to create token'));
-	}
+ e.preventDefault();
+ const form=e.target, button=form.querySelector('button[type="submit"]');
+ if(button.disabled)return;
+ button.disabled=true;
+ button.textContent='Creating…';
+ try {
+  const res=await fetch('/account/tokens', {
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({client:form.client.value,name:form.name.value,expires_in:parseInt(form.expires_in.value),services:form.client.value==='services'?Array.from(form.querySelectorAll('[name="services"]:checked'),el=>el.value):[],permissions:form.client.value==='api'?['read',...Array.from(form.querySelectorAll('[name="capability"]:checked'),el=>el.value),...(form.api_write.checked?['write']:[])]:[]})
+  });
+  const result=await res.json();
+  if(!res.ok || !result.success)throw Error(typeof result.error==='string'?result.error:(result.error?.message||'Failed to create token'));
+  const panel=document.getElementById('token-result');
+  document.getElementById('new-token').textContent=result.token;
+  panel.querySelector('[data-token-copy-status]').textContent='';
+  panel.classList.remove('d-none');
+  panel.focus({preventScroll:true});
+  requestAnimationFrame(()=>panel.scrollIntoView({block:'center',behavior:'instant'}));
+ } catch(error) {
+  alert(error.message||'Could not create token. Check your connection and try again.');
+ } finally {
+  button.disabled=false;
+  button.textContent='Create token';
+ }
 }
+document.querySelector('[data-copy-token]')?.addEventListener('click',async()=>{
+ const token=document.getElementById('new-token'),status=document.querySelector('[data-token-copy-status]');
+ try{await navigator.clipboard.writeText(token.textContent);status.textContent=' Copied.';}
+ catch{const range=document.createRange();range.selectNodeContents(token);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);status.textContent=' Select and copy the token.';}
+});
 
 
 // cardJS
