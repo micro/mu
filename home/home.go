@@ -138,17 +138,17 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
-	right.WriteString(`<section class="record-card"><div class="section-card-head"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
-	for i, a := range snapshot.apps {
-		if i == 3 {
-			break
+	right.WriteString(`<section class="record-card"><div class="section-card-head"><h2>Saved items</h2></div><nav class="form-actions" aria-label="Saved items"><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a><a href="/home/apps">My apps</a></nav></section>`)
+	if len(snapshot.apps) > 0 {
+		right.WriteString(`<section class="record-card"><div class="section-card-head"><h2>My apps</h2><a href="/home/apps">View all</a></div><div class="collection-list">`)
+		for i, a := range snapshot.apps {
+			if i == 3 {
+				break
+			}
+			right.WriteString(`<a class="collection-item" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a>`)
 		}
-		right.WriteString(`<a class="collection-item" href="/apps/` + url.PathEscape(a.Slug) + `">` + html.EscapeString(a.Name) + `</a>`)
+		right.WriteString(`</div></section>`)
 	}
-	if len(snapshot.apps) == 0 {
-		right.WriteString(`<p class="text-muted">Open your apps or ask Micro to build one.</p>`)
-	}
-	right.WriteString(`</div><nav class="form-actions" aria-label="Saved items"><a href="/docs">Docs</a><a href="/files">Files</a><a href="/notes">Notes</a><a href="/bookmarks">Bookmarks</a></nav></section>`)
 	for i, spec := range service.Pinned(acc.PinnedServices()) {
 		column := &left
 		if i%2 != 0 {
@@ -164,5 +164,5 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-col">` + shortBrief(acc.ID) + `<nav class="form-actions" aria-label="Home services"><a href="/services">Choose services</a></nav>` + columns + `</div>`
+	return `<div class="page-col">` + shortBrief(acc.ID) + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
 }
