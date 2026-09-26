@@ -34,6 +34,46 @@ jobs:
           restore-keys: |
             go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-
 
+      - name: Verify image provider logging
+        run: go test ./internal/ai -run '^TestImageRequestsRecordOutcomes
+      - name: Build binaries
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/mu-build"
+          targets="linux/amd64 linux/arm64"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            targets="$targets darwin/amd64 darwin/arm64"
+          fi
+          for target in $targets; do
+            os="${target%/*}"; arch="${target#*/}"
+            echo "Building ${os}/${arch}"
+            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -trimpath -o "$RUNNER_TEMP/mu-build/mu-${os}-${arch}" .
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: mu-linux-amd64
+          path: ${{ runner.temp }}/mu-build/mu-linux-amd64
+          retention-days: 7
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: mu-linux-arm64
+          path: ${{ runner.temp }}/mu-build/mu-linux-arm64
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
+ -count=1
+
       # PRs verify every release platform; main builds deployment artifacts only.
       - name: Build binaries
         env:
