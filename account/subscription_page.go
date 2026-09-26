@@ -19,7 +19,15 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 	if s.AccountCreated != strconv.FormatInt(acc.Created.UnixNano(), 10) {
 		s = subscription{}
 	}
-	plan, enabled := MonthlyPlan()
+	selected := r.URL.Query().Get("plan")
+	if selected != "starter" {
+		selected = "pro"
+	}
+	plan, enabled := SubscriptionPlan(selected)
+	currentName := "Pro"
+	if normalizedTier(s.Tier) == "starter" {
+		currentName = "Starter"
+	}
 	if !enabled && s.ID == "" {
 		return ""
 	}
@@ -30,17 +38,17 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 	form := func(action, label string) string {
 		confirm := ""
 		if action == "cancel" {
-			confirm = ` data-confirm="Cancel Pro renewal? Your paid allowance remains until the period ends."`
+			confirm = ` data-confirm="Cancel subscription renewal? Your paid allowance remains until the period ends."`
 		}
 		if action == "resume" {
-			confirm = ` data-confirm="Resume Pro at ` + money(s.Cents) + ` per month?"`
+			confirm = ` data-confirm="Resume subscription at ` + money(s.Cents) + ` per month?"`
 		}
-		return `<form method="POST" action="/account/subscription"` + confirm + `>` + csrf + `<input type="hidden" name="action" value="` + action + `"><button class="btn" type="submit">` + label + `</button></form>`
+		return `<form method="POST" action="/account/subscription"` + confirm + `>` + csrf + `<input type="hidden" name="tier" value="` + selected + `"><input type="hidden" name="action" value="` + action + `"><button class="btn" type="submit">` + label + `</button></form>`
 	}
 	allowance := Monthly(acc.ID)
 	body := `<p><strong>Free</strong></p>`
 	if allowance.Credits > 0 {
-		body = `<p><strong>Pro</strong> · ` + money(s.Cents) + `/month</p><p>` + thousands(allowance.Remaining) + ` / ` + thousands(allowance.Credits) + ` credits remaining</p>`
+		body = `<p><strong>` + currentName + `</strong> · ` + money(s.Cents) + `/month</p><p>` + thousands(allowance.Remaining) + ` / ` + thousands(allowance.Credits) + ` credits remaining</p>`
 	}
 	ongoing := s.ID != "" && s.Status != "canceled" && s.Status != "incomplete_expired"
 	if ongoing {
@@ -48,11 +56,11 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 		case s.CancelAtEnd:
 			body += `<p>Ends ` + time.Unix(s.PeriodEnd, 0).UTC().Format("2 Jan 2006") + `.</p>`
 		case s.Status == "past_due" || s.Status == "unpaid" || s.Status == "incomplete":
-			body += `<p>Payment required to renew Pro.</p>`
+			body += `<p>Payment required to renew your subscription.</p>`
 		case allowance.Credits > 0:
 			body += `<p>Renews ` + allowance.EndsAt.Format("2 Jan 2006") + `.</p>`
 		default:
-			body += `<p>Pro payment is being confirmed.</p>`
+			body += `<p>Your subscription payment is being confirmed.</p>`
 		}
 		body += `<div class="form-actions">`
 		if strings.HasPrefix(s.PaymentURL, "https://invoice.stripe.com/") {
@@ -62,7 +70,7 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 			body += form("manage", "Payment details")
 		}
 		if s.CancelAtEnd {
-			body += form("resume", "Resume Pro")
+			body += form("resume", "Resume subscription")
 		} else {
 			body += form("cancel", "Cancel renewal")
 		}
@@ -71,21 +79,25 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 		if allowance.Credits > 0 {
 			body += `<p>Ends ` + allowance.EndsAt.Format("2 Jan 2006") + `.</p>`
 		}
-		body += `<p>Pro · ` + money(plan.Cents) + `/month · ` + thousands(plan.Credits) + ` monthly credits</p>`
-		label := "Upgrade to Pro"
-		if r.URL.Query().Get("plan") == "pro" {
+		body += `<p>` + plan.Name + ` · ` + money(plan.Cents) + `/month · ` + thousands(plan.Credits) + ` monthly credits</p>`
+		label := "Get " + plan.Name
+		if r.URL.Query().Get("plan") == selected {
 			label = "Continue to payment"
 		}
-		body += `<div class="form-actions">` + form("subscribe", label)
+		body += `<div class="form-actions"><a href="/account?plan=starter#subscription">Starter</a><a href="/account?plan=pro#subscription">Pro</a></div><div class="form-actions">` + form("subscribe", label)
 		if s.ID != "" && s.Customer != "" {
 			body += form("manage", "Payment details")
 		}
 		body += `</div>`
 	}
 	if allowance.Credits > 0 {
-		body += `<p><a href="/events?view=brief">Daily briefs</a></p>`
+		body += `<nav class="form-actions"><a href="/events?view=brief">Brief and plan</a>`
+		if Tier(acc.ID) == "pro" {
+			body += `<a href="/events?view=research">Research</a>`
+		}
+		body += `</nav>`
 	} else if enabled {
-		body += `<p class="text-sm text-muted">For your daily brief and assistant. Renews monthly. Cancel any time.</p>`
+		body += `<p class="text-sm text-muted">For your daily brief and assistant. Renews monthly. Cancel any time.</p><p><a href="/events?view=brief">Set up your included weekly brief</a></p>`
 	}
 	return app.SectionID("subscription", "Plan", body)
 }
@@ -142,16 +154,19 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.PostForm.Get("action") {
 	case "subscribe":
-		destination, err := startSubscription(r.Context(), acc, app.BaseURL(r))
+		if r.PostForm.Get("tier") == "" {
+			r.PostForm.Set("tier", "pro")
+		}
+		destination, err := startSubscription(r.Context(), acc, app.BaseURL(r), r.PostForm.Get("tier"))
 		if err != nil {
 			app.Log("stripe", "subscription checkout: %v", err)
 			message := "Checkout is temporarily unavailable. Please try again."
 			if errors.Is(err, errSubscriptionWebhook) {
-				message = "Pro payment setup needs attention. Please contact support."
+				message = "Subscription payment setup needs attention. Please contact support."
 			}
 			var failure *stripeAPIError
 			if errors.As(err, &failure) && failure.Status >= 400 && failure.Status < 500 && failure.Status != 429 {
-				message = "Pro payment setup needs attention. Please contact support."
+				message = "Subscription payment setup needs attention. Please contact support."
 			}
 			body := app.Problem(message)
 			if failure != nil && failure.RequestID != "" {
@@ -199,18 +214,23 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 // MonthlyPricingHTML uses the same configuration as Checkout, without claiming
 // that an unconfigured plan is available for purchase.
 func MonthlyPricingHTML(r *http.Request) string {
-	p, ok := MonthlyPlan()
-	if !ok {
-		return ""
-	}
-	destination, label := "/account?plan=pro#subscription", "Get Pro"
-	if _, acc, err := auth.RequireSession(r); err != nil {
-		destination = "/signup?redirect=" + url.QueryEscape(destination)
-	} else {
-		if Monthly(acc.ID).Credits > 0 {
+	var b strings.Builder
+	for _, tier := range []string{"starter", "pro"} {
+		p, ok := SubscriptionPlan(tier)
+		if !ok {
+			continue
+		}
+		destination, label := "/account?plan="+tier+"#subscription", "Get "+p.Name
+		if _, acc, err := auth.RequireSession(r); err != nil {
+			destination = "/signup?redirect=" + url.QueryEscape(destination)
+		} else if Monthly(acc.ID).Credits > 0 {
 			destination, label = "/account#subscription", "Your plan"
 		}
+		benefits := "Daily morning brief, included without using your credits."
+		if tier == "pro" {
+			benefits = "Daily morning brief, an optional daily plan, and one recurring research topic. Brief and plan are included; research uses credits at the displayed rate."
+		}
+		b.WriteString(`<section class="plan-section section-stack"><h2>` + p.Name + `</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>` + benefits + `</p><p>` + thousands(p.Credits) + ` monthly credits for assistant replies and paid services. Top up any time: 1 credit = 1 US cent.</p><p>Monthly credits expire at renewal; purchased top-ups do not. Renews monthly; cancel any time. No additional service charge.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`)
 	}
-
-	return `<section class="plan-section section-stack"><h2>Pro</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>A recurring credit allowance for regular use of Micro and its services.</p><p>` + thousands(p.Credits) + ` monthly credits for assistant replies and paid service operations, in addition to any free daily credits.</p><p>The same services as Free and PAYG, with credits added each billing month. Unused monthly credits expire. Renews monthly; cancel any time.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`
+	return b.String()
 }

@@ -14,6 +14,7 @@ const txAllowance = "allowance"
 // MonthlyAllowance is usage credit, never transferable money. The invoice and
 // its service period live in the same authoritative ledger as every debit.
 type MonthlyAllowance struct {
+	Tier      string    `json:"tier"`
 	Credits   int       `json:"credits"`
 	Remaining int       `json:"remaining"`
 	EndsAt    time.Time `json:"ends_at"`
@@ -54,7 +55,8 @@ func monthly(_ *ledger, id string, now time.Time) MonthlyAllowance {
 				continue
 			}
 			start = from
-			out = MonthlyAllowance{Credits: metadataInt(tx.Metadata["monthly_credits"]), EndsAt: time.Unix(int64(to), 0).UTC(), Invoice: invoice}
+			tier, _ := tx.Metadata["tier"].(string)
+			out = MonthlyAllowance{Tier: normalizedTier(tier), Credits: metadataInt(tx.Metadata["monthly_credits"]), EndsAt: time.Unix(int64(to), 0).UTC(), Invoice: invoice}
 		}
 	}
 	if out.Invoice == "" {
@@ -76,7 +78,11 @@ func monthly(_ *ledger, id string, now time.Time) MonthlyAllowance {
 	return out
 }
 
-func grantMonthly(id, subscription, invoice string, credits int, from, to int64) error {
+func grantMonthly(id, subscription, invoice string, credits int, from, to int64, tiers ...string) error {
+	tier := "pro"
+	if len(tiers) > 0 {
+		tier = normalizedTier(tiers[0])
+	}
 	if id == "" || subscription == "" || invoice == "" || credits <= 0 || from <= 0 || to <= from {
 		return errors.New("invalid monthly allowance")
 	}
@@ -93,7 +99,7 @@ func grantMonthly(id, subscription, invoice string, credits int, from, to int64)
 			balance = w.Balance
 		}
 		tx := &Transaction{ID: uuid.NewString(), UserID: id, Type: txAllowance, Balance: balance, Operation: "subscription", CreatedAt: time.Now().UTC(), Metadata: map[string]interface{}{
-			"invoice": invoice, "subscription": subscription, "monthly_credits": credits, "period_start": from, "period_end": to,
+			"tier": tier, "invoice": invoice, "subscription": subscription, "monthly_credits": credits, "period_start": from, "period_end": to,
 		}}
 		transactions[id] = append(transactions[id], tx)
 		if err := data.SaveJSON("transactions.json", transactions); err != nil {

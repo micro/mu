@@ -419,6 +419,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	}
 	agentOpts = append(agentOpts, managementTools(accountID, opts)...)
 	if opts.NoTools {
+		agentOpts = append(agentOpts, gmagent.MaxSteps(1))
 		agentOpts = append(agentOpts, gmagent.WrapTool(func(next gmai.ToolHandler) gmai.ToolHandler {
 			return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
 				return gmai.ToolResult{ID: call.ID, Refused: "not_permitted", Content: `{"error":"This agent has no tools."}`}

@@ -17,18 +17,18 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if len(csrf) > 0 {
 		token = csrf[0]
 	}
-	return `<div class="page-stack">` + briefPeriodHTML(owner, token, "morning") + `<p class="text-muted">Delivered to your Micro mail using your connected calendar, email and saved location where available. Normal usage charges apply.</p></div>`
+	return `<div class="page-stack">` + briefPeriodHTML(owner, token, "morning") + `<p class="text-muted">Delivered to your Micro inbox using your calendar, recent conversations and outstanding work. Your scheduled brief and optional Pro plan are included without using credits.</p></div>`
 }
 
 func briefPeriodHTML(owner, token, period string) string {
-	clock, zone, repeat := "06:00", "", "daily"
+	clock, zone, repeat := "06:00", "", BriefFrequency(owner, "daily")
 	status := "Not scheduled"
 	if acc, err := auth.GetAccount(owner); err == nil && acc != nil {
 		zone = acc.Zone
 	}
 	e := Brief(owner, period)
 	if e != nil {
-		zone, repeat = e.Zone, e.Repeat
+		zone, repeat = e.Zone, BriefFrequency(owner, e.Repeat)
 		loc, err := time.LoadLocation(zone)
 		if err != nil {
 			loc = time.UTC
@@ -40,7 +40,10 @@ func briefPeriodHTML(owner, token, period string) string {
 		}
 	}
 	title := "Morning brief"
-	description := "Overnight developments and what matters today."
+	description := "Your commitments, outstanding work and what matters today."
+	if auth.Plan(owner) == "free" || repeat == "weekly" {
+		description = "A weekly look ahead at your commitments and outstanding work."
+	}
 	var b strings.Builder
 	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h3>` + title + `</h3><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {
@@ -56,12 +59,23 @@ func briefPeriodHTML(owner, token, period string) string {
 	}
 	b.WriteString(`<input type="hidden" name="period" value="` + period + `">`)
 	b.WriteString(`<label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label>`)
-	selectField("repeat", "Frequency", repeat, "daily", "weekdays")
+	if auth.Plan(owner) == "free" {
+		b.WriteString(`<input type="hidden" name="repeat" value="weekly"><p>Free includes a weekly brief. <a href="/pricing">Starter includes a daily brief.</a></p>`)
+	} else {
+		selectField("repeat", "Frequency", repeat, "daily", "weekdays", "weekly")
+	}
 	checked := ""
 	if BriefWorldNews(e) {
 		checked = " checked"
 	}
 	b.WriteString(`<input type="hidden" name="news_present" value="1"><label class="check-label"><input type="checkbox" name="include_world_news" value="1"` + checked + `> Include world news</label>`)
+	if auth.Plan(owner) == "pro" {
+		checkedPlan := ""
+		if e != nil && e.Plan {
+			checkedPlan = " checked"
+		}
+		b.WriteString(`<label class="check-label"><input type="checkbox" name="include_plan" value="1"` + checkedPlan + `> Include a suggested daily plan</label><p class="text-sm text-muted">Suggest priorities and time slots. Nothing is added to your calendar automatically.</p>`)
+	}
 	b.WriteString(`<div class="form-actions"><button name="state" value="active">`)
 	if e == nil {
 		b.WriteString("Schedule")
@@ -99,6 +113,10 @@ func briefScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err := scheduleBrief(sess.Account, r.FormValue("clock"), r.FormValue("zone"), r.FormValue("repeat"), r.FormValue("period"), state == "paused", false, news...)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := setBriefPlan(sess.Account, r.FormValue("include_plan") == "1"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

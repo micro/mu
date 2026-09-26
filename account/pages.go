@@ -128,11 +128,14 @@ func renderSignupInvite(errHTML, redirectParam, invite string) string {
 	// nothing and returned the string unchanged. A slot cannot miss.
 	planHint := ""
 	values, _ := url.ParseQuery(strings.TrimPrefix(redirectParam, "?"))
-	if values.Get("redirect") == "/account?plan=pro#subscription" {
-		if plan, ok := MonthlyPlan(); ok {
-			planHint = `<p class="text-center">Pro · ` + money(plan.Cents) + `/month. Payment follows signup.</p>`
+	for _, tier := range []string{"starter", "pro"} {
+		if values.Get("redirect") == "/account?plan="+tier+"#subscription" {
+			if plan, ok := SubscriptionPlan(tier); ok {
+				planHint = `<p class="text-center">` + plan.Name + ` · ` + money(plan.Cents) + `/month. Payment follows signup.</p>`
+			}
 		}
 	}
+
 	return app.ConsoleHTML("Sign up", fmt.Sprintf(SignupTemplate, redirectParam, planHint,
 		googleButtonHTML("Sign up with Google"), errHTML, app.CaptchaHTML(c), inviteField), nil)
 }

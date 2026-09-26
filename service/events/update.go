@@ -38,6 +38,9 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 	if old == nil || old.Owner != owner {
 		return fmt.Errorf("event not found")
 	}
+	if old.Kind == "brief" || old.Kind == "research" {
+		return fmt.Errorf("manage this included feature in Events settings")
+	}
 	if service.RestrictedCaller(ctx) && (old.Prompt != "" || (req.Prompt != nil && strings.TrimSpace(*req.Prompt) != "")) {
 		return fmt.Errorf("a restricted caller cannot change background agent work")
 	}

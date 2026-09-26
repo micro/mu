@@ -87,7 +87,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 			at = at.In(loc)
 		}
 		state["time"] = at.Format("15:04")
-		state["repeat"] = e.Repeat
+		state["repeat"] = events.BriefFrequency(acc.ID, e.Repeat)
 		state["title"] = e.Title
 	}
 	if app.WantsJSON(r) || app.SendsJSON(r) {
