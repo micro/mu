@@ -32,7 +32,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
-<p class="landing-tagline">A personal assistant for your everyday life.</p>
+<p class="landing-tagline">A personal assistant for everyday life.</p>
 <p>Ask a question, explore an idea or get stuff done.</p>
 <ul class="landing-highlights" aria-label="Ways to use Micro">
 <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5"/></svg><span>Ask</span></li>
