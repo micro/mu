@@ -88,6 +88,13 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 			next.When = next.When.In(loc)
 		}
 	}
+	// A repeated identical tool call must not publish another invitation.
+	if next.Title == old.Title && next.When.Equal(old.When) && next.Note == old.Note &&
+		next.Minutes == old.Minutes && next.Repeat == old.Repeat && next.Prompt == old.Prompt && next.Zone == old.Zone {
+		cp := *old
+		rsp.Item, rsp.Text = &cp, "Unchanged: "+Describe(old)
+		return nil
+	}
 	next.Sequence++
 	events[next.ID] = &next
 	list := make([]*Event, 0, len(events))

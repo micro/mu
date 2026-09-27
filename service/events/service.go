@@ -45,9 +45,9 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	if service.RestrictedCaller(ctx) && strings.TrimSpace(req.Prompt) != "" {
 		return fmt.Errorf("a restricted caller cannot schedule background agent work")
 	}
-	when, err := parseWhen(req.When)
+	when, err := time.Parse(time.RFC3339, strings.TrimSpace(req.When))
 	if err != nil {
-		return err
+		return fmt.Errorf("when must include a timezone offset (RFC3339); use the user’s local timezone and its offset on the event date, e.g. 2026-07-22T15:00:00+01:00")
 	}
 	e, err := CreateStanding(service.AccountFrom(ctx), req.Title, when, req.Note, req.Minutes, req.Repeat, req.Prompt)
 	if err != nil {
@@ -64,7 +64,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 		return nil
 	}
 	rsp.Result = fmt.Sprintf("Reminder scheduled %q for %s. This sends a reminder to subscribed devices; it does not run agent work. View schedule: %s. Add a copy to Google Calendar: %s",
-		e.Title, e.When.Format("Mon 2 Jan 2006 15:04 MST"), rsp.URL, GoogleCalendarURL(e.Title, e.When, e.Note))
+		e.Title, e.LocalTime().Format("Mon 2 Jan 2006 15:04 MST"), rsp.URL, GoogleCalendarURL(e.Title, e.When, e.Note))
 	return nil
 }
 

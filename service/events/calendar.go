@@ -68,3 +68,18 @@ func GoogleCalendarURL(title string, when time.Time, note string) string {
 	}
 	return "https://calendar.google.com/calendar/render?" + q.Encode()
 }
+
+// LocalTime presents an event in its saved timezone, including after reload.
+// Legacy events use the owner's timezone; never the server's timezone.
+func (e *Event) LocalTime() time.Time {
+	zone := e.Zone
+	if zone == "" {
+		zone = recurringZone(e.Owner)
+	}
+	if zone != "" {
+		if loc, err := time.LoadLocation(zone); err == nil {
+			return e.When.In(loc)
+		}
+	}
+	return e.When
+}
