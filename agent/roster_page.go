@@ -93,7 +93,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
-	b.WriteString(`<div class="page-col page-stack">`)
+	b.WriteString(`<div class="page-col page-stack"><p class="text-muted">Choose an agent to talk to, or create one with its own instructions and tools.</p>`)
 	// The way to make one, first.
 	//
 	// Three sentences of explanation stood here — what an agent is, what it
