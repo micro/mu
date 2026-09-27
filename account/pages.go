@@ -719,7 +719,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		links = ""
 		content += app.SectionID("clients", "Clients", `<p>Use Micro from a mail app, chat app or your own code.</p><div class="form-actions"><a class="btn" href="/account/clients">Client setup</a><a class="btn" href="/account/tokens">Tokens</a><a class="btn" href="/developers">Developers</a></div><p><a href="/api">API</a> · <a href="/tools">Tools</a> · <a href="/x402">x402 payments</a></p><p>Tokens are passwords for your apps and programs.</p>`)
 	}
-	sections := `<nav class="page-menu" aria-label="Account sections"><a href="#balance">Balance</a>`
+	sections := `<nav class="page-menu anchor-nav" aria-label="On this page"><span class="text-muted">On this page</span><a href="#balance">Balance</a>`
 	if strings.Contains(content, `id="subscription"`) {
 		sections += `<a href="#subscription">Plan</a>`
 	}

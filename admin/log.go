@@ -10,8 +10,8 @@ package admin
 // tabs and compare timestamps. Three nav entries for one question — what
 // happened just now — and the answer split across them.
 //
-// So: one page, three tabs. Alerts stay above all of them, because an alert is
-// a thing to look at whichever log you came for.
+// One page, three log sources. Request activity and grouped failures have
+// their own admin pages; they are not substitutes for these technical logs.
 //
 // The mail *rules* did not come here. What may be sent and who is refused is a
 // setting rather than an event, and it is on /admin/spam with the filter.
@@ -44,47 +44,36 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var content strings.Builder
-	content.WriteString(logTabs(tab))
-	switch tab {
-	case "activity":
-		content.WriteString(activityLogCard(r, true))
-	case "technical", "system", "api", "mail":
-		content.WriteString(technicalLogTabs(tab))
-		if api {
-			content.WriteString(apiLogCard())
-		} else if mailTab {
-			content.WriteString(mailLogCard())
-		} else {
-			content.WriteString(sysLogCard())
+	// Retain links from the previous combined view without mixing activity
+	// records into the system logs.
+	if tab == "activity" || tab == "errors" {
+		destination := "/admin/activity"
+		if tab == "errors" {
+			destination = "/admin/errors"
 		}
-	default:
-		content.WriteString(alertsCard())
-		content.WriteString(activityLogCard(r, false))
+		http.Redirect(w, r, destination, http.StatusTemporaryRedirect)
+		return
 	}
-	app.Respond(w, r, app.Response{Title: "Logs", Description: "Activity, failures and technical detail", HTML: `<div class="log-tables">` + content.String() + `</div>`})
+	var content strings.Builder
+	content.WriteString(`<p class="text-muted">Technical logs from the server, external calls and mail delivery.</p>`)
+	content.WriteString(technicalLogTabs(tab))
+	if api {
+		content.WriteString(apiLogCard())
+	} else if mailTab {
+		content.WriteString(mailLogCard())
+	} else {
+		content.WriteString(sysLogCard())
+	}
+	app.Respond(w, r, app.Response{Title: "Logs", HTML: `<div class="page-stack log-tables">` + content.String() + `</div>`})
 }
 
 func MailLogMoved(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin/log?tab=mail", http.StatusSeeOther)
 }
 
-func logTabs(on string) string {
-	selected := ""
-	switch on {
-	case "activity":
-		selected = "activity"
-	case "technical", "system", "api", "mail":
-		selected = "technical"
-	}
-	return `<nav class="form-actions" aria-label="Log views">` +
-		app.PillLink("Needs attention", "/admin/log", selected == "") +
-		app.PillLink("Activity", "/admin/log?tab=activity", selected == "activity") +
-		app.PillLink("Technical", "/admin/log?tab=technical", selected == "technical") + `</nav>`
-}
 func technicalLogTabs(on string) string {
 	return `<nav class="form-actions" aria-label="Technical log sources">` +
-		app.PillLink("System", "/admin/log?tab=technical", on == "technical" || on == "system") +
+		app.PillLink("System", "/admin/log", on != "api" && on != "mail") +
 		app.PillLink("External calls", "/admin/log?tab=api", on == "api") +
 		app.PillLink("Mail", "/admin/log?tab=mail", on == "mail") + `</nav>`
 }
