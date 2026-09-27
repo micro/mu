@@ -51,6 +51,9 @@ func Run(owner, id string) error {
 	if err != nil {
 		return err
 	}
+	if t.Occurrence != nil {
+		return fmt.Errorf("manage this execution through its schedule")
+	}
 	if t.Delivery != nil {
 		return fmt.Errorf("the previous result is still being delivered")
 	}

@@ -26,7 +26,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			api.JSONAction(w, r, "work", "submit")
 			return
 		}
-		if r.Method == "GET" && r.URL.Query().Get("id") == "" && r.URL.Query().Get("build") == "" {
+		if r.Method == "GET" && r.URL.Query().Get("id") == "" && r.URL.Query().Get("build") == "" && r.URL.Query().Get("schedule") == "" {
 			args := map[string]any{}
 			if status := r.URL.Query().Get("status"); status != "" {
 				args["status"] = status
@@ -50,6 +50,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	auth.SetCSRFCookie(w, r)
+	if id := r.URL.Query().Get("schedule"); id != "" {
+		scheduleHistory(w, r, acc, id)
+		return
+	}
 	if id := r.URL.Query().Get("build"); id != "" {
 		for _, build := range buildsFor(acc.ID) {
 			if build.ID == id {
@@ -70,6 +74,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Content-Disposition", `attachment; filename="report.json"`)
 			fmt.Fprint(w, diagnosticReport(t))
+			return
+		}
+		if t.Occurrence != nil {
+			if app.WantsJSON(r) {
+				status, _ := occurrenceStatus(t, scheduleFor(t.Owner, t.Occurrence.Schedule))
+				app.RespondJSON(w, map[string]any{"html": occurrenceDetail(t), "status": status, "work": publicTask(t)})
+				return
+			}
+			app.Respond(w, r, app.Response{Title: "Scheduled run", HTML: `<div id="work-detail" class="page-stack">` + occurrenceDetail(t) + `</div>` + workPollJS})
 			return
 		}
 		body := workDetail(t, auth.CSRFToken(r))
@@ -109,6 +122,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	var entries []entry
 	if !archived {
+		for _, g := range scheduledGroups(acc.ID) {
+			if filter != "" && filter != g.Status {
+				continue
+			}
+			entries = append(entries, entry{g.Title, "/work?schedule=" + url.QueryEscape(g.ID), g.Status, "Scheduled work · " + g.Label, g.Created, g.Updated})
+		}
 		for _, build := range buildsFor(acc.ID) {
 			status := "doing"
 			switch build.State {
@@ -141,7 +160,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].created.After(entries[j].created) })
 	pager := app.Paginate(r, len(entries), 25)
 	for _, item := range entries[pager.From:pager.To] {
-		b.WriteString(`<article class="record-card"><a class="record-title" href="` + item.target + `">` + html.EscapeString(item.title) + `</a><div class="metadata-row">` + badge(item.status) + `<span>` + html.EscapeString(item.kind) + `</span><time datetime="` + item.created.Format(time.RFC3339) + `" title="` + item.created.Format(time.RFC1123) + `">Created ` + app.TimeAgo(item.created) + `</time><span>Updated ` + app.TimeAgo(item.updated) + `</span></div></article>`)
+		statusHTML := badge(item.status)
+		if strings.HasPrefix(item.kind, "Scheduled work ·") {
+			statusHTML = ""
+		}
+		b.WriteString(`<article class="record-card"><a class="record-title" href="` + item.target + `">` + html.EscapeString(item.title) + `</a><div class="metadata-row">` + statusHTML + `<span>` + html.EscapeString(item.kind) + `</span><time datetime="` + item.created.Format(time.RFC3339) + `" title="` + item.created.Format(time.RFC1123) + `">Created ` + app.TimeAgo(item.created) + `</time><span>Updated ` + app.TimeAgo(item.updated) + `</span></div></article>`)
 	}
 	b.WriteString(pager.Nav("/work?status=" + url.QueryEscape(filter) + "&view=" + url.QueryEscape(r.URL.Query().Get("view"))))
 	if len(entries) == 0 {

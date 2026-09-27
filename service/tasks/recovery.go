@@ -18,7 +18,7 @@ func recoverInterrupted(owner string) error {
 		// Filter before limiting so tasks beyond the first page are recovered
 		// too. Each successful update removes a record from the next batch.
 		records, err := userdb.List(ns, owner, collection, "mine", map[string]interface{}{
-			"status": StatusDoing, "assignee": Agent,
+			"status": StatusDoing, "assignee": Agent, "schedule_id": map[string]any{"exists": false},
 		}, "", "", userdb.MaxListLimit)
 		if err != nil {
 			return err

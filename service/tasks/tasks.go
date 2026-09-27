@@ -69,18 +69,19 @@ type Step struct {
 }
 
 type Task struct {
-	Attempts []Attempt `json:"attempts,omitempty"`
-	Archived bool      `json:"archived,omitempty"`
-	ID       string    `json:"id"`
-	Title    string    `json:"title"`
-	Detail   string    `json:"detail,omitempty"`
-	Status   string    `json:"status"`
-	Assignee string    `json:"assignee"`
-	Result   string    `json:"result,omitempty"`
-	Due      time.Time `json:"due,omitempty"`
-	Created  time.Time `json:"created"`
-	Updated  time.Time `json:"updated"`
-	Owner    string    `json:"owner"`
+	Occurrence *Occurrence `json:"occurrence,omitempty"`
+	Attempts   []Attempt   `json:"attempts,omitempty"`
+	Archived   bool        `json:"archived,omitempty"`
+	ID         string      `json:"id"`
+	Title      string      `json:"title"`
+	Detail     string      `json:"detail,omitempty"`
+	Status     string      `json:"status"`
+	Assignee   string      `json:"assignee"`
+	Result     string      `json:"result,omitempty"`
+	Due        time.Time   `json:"due,omitempty"`
+	Created    time.Time   `json:"created"`
+	Updated    time.Time   `json:"updated"`
+	Owner      string      `json:"owner"`
 	// Steps is what the agent did, in order — the tools it ran and whether
 	// each worked. Without it a finished task is a paragraph with no way to
 	// tell whether it was researched or invented.
@@ -177,9 +178,9 @@ func List(owner, status string) []*Task {
 	if owner == "" {
 		return nil
 	}
-	var where map[string]any
+	where := map[string]any{"schedule_id": map[string]any{"exists": false}}
 	if status != "" {
-		where = map[string]any{"status": status}
+		where["status"] = status
 	}
 	recs, err := userdb.List(ns, owner, collection, "mine", where, "", "", 0)
 	if err != nil {
@@ -252,6 +253,9 @@ func update(owner, id, title, detail, status, assignee, result string, extra map
 		return nil, err
 	}
 
+	if existing.Occurrence != nil {
+		return nil, fmt.Errorf("manage this execution through its schedule")
+	}
 	if status != "" && !validStatus(status) {
 		return nil, fmt.Errorf("status must be %s, %s, %s, %s or %s", StatusTodo, StatusDoing, StatusDone, StatusFailed, StatusBlocked)
 	}
@@ -422,7 +426,8 @@ func toTask(id, owner string, d map[string]any) *Task {
 		status = StatusTodo
 	}
 	return &Task{
-		ID: id, Title: str("title"), Detail: str("detail"),
+		Occurrence: decodeOccurrence(d),
+		ID:         id, Title: str("title"), Detail: str("detail"),
 		Attempts: decodeAttempts(str("attempts")), Archived: d["archived"] == true,
 		Status: status, Assignee: normaliseAssignee(str("assignee")),
 		Result: str("result"), Due: when("due"),
