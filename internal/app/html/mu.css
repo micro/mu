@@ -1371,3 +1371,5 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 
 .account-menu>summary{width:auto;padding:0 8px}
 .account-menu>summary>span{width:auto;height:auto;border-radius:4px;padding:6px 8px;line-height:1.4}
+
+.account-group>.card+.card{border-top:1px solid var(--border);border-radius:0;margin-top:12px;padding-top:20px}

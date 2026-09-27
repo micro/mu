@@ -140,9 +140,10 @@ func apiTokenForm(r *http.Request, accountID string) string {
 	sb.WriteString(app.Field{
 		Name: "name", Label: "Name", Placeholder: "e.g. My script", Required: true, Wide: true,
 	}.HTML())
-	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "mail", Label: "Mail", On: kind == "mail"}, {Value: "chat", Label: "Chat (XMPP)", On: kind == "xmpp"}, {Value: "api", Label: "Agents and account access", On: agentAccess}, {Value: "services", Label: "Services API / MCP", On: serviceAccess}}}.HTML())
+	sb.WriteString(app.Field{Name: "client", Label: "Access", Options: []app.Option{{Value: "all", Label: "All"}, {Value: "mail", Label: "Mail", On: kind == "mail"}, {Value: "chat", Label: "Chat (XMPP)", On: kind == "xmpp"}, {Value: "both", Label: "Mail / Chat"}, {Value: "api", Label: "Agents / Account", On: agentAccess}, {Value: "services", Label: "Services API / MCP", On: serviceAccess}}}.HTML())
+	sb.WriteString(`<fieldset data-token-access="all" hidden><legend>All access</legend><p>One token for mail, chat, agents, Inbox, Work and all services, including actions. Access is limited to what your account can do.</p></fieldset><fieldset data-token-access="both" hidden><legend>Mail / Chat</legend><p>Use the same token as your app password for mail and XMPP.</p></fieldset>`)
 	sb.WriteString(`<fieldset class="scope-fields" data-token-access="api" hidden><legend>API capabilities</legend><p class="text-muted text-sm">Use /agent, /inbox and /work with JSON. These credentials do not grant service tools at /mcp. <a href="/developers">Examples</a>.</p><div class="choices"><label class="choice"><input type="checkbox" name="capability" value="api:agent"` + checked + `>Agents</label><label class="choice"><input type="checkbox" name="capability" value="api:inbox">Inbox</label><label class="choice"><input type="checkbox" name="capability" value="api:work">Background jobs</label></div><p class="text-muted text-sm">Agent access can run any of your account’s agents with their configured tools; it is not limited to one named agent. Choose Services instead to restrict a client to specific capabilities.</p><label class="choice"><input type="checkbox" name="api_write"` + checked + `>Allow actions (required to ask agents or start jobs)</label></fieldset>`)
-	sb.WriteString(`<fieldset class="scope-fields" data-token-access="services" hidden><legend>Allowed services</legend><p class="text-muted text-sm">Use /api/v1 or /mcp. <a href="/tools">Service tools</a>.</p><p class="text-muted text-sm">Only selected services are accessible, including their actions. This does not grant agent execution or Inbox API access.</p><div class="choices">`)
+	sb.WriteString(`<fieldset class="scope-fields" data-token-access="services" hidden><legend>Allowed services</legend><p class="text-muted text-sm">Use /api/v1 or /mcp. <a href="/tools">Service tools</a>.</p><p class="text-muted text-sm">Leave all boxes unchecked to allow all services and their actions, or select services to limit access. This does not grant agent execution or Inbox API access.</p><div class="choices">`)
 	for _, spec := range service.Specs() {
 		sb.WriteString(`<label class="choice"><input type="checkbox" name="services" value="` + htmlpkg.EscapeString(spec.Name) + `">` + htmlpkg.EscapeString(spec.NavLabel()) + `</label>`)
 	}
@@ -319,6 +320,9 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		requested := permissions
 		permissions = []string{"read", "write"}
 		switch client {
+		case "all":
+			// Unscoped read/write grants every supported door within this account.
+			permissions = []string{"read", "write"}
 		case "mail":
 			permissions = append(permissions, "protocol:mail")
 		case "chat":
@@ -343,7 +347,12 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 			}
 		case "services":
 			if len(validScope) == 0 {
-				app.RespondError(w, http.StatusBadRequest, "Select at least one service")
+				for _, spec := range service.Specs() {
+					validScope = append(validScope, spec.Name)
+				}
+			}
+			if len(validScope) == 0 {
+				app.RespondError(w, http.StatusBadRequest, "No services are available")
 				return
 			}
 			permissions = append(permissions, auth.ScopeFor(validScope)...)
