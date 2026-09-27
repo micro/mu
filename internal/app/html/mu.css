@@ -1341,7 +1341,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 
 .form-action>button{flex-shrink:0;white-space:nowrap}
 .collection-item>.directory-content>.directory-heading{flex-wrap:wrap}
-.page-stack>.card{margin-block:0}
+:is(.page-col,.page-stack,.section-stack,.settings-sections)>:is(.card,.section-card,.record-card,.record-editor,.page-section){margin-block:0}
 
 .collection-item>.action-menu[open]{grid-column:1/-1}
 
