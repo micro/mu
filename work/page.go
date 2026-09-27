@@ -93,7 +93,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	archived := r.URL.Query().Get("view") == "archived" || filter == "archived"
 	var b strings.Builder
 	var controls strings.Builder
-	controls.WriteString(`<div class="collection-toolbar"><a class="btn" href="/work?view=new">New work</a><form class="search-bar" method="GET" action="/work"><label for="work-status">Status</label><select id="work-status" name="status" data-submit-on-change>`)
+	controls.WriteString(`<div class="collection-toolbar"><a class="btn" href="/work?view=new">New work</a><form class="search-bar" method="GET" action="/work"><label class="filter-control" for="work-status"><span>Status</span><select id="work-status" name="status" data-submit-on-change>`)
 	for _, f := range []struct{ value, label string }{{"", "All"}, {"todo", "Queued"}, {"doing", "Running"}, {"blocked", "Needs input"}, {"failed", "Failed"}, {"done", "Done"}, {"canceled", "Stopped"}, {"archived", "Archived"}} {
 		current := ""
 		if (filter == f.value && !archived) || (archived && f.value == "archived") {
@@ -101,7 +101,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		controls.WriteString(`<option value="` + f.value + `"` + current + `>` + f.label + `</option>`)
 	}
-	controls.WriteString(`</select><noscript><button type="submit">Filter</button></noscript></form></div>`)
+	controls.WriteString(`</select></label><noscript><button type="submit">Filter</button></noscript></form></div>`)
 	b.WriteString(app.PageControls("Give Micro a task to carry out in the background, then track its progress and results here.", "", controls.String()))
 	type entry struct {
 		title, target, status, kind string
