@@ -28,9 +28,13 @@ func inviteSchedule(e *events.Event) {
 	if err != nil || acc.Email == "" || !acc.EmailVerified {
 		return
 	}
-	when := e.When.Local().Format("Mon 2 Jan 2006, 15:04 MST")
-	body := fmt.Sprintf(`<p>Scheduled with Micro:</p><p class="status-icon"><strong>%s</strong><br>%s</p>`,
-		html.EscapeString(e.Title), html.EscapeString(when))
+	when := e.LocalTime().Format("Mon 2 Jan 2006, 15:04 MST")
+	heading, subject := "Scheduled with Micro:", "Event: "
+	if e.Sequence > 0 {
+		heading, subject = "Schedule updated — this replaces the previous time:", "Updated event: "
+	}
+	body := fmt.Sprintf(`<p>%s</p><p class="status-icon"><strong>%s</strong><br>%s</p>`,
+		heading, html.EscapeString(e.Title), html.EscapeString(when))
 	if e.Note != "" {
 		body += `<p>` + html.EscapeString(e.Note) + `</p>`
 	}
@@ -45,7 +49,7 @@ func inviteSchedule(e *events.Event) {
 	body += `<p><a href="` + html.EscapeString(strings.TrimRight(origin.Self(), "/")+"/events?id="+e.ID) + `">View schedule</a></p>`
 	body += `<p class="text-muted text-sm">You can add a copy to your calendar using the attached invite. Changes in that calendar do not change Micro's schedule.</p>`
 	ics := events.ICS(e, acc.Email)
-	if _, err := mail.SendCalendarInvite("Micro", "no-reply@"+domain, acc.Email, "Event: "+e.Title, body, ics); err != nil {
+	if _, err := mail.SendCalendarInvite("Micro", "no-reply@"+domain, acc.Email, subject+e.Title, body, ics); err != nil {
 		app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)
 	}
 

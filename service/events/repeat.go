@@ -116,7 +116,7 @@ func rescheduleLocked(e *Event, now time.Time) {
 // check. An agent that has been told to do something every morning should be
 // able to say so plainly.
 func Describe(e *Event) string {
-	when := e.When.Format("Mon 2 Jan 15:04 MST")
+	when := e.LocalTime().Format("Mon 2 Jan 15:04 MST")
 	if e.Repeat == RepeatNone {
 		return fmt.Sprintf("%s at %s", e.Title, when)
 	}

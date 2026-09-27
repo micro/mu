@@ -131,13 +131,11 @@ func CreateStanding(owner, title string, when time.Time, note string, minutes in
 		Prompt:  strings.TrimSpace(prompt),
 		Created: time.Now().UTC(),
 	}
-	// A recurring personal schedule follows local wall time across DST changes.
-	if e.Repeat != RepeatNone {
-		zone := recurringZone(owner)
-		if loc, err := time.LoadLocation(zone); zone != "" && err == nil {
-			e.Zone = zone
-			e.When = when.In(loc)
-		}
+	// Preserve the owner’s timezone for confirmations as well as recurrence.
+	zone := recurringZone(owner)
+	if loc, err := time.LoadLocation(zone); zone != "" && err == nil {
+		e.Zone = zone
+		e.When = when.In(loc)
 	}
 
 	mu.Lock()
