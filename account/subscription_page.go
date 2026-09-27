@@ -226,11 +226,15 @@ func MonthlyPricingHTML(r *http.Request) string {
 		} else if Monthly(acc.ID).Credits > 0 {
 			destination, label = "/account#subscription", "Your plan"
 		}
-		benefits := "Daily morning brief, included without using your credits."
+		benefits := `<li>Daily morning brief included.</li>`
 		if tier == "pro" {
-			benefits = "Daily morning brief, an optional daily plan, and one recurring research topic. Brief and plan are included; research uses credits at the displayed rate."
+			benefits += `<li>Optional daily plan included.</li><li>One recurring research topic; research uses credits.</li>`
 		}
-		b.WriteString(`<section class="plan-section section-stack"><h2>` + p.Name + `</h2><p><strong>` + money(p.Cents) + `/month</strong></p><p>` + benefits + `</p><p>` + thousands(p.Credits) + ` monthly credits for assistant replies and paid services. Top up any time: 1 credit = 1 US cent.</p><p>Monthly credits expire at renewal; purchased top-ups do not. Renews monthly; cancel any time. No additional service charge.</p><p><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></p></section>`)
+		intro := "A daily helping hand."
+		if tier == "pro" {
+			intro = "More room for regular use and research."
+		}
+		b.WriteString(`<section class="card plan-card"><h2>` + p.Name + `</h2><p class="plan-price"><strong>` + money(p.Cents) + `/month</strong></p><p>` + intro + `</p><ul class="plan-benefits"><li>` + thousands(p.Credits) + ` credits each month.</li>` + benefits + `<li>Top up whenever you need more usage.</li></ul><p class="text-sm text-muted">Monthly credits expire at renewal.</p><div class="form-actions"><a class="btn" href="` + htmlEsc(destination) + `">` + label + `</a></div></section>`)
 	}
 	return b.String()
 }
