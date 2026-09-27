@@ -50,9 +50,11 @@ type Thread struct {
 var inboxes map[string]*Inbox
 
 type Message struct {
+	InReplyTo   string   `json:"in_reply_to,omitempty"`
+	References  string   `json:"references,omitempty"`
 	Arrival     *arrival `json:"arrival,omitempty"`
-	Markdown    bool     `json:"-"` // Generated body requiring safe Markdown rendering for mail clients.
-	Bridged     bool     `json:"-"` // Read from the unified conversation record.
+	Markdown    bool     `json:"markdown,omitempty"` // Generated body requiring safe Markdown rendering for mail clients.
+	Bridged     bool     `json:"-"`                  // Read from the unified conversation record.
 	ID          string   `json:"id"`
 	From        string   `json:"from"`    // Sender username
 	FromID      string   `json:"from_id"` // Sender account ID
@@ -1610,12 +1612,13 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 // it separately to the agent, which is why the record and the mailbox disagreed
 // about which conversation a reply belonged to.
 type Delivery struct {
-	arrival *arrival
-	From    string // what the sender called themselves
-	FromID  string // where it actually came from: an address, or an account
-	To      string // the recipient's display name
-	ToID    string // the account it belongs to
-	Tag     string // the part after the plus, if the address carried one
+	Markdown bool
+	arrival  *arrival
+	From     string // what the sender called themselves
+	FromID   string // where it actually came from: an address, or an account
+	To       string // the recipient's display name
+	ToID     string // the account it belongs to
+	Tag      string // the part after the plus, if the address carried one
 
 	Subject string
 	Body    string
@@ -1658,7 +1661,8 @@ func SendMessageTo(d Delivery) error {
 		d.MessageID = fmt.Sprintf("<%s@%s>", uuid.NewString(), ConfiguredDomain())
 	}
 	msg := &Message{
-		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
+		ID:       fmt.Sprintf("%d", time.Now().UnixNano()),
+		Markdown: d.Markdown, InReplyTo: d.InReplyTo, References: d.References,
 		Arrival:     d.arrival,
 		From:        d.From,
 		FromID:      d.FromID,

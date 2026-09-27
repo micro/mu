@@ -43,7 +43,7 @@ func RESTPageHandler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	b.WriteString(`<div class="card">`)
+	b.WriteString(`<p class="text-muted">Call Micro’s services over HTTP with JSON requests and responses.</p><div class="card">`)
 	b.WriteString(`<h2>HTTP API</h2>`)
 	b.WriteString(`<p class="card-desc">Every service method as a plain HTTP call. ` +
 		`JSON in, JSON out, one URL per method.</p>`)

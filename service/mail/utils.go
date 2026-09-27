@@ -293,14 +293,9 @@ func stripHTMLTags(s string) string {
 		}
 	}
 
-	// Decode common HTML entities
-	text := result.String()
-	text = strings.ReplaceAll(text, "&nbsp;", " ")
-	text = strings.ReplaceAll(text, "&amp;", "&")
-	text = strings.ReplaceAll(text, "&lt;", "<")
-	text = strings.ReplaceAll(text, "&gt;", ">")
-	text = strings.ReplaceAll(text, "&quot;", "\"")
-	text = strings.ReplaceAll(text, "&#39;", "'")
+	// Decode the full entity set, including smart punctuation such as &rsquo;.
+	// This is plain text; callers must still escape it when rendering HTML.
+	text := strings.ReplaceAll(html.UnescapeString(result.String()), "\u00a0", " ")
 
 	// Trim leading whitespace from each line to remove HTML indentation, and
 	// collapse the blank lines that come with it.

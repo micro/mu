@@ -10,8 +10,8 @@ import (
 
 func DevelopersHandler(w http.ResponseWriter, r *http.Request) {
 	base := html.EscapeString(strings.TrimRight(origin.URL(r), "/"))
-	body := `<div class="page-col"><p>Build with your Micro account: conversations, inbox and work. For individual services, use the <a href="/api">HTTP API reference</a> or <a href="/tools">MCP tools catalogue</a>. <a href="/x402">x402</a> explains wallet-paid access to public services.</p><p>Use the same resources from your browser or your own code. Send JSON with Content-Type: application/json and request JSON with Accept: application/json.</p>
- <h2>Assistant</h2><p><a href="/account/tokens?add=api#create-token-form">Create a token</a> with Agents and Allow actions. Set it as MICRO_TOKEN, then run:</p><pre>curl '` + base + `/agent' \
+	body := `<div class="document-content"><p>Build with your Micro account: conversations, inbox and work. For individual services, use the <a href="/api">HTTP API reference</a> or <a href="/tools">MCP tools catalogue</a>. <a href="/x402">x402</a> explains wallet-paid access to public services.</p><p>Use the same resources from your browser or your own code. Send JSON with Content-Type: application/json and request JSON with Accept: application/json.</p>
+ <h2>Agent</h2><p><a href="/account/tokens?add=api#create-token-form">Create a token</a> with Agents and Allow actions. Set it as MICRO_TOKEN, then run:</p><pre>curl '` + base + `/agent' \
   -H "Authorization: Bearer $MICRO_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json' \
@@ -26,6 +26,6 @@ func DevelopersHandler(w http.ResponseWriter, r *http.Request) {
  <tr><td>GET /work?id=WORK_ID</td><td>Read progress in the work field.</td></tr>
  <tr><td>POST /work</td><td>Send {"prompt":"…"} to submit work, or {"action":"retry","id":"WORK_ID"} to retry reviewed work.</td></tr>
  </tbody></table><p>Do not automatically retry a submission after a lost response: it may already have started. Usage draws from the same account allowance and balance.</p>
- <h2>Service tools</h2><p><a href="/tools">Tools</a> documents the runtime services available through <code>/mcp</code> and <a href="/api">/api/v1</a>. Use a Services token for these. MCP supplies tools to your client; it does not run your Micro assistant.</p></div>`
+ <h2>Tools</h2><p><a href="/tools">Tools</a> documents the runtime services available through <code>/mcp</code> and <a href="/api">/api/v1</a>. Use a Services token for these. MCP supplies tools to your client; it does not run your Micro agent.</p><h2>x402</h2><p>Use public services with wallet payments through the machine-readable host. <a href="/x402">Connection details and payment flow</a>.</p></div>`
 	app.Respond(w, r, app.Response{Title: "Developers", HTML: body})
 }

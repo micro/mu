@@ -37,7 +37,7 @@ func TestAccessCompatibilityAndOAuth(t *testing.T) {
 	}
 	alias := httptest.NewRecorder()
 	ClientsHandler(alias, request("GET", "/account/clients", nil, false))
-	if alias.Code != 200 || !strings.Contains(alias.Body.String(), "Assistant API") || !strings.Contains(alias.Body.String(), "Connection details") {
+	if alias.Code != 200 || !strings.Contains(alias.Body.String(), "Agent API") || !strings.Contains(alias.Body.String(), "Connection details") {
 		t.Fatal("client setup is unavailable")
 	}
 	alias = httptest.NewRecorder()

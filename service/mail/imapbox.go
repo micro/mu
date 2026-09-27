@@ -320,6 +320,28 @@ func imapFolder(accountID, name string) ([]*Message, bool) {
 			}
 		}
 		copy := *m
+		if copy.InReplyTo == "" && copy.Arrival != nil {
+			copy.InReplyTo = copy.Arrival.InReplyTo
+		}
+		if copy.References == "" && copy.Arrival != nil {
+			copy.References = copy.Arrival.References
+		}
+		if copy.InReplyTo == "" {
+			if strings.HasPrefix(copy.ReplyTo, "<") {
+				copy.InReplyTo = copy.ReplyTo
+			} else if parent := byID[copy.ReplyTo]; parent != nil && (parent.ToID == accountID || sentBy(parent, accountID)) {
+				copy.InReplyTo = parent.MessageID
+				if copy.References == "" {
+					copy.References = strings.TrimSpace(parent.References + " " + parent.MessageID)
+				}
+			}
+		}
+		if copy.References == "" {
+			copy.References = copy.InReplyTo
+		}
+		if copy.FromID == "agent@"+ConfiguredDomain() && (copy.Tag == "checkin" || copy.Tag == "brief" || copy.Tag == "research") && !imapLooksHTML(copy.Body) {
+			copy.Markdown = true
+		}
 		out = append(out, &copy)
 	}
 	mutex.RUnlock()
@@ -433,7 +455,21 @@ func imapRender(m *Message) []byte {
 	header("Subject", m.Subject)
 	b.WriteString("Date: " + m.CreatedAt.Format(time.RFC1123Z) + "\r\n")
 	header("Message-ID", m.MessageID)
-	header("In-Reply-To", m.ReplyTo)
+	header("In-Reply-To", m.InReplyTo)
+	refs := referenceIDs(m.References)
+	if parent := strings.TrimSpace(m.InReplyTo); parent != "" {
+		found := false
+		for _, ref := range refs {
+			if ref == parent {
+				found = true
+				break
+			}
+		}
+		if !found {
+			refs = append(refs, parent)
+		}
+	}
+	header("References", strings.Join(refs, " "))
 	b.WriteString("MIME-Version: 1.0\r\n")
 
 	body, sub := imapTextBody(m)
@@ -612,7 +648,7 @@ func imapEnvelope(m *Message) string {
 	to := addr(imapDelivered(m))
 	return "(" + imapQuoted(m.CreatedAt.Format(time.RFC1123Z)) + " " +
 		imapQuoted(m.Subject) + " " + from + " " + from + " " + from + " " +
-		to + " NIL NIL " + imapQuoted(m.ReplyTo) + " " + imapQuoted(m.MessageID) + ")"
+		to + " NIL NIL " + imapQuoted(m.InReplyTo) + " " + imapQuoted(m.MessageID) + ")"
 }
 
 // imapQuoted is a quoted string, or NIL for nothing. Literals are avoided by

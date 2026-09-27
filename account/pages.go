@@ -728,7 +728,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		sections += `<a href="#google">Google</a>`
 	}
 	sections += `<a href="#clients">Clients</a></nav>`
-	content = `<p><a href="/@` + htmlpkg.EscapeString(acc.ID) + `">View your profile</a></p>` + links + sections + notice + `<div class="page-stack settings-sections account-sections">` + content + `</div>`
+	content = links + sections + notice + `<div class="page-stack settings-sections account-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went

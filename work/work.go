@@ -433,7 +433,8 @@ func deliver(r request, answer string, err error) {
 		sender = "Micro"
 	}
 	delivery := mail.Delivery{
-		From: sender, FromID: "agent@" + mail.ConfiguredDomain(),
+		Markdown: true,
+		From:     sender, FromID: "agent@" + mail.ConfiguredDomain(),
 		To: acc.Name, ToID: acc.ID, Tag: tag,
 		Subject: r.Title, Body: body, MessageID: messageID,
 	}
@@ -446,6 +447,7 @@ func deliver(r request, answer string, err error) {
 		topic := "brief"
 		if isCheckin {
 			topic = "checkin"
+			link = strings.Replace(link, "/inbox?id=", "/checkin?id=", 1)
 		}
 		event.Announce(topic, strings.TrimSpace(answer), link, r.Account)
 	}
