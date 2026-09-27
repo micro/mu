@@ -80,3 +80,56 @@ func TestEveningBriefRetired(t *testing.T) {
 		t.Fatal("evening option remains")
 	}
 }
+
+func TestExplicitBriefTimeChangeAllowsAnotherOccurrence(t *testing.T) {
+	oldTier := auth.SubscriptionTier
+	auth.SubscriptionTier = func(string) string { return "starter" }
+	defer func() { auth.SubscriptionTier = oldTier }()
+	owner := "brief_reschedule_regression"
+	defer DeleteAll(owner)
+	if err := ScheduleBrief(owner, "06:00", "Europe/London", "daily", "morning", false); err != nil {
+		t.Fatal(err)
+	}
+	first := Brief(owner)
+	mu.Lock()
+	events[first.ID].LastBrief = time.Now().UTC()
+	mu.Unlock()
+	if err := ScheduleBrief(owner, "06:00", "Europe/London", "daily", "morning", false); err != nil {
+		t.Fatal(err)
+	}
+	if Brief(owner).LastBrief.IsZero() {
+		t.Fatal("unchanged settings bypassed cadence")
+	}
+	if err := ScheduleBrief(owner, "07:15", "Europe/London", "daily", "morning", false); err != nil {
+		t.Fatal(err)
+	}
+	changed := Brief(owner)
+	if !changed.LastBrief.IsZero() {
+		t.Fatal("explicit reschedule remains blocked by previous delivery")
+	}
+	loc, _ := time.LoadLocation("Europe/London")
+	if changed.ID != first.ID || changed.When.In(loc).Format("15:04") != "07:15" {
+		t.Fatal("new schedule not preserved")
+	}
+}
+
+func TestBriefCadenceGuardPreservesChosenClock(t *testing.T) {
+	oldTier := auth.SubscriptionTier
+	auth.SubscriptionTier = func(string) string { return "starter" }
+	defer func() { auth.SubscriptionTier = oldTier }()
+	owner := "brief_clock_regression"
+	defer DeleteAll(owner)
+	now := time.Now().UTC()
+	due := now.Add(-time.Minute)
+	mu.Lock()
+	events[owner] = &Event{ID: owner, Owner: owner, Kind: "brief", Title: "Morning brief", When: due, LastBrief: now.Add(-time.Hour), Zone: "UTC", Repeat: "daily"}
+	mu.Unlock()
+	fireDue()
+	after := Brief(owner)
+	if after.When.Format("15:04") != due.Format("15:04") {
+		t.Fatalf("clock reverted: %v -> %v", due, after.When)
+	}
+	if !after.When.After(now) {
+		t.Fatal("schedule did not advance")
+	}
+}

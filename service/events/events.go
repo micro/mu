@@ -255,7 +255,11 @@ func fireDue() {
 					}
 					next := e.LastBrief.In(loc).AddDate(0, 0, days)
 					if now.Before(next) {
-						e.When = next
+						// Advance the chosen schedule, not the last delivery's
+						// clock time (which can be late or use an old setting).
+						for e.When.Before(next) {
+							rescheduleLocked(e, e.When)
+						}
 						changed = true
 						continue
 					}
