@@ -77,12 +77,12 @@ func researchHTML(owner, csrf string) string {
 	}
 	status := "Not scheduled"
 	if e != nil {
-		status = "Enabled"
+		status = strings.Title(frequency) + " at " + clock + " (" + zone + ")"
 		if e.Paused {
 			status = "Disabled"
 		}
 	}
-	return `<div class="page-stack"><p>Follow one topic. Micro checks current web sources and sends a private update when the search results change.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search and one summary. Cached searches may cost less. Your limit is checked before starting.</p><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></div>`
+	return `<div class="page-stack"><p>Follow one topic. Micro checks current web sources and sends a private update when the search results change.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search and one summary. Cached searches may cost less. Your limit is checked before starting.</p><details class="disclosure"><summary>Settings</summary><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></details></div>`
 }
 
 func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {

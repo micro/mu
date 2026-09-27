@@ -79,7 +79,7 @@ func checkinHTML(owner, token string) string {
 		}
 	}
 	var b strings.Builder
-	b.WriteString(`<section id="checkin" class="card page-stack"><h3>Daily Checkin</h3><p>A separate conversation when you are ready to start your day. Micro shows upcoming commitments and outstanding tasks, then asks what you want to focus on. Reply in one or two sentences about what you need to get done or need help with. No follow-up nudges.</p><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="checkin-schedule"><label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label><label class="field-label">Frequency<select class="form-input" name="repeat">`)
+	b.WriteString(`<section id="checkin" class="card page-stack"><h2>Daily Checkin</h2><p>A short checkin to share your priorities and work out what to do next. Reply in one or two sentences.</p><p class="text-muted">` + html.EscapeString(status) + `</p><details class="disclosure"><summary>Settings</summary><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="checkin-schedule"><label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label><label class="field-label">Frequency<select class="form-input" name="repeat">`)
 	for _, f := range []string{"daily", "weekdays", "weekly"} {
 		selected := ""
 		if f == repeat {
@@ -98,7 +98,7 @@ func checkinHTML(owner, token string) string {
 	if e != nil && !e.Paused {
 		b.WriteString(`<button name="state" value="paused" class="btn-secondary">Disable</button>`)
 	}
-	b.WriteString(`</div></form></section>`)
+	b.WriteString(`</div></form></details></section>`)
 	return b.String()
 }
 

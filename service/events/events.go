@@ -111,7 +111,7 @@ func CreateFor(owner, title string, when time.Time, note string, minutes int) (*
 
 // CreateStanding schedules an event that may repeat, and may run a prompt
 // through the agent when it fires.
-func CreateStanding(owner, title string, when time.Time, note string, minutes int, repeat, prompt string) (*Event, error) {
+func CreateStanding(owner, title string, when time.Time, note string, minutes int, repeat, prompt string, zones ...string) (*Event, error) {
 	owner = strings.TrimSpace(owner)
 	title = strings.TrimSpace(title)
 	if owner == "" {
@@ -136,6 +136,12 @@ func CreateStanding(owner, title string, when time.Time, note string, minutes in
 	}
 	// Preserve the owner’s timezone for confirmations as well as recurrence.
 	zone := recurringZone(owner)
+	if len(zones) > 0 {
+		zone = zones[0]
+		if _, err := time.LoadLocation(zone); err != nil || zone == "" || zone == "Local" {
+			return nil, fmt.Errorf("invalid schedule timezone")
+		}
+	}
 	if loc, err := time.LoadLocation(zone); zone != "" && err == nil {
 		e.Zone = zone
 		e.When = when.In(loc)

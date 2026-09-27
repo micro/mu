@@ -1391,3 +1391,21 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .page-menu.anchor-nav{flex-wrap:wrap;align-items:baseline;gap:8px 16px;overflow:visible;padding-bottom:16px;border-bottom:1px solid var(--border)}
 .page-menu.anchor-nav a{padding:0;border:0;border-radius:0;background:none;text-decoration:underline;text-underline-offset:3px}
 .page-menu.anchor-nav a:hover{background:none;text-decoration:underline}
+
+/* Shared page introduction, tabs and filters. Keep controls separate from results. */
+.page-controls{display:flex;flex-direction:column;gap:12px;min-width:0;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.view-controls{display:flex;flex-direction:column;gap:12px;min-width:0}
+.page-controls>*,.view-controls>*{margin-block:0}
+.view-tabs,.view-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.view-tabs>a,.view-filters>a{display:inline-flex;align-items:center;min-height:36px;padding:5px 10px;line-height:24px;text-decoration:none;white-space:nowrap}
+.view-tabs>a{border-bottom:2px solid transparent}
+.view-tabs>a[aria-current="page"]{border-bottom-color:var(--text-primary);font-weight:500}
+.view-filters>a{border:1px solid var(--border);border-radius:5px}
+.view-filters>a[aria-current="page"]{background:var(--surface);border-color:var(--text-secondary);font-weight:500}
+.view-tabs>a:hover,.view-filters>a:hover{background:var(--surface);text-decoration:none}
+
+.collection-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-block:16px}
+.collection-toolbar>.search-bar{margin:0;margin-inline-start:auto;width:auto}
+
+.view-controls>.collection-toolbar{margin:0}
+.collection-toolbar>.search-bar:has(input){flex:1 1 280px;max-width:560px}

@@ -92,15 +92,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	filter := r.URL.Query().Get("status")
 	archived := r.URL.Query().Get("view") == "archived" || filter == "archived"
 	var b strings.Builder
-	b.WriteString(`<p class="text-muted">Give Micro a task to carry out in the background, then track its progress and results here.</p><div class="page-action"><a class="btn" href="/work?view=new">New work</a></div><div class="collection-head"><form class="search-bar" method="GET" action="/work"><label for="work-status">Status</label><select id="work-status" name="status" data-submit-on-change>`)
+	var controls strings.Builder
+	controls.WriteString(`<div class="collection-toolbar"><a class="btn" href="/work?view=new">New work</a><form class="search-bar" method="GET" action="/work"><label for="work-status">Status</label><select id="work-status" name="status" data-submit-on-change>`)
 	for _, f := range []struct{ value, label string }{{"", "All"}, {"todo", "Queued"}, {"doing", "Running"}, {"blocked", "Needs input"}, {"failed", "Failed"}, {"done", "Done"}, {"canceled", "Stopped"}, {"archived", "Archived"}} {
 		current := ""
 		if (filter == f.value && !archived) || (archived && f.value == "archived") {
 			current = ` selected`
 		}
-		b.WriteString(`<option value="` + f.value + `"` + current + `>` + f.label + `</option>`)
+		controls.WriteString(`<option value="` + f.value + `"` + current + `>` + f.label + `</option>`)
 	}
-	b.WriteString(`</select><noscript><button type="submit">Filter</button></noscript></form></div>`)
+	controls.WriteString(`</select><noscript><button type="submit">Filter</button></noscript></form></div>`)
+	b.WriteString(app.PageControls("Give Micro a task to carry out in the background, then track its progress and results here.", "", controls.String()))
 	type entry struct {
 		title, target, status, kind string
 		created, updated            time.Time
@@ -145,7 +147,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(entries) == 0 {
 		b.WriteString(`<p>No work here.</p>`)
 	}
-	app.Respond(w, r, app.Response{Title: "Work", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Work", HTML: `<div class="page-stack">` + b.String() + `</div>`})
 }
 
 func workAction(w http.ResponseWriter, r *http.Request, owner string) {
