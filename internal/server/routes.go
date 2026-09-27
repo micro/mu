@@ -226,6 +226,7 @@ func staticSuffixes() []string {
 
 // registerRoutes attaches every handler to the default mux.
 func registerRoutes() {
+	http.HandleFunc("/robots.txt", robotsHandler)
 	// Older open pages ask this endpoint whether to use the assistant.
 	// Keep that handshake without restoring keyword execution.
 	http.HandleFunc("/command", func(w http.ResponseWriter, r *http.Request) {

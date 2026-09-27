@@ -38,3 +38,24 @@ func TestActivityRetainsFailuresSeparatelyAndBoundsHistory(t *testing.T) {
 		t.Fatal("activity did not survive restore")
 	}
 }
+
+func TestAnonymousNotFoundStaysInActivity(t *testing.T) {
+	mu.Lock()
+	old := rings
+	rings = newStore()
+	mu.Unlock()
+	defer func() { mu.Lock(); rings = old; mu.Unlock() }()
+	for _, e := range []Activity{{Surface: "http", Operation: "GET robots.txt", Status: 404, Outcome: "request failed"}, {Surface: "http", Account: "asim", Operation: "GET docs", Status: 404, Outcome: "request failed"}, {Surface: "http", Operation: "GET blog", Status: 500, Outcome: "service failure"}, {Surface: "http", Operation: "GET social", Status: 403, Outcome: "access blocked"}} {
+		RecordActivity(e)
+	}
+	if len(Activities(false)) != 4 || len(Activities(true)) != 3 {
+		t.Fatal("missing-page filtering hid actionable failures")
+	}
+	// Existing stored records receive the same treatment after upgrading.
+	mu.Lock()
+	rings.Failures = append(rings.Failures, Activity{At: time.Now(), Surface: "http", Account: "guest", Status: 404, Outcome: "request failed"})
+	mu.Unlock()
+	if len(Activities(true)) != 3 {
+		t.Fatal("historical anonymous 404 remained in Errors")
+	}
+}

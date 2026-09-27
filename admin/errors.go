@@ -31,7 +31,7 @@ func ErrorsHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Activity"
 	}
 	var b strings.Builder
-	b.WriteString(`<nav class="form-actions"><a href="/admin/errors">Errors</a><a href="/admin/activity">Activity</a><a href="/admin/traffic">Usage totals</a><a href="/admin/log">Logs</a></nav><p>Recent operational metadata, recorded from this update. Up to 5,000 activity records and 2,000 failures are retained for 14 days; busy periods may cover less time. Historical aggregate counts cannot recover individual requests.</p>`)
+	b.WriteString(`<nav class="form-actions"><a href="/admin/errors">Errors</a><a href="/admin/activity">Activity</a><a href="/admin/traffic">Usage totals</a><a href="/admin/log">Logs</a></nav><p>Recent operational metadata, recorded from this update. Up to 5,000 activity records and 2,000 failures are retained for 14 days; busy periods may cover less time. Historical aggregate counts cannot recover individual requests. Anonymous HTTP 404s appear in Activity rather than Errors.</p>`)
 	fmt.Fprintf(&b, `<form class="search-bar" method="POST">%s<input name="account" aria-label="Username" placeholder="Username (exact)" value="%s"><select name="surface" aria-label="Source"><option value="">All sources</option>`, app.CSRFField(auth.CSRFToken(r)), html.EscapeString(account))
 	for _, s := range []string{"mcp", "api", "agent", "http", "provider", "credentials"} {
 		selected := ""
@@ -46,7 +46,14 @@ func ErrorsHandler(w http.ResponseWriter, r *http.Request) {
 		counts := map[string]int{}
 		priority := map[string]int{}
 		for _, e := range filtered {
-			key := e.Outcome + " · " + e.Surface + " · " + e.Operation
+			outcome := e.Outcome
+			if e.Status >= 400 && outcome == "request failed" {
+				outcome = usage.FailureKind(e.Status, "")
+			}
+			key := outcome + " · " + e.Surface + " · " + e.Operation
+			if e.Status > 0 {
+				key += fmt.Sprintf(" · HTTP %d", e.Status)
+			}
 			counts[key]++
 			score := 1
 			if e.Account != "guest" {

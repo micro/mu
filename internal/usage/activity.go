@@ -36,7 +36,7 @@ func RecordActivity(a Activity) {
 	if len(rings.Activity) > maxActivity {
 		rings.Activity = rings.Activity[len(rings.Activity)-maxActivity:]
 	}
-	if a.Outcome != "ok" && a.Outcome != "created" && a.Outcome != "revoked" {
+	if !routineNotFound(a) && a.Outcome != "ok" && a.Outcome != "created" && a.Outcome != "revoked" {
 		rings.Failures = append(rings.Failures, a)
 		if len(rings.Failures) > maxFailures {
 			rings.Failures = rings.Failures[len(rings.Failures)-maxFailures:]
@@ -54,7 +54,7 @@ func Activities(failures bool) []Activity {
 	out := []Activity{}
 	cutoff := now().AddDate(0, 0, -14)
 	for i := len(src) - 1; i >= 0; i-- {
-		if src[i].At.After(cutoff) {
+		if src[i].At.After(cutoff) && (!failures || !routineNotFound(src[i])) {
 			out = append(out, src[i])
 		}
 	}
@@ -71,6 +71,12 @@ func FailureKind(status int, message string) string {
 		return "timeout"
 	case status == 429, strings.Contains(s, "rate limit"):
 		return "rate limited"
+	case status == 404:
+		return "not found"
+	case status == 400:
+		return "invalid request"
+	case status == 405:
+		return "method not allowed"
 	case status == 401:
 		return "authentication refused"
 	case status == 403, strings.Contains(s, "forbidden"), strings.Contains(s, "permission"), strings.Contains(s, "blocked"), strings.Contains(s, "authorization"):
@@ -80,4 +86,10 @@ func FailureKind(status int, message string) string {
 	default:
 		return "request failed"
 	}
+}
+
+// Anonymous missing-page requests remain in Activity, not the actionable feed.
+// This does not infer bot activity or hide signed-in users' broken links.
+func routineNotFound(a Activity) bool {
+	return a.Surface == "http" && a.Status == 404 && (a.Account == "" || a.Account == "guest")
 }
