@@ -33,7 +33,7 @@ func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant for your everyday life.</p>
-<p>Ask a question, explore an idea or get things done.</p>
+<p>Ask a question, explore an idea or get stuff done.</p>
 <ul class="landing-highlights" aria-label="Ways to use Micro">
 <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5"/></svg><span>Ask</span></li>
 <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg><span>Brief</span></li>
@@ -48,7 +48,7 @@ func landingHTML() string {
 <p>Start a conversation whenever you need a hand.</p>
 <dl class="landing-capabilities">
 <div><dt>Find answers</dt><dd>Search the web, explore a topic or find local information.</dd></div>
-<div><dt>Get things done</dt><dd>Work with your notes, files and tasks. Connect Google Calendar to include your schedule.</dd></div>
+<div><dt>Get stuff done</dt><dd>Work with your notes, files and tasks. Connect Google Calendar to include your schedule.</dd></div>
 <div><dt>Talk your way</dt><dd>Use Micro on the web, by email, WhatsApp or XMPP.</dd></div>
 </dl>
 <p class="landing-access">Tell Micro what you need in your own words. It can look things up, use the information you share and help you take the next step. Ask follow-up questions as you go.</p>
