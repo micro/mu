@@ -74,7 +74,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.Respond(w, r, app.Response{Title: "New event", HTML: eventForm(csrf)})
 		return
 	}
-	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
+	b.WriteString(`<div class="page-col page-stack">` + app.PageControls(Spec.Description, "", `<div class="form-actions"><a class="btn" href="/events?new=1">New event</a></div>`))
 
 	up := Upcoming(owner)
 	ext := Overview(owner, 0)

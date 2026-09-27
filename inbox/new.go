@@ -465,7 +465,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	}
 
 	var b strings.Builder
-	b.WriteString(viewNavigation("new"))
+	b.WriteString(`<div class="page-stack">` + app.PageControls(inboxDescription, viewNavigation("conversations"), ""))
 	b.WriteString(`<div class="ib page-col">`)
 	if f.On != "" {
 		b.WriteString(app.Actions(app.TextLink("Back to the conversation", "/inbox?id="+url.QueryEscape(f.On))))
@@ -596,7 +596,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		`" placeholder="` + placeholder + `">` + html.EscapeString(f.Body) + `</textarea>`)
 
 	b.WriteString(`<div class="form-actions"><button type="submit">` + verb + `</button>`)
-	b.WriteString(`</div></form></div>`)
+	b.WriteString(`</div></form></div></div>`)
 
 	// Named for what is being written. "New message" over a note form is the
 	// page telling you it is doing something other than what it is doing.

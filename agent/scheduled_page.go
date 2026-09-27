@@ -6,14 +6,27 @@ import (
 	"net/http"
 )
 
+const agentsDescription = "Talk to an agent, create your own, or choose scheduled updates from Micro."
+
 func scheduledTabs(scheduled bool) string {
-	return `<nav class="page-menu" aria-label="Agents">` + app.PillLink("Agents", "/agents", !scheduled) + app.PillLink("Scheduled", "/agents?view=scheduled", scheduled) + `</nav>`
+	active := "agents"
+	if scheduled {
+		active = "scheduled"
+	}
+	return app.ViewNavigation("Agent views", active, []app.ViewLink{
+		{Key: "agents", Label: "Agents", URL: "/agents"},
+		{Key: "scheduled", Label: "Scheduled", URL: "/agents?view=scheduled"},
+	}, false)
 }
 
 func scheduledHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)
+		return
+	}
+	if (r.Method == http.MethodGet && r.URL.Query().Get("new") == "1") || (r.Method == http.MethodPost && (r.FormValue("action") == "create-schedule" || r.FormValue("action") == "cancel-schedule")) {
+		customScheduleHandler(w, r, acc)
 		return
 	}
 	if r.Method == http.MethodPost {
@@ -38,6 +51,6 @@ func scheduledHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := auth.CSRFToken(r)
-	body := `<div class="page-stack"><p class="text-muted">Choose the updates Micro prepares for you and when they arrive.</p>` + scheduledTabs(true) + briefPeriodHTML(acc.ID, token, "morning") + checkinHTML(acc.ID, token) + `<section id="research" class="section-card section-stack"><h2>Evening Research</h2>` + researchHTML(acc.ID, token) + `</section></div>`
+	body := `<div class="page-stack">` + app.PageControls(agentsDescription, scheduledTabs(true), `<div class="form-actions"><a class="btn" href="/agents?view=scheduled&amp;new=1">New schedule</a></div>`) + `<div class="card-grid comparison-grid">` + briefPeriodHTML(acc.ID, token, "morning") + checkinHTML(acc.ID, token) + `<section id="research" class="section-card section-stack"><h2>Evening Research</h2>` + researchHTML(acc.ID, token) + `</section></div>` + customSchedulesHTML(acc.ID, token) + `</div>`
 	app.Respond(w, r, app.Response{Title: "Agents", HTML: body})
 }

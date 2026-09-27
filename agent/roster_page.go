@@ -97,7 +97,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
-	b.WriteString(`<div class="page-col page-stack"><div class="action-block"><p class="text-muted">Choose an agent to talk to, or create one with its own instructions and tools.</p>`)
+	b.WriteString(`<div class="page-col page-stack">`)
 	// The way to make one, first.
 	//
 	// Three sentences of explanation stood here — what an agent is, what it
@@ -108,7 +108,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// The button is the standard one, in the standard place: the top, where
 	// every other page in this product puts its primary action.
-	b.WriteString(scheduledTabs(false) + `<div class="form-actions">` + newAgentAction(owner) + `</div></div>`)
+	b.WriteString(app.PageControls(agentsDescription, scheduledTabs(false), `<div class="form-actions">`+newAgentAction(owner)+`</div>`))
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit
@@ -234,7 +234,7 @@ func newAgentAction(owner string) string {
 	}
 	full, have, max := AtAgentLimit(owner)
 	if !full {
-		return app.ActionLink("/agent/new", "New")
+		return app.ActionLink("/agent/new", "New agent")
 	}
 	return app.ActionLink("/account/topup", "Top up to lift the limit") +
 		fmt.Sprintf(`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and `+

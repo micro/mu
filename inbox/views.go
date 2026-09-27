@@ -22,18 +22,13 @@ import (
 	"mu/service/shell"
 )
 
+const inboxDescription = "Read and reply to messages, and find things you and Micro have saved."
+
 func viewNavigation(active string) string {
-	var b strings.Builder
-	b.WriteString(`<nav class="page-menu" aria-label="Inbox views">`)
-	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"saved", "Saved", "/inbox?view=saved"}, {"new", "New message", "/inbox/new"}} {
-		current := ""
-		if active == v.key {
-			current = ` aria-current="page"`
-		}
-		fmt.Fprintf(&b, `<a href="%s"%s>%s</a>`, html.EscapeString(v.href), current, v.name)
-	}
-	b.WriteString(`</nav>`)
-	return b.String()
+	return app.ViewNavigation("Inbox views", active, []app.ViewLink{
+		{Key: "conversations", Label: "Messages", URL: "/inbox"},
+		{Key: "saved", Label: "Saved", URL: "/inbox?view=saved"},
+	}, false)
 }
 
 // These views only compose records owned by the session account. They do not
@@ -85,8 +80,7 @@ type savedItem struct {
 
 func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	var b strings.Builder
-	b.WriteString(viewNavigation("saved"))
-	b.WriteString(`<p class="text-muted">Things you and Micro have saved. To create something, <a href="/?new=1">start a conversation</a>.</p>`)
+
 	filter := r.URL.Query().Get("type")
 	switch filter {
 	case "", "note", "document", "app", "file":
@@ -117,25 +111,14 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 			items = append(items, savedItem{f.Name, "file", f.URL, "Saved", "", f.Created})
 		}
 	}
-	// Filters remain small and textual; no dashboard or service catalogue.
-	kinds := map[string]bool{}
-	for _, item := range items {
-		kinds[item.kind] = true
-	}
-	if shell.Configured() {
-		kinds["file"] = true
-	}
-	if len(kinds) > 1 || filter != "" {
-		b.WriteString(`<nav class="view-switch" aria-label="Saved type">`)
-		for _, f := range []struct{ key, label string }{{"", "All"}, {"note", "Notes"}, {"document", "Docs"}, {"app", "Apps"}, {"file", "Files"}} {
-			current := ""
-			if filter == f.key {
-				current = ` aria-current="page"`
-			}
-			fmt.Fprintf(&b, `<a href="/inbox?view=saved&amp;type=%s"%s>%s</a>`, f.key, current, f.label)
-		}
-		b.WriteString(`</nav>`)
-	}
+	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a></div>` + app.ViewNavigation("Saved type", filter, []app.ViewLink{
+		{Key: "", Label: "All", URL: "/inbox?view=saved"},
+		{Key: "note", Label: "Notes", URL: "/inbox?view=saved&type=note"},
+		{Key: "document", Label: "Docs", URL: "/inbox?view=saved&type=document"},
+		{Key: "app", Label: "Apps", URL: "/inbox?view=saved&type=app"},
+		{Key: "file", Label: "Files", URL: "/inbox?view=saved&type=file"},
+	}, true)
+	b.WriteString(app.PageControls(inboxDescription, viewNavigation("saved"), controls))
 	sort.SliceStable(items, func(i, j int) bool {
 		if items[i].updated.Equal(items[j].updated) {
 			return items[i].href < items[j].href
@@ -217,7 +200,7 @@ func filePreview(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		app.BadRequest(w, r, "Cannot open this file. The workspace may be asleep or the file may have been removed.")
 		return
 	}
-	body := viewNavigation("saved") + `<a href="/inbox?view=saved&amp;type=file">Back to files</a><h2>` + html.EscapeString(name) + `</h2>`
+	body := app.PageControls(inboxDescription, viewNavigation("saved"), "") + `<a href="/inbox?view=saved&amp;type=file">Back to files</a><h2>` + html.EscapeString(name) + `</h2>`
 	if strings.ContainsRune(text, 0) || !utf8.ValidString(text) {
 		body += `<p>This file has no text preview. Use your workspace to retrieve it.</p>`
 	} else {
