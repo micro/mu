@@ -61,13 +61,13 @@ func customScheduleHandler(w http.ResponseWriter, r *http.Request, acc *auth.Acc
 		return
 	}
 	token := auth.CSRFToken(r)
-	body := `<div class="page-stack">` + app.PageControls(agentsDescription, scheduledTabs(true), "") + `<section class="section-card section-stack"><h2>New schedule</h2><p>Tell Micro what to do and when. The result arrives in your inbox. Assistant replies and paid tools use your credits.</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="create-schedule">` +
+	body := `<div class="page-stack">` + app.PageControls(agentsDescription, scheduledTabs(true), "") + `<section class="section-card section-stack"><h2>New event</h2><p>Tell Micro what to do and when. The result arrives in your inbox. Assistant replies and paid tools use your credits.</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="create-schedule">` +
 		app.Field{Name: "title", Label: "Title", Required: true, Max: 1000}.HTML() +
 		app.Field{Name: "prompt", Label: "What should Micro do?", Placeholder: "Check the latest developments on a topic and send me a summary", Required: true, Rows: 3, Max: 16000}.HTML() +
 		app.Field{Name: "when", Label: "Date and time", Type: "datetime-local", Required: true}.HTML() +
 		`<label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(acc.Zone) + `" placeholder="Europe/London"></label>` +
 		app.Field{Name: "repeat", Label: "Repeat", Options: []app.Option{{Value: "", Label: "Once"}, {Value: "daily", Label: "Daily"}, {Value: "weekly", Label: "Weekly"}, {Value: "monthly", Label: "Monthly"}}}.HTML() +
-		`<div class="form-actions"><button type="submit">Create schedule</button><a href="/agents?view=scheduled">Cancel</a></div></form></section></div>`
+		`<div class="form-actions"><button type="submit">Create event</button><a href="/agents?view=scheduled">Cancel</a></div></form></section></div>`
 	app.Respond(w, r, app.Response{Title: "Agents", HTML: body})
 }
 
