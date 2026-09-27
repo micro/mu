@@ -61,7 +61,7 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       "Connect",
 		Description: "Every way to reach this instance's assistant — the web, a text, WhatsApp, mail, or a program.",
-		HTML:        contactBody(acc) + `<p><a href="/account/clients">Set up your mail or chat app</a> · <a href="/account/tokens">Manage tokens</a></p>`,
+		HTML:        `<div class="section-stack">` + contactBody(acc) + `<div class="form-actions"><a href="/account/clients">Set up your mail or chat app</a><a href="/account/tokens">Manage tokens</a></div></div>`,
 	})
 }
 
