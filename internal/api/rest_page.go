@@ -188,12 +188,12 @@ func restMethods() []restMethod {
 }
 
 // restReference renders the index and the per-method cards, in the same
-// two-column shape /mcp uses so the two pages read as one reference.
+// document, with a collapsible index above the method cards.
 func restReference(base string) string {
 	methods := restMethods()
 
 	var nav strings.Builder
-	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Methods</div>`)
+	nav.WriteString(`<details class="disclosure"><summary>Methods</summary><nav class="reference-index" aria-label="API methods">`)
 	last := ""
 	for _, m := range methods {
 		if m.Service != last {
@@ -207,15 +207,14 @@ func restReference(base string) string {
 		nav.WriteString(`<a href="#api-` + html.EscapeString(m.Tool) + `">` +
 			html.EscapeString(strings.ToLower(m.Method)) + price + `</a>`)
 	}
-	nav.WriteString(`</nav>`)
+	nav.WriteString(`</nav></details>`)
 
 	var cards strings.Builder
 	for _, m := range methods {
 		cards.WriteString(restMethodCard(m, base))
 	}
 
-	return `<div class="ep-layout">` + nav.String() +
-		`<div class="ep-main">` + app.List(cards.String()) + `</div></div>`
+	return `<div class="section-stack">` + nav.String() + app.List(cards.String()) + `</div>`
 }
 
 func restMethodCard(m restMethod, base string) string {

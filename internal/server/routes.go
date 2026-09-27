@@ -74,6 +74,7 @@ import (
 func authRequired() map[string]bool {
 	authenticated := map[string]bool{
 		"/developers":  false,
+		"/x402":        false,
 		"/tools":       false, // Public — the catalogue, agent lens
 		"/tools/":      false, // Public — one tool, same as the catalogue
 		"/services":    false, // Public — the catalogue, person lens
@@ -769,6 +770,7 @@ func registerRoutes() {
 
 	// Product operations have separate routes; runtime tools never switch by token.
 	http.HandleFunc("/developers", DevelopersHandler)
+	http.HandleFunc("/x402", X402PageHandler)
 
 	http.HandleFunc("/tools", api.ServiceToolsPageHandler)
 

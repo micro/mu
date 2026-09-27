@@ -1349,3 +1349,14 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .search-bar>.filter-control{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin:0;white-space:nowrap}
 .search-bar>.filter-control select{width:auto;min-width:80px;margin:0}
 .search-bar>button{align-self:center;margin-block:0}
+
+/* Public service introductions and API reference share the document canvas. */
+.service-introduction{width:100%;max-width:42rem;margin:24px auto;display:flex;flex-direction:column;align-items:flex-start;gap:20px}
+.service-introduction h1,.service-introduction p{margin:0}
+.service-introduction h1{margin-bottom:8px}
+.service-introduction .form-actions{margin:0}
+.reference-index{display:flex;flex-wrap:wrap;gap:8px 16px;padding:16px 0}
+.reference-index .ep-nav-title{flex-basis:100%;margin-top:12px;font-weight:500}
+.reference-index .ep-price{margin-left:6px;color:var(--text-muted)}
+.svc-page{display:flex;flex-direction:column;gap:20px;min-width:0}
+.svc-page .svc-h{margin:0}

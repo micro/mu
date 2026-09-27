@@ -113,6 +113,50 @@ func RenderInternalStatusHTML() string {
 	return renderStatusHTML(status)
 }
 
+// RenderSettledInternalStatusHTML is for the admin snapshot worker only.
+// Resolve cold DNS checks before freezing the HTML for a minute. The request
+// itself continues to poll the worker, rather than caching “checking” as final.
+func RenderSettledInternalStatusHTML() string {
+	status := buildStatus()
+	deadline := time.Now().Add(dnsTimeout + time.Second)
+	for {
+		pending := false
+		for i, check := range status.Config {
+			if check.State != "pending" {
+				continue
+			}
+			domain := os.Getenv("MAIL_DOMAIN")
+			selector := settings.Get("MAIL_SELECTOR")
+			if selector == "" {
+				selector = "default"
+			}
+			switch check.Name {
+			case "DKIM DNS Record":
+				status.Config[i] = dnsStatus(check.Name, selector+"._domainkey."+domain, "v=DKIM1")
+			case "SPF DNS Record":
+				status.Config[i] = dnsStatus(check.Name, domain, "v=spf1")
+			}
+			if status.Config[i].State == "pending" {
+				pending = true
+			}
+		}
+		if !pending {
+			break
+		}
+		if time.Now().After(deadline) {
+			for i := range status.Config {
+				if status.Config[i].State == "pending" {
+					status.Config[i].State = "unavailable"
+					status.Config[i].Details = "DNS lookup unavailable; will retry"
+				}
+			}
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return renderStatusHTML(status)
+}
+
 func buildStatus() StatusResponse {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)

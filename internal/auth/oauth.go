@@ -271,7 +271,7 @@ func ExchangeAuthorizationCode(code, clientID, redirectURI, codeVerifier string)
 	if len(authCode.Permissions) == 0 {
 		return "", errors.New("authorization has no approved permissions; reconnect")
 	}
-	_, raw, err := CreateToken(authCode.AccountID, "OAuth: "+clientID, authCode.Permissions, time.Now().Add(24*time.Hour))
+	_, raw, err := createToken(authCode.AccountID, "OAuth: "+clientID, authCode.Permissions, time.Now().Add(24*time.Hour), clientID)
 	return raw, err
 }
 
@@ -628,4 +628,35 @@ func OAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 		"token_type":   "Bearer",
 		"expires_in":   86400,
 	})
+}
+
+// OAuthConnection contains audit metadata only; never return token secrets.
+type OAuthConnection struct {
+	Account                      string
+	Created, LastUsed, ExpiresAt time.Time
+	Legacy                       bool
+}
+
+// OAuthConnections groups retained tokens by client. Legacy names are only
+// hints (users can name personal tokens), so the UI labels them explicitly.
+func OAuthConnections() map[string][]OAuthConnection {
+	mutex.Lock()
+	defer mutex.Unlock()
+	result := make(map[string][]OAuthConnection)
+	for _, token := range tokens {
+		clientID := token.OAuthClientID
+		legacy := false
+		if clientID == "" && strings.HasPrefix(token.Name, "OAuth: ") {
+			clientID = strings.TrimPrefix(token.Name, "OAuth: ")
+			legacy = true
+		}
+		if clientID == "" {
+			continue
+		}
+		result[clientID] = append(result[clientID], OAuthConnection{token.Account, token.Created, token.LastUsed, token.ExpiresAt, legacy})
+	}
+	for id := range result {
+		sort.Slice(result[id], func(i, j int) bool { return result[id][i].Created.After(result[id][j].Created) })
+	}
+	return result
 }

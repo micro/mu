@@ -17,6 +17,7 @@ import (
 	"html"
 	"net/http"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -54,6 +55,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clients := auth.AllOAuthClients()
+	connections := auth.OAuthConnections()
 
 	var b strings.Builder
 	b.WriteString(`<p class="text-muted text-sm">Anything that speaks MCP can register ` +
@@ -73,13 +75,31 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(&b, `<p class="text-muted text-sm">%d client%s.</p>`, len(clients), suffix)
 	b.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="OAuth clients"><table class="data-table"><thead><tr><th>Name</th><th>Client ID</th>` +
-		`<th>Redirects to</th><th>Username</th><th class="created-col">Created</th>` +
+		`<th>Redirects to</th><th>Registered by</th><th>Account connections</th><th class="created-col">Created</th>` +
 		`<th class="center"></th></tr></thead><tbody>`)
 
 	for _, c := range clients {
 		owner := `<span class="text-muted">Anonymous registration</span>`
 		if c.Account != "" {
 			owner = html.EscapeString(c.Account)
+		}
+		var connected strings.Builder
+		for _, connection := range connections[c.ClientID] {
+			state := "Active"
+			if !connection.ExpiresAt.IsZero() && connection.ExpiresAt.Before(time.Now()) {
+				state = "Expired"
+			}
+			lastUsed := "Never used"
+			if !connection.LastUsed.IsZero() {
+				lastUsed = "Last used " + connection.LastUsed.UTC().Format("2 Jan 15:04 UTC")
+			}
+			if connection.Legacy {
+				state += "; inferred from legacy token name"
+			}
+			fmt.Fprintf(&connected, `<div class="record-card"><strong>%s</strong><p class="text-sm text-muted">%s · Issued %s · %s</p></div>`, html.EscapeString(connection.Account), state, connection.Created.UTC().Format("2 Jan 15:04 UTC"), lastUsed)
+		}
+		if connected.Len() == 0 {
+			connected.WriteString(`<span class="text-muted">No retained tokens</span>`)
 		}
 		// No address means the client cannot complete a sign-in at all, so the
 		// row offers the one thing that fixes it. Every client the /token form
@@ -95,16 +115,16 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 			where = `<span class="text-muted text-sm">none — cannot sign anybody in</span>` + where
 		}
 		fmt.Fprintf(&b, `<tr><td>%s</td><td><code class="text-2xs">%s</code></td>`+
-			`<td><div class="page-stack compact-stack">%s</div></td><td>%s</td><td class="created-col">%s</td><td class="center">`+
+			`<td><div class="page-stack compact-stack">%s</div></td><td>%s</td><td>%s</td><td class="created-col">%s</td><td class="center">`+
 			`<form method="POST" action="/admin/oauth" class="form-action d-inline" `+
 			`onsubmit="return confirm('Remove this client?')">`+
 			`<input type="hidden" name="client_id" value="%s">`+
 			`<button type="submit" class="btn-danger">Remove</button></form></td></tr>`,
-			html.EscapeString(c.Name), html.EscapeString(c.ClientID), where, owner,
+			html.EscapeString(c.Name), html.EscapeString(c.ClientID), where, owner, connected.String(),
 			c.CreatedAt.Format("2006-01-02"), html.EscapeString(c.ClientID))
 	}
 	if len(clients) == 0 {
-		b.WriteString(`<tr><td colspan="6" class="center text-muted">Nothing registered.</td></tr>`)
+		b.WriteString(`<tr><td colspan="7" class="center text-muted">Nothing registered.</td></tr>`)
 	}
 	b.WriteString(`</tbody></table></div>`)
 

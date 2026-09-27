@@ -16,7 +16,14 @@ func ErrorsHandler(w http.ResponseWriter, r *http.Request) {
 		app.Forbidden(w, r, "Admin access required")
 		return
 	}
-	activity := r.URL.Path == "/admin/activity"
+	destination := "/admin/log"
+	if r.URL.Path == "/admin/activity" {
+		destination += "?tab=activity"
+	}
+	http.Redirect(w, r, destination, http.StatusTemporaryRedirect)
+}
+
+func activityLogCard(r *http.Request, activity bool) string {
 	entries := usage.Activities(!activity)
 	account, surface := strings.TrimSpace(r.FormValue("account")), strings.TrimSpace(r.FormValue("surface"))
 	filtered := []usage.Activity{}
@@ -26,13 +33,14 @@ func ErrorsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		filtered = append(filtered, e)
 	}
-	title := "Errors"
-	if activity {
-		title = "Activity"
-	}
 	var b strings.Builder
-	b.WriteString(`<nav class="form-actions"><a href="/admin/errors">Errors</a><a href="/admin/activity">Activity</a><a href="/admin/traffic">Usage totals</a><a href="/admin/log">Logs</a></nav><p>Recent operational metadata, recorded from this update. Up to 5,000 activity records and 2,000 failures are retained for 14 days; busy periods may cover less time. Historical aggregate counts cannot recover individual requests. Anonymous HTTP 404s appear in Activity rather than Errors.</p>`)
-	fmt.Fprintf(&b, `<form class="search-bar" method="POST">%s<input name="account" aria-label="Username" placeholder="Username (exact)" value="%s"><select name="surface" aria-label="Source"><option value="">All sources</option>`, app.CSRFField(auth.CSRFToken(r)), html.EscapeString(account))
+	b.WriteString(`<p>Anonymous missing-page requests stay in Activity. <a href="/admin/traffic">View usage totals</a>.</p><details class="disclosure"><summary>About these records</summary><p>Up to 5,000 activity records and 2,000 failures, retained for 14 days; busy periods may cover less time. Recording began with the activity update. Historical totals cannot reconstruct individual requests.</p></details>`)
+	target := "/admin/log"
+	if activity {
+		target += "?tab=activity"
+	}
+
+	fmt.Fprintf(&b, `<form class="search-bar" method="POST" action="%s">%s<input name="account" aria-label="Username" placeholder="Username (exact)" value="%s"><select name="surface" aria-label="Source"><option value="">All sources</option>`, target, app.CSRFField(auth.CSRFToken(r)), html.EscapeString(account))
 	for _, s := range []string{"mcp", "api", "agent", "http", "provider", "credentials"} {
 		selected := ""
 		if s == surface {
@@ -96,5 +104,5 @@ func ErrorsHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<tr><td colspan="8">No matching records.</td></tr>`)
 	}
 	b.WriteString(`</tbody></table></div><p>Showing at most 500 matching records. Provider failures may have no account attribution. A failed request is not, by itself, evidence of abuse.</p>`)
-	app.Respond(w, r, app.Response{Title: title, Description: "What happened and what needs attention", HTML: b.String()})
+	return b.String()
 }

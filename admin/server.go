@@ -66,7 +66,7 @@ func serverSnapshot() (string, bool) {
 	if !serverView.refreshing {
 		serverView.refreshing = true
 		go func() {
-			content := `<p class="text-sm text-muted">Snapshot refreshed every minute.</p>` + app.RenderInternalStatusHTML() + startupTable() + storesTable()
+			content := `<p class="text-sm text-muted">Snapshot refreshed every minute.</p>` + app.RenderSettledInternalStatusHTML() + startupTable() + storesTable()
 			serverView.Lock()
 			serverView.html = content
 			serverView.expires = time.Now().Add(time.Minute)

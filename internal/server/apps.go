@@ -59,12 +59,12 @@ func appIntroduction(w http.ResponseWriter, r *http.Request, protected bool) boo
 			subject = "access to Islamic knowledge"
 		}
 		var b strings.Builder
-		b.WriteString(`<section class="app-introduction"><span class="app-launcher-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" width="32" height="32" alt=""></span><div class="prompt-welcome"><h1>` + html.EscapeString(s.NavLabel()) + `</h1><p>Simple ` + html.EscapeString(subject) + ` for everyday life.</p></div><p>` + html.EscapeString(description) + `</p><p>Log in or create an account to use it with Micro.</p><div class="form-actions"><a class="btn" href="/login?redirect=` + url.QueryEscape(s.Page) + `">Log in</a><a class="btn" href="/signup?redirect=` + url.QueryEscape(s.Page) + `">Create an account</a></div>`)
+		b.WriteString(`<section class="service-introduction"><span class="app-launcher-icon"><img src="/` + html.EscapeString(s.NavIcon()) + `" width="32" height="32" alt=""></span><div><h1>` + html.EscapeString(s.NavLabel()) + `</h1><p>Simple ` + html.EscapeString(subject) + ` for everyday life.</p></div><p>` + html.EscapeString(description) + `</p><p>Log in or create an account to use it with Micro.</p><div class="form-actions"><a class="btn" href="/login?redirect=` + url.QueryEscape(s.Page) + `">Log in</a><a class="btn" href="/signup?redirect=` + url.QueryEscape(s.Page) + `">Create an account</a></div>`)
 		browse := s.Name == "news" || s.Name == "markets" || s.Name == "video" || s.Name == "weather" || s.Name == "maps"
 		if !protected && browse {
 			b.WriteString(`<a data-app-browse href="` + html.EscapeString(s.Page) + `?view=public">Browse ` + html.EscapeString(s.NavLabel()) + `</a>`)
 		}
-		b.WriteString(`<a href="/services">Explore all services</a></section>`)
+		b.WriteString(`<p><a href="/services">Explore all services</a></p></section>`)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "private, no-store")
 		w.Header().Add("Vary", "Accept")
