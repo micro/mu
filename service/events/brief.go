@@ -80,6 +80,15 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 		*e = *old
 	}
 	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Prompt, e.Paused = "brief", "Morning brief", next, zone, repeat, prompt, paused
+	// An explicit change of delivery time requests a new occurrence, even
+	// when the previous brief was delivered earlier today. Preference-only
+	// saves and automatic enrollment must retain the cadence guard.
+	if old != nil && !builtin && !paused {
+		oldClock := old.When.In(loc).Format("15:04")
+		if oldClock != clock || old.Zone != zone || old.Repeat != repeat {
+			e.LastBrief = time.Time{}
+		}
+	}
 	e.Fired, e.FiredAt = false, time.Time{}
 	e.Builtin = builtin
 	if builtin && old != nil {
