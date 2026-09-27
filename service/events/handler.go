@@ -80,7 +80,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Query().Get("view") == "research" {
-		app.Respond(w, r, app.Response{Title: "Research", HTML: researchHTML(owner, auth.CSRFToken(r))})
+		app.Respond(w, r, app.Response{Title: "Evening research", HTML: researchHTML(owner, auth.CSRFToken(r))})
 		return
 	}
 	if r.URL.Query().Get("view") == "brief" {
@@ -100,7 +100,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
-	b.WriteString(`<nav class="form-actions"><a href="/events?view=brief">Brief and check-in</a><a href="/events?view=research">Research</a></nav>`)
+	b.WriteString(`<nav class="form-actions"><a href="/events?view=brief">Brief and check-in</a><a href="/events?view=research">Evening research</a></nav>`)
 
 	up := Upcoming(owner)
 	ext := Overview(owner, 0)

@@ -1299,7 +1299,9 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 @font-face{font-family:"DM Sans";src:url("/dm-sans-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
 .landing-page{font-family:"DM Sans",system-ui,sans-serif;--landing-accent:#386350}
 .landing-page .page{display:flex;flex-direction:column}
-.landing-page main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 0}
+.landing-page main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 0}
+.landing-page main>.landing-introduction:first-child{min-height:calc(100svh - 160px);display:flex;flex-direction:column;justify-content:center}
+.landing-scheduled{border-top:1px solid var(--border)}
 .landing-introduction{width:100%;max-width:440px;text-align:center;padding:24px 0}
 .landing-introduction h1{font-size:28px;margin:0 0 8px}
 .landing-introduction p{color:var(--text-muted);margin:0 0 20px}

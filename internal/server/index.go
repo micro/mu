@@ -34,14 +34,20 @@ func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant for your everyday life.</p>
-<p>Spend less time looking things up and keeping track of everything.</p>
-<dl class="landing-capabilities">
-<div><dt>Morning Brief</dt><dd>Catch up on your schedule, outstanding tasks and the news in one brief.</dd></div>
-<div><dt>Daily Checkin</dt><dd>Say what you need to get done in one or two sentences. Micro helps you work out the next steps.</dd></div>
-<div><dt>Deep Research</dt><dd>Look things up, compare options and save useful findings, with links to sources.</dd></div>
-</dl>
-<p class="landing-access">Web search, news, weather and maps are built in. Micro works with the notes, files, mail and tasks you keep here. Connect Google Calendar to include your calendar too.</p>
+<p>Ask a question, work through an idea or get help with something you need to do.</p>
+<p>Talk to Micro here on the web, by email, WhatsApp or XMPP. Your assistant is there when you need it.</p>
+<p class="landing-access">Search the web, find local information and work with your notes, files and tasks. Connect Google Calendar to bring your schedule into the conversation.</p>
 <div class="form-actions"><a class="btn landing-primary" href="/pricing">Get started</a></div>
 <a class="landing-services" href="/services">Explore services</a>
+</section>
+<section class="landing-introduction landing-scheduled">
+<h2>Help on your schedule</h2>
+<p>Opt into scheduled events and choose when they reach you.</p>
+<dl class="landing-capabilities">
+<div><dt>Morning brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>
+<div><dt>Daily check-in</dt><dd>A short prompt to share what’s on your mind and what you need to get done. Reply in a sentence or two.</dd></div>
+<div><dt>Evening research</dt><dd>Follow a topic with source-linked updates to read when you have time to think. Choose your time and frequency.</dd></div>
+</dl>
+<p class="landing-access">Free includes a weekly brief; Starter and Pro include daily briefs. Research is available with Pro and uses credits. You choose which events to enable.</p>
 </section>`
 }

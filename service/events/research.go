@@ -64,7 +64,7 @@ func researchHTML(owner, csrf string) string {
 	if auth.Plan(owner) != "pro" {
 		return `<p>Follow one topic with a private, source-linked research update on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
 	}
-	topic, clock, zone, frequency, maxCredits := "", "07:00", "", "weekly", ResearchCost()
+	topic, clock, zone, frequency, maxCredits := "", "20:30", "", "weekly", ResearchCost()
 	if acc, err := auth.GetAccount(owner); err == nil {
 		zone = acc.Zone
 	}
