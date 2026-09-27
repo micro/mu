@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"mu/internal/service"
 
@@ -624,7 +625,26 @@ func toolCaller(r *http.Request) string {
 	return caller
 }
 
-func ExecuteTool(r *http.Request, name string, args map[string]any) (string, bool, error) {
+func ExecuteTool(r *http.Request, name string, args map[string]any) (result string, failed bool, callErr error) {
+	started := time.Now()
+	defer func() {
+		outcome := "ok"
+		if failed || callErr != nil {
+			message := ""
+			if callErr != nil {
+				message = callErr.Error()
+			}
+			outcome = usage.FailureKind(0, message)
+		}
+		tokenID := ""
+		if r != nil {
+			if token := auth.TokenFromRequest(r); token != nil {
+				tokenID = token.ID
+			}
+		}
+		usage.RecordActivity(usage.Activity{Surface: toolSurface(r), Operation: name, Account: toolCaller(r), TokenID: tokenID, Outcome: outcome, DurationMS: time.Since(started).Milliseconds()})
+	}()
+
 	tools := Tools()
 	var tool *Tool
 	for i := range tools {
@@ -634,9 +654,11 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 		}
 	}
 	if tool == nil {
-		return "", true, fmt.Errorf("unknown tool: %s", name)
+		name = "unknown tool"
+		return "", true, fmt.Errorf("unknown tool")
 	}
 
+	name = tool.Name
 	if tool.OperatorOnly {
 		if !operatorAllowed(r) {
 			return "operator authorization required", true, fmt.Errorf("operator authorization required")

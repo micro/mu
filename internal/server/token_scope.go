@@ -20,7 +20,7 @@ func scopedRequestAllowed(r *http.Request) bool {
 	if path.Clean(p) != p {
 		return false
 	}
-	return productClientRequest(r) || p == "/mcp" || p == "/api/v1" || strings.HasPrefix(p, "/api/v1/")
+	return p == "/.well-known/jmap" || p == "/mail/jmap" || strings.HasPrefix(p, "/mail/jmap/") || productClientRequest(r) || p == "/mcp" || p == "/api/v1" || strings.HasPrefix(p, "/api/v1/")
 }
 
 // Only content-negotiated resource handlers may receive product-scoped credentials.

@@ -18,6 +18,7 @@ import (
 
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/internal/usage"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -1001,6 +1002,7 @@ func CreateToken(accountID, name string, permissions []string, expiresAt time.Ti
 		return nil, "", err
 	}
 
+	usage.RecordActivity(usage.Activity{Surface: "credentials", Operation: "token created", Account: accountID, TokenID: tokenID, Outcome: "created"})
 	// Return the unhashed token only once (user must save it)
 	return token, rawToken, nil
 }

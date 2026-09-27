@@ -2,9 +2,11 @@ package app
 
 import (
 	"io"
+	"mu/internal/auth"
 	"mu/internal/usage"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/felixge/httpsnoop"
@@ -41,6 +43,18 @@ func TimeRequest(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, f
 	return wrapped, func() {
 		if !usage.Skipped(r.URL.Path) && r.URL.Path != "/mu.css" && r.URL.Path != "/mu.js" && r.URL.Path != "/manifest.webmanifest" {
 			usage.RecordOutcome(strconv.Itoa(status) + " " + usage.Endpoint(r.URL.Path))
+		}
+
+		if status >= 400 || (time.Since(start) > 10*time.Second && !strings.HasPrefix(wrapped.Header().Get("Content-Type"), "text/event-stream")) {
+			account := ""
+			if _, acc := auth.TrySession(r); acc != nil {
+				account = acc.ID
+			}
+			outcome := usage.FailureKind(status, "")
+			if status < 400 {
+				outcome = "slow request"
+			}
+			usage.RecordActivity(usage.Activity{Surface: "http", Operation: r.Method + " " + usage.Endpoint(r.URL.Path), Account: account, Status: status, Outcome: outcome, DurationMS: time.Since(start).Milliseconds()})
 		}
 
 		Log("http", "method=%s path=%q status=%d bytes=%d duration_ms=%.3f", r.Method, r.URL.Path, status, size, float64(time.Since(start))/float64(time.Millisecond))

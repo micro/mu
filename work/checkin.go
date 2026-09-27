@@ -9,7 +9,6 @@ import (
 	"mu/internal/auth"
 	"mu/internal/origin"
 	"mu/service/events"
-	"mu/service/tasks"
 )
 
 // The invitation needs no model call or tools. Planning starts only on reply.
@@ -28,7 +27,7 @@ func checkinMessage(owner string, schedule *events.Event, now time.Time) string 
 		greeting += " " + checkinText(acc.Name)
 	}
 	var b strings.Builder
-	b.WriteString(greeting + ". What would you like to focus on today?\n")
+	b.WriteString("## Daily check-in\n\n" + now.Format("Monday, 2 January 2006") + "\n\n" + greeting + ". How’s it going?\n\n## Today\n")
 	type commitment struct {
 		when   time.Time
 		title  string
@@ -40,14 +39,14 @@ func checkinMessage(owner string, schedule *events.Event, now time.Time) string 
 			agenda = append(agenda, commitment{e.When, e.Title, false})
 		}
 	}
-	for _, e := range events.CachedOverview(owner) {
+	for _, e := range events.ExternalEvents(owner, now, end, 10) {
 		if e.Start.Before(end) && e.End.After(now) {
 			agenda = append(agenda, commitment{e.Start, e.Title, e.AllDay})
 		}
 	}
 	sort.Slice(agenda, func(i, j int) bool { return agenda[i].when.Before(agenda[j].when) })
 	if len(agenda) > 0 {
-		b.WriteString("\nToday, from your saved calendar information:\n")
+		b.WriteString("\nFrom your calendar:\n")
 		for i, e := range agenda {
 			if i == 3 {
 				break
@@ -59,21 +58,10 @@ func checkinMessage(owner string, schedule *events.Event, now time.Time) string 
 			fmt.Fprintf(&b, "- %s — %s\n", label, checkinText(e.title))
 		}
 	}
-	count := 0
-	for _, t := range tasks.List(owner, "") {
-		if t.Archived || t.Status == tasks.StatusDone || t.Status == tasks.StatusCanceled {
-			continue
-		}
-		if count == 0 {
-			b.WriteString("\nA few outstanding tasks:\n")
-		}
-		b.WriteString("- " + checkinText(t.Title) + "\n")
-		count++
-		if count == 3 {
-			break
-		}
+	if len(agenda) == 0 {
+		b.WriteString("\nNo upcoming calendar entries were returned for today.\n")
 	}
-	b.WriteString("\nOne or two sentences is enough: tell me what you need to get done or need help with. I can help you choose a priority and work out the next steps. Nothing has been changed.\n\nReply whenever you are ready. There are no follow-up nudges.\n\n[Manage your check-in](" + origin.Self() + "/events?view=brief#checkin)")
+	b.WriteString("\n## Your focus\n\nWhat do you need to get done, or need help with? One or two sentences is enough.\n\nReply when you’re ready. We can choose a priority and work out the next step together.\n\n[Manage your check-in](" + origin.Self() + "/events?view=brief#checkin)")
 	return b.String()
 }
 

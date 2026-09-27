@@ -24,9 +24,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := `<nav aria-label="Admin" class="section-stack">
+		<a class="section-link" href="/admin/activity">Activity</a>
 		<a class="section-link" href="/admin/alerts">Alerts</a>
 		<a class="section-link" href="/admin/backup">Backups</a>
 		<a class="section-link" href="/admin/config">Config</a>
+		<a class="section-link" href="/admin/errors">Errors</a>
 		<a class="section-link" href="/admin/flagged">Flagged</a>
 		<a class="section-link" href="/admin/log">Logs` + alertBadge() + `</a>
 		<a class="section-link" href="/admin/oauth">OAuth</a>
@@ -327,7 +329,7 @@ func userSearchForm(r *http.Request, tab, query string, page int, label string) 
 	}
 	var size strings.Builder
 	if label == "Search" {
-		size.WriteString(`<div class="form-action"><label for="user-page-size">Show</label><select id="user-page-size" name="size" data-submit-on-change>`)
+		size.WriteString(`<label class="filter-control" for="user-page-size"><span>Show</span><select id="user-page-size" name="size" data-submit-on-change>`)
 		for _, value := range []string{"25", "50", "100", "all"} {
 			selected := ""
 			if value == userPageChoice(r) {
@@ -335,7 +337,7 @@ func userSearchForm(r *http.Request, tab, query string, page int, label string) 
 			}
 			size.WriteString(`<option value="` + value + `"` + selected + `>` + strings.Title(value) + `</option>`)
 		}
-		size.WriteString(`</select></div>`)
+		size.WriteString(`</select></label>`)
 	}
 	return fmt.Sprintf(`<form class="search-bar" method="POST" action="/admin/users?tab=%s&amp;page=%d&amp;size=%s">%s<input type="hidden" name="action" value="search"><input type="%s" name="q" aria-label="Search users" placeholder="Search users" value="%s"><button type="submit">%s</button>%s</form>`, tab, page, userPageChoice(r), app.CSRFField(auth.CSRFToken(r)), kind, html.EscapeString(query), label, size.String())
 }

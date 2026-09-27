@@ -73,17 +73,13 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(&b, `<p class="text-muted text-sm">%d client%s.</p>`, len(clients), suffix)
 	b.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="OAuth clients"><table class="data-table"><thead><tr><th>Name</th><th>Client ID</th>` +
-		`<th>Redirects to</th><th>Owner</th><th class="created-col">Created</th>` +
+		`<th>Redirects to</th><th>Username</th><th class="created-col">Created</th>` +
 		`<th class="center"></th></tr></thead><tbody>`)
 
 	for _, c := range clients {
-		owner := `<span class="text-muted">self-registered</span>`
+		owner := `<span class="text-muted">Anonymous registration</span>`
 		if c.Account != "" {
-			who := c.Account
-			if a, err := auth.GetAccount(c.Account); err == nil {
-				who = a.Name
-			}
-			owner = html.EscapeString(who)
+			owner = html.EscapeString(c.Account)
 		}
 		// No address means the client cannot complete a sign-in at all, so the
 		// row offers the one thing that fixes it. Every client the /token form
