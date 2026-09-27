@@ -24,11 +24,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := `<nav aria-label="Admin" class="section-stack">
-		<a class="section-link" href="/admin/alerts">Alerts</a>
+		<a class="section-link" href="/admin/activity">Activity</a>
+		<a class="section-link" href="/admin/alerts">Alerts` + alertBadge() + `</a>
 		<a class="section-link" href="/admin/backup">Backups</a>
 		<a class="section-link" href="/admin/config">Config</a>
+		<a class="section-link" href="/admin/errors">Errors</a>
 		<a class="section-link" href="/admin/flagged">Flagged</a>
-		<a class="section-link" href="/admin/log">Logs` + alertBadge() + `</a>
+		<a class="section-link" href="/admin/log">Logs</a>
 		<a class="section-link" href="/admin/oauth">OAuth</a>
 		<a class="section-link" href="/admin/server">Server</a>
 		<a class="section-link" href="/admin/spam">Spam</a>
@@ -40,7 +42,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{Title: "Admin", Description: "Admin Dashboard", HTML: content})
 }
 
-// alertBadge puts the number of outstanding alerts beside the log, so that
+// alertBadge puts the number of outstanding alerts beside Alerts, so that
 // something serious is visible from the one page an admin actually opens.
 //
 // An alert that only exists in a log nobody has scrolled to is the same as no

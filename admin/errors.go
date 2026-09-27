@@ -16,11 +16,15 @@ func ErrorsHandler(w http.ResponseWriter, r *http.Request) {
 		app.Forbidden(w, r, "Admin access required")
 		return
 	}
-	destination := "/admin/log"
-	if r.URL.Path == "/admin/activity" {
-		destination += "?tab=activity"
+	activity := r.URL.Path == "/admin/activity"
+	title, description := "Errors", "Failures that need attention, grouped by recurring problem."
+	content := alertsCard()
+	if activity {
+		title, description = "Activity", "Who used Micro, what they requested and how it went."
+		content = ""
 	}
-	http.Redirect(w, r, destination, http.StatusTemporaryRedirect)
+	content = `<p class="text-muted">` + description + `</p>` + content + activityLogCard(r, activity)
+	app.Respond(w, r, app.Response{Title: title, HTML: `<div class="page-stack log-tables">` + content + `</div>`})
 }
 
 func activityLogCard(r *http.Request, activity bool) string {
@@ -35,9 +39,9 @@ func activityLogCard(r *http.Request, activity bool) string {
 	}
 	var b strings.Builder
 	b.WriteString(`<p>Anonymous missing-page requests stay in Activity. <a href="/admin/traffic">View usage totals</a>.</p><details class="disclosure"><summary>About these records</summary><p>Up to 5,000 activity records and 2,000 failures, retained for 14 days; busy periods may cover less time. Recording began with the activity update. Historical totals cannot reconstruct individual requests.</p></details>`)
-	target := "/admin/log"
+	target := "/admin/errors"
 	if activity {
-		target += "?tab=activity"
+		target = "/admin/activity"
 	}
 
 	fmt.Fprintf(&b, `<form class="search-bar" method="POST" action="%s">%s<input name="account" aria-label="Username" placeholder="Username (exact)" value="%s"><select name="surface" aria-label="Source"><option value="">All sources</option>`, target, app.CSRFField(auth.CSRFToken(r)), html.EscapeString(account))

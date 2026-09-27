@@ -4,7 +4,6 @@
 body{margin:0;min-height:100svh;min-height:100dvh;display:flex;flex-direction:column}
 a{color:inherit;text-decoration:underline;text-underline-offset:3px}
 a:hover{color:#555;text-decoration:underline}
-:is(nav,header,h1,h2,h3,h4,.home-date,.section-card-head,.home-resume,.metadata-row,.reading-meta) a{text-decoration:none}
 a:has(>.title){text-decoration:none}
 :is(.prose,.reader-content,.answer,.ib-body) a{text-decoration:underline}
 button,input,textarea,select{font:inherit;color:inherit}
@@ -1258,7 +1257,6 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .section-card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
 .record-card>.section-card-head{margin-bottom:4px}
 .section-card-head :is(h2,h3,h4){margin:0;font-size:1.05rem}
-.section-card-head a{text-decoration:none}
 .section-more{font-size:.85rem;color:#666}
 .inbox-peek{display:flex;flex-direction:column}
 .peek-row{display:flex;flex-direction:column;gap:5px;min-width:0;padding:12px 0;border-bottom:1px solid #eee;text-decoration:none}
@@ -1388,3 +1386,8 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .plan-card>.form-actions{margin-top:auto;padding-top:8px}
 .plan-card .btn{width:100%;text-align:center}
 @media(max-width:700px){.card-grid.comparison-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* In-page anchors are text navigation, not action buttons. */
+.page-menu.anchor-nav{flex-wrap:wrap;align-items:baseline;gap:8px 16px;overflow:visible;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.page-menu.anchor-nav a{padding:0;border:0;border-radius:0;background:none;text-decoration:underline;text-underline-offset:3px}
+.page-menu.anchor-nav a:hover{background:none;text-decoration:underline}
