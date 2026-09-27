@@ -35,13 +35,19 @@ func landingHTML() string {
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant for your everyday life.</p>
 <p>Ask a question, work through an idea or get help with something you need to do.</p>
-<p>Talk to Micro here on the web, by email, WhatsApp or XMPP. Your assistant is there when you need it.</p>
-<p class="landing-access">Search the web, find local information and work with your notes, files and tasks. Connect Google Calendar to bring your schedule into the conversation.</p>
 <div class="form-actions"><a class="btn landing-primary" href="/pricing">Get started</a></div>
-<a class="landing-services" href="/services">Explore services</a>
 </section>
 <section class="landing-introduction landing-scheduled">
-<h2>Help on your schedule</h2>
+<h2>What Micro can do</h2>
+<dl class="landing-capabilities">
+<div><dt>Find answers</dt><dd>Search the web, explore a topic or find local information.</dd></div>
+<div><dt>Get things done</dt><dd>Work with your notes, files and tasks. Connect Google Calendar to include your schedule.</dd></div>
+<div><dt>Talk your way</dt><dd>Use Micro on the web, by email, WhatsApp or XMPP.</dd></div>
+</dl>
+<a href="/services">Explore services</a>
+</section>
+<section class="landing-introduction landing-scheduled">
+<h2>Scheduled Events</h2>
 <p>Opt into scheduled events and choose when they reach you.</p>
 <dl class="landing-capabilities">
 <div><dt>Morning brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>

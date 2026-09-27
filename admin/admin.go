@@ -24,11 +24,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	content := `<nav aria-label="Admin" class="section-stack">
-		<a class="section-link" href="/admin/activity">Activity</a>
 		<a class="section-link" href="/admin/alerts">Alerts</a>
 		<a class="section-link" href="/admin/backup">Backups</a>
 		<a class="section-link" href="/admin/config">Config</a>
-		<a class="section-link" href="/admin/errors">Errors</a>
 		<a class="section-link" href="/admin/flagged">Flagged</a>
 		<a class="section-link" href="/admin/log">Logs` + alertBadge() + `</a>
 		<a class="section-link" href="/admin/oauth">OAuth</a>

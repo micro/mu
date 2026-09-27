@@ -45,51 +45,48 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var content strings.Builder
-	content.WriteString(alertsCard())
 	content.WriteString(logTabs(tab))
-	switch {
-	case api:
-		content.WriteString(apiLogCard())
-	case mailTab:
-		content.WriteString(mailLogCard())
+	switch tab {
+	case "activity":
+		content.WriteString(activityLogCard(r, true))
+	case "technical", "system", "api", "mail":
+		content.WriteString(technicalLogTabs(tab))
+		if api {
+			content.WriteString(apiLogCard())
+		} else if mailTab {
+			content.WriteString(mailLogCard())
+		} else {
+			content.WriteString(sysLogCard())
+		}
 	default:
-		content.WriteString(sysLogCard())
+		content.WriteString(alertsCard())
+		content.WriteString(activityLogCard(r, false))
 	}
-
-	title := "System Log"
-	switch {
-	case api:
-		title = "API Log"
-	case mailTab:
-		title = "Mail Log"
-	}
-	app.Respond(w, r, app.Response{Title: title, Description: "Logs", HTML: `<div class="log-tables">` + content.String() + `</div>`})
+	app.Respond(w, r, app.Response{Title: "Logs", Description: "Activity, failures and technical detail", HTML: `<div class="log-tables">` + content.String() + `</div>`})
 }
 
-// MailLogMoved sends the old mail-log address to its tab.
 func MailLogMoved(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin/log?tab=mail", http.StatusSeeOther)
 }
 
-// logTabs is the switch between the three.
 func logTabs(on string) string {
-	// app.PillLink, not a hand-rolled class. The first version of these tabs
-	// wrote `pill pill-on`, and pill-on does not exist in mu.css — so the
-	// selected tab was styled exactly like the unselected ones and there was
-	// no way to tell which page you were on. The selected class is "on", and
-	// the helper is the reason not to have to know that.
-	tab := func(slug, label string) string {
-		href := "/admin/log"
-		if slug != "" {
-			href += "?tab=" + slug
-		}
-		return app.PillLink(label, href, on == slug)
+	selected := ""
+	switch on {
+	case "activity":
+		selected = "activity"
+	case "technical", "system", "api", "mail":
+		selected = "technical"
 	}
-	return `<div class="d-flex gap-2 mb-3">` +
-		tab("", "System") +
-		tab("api", "External calls") +
-		tab("mail", "Mail") +
-		`</div>`
+	return `<nav class="form-actions" aria-label="Log views">` +
+		app.PillLink("Needs attention", "/admin/log", selected == "") +
+		app.PillLink("Activity", "/admin/log?tab=activity", selected == "activity") +
+		app.PillLink("Technical", "/admin/log?tab=technical", selected == "technical") + `</nav>`
+}
+func technicalLogTabs(on string) string {
+	return `<nav class="form-actions" aria-label="Technical log sources">` +
+		app.PillLink("System", "/admin/log?tab=technical", on == "technical" || on == "system") +
+		app.PillLink("External calls", "/admin/log?tab=api", on == "api") +
+		app.PillLink("Mail", "/admin/log?tab=mail", on == "mail") + `</nav>`
 }
 
 // sysLogCard is the in-memory ring of lines this process wrote.

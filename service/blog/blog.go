@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -611,7 +612,9 @@ func updateCacheUnlocked() {
 
 	// Publish the rebuilt preview snapshot to the go-micro store + broker; runs
 	// under the caller's lock (nil-safe before Load wires cardSnap).
+	publishStarted := time.Now()
 	cardSnap.Publish(postsPreviewHtml)
+	app.RecordStartup("blog.publishCache", time.Since(publishStarted))
 }
 
 // visibleTo drops the posts this viewer has hidden, and the posts by accounts
@@ -1939,6 +1942,16 @@ func DeletePostsByAuthor(authorID string) {
 }
 
 func postExcerpt(markdown string) string {
+	// An archive preview needs only the opening text, not a rendered copy of
+	// every complete article. Bound markdown parsing even for book-length posts.
+	const previewBytes = 4096
+	if len(markdown) > previewBytes {
+		end := previewBytes
+		for end > 0 && !utf8.RuneStart(markdown[end]) {
+			end--
+		}
+		markdown = markdown[:end]
+	}
 	z := html.NewTokenizer(strings.NewReader(string(app.RenderNoImages([]byte(markdown)))))
 	var text strings.Builder
 	for {

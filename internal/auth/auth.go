@@ -126,14 +126,15 @@ type Session struct {
 
 // Token represents a Personal Access Token (PAT) for API automation
 type Token struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`    // User-friendly name for the token
-	Token       string    `json:"token"`   // The actual token value (hashed in storage)
-	Account     string    `json:"account"` // Account ID this token belongs to
-	Created     time.Time `json:"created"`
-	LastUsed    time.Time `json:"last_used"`
-	ExpiresAt   time.Time `json:"expires_at"`  // Optional expiration
-	Permissions []string  `json:"permissions"` // e.g., "read", "write", "admin"
+	OAuthClientID string    `json:"oauth_client_id,omitempty"`
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`    // User-friendly name for the token
+	Token         string    `json:"token"`   // The actual token value (hashed in storage)
+	Account       string    `json:"account"` // Account ID this token belongs to
+	Created       time.Time `json:"created"`
+	LastUsed      time.Time `json:"last_used"`
+	ExpiresAt     time.Time `json:"expires_at"`  // Optional expiration
+	Permissions   []string  `json:"permissions"` // e.g., "read", "write", "admin"
 
 	// Lookup is sha256 of the raw token, hex, and it is how a token is found.
 	//
@@ -946,6 +947,10 @@ func CheckCredentialAccess(accountID string) error {
 
 // CreateToken creates a new Personal Access Token for an account
 func CreateToken(accountID, name string, permissions []string, expiresAt time.Time) (*Token, string, error) {
+	return createToken(accountID, name, permissions, expiresAt, "")
+}
+
+func createToken(accountID, name string, permissions []string, expiresAt time.Time, clientID string) (*Token, string, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -983,15 +988,16 @@ func CreateToken(accountID, name string, permissions []string, expiresAt time.Ti
 
 	tokenID := uuid.New().String()
 	token := &Token{
-		ID:          tokenID,
-		Name:        name,
-		Token:       string(hash),
-		Account:     accountID,
-		Created:     time.Now(),
-		LastUsed:    time.Time{},
-		ExpiresAt:   expiresAt,
-		Permissions: permissions,
-		Lookup:      tokenKey(rawToken),
+		OAuthClientID: clientID,
+		ID:            tokenID,
+		Name:          name,
+		Token:         string(hash),
+		Account:       accountID,
+		Created:       time.Now(),
+		LastUsed:      time.Time{},
+		ExpiresAt:     expiresAt,
+		Permissions:   permissions,
+		Lookup:        tokenKey(rawToken),
 	}
 
 	tokens[tokenID] = token
