@@ -10,7 +10,7 @@ import (
 
 func DevelopersHandler(w http.ResponseWriter, r *http.Request) {
 	base := html.EscapeString(strings.TrimRight(origin.URL(r), "/"))
-	body := `<div class="page-col"><p>Use the same resources from your browser or your own code. Send JSON with Content-Type: application/json and request JSON with Accept: application/json.</p>
+	body := `<div class="page-col"><p>Build with your Micro account: conversations, inbox and work. For individual services, use the <a href="/api">HTTP API reference</a> or <a href="/tools">MCP tools catalogue</a>. <a href="/x402">x402</a> explains wallet-paid access to public services.</p><p>Use the same resources from your browser or your own code. Send JSON with Content-Type: application/json and request JSON with Accept: application/json.</p>
  <h2>Assistant</h2><p><a href="/account/tokens?add=api#create-token-form">Create a token</a> with Agents and Allow actions. Set it as MICRO_TOKEN, then run:</p><pre>curl '` + base + `/agent' \
   -H "Authorization: Bearer $MICRO_TOKEN" \
   -H 'Content-Type: application/json' \

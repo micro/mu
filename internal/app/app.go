@@ -193,9 +193,7 @@ func footerFor(acc *auth.Account) string {
 }
 
 func FooterLinks() string {
-	return `<a href="/about">About</a> · <a href="/blog">Blog</a> · <a href="/contact">Contact</a> · ` +
-		`<a href="/pricing">Pricing</a> · <a href="/api">API</a> · <a href="/tools">Tools</a> · <a href="/developers">Developers</a> · <a href="/x402">x402</a> · ` +
-		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	return `<a href="/api">API</a> · <a href="/developers">Developers</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a> · <a href="/tools">Tools</a>` + torFooterLink() + ` · <a href="/x402">x402</a>`
 }
 
 func torFooterLink() string {
