@@ -39,28 +39,37 @@ func RunScheduled(owner, id, revision string, due time.Time) (handled bool, answ
 	if err != nil || acc.Banned {
 		return true, "", nil
 	}
-	allowed, reserveErr := reserveScheduled(schedule, due, time.Now())
+	now := time.Now()
+	cadence := now
+	if due.After(now) {
+		cadence = due
+	}
+	allowed, reserveErr := reserveScheduled(schedule, due, cadence)
 	if reserveErr != nil {
 		return true, "", reserveErr
 	}
 	if !allowed {
 		return true, "", nil
 	}
+	at := due
+	if at.IsZero() {
+		at = time.Now()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	if schedule.Kind == "checkin" {
-		answer = checkinMessage(owner, schedule, time.Now())
+		answer = checkinMessage(owner, schedule, at)
 	} else if schedule.Kind == "research" {
 		if auth.Plan(owner) != "pro" {
 			return true, "", nil
 		}
 		answer, err = researchReport(ctx, owner, schedule)
 	} else {
-		facts, reflection := morningFacts(ctx, owner, schedule, time.Now())
+		facts, reflection := morningFacts(ctx, owner, schedule, at)
 		var content BriefContent
 		content, err = IncludedBrief(ctx, owner, facts)
 		if err == nil {
-			answer = renderMorningBrief(content, acc.Name, schedule, time.Now(), reflection, auth.Plan(owner) == "pro" && schedule.Plan)
+			answer = renderMorningBrief(content, acc.Name, schedule, at, reflection, auth.Plan(owner) == "pro" && schedule.Plan)
 		}
 
 	}
@@ -154,7 +163,7 @@ func reserveScheduled(source *events.Event, due, now time.Time) (bool, error) {
 				}
 			}
 			e.LastBrief = now
-			if e.Repeat == "weekly" && !due.IsZero() {
+			if e.Repeat == "weekly" && !due.IsZero() && !e.When.Equal(due) {
 				if next, ok := events.NextTime(due.In(loc), e.Repeat, now); ok {
 					e.When = next
 				}

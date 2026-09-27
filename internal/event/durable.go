@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	TaskStarted   = "tasks.started"
-	ScheduleDue   = "events.due"
-	ChatRecorded  = "chat.recorded"
-	MailAccepted  = "mail.accepted"
-	ChatAddressed = "chat.addressed"
+	TaskStarted     = "tasks.started"
+	ScheduleDue     = "events.due"
+	ScheduleAdvance = "events.advance"
+	ChatRecorded    = "chat.recorded"
+	MailAccepted    = "mail.accepted"
+	ChatAddressed   = "chat.addressed"
 )
 
 // Record is a fact about a committed service resource, not an agent command.

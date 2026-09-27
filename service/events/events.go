@@ -21,7 +21,16 @@ import (
 )
 
 // Event is a scheduled reminder owned by a single user.
+type Advance struct {
+	Minutes   int    `json:"minutes"`
+	Recipient string `json:"recipient"`
+}
+
 type Event struct {
+	Advance         Advance   `json:"advance,omitempty"`
+	AdvanceFor      time.Time `json:"advance_for,omitempty"`
+	AdvanceRevision int       `json:"advance_revision,omitempty"`
+
 	// Legacy feature payload fields remain in the persisted schema so existing
 	// schedules retain their settings. Agent owns their interpretation; Events
 	// treats them as opaque data and only advances the schedule.
@@ -112,6 +121,13 @@ func CreateFor(owner, title string, when time.Time, note string, minutes int) (*
 // CreateStanding schedules an event that may repeat, and may run a prompt
 // through the agent when it fires.
 func CreateStanding(owner, title string, when time.Time, note string, minutes int, repeat, prompt string, zones ...string) (*Event, error) {
+	return CreateScheduled(owner, title, when, note, minutes, repeat, prompt, Advance{}, zones...)
+}
+
+func CreateScheduled(owner, title string, when time.Time, note string, minutes int, repeat, prompt string, advance Advance, zones ...string) (*Event, error) {
+	if err := validAdvance(advance, prompt); err != nil {
+		return nil, err
+	}
 	owner = strings.TrimSpace(owner)
 	title = strings.TrimSpace(title)
 	if owner == "" {
@@ -124,6 +140,7 @@ func CreateStanding(owner, title string, when time.Time, note string, minutes in
 		return nil, fmt.Errorf("a valid time is required")
 	}
 	e := &Event{
+		Advance: advance,
 		ID:      uuid.New().String(),
 		Owner:   owner,
 		Title:   title,
@@ -209,8 +226,8 @@ func Cancel(owner, id string) error {
 
 func scheduler() {
 	// A short cadence so reminders land close to their minute without a busy
-	// loop. Runs once immediately, then every 30s.
-	t := time.NewTicker(30 * time.Second)
+	// loop. Runs once immediately, then every second.
+	t := time.NewTicker(time.Second)
 	defer t.Stop()
 	for {
 		fireDue()
@@ -220,9 +237,11 @@ func scheduler() {
 
 // fireDue marks every due event fired (under lock, persisting once) then
 // delivers them outside the lock so a slow channel can't block the store.
-func fireDue() {
-	now := time.Now().UTC()
+func fireDue() { fireDueAt(time.Now().UTC()) }
+
+func fireDueAt(now time.Time) {
 	var due []*Event
+	var facts []event.Record
 
 	mu.Lock()
 	changed := false
@@ -232,6 +251,11 @@ func fireDue() {
 		previous[id] = &cp
 	}
 	for id, e := range events {
+		if !e.Fired && !e.Paused && e.Advance.Minutes > 0 && e.When.After(now) && !e.When.Add(-time.Duration(e.Advance.Minutes)*time.Minute).After(now) && (!e.AdvanceFor.Equal(e.When) || e.AdvanceRevision != e.Sequence) {
+			e.AdvanceFor, e.AdvanceRevision = e.When, e.Sequence
+			changed = true
+			facts = append(facts, event.Record{Type: event.ScheduleAdvance, Service: "events", Account: e.Owner, Resource: e.ID, Version: fmt.Sprint(e.Sequence), Data: map[string]interface{}{"when": e.When, "recipient": e.Advance.Recipient, "title": e.Title, "note": e.Note}})
+		}
 		if !e.Fired && !e.Paused && !e.When.After(now) {
 			e.Fired = true
 			e.FiredAt = now
@@ -253,9 +277,8 @@ func fireDue() {
 		for _, e := range events {
 			list = append(list, e)
 		}
-		var facts []event.Record
 		for _, e := range due {
-			facts = append(facts, event.Record{Type: event.ScheduleDue, Service: "events", Account: e.Owner, Resource: e.ID, Version: fmt.Sprint(e.Sequence), Data: map[string]interface{}{"when": e.When, "title": e.Title, "note": e.Note, "kind": e.Kind}})
+			facts = append(facts, event.Record{Type: event.ScheduleDue, Service: "events", Account: e.Owner, Resource: e.ID, Version: fmt.Sprint(e.Sequence), Data: map[string]interface{}{"when": e.When, "title": e.Title, "note": e.Note, "kind": e.Kind, "agent_work": e.Prompt != ""}})
 		}
 		if err := data.CommitJSON(storeKey, list, facts...); err != nil {
 			events = previous
@@ -337,4 +360,20 @@ func recurringZone(owner string) string {
 		}
 	}
 	return ""
+}
+
+func validAdvance(a Advance, prompt string) error {
+	if a.Minutes == 0 && a.Recipient == "" {
+		return nil
+	}
+	if a.Minutes < 1 || a.Minutes > 10080 {
+		return fmt.Errorf("advance minutes must be between 1 and 10080")
+	}
+	if a.Recipient != "user" && a.Recipient != "agent" {
+		return fmt.Errorf("advance recipient must be user or agent")
+	}
+	if a.Recipient == "agent" && strings.TrimSpace(prompt) == "" {
+		return fmt.Errorf("agent preparation requires instructions")
+	}
+	return nil
 }

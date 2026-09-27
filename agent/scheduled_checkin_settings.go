@@ -54,6 +54,7 @@ func scheduleCheckin(owner, clock, zone, repeat string, paused bool) error {
 		e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Paused = "checkin", "Daily Checkin", next, zone, repeat, paused
 		e.Prompt = "Ask what I want to focus on today. Wait for my reply before planning or taking action."
 		e.Fired, e.FiredAt = false, time.Time{}
+		e.Advance = scheduledAdvance(e.Kind)
 		e.Sequence++
 		records[e.ID] = e
 		return nil

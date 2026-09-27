@@ -16,7 +16,8 @@ type Server struct{}
 
 // CreateRequest schedules a reminder/event.
 type CreateRequest struct {
-	Title string `json:"title" required:"true" description:"What to be reminded about, e.g. 'Call the dentist'"`
+	Advance Advance `json:"advance,omitempty" description:"Optional advance trigger: minutes before the event and recipient user or agent. Agent prepares a read-only report for delivery at when; actions that change records must use a normal scheduled prompt without advance"`
+	Title   string  `json:"title" required:"true" description:"What to be reminded about, e.g. 'Call the dentist'"`
 	// When is an RFC3339 timestamp with a timezone offset. Resolve relative
 	// phrases ("tomorrow at 3pm") against the current date before calling.
 	When string `json:"when" required:"true" description:"When to fire, RFC3339 with timezone offset, e.g. 2026-07-22T15:00:00+01:00"`
@@ -49,7 +50,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	if err != nil {
 		return fmt.Errorf("when must include a timezone offset (RFC3339); use the user’s local timezone and its offset on the event date, e.g. 2026-07-22T15:00:00+01:00")
 	}
-	e, err := CreateStanding(service.AccountFrom(ctx), req.Title, when, req.Note, req.Minutes, req.Repeat, req.Prompt)
+	e, err := CreateScheduled(service.AccountFrom(ctx), req.Title, when, req.Note, req.Minutes, req.Repeat, req.Prompt, req.Advance)
 	if err != nil {
 		return err
 	}

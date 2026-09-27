@@ -11,13 +11,14 @@ import (
 )
 
 type UpdateRequest struct {
-	ID      string  `json:"id" required:"true" description:"Event id from events_list"`
-	Title   *string `json:"title,omitempty" description:"New title; omitted keeps the existing title"`
-	When    *string `json:"when,omitempty" description:"New future time as RFC3339 with timezone offset"`
-	Note    *string `json:"note,omitempty" description:"New note; empty clears it"`
-	Minutes *int    `json:"minutes,omitempty" description:"Duration in minutes, 1 to 10080"`
-	Repeat  *string `json:"repeat,omitempty" description:"hourly, daily, weekly, monthly; empty makes it one-off"`
-	Prompt  *string `json:"prompt,omitempty" description:"New standing instruction; empty clears it"`
+	Advance *Advance `json:"advance,omitempty" description:"Advance trigger with minutes and recipient user or agent; zero minutes and empty recipient clears it. Agent preparation is read-only"`
+	ID      string   `json:"id" required:"true" description:"Event id from events_list"`
+	Title   *string  `json:"title,omitempty" description:"New title; omitted keeps the existing title"`
+	When    *string  `json:"when,omitempty" description:"New future time as RFC3339 with timezone offset"`
+	Note    *string  `json:"note,omitempty" description:"New note; empty clears it"`
+	Minutes *int     `json:"minutes,omitempty" description:"Duration in minutes, 1 to 10080"`
+	Repeat  *string  `json:"repeat,omitempty" description:"hourly, daily, weekly, monthly; empty makes it one-off"`
+	Prompt  *string  `json:"prompt,omitempty" description:"New standing instruction; empty clears it"`
 }
 type UpdateResponse struct {
 	Item *Event `json:"item"`
@@ -45,6 +46,9 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 		return fmt.Errorf("a restricted caller cannot change background agent work")
 	}
 	next := *old
+	if req.Advance != nil {
+		next.Advance = *req.Advance
+	}
 	if req.Title != nil {
 		next.Title = strings.TrimSpace(*req.Title)
 	}
@@ -56,6 +60,9 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 	}
 	if req.Prompt != nil {
 		next.Prompt = strings.TrimSpace(*req.Prompt)
+	}
+	if err := validAdvance(next.Advance, next.Prompt); err != nil {
+		return err
 	}
 	if len(next.Note) > 16000 || len(next.Prompt) > 16000 {
 		return fmt.Errorf("note and prompt must not exceed 16000 bytes")
@@ -89,7 +96,7 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 		}
 	}
 	// A repeated identical tool call must not publish another invitation.
-	if next.Title == old.Title && next.When.Equal(old.When) && next.Note == old.Note &&
+	if next.Advance == old.Advance && next.Title == old.Title && next.When.Equal(old.When) && next.Note == old.Note &&
 		next.Minutes == old.Minutes && next.Repeat == old.Repeat && next.Prompt == old.Prompt && next.Zone == old.Zone {
 		cp := *old
 		rsp.Item, rsp.Text = &cp, "Unchanged: "+Describe(old)

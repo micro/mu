@@ -34,22 +34,29 @@ func requestFor(e event.Record) (request, error) {
 		if t.Detail != "" {
 			r.Prompt += "\n\n" + t.Detail
 		}
-	case event.ScheduleDue:
+	case event.ScheduleDue, event.ScheduleAdvance:
+		r.Preparing = e.Type == event.ScheduleAdvance
+		if r.Preparing && e.Data["recipient"] != "agent" {
+			return request{}, nil
+		}
 		switch when := e.Data["when"].(type) {
 		case time.Time:
 			r.Due = when
 		case string:
 			r.Due, _ = time.Parse(time.RFC3339Nano, when)
 		}
-		var rsp events.ReadResponse
-		if err := service.Call(ctx, "events", "Server.Read", &events.ReadRequest{ID: e.Resource}, &rsp); err != nil {
-			return r, err
+		var schedule *events.Event
+		for _, candidate := range events.List(e.Account) {
+			if candidate.ID == e.Resource {
+				schedule = candidate
+				break
+			}
 		}
-		schedule := rsp.Item
 		if schedule == nil || schedule.Paused || fmt.Sprint(schedule.Sequence) != e.Version {
 			return request{}, nil
 		}
 		r.Kind, r.Title, r.Prompt = events.Kind, schedule.Title, strings.TrimSpace(schedule.Prompt)
+		r.Prepared = schedule.Advance.Recipient == "agent" && schedule.Advance.Minutes > 0
 	}
 	return r, nil
 }
@@ -60,6 +67,9 @@ func consumeWork(e event.Record) error {
 	r, err := requestFor(e)
 	if err != nil {
 		return err
+	}
+	if r.Account != "" && r.Prompt != "" && r.Prepared {
+		return consumePrepared(r)
 	}
 	return consumeRequest(r, run)
 }
