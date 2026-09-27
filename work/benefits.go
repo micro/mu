@@ -52,9 +52,10 @@ func benefitRun(r request) bool {
 		answer, err = researchReport(ctx, r, schedule)
 	} else {
 		facts, reflection := morningFacts(ctx, r.Account, schedule, time.Now())
-		answer, err = agent.IncludedBrief(ctx, r.Account, facts)
-		if err == nil && reflection != "" {
-			answer += "\n\n" + reflection
+		var content agent.BriefContent
+		content, err = agent.IncludedBrief(ctx, r.Account, facts)
+		if err == nil {
+			answer = renderMorningBrief(content, acc.Name, schedule, time.Now(), reflection, auth.Plan(r.Account) == "pro" && schedule.Plan)
 		}
 
 	}
