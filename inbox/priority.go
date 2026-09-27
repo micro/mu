@@ -49,6 +49,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 	auth.SetCSRFCookie(w, r)
 	box := strings.Trim(strings.TrimPrefix(r.URL.Path, "/inbox"), "/")
 	var b strings.Builder
+	b.WriteString(`<p class="text-muted">Read and reply to messages, and catch up on updates from Micro.</p>`)
 	b.WriteString(viewNavigation("conversations"))
 	b.WriteString(searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r), unreadOnly(r)))
 	b.WriteString(`<nav class="form-actions" aria-label="Conversation filter">` + app.PillLink("All", r.URL.Path, !unreadOnly(r)) + app.PillLink("Unread", r.URL.Path+"?filter=unread", unreadOnly(r)) + `</nav>`)
