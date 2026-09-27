@@ -111,14 +111,14 @@ func savedView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 			items = append(items, savedItem{f.Name, "file", f.URL, "Saved", "", f.Created})
 		}
 	}
-	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a></div>` + viewNavigation("saved") + app.ViewNavigation("Saved type", filter, []app.ViewLink{
+	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a></div>` + app.ViewNavigation("Saved type", filter, []app.ViewLink{
 		{Key: "", Label: "All", URL: "/inbox?view=saved"},
 		{Key: "note", Label: "Notes", URL: "/inbox?view=saved&type=note"},
 		{Key: "document", Label: "Docs", URL: "/inbox?view=saved&type=document"},
 		{Key: "app", Label: "Apps", URL: "/inbox?view=saved&type=app"},
 		{Key: "file", Label: "Files", URL: "/inbox?view=saved&type=file"},
 	}, true)
-	b.WriteString(app.PageControls(inboxDescription, "", controls))
+	b.WriteString(app.PageControls(inboxDescription, viewNavigation("saved"), controls))
 	sort.SliceStable(items, func(i, j int) bool {
 		if items[i].updated.Equal(items[j].updated) {
 			return items[i].href < items[j].href

@@ -262,21 +262,20 @@ func mcpToolsJSON() string {
 	return string(b)
 }
 
-// mcpToolsSection renders the tool reference as a two-column layout: a sticky
-// endpoint index on the left (desktop only) anchoring to each tool card on the
-// right. On mobile the index is hidden and the cards stack normally.
+// mcpToolsSection shares the API reference layout: a collapsible index
+// followed by tool cards on the normal document canvas.
 func mcpToolsSection() string {
 	var nav strings.Builder
-	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Tools</div>`)
+	nav.WriteString(`<details class="disclosure"><summary>Tools</summary><nav class="reference-index" aria-label="MCP tools">`)
 	for _, t := range mcpTools() {
 		price := ""
 		if n := quota.OperationCost(t.WalletOp); t.WalletOp != "" && n > 0 {
-			price = `<span class="ep-price">` + strconv.Itoa(n) + `</span>`
+			price = ` <span class="ep-price">` + strconv.Itoa(n) + ` ` + creditWord(n) + `</span>`
 		}
 		nav.WriteString(`<a href="#tool-` + html.EscapeString(t.Name) + `">` + html.EscapeString(t.Name) + price + `</a>`)
 	}
-	nav.WriteString(`</nav>`)
-	return `<div class="ep-layout">` + nav.String() + `<div class="ep-main">` + app.List(mcpToolsHTML()) + `</div></div>`
+	nav.WriteString(`</nav></details>`)
+	return `<div class="page-stack">` + nav.String() + app.List(mcpToolsHTML()) + `</div>`
 }
 
 // mcpToolsHTML generates HTML listing all registered MCP tools
@@ -287,17 +286,17 @@ func mcpToolsHTML() string {
 		if t.WalletOp != "" {
 			cost = quota.OperationCost(t.WalletOp)
 		}
-		b.WriteString(`<div class="card" id="tool-` + html.EscapeString(t.Name) + `">`)
+		b.WriteString(`<section class="card section-stack" id="tool-` + html.EscapeString(t.Name) + `"><div class="metadata-row"><h3>` + html.EscapeString(t.Name) + `</h3>`)
 		if cost > 0 {
-			b.WriteString(`<span class="tool-price"><b>` + strconv.Itoa(cost) + `</b> <span>` + creditWord(cost) + `</span></span>`)
+			b.WriteString(`<span class="text-muted"><b>` + strconv.Itoa(cost) + `</b> <span>` + creditWord(cost) + `</span></span>`)
 		}
-		b.WriteString(`<span class="card-title">` + html.EscapeString(t.Name) + `</span>`)
+		b.WriteString(`</div>`)
 		b.WriteString(app.Desc(t.Description))
 		if cost > 0 {
 			b.WriteString(`<p class="card-meta">Draws ` + strconv.Itoa(cost) + ` ` + creditWord(cost) + ` from your balance per call.</p>`)
 		}
 		if len(t.Params) > 0 {
-			b.WriteString(`<table class="rule-table">`)
+			b.WriteString(`<div class="scroll-x"><table class="rule-table">`)
 			b.WriteString(`<tr><th >Param</th><th >Type</th><th >Description</th></tr>`)
 			for _, p := range t.Params {
 				req := ""
@@ -310,13 +309,13 @@ func mcpToolsHTML() string {
 					html.EscapeString(p.Description),
 				))
 			}
-			b.WriteString(`</table>`)
+			b.WriteString(`</table></div>`)
 		}
 		// Example JSON-RPC request - use data attribute to avoid JS escaping issues
 		example := exampleRequest(t)
 		exampleEscaped := html.EscapeString(example)
 		b.WriteString(`<pre class="bg-soft p-2 text-xs scroll-x clickable" data-json="` + exampleEscaped + `" onclick="fillAndSend(this.dataset.json)">` + exampleEscaped + `</pre>`)
-		b.WriteString(`</div>`)
+		b.WriteString(`</section>`)
 	}
 	return b.String()
 }

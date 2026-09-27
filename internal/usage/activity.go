@@ -11,6 +11,10 @@ type Activity struct {
 	Surface    string    `json:"surface"`
 	Operation  string    `json:"operation"`
 	Account    string    `json:"account"`
+	Host       string    `json:"host,omitempty"`
+	IP         string    `json:"ip,omitempty"`
+	UserAgent  string    `json:"user_agent,omitempty"`
+	Path       string    `json:"path,omitempty"`
 	TokenID    string    `json:"token_id,omitempty"`
 	Outcome    string    `json:"outcome"`
 	Status     int       `json:"status,omitempty"`
@@ -29,6 +33,18 @@ func RecordActivity(a Activity) {
 	}
 	if len(a.Operation) > 160 {
 		a.Operation = a.Operation[:160]
+	}
+	if len(a.UserAgent) > 512 {
+		a.UserAgent = a.UserAgent[:512]
+	}
+	if len(a.Path) > 2048 {
+		a.Path = a.Path[:2048]
+	}
+	if len(a.Host) > 255 {
+		a.Host = a.Host[:255]
+	}
+	if len(a.IP) > 64 {
+		a.IP = a.IP[:64]
 	}
 	mu.Lock()
 	defer mu.Unlock()

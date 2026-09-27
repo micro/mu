@@ -607,7 +607,7 @@ func renderStatusHTML(status StatusResponse) string {
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="detail-row">
 <span class="status-name">%s</span>
-<span class="status-value">%s<span class="status-icon %s">%s</span></span>
+<span class="status-value inline-row">%s<span class="status-icon %s">%s</span></span>
 </div>`, svc.Name, details, class, icon))
 	}
 	sb.WriteString(`</div>`)
@@ -631,7 +631,7 @@ func renderStatusHTML(status StatusResponse) string {
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="detail-row">
 <span class="status-name">%s</span>
-<span class="status-value">%s<span class="status-icon %s">%s</span></span>
+<span class="status-value inline-row">%s<span class="status-icon %s">%s</span></span>
 </div>`, cfg.Name, details, class, icon))
 	}
 	sb.WriteString(`</div>`)
