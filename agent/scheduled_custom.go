@@ -61,13 +61,13 @@ func customScheduleHandler(w http.ResponseWriter, r *http.Request, acc *auth.Acc
 		return
 	}
 	token := auth.CSRFToken(r)
-	body := `<div class="page-stack">` + app.PageControls(agentsDescription, scheduledTabs(true), "") + `<section class="section-card section-stack"><h2>New event</h2><p>Tell Micro what to do and when. The result arrives in your inbox. Assistant replies and paid tools use your credits.</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="create-schedule">` +
+	body := `<div class="page-stack">` + app.PageControls(agentsDescription, scheduledTabs(true), "") + `<section class="section-card section-stack"><h2>New task</h2><p>Tell Micro what to do and when. The result arrives in your inbox. Assistant replies and paid tools use your credits.</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="create-schedule">` +
 		app.Field{Name: "title", Label: "Title", Required: true, Max: 1000}.HTML() +
 		app.Field{Name: "prompt", Label: "What should Micro do?", Placeholder: "Check the latest developments on a topic and send me a summary", Required: true, Rows: 3, Max: 16000}.HTML() +
 		app.Field{Name: "when", Label: "Date and time", Type: "datetime-local", Required: true}.HTML() +
 		`<label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(acc.Zone) + `" placeholder="Europe/London"></label>` +
 		app.Field{Name: "repeat", Label: "Repeat", Options: []app.Option{{Value: "", Label: "Once"}, {Value: "daily", Label: "Daily"}, {Value: "weekly", Label: "Weekly"}, {Value: "monthly", Label: "Monthly"}}}.HTML() +
-		`<div class="form-actions"><button type="submit">Create event</button><a href="/agents?view=scheduled">Cancel</a></div></form></section></div>`
+		`<div class="form-actions"><button type="submit">Create task</button><a href="/agents?view=scheduled">Cancel</a></div></form></section></div>`
 	app.Respond(w, r, app.Response{Title: "Agents", HTML: body})
 }
 
@@ -78,13 +78,13 @@ func customSchedulesHTML(owner, token string) string {
 			continue
 		}
 		if b.Len() == 0 {
-			b.WriteString(`<section class="section-stack"><h2>Your schedules</h2><div class="collection-list">`)
+			b.WriteString(`<section class="section-stack"><h2>Your scheduled tasks</h2><div class="collection-list">`)
 		}
 		state := "Scheduled"
 		if e.Paused {
 			state = "Paused"
 		}
-		fmt.Fprintf(&b, `<article class="record-card section-stack"><h3>%s</h3><p class="text-muted">%s · %s</p><p>%s</p><form method="POST" action="/agents?view=scheduled" class="form-actions">%s<input type="hidden" name="action" value="cancel-schedule"><input type="hidden" name="id" value="%s"><button type="submit">Cancel schedule</button></form></article>`, html.EscapeString(e.Title), state, html.EscapeString(events.Describe(e)), html.EscapeString(e.Prompt), app.CSRFField(token), html.EscapeString(e.ID))
+		fmt.Fprintf(&b, `<article class="record-card section-stack"><h3>%s</h3><p class="text-muted">%s · %s</p><p>%s</p><form method="POST" action="/agents?view=scheduled" class="form-actions">%s<input type="hidden" name="action" value="cancel-schedule"><input type="hidden" name="id" value="%s"><button type="submit">Cancel task</button></form></article>`, html.EscapeString(e.Title), state, html.EscapeString(events.Describe(e)), html.EscapeString(e.Prompt), app.CSRFField(token), html.EscapeString(e.ID))
 	}
 	if b.Len() > 0 {
 		b.WriteString(`</div></section>`)
