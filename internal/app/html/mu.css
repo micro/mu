@@ -4,7 +4,7 @@
 body{margin:0;min-height:100svh;min-height:100dvh;display:flex;flex-direction:column}
 a{color:inherit;text-decoration:underline;text-underline-offset:3px}
 a:hover{color:#555;text-decoration:underline}
-:is(nav,header,h1,h2,h3,h4,.form-actions,.section-actions,.home-date,.section-card-head,.home-resume,.metadata-row,.reading-meta) a{text-decoration:none}
+:is(nav,header,h1,h2,h3,h4,.home-date,.section-card-head,.home-resume,.metadata-row,.reading-meta) a{text-decoration:none}
 a:has(>.title){text-decoration:none}
 :is(.prose,.reader-content,.answer,.ib-body) a{text-decoration:underline}
 button,input,textarea,select{font:inherit;color:inherit}
@@ -1375,6 +1375,6 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .account-group>.card+.card{border-top:1px solid var(--border);border-radius:0;margin-top:12px;padding-top:20px}
 
 .landing-highlights{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin:12px 0 4px;padding:0}
-.landing-highlights li{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.8rem;color:var(--text-muted)}
+.landing-highlights li{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.8rem;color:var(--text-muted)}
 .landing-highlights svg{width:24px;height:24px;fill:none;stroke:var(--landing-accent);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .landing-introduction+.landing-scheduled{margin-top:48px;padding-top:48px}
