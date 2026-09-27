@@ -47,7 +47,7 @@ func landingHTML() string {
 <h2>What Micro can do</h2>
 <p>Start a conversation whenever you need a hand.</p>
 <dl class="landing-capabilities">
-<div><dt>Find answers</dt><dd>Search the web, explore a topic or find local information.</dd></div>
+<div><dt>Find answers</dt><dd>Search the web, explore a topic or catch up on the latest news and local information.</dd></div>
 <div><dt>Get stuff done</dt><dd>Work with your notes, files and tasks. Connect Google Calendar to include your schedule.</dd></div>
 <div><dt>Talk your way</dt><dd>Use Micro on the web, by email, WhatsApp or XMPP.</dd></div>
 </dl>
