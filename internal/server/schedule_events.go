@@ -58,7 +58,7 @@ func inviteSchedule(e *events.Event) {
 func watchScheduleEvents() {
 	go func() {
 		for {
-			err := event.Consume(context.Background(), "schedule-notifications", []string{event.ScheduleDue, "events.changed"}, func(e event.Record) error {
+			err := event.Consume(context.Background(), "schedule-notifications", []string{event.ScheduleDue, event.ScheduleAdvance, "events.changed"}, func(e event.Record) error {
 				// External delivery cannot be rolled back. Reserve it before
 				// sending so a crash/replay cannot send the same invite twice.
 				key := "work/notifications/" + e.ID + ".json"
@@ -67,7 +67,41 @@ func watchScheduleEvents() {
 				} else if !os.IsNotExist(err) {
 					return err
 				}
+				if e.Type == event.ScheduleAdvance {
+					when := time.Time{}
+					switch v := e.Data["when"].(type) {
+					case time.Time:
+						when = v
+					case string:
+						when, _ = time.Parse(time.RFC3339Nano, v)
+					}
+					if when.IsZero() || !when.After(time.Now()) {
+						return nil
+					}
+					if e.Data["recipient"] != "user" {
+						return nil
+					}
+					current := false
+					for _, s := range events.List(e.Account) {
+						if s.ID == e.Resource && !s.Paused && fmt.Sprint(s.Sequence) == e.Version {
+							current = true
+						}
+					}
+					if !current {
+						return nil
+					}
+					if err := persist.Write(key, []byte(`"attempted"`)); err != nil {
+						return err
+					}
+					title, _ := e.Data["title"].(string)
+					note, _ := e.Data["note"].(string)
+					push.Send(e.Account, push.Notification{Title: "Upcoming: " + title, Body: note, URL: "/events"})
+					return nil
+				}
 				if e.Type == event.ScheduleDue {
+					if agentWork, _ := e.Data["agent_work"].(bool); agentWork {
+						return nil
+					}
 					if kind, _ := e.Data["kind"].(string); kind != "" {
 						return nil
 					}

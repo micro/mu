@@ -135,6 +135,7 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 			e.ResearchDigest, e.ResearchReport = "", ""
 		}
 		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused, e.MaxCredits = "Research: "+topic, topic, repeat, zone, next, paused, budget
+		e.Advance = scheduledAdvance(e.Kind)
 		e.Sequence++
 		e.Fired = false
 		e.FiredAt = time.Time{}

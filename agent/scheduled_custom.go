@@ -53,7 +53,11 @@ func customScheduleHandler(w http.ResponseWriter, r *http.Request, acc *auth.Acc
 			app.BadRequest(w, r, "Enter a title, instructions and a future date and time")
 			return
 		}
-		if _, err := events.CreateStanding(acc.ID, title, when, "", 0, repeat, prompt, zone); err != nil {
+		advance := events.Advance{}
+		if r.FormValue("prepare") == "yes" {
+			advance = events.Advance{Minutes: 10, Recipient: "agent"}
+		}
+		if _, err := events.CreateScheduled(acc.ID, title, when, "", 0, repeat, prompt, advance, zone); err != nil {
 			app.BadRequest(w, r, err.Error())
 			return
 		}
@@ -64,6 +68,7 @@ func customScheduleHandler(w http.ResponseWriter, r *http.Request, acc *auth.Acc
 	body := `<div class="page-stack">` + app.PageControls(agentsDescription, scheduledTabs(true), "") + `<section class="section-card section-stack"><h2>New task</h2><p>Tell Micro what to do and when. The result arrives in your inbox. Assistant replies and paid tools use your credits.</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="create-schedule">` +
 		app.Field{Name: "title", Label: "Title", Required: true, Max: 1000}.HTML() +
 		app.Field{Name: "prompt", Label: "What should Micro do?", Placeholder: "Check the latest developments on a topic and send me a summary", Required: true, Rows: 3, Max: 16000}.HTML() +
+		`<label><input type="checkbox" name="prepare" value="yes"> Prepare a report ahead of delivery</label><p class="text-muted">For reading and summaries: Micro starts 10 minutes early using read-only tools, then delivers at the selected time. Leave unchecked for tasks that send messages or change records.</p>` +
 		app.Field{Name: "when", Label: "Date and time", Type: "datetime-local", Required: true}.HTML() +
 		`<label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(acc.Zone) + `" placeholder="Europe/London"></label>` +
 		app.Field{Name: "repeat", Label: "Repeat", Options: []app.Option{{Value: "", Label: "Once"}, {Value: "daily", Label: "Daily"}, {Value: "weekly", Label: "Weekly"}, {Value: "monthly", Label: "Monthly"}}}.HTML() +

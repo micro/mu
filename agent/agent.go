@@ -29,6 +29,7 @@ import (
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
 func Load() {
+	configureScheduledAdvances()
 	adoptAll()
 
 	inbox.Tools = runTools

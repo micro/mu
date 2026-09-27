@@ -98,6 +98,7 @@ func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bo
 			value := news[0]
 			e.WorldNews = &value
 		}
+		e.Advance = scheduledAdvance(e.Kind)
 		e.Sequence++
 		records[e.ID] = e
 		return nil
@@ -162,6 +163,7 @@ func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...st
 		e.Paused = !enabled
 		e.Repeat = BriefFrequency(owner, e.Repeat)
 		e.WorldNews = &news
+		e.Advance = scheduledAdvance(e.Kind)
 		e.Sequence++
 		if enabled && !e.When.After(time.Now()) {
 			at := e.When
