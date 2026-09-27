@@ -54,9 +54,9 @@ func TimeRequest(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, f
 			if status < 400 {
 				outcome = "slow request"
 			}
-			usage.RecordActivity(usage.Activity{Surface: "http", Operation: r.Method + " " + usage.Endpoint(r.URL.Path), Account: account, Status: status, Outcome: outcome, DurationMS: time.Since(start).Milliseconds()})
+			usage.RecordActivity(usage.Activity{Surface: "http", Operation: r.Method + " " + usage.Endpoint(r.URL.Path), Account: account, Path: r.URL.Path, Host: r.Host, IP: ClientIP(r), UserAgent: r.UserAgent(), Status: status, Outcome: outcome, DurationMS: time.Since(start).Milliseconds()})
 		}
 
-		Log("http", "method=%s path=%q status=%d bytes=%d duration_ms=%.3f", r.Method, r.URL.Path, status, size, float64(time.Since(start))/float64(time.Millisecond))
+		Log("http", "method=%s host=%q path=%q status=%d bytes=%d duration_ms=%.3f", r.Method, r.Host, r.URL.Path, status, size, float64(time.Since(start))/float64(time.Millisecond))
 	}
 }

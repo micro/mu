@@ -1409,3 +1409,5 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 
 .view-controls>.collection-toolbar{margin:0}
 .collection-toolbar>.search-bar:has(input){flex:1 1 280px;max-width:560px}
+
+.account-menu-links>hr{margin:6px 12px;border-color:var(--border)}

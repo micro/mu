@@ -458,6 +458,7 @@ func updateCache() {
 
 // updateCacheUnlocked updates the cache without locking (caller must hold lock)
 func updateCacheUnlocked() {
+	previewStarted := time.Now()
 	// Re-sort posts by most recent activity (updated or created) newest first
 	sort.Slice(posts, func(i, j int) bool {
 		ti := posts[i].UpdatedAt
@@ -578,6 +579,8 @@ func updateCacheUnlocked() {
 		postsPreviewHtml = strings.Join(preview, "\n")
 	}
 
+	app.RecordStartup("blog.preview", time.Since(previewStarted))
+	archiveStarted := time.Now()
 	// Generate full list for blog page (exclude flagged posts)
 	var items []listItem
 	for _, post := range posts {
@@ -609,6 +612,7 @@ func updateCacheUnlocked() {
 	}
 
 	postsItems = items
+	app.RecordStartup("blog.archiveEntries", time.Since(archiveStarted))
 
 	// Publish the rebuilt preview snapshot to the go-micro store + broker; runs
 	// under the caller's lock (nil-safe before Load wires cardSnap).
