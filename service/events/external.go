@@ -93,7 +93,7 @@ func externalEvents(owner string, from, to time.Time, limit int) []External {
 func withoutLocalCopies(local []*Event, external []External) []External {
 	byUID := make(map[string]*Event, len(local))
 	for _, e := range local {
-		if e.ID != "" && e.Kind != "brief" && e.Prompt == "" {
+		if e.ID != "" && e.Kind == "" && e.Prompt == "" {
 			byUID[e.ID+"@mu"] = e
 		}
 	}

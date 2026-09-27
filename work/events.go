@@ -15,7 +15,7 @@ import (
 )
 
 func requestFor(e event.Record) (request, error) {
-	r := request{EventID: e.ID, Account: e.Account, ID: e.Resource}
+	r := request{EventID: e.ID, Revision: e.Version, Account: e.Account, ID: e.Resource}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	ctx = service.WithAccount(ctx, e.Account)
@@ -35,6 +35,12 @@ func requestFor(e event.Record) (request, error) {
 			r.Prompt += "\n\n" + t.Detail
 		}
 	case event.ScheduleDue:
+		switch when := e.Data["when"].(type) {
+		case time.Time:
+			r.Due = when
+		case string:
+			r.Due, _ = time.Parse(time.RFC3339Nano, when)
+		}
 		var rsp events.ReadResponse
 		if err := service.Call(ctx, "events", "Server.Read", &events.ReadRequest{ID: e.Resource}, &rsp); err != nil {
 			return r, err
@@ -44,14 +50,6 @@ func requestFor(e event.Record) (request, error) {
 			return request{}, nil
 		}
 		r.Kind, r.Title, r.Prompt = events.Kind, schedule.Title, strings.TrimSpace(schedule.Prompt)
-		if schedule.Kind == "brief" {
-			r.Prompt += "\nCover overnight developments and what matters today."
-			if events.BriefWorldNews(schedule) {
-				r.Prompt += "\nInclude a short world news section with current sources."
-			} else {
-				r.Prompt += "\nKeep this brief personal: calendar, messages, tasks and local weather. Do not fetch or include world news, general headlines, social trends or market news."
-			}
-		}
 	}
 	return r, nil
 }

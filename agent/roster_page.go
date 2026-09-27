@@ -24,6 +24,10 @@ import (
 
 // Handler serves /agents.
 func RosterHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("view") == "scheduled" {
+		scheduledHandler(w, r)
+		return
+	}
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		// Signed out, this page is what the instance already has.
@@ -93,7 +97,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
-	b.WriteString(`<div class="page-col page-stack"><p class="text-muted">Choose an agent to talk to, or create one with its own instructions and tools.</p>`)
+	b.WriteString(`<div class="page-col page-stack"><div class="action-block"><p class="text-muted">Choose an agent to talk to, or create one with its own instructions and tools.</p>`)
 	// The way to make one, first.
 	//
 	// Three sentences of explanation stood here — what an agent is, what it
@@ -104,7 +108,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// The button is the standard one, in the standard place: the top, where
 	// every other page in this product puts its primary action.
-	b.WriteString(`<div class="page-action">` + newAgentAction(owner) + `</div>`)
+	b.WriteString(scheduledTabs(false) + `<div class="form-actions">` + newAgentAction(owner) + `</div></div>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit

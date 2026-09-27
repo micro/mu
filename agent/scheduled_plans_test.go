@@ -1,7 +1,8 @@
-package events
+package agent
 
 import (
 	"mu/internal/auth"
+	"mu/service/events"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func TestBriefCadenceAndPlanEntitlement(t *testing.T) {
 	tier := "free"
 	auth.SubscriptionTier = func(string) string { return tier }
 	owner := "benefit-cadence"
-	defer DeleteAll(owner)
+	defer events.DeleteAll(owner)
 	if err := ScheduleBrief(owner, "08:00", "Europe/London", "daily", "morning", false); err != nil {
 		t.Fatal(err)
 	}

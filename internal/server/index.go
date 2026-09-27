@@ -62,5 +62,10 @@ func landingHTML() string {
 <div><dt>Evening Research</dt><dd>Choose a topic and schedule. Micro searches the web and sends a summary with source links when it finds an update.</dd></div>
 </dl>
 <p class="landing-access">Free includes a weekly brief; Starter and Pro include daily briefs. Research is available with Pro and uses credits. You choose which events to enable.</p>
+</section>
+<section class="landing-introduction landing-scheduled">
+<h2>Start with Micro</h2>
+<p>Ask your first question and get help with what’s on your mind. Start free, with no card required.</p>
+<div class="form-actions"><a class="btn landing-primary" href="/signup">Create free account</a></div>
 </section>`
 }

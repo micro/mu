@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"html"
+
 	"net/http"
 	"net/url"
 	"sort"
@@ -24,7 +25,7 @@ import (
 func viewNavigation(active string) string {
 	var b strings.Builder
 	b.WriteString(`<nav class="page-menu" aria-label="Inbox views">`)
-	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"scheduled", "Scheduled", "/inbox?view=scheduled"}, {"saved", "Saved", "/inbox?view=saved"}, {"new", "New message", "/inbox/new"}} {
+	for _, v := range []struct{ key, name, href string }{{"conversations", "Messages", "/inbox"}, {"saved", "Saved", "/inbox?view=saved"}, {"new", "New message", "/inbox/new"}} {
 		current := ""
 		if active == v.key {
 			current = ` aria-current="page"`
@@ -73,62 +74,7 @@ func collectionView(w http.ResponseWriter, r *http.Request, acc *auth.Account, v
 }
 
 func scheduledView(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
-	var b strings.Builder
-	b.WriteString(viewNavigation("scheduled"))
-	loc := time.UTC
-	if z, err := time.LoadLocation(acc.Zone); err == nil {
-		loc = z
-	}
-	b.WriteString(`<p class="text-muted">Reminders and work scheduled with Micro. Times shown in ` + html.EscapeString(loc.String()) + `.</p>`)
-	if events.Brief(acc.ID) == nil {
-		b.WriteString(`<section class="record-card"><a class="record-title" href="/events?view=brief#morning-brief">Morning brief</a><p class="text-muted">Not scheduled</p></section>`)
-	}
-	if events.Checkin(acc.ID) == nil {
-		b.WriteString(`<section class="record-card"><a class="record-title" href="/events?view=brief#checkin">Daily Checkin</a><p class="text-muted">Optional. Say what you need to get done in one or two sentences.</p></section>`)
-	}
-	items := events.List(acc.ID)
-	active := items[:0]
-	for _, e := range items {
-		if !e.Fired {
-			active = append(active, e)
-		}
-	}
-	pager := app.Paginate(r, len(active), shown)
-	if len(active) == 0 {
-		b.WriteString(`<p>Nothing scheduled. Ask Micro to remind you or do something later.</p>`)
-	}
-	b.WriteString(`<div class="collection-list">`)
-	for _, e := range active[pager.From:pager.To] {
-		kind, detail := "Reminder", "Sends a reminder to your subscribed devices."
-		if e.Prompt != "" {
-			kind, detail = "Agent work", e.Prompt
-		}
-		destination := "/events?id=" + url.QueryEscape(e.ID)
-		if e.Kind == "brief" {
-			kind, detail = "Brief", "Overnight developments and what matters today."
-		}
-		if e.Kind == "checkin" {
-			kind, detail = "Check-in", "Reply in one or two sentences to start planning your day."
-		}
-		state := "Scheduled"
-		if e.Paused {
-			state = "Paused"
-		}
-		fmt.Fprintf(&b, `<section class="record-card"><a class="record-title" href="%s">%s</a><div class="metadata-row"><span>%s</span><span>%s</span><time datetime="%s">%s</time>`, html.EscapeString(destination), html.EscapeString(e.Title), kind, state, e.When.Format(time.RFC3339), html.EscapeString(e.When.In(loc).Format("Mon 2 Jan, 15:04 MST")))
-		if e.Repeat != "" {
-			b.WriteString(`<span>` + html.EscapeString(e.Repeat) + `</span>`)
-		}
-		b.WriteString(`</div><p class="collection-preview">` + html.EscapeString(trimTo(detail, 200)) + `</p>`)
-		b.WriteString(`<div class="form-actions">`)
-		if !e.Paused && e.Kind != "brief" {
-			label := "Cancel"
-			fmt.Fprintf(&b, `<form method="post" action="/inbox?view=scheduled"><input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="cancel"><input type="hidden" name="id" value="%s"><button type="submit">%s</button></form>`, html.EscapeString(auth.CSRFToken(r)), html.EscapeString(e.ID), label)
-		}
-		b.WriteString(`</div></section>`)
-	}
-	b.WriteString(`</div>` + pager.Nav("/inbox?view=scheduled"))
-	b.WriteString(`<div class="section-actions"><a href="/events">Calendar and schedule settings</a></div>`)
-	app.Respond(w, r, app.Response{Title: "Inbox", HTML: `<div class="page-stack">` + b.String() + `</div>`})
+	http.Redirect(w, r, "/agents?view=scheduled", http.StatusSeeOther)
 }
 
 type savedItem struct {

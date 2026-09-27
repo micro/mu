@@ -1,8 +1,9 @@
-package events
+package agent
 
 import (
 	"fmt"
 	"html"
+	"mu/service/events"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/data"
+
 	"mu/internal/quota"
 )
 
@@ -19,36 +20,22 @@ func setBriefPlan(owner string, enabled bool) error {
 	if enabled && auth.Plan(owner) != "pro" {
 		return fmt.Errorf("a daily plan is included with Pro")
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	for id, old := range events {
-		if old.Owner != owner || old.Kind != "brief" || BriefPeriod(old) != "morning" {
-			continue
+	return events.EditOwned(owner, func(records map[string]*events.Event) error {
+		for id, old := range records {
+			if old.Owner != owner || old.Kind != "brief" || BriefPeriod(old) != "morning" {
+				continue
+			}
+			cp := *old
+			cp.Plan = enabled
+			records[id] = &cp
+			return nil
 		}
-		cp := *old
-		cp.Plan = enabled
-		return saveFeatureLocked(id, &cp)
-	}
-	return nil
+		return nil
+	})
 }
 
-func saveFeatureLocked(id string, next *Event) error {
-	list := make([]*Event, 0, len(events)+1)
-	for key, e := range events {
-		if key != id {
-			list = append(list, e)
-		}
-	}
-	list = append(list, next)
-	if err := data.SaveJSON(storeKey, list); err != nil {
-		return err
-	}
-	events[id] = next
-	return nil
-}
-
-func Research(owner string) *Event {
-	for _, e := range List(owner) {
+func Research(owner string) *events.Event {
+	for _, e := range events.List(owner) {
 		if e.Kind == "research" {
 			return e
 		}
@@ -95,7 +82,7 @@ func researchHTML(owner, csrf string) string {
 			status = "Disabled"
 		}
 	}
-	return `<div class="page-stack"><p>Follow one topic. Micro checks current web sources and sends a private update when the search results change.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search and one summary. Cached searches may cost less. Your limit is checked before starting.</p><form class="form" method="POST" action="/events">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></div>`
+	return `<div class="page-stack"><p>Follow one topic. Micro checks current web sources and sends a private update when the search results change.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search and one summary. Cached searches may cost less. Your limit is checked before starting.</p><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></div>`
 }
 
 func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
@@ -132,46 +119,49 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	if !next.After(now) {
 		next = next.AddDate(0, 0, 1)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	var old *Event
-	for _, e := range events {
-		if e.Owner == acc.ID && e.Kind == "research" {
-			old = e
-			break
+	err = events.EditOwned(acc.ID, func(records map[string]*events.Event) error {
+		var old *events.Event
+		for _, e := range records {
+			if e.Owner == acc.ID && e.Kind == "research" {
+				old = e
+				break
+			}
 		}
-	}
-	e := Event{ID: uuid.NewString(), Owner: acc.ID, Kind: "research", Created: time.Now().UTC()}
-	if old != nil {
-		e = *old
-	}
-	if e.Prompt != topic {
-		e.ResearchDigest, e.ResearchReport = "", ""
-	}
-	e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused, e.MaxCredits = "Research: "+topic, topic, repeat, zone, next, paused, budget
-	e.Sequence++
-	e.Fired = false
-	e.FiredAt = time.Time{}
-	if err := saveFeatureLocked(e.ID, &e); err != nil {
+		e := events.Event{ID: uuid.NewString(), Owner: acc.ID, Kind: "research", Created: time.Now().UTC()}
+		if old != nil {
+			e = *old
+		}
+		if e.Prompt != topic {
+			e.ResearchDigest, e.ResearchReport = "", ""
+		}
+		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused, e.MaxCredits = "Research: "+topic, topic, repeat, zone, next, paused, budget
+		e.Sequence++
+		e.Fired = false
+		e.FiredAt = time.Time{}
+		records[e.ID] = &e
+		return nil
+	})
+	if err != nil {
 		app.BadRequest(w, r, "Could not save research schedule")
 		return
 	}
-	http.Redirect(w, r, "/events?view=research", http.StatusSeeOther)
+	http.Redirect(w, r, "/agents?view=scheduled#research", http.StatusSeeOther)
 }
 
 // SaveResearch keeps the bounded comparison context with its owned schedule, so
 // canceling the schedule or deleting the account removes both together.
-func SaveResearch(source *Event, digest, report string) error {
-	mu.Lock()
-	defer mu.Unlock()
-	old := events[source.ID]
-	if old == nil || old.Owner != source.Owner || old.Kind != "research" || old.Paused || old.Sequence != source.Sequence {
-		return fmt.Errorf("research schedule changed during the check")
-	}
-	if len(report) > 8000 {
-		report = report[:8000]
-	}
-	cp := *old
-	cp.ResearchDigest, cp.ResearchReport = digest, report
-	return saveFeatureLocked(cp.ID, &cp)
+func SaveResearch(source *events.Event, digest, report string) error {
+	return events.EditOwned(source.Owner, func(records map[string]*events.Event) error {
+		old := records[source.ID]
+		if old == nil || old.Owner != source.Owner || old.Kind != "research" || old.Paused || old.Sequence != source.Sequence {
+			return fmt.Errorf("research schedule changed during the check")
+		}
+		if len(report) > 8000 {
+			report = report[:8000]
+		}
+		cp := *old
+		cp.ResearchDigest, cp.ResearchReport = digest, report
+		records[cp.ID] = &cp
+		return nil
+	})
 }

@@ -1,7 +1,6 @@
-package work
+package agent
 
 import (
-	"mu/agent"
 	"mu/service/events"
 	"strings"
 	"testing"
@@ -11,7 +10,7 @@ import (
 func TestBriefRendererOwnsStructure(t *testing.T) {
 	off := false
 	e := &events.Event{Zone: "Europe/London", WorldNews: &off}
-	c := agent.BriefContent{Day: []agent.BriefItem{{Text: "Meeting\n## Surprise", URL: "javascript:alert(1)"}}, Headlines: []agent.BriefItem{{Text: "Hidden news"}}, Priorities: []agent.BriefItem{{Text: "Hidden plan"}}}
+	c := BriefContent{Day: []BriefItem{{Text: "Meeting\n## Surprise", URL: "javascript:alert(1)"}}, Headlines: []BriefItem{{Text: "Hidden news"}}, Priorities: []BriefItem{{Text: "Hidden plan"}}}
 	result := renderMorningBrief(c, "Asim", e, time.Date(2026, 9, 27, 23, 30, 0, 0, time.UTC), "", false)
 	if strings.Contains(result, "\n## Surprise") || strings.Contains(result, "javascript:") || strings.Contains(result, "Hidden") {
 		t.Fatal(result)

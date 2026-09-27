@@ -1,8 +1,8 @@
-package work
+package agent
 
 import (
 	"fmt"
-	"mu/agent"
+
 	"mu/service/events"
 	"net/url"
 	"strings"
@@ -15,7 +15,7 @@ func briefText(s string) string {
 	s = strings.Join(strings.Fields(s), " ")
 	return strings.NewReplacer("\\", "\\\\", "*", "\\*", "_", "\\_", "[", "\\[", "]", "\\]", "#", "\\#", "<", "&lt;", ">", "&gt;", "`", "\\`", "!", "\\!", "|", "\\|").Replace(s)
 }
-func renderMorningBrief(c agent.BriefContent, name string, e *events.Event, now time.Time, reminder string, plan bool) string {
+func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.Time, reminder string, plan bool) string {
 	loc, err := time.LoadLocation(e.Zone)
 	if err != nil {
 		loc = time.UTC
@@ -26,7 +26,7 @@ func renderMorningBrief(c agent.BriefContent, name string, e *events.Event, now 
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n\n%s\n", greeting, now.In(loc).Format("Monday, 2 January 2006"))
-	section := func(title string, items []agent.BriefItem, limit int, fallback string) {
+	section := func(title string, items []BriefItem, limit int, fallback string) {
 		fmt.Fprintf(&b, "\n## %s\n\n", title)
 		count := 0
 		for _, item := range items {
@@ -51,7 +51,7 @@ func renderMorningBrief(c agent.BriefContent, name string, e *events.Event, now 
 	section("Your day", c.Day, 8, "No commitments or relevant work were available for this brief. Calendar coverage may be incomplete.")
 	section("Weather", c.Weather, 1, "Today's weather is unavailable.")
 	section("Prayer times", c.Prayer, 1, "Today's prayer times are unavailable.")
-	if events.BriefWorldNews(e) {
+	if BriefWorldNews(e) {
 		section("Headlines", c.Headlines, 5, "No recent sourced headlines are available.")
 	}
 	if plan && len(c.Priorities) > 0 {

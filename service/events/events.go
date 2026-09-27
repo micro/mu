@@ -22,6 +22,9 @@ import (
 
 // Event is a scheduled reminder owned by a single user.
 type Event struct {
+	// Legacy feature payload fields remain in the persisted schema so existing
+	// schedules retain their settings. Agent owns their interpretation; Events
+	// treats them as opaque data and only advances the schedule.
 	ResearchDigest string    `json:"research_digest,omitempty"`
 	ResearchReport string    `json:"research_report,omitempty"`
 	Plan           bool      `json:"plan,omitempty"`
@@ -71,7 +74,7 @@ func Load() {
 	var list []*Event
 	if err := data.LoadJSON(storeKey, &list); err == nil {
 		for _, e := range list {
-			if e != nil && e.ID != "" && !retiredBrief(e) {
+			if e != nil && e.ID != "" {
 				events[e.ID] = e
 			}
 		}
@@ -161,7 +164,7 @@ func List(owner string) []*Event {
 	defer mu.RUnlock()
 	var out []*Event
 	for _, e := range events {
-		if e.Owner == owner && !retiredBrief(e) {
+		if e.Owner == owner {
 			cp := *e
 			out = append(out, &cp)
 		}
@@ -189,7 +192,7 @@ func Cancel(owner, id string) error {
 	if e == nil || e.Owner != owner {
 		return fmt.Errorf("event not found")
 	}
-	if e.Kind == "brief" {
+	if e.Kind != "" {
 		e.Paused = true
 	} else {
 		delete(events, id)
@@ -223,47 +226,7 @@ func fireDue() {
 		previous[id] = &cp
 	}
 	for id, e := range events {
-		if retiredBrief(e) {
-			delete(events, id)
-			changed = true
-			continue
-		}
 		if !e.Fired && !e.Paused && !e.When.After(now) {
-			// A missed morning check-in must not arrive at night after a restart.
-			if e.Kind == "checkin" && now.Sub(e.When) > time.Hour {
-				rescheduleLocked(e, now)
-				changed = true
-				continue
-			}
-			if e.Kind == "research" && auth.Plan(e.Owner) != "pro" {
-				e.Paused = true
-				changed = true
-				continue
-			}
-			if e.Kind == "brief" {
-				e.Repeat = BriefFrequency(e.Owner, e.Repeat)
-				if !e.LastBrief.IsZero() {
-					loc, err := time.LoadLocation(e.Zone)
-					if err != nil {
-						loc = time.UTC
-					}
-					days := 1
-					if auth.Plan(e.Owner) == "free" || e.Repeat == "weekly" {
-						days = 7
-					}
-					next := e.LastBrief.In(loc).AddDate(0, 0, days)
-					if now.Before(next) {
-						// Advance the chosen schedule, not the last delivery's
-						// clock time (which can be late or use an old setting).
-						for e.When.Before(next) {
-							rescheduleLocked(e, e.When)
-						}
-						changed = true
-						continue
-					}
-				}
-				e.LastBrief = now
-			}
 			e.Fired = true
 			e.FiredAt = now
 			cp := *e
@@ -324,7 +287,7 @@ func Remove(owner, id string) error {
 	if !ok || e.Owner != owner {
 		return fmt.Errorf("no such event")
 	}
-	if e.Kind == "brief" {
+	if e.Kind != "" {
 		e.Paused = true
 	} else {
 		delete(events, id)
@@ -362,8 +325,10 @@ func recurringZone(owner string) string {
 	if acc, err := auth.GetAccount(owner); err == nil && acc.Zone != "" {
 		return acc.Zone
 	}
-	if brief := Brief(owner); brief != nil {
-		return brief.Zone
+	for _, e := range List(owner) {
+		if e.Zone != "" {
+			return e.Zone
+		}
 	}
 	return ""
 }

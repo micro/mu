@@ -37,7 +37,6 @@ import (
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
-	"mu/service/events"
 	"mu/service/files"
 	"mu/service/flights"
 	"mu/service/food"
@@ -585,7 +584,7 @@ func registerRoutes() {
 	http.HandleFunc("/images", images.Handler)
 	http.HandleFunc("/images/daily/", images.DailyImageHandler)
 	http.HandleFunc("/images/file/", images.GeneratedImageHandler)
-	http.HandleFunc("/events", events.Handler)
+	http.HandleFunc("/events", eventsPageHandler)
 	// /files lists a person's files; /files/<id> serves one. A stored file's URL
 	// has to be fetchable by an ordinary HTTP client, or handing someone a link
 	// to it is worthless.
@@ -642,7 +641,7 @@ func registerRoutes() {
 	http.HandleFunc("/report", app.ReportHandler)
 	// What you are doing, set on your own profile. See internal/user/status.go.
 
-	http.HandleFunc("/inbox/settings", inbox.SettingsHandler)
+	http.HandleFunc("/inbox/settings", agent.ScheduledPreferencesHandler)
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/account/profile", account.Account)
 	http.HandleFunc("/account/billing", account.Account)

@@ -1,9 +1,10 @@
-package events
+package agent
 
 import (
 	"html"
 	"mu/internal/app"
 	"mu/internal/auth"
+
 	"net/http"
 	"strings"
 	"time"
@@ -45,7 +46,7 @@ func briefPeriodHTML(owner, token, period string) string {
 		description = "A weekly look ahead at your commitments and outstanding work."
 	}
 	var b strings.Builder
-	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h3>` + title + `</h3><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
+	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h3>` + title + `</h3><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {
 		b.WriteString(`<label class="field-label">` + title + `<select class="form-input" name="` + name + `">`)
 		for _, v := range values {
@@ -99,7 +100,7 @@ func briefScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !auth.StrictCSRF(r) {
-		http.Error(w, "Reload Events and try again", http.StatusForbidden)
+		http.Error(w, "Reload Scheduled and try again", http.StatusForbidden)
 		return
 	}
 	state := r.FormValue("state")
@@ -120,5 +121,5 @@ func briefScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/events?view=brief", http.StatusSeeOther)
+	http.Redirect(w, r, "/agents?view=scheduled", http.StatusSeeOther)
 }
