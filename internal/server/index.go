@@ -33,7 +33,14 @@ func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant for your everyday life.</p>
-<p>Ask a question, work through an idea or get help with something you need to do.</p>
+<p>Ask a question, explore an idea or get things done.</p>
+<ul class="landing-highlights" aria-label="Ways to use Micro">
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5"/></svg><span>Ask</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg><span>Brief</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4Zm4 6 3 3 5-5"/></svg><span>Checkin</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v16H4V5ZM8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/></svg><span>Plan</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6V3h8v3M3 7h18v14H3V7ZM3 12h18M10 12v3h4v-3"/></svg><span>Work</span></li>
+</ul>
 <div class="form-actions"><a class="btn landing-primary" href="/pricing">Get started</a></div>
 </section>
 <section class="landing-introduction landing-scheduled">
@@ -50,9 +57,9 @@ func landingHTML() string {
 <h2>Scheduled Events</h2>
 <p>Opt into scheduled events and choose when they reach you.</p>
 <dl class="landing-capabilities">
-<div><dt>Morning brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>
-<div><dt>Daily check-in</dt><dd>A short prompt to share what’s on your mind and what you need to get done. Reply in a sentence or two.</dd></div>
-<div><dt>Evening research</dt><dd>Follow a topic with source-linked updates to read when you have time to think. Choose your time and frequency.</dd></div>
+<div><dt>Morning Brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>
+<div><dt>Daily Check-in</dt><dd>A short prompt to share what’s on your mind and what you need to get done. Reply in a sentence or two.</dd></div>
+<div><dt>Evening Research</dt><dd>Follow a topic with source-linked updates to read when you have time to think. Choose your time and frequency.</dd></div>
 </dl>
 <p class="landing-access">Free includes a weekly brief; Starter and Pro include daily briefs. Research is available with Pro and uses credits. You choose which events to enable.</p>
 </section>`

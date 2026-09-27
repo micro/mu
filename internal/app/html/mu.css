@@ -1373,3 +1373,8 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .account-menu>summary>span{width:auto;height:auto;border-radius:4px;padding:6px 8px;line-height:1.4}
 
 .account-group>.card+.card{border-top:1px solid var(--border);border-radius:0;margin-top:12px;padding-top:20px}
+
+.landing-highlights{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin:12px 0 4px;padding:0}
+.landing-highlights li{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.8rem;color:var(--text-muted)}
+.landing-highlights svg{width:24px;height:24px;fill:none;stroke:var(--landing-accent);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.landing-introduction+.landing-scheduled{margin-top:48px;padding-top:48px}
