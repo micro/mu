@@ -114,7 +114,8 @@ func asMessages(accountID string, t thread.Thread, domain string) []*mail.Messag
 			CreatedAt: m.At,
 			MessageID: messageID,
 			ReplyTo:   prev,
-			ThreadID:  bridgeID(t.ID),
+			InReplyTo: prev, References: prev,
+			ThreadID: bridgeID(t.ID),
 			// Read is the thread's own answer. The record marks a conversation
 			// seen rather than each message, so anything said before you last
 			// looked has been seen and anything after it has not — which is

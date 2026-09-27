@@ -355,6 +355,15 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 		return
 	}
 
+	if r.Method == http.MethodGet && !app.WantsJSON(r) && t.Client == "mail" {
+		for _, message := range thread.Messages(accountID, id, MessagesShown) {
+			if strings.Contains(message.To, "+checkin@") {
+				http.Redirect(w, r, "/checkin?id="+url.QueryEscape(id), http.StatusSeeOther)
+				return
+			}
+		}
+	}
+
 	subject := strings.TrimSpace(t.Subject)
 	if subject == "" {
 		subject = "Untitled"

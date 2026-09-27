@@ -495,5 +495,5 @@ func serviceOf(tool string) string {
 // ServiceToolsPageHandler documents the service contract used by scoped clients and x402.
 func ServiceToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	body := `<p>Tools are operations provided by services. Connect to <code>/mcp</code> or call <code>/api/v1</code>.</p><p>For account access, <a href="/account/tokens?access=services">create a token</a> with Services API / MCP access and choose only the services the client needs. That token cannot run agents or use the Inbox API. On an x402 host, priced calls can instead be paid per request.</p>` + toolGrid()
-	app.Respond(w, r, app.Response{Title: "Service tools", HTML: body})
+	app.Respond(w, r, app.Response{Title: "Tools", HTML: body})
 }

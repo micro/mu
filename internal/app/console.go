@@ -14,17 +14,13 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 	if len(returnTo) > 0 && strings.HasPrefix(returnTo[0], "/") && !strings.HasPrefix(returnTo[0], "//") {
 		login += "?redirect=" + url.QueryEscape(returnTo[0])
 	}
-	links := `<a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a><a href="/pricing">Pricing</a><a href="` + html.EscapeString(login) + `">Login</a>`
+	links := `<a href="/about">About</a><a href="/blog">Blog</a><a href="/connect">Connect</a><a href="/pricing">Pricing</a><a href="` + html.EscapeString(login) + `">Login</a>`
 	if acc != nil {
 		name := strings.TrimSpace(acc.Name)
 		if name == "" {
 			name = strings.TrimSpace(acc.ID)
 		}
-		initial := "?"
-		if letters := []rune(name); len(letters) > 0 {
-			initial = strings.ToUpper(string(letters[0]))
-		}
-		links = `<details class="account-menu"><summary aria-label="Account menu" title="` + html.EscapeString(name) + `"><span aria-hidden="true">` + html.EscapeString(initial) + `</span></summary><div class="account-menu-links"><a href="/account">Account</a>`
+		links = `<details class="account-menu"><summary aria-label="Account menu" title="` + html.EscapeString(acc.ID) + `"><span>` + html.EscapeString(name) + `</span></summary><div class="account-menu-links"><a href="/account">Account</a><a href="/@` + html.EscapeString(acc.ID) + `">Profile</a><a href="/connect">Connect</a><a href="/developers">Developers</a>`
 		if acc.Admin {
 			links += `<a href="/admin">Admin</a>`
 		}
@@ -58,17 +54,17 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 	publicPage := false
 	if len(returnTo) > 0 {
 		switch strings.SplitN(returnTo[0], "?", 2)[0] {
-		case "/", "/about", "/contact", "/pricing", "/privacy", "/status", "/blog", "/blog/post":
+		case "/", "/about", "/contact", "/pricing", "/privacy", "/status", "/blog", "/blog/post", "/connect", "/api", "/tools", "/developers", "/x402":
 			publicPage = true
 		}
 	}
-	if acc == nil && (publicPage || strings.Contains(body, `class="landing-introduction"`)) {
+	if publicPage || strings.Contains(body, `class="landing-introduction"`) {
 		pageClass += " public-page"
 	}
 	if acc == nil || publicPage {
 		footer = `<footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer>`
 	}
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=layout-82"><script defer src="/mu.js?v=prompt-71"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header><a href="/" class="brand">Micro</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=layout-83"><script defer src="/mu.js?v=prompt-71"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header><a href="/" class="brand">Micro</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
 }
 
 // The product destinations stay the same across screen sizes. Services retain
