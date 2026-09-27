@@ -7,7 +7,7 @@ import (
 )
 
 func TestIMAPGeneratedMailKeepsFormatAndThreadHeaders(t *testing.T) {
-	original := Message{ID: "internal-child", ReplyTo: "internal-parent", MessageID: "<child@example.test>", InReplyTo: "<parent@example.test>", References: "<root@example.test>", Body: "## Daily check-in\n\nHow is your day?", Markdown: true}
+	original := Message{ID: "internal-child", ReplyTo: "internal-parent", MessageID: "<child@example.test>", InReplyTo: "<parent@example.test>", References: "<root@example.test>", Body: "## Daily Checkin\n\nHow is your day?", Markdown: true}
 	saved, err := json.Marshal(original)
 	if err != nil {
 		t.Fatal(err)
@@ -17,7 +17,7 @@ func TestIMAPGeneratedMailKeepsFormatAndThreadHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	wire := string(imapRender(&m))
-	for _, want := range []string{"Content-Type: text/html", "In-Reply-To: <parent@example.test>", "References: <root@example.test> <parent@example.test>", "Daily check-in</h2>"} {
+	for _, want := range []string{"Content-Type: text/html", "In-Reply-To: <parent@example.test>", "References: <root@example.test> <parent@example.test>", "Daily Checkin</h2>"} {
 		if !strings.Contains(wire, want) {
 			t.Fatalf("missing %q in %s", want, wire)
 		}

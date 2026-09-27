@@ -58,7 +58,7 @@ func landingHTML() string {
 <p>Opt into scheduled events and choose when they reach you.</p>
 <dl class="landing-capabilities">
 <div><dt>Morning Brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>
-<div><dt>Daily Check-in</dt><dd>A short prompt to share what’s on your mind and what you need to get done. Reply in a sentence or two.</dd></div>
+<div><dt>Daily Checkin</dt><dd>A short prompt to share what’s on your mind and what you need to get done. Reply in a sentence or two.</dd></div>
 <div><dt>Evening Research</dt><dd>Choose a topic and schedule. Micro searches the web and sends a summary with source links when it finds an update.</dd></div>
 </dl>
 <p class="landing-access">Free includes a weekly brief; Starter and Pro include daily briefs. Research is available with Pro and uses credits. You choose which events to enable.</p>
