@@ -28,8 +28,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, app.ConsoleHTML("Micro", landingHTML(), nil))
 }
 
-// Explain the everyday outcomes and available context before sending visitors
-// to Pricing or the full service directory.
+// Explain everyday help and optional scheduled events after the main introduction.
 func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
@@ -39,12 +38,13 @@ func landingHTML() string {
 </section>
 <section class="landing-introduction landing-scheduled">
 <h2>What Micro can do</h2>
+<p>Start a conversation whenever you need a hand.</p>
 <dl class="landing-capabilities">
 <div><dt>Find answers</dt><dd>Search the web, explore a topic or find local information.</dd></div>
 <div><dt>Get things done</dt><dd>Work with your notes, files and tasks. Connect Google Calendar to include your schedule.</dd></div>
 <div><dt>Talk your way</dt><dd>Use Micro on the web, by email, WhatsApp or XMPP.</dd></div>
 </dl>
-<a href="/services">Explore services</a>
+<p class="landing-access">Tell Micro what you need in your own words. It can look things up, use the information you share and help you take the next step. Ask follow-up questions as you go.</p>
 </section>
 <section class="landing-introduction landing-scheduled">
 <h2>Scheduled Events</h2>
