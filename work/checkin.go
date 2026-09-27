@@ -27,7 +27,7 @@ func checkinMessage(owner string, schedule *events.Event, now time.Time) string 
 		greeting += " " + checkinText(acc.Name)
 	}
 	var b strings.Builder
-	b.WriteString("## Daily check-in\n\n" + now.Format("Monday, 2 January 2006") + "\n\n" + greeting + ". How’s it going?\n\n## Today\n")
+	b.WriteString("## Daily Checkin\n\n" + now.Format("Monday, 2 January 2006") + "\n\n" + greeting + ". How’s it going?\n\n## Today\n")
 	type commitment struct {
 		when   time.Time
 		title  string

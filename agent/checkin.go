@@ -46,7 +46,7 @@ func CheckinHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	target := thread.Open(acc.ID, thread.WebClient, "checkin:"+source.ID)
-	thread.Name(acc.ID, target.ID, "Daily check-in")
+	thread.Name(acc.ID, target.ID, "Daily Checkin")
 	thread.SetAgent(acc.ID, target.ID, source.Agent)
 	for _, m := range messages {
 		role := m.Role
