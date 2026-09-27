@@ -132,20 +132,22 @@ func authRequired() map[string]bool {
 		// Your WhatsApp threads. Sign-in checked in the handler, for the same
 		// reason as /sms: this map is matched by prefix and /whatsapp/twilio is
 		// the provider posting an inbound message with no session at all.
-		"/whatsapp":       false,
-		"/agent/session/": true, // Deleting one of your conversations
-		"/bookmarks":      true,
-		"/recall":         true,  // Your own past — sign-in required
-		"/agent/connect":  true,  // How to reach one agent
-		"/agent/pending":  true,  // Has an in-flight run answered yet — your own conversations
-		"/tasks":          true,  // Your task list — sign-in required
-		"/social":         false, // Public viewing, auth for search
-		"/social/thread":  false, // Public thread view, auth for messaging
-		"/places":         false, // Public map, auth for search
-		"/weather":        false, // Public — the forecast, as a page or as JSON
-		"/hazards":        false, // Public — quakes and alerts are public record
-		"/flights":        false, // Public — aircraft broadcast their positions in clear
-		"/mail":           true,  // Require auth for inbox
+		"/whatsapp":         false,
+		"/agent/session/":   true, // Deleting one of your conversations
+		"/bookmarks":        true,
+		"/recall":           true,  // Your own past — sign-in required
+		"/agent/connect":    true,  // How to reach one agent
+		"/agent/pending":    true,  // Has an in-flight run answered yet — your own conversations
+		"/tasks":            true,  // Your task list — sign-in required
+		"/social":           false, // Public viewing, auth for search
+		"/social/thread":    false, // Public thread view, auth for messaging
+		"/places":           false, // Public map, auth for search
+		"/weather":          false, // Public — the forecast, as a page or as JSON
+		"/hazards":          false, // Public — quakes and alerts are public record
+		"/flights":          false, // Public — aircraft broadcast their positions in clear
+		"/.well-known/jmap": false, // Mail token authentication in protocol handler
+		"/mail/jmap":        false,
+		"/mail":             true, // Require auth for inbox
 		// The token in the link is the credential, the same as /verify: it
 		// arrived at an address only the recipient reads. An unsubscribe link
 		// that asks you to sign in first is not an unsubscribe link.
@@ -301,6 +303,8 @@ func registerRoutes() {
 
 	// system log
 	http.HandleFunc("/admin/log", admin.LogHandler)
+	http.HandleFunc("/admin/errors", admin.ErrorsHandler)
+	http.HandleFunc("/admin/activity", admin.ErrorsHandler)
 
 	// environment variables status
 	http.HandleFunc("/admin/config", admin.ConfigHandler)
@@ -495,6 +499,9 @@ func registerRoutes() {
 
 	// serve mail inbox
 	http.HandleFunc("/mail", mail.Handler)
+	http.HandleFunc("/.well-known/jmap", mail.JMAPHandler)
+	http.HandleFunc("/mail/jmap", mail.JMAPHandler)
+	http.HandleFunc("/mail/jmap/", mail.JMAPHandler)
 
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"mu/internal/usage"
 	"sync"
 	"time"
 
@@ -77,6 +78,10 @@ func RecordAPICall(service, method, url string, status int, duration time.Durati
 
 // RecordExternalCall records metadata without retaining prompts or credentials.
 func RecordExternalCall(value APILogEntry) {
+	if value.Status >= 400 || value.Error != "" {
+		usage.RecordActivity(usage.Activity{At: value.Time, Surface: "provider", Operation: value.Service + " " + value.Method, Status: value.Status, Outcome: usage.FailureKind(value.Status, value.Error), DurationMS: value.Duration.Milliseconds()})
+	}
+
 	entry := &value
 	if entry.Time.IsZero() {
 		entry.Time = time.Now()

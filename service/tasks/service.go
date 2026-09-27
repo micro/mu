@@ -187,16 +187,23 @@ func ParseDue(s string) (time.Time, error) {
 }
 
 func Load() {
+	recoveryStarted := time.Now()
 	// Synchronous and before registration: no live task may be mistaken for
 	// an interrupted run while startup recovery is in progress.
-	for _, acc := range auth.AllAccounts() {
-		if acc != nil {
-			if err := recoverInterrupted(acc.ID); err != nil {
-				app.Log("tasks", "recovering interrupted work for %s: %v", acc.ID, err)
-			}
+	owners, err := userdb.OwnersMatching(ns, collection, map[string]interface{}{"status": StatusDoing, "assignee": Agent})
+	if err != nil {
+		app.Log("tasks", "finding interrupted work: %v", err)
+	}
+	for _, owner := range owners {
+		if _, err := auth.GetAccount(owner); err != nil {
+			continue
+		}
+		if err := recoverInterrupted(owner); err != nil {
+			app.Log("tasks", "recovering interrupted work for %s: %v", owner, err)
 		}
 	}
 
+	app.RecordStartup("tasks.recoverInterrupted", time.Since(recoveryStarted))
 	if err := service.Register(Spec); err != nil {
 		app.Log("tasks", "service register failed: %v", err)
 	}

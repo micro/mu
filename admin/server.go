@@ -39,7 +39,12 @@ func ServerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := serverSnapshot()
+	content, pending := serverSnapshot()
+	if r.URL.Query().Get("view") == "snapshot" {
+		app.RespondJSON(w, map[string]any{"html": content, "pending": pending})
+		return
+	}
+	content = fmt.Sprintf(`<div data-server-snapshot data-pending="%t">%s</div>`, pending, content)
 
 	app.Respond(w, r, app.Response{Title: "Server", Description: "What this process is doing and what it is sitting on", HTML: content})
 }
@@ -47,19 +52,32 @@ func ServerHandler(w http.ResponseWriter, r *http.Request) {
 // One bounded snapshot avoids repeating filesystem scans for every page visit.
 var serverView struct {
 	sync.Mutex
-	html    string
-	expires time.Time
+	refreshing bool
+	html       string
+	expires    time.Time
 }
 
-func serverSnapshot() string {
+func serverSnapshot() (string, bool) {
 	serverView.Lock()
 	defer serverView.Unlock()
-	if serverView.html != "" && time.Now().Before(serverView.expires) {
-		return serverView.html
+	if time.Now().Before(serverView.expires) && serverView.html != "" {
+		return serverView.html, false
 	}
-	serverView.html = `<p class="text-sm text-muted">Snapshot refreshed every minute.</p>` + app.RenderInternalStatusHTML() + startupTable() + storesTable()
-	serverView.expires = time.Now().Add(time.Minute)
-	return serverView.html
+	if !serverView.refreshing {
+		serverView.refreshing = true
+		go func() {
+			content := `<p class="text-sm text-muted">Snapshot refreshed every minute.</p>` + app.RenderInternalStatusHTML() + startupTable() + storesTable()
+			serverView.Lock()
+			serverView.html = content
+			serverView.expires = time.Now().Add(time.Minute)
+			serverView.refreshing = false
+			serverView.Unlock()
+		}()
+	}
+	if serverView.html != "" {
+		return serverView.html, true
+	}
+	return `<p role="status">Loading server snapshot…</p>` + startupTable(), true
 }
 
 // storesShown is how much of the data directory the table lists. The question

@@ -1733,3 +1733,21 @@ if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initServiceFilter);
   else initServiceFilter();
 }
+
+// Server diagnostics may scan stores; load them after the page is visible.
+(()=>{
+ const target=document.querySelector('[data-server-snapshot]');
+ if(!target||target.dataset.pending!=='true')return;
+ let attempts=0;
+ async function refresh(){
+  if(!target.isConnected||attempts++>=30)return;
+  try{
+   const response=await fetch('/admin/server?view=snapshot',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(10000)});
+   if(!response.ok)return;
+   const data=await response.json();
+   target.innerHTML=data.html;
+   if(data.pending)setTimeout(refresh,2000);
+  }catch{if(target.isConnected)setTimeout(refresh,3000);}
+ }
+ setTimeout(refresh,1000);
+})();

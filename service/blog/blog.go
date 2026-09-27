@@ -256,6 +256,7 @@ func Load() {
 	// single seed post, permanently, and nothing said anything. A file that is
 	// there but cannot be read is the case where doing nothing is the only
 	// safe move.
+	readStarted := time.Now()
 	b, err := data.LoadFile("blog.json")
 	switch {
 	case err != nil && os.IsNotExist(err):
@@ -271,6 +272,8 @@ func Load() {
 				"Posts are intact on disk; repair or move the file and restart.", err)
 		}
 	}
+
+	app.RecordStartup("blog.readAndDecode", time.Since(readStarted))
 
 	// No seeded posts.
 	//
@@ -319,7 +322,9 @@ func Load() {
 	populateComments()
 
 	// Update cached HTML
+	cacheStarted := time.Now()
 	updateCache()
+	app.RecordStartup("blog.renderCache", time.Since(cacheStarted))
 
 	// The archive is maintained when posts change, not rebuilt on every boot.
 	// Only withdraw explicitly private sources here, including records from

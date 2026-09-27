@@ -612,3 +612,30 @@ func recordEvent(ns, collection string, r Record, change string) event.Record {
 	serviceName := strings.Split(ns, "/")[0]
 	return event.Record{Type: serviceName + "." + change, Service: serviceName, Account: r.Owner, Resource: r.ID, Version: r.Updated.UTC().Format(time.RFC3339Nano), Data: map[string]interface{}{"namespace": ns, "collection": collection}}
 }
+
+// OwnersMatching is for service startup maintenance, not a user-facing query.
+// Read the collection once to avoid decoding it for every registered account.
+func OwnersMatching(ns, collection string, where map[string]interface{}) ([]string, error) {
+	k, err := key(ns, collection)
+	if err != nil {
+		return nil, err
+	}
+	mu.Lock()
+	records, err := loadChecked(k)
+	mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	for _, rec := range records {
+		if rec.Owner != "" && matchesWhere(rec, where) {
+			seen[rec.Owner] = true
+		}
+	}
+	owners := make([]string, 0, len(seen))
+	for owner := range seen {
+		owners = append(owners, owner)
+	}
+	sort.Strings(owners)
+	return owners, nil
+}

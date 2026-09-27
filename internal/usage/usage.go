@@ -19,6 +19,7 @@
 package usage
 
 import (
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -101,9 +102,11 @@ type ring struct {
 }
 
 type store struct {
-	Minute *ring `json:"minute"`
-	Hour   *ring `json:"hour"`
-	Day    *ring `json:"day"`
+	Activity []Activity `json:"activity,omitempty"`
+	Failures []Activity `json:"failures,omitempty"`
+	Minute   *ring      `json:"minute"`
+	Hour     *ring      `json:"hour"`
+	Day      *ring      `json:"day"`
 }
 
 var (
@@ -505,19 +508,41 @@ func saver() {
 // Save writes the counters if anything has changed since the last write.
 func Save() {
 	mu.Lock()
+	prune := func(entries []Activity) []Activity {
+		out := make([]Activity, 0, len(entries))
+		cutoff := now().AddDate(0, 0, -14)
+		for _, e := range entries {
+			if e.At.After(cutoff) {
+				out = append(out, e)
+			}
+		}
+		if len(out) != len(entries) {
+			dirty = true
+		}
+		return out
+	}
+	rings.Activity = prune(rings.Activity)
+	rings.Failures = prune(rings.Failures)
 	if !dirty {
 		mu.Unlock()
 		return
 	}
 	snapshot := store{
-		Minute: &ring{Step: rings.Minute.Step, Keep: rings.Minute.Keep, Buckets: cloneBuckets(rings.Minute.Buckets)},
-		Hour:   &ring{Step: rings.Hour.Step, Keep: rings.Hour.Keep, Buckets: cloneBuckets(rings.Hour.Buckets)},
-		Day:    &ring{Step: rings.Day.Step, Keep: rings.Day.Keep, Buckets: cloneBuckets(rings.Day.Buckets)},
+		Activity: append([]Activity(nil), rings.Activity...),
+		Failures: append([]Activity(nil), rings.Failures...),
+		Minute:   &ring{Step: rings.Minute.Step, Keep: rings.Minute.Keep, Buckets: cloneBuckets(rings.Minute.Buckets)},
+		Hour:     &ring{Step: rings.Hour.Step, Keep: rings.Hour.Keep, Buckets: cloneBuckets(rings.Hour.Buckets)},
+		Day:      &ring{Step: rings.Day.Step, Keep: rings.Day.Keep, Buckets: cloneBuckets(rings.Day.Buckets)},
 	}
 	dirty = false
 	mu.Unlock()
 
-	data.SaveJSON(storeKey, snapshot) //nolint:errcheck — counters are not worth failing a request over
+	if err := data.SaveJSON(storeKey, snapshot); err != nil {
+		mu.Lock()
+		dirty = true
+		mu.Unlock()
+		log.Printf("[usage] could not save usage/activity: %v", err)
+	}
 }
 
 // SeriesFor is one account's calls over the last n buckets, in the same shape

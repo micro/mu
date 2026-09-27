@@ -27,6 +27,11 @@ func TestCheckinUsesOnlyOwnedTodayContext(t *testing.T) {
 	if !strings.Contains(message, "Proposal meeting") || !strings.Contains(message, "One or two sentences") {
 		t.Fatal(message)
 	}
+	for _, heading := range []string{"## Daily check-in", "## Today", "## Your focus"} {
+		if !strings.Contains(message, heading) {
+			t.Fatal("missing fixed section", heading)
+		}
+	}
 	if strings.Contains(message, "Private foreign") || strings.Contains(message, "Tomorrow appointment") {
 		t.Fatal("unrelated context included")
 	}

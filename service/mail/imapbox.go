@@ -319,7 +319,8 @@ func imapFolder(accountID, name string) ([]*Message, bool) {
 				continue
 			}
 		}
-		out = append(out, m)
+		copy := *m
+		out = append(out, &copy)
 	}
 	mutex.RUnlock()
 

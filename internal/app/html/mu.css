@@ -1344,3 +1344,8 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .page-stack>.card{margin-block:0}
 
 .collection-item>.action-menu[open]{grid-column:1/-1}
+
+/* Inline labelled controls keep filter rows aligned at every width. */
+.search-bar>.filter-control{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin:0;white-space:nowrap}
+.search-bar>.filter-control select{width:auto;min-width:80px;margin:0}
+.search-bar>button{align-self:center;margin-block:0}

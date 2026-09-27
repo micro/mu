@@ -447,6 +447,7 @@ func serve(addr string, initialize func()) {
 							// number that would have shown the mistake could
 							// not see it.
 							usage.Record("mcp-refused", op, who)
+							usage.RecordActivity(usage.Activity{Surface: "mcp", Operation: op, Account: who, Status: 402, Outcome: "credits or quota"})
 							return
 						}
 						// Nothing to charge: let it through rather than
