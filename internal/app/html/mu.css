@@ -1360,3 +1360,5 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .reference-index .ep-price{margin-left:6px;color:var(--text-muted)}
 .svc-page{display:flex;flex-direction:column;gap:20px;min-width:0}
 .svc-page .svc-h{margin:0}
+
+body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}

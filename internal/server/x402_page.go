@@ -12,7 +12,7 @@ import (
 
 // X402PageHandler explains wallet-paid access and points to the configured host.
 func X402PageHandler(w http.ResponseWriter, r *http.Request) {
-	body := `<div class="section-stack"><section><h2>Pay per call</h2><p>Use public services from your own agent with x402 payments. You do not need a Micro account for public paid tools. Private account data still requires authorization.</p></section><section><h2>How it works</h2><ol><li>Choose a tool from the catalogue and call it through MCP or the HTTP API.</li><li>A paid call returns HTTP 402 with payment requirements.</li><li>Your x402-compatible client signs the payment and retries the request.</li></ol><p>Free public tools do not require payment. An ordinary MCP client needs x402 payment support to use this flow.</p></section>`
+	body := `<div class="section-stack"><section><h2>Pay per call</h2><p><a href="https://m3o.com">m3o.com</a> is a machine-readable endpoint for agents and software clients, rather than a website for people to browse.</p><p>Use public services from your own agent with x402 payments. You do not need a Micro account for public paid tools. Private account data still requires authorization.</p></section><section><h2>How it works</h2><ol><li>Choose a tool from the catalogue and call it through MCP or the HTTP API.</li><li>A paid call returns HTTP 402 with payment requirements.</li><li>Your x402-compatible client signs the payment and retries the request.</li></ol><p>Free public tools do not require payment. An ordinary MCP client needs x402 payment support to use this flow.</p></section>`
 	host := strings.TrimSpace(settings.Get("X402_HOST"))
 	if host != "" {
 		if !strings.Contains(host, "://") {
