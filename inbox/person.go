@@ -135,12 +135,16 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	// the changeable one and the handle is the address.
 	var b strings.Builder
 	b.WriteString(`<div class="ib-person page-stack">`)
-	b.WriteString(`<p class="ib-person-sub">` + html.EscapeString(handle) + `</p>`)
+	b.WriteString(`<section class="section-card section-stack"><h2>Profile</h2><p class="ib-person-sub">` + html.EscapeString(handle) + `</p>`)
 	b.WriteString(personFacts(them))
 	if you {
-		b.WriteString(statusForm(r, acc.ID))
+		b.WriteString(`<div class="section-actions">` + app.Link("Settings", "/account#profile") + `</div>`)
+	}
+	b.WriteString(`</section>`)
+	if you {
+		b.WriteString(`<section class="section-card section-stack"><h2>Status</h2>` + statusForm(r, acc.ID) + `</section>`)
 	} else if status := user.Status(them.ID); status != "" {
-		b.WriteString(`<p class="text-muted">` + html.EscapeString(status) + `</p>`)
+		b.WriteString(`<section class="section-card section-stack"><h2>Status</h2><p>` + html.EscapeString(status) + `</p></section>`)
 	}
 	// New message belongs on a page that already has one.
 	//
@@ -151,7 +155,7 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// Where there are conversations it earns its place, because there it means
 	// "a different one from these".
-	head := `<div class="ib-person-head">` + reachTo(handle) + `</div>`
+	head := `<section class="section-card section-stack"><h2>Connect</h2>` + reachTo(handle) + `</section>`
 
 	// Nobody you have spoken to yet is still a page.
 	//
@@ -170,8 +174,7 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 		// not a second one. What is left is what a profile is: who you are on
 		// this instance, where people reach you, and the way to change it.
 		b.WriteString(yourAddresses(acc.ID))
-		b.WriteString(`<div class="section-actions">` +
-			app.Link("Settings", "/account#profile") + `</div></div>`)
+		b.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{
 			Title:       title,
 			Description: handle + " on this instance",
@@ -181,8 +184,8 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(convs) == 0 {
-		b.WriteString(`<div class="ib-person-empty page-stack">` +
-			`<p>Nothing between you yet.</p>` + reachTo(handle) + `</div></div>`)
+		b.WriteString(`<section class="section-card section-stack"><h2>Connect</h2>` +
+			`<p>Nothing between you yet.</p>` + reachTo(handle) + `</section></div>`)
 		app.Respond(w, r, app.Response{
 			Title:       title,
 			Description: "Your conversation with " + title,
@@ -315,8 +318,8 @@ func conversationsWith(who string, convs []thread.Thread) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="ib-person-also"><h3>With ` +
-		html.EscapeString(who) + `</h3><ul class="addr-list">`)
+	b.WriteString(`<section class="section-card section-stack"><h2>Conversations with ` +
+		html.EscapeString(who) + `</h2><ul class="addr-list">`)
 	for i := range convs {
 		t := convs[i]
 		subject := strings.TrimSpace(t.Subject)
@@ -330,7 +333,7 @@ func conversationsWith(who string, convs []thread.Thread) string {
 			`<span class="ib-person-when">` + html.EscapeString(app.TimeAgo(t.Updated)) +
 			`</span></span></li>`)
 	}
-	b.WriteString(`</ul></div>`)
+	b.WriteString(`</ul></section>`)
 	return b.String()
 }
 
@@ -349,7 +352,7 @@ func conversationsWith(who string, convs []thread.Thread) string {
 // address on a real network rather than a username on a site.
 func yourAddresses(accountID string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="ib-person-also"><h3>Where people reach you</h3>` +
+	b.WriteString(`<section class="section-card section-stack"><h2>Where people reach you</h2>` +
 		`<ul class="addr-list">`)
 	b.WriteString(`<li><code>@` + html.EscapeString(accountID) + `</code>` +
 		`<span class="inline-row text-muted"><span class="ib-person-when">here</span></span></li>`)
@@ -357,7 +360,7 @@ func yourAddresses(accountID string) string {
 		b.WriteString(`<li><code>` + html.EscapeString(addr) + `</code>` +
 			`<span class="inline-row text-muted"><span class="ib-person-when">mail</span></span></li>`)
 	}
-	b.WriteString(`</ul></div>`)
+	b.WriteString(`</ul></section>`)
 	return b.String()
 }
 
