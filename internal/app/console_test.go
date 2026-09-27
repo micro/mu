@@ -32,7 +32,7 @@ func TestPublicPagesRetainFooterForSignedInReaders(t *testing.T) {
 }
 
 func TestSignedInShellPreservesContentLayoutClasses(t *testing.T) {
-	page := renderShell("en", "Article", "", "reading-page editorial-reading", "<p>Article</p>", &auth.Account{ID: "reader"}, "/blog", "/blog")
+	page := renderShell("en", "Article", "", "reading-page editorial-reading", "<p>Article</p>", &auth.Account{ID: "reader"}, "/work", "/work")
 	if !strings.Contains(page, `class="document-page reading-page editorial-reading signed-in"`) {
 		t.Fatal("lost content or account layout classes")
 	}

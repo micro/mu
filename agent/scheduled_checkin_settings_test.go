@@ -1,14 +1,15 @@
-package events
+package agent
 
 import (
 	"mu/internal/data"
+	"mu/service/events"
 	"testing"
 	"time"
 )
 
 func TestCheckinIndependentAndDurable(t *testing.T) {
 	const owner = "checkin_schedule_test"
-	defer DeleteAll(owner)
+	defer events.DeleteAll(owner)
 	if Checkin(owner) != nil {
 		t.Fatal("automatically enrolled")
 	}
@@ -39,8 +40,8 @@ func TestCheckinIndependentAndDurable(t *testing.T) {
 	if err := scheduleCheckin(owner, "bad", "Europe/London", "daily", false); err == nil {
 		t.Fatal("invalid time accepted")
 	}
-	var persisted []*Event
-	if err := data.LoadJSON(storeKey, &persisted); err != nil {
+	var persisted []*events.Event
+	if err := data.LoadJSON("events.json", &persisted); err != nil {
 		t.Fatal(err)
 	}
 	found := false
@@ -54,7 +55,7 @@ func TestCheckinIndependentAndDurable(t *testing.T) {
 	}
 	// Recurrence stays at the local hour when UK daylight saving ends.
 	due := time.Date(2026, 10, 24, 9, 0, 0, 0, mustLondon(t))
-	next, ok := nextOccurrence(due, "daily")
+	next, ok := events.NextTime(due, "daily", due)
 	if !ok || next.Hour() != 9 || next.Sub(due) != 25*time.Hour {
 		t.Fatal("DST moved local time")
 	}

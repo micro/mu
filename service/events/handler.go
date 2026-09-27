@@ -17,18 +17,6 @@ import (
 // and cancel. GET with an Accept: application/json header returns the caller's
 // upcoming events as JSON.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost && r.FormValue("action") == "checkin-schedule" {
-		checkinScheduleHandler(w, r)
-		return
-	}
-	if r.Method == http.MethodPost && r.FormValue("action") == "research-schedule" {
-		researchScheduleHandler(w, r)
-		return
-	}
-	if r.Method == http.MethodPost && r.FormValue("action") == "brief-schedule" {
-		briefScheduleHandler(w, r)
-		return
-	}
 	sess, _ := auth.TrySession(r)
 	if sess == nil {
 		http.Redirect(w, r, "/login?next=/events", http.StatusSeeOther)
@@ -61,10 +49,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == http.MethodGet && r.URL.Query().Get("view") == "brief" && app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]any{"brief": Brief(owner), "checkin": Checkin(owner)})
-		return
-	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		if id := r.URL.Query().Get("id"); id != "" {
 			e := ownedEvent(owner, id)
@@ -76,15 +60,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		app.RespondJSON(w, Upcoming(owner))
-		return
-	}
-
-	if r.URL.Query().Get("view") == "research" {
-		app.Respond(w, r, app.Response{Title: "Evening research", HTML: researchHTML(owner, auth.CSRFToken(r))})
-		return
-	}
-	if r.URL.Query().Get("view") == "brief" {
-		app.Respond(w, r, app.Response{Title: "Brief and check-in", HTML: briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
 	}
 
@@ -100,7 +75,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.WriteString(`<div class="page-col page-stack"><div class="page-action"><a class="btn" href="/events?new=1">New</a></div>`)
-	b.WriteString(`<nav class="form-actions"><a href="/events?view=brief">Brief and check-in</a><a href="/events?view=research">Evening research</a></nav>`)
 
 	up := Upcoming(owner)
 	ext := Overview(owner, 0)
@@ -112,7 +86,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div class="compact-list">`)
 		for _, row := range mergedRows(up, ext) {
 			if row.Event != nil {
-				if row.Event.Kind != "brief" && row.Event.Kind != "checkin" {
+				if row.Event.Kind == "" {
 					b.WriteString(eventRow(row.Event, csrf))
 				}
 			} else {

@@ -91,13 +91,13 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 		body += `</div>`
 	}
 	if allowance.Credits > 0 {
-		body += `<nav class="form-actions"><a href="/events?view=brief">Brief and check-in</a>`
+		body += `<nav class="form-actions"><a href="/agents?view=scheduled">Scheduled updates</a>`
 		if Tier(acc.ID) == "pro" {
-			body += `<a href="/events?view=research">Research</a>`
+			body += `<a href="/agents?view=scheduled#research">Research</a>`
 		}
 		body += `</nav>`
 	} else if enabled {
-		body += `<p class="text-sm text-muted">For your daily brief and assistant. Renews monthly. Cancel any time.</p><p><a href="/events?view=brief">Set up your included weekly brief</a></p>`
+		body += `<p class="text-sm text-muted">For your daily brief and assistant. Renews monthly. Cancel any time.</p><p><a href="/agents?view=scheduled">Set up your included weekly brief</a></p>`
 	}
 	return app.SectionID("subscription", "Plan", body)
 }

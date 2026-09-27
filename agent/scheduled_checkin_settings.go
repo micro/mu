@@ -1,8 +1,9 @@
-package events
+package agent
 
 import (
 	"fmt"
 	"html"
+	"mu/service/events"
 	"net/http"
 	"strings"
 	"time"
@@ -13,8 +14,8 @@ import (
 )
 
 // Checkin returns the owner's optional check-in, independently of their brief.
-func Checkin(owner string) *Event {
-	for _, e := range List(owner) {
+func Checkin(owner string) *events.Event {
+	for _, e := range events.List(owner) {
 		if e.Kind == "checkin" {
 			return e
 		}
@@ -42,20 +43,21 @@ func scheduleCheckin(owner, clock, zone, repeat string, paused bool) error {
 	for !next.After(now) || (repeat == "weekdays" && (next.Weekday() == time.Saturday || next.Weekday() == time.Sunday)) {
 		next = next.AddDate(0, 0, 1)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	e := &Event{ID: uuid.NewString(), Owner: owner, Created: time.Now().UTC()}
-	for _, old := range events {
-		if old.Owner == owner && old.Kind == "checkin" {
-			*e = *old
-			break
+	return events.EditOwned(owner, func(records map[string]*events.Event) error {
+		e := &events.Event{ID: uuid.NewString(), Owner: owner, Created: time.Now().UTC()}
+		for _, old := range records {
+			if old.Owner == owner && old.Kind == "checkin" {
+				*e = *old
+				break
+			}
 		}
-	}
-	e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Paused = "checkin", "Daily Checkin", next, zone, repeat, paused
-	e.Prompt = "Ask what I want to focus on today. Wait for my reply before planning or taking action."
-	e.Fired, e.FiredAt = false, time.Time{}
-	e.Sequence++
-	return saveFeatureLocked(e.ID, e)
+		e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Paused = "checkin", "Daily Checkin", next, zone, repeat, paused
+		e.Prompt = "Ask what I want to focus on today. Wait for my reply before planning or taking action."
+		e.Fired, e.FiredAt = false, time.Time{}
+		e.Sequence++
+		records[e.ID] = e
+		return nil
+	})
 }
 
 func checkinHTML(owner, token string) string {
@@ -77,7 +79,7 @@ func checkinHTML(owner, token string) string {
 		}
 	}
 	var b strings.Builder
-	b.WriteString(`<section id="checkin" class="card page-stack"><h3>Daily Checkin</h3><p>A separate conversation when you are ready to start your day. Micro shows upcoming commitments and outstanding tasks, then asks what you want to focus on. Reply in one or two sentences about what you need to get done or need help with. No follow-up nudges.</p><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/events" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="checkin-schedule"><label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label><label class="field-label">Frequency<select class="form-input" name="repeat">`)
+	b.WriteString(`<section id="checkin" class="card page-stack"><h3>Daily Checkin</h3><p>A separate conversation when you are ready to start your day. Micro shows upcoming commitments and outstanding tasks, then asks what you want to focus on. Reply in one or two sentences about what you need to get done or need help with. No follow-up nudges.</p><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="checkin-schedule"><label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label><label class="field-label">Frequency<select class="form-input" name="repeat">`)
 	for _, f := range []string{"daily", "weekdays", "weekly"} {
 		selected := ""
 		if f == repeat {
@@ -107,7 +109,7 @@ func checkinScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !auth.StrictCSRF(r) {
-		http.Error(w, "Reload Events and try again", http.StatusForbidden)
+		http.Error(w, "Reload Scheduled and try again", http.StatusForbidden)
 		return
 	}
 	state := r.FormValue("state")
@@ -119,5 +121,5 @@ func checkinScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/events?view=brief#checkin", http.StatusSeeOther)
+	http.Redirect(w, r, "/agents?view=scheduled#checkin", http.StatusSeeOther)
 }

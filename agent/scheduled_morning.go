@@ -1,4 +1,4 @@
-package work
+package agent
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 	} else {
 		b.WriteString("Prepare today's morning brief.\n")
 	}
-	if !events.BriefWorldNews(schedule) {
+	if !BriefWorldNews(schedule) {
 		b.WriteString("World news is disabled. Omit Headlines.\n")
 	}
 	if auth.Plan(owner) == "pro" && schedule.Plan {
@@ -133,7 +133,7 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 		appendBriefSource(&b, src)
 	}
 	appendBriefSource(&b, briefSource{Name: "Relevant outstanding work", Text: briefWork(tasks.List(owner, ""), now, end), URL: origin.Self() + "/work"})
-	if events.BriefWorldNews(schedule) {
+	if BriefWorldNews(schedule) {
 		appendBriefSource(&b, briefSource{Name: "News published in the last 24 hours", Text: briefNews(news.GetFeed(), now)})
 	}
 	b.WriteString("\nOnly the sources supplied above are available. Missing calendar entries cannot establish availability. No inbox messages have been evaluated for whether a reply is owed.\n")

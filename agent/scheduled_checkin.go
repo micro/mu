@@ -1,4 +1,4 @@
-package work
+package agent
 
 import (
 	"fmt"
@@ -61,7 +61,7 @@ func checkinMessage(owner string, schedule *events.Event, now time.Time) string 
 	if len(agenda) == 0 {
 		b.WriteString("\nNo upcoming calendar entries were returned for today.\n")
 	}
-	b.WriteString("\n## Your focus\n\nWhat do you need to get done, or need help with? One or two sentences is enough.\n\nReply when you’re ready. We can choose a priority and work out the next step together.\n\n[Manage your check-in](" + origin.Self() + "/events?view=brief#checkin)")
+	b.WriteString("\n## Your focus\n\nWhat do you need to get done, or need help with? One or two sentences is enough.\n\nReply when you’re ready. We can choose a priority and work out the next step together.\n\n[Manage your check-in](" + origin.Self() + "/agents?view=scheduled#checkin)")
 	return b.String()
 }
 

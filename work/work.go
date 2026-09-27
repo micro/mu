@@ -81,12 +81,14 @@ func Load() {
 
 // request is one piece of work, off the bus.
 type request struct {
-	EventID string
-	Account string
-	Kind    string
-	ID      string
-	Title   string
-	Prompt  string
+	EventID  string
+	Revision string
+	Due      time.Time
+	Account  string
+	Kind     string
+	ID       string
+	Title    string
+	Prompt   string
 	// Thread is the conversation it came out of, empty when nobody asked for
 	// it in one. See answered.
 	Thread string
@@ -409,18 +411,7 @@ func deliver(r request, answer string, err error) {
 	if accErr != nil {
 		return
 	}
-	tag := "scheduled"
-	isBrief := false
-	isCheckin := false
-	if e := events.Checkin(r.Account); e != nil && e.ID == r.ID {
-		tag = "checkin"
-		isCheckin = true
-	}
-	if e := scheduledBrief(r); e != nil {
-		isBrief = true
-		tag = "brief"
-		body += "\n\n---\n[Manage your brief and plan](" + origin.Self() + "/events?view=brief)."
-	}
+	body, tag, topic := agent.ScheduledDelivery(r.Account, r.ID, body)
 	messageID := "<" + uuid.NewString() + "@" + mail.ConfiguredDomain() + ">"
 	if r.EventID != "" {
 		messageID = "<schedule-" + r.EventID + "@" + mail.ConfiguredDomain() + ">"
@@ -442,13 +433,9 @@ func deliver(r request, answer string, err error) {
 		app.Log("work", "delivering scheduled result for %s: %v", r.Account, sendErr)
 		return
 	}
-	if (isBrief || isCheckin) && err == nil {
+	if topic != "" && err == nil {
 		link := inbox.MailURL(mail.InboundMail{Owner: acc.ID, From: delivery.FromID, FromName: delivery.From, To: acc.ID + "+" + tag + "@" + mail.ConfiguredDomain(), Subject: r.Title, Body: delivery.Body, MessageID: messageID, Tag: tag})
-		topic := "brief"
-		if isCheckin {
-			topic = "checkin"
-			link = strings.Replace(link, "/inbox?id=", "/checkin?id=", 1)
-		}
+		link = agent.ScheduledNotificationURL(topic, link)
 		event.Announce(topic, strings.TrimSpace(answer), link, r.Account)
 	}
 }

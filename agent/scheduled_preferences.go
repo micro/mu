@@ -1,16 +1,16 @@
-package inbox
+package agent
 
 import (
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/service/events"
+
 	"net/http"
 	"strings"
 	"time"
 )
 
-// SettingsHandler preserves the legacy brief API; browser setup belongs to Events.
-func SettingsHandler(w http.ResponseWriter, r *http.Request) {
+// SettingsHandler preserves the legacy brief API; browser setup belongs to Agents.
+func ScheduledPreferencesHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		if app.WantsJSON(r) {
@@ -59,12 +59,12 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		if zone == "" || zone == "Local" {
 			zone = req.Zone
 		}
-		if err := events.ConfigureBrief(acc.ID, *req.Enabled, *req.WorldNews, zone, req.Period); err != nil {
+		if err := ConfigureBrief(acc.ID, *req.Enabled, *req.WorldNews, zone, req.Period); err != nil {
 			app.BadRequest(w, r, err.Error())
 			return
 		}
 		if !app.SendsJSON(r) && !app.WantsJSON(r) {
-			http.Redirect(w, r, "/events?view=brief", http.StatusSeeOther)
+			http.Redirect(w, r, "/agents?view=scheduled", http.StatusSeeOther)
 			return
 		}
 	} else if r.Method != http.MethodGet {
@@ -75,24 +75,24 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		app.BadRequest(w, r, "only the morning brief is available")
 		return
 	}
-	e := events.Brief(acc.ID, period)
+	e := Brief(acc.ID, period)
 	state := map[string]any{"enabled": false, "include_world_news": true, "time": "06:00", "timezone": acc.Zone}
 	state["period"] = period
 	if e != nil {
 		state["enabled"] = !e.Paused
-		state["include_world_news"] = events.BriefWorldNews(e)
+		state["include_world_news"] = BriefWorldNews(e)
 		state["timezone"] = e.Zone
 		at := e.When
 		if loc, err := time.LoadLocation(e.Zone); err == nil {
 			at = at.In(loc)
 		}
 		state["time"] = at.Format("15:04")
-		state["repeat"] = events.BriefFrequency(acc.ID, e.Repeat)
+		state["repeat"] = BriefFrequency(acc.ID, e.Repeat)
 		state["title"] = e.Title
 	}
 	if app.WantsJSON(r) || app.SendsJSON(r) {
 		app.RespondJSON(w, state)
 		return
 	}
-	http.Redirect(w, r, "/events?view=brief", http.StatusSeeOther)
+	http.Redirect(w, r, "/agents?view=scheduled", http.StatusSeeOther)
 }

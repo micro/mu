@@ -382,6 +382,14 @@ func RenderHTML(title, desc, html string, acc *auth.Account) string {
 
 func renderForRequest(title, desc, html, bodyClass string, r *http.Request) string {
 	lang := UserLanguage(r)
+	if r.URL.Query().Get("id") == "" && r.URL.Query().Get("view") == "" && r.URL.Query().Get("new") == "" {
+		for _, s := range service.Nav() {
+			if s.Page != "" && s.Page == r.URL.Path && s.Description != "" {
+				html = `<p class="text-muted">` + htmlpkg.EscapeString(s.Description) + `</p>` + html
+				break
+			}
+		}
+	}
 	if banner := VerifyBanner(r); banner != "" {
 		html = banner + html
 	}

@@ -1,7 +1,8 @@
-package events
+package agent
 
 import (
 	"mu/internal/auth"
+	"mu/service/events"
 	"strings"
 	"testing"
 	"time"
@@ -44,7 +45,7 @@ func TestBriefSchedulePreservesIdentityAndPreferences(t *testing.T) {
 
 func TestEveningBriefRetired(t *testing.T) {
 	const owner = "retired_brief_test"
-	defer DeleteAll(owner)
+	defer events.DeleteAll(owner)
 	if err := ScheduleBrief(owner, "06:00", "Europe/London", "weekdays", "morning", false); err != nil {
 		t.Fatal(err)
 	}
@@ -55,23 +56,19 @@ func TestEveningBriefRetired(t *testing.T) {
 	if err := ConfigureBrief(owner, true, true, "Europe/London", "evening"); err == nil {
 		t.Fatal("evening preference accepted")
 	}
-	mu.Lock()
 	for _, title := range []string{"Evening brief", "Evening Debrief", "Daily brief"} {
-		id := owner + title
-		events[id] = &Event{ID: id, Owner: owner, Kind: "brief", Title: title, Prompt: "Give me a brief for tomorrow", When: time.Now().Add(-time.Hour), Repeat: "daily"}
-	}
-	mu.Unlock()
-	if len(List(owner)) != 1 {
-		t.Fatal("retired briefs visible")
-	}
-	fireDue()
-	mu.RLock()
-	for _, title := range []string{"Evening brief", "Evening Debrief", "Daily brief"} {
-		if events[owner+title] != nil {
-			t.Error("retired brief retained", title)
+		old := &events.Event{ID: owner + title, Owner: owner, Kind: "brief", Title: title, Prompt: "Give me a brief for tomorrow", When: time.Now().Add(-time.Hour), Repeat: "daily"}
+		if err := events.EditOwned(owner, func(records map[string]*events.Event) error { records[old.ID] = old; return nil }); err != nil {
+			t.Fatal(err)
+		}
+		allowed, err := reserveScheduled(old, old.When, time.Now())
+		if err != nil || allowed {
+			t.Fatalf("retired brief ran: %v", err)
 		}
 	}
-	mu.RUnlock()
+	if len(events.List(owner)) != 1 {
+		t.Fatal("retired schedules retained")
+	}
 	after := Brief(owner)
 	if after == nil || after.ID != morning.ID || after.Paused || after.Repeat != morning.Repeat || !after.When.Equal(morning.When) {
 		t.Fatal("morning schedule changed")
@@ -86,14 +83,17 @@ func TestExplicitBriefTimeChangeAllowsAnotherOccurrence(t *testing.T) {
 	auth.SubscriptionTier = func(string) string { return "starter" }
 	defer func() { auth.SubscriptionTier = oldTier }()
 	owner := "brief_reschedule_regression"
-	defer DeleteAll(owner)
+	defer events.DeleteAll(owner)
 	if err := ScheduleBrief(owner, "06:00", "Europe/London", "daily", "morning", false); err != nil {
 		t.Fatal(err)
 	}
 	first := Brief(owner)
-	mu.Lock()
-	events[first.ID].LastBrief = time.Now().UTC()
-	mu.Unlock()
+	if err := events.EditOwned(owner, func(records map[string]*events.Event) error {
+		records[first.ID].LastBrief = time.Now().UTC()
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if err := ScheduleBrief(owner, "06:00", "Europe/London", "daily", "morning", false); err != nil {
 		t.Fatal(err)
 	}
@@ -118,13 +118,16 @@ func TestBriefCadenceGuardPreservesChosenClock(t *testing.T) {
 	auth.SubscriptionTier = func(string) string { return "starter" }
 	defer func() { auth.SubscriptionTier = oldTier }()
 	owner := "brief_clock_regression"
-	defer DeleteAll(owner)
+	defer events.DeleteAll(owner)
 	now := time.Now().UTC()
 	due := now.Add(-time.Minute)
-	mu.Lock()
-	events[owner] = &Event{ID: owner, Owner: owner, Kind: "brief", Title: "Morning brief", When: due, LastBrief: now.Add(-time.Hour), Zone: "UTC", Repeat: "daily"}
-	mu.Unlock()
-	fireDue()
+	source := &events.Event{ID: owner, Owner: owner, Kind: "brief", Title: "Morning brief", When: due, LastBrief: now.Add(-time.Hour), Zone: "UTC", Repeat: "daily"}
+	if err := events.EditOwned(owner, func(records map[string]*events.Event) error { records[owner] = source; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if allowed, err := reserveScheduled(source, due, now); err != nil || allowed {
+		t.Fatalf("cadence was not enforced: %v", err)
+	}
 	after := Brief(owner)
 	if after.When.Format("15:04") != due.Format("15:04") {
 		t.Fatalf("clock reverted: %v -> %v", due, after.When)

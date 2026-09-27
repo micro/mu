@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 )
 
 func eventURL(id string) string { return "/events?id=" + url.QueryEscape(id) }
@@ -25,7 +24,7 @@ func ownedEvent(owner, id string) *Event {
 	mu.RLock()
 	defer mu.RUnlock()
 	e := events[id]
-	if e == nil || e.Owner != owner || retiredBrief(e) {
+	if e == nil || e.Owner != owner {
 		return nil
 	}
 	copy := *e
@@ -36,10 +35,6 @@ func detailHandler(w http.ResponseWriter, r *http.Request, owner, id string) {
 	e := ownedEvent(owner, id)
 	if e == nil {
 		http.NotFound(w, r)
-		return
-	}
-	if e.Kind == "brief" || e.Kind == "checkin" {
-		app.Respond(w, r, app.Response{Title: e.Title, HTML: `<p><a href="/events">Events</a></p>` + briefScheduleHTML(owner, auth.CSRFToken(r))})
 		return
 	}
 	body := `<div class="page-col page-stack"><article class="card page-stack"><p><time datetime="` + e.When.Format(time.RFC3339) + `" data-event-time>` + html.EscapeString(e.When.Format("Mon 2 Jan, 15:04")) + `</time></p>`
