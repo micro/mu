@@ -3,6 +3,7 @@ package prayer
 import (
 	"encoding/json"
 	"html"
+	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -679,7 +680,7 @@ func DailyReminderForDate(date string) *ReminderData {
 		url += "?date=" + date
 	}
 
-	resp, err := http.Get(url)
+	resp, err := (&http.Client{Timeout: 12 * time.Second}).Get(url)
 	if err != nil {
 		app.Log("reminder", "Error fetching daily reminder for %s: %v", date, err)
 		// Only fall back to latest for today
@@ -690,7 +691,13 @@ func DailyReminderForDate(date string) *ReminderData {
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil
+	}
 
 	var rd ReminderData
 	if err := json.Unmarshal(body, &rd); err != nil {
