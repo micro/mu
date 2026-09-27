@@ -13,17 +13,21 @@ import (
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/persist"
+	"mu/service/mail"
+	"mu/service/tasks"
 )
 
 // A result belongs to one owner, schedule revision and delivery occurrence.
 // Locks serialize preparation and delivery in this process; receipts survive restart.
 var scheduledLocks [64]sync.Mutex
+var preparingOccurrences sync.Map
 
 type preparedResult struct {
-	State   string    `json:"state"`
-	Answer  string    `json:"answer,omitempty"`
-	Failure string    `json:"failure,omitempty"`
-	ReadyAt time.Time `json:"ready_at,omitempty"`
+	MessageID string    `json:"message_id,omitempty"`
+	State     string    `json:"state"`
+	Answer    string    `json:"answer,omitempty"`
+	Failure   string    `json:"failure,omitempty"`
+	ReadyAt   time.Time `json:"ready_at,omitempty"`
 }
 
 func preparationKey(r request) (string, byte) {
@@ -39,9 +43,6 @@ func consumePreparedWith(r request, prepare func(string, string, string, time.Ti
 	key, slot := preparationKey(r)
 	scheduledLocks[slot].Lock()
 	defer scheduledLocks[slot].Unlock()
-	if !current(r.Account, r.ID, r.Revision) {
-		return nil
-	}
 	var result preparedResult
 	b, err := persist.Read(key)
 	if err == nil {
@@ -51,17 +52,39 @@ func consumePreparedWith(r request, prepare func(string, string, string, time.Ti
 	} else if !os.IsNotExist(err) {
 		return err
 	}
+	syncTask := func() error {
+		_, err := tasks.RecordOccurrence(r.Account, r.Title, r.Due, tasks.Occurrence{Key: key, Schedule: r.ID, Revision: r.Revision, State: result.State, Failure: result.Failure, MessageID: result.MessageID}, result.Answer)
+		return err
+	}
 	save := func() error {
 		b, err := json.Marshal(result)
 		if err != nil {
 			return err
 		}
-		return persist.Write(key, b)
+		if err := persist.Write(key, b); err != nil {
+			return err
+		}
+		return syncTask()
+	}
+	if !current(r.Account, r.ID, r.Revision) {
+		if result.State == "" {
+			return nil
+		}
+		if result.State != "done" && result.State != "delivery_failed" {
+			result.State = "canceled"
+			return save()
+		}
+		return syncTask()
+	}
+	if result.State == "canceled" {
+		return syncTask()
 	}
 	if result.State == "done" || result.State == "delivering" || result.State == "delivery_failed" {
-		return nil
+		return syncTask()
 	}
 	if result.State == "" {
+		preparingOccurrences.Store(key, true)
+		defer preparingOccurrences.Delete(key)
 		result.State = "started"
 		if err := save(); err != nil {
 			return err
@@ -81,18 +104,20 @@ func consumePreparedWith(r request, prepare func(string, string, string, time.Ti
 		}
 	}
 	if r.Preparing {
-		return nil
+		return syncTask()
 	}
 	if time.Now().Before(r.Due) {
 		return fmt.Errorf("scheduled delivery is not due")
 	}
 	if !current(r.Account, r.ID, r.Revision) {
-		result.State = "done"
-		result.Answer = ""
+		result.State = "canceled"
 		return save()
 	}
 	// Reserve external delivery before sending: a restart must not duplicate it.
 	result.State = "delivering"
+	if r.EventID != "" {
+		result.MessageID = "<schedule-" + r.EventID + "@" + mail.ConfiguredDomain() + ">"
+	}
 	if err := save(); err != nil {
 		return err
 	}
@@ -108,6 +133,6 @@ func consumePreparedWith(r request, prepare func(string, string, string, time.Ti
 		result.Failure = ai.FailureMessage(err)
 		return save()
 	}
-	result.State, result.Answer = "done", ""
+	result.State = "done"
 	return save()
 }

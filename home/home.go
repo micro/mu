@@ -19,6 +19,7 @@ import (
 	"mu/service/events"
 	"mu/service/tasks"
 	"mu/service/weather"
+	"mu/work"
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -86,12 +87,17 @@ func shortBrief(owner string) string {
 		}
 		parts = append(parts, text+".")
 	}
-	if doing := tasks.List(owner, tasks.StatusDoing); len(doing) > 0 {
+	scheduledActive, scheduledAttention := work.ScheduledCounts(owner)
+	doing := len(tasks.List(owner, tasks.StatusDoing)) + scheduledActive
+	if doing > 0 {
 		noun := "tasks"
-		if len(doing) == 1 {
+		if doing == 1 {
 			noun = "task"
 		}
-		parts = append(parts, fmt.Sprintf(`<a href="/work">%d %s</a> in progress.`, len(doing), noun))
+		parts = append(parts, fmt.Sprintf(`<a href="/work">%d %s</a> in progress.`, doing, noun))
+	}
+	if scheduledAttention > 0 {
+		parts = append(parts, fmt.Sprintf(`<a href="/work">%d scheduled updates need attention</a>.`, scheduledAttention))
 	}
 	if line := nextEvent(owner); line != "" {
 		parts = append(parts, line)

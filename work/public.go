@@ -22,7 +22,7 @@ type publicRequest struct {
 }
 
 func publicTask(t *tasks.Task) map[string]any {
-	return map[string]any{"id": t.ID, "prompt": t.Title, "status": t.Status, "result": t.Result, "agent": agent.SlugFor(t.Owner, t.Agent), "thread": t.Thread, "created": t.Created, "updated": t.Updated, "steps": t.Steps, "attempts": t.Attempts}
+	return map[string]any{"id": t.ID, "prompt": t.Title, "status": t.Status, "result": t.Result, "agent": agent.SlugFor(t.Owner, t.Agent), "thread": t.Thread, "created": t.Created, "updated": t.Updated, "steps": t.Steps, "attempts": t.Attempts, "occurrence": t.Occurrence}
 }
 func PublicOperations() []api.Operation {
 	id := api.ToolParam{Name: "id", Type: "string", Description: "An owned work ID.", Required: true}
@@ -131,7 +131,14 @@ func PublicOperations() []api.Operation {
 				}
 				out = append(out, publicTask(t))
 			}
-			return map[string]any{"work": out, "has_more": more}, nil
+			groups := []map[string]any{}
+			for _, g := range scheduledGroups(account) {
+				if req.Status != "" && req.Status != g.Status {
+					continue
+				}
+				groups = append(groups, map[string]any{"id": g.ID, "title": g.Title, "status": g.Status, "state": g.Label, "url": "/work?schedule=" + g.ID})
+			}
+			return map[string]any{"work": out, "has_more": more, "scheduled": groups}, nil
 		}},
 		{Name: "work_retry", Description: "Explicitly retry reviewed failed or blocked work. Earlier side effects may be repeated.", Writes: true, Params: []api.ToolParam{id}, Handle: func(account string, raw json.RawMessage) (any, error) {
 			var req publicRequest
