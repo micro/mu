@@ -50,6 +50,9 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 	} else {
 		b.WriteString("Prepare today's morning brief.\n")
 	}
+	if !events.BriefWorldNews(schedule) {
+		b.WriteString("World news is disabled. Omit Headlines.\n")
+	}
 	if auth.Plan(owner) == "pro" && schedule.Plan {
 		b.WriteString("A short suggested daily plan is explicitly requested. Base it on supplied deadlines and commitments; do not invent free time.\n")
 	}
@@ -67,7 +70,7 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 			return briefSource{Name: "Daily reminder"}
 		}
 		// This source text is rendered verbatim after synthesis, never rewritten by a model.
-		text := "**Daily reminder**\n\n" + d.Verse
+		text := "## Daily reminder\n\n" + d.Verse
 		if strings.TrimSpace(d.Message) != "" {
 			text += "\n\n" + d.Message
 		}
