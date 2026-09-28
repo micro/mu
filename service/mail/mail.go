@@ -1356,9 +1356,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// interleaved. They belong at the foot, after the reason, which is
 			// the thing the decision is actually made on.
 			items = append(items, fmt.Sprintf(
-				`<div class="thread-preview card" onclick="window.location.href='/mail?id=%s'">
-					<div class="mail-thread-item">
-						<strong class="mail-thread-subject">%s</strong>
+				`<div class="section-card section-stack">
+					<div>
+						<a href="/mail?id=%s"><strong class="mail-thread-subject">%s</strong></a>
 					</div>
 					<div class="mail-thread-meta">%s</div>
 					<div class="mail-thread-row">
@@ -1366,7 +1366,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						<span class="mail-thread-time">%s</span>
 					</div>
 					<div class="spam-info text-muted text-sm">Spam score: %d — %s</div>
-					<div class="action-footer" onclick="event.stopPropagation()">
+					<div class="action-footer">
 						<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
 							<input type="hidden" name="action" value="not_spam">
 							<input type="hidden" name="msg_id" value="%s">
