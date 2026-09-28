@@ -2,6 +2,7 @@ package mail
 
 import (
 	"encoding/json"
+	"mu/internal/auth"
 	"strings"
 	"testing"
 )
@@ -27,5 +28,21 @@ func TestIMAPGeneratedMailKeepsFormatAndThreadHeaders(t *testing.T) {
 	}
 	if !strings.Contains(imapEnvelope(&m), "<parent@example.test>") {
 		t.Fatal("envelope lost parent")
+	}
+}
+
+func TestLocalSubmissionKeepsClientMessageID(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	owner := "submission-identity"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	clientID := "<gmail-original@example.test>"
+	session := &submissionSession{acc: &auth.Account{ID: owner}}
+	if err := session.deliverLocally("agent@"+ConfiguredDomain(), owner, "Re: Daily Checkin", "My focus", "", "<checkin@example.test>", "<checkin@example.test>", clientID); err != nil {
+		t.Fatal(err)
+	}
+	stored := FindMessageByMessageID(clientID)
+	if stored == nil || stored.FromID != EmailForUser(owner, ConfiguredDomain()) || stored.InReplyTo != "<checkin@example.test>" {
+		t.Fatalf("client identity lost: %+v", stored)
 	}
 }

@@ -74,13 +74,14 @@ const (
 // client knows what a conversation is on its own service, and this stores
 // whatever it says without interpreting it.
 type Thread struct {
-	Handled  time.Time  `json:"handled,omitempty"`
-	Evidence []Evidence `json:"-"`
-	ID       string     `json:"id"`
-	Account  string     `json:"account"`
-	Client   string     `json:"client"`
-	Key      string     `json:"key"`
-	Subject  string     `json:"subject,omitempty"`
+	Canonical string     `json:"canonical,omitempty"` // Legacy identity of a merged conversation.
+	Handled   time.Time  `json:"handled,omitempty"`
+	Evidence  []Evidence `json:"-"`
+	ID        string     `json:"id"`
+	Account   string     `json:"account"`
+	Client    string     `json:"client"`
+	Key       string     `json:"key"`
+	Subject   string     `json:"subject,omitempty"`
 	// Attachment is an opaque reference supplied by the client. The client
 	// resolves its contents afresh; the record holds neither generated context
 	// nor source text attributed to the person who attached it.
@@ -362,7 +363,9 @@ func Find(account, client, key string) *Thread {
 func findUnlocked(account, client, key string) *Thread {
 	for _, t := range owned[account] {
 		if t.Client == client && t.Key == key {
-			return t
+			if current := resolveUnlocked(account, t.ID); current != nil {
+				return current
+			}
 		}
 	}
 	return nil
@@ -373,10 +376,7 @@ func Get(account, id string) *Thread {
 	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
-	if t := threads[id]; t != nil && t.Account == account {
-		return t
-	}
-	return nil
+	return resolveUnlocked(account, id)
 }
 
 // ByRef finds the conversation containing a message the client named.
@@ -463,10 +463,11 @@ func Add(m Message) string {
 	mu.Lock()
 	defer mu.Unlock()
 
-	t := threads[m.Thread]
+	t := resolveUnlocked(m.Account, m.Thread)
 	if t == nil || t.Account != m.Account {
 		return ""
 	}
+	m.Thread = t.ID
 	if m.Ref != "" {
 		for _, have := range messages[m.Thread] {
 			if have.Ref == m.Ref {
@@ -543,7 +544,7 @@ func Join(account, id string, p Party) {
 	ensure()
 	mu.Lock()
 	defer mu.Unlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account {
 		return
 	}
@@ -584,7 +585,7 @@ func Parties(account, id string) []Party {
 	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account {
 		return nil
 	}
@@ -598,11 +599,11 @@ func Messages(account, threadID string, limit int) []Message {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	t := threads[threadID]
+	t := resolveUnlocked(account, threadID)
 	if t == nil || t.Account != account {
 		return nil
 	}
-	src := messages[threadID]
+	src := messages[t.ID]
 	if limit > 0 && len(src) > limit {
 		src = src[len(src)-limit:]
 	}
@@ -619,11 +620,11 @@ func MessageWindow(account, threadID string, before, limit int) ([]Message, bool
 	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
-	t := threads[threadID]
+	t := resolveUnlocked(account, threadID)
 	if t == nil || t.Account != account {
 		return nil, false
 	}
-	src := messages[threadID]
+	src := messages[t.ID]
 	if before < 0 {
 		before = 0
 	}
@@ -656,7 +657,7 @@ func List(account string, limit int) []Thread {
 		// Held conversations are not in the list, which is the whole point of
 		// the state: somebody nobody here has heard of cannot put a line in
 		// front of you until you or an agent lets them. See HeldFor.
-		if t.Held {
+		if t.Held || t.Canonical != "" {
 			continue
 		}
 		out = append(out, *t)
@@ -815,7 +816,7 @@ func SetAgent(account, id, agentID string) {
 	ensure()
 	mu.Lock()
 	defer mu.Unlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account || t.Agent == agentID {
 		return
 	}
@@ -842,7 +843,7 @@ func Name(account, id, subject string) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account || t.Subject != "" {
 		return
 	}
@@ -863,17 +864,26 @@ func Name(account, id, subject string) {
 func Delete(account, id string) {
 	ensure()
 	mu.Lock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account {
 		mu.Unlock()
 		return
 	}
-	gone := *t
-	dropUnlocked(t)
+	gone := []Thread{*t}
+	for _, old := range owned[account] {
+		if old.ID != t.ID && resolveUnlocked(account, old.ID) == t {
+			gone = append(gone, *old)
+		}
+	}
+	for _, old := range gone {
+		dropUnlocked(&old)
+	}
 	save()
 	mu.Unlock()
 
-	forget(gone)
+	for _, old := range gone {
+		forget(old)
+	}
 }
 
 // Deleted is told when a conversation is removed, so whatever else was written
@@ -1041,7 +1051,7 @@ func SetAttachment(account, id, reference string) {
 	ensure()
 	mu.Lock()
 	defer mu.Unlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account || t.Attachment == reference {
 		return
 	}
@@ -1054,7 +1064,7 @@ func Attachment(account, id string) string {
 	ensure()
 	mu.RLock()
 	defer mu.RUnlock()
-	if t := threads[id]; t != nil && t.Account == account {
+	if t := resolveUnlocked(account, id); t != nil && t.Account == account {
 		return t.Attachment
 	}
 	return ""
@@ -1069,7 +1079,7 @@ func RetitleWeb(account, id, subject string) bool {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account || t.Client != WebClient {
 		return false
 	}

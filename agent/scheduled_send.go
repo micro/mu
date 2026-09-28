@@ -7,6 +7,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/internal/thread"
 	"mu/internal/usage"
 	"mu/service/mail"
 	"strings"
@@ -53,6 +54,13 @@ func DeliverScheduled(r ScheduledResult, answer string, err error) error {
 	}
 	if topic != "" && err == nil {
 		link := inbox.MailURL(mail.InboundMail{Owner: acc.ID, From: delivery.FromID, FromName: delivery.From, To: acc.ID + "+" + tag + "@" + mail.ConfiguredDomain(), Subject: r.Title, Body: delivery.Body, MessageID: messageID, Tag: tag})
+		if tag == "checkin" {
+			if source := thread.ByRef(acc.ID, messageID); source != nil {
+				if _, mergeErr := consolidateCheckin(acc.ID, source); mergeErr != nil {
+					app.Log("agent", "consolidate delivered checkin: %v", mergeErr)
+				}
+			}
+		}
 		link = ScheduledNotificationURL(topic, link)
 		event.Announce(topic, strings.TrimSpace(answer), link, r.Account)
 	}

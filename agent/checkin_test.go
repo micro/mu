@@ -2,6 +2,7 @@ package agent_test
 
 import (
 	"mu/agent"
+	"mu/inbox"
 	"mu/internal/auth"
 	"mu/internal/thread"
 	"mu/service/mail"
@@ -36,18 +37,26 @@ func TestCheckinContinuesOwnedHistoryOnce(t *testing.T) {
 	u, _ := url.Parse(w.Header().Get("Location"))
 	id := u.Query().Get("session")
 	messages := thread.Messages(owner, id, 100)
-	if len(messages) != 1 || messages[0].Text != "How’s your day?" || messages[0].Role != thread.RoleAgent {
+	if len(messages) != 1 || messages[0].Text != "How’s your day?" || messages[0].Role != thread.RoleAgent || messages[0].Ref != "initial" {
 		t.Fatalf("bad import: %+v", messages)
 	}
+	if len(thread.List(owner, 0)) != 1 || thread.UnreadCount(owner) != 0 {
+		t.Fatal("split or unread conversation")
+	}
+	thread.Add(thread.Message{Account: owner, Thread: source.ID, Text: "My mail reply", Ref: "<mail-reply@test>"})
+	thread.Add(thread.Message{Account: owner, Thread: id, Role: thread.RoleAgent, Text: "Response from web", Ref: "answer"})
+	if len(inbox.Bridge(owner)) != 3 {
+		t.Fatal("checkin missing from IMAP")
+	}
 	request(source.ID)
-	if len(thread.Messages(owner, id, 100)) != 1 {
+	if len(thread.Messages(owner, id, 100)) != 3 {
 		t.Fatal("duplicate history")
 	}
 	r := httptest.NewRequest("GET", w.Header().Get("Location"), nil)
 	r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
 	page := httptest.NewRecorder()
 	agent.ConsoleHandler(page, r)
-	if !strings.Contains(page.Body.String(), ">Check in</button>") || !strings.Contains(page.Body.String(), `id="command-form"`) {
+	if !strings.Contains(page.Body.String(), ">Send</button>") || !strings.Contains(page.Body.String(), `id="command-form"`) {
 		t.Fatal("missing live check-in composer")
 	}
 	foreign := thread.Open("other-checkin-owner", "mail", "private")

@@ -62,7 +62,7 @@ func Search(account, query, client string, limit int) []Hit {
 
 	var hits []Hit
 	for id, t := range owned[account] {
-		if client != "" && t.Client != client {
+		if t.Canonical != "" || (client != "" && t.Client != client) {
 			continue
 		}
 
