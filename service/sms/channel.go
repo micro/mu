@@ -115,6 +115,12 @@ func maxBodyFor(c Channel) int {
 	return maxBody
 }
 
+// WhatsAppEnabled defaults to enabled for existing configurations. Only an
+// explicit false disables the channel, without deleting its saved sender.
+func WhatsAppEnabled() bool {
+	return !strings.EqualFold(strings.TrimSpace(settings.Get("WHATSAPP_ENABLED")), "false")
+}
+
 // SendersFor is the numbers this instance can send from on a channel.
 //
 // WhatsApp has its own sender and only ever one: a WhatsApp sender is a number
@@ -123,6 +129,9 @@ func maxBodyFor(c Channel) int {
 func SendersFor(c Channel) []string {
 	if c != ChannelWhatsApp {
 		return Senders()
+	}
+	if !WhatsAppEnabled() {
+		return nil
 	}
 	var out []string
 	for _, part := range strings.Split(settings.Get("TWILIO_WHATSAPP_FROM"), ",") {

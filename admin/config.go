@@ -188,7 +188,7 @@ var settingGroups = []settingGroup{
 	{Name: "Twilio — SMS and WhatsApp",
 		Does: "A phone number, so an agent can text somebody and read what they text back. " +
 			"Set TWILIO_WHATSAPP_FROM as well and the same account carries WhatsApp, " +
-			"on the same webhook.",
+			"on the same webhook. Set WHATSAPP_ENABLED=false to disable it and hide its contact details without removing the number.",
 		Needs: []string{"TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"},
 		Vars: []string{
 			"TWILIO_ACCOUNT_SID",
@@ -204,6 +204,7 @@ var settingGroups = []settingGroup{
 			"SMS_VERIFY_INBOUND",
 			"SMS_DAILY_LIMIT",
 			"TWILIO_WHATSAPP_FROM",
+			"WHATSAPP_ENABLED",
 			"WHATSAPP_DAILY_LIMIT",
 		}},
 	// "Sending limits and email out" was here, and four of its five settings

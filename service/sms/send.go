@@ -34,6 +34,9 @@ func Send(owner, to, text string) (*Message, error) {
 // same refusals, and the four things that differ are read from the channel
 // rather than branched on at each site.
 func SendOn(channel Channel, owner, to, text string) (*Message, error) {
+	if channel == ChannelWhatsApp && !WhatsAppEnabled() {
+		return nil, fmt.Errorf("WhatsApp is disabled on this instance")
+	}
 	if !channel.Known() {
 		return nil, fmt.Errorf("%q is not a channel this instance sends on", string(channel))
 	}

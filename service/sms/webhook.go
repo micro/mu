@@ -122,6 +122,11 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// a prefixed sender was silently turned into a stranger's number and filed
 	// against their phone.
 	channel, rawFrom := ChannelOf(r.PostForm.Get("From"))
+	if channel == ChannelWhatsApp && !WhatsAppEnabled() {
+		// Acknowledge disabled-channel deliveries without storing or invoking agents.
+		twiml(w, "")
+		return
+	}
 	from := e164(rawFrom)
 	body := strings.TrimSpace(r.PostForm.Get("Body"))
 	if from == "" {
