@@ -74,6 +74,9 @@ type texted struct {
 
 // answer asks, then texts back.
 func answer(t texted) {
+	if t.Channel == svcsms.ChannelWhatsApp && !svcsms.WhatsAppEnabled() {
+		return
+	}
 	owner, verified := svcsms.KnownSender(t.From)
 	if !verified || owner != t.Owner {
 		return
