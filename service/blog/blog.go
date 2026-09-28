@@ -1142,8 +1142,11 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 	}
 	previous := *post
 	post.Title, post.Content, post.Tags, post.Private = title, content, tags, private
-	// Changed copy must be explicitly selected again, including edits through tools.
-	post.Editorial = false
+	// Editing content does not change its publication. Making a post private
+	// withdraws it; publishing it again requires an explicit editorial selection.
+	if private {
+		post.Editorial = false
+	}
 	post.UpdatedAt = time.Now()
 	if err := save(); err != nil {
 		*post = previous

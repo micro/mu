@@ -83,6 +83,7 @@ func PublicOperations() []api.Operation {
 			if err != nil {
 				return nil, err
 			}
+			thread.MarkSeen(account, res.Thread)
 			return apiAnswer{Text: res.Text, Thread: res.Thread, Agent: SlugFor(account, id)}, nil
 		}},
 	}

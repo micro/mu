@@ -363,12 +363,13 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		retrieved = retrievedContext(accountID, prompt, opts, services)
 	}
 	sys += "\n\n" + retrievalInstructions
+	sys += fmt.Sprintf("\nUse at most %d web/image searches for this turn across all tool steps. Reuse results and read relevant pages; when the search budget is exhausted, answer using the evidence available and state any gaps.", searchLimit())
 	question := prompt
 
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
-	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID, len(opts.Tools) > 0 || opts.Public), dedupeNativeToolCalls(), retainEvidence(accountID, opts)}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID, len(opts.Tools) > 0 || opts.Public), dedupeNativeToolCalls(), limitNativeSearches(searchLimit()), retainEvidence(accountID, opts)}, wrappers...)
 	if opts.Stream.wants() {
 		toolWrappers = append([]gmai.ToolWrapper{streamToolReporter(opts.Stream)}, toolWrappers...)
 	}

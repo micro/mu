@@ -148,24 +148,46 @@ function getCsrfToken() {
   };
 })();
 
+// Refresh plain forms too: a page left open across a restart still has the
+// old CSRF token. Keep the form and its content intact if verification fails.
+const verifiedForms = new WeakSet();
+const verifyingForms = new WeakSet();
 document.addEventListener('submit', function(e) {
-  var form = e.target;
+  const form = e.target;
   if (!form || form.tagName !== 'FORM') return;
-  var method = (form.method || 'GET').toUpperCase();
-  if (method !== 'POST') return;
-  if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    return;
-  }
-  if (form.querySelector('input[name="_csrf"]')) return;
-  var token = getCsrfToken();
-  if (!token) return;
-  var input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = '_csrf';
-  input.value = token;
-  form.appendChild(input);
+  const submitter = e.submitter;
+  const method = (submitter?.getAttribute('formmethod') || form.method || 'GET').toUpperCase();
+  const action = submitter?.getAttribute('formaction') || form.action;
+  if (method !== 'POST' || new URL(action, location.href).origin !== location.origin) return;
+  // Sign-in and invitation forms must remain usable without a session.
+  if (['/login','/signup','/request-invite','/invite'].includes(new URL(action, location.href).pathname)) return;
+  if (verifiedForms.has(form)) { verifiedForms.delete(form); return; }
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (verifyingForms.has(form)) return;
+  if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) return;
+  verifyingForms.add(form);
+  fetch('/session', {credentials:'same-origin', cache:'no-store'})
+    .then(async response => {
+      if (!response.ok) throw Error('Could not verify your session. Your edits are still here; try saving again.');
+      const session = await response.json();
+      if (!session.account || session.type === 'guest' || !getCsrfToken()) {
+        throw Error('Your session has expired. Sign in again in another tab, then save here. Your edits have been kept.');
+      }
+      let input = form.querySelector('input[name="_csrf"]');
+      if (!input) { input = document.createElement('input'); input.type = 'hidden'; input.name = '_csrf'; form.appendChild(input); }
+      input.value = getCsrfToken();
+      form.querySelector('[data-session-error]')?.remove();
+      verifyingForms.delete(form);
+      verifiedForms.add(form);
+      form.requestSubmit(submitter || undefined);
+      verifiedForms.delete(form);
+    }).catch(error => {
+      verifyingForms.delete(form);
+      let note = form.querySelector('[data-session-error]');
+      if (!note) { note = document.createElement('p'); note.dataset.sessionError = ''; note.className = 'note'; note.setAttribute('role', 'alert'); form.appendChild(note); }
+      note.textContent = error.message || 'Could not verify your session. Your edits are still here; try again.';
+    });
 }, true);
 
 function timeAgo(timestamp) {

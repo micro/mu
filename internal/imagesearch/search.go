@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mu/internal/brave"
 	"mu/internal/settings"
 	"net/http"
 	"net/url"
@@ -40,7 +41,7 @@ func Search(ctx context.Context, query string) ([]WebImage, error) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageSearchURL+"?"+q.Encode(), nil)
 	req.Header.Set("X-Subscription-Token", key)
 	req.Header.Set("Accept", "application/json")
-	resp, err := imageSearchClient.Do(req)
+	resp, err := brave.Do(imageSearchClient, req)
 	if err != nil {
 		return nil, fmt.Errorf("could not reach image search")
 	}

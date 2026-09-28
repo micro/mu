@@ -55,6 +55,14 @@ func runAsk(args []string, rc *ResolvedConfig) int {
 	var words []string
 	for i := 0; i < len(args); i++ {
 		switch {
+		case args[i] == "--":
+			words = append(words, args[i+1:]...)
+			i = len(args)
+		case args[i] == "--prompt" && i+1 < len(args):
+			words = append(words, args[i+1])
+			i++
+		case strings.HasPrefix(args[i], "--prompt="):
+			words = append(words, strings.TrimPrefix(args[i], "--prompt="))
 		case args[i] == "--thread" && i+1 < len(args):
 			thread, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--thread="):
@@ -63,6 +71,9 @@ func runAsk(args []string, rc *ResolvedConfig) int {
 			agent, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--agent="):
 			agent = strings.TrimPrefix(args[i], "--agent=")
+		case strings.HasPrefix(args[i], "--"):
+			fmt.Fprintf(os.Stderr, "unknown option or missing value: %s\n", args[i])
+			return 2
 		default:
 			words = append(words, args[i])
 		}
