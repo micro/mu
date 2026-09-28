@@ -14,7 +14,7 @@ Connect from various places and it all goes in one inbox.
 |---|---|
 | HTTP | Start a conversation or reopen one from Inbox. |
 | SMTP | Send a message to `agent@your-domain` from your verified email address |
-| Text | Verify your phone number in Account, then text the configured number. |
+| SMS | Verify your phone number in Account, then text the configured number. |
 | XMPP | Connect with your account and a Chat token from Client access, then message the agent. |
 
 ## Agents
