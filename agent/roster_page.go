@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
@@ -24,6 +25,29 @@ import (
 
 // Handler serves /agents.
 func RosterHandler(w http.ResponseWriter, r *http.Request) {
+	if app.WantsJSON(r) || app.SendsJSON(r) {
+		r = api.CredentialRequest(r)
+		if !api.AuthorizeProduct(w, r, "agent", r.Method != http.MethodGet) {
+			return
+		}
+		if r.URL.Query().Get("view") == "scheduled" {
+			scheduledHandler(w, r)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			api.RespondOperation(w, r, "agent_list", map[string]any{})
+		case http.MethodPost:
+			if !app.SendsJSON(r) {
+				app.BadRequest(w, r, "Send application/json")
+				return
+			}
+			api.JSONAction(w, r, "agent", "create")
+		default:
+			app.MethodNotAllowed(w, r)
+		}
+		return
+	}
 	if r.URL.Query().Get("view") == "scheduled" {
 		scheduledHandler(w, r)
 		return

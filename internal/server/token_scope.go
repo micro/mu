@@ -33,7 +33,7 @@ func productClientRequest(r *http.Request) bool {
 	} else if r.Method != "POST" || !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		return false
 	}
-	if p == "/agent" || p == "/inbox" || p == "/work" {
+	if p == "/agent" || p == "/agents" || p == "/inbox" || p == "/work" {
 		return true
 	}
 	if !strings.HasPrefix(p, "/agent/") {

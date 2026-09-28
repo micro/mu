@@ -24,15 +24,17 @@ START HERE
                                  mail, notes and internal service tools
 
 TALKING TO AN AGENT
-  Two commands, and the difference is worth a sentence: "ask" talks to the
-  agent you made on an instance; "agent" runs one on this machine that rents
-  tools from an instance. Same word in English, opposite directions.
+  "ask" talks to your hosted agent. "agent create" and "agent list" manage
+  agents on that server. The existing "agent QUESTION" mode runs a local
+  agent with your own model and rents tools over x402.
 
   mu ask "summarise my unread mail"
   mu agent "what is the btc price?"
 
 COMMON COMMANDS
-  mu agent_list                  Agents you can ask
+  mu agent list                  Agents you can ask
+  mu agent create researcher --prompt "Research with sources" --tools web,news
+                                 Create an agent on the server
   mu work submit --prompt "Research the options"
                                  Delegate a goal to run in the background
   mu work list                   Delegated jobs and their state
@@ -72,10 +74,10 @@ EXAMPLES
   mu work get --id WORK_ID
   mu inbox read --id THREAD_ID
 
-Operation names can be two words: mu work list and mu work_list are the
-same call. Agent operations use the underscore form, such as mu agent_list,
-because mu agent runs a local agent. Service commands use a Services token
-on the same host.
+Agent, work and inbox commands use HTTP with an Agents / Account token.
+Enable Agents and Background jobs, plus Allow actions, for this workflow.
+Service commands use MCP with a Services token on the same host.
+Use mu help agent create or mu help work submit for the hosted commands.
 
 `
 
@@ -169,6 +171,10 @@ func runToolList(rc *ResolvedConfig) int {
 
 // runToolHelp prints parameter details for a single tool.
 func runToolHelp(name string, rc *ResolvedConfig) int {
+	if spec, ok := productCommands[strings.ReplaceAll(strings.TrimSpace(name), " ", "_")]; ok {
+		fmt.Println(spec.help)
+		return 0
+	}
 	if err := rc.Validate(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2

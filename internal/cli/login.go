@@ -50,6 +50,7 @@ func runLogin(args []string, cfg *ResolvedConfig) int {
 		fmt.Fprintf(os.Stdout, "   (couldn't open browser automatically — open the URL manually)\n")
 	}
 
+	fmt.Fprintln(os.Stdout, "For hosted agents and work, select Agents / Account, enable Agents and Background jobs, and Allow actions.")
 	fmt.Fprintln(os.Stdout, "2. Paste the token below and press Enter.")
 	fmt.Fprint(os.Stdout, "Token: ")
 

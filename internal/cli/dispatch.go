@@ -99,6 +99,10 @@ func Run(args []string) int {
 	command := positional[0]
 	rest := positional[1:]
 
+	if code, handled := runProduct(command, rest, &rc); handled {
+		return code
+	}
+
 	switch command {
 	case "help", "--help", "-h":
 		return runHelp(rest, &rc)
