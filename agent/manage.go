@@ -55,7 +55,7 @@ func createFocusedAgent(owner string, in map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b, err := json.Marshal(map[string]any{"id": a.ID, "name": a.Name, "url": chatPath(owner, a.ID), "services": a.Services})
+	b, err := json.Marshal(map[string]any{"id": a.ID, "name": a.Name, "url": chatPath(owner, a.ID), "agent": Slug(a), "services": a.Services})
 	return string(b), err
 }
 

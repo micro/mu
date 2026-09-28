@@ -21,11 +21,26 @@ func Resolve(account, slug string) (string, error) {
 
 func PublicOperations() []api.Operation {
 	return []api.Operation{
+		{Name: "agent_create", Description: "Create an owned agent with instructions and an explicit service scope. Does not issue a token. Do not blindly retry creation.", Writes: true, Params: []api.ToolParam{
+			{Name: "name", Type: "string", Description: "Agent name, up to 60 bytes.", Required: true},
+			{Name: "prompt", Type: "string", Description: "Reusable instructions, up to 8000 bytes.", Required: true},
+			{Name: "services", Type: "array", Description: "Nonempty list of permitted service names, such as web and news.", Required: true},
+		}, Handle: func(account string, raw json.RawMessage) (any, error) {
+			var in map[string]any
+			if err := api.Decode(raw, &in); err != nil {
+				return nil, err
+			}
+			result, err := createFocusedAgent(account, in)
+			if err != nil {
+				return nil, api.Fail(400, "invalid_arguments", err.Error())
+			}
+			return json.RawMessage(result), nil
+		}},
 		{Name: "agent_list", Description: "List the agents you can ask.", Handle: func(account string, raw json.RawMessage) (any, error) {
-			out := []map[string]string{{"name": SlugFor(account, DefaultPlatformAgent), "description": "The default agent"}}
+			out := []map[string]any{{"name": SlugFor(account, DefaultPlatformAgent), "description": "The default agent"}}
 			for _, a := range Agents(account) {
 
-				out = append(out, map[string]string{"name": Slug(a), "description": a.Description})
+				out = append(out, map[string]any{"id": a.ID, "name": Slug(a), "description": a.Description, "services": a.Services})
 			}
 			return map[string]any{"agents": out}, nil
 		}},

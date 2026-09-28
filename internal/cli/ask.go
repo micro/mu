@@ -51,10 +51,14 @@ import (
 
 // runAsk handles `mu ask [--agent name] [question]`.
 func runAsk(args []string, rc *ResolvedConfig) int {
-	agent := ""
+	agent, thread := "", ""
 	var words []string
 	for i := 0; i < len(args); i++ {
 		switch {
+		case args[i] == "--thread" && i+1 < len(args):
+			thread, i = args[i+1], i+1
+		case strings.HasPrefix(args[i], "--thread="):
+			thread = strings.TrimPrefix(args[i], "--thread=")
 		case args[i] == "--agent" && i+1 < len(args):
 			agent, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--agent="):
@@ -82,10 +86,11 @@ func runAsk(args []string, rc *ResolvedConfig) int {
 	}
 
 	a := &asker{
-		url:   strings.TrimRight(rc.URL, "/") + "/agent/" + url.PathEscape(agent),
-		token: rc.Token,
-		agent: agent,
-		http:  &http.Client{Timeout: 180 * time.Second},
+		url:    strings.TrimRight(rc.URL, "/") + "/agent/" + url.PathEscape(agent),
+		token:  rc.Token,
+		thread: thread,
+		agent:  agent,
+		http:   &http.Client{Timeout: 180 * time.Second},
 	}
 
 	if len(words) > 0 {
@@ -94,7 +99,11 @@ func runAsk(args []string, rc *ResolvedConfig) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		fmt.Println(text)
+		if rc.Raw {
+			_ = Format(os.Stdout, string(a.last), rc)
+		} else {
+			fmt.Println(text)
+		}
 		return 0
 	}
 	return a.loop(agent)
@@ -108,6 +117,7 @@ const defaultAgent = "micro"
 
 // asker holds one conversation.
 type asker struct {
+	last  json.RawMessage
 	agent string
 	url   string
 	token string
@@ -172,6 +182,7 @@ func (a *asker) ask(text string) (string, error) {
 	if out.Thread != "" {
 		a.thread = out.Thread
 	}
+	a.last = append(json.RawMessage(nil), raw...)
 	return out.Text, nil
 }
 

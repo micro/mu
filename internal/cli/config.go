@@ -1,7 +1,6 @@
 // Package cli provides the `mu` command-line interface. It is a thin
-// client that talks to any Mu instance's MCP endpoint over HTTP. It has
-// no dependencies on the rest of the Mu codebase and no embedded data —
-// every command is dispatched via JSON-RPC against /mcp.
+// client for any Mu instance. Agent, work and inbox operations use HTTP
+// resources; service tool commands use JSON-RPC against /mcp.
 //
 // This file handles configuration: loading/saving the on-disk config,
 // merging environment variables, and applying CLI flag overrides.
