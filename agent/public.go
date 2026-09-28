@@ -83,7 +83,7 @@ func PublicOperations() []api.Operation {
 			if err != nil {
 				return nil, err
 			}
-			return apiAnswer{Text: res.Text, Thread: res.Thread, Agent: SlugFor(account, id), Flow: res.Flow}, nil
+			return apiAnswer{Text: res.Text, Thread: res.Thread, Agent: SlugFor(account, id)}, nil
 		}},
 	}
 }
