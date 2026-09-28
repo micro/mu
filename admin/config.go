@@ -66,10 +66,12 @@ var settingGroups = []settingGroup{
 			"IMAGE_MODEL",
 		}},
 	{Name: "Search",
-		Does:  "Searching the web, and video and places lookups.",
+		Does:  "Searching the web, and video and places lookups. Brave defaults to 10 shared requests/second (BRAVE_SEARCH_RPS, 1–50). Agents default to 5 web/image searches per turn (AGENT_SEARCH_LIMIT, 1–20).",
 		Needs: []string{"BRAVE_API_KEY"},
 		Vars: []string{
 			"BRAVE_API_KEY",
+			"BRAVE_SEARCH_RPS",
+			"AGENT_SEARCH_LIMIT",
 			"YOUTUBE_API_KEY",
 			"GOOGLE_API_KEY",
 		}},

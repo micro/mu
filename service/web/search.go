@@ -16,6 +16,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/brave"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -82,6 +83,7 @@ var httpClient = &http.Client{Timeout: 10 * time.Second}
 var braveCache struct {
 	sync.RWMutex
 	entries map[string]braveCacheEntry
+	flights map[string]*braveFlight
 }
 
 type braveCacheEntry struct {
@@ -89,10 +91,17 @@ type braveCacheEntry struct {
 	fetched time.Time
 }
 
+type braveFlight struct {
+	done    chan struct{}
+	results []BraveResult
+	err     error
+}
+
 const braveCacheTTL = 5 * time.Minute
 
 func init() {
 	braveCache.entries = make(map[string]braveCacheEntry)
+	braveCache.flights = make(map[string]*braveFlight)
 }
 
 // SearchBraveCached returns cached results if available, otherwise calls searchBrave.
@@ -105,31 +114,44 @@ func searchBraveCachedWithTTL(query string, limit int, ttl time.Duration) ([]Bra
 }
 
 func searchBraveCached(ctx context.Context, query string, limit int, ttl time.Duration) ([]BraveResult, error) {
-	key := strings.ToLower(strings.TrimSpace(query))
-	braveCache.RLock()
+	key := fmt.Sprintf("%d:%s", limit, strings.TrimSpace(query))
+	braveCache.Lock()
 	if e, ok := braveCache.entries[key]; ok && time.Since(e.fetched) < ttl {
-		braveCache.RUnlock()
+		braveCache.Unlock()
 		service.ServedFromCache(ctx)
 		return e.results, nil
 	}
-	braveCache.RUnlock()
-
-	results, err := searchBrave(query, limit)
-	if err != nil {
-		return nil, err
-	}
-
-	braveCache.Lock()
-	braveCache.entries[key] = braveCacheEntry{results: results, fetched: time.Now()}
-	// Evict old entries
-	for k, v := range braveCache.entries {
-		if time.Since(v.fetched) > braveCacheTTL {
-			delete(braveCache.entries, k)
+	if flight := braveCache.flights[key]; flight != nil {
+		braveCache.Unlock()
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-flight.done:
+			if flight.err == nil {
+				service.ServedFromCache(ctx)
+			}
+			return flight.results, flight.err
 		}
 	}
+	flight := &braveFlight{done: make(chan struct{})}
+	braveCache.flights[key] = flight
 	braveCache.Unlock()
 
-	return results, nil
+	results, err := searchBrave(ctx, query, limit)
+	braveCache.Lock()
+	if err == nil {
+		braveCache.entries[key] = braveCacheEntry{results: results, fetched: time.Now()}
+		for k, v := range braveCache.entries {
+			if time.Since(v.fetched) > braveCacheTTL {
+				delete(braveCache.entries, k)
+			}
+		}
+	}
+	flight.results, flight.err = results, err
+	delete(braveCache.flights, key)
+	close(flight.done)
+	braveCache.Unlock()
+	return results, err
 }
 
 // ErrNotConfigured means this instance has no web search provider, which is a
@@ -139,7 +161,7 @@ func searchBraveCached(ctx context.Context, query string, limit int, ttl time.Du
 var ErrNotConfigured = errors.New("no web search provider configured on this instance")
 
 // searchBrave calls the Brave Search API and returns up to limit results.
-func searchBrave(query string, limit int) ([]BraveResult, error) {
+func searchBrave(ctx context.Context, query string, limit int) ([]BraveResult, error) {
 	// settings, not os.Getenv: a key set from /admin/config is stored, not exported
 	// into the process, so a self-hoster who configured web search in the
 	// browser still got "not set" here.
@@ -151,7 +173,7 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 	reqURL := "https://api.search.brave.com/res/v1/web/search?q=" +
 		url.QueryEscape(query) + fmt.Sprintf("&count=%d", limit)
 
-	req, err := http.NewRequest("GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +181,7 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 	req.Header.Set("X-Subscription-Token", apiKey)
 
 	start := time.Now()
-	resp, err := httpClient.Do(req)
+	resp, err := brave.Do(httpClient, req)
 	duration := time.Since(start)
 	if err != nil {
 		app.RecordAPICall("brave", "GET", reqURL, 0, duration, err, "", "")

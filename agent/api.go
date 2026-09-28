@@ -189,6 +189,7 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	thread.MarkSeen(accountID, res.Thread)
 	app.RespondJSON(w, apiAnswer{
 		Text:   res.Text,
 		Thread: res.Thread,
