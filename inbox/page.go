@@ -97,12 +97,18 @@ func boxTag(accountID, agentID string) string {
 
 // Handler serves /inbox and /inbox/<box>.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/inbox" && (app.WantsJSON(r) || app.SendsJSON(r)) {
+	if app.WantsJSON(r) || app.SendsJSON(r) {
 		r = api.CredentialRequest(r)
 		if !api.AuthorizeProduct(w, r, "inbox", r.Method != "GET") {
 			return
 		}
-		if r.Method == "POST" && app.SendsJSON(r) {
+		_, acc, _ := auth.RequireSession(r)
+		var ok bool
+		r, ok = inboxResource(w, r, acc.ID)
+		if !ok {
+			return
+		}
+		if r.Method == "POST" {
 			api.JSONAction(w, r, "inbox", "")
 			return
 		}
@@ -110,6 +116,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)
+		return
+	}
+	var ok bool
+	r, ok = inboxResource(w, r, acc.ID)
+	if !ok {
 		return
 	}
 	if view := r.URL.Query().Get("view"); (view == "saved" || view == "scheduled") && r.URL.Path == "/inbox" && r.URL.Query().Get("id") == "" {

@@ -15,8 +15,8 @@ func TestHostedCommandsUseHTTPResources(t *testing.T) {
 		{[]string{"agent", "create", "researcher", "--prompt", "Research with sources", "--tools", "web,news"}, "/agents", "POST"},
 		{[]string{"agent", "list"}, "/agents", "GET"},
 		{[]string{"work", "submit", "--agent", "researcher", "--prompt", "Compare options"}, "/work", "POST"},
-		{[]string{"work", "get", "--id", "12345678901234567890"}, "/work", "GET"},
-		{[]string{"inbox", "read", "--id", "thread"}, "/inbox", "GET"},
+		{[]string{"work", "get", "--id", "12345678901234567890"}, "/work/12345678901234567890", "GET"},
+		{[]string{"inbox", "read", "--id", "thread"}, "/inbox/thread", "GET"},
 	} {
 		t.Run(tc.args[0]+tc.args[1], func(t *testing.T) {
 			calls := 0
@@ -38,7 +38,7 @@ func TestHostedCommandsUseHTTPResources(t *testing.T) {
 							t.Error("missing explicit service scope")
 						}
 					}
-				} else if tc.args[1] == "get" && r.URL.Query().Get("id") != "12345678901234567890" {
+				} else if tc.args[1] == "get" && r.URL.Path != "/work/12345678901234567890" {
 					t.Error("numeric ID changed")
 				}
 				w.Header().Set("Content-Type", "application/json")

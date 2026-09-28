@@ -243,6 +243,7 @@ func registerRoutes() {
 	api.Operations = append(api.Operations, inbox.PublicOperations()...)
 	http.HandleFunc("/services/call/", api.ServiceCallHandler)
 	http.HandleFunc("/work", work.Handler)
+	http.HandleFunc("/work/", work.Handler)
 	// serve video
 	http.HandleFunc("/video", video.Handler)
 	http.HandleFunc("/video/thumb", video.ThumbHandler)
@@ -652,7 +653,7 @@ func registerRoutes() {
 	http.HandleFunc("/account/app-password", account.AppPasswordHandler)
 	http.HandleFunc("/account/codex", account.CodexHandler)
 	http.HandleFunc("/verify", account.Verify)
-	http.HandleFunc("/session", account.Session)
+	http.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) { account.Session(w, api.CredentialRequest(r)) })
 
 	http.HandleFunc("/account/clients", account.ClientsHandler)
 	http.HandleFunc("/account/tokens", account.TokenHandler)

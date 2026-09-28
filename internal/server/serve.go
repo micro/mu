@@ -76,7 +76,7 @@ func serve(addr string, initialize func()) {
 				return
 			}
 			if !scopedRequestAllowed(r) {
-				http.Error(w, "Scoped tokens must use the MCP or service API endpoint", http.StatusForbidden)
+				http.Error(w, "This token cannot access this route; use its permitted product or service endpoints", http.StatusForbidden)
 				return
 			}
 

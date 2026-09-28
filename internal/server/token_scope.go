@@ -20,7 +20,7 @@ func scopedRequestAllowed(r *http.Request) bool {
 	if path.Clean(p) != p {
 		return false
 	}
-	return p == "/.well-known/jmap" || p == "/mail/jmap" || strings.HasPrefix(p, "/mail/jmap/") || productClientRequest(r) || p == "/mcp" || p == "/api/v1" || strings.HasPrefix(p, "/api/v1/")
+	return (p == "/session" && r.Method == http.MethodGet) || p == "/.well-known/jmap" || p == "/mail/jmap" || strings.HasPrefix(p, "/mail/jmap/") || productClientRequest(r) || p == "/mcp" || p == "/api/v1" || strings.HasPrefix(p, "/api/v1/")
 }
 
 // Only content-negotiated resource handlers may receive product-scoped credentials.
@@ -30,10 +30,16 @@ func productClientRequest(r *http.Request) bool {
 		if !strings.Contains(r.Header.Get("Accept"), "application/json") {
 			return false
 		}
-	} else if r.Method != "POST" || !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+	} else if r.Method != "POST" || (!strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") && !strings.Contains(r.Header.Get("Accept"), "application/json")) {
 		return false
 	}
 	if p == "/agent" || p == "/agents" || p == "/inbox" || p == "/work" {
+		return true
+	}
+	if id, ok := api.ResourcePath(p, "/work"); ok && id != "" {
+		return true
+	}
+	if id, ok := api.ResourcePath(p, "/inbox"); ok && id != "" {
 		return true
 	}
 	if !strings.HasPrefix(p, "/agent/") {

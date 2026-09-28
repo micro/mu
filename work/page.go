@@ -17,12 +17,23 @@ import (
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	pathID, valid := api.ResourcePath(r.URL.Path, "/work")
+	if !valid {
+		app.NotFound(w, r, "Work not found")
+		return
+	}
+	var ok bool
+	r, ok = api.ResourceID(w, r, pathID)
+	if !ok {
+		return
+	}
+
 	if app.WantsJSON(r) || app.SendsJSON(r) {
 		r = api.CredentialRequest(r)
 		if !api.AuthorizeProduct(w, r, "work", r.Method != "GET") {
 			return
 		}
-		if r.Method == "POST" && app.SendsJSON(r) {
+		if r.Method == "POST" {
 			api.JSONAction(w, r, "work", "submit")
 			return
 		}
@@ -154,7 +165,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, task := range tasks.List(acc.ID, taskFilter) {
 		if task.Archived == archived {
-			entries = append(entries, entry{task.Title, "/work?id=" + url.QueryEscape(task.ID), task.Status, assignee(task), task.Created, task.Updated})
+			entries = append(entries, entry{task.Title, "/work/" + url.PathEscape(task.ID), task.Status, assignee(task), task.Created, task.Updated})
 		}
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].created.After(entries[j].created) })
@@ -298,7 +309,7 @@ func workDetail(t *tasks.Task, csrf string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="section-actions"><a href="/work">Work</a>`)
 	if t.Thread != "" {
-		b.WriteString(`<a href="/inbox?id=` + url.QueryEscape(t.Thread) + `">Conversation</a>`)
+		b.WriteString(`<a href="/inbox/` + url.PathEscape(t.Thread) + `">Conversation</a>`)
 	}
 	b.WriteString(`</div><h2>` + html.EscapeString(t.Title) + `</h2><div class="metadata-row">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div>`)
 	if t.Result != "" {

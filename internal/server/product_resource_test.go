@@ -2,11 +2,14 @@ package server
 
 import (
 	"encoding/json"
+	"mu/account"
 	"mu/agent"
 	"mu/inbox"
 	"mu/internal/api"
 	"mu/internal/auth"
+	"mu/internal/cli"
 	"mu/work"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -80,5 +83,49 @@ func TestJSONResourceHandlers(t *testing.T) {
 	agent.Handler(w, r)
 	if w.Code != 400 {
 		t.Fatalf("agent validation: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestScopedTokenCanVerifyIdentityOnly(t *testing.T) {
+	owner := "scoped-verification"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	_, token, err := auth.CreateToken(owner, "cli", []string{"read", "write", "api:agent", "api:work"}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		method, path string
+		allowed      bool
+	}{{"GET", "/session", true}, {"POST", "/session", false}, {"GET", "/account", false}, {"GET", "/session/other", false}} {
+		r := httptest.NewRequest(tc.method, tc.path, nil)
+		r.Header.Set("Authorization", "Bearer "+token)
+		if scopedRequestAllowed(r) != tc.allowed {
+			t.Fatalf("%s %s", tc.method, tc.path)
+		}
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !scopedRequestAllowed(r) {
+			http.Error(w, "Scoped token blocked", http.StatusForbidden)
+			return
+		}
+		account.Session(w, api.CredentialRequest(r))
+	}))
+	defer srv.Close()
+	client := cli.NewClient(&cli.ResolvedConfig{URL: srv.URL, Token: token})
+	if err := client.Verify(); err != nil {
+		t.Fatalf("CLI verification of scoped token: %v", err)
+	}
+	client.Token = "invalid-token"
+	if err := client.Verify(); err == nil {
+		t.Fatal("invalid token passed CLI verification")
+	}
+	for _, path := range []string{"/work/123", "/inbox/abcdef012345abcdef012345"} {
+		r := httptest.NewRequest("GET", path, nil)
+		r.Header.Set("Accept", "application/json")
+		r.Header.Set("Authorization", "Bearer "+token)
+		if !productClientRequest(r) || !scopedRequestAllowed(r) {
+			t.Fatal("blocked resource path", path)
+		}
 	}
 }
