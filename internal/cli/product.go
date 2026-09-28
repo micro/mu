@@ -151,6 +151,10 @@ func (c *Client) productRequest(spec productCommand, args map[string]any) ([]byt
 	if spec.method == "GET" {
 		query := url.Values{}
 		for k, v := range args {
+			if k == "id" {
+				endpoint += "/" + url.PathEscape(fmt.Sprint(v))
+				continue
+			}
 			query.Set(k, fmt.Sprint(v))
 		}
 		if len(query) > 0 {

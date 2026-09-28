@@ -38,10 +38,6 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		case http.MethodGet:
 			api.RespondOperation(w, r, "agent_list", map[string]any{})
 		case http.MethodPost:
-			if !app.SendsJSON(r) {
-				app.BadRequest(w, r, "Send application/json")
-				return
-			}
 			api.JSONAction(w, r, "agent", "create")
 		default:
 			app.MethodNotAllowed(w, r)

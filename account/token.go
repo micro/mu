@@ -14,7 +14,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/internal/sshaccess"
 )
 
 // TokenHandler manages Personal Access Tokens (PATs)
@@ -44,6 +43,9 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, target, http.StatusSeeOther)
 		return
 	}
+	if handleSSHKey(w, r, acc.ID) {
+		return
+	}
 	// Credential creation requires a verified or explicitly approved account.
 	if r.Method == http.MethodPost {
 		r.ParseForm()
@@ -58,24 +60,6 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-	}
-	if r.Method == http.MethodPost && (r.FormValue("sshkey") != "" || r.FormValue("removekey") != "") {
-		if !auth.ValidCSRF(r) {
-			app.Forbidden(w, r, "Reopen Tokens and try again.")
-			return
-		}
-		var keyErr error
-		if key := r.FormValue("sshkey"); key != "" {
-			_, keyErr = sshaccess.Register(acc.ID, key, r.FormValue("keyname"))
-		} else {
-			keyErr = auth.RemoveSSHKey(acc.ID, r.FormValue("removekey"))
-		}
-		if keyErr != nil {
-			app.RespondError(w, http.StatusBadRequest, keyErr.Error())
-			return
-		}
-		http.Redirect(w, r, "/account/tokens", http.StatusSeeOther)
-		return
 	}
 	// Handle OAuth client actions
 	if r.Method == "POST" {
@@ -135,7 +119,7 @@ func apiTokenForm(r *http.Request, accountID string) string {
 	if agentAccess {
 		checked = " checked"
 	}
-	sb.WriteString(`<h4 class="mt-5">Create a token</h4>`)
+	sb.WriteString(`<h3>Create a token</h3>`)
 	sb.WriteString(`<form id="create-token-form" class="form" onsubmit="createToken(event)">`)
 	sb.WriteString(app.Field{
 		Name: "name", Label: "Name", Placeholder: "e.g. My script", Required: true, Wide: true,
@@ -162,7 +146,7 @@ func apiTokenForm(r *http.Request, accountID string) string {
 	}.HTML())
 
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
-	sb.WriteString(`<div id="token-result" class="success-panel d-none" role="status" tabindex="-1"><strong>Token created</strong><p>Copy it now. It is shown only once.</p><pre id="new-token"></pre><button type="button" data-copy-token>Copy token</button><span data-token-copy-status aria-live="polite"></span></div>`)
+	sb.WriteString(`<div id="token-result" class="section-card section-stack d-none" role="status" tabindex="-1"><strong>Token created</strong><p>Copy it now. It is shown only once.</p><pre id="new-token"></pre><button type="button" data-copy-token>Copy token</button><span data-token-copy-status aria-live="polite"></span></div>`)
 
 	return sb.String()
 }

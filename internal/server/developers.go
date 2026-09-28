@@ -44,7 +44,7 @@ go build -o mu .
   -H 'Accept: application/json' \
   -d '{"agent":"researcher","prompt":"Compare SQLite and PostgreSQL for a small personal server"}'
 
-curl '` + base + `/work?id=WORK_ID' \
+curl '` + base + `/work/WORK_ID' \
   -H "Authorization: Bearer $MU_TOKEN" \
   -H 'Accept: application/json'</pre>
  <table class="data-table stacked"><thead><tr><th>Request</th><th>Purpose</th></tr></thead><tbody>
@@ -53,10 +53,10 @@ curl '` + base + `/work?id=WORK_ID' \
  <tr><td>POST /agent or /agent/NAME</td><td>Ask with prompt; pass thread to continue a conversation.</td></tr>
  <tr><td>POST /work</td><td>Submit prompt, optional agent and optional thread for context and delivery.</td></tr>
  <tr><td>GET /work</td><td>List work; optionally filter with ?status=failed.</td></tr>
- <tr><td>GET /work?id=WORK_ID</td><td>Read progress and result in the work field.</td></tr>
- <tr><td>GET /inbox?id=THREAD_ID</td><td>Read the conversation, including delivered results.</td></tr>
+ <tr><td>GET /work/WORK_ID</td><td>Read progress and result in the work field.</td></tr>
+ <tr><td>GET /inbox/THREAD_ID</td><td>Read the conversation, including delivered results.</td></tr>
  </tbody></table>
- <p>All calls require your token and Accept: application/json; POST requests also require Content-Type: application/json. Usage draws from the same account allowance and balance. After a lost creation or submission response, inspect your agents or work before retrying. To retry reviewed work explicitly, use <code>./mu work retry --id WORK_ID</code> or POST /work with <code>{"action":"retry","id":"WORK_ID"}</code>; previous actions may be repeated.</p>
+ <p>Existing ?id= links remain supported. Path, query and body IDs must agree when supplied together. JSON and URL-encoded form bodies are accepted for actions; Accept selects the response format. Single-work reads retain the work field; conversation reads retain thread and messages, whichever URL is used.</p><p>All calls require your token and Accept: application/json; JSON POST requests also require Content-Type: application/json. Usage draws from the same account allowance and balance. After a lost creation or submission response, inspect your agents or work before retrying. To retry reviewed work explicitly, use <code>./mu work retry --id WORK_ID</code> or POST /work with <code>{"action":"retry","id":"WORK_ID"}</code>; previous actions may be repeated.</p>
  <h2>Hosted or self-hosted</h2><p>The CLI defaults to Micro. Run <code>./mu login https://your-server.example</code> to use your own Mu server, or set <code>MU_URL</code> and <code>MU_TOKEN</code>. The HTTP resources stay the same; a self-hosted server needs its own model and service configuration. See <a href="/install">self-hosting</a>.</p>
  <h2>Tools and x402</h2><p>Bring your own agent to <a href="/tools">/mcp</a> or the <a href="/api">services API</a> to call individual tools with a Services token. For wallet-paid public service calls, use <a href="/x402">x402</a>: m3o.com is the machine-readable endpoint. Hosted agent execution uses your Micro account and credits.</p></div>`
 	app.Respond(w, r, app.Response{Title: "Developers", HTML: body})

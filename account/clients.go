@@ -12,18 +12,16 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/origin"
-	"mu/internal/sshaccess"
 )
 
 func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionID string) {
 	var b strings.Builder
-	b.WriteString(Navigation("/account/tokens") + `<div class="account-access">`)
+	b.WriteString(Navigation("/account/tokens") + `<div class="account-access page-stack">`)
 	b.WriteString(`<p>Tokens let apps and programs access your Micro account without using your password. Create a separate token for each app. <a href="/account/clients">Client setup</a>.</p>`)
-	b.WriteString(tokenList(r, accountID, false))
+	b.WriteString(`<section class="section-card page-stack"><h2>API tokens</h2>` + tokenList(r, accountID, false))
 
-	b.WriteString(apiTokenForm(r, accountID))
-	b.WriteString(`<h2 id="oauth">OAuth clients</h2><p>Register an app you are building so people can sign in and grant it access to Micro. For your own scripts, use an API token above.</p><p>Use the authorization-code flow with PKCE (S256): send users to <code>/oauth/authorize</code>, then exchange the returned code at <code>/oauth/token</code>. Register your app’s exact callback URL below. Configuration is available at <code>/.well-known/oauth-authorization-server</code>.</p>` + tokenList(r, accountID, true) + oauthClientForm(r))
-	b.WriteString(sshaccess.Card(r, accountID, "/account/tokens", "SSH keys", "Use a public SSH key to access Micro’s shell and files from a terminal or SFTP client. Add the contents of your .pub file; keep the private key on your device.", "ssh") + "</div>")
+	b.WriteString(apiTokenForm(r, accountID) + `</section>`)
+	b.WriteString(`<section id="oauth" class="section-card page-stack"><h2>OAuth clients</h2><p>Register an app you are building so people can sign in and grant it access to Micro. For your own scripts, use an API token above.</p><p>Use the authorization-code flow with PKCE (S256): send users to <code>/oauth/authorize</code>, then exchange the returned code at <code>/oauth/token</code>. Register your app’s exact callback URL below. Configuration is available at <code>/.well-known/oauth-authorization-server</code>.</p>` + tokenList(r, accountID, true) + oauthClientForm(r) + `</section></div>`)
 	app.Respond(w, r, app.Response{Title: "Tokens", Description: "Account tokens", HTML: b.String()})
 
 }
@@ -115,6 +113,6 @@ func ClientsHandler(w http.ResponseWriter, r *http.Request) {
   -H 'Content-Type: application/json' \
   -d '{"prompt":"Help me plan my week"}'</pre><p>The reply is in <code>text</code>. Include the returned <code>thread</code> as <code>thread</code> in your next request to continue. Keep tokens out of browser code and source control.</p>
  <h2>Service tools (MCP)</h2><p>Connect your own agent to Micro’s services using <code>` + base + `/mcp</code> and a <a href="/account/tokens?access=services#create-token-form">Services token</a>. This gives your client tools; it does not talk to your Micro assistant. <a href="/tools">Tool reference</a>.</p>
- <h2>OAuth and SSH</h2><p>For apps you build, register an OAuth client. For terminal and file access, add an SSH public key. Setup and credentials are on <a href="/account/tokens#oauth">Tokens</a>.</p>`
+ <h2>OAuth and SSH</h2><p>For apps you build, register an OAuth client. For terminal and file access, add an SSH public key. Manage <a href="/account/tokens#oauth">OAuth clients</a> in Tokens and <a href="/account#security">SSH keys</a> in Account security.</p>`
 	app.Respond(w, r, app.Response{Title: "Clients", HTML: body})
 }

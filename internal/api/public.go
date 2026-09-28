@@ -187,15 +187,41 @@ func RespondOperation(w http.ResponseWriter, r *http.Request, name string, args 
 
 // JSONAction reads an explicit action from a resource's JSON request body.
 func JSONAction(w http.ResponseWriter, r *http.Request, owner, defaultAction string) {
-	var args map[string]any
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBytes))
-	if err := decoder.Decode(&args); err != nil || args == nil {
-		writeFailure(w, r, Fail(400, "invalid_arguments", "Send a JSON object"))
+	var ok bool
+	r, ok = ResourceID(w, r, "")
+	if !ok {
 		return
 	}
-	if decoder.Decode(new(any)) != io.EOF {
-		writeFailure(w, r, Fail(400, "invalid_arguments", "Send one JSON object"))
-		return
+
+	args := map[string]any{}
+	if app.SendsJSON(r) {
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBytes))
+		if err := decoder.Decode(&args); err != nil || args == nil {
+			writeFailure(w, r, Fail(400, "invalid_arguments", "Send a JSON object"))
+			return
+		}
+		if decoder.Decode(new(any)) != io.EOF {
+			writeFailure(w, r, Fail(400, "invalid_arguments", "Send one JSON object"))
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			writeFailure(w, r, Fail(400, "invalid_arguments", "Invalid form"))
+			return
+		}
+		for key, values := range r.PostForm {
+			if key == "_csrf" || len(values) == 0 {
+				continue
+			}
+			if len(values) > 1 {
+				args[key] = values
+			} else {
+				args[key] = values[0]
+			}
+		}
+	}
+	if id := r.URL.Query().Get("id"); id != "" {
+		args["id"] = id
 	}
 	action := defaultAction
 	if v, ok := args["action"]; ok {
@@ -206,6 +232,15 @@ func JSONAction(w http.ResponseWriter, r *http.Request, owner, defaultAction str
 	if op == nil || !op.Writes {
 		writeFailure(w, r, Fail(400, "invalid_arguments", "Unknown action"))
 		return
+	}
+	if !app.SendsJSON(r) {
+		for _, param := range op.Params {
+			if param.Type == "array" {
+				if v, ok := args[param.Name].(string); ok {
+					args[param.Name] = []string{v}
+				}
+			}
+		}
 	}
 	RespondOperation(w, r, op.Name, args)
 }
