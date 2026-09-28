@@ -325,8 +325,11 @@ const conversation=form.closest('.conversation');
 
 function sizeInput(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,160)+'px';}
 input.addEventListener('input',sizeInput);sizeInput();
-const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
-if(conversation.classList.contains('is-active'))requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});
+function anchorQuestion(){
+ const questions=log.querySelectorAll('.request'),question=questions[questions.length-1];
+ log.scrollTo({top:question?log.scrollTop+question.getBoundingClientRect().top-log.getBoundingClientRect().top-log.clientTop:0,behavior:'instant'});
+}
+if(conversation.classList.contains('is-active'))requestAnimationFrame(anchorQuestion);
 let busy=false,thread=new URLSearchParams(location.search).get('session')||new URLSearchParams(location.search).get('continue')||'';
 let viewVersion=0,navigationVersion=0,navigating=false,submission=null,currentURL=location.pathname+location.search;
 const scrollPositions=new Map();
@@ -375,7 +378,7 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
    if(response&&response.status===404)throw Error('Conversation not found.');
    if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to continue.');
    if(result){
-    if(!result.waiting){if(result.error)throw Error(result.error);const follow=log.scrollHeight-log.scrollTop-log.clientHeight<80;answer.innerHTML=result.answer_html||'';if(follow)requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});return;}
+    if(!result.waiting){if(result.error)throw Error(result.error);answer.innerHTML=result.answer_html||'';return;}
     answer.textContent='Working…';
    }else answer.textContent='Reconnecting…';
   }
@@ -406,7 +409,7 @@ async function run(command){
  const turn=document.createElement('section');turn.className='turn';const q=document.createElement('div');q.className='request';
  q.append(byline('You'),document.createTextNode(command));
  const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));const answer=document.createElement('div');answer.className='message-body';answer.setAttribute('aria-live','polite');answer.textContent='Working…';response.append(answer);turn.append(q,response);log.append(turn);
- requestAnimationFrame(()=>{log.scrollTo({top:log.scrollHeight,behavior:first||reducedMotion.matches?'instant':'smooth'});});
+ requestAnimationFrame(anchorQuestion);
  try{await assistant(command,answer,version);if(version===viewVersion)status.textContent='';}catch(error){if(version===viewVersion){answer.textContent=error.message;answer.classList.add('error');status.textContent='Message not confirmed.';if(receipt&&!input.value)input.value=command;}}finally{if(version===viewVersion){busy=false;send.disabled=false;sizeInput();}}
 }
 function resumePending(){
@@ -432,13 +435,13 @@ async function checkDeliveries(){
   const page=new DOMParser().parseFromString(await response.text(),'text/html');
   if(version!==viewVersion||busy||navigating||page.querySelector('#command-form')?.dataset.account!==form.dataset.account)return;
   const seen=new Set(Array.from(log.querySelectorAll('[data-delivery-id]')).map(n=>n.dataset.deliveryId));
-  const follow=log.scrollHeight-log.scrollTop-log.clientHeight<80;
+  const position=log.scrollTop;
   for(const node of page.querySelectorAll('#responses > [data-delivery-id]')){
    if(!seen.has(node.dataset.deliveryId))log.append(node);
    const id=node.dataset.deliveryId.replace(/^app-build:/,'');
    for(const pending of log.querySelectorAll('[data-build-id]'))if(pending.dataset.buildId===id)pending.remove();
   }
-  if(follow)requestAnimationFrame(()=>{log.scrollTop=log.scrollHeight;});
+  log.scrollTop=position;
  }catch{}finally{deliveryPolling=false;}
 }
 setInterval(checkDeliveries,5000);
@@ -469,7 +472,7 @@ async function navigateThread(url,push=true){
   conversation.classList.toggle('is-active',!!thread);status.textContent='';
   form.dispatchEvent(new CustomEvent('thread-changed',{detail:{thread}}));sizeInput();
   resumePending();
-  requestAnimationFrame(()=>{log.scrollTop=scrollPositions.get(currentURL)??log.scrollHeight;});
+  requestAnimationFrame(()=>{if(scrollPositions.has(currentURL))log.scrollTop=scrollPositions.get(currentURL);else anchorQuestion();});
  }catch(error){if(navigation===navigationVersion){if(!push)history.replaceState(null,'',currentURL);status.textContent=error.message;}}finally{if(navigation===navigationVersion){navigating=false;send.disabled=busy;}}
 }
 document.querySelector('.assistant-workspace').addEventListener('click',event=>{

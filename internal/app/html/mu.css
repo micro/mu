@@ -817,6 +817,8 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .assistant-workspace>.conversation{flex:1;min-width:0;margin-inline:auto}
 .assistant-workspace .conversation>.assistant-toolbar,.assistant-workspace .assistant-thread-title,.assistant-workspace .prompt-panel{width:100%;box-sizing:border-box;margin-inline:auto}
 .assistant-workspace #responses>.turn{width:100%;box-sizing:border-box;margin:0}
+/* Leave room to anchor the question before a short or pending answer grows. */
+.assistant-workspace #responses>.turn:last-child{min-height:100%}
 .assistant-toolbar{display:flex;align-items:center;gap:16px;flex-shrink:0;padding:8px 0 16px;font-size:.875rem}
 .assistant-toolbar button{font:inherit;margin:0;padding:0;background:none;border:0;color:inherit}
 .assistant-thread-title{font-size:1rem;font-weight:500;margin:0 0 12px;flex-shrink:0;overflow-wrap:anywhere}
