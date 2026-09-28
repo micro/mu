@@ -30,6 +30,12 @@ Work can run in the background and return its result to the originating conversa
 Task records live in service/tasks. Agents own the daily brief and delivery logic, 
 while service/events schedules it and Work tracks each occurrence.
 
+## Services
+
+Complete standalone services that agents can use as tools or you can browse with. 
+For example a complete Mail client and server. Web search via brave. News aggregation, 
+headlines and summary via RSS. Video search via YouTube. All behind one MCP interface.
+
 ## Install
 
 ```bash
