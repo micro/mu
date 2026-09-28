@@ -1366,7 +1366,7 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .document-content>:first-child{margin-top:0}
 .document-content h2{margin:24px 0 8px}
 .document-content p{margin:0 0 12px}
-.document-content pre{margin:12px 0}
+.document-content pre,.document-content table{margin:12px 0}
 .account-menu summary span{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .account-menu>summary{width:auto;padding:0 8px}
