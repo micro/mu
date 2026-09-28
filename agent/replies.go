@@ -19,15 +19,16 @@ import (
 )
 
 type pendingReply struct {
-	Context ClientContext `json:"context,omitempty"`
-	Digest  string        `json:"digest"`
-	ID      string        `json:"id"`
-	Account string        `json:"account"`
-	Thread  string        `json:"thread"`
-	Text    string        `json:"text,omitempty"`
-	Agent   string        `json:"agent,omitempty"`
-	State   string        `json:"state"`
-	Created time.Time     `json:"created"`
+	MessageRef string        `json:"message_ref,omitempty"`
+	Context    ClientContext `json:"context,omitempty"`
+	Digest     string        `json:"digest"`
+	ID         string        `json:"id"`
+	Account    string        `json:"account"`
+	Thread     string        `json:"thread"`
+	Text       string        `json:"text,omitempty"`
+	Agent      string        `json:"agent,omitempty"`
+	State      string        `json:"state"`
+	Created    time.Time     `json:"created"`
 }
 
 const repliesFile = "agent_replies.json"
@@ -98,7 +99,7 @@ func restoreReplies() error {
 
 // A queued receipt can survive a crash between saving the job and its message.
 func persistReplyMessage(j pendingReply) error {
-	if thread.Add(thread.Message{Account: j.Account, Thread: j.Thread, Role: thread.RolePerson, Text: j.Text, Ref: "reply:" + j.ID, At: j.Created}) == "" {
+	if thread.Add(thread.Message{Account: j.Account, Thread: j.Thread, Role: thread.RolePerson, Text: j.Text, Ref: replyMessageRef(j), At: j.Created}) == "" {
 		return errNoConversation
 	}
 	return thread.Flush()
@@ -138,6 +139,7 @@ func submitReply(accountID, threadID, text, ref string, context ClientContext) e
 			return err
 		}
 	}
+	threadID = t.ID
 	id := newFlowID()
 	if ref != "" {
 		id = replyID(accountID, threadID, ref)
@@ -185,6 +187,9 @@ func submitReply(accountID, threadID, text, ref string, context ClientContext) e
 	}
 	digest := sha256.Sum256([]byte(text))
 	j := pendingReply{Context: context, Digest: hex.EncodeToString(digest[:]), ID: id, Account: accountID, Thread: threadID, Text: text, Agent: t.Agent, State: "queued", Created: time.Now().UTC()}
+	if strings.HasPrefix(ref, "<") && strings.HasSuffix(ref, ">") && !strings.ContainsAny(ref, "\r\n ") && len(ref) <= 998 {
+		j.MessageRef = ref
+	}
 	replies.jobs[id] = j
 	if err := data.SaveJSON(repliesFile, replies.jobs); err != nil {
 		delete(replies.jobs, id)
@@ -248,7 +253,7 @@ func processReply(ask func(AskRequest) (Answer, error)) {
 		switch original {
 		case "queued":
 			// Recheck the captured specialist; never silently replace it on execution.
-			answer, err := ask(AskRequest{Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: "reply:" + job.ID, AnswerRef: "reply-answer:" + job.ID})
+			answer, err := ask(AskRequest{Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: replyMessageRef(job), AnswerRef: "reply-answer:" + job.ID})
 			if err == nil && strings.TrimSpace(answer.Text) == "" {
 				err = fmt.Errorf("no answer was recorded")
 			}
@@ -357,4 +362,11 @@ func queuePrompt(account, id, text, ref, agent, attachment string, context Clien
 func replyID(accountID, threadID, ref string) string {
 	sum := sha256.Sum256([]byte(accountID + "\x00" + threadID + "\x00" + ref))
 	return hex.EncodeToString(sum[:])
+}
+
+func replyMessageRef(j pendingReply) string {
+	if j.MessageRef != "" {
+		return j.MessageRef
+	}
+	return "reply:" + j.ID
 }

@@ -51,12 +51,14 @@ func researchHTML(owner, csrf string) string {
 	if auth.Plan(owner) != "pro" {
 		return `<p>Follow one topic with a private, source-linked research update on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
 	}
+	details := ""
 	topic, clock, zone, frequency, maxCredits := "", "20:30", "", "weekly", ResearchCost()
 	if acc, err := auth.GetAccount(owner); err == nil {
 		zone = acc.Zone
 	}
 	e := Research(owner)
 	if e != nil {
+		details = e.Note
 		topic, zone, frequency, maxCredits = e.Prompt, e.Zone, e.Repeat, e.MaxCredits
 		loc, err := time.LoadLocation(zone)
 		if err == nil {
@@ -82,7 +84,7 @@ func researchHTML(owner, csrf string) string {
 			status = "Disabled"
 		}
 	}
-	return `<div class="page-stack"><p>Follow one topic. Micro checks current web sources and sends a private update when the search results change.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search and one summary. Cached searches may cost less. Your limit is checked before starting.</p><details class="disclosure"><summary>Settings</summary><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></details></div>`
+	return `<div class="page-stack"><p>Follow one topic. Micro checks current web sources and sends a private update when the search results change.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search and one summary. Cached searches may cost less. Your limit is checked before starting.</p><details class="disclosure"><summary>Settings</summary><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Instructions<textarea name="instructions" rows="4" maxlength="4000" placeholder="Questions, areas to focus on, sources or the kind of reading you want">` + html.EscapeString(details) + `</textarea></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></details></div>`
 }
 
 func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
@@ -105,12 +107,13 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	topic := strings.TrimSpace(r.FormValue("topic"))
+	details := strings.TrimSpace(r.FormValue("instructions"))
 	repeat := r.FormValue("repeat")
 	zone := r.FormValue("zone")
 	budget, e1 := strconv.Atoi(r.FormValue("max_credits"))
 	clock, e2 := time.Parse("15:04", r.FormValue("clock"))
 	loc, e3 := time.LoadLocation(zone)
-	if topic == "" || len([]rune(topic)) > 300 || (repeat != "daily" && repeat != "weekly") || e1 != nil || budget < 1 || budget > 1000 || e2 != nil || e3 != nil || zone == "" || zone == "Local" {
+	if len([]rune(details)) > 4000 || topic == "" || len([]rune(topic)) > 300 || (repeat != "daily" && repeat != "weekly") || e1 != nil || budget < 1 || budget > 1000 || e2 != nil || e3 != nil || zone == "" || zone == "Local" {
 		app.BadRequest(w, r, "Choose a topic, daily or weekly frequency, time, timezone and credit limit")
 		return
 	}
@@ -131,9 +134,10 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		if old != nil {
 			e = *old
 		}
-		if e.Prompt != topic {
+		if e.Prompt != topic || e.Note != details {
 			e.ResearchDigest, e.ResearchReport = "", ""
 		}
+		e.Note = details
 		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused, e.MaxCredits = "Research: "+topic, topic, repeat, zone, next, paused, budget
 		e.Advance = scheduledAdvance(e.Kind)
 		e.Sequence++

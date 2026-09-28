@@ -247,7 +247,7 @@ func (s *submissionSession) Data(r io.Reader) error {
 				}
 			}
 		} else {
-			err = s.deliverLocally(to, display, subject, plain, html, inReplyTo, references)
+			err = s.deliverLocally(to, display, subject, plain, html, inReplyTo, references, msg.Header.Get("Message-ID"))
 		}
 		if err != nil {
 			app.Log("mail", "submission: %s -> %s failed: %v", s.acc.ID, to, err)
@@ -281,12 +281,17 @@ func (s *submissionSession) Data(r io.Reader) error {
 // This was the only door that had the whole rule, and having it here is why the
 // other three each got a piece of it wrong. It is the shared one now, and this
 // is what is left: an address, a body, and the IP the client connected from.
-func (s *submissionSession) deliverLocally(to, display, subject, plain, html, replyTo, references string) error {
+func (s *submissionSession) deliverLocally(to, display, subject, plain, html, replyTo, references string, messageIDs ...string) error {
 	if !strings.Contains(to, "@") {
 		return fmt.Errorf("not an address")
 	}
+	messageID := ""
+	if len(messageIDs) > 0 {
+		messageID = messageIDs[0]
+	}
 	_, err := Deliver(Outgoing{
-		FromID: s.acc.ID, Display: display, To: to,
+		MessageID: messageID,
+		FromID:    s.acc.ID, Display: display, To: to,
 		Subject: subject, Body: plain, HTML: html,
 		InReplyTo: replyTo, References: references,
 		SenderIP: s.remoteIP,

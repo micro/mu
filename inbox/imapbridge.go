@@ -66,7 +66,7 @@ func Bridge(accountID string) []*mail.Message {
 	for _, t := range thread.List(accountID, bridgeThreads) {
 		// Mail comes from mail. Web and CLI conversations are already visible
 		// where the person is working; they are not incoming correspondence.
-		if t.Client == mailClient || !thread.Arrived(t) {
+		if t.Client == mailClient || (!thread.Arrived(t) && !strings.HasPrefix(t.Key, "checkin:")) {
 			continue
 		}
 		// And nothing held. Held means somebody nobody here has heard of has
@@ -105,6 +105,18 @@ func asMessages(accountID string, t thread.Thread, domain string) []*mail.Messag
 	for _, m := range msgs {
 		id := bridgeID(m.ID)
 		messageID := "<" + id + "@" + domain + ">"
+		// Native mail is already in this mailbox. Keep its RFC identity in
+		// the reference chain, but never project a second copy of its body.
+		if strings.HasPrefix(m.Ref, "<") && strings.HasSuffix(m.Ref, ">") {
+			messageID = m.Ref
+			if native := mail.FindMessageByMessageID(m.Ref); native != nil && (native.ToID == accountID || native.FromID == accountID) {
+				if subject == t.Subject {
+					subject = mailSubject(native.Subject)
+				}
+				prev = messageID
+				continue
+			}
+		}
 
 		one := &mail.Message{
 			Bridged:   true,
@@ -123,6 +135,9 @@ func asMessages(accountID string, t thread.Thread, domain string) []*mail.Messag
 			Read: !m.At.After(t.Seen),
 		}
 
+		if strings.HasPrefix(t.Key, "checkin:") {
+			one.Tag = "checkin"
+		}
 		if m.Role == thread.RoleAgent {
 			one.Markdown = true
 			one.ToID = accountID

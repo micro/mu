@@ -36,6 +36,7 @@ import (
 // A struct for the same reason Local is one: nine fields, all strings, and the
 // shape where adding a tenth silently shifts the rest at every call site.
 type Outgoing struct {
+	MessageID string // Original authenticated client identity, when supplied.
 	// FromID is the account sending. Every caller has signed in, so unlike
 	// Local this is never empty — the instance's own notices go through
 	// DeliverHere directly.
@@ -126,7 +127,13 @@ func deliverHere(m Outgoing, to string) (string, error) {
 	if !strings.Contains(arrivedAt, "@") {
 		arrivedAt = EmailForUser(local, domain)
 	}
-	messageID := fmt.Sprintf("<%d.local@%s>", time.Now().UnixNano(), domain)
+	messageID := strings.TrimSpace(m.MessageID)
+	if messageID == "" {
+		messageID = fmt.Sprintf("<%d.local@%s>", time.Now().UnixNano(), domain)
+	}
+	if !strings.HasPrefix(messageID, "<") || !strings.HasSuffix(messageID, ">") || strings.ContainsAny(messageID, "\r\n ") || len(messageID) > 998 {
+		return "", fmt.Errorf("invalid Message-ID")
+	}
 
 	if err := DeliverHere(Local{
 		arrival: &arrival{To: arrivedAt, Shared: shared, Authenticated: true, Owned: strings.EqualFold(m.FromID, owner), InReplyTo: m.InReplyTo, References: m.References},

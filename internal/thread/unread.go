@@ -27,7 +27,7 @@ func UnreadCount(account string) int {
 	defer mu.RUnlock()
 	n := 0
 	for _, t := range owned[account] {
-		if t.Updated.After(t.Seen) {
+		if t.Canonical == "" && t.Updated.After(t.Seen) {
 			n++
 		}
 	}
@@ -42,7 +42,7 @@ func UnreadCount(account string) int {
 func MarkSeen(account, id string) {
 	mu.Lock()
 	defer mu.Unlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account {
 		return
 	}
@@ -62,7 +62,7 @@ func MarkSeen(account, id string) {
 func MarkUnread(account, id string) {
 	mu.Lock()
 	defer mu.Unlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account {
 		return
 	}
@@ -76,7 +76,7 @@ func Handle(account, id string) { HandleAt(account, id, time.Now()) }
 func HandleAt(account, id string, reviewed time.Time) {
 	mu.Lock()
 	defer mu.Unlock()
-	if t := threads[id]; t != nil && t.Account == account {
+	if t := resolveUnlocked(account, id); t != nil && t.Account == account {
 		if reviewed.After(t.Updated) {
 			reviewed = t.Updated
 		}
@@ -92,7 +92,7 @@ func HandleAt(account, id string, reviewed time.Time) {
 func Visit(account, id string) {
 	mu.Lock()
 	defer mu.Unlock()
-	t := threads[id]
+	t := resolveUnlocked(account, id)
 	if t == nil || t.Account != account {
 		return
 	}
@@ -115,7 +115,7 @@ func MarkSeenThrough(account string, ids []string, reviewed time.Time) {
 	defer mu.Unlock()
 	changed := false
 	for _, id := range ids {
-		t := threads[id]
+		t := resolveUnlocked(account, id)
 		if t == nil || t.Account != account || t.Held || !reviewed.After(t.Seen) {
 			continue
 		}
