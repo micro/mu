@@ -72,14 +72,12 @@ func (a apiAsk) ask() string {
 // apiAnswer is what comes back.
 //
 // Thread is returned always, including on the first call, because a caller that
-// wants a second turn needs it and has no other way to learn it. Flow is the
-// workflow record — how the answer was produced — for anybody who wants to look
-// at what it did.
+// wants a second turn needs it and has no other way to learn it. Execution
+// records remain internal; callers continue conversations using Thread.
 type apiAnswer struct {
 	Text   string `json:"text"`
 	Thread string `json:"thread,omitempty"`
 	Agent  string `json:"agent,omitempty"`
-	Flow   string `json:"flow,omitempty"`
 }
 
 // askLimit bounds one question. Long enough for a paragraph with a document
@@ -195,7 +193,6 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 		Text:   res.Text,
 		Thread: res.Thread,
 		Agent:  SlugFor(accountID, agentID),
-		Flow:   res.Flow,
 	})
 }
 
