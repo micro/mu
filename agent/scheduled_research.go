@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"html"
+	"mu/service/browser"
 	"mu/service/events"
 	"net/http"
 	"strconv"
@@ -44,7 +45,11 @@ func Research(owner string) *events.Event {
 }
 
 func ResearchCost() int {
-	return quota.OperationCost(quota.OpWebSearch) + 3*quota.OperationCost(quota.OpWebFetch) + quota.OperationCost(quota.OpAgentRun)
+	cost := quota.OperationCost(quota.OpWebSearch) + 3*quota.OperationCost(quota.OpWebFetch) + 2*quota.OperationCost(quota.OpAgentRun)
+	if browser.Configured() {
+		cost += 3 * quota.OperationCost(quota.OpBrowserRead)
+	}
+	return cost
 }
 
 func researchHTML(owner, csrf string) string {
@@ -84,7 +89,7 @@ func researchHTML(owner, csrf string) string {
 			status = "Disabled"
 		}
 	}
-	return `<div class="page-stack"><p>Follow one topic. Micro reads web sources and prepares a private, sourced piece for each scheduled reading.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search, up to three source pages and one reading. Cached searches may cost less. Your limit is checked before starting.</p><details class="disclosure"><summary>Settings</summary><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Instructions<textarea name="instructions" rows="4" maxlength="4000" placeholder="Questions, areas to focus on, sources or the kind of reading you want">` + html.EscapeString(details) + `</textarea></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></details></div>`
+	return `<div class="page-stack"><p>Follow one topic. Micro reads web sources and prepares a private, sourced piece for each scheduled reading.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: planning, one web search, up to three source pages with browser fallback when available, and the reading. Cached searches may cost less. Your limit is checked before starting.</p><details class="disclosure"><summary>Settings</summary><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Instructions<textarea name="instructions" rows="4" maxlength="4000" placeholder="Questions, areas to focus on, sources or the kind of reading you want">` + html.EscapeString(details) + `</textarea></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></details></div>`
 }
 
 func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
