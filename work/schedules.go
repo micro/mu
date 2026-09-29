@@ -200,7 +200,7 @@ func occurrenceDelivery(t *tasks.Task) string {
 // run history and configuration remain separate, secondary links.
 func ScheduledCard(owner string) string {
 	var b strings.Builder
-	b.WriteString(`<section class="section-card section-stack"><div class="section-card-head"><h2>Scheduled</h2><a href="/agents?view=scheduled">Manage</a></div><div class="collection-list">`)
+	b.WriteString(`<div class="compact-list">`)
 	loc := time.UTC
 	if acc, err := auth.GetAccount(owner); err == nil {
 		if l, err := time.LoadLocation(acc.Zone); err == nil {
@@ -251,8 +251,8 @@ func ScheduledCard(owner string) string {
 				}
 			}
 		}
-		b.WriteString(`<div class="record-card section-stack"><a href="` + html.EscapeString(href) + `">` + item.title + `</a><div class="metadata-row"><span>` + html.EscapeString(status) + `</span>` + history + `</div></div>`)
+		b.WriteString(`<div class="compact-list-item"><div><a href="` + html.EscapeString(href) + `">` + item.title + `</a><div class="text-muted text-sm">` + html.EscapeString(status) + `</div></div><small class="event-date">` + history + `</small></div>`)
 	}
-	b.WriteString(`</div></section>`)
-	return b.String()
+	b.WriteString(`</div>`)
+	return app.PreviewCard("home-scheduled-card", "Scheduled", "/agents?view=scheduled", b.String())
 }

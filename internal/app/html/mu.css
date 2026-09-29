@@ -328,7 +328,7 @@ main{overflow-wrap:anywhere}
 @media(max-width:480px){header nav a{padding-block:4px}.form-row,.form-inline{align-items:stretch}pre{padding:12px}}
 
 /* Mixed previews flow independently; uniform collections use a card grid. */
-.dashboard-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--section-gap);align-items:start}
+.dashboard-columns{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:var(--section-gap);align-items:start}
 .dashboard-columns>.page-stack{min-width:0;gap:var(--section-gap)}
 .dashboard-columns>.page-stack>:is(.record-card,.section-card){margin:0}
 @media(max-width:900px){.dashboard-columns{grid-template-columns:minmax(0,1fr)}}
