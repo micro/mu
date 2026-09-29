@@ -17,7 +17,7 @@ func managementTools(owner string, opts QueryOpts) []gmagent.Option {
 		return nil
 	}
 	return []gmagent.Option{
-		gmagent.WithTool("micro_research_schedule", "Read your existing evening research schedule or update its topic and persistent instructions when asked. This saves future research preferences; it does not run research now or change delivery time, budget or enabled state. Read first and preserve existing instructions when adding a note.", map[string]any{"topic": map[string]any{"type": "string"}, "instructions": map[string]any{"type": "string"}}, func(_ context.Context, in map[string]any) (string, error) { return manageResearch(owner, in) }),
+		gmagent.WithTool("micro_research_schedule", "Read your existing evening reading schedule or update its topic and persistent instructions when asked. This saves future research preferences; it does not run research now or change delivery time, budget or enabled state. Read first and preserve existing instructions when adding a note.", map[string]any{"topic": map[string]any{"type": "string"}, "instructions": map[string]any{"type": "string"}}, func(_ context.Context, in map[string]any) (string, error) { return manageResearch(owner, in) }),
 		gmagent.WithTool("micro_agents", "List your focused agents and their tool scopes", map[string]any{}, func(_ context.Context, _ map[string]any) (string, error) {
 			var items []map[string]any
 			for _, a := range Agents(owner) {

@@ -44,12 +44,12 @@ func Research(owner string) *events.Event {
 }
 
 func ResearchCost() int {
-	return quota.OperationCost(quota.OpWebSearch) + quota.OperationCost(quota.OpAgentRun)
+	return quota.OperationCost(quota.OpWebSearch) + 3*quota.OperationCost(quota.OpWebFetch) + quota.OperationCost(quota.OpAgentRun)
 }
 
 func researchHTML(owner, csrf string) string {
 	if auth.Plan(owner) != "pro" {
-		return `<p>Follow one topic with a private, source-linked research update on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
+		return `<p>Receive a private, sourced reading on your chosen topic on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
 	}
 	details := ""
 	topic, clock, zone, frequency, maxCredits := "", "20:30", "", "weekly", ResearchCost()
@@ -84,7 +84,7 @@ func researchHTML(owner, csrf string) string {
 			status = "Disabled"
 		}
 	}
-	return `<div class="page-stack"><p>Follow one topic. Micro checks current web sources and sends a private update when the search results change.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search and one summary. Cached searches may cost less. Your limit is checked before starting.</p><details class="disclosure"><summary>Settings</summary><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Instructions<textarea name="instructions" rows="4" maxlength="4000" placeholder="Questions, areas to focus on, sources or the kind of reading you want">` + html.EscapeString(details) + `</textarea></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></details></div>`
+	return `<div class="page-stack"><p>Follow one topic. Micro reads web sources and prepares a private, sourced piece for each scheduled reading.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(ResearchCost()) + ` credits per check: one web search, up to three source pages and one reading. Cached searches may cost less. Your limit is checked before starting.</p><details class="disclosure"><summary>Settings</summary><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Instructions<textarea name="instructions" rows="4" maxlength="4000" placeholder="Questions, areas to focus on, sources or the kind of reading you want">` + html.EscapeString(details) + `</textarea></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></details></div>`
 }
 
 func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +138,7 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 			e.ResearchDigest, e.ResearchReport = "", ""
 		}
 		e.Note = details
-		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused, e.MaxCredits = "Research: "+topic, topic, repeat, zone, next, paused, budget
+		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused, e.MaxCredits = "Evening Reading: "+topic, topic, repeat, zone, next, paused, budget
 		e.Advance = scheduledAdvance(e.Kind)
 		e.Sequence++
 		e.Fired = false

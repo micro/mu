@@ -3,6 +3,7 @@ package tasks
 import (
 	"fmt"
 	"mu/internal/userdb"
+	"strings"
 	"time"
 )
 
@@ -49,6 +50,10 @@ func RecordOccurrence(owner, title string, due time.Time, o Occurrence, result s
 		delivery = "failed"
 	case "done":
 		delivery = "delivered"
+		if strings.TrimSpace(result) == "" && o.Failure == "" {
+			delivery = "not sent"
+			o.MessageID = ""
+		}
 	case "canceled":
 		delivery = "canceled"
 		if execution == "running" {

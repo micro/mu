@@ -41,6 +41,9 @@ func DeliverScheduled(r ScheduledResult, answer string, err error) error {
 	if sender == "" {
 		sender = "Micro"
 	}
+	if e := Research(r.Account); e != nil && e.ID == r.ID {
+		r.Title = "Evening Reading: " + e.Prompt
+	}
 	delivery := mail.Delivery{
 		Markdown: true,
 		From:     sender, FromID: "agent@" + mail.ConfiguredDomain(),

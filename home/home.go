@@ -149,6 +149,7 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	}
 	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
+	right.WriteString(work.ScheduledCard(acc.ID))
 	extra := 0
 	for _, spec := range overviewServices(acc) {
 		column := &left
