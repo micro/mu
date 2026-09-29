@@ -1,7 +1,10 @@
 package work
 
 import (
+	"encoding/json"
 	"mu/internal/persist"
+	"mu/service/tasks"
+	"strings"
 	"testing"
 	"time"
 )
@@ -84,5 +87,35 @@ func TestPreparedCancellationAndInterruptedRun(t *testing.T) {
 	}
 	if sent != 1 {
 		t.Fatal("missing failure delivery")
+	}
+}
+
+func TestPreparedEmptyResultDoesNotClaimDelivery(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	r := request{Account: "empty-reading-owner", ID: "reading", Revision: "1", EventID: "empty-reading-event", Due: time.Now().Add(-time.Second)}
+	prepare := func(string, string, string, time.Time) (bool, string, error) { return true, "", nil }
+	current := func(string, string, string) bool { return true }
+	send := func(request, string, error) error { t.Fatal("sent empty result"); return nil }
+	for i := 0; i < 2; i++ {
+		if err := consumePreparedWith(r, prepare, current, send); err != nil {
+			t.Fatal(err)
+		}
+	}
+	key, _ := preparationKey(r)
+	b, err := persist.Read(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result preparedResult
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.State != "done" || result.MessageID != "" {
+		t.Fatalf("%+v", result)
+	}
+	legacy := &tasks.Task{Occurrence: &tasks.Occurrence{State: "done", Delivery: "delivered"}}
+	_, label := occurrenceStatus(legacy, nil)
+	if strings.Contains(label, "Delivered") || occurrenceDelivery(legacy) != "not sent" {
+		t.Fatalf("misleading legacy status: %s", label)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -111,6 +112,12 @@ func consumePreparedWith(r request, prepare func(string, string, string, time.Ti
 	}
 	if !current(r.Account, r.ID, r.Revision) {
 		result.State = "canceled"
+		return save()
+	}
+	// An intentional no-op has no Inbox delivery. Keep the completed run, but
+	// never reserve a message ID or call the sender for an empty result.
+	if strings.TrimSpace(result.Answer) == "" && result.Failure == "" {
+		result.State, result.MessageID = "done", ""
 		return save()
 	}
 	// Reserve external delivery before sending: a restart must not duplicate it.

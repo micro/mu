@@ -3,6 +3,7 @@ package work
 import (
 	"fmt"
 	"html"
+	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
@@ -10,6 +11,7 @@ import (
 	"mu/service/tasks"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -77,6 +79,9 @@ func occurrenceStatus(t *tasks.Task, e *events.Event) (string, string) {
 	case "done":
 		if o.Failure != "" {
 			return "failed", "Preparation failed · notice sent"
+		}
+		if strings.TrimSpace(t.Result) == "" {
+			return "done", "No output — no message sent"
 		}
 		return "done", "Delivered"
 	}
@@ -148,13 +153,16 @@ func occurrenceDetail(t *tasks.Task) string {
 	if th := thread.ByRef(t.Owner, t.Occurrence.MessageID); t.Occurrence.MessageID != "" && th != nil {
 		body += `<p><a href="/inbox?id=` + url.QueryEscape(th.ID) + `">Open in Inbox</a></p>`
 	}
-	body += `<div class="metadata-row"><span>Execution: ` + html.EscapeString(t.Occurrence.Execution) + `</span><span>Delivery: ` + html.EscapeString(t.Occurrence.Delivery) + `</span></div>`
+	body += `<div class="metadata-row"><span>Execution: ` + html.EscapeString(t.Occurrence.Execution) + `</span><span>Delivery: ` + html.EscapeString(occurrenceDelivery(t)) + `</span></div>`
 	if t.Occurrence.Failure != "" {
 		body += `<p>` + html.EscapeString(t.Occurrence.Failure) + `</p>`
 	}
 	body += `</section>`
 	if t.Result != "" {
 		body += `<section class="section-card section-stack"><h2>Result</h2>` + app.RenderString(t.Result) + `</section>`
+	}
+	if t.Occurrence.State == "done" && strings.TrimSpace(t.Result) == "" && t.Occurrence.Failure == "" {
+		body += `<p>No reading or message was saved by this run.</p>`
 	}
 	return body + `</div>`
 }
@@ -179,4 +187,72 @@ func ScheduledCounts(owner string) (active, attention int) {
 		}
 	}
 	return
+}
+
+func occurrenceDelivery(t *tasks.Task) string {
+	if t.Occurrence.State == "done" && strings.TrimSpace(t.Result) == "" && t.Occurrence.Failure == "" {
+		return "not sent"
+	}
+	return t.Occurrence.Delivery
+}
+
+// ScheduledCard reads local records only. Content is the primary destination;
+// run history and configuration remain separate, secondary links.
+func ScheduledCard(owner string) string {
+	var b strings.Builder
+	b.WriteString(`<section class="section-card section-stack"><div class="section-card-head"><h2>Scheduled</h2><a href="/agents?view=scheduled">Manage</a></div><div class="collection-list">`)
+	loc := time.UTC
+	if acc, err := auth.GetAccount(owner); err == nil {
+		if l, err := time.LoadLocation(acc.Zone); err == nil {
+			loc = l
+		}
+	}
+	for _, item := range []struct {
+		title, anchor string
+		schedule      *events.Event
+	}{
+		{"Morning Brief", "morning-brief", agent.Brief(owner)},
+		{"Daily Checkin", "checkin", agent.Checkin(owner)},
+		{"Evening Reading", "research", agent.Research(owner)},
+	} {
+		href := "/agents?view=scheduled#" + item.anchor
+		status := "Not scheduled"
+		history := ""
+		if e := item.schedule; e != nil {
+			if e.Paused {
+				status = "Paused"
+			} else {
+				status = "Next: " + e.When.In(loc).Format("Mon 2 Jan, 15:04")
+			}
+			runs := tasks.Occurrences(owner, e.ID)
+			history = `<a href="/work?schedule=` + url.QueryEscape(e.ID) + `">History</a>`
+			for _, t := range runs {
+				if t.Occurrence.State != "done" || t.Occurrence.Failure != "" || strings.TrimSpace(t.Result) == "" {
+					continue
+				}
+				href = "/work/" + url.PathEscape(t.ID)
+				if th := thread.ByRef(owner, t.Occurrence.MessageID); t.Occurrence.MessageID != "" && th != nil {
+					href = "/inbox?id=" + url.QueryEscape(th.ID)
+					if e.Kind == "checkin" {
+						href = agent.ScheduledNotificationURL("checkin", href)
+					}
+				}
+				status = "Ready · " + t.Due.In(loc).Format("Mon 2 Jan, 15:04")
+				break
+			}
+			if len(runs) > 0 {
+				latest := runs[0]
+				_, label := occurrenceStatus(latest, e)
+				if latest.Occurrence.State != "done" || latest.Occurrence.Failure != "" || strings.TrimSpace(latest.Result) == "" {
+					status += " · " + label
+					if strings.HasPrefix(href, "/agents") {
+						href = "/work/" + url.PathEscape(latest.ID)
+					}
+				}
+			}
+		}
+		b.WriteString(`<div class="record-card section-stack"><a href="` + html.EscapeString(href) + `">` + item.title + `</a><div class="metadata-row"><span>` + html.EscapeString(status) + `</span>` + history + `</div></div>`)
+	}
+	b.WriteString(`</div></section>`)
+	return b.String()
 }
