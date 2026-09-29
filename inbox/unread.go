@@ -31,7 +31,7 @@ func deleteButton(r *http.Request, id string) string {
 		`onsubmit="return confirm('Delete this conversation? What was said in it is gone.')">` +
 		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`<button class="pill pill-danger" type="submit">Delete</button></form>`
+		`<button class="btn btn-danger" type="submit">Delete</button></form>`
 }
 
 // DeleteHandler serves POST /inbox/delete.
@@ -70,7 +70,7 @@ func unreadButton(r *http.Request, id string, wasUnread bool) string {
 	return `<form class="form-action" method="post" action="/inbox/unread">` +
 		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`<button class="pill" type="submit">Mark unread</button></form>`
+		`<button class="btn" type="submit">Mark unread</button></form>`
 }
 
 // UnreadHandler serves POST /inbox/unread.

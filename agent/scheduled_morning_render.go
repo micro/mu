@@ -54,6 +54,7 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	if BriefWorldNews(e) {
 		section("Headlines", c.Headlines, 5, "No recent sourced headlines are available.")
 	}
+	section("Markets", c.Markets, 4, "Market prices are unavailable for this brief.")
 	if plan && len(c.Priorities) > 0 {
 		section("Suggested priorities", c.Priorities, 3, "No priorities were suggested.")
 	}

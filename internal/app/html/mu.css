@@ -9,6 +9,8 @@ a:has(>.title){text-decoration:none}
 button,input,textarea,select{font:inherit;color:inherit}
 button,.btn,.oauth-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:5px 10px;min-height:32px;line-height:20px;border:1px solid #bbb;border-radius:6px;background:#f5f5f5;text-decoration:none;cursor:pointer;width:auto}
 button:hover,.btn:hover,.oauth-btn:hover{background:#e8e8e8}
+/* Action links retain button styling in every interaction state. */
+a:is(.btn,.oauth-btn,.mini-btn,.btn-sm,.btn-secondary,.pill,.category,.head,.rc-chip,.news-topic):is(:hover,:focus-visible){text-decoration:none}
 button:disabled{opacity:.5;cursor:wait}
 input,select,textarea{min-width:0;max-width:100%;padding:7px 10px;line-height:20px;border:1px solid #bbb;border-radius:6px;background:#fff}
 input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select{width:100%}

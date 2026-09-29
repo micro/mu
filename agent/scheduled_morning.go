@@ -12,6 +12,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/origin"
 	"mu/service/events"
+	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/prayer"
 	"mu/service/tasks"
@@ -132,6 +133,7 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 		}
 		appendBriefSource(&b, src)
 	}
+	appendBriefSource(&b, briefSource{Name: "Markets — cached prices in USD, with retrieval times; not live quotes", Text: briefMarkets(markets.AllPriceData(), now), URL: origin.Self() + "/markets"})
 	appendBriefSource(&b, briefSource{Name: "Relevant outstanding work", Text: briefWork(tasks.List(owner, ""), now, end), URL: origin.Self() + "/work"})
 	if BriefWorldNews(schedule) {
 		appendBriefSource(&b, briefSource{Name: "News published in the last 24 hours", Text: briefNews(news.GetFeed(), now)})
@@ -276,4 +278,22 @@ func hasPublicationDate(value string) bool {
 		}
 	}
 	return false
+}
+
+// Use a bounded, stable cross-section of the existing market cache. Preserve
+// freshness and units rather than handing the model an undated price summary.
+func briefMarkets(prices map[string]markets.PriceData, now time.Time) string {
+	var rows []string
+	for _, symbol := range []string{"BTC", "ETH", "GOLD", "OIL", "GBP", "EUR", "AAPL", "MSFT"} {
+		p, ok := prices[symbol]
+		if !ok || p.Price <= 0 || p.UpdatedAt.IsZero() || p.UpdatedAt.After(now) {
+			continue
+		}
+		freshness := "cached"
+		if now.Sub(p.UpdatedAt) > 2*time.Hour {
+			freshness = "stale cached"
+		}
+		rows = append(rows, fmt.Sprintf("%s: %.8g USD; reported 24h change %+.2f%%; %s, retrieved %s; provider %s", symbol, p.Price, p.Change24h, freshness, p.UpdatedAt.Format(time.RFC3339), p.Source))
+	}
+	return strings.Join(rows, "\n")
 }
