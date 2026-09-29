@@ -400,13 +400,13 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 		}
 		var links []string
 		if i > 0 {
-			links = append(links, app.TextLink("Previous", inboxURL(r, all[i-1].ID)))
+			links = append(links, `<a class="btn" href="`+html.EscapeString(inboxURL(r, all[i-1].ID))+`">Previous</a>`)
 		}
 		if i+1 < len(all) {
-			links = append(links, app.TextLink("Next", inboxURL(r, all[i+1].ID)))
+			links = append(links, `<a class="btn" href="`+html.EscapeString(inboxURL(r, all[i+1].ID))+`">Next</a>`)
 		}
 		if len(links) > 0 {
-			toolbar = append(links, toolbar...)
+			toolbar = append(toolbar, links...)
 		}
 		break
 	}
