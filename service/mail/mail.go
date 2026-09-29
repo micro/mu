@@ -1655,7 +1655,16 @@ type Delivery struct {
 // This is the one place a message is stored, and every delivery path reaches
 // it: inbound SMTP, submission from a mail client, the web compose, the
 // mail_send tool and the agent's own replies.
+// recipientDisplayName keeps account names separate from mailbox aliases.
+func recipientDisplayName(owner, fallback string) string {
+	if acc, err := auth.GetAccount(owner); err == nil && strings.TrimSpace(acc.Name) != "" {
+		return strings.TrimSpace(acc.Name)
+	}
+	return strings.TrimSpace(fallback)
+}
+
 func SendMessageTo(d Delivery) error {
+	d.To = recipientDisplayName(d.ToID, d.To)
 	// Local deliveries need the same mailbox-to-Inbox reference as SMTP mail.
 	if d.MessageID == "" {
 		d.MessageID = fmt.Sprintf("<%s@%s>", uuid.NewString(), ConfiguredDomain())

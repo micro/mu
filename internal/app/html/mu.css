@@ -331,7 +331,18 @@ main{overflow-wrap:anywhere}
 .dashboard-columns{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:var(--section-gap);align-items:start}
 .dashboard-columns>.page-stack{min-width:0;gap:var(--section-gap)}
 .dashboard-columns>.page-stack>:is(.record-card,.section-card){margin:0}
-@media(max-width:900px){.dashboard-columns{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:900px){
+ .dashboard-columns{display:flex;flex-direction:column}
+ .dashboard-columns>.page-stack{display:contents}
+ .dashboard-columns>.page-stack>.section-card{order:2;width:100%}
+ .dashboard-columns #home-events-card{order:-5}
+ .dashboard-columns #home-scheduled-card{order:-4}
+ .dashboard-columns #home-inbox{order:-3}
+ .dashboard-columns #home-service-markets{order:-2}
+ .dashboard-columns #home-service-news{order:-1}
+ .dashboard-columns #home-blog{order:0}
+ .dashboard-columns #home-service-video{order:1}
+}
 .card-grid,.directory-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:var(--section-gap);min-width:0;align-items:start}
 :is(.card-grid,.directory-list)>*{min-width:0;margin:0}
 .card-grid>:is(h2,.section-heading){grid-column:1/-1}

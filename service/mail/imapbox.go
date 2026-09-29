@@ -519,7 +519,7 @@ func imapRender(m *Message) []byte {
 // arrived at, the one that says which agent it was for, and the one a reply
 // should quote.
 func imapDelivered(m *Message) (name, address string) {
-	name = strings.TrimSpace(m.To)
+	name = recipientDisplayName(m.ToID, m.To)
 	local := strings.TrimSpace(m.ToID)
 	if local == "" {
 		// Nothing to build an address out of. If the name is one, it is all
@@ -528,9 +528,6 @@ func imapDelivered(m *Message) (name, address string) {
 			return "", name
 		}
 		return "", ""
-	}
-	if strings.EqualFold(name, local) {
-		name = ""
 	}
 	if m.Tag != "" {
 		local += "+" + m.Tag
