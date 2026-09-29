@@ -1278,6 +1278,9 @@ func toolResultError(res gmai.ToolResult) string {
 }
 
 func nativeSystem(opts QueryOpts) string {
+	if opts.NoTools && strings.TrimSpace(opts.System) != "" {
+		return opts.System + "\n\n" + flag.Values + "\n\n" + opts.OutputInstruction + "\nYou have no tools in this step. Source material was collected before this request. Use the supplied material; never claim you attempted to open a page or call a tool."
+	}
 	sys := "You are Micro, a personal AI agent. " +
 		"Use the available tools for live or personal data (weather, news, market prices, " +
 		"social, video, blog, web search, places and points of interest near a location, " +

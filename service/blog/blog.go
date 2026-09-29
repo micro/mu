@@ -1,11 +1,15 @@
 package blog
 
 import (
+	"crypto/rand"
+	"crypto/subtle"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/net/html"
 	stdhtml "html"
+	"mu/internal/origin"
 	"net/http"
 	"net/url"
 	"os"
@@ -96,6 +100,7 @@ func loadTopics() []string {
 }
 
 type Post struct {
+	ShareKey  string     `json:"share_key,omitempty"`
 	Community bool       `json:"community,omitempty"`
 	Editorial bool       `json:"editorial,omitempty"`
 	ID        string     `json:"id"`
@@ -1000,6 +1005,32 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 	return nil
 }
 
+// SavePrivateDraft saves a caller-named draft once, without announcing it before
+// its scheduled delivery. Replays cannot overwrite an edited or published post.
+func SavePrivateDraft(id, title, content, author, owner string) error {
+	if id == "" || owner == "" || strings.TrimSpace(content) == "" {
+		return fmt.Errorf("draft identity, owner and content required")
+	}
+	mutex.Lock()
+	defer mutex.Unlock()
+	if old := postsMap[id]; old != nil {
+		if old.AuthorID != owner {
+			return fmt.Errorf("draft belongs to another account")
+		}
+		return nil
+	}
+	post := &Post{ID: id, Title: title, Content: content, Author: author, AuthorID: owner, Private: true, Community: true, Tags: "evening-reading", CreatedAt: time.Now()}
+	posts = append([]*Post{post}, posts...)
+	postsMap[id] = post
+	if err := save(); err != nil {
+		posts = posts[1:]
+		delete(postsMap, id)
+		return err
+	}
+	updateCacheUnlocked()
+	return indexPost(*post)
+}
+
 // CreateComment adds a comment to a post and returns the new comment.
 func CreateComment(postID, content, author, authorID string) (*Comment, error) {
 	comment := &Comment{
@@ -1351,6 +1382,24 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == http.MethodPost && r.FormValue("sharing") != "" {
+		_, acc, err := auth.RequireSession(r)
+		if err != nil || acc.ID != post.AuthorID || !auth.StrictCSRF(r) {
+			app.Forbidden(w, r, "Only the author can change sharing")
+			return
+		}
+		action := r.FormValue("sharing")
+		if action != "enable" && action != "disable" {
+			app.BadRequest(w, r, "Invalid sharing action")
+			return
+		}
+		if err := setShareKey(id, acc.ID, action == "enable"); err != nil {
+			app.BadRequest(w, r, "Could not update sharing")
+			return
+		}
+		http.Redirect(w, r, "/blog/post?id="+url.QueryEscape(id), http.StatusSeeOther)
+		return
+	}
 	if r.Method == http.MethodPost && r.FormValue("publication") != "" {
 		_, acc := auth.TrySession(r)
 		if acc == nil || !acc.Admin {
@@ -1377,9 +1426,11 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	// Private drafts are readable by their author and instance administrators.
 	if post.Private {
 		w.Header().Set("Cache-Control", "private, no-store")
+		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 		_, acc := auth.TrySession(r)
 		isAdmin := acc != nil && acc.Admin
-		if acc == nil || (!isAdmin && acc.ID != post.AuthorID) {
+		shared := r.Method == http.MethodGet && post.ShareKey != "" && subtle.ConstantTimeCompare([]byte(post.ShareKey), []byte(r.URL.Query().Get("share"))) == 1
+		if !shared && (acc == nil || (!isAdmin && acc.ID != post.AuthorID)) {
 			app.Forbidden(w, r, "This post is private")
 			return
 		}
@@ -1597,7 +1648,16 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		contentSB.WriteString(`<p class="text-muted text-sm">Updated ` + post.UpdatedAt.Format("2 January 2006") + `</p>`)
 	}
 	if post.Private {
-		contentSB.WriteString(`<p class="text-muted text-sm">Private draft</p>`)
+		contentSB.WriteString(`<p class="text-muted text-sm">Private article</p>`)
+		if userID == post.AuthorID {
+			action, label := "enable", "Create share link"
+			if post.ShareKey != "" {
+				action, label = "disable", "Revoke share link"
+				link := origin.Self() + "/blog/post?id=" + url.QueryEscape(post.ID) + "&share=" + url.QueryEscape(post.ShareKey)
+				contentSB.WriteString(`<label class="field-label">Unlisted link<input readonly value="` + stdhtml.EscapeString(link) + `"></label><p class="text-muted text-sm">Anyone with this link can read this article. It is not listed publicly.</p>`)
+			}
+			contentSB.WriteString(`<form method="POST" class="form-actions" action="/blog/post?id=` + url.QueryEscape(post.ID) + `">` + app.CSRFField(auth.CSRFToken(r)) + `<button name="sharing" value="` + action + `">` + label + `</button><a class="btn" href="/blog/post?id=` + url.QueryEscape(post.ID) + `&amp;edit=true">Edit or publish</a></form>`)
+		}
 	}
 	if !post.Editorial && !post.Private {
 		contentSB.WriteString(`<p class="editorial-notice">` + backLabel + ` · This post is not part of Micro’s editorial publication.</p>`)
@@ -2013,4 +2073,31 @@ func publication(editorial, community bool) string {
 		return "community"
 	}
 	return "archive"
+}
+
+func setShareKey(id, owner string, enabled bool) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	p := postsMap[id]
+	if p == nil || p.AuthorID != owner {
+		return fmt.Errorf("post not owned")
+	}
+	old := p.ShareKey
+	if enabled {
+		if old != "" {
+			return nil
+		}
+		var key [32]byte
+		if _, err := rand.Read(key[:]); err != nil {
+			return err
+		}
+		p.ShareKey = hex.EncodeToString(key[:])
+	} else {
+		p.ShareKey = ""
+	}
+	if err := save(); err != nil {
+		p.ShareKey = old
+		return err
+	}
+	return nil
 }
