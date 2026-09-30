@@ -922,7 +922,7 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory, convert
 
 	// Market data table
 	sb.WriteString(`<div class="table-scroll"><table class="markets-table">`)
-	sb.WriteString(`<thead><tr><th>Symbol</th><th>Price</th><th>24h Change</th><th>Chart</th></tr></thead>`)
+	sb.WriteString(`<thead><tr><th>Symbol</th><th class="markets-price">Price</th><th class="markets-change">24h Change</th><th>Chart</th></tr></thead>`)
 	sb.WriteString(`<tbody>`)
 
 	assets := append([]string{}, getAssetsForCategory(activeCategory)...)
