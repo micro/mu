@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -46,11 +45,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]any{"html": content, "pending": pending, "weather": weatherLine(acc.ID)})
 		return
 	}
-	resume := ""
-	if th := agent.RecentConversation(acc.ID, ""); th != nil {
-		resume = `<p class="home-resume" data-home-overview><a href="` + html.EscapeString(agent.Path(acc.ID, th.Agent)+"?session="+url.QueryEscape(th.ID)) + `">Continue: ` + html.EscapeString(th.Subject) + `</a></p>`
-	}
-	body := `<div data-home-overview>` + `<div class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time>` + `<span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + `</div>` + agent.Prompt(acc.ID) + resume + `<div data-home-overview id="home-overview-content" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
+	body := `<div data-home-overview>` + `<div class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time>` + `<span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + `</div>` + agent.Prompt(acc.ID) + `<div data-home-overview id="home-overview-content" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
 	app.Respond(w, r, app.Response{Title: "Home", HTML: body})
 }
 
@@ -174,5 +169,5 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-col">` + shortBrief(acc.ID) + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
+	return `<div class="page-col">` + todoHTML(acc.ID) + shortBrief(acc.ID) + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
 }

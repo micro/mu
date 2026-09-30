@@ -11,6 +11,7 @@ import (
 	"mu/service/tasks"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -255,4 +256,25 @@ func ScheduledCard(owner string) string {
 	}
 	b.WriteString(`</div>`)
 	return app.PreviewCard("home-scheduled-card", "Scheduled", "/agents?view=scheduled", b.String())
+}
+
+// ScheduledAttention returns only the latest failed or blocked run per schedule.
+// Superseded failures and canceled runs do not create stale Home actions.
+func ScheduledAttention(owner string) []*tasks.Task {
+	var out []*tasks.Task
+	for _, g := range scheduledGroups(owner) {
+		if g.Latest == nil || (g.Status != tasks.StatusFailed && g.Status != tasks.StatusBlocked) {
+			continue
+		}
+		t := *g.Latest
+		t.Status = g.Status
+		out = append(out, &t)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Updated.Equal(out[j].Updated) {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].Updated.After(out[j].Updated)
+	})
+	return out
 }

@@ -268,11 +268,17 @@ func wireHooks() {
 			if strings.TrimSpace(title) == "" {
 				title = "New mail"
 			}
+			link, tag := inbox.MailURL(m), "mail-"+from
+			if m.Tag == "checkin" && from == "agent@"+mail.ConfiguredDomain() {
+				link = agent.ScheduledNotificationURL("checkin", link)
+				// A later message must not replace this actionable check-in.
+				tag = "checkin-" + m.MessageID
+			}
 			push.Send(accountID, push.Notification{
 				Title: title,
 				Body:  "From " + from,
-				URL:   inbox.MailURL(m),
-				Tag:   "mail-" + from,
+				URL:   link,
+				Tag:   tag,
 			})
 		}
 	}()
