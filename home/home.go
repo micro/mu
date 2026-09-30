@@ -6,7 +6,6 @@ import (
 	"html"
 	"net/http"
 	"strings"
-	"time"
 
 	"mu/account"
 	"mu/agent"
@@ -68,7 +67,8 @@ func weatherLine(owner string) string {
 	return `<a href="/account#place">Set your location for weather</a>`
 }
 
-// Personal facts and the cached world summary. Rendering never calls a model.
+// Brief is context to read; Todo owns actions and Upcoming owns the calendar.
+// Rendering uses local facts and the cached world summary, never a model call.
 func shortBrief(owner string) string {
 	var parts []string
 	if n, newest := inbox.Waiting(owner); n > 0 {
@@ -82,7 +82,7 @@ func shortBrief(owner string) string {
 		}
 		parts = append(parts, text+".")
 	}
-	scheduledActive, scheduledAttention := work.ScheduledCounts(owner)
+	scheduledActive, _ := work.ScheduledCounts(owner)
 	doing := len(tasks.List(owner, tasks.StatusDoing)) + scheduledActive
 	if doing > 0 {
 		noun := "tasks"
@@ -91,12 +91,6 @@ func shortBrief(owner string) string {
 		}
 		parts = append(parts, fmt.Sprintf(`<a href="/work">%d %s</a> in progress.`, doing, noun))
 	}
-	if scheduledAttention > 0 {
-		parts = append(parts, fmt.Sprintf(`<a href="/work">%d scheduled updates need attention</a>.`, scheduledAttention))
-	}
-	if line := nextEvent(owner); line != "" {
-		parts = append(parts, line)
-	}
 	if line := brief.Line(); line != "" {
 		parts = append(parts, html.EscapeString(line))
 	}
@@ -104,33 +98,6 @@ func shortBrief(owner string) string {
 		return ""
 	}
 	return `<section class="section-card" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + strings.Join(parts, " ") + `</p></section>`
-}
-
-// Read only the local calendar and its already cached external preview.
-func nextEvent(owner string) string {
-	now := account.LocalNow(owner)
-	var when time.Time
-	title := ""
-	consider := func(name string, at time.Time) {
-		at = at.In(now.Location())
-		if at.After(now) && at.Format("2006-01-02") == now.Format("2006-01-02") && (when.IsZero() || at.Before(when)) {
-			title, when = name, at
-		}
-	}
-	for _, e := range events.Upcoming(owner) {
-		if e.Kind != "brief" && e.Prompt == "" {
-			consider(e.Title, e.When)
-		}
-	}
-	for _, e := range events.CachedOverview(owner) {
-		if !e.AllDay {
-			consider(e.Title, e.Start)
-		}
-	}
-	if title == "" {
-		return ""
-	}
-	return `<a href="/events">` + html.EscapeString(title) + `</a> at ` + when.Format("15:04") + `.`
 }
 
 func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
