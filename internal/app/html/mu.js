@@ -110,8 +110,10 @@ self.addEventListener('notificationclick', function (e) {
     self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(function (all) {
       for (var i = 0; i < all.length; i++) {
         if (all[i].url.indexOf(self.registration.scope) === 0 && 'focus' in all[i]) {
-          all[i].navigate(url);
-          return all[i].focus();
+          return all[i].navigate(url).then(function (client) {
+            if (client) return client.focus();
+            if (self.clients.openWindow) return self.clients.openWindow(url);
+          });
         }
       }
       if (self.clients.openWindow) return self.clients.openWindow(url);
@@ -1615,6 +1617,8 @@ if(typeof document!=='undefined'){
   window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; clearTimeout(timer); check(); } });
 })();
 
+// The remaining controls run in pages, never in the push service worker.
+if (typeof document !== 'undefined') {
 // App passwords are displayed once; copying never sends them elsewhere.
 document.querySelector('[data-copy-password]')?.addEventListener('click',async()=>{
  const field=document.querySelector('#app-password'),status=document.querySelector('[data-copy-status]');
@@ -1659,10 +1663,11 @@ if(typeof document!=='undefined'){
 // Fill Home's cold cache after paint; leave its composer and draft untouched.
 (()=>{
  const target=document.querySelector('#home-overview-content');
- if(!target||target.dataset.pending!=='true')return;
- let attempts=0;
+ if(!target)return;
+ let attempts=0,refreshing=false,timer,lastRefresh=0;
  async function refresh(){
-  if(!target.isConnected||document.hidden||attempts++>=15)return;
+  if(!target.isConnected||document.hidden||refreshing||attempts++>=15)return;
+  refreshing=true;lastRefresh=Date.now();
   try{
    const response=await fetch('/home?view=overview',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(10000)});
    if(!response.ok)return;
@@ -1670,10 +1675,18 @@ if(typeof document!=='undefined'){
    if(!target.isConnected)return;
    target.innerHTML=data.html;
    const weather=document.querySelector("#home-weather");if(weather)weather.innerHTML=data.weather;
-   if(data.pending)setTimeout(refresh,2000);
-  }catch{}
+   target.dataset.pending=String(data.pending);
+   if(data.pending)timer=setTimeout(refresh,2000);
+  }catch{}finally{refreshing=false;}
  }
- setTimeout(refresh,1500);
+ function resume(){
+  if(document.hidden||Date.now()-lastRefresh<1000)return;
+  clearTimeout(timer);attempts=0;refresh();
+ }
+ document.addEventListener('visibilitychange',resume);
+ window.addEventListener('focus',resume);
+ window.addEventListener('pageshow',event=>{if(event.persisted)resume();});
+ if(target.dataset.pending==='true')timer=setTimeout(refresh,1500);
 })();
 
 // Video controls share the app bundle; only the player API is loaded by Watch.
@@ -1776,3 +1789,5 @@ if (typeof document !== 'undefined') {
  }
  setTimeout(refresh,1000);
 })();
+
+}

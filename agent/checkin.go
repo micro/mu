@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -104,4 +105,36 @@ func consolidateCheckins() {
 	if err := thread.Flush(); err != nil {
 		app.Log("agent", "save consolidated checkins: %v", err)
 	}
+}
+
+// PendingCheckin returns today's latest delivered check-in until the owner
+// replies, regardless of read state. The caller supplies the owner's local time.
+// Older check-ins remain in history but never become today's next action.
+func PendingCheckin(owner string, now time.Time) *thread.Thread {
+	var latest *thread.Thread
+	var delivered time.Time
+	answered := false
+	for _, th := range thread.List(owner, 0) {
+		if th.Held || th.Updated.In(now.Location()).Format("2006-01-02") < now.Format("2006-01-02") {
+			continue
+		}
+		messages := thread.Messages(owner, th.ID, 0)
+		for i, m := range messages {
+			if m.From != "agent@"+mail.ConfiguredDomain() || !strings.Contains(m.To, "+checkin@") || m.At.After(now) || m.At.In(now.Location()).Format("2006-01-02") != now.Format("2006-01-02") || !m.At.After(delivered) {
+				continue
+			}
+			copy := th
+			latest, delivered, answered = &copy, m.At, false
+			for _, reply := range messages[i+1:] {
+				if reply.Role == thread.RolePerson && reply.From != "agent@"+mail.ConfiguredDomain() {
+					answered = true
+					break
+				}
+			}
+		}
+	}
+	if answered {
+		return nil
+	}
+	return latest
 }

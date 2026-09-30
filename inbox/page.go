@@ -118,6 +118,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RedirectToLogin(w, r)
 		return
 	}
+	// Bulk read is a collection operation: its repeated IDs are selections,
+	// not conflicting identifiers for one resource. Keep markRead's CSRF,
+	// owner, held-message and arrival-cutoff checks before any mutation.
+	if r.Method == http.MethodPost && r.URL.Path == "/inbox" {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		if err := r.ParseForm(); err != nil {
+			app.BadRequest(w, r, "Invalid form")
+			return
+		}
+		if r.PostFormValue("action") == "mark_read" {
+			markRead(w, r, acc.ID)
+			return
+		}
+	}
 	var ok bool
 	r, ok = inboxResource(w, r, acc.ID)
 	if !ok {
