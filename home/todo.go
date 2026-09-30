@@ -12,7 +12,7 @@ import (
 	"mu/work"
 )
 
-// To do is a view of outstanding actions, not a second task store. Reading a
+// Todo is a view of outstanding actions, not a second task store. Reading a
 // message does not complete an action; replying or changing its work state does.
 func todoHTML(owner string) string {
 	var rows []string
@@ -49,5 +49,5 @@ func todoHTML(owner string) string {
 			body += fmt.Sprintf(`<p><a href="/work">%d more in Work</a></p>`, len(rows)-shown)
 		}
 	}
-	return `<section class="section-card" aria-labelledby="home-todo-title"><div class="section-card-head"><h2 id="home-todo-title">To do</h2></div>` + body + `</section>`
+	return `<section class="section-card" aria-labelledby="home-todo-title"><div class="section-card-head"><h2 id="home-todo-title">Todo</h2></div>` + body + `</section>`
 }
