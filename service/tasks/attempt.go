@@ -3,6 +3,8 @@ package tasks
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"mu/internal/userdb"
 	"time"
 )
 
@@ -48,6 +50,23 @@ func ArchiveTask(owner, id string, archive bool) error {
 	defer runMu.Unlock()
 	t, err := Get(owner, id)
 	if err != nil {
+		return err
+	}
+	if t.Occurrence != nil {
+		if t.Occurrence.State != "done" && t.Occurrence.State != "delivery_failed" && t.Occurrence.State != "canceled" {
+			return fmt.Errorf("wait for the scheduled run to finish before dismissing it")
+		}
+		rec, err := userdb.Get(ns, owner, collection, id)
+		if err != nil {
+			return err
+		}
+		rec.Data = maps.Clone(rec.Data)
+		rec.Data["archived"] = archive
+		rec.Data["updated"] = stamp(now())
+		rec, err = userdb.Update(ns, owner, collection, id, rec.Data, false)
+		if err == nil {
+			index(toTask(rec.ID, owner, rec.Data))
+		}
 		return err
 	}
 	if t.Status == StatusDoing {

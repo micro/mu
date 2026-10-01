@@ -90,10 +90,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if t.Occurrence != nil {
 			if app.WantsJSON(r) {
 				status, _ := occurrenceStatus(t, scheduleFor(t.Owner, t.Occurrence.Schedule))
-				app.RespondJSON(w, map[string]any{"html": occurrenceDetail(t), "status": status, "work": publicTask(t)})
+				app.RespondJSON(w, map[string]any{"html": occurrenceDetail(t, auth.CSRFToken(r)), "status": status, "work": publicTask(t)})
 				return
 			}
-			app.Respond(w, r, app.Response{Title: "Scheduled run", HTML: `<div id="work-detail" class="page-stack">` + occurrenceDetail(t) + `</div>` + workPollJS})
+			app.Respond(w, r, app.Response{Title: "Scheduled run", HTML: `<div id="work-detail" class="page-stack">` + occurrenceDetail(t, auth.CSRFToken(r)) + `</div>` + workPollJS})
 			return
 		}
 		body := workDetail(t, auth.CSRFToken(r))
