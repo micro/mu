@@ -22,15 +22,3 @@ func SectionCard(id, heading, href, body string) string {
 	}
 	return `<section id="` + html.EscapeString(id) + `" class="section-card"><div class="section-card-head"><h4>` + heading + `</h4>` + more + `</div><div class="card"><div class="card-body">` + body + `</div></div></section>`
 }
-
-// PreviewSection presents a collection in the page flow without a surrounding card.
-// Body is trusted rendered HTML; identifiers, titles and links are escaped.
-func PreviewSection(id, title, href, body string) string {
-	heading := html.EscapeString(title)
-	more := ""
-	if href != "" {
-		heading = `<a href="` + html.EscapeString(href) + `">` + heading + `</a>`
-		more = `<a class="section-more" href="` + html.EscapeString(href) + `">View all</a>`
-	}
-	return `<section id="` + html.EscapeString(id) + `" class="preview-section" aria-labelledby="` + html.EscapeString(id) + `-title"><div class="section-card-head"><h2 id="` + html.EscapeString(id) + `-title">` + heading + `</h2>` + more + `</div>` + body + `</section>`
-}
