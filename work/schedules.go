@@ -53,6 +53,9 @@ func scheduledGroups(owner string) []scheduleGroup {
 }
 
 func occurrenceStatus(t *tasks.Task, e *events.Event) (string, string) {
+	if t.Archived {
+		return tasks.StatusCanceled, "Dismissed"
+	}
 	o := t.Occurrence
 	if o == nil {
 		return t.Status, state(t.Status)
@@ -136,7 +139,7 @@ func scheduleHistory(w http.ResponseWriter, r *http.Request, acc *auth.Account, 
 	app.Respond(w, r, app.Response{Title: "Scheduled work", HTML: body})
 }
 
-func occurrenceDetail(t *tasks.Task) string {
+func occurrenceDetail(t *tasks.Task, csrf string) string {
 	schedule := scheduleFor(t.Owner, t.Occurrence.Schedule)
 	_, label := occurrenceStatus(t, schedule)
 	loc := time.UTC
@@ -157,6 +160,13 @@ func occurrenceDetail(t *tasks.Task) string {
 	body += `<div class="metadata-row"><span>Execution: ` + html.EscapeString(t.Occurrence.Execution) + `</span><span>Delivery: ` + html.EscapeString(occurrenceDelivery(t)) + `</span></div>`
 	if t.Occurrence.Failure != "" {
 		body += `<p>` + html.EscapeString(t.Occurrence.Failure) + `</p>`
+	}
+	if t.Occurrence.State == "done" || t.Occurrence.State == "delivery_failed" || t.Occurrence.State == "canceled" {
+		action, label := "archive", "Dismiss"
+		if t.Archived {
+			action, label = "restore", "Restore"
+		}
+		body += `<form class="form-actions" method="POST" action="/work">` + app.CSRFField(csrf) + `<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `"><input type="hidden" name="action" value="` + action + `"><button>` + label + `</button></form><p class="text-muted">Dismiss removes this run from Todo. Its history and future schedule are kept.</p>`
 	}
 	body += `</section>`
 	if t.Result != "" {

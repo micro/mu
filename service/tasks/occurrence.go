@@ -87,6 +87,7 @@ func RecordOccurrence(owner, title string, due time.Time, o Occurrence, result s
 	if len(records) > 0 {
 		old := toTask(records[0].ID, owner, records[0].Data)
 		fields["created"] = stamp(old.Created)
+		fields["archived"] = old.Archived
 		if len(old.Attempts) > 0 {
 			attempt.Started = old.Attempts[0].Started
 			attempt.Finished = old.Attempts[0].Finished
