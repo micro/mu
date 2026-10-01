@@ -15,7 +15,6 @@ import (
 	"mu/internal/auth"
 	"mu/service/blog"
 	"mu/service/events"
-	"mu/service/tasks"
 	"mu/service/weather"
 	"mu/work"
 )
@@ -67,37 +66,13 @@ func weatherLine(owner string) string {
 	return `<a href="/account#place">Set your location for weather</a>`
 }
 
-// Brief is context to read; Todo owns actions and Upcoming owns the calendar.
-// Rendering uses local facts and the cached world summary, never a model call.
-func shortBrief(owner string) string {
-	var parts []string
-	if n, newest := inbox.Waiting(owner); n > 0 {
-		noun := "conversations"
-		if n == 1 {
-			noun = "conversation"
-		}
-		text := fmt.Sprintf(`<a href="/inbox?filter=unread">%d unread %s</a>`, n, noun)
-		if newest != "" && !strings.EqualFold(newest, "You") {
-			text += ", the newest from " + html.EscapeString(newest)
-		}
-		parts = append(parts, text+".")
-	}
-	scheduledActive, _ := work.ScheduledCounts(owner)
-	doing := len(tasks.List(owner, tasks.StatusDoing)) + scheduledActive
-	if doing > 0 {
-		noun := "tasks"
-		if doing == 1 {
-			noun = "task"
-		}
-		parts = append(parts, fmt.Sprintf(`<a href="/work">%d %s</a> in progress.`, doing, noun))
-	}
-	if line := brief.Line(); line != "" {
-		parts = append(parts, html.EscapeString(line))
-	}
-	if len(parts) == 0 {
+// Brief contains only the cached world summary; rendering never calls a model.
+func shortBrief() string {
+	line := brief.Line()
+	if line == "" {
 		return ""
 	}
-	return `<section class="section-card" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + strings.Join(parts, " ") + `</p></section>`
+	return `<section class="section-card" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + html.EscapeString(line) + `</p></section>`
 }
 
 func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
@@ -136,5 +111,5 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-col">` + todoHTML(acc.ID) + shortBrief(acc.ID) + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
+	return `<div class="page-col">` + todoHTML(acc.ID) + shortBrief() + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
 }
