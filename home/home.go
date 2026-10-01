@@ -72,26 +72,21 @@ func shortBrief() string {
 	if line == "" {
 		return ""
 	}
-	return app.PreviewSection("home-brief", "Brief", "", `<p class="home-summary">`+html.EscapeString(line)+`</p>`)
+	return `<section class="section-card" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + html.EscapeString(line) + `</p></section>`
 }
 
 func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
 	var left, right strings.Builder
-	left.WriteString(todoHTML(acc.ID))
 	if preview := inbox.Preview(acc.ID); preview != "" {
-		left.WriteString(app.PreviewSection("home-inbox", "Messages", "/inbox", preview))
+		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
+	reading := blog.Preview()
+	if reading == "" {
+		reading = `<p class="text-muted">Published articles and topic digests will appear here.</p>`
+	}
+	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
 	right.WriteString(work.ScheduledCard(acc.ID))
-	today := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
-	if left.Len() == 0 {
-		today = `<div class="page-stack">` + right.String() + `</div>`
-	}
-	left.Reset()
-	right.Reset()
-	if reading := blog.Preview(); reading != "" {
-		left.WriteString(app.PreviewSection("home-blog", "Reading", "/blog", `<div class="home-card-content">`+reading+`</div>`))
-	}
 	extra := 0
 	for _, spec := range overviewServices(acc) {
 		column := &left
@@ -99,7 +94,7 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 		case "markets", "video":
 			column = &right
 		case "news":
-			// News follows articles in the reading column.
+			// Reading follows Inbox and Blog in the left column.
 		default:
 			if extra%2 != 0 {
 				column = &right
@@ -110,11 +105,11 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 		if body == "" {
 			body = `<p class="text-muted">` + html.EscapeString(spec.Description) + `</p>`
 		}
-		column.WriteString(app.PreviewSection("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
+		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
 	}
 	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-stack home-overview">` + today + shortBrief() + columns + `<nav class="form-actions" aria-label="Home services"><a href="/services">Choose services</a></nav></div>`
+	return `<div class="page-col">` + todoHTML(acc.ID) + shortBrief() + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
 }

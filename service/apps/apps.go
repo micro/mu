@@ -650,15 +650,11 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			} else {
 				controls = app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "", "")
 			}
-			description := ""
-			if text := strings.TrimSpace(a.Description); text != "" {
-				description = `<p class="card-summary text-secondary">` + htmlpkg.EscapeString(text) + `</p>`
-			}
 			sb.WriteString(fmt.Sprintf(`<div class="directory-row">
 <img src="/apps/%s/icon.svg" width="32" height="32" class="directory-icon">
 <div class="directory-content">
 <h3 class="m-0 mb-1"><a href="/apps/%s">%s</a></h3>
-%s
+<p class="card-summary text-secondary">%s</p>
 <div class="metadata-row card-summary">by %s%s%s · %d launches</div>
 <div class="form-actions directory-actions"><a href="/apps/%s/embed">Embed</a>%s</div>
 </div>
@@ -666,7 +662,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Name),
-				description,
+				htmlpkg.EscapeString(a.Description),
 				htmlpkg.EscapeString(a.Author),
 				tagsHTML,
 				priceHTML,
