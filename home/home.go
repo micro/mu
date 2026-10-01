@@ -111,5 +111,5 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-col">` + todoHTML(acc.ID) + shortBrief() + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
+	return `<div class="page-col">` + shortBrief() + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
 }

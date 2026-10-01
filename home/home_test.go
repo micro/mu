@@ -36,8 +36,11 @@ func TestHomeOverviewIsPrivateAndDoesNotRepeatDailyBrief(t *testing.T) {
 		if w.Code != 200 || strings.Contains(body, "The end of the daily brief.") || strings.Contains(body, "Foreign secret") {
 			t.Fatalf("incorrect overview at %s: %d", path, w.Code)
 		}
+		if strings.Contains(body, "home-todo-title") {
+			t.Fatal("removed Todo card rendered on Home")
+		}
 		if path == "/home" {
-			for _, want := range []string{`data-path="/agent/micro"`, `id="home-todo-title"`, `You’re all caught up.`, `href="/services"`, `aria-label="Main navigation"`} {
+			for _, want := range []string{`data-path="/agent/micro"`, `href="/services"`, `aria-label="Main navigation"`} {
 				if !strings.Contains(body, want) {
 					t.Fatalf("missing %q", want)
 				}
