@@ -8,6 +8,7 @@ import (
 
 	"mu/account"
 	"mu/agent"
+	"mu/internal/app"
 	"mu/service/tasks"
 	"mu/work"
 )
@@ -17,7 +18,7 @@ import (
 func todoHTML(owner string) string {
 	var rows []string
 	add := func(title, href, detail string) {
-		rows = append(rows, `<a class="collection-item" href="`+html.EscapeString(href)+`"><span class="collection-title">`+html.EscapeString(title)+`</span><span class="collection-preview">`+html.EscapeString(detail)+`</span></a>`)
+		rows = append(rows, `<a class="todo-row" href="`+html.EscapeString(href)+`"><span class="todo-mark" aria-hidden="true">○</span><span class="collection-title">`+html.EscapeString(title)+`</span><span class="collection-preview">`+html.EscapeString(detail)+`</span></a>`)
 	}
 	if th := agent.PendingCheckin(owner, account.LocalNow(owner)); th != nil {
 		add("Respond to today’s check-in", "/checkin?id="+url.QueryEscape(th.ID), "A sentence or two is enough")
@@ -41,13 +42,14 @@ func todoHTML(owner string) string {
 			add(t.Title, "/work?id="+url.QueryEscape(t.ID), label)
 		}
 	}
-	body := `<p class="text-muted">You’re all caught up.</p>`
-	if len(rows) > 0 {
-		shown := min(len(rows), 5)
-		body = `<div class="collection-list">` + strings.Join(rows[:shown], "") + `</div>`
-		if len(rows) > shown {
-			body += fmt.Sprintf(`<p><a href="/work">%d more in Work</a></p>`, len(rows)-shown)
-		}
+	if len(rows) == 0 {
+		return ""
 	}
-	return `<section class="section-card" aria-labelledby="home-todo-title"><div class="section-card-head"><h2 id="home-todo-title">Todo</h2></div>` + body + `</section>`
+	shown := min(len(rows), 5)
+	body := `<div class="compact-list">` + strings.Join(rows[:shown], "") + `</div>`
+	if len(rows) > shown {
+		body += fmt.Sprintf(`<p><a href="/work">%d more in Work</a></p>`, len(rows)-shown)
+	}
+
+	return app.PreviewSection("home-todo", "Todo", "/work", body)
 }

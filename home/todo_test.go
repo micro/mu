@@ -46,7 +46,7 @@ func TestTodoUsesOutstandingOwnedWork(t *testing.T) {
 	if strings.Contains(todoHTML(owner), mine.ID) {
 		t.Fatal("completed action remained on Home")
 	}
-	if !strings.Contains(todoHTML("empty-todo-owner"), "You’re all caught up.") {
-		t.Fatal("missing empty state")
+	if todoHTML("empty-todo-owner") != "" {
+		t.Fatal("empty Todo should be hidden")
 	}
 }

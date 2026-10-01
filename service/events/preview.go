@@ -18,7 +18,7 @@ func Preview(owner string, external []External) string {
 	now := time.Now()
 	rows := mergedRows(Upcoming(owner), external)
 	var b strings.Builder
-	b.WriteString(`<div class="compact-list">`)
+	b.WriteString(`<div class="agenda">`)
 	count := 0
 	for _, row := range rows {
 		href := externalURL(row.External)
@@ -36,7 +36,7 @@ func Preview(owner string, external []External) string {
 			label = when.Format("Mon 2 Jan") + ", all day"
 			stamp = ""
 		}
-		b.WriteString(`<a href="` + html.EscapeString(href) + `" class="link compact-list-item"><span>` + html.EscapeString(title) + `</span><small class="text-muted event-date"><time datetime="` + when.Format(time.RFC3339) + `"` + stamp + `>` + html.EscapeString(label) + `</time></small></a>`)
+		b.WriteString(`<a href="` + html.EscapeString(href) + `" class="agenda-row"><time class="text-muted" datetime="` + when.Format(time.RFC3339) + `"` + stamp + `>` + html.EscapeString(label) + `</time><span>` + html.EscapeString(title) + `</span></a>`)
 		count++
 		if count == PreviewLimit {
 			break
@@ -46,5 +46,5 @@ func Preview(owner string, external []External) string {
 		b.WriteString(`<p class="text-muted">No upcoming events to show.</p>`)
 	}
 	b.WriteString(`</div>`)
-	return app.PreviewCard("home-events-card", "Upcoming", "/events", b.String())
+	return app.PreviewSection("home-events-card", "Upcoming", "/events", b.String())
 }
