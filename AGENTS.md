@@ -84,8 +84,9 @@ navigation on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
 Home owns the authenticated overview, prompt, personal collections and pinned
-service cards. Its short brief combines local personal facts with the cached generated world
-summary from agent/brief; it does not repeat the full scheduled daily brief. Agent owns the conversation UI and explicit new/resume
+service previews. Home uses open sections with shared headings and dividers: Todo actions,
+message rows and an Upcoming agenda come first; reading and market/video previews follow.
+Its short Brief contains only the cached world summary from agent/brief; it does not repeat the full scheduled daily brief. Agent owns the conversation UI and explicit new/resume
 controls. Services are directly usable by people as well as callable by agents;
 the directory is not admin-only. Each service retains its permissions. Apps are
 small tools that can be opened or embedded, not additional primary destinations.

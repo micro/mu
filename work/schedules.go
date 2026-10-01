@@ -265,7 +265,7 @@ func ScheduledCard(owner string) string {
 		b.WriteString(`<div class="compact-list-item"><div><a href="` + html.EscapeString(href) + `">` + item.title + `</a><div class="text-muted text-sm">` + html.EscapeString(status) + `</div></div><small class="event-date">` + history + `</small></div>`)
 	}
 	b.WriteString(`</div>`)
-	return app.PreviewCard("home-scheduled-card", "Scheduled", "/agents?view=scheduled", b.String())
+	return app.PreviewSection("home-scheduled-card", "Routines", "/agents?view=scheduled", b.String())
 }
 
 // ScheduledAttention returns only the latest failed or blocked run per schedule.
