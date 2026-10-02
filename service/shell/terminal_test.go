@@ -129,9 +129,21 @@ func TestTerminalOriginBehindConfiguredTLSProxy(t *testing.T) {
 			t.Fatalf("accepted foreign origin %s", value)
 		}
 	}
-	r.Host = "other.example"
+	r.Host = "127.0.0.1:8080"
 	r.Header.Set("Origin", "https://micro.example")
-	if terminalOrigin(r) {
-		t.Fatal("configured origin must not authorize another host")
+	if !terminalOrigin(r) {
+		t.Fatal("configured origin rejected when proxy replaces Host")
+	}
+}
+
+func TestTerminalOriginDoesNotTrustForwardedHost(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "micro.example")
+	r := httptest.NewRequest("GET", "http://127.0.0.1:8080/shell", nil)
+	r.Header.Set("X-Forwarded-Host", "evil.example")
+	for _, origin := range []string{"https://evil.example", "https://micro.example.evil", "https://micro.example/path", "https://user@micro.example", "https://micro.example?x=1", "https://micro.example#x", "null", ""} {
+		r.Header.Set("Origin", origin)
+		if terminalOrigin(r) {
+			t.Fatalf("accepted origin %q", origin)
+		}
 	}
 }
