@@ -279,8 +279,10 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 	if StripeEnabled() {
 		sb.WriteString(renderStripeDeposit(sess.Account, ""))
 	}
-	if x402.TopUpRequirement(100) != nil {
-		sb.WriteString(`<details class="disclosure"><summary>Pay with crypto</summary>` + wallet.Page(sess.Account) + `</details>`)
+	if CryptoConfigured() {
+		sb.WriteString(cryptoPage(r))
+	} else if x402.TopUpRequirement(100) != nil {
+		sb.WriteString(`<p><a href="/wallet">Convert wallet USDC to credits</a></p>`)
 	} else if !StripeEnabled() {
 		sb.WriteString(`<div class="card"><p>No payment methods available.</p></div>`)
 	}
@@ -513,8 +515,10 @@ func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	methods := []TopupMethod{}
-	if x402.TopUpRequirement(100) != nil {
-		methods = append(methods, TopupMethod{Type: "usdc", Path: "/account/topup"})
+	if CryptoConfigured() {
+		methods = append(methods, TopupMethod{Type: "usdc", Path: "/account/topup#crypto"})
+	} else if x402.TopUpRequirement(100) != nil {
+		methods = append(methods, TopupMethod{Type: "usdc", Path: "/wallet"})
 	}
 
 	if StripeEnabled() {
