@@ -19,7 +19,7 @@ Connect from various places and it all goes in one inbox.
 
 ## Agents
 
-**Micro** is the default agent. Agents have instructions and a permitted set of
+**Micro** is the default agent. Agents have instructions and a set of
 tools. Services provide those tools: mail, files, calendar, search, weather,
 notes, shell, and more. You ask for an outcome; the agent chooses the tools.
 
