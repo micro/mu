@@ -916,6 +916,15 @@ func TopUpRequirement(credits int) *PaymentRequirements {
 	return &r
 }
 
+// VerifySigned checks an authorization without broadcasting it.
+func VerifySigned(hdr string, req *PaymentRequirements) error {
+	payload, err := signedPayload(hdr, req)
+	if err != nil {
+		return err
+	}
+	return verifyRequirement(payload, req)
+}
+
 // SettleSigned verifies and settles a payment this instance signed itself.
 //
 // The rest of this file settles payments that arrived: an X-PAYMENT header on
@@ -928,6 +937,14 @@ func TopUpRequirement(credits int) *PaymentRequirements {
 // producing exactly one thing and this decodes it the same way an inbound
 // payment is decoded.
 func SettleSigned(hdr string, req *PaymentRequirements) (*SettleResponse, error) {
+	payload, err := signedPayload(hdr, req)
+	if err != nil {
+		return nil, err
+	}
+	return settleRequirement(payload, req)
+}
+
+func signedPayload(hdr string, req *PaymentRequirements) (map[string]any, error) {
 	if req == nil {
 		return nil, fmt.Errorf("no payment requirement")
 	}
@@ -939,5 +956,5 @@ func SettleSigned(hdr string, req *PaymentRequirements) (*SettleResponse, error)
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return nil, fmt.Errorf("payment payload is not JSON: %w", err)
 	}
-	return settleRequirement(payload, req)
+	return payload, nil
 }

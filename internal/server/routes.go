@@ -549,6 +549,7 @@ func registerRoutes() {
 	// obvious rather than nested three switches deep.
 	http.HandleFunc("/wallet/convert", account.ConvertUSDC)
 	http.HandleFunc("/account/convert", account.ConvertUSDC)
+	http.HandleFunc("/account/crypto", account.CryptoHandler)
 	// The money actions. account/ owns them because it owns the ledger.
 	http.HandleFunc("/wallet/", account.BalanceHandler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)

@@ -6,6 +6,7 @@ import (
 
 	gmlogger "go-micro.dev/v6/logger"
 
+	"mu/account"
 	"mu/internal/app"
 	"mu/internal/persist"
 	"mu/internal/service"
@@ -90,6 +91,7 @@ func Run(addr string) {
 		app.Log("main", "boot: catalogue in %s", time.Since(phase).Round(time.Millisecond))
 		phase = time.Now()
 
+		account.StartCryptoPayments()
 		registerRoutes()
 		app.Log("main", "boot: routes in %s, ready in %s",
 			time.Since(phase).Round(time.Millisecond), time.Since(started).Round(time.Millisecond))
