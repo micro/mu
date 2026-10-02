@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/event"
@@ -231,10 +233,9 @@ func answerMail(m mail.InboundMail) {
 	// the account has to be able to see that it happened.
 	via := agent.Via{From: m.From}
 
-	// The conversation the answer will be recorded on, filled in once the run
-	// has happened. deliver closes over it so it can note the id the reply went
-	// out under, which is what the next message in the thread looks for.
-	var threadRef string
+	// Reserve the mail identity before recording the answer. The independent
+	// Inbox consumer can then project delivery without adding another turn.
+	answerRef := "<" + uuid.NewString() + ".reply@" + domain + ">"
 
 	record := func(prompt, answer string, err error) string {
 		return agent.Record(agent.Recorded{
@@ -284,15 +285,9 @@ func answerMail(m mail.InboundMail) {
 		// every message from somebody writing to their own agent.
 		to, cc := replyTo(m)
 		plain = introduction(m.Owner, m, from) + plain
-		sent, err := mail.SendReplyAll(m.Owner, name, from, to, cc, subject,
-			plain, app.RenderString(plain), m.MessageID, m.References)
-		// The id the answer went out under, so the reply to *it* finds this
-		// turn. Recorded even when delivery failed below, because a message
-		// that reached the far side and then errored still gets answered.
-		// Against the conversation, which is what the next message looks
-		// in — the workflow record is how this answer was produced, not what
-		// was said.
-		agent.Sent(m.Owner, threadRef, sent)
+		_, err := mail.SendReplyAll(m.Owner, name, from, to, cc, subject,
+			plain, app.RenderString(plain), m.MessageID, m.References, answerRef)
+
 		if err != nil {
 			app.Log("mail", "agent %s could not reply to %s: %v", name, m.From, err)
 			// Recorded as an error against the run, because a reply that
@@ -371,12 +366,12 @@ func answerMail(m mail.InboundMail) {
 		As:         from,
 		Ref:        m.InReplyTo + " " + m.References,
 		MessageRef: m.MessageID,
+		AnswerRef:  answerRef,
 		From:       m.From,
 		FromName:   m.FromName,
 		Via:        via,
 	})
 	answer := res.Text
-	threadRef = res.Thread
 	if err != nil {
 		app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)
 		deliver(res.Flow, prompt, "I could not answer that one. Try again, or ask a different way.")

@@ -35,3 +35,33 @@ func TestCheckinBridgeSkipsNativeMailAndKeepsReferences(t *testing.T) {
 		t.Fatalf("bad bridge: %+v", got)
 	}
 }
+
+func TestCheckinMailAnswerIsNotBridgedBeforeOrAfterDelivery(t *testing.T) {
+	const owner = "checkin-mail-answer"
+	defer thread.Forget(owner)
+	th := thread.Open(owner, thread.WebClient, "checkin:mail-answer")
+	from := "agent@" + mail.ConfiguredDomain()
+	ref := "<checkin-answer@test>"
+	answer := thread.Message{Account: owner, Thread: th.ID, Role: thread.RoleAgent, Text: "One answer", From: from, Ref: ref, Workflow: "mail-run"}
+	id := thread.Add(answer)
+	if got := Bridge(owner); len(got) != 0 {
+		t.Fatalf("mail answer bridged before delivery: %+v", got)
+	}
+	if err := mail.SendMessageTo(mail.Delivery{FromID: from, ToID: owner, Subject: "Re: Daily Checkin", Body: "One answer", MessageID: ref}); err != nil {
+		t.Fatal(err)
+	}
+	// The independent arrival consumer may run before the mail responder returns.
+	if added := thread.Add(thread.Message{Account: owner, Thread: th.ID, Role: thread.RolePerson, Text: "One answer", From: from, Ref: ref, Workflow: "mail-run"}); added != id {
+		t.Fatal("delivery recorded a second conversation turn")
+	}
+	if got := Bridge(owner); len(got) != 0 {
+		t.Fatalf("mail answer bridged after delivery: %+v", got)
+	}
+	// Old answers whose delivery raced the late reference update are suppressed too.
+	thread.Add(thread.Message{Account: owner, Thread: th.ID, Role: thread.RoleAgent, Text: "Older mail answer", From: from, Workflow: "older-mail-run"})
+	thread.Add(thread.Message{Account: owner, Thread: th.ID, Role: thread.RoleAgent, Text: "One answer"})
+	got := Bridge(owner)
+	if len(got) != 1 || got[0].Body != "One answer" || got[0].InReplyTo != ref {
+		t.Fatalf("lost genuine web answer or mail references: %+v", got)
+	}
+}

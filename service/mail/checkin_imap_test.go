@@ -46,3 +46,22 @@ func TestLocalSubmissionKeepsClientMessageID(t *testing.T) {
 		t.Fatalf("client identity lost: %+v", stored)
 	}
 }
+
+func TestMailReplyUsesReservedIdentity(t *testing.T) {
+	const ref = "<reserved-reply@example.test>"
+	body, id := buildExternalTo("Micro", "agent@example.test", "", "person@outside.test", nil, "Re: Checkin", "Answer", "<p>Answer</p>", "<question@example.test>", "", ref)
+	if id != ref || !strings.Contains(string(body), "Message-ID: "+ref+"\r\n") {
+		t.Fatal("outbound reply replaced reserved identity")
+	}
+	const owner = "reserved-reply-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	got, err := SendReplyAll(owner, "Micro", "agent@"+ConfiguredDomain(), owner, nil, "Re: Checkin", "Answer", "<p>Answer</p>", "<question@example.test>", "", ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := FindMessageByMessageID(ref)
+	if got != ref || stored == nil || stored.ToID != owner {
+		t.Fatalf("local reply replaced reserved identity: %q %+v", got, stored)
+	}
+}

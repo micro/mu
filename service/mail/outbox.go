@@ -39,8 +39,8 @@ type queuedMail struct {
 	LastError  string          `json:"last_error,omitempty"`
 }
 
-func queueReply(owner, display, from, to string, cc []string, subject, plain, html, parent, refs string) (string, error) {
-	message, id := buildExternalTo(display, from, "", to, cc, subject, plain, html, parent, refs)
+func queueReply(owner, display, from, to string, cc []string, subject, plain, html, parent, refs string, identity ...string) (string, error) {
+	message, id := buildExternalTo(display, from, "", to, cc, subject, plain, html, parent, refs, identity...)
 	return enqueueMail(owner, queuedMail{From: from, Subject: subject, MessageID: id,
 		Message: signExternal(message), Recipients: append([]string{to}, cc...)})
 }
