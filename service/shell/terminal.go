@@ -35,12 +35,17 @@ func terminalOrigin(r *http.Request) bool {
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
 	}
-	// TLS may terminate at the configured public host before reaching Mu.
-	// Trust only that exact configured host, never an arbitrary forwarded host.
-	if public, e := url.Parse(origin.Self()); e == nil && public.Host != "" && strings.EqualFold(public.Host, r.Host) {
-		scheme = public.Scheme
+	// The proxy may replace Host with its upstream address. Match the
+	// operator-configured public origin, never an arbitrary forwarded host.
+	host := r.Host
+	if public := origin.Self(); public != "" {
+		configured, e := url.Parse(public)
+		if e != nil || configured.Host == "" {
+			return false
+		}
+		scheme, host = configured.Scheme, configured.Host
 	}
-	return err == nil && u.Scheme == scheme && u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment == "" && strings.EqualFold(u.Host, r.Host)
+	return err == nil && u.Scheme == scheme && u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment == "" && strings.EqualFold(u.Host, host)
 }
 
 var webTerminals = struct {
