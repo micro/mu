@@ -133,7 +133,7 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 		}
 		appendBriefSource(&b, src)
 	}
-	appendBriefSource(&b, briefSource{Name: "Markets — cached prices in USD, with retrieval times; not live quotes", Text: briefMarkets(markets.AllPriceData(), now), URL: origin.Self() + "/markets"})
+	appendBriefSource(&b, briefSource{Name: "Markets — prices in USD", Text: briefMarkets(markets.AllPriceData(), now), URL: origin.Self() + "/markets"})
 	appendBriefSource(&b, briefSource{Name: "Relevant outstanding work", Text: briefWork(tasks.List(owner, ""), now, end), URL: origin.Self() + "/work"})
 	if BriefWorldNews(schedule) {
 		appendBriefSource(&b, briefSource{Name: "News published in the last 24 hours", Text: briefNews(news.GetFeed(), now)})
