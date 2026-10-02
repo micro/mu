@@ -4,12 +4,15 @@ import (
 	"context"
 	gmai "go-micro.dev/v6/model"
 	"go-micro.dev/v6/model/gemini"
+	"mu/internal/privacy"
 )
 
 // The pinned framework's built-in plan tool omits the schema of its steps.
 // Repair that declaration at the Gemini boundary without mutating shared tools.
 func init() {
-	gmai.Register("gemini", func(opts ...gmai.Option) gmai.Model { return &geminiSchema{&geminiTools{gemini.NewProvider(opts...)}} })
+	gmai.Register("gemini", func(opts ...gmai.Option) gmai.Model {
+		return privacy.New(func(o ...gmai.Option) gmai.Model { return &geminiSchema{&geminiTools{gemini.NewProvider(o...)}} }, opts...)
+	})
 }
 
 type geminiSchema struct{ gmai.Model }

@@ -24,6 +24,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/codex"
 	"mu/internal/flag"
+	"mu/internal/privacy"
 	"mu/internal/service"
 	"mu/internal/settings"
 )
@@ -769,6 +770,27 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 		if err != nil {
 			return "", err
 		}
+	}
+	ctx = privacy.With(ctx)
+	if owner, err := auth.GetAccount(accountID); err == nil {
+		privacy.From(ctx).Remember(owner.Name)
+		privacy.From(ctx).Forget(owner.Secret)
+	}
+	// Both native live bridges emit provider tokens before Generate returns.
+	// Restore those chunks locally using the same run mapping as tool calls.
+	if opts.Stream.Token != nil {
+		original := opts.Stream.Token
+		text := privacy.From(ctx).Text()
+		opts.Stream.Token = func(chunk string) {
+			if out := text.Write(chunk); out != "" {
+				original(out)
+			}
+		}
+		defer func() {
+			if tail := text.Flush(); tail != "" {
+				original(tail)
+			}
+		}()
 	}
 	ctx, meter := ai.MeterCalls(ctx, run.provider, run.baseURL, run.model)
 	// Failed runs still incurred provider costs.
