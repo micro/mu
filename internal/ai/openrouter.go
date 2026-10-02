@@ -6,6 +6,7 @@ import (
 	gmai "go-micro.dev/v6/model"
 	"go-micro.dev/v6/model/openai"
 
+	"mu/internal/privacy"
 	"mu/internal/settings"
 )
 
@@ -28,7 +29,7 @@ const ModelOpenRouter = "openai/gpt-4o-mini"
 func init() {
 	gmai.Register("openrouter", func(opts ...gmai.Option) gmai.Model {
 		opts = append([]gmai.Option{gmai.WithBaseURL(ProviderBaseURL(openRouterBaseURL))}, opts...)
-		return openai.NewProvider(opts...)
+		return privacy.New(openai.NewProvider, opts...)
 	})
 	gmai.RegisterStream("openrouter")
 }

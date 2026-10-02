@@ -8,10 +8,13 @@ import (
 
 	gmai "go-micro.dev/v6/model"
 	"mu/internal/auth"
+	"mu/internal/privacy"
 )
 
 func init() {
-	gmai.Register("codex", func(o ...gmai.Option) gmai.Model { return &provider{opts: gmai.NewOptions(o...)} })
+	gmai.Register("codex", func(o ...gmai.Option) gmai.Model {
+		return privacy.New(func(opts ...gmai.Option) gmai.Model { return &provider{opts: gmai.NewOptions(opts...)} }, o...)
+	})
 }
 
 type provider struct{ opts gmai.Options }
