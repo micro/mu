@@ -469,19 +469,6 @@ func History(account, threadID string, max int) []QueryMessage {
 	return out
 }
 
-// Sent records the id a client's own protocol gave an answer, so a reply to it
-// finds this conversation. Mail's Message-ID; nothing for a client without one.
-func Sent(accountID, threadID, ref string) {
-	if threadID == "" || strings.TrimSpace(ref) == "" {
-		return
-	}
-	for _, m := range thread.Messages(accountID, threadID, 1) {
-		if m.Role == thread.RoleAgent {
-			thread.SetRef(accountID, m.ID, ref)
-		}
-	}
-}
-
 func threadID(th *thread.Thread) string {
 	if th == nil {
 		return ""

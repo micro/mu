@@ -118,6 +118,16 @@ func asMessages(accountID string, t thread.Thread, domain string) []*mail.Messag
 			}
 		}
 
+		// Mail answers carry their sending address in From (AskRequest.As).
+		// They belong to the mail transport even before delivery is indexed;
+		// projecting them here exposes a second .conversation sender to IMAP.
+		if m.Role == thread.RoleAgent && m.Workflow != "" && strings.HasSuffix(strings.ToLower(m.From), "@"+strings.ToLower(domain)) {
+			if strings.HasPrefix(m.Ref, "<") && strings.HasSuffix(m.Ref, ">") {
+				prev = m.Ref
+			}
+			continue
+		}
+
 		one := &mail.Message{
 			Bridged:   true,
 			ID:        id,

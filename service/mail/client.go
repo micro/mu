@@ -191,7 +191,7 @@ func buildExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML 
 	return buildExternalTo(displayName, from, replyTo, to, nil, subject, bodyPlain, bodyHTML, replyToMsgID, references)
 }
 
-func buildExternalTo(displayName, from, replyTo, to string, cc []string, subject, bodyPlain, bodyHTML string, replyToMsgID, references string) ([]byte, string) {
+func buildExternalTo(displayName, from, replyTo, to string, cc []string, subject, bodyPlain, bodyHTML string, replyToMsgID, references string, identity ...string) ([]byte, string) {
 	// Extract username from email for Message-ID
 	username := from
 	if strings.Contains(from, "@") {
@@ -200,6 +200,9 @@ func buildExternalTo(displayName, from, replyTo, to string, cc []string, subject
 
 	// Generate unique Message-ID for threading
 	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, ConfiguredDomain())
+	if len(identity) > 0 && identity[0] != "" && !strings.ContainsAny(identity[0], "\r\n") {
+		messageID = identity[0]
+	}
 
 	// Generate boundary for multipart
 	boundary := fmt.Sprintf("----=_Part_%d", time.Now().UnixNano())
@@ -499,7 +502,10 @@ func DKIMStatus() (enabled bool, domain, selector string) {
 // and it asks per recipient: a thread with one local person and one outside is
 // both, which is the case a single branch at the call site would get wrong.
 func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bodyPlain, bodyHTML,
-	inReplyTo, references string) (string, error) {
+	inReplyTo, references, messageID string) (string, error) {
+	if strings.ContainsAny(messageID, "\r\n") {
+		return "", fmt.Errorf("invalid Message-ID")
+	}
 
 	var outside []string
 	var here []string
@@ -522,15 +528,16 @@ func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bo
 	// this instance are still owed their copy — the relay being down is not
 	// their problem, and returning early meant one bad address on a thread
 	// silenced the answer for everybody on it.
-	var messageID string
 	var relayErr error
 	if len(outside) > 0 {
 		id, err := queueReply(fromID, displayName, from, outside[0], outside[1:], subject,
-			bodyPlain, bodyHTML, inReplyTo, references)
+			bodyPlain, bodyHTML, inReplyTo, references, messageID)
 		if err != nil {
 			relayErr = err
 		}
-		messageID = id
+		if id != "" {
+			messageID = id
+		}
 	}
 
 	// And everybody here, delivered rather than relayed. Each on their own,
