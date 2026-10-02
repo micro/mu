@@ -1108,13 +1108,19 @@ func touchToken(t *Token) {
 	data.SaveJSON("tokens.json", tokens) //nolint:errcheck
 }
 
-// ListTokens returns all PAT tokens for an account (with hashed values)
+// ListTokens returns account credentials for display (with hashed values).
+// Expired OAuth grants are retained for admin audit, not listed as connections.
 func ListTokens(accountID string) []*Token {
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	var result []*Token
+	now := time.Now()
 	for _, token := range tokens {
+		oauth := token.OAuthClientID != "" || strings.HasPrefix(token.Name, "OAuth: ")
+		if oauth && !token.ExpiresAt.IsZero() && !token.ExpiresAt.After(now) {
+			continue
+		}
 		if token.Account == accountID {
 			result = append(result, token)
 		}
