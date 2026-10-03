@@ -14,13 +14,13 @@ func momentMessage(schedule *events.Event, at time.Time) string {
 	}
 	day := at.In(loc)
 	messages := []string{
-		"A little space in the day. Step outside for a few minutes, if that suits you. There is nothing you need to accomplish while you’re there.",
-		"You can leave things unfinished for a moment. Settle somewhere comfortable and let yourself pause.",
-		"If it feels comfortable, change position or have a gentle stretch. Resting is an option too.",
-		"Take a moment away from the screen, if you can. Notice something around you without needing to do anything about it.",
-		"A short walk might feel good, if that is available to you. Sitting somewhere different can offer a pause too.",
-		"A moment to check what you need: perhaps some water, a little quiet or a rest. Choose what suits you.",
-		"You don’t need to resolve everything today. There is room for a small pause.",
+		"If it suits you, rest your gaze on one nearby object for ten seconds. Nothing needs to change.",
+		"You can leave things unfinished. Pause where you are for thirty seconds, if you would like to.",
+		"If it is comfortable for you, loosen your grip for a few seconds. That is enough.",
+		"If it suits you, look away from the screen for ten seconds. There is nothing to complete afterwards.",
+		"If it feels comfortable, rest one hand where it is for ten seconds. No need to move anywhere.",
+		"If water is already within reach and drinking is comfortable for you, take one sip. Otherwise, let this invitation pass.",
+		"If you would like to, listen to the sounds around you for ten seconds. You do not need to feel any particular way.",
 	}
 	index := int(time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC).Unix()/86400) % len(messages)
 	if index < 0 {

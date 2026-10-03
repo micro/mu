@@ -56,7 +56,7 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	}
 	section("Markets", c.Markets, 4, "Market prices are unavailable for this brief.")
 	if plan && len(c.Priorities) > 0 {
-		section("Suggested priorities", c.Priorities, 3, "No priorities were suggested.")
+		section("One small step", c.Priorities, 1, "")
 	}
 	if reminder != "" {
 		b.WriteString("\n" + reminder + "\n")

@@ -75,7 +75,7 @@ func briefPeriodHTML(owner, token, period string) string {
 		if e != nil && e.Plan {
 			checkedPlan = " checked"
 		}
-		b.WriteString(`<label class="check-label"><input type="checkbox" name="include_plan" value="1"` + checkedPlan + `> Include a suggested daily plan</label><p class="text-sm text-muted">Suggest priorities and time slots. Nothing is added to your calendar automatically.</p>`)
+		b.WriteString(`<label class="check-label"><input type="checkbox" name="include_plan" value="1"` + checkedPlan + `> Include one small step</label><p class="text-sm text-muted">An optional action under five minutes, in one step, suited to very little energy. Nothing is added to your calendar automatically.</p>`)
 	}
 	b.WriteString(`<div class="form-actions"><button name="state" value="active">`)
 	if e == nil {
