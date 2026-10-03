@@ -68,11 +68,12 @@ func weatherLine(owner string) string {
 
 // Brief contains only the cached world summary; rendering never calls a model.
 func shortBrief() string {
-	line := brief.Line()
-	if line == "" {
+	entry, ok := brief.Latest()
+	line := entry.Text
+	if !ok {
 		return ""
 	}
-	return `<section class="section-card" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + html.EscapeString(line) + `</p></section>`
+	return `<section class="section-card" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + html.EscapeString(line) + `</p><a href="/brief?id=` + entry.ID() + `">More</a></section>`
 }
 
 func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
