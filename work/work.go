@@ -398,7 +398,7 @@ func retryDeliveries() {
 // A failure is delivered too, for the reason in the package comment: silence is
 // indistinguishable from an instruction nobody kept.
 func deliver(r request, answer string, err error) error {
-	return agent.DeliverScheduled(agent.ScheduledResult{Account: r.Account, ID: r.ID, EventID: r.EventID, Title: r.Title, Agent: r.Agent}, answer, err)
+	return agent.DeliverScheduled(agent.ScheduledResult{Account: r.Account, ID: r.ID, EventID: r.EventID, Title: r.Title, Agent: r.Agent, Due: r.Due}, answer, err)
 }
 
 var activeRuns sync.Map // account:task -> context.CancelFunc

@@ -11,12 +11,19 @@ import (
 	"mu/internal/usage"
 	"mu/service/mail"
 	"strings"
+	"time"
 )
 
 // ScheduledResult identifies the owned output being released to Inbox.
-type ScheduledResult struct{ Account, ID, EventID, Title, Agent string }
+type ScheduledResult struct {
+	Account, ID, EventID, Title, Agent string
+	Due                                time.Time
+}
 
 func DeliverScheduled(r ScheduledResult, answer string, err error) error {
+	if e := Moment(r.Account); e != nil && e.ID == r.ID && (e.Paused || r.Due.IsZero() || time.Since(r.Due) > time.Hour) {
+		return nil
+	}
 	body := strings.TrimSpace(answer)
 	if err != nil {
 		app.Log("work", "standing instruction %q failed for %s: %v", r.Title, r.Account, err)

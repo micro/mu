@@ -176,7 +176,7 @@ You are getting this because mail sent to your Mu address is copied to you here.
 Stop these emails: %s`, text, from, base, stop)
 
 	rendered := html.EscapeString(text)
-	if (m.Tag == "brief" || m.Tag == "scheduled") && m.From == "agent@"+ConfiguredDomain() {
+	if (m.Tag == "brief" || m.Tag == "scheduled" || m.Tag == "moment") && m.From == "agent@"+ConfiguredDomain() {
 		rendered = app.RenderString(text)
 	}
 	htmlBody = fmt.Sprintf(`<div style="font:14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222">

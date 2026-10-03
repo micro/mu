@@ -33,7 +33,7 @@ func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant for everyday life.</p>
-<p>Ask a question, explore an idea or get stuff done.</p>
+<p>Carry less. Make room for what matters. Ask a question, explore an idea or get a hand with everyday tasks.</p>
 <ul class="landing-highlights" aria-label="Ways to use Micro">
 <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5"/></svg><span>Ask</span></li>
 <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg><span>Brief</span></li>
@@ -58,7 +58,8 @@ func landingHTML() string {
 <p>Opt into scheduled events and choose when they reach you.</p>
 <dl class="landing-capabilities">
 <div><dt>Morning Brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>
-<div><dt>Daily Checkin</dt><dd>A short prompt to share what’s on your mind and what you need to get done. Reply in a sentence or two.</dd></div>
+<div><dt>Daily Checkin</dt><dd>What’s on your mind? Space to share whatever is going on, when you feel like it.</dd></div>
+<div><dt>Take a moment</dt><dd>An optional reminder to pause, stretch, step outside or rest. No reply needed.</dd></div>
 <div><dt>Evening Reading</dt><dd>Choose a topic and schedule. Micro reads web sources and delivers a sourced piece to read at your chosen time.</dd></div>
 </dl>
 <p class="landing-access">Free includes a weekly brief; Starter and Pro include daily briefs. Research is available with Pro and uses credits. You choose which events to enable.</p>
