@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestCheckinUsesOnlyOwnedTodayContext(t *testing.T) {
+func TestCheckinInvitesConversationWithoutAnAgenda(t *testing.T) {
 	owner, foreign := "checkin-context-owner", "checkin-context-foreign"
 	defer events.DeleteAll(owner)
 	defer events.DeleteAll(foreign)
@@ -24,15 +24,12 @@ func TestCheckinUsesOnlyOwnedTodayContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	message := checkinMessage(owner, &events.Event{Zone: "UTC"}, now)
-	if !strings.Contains(message, "Proposal meeting") || !strings.Contains(message, "One or two sentences") {
+	if !strings.Contains(message, "What’s on your mind?") {
 		t.Fatal(message)
 	}
-	for _, heading := range []string{"## Daily Checkin", "## Today", "## Your focus"} {
-		if !strings.Contains(message, heading) {
-			t.Fatal("missing fixed section", heading)
+	for _, unwanted := range []string{"Proposal meeting", "Private foreign", "Tomorrow appointment", "Your focus", "get done", "One or two sentences"} {
+		if strings.Contains(message, unwanted) {
+			t.Fatalf("check-in added pressure or agenda: %s", message)
 		}
-	}
-	if strings.Contains(message, "Private foreign") || strings.Contains(message, "Tomorrow appointment") {
-		t.Fatal("unrelated context included")
 	}
 }

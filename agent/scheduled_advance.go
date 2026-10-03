@@ -15,7 +15,7 @@ func scheduledAdvance(kind string) events.Advance {
 	switch kind {
 	case "brief":
 		minutes = 10
-	case "checkin":
+	case "checkin", "moment":
 		minutes = 1
 	case "research":
 		minutes = 15

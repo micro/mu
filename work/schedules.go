@@ -224,8 +224,12 @@ func ScheduledCard(owner string) string {
 	}{
 		{"Morning Brief", "morning-brief", agent.Brief(owner)},
 		{"Daily Checkin", "checkin", agent.Checkin(owner)},
+		{"Take a moment", "moment", agent.Moment(owner)},
 		{"Evening Reading", "research", agent.Research(owner)},
 	} {
+		if item.anchor == "moment" && (item.schedule == nil || item.schedule.Paused) {
+			continue
+		}
 		href := "/agents?view=scheduled#" + item.anchor
 		status := "Not scheduled"
 		history := ""

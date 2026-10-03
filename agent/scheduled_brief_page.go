@@ -18,7 +18,7 @@ func briefScheduleHTML(owner string, csrf ...string) string {
 	if len(csrf) > 0 {
 		token = csrf[0]
 	}
-	return `<div class="page-stack">` + briefPeriodHTML(owner, token, "morning") + checkinHTML(owner, token) + `<p class="text-muted">Delivered to your Micro inbox using your calendar, recent conversations and outstanding work. Your scheduled brief and optional Pro plan are included without using credits.</p></div>`
+	return `<div class="page-stack">` + briefPeriodHTML(owner, token, "morning") + checkinHTML(owner, token) + momentHTML(owner, token) + `<p class="text-muted">Delivered to your Micro inbox at the times you choose. Your scheduled brief and optional Pro plan are included without using credits.</p></div>`
 }
 
 func briefPeriodHTML(owner, token, period string) string {
@@ -41,9 +41,9 @@ func briefPeriodHTML(owner, token, period string) string {
 		}
 	}
 	title := "Morning Brief"
-	description := "Your commitments, outstanding work and what matters today."
+	description := "A clear view of your day, useful headlines and a daily reminder."
 	if auth.Plan(owner) == "free" || repeat == "weekly" {
-		description = "A weekly look ahead at your commitments and outstanding work."
+		description = "A little perspective on the week, with your commitments, useful headlines and a reminder."
 	}
 	var b strings.Builder
 	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h2>` + title + `</h2><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><details class="disclosure"><summary>Settings</summary><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)

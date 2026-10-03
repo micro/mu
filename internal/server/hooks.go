@@ -274,9 +274,14 @@ func wireHooks() {
 				// A later message must not replace this actionable check-in.
 				tag = "checkin-" + m.MessageID
 			}
+			body := "From " + from
+			if m.Tag == "moment" && from == "agent@"+mail.ConfiguredDomain() {
+				body, _, _ = strings.Cut(m.Body, "\n\n")
+				tag = "moment"
+			}
 			push.Send(accountID, push.Notification{
 				Title: title,
-				Body:  "From " + from,
+				Body:  body,
 				URL:   link,
 				Tag:   tag,
 			})

@@ -58,7 +58,7 @@ func ResearchCost() int {
 
 func researchHTML(owner, csrf string) string {
 	if auth.Plan(owner) != "pro" {
-		return `<p>Receive a private, sourced reading on your chosen topic on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
+		return `<p>Receive a short, thoughtful reading on your chosen topic, with sources and room for perspective. Private, on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
 	}
 	details := ""
 	topic, clock, zone, frequency, maxCredits := "", "20:30", "", "weekly", ResearchCost()

@@ -212,7 +212,7 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 			}
 		}
 		if first {
-			placeholder, button = "How’s it going? What do you need to get done today?", "Check in"
+			placeholder, button = "What’s on your mind?", "Check in"
 		}
 	}
 	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + attached + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="` + html.EscapeString(placeholder) + `" required></textarea><button id="send" type="submit" aria-label="Send message">` + button + `</button></div><p id="status" role="status"></p></form></div></div></div>`
