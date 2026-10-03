@@ -408,6 +408,7 @@ func registerRoutes() {
 
 	// Old shared entry URLs resolve to the conversation or optional Services feed.
 	http.HandleFunc("/home", home.Handler)
+	http.HandleFunc("/brief", agent.BriefHandler)
 	http.HandleFunc("/home/apps", home.AppsHandler)
 	http.HandleFunc("/assistant", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

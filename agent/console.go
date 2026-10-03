@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"mu/agent/brief"
 	"mu/agent/hello"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -194,6 +195,12 @@ func Prompt(owner string) string {
 }
 
 func consoleBody(owner, selected, session, agentName, description, initial, heading, state, basePath string) string {
+	attached := ""
+	if ref := thread.Attachment(owner, session); strings.HasPrefix(ref, "brief:") {
+		if entry, ok := brief.Get(strings.TrimPrefix(ref, "brief:")); ok {
+			attached = `<section class="record-card"><h2>Brief</h2><p>` + html.EscapeString(entry.Text) + `</p><a href="/brief?id=` + entry.ID() + `">Sources and details</a></section>`
+		}
+	}
 	toolbar := `<div class="assistant-toolbar"><a href="` + html.EscapeString(basePath) + `?new=1">New conversation</a></div>`
 	placeholder, button := "What do you need?", "Send"
 	if t := thread.Get(owner, session); t != nil && strings.HasPrefix(t.Key, "checkin:") {
@@ -208,7 +215,7 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 			placeholder, button = "How’s it going? What do you need to get done today?", "Check in"
 		}
 	}
-	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="` + html.EscapeString(placeholder) + `" required></textarea><button id="send" type="submit" aria-label="Send message">` + button + `</button></div><p id="status" role="status"></p></form></div></div></div>`
+	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + attached + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="` + html.EscapeString(placeholder) + `" required></textarea><button id="send" type="submit" aria-label="Send message">` + button + `</button></div><p id="status" role="status"></p></form></div></div></div>`
 }
 
 // RecentConversation resumes the owner's most recently visited web conversation
