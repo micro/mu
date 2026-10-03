@@ -46,6 +46,9 @@
     "directory to override without rebuilding."
   ],
   "operations": [
+    {"op":"voice_transcribe","cost":3,"label":"Voice input (up to 30 seconds)","env":"VOICE_TRANSCRIBE_COST","note":"Google speech recognition; bounded recording, operator-adjustable retail price."},
+    {"op":"voice_speak","cost":10,"label":"Speech output (up to 4500 bytes)","env":"VOICE_SPEAK_COST","note":"Speech synthesis; select a voice whose provider cost fits this price, or override it."},
+    {"op":"voice_call","cost":15,"label":"Voice call (per minute)","env":"VOICE_CALL_COST","note":"ConversationRelay plus telephony; agent runs charged separately. Adjust for the configured number and providers."},
     {
       "op": "places_search",
       "cost": 6,

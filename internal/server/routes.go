@@ -72,19 +72,23 @@ import (
 // authRequired reports, per path, whether a caller must be signed in.
 func authRequired() map[string]bool {
 	authenticated := map[string]bool{
-		"/developers":  false,
-		"/x402":        false,
-		"/tools":       false, // Public — the catalogue, agent lens
-		"/tools/":      false, // Public — one tool, same as the catalogue
-		"/services":    false, // Public — the catalogue, person lens
-		"/service/":    false,
-		"/services/":   false, // Public — one service, what it is and how to call it
-		"/card/":       false, // Public — a service rendered at a glance
-		"/usage":       true,  // Your own calls and spend
-		"/video":       false, // Public viewing, auth for interactive features
-		"/video/thumb": false, // Public — thumbnails for the public feed
-		"/news":        false, // Public viewing, auth for search
-		"/chat":        false, // Public viewing, auth for chatting
+		"/agent/voice":   true,
+		"/voice/webhook": false,
+		"/voice/relay":   false,
+		"/agent/voice/":  true,
+		"/developers":    false,
+		"/x402":          false,
+		"/tools":         false, // Public — the catalogue, agent lens
+		"/tools/":        false, // Public — one tool, same as the catalogue
+		"/services":      false, // Public — the catalogue, person lens
+		"/service/":      false,
+		"/services/":     false, // Public — one service, what it is and how to call it
+		"/card/":         false, // Public — a service rendered at a glance
+		"/usage":         true,  // Your own calls and spend
+		"/video":         false, // Public viewing, auth for interactive features
+		"/video/thumb":   false, // Public — thumbnails for the public feed
+		"/news":          false, // Public viewing, auth for search
+		"/chat":          false, // Public viewing, auth for chatting
 		// SASL inside the stream, with an access token — so no session is
 		// required to open it and none would be honoured. See xmpp_ws.go.
 		"/xmpp-websocket":             false,
@@ -564,6 +568,12 @@ func registerRoutes() {
 	http.HandleFunc("/notes", notes.Handler)
 	http.HandleFunc("/notify", notify.Handler)
 	// Preserve the complete conversation UI until the SDK app replaces it.
+	http.HandleFunc("/voice/webhook", agent.CallWebhookHandler)
+	http.HandleFunc("/voice/relay", agent.CallRelayHandler)
+	http.HandleFunc("/agent/voice/code", agent.VoiceCodeHandler)
+	http.HandleFunc("/agent/voice", agent.VoiceHandler)
+	http.HandleFunc("/agent/voice/transcribe", agent.VoiceHandler)
+	http.HandleFunc("/agent/voice/speak", agent.VoiceHandler)
 	http.HandleFunc("/sms", sms.Handler)
 
 	// Twilio posts everything arriving on a Messaging Service to one webhook,
