@@ -55,7 +55,7 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 		b.WriteString("World news is disabled. Omit Headlines.\n")
 	}
 	if auth.Plan(owner) == "pro" && schedule.Plan {
-		b.WriteString("A short suggested daily plan is explicitly requested. Base it on supplied deadlines and commitments; do not invent free time.\n")
+		b.WriteString("One optional micro-action is explicitly requested. Base it on supplied facts: less than five minutes, one step, a controllable input, and feasible with almost no energy. Omit it if those conditions cannot be met. Keep commitments factual; do not invent free time.\n")
 	}
 
 	type lookup struct {
