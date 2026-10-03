@@ -46,17 +46,7 @@ func binary() (string, error) {
 	if e != nil {
 		return "", e
 	}
-	f, e := os.Open(p)
-	if e != nil {
-		return "", e
-	}
-	var magic [4]byte
-	_, e = f.Read(magic[:])
-	f.Close()
-	if e != nil || string(magic[:]) != "\x7fELF" {
-		return "", fmt.Errorf("CODEX_BINARY must point to the native Linux Codex executable, not an npm launcher")
-	}
-	return p, nil
+	return resolveBinary(p, runtime.GOARCH)
 }
 
 // No host home, data, credentials, sockets, config or environment are mounted.

@@ -1352,9 +1352,11 @@ does not replace the site provider, change scheduled work or require a separate
 agent. The Account page has a **Codex preview** section for admins only.
 
 The preview currently requires Linux, Bubblewrap (`apt install bubblewrap` on
-Debian/Ubuntu), permitted unprivileged user namespaces, and the standalone native
-Codex **0.156.1** executable. `CODEX_BINARY` can specify its absolute path; the
-default is `codex` on PATH. An npm JavaScript launcher is not a native executable.
+Debian/Ubuntu), permitted unprivileged user namespaces, and the native
+Codex **0.156.1** executable (standalone or installed through npm). `CODEX_BINARY` can specify its absolute path; the
+default is `codex` on PATH. For an npm installation, Mu resolves the launcher to its bundled Linux binary
+without running JavaScript or exposing the npm package tree to the sandbox.
+Install optional dependencies when using npm (`npm install -g @openai/codex@0.156.1`).
 Set the same executable path in the server environment and the setup shell.
 
 As the OS user that runs Micro:
