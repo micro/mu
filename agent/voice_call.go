@@ -236,11 +236,12 @@ func CallRelayHandler(w http.ResponseWriter, r *http.Request) {
 		interrupted bool
 	}
 	done := make(chan result, 1)
-	var running bool
+	var running, interrupted bool
 	var stop context.CancelFunc
 	var pending, partial string
 	start := func(text string) {
 		running = true
+		interrupted = false
 		turn, stopTurn := context.WithCancel(ctx)
 		stop = stopTurn
 		go func() {
@@ -272,6 +273,7 @@ func CallRelayHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			switch m.Type {
 			case "interrupt":
+				interrupted = true
 				if stop != nil {
 					stop()
 				}
@@ -292,6 +294,7 @@ func CallRelayHandler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				if running {
+					interrupted = true
 					if stop != nil {
 						stop()
 					}
@@ -305,7 +308,7 @@ func CallRelayHandler(w http.ResponseWriter, r *http.Request) {
 		case res := <-done:
 			running = false
 			stop = nil
-			if !res.interrupted {
+			if !res.interrupted && !interrupted {
 				text := res.text
 				if res.err != nil {
 					text = "I couldn't complete that request. Please try again."
