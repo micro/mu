@@ -1487,3 +1487,54 @@ notes, tasks, calendars and assistant conversations are not shared by joining a
 group, and group messages do not trigger Micro or use a member's private context.
 Group membership is stored atomically in `data/groups.json`; include it alongside
 room records in backups. An unreadable membership file fails closed.
+
+## Voice input, spoken replies and calls
+
+Web voice uses Google Cloud Speech-to-Text and Text-to-Speech. Enable both APIs
+on a billing-enabled Google Cloud project and set `GOOGLE_SPEECH_API_KEY` to a
+server-side key restricted to those APIs. The key is never sent to the browser.
+`VOICE_LANGUAGE` defaults to `en-GB`; `GOOGLE_SPEECH_VOICE` optionally selects a
+Google voice. Leave the voice name unset to let Google choose for the language.
+
+The microphone beside Send records up to 30 seconds, transcribes when stopped,
+and inserts editable text without sending it. Speak replies is optional and
+remembered on that browser. Playback can be stopped. Leaving the page stops
+recording and playback. Raw audio is held in memory, not saved by Mu; Google
+receives the recording before any model text-redaction step. This is short-form
+recording, not streaming transcription or always-on wake-word detection.
+
+`voice_transcribe` and `voice_speak` in `quota.json` price each transcription and
+speech request. Long replies are spoken in bounded chunks, each billed as a
+speech request. Review these prices when choosing a Google voice. They can be
+overridden with `VOICE_TRANSCRIBE_COST` and `VOICE_SPEAK_COST`.
+
+For inbound phone calls, use the existing Twilio account credentials and set:
+
+- `TWILIO_VOICE_ENABLED=true`
+- `TWILIO_VOICE_FROM` to one voice-capable Twilio number in E.164 format
+- `MU_DOMAIN` to the public HTTPS domain
+
+Accept Twilio's ConversationRelay terms in its console, then configure the
+number's **voice** webhook as `POST https://<domain>/voice/webhook`. Keep its
+SMS webhook unchanged. The reverse proxy must allow WebSocket upgrades at
+`/voice/relay`. Both the webhook and WebSocket handshake require the account's
+`TWILIO_AUTH_TOKEN` signature; an API key secret cannot replace it.
+
+Verify your phone number in Account. Immediately before calling, choose **Get
+call code** in the Phone section. Enter the six-digit code using the keypad
+when prompted. It expires in five minutes, works once and is bound to the owner
+of the verified calling number. Caller ID by itself never grants access.
+
+Twilio handles call transcription and synthesis; no Google speech key is needed
+for calls. Mu calls the existing agent and saves the conversation. Replies are
+spoken after the agent completes a turn. Speaking interrupts playback; a new
+request cancels an unfinished turn before starting another. Cancellation cannot
+undo tools that already completed. Disconnects cancel the active turn; Mu does
+not automatically retry it. Calls end after ten minutes, with one active call
+per account. Restarting Mu ends calls and invalidates unused codes.
+
+`voice_call` is charged per started minute, separately from normal agent/tool
+usage. Adjust `VOICE_CALL_COST` for your Twilio telephony and ConversationRelay
+rates. Mu does not record call audio. Twilio's own processing and retention
+settings remain separate. Wake-word listening belongs in the separate Hey Micro
+client; it is not enabled by these settings.

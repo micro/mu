@@ -29,6 +29,8 @@ import (
 	"sort"
 
 	"mu/internal/auth"
+	"mu/internal/settings"
+	"mu/internal/voice"
 	"mu/service/sms"
 )
 
@@ -1028,6 +1030,9 @@ func renderPhoneCard(accountID string) string {
 	mine := sms.Numbers(accountID)
 	if len(mine) > 0 {
 		var b strings.Builder
+		if voice.CallsConfigured() {
+			b.WriteString(`<p>Call Micro on ` + htmlpkg.EscapeString(settings.Get("TWILIO_VOICE_FROM")) + ` using a verified number. Get a code before calling.</p><button type="button" data-call-code>Get call code</button><p data-call-code-status role="status"></p>`)
+		}
 		for _, n := range mine {
 			b.WriteString(`<div class="form-actions"><span><strong>` + htmlpkg.EscapeString(n) + `</strong> — verified</span>` +
 				app.Form{Action: "/account", Inline: true,
