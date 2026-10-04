@@ -24,7 +24,7 @@ func TestCheckinInvitesConversationWithoutAnAgenda(t *testing.T) {
 		t.Fatal(err)
 	}
 	message := checkinMessage(owner, &events.Event{Zone: "UTC"}, now)
-	if !strings.Contains(message, "What’s on your mind?") {
+	if !strings.Contains(message, "How's it going?") {
 		t.Fatal(message)
 	}
 	for _, unwanted := range []string{"Proposal meeting", "Private foreign", "Tomorrow appointment", "Your focus", "get done", "One or two sentences"} {

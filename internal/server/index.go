@@ -58,7 +58,7 @@ func landingHTML() string {
 <p>Opt into scheduled events and choose when they reach you.</p>
 <dl class="landing-capabilities">
 <div><dt>Morning Brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>
-<div><dt>Daily Checkin</dt><dd>What’s on your mind? Space to share whatever is going on, when you feel like it.</dd></div>
+<div><dt>Daily Checkin</dt><dd>How's it going? Space to share whatever is going on, when you feel like it.</dd></div>
 <div><dt>Take a moment</dt><dd>An optional reminder to pause, stretch, step outside or rest. No reply needed.</dd></div>
 <div><dt>Evening Reading</dt><dd>Choose a topic and schedule. Micro reads web sources and delivers a sourced piece to read at your chosen time.</dd></div>
 </dl>
