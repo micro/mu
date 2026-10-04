@@ -82,7 +82,7 @@ func checkinHTML(owner, token string) string { return invitationHTML(owner, toke
 func momentHTML(owner, token string) string  { return invitationHTML(owner, token, "moment") }
 
 func invitationHTML(owner, token, kind string) string {
-	title, description := "Daily Checkin", "What’s on your mind? A little space to share whatever is going on, when you feel like it."
+	title, description := "Daily Checkin", "How's it going? A little space to share whatever is going on, when you feel like it."
 	if kind == "moment" {
 		title = "Take a moment"
 		description = "A gentle invitation to pause, stretch, step outside or simply rest. No reply needed."

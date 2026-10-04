@@ -23,7 +23,7 @@ func checkinMessage(owner string, schedule *events.Event, now time.Time) string 
 	if acc, err := auth.GetAccount(owner); err == nil && acc != nil && strings.TrimSpace(acc.Name) != "" {
 		greeting += " " + checkinText(acc.Name)
 	}
-	return greeting + ". What’s on your mind?\n\n[Manage your check-in](" + origin.Self() + "/agents?view=scheduled#checkin)"
+	return greeting + ". How's it going?\n\n[Manage your check-in](" + origin.Self() + "/agents?view=scheduled#checkin)"
 }
 
 func checkinText(s string) string {
