@@ -29,8 +29,6 @@ import (
 	"sort"
 
 	"mu/internal/auth"
-	"mu/internal/settings"
-	"mu/internal/voice"
 	"mu/service/sms"
 )
 
@@ -717,7 +715,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
 	content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))
 	content += codexCard(acc)
-	content += renderCallsCard(acc.ID)
 
 	// Forms return to their owning tab; credentials and mutations stay in POST.
 	content = strings.ReplaceAll(content, `action="/account"`, `action="`+accountPath+`"`)
@@ -1021,14 +1018,6 @@ func otherAddresses(acc *auth.Account) string {
 	}
 	b.WriteString(`</ul>`)
 	return b.String()
-}
-
-func renderCallsCard(accountID string) string {
-	if !voice.CallsConfigured() || len(sms.Numbers(accountID)) == 0 {
-		return ""
-	}
-	return app.SectionID("calls", "Calls",
-		`<p>Call Micro on `+htmlpkg.EscapeString(settings.Get("TWILIO_VOICE_FROM"))+` from your verified number. Get a code before calling.</p><div class="form-actions"><button type="button" class="btn" data-call-code>Get call code</button></div><p class="text-sm text-muted" data-call-code-status role="status"></p>`)
 }
 
 func renderPhoneCard(accountID string) string {

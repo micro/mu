@@ -1429,11 +1429,3 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .collection-toolbar>.search-bar:has(input){flex:1 1 280px;max-width:560px}
 
 .account-menu-links>hr{margin:6px 12px;border-color:var(--border)}
-
-/* Shared voice controls in Home and conversation composers. */
-.composer .voice-control{display:flex;align-items:center;justify-content:center;width:36px;padding:7px;flex:none}
-.composer .voice-control[hidden]{display:none}
-.composer .voice-control[aria-pressed="true"]{background:#e5edf5;color:#174c79}
-.composer #mu-chat-mic[aria-pressed="true"]{background:#fde9e9;color:#9e2020}
-.voice-status{font-size:13px;margin:6px 0}
-.voice-status:empty{display:none}

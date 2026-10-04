@@ -176,7 +176,7 @@ function ask(q){
           terminal=true;stopWork();clearTimeout(completionTimer);
           if(d.answer_html)a.innerHTML=d.answer_html;else a.innerHTML=d.html;
           if(typeof d.text==='string')history.push({prompt:q,answer:d.text});
-          save();window.dispatchEvent(new CustomEvent('mu-chat-answer',{detail:a.textContent}));revealQuestion(u);streamController.abort();return;
+          save();revealQuestion(u);streamController.abort();return;
         }
         if(d&&!d.waiting){
           terminal=true;stopWork();a.innerHTML='<div class="mu-err">'+esc(d.error||'The run stopped without returning an answer.')+'</div>';save();streamController.abort();return;
@@ -267,7 +267,6 @@ function ask(q){
               if(typeof ev.text==='string')streamText=ev.text;
               history.push({prompt:q,answer:streamText,results:ev.results||[]});
               save();
-              window.dispatchEvent(new CustomEvent('mu-chat-answer',{detail:a.textContent}));
               revealQuestion(u);
             }else if(ev.type==='error'){
               terminal=true;clearTimeout(completionTimer);stopWork();

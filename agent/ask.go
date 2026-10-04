@@ -26,7 +26,6 @@ package agent
 //            Assembled fresh each time, never stored.
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"mu/internal/result"
@@ -80,10 +79,8 @@ var errNoConversation = errors.New("no conversation with that id")
 
 // AskRequest is one message arriving from a client.
 type AskRequest struct {
-	// RunContext cancels a live client request when its transport closes.
-	RunContext context.Context
-	Context    ClientContext
-	Account    string
+	Context ClientContext
+	Account string
 	// Client is which one: web, cli, mail. Named
 	// for the directory rather than for an abstraction, because that is the
 	// word anybody would use for it.
@@ -270,7 +267,6 @@ func Ask(r AskRequest) (Answer, error) {
 	}
 
 	opts := QueryOpts{
-		RunContext:  r.RunContext,
 		interactive: true,
 		Context:     r.Context,
 		Thread:      threadID(th),

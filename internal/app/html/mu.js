@@ -402,7 +402,7 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
    if(response&&response.status===404)throw Error('Conversation not found.');
    if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to continue.');
    if(result){
-    if(!result.waiting){if(result.error)throw Error(result.error);answer.innerHTML=result.answer_html||'';window.dispatchEvent(new CustomEvent('mu-chat-answer',{detail:answer.textContent}));return;}
+    if(!result.waiting){if(result.error)throw Error(result.error);answer.innerHTML=result.answer_html||'';return;}
     answer.textContent='Working…';
    }else answer.textContent='Reconnecting…';
   }
@@ -1835,102 +1835,4 @@ if (typeof document !== 'undefined') {
  setTimeout(refresh,1000);
 })();
 
-// Voice is opt-in. Audio stays in memory and is uploaded only after recording.
-(function () {
- function init() {
-  const mic=document.getElementById('mu-chat-mic'), input=document.getElementById('command-input')||document.getElementById('mu-chat-input');
-  if(!mic||!input)return;
-  const status=document.getElementById('mu-chat-voice-status'), speak=document.getElementById('mu-chat-speak'), stopButton=document.getElementById('mu-chat-speech-stop');
-  const form=document.getElementById('command-form')||document.getElementById('mu-chat-form');
-  let capture=null, starting=false, generation=0, request=null, player=null, audioURL='', enabled=false, recordingRequest=null;
-  function csrf(){return decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'');}
-  async function post(path,body,headers,signal){
-   const r=await fetch(path,{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':csrf(),...headers},body,signal});
-   if(!r.ok)throw new Error((await r.text()).slice(0,240)||'Voice is unavailable.');
-   return r;
-  }
-  function stopSpeech(){
-   generation++;if(request)request.abort();request=null;
-   if(player){player.pause();player.src='';player=null;}
-   if(audioURL)URL.revokeObjectURL(audioURL);audioURL='';stopButton.hidden=true;
-  }
-  function stopRecording(discard){
-   starting=false;
-   if(recordingRequest){recordingRequest.abort();recordingRequest=null;}
-   const c=capture;if(!c)return;capture=null;clearTimeout(c.timer);
-   c.processor.disconnect();c.source.disconnect();c.silent.disconnect();c.stream.getTracks().forEach(t=>t.stop());c.context.close();
-   mic.setAttribute('aria-pressed','false');mic.setAttribute('aria-label','Record a voice message');
-   if(discard){status.textContent='';return;}
-   if(input.value!==c.original){status.textContent='Recording discarded because your message changed.';return;}
-   const samples=new Int16Array(c.count);let offset=0;
-   c.chunks.forEach(chunk=>{samples.set(chunk,offset);offset+=chunk.length;});
-   if(!samples.length){status.textContent='No audio recorded. Try again.';return;}
-   const controller=new AbortController();recordingRequest=controller;
-   mic.disabled=true;status.textContent='Transcribing…';
-   post('/agent/voice/transcribe',samples.buffer,{'Content-Type':'application/octet-stream','X-Audio-Rate':String(c.context.sampleRate),'X-Audio-Language':navigator.language||'en-GB'},controller.signal)
-    .then(r=>r.json()).then(d=>{
-     if(controller.signal.aborted||input.value!==c.original)return;
-     const text=(c.before?c.before+' ':'')+(d.text||'')+c.after;
-     input.value=text.slice(0,input.maxLength);input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();
-     status.textContent=!d.text?'No speech heard. Try again.':text.length>input.maxLength?'The message is too long; only the part that fits was inserted.':'Review your message, then send.';
-    }).catch(e=>{if(e.name!=='AbortError')status.textContent=e.message;}).finally(()=>{mic.disabled=false;if(recordingRequest===controller)recordingRequest=null;});
-  }
-  mic.onclick=async()=>{
-   if(capture){stopRecording(false);return;}
-   if(starting)return;starting=true;mic.disabled=true;stopSpeech();status.textContent='Opening microphone…';
-   let stream,context;
-   try{
-    stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}});
-    if(!starting||document.hidden){stream.getTracks().forEach(t=>t.stop());return;}
-    context=new (window.AudioContext||window.webkitAudioContext)();await context.resume();
-    if(!starting||document.hidden){stream.getTracks().forEach(t=>t.stop());await context.close();return;}
-    const source=context.createMediaStreamSource(stream), processor=context.createScriptProcessor(4096,1,1), silent=context.createGain();silent.gain.value=0;
-    const c={context,stream,source,processor,silent,chunks:[],count:0,original:input.value,before:input.value.slice(0,input.selectionStart),after:input.value.slice(input.selectionEnd)};
-    capture=c;starting=false;
-    processor.onaudioprocess=e=>{if(capture!==c)return;const f=e.inputBuffer.getChannelData(0);const n=Math.min(f.length,30*context.sampleRate-c.count);if(n<=0){stopRecording(false);return;}const pcm=new Int16Array(n);for(let i=0;i<n;i++)pcm[i]=Math.max(-1,Math.min(1,f[i]))*(f[i]<0?32768:32767);c.chunks.push(pcm);c.count+=n;};
-    source.connect(processor);processor.connect(silent);silent.connect(context.destination);
-    c.timer=setTimeout(()=>stopRecording(false),30000);
-    mic.setAttribute('aria-pressed','true');mic.setAttribute('aria-label','Stop recording');status.textContent='Listening. Tap the microphone to finish (up to 30 seconds).';
-   }catch(e){starting=false;if(stream)stream.getTracks().forEach(t=>t.stop());if(context)context.close();status.textContent=e.name==='NotAllowedError'?'Microphone permission was denied. You can still type.':'Could not open the microphone. You can still type.';}finally{mic.disabled=false;}
-  };
-  try{enabled=localStorage.getItem('mu-speak-replies')==='1';}catch(e){}
-  function toggleLabel(){speak.setAttribute('aria-pressed',String(enabled));speak.title=enabled?'Turn off spoken replies':'Speak replies';speak.setAttribute('aria-label',speak.title);}
-  toggleLabel();
-  speak.onclick=()=>{enabled=!enabled;try{localStorage.setItem('mu-speak-replies',enabled?'1':'0');}catch(e){}toggleLabel();if(!enabled)stopSpeech();status.textContent=enabled?'New replies will be spoken.':'';};
-  stopButton.onclick=()=>{stopSpeech();status.textContent='';};
-  window.addEventListener('mu-chat-answer',async e=>{
-   stopSpeech();if(!enabled||document.hidden||capture)return;
-   const current=generation, chunks=String(e.detail||'').match(/[\s\S]{1,1000}(?:\s|$)|[\s\S]{1,1000}/gu)||[];
-   const controller=new AbortController();request=controller;stopButton.hidden=false;
-   try{
-    for(const chunk of chunks){
-     if(current!==generation)return;
-     const r=await post('/agent/voice/speak',JSON.stringify({text:chunk}),{'Content-Type':'application/json'},controller.signal);
-     const blob=await r.blob();if(current!==generation)return;
-     audioURL=URL.createObjectURL(blob);const audio=new Audio(audioURL);player=audio;
-     await new Promise((resolve,reject)=>{audio.onended=resolve;audio.onerror=()=>reject(new Error('Audio playback failed.'));controller.signal.addEventListener('abort',resolve,{once:true});audio.play().catch(reject);});
-     if(current!==generation)return;URL.revokeObjectURL(audioURL);audioURL='';player=null;
-    }
-   }catch(err){if(current===generation&&err.name!=='AbortError')status.textContent='Could not speak this reply. '+err.message;}
-   finally{if(current===generation){request=null;stopButton.hidden=true;}}
-  });
-  form.addEventListener('submit',()=>{stopRecording(true);stopSpeech();});
-  form.addEventListener('thread-leaving',()=>{stopRecording(true);stopSpeech();});
-  input.addEventListener('beforeinput',()=>stopRecording(true));
-  window.addEventListener('pagehide',()=>{stopRecording(true);stopSpeech();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopRecording(true);stopSpeech();}});
-  fetch('/agent/voice',{credentials:'same-origin',headers:{Accept:'application/json'}}).then(r=>r.ok?r.json():null).then(d=>{
-   if(!d||!d.enabled)return;speak.hidden=false;
-   mic.hidden=!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&(window.AudioContext||window.webkitAudioContext));
-  }).catch(()=>{});
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-})();
-
-document.querySelectorAll('[data-call-code]').forEach(button=>button.addEventListener('click',async()=>{
- const status=document.querySelector('[data-call-code-status]');button.disabled=true;
- try{const r=await fetch('/agent/voice/code',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')}});
- if(!r.ok)throw new Error(await r.text());const d=await r.json();status.textContent='Your call code: '+d.code+'. Use it within five minutes. It works once.';
- }catch(e){status.textContent=e.message;}finally{button.disabled=false;}
-}));
 }

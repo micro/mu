@@ -95,14 +95,5 @@ func ChatComponent(cfg ChatConfig) string {
 	if cfg.Location {
 		location = `<button type="button" id="mu-chat-location" aria-label="Share approximate location" title="Share approximate location"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button>`
 	}
-	return `<div id="mu-chat" class="mu-chat-transcript"><div id="mu-chat-conv" role="log" aria-label="Conversation">` + cfg.InitialConvHTML + `</div><form id="mu-chat-form"><textarea id="mu-chat-input" aria-label="Message Micro" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="1024" rows="1"></textarea>` + location + `` + Microphone() + `<button type="submit" aria-label="Send">↑</button>` + SpeechControls() + `<span id="mu-chat-voice-status" class="text-muted" role="status"></span></form></div><script type="application/json" id="conversation-config">` + string(config) + `</script><script>` + locationJS + conversationJS + `</script>`
-}
-
-// Microphone is shared by the Home and conversation composers.
-func Microphone() string {
-	return `<button type="button" id="mu-chat-mic" class="voice-control" aria-label="Dictate" title="Record a voice message" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg></button>`
-}
-
-func SpeechControls() string {
-	return `<button type="button" id="mu-chat-speak" class="voice-control" aria-label="Speak replies" title="Speak replies" aria-pressed="false" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4zM15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/></svg></button><button type="button" id="mu-chat-speech-stop" class="voice-control" aria-label="Stop speaking" title="Stop speaking" hidden>■</button>`
+	return `<div id="mu-chat" class="mu-chat-transcript"><div id="mu-chat-conv" role="log" aria-label="Conversation">` + cfg.InitialConvHTML + `</div><form id="mu-chat-form"><textarea id="mu-chat-input" aria-label="Message Micro" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="1024" rows="1"></textarea>` + location + `<button type="submit" aria-label="Send">↑</button></form></div><script type="application/json" id="conversation-config">` + string(config) + `</script><script>` + locationJS + conversationJS + `</script>`
 }
