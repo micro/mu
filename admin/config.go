@@ -313,22 +313,7 @@ var settingGroups = []settingGroup{
 			"BROWSER_URL",
 			"CHROME_PATH",
 		}},
-	// Not your notes. This group was called "Notes and the blog" and described
-	// as "whether what you write is kept private or published", which is a
-	// setting that does not exist and would not belong here if it did —
-	// visibility is a property of a note, decided when it is written.
-	//
-	// What NOTES actually gates is a background loop in service/blog that
-	// posts Mu's own story to Mu's own blog on a low cadence. Two unrelated
-	// things are called notes in this repository — internal/notes is what you
-	// and your agents write down, at /notes — and the label had picked the
-	// wrong one.
-	{Name: "The blog Micro writes about itself",
-		Does:  "Micro posts about its own work to its own blog, occasionally. This is the off switch.",
-		Needs: nil,
-		Vars: []string{
-			"NOTES",
-		}}}
+}
 
 // Settable reports whether a setting can be changed from this page.
 //
