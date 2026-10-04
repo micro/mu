@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"regexp"
 
 	"mu/service/events"
 	"net/url"
@@ -15,6 +16,10 @@ func briefText(s string) string {
 	s = strings.Join(strings.Fields(s), " ")
 	return strings.NewReplacer("\\", "\\\\", "*", "\\*", "_", "\\_", "[", "\\[", "]", "\\]", "#", "\\#", "<", "&lt;", ">", "&gt;", "`", "\\`", "!", "\\!", "|", "\\|").Replace(s)
 }
+
+// Imported reflections use section headings, never a second document title.
+var reminderTitle = regexp.MustCompile(`(?m)^ {0,3}#([[:blank:]]+)`)
+
 func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.Time, reminder string, plan bool) string {
 	loc, err := time.LoadLocation(e.Zone)
 	if err != nil {
@@ -59,7 +64,7 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 		section("One small step", c.Priorities, 1, "")
 	}
 	if reminder != "" {
-		b.WriteString("\n" + reminder + "\n")
+		b.WriteString("\n" + reminderTitle.ReplaceAllString(reminder, "##$1") + "\n")
 	} else {
 		b.WriteString("\n## Daily reminder\n\nToday's reminder is unavailable.\n")
 	}

@@ -12,7 +12,7 @@ func TestBriefRendererOwnsStructure(t *testing.T) {
 	off := false
 	e := &events.Event{Zone: "Europe/London", WorldNews: &off}
 	c := BriefContent{Day: []BriefItem{{Text: "Meeting\n## Surprise", URL: "javascript:alert(1)"}}, Headlines: []BriefItem{{Text: "Hidden news"}}, Priorities: []BriefItem{{Text: "Hidden plan"}}}
-	result := renderMorningBrief(c, "Asim", e, time.Date(2026, 9, 27, 23, 30, 0, 0, time.UTC), "", false)
+	result := renderMorningBrief(c, "Asim", e, time.Date(2026, 9, 27, 23, 30, 0, 0, time.UTC), "## Daily reminder\n\nA verse.\n\n# Spiritual Reflection\n\nReflection text.", false)
 	if strings.Contains(result, "\n## Surprise") || strings.Contains(result, "javascript:") || strings.Contains(result, "Hidden") {
 		t.Fatal(result)
 	}
@@ -20,7 +20,7 @@ func TestBriefRendererOwnsStructure(t *testing.T) {
 		t.Fatal("timezone lost", result)
 	}
 	previous := -1
-	for _, heading := range []string{"## Your day", "## Weather", "## Prayer times", "## Markets", "## Daily reminder"} {
+	for _, heading := range []string{"## Your day", "## Weather", "## Prayer times", "## Markets", "## Daily reminder", "## Spiritual Reflection"} {
 		position := strings.Index(result, heading)
 		if position <= previous {
 			t.Fatal(result)
