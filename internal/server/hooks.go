@@ -556,10 +556,6 @@ func wireHooks() {
 	// Start surfacing breaking stories into social
 	agentsocial.Start()
 
-	// Start the notes loop — Mu's own story, posted to its own blog as the
-	// system account (low cadence; disable with NOTES=off).
-	blog.StartNotes()
-
 	// Wire guest agent news search directly to the live feed-backed provider path.
 	api.GuestNewsSearch = news.SearchToolText
 

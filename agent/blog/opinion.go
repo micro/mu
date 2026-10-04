@@ -161,7 +161,6 @@ func dailyOpinions() int {
 
 // opinionsEnabled is the switch for an instance that does not want them.
 //
-// The same shape as NOTES=off in service/blog/notes.go rather than a new idea:
 // a self-hosted instance whose model costs money is entitled to a blog that
 // does not write itself, and the alternative to a switch is editing
 // topics.json down to nothing, which reads as a mistake rather than a
