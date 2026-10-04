@@ -61,7 +61,7 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 		rsp.NextOffset = &end
 	}
 	for _, v := range rsp.Items {
-		rsp.Text += fmt.Sprintf("- %s (%s) https://youtube.com/watch?v=%s\n", v.Title, v.Channel, v.ID)
+		rsp.Text += fmt.Sprintf("- %s (%s) /video?id=%s\n", v.Title, v.Channel, v.ID)
 	}
 	if len(rsp.Items) == 0 {
 		rsp.Text = "No videos match this category or page."
@@ -127,7 +127,7 @@ func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchRespons
 			b.WriteString(" (" + v.Channel + ")")
 		}
 		if v.ID != "" {
-			b.WriteString(" https://youtube.com/watch?v=" + v.ID)
+			b.WriteString(" " + v.URL)
 		}
 		b.WriteString("\n")
 	}

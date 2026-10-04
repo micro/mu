@@ -81,7 +81,7 @@ func Results(items []result.Item) string {
 			if !videoID.MatchString(item.ID) {
 				continue
 			}
-			b.WriteString(`<section class="result-card page-stack">` + VideoPlayer(item.ID, false) + `<a class="record-title" href="https://www.youtube.com/watch?v=` + url.QueryEscape(item.ID) + `">` + html.EscapeString(item.Title) + `</a></section>`)
+			b.WriteString(`<section class="result-card page-stack">` + VideoPlayer(item.ID, false) + `<a class="record-title" href="/video?id=` + url.QueryEscape(item.ID) + `">` + html.EscapeString(item.Title) + `</a><a href="/video?id=` + url.QueryEscape(item.ID) + `&amp;audio=1">Audio only</a></section>`)
 		case "route":
 			b.WriteString(`<section class="result-card page-stack">` + RouteMap(item.Shape) + `<p>` + html.EscapeString(item.Summary) + `</p>`)
 			if len(item.Steps) > 0 {
