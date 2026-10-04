@@ -609,5 +609,5 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<button type="submit" class="btn mb-4">Save</button>`)
 	b.WriteString(`</form>`)
 
-	app.Respond(w, r, app.Response{Title: "Config", Description: "What this instance is configured with", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Config", Description: "What this instance is configured with", HTML: `<div class="section-stack">` + b.String() + `</div>`})
 }
