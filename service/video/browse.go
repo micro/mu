@@ -63,7 +63,7 @@ func browse(r *http.Request, all map[string]Channel) string {
 		b.WriteString(`<p>No videos in this category yet.</p>`)
 	}
 	for _, v := range items[start:end] {
-		b.WriteString(`<article id="reading-` + html.EscapeString("video_"+v.ID) + `" class="reading-row"><a href="/video?id=` + url.QueryEscape(v.ID) + `"><img src="` + html.EscapeString(thumbSrc(v.ID, v.Thumbnail)) + `" loading="lazy" alt=""><h3>` + html.EscapeString(v.Title) + `</h3></a><div class="reading-meta">` + channelLink(v.Channel, v.ChannelID) + " · " + html.EscapeString(app.TimeAgo(v.Published)) + `</div>` + app.ReadingActions(r, "video_"+v.ID) + `</article>`)
+		b.WriteString(`<article id="reading-` + html.EscapeString("video_"+v.ID) + `" class="reading-row"><a href="/video?id=` + url.QueryEscape(v.ID) + `"><img src="` + html.EscapeString(thumbSrc(v.ID, v.Thumbnail)) + `" loading="lazy" alt=""><h3>` + html.EscapeString(v.Title) + `</h3></a><div class="reading-meta">` + channelLink(v.Channel, v.ChannelID) + " · " + html.EscapeString(app.TimeAgo(v.Published)) + ` · <a href="/video?id=` + url.QueryEscape(v.ID) + `&amp;audio=1">Audio only</a></div>` + app.ReadingActions(r, "video_"+v.ID) + `</article>`)
 	}
 	return fmt.Sprintf(Template, "", b.String()+`</div>`) + app.ReadingPages("/video", category, page, len(items), 9) + ``
 }
@@ -77,7 +77,7 @@ func channelLink(name, id string) string {
 	if label == "" {
 		label = "YouTube channel"
 	}
-	return `<a href="https://www.youtube.com/channel/` + html.EscapeString(url.PathEscape(id)) + `" rel="noopener noreferrer">` + label + `</a>`
+	return `<a href="/video?channel=` + html.EscapeString(url.QueryEscape(id)) + `">` + label + `</a>`
 }
 
 func watchInfo(id string) (string, string, string) {

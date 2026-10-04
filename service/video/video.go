@@ -725,7 +725,7 @@ func getResults(query, channel string) (string, []*Result, error) {
 			results = append(results, res)
 		}
 
-		// Results open in Mu; the channel name opens its YouTube page.
+		// Results and channel names open the local browsing pages.
 		html := fmt.Sprintf(`
 			<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a>%s · %s</div>`,
 			url, thumbSrc(id, thumbnailURL), item.Snippet.Title, channelLink(item.Snippet.ChannelTitle, item.Snippet.ChannelId), desc)
@@ -950,7 +950,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				playlistDesc = playlistDesc[:500] + "..."
 			}
 			if playlistDesc != "" {
-				playlistDesc = "<p>" + playlistDesc + "</p>"
+				playlistDesc = "<p>" + htmlpkg.EscapeString(playlistDesc) + "</p>"
 			}
 		}
 
@@ -1029,7 +1029,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		channelInfo := ""
 		if channelDesc != "" {
-			channelInfo = "<p>" + channelDesc + "</p>"
+			channelInfo = "<p>" + htmlpkg.EscapeString(channelDesc) + "</p>"
 		}
 
 		uploadsPlaylistID := channelResp.Items[0].ContentDetails.RelatedPlaylists.Uploads

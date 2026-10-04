@@ -1771,9 +1771,13 @@ if(typeof document !== "undefined" && document.querySelector(".video-embed") && 
       if(!player||!player.getPlayerState)return;
       player.getPlayerState()===1?player.pauseVideo():player.playVideo();
     });
-    window.onYouTubeIframeAPIReady=function(){
+    function initPlayer(){
+      if(player)return;
       player=new YT.Player('ytplayer',{events:{onReady:function(){play.disabled=false;updateState();},onStateChange:updateState,onError:function(){time.textContent='Playback unavailable. Try opening the original video.';play.disabled=true;}}});
-    };
+    }
+    window.onYouTubeIframeAPIReady=initPlayer;
+    if(window.YT&&window.YT.Player)initPlayer();
+    if(new URLSearchParams(location.search).get('audio')==='1')audio.click();
   })();
 
 
