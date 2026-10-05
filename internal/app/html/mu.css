@@ -350,7 +350,7 @@ main{overflow-wrap:anywhere}
 :is(.card-grid,.directory-list)>*{min-width:0;margin:0}
 .card-grid>:is(h2,.section-heading){grid-column:1/-1}
 :is(.card-grid,.directory-list)>:is(.card,.section-card,.record-card,.record-editor,.page-section){margin:0}
-.directory-row{display:flex;align-items:stretch;align-self:stretch;gap:12px;min-width:0;height:100%}
+.directory-row{display:flex;align-items:flex-start;align-self:start;gap:12px;min-width:0;padding:16px}
 .directory-content{display:flex;flex-direction:column;flex:1;min-width:0;text-decoration:none}
 .directory-content h3{margin:0 0 4px}
 .directory-content .form-actions{margin-top:8px}
@@ -1211,7 +1211,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .result-preview>:first-child{margin-top:0}.result-preview>:last-child{margin-bottom:0}
 
 /* Home embeds the Agent composer within a normally scrolling overview. */
-.document-page:has([data-home-overview]) .assistant-workspace{display:block;margin:16px 0 0}
+.document-page:has([data-home-overview]) .assistant-workspace{display:block;margin:0}
 .document-page:has([data-home-overview]) .conversation{min-height:0;height:auto;display:block}
 .document-page:has([data-home-overview]) .prompt-panel{margin:0;padding:0}
 .document-page:has([data-home-overview]) .prompt-welcome{display:none}
@@ -1432,11 +1432,12 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .account-menu-links>hr{margin:6px 12px;border-color:var(--border)}
 
 /* Compact app shortcuts reuse service icons without directory card chrome. */
-.service-shortcuts{display:flex;flex-wrap:nowrap;gap:4px;align-items:flex-start;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
+.service-shortcuts{display:flex;flex-wrap:nowrap;gap:8px;align-items:flex-start;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
 .service-shortcuts::-webkit-scrollbar{display:none}
-.service-shortcuts>a{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px;max-width:100%;padding:2px 4px;border-radius:6px;text-align:center;font-size:.875rem;font-weight:400}
-.service-shortcuts>a:hover{background:var(--surface)}
-.service-shortcuts img{width:24px;height:24px;object-fit:contain}
+.service-shortcuts>a{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:88px;max-width:100%;padding:4px 8px;border-radius:8px;text-align:center;font-size:.875rem;font-weight:400}
+.service-shortcuts>a:hover .service-shortcut-icon{background:var(--surface)}
+.service-shortcut-icon{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border:1px solid var(--border);border-radius:14px;background:var(--bg,#fff)}
+.service-shortcuts img{width:28px;height:28px;object-fit:contain}
 .service-shortcuts span{white-space:nowrap}
 
 /* Compact the shared signed-in canvas progressively without shrinking controls. */
@@ -1454,13 +1455,12 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
  .signed-in .section-card-head{margin-bottom:12px}
  .signed-in .section-heading{margin-block:16px 8px}
  .signed-in .home-date{gap:4px 12px;margin-bottom:8px}
- .signed-in.document-page:has([data-home-overview]) .assistant-workspace{margin-top:8px}
- .service-shortcuts>a{min-width:56px}
+ .service-shortcuts>a{min-width:80px}
 }
 
 /* Compact shortcut groups and optional article references. */
-.shortcut-section{border-top:1px solid var(--border);padding-top:10px;min-width:0}
-.shortcut-section>h2{font-size:.8rem;font-weight:400;color:var(--text-muted);margin:0 0 6px}
+.shortcut-section{border-top:1px solid var(--border);padding-block:16px 8px;min-width:0}
+.shortcut-section>h2{font-size:.875rem;font-weight:400;color:var(--text-muted);margin:0 0 12px}
 .reference-list{padding-left:20px;max-width:var(--reading-width)}
 .reference-list li{margin-block:10px;overflow-wrap:anywhere}
 .reference-list a{font-weight:400}
