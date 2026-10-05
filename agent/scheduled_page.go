@@ -50,6 +50,6 @@ func scheduledHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := auth.CSRFToken(r)
-	body := `<div class="page-stack">` + app.PageControls(agentsDescription, scheduledTabs(true), `<div class="form-actions"><a class="btn" href="/agents?view=scheduled&amp;new=1">New task</a></div>`) + `<div class="card-grid">` + briefPeriodHTML(acc.ID, token, "morning") + checkinHTML(acc.ID, token) + momentHTML(acc.ID, token) + `<section id="research" class="section-card section-stack"><h2>Evening Reading</h2>` + researchHTML(acc.ID, token) + `</section></div>` + customSchedulesHTML(acc.ID, token) + `</div>`
+	body := `<div class="page-stack">` + app.PageControls(agentsDescription, scheduledTabs(true), `<div class="form-actions"><a class="btn" href="/agents?view=scheduled&amp;new=1">New event</a></div>`) + `<div class="card-grid">` + briefPeriodHTML(acc.ID, token, "morning") + checkinHTML(acc.ID, token) + momentHTML(acc.ID, token) + `<section id="research" class="section-card section-stack"><h2>Evening Reading</h2>` + researchHTML(acc.ID, token) + `</section></div>` + customSchedulesHTML(acc.ID, token) + `</div>`
 	app.Respond(w, r, app.Response{Title: "Agents", HTML: body})
 }

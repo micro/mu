@@ -109,14 +109,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			options = append(options, app.Option{Value: agent.Slug(a), Label: a.Name})
 		}
 		body := `<form method="POST" action="/work" class="form">` + app.CSRFField(auth.CSRFToken(r)) + app.Field{Name: "prompt", Label: "What needs doing?", Rows: 4, Max: 8000, Required: true, Wide: true}.HTML() + app.Field{Name: "agent", Label: "Assigned to", Options: options}.HTML() + `<div class="form-actions"><button>Save</button><a href="/work">Cancel</a></div></form>`
-		respond(w, r, app.Response{Title: "New work", HTML: body})
+		respond(w, r, app.Response{Title: "New task", HTML: body})
 		return
 	}
 	filter := r.URL.Query().Get("status")
 	archived := r.URL.Query().Get("view") == "archived" || filter == "archived"
 	var b strings.Builder
 	var controls strings.Builder
-	controls.WriteString(`<div class="collection-toolbar"><a class="btn" href="/work?view=new">New work</a><form class="search-bar" method="GET" action="/work"><label class="filter-control" for="work-status"><span>Status</span><select id="work-status" name="status" data-submit-on-change>`)
+	controls.WriteString(`<div class="collection-toolbar"><a class="btn" href="/work?view=new">New task</a><form class="search-bar" method="GET" action="/work"><label class="filter-control" for="work-status"><span>Status</span><select id="work-status" name="status" data-submit-on-change>`)
 	for _, f := range []struct{ value, label string }{{"", "All"}, {"todo", "Queued"}, {"doing", "Running"}, {"blocked", "Needs input"}, {"failed", "Failed"}, {"done", "Done"}, {"canceled", "Stopped"}, {"archived", "Archived"}} {
 		current := ""
 		if (filter == f.value && !archived) || (archived && f.value == "archived") {
