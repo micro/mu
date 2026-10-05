@@ -868,9 +868,9 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .desktop-navigation{align-items:center;flex-wrap:nowrap}
 .account-menu{position:relative;flex:none}
 .account-menu>summary{width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;font-weight:var(--font-weight-medium);line-height:1}
-.account-menu>summary>span{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#f5f5f5}
+
 .account-menu>summary::before{display:none}
-.account-menu>summary:hover>span,.account-menu[open]>summary>span{background:#e8e8e8}
+
 .account-menu>.account-menu-links{position:absolute;right:0;top:100%;z-index:100;margin:8px 0 0;padding:6px;min-width:160px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 16px #00000012}
 .account-menu-links>a{display:flex;align-items:center;min-height:44px;padding:8px 12px;border-radius:4px;white-space:nowrap;text-decoration:none}
 .account-menu-links>a:hover,.account-menu-links>a:focus-visible{background:#f5f5f5;color:inherit}
@@ -1242,7 +1242,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .home-date{color:#666;display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px}
 .home-summary{line-height:1.7;margin:0}
 .home-card-content{min-width:0}
-.home-card-content>.post-item{border:0;border-radius:0;padding:0}
+.home-card-content>:is(.post-item,.thumbnail){border:0;border-radius:0;padding:0}
 .home-card-content>:first-child{margin-top:0}
 .home-card-content>:last-child{margin-bottom:0}
 .runtime-brand{display:none}
@@ -1387,10 +1387,11 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .document-content h2{margin:24px 0 8px}
 .document-content p{margin:0 0 12px}
 .document-content pre,.document-content table{margin:12px 0}
-.account-menu summary span{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-menu summary .account-name{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.account-menu>summary{width:auto;padding:0 8px}
-.account-menu>summary>span{width:auto;height:auto;border-radius:4px;padding:6px 8px;line-height:1.4}
+.account-menu>summary{width:auto;padding:0;gap:8px}
+.account-menu>summary>.account-name{width:auto;height:auto;line-height:1.4}
+.account-avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border-radius:50%;background:var(--surface);color:var(--text-secondary);font-size:14px;line-height:1;object-fit:cover}
 
 .account-group>.card+.card{border-top:1px solid var(--border);border-radius:0;margin-top:12px;padding-top:20px}
 
@@ -1433,3 +1434,10 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .collection-toolbar>.search-bar:has(input){flex:1 1 280px;max-width:560px}
 
 .account-menu-links>hr{margin:6px 12px;border-color:var(--border)}
+
+/* Compact app shortcuts reuse service icons without directory card chrome. */
+.service-shortcuts{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.service-shortcuts>a{display:flex;flex-direction:column;align-items:center;gap:8px;width:80px;max-width:100%;padding:10px 4px;border-radius:6px;text-align:center;font-size:.875rem;font-weight:400}
+.service-shortcuts>a:hover{background:var(--surface)}
+.service-shortcuts img{width:28px;height:28px;object-fit:contain}
+.service-shortcuts span{max-width:100%;overflow-wrap:anywhere}

@@ -956,7 +956,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			}
 			search = `<form method="GET" action="/blog" class="search-bar">` + hidden + `<input type="search" name="q" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
 		}
-		content = `<div id="blog" class="editorial-page"><p class="text-muted">` + description + `</p><nav class="section-actions" aria-label="Blog">` + nav + actions + `</nav>` + search + `<div id="posts-list">` + list + `</div></div>`
+		content = `<div id="blog" class="editorial-page"><p class="text-muted">` + description + `</p><nav class="section-actions view-tabs" aria-label="Blog">` + nav + actions + `</nav>` + search + `<div id="posts-list">` + list + `</div></div>`
 	}
 
 	app.Respond(w, r, app.Response{Title: "Blog", Description: "Writing about Micro and the ideas behind it.", BodyClass: "reading-page editorial-reading", HTML: content})

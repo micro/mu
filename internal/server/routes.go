@@ -648,6 +648,7 @@ func registerRoutes() {
 	http.HandleFunc("/inbox/settings", agent.ScheduledPreferencesHandler)
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/account/profile", account.Account)
+	http.HandleFunc("/account/avatar", account.Account)
 	http.HandleFunc("/account/billing", account.Account)
 	http.HandleFunc("/account/subscription", account.SubscriptionHandler)
 	http.HandleFunc("/account/usage", account.UsageHandler)

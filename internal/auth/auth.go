@@ -36,6 +36,7 @@ var userPresence = map[string]time.Time{} // username -> last seen time
 type Account struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
+	Avatar       string    `json:"avatar,omitempty"`
 	Secret       string    `json:"secret"`
 	Created      time.Time `json:"created"`
 	Admin        bool      `json:"admin"`
@@ -63,7 +64,7 @@ type Account struct {
 	Lat                  float64   `json:"lat,omitempty"`
 	Lon                  float64   `json:"lon,omitempty"`
 	Zone                 string    `json:"zone,omitempty"`
-	Pinned               []string  `json:"pinned"`             // Service names pinned to the sidebar, in the order shown
+	Pinned               []string  `json:"pinned"`             // Service shortcuts pinned to Home, in the order shown
 	Approved             bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
 	Email                string    `json:"email,omitempty"`
 	EmailVerified        bool      `json:"email_verified,omitempty"`
@@ -1183,7 +1184,7 @@ func (t *Token) HasPermission(perm string) bool {
 	return false
 }
 
-// PinnedServices is the services this account keeps in its sidebar, in order.
+// PinnedServices is the service selection shown as Home shortcuts, in order.
 //
 // An unset selection gets useful presets. An explicit empty slice means the
 // reader unpinned everything and survives JSON round trips as an empty array.
@@ -1193,7 +1194,7 @@ func (a *Account) PinnedServices() []string {
 	}
 	names := a.Pinned
 	if names == nil {
-		names = []string{"web", "news", "video", "bookmarks"}
+		names = []string{"news", "markets", "video", "blog"}
 	}
 	out := make([]string, 0, len(names))
 	seen := map[string]bool{}

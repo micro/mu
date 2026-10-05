@@ -506,6 +506,11 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == "/account/avatar" {
+		avatarHandler(w, r, acc)
+		return
+	}
+
 	if handleSSHKey(w, r, acc.ID) {
 		return
 	}
@@ -710,7 +715,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		notice = app.Notice("Google connected.") + notice
 	}
 	content = billingSummary(acc) + subscriptionSummary(r, acc)
-	content += `<section id="details" class="account-group"><h2>Details</h2>` + profile + renderEmailCard(acc) + renderPhoneCard(acc.ID) + language + PlaceCard(r, acc.ID) + `</section>`
+	content += `<section id="details" class="account-group"><h2>Details</h2>` + profile + avatarCard(r, acc) + renderEmailCard(acc) + renderPhoneCard(acc.ID) + language + PlaceCard(r, acc.ID) + `</section>`
 	content += `<section id="security" class="account-group"><h2>Security</h2>` + passwordCard(acc) + PasskeyListHTML(acc.ID) + sshaccess.Card(r, acc.ID, "/account", "SSH keys", "Use a public SSH key for terminal and SFTP access. Add your .pub file contents and keep the private key on your device.", "ssh") + `</section>`
 	content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
 	content += renderGoogleCard(r, acc, r.URL.Query().Get("connection"))

@@ -25,6 +25,21 @@ func Get(key string, original []byte) ([]byte, error) {
 	if b, err := blob.Get(cached); err == nil {
 		return b, nil
 	}
+	b, err := Render(original, Width)
+	if err != nil {
+		return nil, err
+	}
+	if err = blob.Put(cached, b, "image/jpeg"); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// Render validates a raster image and returns a bounded JPEG without metadata.
+func Render(original []byte, size int) ([]byte, error) {
+	if size < 1 {
+		return nil, fmt.Errorf("invalid preview size")
+	}
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(original))
 	if err != nil {
 		return nil, err
@@ -37,13 +52,13 @@ func Get(key string, original []byte) ([]byte, error) {
 		return nil, err
 	}
 	w, h := cfg.Width, cfg.Height
-	if w > Width || h > Width {
+	if w > size || h > size {
 		if w >= h {
-			h = h * Width / w
-			w = Width
+			h = h * size / w
+			w = size
 		} else {
-			w = w * Width / h
-			h = Width
+			w = w * size / h
+			h = size
 		}
 	}
 	if w < 1 {
@@ -76,9 +91,5 @@ func Get(key string, original []byte) ([]byte, error) {
 	if err = jpeg.Encode(&out, dst, &jpeg.Options{Quality: 78}); err != nil {
 		return nil, err
 	}
-	b := out.Bytes()
-	if err = blob.Put(cached, b, "image/jpeg"); err != nil {
-		return nil, err
-	}
-	return b, nil
+	return out.Bytes(), nil
 }

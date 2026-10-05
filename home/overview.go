@@ -118,5 +118,5 @@ func Forget(owner string) {
 // Feed keeps reading and markets on the left; prayer, images and video on the right.
 // Pins are shortcuts; these cards form the Feed independently of those shortcuts.
 func feedServices() []service.Spec {
-	return service.Pinned([]string{"news", "markets", "prayer", "images", "video"})
+	return service.Pinned([]string{"markets", "news", "prayer", "images", "video"})
 }
