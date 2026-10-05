@@ -99,15 +99,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // form is the two ends and the mode.
 func form(from, to, mode string, csrf ...string) string {
 	var b strings.Builder
-	b.WriteString(`<form method="POST" action="/routes" class="card form form-inline">`)
+	b.WriteString(`<form method="POST" action="/routes" class="form form-inline lookup-form">`)
 	if len(csrf) > 0 {
 		b.WriteString(app.CSRFField(csrf[0]))
 	}
-	b.WriteString(`<input name="from" value="` + html.EscapeString(from) +
-		`" placeholder="From — e.g. King's Cross, London" autocomplete="off" aria-label="Starting point">`)
-	b.WriteString(`<input name="to" value="` + html.EscapeString(to) +
-		`" placeholder="To — e.g. British Museum" autocomplete="off" aria-label="Destination">`)
-	b.WriteString(`<select name="mode" aria-label="How to travel">`)
+	b.WriteString(`<label class="field-label">From<input name="from" value="` + html.EscapeString(from) +
+		`" placeholder="From — e.g. King's Cross, London" autocomplete="off" aria-label="Starting point"></label>`)
+	b.WriteString(`<label class="field-label">To<input name="to" value="` + html.EscapeString(to) +
+		`" placeholder="To — e.g. British Museum" autocomplete="off" aria-label="Destination"></label>`)
+	b.WriteString(`<label class="field-label">Travel by<select name="mode" aria-label="How to travel">`)
 	for _, m := range []struct{ value, label string }{
 		{"drive", "Drive"}, {"walk", "Walk"}, {"cycle", "Cycle"}, {"transit", "Transit"},
 	} {
@@ -117,7 +117,7 @@ func form(from, to, mode string, csrf ...string) string {
 		}
 		b.WriteString(`<option value="` + m.value + `"` + sel + `>` + m.label + `</option>`)
 	}
-	b.WriteString(`</select><button type="submit">Get directions</button></form>`)
+	b.WriteString(`</select></label><button type="submit">Get directions</button></form>`)
 	return b.String()
 }
 

@@ -185,31 +185,21 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	stored := List(sess.Account)
 	csrf := auth.CSRFToken(r)
 
-	var b strings.Builder
-	// No heading here: the page is already titled Files by the shell, and a
-	// card that repeats the page title just costs a phone a line of screen.
-	b.WriteString(`<div class="page-stack"><div class="form-actions"><a class="btn" href="/files?new=1">New</a></div><div class="record-card">`)
-	b.WriteString(`<p class="text-sm text-muted">Using ` +
-		human(UsedBytes(sess.Account)) + ` of ` + human(MaxOwnerBytes) + `.</p>`)
-
-	if msg := r.URL.Query().Get("error"); msg != "" {
-		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
+	if r.URL.Query().Get("import") == "1" && !app.WantsJSON(r) {
+		form := `<form method="POST" action="/files" enctype="multipart/form-data" class="form record-editor">` + app.CSRFField(csrf) + `<label class="field-label">Choose a file<input type="file" name="file" required></label><p class="note">Up to ` + human(MaxBytes) + ` a file.</p><div class="form-actions"><button type="submit">Upload</button></div></form>`
+		app.Respond(w, r, app.Response{Title: "Upload file", HTML: app.EditorPage("/files", "All files", form)})
+		return
 	}
-
-	// Upload. A plain multipart form: the browser's own file picker beats
-	// anything worth building here, and the page keeps working without
-	// JavaScript.
-	fmt.Fprintf(&b, `<form method="POST" action="/files" enctype="multipart/form-data" class="form form-inline">
-  <input type="hidden" name="_csrf" value="%s">
-  <input type="file" name="file" required>
-  <button type="submit">Upload</button>
-</form>`, html.EscapeString(csrf))
-	b.WriteString(`<p class="text-sm text-muted">Up to ` + human(MaxBytes) + ` a file.</p>`)
-	b.WriteString(`</div>`)
+	var b strings.Builder
+	b.WriteString(`<div class="page-stack">` + app.CollectionControls("", app.ActionLink("/files?new=1", "New")+app.ActionLink("/files?import=1", "Upload"), ""))
+	b.WriteString(app.Note("Using " + human(UsedBytes(sess.Account)) + " of " + human(MaxOwnerBytes) + "."))
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		b.WriteString(app.Problem(msg))
+	}
 
 	if len(stored) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">Nothing stored yet. ` +
-			`Upload a file above, or ask Micro to create one for you.</p></div>`)
+			`Upload a file, or ask Micro to create one for you.</p></div>`)
 	} else {
 		b.WriteString(`<div class="collection-list">`)
 		for _, f := range stored {

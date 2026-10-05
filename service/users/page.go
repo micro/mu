@@ -57,14 +57,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Search, because a hundred and eighty rows is a list you scroll and a
 	// thousand is one you cannot.
-	b.WriteString(`<form method="GET" action="/users" class="search-bar">` +
+	var controls strings.Builder
+	controls.WriteString(`<form method="GET" action="/users" class="search-bar">` +
 		`<input name="q" class="field" placeholder="Find somebody" value="` +
 		html.EscapeString(q) + `">` +
 		`<button type="submit">Search</button>`)
 	if q != "" {
-		b.WriteString(` <a class="mini-btn" href="/users">Clear</a>`)
+		controls.WriteString(` <a class="mini-btn" href="/users">Clear</a>`)
 	}
-	b.WriteString(`</form>`)
+	controls.WriteString(`</form>`)
+
+	b.WriteString(app.CollectionControls(controls.String(), "", ""))
 
 	if len(list) == 0 {
 		b.WriteString(app.Note("Nobody here matches " + html.EscapeString(q) + "."))

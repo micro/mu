@@ -78,13 +78,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<div class="ar">`)
 
-	b.WriteString(`<form method="GET" action="/archive" class="search-bar">`)
+	var controls strings.Builder
+	controls.WriteString(`<form method="GET" action="/archive" class="search-bar">`)
 	if kind != "" {
-		b.WriteString(`<input type="hidden" name="kind" value="` + html.EscapeString(kind) + `">`)
+		controls.WriteString(`<input type="hidden" name="kind" value="` + html.EscapeString(kind) + `">`)
 	}
-	b.WriteString(`<input type="search" name="q" placeholder="Search the archive" ` +
+	controls.WriteString(`<input type="search" name="q" placeholder="Search the archive" ` +
 		`value="` + html.EscapeString(query) + `" autofocus>` +
 		`<button type="submit">Search</button></form>`)
+
+	b.WriteString(app.CollectionControls(controls.String(), "", ""))
 
 	b.WriteString(kindChips(kinds, query, kind))
 

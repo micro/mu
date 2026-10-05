@@ -64,16 +64,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	if title := strings.TrimSpace(q.Get("note")); title != "" {
 		if text := notes.Get(who, title); text != "" {
-			source := ""
+			source, noteID := "", ""
 			for _, e := range entries {
-				if strings.EqualFold(e.Title, title) && e.SourceThread != "" {
-					source = `<p class="text-sm text-muted">Remembered from <a href="/inbox?id=` + html.EscapeString(urlArg(e.SourceThread)) + `">a conversation</a> · ` + html.EscapeString(e.UpdatedAt.Format("2 Jan 2006")) + `</p>`
+				if strings.EqualFold(e.Title, title) {
+					noteID = e.ID
+					if e.SourceThread != "" {
+						source = `<p class="text-sm text-muted">Remembered from <a href="/inbox?id=` + html.EscapeString(urlArg(e.SourceThread)) + `">a conversation</a> · ` + html.EscapeString(e.UpdatedAt.Format("2 Jan 2006")) + `</p>`
+					}
 					break
 				}
 			}
-			body := `<div class="collection-head"><a href="/notes">All notes</a></div>` + source +
-				`<article class="reading-body">` + string(app.RenderLinesNoImages([]byte(text))) + `</article>` +
-				`<details class="disclosure"><summary>Edit</summary>` + editor(r, title, text) + `</details>`
+			if q.Get("edit") == "1" {
+				render(w, r, "Edit note", app.EditorPage("/notes", "All notes", editor(r, title, text)))
+				return
+			}
+			body := app.CollectionControls("", `<a href="/notes">All notes</a>`+app.ActionLink("/notes?id="+urlArg(noteID)+"&edit=1", "Edit"), "") + source + `<article class="reader-content">` + string(app.RenderLinesNoImages([]byte(text))) + `</article>`
+
 			render(w, r, title, body)
 			return
 		}
@@ -83,7 +89,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if q.Get("new") != "" {
-		render(w, r, "New note", `<div class="collection-head"><a href="/notes">All notes</a></div>`+editor(r, "", ""))
+		render(w, r, "New note", app.EditorPage("/notes", "All notes", editor(r, "", "")))
 		return
 	}
 
@@ -93,8 +99,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // list is every note, newest change first, each one a link into the editor.
 func list(entries []*notes.Entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="page-action">` +
-		`<a class="btn" href="/notes?new=1">New</a></div>`)
+	b.WriteString(app.CollectionControls("", app.ActionLink("/notes?new=1", "New"), ""))
 
 	if len(entries) == 0 {
 		// Most accounts land here, because an agent only writes a note when a
@@ -131,7 +136,7 @@ func list(entries []*notes.Entry) string {
 func editor(r *http.Request, title, text string) string {
 	csrf := html.EscapeString(auth.CSRFToken(r))
 
-	titleField := `<input name="title" class="record-title" required maxlength="40" ` +
+	titleField := `<input name="title" aria-label="Title" class="record-title" required maxlength="40" ` +
 		`placeholder="Title" autofocus value="` + html.EscapeString(title) + `">`
 	if title != "" {
 		// The title is the note's address — rewriting it would leave the old
@@ -143,11 +148,11 @@ func editor(r *http.Request, title, text string) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="page-stack"><form method="POST" action="/notes" class="form record-editor">` +
+	b.WriteString(`<div class="page-stack"><form method="POST" action="/notes" class="form record-editor document-editor">` +
 		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 		`<input type="hidden" name="save" value="1">` +
 		titleField +
-		`<textarea name="text" class="record-body" rows="14" required maxlength="` +
+		`<textarea name="text" aria-label="Note" class="record-body" rows="14" required maxlength="` +
 		strconv.Itoa(maxText) + `" placeholder="Write it down">` + html.EscapeString(text) + `</textarea>` +
 		`<div class="record-actions"><button type="submit">Save</button></div></form>`)
 

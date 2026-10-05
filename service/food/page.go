@@ -25,7 +25,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 
-	b.WriteString(`<div class="page-stack"><section class="page-section"><h3>Nutrition and ingredients</h3><p>Find a packaged food to see its nutritional information, ingredients and recorded allergens.</p><form class="search-bar" method="get" action="/food">`)
+	b.WriteString(`<div class="page-stack"><section class="section-body"><p>Find a packaged food to see its nutritional information, ingredients and recorded allergens.</p><form class="search-bar" method="get" action="/food">`)
 	fmt.Fprintf(&b, `<input type="search" name="q" value="%s" placeholder="Search food or brand" aria-label="Food or brand"><button type="submit">Search</button></form>`, html.EscapeString(find))
 	b.WriteString(`<details class="disclosure"><summary>Look up a barcode</summary><form class="search-bar" method="get" action="/food">`)
 	fmt.Fprintf(&b, `<input type="text" inputmode="numeric" name="barcode" value="%s" placeholder="Barcode on the packet" aria-label="Barcode"><button type="submit">Look up</button></form></details></section>`, html.EscapeString(barcode))

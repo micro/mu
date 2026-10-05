@@ -42,9 +42,10 @@ func browse(r *http.Request, posts []*Post) string {
 	}
 	page, start, end := app.ReadingPage(r, len(items), 20)
 	var b strings.Builder
-	b.WriteString(`<form id="news-search" class="search-bar" action="/news" method="GET"><input id="news-query" name="query" type="search" placeholder="Search news" aria-label="Search news" maxlength="256"><button type="submit">Search</button></form>`)
-	b.WriteString(app.RecentSearches("news-search", "mu-news-recent"))
-	b.WriteString(app.ReadingFilters("/news", category, categories))
+	var controls strings.Builder
+	controls.WriteString(`<form id="news-search" class="search-bar" action="/news" method="GET"><input id="news-query" name="query" type="search" placeholder="Search news" aria-label="Search news" maxlength="256"><button type="submit">Search</button></form>`)
+	b.WriteString(app.CollectionControls(controls.String(), "", app.RecentSearches("news-search", "mu-news-recent")+app.ReadingFilters("/news", category, categories)))
+
 	if category == "" {
 		b.WriteString(`<h2>Headlines</h2>`)
 	}

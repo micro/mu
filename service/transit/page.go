@@ -102,7 +102,7 @@ func stopsJSON(stops []stop) []map[string]any {
 func page() string {
 	var b strings.Builder
 	b.WriteString(app.Column())
-	b.WriteString(`<div class="card"><form id="xsearch" class="form"><label for="xquery">Find a London stop or station</label><div class="form-row page-section"><input id="xquery" name="q" type="search" placeholder="Stop, station or area" required maxlength="200"><button type="submit" class="btn">Search</button><button type="button" id="xnear" class="btn">Use my location</button></div></form><div id="xstops" aria-live="polite" class="xmuted">Search for a stop or use your location.</div></div>`)
+	b.WriteString(`<div class="section-body"><form id="xsearch" class="form lookup-form"><label for="xquery">Find a London stop or station</label><div class="form-row"><input id="xquery" name="q" type="search" placeholder="Stop, station or area" required maxlength="200"><button type="submit" class="btn">Search</button><button type="button" id="xnear" class="btn">Use my location</button></div></form><div id="xstops" aria-live="polite" class="xmuted">Search for a stop or use your location.</div></div>`)
 
 	b.WriteString(statusCard())
 	b.WriteString(`</div>` + pageScript)

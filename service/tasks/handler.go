@@ -118,15 +118,15 @@ func listPage(w http.ResponseWriter, r *http.Request, names ...func(string, stri
 		return
 	}
 
-	var b strings.Builder
-	b.WriteString(`<div class="page-section">`)
-
-	if msg := r.URL.Query().Get("error"); msg != "" {
-		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
+	if r.URL.Query().Get("new") == "1" {
+		app.Respond(w, r, app.Response{Title: "New task", HTML: app.EditorPage("/tasks", "All tasks", addForm(csrf))})
+		return
 	}
-
-	b.WriteString(`<div class="form-actions"><button type="button" aria-controls="task-new" aria-expanded="false" onclick="var p=document.getElementById('task-new');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden)p.querySelector('input[name=title]').focus()">New</button></div><div id="task-new" hidden>` + addForm(csrf) + `</div>`)
-	b.WriteString(`</div>`)
+	var b strings.Builder
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		b.WriteString(app.Problem(msg))
+	}
+	b.WriteString(app.CollectionControls("", app.ActionLink("/tasks?new=1", "New"), ""))
 
 	// Filters. Counted, because "3 open" is the thing you want to know before
 	// you decide whether to look.
@@ -372,16 +372,16 @@ func plural(n int) string {
 // long way from the words it belonged to. Giving each its own line costs
 // nothing and removes both problems.
 func addForm(csrf string) string {
-	return fmt.Sprintf(`<form method="POST" action="/tasks" class="form page-stack" onsubmit="var d=this.duelocal.value;this.due.value=d?new Date(d).toISOString():''">
+	return fmt.Sprintf(`<form method="POST" action="/tasks" class="form record-editor" onsubmit="var d=this.duelocal.value;this.due.value=d?new Date(d).toISOString():''">
   <input type="hidden" name="_csrf" value="%s">
   <input type="hidden" name="due" value="">
   <label class="field-label">What needs doing?<input name="title" required></label>
   <label class="field-label">Detail (optional)<input name="detail"></label>
   <div class="form-row">
     <label class="field-label">Due <input type="datetime-local" name="duelocal"></label>
-    <button type="submit">Add</button>
   </div>
   <label class="field-label form-check"><input type="checkbox" name="assign" value="agent"> <span>Give it to the agent — it starts working on this now</span></label>
+<div class="form-actions"><button type="submit">Add</button></div>
 </form>`, html.EscapeString(csrf))
 }
 

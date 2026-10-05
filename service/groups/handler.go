@@ -71,6 +71,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	auth.SetCSRFCookie(w, r)
 	csrf := auth.CSRFToken(r)
+	if !app.WantsJSON(r) && ((r.Method == http.MethodGet && r.URL.Query().Get("new") == "1") || (r.Method == http.MethodPost && r.PostFormValue("action") == "create" && notice != "")) {
+		editor := form(csrf, "", "create", "", `<label class="field-label">Group name<input name="name" required maxlength="100" placeholder="Family"></label><label class="field-label">Chat privacy<select name="encrypted"><option value="false">Web and XMPP chat</option><option value="true">End-to-end encrypted · XMPP clients only</option></select></label><p class="text-muted">Web chat uses an encrypted connection; Micro stores its messages. End-to-end encrypted groups require an XMPP client such as Conversations.</p><div class="form-actions"><button>Create group</button></div>`)
+		if notice != "" {
+			editor = app.Problem(notice) + editor
+		}
+		app.Respond(w, r, app.Response{Title: "New group", HTML: app.EditorPage("/groups", "All groups", editor)})
+		return
+	}
 	var b strings.Builder
 	b.WriteString(`<div class="page-stack">`)
 	if notice != "" {
@@ -149,6 +157,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, ListResponse{Groups: gs, Invitations: pending})
 			return
 		}
+		b.WriteString(app.CollectionControls("", app.ActionLink("/groups?new=1", "New"), ""))
 		if len(pending) > 0 {
 			b.WriteString(`<section class="record-card"><h2>Invitations</h2>`)
 			for _, inv := range pending {
@@ -157,14 +166,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			b.WriteString(`</section>`)
 		}
-		b.WriteString(`<section class="record-card"><h2>Your groups</h2><div class="collection-list">`)
+		b.WriteString(`<section><div class="collection-list">`)
 		for _, g := range gs {
 			fmt.Fprintf(&b, `<a class="collection-item" href="/groups?id=%s"><span class="collection-title">%s</span><span class="collection-preview">%d members · %s</span></a>`, g.ID, html.EscapeString(g.Name), len(g.Members), g.Members[acc.ID])
 		}
 		if len(gs) == 0 {
 			b.WriteString(`<p>No groups yet. Create one for your family, friends or community.</p>`)
 		}
-		b.WriteString(`</div></section><section class="record-card"><h2>New group</h2>` + form(csrf, "", "create", "", `<label class="field-label">Group name<input name="name" required maxlength="100" placeholder="Family"></label><label class="field-label">Chat privacy<select name="encrypted"><option value="false">Web and XMPP chat</option><option value="true">End-to-end encrypted · XMPP clients only</option></select></label><p class="text-muted">Web chat uses an encrypted connection; Micro stores its messages. End-to-end encrypted groups require an XMPP client such as Conversations.</p><button>Create group</button>`) + `</section>`)
+		b.WriteString(`</div></section>`)
 	}
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: title, Description: "Private groups and shared conversations", HTML: b.String()})
@@ -175,5 +184,9 @@ func form(csrf, id, action, account, body string) string {
 	if account != "" {
 		fields += `<input type="hidden" name="account" value="` + html.EscapeString(account) + `">`
 	}
-	return `<form method="POST" action="/groups" class="form-inline">` + fields + body + `</form>`
+	class := "form-inline"
+	if action == "create" {
+		class = "form record-editor"
+	}
+	return `<form method="POST" action="/groups" class="` + class + `">` + fields + body + `</form>`
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"sort"
 	"strings"
 
 	"mu/account"
@@ -103,6 +104,9 @@ func overviewHTML(acc *auth.Account) string {
 	if len(services) == 0 {
 		services = service.Pinned([]string{"news", "markets", "video", "blog"})
 	}
+	sort.SliceStable(services, func(i, j int) bool {
+		return strings.ToLower(services[i].NavLabel()) < strings.ToLower(services[j].NavLabel())
+	})
 	for _, spec := range services {
 		pins.WriteString(`<a href="` + html.EscapeString(spec.Page) + `"><img src="/` + html.EscapeString(spec.NavIcon()) + `?` + app.Version + `" width="28" height="28" alt=""><span>` + html.EscapeString(spec.NavLabel()) + `</span></a>`)
 	}

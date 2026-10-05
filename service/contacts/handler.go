@@ -113,34 +113,21 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		people = Find(sess.Account, query)
 	}
 
-	var b strings.Builder
-	b.WriteString(`<div class="page-stack page-section">`)
-
-	if msg := r.URL.Query().Get("error"); msg != "" {
-		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
+	if r.Method == http.MethodGet && (r.URL.Query().Get("new") == "1" || r.URL.Query().Get("import") == "1") {
+		title := "New contact"
+		form := `<form method="POST" action="/contacts" class="form record-editor">` + app.CSRFField(csrf) + `<label class="field-label">Name<input name="name" autocomplete="name" required></label><label class="field-label">Email<input name="email" type="email" autocomplete="email"></label><label class="field-label">Phone<input name="phone" type="tel" autocomplete="tel"></label><label class="field-label">Note<input name="note"></label><div class="form-actions"><button type="submit">Add</button></div></form>`
+		if r.URL.Query().Get("import") == "1" {
+			title = "Import contacts"
+			form = `<form method="POST" action="/contacts/import" enctype="multipart/form-data" class="form record-editor">` + app.CSRFField(csrf) + `<label class="field-label">CSV file<input type="file" name="file" accept=".csv,text/csv" required></label><p class="note">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p><div class="form-actions"><button type="submit">Import CSV</button></div></form>`
+		}
+		app.Respond(w, r, app.Response{Title: title, HTML: app.EditorPage("/contacts", "All contacts", form)})
+		return
 	}
-
-	// POST: an address book is a list of the people somebody knows, and the name
-	// they looked up is not a thing to write into a URL. See AGENTS.md, "What may
-	// travel in a URL".
-	fmt.Fprintf(&b, `<form method="POST" action="/contacts" class="search-bar">
-  <input type="hidden" name="_csrf" value="%s">
-  <input type="search" name="q" value="%s" placeholder="Search by name or address">
-  <button type="submit">Search</button>
-</form>`, html.EscapeString(auth.CSRFToken(r)), html.EscapeString(query))
-
-	// Add. Only the name is required — a contact with just a name is still
-	// worth having, and the rest can be filled in later by saying so.
-	b.WriteString(`<div class="form-actions"><button type="button" aria-expanded="false" aria-controls="contact-new" onclick="var f=document.getElementById('contact-new');f.hidden=!f.hidden;this.setAttribute('aria-expanded',String(!f.hidden));if(!f.hidden)f.querySelector('input[name=name]').focus()">New</button><button type="button" class="btn-secondary" aria-expanded="false" aria-controls="contact-import" onclick="var f=document.getElementById('contact-import');f.hidden=!f.hidden;this.setAttribute('aria-expanded',String(!f.hidden))">Import</button></div>`)
-	fmt.Fprintf(&b, `<div id="contact-new" hidden><form method="POST" action="/contacts" class="form page-stack">
-  <input type="hidden" name="_csrf" value="%s">
-  <label class="field-label">Name<input name="name" autocomplete="name" required></label>
-  <label class="field-label">Email<input name="email" type="email" autocomplete="email"></label>
-  <label class="field-label">Phone<input name="phone" type="tel" autocomplete="tel"></label>
-  <label class="field-label">Note<input name="note"></label>
-  <div class="form-actions"><button type="submit">Add</button></div>
-</form></div>`, html.EscapeString(csrf))
-	b.WriteString(`<div id="contact-import" hidden><form method="POST" action="/contacts/import" enctype="multipart/form-data" class="form page-stack">` + app.CSRFField(csrf) + `<label class="field-label">CSV file<input type="file" name="file" accept=".csv,text/csv" required></label><div class="form-actions"><button>Import CSV</button></div></form><p class="text-sm">Google, Outlook or a CSV with Name, Email, Phone and Note columns. Up to 500 contacts.</p></div></div>`)
+	var b strings.Builder
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		b.WriteString(app.Problem(msg))
+	}
+	b.WriteString(app.CollectionControls(app.SearchBar("/contacts", "Search by name or address", query, csrf), app.ActionLink("/contacts?new=1", "New")+app.ActionLink("/contacts?import=1", "Import"), ""))
 
 	if len(people) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">`)
@@ -152,7 +139,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</p></div>`)
 	} else {
-		b.WriteString(`<div class="card"><table class="data-table stacked contacts-table">`)
+		b.WriteString(`<div class="table-scroll"><table class="data-table stacked contacts-table">`)
 		b.WriteString(`<thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Note</th><th></th></tr></thead><tbody>`)
 		for _, c := range people {
 			// Classed cells, not positional ones: a phone renders this as a
@@ -166,7 +153,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(&b, `<td class="contact-meta" data-label="Email">%s</td><td class="contact-meta" data-label="Phone">%s</td><td class="contact-meta" data-label="Note">%s</td>`,
 				mailLink, orDash(c.Phone), orDash(c.Note))
 
-			fmt.Fprintf(&b, `<td class="contact-actions"><form class="form-action" method="POST" action="/contacts/%s/delete" onsubmit="return confirm('Remove %s?')">
+			fmt.Fprintf(&b, `<td><form class="form-action" method="POST" action="/contacts/%s/delete" onsubmit="return confirm('Remove %s?')">
   <input type="hidden" name="_csrf" value="%s">
   <button type="submit" class="link-button danger">Remove</button>
 </form></td></tr>`,
