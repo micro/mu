@@ -84,8 +84,11 @@ Agents, Scheduled and Work tabs; existing /work links remain valid. They use bot
 navigation on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
-Home owns the authenticated overview, prompt, personal collections and pinned
-service cards. Its short brief combines local personal facts with the cached generated world
+Home has Overview and Feed views. Overview owns the prompt, brief, inbox and
+personal context; Feed composes public blog, news, markets, video and pinned
+public service cards. Personal pinned cards stay on Overview. Home Library
+composes owned notes, documents, apps and files; it is not saved messages.
+Inbox owns messages and no longer labels these collections Saved. Its short brief combines local personal facts with the cached generated world
 summary from agent/brief; it does not repeat the full scheduled daily brief. Agent owns the conversation UI and explicit new/resume
 controls. Services are directly usable by people as well as callable by agents;
 the directory is not admin-only. Each service retains its permissions. Apps are

@@ -1714,7 +1714,7 @@ if(typeof document!=='undefined'){
   if(!target.isConnected||document.hidden||refreshing||attempts++>=15)return;
   refreshing=true;lastRefresh=Date.now();
   try{
-   const response=await fetch('/home?view=overview',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(10000)});
+   const response=await fetch(target.dataset.source||'/home?view=overview',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(10000)});
    if(!response.ok)return;
    const data=await response.json();
    if(!target.isConnected)return;
