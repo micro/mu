@@ -26,6 +26,7 @@ package agent
 //            Assembled fresh each time, never stored.
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"mu/internal/result"
@@ -330,6 +331,24 @@ func Ask(r AskRequest) (Answer, error) {
 	if reason, ok := affordable(r.Account); !ok {
 		recordAnswer(r.Account, threadID(th), reason, "", r.As, r.AnswerRef)
 		return Answer{Text: reason, Thread: threadID(th)}, nil
+	}
+
+	if !r.Public && checkinConversation(r.Account, threadID(th)) {
+		// Only classify intent here: no tools, streamed prose or memory extraction.
+		message, _ := json.Marshal(r.Text)
+		intent, err := QueryWithOpts(r.Account, "Classify this check-in message: "+string(message), QueryOpts{NoTools: true, RawReply: true, History: opts.History, System: checkinReplyInstruction})
+		if err != nil {
+			return Answer{Thread: threadID(th)}, err
+		}
+		switch strings.TrimSpace(intent) {
+		case "ACK":
+			recordAnswer(r.Account, threadID(th), "ACK", "", r.As, r.AnswerRef)
+			return Answer{Text: "ACK", Thread: threadID(th)}, nil
+		case "REQUEST":
+			// The ordinary agent handles an explicit request using the same thread.
+		default:
+			return Answer{Thread: threadID(th)}, fmt.Errorf("could not classify the check-in reply")
+		}
 	}
 
 	var resultMu sync.Mutex
