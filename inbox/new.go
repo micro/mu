@@ -465,7 +465,7 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="page-stack">` + app.PageControls(inboxDescription, viewNavigation("conversations"), ""))
+	b.WriteString(`<div class="page-stack">` + app.PageControls(inboxDescription, "", ""))
 	b.WriteString(`<div class="ib page-col">`)
 	if f.On != "" {
 		b.WriteString(app.Actions(app.TextLink("Back to the conversation", "/inbox?id="+url.QueryEscape(f.On))))

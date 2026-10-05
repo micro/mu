@@ -58,7 +58,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 		{Key: "unread", Label: "Unread", URL: r.URL.Path + "?filter=unread"},
 	}, true)
 	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a></div>` + searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r), unreadOnly(r)) + filters
-	b.WriteString(app.PageControls(inboxDescription, viewNavigation("conversations"), controls))
+	b.WriteString(app.PageControls(inboxDescription, "", controls))
 	if r.Method == http.MethodGet {
 		b.WriteString(`<div data-inbox-list>`)
 	} else {

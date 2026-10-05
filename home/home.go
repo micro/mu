@@ -35,24 +35,37 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	auth.SetCSRFCookie(w, r)
 	w.Header().Set("Cache-Control", "private, no-store")
+	view := "overview"
+	if r.URL.Query().Get("view") == "feed" {
+		view = "feed"
+	}
 	snapshot, pending := overview(acc)
 	content := overviewHTML(r, acc, snapshot)
-	// The first visit can fill its cards after paint without replacing the prompt
-	// or draft. Subsequent visits render the cached overview immediately.
-	if r.URL.Query().Get("view") == "overview" {
+	source := "/home?view=overview"
+	if view == "feed" {
+		content = feedHTML(acc, snapshot)
+		source = "/home?view=feed"
+	}
+	// Refresh only the selected view; never replace the prompt or a draft.
+	if r.URL.Query().Get("view") == "overview" || app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]any{"html": content, "pending": pending, "weather": weatherLine(acc.ID)})
 		return
 	}
-	body := `<div data-home-overview>` + `<div class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time>` + `<span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + `</div>` + agent.Prompt(acc.ID) + `<div data-home-overview id="home-overview-content" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
-	app.Respond(w, r, app.Response{Title: "Home", HTML: body})
+	body := `<div class="page-stack" data-home-overview>` + tabs(view) + `</div>`
+	if view == "overview" {
+		body += `<div data-home-overview class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + agent.Prompt(acc.ID)
+	} else {
+		body += `<p>News, reading and live updates from your services.</p>`
+	}
+	body += `<div data-home-overview id="home-overview-content" data-source="` + html.EscapeString(source) + `" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
+	app.Respond(w, r, app.Response{Title: "Home", HTML: `<div class="page-stack">` + body + `</div>`})
 }
 
-func tabs(apps bool) string {
-	overview, currentApps := ` aria-current="page"`, ""
-	if apps {
-		overview, currentApps = "", ` aria-current="page"`
-	}
-	return `<nav class="view-switch form-actions" aria-label="Home"><a href="/home"` + overview + `>Overview</a><a href="/home/apps"` + currentApps + `>My apps</a></nav>`
+func tabs(active string) string {
+	return app.ViewNavigation("Home views", active, []app.ViewLink{
+		{Key: "overview", Label: "Overview", URL: "/home"},
+		{Key: "feed", Label: "Feed", URL: "/home?view=feed"},
+	}, false)
 }
 
 func weatherLine(owner string) string {
@@ -81,22 +94,47 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 	if preview := inbox.Preview(acc.ID); preview != "" {
 		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
-	reading := blog.Preview()
-	if reading == "" {
-		reading = `<p class="text-muted">Published articles and topic digests will appear here.</p>`
-	}
-	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
 	right.WriteString(work.ScheduledCard(acc.ID))
 	extra := 0
 	for _, spec := range overviewServices(acc) {
+		if !spec.Card.Personal() {
+			continue
+		}
 		column := &left
-		switch spec.Name {
-		case "markets", "video":
+		if extra%2 != 0 {
 			column = &right
-		case "news":
-			// Reading follows Inbox and Blog in the left column.
-		default:
+		}
+		extra++
+		body := snapshot.cards[spec.Name]
+		if body == "" {
+			body = `<p class="text-muted">` + html.EscapeString(spec.Description) + `</p>`
+		}
+		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
+	}
+	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
+	if left.Len() == 0 {
+		columns = `<div class="page-col">` + right.String() + `</div>`
+	}
+	return `<div class="page-col">` + shortBrief() + `<nav class="form-actions" aria-label="Your collections"><a href="/home/library">Library</a><a href="/services">Services</a></nav>` + columns + `</div>`
+}
+
+func feedHTML(acc *auth.Account, snapshot overviewSnapshot) string {
+	var left, right strings.Builder
+	reading := blog.Preview()
+	if reading == "" {
+		reading = `<p class="text-muted">Published articles will appear here.</p>`
+	}
+	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
+	extra := 0
+	for _, spec := range overviewServices(acc) {
+		if spec.Card.Personal() {
+			continue
+		}
+		column := &left
+		if spec.Name == "markets" || spec.Name == "video" {
+			column = &right
+		} else if spec.Name != "news" {
 			if extra%2 != 0 {
 				column = &right
 			}
@@ -108,9 +146,5 @@ func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot)
 		}
 		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
 	}
-	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
-	if left.Len() == 0 {
-		columns = `<div class="page-col">` + right.String() + `</div>`
-	}
-	return `<div class="page-col">` + shortBrief() + `<nav class="form-actions" aria-label="Home services"><a href="/services">Pin services to Home</a></nav>` + columns + `</div>`
+	return `<div class="page-stack"><nav class="form-actions" aria-label="Feed services"><a href="/services">Choose services</a></nav><div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div></div>`
 }

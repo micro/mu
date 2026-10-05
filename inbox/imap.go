@@ -68,7 +68,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	// is what made it true.
 	b.WriteString(`<p class="svc-lead">Read your mail and recent conversations in your mail app, including conversations started on the web.</p>`)
 	b.WriteString(`<p>Your messages appear in Sent. Micro’s answers appear in Inbox. Reply to Micro using this account’s outgoing mail settings to continue the same conversation.</p>`)
-	b.WriteString(`<p class="text-sm text-muted">Text and WhatsApp replies to a person go back through that channel. XMPP replies continue in your chat client. Notes, documents and schedules remain in the web Inbox’s Saved and Scheduled views.</p>`)
+	b.WriteString(`<p class="text-sm text-muted">Text and WhatsApp replies to a person go back through that channel. XMPP replies continue in your chat client. Notes and documents are in Home’s Library. Schedules are under Agents.</p>`)
 	b.WriteString(`<p class="text-sm text-muted">For non-email conversations, read flags and deletions apply to the mail-client view. Deleting one of these messages does not erase its source conversation from the web Inbox.</p>`)
 
 	host, port, secure, on := imapReach()

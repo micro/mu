@@ -72,7 +72,7 @@ func AppsHandler(w http.ResponseWriter, r *http.Request) {
 		app.NotFound(w, r, "App not found")
 		return
 	}
-	body := tabs(true) + `<div class="form-actions"><a href="/agent/micro">Ask Micro</a><a href="/apps">Browse apps</a><a href="/work">Work</a></div>`
+	body := tabs("") + `<div class="form-actions"><a href="/home/library">Library</a><a href="/agent/micro">Ask Micro</a><a href="/apps">Browse apps</a><a href="/work">Work</a></div>`
 	if len(collection.Items) == 0 {
 		body += `<p>Your saved apps will appear here. Ask Micro to build a small tool you need.</p>`
 	}

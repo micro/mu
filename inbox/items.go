@@ -69,7 +69,7 @@ func itemPage(w http.ResponseWriter, r *http.Request, owner, kind, id string) {
 				notes.AddFrom(owner, note.Title, text, note.SourceThread)
 			case "delete":
 				notes.Delete(owner, note.Title)
-				dest = "/inbox?view=saved&type=note"
+				dest = "/home/library?type=note"
 			default:
 				app.BadRequest(w, r, "Unknown action")
 				return

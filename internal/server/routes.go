@@ -410,6 +410,7 @@ func registerRoutes() {
 	http.HandleFunc("/home", home.Handler)
 	http.HandleFunc("/brief", agent.BriefHandler)
 	http.HandleFunc("/home/apps", home.AppsHandler)
+	http.HandleFunc("/home/library", home.LibraryHandler)
 	http.HandleFunc("/assistant", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			app.MethodNotAllowed(w, r)
