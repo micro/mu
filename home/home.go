@@ -87,7 +87,7 @@ func shortBrief() string {
 	if !ok {
 		return ""
 	}
-	return `<section class="section-card" id="home-brief" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + html.EscapeString(line) + `</p><a href="/brief?id=` + entry.ID() + `">More</a></section>`
+	return app.PreviewCard("home-brief", "Brief", "/brief?id="+entry.ID(), `<p class="home-summary">`+html.EscapeString(line)+`</p>`)
 }
 
 func overviewHTML(acc *auth.Account) string {
