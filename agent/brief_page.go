@@ -61,24 +61,24 @@ func BriefHandler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, e)
 		return
 	}
-	body := `<div class="page-stack"><section class="record-card"><div class="metadata-row"><time>` + html.EscapeString(e.Written.Format("2 January 2006 · 15:04 MST")) + `</time></div><p>` + html.EscapeString(e.Text) + `</p><form method="POST" action="/brief" class="form-actions">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="id" value="` + e.ID() + `"><button type="submit">Ask about this brief</button></form><p class="text-muted">The brief and its source material will accompany your questions in a private conversation.</p></section>`
+	body := `<article class="editorial-page"><div class="metadata-row"><time>` + html.EscapeString(e.Written.Format("2 January 2006 · 15:04 MST")) + `</time></div><div class="reader-content"><p>` + html.EscapeString(e.Text) + `</p></div><form method="POST" action="/brief" class="form-actions">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="id" value="` + e.ID() + `"><button type="submit">Ask about this brief</button></form>`
 
+	// Keep references secondary; the full material remains attached to questions.
+	sources := ""
+	seen := make(map[string]bool)
 	for _, story := range e.Stories {
-		body += `<section class="record-card"><h2>` + html.EscapeString(story.Title) + `</h2><p>` + html.EscapeString(story.Detail) + `</p><div class="form-actions">`
 		for _, source := range story.Sources {
-			parsed, _ := url.Parse(source)
-			label := source
-			if parsed != nil {
-				label = parsed.Host
+			parsed, err := url.Parse(source)
+			if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" || seen[source] {
+				continue
 			}
-			body += `<a href="` + html.EscapeString(source) + `" rel="noopener noreferrer">` + html.EscapeString(label) + `</a>`
+			seen[source] = true
+			sources += `<li><a href="` + html.EscapeString(source) + `" rel="noopener noreferrer">` + html.EscapeString(story.Title) + `</a> <span class="text-muted text-sm">` + html.EscapeString(parsed.Hostname()) + `</span></li>`
 		}
-		body += `</div></section>`
 	}
-	if e.Material != "" {
-		body += `<details class="disclosure"><summary>All source material</summary>` + string(app.RenderNoImages([]byte(e.Material))) + `</details>`
+	if sources != "" {
+		body += `<details class="disclosure"><summary>Sources</summary><ul class="reference-list">` + sources + `</ul></details>`
 	}
-
-	body += `</div>`
+	body += `</article>`
 	app.Respond(w, r, app.Response{Title: "Brief", HTML: body})
 }
