@@ -54,7 +54,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	body := `<div class="page-stack" data-home-overview>` + tabs(view) + `</div>`
 	if view == "overview" {
-		body += `<div><div data-home-overview class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + agent.Prompt(acc.ID) + `</div><hr data-home-overview>`
+		body += `<div><div data-home-overview class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + agent.Prompt(acc.ID) + `</div>`
 	} else {
 		body += `<p>News, reading and live updates from your services.</p>`
 	}
@@ -114,7 +114,7 @@ func overviewHTML(acc *auth.Account) string {
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-stack">` + pinned + columns + `</div>`
+	return `<div class="section-body">` + pinned + columns + `</div>`
 }
 
 func feedHTML(snapshot overviewSnapshot) string {

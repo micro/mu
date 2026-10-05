@@ -28,10 +28,13 @@ func subscriptionSummary(r *http.Request, acc *auth.Account) string {
 	if normalizedTier(s.Tier) == "starter" {
 		currentName = "Starter"
 	}
+	if acc.Admin && s.ID == "" {
+		return app.SectionID("subscription", "Plan", `<p><strong>Admin</strong> · No usage charges for this account.</p>`)
+	}
 	if !enabled && s.ID == "" {
 		return ""
 	}
-	if (acc.Admin || acc.Agent) && s.ID == "" {
+	if acc.Agent && s.ID == "" {
 		return app.SectionID("subscription", "Plan", `<p>Included · no usage charges for this account.</p>`)
 	}
 	csrf := app.CSRFField(auth.CSRFToken(r))
