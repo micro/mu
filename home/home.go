@@ -53,14 +53,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]any{"html": content, "pending": pending, "weather": weatherLine(acc.ID)})
 		return
 	}
-	body := `<div class="page-stack" data-home-overview>` + tabs(view) + `</div>`
+	now := account.LocalNow(acc.ID)
+	header := `<div data-home-overview class="home-date"><time datetime="` + now.Format("2006-01-02") + `">` + now.Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>`
+	body := `<div data-home-overview>` + tabs(view) + `</div>`
 	if view == "overview" {
-		body += `<div><div data-home-overview class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + agent.Prompt(acc.ID) + `</div>`
+		body += `<div>` + agent.Prompt(acc.ID) + `</div>`
 	} else {
 		body += `<p>News, reading and live updates from your services.</p>`
 	}
 	body += `<div data-home-overview id="home-overview-content" data-source="` + html.EscapeString(source) + `" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
-	app.Respond(w, r, app.Response{Title: "Home", HTML: `<div class="page-stack">` + body + `</div>`})
+	app.Respond(w, r, app.Response{Title: "Home", HTML: header + `<div class="page-stack">` + body + `</div>`})
 }
 
 func tabs(active string) string {
