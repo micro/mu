@@ -88,9 +88,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Query().Get("new") == "1" || (r.Method == http.MethodPost && notice != "") {
+		auth.SetCSRFCookie(w, r)
+		form := notice + `<form method="POST" action="/notify" class="form record-editor">` + app.CSRFField(auth.CSRFToken(r)) + `<label class="field-label">Title<input name="title" required maxlength="120" value="` + html.EscapeString(r.PostFormValue("title")) + `"></label><label class="field-label">Message<textarea name="body" rows="3" maxlength="300">` + html.EscapeString(r.PostFormValue("body")) + `</textarea></label><div class="form-actions"><button type="submit">Send to my devices</button></div><p class="note">For text messages, use <a href="/sms">SMS</a>.</p></form>`
+		app.Respond(w, r, app.Response{Title: "New notification", HTML: app.EditorPage("/notify", "All notifications", form)})
+		return
+	}
+	b.WriteString(app.CollectionControls("", app.ActionLink("/notify?new=1", "New"), ""))
 	b.WriteString(notice)
 	b.WriteString(push.Card(r, who, "Settings"))
-	b.WriteString(`<div class="page-section"><div class="form-actions"><button type="button" aria-controls="notify-new" aria-expanded="false" onclick="var p=document.getElementById('notify-new');p.hidden=!p.hidden;this.setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden)document.getElementById('notify-title').focus()">New</button></div><div id="notify-new" hidden><form method="post" action="/notify" class="form page-stack mt-3">` + app.CSRFField(auth.CSRFToken(r)) + `<label class="field-label" for="notify-title">Title<input id="notify-title" name="title" required maxlength="120"></label><label class="field-label" for="notify-body">Message<textarea id="notify-body" name="body" rows="3" maxlength="300"></textarea></label><div class="form-actions"><button type="submit">Send to my devices</button></div></form><p class="text-sm text-muted">For phone numbers and text messages, use <a href="/sms">SMS</a>. Manage your verified number in <a href="/account">Account</a>.</p></div></div>`)
 
 	b.WriteString(historyCard(sent))
 

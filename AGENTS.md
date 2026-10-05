@@ -631,3 +631,16 @@ Record any unavailable browser verification explicitly; a successful build does
 not establish that a page renders correctly.
 
 Work UI lives under `agent/work`; `agent/exec` executes tasks. Independent task storage remains in `service/tasks`. Existing `/work` URLs and stored data paths remain compatible.
+
+### Service page patterns
+
+Use `app.CollectionControls(search, actions, filters)` for collection headers and
+`app.EditorPage(backURL, backLabel, form)` for dedicated create/import/edit pages.
+Keep create forms out of collection results and use ordinary links to open them.
+Forms use `form record-editor`, visible field labels and a final `form-actions`
+row. Short forms keep the shared form width; document/code editors opt into
+`document-editor`. Lookup tools use `lookup-form`; results retain the right
+visualisation for their content. Do not turn every list, search or form into a
+card. Use the shared spacing scale and component gaps instead of adding local
+margin utilities. Mobile compacts spacing while coarse-pointer controls retain
+comfortable touch targets. Home shortcuts sort by their displayed labels.

@@ -694,7 +694,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	}
 	var sb strings.Builder
 
-	sb.WriteString(`<div class="collection-head"><a href="/apps">All apps</a></div><form method="POST" action="/apps/new" class="form page-col">`)
+	sb.WriteString(`<div class="collection-head"><a href="/apps">All apps</a></div><form method="POST" action="/apps/new" class="form record-editor document-editor">`)
 	sb.WriteString(`<label class="field-label">Name`)
 	sb.WriteString(`<input type="text" name="name" required maxlength="60" class="form-input w-full" placeholder="Pomodoro Timer"></label>`)
 	sb.WriteString(`<label class="field-label">Description`)

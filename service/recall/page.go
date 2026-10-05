@@ -64,14 +64,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="w-760">`)
+	b.WriteString(`<div class="page-col">`)
 
 	csrf := auth.CSRFToken(r)
-	b.WriteString(`<form method="POST" action="/recall" class="search-bar">` +
+	var controls strings.Builder
+	controls.WriteString(`<form method="POST" action="/recall" class="search-bar">` +
 		app.CSRFField(csrf) +
 		`<input type="search" name="q" placeholder="A word or phrase somebody said" ` +
 		`value="` + html.EscapeString(query) + `" autofocus>` +
 		`<button type="submit">Search</button></form>`)
+
+	b.WriteString(app.CollectionControls(controls.String(), "", ""))
 
 	// The clients this account has actually used, so an instance that has only ever seen
 	// mail does not offer to narrow to anything else.

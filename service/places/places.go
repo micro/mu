@@ -665,9 +665,7 @@ func renderPlacesPage(r *http.Request) string {
 	// same word twice.
 	return fmt.Sprintf(`<div class="places-page page-stack">
 %s
-<div class="card">
-  %s
-</div>
+%s
 %s
 %s
 %s
@@ -729,18 +727,18 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
 	if sortBy == "name" {
 		sortDistSel, sortNameSel = "", " selected"
 	}
-	return fmt.Sprintf(`<form id="places-form" class="form" action="/places/search" method="POST">
+	return fmt.Sprintf(`<form id="places-form" class="form lookup-form" action="/places/search" method="POST">
     %s
-    <input type="text" class="field field-wide" name="q" id="places-q" placeholder="What are you looking for? (leave empty for whatever is nearby)" value="%s">
+    <label for="places-q">Find a place</label><input type="text" class="field field-wide" name="q" id="places-q" placeholder="What are you looking for? (leave empty for whatever is nearby)" value="%s">
     <div class="form-row">
-      <input type="text" class="field field-wide" name="near" id="places-near" placeholder="Location (optional)" value="%s">
+      <input type="text" class="field field-wide" name="near" id="places-near" aria-label="Location" placeholder="Location (optional)" value="%s">
       <input type="hidden" name="near_lat" id="places-near-lat" value="%s">
       <input type="hidden" name="near_lon" id="places-near-lon" value="%s">
       <button type="button" onclick="usePlacesLocation(this)" class="btn btn-quiet">Use my location</button>
     </div>
     <div class="form-row">
-      <select class="field field-wide" name="radius" id="places-radius">%s</select>
-      <select class="field field-wide" name="sort" id="places-sort">
+      <select class="field field-wide" name="radius" id="places-radius" aria-label="Search radius">%s</select>
+      <select class="field field-wide" name="sort" id="places-sort" aria-label="Sort results">
         <option value="distance"%s>Sort by distance</option>
         <option value="name"%s>Sort by name</option>
       </select>

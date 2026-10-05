@@ -50,11 +50,11 @@ func CSRFField(token string) string {
 func SearchBar(action, placeholder, query, csrf string) string {
 	var b strings.Builder
 	b.WriteString(`<form class="search-bar" action="`)
-	b.WriteString(action)
+	b.WriteString(html.EscapeString(action))
 	b.WriteString(`" method="POST">`)
 	b.WriteString(CSRFField(csrf))
-	b.WriteString(`<input type="text" name="q" placeholder="`)
-	b.WriteString(placeholder)
+	b.WriteString(`<input type="search" name="q" aria-label="` + html.EscapeString(placeholder) + `" placeholder="`)
+	b.WriteString(html.EscapeString(placeholder))
 	b.WriteString(`" value="`)
 	b.WriteString(html.EscapeString(query))
 	b.WriteString(`"><button type="submit">Search</button></form>`)
@@ -63,7 +63,7 @@ func SearchBar(action, placeholder, query, csrf string) string {
 
 // ActionLink renders a primary action link (e.g. "New note").
 func ActionLink(href, label string) string {
-	return `<a href="` + href + `" class="btn">` + html.EscapeString(label) + `</a>`
+	return `<a href="` + html.EscapeString(href) + `" class="btn">` + html.EscapeString(label) + `</a>`
 }
 
 // List wraps content in a card-list container
@@ -98,28 +98,18 @@ type PageOpts struct {
 func Page(opts PageOpts) string {
 	var b strings.Builder
 
-	// Search bar (at top)
+	search, actions := "", ""
 	if opts.Search != "" {
-		b.WriteString(SearchBar(opts.Search, "Search...", opts.Query, opts.CSRF))
+		search = SearchBar(opts.Search, "Search...", opts.Query, opts.CSRF)
 	}
-
-	// Action button (below search)
 	if opts.Action != "" {
 		label := opts.Label
 		if label == "" {
 			label = "New"
 		}
-		b.WriteString(`<div class="page-action">`)
-		b.WriteString(ActionLink(opts.Action, label))
-		b.WriteString(`</div>`)
+		actions = ActionLink(opts.Action, label)
 	}
-
-	// Filters (tags, toggles, etc.)
-	if opts.Filters != "" {
-		b.WriteString(`<div class="page-filters">`)
-		b.WriteString(opts.Filters)
-		b.WriteString(`</div>`)
-	}
+	b.WriteString(CollectionControls(search, actions, opts.Filters))
 
 	// Content or empty state
 	if opts.Content != "" {
@@ -153,4 +143,26 @@ func Close() string { return `</div>` }
 // Services supply content; the app owns wrapping, spacing and mobile layout.
 func CollectionItem(href, title, preview, when string) string {
 	return `<a class="collection-item" href="` + html.EscapeString(href) + `"><span class="collection-title">` + html.EscapeString(title) + `</span><span class="collection-preview">` + html.EscapeString(preview) + `</span><span class="collection-when">` + html.EscapeString(when) + `</span></a>`
+}
+
+// CollectionControls groups a collection's search, actions and optional filters.
+// Arguments are rendered markup; field values are escaped by their renderers.
+func CollectionControls(search, actions, filters string) string {
+	if search == "" && actions == "" && filters == "" {
+		return ""
+	}
+	body := `<div class="collection-head">` + search
+	if actions != "" {
+		body += `<div class="form-actions">` + actions + `</div>`
+	}
+	if filters != "" {
+		body += `<div class="collection-filters">` + filters + `</div>`
+	}
+	return body + `</div>`
+}
+
+// EditorPage provides the shared return navigation and layout around a form.
+// Editors which need the full canvas opt in with the document-editor class.
+func EditorPage(href, label, form string) string {
+	return `<div class="editor-page"><nav class="form-actions" aria-label="Back"><a href="` + html.EscapeString(href) + `">` + html.EscapeString(label) + `</a></nav>` + form + `</div>`
 }

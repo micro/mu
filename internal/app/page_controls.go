@@ -31,7 +31,11 @@ func ViewNavigation(label, active string, links []ViewLink, filter bool) string 
 // PageControls keeps a stable page introduction above tabs and view controls,
 // with one boundary before the results or editor.
 func PageControls(description, tabs, controls string) string {
-	body := `<div class="page-controls"><p class="text-muted">` + html.EscapeString(description) + `</p>` + tabs
+	body := `<div class="page-controls">`
+	if description != "" {
+		body += `<p class="text-muted">` + html.EscapeString(description) + `</p>`
+	}
+	body += tabs
 	if controls != "" {
 		body += `<div class="view-controls">` + controls + `</div>`
 	}

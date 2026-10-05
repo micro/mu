@@ -44,6 +44,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.BadRequest(w, r, "Could not read the form")
 		return
 	}
+	if r.Method == http.MethodGet && r.URL.Query().Get("new") == "1" && !app.WantsJSON(r) {
+		auth.SetCSRFCookie(w, r)
+		form := `<form method="POST" action="/bookmarks" class="form record-editor">` + token(r) + hidden("action", "add") + `<label class="field-label">Link<input name="url" type="url" required maxlength="4096" placeholder="https://…"></label><label class="field-label">Title (optional)<input name="title" maxlength="1000"></label><div class="form-actions"><button type="submit">Save link</button></div></form>`
+		app.Respond(w, r, app.Response{Title: "Add bookmark", HTML: app.EditorPage("/bookmarks", "All bookmarks", form)})
+		return
+	}
 	query := ""
 	kind := r.URL.Query().Get("kind")
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
@@ -136,7 +142,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, map[string]any{"items": items, "total": total})
 			return
 		}
-		b.WriteString(`<form method="POST" action="/bookmarks/search" class="search-bar">` + token(r) + `<input type="search" name="query" value="` + html.EscapeString(query) + `" placeholder="Search your saved items"><select name="kind" aria-label="Content type">`)
+		var search strings.Builder
+		search.WriteString(`<form method="POST" action="/bookmarks/search" class="search-bar">` + token(r) + `<input type="search" name="query" value="` + html.EscapeString(query) + `" placeholder="Search your saved items"><select name="kind" aria-label="Content type">`)
 		for _, k := range []string{"", "article", "video", "post", "link"} {
 			selected := ""
 			if k == kind {
@@ -146,18 +153,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if k == "" {
 				label = "All types"
 			}
-			b.WriteString(`<option value="` + k + `"` + selected + `>` + label + `</option>`)
+			search.WriteString(`<option value="` + k + `"` + selected + `>` + label + `</option>`)
 		}
-		b.WriteString(`</select><button>Search</button></form>`)
+		search.WriteString(`</select><button>Search</button></form>`)
+		b.WriteString(app.CollectionControls(search.String(), app.ActionLink("/bookmarks?new=1", "Add link"), ""))
 		if len(items) == 0 {
 			if query != "" || kind != "" {
 				b.WriteString(`<p>No saved items match this search. <a href="/bookmarks">Show all saved items</a>.</p>`)
 			} else {
-				b.WriteString(`<p>Nothing saved here yet. Browse <a href="/news">News</a> or <a href="/video">Video</a>, or add a link below.</p>`)
+				b.WriteString(`<p>Nothing saved here yet. Browse <a href="/news">News</a> or <a href="/video">Video</a>, or add a link.</p>`)
 			}
 		}
 		for _, i := range items {
-			b.WriteString(`<article class="record-card section-stack"><div class="metadata-row">` + app.Pill(i.Kind) + " · " + html.EscapeString(i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3 class="collection-title"><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p class="card-summary">` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original</a></div></article>`)
+			b.WriteString(`<article class="post-item"><div class="metadata-row">` + app.Pill(i.Kind) + " · " + html.EscapeString(i.Source+" · "+app.TimeAgo(i.Created)) + `</div><h3 class="collection-title"><a href="/bookmarks?id=` + url.QueryEscape(i.ID) + `">` + html.EscapeString(i.Title) + `</a></h3><p class="card-summary">` + html.EscapeString(i.Note) + `</p><div class="reading-actions"><a href="` + html.EscapeString(i.URL) + `" rel="noopener noreferrer">Original</a></div></article>`)
 		}
 		b.WriteString(`<div class="reading-actions">`)
 		for _, p := range []struct {
@@ -169,7 +177,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			b.WriteString(`<form class="form-action" method="POST" action="/bookmarks/search">` + token(r) + hidden("query", query) + hidden("kind", kind) + hidden("offset", strconv.Itoa(p.off)) + `<button>` + p.label + `</button></form>`)
 		}
-		b.WriteString(`</div><details><summary>Add a link</summary><form method="POST" action="/bookmarks" class="form form-inline page-section">` + token(r) + hidden("action", "add") + `<input name="url" type="url" required maxlength="4096" placeholder="https://…" aria-label="Link"><input name="title" maxlength="1000" placeholder="Title" aria-label="Title"><button>Save link</button></form></details>`)
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>` + ``)
 	app.Respond(w, r, app.Response{Title: "Bookmarks", Description: "Your private saved reading", HTML: b.String()})

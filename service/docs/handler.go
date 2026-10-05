@@ -62,12 +62,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		title = "Import document"
 	case r.URL.Query().Get("new") == "1":
 		body = editor(r, nil)
+		title = "New document"
 	case r.URL.Query().Get("id") != "":
 		d := Get(who, r.URL.Query().Get("id"))
 		if d == nil {
 			body = notice("No such document.") + list(r, docs, query)
 		} else if r.URL.Query().Get("edit") == "1" {
 			body = editor(r, d)
+			title = "Edit document"
 		} else {
 			body = view(r, d)
 		}
@@ -110,14 +112,8 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 // list is every document, newest change first.
 func list(r *http.Request, docs []*Doc, query string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="collection-head">`)
-	b.WriteString(`<form method="POST" action="/docs" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) +
-		`<input type="hidden" name="action" value="search">` +
-		`<input type="search" name="q" value="` + html.EscapeString(query) +
-		`" placeholder="Search your documents" autocomplete="off">` +
-		`<button type="submit">Search</button></form>`)
-	b.WriteString(`<div class="form-actions"><a class="btn" href="/docs?new=1">New</a><a class="btn" href="/docs?import=1">Import</a></div>`)
-	b.WriteString(`</div>`)
+	search := `<form method="POST" action="/docs" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="search"><input type="search" name="q" value="` + html.EscapeString(query) + `" placeholder="Search your documents" aria-label="Search your documents" autocomplete="off"><button type="submit">Search</button></form>`
+	b.WriteString(app.CollectionControls(search, app.ActionLink("/docs?new=1", "New")+app.ActionLink("/docs?import=1", "Import"), ""))
 
 	if len(docs) == 0 {
 		if query != "" {
@@ -164,22 +160,22 @@ func editor(r *http.Request, d *Doc) string {
 	if d.Public {
 		checked = " checked"
 	}
-	back := `<a class="section-link" href="/docs">All docs</a>`
+	back, label := "/docs", "All docs"
 	if d.ID != "" {
-		back = `<a class="section-link" href="/docs?id=` + html.EscapeString(d.ID) + `">Back</a>`
+		back, label = "/docs?id="+d.ID, "Back to document"
 	}
-	return `<div class="page-stack"><nav class="form-actions" aria-label="Back">` + back + `</nav><form method="POST" action="/docs" class="form record-editor">
-<input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
-<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">
+	return app.EditorPage(back, label, `<form method="POST" action="/docs" class="form record-editor document-editor">
+<input type="hidden" name="id" value="`+html.EscapeString(d.ID)+`">
+<input type="hidden" name="_csrf" value="`+html.EscapeString(auth.CSRFToken(r))+`">
 <div class="page-stack compact-stack">
-` + editorTools + `</div>
+`+editorTools+`</div>
 <div class="form">
-<input id="doc-title" class="record-title" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
-<textarea id="doc-body" class="record-body" name="content" rows="24" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
+<input id="doc-title" aria-label="Title" class="record-title" type="text" name="title" value="`+html.EscapeString(d.Title)+`" placeholder="Title" autocomplete="off" autofocus>
+<textarea id="doc-body" aria-label="Document" class="record-body" name="content" rows="24" placeholder="Write. Markdown works.">`+html.EscapeString(d.Content)+`</textarea>
 </div>
-<label class="check-label"><input type="checkbox" name="public"` + checked + `> Anyone with the link can read it</label>
-<div class="form-actions form-actions-end"><button type="submit">Save</button></div>
-</form></div>` + editorScript
+<label class="check-label"><input type="checkbox" name="public"`+checked+`> Anyone with the link can read it</label>
+<div class="form-actions"><button type="submit">Save</button></div>
+</form>`) + editorScript
 }
 
 func notice(msg string) string {

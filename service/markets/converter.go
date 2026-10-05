@@ -89,7 +89,7 @@ func converterHTML(r *http.Request) string {
 	if q.Has("amount") {
 		open = " open"
 	}
-	sb.WriteString(`<details class="disclosure page-section"` + open + `><summary class="btn">Convert</summary><div>`)
+	sb.WriteString(`<details class="disclosure section-block"` + open + `><summary class="btn">Convert</summary><div>`)
 	sb.WriteString(`<form class="form form-inline" method="get" action="/markets">`)
 	fmt.Fprintf(&sb, `<input type="hidden" name="category" value="%s">`,
 		html.EscapeString(category))

@@ -87,8 +87,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`<div class="` + layout + `">`)
 	if r.URL.Query().Get("view") == "new" {
-		b.WriteString(`<div class="section-actions"><a href="/sms">Conversations</a></div>`)
-		b.WriteString(composer(r, who))
+		b.WriteString(app.EditorPage("/sms", "Conversations", composer(r, who)))
 	} else if id := r.URL.Query().Get("id"); id != "" {
 		// The opaque message ID locates a conversation only within this account.
 		rec, err := userdb.Get(ns, who, msgs, id)
@@ -101,7 +100,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div class="section-actions"><a href="/sms">Conversations</a><a href="/sms?view=new">New</a></div>`)
 		b.WriteString(threads(r, who, conversationHistory(who, number, Channel(channel))))
 	} else {
-		b.WriteString(`<div class="page-action"><a class="btn" href="/sms?view=new">New</a></div>`)
+		b.WriteString(app.CollectionControls("", app.ActionLink("/sms?view=new", "New"), ""))
 		latest, err := recentConversations(who)
 		if err != nil {
 			app.Error(w, r, http.StatusInternalServerError, "Could not load conversations")
@@ -198,7 +197,7 @@ func composer(r *http.Request, who string) string {
 	// longer has. Numbers you know are a convenience now, not a gate.
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
-	b.WriteString(`<form method="POST" action="/sms" class="form">` +
+	b.WriteString(`<form method="POST" action="/sms" class="form record-editor">` +
 		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 		`<input type="hidden" name="send" value="1">` +
 		`<input name="to" class="sms-to" required list="sms-known" autocomplete="off" ` +

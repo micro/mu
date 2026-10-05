@@ -127,7 +127,7 @@ func page(answer string) string {
 
 	b.WriteString(answer)
 
-	b.WriteString(`<form method="post" class="card form">`)
+	b.WriteString(`<form method="post" class="form record-editor">`)
 	b.WriteString(`<div class="tjobs">`)
 	for i, j := range jobs {
 		checked := ""
@@ -142,8 +142,8 @@ func page(answer string) string {
 	b.WriteString(`</div>`)
 
 	b.WriteString(`<p class="tnote" id="tnote">` + html.EscapeString(jobs[0].Note) + `</p>`)
-	b.WriteString(`<textarea name="text" rows="9" placeholder="Paste text here" required></textarea>`)
-	b.WriteString(`<input type="text" name="arg" id="targ" placeholder="` +
+	b.WriteString(`<label for="text-input">Text</label><textarea id="text-input" name="text" rows="9" placeholder="Paste text here" required></textarea>`)
+	b.WriteString(`<label for="targ">Options</label><input type="text" name="arg" id="targ" placeholder="` +
 		html.EscapeString(jobs[0].Hint) + `">`)
 	b.WriteString(`<button type="submit" id="trun">Summarise</button>`)
 	b.WriteString(`<p class="tcap">Up to ` + strconv.Itoa(maxInput/1000) + `,000 characters a call.</p>`)

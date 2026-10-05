@@ -481,14 +481,15 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 			title = "Generate image"
 			form = `<form class="form record-editor" data-image-generate><label for="img-prompt">Describe the image</label><textarea id="img-prompt" name="prompt" rows="6" required placeholder="A cat astronaut drifting past Saturn, watercolour"></textarea><div class="form-actions"><button id="img-go" type="submit">Generate</button><span id="img-status" class="text-sm text-muted" role="status"></span></div><div id="img-result" aria-live="polite"></div></form>`
 		}
-		app.Respond(w, r, app.Response{Title: title, HTML: `<div class="collection-head"><a href="/images">All images</a></div>` + form})
+		app.Respond(w, r, app.Response{Title: title, HTML: app.EditorPage("/images", "All images", form)})
 		return
 	}
-	b.WriteString(`<div class="collection-head"><form id="image-search" method="POST" action="/images?search=1" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="q" aria-label="Search images" value="` + html.EscapeString(q) + `" placeholder="Search images"><button type="submit">Search</button>`)
+	search := `<form id="image-search" method="POST" action="/images?search=1" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="q" aria-label="Search images" value="` + html.EscapeString(q) + `" placeholder="Search images"><button type="submit">Search</button>`
 	if caller != "" {
-		b.WriteString(`<button type="submit" formaction="/images?web=1">Search web</button>`)
+		search += `<button type="submit" formaction="/images?web=1">Search web</button>`
 	}
-	b.WriteString(`</form><div class="form-actions"><a class="btn" href="/images?import=1">Import</a><a class="btn" href="/images?generate=1">Generate</a></div></div>`)
+	search += `</form>`
+	b.WriteString(app.CollectionControls(search, app.ActionLink("/images?import=1", "Import")+app.ActionLink("/images?generate=1", "Generate"), ""))
 
 	// Search results.
 	if q != "" {
