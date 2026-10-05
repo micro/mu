@@ -55,13 +55,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	now := account.LocalNow(acc.ID)
 	header := `<div data-home-overview class="home-date"><time datetime="` + now.Format("2006-01-02") + `">` + now.Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>`
-	body := `<div data-home-overview>` + tabs(view) + `</div>`
+	body := `<div class="section-body"><div data-home-overview>` + tabs(view) + `</div>`
 	if view == "overview" {
 		body += `<div>` + agent.Prompt(acc.ID) + `</div>`
 	} else {
 		body += `<p>News, reading and live updates from your services.</p>`
 	}
-	body += `<div data-home-overview id="home-overview-content" data-source="` + html.EscapeString(source) + `" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
+	body += `</div><div data-home-overview id="home-overview-content" data-source="` + html.EscapeString(source) + `" data-pending="` + fmt.Sprint(pending) + `">` + content + `</div>`
 	app.Respond(w, r, app.Response{Title: "Home", HTML: header + `<div class="page-stack">` + body + `</div>`})
 }
 
@@ -110,7 +110,7 @@ func overviewHTML(acc *auth.Account) string {
 		return strings.ToLower(services[i].NavLabel()) < strings.ToLower(services[j].NavLabel())
 	})
 	for _, spec := range services {
-		pins.WriteString(`<a href="` + html.EscapeString(spec.Page) + `"><img src="/` + html.EscapeString(spec.NavIcon()) + `?` + app.Version + `" width="28" height="28" alt=""><span>` + html.EscapeString(spec.NavLabel()) + `</span></a>`)
+		pins.WriteString(`<a href="` + html.EscapeString(spec.Page) + `"><span class="service-shortcut-icon"><img src="/` + html.EscapeString(spec.NavIcon()) + `?` + app.Version + `" width="28" height="28" alt=""></span><span>` + html.EscapeString(spec.NavLabel()) + `</span></a>`)
 	}
 	pinned := ""
 	if pins.Len() > 0 {
@@ -120,7 +120,7 @@ func overviewHTML(acc *auth.Account) string {
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="section-body">` + pinned + columns + `</div>`
+	return `<div class="page-stack">` + pinned + columns + `</div>`
 }
 
 func feedHTML(snapshot overviewSnapshot) string {
