@@ -108,7 +108,7 @@ func overviewHTML(acc *auth.Account) string {
 	}
 	pinned := ""
 	if pins.Len() > 0 {
-		pinned = `<section class="section-body" aria-labelledby="pinned-services-title"><p id="pinned-services-title" class="text-muted text-sm">Pinned services</p><nav class="service-shortcuts" aria-labelledby="pinned-services-title">` + pins.String() + `</nav></section>`
+		pinned = `<section class="section-body" aria-labelledby="pinned-services-title"><p id="pinned-services-title" class="text-muted text-sm">Pinned</p><nav class="service-shortcuts" aria-labelledby="pinned-services-title">` + pins.String() + `</nav></section>`
 	}
 	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
 	if left.Len() == 0 {
