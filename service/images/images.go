@@ -471,26 +471,24 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
 	auth.SetCSRFCookie(w, r)
-	// Search acts only on the search field. Creation has separate disclosures.
-	b.WriteString(`<div class="page-stack"><form id="image-search" method="POST" action="/images?search=1" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="q" aria-label="Search images" value="` + html.EscapeString(q) + `" placeholder="Search images"><button type="submit">Search</button>`)
+	if r.Method == http.MethodGet && (r.URL.Query().Get("import") == "1" || r.URL.Query().Get("generate") == "1") {
+		if acc == nil {
+			app.RedirectToLogin(w, r)
+			return
+		}
+		title, form := "Import image", uploadForm(r)
+		if r.URL.Query().Get("generate") == "1" {
+			title = "Generate image"
+			form = `<form class="form record-editor" data-image-generate><label for="img-prompt">Describe the image</label><textarea id="img-prompt" name="prompt" rows="6" required placeholder="A cat astronaut drifting past Saturn, watercolour"></textarea><div class="form-actions"><button id="img-go" type="submit">Generate</button><span id="img-status" class="text-sm text-muted" role="status"></span></div><div id="img-result" aria-live="polite"></div></form>`
+		}
+		app.Respond(w, r, app.Response{Title: title, HTML: `<div class="collection-head"><a href="/images">All images</a></div>` + form})
+		return
+	}
+	b.WriteString(`<div class="collection-head"><form id="image-search" method="POST" action="/images?search=1" class="search-bar">` + app.CSRFField(auth.CSRFToken(r)) + `<input name="q" aria-label="Search images" value="` + html.EscapeString(q) + `" placeholder="Search images"><button type="submit">Search</button>`)
 	if caller != "" {
 		b.WriteString(`<button type="submit" formaction="/images?web=1">Search web</button>`)
 	}
-	b.WriteString(`</form><div class="section-stack">`)
-	if caller != "" {
-		b.WriteString(uploadForm(r))
-	} else {
-		b.WriteString(`<details class="record-card"><summary>Import an image</summary><p><a href="/login">Sign in</a> to import images.</p></details>`)
-	}
-	b.WriteString(`<details id="image-generate" class="record-card"><summary>Generate an image</summary><div class="section-stack">`)
-	if acc == nil {
-		b.WriteString(`<p><a href="/login">Sign in</a> to generate images.</p>`)
-	} else {
-		b.WriteString(`<label for="img-prompt">Describe the image you want to create</label><textarea id="img-prompt" rows="3" placeholder="a cat astronaut drifting past Saturn, watercolour" class="form-area"></textarea>`)
-		b.WriteString(`<div class="form-actions"><button id="img-go" onclick="imgGenerate()">Generate</button><span id="img-status" class="text-sm text-muted" role="status"></span></div>`)
-		b.WriteString(`<div id="img-result"></div>`)
-	}
-	b.WriteString(`</div></details></div></div>`)
+	b.WriteString(`</form><div class="form-actions"><a class="btn" href="/images?import=1">Import</a><a class="btn" href="/images?generate=1">Generate</a></div></div>`)
 
 	// Search results.
 	if q != "" {
@@ -540,7 +538,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="card-desc">Share an image to the public stock pool so others (and their agents) can find and reuse it.</p>`)
 		b.WriteString(`<div id="img-gallery" class="thumb-grid wide">`)
 		if len(recs) == 0 {
-			b.WriteString(`<p class="text-muted text-base span-all" id="img-empty">Nothing yet — generate your first image above.</p>`)
+			b.WriteString(`<p class="text-muted text-base span-all" id="img-empty">Nothing yet — import an image or generate your first one.</p>`)
 		}
 		for _, rec := range recs {
 			prompt, _ := rec.Data["prompt"].(string)
@@ -554,7 +552,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 			}
 			b.WriteString(`<div class="relative">`)
 			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url+"?size=thumb") + `" decoding="async" alt="` + html.EscapeString(prompt) + `" class="w-full rounded-lg d-block" loading="lazy"><span class="text-sm d-block mt-2">` + html.EscapeString(prompt) + `</span></a>`)
-			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" onclick="imgShare(this)" class="overlay-btn">` + label + `</button>`)
+			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" data-image-share class="overlay-btn">` + label + `</button>`)
 			b.WriteString(`</div>`)
 		}
 		b.WriteString(`</div></div>`)
@@ -568,53 +566,6 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(imageGrid(stock))
 		b.WriteString(`</div>`)
 	}
-
-	// JS: generate, and toggle sharing to the stock pool.
-	b.WriteString(`<script>
-function imgCookie(n){var m=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return m?m.pop():'';}
-function imgGenerate(){
- var p=document.getElementById('img-prompt').value.trim();
- if(!p){return;}
- var btn=document.getElementById('img-go'),st=document.getElementById('img-status');
- btn.disabled=true;st.textContent='Generating… this takes up to a minute.';
- fetch('/images',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':imgCookie('csrf_token')},credentials:'same-origin',body:JSON.stringify({prompt:p})})
- .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
- .then(function(res){
-  btn.disabled=false;
-  if(!res.ok||res.j.error){st.textContent=res.j.error||'Failed';return;}
-  st.textContent='';
-  // Show it here, where the person is looking. This used to render the
-  // image and then immediately reload the page, so nobody ever saw it —
-  // you landed back on /images and had to scroll to find your own picture.
-  var r=document.getElementById('img-result');
-  r.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="img-full"></a>'+
-              '<p class="text-sm text-muted mt-half m-0">'+
-              '<button data-id="'+res.j.id+'" data-next="true" onclick="imgShare(this)" class="mini-btn mr-2">Share</button>'+
-              'Saved to your images.</p>';
-  r.scrollIntoView({block:'nearest'});
-  // Add it to the gallery too, so the page matches what a reload would show.
-  var g=document.getElementById('img-gallery'),e=document.getElementById('img-empty');if(e)e.remove();
-  if(g){
-   var d=document.createElement('div');d.style.position='relative';
-   d.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="w-full rounded-lg d-block"></a>';
-   g.insertBefore(d,g.firstChild);
-  }
-  document.getElementById('img-prompt').value='';
- }).catch(function(err){btn.disabled=false;st.textContent='Error: '+err;});
-}
-function imgShare(btn){
- var id=btn.dataset.id,next=btn.dataset.next==='true';
- btn.disabled=true;
- fetch('/images',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':imgCookie('csrf_token')},credentials:'same-origin',body:JSON.stringify({id:id,public:next})})
- .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
- .then(function(res){
-  btn.disabled=false;
-  if(!res.ok||res.j.error){return;}
-  if(next){btn.textContent='Shared ✓';btn.dataset.next='false';}
-  else{btn.textContent='Share';btn.dataset.next='true';}
- }).catch(function(){btn.disabled=false;});
-}
-</script>`)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Images",

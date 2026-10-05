@@ -3,7 +3,6 @@ package images
 import (
 	"bytes"
 	"fmt"
-	"html"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -59,7 +58,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/images", http.StatusSeeOther)
 }
 func uploadForm(r *http.Request) string {
-	return `<details class="record-card"><summary>Import an image</summary><form class="form form-inline mt-3" method="POST" action="/images?upload=1" enctype="multipart/form-data">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="file" name="file" accept="image/png,image/jpeg,image/gif" required><input name="caption" placeholder="Caption" maxlength="1000"><button>Upload</button></form><p class="text-sm text-muted">Private. PNG, JPEG or GIF, up to 8 MB and 8 megapixels. ` + html.EscapeString("GIF uploads keep the first frame.") + `</p></details>`
+	return `<form class="form record-editor" method="POST" action="/images?upload=1" enctype="multipart/form-data">` + app.CSRFField(auth.CSRFToken(r)) + `<label for="image-file">Choose an image</label><input id="image-file" type="file" name="file" accept="image/png,image/jpeg,image/gif" required><p class="text-sm text-muted">PNG, JPEG or GIF, up to 8 MB and 8 megapixels. GIF uploads keep the first frame.</p><label for="image-caption">Caption (optional)</label><input id="image-caption" name="caption" maxlength="1000"><p class="text-sm text-muted">Imported images are private until you share them.</p><div class="form-actions"><button type="submit">Import</button></div></form>`
 }
 
 // saveUpload normalizes accepted raster images and creates a private record.

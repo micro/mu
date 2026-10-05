@@ -1845,3 +1845,52 @@ if (typeof document !== 'undefined') {
 })();
 
 }
+
+if(typeof document!=='undefined'){
+function imgCookie(n){var m=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return m?m.pop():'';}
+function imgGenerate(){
+ var p=document.getElementById('img-prompt').value.trim();
+ if(!p){return;}
+ var btn=document.getElementById('img-go'),st=document.getElementById('img-status');
+ btn.disabled=true;st.textContent='Generating… this takes up to a minute.';
+ fetch('/images',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':imgCookie('csrf_token')},credentials:'same-origin',body:JSON.stringify({prompt:p})})
+ .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+ .then(function(res){
+  btn.disabled=false;
+  if(!res.ok||res.j.error){st.textContent=res.j.error||'Failed';return;}
+  st.textContent='';
+  // Show it here, where the person is looking. This used to render the
+  // image and then immediately reload the page, so nobody ever saw it —
+  // you landed back on /images and had to scroll to find your own picture.
+  var r=document.getElementById('img-result');
+  r.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="img-full"></a>'+
+              '<p class="text-sm text-muted mt-half m-0">'+
+              '<button data-id="'+res.j.id+'" data-next="true" data-image-share class="mini-btn mr-2">Share</button>'+
+              'Saved to your images.</p>';
+  r.scrollIntoView({block:'nearest'});
+  // Add it to the gallery too, so the page matches what a reload would show.
+  var g=document.getElementById('img-gallery'),e=document.getElementById('img-empty');if(e)e.remove();
+  if(g){
+   var d=document.createElement('div');d.className='relative';
+   d.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="w-full rounded-lg d-block"></a>';
+   g.insertBefore(d,g.firstChild);
+  }
+  document.getElementById('img-prompt').value='';
+ }).catch(function(err){btn.disabled=false;st.textContent='Error: '+err;});
+}
+function imgShare(btn){
+ var id=btn.dataset.id,next=btn.dataset.next==='true';
+ btn.disabled=true;
+ fetch('/images',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':imgCookie('csrf_token')},credentials:'same-origin',body:JSON.stringify({id:id,public:next})})
+ .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+ .then(function(res){
+  btn.disabled=false;
+  if(!res.ok||res.j.error){return;}
+  if(next){btn.textContent='Shared ✓';btn.dataset.next='false';}
+  else{btn.textContent='Share';btn.dataset.next='true';}
+ }).catch(function(){btn.disabled=false;});
+}
+
+document.addEventListener('submit',function(event){if(event.target.matches('[data-image-generate]')){event.preventDefault();imgGenerate();}});
+document.addEventListener('click',function(event){var button=event.target.closest('[data-image-share]');if(button){imgShare(button);}});
+}
