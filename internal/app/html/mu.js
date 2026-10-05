@@ -360,6 +360,7 @@ const scrollPositions=new Map();
 function remember(title){
  if(!thread)return;
  history.replaceState(null,'',(form.dataset.path||'/')+'?session='+encodeURIComponent(thread));currentURL=location.pathname+location.search;
+ const savedForm=conversation.querySelector('[data-save-conversation]');if(savedForm){savedForm.elements.id.value=thread;savedForm.elements.return.value=currentURL;savedForm.hidden=false;}
  document.querySelectorAll('.runtime-navigation a').forEach(a=>{if(a.getAttribute('href')==='/agents')a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
@@ -490,6 +491,7 @@ async function navigateThread(url,push=true){
   currentURL=url.pathname+url.search;
   form.dataset.path=nextForm.dataset.path||'/';form.dataset.pending=nextForm.dataset.pending;form.dataset.agent=nextForm.dataset.agent;form.dataset.agentName=nextForm.dataset.agentName;
   log.replaceChildren(...nextLog.childNodes);
+  const toolbar=conversation.querySelector('.assistant-toolbar'),nextToolbar=page.querySelector('.assistant-toolbar');if(toolbar&&nextToolbar)toolbar.replaceWith(nextToolbar);
   conversation.querySelector('.assistant-thread-title')?.remove();
   const heading=page.querySelector('.assistant-thread-title');if(heading)log.before(heading);
   const welcome=conversation.querySelector('.prompt-welcome');welcome.replaceChildren(...page.querySelector('.prompt-welcome').childNodes);

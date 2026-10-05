@@ -74,7 +74,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		// once by somebody new and read past on every visit after that — and
 		// this is a catalogue somebody comes to in order to reach one of the
 		// things in it. The grid says what it is by being a grid of them.
-		b.WriteString(`<p class="text-muted">Open a service directly, or ask Micro to use it for you. Pin services to Home: personal cards appear in Overview, public updates in Feed.</p>`)
+		b.WriteString(`<p class="text-muted">Open a service directly, or ask Micro to use it for you. Pin services to add shortcuts to Home.</p>`)
 		b.WriteString(serviceGrid(r))
 	} else {
 		b.WriteString(`<p class="lens-lead">What an agent can call. Your agents here reach all ` +

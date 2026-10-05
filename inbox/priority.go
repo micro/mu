@@ -49,16 +49,14 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 	auth.SetCSRFCookie(w, r)
 	box := strings.Trim(strings.TrimPrefix(r.URL.Path, "/inbox"), "/")
 	var b strings.Builder
-	active := "all"
-	if unreadOnly(r) {
-		active = "unread"
-	}
-	filters := app.ViewNavigation("Message filter", active, []app.ViewLink{
+	filters := app.ViewNavigation("Inbox views", messageFilter(r), []app.ViewLink{
 		{Key: "all", Label: "All", URL: r.URL.Path},
 		{Key: "unread", Label: "Unread", URL: r.URL.Path + "?filter=unread"},
-	}, true)
-	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a></div>` + searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r), unreadOnly(r)) + filters
-	b.WriteString(app.PageControls(inboxDescription, "", controls))
+		{Key: "saved", Label: "Saved", URL: r.URL.Path + "?filter=saved"},
+		{Key: "sent", Label: "Sent", URL: r.URL.Path + "?filter=sent"},
+	}, false)
+	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a></div>` + searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r), messageFilter(r))
+	b.WriteString(app.PageControls(inboxDescription, filters, controls))
 	if r.Method == http.MethodGet {
 		b.WriteString(`<div data-inbox-list>`)
 	} else {
@@ -68,10 +66,14 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 	if q := strings.TrimSpace(r.PostFormValue("q")); q != "" {
 		found(&b, r, owner, box, q)
 	} else {
-		all := filterUnread(r, inboxThreads(owner, r.URL.Path))
+		all := filterThreads(r, inboxThreads(owner, r.URL.Path))
 		pager := app.Paginate(r, len(all), shown)
 		if len(all) == 0 {
-			if unreadOnly(r) {
+			if messageFilter(r) == "saved" {
+				b.WriteString(`<p class="text-muted">No saved conversations. Open a conversation and choose Save to keep it here.</p>`)
+			} else if messageFilter(r) == "sent" {
+				b.WriteString(`<p class="text-muted">Conversations you have sent messages to will appear here.</p>`)
+			} else if unreadOnly(r) {
 				b.WriteString(`<p class="text-muted">You have no unread conversations.</p>`)
 			} else {
 				b.WriteString(`<p class="text-muted">Your inbox is empty.</p>`)
@@ -85,9 +87,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 		}
 		if unread > 0 {
 			b.WriteString(`<form method="post" action="` + html.EscapeString(r.URL.Path) + `" class="bulk-read">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="mark_read"><input type="hidden" name="reviewed" value="` + reviewed.Format(time.RFC3339Nano) + `">`)
-			if unreadOnly(r) {
-				b.WriteString(`<input type="hidden" name="filter" value="unread">`)
-			}
+			b.WriteString(`<input type="hidden" name="filter" value="` + messageFilter(r) + `">`)
 			b.WriteString(fmt.Sprintf(`<div class="form-actions"><button name="scope" value="selected">Mark selected as read</button><button name="scope" value="all">Mark all %d as read</button></div>`, unread))
 		}
 		for _, t := range all[pager.From:pager.To] {
@@ -107,10 +107,10 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 		if unread > 0 {
 			b.WriteString(`</form>`)
 		}
-		b.WriteString(pager.Nav(r.URL.Path))
+		b.WriteString(pager.Nav(inboxURL(r, "")))
 	}
 	b.WriteString(`</div>`)
-	app.Respond(w, r, app.Response{Title: "Inbox", HTML: `<div class="page-stack">` + b.String() + `</div>`})
+	app.Respond(w, r, app.Response{Title: "Inbox", HTML: `<div class="section-body">` + b.String() + `</div>`})
 }
 
 func waitingHTML(r *http.Request, owner string) string { return waiting(r, owner) }
@@ -138,15 +138,36 @@ func conversationRow(r *http.Request, owner string, t thread.Thread, preview str
 	return result + `</a>`
 }
 
-func unreadOnly(r *http.Request) bool { return r.URL.Query().Get("filter") == "unread" }
+func unreadOnly(r *http.Request) bool { return messageFilter(r) == "unread" }
 
-func filterUnread(r *http.Request, all []thread.Thread) []thread.Thread {
-	if !unreadOnly(r) {
-		return all
+func messageFilter(r *http.Request) string {
+	f := r.URL.Query().Get("filter")
+	if f == "" {
+		f = r.PostFormValue("filter")
 	}
+	switch f {
+	case "unread", "saved", "sent":
+		return f
+	}
+	return "all"
+}
+
+func matchesFilter(r *http.Request, t thread.Thread) bool {
+	switch messageFilter(r) {
+	case "unread":
+		return thread.Unread(t)
+	case "saved":
+		return t.Saved
+	case "sent":
+		return thread.Sent(t.Account, t.ID)
+	}
+	return true
+}
+
+func filterThreads(r *http.Request, all []thread.Thread) []thread.Thread {
 	out := make([]thread.Thread, 0, len(all))
 	for _, t := range all {
-		if thread.Unread(t) {
+		if matchesFilter(r, t) {
 			out = append(out, t)
 		}
 	}

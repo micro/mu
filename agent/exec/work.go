@@ -1,5 +1,5 @@
-// Package worker executes assignments published by tasks and schedules.
-package worker
+// Package exec executes assignments published by tasks and schedules.
+package exec
 
 import (
 	"context"

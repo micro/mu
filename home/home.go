@@ -10,13 +10,14 @@ import (
 	"mu/account"
 	"mu/agent"
 	"mu/agent/brief"
+	"mu/agent/work"
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/service"
 	"mu/service/blog"
 	"mu/service/events"
 	"mu/service/weather"
-	"mu/work"
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -40,10 +41,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		view = "feed"
 	}
 	snapshot, pending := overview(acc)
-	content := overviewHTML(r, acc, snapshot)
+	content := overviewHTML(acc)
 	source := "/home?view=overview"
 	if view == "feed" {
-		content = feedHTML(acc, snapshot)
+		content = feedHTML(snapshot)
 		source = "/home?view=feed"
 	}
 	// Refresh only the selected view; never replace the prompt or a draft.
@@ -86,59 +87,43 @@ func shortBrief() string {
 	if !ok {
 		return ""
 	}
-	return `<section class="section-card" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + html.EscapeString(line) + `</p><a href="/brief?id=` + entry.ID() + `">More</a></section>`
+	return `<section class="section-card" id="home-brief" aria-labelledby="home-brief-title"><div class="section-card-head"><h2 id="home-brief-title">Brief</h2></div><p class="home-summary">` + html.EscapeString(line) + `</p><a href="/brief?id=` + entry.ID() + `">More</a></section>`
 }
 
-func overviewHTML(r *http.Request, acc *auth.Account, snapshot overviewSnapshot) string {
+func overviewHTML(acc *auth.Account) string {
 	var left, right strings.Builder
+	left.WriteString(shortBrief())
 	if preview := inbox.Preview(acc.ID); preview != "" {
 		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
 	right.WriteString(work.ScheduledCard(acc.ID))
-	extra := 0
-	for _, spec := range overviewServices(acc) {
-		if !spec.Card.Personal() {
-			continue
-		}
-		column := &left
-		if extra%2 != 0 {
-			column = &right
-		}
-		extra++
-		body := snapshot.cards[spec.Name]
-		if body == "" {
-			body = `<p class="text-muted">` + html.EscapeString(spec.Description) + `</p>`
-		}
-		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
+	var pins strings.Builder
+	for _, spec := range service.Pinned(acc.PinnedServices()) {
+		pins.WriteString(`<a class="btn" href="` + html.EscapeString(spec.Page) + `">` + html.EscapeString(spec.NavLabel()) + `</a>`)
+	}
+	pinned := ""
+	if pins.Len() > 0 {
+		pinned = `<nav class="form-actions" aria-label="Pinned services">` + pins.String() + `</nav>`
 	}
 	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-col">` + shortBrief() + columns + `</div>`
+	return `<div class="page-stack">` + pinned + columns + `</div>`
 }
 
-func feedHTML(acc *auth.Account, snapshot overviewSnapshot) string {
+func feedHTML(snapshot overviewSnapshot) string {
 	var left, right strings.Builder
 	reading := blog.Preview()
 	if reading == "" {
 		reading = `<p class="text-muted">Published articles will appear here.</p>`
 	}
 	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
-	extra := 0
-	for _, spec := range overviewServices(acc) {
-		if spec.Card.Personal() {
-			continue
-		}
+	for _, spec := range feedServices() {
 		column := &left
-		if spec.Name == "markets" || spec.Name == "video" {
+		if spec.Name == "markets" || spec.Name == "video" || spec.Name == "images" || spec.Name == "prayer" {
 			column = &right
-		} else if spec.Name != "news" {
-			if extra%2 != 0 {
-				column = &right
-			}
-			extra++
 		}
 		body := snapshot.cards[spec.Name]
 		if body == "" {
@@ -146,5 +131,5 @@ func feedHTML(acc *auth.Account, snapshot overviewSnapshot) string {
 		}
 		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
 	}
-	return `<div class="page-stack"><nav class="form-actions" aria-label="Feed services"><a href="/services">Choose services</a></nav><div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div></div>`
+	return `<div class="page-stack"><div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div></div>`
 }

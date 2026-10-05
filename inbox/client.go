@@ -13,6 +13,7 @@ import (
 )
 
 type clientRow struct {
+	Saved    bool      `json:"saved"`
 	ID       string    `json:"id"`
 	Subject  string    `json:"subject"`
 	Sender   string    `json:"sender"`
@@ -32,12 +33,12 @@ func summary(owner string, t thread.Thread) clientRow {
 		preview = plainPreview(ms[len(ms)-1].Text)
 	}
 	canBlock := t.Held && t.Client == thread.SMSClient && strings.TrimSpace(t.Key) != ""
-	return clientRow{ID: t.ID, Subject: t.Subject, Sender: who, Kind: t.Client, Preview: preview, Updated: t.Updated, Unread: thread.Unread(t), Held: t.Held, CanBlock: canBlock, Blocked: canBlock && sms.OptedOut(t.Key)}
+	return clientRow{Saved: t.Saved, ID: t.ID, Subject: t.Subject, Sender: who, Kind: t.Client, Preview: preview, Updated: t.Updated, Unread: thread.Unread(t), Held: t.Held, CanBlock: canBlock, Blocked: canBlock && sms.OptedOut(t.Key)}
 }
 
 func clientData(w http.ResponseWriter, r *http.Request, owner string) {
 	w.Header().Set("Cache-Control", "private, no-store")
-	all := filterUnread(r, inboxThreads(owner, r.URL.Path))
+	all := filterThreads(r, inboxThreads(owner, r.URL.Path))
 	requests := r.URL.Query().Get("view") == "requests"
 	if requests {
 		all = thread.HeldFor(owner, held)

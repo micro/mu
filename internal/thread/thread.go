@@ -74,6 +74,7 @@ const (
 // client knows what a conversation is on its own service, and this stores
 // whatever it says without interpreting it.
 type Thread struct {
+	Saved     bool       `json:"saved,omitempty"`
 	Canonical string     `json:"canonical,omitempty"` // Legacy identity of a merged conversation.
 	Handled   time.Time  `json:"handled,omitempty"`
 	Evidence  []Evidence `json:"-"`

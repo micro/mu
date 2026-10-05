@@ -13,23 +13,23 @@ import (
 	"time"
 )
 
-func TestHomeViewsKeepPersonalCardsOutOfFeed(t *testing.T) {
+func TestHomePinsAreShortcutsAndFeedIncludesPrayer(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	for _, name := range []string{"home-public-view-test", "home-personal-view-test"} {
+	for _, name := range []string{"images", "prayer", "apps"} {
 		card := service.Glance(func() string { return "public test update" })
-		if strings.Contains(name, "personal") {
+		if name == "prayer" {
 			card = service.Personal(func(v service.Viewer) string { return "private test context" })
 		}
 		if err := service.Register(service.Spec{Name: name, Handler: &apps.Server{}, Page: "/" + name, Card: card}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	acc := &auth.Account{ID: "home-view-owner", Approved: true, Pinned: []string{"home-public-view-test", "home-personal-view-test"}}
+	acc := &auth.Account{ID: "home-view-owner", Approved: true, Pinned: []string{"images", "prayer", "apps"}}
 	auth.SetAccountForTest(acc)
 	defer auth.RemoveAccountForTest(acc.ID)
 	sess, _ := auth.CreateSession(acc.ID)
 	overviewCache.Lock()
-	overviewCache.values[acc.ID] = overviewSnapshot{key: overviewKey(acc), at: time.Now(), cards: map[string]string{"home-public-view-test": "public test update", "home-personal-view-test": "private test context"}}
+	overviewCache.values[acc.ID] = overviewSnapshot{key: overviewKey(acc), at: time.Now(), cards: map[string]string{"images": "public test update", "prayer": "private test context"}}
 	overviewCache.Unlock()
 	for _, feed := range []bool{false, true} {
 		for _, fragment := range []bool{false, true} {
@@ -57,8 +57,11 @@ func TestHomeViewsKeepPersonalCardsOutOfFeed(t *testing.T) {
 				}
 				body = data.HTML
 			}
-			if strings.Contains(body, "private test context") == feed || strings.Contains(body, "public test update") != feed {
+			if strings.Contains(body, "private test context") != feed || strings.Contains(body, "public test update") != feed {
 				t.Fatalf("mixed views: feed=%v fragment=%v", feed, fragment)
+			}
+			if !feed && !strings.Contains(body, `href="/apps"`) {
+				t.Fatal("Apps pin missing")
 			}
 			if feed && strings.Contains(body, `data-path="/agent/micro"`) {
 				t.Fatal("feed contains composer")

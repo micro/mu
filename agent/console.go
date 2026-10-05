@@ -155,7 +155,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if agentDescription != "" {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
-	body := consoleBody(acc.ID, selected, session, agentName, description, initial, heading, state, basePath)
+	body := consoleBody(acc.ID, selected, session, agentName, description, initial, heading, state, basePath, auth.CSRFToken(r))
 	fmt.Fprint(w, app.ConsoleHTML(agentName, body, acc, r.URL.RequestURI()))
 }
 
@@ -194,14 +194,23 @@ func Prompt(owner string) string {
 	return consoleBody(owner, "", "", "Micro", "", "", "", "conversation", Path(owner, ""))
 }
 
-func consoleBody(owner, selected, session, agentName, description, initial, heading, state, basePath string) string {
+func consoleBody(owner, selected, session, agentName, description, initial, heading, state, basePath string, csrf ...string) string {
 	attached := ""
 	if ref := thread.Attachment(owner, session); strings.HasPrefix(ref, "brief:") {
 		if entry, ok := brief.Get(strings.TrimPrefix(ref, "brief:")); ok {
 			attached = `<section class="record-card"><h2>Brief</h2><p>` + html.EscapeString(entry.Text) + `</p><a href="/brief?id=` + entry.ID() + `">Sources and details</a></section>`
 		}
 	}
-	toolbar := `<div class="assistant-toolbar"><a href="` + html.EscapeString(basePath) + `?new=1">New conversation</a></div>`
+	toolbar := `<div class="assistant-toolbar"><a href="` + html.EscapeString(basePath) + `?new=1">New conversation</a>`
+	saved, token := false, ""
+	if t := thread.Get(owner, session); t != nil {
+		saved = t.Saved
+	}
+	if len(csrf) > 0 {
+		token = csrf[0]
+	}
+	toolbar += app.ConversationSave(session, saved, token, basePath+"?session="+url.QueryEscape(session))
+	toolbar += `</div>`
 	placeholder, button := "What do you need?", "Send"
 	if t := thread.Get(owner, session); t != nil && strings.HasPrefix(t.Key, "checkin:") {
 		first := true

@@ -127,15 +127,15 @@ func markRead(w http.ResponseWriter, r *http.Request, owner string) {
 		selected[id] = true
 	}
 	var ids []string
-	for _, t := range inboxThreads(owner, r.URL.Path) {
+	for _, t := range filterThreads(r, inboxThreads(owner, r.URL.Path)) {
 		if thread.Unread(t) && (scope == "all" || selected[t.ID]) {
 			ids = append(ids, t.ID)
 		}
 	}
 	thread.MarkSeenThrough(owner, ids, reviewed)
 	destination := r.URL.Path
-	if r.PostFormValue("filter") == "unread" {
-		destination += "?filter=unread"
+	if f := messageFilter(r); f != "all" {
+		destination += "?filter=" + f
 	}
 	http.Redirect(w, r, destination, http.StatusSeeOther)
 }

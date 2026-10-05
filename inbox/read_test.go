@@ -64,7 +64,7 @@ func TestBulkReadScopeCSRFAndLaterArrivals(t *testing.T) {
 		}
 	}
 	r := httptest.NewRequest("GET", "/inbox?filter=unread", nil)
-	rows := filterUnread(r, inboxThreads(owner, "/inbox"))
+	rows := filterThreads(r, inboxThreads(owner, "/inbox"))
 	if len(rows) != 1 || rows[0].ID != later.ID {
 		t.Fatalf("unread rows: %+v", rows)
 	}

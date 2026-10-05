@@ -167,6 +167,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			markRead(w, r, acc.ID)
 			return
 		}
+		if action := r.FormValue("action"); action == "save" || action == "unsave" {
+			if !auth.StrictCSRF(r) {
+				app.Forbidden(w, r, "Invalid CSRF token")
+				return
+			}
+			if err := thread.SetSaved(acc.ID, r.FormValue("id"), action == "save"); err != nil {
+				app.NotFound(w, r, "Conversation not found")
+				return
+			}
+			if err := thread.Flush(); err != nil {
+				app.Error(w, r, 503, "Could not save the conversation. Please try again.")
+				return
+			}
+			http.Redirect(w, r, app.ReturnTo(r, "/inbox?filter=saved"), http.StatusSeeOther)
+			return
+		}
 		if r.FormValue("action") == "handled" {
 			if !auth.StrictCSRF(r) {
 				app.Forbidden(w, r, "Invalid CSRF token")
@@ -396,7 +412,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 
 	// Opening it is reading it. Before rendering, so a reload of the page you
 	// are already on does not still show it bold.
-	all := filterUnread(r, inboxThreads(accountID, r.URL.Path))
+	all := filterThreads(r, inboxThreads(accountID, r.URL.Path))
 	wasUnread := thread.Unread(*t)
 	thread.MarkSeen(accountID, t.ID)
 
@@ -406,7 +422,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string, 
 	b.WriteString(`<div class="ib page-stack" data-inbox-watch="` + html.EscapeString(t.Updated.Format(time.RFC3339Nano)) + `">`)
 	// Where you came from, and what you can do to this — one bar rather than
 	// three loose things stacked above the conversation. See app.Actions.
-	toolbar := []string{unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)}
+	toolbar := []string{app.ConversationSave(t.ID, t.Saved, auth.CSRFToken(r), inboxURL(r, t.ID)), unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)}
 
 	for i, item := range all {
 		if item.ID != id {

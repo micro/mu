@@ -63,7 +63,7 @@ Direction, not description — none of this paragraph is a claim about today.
 The services become the building blocks for infrastructure, tools and external
 services. MCP is how agents reach them. The agents are what turn reach into
 intelligence: summarising, contextualising and acting on what is there, rather
-than fetching it again each time somebody asks. The conversation becomes the focal point, with the agent using services and showing their results in place. Work tracks delegated goals and outcomes; agent/worker owns execution;
+than fetching it again each time somebody asks. The conversation becomes the focal point, with the agent using services and showing their results in place. Work tracks delegated goals and outcomes; agent/exec owns execution;
 Inbox owns the messages and updates about them. A conversation alone is not
 a work item. `/work` retains delegated task details; the assistant starts work
 and delivers outcomes back to the conversation.
@@ -85,10 +85,12 @@ navigation on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
 Home has Overview and Feed views. Overview owns the prompt, brief, inbox and
-personal context; Feed composes public blog, news, markets, video and pinned
-public service cards. Personal pinned cards stay on Overview. Home Library
+personal context; Feed composes blog, news, markets, video and additional
+service cards, including Images and account-scoped Prayer. Pins are compact service shortcuts on Overview. Home Library
 composes owned notes, documents, apps and files; it is not saved messages.
-Inbox owns messages and no longer labels these collections Saved. Its short brief combines local personal facts with the cached generated world
+Inbox owns messages. All, Unread, Saved and Sent filter conversations; Saved
+is an explicit per-account bookmark, independent of read state. Notes and files
+remain in Library. Scheduled lists link to individual event settings pages. Home’s short brief uses the cached generated world
 summary from agent/brief; it does not repeat the full scheduled daily brief. Agent owns the conversation UI and explicit new/resume
 controls. Services are directly usable by people as well as callable by agents;
 the directory is not admin-only. Each service retains its permissions. Apps are
@@ -119,7 +121,7 @@ anything else; chat was the protocol that did not. The claim stands when a
 message from here lands on a Prosody account and one comes back.
 
 Background work now has a dedicated public surface.
-`service/tasks`, `agent/worker` and durable `tasks.started` events run work nobody is
+`service/tasks`, `agent/exec` and durable `tasks.started` events run work nobody is
 present for; `/work` and the public Work operations expose its state and outcome. Outbound is the same gap from the other
 side — mail leaving, an x402 payment to another server — and `X402_SERVERS` is
 read by a client no tool exposes. Inbound has three good rungs; outbound has
@@ -363,7 +365,7 @@ eviction limit governed both, which is why it was wrong for each.
 ## Layering
 
 The fixed product packages are `account/`, `admin/`, `home/`, `agent/`,
-`inbox/`, `work/` and `service/`. They evolve deliberately and slowly; do not
+`inbox/` and `service/`. They evolve deliberately and slowly; do not
 add top-level packages or navigation for implementation infrastructure.
 `main.go` is the front door; `internal/server` assembles the product.
 Internal event delivery and persistence belong under `internal/`.
@@ -424,7 +426,7 @@ quietly. Two are debt today — `service/blog` and `service/chat` — tracked in
 
 Services publish facts; subscribers own response policy. Mail and chat do not
 invoke the agent. Tasks publish `tasks.started` and schedules publish
-`events.due`; `agent/worker` reads their current state through service APIs,
+`events.due`; `agent/exec` reads their current state through service APIs,
 executes the requested instruction and delivers the outcome. Schedule invites
 and device notifications have their own subscriber in the server composition.
 
@@ -627,3 +629,5 @@ When changing a shared primitive, inspect its populated and empty uses across
 services at narrow and wide widths, including long titles and action groups.
 Record any unavailable browser verification explicitly; a successful build does
 not establish that a page renders correctly.
+
+Work UI lives under `agent/work`; `agent/exec` executes tasks. Independent task storage remains in `service/tasks`. Existing `/work` URLs and stored data paths remain compatible.
