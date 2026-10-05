@@ -1,4 +1,4 @@
-package work
+package worker
 
 import (
 	"crypto/sha256"
@@ -21,7 +21,6 @@ import (
 // A result belongs to one owner, schedule revision and delivery occurrence.
 // Locks serialize preparation and delivery in this process; receipts survive restart.
 var scheduledLocks [64]sync.Mutex
-var preparingOccurrences sync.Map
 
 type preparedResult struct {
 	MessageID string    `json:"message_id,omitempty"`
@@ -84,8 +83,8 @@ func consumePreparedWith(r request, prepare func(string, string, string, time.Ti
 		return syncTask()
 	}
 	if result.State == "" {
-		preparingOccurrences.Store(key, true)
-		defer preparingOccurrences.Delete(key)
+		release := tasks.BeginPreparation(r.Account, key)
+		defer release()
 		result.State = "started"
 		if err := save(); err != nil {
 			return err

@@ -63,7 +63,7 @@ Direction, not description — none of this paragraph is a claim about today.
 The services become the building blocks for infrastructure, tools and external
 services. MCP is how agents reach them. The agents are what turn reach into
 intelligence: summarising, contextualising and acting on what is there, rather
-than fetching it again each time somebody asks. The conversation becomes the focal point, with the agent using services and showing their results in place. Work owns delegated goals, execution and outcomes;
+than fetching it again each time somebody asks. The conversation becomes the focal point, with the agent using services and showing their results in place. Work tracks delegated goals and outcomes; agent/worker owns execution;
 Inbox owns the messages and updates about them. A conversation alone is not
 a work item. `/work` retains delegated task details; the assistant starts work
 and delivers outcomes back to the conversation.
@@ -78,8 +78,9 @@ Breadth behind one account is the value.
 
 **Mu is the runtime; Micro is the assistant it hosts.** The consumer app uses
 Micro consistently in its header, page titles and PWA. Mu names the runtime in
-code and technical documentation. The five primary
-product destinations are Home, Inbox, Agents, Work and Services. They use bottom
+code and technical documentation. The four primary
+product destinations are Home, Inbox, Agents and Services. Agents contains
+Agents, Scheduled and Work tabs; existing /work links remain valid. They use bottom
 navigation on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
@@ -115,7 +116,7 @@ anything else; chat was the protocol that did not. The claim stands when a
 message from here lands on a Prosody account and one comes back.
 
 Background work now has a dedicated public surface.
-`service/tasks`, top-level `work` and durable `tasks.started` events run work nobody is
+`service/tasks`, `agent/worker` and durable `tasks.started` events run work nobody is
 present for; `/work` and the public Work operations expose its state and outcome. Outbound is the same gap from the other
 side — mail leaving, an x402 payment to another server — and `X402_SERVERS` is
 read by a client no tool exposes. Inbound has three good rungs; outbound has
@@ -420,7 +421,7 @@ quietly. Two are debt today — `service/blog` and `service/chat` — tracked in
 
 Services publish facts; subscribers own response policy. Mail and chat do not
 invoke the agent. Tasks publish `tasks.started` and schedules publish
-`events.due`; top-level `work` reads their current state through service APIs,
+`events.due`; `agent/worker` reads their current state through service APIs,
 executes the requested instruction and delivers the outcome. Schedule invites
 and device notifications have their own subscriber in the server composition.
 

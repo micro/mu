@@ -149,9 +149,6 @@ func PublicOperations() []api.Operation {
 			if err != nil {
 				return nil, err
 			}
-			if _, running := activeRuns.Load(account + ":" + t.ID); running {
-				return nil, api.Fail(409, "conflict", "The previous run is still stopping")
-			}
 			if t.Status != tasks.StatusFailed && t.Status != tasks.StatusBlocked && t.Status != tasks.StatusCanceled {
 				return nil, api.Fail(409, "conflict", "Only failed or blocked work can be retried")
 			}
