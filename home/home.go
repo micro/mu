@@ -54,7 +54,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	body := `<div class="page-stack" data-home-overview>` + tabs(view) + `</div>`
 	if view == "overview" {
-		body += `<div><div data-home-overview class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + agent.Prompt(acc.ID) + `</div>`
+		body += `<div><div data-home-overview class="home-date"><time datetime="` + account.LocalNow(acc.ID).Format("2006-01-02") + `">` + account.LocalNow(acc.ID).Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>` + agent.Prompt(acc.ID) + `</div><hr data-home-overview>`
 	} else {
 		body += `<p>News, reading and live updates from your services.</p>`
 	}
@@ -99,12 +99,16 @@ func overviewHTML(acc *auth.Account) string {
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
 	right.WriteString(work.ScheduledCard(acc.ID))
 	var pins strings.Builder
-	for _, spec := range service.Pinned(acc.PinnedServices()) {
-		pins.WriteString(`<a class="btn" href="` + html.EscapeString(spec.Page) + `">` + html.EscapeString(spec.NavLabel()) + `</a>`)
+	services := service.Pinned(acc.PinnedServices())
+	if len(services) == 0 {
+		services = service.Pinned([]string{"news", "markets", "video", "blog"})
+	}
+	for _, spec := range services {
+		pins.WriteString(`<a href="` + html.EscapeString(spec.Page) + `"><img src="/` + html.EscapeString(spec.NavIcon()) + `?` + app.Version + `" width="28" height="28" alt=""><span>` + html.EscapeString(spec.NavLabel()) + `</span></a>`)
 	}
 	pinned := ""
 	if pins.Len() > 0 {
-		pinned = `<nav class="form-actions" aria-label="Pinned services">` + pins.String() + `</nav>`
+		pinned = `<section class="section-body" aria-labelledby="pinned-services-title"><p id="pinned-services-title" class="text-muted text-sm">Pinned services</p><nav class="service-shortcuts" aria-labelledby="pinned-services-title">` + pins.String() + `</nav></section>`
 	}
 	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
 	if left.Len() == 0 {
