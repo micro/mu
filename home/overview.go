@@ -115,8 +115,8 @@ func Forget(owner string) {
 	overviewCache.Unlock()
 }
 
-// Home keeps reading on the left and market/video previews on the right.
+// Feed keeps reading and markets on the left; prayer, images and video on the right.
 // Pins are shortcuts; these cards form the Feed independently of those shortcuts.
 func feedServices() []service.Spec {
-	return service.Pinned([]string{"news", "markets", "video", "images", "prayer"})
+	return service.Pinned([]string{"news", "markets", "prayer", "images", "video"})
 }

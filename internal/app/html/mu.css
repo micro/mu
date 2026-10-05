@@ -342,7 +342,9 @@ main{overflow-wrap:anywhere}
  .dashboard-columns #home-service-markets{order:-2}
  .dashboard-columns #home-service-news{order:-1}
  .dashboard-columns #home-blog{order:0}
- .dashboard-columns #home-service-video{order:1}
+ .dashboard-columns #home-service-prayer{order:2}
+ .dashboard-columns #home-service-images{order:3}
+ .dashboard-columns #home-service-video{order:4}
 }
 .card-grid,.directory-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:var(--section-gap);min-width:0;align-items:start}
 :is(.card-grid,.directory-list)>*{min-width:0;margin:0}

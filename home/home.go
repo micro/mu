@@ -122,7 +122,7 @@ func feedHTML(snapshot overviewSnapshot) string {
 	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
 	for _, spec := range feedServices() {
 		column := &left
-		if spec.Name == "markets" || spec.Name == "video" || spec.Name == "images" || spec.Name == "prayer" {
+		if spec.Name == "video" || spec.Name == "images" || spec.Name == "prayer" {
 			column = &right
 		}
 		body := snapshot.cards[spec.Name]
