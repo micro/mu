@@ -114,7 +114,7 @@ func scheduleHistory(w http.ResponseWriter, r *http.Request, acc *auth.Account, 
 	if loc, err := time.LoadLocation(acc.Zone); err == nil {
 		zone = loc
 	}
-	body := `<div class="page-stack"><p><a href="/work">Back to work</a></p><section class="section-card section-stack"><h2>` + html.EscapeString(found.Title) + `</h2><p>Scheduled work · one entry, with a separate run for each occurrence.</p>`
+	body := `<div class="page-stack"><section class="section-card section-stack"><h2>` + html.EscapeString(found.Title) + `</h2><p>Scheduled work · one entry, with a separate run for each occurrence.</p>`
 	if e := found.Schedule; e != nil {
 		if e.Zone != "" {
 			if loc, err := time.LoadLocation(e.Zone); err == nil {
@@ -245,7 +245,7 @@ func ScheduledCard(owner string) string {
 				if t.Occurrence.State != "done" || t.Occurrence.Failure != "" || strings.TrimSpace(t.Result) == "" {
 					continue
 				}
-				href = "/work/" + url.PathEscape(t.ID)
+				href = "/work?id=" + url.QueryEscape(t.ID)
 				if th := thread.ByRef(owner, t.Occurrence.MessageID); t.Occurrence.MessageID != "" && th != nil {
 					href = "/inbox?id=" + url.QueryEscape(th.ID)
 					if e.Kind == "checkin" {
@@ -261,7 +261,7 @@ func ScheduledCard(owner string) string {
 				if latest.Occurrence.State != "done" || latest.Occurrence.Failure != "" || strings.TrimSpace(latest.Result) == "" {
 					status += " · " + label
 					if strings.HasPrefix(href, "/agents") {
-						href = "/work/" + url.PathEscape(latest.ID)
+						href = "/work?id=" + url.QueryEscape(latest.ID)
 					}
 				}
 			}

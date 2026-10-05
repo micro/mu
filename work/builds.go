@@ -126,7 +126,7 @@ func buildState(s string) string {
 	}
 }
 func buildDetail(b apps.BuildStatusResponse) string {
-	body := `<div class="form-actions"><a href="/work">Work</a><a href="/home/apps">My apps</a></div><h2>Build an app</h2><p>` + html.EscapeString(b.Prompt) + `</p><p>` + buildState(b.State) + ` · Updated ` + app.TimeAgo(b.Updated) + `</p>`
+	body := `<div class="form-actions"><a href="/home/apps">My apps</a></div><h2>Build an app</h2><p>` + html.EscapeString(b.Prompt) + `</p><p>` + buildState(b.State) + ` · Updated ` + app.TimeAgo(b.Updated) + `</p>`
 	if b.State == "complete" && b.Item != nil {
 		body += `<p>Your app is saved. Open it to use it, or return to the conversation to request changes.</p>` + app.Results([]result.Item{*b.Item})
 	}

@@ -164,7 +164,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, task := range tasks.List(acc.ID, taskFilter) {
 		if task.Archived == archived {
-			entries = append(entries, entry{task.Title, "/work/" + url.PathEscape(task.ID), task.Status, assignee(task), task.Created, task.Updated})
+			entries = append(entries, entry{task.Title, "/work?id=" + url.QueryEscape(task.ID), task.Status, assignee(task), task.Created, task.Updated})
 		}
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].created.After(entries[j].created) })
@@ -297,11 +297,10 @@ func state(status string) string {
 }
 func workDetail(t *tasks.Task, csrf string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="section-actions"><a href="/work">Work</a>`)
 	if t.Thread != "" {
-		b.WriteString(`<a href="/inbox/` + url.PathEscape(t.Thread) + `">Conversation</a>`)
+		b.WriteString(`<div class="section-actions"><a href="/inbox?id=` + url.QueryEscape(t.Thread) + `">Conversation</a></div>`)
 	}
-	b.WriteString(`</div><h2>` + html.EscapeString(t.Title) + `</h2><div class="metadata-row">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div>`)
+	b.WriteString(`<h2>` + html.EscapeString(t.Title) + `</h2><div class="metadata-row">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div>`)
 	if t.Result != "" {
 		b.WriteString(`<section><h3>Outcome</h3>` + app.RenderString(t.Result) + `</section>`)
 	}
