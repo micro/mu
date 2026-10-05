@@ -198,6 +198,7 @@ func authRequired() map[string]bool {
 		"/contact.vcf":                   false, // Public - the same list as a contact card; everything in it is on that page
 		"/about":                         false, // Public - what this is, for somebody who does not know yet
 		"/pricing":                       false, // Public - what it costs, which is what a stranger is deciding on
+		"/help":                          false,
 		"/install":                       false, // Public - run your own instance
 		"/mcp":                           false, // Public - MCP tools page
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
@@ -744,11 +745,10 @@ func registerRoutes() {
 	app.HealthCheckFunc = runHealthChecks
 	http.HandleFunc("/status", app.StatusHandler)
 
-	// Documentation. One page: how to run your own. Every address the old nine
-	// answered on redirects to whatever replaced it — an exact pattern outranks
-	// the /docs the service owns now, and /about is in that map pointing at the
-	// landing, which is the page that answers the question it used to.
+	// Installation stays minimal; optional operator guides live under /help.
 	http.HandleFunc("/install", help.InstallHandler)
+	http.HandleFunc("/help", help.Handler)
+	http.HandleFunc("/help/", help.Handler)
 
 	// ActivityPub: WebFinger discovery
 	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)

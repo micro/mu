@@ -555,15 +555,11 @@ cost; rate limits stop bots.
   `main.go`. Same rule as one directory per service — a central pile separates
   an asset from the only code that reads it, and nothing then says which of the
   two to delete. The `//go:embed` sits in the file that uses the bytes
-- `docs/` holds one file, `INSTALL.md`, served at `/install`. There were nine.
-  The eight that went described what the code already says, in files nothing
-  fails when they go stale — the architecture doc kept a hand-written table of
-  the registry *with a test to stop it drifting*, which is the admission that it
-  was a copy. What is registered is `/services` and `/tools`. What things cost
-  is `quota.json`. The layering is `test/layering_test.go`, which fails when it
-  is wrong rather than being read when it is not. Install survives because it
-  holds what the code cannot: ports, DNS records, decisions about a machine this
-  repository never sees
+- Keep `docs/INSTALL.md`, served at `/install`, limited to the minimal local
+  setup: install, start, open Micro. Optional hosting, configuration, messaging
+  and architecture guides live separately under `/help`, indexed by
+  `docs/README.md`. Do not copy service registries or price catalogues into docs;
+  `/services`, `/tools`, `quota.json` and layering tests remain authoritative.
 
 ## UI composition
 
