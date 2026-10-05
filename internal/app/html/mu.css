@@ -1436,7 +1436,8 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .account-menu-links>hr{margin:6px 12px;border-color:var(--border)}
 
 /* Compact app shortcuts reuse service icons without directory card chrome. */
-.service-shortcuts{display:flex;flex-wrap:nowrap;gap:8px;align-items:flex-start;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding:2px}
+.service-shortcuts{display:flex;flex-wrap:nowrap;gap:8px;align-items:flex-start;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px}
+.service-shortcuts::-webkit-scrollbar{display:none}
 .service-shortcuts>a{flex:0 0 80px;display:flex;flex-direction:column;align-items:center;gap:8px;width:80px;max-width:100%;padding:10px 4px;border-radius:6px;text-align:center;font-size:.875rem;font-weight:400}
 .service-shortcuts>a:hover{background:var(--surface)}
 .service-shortcuts img{width:28px;height:28px;object-fit:contain}
@@ -1461,4 +1462,7 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
  .service-shortcuts{gap:4px}
  .service-shortcuts>a{flex-basis:64px;width:64px;gap:6px;padding:6px 4px}
  .service-shortcuts img{width:24px;height:24px}
+}
+@media(max-width:480px){
+ .service-shortcuts>a{flex-basis:calc((100% - 16px)/4.5);width:auto}
 }
