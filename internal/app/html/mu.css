@@ -1461,3 +1461,10 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
  .signed-in.document-page:has([data-home-overview]) .assistant-workspace{margin-top:8px}
  .service-shortcuts>a{min-width:56px}
 }
+
+/* Compact shortcut groups and optional article references. */
+.shortcut-section{border-top:1px solid var(--border);padding-top:10px;min-width:0}
+.shortcut-section>h2{font-size:.8rem;font-weight:400;color:var(--text-muted);margin:0 0 6px}
+.reference-list{padding-left:20px;max-width:var(--reading-width)}
+.reference-list li{margin-block:10px;overflow-wrap:anywhere}
+.reference-list a{font-weight:400}
