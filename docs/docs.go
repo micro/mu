@@ -1,24 +1,4 @@
-// Package docs serves the one documentation page this site has.
-//
-// It served nine, behind an index grouping them into categories: About, Use
-// cases, MCP, CLI, Installation, Configuration, Architecture, Security,
-// Principles. Nine pages is a manual, and a product that needs a manual to be
-// used has already lost the argument it is making — the tools are discoverable
-// at /tools, the protocol is a URL, the price list is a page. Most of those
-// documents existed because writing one is easier than making the thing explain
-// itself.
-//
-// Then three, then one. /about went last, and for the reason the other eight
-// went: the landing is the page that says what this is, so an About page was a
-// second answer to a question already answered, kept in a file that nothing
-// fails when it goes stale. A visitor deciding whether to care reads the
-// landing; nobody has ever read both.
-//
-// So /install, which is how you run your own, and which earns its place by
-// holding what the code cannot — ports, records, an operator's decisions.
-//
-// The old addresses still resolve. /docs/<slug> was every one of these until
-// Docs became the name of a service, and /about redirects to the landing.
+// Package docs serves minimal installation and optional operator guides.
 package docs
 
 import (
@@ -34,8 +14,6 @@ import (
 //go:embed *.md
 var docsFS embed.FS
 
-// page is one of them. A slice rather than a constant because /install is
-// unlikely to be the last, and one-of-a-kind is how the nine started.
 type page struct {
 	Path        string
 	Filename    string
@@ -46,6 +24,11 @@ type page struct {
 var pages = []page{
 	{Path: "/install", Filename: "INSTALL.md", Title: "Install",
 		Description: "Run your own instance"},
+	{Path: "/help", Filename: "README.md", Title: "Documentation"},
+	{Path: "/help/hosting", Filename: "HOSTING.md", Title: "Hosting and maintenance"},
+	{Path: "/help/configuration", Filename: "CONFIGURATION.md", Title: "Configuration"},
+	{Path: "/help/channels", Filename: "CHANNELS.md", Title: "Mail and messaging"},
+	{Path: "/help/architecture", Filename: "ARCHITECTURE.md", Title: "Architecture and development"},
 }
 
 // Redirects maps every address the documentation used to answer on to the page
@@ -63,27 +46,22 @@ var Redirects = map[string]string{
 	"/docs/usecases":     "/tools",
 	"/docs/mcp":          "/tools",
 	"/docs/cli":          "/tools",
-	"/docs/architecture": "/tools",
+	"/docs/architecture": "/help/architecture",
 	"/docs/security":     "/tools",
 	"/docs/principles":   "/tools",
 	"/docs/installation": "/install",
-	"/docs/environment":  "/install",
-	"/help":              "/tools",
+	"/docs/environment":  "/help/configuration",
+
 	"/help/mcp":          "/tools",
 	"/help/cli":          "/tools",
 	"/help/about":        "/",
 	"/help/installation": "/install",
-	"/help/environment":  "/install",
+	"/help/environment":  "/help/configuration",
 }
 
 // Load initializes the docs building block.
 func Load() {}
 
-// Indexed rather than positional. These were pages[0], pages[1], pages[2], so
-// removing a page silently repointed the handlers after it — deleting /help
-// would have made /install serve nothing and /about serve Install. Two of the
-// three have since been deleted, which is exactly when that bug would have
-// fired.
 func pageAt(path string) page {
 	for _, p := range pages {
 		if p.Path == path {
@@ -96,6 +74,15 @@ func pageAt(path string) page {
 // InstallHandler serves /install.
 func InstallHandler(w http.ResponseWriter, r *http.Request) { serve(w, r, pageAt("/install")) }
 
+// Handler serves the optional guides, with exact paths and explicit legacy redirects.
+func Handler(w http.ResponseWriter, r *http.Request) {
+	if target, ok := Redirects[r.URL.Path]; ok {
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
+		return
+	}
+	serve(w, r, pageAt(r.URL.Path))
+}
+
 func serve(w http.ResponseWriter, r *http.Request, p page) {
 	content, err := docsFS.ReadFile(p.Filename)
 	if err != nil {
@@ -104,7 +91,12 @@ func serve(w http.ResponseWriter, r *http.Request, p page) {
 	}
 
 	rendered := app.RenderTrusted(stripTitle(content))
-	html := fmt.Sprintf(`<div class="docs"><div class="docs-content">%s</div></div>`, string(rendered))
+	body := string(rendered)
+	for _, target := range pages {
+		body = strings.ReplaceAll(body, `href="`+target.Filename+`"`, `href="`+target.Path+`"`)
+		body = strings.ReplaceAll(body, `href="`+target.Filename+`#`, `href="`+target.Path+`#`)
+	}
+	html := fmt.Sprintf(`<article class="reader-content">%s</article>`, body)
 	app.Respond(w, r, app.Response{Title: p.Title, Description: p.Description, HTML: html})
 }
 

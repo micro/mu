@@ -50,6 +50,6 @@ curl '` + base + `/work/WORK_ID' \
  </tbody></table>
  <h2>Services and tools</h2><p>Call services directly with a Services token. The <a href="/api">API reference</a> lists HTTP endpoints, parameters and examples. The <a href="/tools">Tools page</a> lists MCP tools and connection instructions for your own agent. In the CLI, use <code>mu tools</code> to discover them and <code>mu SERVICE METHOD --argument value</code> to call one.</p>
  <h2>Pay per call</h2><p><a href="/x402">x402</a> lets your applications pay for public service calls with USDC. See the payment and connection details there.</p>
- <h2>Self-hosting</h2><p>The same CLI works with your own server: <code>mu login https://your-server.example</code>. See the <a href="/install">installation guide</a> and <a href="https://github.com/micro/mu">source code</a>.</p></div>`
+ <h2>Self-hosting</h2><p>The same CLI works with your own server: <code>mu login https://your-server.example</code>. See the <a href="/install">installation guide</a>, <a href="/help">documentation</a> and <a href="https://github.com/micro/mu">source code</a>.</p></div>`
 	app.Respond(w, r, app.Response{Title: "Developers", HTML: body})
 }

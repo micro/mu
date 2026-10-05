@@ -37,30 +37,15 @@ headlines and summary via RSS. Video search via YouTube. All behind one MCP inte
 
 ## Install
 
-```bash
+```sh
 curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
-mu setup
-mu --serve
+~/.local/bin/mu --serve --address 127.0.0.1:8080
 ```
 
-Open **http://localhost:8080**. Initial administrator setup depends on the
-instance's bootstrap configuration; see the installation guide.
+Open **http://localhost:8080** to create your account and choose an AI provider.
 
-Configure an AI provider with `mu setup`, or use the settings below.
-
-From source:
-
-```bash
-git clone https://github.com/micro/mu
-cd mu
-go install
-mu setup
-mu --serve
-```
-
-Or run `docker compose up` from the checkout. See the
-[installation guide](docs/INSTALL.md) for domains, TLS, mail, messaging,
-sandbox configuration, and deployment.
+See [Install Micro](docs/INSTALL.md) for the quick start. Optional
+[documentation](docs/README.md) covers hosting, configuration, mail and development.
 
 ## CLI
 
