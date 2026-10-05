@@ -1215,7 +1215,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .result-preview>:first-child{margin-top:0}.result-preview>:last-child{margin-bottom:0}
 
 /* Home embeds the Agent composer within a normally scrolling overview. */
-.document-page:has([data-home-overview]) .assistant-workspace{display:block;margin:16px 0}
+.document-page:has([data-home-overview]) .assistant-workspace{display:block;margin:16px 0 0}
 .document-page:has([data-home-overview]) .conversation{min-height:0;height:auto;display:block}
 .document-page:has([data-home-overview]) .prompt-panel{margin:0;padding:0}
 .document-page:has([data-home-overview]) .prompt-welcome{display:none}
@@ -1436,8 +1436,29 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .account-menu-links>hr{margin:6px 12px;border-color:var(--border)}
 
 /* Compact app shortcuts reuse service icons without directory card chrome. */
-.service-shortcuts{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
-.service-shortcuts>a{display:flex;flex-direction:column;align-items:center;gap:8px;width:80px;max-width:100%;padding:10px 4px;border-radius:6px;text-align:center;font-size:.875rem;font-weight:400}
+.service-shortcuts{display:flex;flex-wrap:nowrap;gap:8px;align-items:flex-start;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding:2px}
+.service-shortcuts>a{flex:0 0 80px;display:flex;flex-direction:column;align-items:center;gap:8px;width:80px;max-width:100%;padding:10px 4px;border-radius:6px;text-align:center;font-size:.875rem;font-weight:400}
 .service-shortcuts>a:hover{background:var(--surface)}
 .service-shortcuts img{width:28px;height:28px;object-fit:contain}
 .service-shortcuts span{max-width:100%;overflow-wrap:anywhere}
+
+/* Compact the shared signed-in canvas progressively without shrinking controls. */
+@media(min-width:701px) and (max-width:1100px){
+ .signed-in{--page-gutter:32px;--section-gap:20px;--section-padding:20px}
+ .signed-in.document-page main>h1{margin-bottom:16px}
+ .signed-in.document-page main{padding-top:12px}
+}
+@media(max-width:700px){
+ .signed-in{--section-gap:12px}
+ .signed-in.document-page main{padding-top:8px}
+ .signed-in.document-page main>h1{margin-bottom:10px}
+ .signed-in .page-controls{gap:8px;padding-bottom:12px}
+ .signed-in .view-controls{gap:8px}
+ .signed-in .section-card-head{margin-bottom:12px}
+ .signed-in .section-heading{margin-block:16px 8px}
+ .signed-in .home-date{gap:4px 12px;margin-bottom:8px}
+ .signed-in.document-page:has([data-home-overview]) .assistant-workspace{margin-top:8px}
+ .service-shortcuts{gap:4px}
+ .service-shortcuts>a{flex-basis:64px;width:64px;gap:6px;padding:6px 4px}
+ .service-shortcuts img{width:24px;height:24px}
+}

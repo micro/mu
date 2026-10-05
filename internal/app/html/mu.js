@@ -1720,7 +1720,10 @@ if(typeof document!=='undefined'){
    if(!response.ok)return;
    const data=await response.json();
    if(!target.isConnected)return;
+   const shortcuts=target.querySelector('.service-shortcuts'),scroll=shortcuts?.scrollLeft||0;
+   const focused=shortcuts?.contains(document.activeElement)?document.activeElement.getAttribute('href'):null;
    target.innerHTML=data.html;
+   const updated=target.querySelector('.service-shortcuts');if(updated){updated.scrollLeft=scroll;if(focused)Array.from(updated.querySelectorAll('a')).find(a=>a.getAttribute('href')===focused)?.focus({preventScroll:true});}
    const weather=document.querySelector("#home-weather");if(weather)weather.innerHTML=data.weather;
    target.dataset.pending=String(data.pending);
    if(data.pending)timer=setTimeout(refresh,2000);
