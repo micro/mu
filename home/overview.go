@@ -67,7 +67,7 @@ func overview(acc *auth.Account) (overviewSnapshot, bool) {
 func refreshOverviews() {
 	for acc := range overviewCache.queue {
 		snapshot := overviewSnapshot{key: overviewKey(acc), cards: map[string]string{}}
-		for _, spec := range overviewServices(acc) {
+		for _, spec := range feedServices() {
 			// The unlocated weather renderer requires an inline browser script.
 			// Home already offers the account location control instead.
 			if spec.Name == "weather" && acc.Lat == 0 && acc.Lon == 0 {
@@ -116,13 +116,7 @@ func Forget(owner string) {
 }
 
 // Home keeps reading on the left and market/video previews on the right.
-// Additional pinned services follow these permanent cards without duplicates.
-func overviewServices(acc *auth.Account) []service.Spec {
-	names := []string{"news", "markets", "video"}
-	for _, name := range acc.PinnedServices() {
-		if name != "blog" && name != "apps" {
-			names = append(names, name)
-		}
-	}
-	return service.Pinned(names)
+// Pins are shortcuts; these cards form the Feed independently of those shortcuts.
+func feedServices() []service.Spec {
+	return service.Pinned([]string{"news", "markets", "video", "images", "prayer"})
 }

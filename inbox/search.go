@@ -52,7 +52,7 @@ const searchHits = 200
 // which is where somebody who has finished looking wants to be.
 //
 // See AGENTS.md, "What may travel in a URL".
-func searchBox(box, q, csrf string, unread bool) string {
+func searchBox(box, q, csrf string, filter string) string {
 	// The box is preserved across a search, because a search inside a mailbox
 	// is a narrower question than a search across all of them and the switcher
 	// above has just been used to ask it.
@@ -60,8 +60,8 @@ func searchBox(box, q, csrf string, unread bool) string {
 	if action == "" {
 		action = "/inbox"
 	}
-	if unread {
-		action += "?filter=unread"
+	if filter != "all" {
+		action += "?filter=" + filter
 	}
 	return `<form class="search-bar" method="POST" action="` + html.EscapeString(action) + `">` +
 		app.CSRFField(csrf) +
@@ -105,7 +105,7 @@ func found(b *strings.Builder, r *http.Request, accountID, box, q string) {
 		}
 		seen[h.Thread] = true
 		t := thread.Get(accountID, h.Thread)
-		if t == nil || t.Held || (unreadOnly(r) && !thread.Unread(*t)) {
+		if t == nil || t.Held || !matchesFilter(r, *t) {
 			continue
 		}
 		// The mailbox narrows the search, because the switcher above is how the

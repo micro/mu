@@ -108,7 +108,7 @@ func invitationHTML(owner, token, kind string) string {
 		}
 	}
 	var b strings.Builder
-	b.WriteString(`<section id="` + kind + `" class="card page-stack"><h2>` + title + `</h2><p>` + description + `</p><p class="text-muted">` + html.EscapeString(status) + `</p><details class="disclosure"><summary>Settings</summary><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="` + kind + `-schedule"><label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label><label class="field-label">Frequency<select class="form-input" name="repeat">`)
+	b.WriteString(`<section id="` + kind + `" class="card page-stack"><h2>` + title + `</h2><p>` + description + `</p><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="` + kind + `-schedule"><label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label><label class="field-label">Frequency<select class="form-input" name="repeat">`)
 	for _, f := range []string{"daily", "weekdays", "weekly"} {
 		selected := ""
 		if f == repeat {
@@ -127,7 +127,7 @@ func invitationHTML(owner, token, kind string) string {
 	if e != nil && !e.Paused {
 		b.WriteString(`<button name="state" value="paused" class="btn-secondary">Disable</button>`)
 	}
-	b.WriteString(`</div></form></details></section>`)
+	b.WriteString(`</div></form></section>`)
 	return b.String()
 }
 
@@ -153,5 +153,5 @@ func invitationScheduleHandler(w http.ResponseWriter, r *http.Request, kind stri
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/agents?view=scheduled#"+kind, http.StatusSeeOther)
+	http.Redirect(w, r, "/agents?view=scheduled&event="+kind, http.StatusSeeOther)
 }

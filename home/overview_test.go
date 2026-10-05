@@ -5,6 +5,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/service/apps"
+	"strings"
 	"testing"
 	"time"
 )
@@ -12,8 +13,11 @@ import (
 func TestOverviewRefreshDoesNotBlockAndNeverSharesPersonalCards(t *testing.T) {
 	entered, release := make(chan string, 2), make(chan struct{})
 	defer close(release)
-	name := "home-cache-test"
+	name := "prayer"
 	if err := service.Register(service.Spec{Name: name, Handler: &apps.Server{}, Page: "/" + name, Card: service.Personal(func(who service.Viewer) string {
+		if !strings.HasPrefix(who.Account, "overview-cache-") {
+			return ""
+		}
 		entered <- who.Account
 		<-release
 		return fmt.Sprintf("private:%s", who.Account)

@@ -60,6 +60,7 @@ func Merge(account, sourceID, targetID string, copiedRefs map[string]bool, norma
 	if source.Started.Before(target.Started) {
 		target.Started = source.Started
 	}
+	target.Saved = target.Saved || source.Saved
 	// Keep the older read boundary so merging cannot silently read new arrivals.
 	if source.Seen.Before(target.Seen) {
 		target.Seen = source.Seen

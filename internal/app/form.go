@@ -351,3 +351,16 @@ func AgentViews(active string) string {
 		{Key: "work", Label: "Work", URL: "/work"},
 	}, false)
 }
+
+// ConversationSave is shared by the Inbox reader and the agent conversation.
+func ConversationSave(id string, saved bool, csrf, back string) string {
+	action, label := "save", "Save"
+	if saved {
+		action, label = "unsave", "Unsave"
+	}
+	hidden := ""
+	if id == "" {
+		hidden = " hidden"
+	}
+	return `<form class="form-action" data-save-conversation` + hidden + ` method="post" action="/inbox">` + CSRFField(csrf) + `<input type="hidden" name="action" value="` + action + `"><input type="hidden" name="id" value="` + htmlpkg.EscapeString(id) + `"><input type="hidden" name="return" value="` + htmlpkg.EscapeString(back) + `"><button type="submit">` + label + `</button></form>`
+}

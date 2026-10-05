@@ -1,6 +1,7 @@
 package home
 
 import (
+	"mu/agent/work"
 	"mu/internal/auth"
 	"mu/service/apps"
 	"mu/service/docs"
@@ -8,7 +9,6 @@ import (
 	"mu/service/files"
 	"mu/service/notes"
 	"mu/service/tasks"
-	"mu/work"
 	"net/http"
 	"net/http/httptest"
 	"strings"

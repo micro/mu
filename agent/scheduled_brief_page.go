@@ -46,7 +46,7 @@ func briefPeriodHTML(owner, token, period string) string {
 		description = "A little perspective on the week, with your commitments, useful headlines and a reminder."
 	}
 	var b strings.Builder
-	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h2>` + title + `</h2><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><details class="disclosure"><summary>Settings</summary><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
+	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h2>` + title + `</h2><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
 	selectField := func(name, title, value string, values ...string) {
 		b.WriteString(`<label class="field-label">` + title + `<select class="form-input" name="` + name + `">`)
 		for _, v := range values {
@@ -89,7 +89,7 @@ func briefPeriodHTML(owner, token, period string) string {
 	if e != nil && !e.Paused {
 		b.WriteString(`<button name="state" value="paused" class="btn-secondary">Disable</button>`)
 	}
-	b.WriteString(`</div></form></details></div></section>`)
+	b.WriteString(`</div></form></div></section>`)
 	return b.String()
 }
 
@@ -121,5 +121,5 @@ func briefScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/agents?view=scheduled", http.StatusSeeOther)
+	http.Redirect(w, r, "/agents?view=scheduled&event=brief", http.StatusSeeOther)
 }

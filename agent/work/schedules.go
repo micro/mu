@@ -222,7 +222,7 @@ func ScheduledCard(owner string) string {
 		title, anchor string
 		schedule      *events.Event
 	}{
-		{"Morning Brief", "morning-brief", agent.Brief(owner)},
+		{"Morning Brief", "brief", agent.Brief(owner)},
 		{"Daily Checkin", "checkin", agent.Checkin(owner)},
 		{"Take a moment", "moment", agent.Moment(owner)},
 		{"Evening Reading", "research", agent.Research(owner)},
@@ -230,7 +230,7 @@ func ScheduledCard(owner string) string {
 		if item.anchor == "moment" && (item.schedule == nil || item.schedule.Paused) {
 			continue
 		}
-		href := "/agents?view=scheduled#" + item.anchor
+		href := "/agents?view=scheduled&event=" + item.anchor
 		status := "Not scheduled"
 		history := ""
 		if e := item.schedule; e != nil {
