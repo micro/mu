@@ -386,6 +386,6 @@ func stepHTML(steps []tasks.Step) string {
 const workPollJS = `<script>(function(){var root=document.getElementById('work-detail');var count=0;async function poll(){if(!root||!root.isConnected||++count>360)return;try{var r=await fetch(location.pathname+location.search,{headers:{Accept:'application/json'}});if(!r.ok)return;var d=await r.json();var rendered=!root.contains(document.activeElement)&&!root.querySelector('details[open]');if(rendered)root.innerHTML=d.html;if(rendered&&d.status!=='doing')return;}catch(e){}setTimeout(poll,3000);}setTimeout(poll,3000);})();</script>`
 
 func respond(w http.ResponseWriter, r *http.Request, response app.Response) {
-	response.HTML = app.AgentViews("work") + response.HTML
+	response.HTML = `<div class="page-stack">` + app.AgentViews("work") + `<div>` + response.HTML + `</div></div>`
 	app.Respond(w, r, response)
 }
