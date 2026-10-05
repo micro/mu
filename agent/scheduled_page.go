@@ -13,10 +13,7 @@ func scheduledTabs(scheduled bool) string {
 	if scheduled {
 		active = "scheduled"
 	}
-	return app.ViewNavigation("Agent views", active, []app.ViewLink{
-		{Key: "agents", Label: "Agents", URL: "/agents"},
-		{Key: "scheduled", Label: "Scheduled", URL: "/agents?view=scheduled"},
-	}, false)
+	return app.AgentViews(active)
 }
 
 func scheduledHandler(w http.ResponseWriter, r *http.Request) {

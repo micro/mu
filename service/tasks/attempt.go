@@ -94,5 +94,8 @@ func Stop(owner, id string) error {
 		extra["attempts"] = encodeAttempts(t.Attempts)
 	}
 	_, err = update(owner, id, "", "", StatusCanceled, "", "Stopped. Actions already completed are retained in the activity report.", extra)
+	if err == nil {
+		stopClaim(owner, id)
+	}
 	return err
 }

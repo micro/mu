@@ -30,6 +30,7 @@ import (
 	"mu/agent/micro"
 	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
+	"mu/agent/worker"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -156,7 +157,7 @@ func wireHooks() {
 	//
 	// tasks.RunAgent, events.RunAgent and events.OnFireEvent were three
 	// function variables filled in here, which is a service running an agent
-	// with the import hidden from the compiler. They are gone; work
+	// with the import hidden from the compiler. They are gone; agent/worker
 	// subscribes, and both services announce and know nothing about who
 	// listens.
 	//
@@ -165,6 +166,7 @@ func wireHooks() {
 	// brief me and mail it" has nowhere to live in a process that only exists
 	// while a client is attached.
 	startupStep("work.Load", work.Load)
+	startupStep("worker.Load", worker.Load)
 
 	// Mail is a client like another client: it speaks its own protocol and
 	// hands what arrives to the agent. See agent/mail.

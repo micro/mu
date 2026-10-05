@@ -1,4 +1,4 @@
-package work
+package worker
 
 import (
 	"mu/internal/event"

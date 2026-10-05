@@ -65,7 +65,7 @@ func occurrenceStatus(t *tasks.Task, e *events.Event) (string, string) {
 	}
 	switch o.State {
 	case "started":
-		if _, ok := preparingOccurrences.Load(o.Key); !ok {
+		if !tasks.Preparing(t.Owner, o.Key) {
 			return "blocked", "Interrupted"
 		}
 		return "doing", "Preparing"
@@ -136,7 +136,7 @@ func scheduleHistory(w http.ResponseWriter, r *http.Request, acc *auth.Account, 
 		body += `<p>No runs yet.</p>`
 	}
 	body += pager.Nav("/work?schedule="+url.QueryEscape(id)) + `</section></div>`
-	app.Respond(w, r, app.Response{Title: "Scheduled work", HTML: body})
+	respond(w, r, app.Response{Title: "Scheduled work", HTML: body})
 }
 
 func occurrenceDetail(t *tasks.Task, csrf string) string {

@@ -1,7 +1,6 @@
 package work
 
 import (
-	"context"
 	"fmt"
 	"html"
 	"mu/agent"
@@ -68,7 +67,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if id := r.URL.Query().Get("build"); id != "" {
 		for _, build := range buildsFor(acc.ID) {
 			if build.ID == id {
-				app.Respond(w, r, app.Response{Title: "App build", HTML: buildDetail(build), Data: build})
+				respond(w, r, app.Response{Title: "App build", HTML: buildDetail(build), Data: build})
 				return
 			}
 		}
@@ -93,7 +92,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				app.RespondJSON(w, map[string]any{"html": occurrenceDetail(t, auth.CSRFToken(r)), "status": status, "work": publicTask(t)})
 				return
 			}
-			app.Respond(w, r, app.Response{Title: "Scheduled run", HTML: `<div id="work-detail" class="page-stack">` + occurrenceDetail(t, auth.CSRFToken(r)) + `</div>` + workPollJS})
+			respond(w, r, app.Response{Title: "Scheduled run", HTML: `<div id="work-detail" class="page-stack">` + occurrenceDetail(t, auth.CSRFToken(r)) + `</div>` + workPollJS})
 			return
 		}
 		body := workDetail(t, auth.CSRFToken(r))
@@ -101,7 +100,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, map[string]any{"html": body, "status": t.Status, "work": publicTask(t)})
 			return
 		}
-		app.Respond(w, r, app.Response{Title: "Work", HTML: `<div id="work-detail" class="page-stack">` + body + `</div>` + workPollJS})
+		respond(w, r, app.Response{Title: "Work", HTML: `<div id="work-detail" class="page-stack">` + body + `</div>` + workPollJS})
 		return
 	}
 	if r.URL.Query().Get("view") == "new" {
@@ -110,7 +109,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			options = append(options, app.Option{Value: agent.Slug(a), Label: a.Name})
 		}
 		body := `<form method="POST" action="/work" class="form">` + app.CSRFField(auth.CSRFToken(r)) + app.Field{Name: "prompt", Label: "What needs doing?", Rows: 4, Max: 8000, Required: true, Wide: true}.HTML() + app.Field{Name: "agent", Label: "Assigned to", Options: options}.HTML() + `<div class="form-actions"><button>Save</button><a href="/work">Cancel</a></div></form>`
-		app.Respond(w, r, app.Response{Title: "New work", HTML: body})
+		respond(w, r, app.Response{Title: "New work", HTML: body})
 		return
 	}
 	filter := r.URL.Query().Get("status")
@@ -181,7 +180,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(entries) == 0 {
 		b.WriteString(`<p>No work here.</p>`)
 	}
-	app.Respond(w, r, app.Response{Title: "Work", HTML: `<div class="page-stack">` + b.String() + `</div>`})
+	respond(w, r, app.Response{Title: "Work", HTML: `<div class="page-stack">` + b.String() + `</div>`})
 }
 
 func workAction(w http.ResponseWriter, r *http.Request, owner string) {
@@ -205,11 +204,6 @@ func workAction(w http.ResponseWriter, r *http.Request, owner string) {
 	switch action {
 	case "stop":
 		err = tasks.Stop(owner, id)
-		if err == nil {
-			if cancel, ok := activeRuns.Load(owner + ":" + id); ok {
-				cancel.(context.CancelFunc)()
-			}
-		}
 	case "archive", "restore":
 		err = tasks.ArchiveTask(owner, id, action == "archive")
 	case "delete":
@@ -233,10 +227,6 @@ func workAction(w http.ResponseWriter, r *http.Request, owner string) {
 			_, err = tasks.Update(owner, id, "", "", tasks.StatusDone, "", "")
 		}
 	case "retry":
-		if _, running := activeRuns.Load(owner + ":" + id); running {
-			err = fmt.Errorf("the previous run is still stopping; try again shortly")
-			break
-		}
 		t, _ := tasks.Get(owner, id)
 		if t == nil || (t.Status != tasks.StatusFailed && t.Status != tasks.StatusBlocked && t.Status != tasks.StatusCanceled) {
 			err = fmt.Errorf("only failed, blocked or stopped work can be retried")
@@ -395,3 +385,8 @@ func stepHTML(steps []tasks.Step) string {
 }
 
 const workPollJS = `<script>(function(){var root=document.getElementById('work-detail');var count=0;async function poll(){if(!root||!root.isConnected||++count>360)return;try{var r=await fetch(location.pathname+location.search,{headers:{Accept:'application/json'}});if(!r.ok)return;var d=await r.json();var rendered=!root.contains(document.activeElement)&&!root.querySelector('details[open]');if(rendered)root.innerHTML=d.html;if(rendered&&d.status!=='doing')return;}catch(e){}setTimeout(poll,3000);}setTimeout(poll,3000);})();</script>`
+
+func respond(w http.ResponseWriter, r *http.Request, response app.Response) {
+	response.HTML = app.AgentViews("work") + response.HTML
+	app.Respond(w, r, response)
+}
