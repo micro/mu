@@ -45,7 +45,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	content := overviewHTML(acc)
 	source := "/home?view=overview"
 	if view == "feed" {
-		content = feedHTML(snapshot)
+		content = feedHTML(snapshot, acc.ID)
 		source = "/home?view=feed"
 	}
 	// Refresh only the selected view; never replace the prompt or a draft.
@@ -123,9 +123,9 @@ func overviewHTML(acc *auth.Account) string {
 	return `<div class="page-stack">` + pinned + columns + `</div>`
 }
 
-func feedHTML(snapshot overviewSnapshot) string {
+func feedHTML(snapshot overviewSnapshot, owner string) string {
 	var left, right strings.Builder
-	reading := blog.Preview()
+	reading := blog.PrivatePreview(owner) + blog.Preview()
 	if reading == "" {
 		reading = `<p class="text-muted">Published articles will appear here.</p>`
 	}

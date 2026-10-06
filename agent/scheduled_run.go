@@ -180,7 +180,7 @@ func researchReport(ctx context.Context, owner string, e *events.Event) (string,
 	if err != nil {
 		return "", err
 	}
-	if err := blog.SavePrivateDraft(articleID, plan.Title, answer, acc.Name, owner); err != nil {
+	if err := blog.SavePrivatePost(articleID, plan.Title, answer, acc.Name, owner); err != nil {
 		return "", err
 	}
 	if err := SaveResearch(e, digest, answer); err != nil {

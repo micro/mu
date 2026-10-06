@@ -58,6 +58,7 @@ var postsPreviewHtml string
 // author next to each item costs nothing and lets a viewer who has hidden or
 // blocked something get a list without it.
 type listItem struct {
+	At        time.Time
 	Community bool
 	Editorial bool
 	ID        string
@@ -100,6 +101,7 @@ func loadTopics() []string {
 }
 
 type Post struct {
+	Published bool       `json:"published,omitempty"` // Completed private posts are not drafts.
 	ShareKey  string     `json:"share_key,omitempty"`
 	Community bool       `json:"community,omitempty"`
 	Editorial bool       `json:"editorial,omitempty"`
@@ -613,7 +615,11 @@ func updateCacheUnlocked() {
 			author = `<a href="/@` + url.PathEscape(post.AuthorID) + `">` + author + `</a>`
 		}
 		item := fmt.Sprintf(`<article class="editorial-entry"><div class="metadata-row"><time datetime="%s">%s</time><span>%s</span></div><h2><a href="/blog/post?id=%s">%s</a></h2><p>%s</p></article>`, post.CreatedAt.Format(time.RFC3339), post.CreatedAt.Format("2 January 2006"), author, url.QueryEscape(post.ID), stdhtml.EscapeString(title), postExcerpt(post.Content))
-		items = append(items, listItem{Community: post.Community, Editorial: post.Editorial, ID: post.ID, AuthorID: post.AuthorID, HTML: item, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
+		at := post.UpdatedAt
+		if at.IsZero() {
+			at = post.CreatedAt
+		}
+		items = append(items, listItem{At: at, Community: post.Community, Editorial: post.Editorial, ID: post.ID, AuthorID: post.AuthorID, HTML: item, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
 	}
 
 	postsItems = items
@@ -699,19 +705,20 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	// Return JSON if requested
 	if app.WantsJSON(r) {
 		mutex.RLock()
-		// Check if user is admin
 		_, acc := auth.TrySession(r)
-		isAdmin := acc != nil && acc.Admin
+		if acc != nil {
+			w.Header().Set("Cache-Control", "private, no-store")
+		}
 
-		// Filter out flagged posts and private posts (unless admin)
+		// Include completed private posts only for their owner.
 		var visiblePosts []*Post
 		for _, post := range posts {
-			if r.URL.Query().Has("view") && publication(post.Editorial, post.Community) != view {
+			if r.URL.Query().Has("view") && postView(post) != view {
 				continue
 			}
 			if !flag.IsHidden("post", post.ID) && !auth.IsBanned(post.AuthorID) && matches(post.Title+" "+post.Content+" "+post.Tags+" "+post.Author) {
-				// Skip private posts for non-admins
-				if post.Private && !isAdmin {
+				// Drafts have a separate owner-only listing.
+				if post.Private && (acc == nil || post.AuthorID != acc.ID || post.isDraft()) {
 					continue
 				}
 				visiblePosts = append(visiblePosts, post)
@@ -728,7 +735,12 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mutex.RLock()
-	items := postsItems
+	items := append([]listItem(nil), postsItems...)
+	if _, acc := auth.TrySession(r); acc != nil {
+		w.Header().Set("Cache-Control", "private, no-store")
+		items = append(privatePostItems(acc.ID), items...)
+		sort.SliceStable(items, func(i, j int) bool { return items[i].At.After(items[j].At) })
+	}
 	mutex.RUnlock()
 
 	// What this viewer has hidden or blocked comes out of the list, and then one
@@ -932,7 +944,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		var actions string
 		_, acc := auth.TrySession(r)
 		if acc != nil {
-			actions = `<a href="/blog?view=drafts">Drafts</a><a href="/blog?write=true">Write a post</a>`
+			actions = `<a href="/blog?view=drafts">Drafts</a><a class="btn" href="/blog?write=true">New post</a>`
 		}
 		var nav string
 		for _, tab := range []struct{ view, label, href string }{{"editorial", "Editorial", "/blog"}, {"community", "Community", "/blog?view=community"}, {"archive", "Archive", "/blog?view=archive"}} {
@@ -1005,21 +1017,21 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 	return nil
 }
 
-// SavePrivateDraft saves a caller-named draft once, without announcing it before
+// SavePrivatePost saves a completed private article once, without announcing it before
 // its scheduled delivery. Replays cannot overwrite an edited or published post.
-func SavePrivateDraft(id, title, content, author, owner string) error {
+func SavePrivatePost(id, title, content, author, owner string) error {
 	if id == "" || owner == "" || strings.TrimSpace(content) == "" {
-		return fmt.Errorf("draft identity, owner and content required")
+		return fmt.Errorf("post identity, owner and content required")
 	}
 	mutex.Lock()
 	defer mutex.Unlock()
 	if old := postsMap[id]; old != nil {
 		if old.AuthorID != owner {
-			return fmt.Errorf("draft belongs to another account")
+			return fmt.Errorf("post belongs to another account")
 		}
 		return nil
 	}
-	post := &Post{ID: id, Title: title, Content: content, Author: author, AuthorID: owner, Private: true, Community: true, Tags: "evening-reading", CreatedAt: time.Now()}
+	post := &Post{ID: id, Title: title, Content: content, Author: author, AuthorID: owner, Private: true, Published: true, Community: true, Tags: "evening-reading", CreatedAt: time.Now()}
 	posts = append([]*Post{post}, posts...)
 	postsMap[id] = post
 	if err := save(); err != nil {
@@ -1172,6 +1184,9 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 		}
 	}
 	previous := *post
+	if post.Private && !post.isDraft() {
+		post.Published = true
+	}
 	post.Title, post.Content, post.Tags, post.Private = title, content, tags, private
 	// Editing content does not change its publication. Making a post private
 	// withdraws it; publishing it again requires an explicit editorial selection.
@@ -1592,7 +1607,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 				<input type="text" name="tags" placeholder="Tags (optional, comma-separated)" value="%s">
 				<select name="visibility">
 					<option value="public" %s>Public</option>
-					<option value="private" %s>Private (draft)</option>
+					<option value="private" %s>Private</option>
 				</select>
 				<div class="note">
 					Supports markdown: **bold**, *italic**, `+"`code`"+`, `+"```"+` for code blocks, # headers, - lists
@@ -1640,7 +1655,10 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if post.Private {
-		back, backLabel = "/blog?view=drafts", "Drafts"
+		back, backLabel = "/blog", "Blog"
+		if post.isDraft() {
+			back, backLabel = "/blog?view=drafts", "Drafts"
+		}
 	}
 	contentSB.WriteString(`<div id="blog" class="editorial-page"><a class="editorial-back" href="` + back + `">← ` + backLabel + `</a>`)
 	contentSB.WriteString(`<div class="metadata-row"><time datetime="` + post.CreatedAt.Format(time.RFC3339) + `">` + post.CreatedAt.Format("2 January 2006") + `</time><span>` + authorLink + `</span></div>`)
