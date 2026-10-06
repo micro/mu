@@ -1535,5 +1535,8 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .preview-entry p{overflow-wrap:anywhere}
 .preview-entry .metadata-row{margin:0}
 
-.record-editor fieldset{display:grid;gap:12px;min-width:0;margin:0;padding:16px;border:1px solid var(--border);border-radius:6px}
+.record-editor fieldset{display:grid;gap:var(--field-gap);min-width:0;margin:0;padding:var(--space-3);border:1px solid var(--border);border-radius:6px}
+.record-editor fieldset+fieldset{margin-top:0}
+.record-editor fieldset>.form-row{margin:0}
+.record-editor fieldset legend{padding-inline:var(--space-1);font-size:.875rem}
 .preserve-whitespace{white-space:pre-wrap;overflow-wrap:anywhere}

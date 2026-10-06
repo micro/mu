@@ -1,6 +1,6 @@
 #!/bin/sh
 # Mu installer — downloads and runs Mu with one command.
-# Usage: curl -fsSL https://micro.mu/install | sh
+# Usage: curl -fsSL https://micro.mu/install.sh | sh
 set -e
 
 REPO="micro/mu"

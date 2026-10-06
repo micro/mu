@@ -7,14 +7,16 @@ Run Micro on Linux or macOS. On Windows, use WSL2.
 Open a terminal and run:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
+curl -fsSL https://micro.mu/install.sh | sh
 ```
 
 ## 2. Start
 
 ```sh
-~/.local/bin/mu --serve --address 127.0.0.1:8080
+mu --serve
 ```
+
+If your terminal does not recognise `mu`, close and reopen it after installation.
 
 ## 3. Open Micro
 
