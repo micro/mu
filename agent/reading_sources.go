@@ -68,6 +68,12 @@ func freshReadingSources(items []web.BraveResult, recent, instructions string) [
 		if key == "" || seen[key] || used[key] && !pinned[key] {
 			continue
 		}
+		// Homepages are discovery links, not source passages. Skip before spending
+		// one of the bounded source fetches so actual articles can be read.
+		u, _ := url.Parse(key)
+		if (u.Path == "" || u.Path == "/") && u.RawQuery == "" {
+			continue
+		}
 		seen[key] = true
 		candidates = append(candidates, item)
 	}

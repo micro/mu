@@ -44,3 +44,11 @@ func TestReadingSourceIdentityPreservesMeaningfulQueries(t *testing.T) {
 		t.Fatal("merged different articles")
 	}
 }
+
+func TestReadingSkipsHomepageBeforeSelectingArticles(t *testing.T) {
+	items := []web.BraveResult{{URL: "https://islamic-sources.com/"}, {URL: "https://example.org/chapter/patience"}, {URL: "https://example.org/?id=42"}}
+	got := freshReadingSources(items, "", "Islam")
+	if len(got) != 2 || got[0].URL != items[1].URL || got[1].URL != items[2].URL {
+		t.Fatalf("%+v", got)
+	}
+}
