@@ -30,6 +30,7 @@ import (
 	"mu/internal/settings"
 	"mu/internal/setup"
 	"mu/internal/user"
+	"mu/internal/voice"
 	"mu/service/apps"
 	"mu/service/archive"
 	"mu/service/blog"
@@ -214,6 +215,7 @@ func authRequired() map[string]bool {
 		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
 		"/push/":   true,  // Subscribing this device to notifications (old name)
 		"/notify/": true,  // The same, under the name the feature actually has
+		"/voice":   true,
 		"/work":    true,
 		"/inbox":   true,  // The mailbox — yours, so it needs a session
 		"/inbox/":  true,  // One alias's mail
@@ -232,6 +234,8 @@ func staticSuffixes() []string {
 
 // registerRoutes attaches every handler to the default mux.
 func registerRoutes() {
+	http.HandleFunc("/voice", voice.Handler)
+	http.HandleFunc("/voice/worker.js", voice.Worker)
 	http.HandleFunc("/robots.txt", robotsHandler)
 	// Older open pages ask this endpoint whether to use the assistant.
 	// Keep that handshake without restoring keyword execution.
