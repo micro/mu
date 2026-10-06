@@ -35,15 +35,18 @@ func conversationList(who string, history []Message) string {
 		if name == "" {
 			name = m.Number
 		}
-		preview := m.Text
+		preview := strings.Join(strings.Fields(m.Text), " ")
 		if m.Direction == "out" {
 			preview = "You: " + preview
+		}
+		if text := []rune(preview); len(text) > 80 {
+			preview = string(text[:79]) + "…"
 		}
 		b.WriteString(`<a class="sms-conversation" href="/sms?id=` + url.QueryEscape(m.ID) + `"><div class="sms-conversation-head"><span class="sms-name">` + html.EscapeString(name) + `</span>` + app.Pill(Channel(m.Channel).Label()) + `<span class="text-muted text-sm">` + html.EscapeString(app.TimeAgo(m.At)) + `</span></div>`)
 		if name != m.Number {
 			b.WriteString(`<span class="text-muted text-sm">` + html.EscapeString(m.Number) + `</span>`)
 		}
-		b.WriteString(`<span class="sms-preview">` + html.EscapeString(preview) + `</span></a>`)
+		b.WriteString(`<span class="sms-preview truncate">` + html.EscapeString(preview) + `</span></a>`)
 	}
 	b.WriteString(`</nav>`)
 	return b.String()

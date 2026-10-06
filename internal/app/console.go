@@ -22,7 +22,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 		if name == "" {
 			name = strings.TrimSpace(acc.ID)
 		}
-		links = `<details class="account-menu"><summary aria-label="Account menu" title="` + html.EscapeString(acc.ID) + `"><span class="account-name">Welcome back, ` + html.EscapeString(name) + `</span>` + Avatar(acc) + `</summary><div class="account-menu-links">` + accountMenuSummary(acc) + `<a href="/account">Account</a><a href="/@` + html.EscapeString(acc.ID) + `">Profile</a><a href="/connect">Connect</a><a href="/developers">Developers</a>`
+		links = `<details class="account-menu"><summary aria-label="Account menu" title="` + html.EscapeString(acc.ID) + `"><span class="account-name">Hey ` + html.EscapeString(name) + ` 👋</span>` + Avatar(acc) + `</summary><div class="account-menu-links">` + accountMenuSummary(acc) + `<a href="/account">Account</a><a href="/@` + html.EscapeString(acc.ID) + `">Profile</a><a href="/connect">Connect</a><a href="/developers">Developers</a>`
 		if acc.Admin {
 			links += `<a href="/admin">Admin</a>`
 		}
