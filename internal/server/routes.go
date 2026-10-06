@@ -755,6 +755,7 @@ func registerRoutes() {
 
 	// Installation stays minimal; optional operator guides live under /help.
 	http.HandleFunc("/install", help.InstallHandler)
+	http.HandleFunc("/install.sh", installScriptHandler)
 	http.HandleFunc("/help", help.Handler)
 	http.HandleFunc("/help/", help.Handler)
 

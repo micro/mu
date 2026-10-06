@@ -132,6 +132,9 @@ func offset(r *http.Request) int {
 	return n
 }
 func pages(r *http.Request, path string, more bool) string {
+	if offset(r) == 0 && !more {
+		return ""
+	}
 	sep := "?"
 	if strings.Contains(path, "?") {
 		sep = "&amp;"
@@ -182,10 +185,10 @@ func editor(r *http.Request, f *Form, problem string) string {
 	if problem != "" {
 		b.WriteString(app.Problem(html.EscapeString(problem)))
 	}
-	fmt.Fprintf(&b, `<form class="form record-editor" method="POST" action="/forms">%s<input type="hidden" name="id" value="%s"><label class="field-label">Title<input name="title" maxlength="160" value="%s" required></label><label class="field-label">Description<textarea name="description" rows="3" maxlength="2000">%s</textarea></label><h2>Fields</h2><p class="text-sm text-muted">Leave a label blank to remove a field. Up to 12 fields.</p>`, app.CSRFField(auth.CSRFToken(r)), html.EscapeString(f.ID), html.EscapeString(f.Title), html.EscapeString(f.Description))
+	fmt.Fprintf(&b, `<form class="form record-editor" method="POST" action="/forms">%s<input type="hidden" name="id" value="%s"><label class="field-label">Title<input name="title" maxlength="160" value="%s" required></label><label class="field-label">Description<textarea name="description" rows="3" maxlength="2000">%s</textarea></label><div class="section-body"><h2>Fields</h2><p class="text-sm text-muted">Leave a label blank to remove a field. Up to 12 fields.</p></div>`, app.CSRFField(auth.CSRFToken(r)), html.EscapeString(f.ID), html.EscapeString(f.Title), html.EscapeString(f.Description))
 	for i, v := range f.Fields {
 		prefix := fmt.Sprintf("field_%d_", i)
-		fmt.Fprintf(&b, `<fieldset class="page-section"><legend>Field %d</legend><input type="hidden" name="%sname" value="%s"><label class="field-label">Label<input name="%slabel" maxlength="160" value="%s"></label><label class="field-label">Answer type<select name="%stype">`, i+1, prefix, html.EscapeString(v.Name), prefix, html.EscapeString(v.Label), prefix)
+		fmt.Fprintf(&b, `<fieldset><legend>Field %d</legend><div class="form-row"><input type="hidden" name="%sname" value="%s"><label class="field-label">Label<input name="%slabel" maxlength="160" value="%s"></label><label class="field-label">Answer type<select name="%stype">`, i+1, prefix, html.EscapeString(v.Name), prefix, html.EscapeString(v.Label), prefix)
 		for _, typ := range []struct{ value, label string }{{"text", "Short text"}, {"textarea", "Long text"}, {"email", "Email"}} {
 			selected := ""
 			if v.Type == typ.value {
@@ -193,7 +196,7 @@ func editor(r *http.Request, f *Form, problem string) string {
 			}
 			fmt.Fprintf(&b, `<option value="%s"%s>%s</option>`, typ.value, selected, typ.label)
 		}
-		b.WriteString(`</select></label>`)
+		b.WriteString(`</select></label></div>`)
 		checked := ""
 		if v.Required {
 			checked = " checked"
@@ -210,12 +213,12 @@ func editor(r *http.Request, f *Form, problem string) string {
 	if f.Closed {
 		c = " checked"
 	}
-	fmt.Fprintf(&b, `<h2>Sharing</h2><label class="check-label"><input type="checkbox" name="public"%s> Public — anyone with the link can submit</label><label class="check-label"><input type="checkbox" name="closed"%s> Close submissions</label><p class="text-sm text-muted">Responses always remain private. Publishing only shares the form.</p><div class="form-actions"><button type="submit" name="action" value="save">Save form</button></div></form>`, p, c)
+	fmt.Fprintf(&b, `<section class="section-body"><h2>Sharing</h2><label class="check-label"><input type="checkbox" name="public"%s> Public — anyone with the link can submit</label><label class="check-label"><input type="checkbox" name="closed"%s> Close submissions</label><p class="text-sm text-muted">Responses always remain private. Publishing only shares the form.</p></section><div class="form-actions"><button type="submit" name="action" value="save">Save form</button></div></form>`, p, c)
 	return app.EditorPage("/forms", "Forms", b.String())
 }
 func view(r *http.Request, owner string, f *Form) (string, error) {
 	var b strings.Builder
-	b.WriteString(`<nav class="form-actions"><a href="/forms">All forms</a><a class="btn" href="/forms?id=` + f.ID + `&amp;edit=1">Edit form</a></nav>`)
+	b.WriteString(`<div class="page-stack"><nav class="form-actions"><a href="/forms">All forms</a><a class="btn" href="/forms?id=` + f.ID + `&amp;edit=1">Edit form</a></nav>`)
 	state := "Private — only you can view this form."
 	if f.Public {
 		state = "Public — anyone with the link can submit."
@@ -223,18 +226,18 @@ func view(r *http.Request, owner string, f *Form) (string, error) {
 	if f.Closed {
 		state += " Submissions are closed."
 	}
-	fmt.Fprintf(&b, `<p>%s</p><p class="text-muted">%s</p>`, html.EscapeString(f.Description), state)
+	fmt.Fprintf(&b, `<div class="section-body"><p>%s</p><p class="text-muted">%s</p></div>`, html.EscapeString(f.Description), state)
 	if f.Public {
 		link := app.BaseURL(r) + "/forms/view?id=" + f.ID
-		fmt.Fprintf(&b, `<div class="form-actions"><a href="%s">Open public form</a></div><label class="field-label">Share link<input readonly value="%s"></label>`, html.EscapeString(link), html.EscapeString(link))
+		fmt.Fprintf(&b, `<section class="section-body"><div class="form-actions"><a href="%s">Open public form</a></div><label class="field-label">Share link<input readonly value="%s"></label>`, html.EscapeString(link), html.EscapeString(link))
 		snippet := strings.Replace(formBody(f, nil), `action="/forms/submit`, `action="`+html.EscapeString(app.BaseURL(r))+`/forms/submit`, 1)
-		fmt.Fprintf(&b, `<details class="disclosure"><summary>Use on another website</summary><p>Copy this HTML into your website. Field names must match this form. Submission limits apply: 100 per hour per form and 2,000 stored responses.</p><pre><code>%s</code></pre></details>`, html.EscapeString(snippet))
+		fmt.Fprintf(&b, `<details class="disclosure"><summary>Use on another website</summary><p>Copy this HTML into your website. Field names must match this form. Submission limits apply: 100 per hour per form and 2,000 stored responses.</p><pre><code>%s</code></pre></details></section>`, html.EscapeString(snippet))
 	}
 	rs, more, e := Responses(owner, f.ID, offset(r))
 	if e != nil {
 		return "", e
 	}
-	b.WriteString(`<h2>Responses</h2><p class="text-muted">Only you can read these responses. Submitted email addresses are not verified.</p>`)
+	b.WriteString(`<section class="section-body"><h2>Responses</h2><p class="text-muted">Only you can read these responses. Submitted email addresses are not verified.</p><div class="page-stack">`)
 	if len(rs) == 0 {
 		b.WriteString(`<p>No responses yet.</p>`)
 	}
@@ -245,7 +248,7 @@ func view(r *http.Request, owner string, f *Form) (string, error) {
 		}
 		fmt.Fprintf(&b, `</dl><form method="POST" action="/forms" class="form-action">%s<input type="hidden" name="id" value="%s"><input type="hidden" name="response_id" value="%s"><button name="action" value="delete_response" class="btn-danger">Delete response</button></form></article>`, app.CSRFField(auth.CSRFToken(r)), f.ID, s.ID)
 	}
-	b.WriteString(pages(r, "/forms?id="+f.ID, more))
-	fmt.Fprintf(&b, `<details class="disclosure"><summary>Delete form</summary><p>This permanently deletes the form and all its responses.</p><form method="POST" action="/forms">%s<input type="hidden" name="id" value="%s"><button name="action" value="delete" class="btn-danger">Delete form and responses</button></form></details>`, app.CSRFField(auth.CSRFToken(r)), f.ID)
+	b.WriteString(`</div>` + pages(r, "/forms?id="+f.ID, more) + `</section>`)
+	fmt.Fprintf(&b, `<details class="disclosure"><summary>Delete form</summary><p>This permanently deletes the form and all its responses.</p><form method="POST" action="/forms">%s<input type="hidden" name="id" value="%s"><button name="action" value="delete" class="btn-danger">Delete form and responses</button></form></details></div>`, app.CSRFField(auth.CSRFToken(r)), f.ID)
 	return b.String(), nil
 }

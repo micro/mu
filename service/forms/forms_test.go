@@ -155,3 +155,40 @@ func TestSubmissionLimitsAndPublication(t *testing.T) {
 		t.Fatal("unpublished form exposed")
 	}
 }
+
+func TestExternalFormJSONReceipt(t *testing.T) {
+	owner := setup(t)
+	f := definition()
+	f.Public = true
+	saved, err := Save(owner, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		message string
+		status  int
+	}{{"Hello from an external form", 200}, {"", 400}} {
+		req := httptest.NewRequest("POST", "/forms/submit?id="+saved.ID, strings.NewReader(url.Values{"message": {tc.message}}.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Origin", "https://example.org")
+		w := httptest.NewRecorder()
+		SubmissionHandler(w, req)
+		if w.Code != tc.status {
+			t.Fatalf("status %d: %s", w.Code, w.Body.String())
+		}
+		if w.Header().Get("Access-Control-Allow-Origin") != "*" || w.Header().Get("Access-Control-Allow-Credentials") != "" {
+			t.Fatal("receipt must be readable without credentials")
+		}
+		if w.Header().Get("Location") != "" {
+			t.Fatal("JSON response redirected off site")
+		}
+		if tc.status == 200 && !strings.Contains(w.Body.String(), `"received"`) {
+			t.Fatal("missing success receipt")
+		}
+	}
+	responses, _, err := Responses(owner, saved.ID, 0)
+	if err != nil || len(responses) != 1 {
+		t.Fatalf("expected only valid submission saved: %v %d", err, len(responses))
+	}
+}

@@ -48,7 +48,7 @@ func allow(key string, max int, window time.Duration) bool {
 }
 func formBody(f *Form, values map[string]string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, `<p>%s</p><form class="form record-editor" method="POST" action="/forms/submit?id=%s">`, html.EscapeString(f.Description), html.EscapeString(f.ID))
+	fmt.Fprintf(&b, `<div class="section-body"><p>%s</p><form class="form record-editor" method="POST" action="/forms/submit?id=%s">`, html.EscapeString(f.Description), html.EscapeString(f.ID))
 	for _, field := range f.Fields {
 		required := ""
 		if field.Required {
@@ -60,13 +60,13 @@ func formBody(f *Form, values map[string]string) string {
 		}
 		b.WriteString(`</span>`)
 		if field.Type == "textarea" {
-			fmt.Fprintf(&b, `<textarea name="%s" rows="5" maxlength="8000"%s>%s</textarea>`, field.Name, required, html.EscapeString(values[field.Name]))
+			fmt.Fprintf(&b, `<textarea name="%s" rows="3" maxlength="8000"%s>%s</textarea>`, field.Name, required, html.EscapeString(values[field.Name]))
 		} else {
 			fmt.Fprintf(&b, `<input type="%s" name="%s" maxlength="1000" value="%s"%s>`, field.Type, field.Name, html.EscapeString(values[field.Name]), required)
 		}
 		b.WriteString(`</label>`)
 	}
-	b.WriteString(`<p class="text-sm text-muted">Your response is sent privately to the form owner. No account is required.</p><div class="form-actions"><button type="submit">Submit</button></div></form>`)
+	b.WriteString(`<p class="text-sm text-muted">Your response is sent privately to the form owner. No account is required.</p><div class="form-actions"><button type="submit">Submit</button></div></form></div>`)
 	return b.String()
 }
 func PublicHandler(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +87,9 @@ func PublicHandler(w http.ResponseWriter, r *http.Request) {
 // SubmissionHandler is deliberately cookie-independent. Public forms can POST
 // from any website; there is no credential to expose and no account to act as.
 func SubmissionHandler(w http.ResponseWriter, r *http.Request) {
+	// This endpoint accepts anonymous submissions only and returns no private
+	// records. External forms can read their receipt without sending cookies.
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("X-Robots-Tag", "noindex")
 	if r.Method != http.MethodPost {

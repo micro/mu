@@ -17,8 +17,11 @@ the form. Use the generated HTML so input names match the current definition.
 There is no API token or account cookie to put on the external website. Use
 `application/x-www-form-urlencoded`; JavaScript is not required. Successful HTML
 submissions redirect to a receipt page. `Accept: application/json` returns
-`{"status":"received"}`. Cross-origin AJAX is not enabled; cross-origin HTML
-form submission works without CORS.
+`{"status":"received"}`. External pages can submit with JavaScript using
+URL-encoded fields, `Accept: application/json` and `credentials: "omit"` to
+show confirmation on their own page. Only this anonymous submission endpoint
+allows cross-origin reads; management and responses remain private. Normal
+HTML submission remains available without JavaScript.
 
 Management and response access use the authenticated `forms` service through
 the normal API/MCP interfaces: Write, Read, List, Responses and Delete. List and
