@@ -47,9 +47,13 @@ func privatePostItems(owner string) []listItem {
 func PrivatePreview(owner string) string {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	items := privatePostItems(owner)
-	if len(items) == 0 {
+	if owner == "" {
 		return ""
 	}
-	return items[0].HTML
+	for _, p := range posts {
+		if p.Private && p.AuthorID == owner && !p.isDraft() {
+			return previewPost(p)
+		}
+	}
+	return ""
 }
