@@ -14,7 +14,8 @@
 // There was a fifth: mail addressed to support@ and nothing else, which was
 // public on purpose so somebody who could not pay had a way to say so. It was
 // also the only address a spammer could reach, and a per-sender cap does
-// nothing about a thousand senders. Gone, with the address and the page.
+// nothing about a thousand senders. Operator aliases now share the same
+// inbound policy as ordinary mailboxes; none bypass this filter.
 //
 // Everything else is refused with a 550, so the sender's own server tells them
 // rather than the message vanishing.

@@ -110,7 +110,9 @@ func deliverHere(m Outgoing, to string) (string, error) {
 	// and the reason agent@ is not an account and must not be looked up as one.
 	shared := sharedMailbox(account)
 	owner := m.FromID
-	if !shared {
+	if operator, operatorTag := operatorMailbox(local); operator != "" {
+		owner, tag = operator, operatorTag
+	} else if !shared {
 		acc, err := auth.AccountByUsername(account)
 		if err != nil || acc == nil {
 			return "", fmt.Errorf("no account here called %q", account)

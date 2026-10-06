@@ -253,7 +253,7 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 		}
 	}
 
-	// Two addresses this instance offers that nobody holds. Both are reserved
+	// Agent addresses this instance offers that nobody holds. Both are reserved
 	// usernames (internal/auth/username.go), so the account lookup below refuses
 	// them and the mail is rejected at the door — 550 before Data ever runs.
 	// Data knows what to do with each of them; without this it never got the
@@ -274,6 +274,9 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	}
 
 	// Domain matches - verify user exists and has mail access
+	if owner, _ := operatorMailbox(username); owner != "" {
+		username = owner
+	}
 	acc, err := auth.GetAccount(username)
 	if err != nil {
 		app.Log("mail", "Rejected mail for non-existent user: %s", username)
@@ -645,6 +648,9 @@ func (s *Session) Data(r io.Reader) error {
 			continue
 		}
 		toUsername, toTag := SplitAlias(parts[0])
+		if owner, tag := operatorMailbox(parts[0]); owner != "" {
+			toUsername, toTag = owner, tag
+		}
 		toDomain := parts[1]
 
 		// Check if this is an external recipient

@@ -34,6 +34,7 @@ var presenceMutex sync.RWMutex
 var userPresence = map[string]time.Time{} // username -> last seen time
 
 type Account struct {
+	System       bool      `json:"system,omitempty"`
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
 	Avatar       string    `json:"avatar,omitempty"`
@@ -193,6 +194,9 @@ func init() {
 // Two of them did; internal/setup and Claim did not, and micro.mu has an
 // account called 3834 to show for it.
 func Create(acc *Account) error {
+	if acc.System {
+		return errors.New("system identities are built in")
+	}
 	if reason := ValidateUsername(acc.ID); reason != "" {
 		return errors.New(reason)
 	}
@@ -266,6 +270,9 @@ func shouldBootstrapAdmin(acc *Account, isFirst bool) bool {
 }
 
 func GetAccount(id string) (*Account, error) {
+	if id == OperatorID {
+		return operatorAccount(), nil
+	}
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -278,6 +285,9 @@ func GetAccount(id string) (*Account, error) {
 }
 
 func UpdateAccount(acc *Account) error {
+	if acc.ID == OperatorID || acc.System {
+		return errors.New("the operator account cannot be changed")
+	}
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -372,6 +382,9 @@ func AccountByUsername(username string) (*Account, error) {
 var AccountDeleteHooks []func(accountID string)
 
 func DeleteAccount(id string) error {
+	if id == OperatorID {
+		return errors.New("the operator account cannot be deleted")
+	}
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -427,6 +440,9 @@ func DeleteAccount(id string) error {
 // function, but a caller must say so in words rather than reporting a wrong
 // password.
 func CheckSecret(id, secret string) error {
+	if id == OperatorID {
+		return errors.New("the operator account has no login secret")
+	}
 	mutex.Lock()
 	acc, ok := accounts[id]
 	mutex.Unlock()
@@ -443,6 +459,9 @@ func CheckSecret(id, secret string) error {
 }
 
 func Login(id, secret string) (*Session, error) {
+	if id == OperatorID {
+		return nil, errors.New("sign in with your own administrator account")
+	}
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -476,6 +495,9 @@ func Login(id, secret string) (*Session, error) {
 // CreateSession creates a new session for the given account ID without password validation.
 // Used for passkey authentication where identity is verified via WebAuthn.
 func CreateSession(id string) (*Session, error) {
+	if id == OperatorID {
+		return nil, errors.New("the operator account cannot sign in")
+	}
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -595,7 +617,7 @@ func RequireSession(r *http.Request) (*Session, *Account, error) {
 	}
 
 	acc, err := GetAccount(sess.Account)
-	if err != nil {
+	if err != nil || acc.System {
 		return nil, nil, errors.New("account not found")
 	}
 
@@ -952,6 +974,9 @@ func CreateToken(accountID, name string, permissions []string, expiresAt time.Ti
 }
 
 func createToken(accountID, name string, permissions []string, expiresAt time.Time, clientID string) (*Token, string, error) {
+	if accountID == OperatorID {
+		return nil, "", errors.New("the operator account cannot have tokens")
+	}
 	mutex.Lock()
 	defer mutex.Unlock()
 

@@ -168,6 +168,7 @@ func authRequired() map[string]bool {
 		"/admin/blocklist":   true,
 		"/admin/spam":        true,
 		"/admin/email":       true,
+		"/admin/mail":        true,
 		"/admin/log":         true,
 		"/admin/config":      true,
 		"/admin/server":      true,
@@ -308,6 +309,7 @@ func registerRoutes() {
 
 	// system log
 	http.HandleFunc("/admin/log", admin.LogHandler)
+	http.HandleFunc("/admin/mail", admin.MailHandler)
 	http.HandleFunc("/admin/errors", admin.ErrorsHandler)
 	http.HandleFunc("/admin/activity", admin.ErrorsHandler)
 
