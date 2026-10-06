@@ -1526,3 +1526,11 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
  .table-records td,.table-records td:last-child{width:100%;padding:6px 0;border:0}
  .table-records td[data-label]::before{content:attr(data-label);display:block;color:var(--text-muted);font-size:.8rem;margin-bottom:4px}
 }
+
+/* Compact article previews share spacing regardless of publication or privacy. */
+.preview-entry{display:flex;flex-direction:column;gap:8px;min-width:0}
+.preview-entry>*{margin:0;min-width:0}
+.preview-entry+.preview-entry{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.preview-entry h3{font-size:1.05rem;line-height:1.35}
+.preview-entry p{overflow-wrap:anywhere}
+.preview-entry .metadata-row{margin:0}
