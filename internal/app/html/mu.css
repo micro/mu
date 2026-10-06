@@ -631,6 +631,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .place-links,.places-type-filter,.link-grid{display:flex;flex-wrap:wrap;gap:8px 12px;margin-block:12px}
 .places-page h3{margin-top:24px}.recent-searches{margin-block:20px}.recent-searches-scroll{gap:8px}.recent-search-label{font-size:.875rem}
 .table-scroll{width:100%;overflow-x:auto}
+.table-nowrap :is(th,td){white-space:nowrap}
 .markets-table{width:100%;display:table}.markets-table td{padding:12px 8px}.markets-name{font-weight:var(--font-weight-medium)}.markets-symbol,.markets-source,.markets-note{color:var(--text-muted);font-size:.8rem}
 .markets-price,.markets-change,.cell-right{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .market-symbol,.market-price{display:block}.markets-footer{margin-top:16px}.markets-chart-link{display:inline-block;padding:5px 0}
