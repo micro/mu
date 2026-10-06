@@ -96,7 +96,7 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	sb.WriteString(`<div class="card"><table class="alerts-table"><thead><tr>` +
+	sb.WriteString(`<div class="card"><table class="data-table stacked"><thead><tr>` +
 		`<th>Watched</th><th>Now</th><th>Tells you at</th><th>Setting</th>` +
 		`</tr></thead><tbody>`)
 	for _, row := range rows {
@@ -104,10 +104,10 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 		if row.key != "" {
 			setting = `<code>` + row.key + `</code>`
 		}
-		sb.WriteString(`<tr><td>` + html.EscapeString(row.what) + `</td>` +
-			`<td class="alerts-now">` + html.EscapeString(row.now) + `</td>` +
-			`<td>` + html.EscapeString(row.when) + `</td>` +
-			`<td>` + setting + `</td></tr>`)
+		sb.WriteString(`<tr><td data-label="Watched">` + html.EscapeString(row.what) + `</td>` +
+			`<td data-label="Now">` + html.EscapeString(row.now) + `</td>` +
+			`<td data-label="Tells you at">` + html.EscapeString(row.when) + `</td>` +
+			`<td data-label="Setting">` + setting + `</td></tr>`)
 	}
 	sb.WriteString(`</tbody></table>`)
 	sb.WriteString(`<p class="card-desc">Set a threshold to <code>0</code> to stop ` +

@@ -96,27 +96,14 @@ func sysLogCard() string {
 		return content.String()
 	}
 
-	content.WriteString(`<div class="scroll-x">`)
-	content.WriteString(`<table class="email-log fixed-table">`)
+	content.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records">`)
+	content.WriteString(`<table class="data-table table-wide">`)
 	content.WriteString(`<colgroup><col class="w-110"><col class="w-90"><col></colgroup>`)
 	content.WriteString(`<tr><th>Time</th><th>Package</th><th>Message</th></tr>`)
-	for i, e := range entries {
-		rowID := fmt.Sprintf("syslog-row-%d", i)
-		content.WriteString(fmt.Sprintf(`<tr class="clickable" onclick="muToggleSyslog('%s')" title="Click to expand">
-			<td class="nowrap">%s</td>
-			<td class="ellipsis">%s</td>
-			<td class="ellipsis">%s</td>
-		</tr>
-		<tr id="%s" class="d-none">
-			<td colspan="3" class="raw">%s</td>
-		</tr>`,
-			rowID,
-			e.Time.Format("Jan 2 15:04:05"),
-			html.EscapeString(e.Package),
-			html.EscapeString(truncateMsg(e.Message, 80)),
-			rowID,
-			html.EscapeString(e.Message),
-		))
+	for _, e := range entries {
+		fmt.Fprintf(&content, `<tr><td>%s</td><td>%s</td><td><details class="disclosure"><summary>%s</summary><pre>%s</pre></details></td></tr>`,
+			e.Time.Format("Jan 2 15:04:05"), html.EscapeString(e.Package),
+			html.EscapeString(truncateMsg(e.Message, 80)), html.EscapeString(e.Message))
 	}
 	content.WriteString(`</table></div></div>`)
 	return content.String()
@@ -134,8 +121,8 @@ func apiLogCard() string {
 		return content.String()
 	}
 
-	content.WriteString(`<div class="scroll-x"><table class="email-log">`)
-	content.WriteString(`<tr><th>Time</th><th>Service</th><th>Method</th><th class="hide-mobile">URL</th><th>Status</th><th>Duration</th><th>Error</th></tr>`)
+	content.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records"><table class="data-table table-wide">`)
+	content.WriteString(`<tr><th>Time</th><th>Service</th><th>Method</th><th>URL</th><th>Status</th><th>Duration</th><th>Error</th></tr>`)
 
 	for _, e := range entries {
 		statusClass := "dir-int"
@@ -169,7 +156,7 @@ func apiLogCard() string {
 			<td>%s</td>
 			<td>%s</td>
 			<td>%s</td>
-			<td class="addr hide-mobile" title="%s">%s</td>
+			<td class="addr" title="%s">%s</td>
 			<td class="%s">%s</td>
 			<td>%dms</td>
 			<td class="subject" title="%s">%s</td>
@@ -256,7 +243,7 @@ func alertsCard() string {
 	b.WriteString(`<p class="text-sm text-muted">Things this instance did that it should ` +
 		`not have had to, or refused in order to protect itself. Kept apart from the log ` +
 		`below, which rolls over.</p>`)
-	b.WriteString(`<div class="scroll-x"><table class="email-log fixed-table">`)
+	b.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records"><table class="data-table table-wide">`)
 	b.WriteString(`<colgroup><col class="w-130"><col class="w-90"><col></colgroup>`)
 	b.WriteString(`<tr><th>When</th><th>Where</th><th>What</th></tr>`)
 	for _, a := range alerts {

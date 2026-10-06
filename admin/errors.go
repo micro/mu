@@ -97,7 +97,7 @@ func activityLogCard(r *http.Request, activity bool) string {
 		}
 		b.WriteString(`</ul>`)
 	}
-	b.WriteString(`<div class="table-scroll"><table class="data-table"><thead><tr><th>Time (UTC)</th><th>Username</th><th>Source</th><th>Operation</th><th>Outcome</th><th>HTTP</th><th>Duration</th><th>Token ID</th><th>Request</th></tr></thead><tbody>`)
+	b.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Activity records"><table class="data-table table-wide"><thead><tr><th>Time (UTC)</th><th>Username</th><th>Source</th><th>Operation</th><th>Outcome</th><th>HTTP</th><th>Duration</th><th>Token ID</th><th>Request</th></tr></thead><tbody>`)
 	for i, e := range filtered {
 		if i == 500 {
 			break

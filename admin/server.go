@@ -113,7 +113,7 @@ func storesTable() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<section class="page-section"><h3>Stores</h3><table class="stats-table"><thead><tr><th>Store</th><th class="cell-right">Size</th></tr></thead><tbody>`)
+	b.WriteString(`<section class="page-section"><h3>Stores</h3><table class="data-table"><thead><tr><th>Store</th><th class="cell-right">Size</th></tr></thead><tbody>`)
 	for _, s := range stores {
 		where := html.EscapeString(s.Name)
 		if s.Files > 1 {
@@ -140,7 +140,7 @@ func startupTable() string {
 	}
 	sort.SliceStable(steps, func(i, j int) bool { return steps[i].Duration > steps[j].Duration })
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf(`<section class="page-section"><h3>Startup</h3><p>Initialization: <strong>%s</strong>. Recorded once at startup, not on page visits. Slowest steps first. Nested steps such as blog.renderCache are included in their parent loader, not additional time.</p><table class="stats-table"><thead><tr><th>Component</th><th class="cell-right">Time</th></tr></thead><tbody>`, total.Round(time.Millisecond)))
+	b.WriteString(fmt.Sprintf(`<section class="page-section"><h3>Startup</h3><p>Initialization: <strong>%s</strong>. Recorded once at startup, not on page visits. Slowest steps first. Nested steps such as blog.renderCache are included in their parent loader, not additional time.</p><table class="data-table"><thead><tr><th>Component</th><th class="cell-right">Time</th></tr></thead><tbody>`, total.Round(time.Millisecond)))
 	for _, step := range steps {
 		b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td class="cell-right">%.1f ms</td></tr>`, html.EscapeString(step.Component), float64(step.Duration)/float64(time.Millisecond)))
 	}

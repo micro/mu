@@ -58,25 +58,14 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	connections := auth.OAuthConnections()
 
 	var b strings.Builder
-	b.WriteString(`<p class="text-muted text-sm">Anything that speaks MCP can register ` +
-		`itself at <code>/oauth/register</code> without signing in — that is what the ` +
-		`protocol asks for — so most of these belong to nobody. A client registered from ` +
-		`somebody's <a href="/account/tokens">token page</a> carries their account, and only they ` +
-		`can remove it. Removing one here stops it signing anybody in until it registers ` +
-		`again, which it will do the next time it connects.</p>`)
-	b.WriteString(`<p class="text-muted text-sm">A code is only ever sent to an address ` +
-		`the client registered, matched exactly — the port aside, for loopback. The ` +
-		`addresses each one gave are below, so a client that stops working after this ` +
-		`can be told apart from one that never registered the address it is asking for.</p>`)
+	b.WriteString(`<p class="text-muted">Applications registered to sign in to this instance.</p><details class="disclosure"><summary>About registrations and redirects</summary><p>MCP clients can register anonymously. Clients created on an account’s token page retain that owner. Removing a client stops new sign-ins until it registers again.</p><p>Redirect addresses must match the registered address exactly, apart from the port for loopback addresses.</p></details>`)
 
 	suffix := "s"
 	if len(clients) == 1 {
 		suffix = ""
 	}
 	fmt.Fprintf(&b, `<p class="text-muted text-sm">%d client%s.</p>`, len(clients), suffix)
-	b.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="OAuth clients"><table class="data-table"><thead><tr><th>Name</th><th>Client ID</th>` +
-		`<th>Redirects to</th><th>Registered by</th><th>Account connections</th><th class="created-col">Created</th>` +
-		`<th class="center"></th></tr></thead><tbody>`)
+	b.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="OAuth clients"><table class="data-table table-records"><thead><tr><th>Client</th><th>Registration</th><th>Redirects to</th><th>Account connections</th><th>Actions</th></tr></thead><tbody>`)
 
 	for _, c := range clients {
 		owner := `<span class="text-muted">Anonymous registration</span>`
@@ -96,7 +85,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 			if connection.Legacy {
 				state += "; inferred from legacy token name"
 			}
-			fmt.Fprintf(&connected, `<div class="record-card"><strong>%s</strong><p class="text-sm text-muted">%s · Issued %s · %s</p></div>`, html.EscapeString(connection.Account), state, connection.Created.UTC().Format("2 Jan 15:04 UTC"), lastUsed)
+			fmt.Fprintf(&connected, `<div class="collection-item"><strong>%s</strong><p class="text-sm text-muted">%s · Issued %s · %s</p></div>`, html.EscapeString(connection.Account), state, connection.Created.UTC().Format("2 Jan 15:04 UTC"), lastUsed)
 		}
 		if connected.Len() == 0 {
 			connected.WriteString(`<span class="text-muted">No retained tokens</span>`)
@@ -105,7 +94,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		// row offers the one thing that fixes it. Every client the /token form
 		// made before it asked for an address is in this state, and none of
 		// them ever worked.
-		where := `<form method="POST" action="/admin/oauth" class="form">` +
+		where := `<form method="POST" action="/admin/oauth" class="form-inline">` +
 			`<input type="hidden" name="action" value="redirect">` +
 			`<input type="hidden" name="client_id" value="` + html.EscapeString(c.ClientID) + `">` +
 			`<input type="text" name="redirect_uri" placeholder="https://… or http://localhost:0/callback" ` +
@@ -114,17 +103,17 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		if len(c.RedirectURIs) == 0 {
 			where = `<span class="text-muted text-sm">none — cannot sign anybody in</span>` + where
 		}
-		fmt.Fprintf(&b, `<tr><td>%s</td><td><code class="text-2xs">%s</code></td>`+
-			`<td><div class="page-stack compact-stack">%s</div></td><td>%s</td><td>%s</td><td class="created-col">%s</td><td class="center">`+
-			`<form method="POST" action="/admin/oauth" class="form-action d-inline" `+
+		fmt.Fprintf(&b, `<tr><td data-label="Client"><strong>%s</strong><div class="text-sm text-muted"><code>%s</code></div></td>`+
+			`<td data-label="Registration">%s<div class="text-sm text-muted">%s</div></td><td data-label="Redirects to">%s</td><td data-label="Account connections">%s</td><td data-label="Actions">`+
+			`<form method="POST" action="/admin/oauth" class="form-action" `+
 			`onsubmit="return confirm('Remove this client?')">`+
 			`<input type="hidden" name="client_id" value="%s">`+
 			`<button type="submit" class="btn-danger">Remove</button></form></td></tr>`,
-			html.EscapeString(c.Name), html.EscapeString(c.ClientID), where, owner, connected.String(),
-			c.CreatedAt.Format("2006-01-02"), html.EscapeString(c.ClientID))
+			html.EscapeString(c.Name), html.EscapeString(c.ClientID), owner,
+			c.CreatedAt.Format("2006-01-02"), where, connected.String(), html.EscapeString(c.ClientID))
 	}
 	if len(clients) == 0 {
-		b.WriteString(`<tr><td colspan="7" class="center text-muted">Nothing registered.</td></tr>`)
+		b.WriteString(`<tr><td colspan="5" class="center text-muted">Nothing registered.</td></tr>`)
 	}
 	b.WriteString(`</tbody></table></div>`)
 

@@ -40,7 +40,7 @@ func mailLogCard() string {
 	// Stats summary
 	content.WriteString(`<div class="card">`)
 	content.WriteString(`<h3>Email Statistics</h3>`)
-	content.WriteString(`<table class="stats-table">`)
+	content.WriteString(`<table class="data-table">`)
 	content.WriteString(fmt.Sprintf(`<tr><td>Total messages</td><td>%d</td></tr>`, stats.Total))
 	content.WriteString(fmt.Sprintf(`<tr><td>Inbound (external → local)</td><td>%d</td></tr>`, stats.Inbound))
 	content.WriteString(fmt.Sprintf(`<tr><td>Outbound (local → external)</td><td>%d</td></tr>`, stats.Outbound))
@@ -59,8 +59,8 @@ func mailLogCard() string {
 	if len(relays) == 0 {
 		content.WriteString(`<p class="text-muted">Nothing relayed yet.</p>`)
 	} else {
-		content.WriteString(`<table class="email-log">`)
-		content.WriteString(`<tr><th>Time</th><th>Status</th><th class="hide-mobile">From</th><th>To</th><th>Subject</th></tr>`)
+		content.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Mail records"><table class="data-table table-wide">`)
+		content.WriteString(`<tr><th>Time</th><th>Status</th><th>From</th><th>To</th><th>Subject</th></tr>`)
 		for _, e := range relays {
 			statusClass, statusLabel := "dir-out", "→"
 			if !e.OK {
@@ -73,7 +73,7 @@ func mailLogCard() string {
 			content.WriteString(fmt.Sprintf(`<tr>
 				<td>%s</td>
 				<td class="%s" title="%s">%s</td>
-				<td class="addr hide-mobile" title="%s">%s</td>
+				<td class="addr" title="%s">%s</td>
 				<td class="addr" title="%s">%s</td>
 				<td class="subject" title="%s">%s</td>
 			</tr>`,
@@ -84,7 +84,7 @@ func mailLogCard() string {
 				html.EscapeString(e.Subject), html.EscapeString(truncate(e.Subject, 40)),
 			))
 		}
-		content.WriteString(`</table>`)
+		content.WriteString(`</table></div>`)
 	}
 	content.WriteString(`</div>`)
 
@@ -92,7 +92,7 @@ func mailLogCard() string {
 	if len(sortedDomains) > 0 {
 		content.WriteString(`<div class="card">`)
 		content.WriteString(`<h3>External Domains</h3>`)
-		content.WriteString(`<table class="stats-table">`)
+		content.WriteString(`<table class="data-table">`)
 		for i, dc := range sortedDomains {
 			if i >= 10 {
 				break
@@ -106,15 +106,15 @@ func mailLogCard() string {
 	// Recent messages
 	content.WriteString(`<div class="card">`)
 	content.WriteString(`<h3>Recent Messages</h3>`)
-	content.WriteString(`<p class="text-muted text-sm">Click a row to expand details.</p>`)
+	content.WriteString(`<p class="text-muted text-sm">Open a subject to see message details.</p>`)
 
 	if len(messages) == 0 {
 		content.WriteString(`<p class="text-muted">No messages yet.</p>`)
 	} else {
-		content.WriteString(`<table class="email-log">`)
+		content.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Mail records"><table class="data-table table-wide">`)
 		content.WriteString(`<tr><th>Time</th><th>Dir</th><th>From</th><th>To</th><th>Subject</th></tr>`)
 
-		for i, msg := range messages {
+		for _, msg := range messages {
 			fromExternal := mail.IsExternalAddress(msg.FromID)
 			toExternal := mail.IsExternalAddress(msg.ToID)
 
@@ -133,33 +133,20 @@ func mailLogCard() string {
 			// Build cell text and tooltip for To
 			toCell, toTitle := addrDisplay(msg.To, msg.ToID, toExternal)
 
-			rowID := fmt.Sprintf("erow%d", i)
-			content.WriteString(fmt.Sprintf(`<tr class="clickable" data-detail="%s" onclick="var d=document.getElementById(this.dataset.detail);d.style.display=d.style.display===''?'none':'';">
-				<td>%s</td>
-				<td class="%s">%s</td>
-				<td class="addr" title="%s">%s</td>
-				<td class="addr" title="%s">%s</td>
-				<td class="subject" title="%s">%s</td>
-			</tr>
-			<tr id="%s" class="d-none"><td colspan="5" class="email-detail">
-				<strong>From:</strong> %s &nbsp;
-				<strong>To:</strong> %s &nbsp;
-				<strong>Subject:</strong> %s<br>
-				<strong>ID:</strong> <code>%s</code>
-			</td></tr>`,
-				rowID,
-				msg.CreatedAt.Format("Jan 2 15:04"),
-				dirClass, dirLabel,
+			content.WriteString(fmt.Sprintf(`<tr>
+				<td>%s</td><td class="%s">%s</td>
+				<td class="addr" title="%s">%s</td><td class="addr" title="%s">%s</td>
+				<td><details class="disclosure"><summary>%s</summary><dl>
+				<dt>From</dt><dd>%s</dd><dt>To</dt><dd>%s</dd><dt>Subject</dt><dd>%s</dd><dt>ID</dt><dd><code>%s</code></dd>
+				</dl></details></td></tr>`,
+				msg.CreatedAt.Format("Jan 2 15:04"), dirClass, dirLabel,
 				html.EscapeString(fromTitle), html.EscapeString(truncate(fromCell, 25)),
 				html.EscapeString(toTitle), html.EscapeString(truncate(toCell, 25)),
-				html.EscapeString(msg.Subject), html.EscapeString(truncate(msg.Subject, 40)),
-				rowID,
-				html.EscapeString(fromTitle), html.EscapeString(toTitle), html.EscapeString(msg.Subject),
-				html.EscapeString(msg.ID),
-			))
+				html.EscapeString(truncate(msg.Subject, 40)),
+				html.EscapeString(fromTitle), html.EscapeString(toTitle), html.EscapeString(msg.Subject), html.EscapeString(msg.ID)))
 		}
 
-		content.WriteString(`</table>`)
+		content.WriteString(`</table></div>`)
 	}
 	content.WriteString(`</div>`)
 
