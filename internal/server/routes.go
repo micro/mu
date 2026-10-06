@@ -41,6 +41,7 @@ import (
 	"mu/service/files"
 	"mu/service/flights"
 	"mu/service/food"
+	"mu/service/forms"
 	"mu/service/groups"
 	"mu/service/hazards"
 	"mu/service/images"
@@ -124,7 +125,8 @@ func authRequired() map[string]bool {
 		// Your own documents. Sign-in required, but checked in the handler
 		// rather than here: the map is matched by prefix, and /docs/<slug> is
 		// still a public redirect to the documentation that used to live there.
-		"/docs": false,
+		"/docs":  false,
+		"/forms": false, // Form management checks sessions; published forms accept visitors.
 		// Your texts. Sign-in is required and the handler requires it — not
 		// stated here, because this map is matched by prefix and /sms/webhook
 		// is the provider posting an inbound message with no session at all.
@@ -565,6 +567,10 @@ func registerRoutes() {
 	http.HandleFunc("/groups", groups.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
+	http.HandleFunc("/forms", forms.Handler)
+	http.HandleFunc("/forms/view", forms.PublicHandler)
+	http.HandleFunc("/forms/submit", forms.SubmissionHandler)
+	http.HandleFunc("/forms/received", forms.ReceivedHandler)
 	http.HandleFunc("/notes", notes.Handler)
 	http.HandleFunc("/notify", notify.Handler)
 	// Preserve the complete conversation UI until the SDK app replaces it.

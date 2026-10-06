@@ -25,6 +25,7 @@ import (
 	"mu/service/files"
 	"mu/service/flights"
 	"mu/service/food"
+	"mu/service/forms"
 	"mu/service/groups"
 	"mu/service/hazards"
 	"mu/service/images"
@@ -121,6 +122,7 @@ func boot() {
 	startupStep("stream.LoadService", stream.LoadService)
 	startupStep("chat.LoadService", chat.LoadService)
 	startupStep("docs.LoadService", docs.LoadService)
+	startupStep("forms.Load", forms.Load)
 	startupStep("notes.LoadService", notes.LoadService)
 	startupStep("notify.LoadService", notify.LoadService)
 	startupStep("sms.LoadService", sms.LoadService)

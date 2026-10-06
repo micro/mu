@@ -24,6 +24,9 @@ import (
 // for.
 func csrfExempt(r *http.Request) bool {
 	switch {
+	// Public form submissions never act with the visitor's cookies or identity.
+	case r.URL.Path == "/forms/submit":
+		return true
 	// A bearer token or a PAT is the credential, and neither is a cookie, so
 	// there is no cross-site request to forge.
 	case r.Header.Get("Authorization") != "", r.Header.Get("X-Micro-Token") != "":
