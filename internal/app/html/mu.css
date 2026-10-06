@@ -1542,9 +1542,7 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .preserve-whitespace{white-space:pre-wrap;overflow-wrap:anywhere}
 
 /* Voice is an explicit dialog; closing it releases the microphone. */
-.voice-dialog{width:min(620px,calc(100vw - 24px));height:min(760px,calc(100dvh - 24px));padding:12px;border:1px solid var(--border);border-radius:8px}
-.voice-dialog::backdrop{background:rgb(0 0 0 / .25)}
-.voice-dialog iframe{display:block;width:100%;height:calc(100% - 44px);border:0;margin-top:8px}
-.voice-frame main{padding:16px;margin:0;max-width:none}
-.voice-frame h1{font-size:1.3rem}
 .voice-open{display:inline-flex;align-items:center;justify-content:center;flex:none}
+
+.voice-overlay{position:fixed;inset:auto 12px 80px auto;width:min(480px,calc(100vw - 24px));max-height:70dvh;overflow:auto;margin:0;padding:20px;border:1px solid var(--card-border);border-radius:8px;box-shadow:0 8px 32px rgb(0 0 0 / .15);z-index:100}
+.voice-open[aria-pressed="true"]{color:#fff;background:#426994}
