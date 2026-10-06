@@ -315,6 +315,36 @@ func Delete(ns, caller, collection, id string) error {
 	return ErrNotFound
 }
 
+// Clear removes the caller's records from one collection in a single commit.
+func Clear(ns, caller, collection string) error {
+	if caller == "" {
+		return ErrAuth
+	}
+	k, err := key(ns, collection)
+	if err != nil {
+		return err
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	recs, err := loadChecked(k)
+	if err != nil {
+		return err
+	}
+	kept := make([]Record, 0, len(recs))
+	var facts []event.Record
+	for _, rec := range recs {
+		if rec.Owner == caller {
+			facts = append(facts, recordEvent(ns, collection, rec, "deleted"))
+		} else {
+			kept = append(kept, rec)
+		}
+	}
+	if len(facts) == 0 {
+		return nil
+	}
+	return data.CommitJSON(k, kept, facts...)
+}
+
 func load(k string) []Record {
 	recs, _ := loadChecked(k)
 	return recs

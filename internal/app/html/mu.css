@@ -1534,3 +1534,6 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .preview-entry h3{font-size:1.05rem;line-height:1.35}
 .preview-entry p{overflow-wrap:anywhere}
 .preview-entry .metadata-row{margin:0}
+
+.record-editor fieldset{display:grid;gap:12px;min-width:0;margin:0;padding:16px;border:1px solid var(--border);border-radius:6px}
+.preserve-whitespace{white-space:pre-wrap;overflow-wrap:anywhere}

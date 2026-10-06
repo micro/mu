@@ -162,7 +162,7 @@ document.addEventListener('submit', function(e) {
   const action = submitter?.getAttribute('formaction') || form.action;
   if (method !== 'POST' || new URL(action, location.href).origin !== location.origin) return;
   // Sign-in and invitation forms must remain usable without a session.
-  if (['/login','/signup','/request-invite','/invite'].includes(new URL(action, location.href).pathname)) return;
+  if (['/login','/signup','/request-invite','/invite','/forms/submit'].includes(new URL(action, location.href).pathname)) return;
   if (verifiedForms.has(form)) { verifiedForms.delete(form); return; }
   e.preventDefault();
   e.stopImmediatePropagation();

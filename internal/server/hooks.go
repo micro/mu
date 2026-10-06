@@ -62,6 +62,7 @@ import (
 	"mu/service/docs"
 	"mu/service/events"
 	"mu/service/files"
+	"mu/service/forms"
 	"mu/service/groups"
 	"mu/service/images"
 	"mu/service/mail"
@@ -524,6 +525,7 @@ func wireHooks() {
 		events.DeleteAll,
 		images.DeleteAll,
 		docs.DeleteAll,
+		forms.DeleteAll,
 		sms.DeleteAll,
 		// And their machine, which is not a file on this disk but a container
 		// and a volume. Nothing else in this list reaches outside the data
