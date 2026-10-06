@@ -1448,12 +1448,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		navigation.WriteString(`<option value="` + folder.value + `"` + selected + `>` + folder.label + `</option>`)
 	}
-	navigation.WriteString(`</select><noscript><button>Open</button></noscript></form><a class="btn" href="/mail?compose=true">Compose</a></div>`)
+	navigation.WriteString(`</select><noscript><button>Open</button></noscript></form><a class="btn" href="/mail?compose=true">Compose</a>`)
 
 	readAction := ""
 	if unreadCount > 0 && view != "sent" && view != "filtered" {
 		readAction = `<form method="POST" action="/mail" class="form-action section-actions">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="mark_read"><input type="hidden" name="all" value="true"><button type="submit" class="btn btn-quiet">Mark all as read</button></form>`
 	}
+	navigation.WriteString(readAction + `</div>`)
 	// Search bar
 	searchBar := mailSearchBar(searchTerm(r), auth.CSRFToken(r))
 
@@ -1461,7 +1462,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if viewTag != "" {
 		optionsOpen = " open"
 	}
-	pageHTML := navigation.String() + searchBar + `<details class="disclosure"` + optionsOpen + `><summary>Mail options</summary>` + tagFilter(userInbox, acc.ID, viewTag) + readAction + addressPanel(acc.ID) + `</details><div id="mailbox" class="compact-list">` + content + `</div>`
+	pageHTML := navigation.String() + searchBar + `<details class="disclosure"` + optionsOpen + `><summary>Mail options</summary>` + tagFilter(userInbox, acc.ID, viewTag) + addressPanel(acc.ID) + `</details><div id="mailbox" class="compact-list">` + content + `</div>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Your messages", HTML: pageHTML})
 }

@@ -12,7 +12,7 @@ import (
 	"mu/internal/auth"
 )
 
-// Drafts are private posts belonging to the signed-in author. Never put them
+// Drafts are unfinished private posts belonging to the signed-in author. Never put them
 // in the shared public-list cache, even for an administrator.
 func draftsHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
@@ -24,7 +24,7 @@ func draftsHandler(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	drafts := []Post{}
 	for _, p := range posts {
-		if p.Private && p.AuthorID == acc.ID {
+		if p.isDraft() && p.AuthorID == acc.ID {
 			drafts = append(drafts, *p)
 		}
 	}
@@ -35,7 +35,7 @@ func draftsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var b strings.Builder
-	b.WriteString(`<div id="blog" class="editorial-page"><p class="text-muted">Your private posts. Open a draft to read or edit it; choose Public in the editor when it is ready.</p><nav class="section-actions view-tabs" aria-label="Blog"><a href="/blog">Editorial</a><a href="/blog?view=community">Community</a><a href="/blog?view=archive">Archive</a><a href="/blog?view=drafts" aria-current="page">Drafts</a><a href="/blog?write=true">Write a post</a></nav><div id="posts-list">`)
+	b.WriteString(`<div id="blog" class="editorial-page"><p class="text-muted">Your unfinished posts. Open a draft to read or edit it; choose Public in the editor when it is ready.</p><nav class="section-actions view-tabs" aria-label="Blog"><a href="/blog">Editorial</a><a href="/blog?view=community">Community</a><a href="/blog?view=archive">Archive</a><a href="/blog?view=drafts" aria-current="page">Drafts</a><a class="btn" href="/blog?write=true">New post</a></nav><div id="posts-list">`)
 	if len(drafts) == 0 {
 		b.WriteString(`<p class="text-muted">No drafts yet. Choose Private (draft) when saving a post to keep it here.</p>`)
 	}
