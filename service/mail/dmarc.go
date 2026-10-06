@@ -275,15 +275,17 @@ func renderDMARCReport(xmlData string) string {
 	// Records table
 	if len(report.Records) > 0 {
 		html.WriteString(`<h4 class="m-0 mb-3">Email Results</h4>`)
-		html.WriteString(`<table class="grid-table tight">`)
+		html.WriteString(`<table class="grid-table tight table-nowrap">`)
 		html.WriteString(`<thead><tr class="bg-soft">`)
 		html.WriteString(`<th >Source IP</th>`)
+		html.WriteString(`<th >Network owner</th>`)
 		html.WriteString(`<th >Count</th>`)
 		html.WriteString(`<th >DKIM</th>`)
 		html.WriteString(`<th >SPF</th>`)
 		html.WriteString(`<th >Disposition</th>`)
 		html.WriteString(`</tr></thead><tbody>`)
 
+		owners := reportIPOwners(report)
 		for _, record := range report.Records {
 			dkimResult := "none"
 			if len(record.AuthResults.DKIM) > 0 {
@@ -307,6 +309,11 @@ func renderDMARCReport(xmlData string) string {
 
 			html.WriteString(`<tr>`)
 			html.WriteString(fmt.Sprintf(`<td>%s</td>`, stdhtml.EscapeString(record.Row.SourceIP)))
+			owner := owners[strings.TrimSpace(record.Row.SourceIP)]
+			if owner == "" {
+				owner = "Unknown"
+			}
+			html.WriteString(fmt.Sprintf(`<td>%s</td>`, stdhtml.EscapeString(owner)))
 			html.WriteString(fmt.Sprintf(`<td>%d</td>`, record.Row.Count))
 			html.WriteString(cell(dkimResult))
 			html.WriteString(cell(spfResult))
@@ -314,7 +321,7 @@ func renderDMARCReport(xmlData string) string {
 			html.WriteString(`</tr>`)
 		}
 
-		html.WriteString(`</tbody></table>`)
+		html.WriteString(`</tbody></table><p class="text-muted text-sm">Network owner identifies the IP allocation, not the person who sent the message. Forwarded mail may show the forwarding provider.</p>`)
 	}
 
 	result := html.String()
