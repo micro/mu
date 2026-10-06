@@ -1895,68 +1895,61 @@ document.addEventListener('submit',function(event){if(event.target.matches('[dat
 document.addEventListener('click',function(event){var button=event.target.closest('[data-image-share]');if(button){imgShare(button);}});
 }
 
-// Voice is opt-in and uses the browser's speech services.
+// Browser speech feeds the normal conversation composer.
 (()=>{
  const form=document.getElementById('command-form'),input=document.getElementById('command-input');
  if(!form||!input||!document.body.classList.contains('signed-in'))return;
  const send=form.querySelector('button[type="submit"]');if(!send)return;
  const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- const button=document.createElement('button');button.type='button';button.className='voice-open';button.title='Enable Hey Micro — browser speech may process audio online';button.setAttribute('aria-label','Enable Hey Micro');button.setAttribute('aria-pressed','false');button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3m-4 0h8"/></svg>';send.before(button);
- const status=document.createElement('p');status.className='text-sm text-muted';status.hidden=true;status.setAttribute('role','status');status.setAttribute('aria-live','polite');form.after(status);
- const dialog=document.createElement('dialog');dialog.className='voice-overlay';dialog.setAttribute('aria-label','Hey Micro');
- dialog.innerHTML='<div class="section-stack"><div class="form-actions"><strong>Hey Micro</strong><button type="button" data-voice-stop>Stop voice</button></div><p data-voice-state role="status" aria-live="polite"></p><p data-voice-text class="preserve-whitespace"></p><p data-voice-answer class="preserve-whitespace" aria-live="polite"></p><label class="check-label"><input type="checkbox" data-voice-speak checked> Speak replies</label><p class="text-sm text-muted">Listens while Micro is open and visible. Your browser may process audio online.</p></div>';
- document.body.append(dialog);
- const state=dialog.querySelector('[data-voice-state]'),transcript=dialog.querySelector('[data-voice-text]'),answer=dialog.querySelector('[data-voice-answer]'),speak=dialog.querySelector('[data-voice-speak]');speak.disabled=!window.speechSynthesis;
- const preference=value=>{try{if(value!==undefined)localStorage.setItem('mu.voice',value?'on':'off');return localStorage.getItem('mu.voice')==='on';}catch{return false;}};
- let recognition=null,enabled=false,awaiting=false,speaking=false,armed=false,restart,pause,expiry,utterance,pending='',voiceRequest=false;
- const say=text=>{status.hidden=false;status.textContent=text;state.textContent=text;};
- function clearRequest(){clearTimeout(pause);clearTimeout(expiry);armed=false;pending='';}
- function halt(){clearTimeout(restart);if(recognition){const old=recognition;recognition=null;old.onend=null;old.onresult=null;old.onerror=null;old.abort();}}
- function cancelSpeech(){if(utterance){utterance.onend=null;utterance.onerror=null;utterance=null;}speaking=false;window.speechSynthesis?.cancel();}
- function stop(){enabled=false;clearRequest();halt();cancelSpeech();button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','Enable Hey Micro');button.title='Enable Hey Micro';}
+ const button=document.createElement('button');button.type='button';button.className='voice-open';button.title='Use microphone';button.setAttribute('aria-label','Use microphone');button.setAttribute('aria-pressed','false');button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3m-4 0h8"/></svg>';send.before(button);
+ const status=document.createElement('p');status.className='text-sm text-muted';status.hidden=true;status.setAttribute('role','status');form.after(status);
+ let enabled=false,recognition=null,awaiting=false,utterance=null,pending='',pause,idle,restart;
+ const error=text=>{status.textContent=text;status.hidden=false;};
+ function timers(){clearTimeout(pause);clearTimeout(idle);clearTimeout(restart);}
+ function halt(){if(recognition){const old=recognition;recognition=null;old.onend=old.onresult=old.onerror=old.onspeechstart=old.onspeechend=null;old.abort();}}
+ function stop(){enabled=false;timers();halt();if(utterance){utterance.onend=utterance.onerror=null;utterance=null;window.speechSynthesis?.cancel();}pending='';button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','Use microphone');button.title='Use microphone';}
+ function inactivity(){clearTimeout(idle);idle=setTimeout(stop,10000);}
  function submit(){
   if(!enabled||awaiting||!pending.trim())return;
-  const text=pending.trim();clearRequest();
-  if(input.value.trim()||send.disabled){stop();say('Send or clear your current message, then tap the microphone again.');return;}
-  if(input.maxLength>0&&text.length>input.maxLength){stop();say('That request is too long. Please try a shorter message.');return;}
-  input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));awaiting=true;voiceRequest=true;halt();say('Waiting for Micro…');form.requestSubmit();
+  if(send.disabled){stop();error('Wait for the current reply, then try the microphone again.');return;}
+  timers();halt();awaiting=true;pending='';form.requestSubmit();
  }
  function start(){
-  clearTimeout(restart);if(!Recognition||!enabled||awaiting||speaking||document.hidden||recognition)return;
-  const current=new Recognition();recognition=current;current.lang=document.documentElement.lang||'en-GB';current.continuous=false;current.interimResults=true;
-  current.onstart=()=>say(armed?'Yes? Say your request.':'Listening for “Hey Micro”…');
+  if(!enabled||awaiting||utterance||document.hidden||recognition)return;
+  const current=new Recognition(),prefix=pending;recognition=current;current.lang=document.documentElement.lang||'en-GB';current.continuous=false;current.interimResults=true;
+  current.onspeechstart=()=>{clearTimeout(pause);inactivity();};
+  current.onspeechend=()=>{clearTimeout(pause);if(pending.trim())pause=setTimeout(submit,1000);};
   current.onresult=event=>{
-   if(recognition!==current||!enabled)return;
+   if(!enabled||recognition!==current)return;
    let text='';for(let i=0;i<event.results.length;i++)text+=event.results[i][0].transcript;
-   const match=text.match(/^\s*hey[ ,.!-]+micro\b[ ,.!?:-]*(.*)$/i);
-   if(!armed&&!match)return;
-   if(!armed){armed=true;answer.textContent='';transcript.textContent='';if(!dialog.open)dialog.show();expiry=setTimeout(()=>{clearRequest();dialog.close();say('Listening for “Hey Micro”…');},15000);}
-   text=match?match[1].trim():text.trim();pending=text;transcript.textContent=text;
-   clearTimeout(pause);say(text?'Listening…':'Yes? Say your request.');
-   if(text){clearTimeout(expiry);pause=setTimeout(submit,500);}
+   pending=[prefix,text.trim()].filter(Boolean).join(' ');
+   if(input.maxLength>0&&pending.length>input.maxLength){stop();error('That message is too long. Please shorten it before sending.');return;}
+   input.value=pending;input.dispatchEvent(new Event('input',{bubbles:true}));inactivity();clearTimeout(pause);
+   if(pending.trim())pause=setTimeout(submit,1000);
   };
-  current.onerror=event=>{if(event.error==='no-speech')return;stop();say(event.error==='not-allowed'?'Tap the microphone to resume voice; allow microphone access if your browser asks.':'Browser speech failed ('+event.error+'). Tap the microphone to retry.');};
-  current.onend=()=>{if(recognition===current)recognition=null;if(enabled&&!awaiting&&!speaking)restart=setTimeout(start,500);};
-  try{current.start();}catch{stop();say('Tap the microphone to start voice in this browser.');}
+  current.onerror=event=>{if(event.error==='no-speech')return;stop();error(event.error==='not-allowed'?'Allow microphone access in your browser to use voice.':'Speech recognition failed. Tap the microphone to try again.');};
+  current.onend=()=>{if(recognition===current)recognition=null;if(enabled&&!awaiting&&!utterance)restart=setTimeout(start,250);};
+  try{current.start();}catch{stop();error('Could not start speech recognition in this browser.');}
  }
- function enable(){
-  status.hidden=false;if(!Recognition){say('Speech recognition is unavailable in this browser. You can still type your message.');return;}
-  enabled=true;button.setAttribute('aria-pressed','true');button.setAttribute('aria-label','Stop voice');button.title='Stop voice';say('Starting voice. Your browser may process audio online.');start();
- }
- function disable(){preference(false);stop();dialog.close();say('Voice off.');}
- button.addEventListener('click',()=>{if(enabled||speaking){disable();return;}preference(true);enable();});
- dialog.querySelector('[data-voice-stop]').addEventListener('click',disable);dialog.addEventListener('cancel',event=>{event.preventDefault();disable();});
- speak.addEventListener('change',()=>{if(!speak.checked){cancelSpeech();start();}});
- form.addEventListener('submit',()=>{if(!input.value.trim()&&!voiceRequest)return;halt();clearRequest();awaiting=true;});
- form.addEventListener('voice-answer',event=>{
-  awaiting=false;if(!voiceRequest){start();return;}voiceRequest=false;answer.textContent=event.detail.text;
-  if(!enabled||!speak.checked||!window.speechSynthesis||document.hidden){start();return;}
-  halt();cancelSpeech();speaking=true;utterance=new SpeechSynthesisUtterance(event.detail.text);utterance.lang=document.documentElement.lang||'en-GB';say('Speaking…');
-  utterance.onend=()=>{speaking=false;utterance=null;start();};utterance.onerror=()=>{speaking=false;utterance=null;stop();say('Could not speak the reply. It is shown here. Tap the microphone to resume.');};window.speechSynthesis.speak(utterance);
+ function listen(){if(!enabled)return;pending='';inactivity();start();}
+ button.addEventListener('click',()=>{
+  if(enabled){stop();return;}status.hidden=true;
+  if(!Recognition){error('Speech recognition is unavailable in this browser.');return;}
+  if(send.disabled||input.value.trim()){error('Send or clear your current message before using the microphone.');return;}
+  enabled=true;awaiting=false;button.setAttribute('aria-pressed','true');button.setAttribute('aria-label','Turn microphone off');button.title='Turn microphone off';listen();
  });
- form.addEventListener('voice-error',()=>{awaiting=false;voiceRequest=false;stop();say('Micro could not complete the request. Check the conversation before retrying.');});
- const leave=()=>{stop();dialog.close();say('Voice paused.');};
- form.addEventListener('thread-leaving',()=>{voiceRequest=false;awaiting=false;leave();});window.addEventListener('pagehide',leave);
- document.addEventListener('visibilitychange',()=>{if(document.hidden)leave();else if(preference())enable();});
- if(preference())enable();
+ // Capture before the conversation handler clears the composer.
+ form.addEventListener('submit',()=>{if(enabled&&input.value.trim()){timers();halt();pending='';awaiting=true;}},true);
+ input.addEventListener('input',event=>{if(event.isTrusted&&enabled)stop();});
+ form.addEventListener('voice-answer',event=>{
+  if(!enabled||!awaiting)return;awaiting=false;
+  if(document.hidden){stop();return;}
+  const text=event.detail.text;
+  if(!window.speechSynthesis||!text){listen();return;}
+  utterance=new SpeechSynthesisUtterance(text);utterance.lang=document.documentElement.lang||'en-GB';
+  utterance.onend=()=>{utterance=null;listen();};
+  utterance.onerror=()=>{utterance=null;stop();error('The reply is shown in the conversation. Tap the microphone to continue.');};
+  window.speechSynthesis.speak(utterance);
+ });
+ form.addEventListener('voice-error',stop);form.addEventListener('thread-leaving',stop);window.addEventListener('pagehide',stop);document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
 })();

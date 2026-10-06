@@ -1544,5 +1544,4 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 /* Voice is an explicit dialog; closing it releases the microphone. */
 .voice-open{display:inline-flex;align-items:center;justify-content:center;flex:none}
 
-.voice-overlay{position:fixed;inset:auto 12px 80px auto;width:min(480px,calc(100vw - 24px));max-height:70dvh;overflow:auto;margin:0;padding:20px;border:1px solid var(--card-border);border-radius:8px;box-shadow:0 8px 32px rgb(0 0 0 / .15);z-index:100}
 .voice-open[aria-pressed="true"]{color:#fff;background:#426994}
