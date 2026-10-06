@@ -31,6 +31,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a class="section-link" href="/admin/errors">Errors</a>
 		<a class="section-link" href="/admin/flagged">Flagged</a>
 		<a class="section-link" href="/admin/log">Logs</a>
+		<a class="section-link" href="/admin/mail">Mail</a>
 		<a class="section-link" href="/admin/oauth">OAuth</a>
 		<a class="section-link" href="/admin/server">Server</a>
 		<a class="section-link" href="/admin/spam">Spam</a>
@@ -89,6 +90,10 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		userID := r.FormValue("user_id")
 		if userID == "" {
 			app.BadRequest(w, r, "User ID required")
+			return
+		}
+		if userID == auth.OperatorID {
+			app.Forbidden(w, r, "The built-in operator account cannot be changed or deleted")
 			return
 		}
 		switch action {

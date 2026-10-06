@@ -351,12 +351,34 @@ func describedNothing(msg *Message) bool {
 }
 
 func renderStoredAttachment(msg *Message) (html string, name string) {
-	if msg == nil || msg.Attachment == "" {
+	raw := storedReportXML(msg)
+	if raw == "" {
 		return "", ""
+	}
+	return renderDMARCReport(raw), msg.AttachmentName
+}
+
+// MessageReport reads the original attachment; it does not create another copy
+// of a report or fetch any external resources.
+func MessageReport(msg *Message) *DMARCReport {
+	raw := storedReportXML(msg)
+	if raw == "" {
+		return nil
+	}
+	var report DMARCReport
+	if xml.Unmarshal([]byte(raw), &report) != nil || report.ReportMetadata.ReportID == "" || report.PolicyPublished.Domain == "" {
+		return nil
+	}
+	return &report
+}
+
+func storedReportXML(msg *Message) string {
+	if msg == nil || msg.Attachment == "" {
+		return ""
 	}
 	raw, err := base64.StdEncoding.DecodeString(msg.Attachment)
 	if err != nil || len(raw) == 0 || len(raw) > 10*1024*1024 {
-		return "", ""
+		return ""
 	}
 
 	var xml string
@@ -366,19 +388,19 @@ func renderStoredAttachment(msg *Message) (html string, name string) {
 	case len(raw) >= 2 && raw[0] == 0x1f && raw[1] == 0x8b:
 		r, err := gzip.NewReader(bytes.NewReader(raw))
 		if err != nil {
-			return "", ""
+			return ""
 		}
 		defer r.Close()
 		out, err := io.ReadAll(io.LimitReader(r, 5*1024*1024+1))
 		if err != nil || len(out) > 5*1024*1024 {
-			return "", ""
+			return ""
 		}
 		xml = string(out)
 	case isValidUTF8Text(raw):
 		xml = string(raw)
 	}
 	if strings.TrimSpace(xml) == "" {
-		return "", ""
+		return ""
 	}
-	return renderDMARCReport(xml), msg.AttachmentName
+	return xml
 }

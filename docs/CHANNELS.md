@@ -4,6 +4,27 @@ Optional setup for your own mail domain, mail clients and XMPP.
 You do not need these steps to use Micro in a browser.
 See [Hosting](HOSTING.md) for TLS and server deployment.
 
+## Operator inbox
+
+`admin` is a permanent built-in system identity. It owns operational mail and
+cannot sign in, hold API tokens, be edited or be deleted. Human administrators
+use their own accounts to access **Admin → Mail** (`/admin/mail`). It does not
+count as a human administrator during first-run setup.
+
+Mail to `admin@your-domain`, `support@`, `postmaster@`, `abuse@` and `security@`
+shares that inbox. The aliases become tags; `admin+dmarc@your-domain` uses the
+`dmarc` tag. These are addresses, not additional accounts or agents. Existing
+inbound-mail restrictions and spam filtering still apply; operator mail never
+triggers an automatic agent response. Additional reporting providers may need
+to be allowed through the inbound filter at `/admin/spam`.
+
+The DMARC tab summarises original stored report attachments and deduplicates
+reporter/domain/report-ID/date-range combinations. The original messages and
+attachments remain accessible in the inbox. For this domain, change only the
+`rua` portion of its DMARC TXT record to `mailto:admin+dmarc@your-domain`.
+Reporting for a different organisational domain also requires external-report
+DNS authorisation at the receiving domain.
+
 ## Mail
 
 To send and receive as your own domain:

@@ -1665,6 +1665,9 @@ func recipientDisplayName(owner, fallback string) string {
 }
 
 func SendMessageTo(d Delivery) error {
+	if d.ToID == auth.OperatorID {
+		d.arrival = nil
+	} // Operator mail never starts agent work.
 	d.To = recipientDisplayName(d.ToID, d.To)
 	// Local deliveries need the same mailbox-to-Inbox reference as SMTP mail.
 	if d.MessageID == "" {
@@ -1784,7 +1787,7 @@ func SendMessageTo(d Delivery) error {
 
 	// Device notifications remain transient hints. Inbox projection and agent
 	// response use the durable source-reference events committed above.
-	if !d.Spam && d.ToID != "" {
+	if !d.Spam && d.ToID != "" && d.ToID != auth.OperatorID {
 		announce(event.MailReceived, InboundMail{
 			Owner:    d.ToID,
 			Tag:      d.Tag,

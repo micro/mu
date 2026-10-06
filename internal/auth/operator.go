@@ -43,3 +43,12 @@ func Operator() string {
 	}
 	return oldest.ID
 }
+
+// OperatorID owns instance operations. It is a built-in identity, not a human
+// administrator or an agent. It has no credentials and is not counted during
+// first-run setup. Access is always through a person's administrator role.
+const OperatorID = "admin"
+
+func operatorAccount() *Account {
+	return &Account{ID: OperatorID, Name: "admin", Approved: true, System: true}
+}
