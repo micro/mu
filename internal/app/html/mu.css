@@ -1516,21 +1516,887 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .table-wide td[colspan]{white-space:normal}
 .table-wide details :is(pre,dl){max-height:20rem;overflow:auto}
 .table-records{table-layout:fixed}
-.table-records :is(th,td):last-child{width:7rem}
-.table-records .collection-item{display:block;padding:8px 0}
-.table-records .collection-item:first-child{padding-top:0}
-@media(max-width:900px){
- .data-table.table-records,.table-records tbody,.table-records tr,.table-records td{display:block;width:100%;table-layout:auto}
- .table-records thead{display:none}
- .table-records tr{padding-block:12px;border-bottom:1px solid var(--card-border)}
- .table-records td,.table-records td:last-child{width:100%;padding:6px 0;border:0}
- .table-records td[data-label]::before{content:attr(data-label);display:block;color:var(--text-muted);font-size:.8rem;margin-bottom:4px}
+.table-records …37677 tokens truncated…
+// treated as public, so a new page is open until somebody says otherwise, and
+// the entry is the place to say it.
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"mu/account"
+	"mu/admin"
+	"mu/agent"
+	"mu/agent/brief"
+	"mu/agent/digest"
+	"mu/agent/micro"
+	"mu/agent/work"
+	help "mu/docs"
+	"mu/home"
+	"mu/inbox"
+	"mu/internal/api"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/client"
+	"mu/internal/imageproxy"
+	"mu/internal/push"
+	"mu/internal/settings"
+	"mu/internal/setup"
+	"mu/internal/user"
+	"mu/service/apps"
+	"mu/service/archive"
+	"mu/service/blog"
+	"mu/service/bookmarks"
+	"mu/service/browser"
+	"mu/service/chat"
+	"mu/service/contacts"
+	"mu/service/docs"
+	"mu/service/files"
+	"mu/service/flights"
+	"mu/service/food"
+	"mu/service/forms"
+	"mu/service/groups"
+	"mu/service/hazards"
+	"mu/service/images"
+	"mu/service/islam"
+	"mu/service/mail"
+	"mu/service/maps"
+	"mu/service/markets"
+	"mu/service/news"
+	"mu/service/notes"
+	"mu/service/notify"
+	"mu/service/places"
+	"mu/service/prayer"
+	"mu/service/recall"
+	"mu/service/routes"
+	"mu/service/shell"
+	"mu/service/sms"
+	"mu/service/social"
+	"mu/service/stream"
+	"mu/service/tasks"
+	"mu/service/text"
+	"mu/service/transit"
+	"mu/service/users"
+	"mu/service/video"
+	"mu/service/wallet"
+	"mu/service/weather"
+	"mu/service/web"
+)
+
+// authRequired reports, per path, whether a caller must be signed in.
+func authRequired() map[string]bool {
+	authenticated := map[string]bool{
+		"/developers":  false,
+		"/x402":        false,
+		"/tools":       false, // Public — the catalogue, agent lens
+		"/tools/":      false, // Public — one tool, same as the catalogue
+		"/services":    false, // Public — the catalogue, person lens
+		"/service/":    false,
+		"/services/":   false, // Public — one service, what it is and how to call it
+		"/card/":       false, // Public — a service rendered at a glance
+		"/usage":       true,  // Your own calls and spend
+		"/video":       false, // Public viewing, auth for interactive features
+		"/video/thumb": false, // Public — thumbnails for the public feed
+		"/news":        false, // Public viewing, auth for search
+		"/chat":        false, // Public viewing, auth for chatting
+		// SASL inside the stream, with an access token — so no session is
+		// required to open it and none would be honoured. See xmpp_ws.go.
+		"/xmpp-websocket":             false,
+		"/.well-known/host-meta.json": false, // How a browser finds the above
+		"/assistant":                  false,
+		"/home":                       false, // Public viewing
+		"/blog":                       false, // Public viewing, auth for posting
+		"/markets":                    false, // Public viewing
+		"/text":                       false, // Public: the tools are callable without an account
+		"/food":                       false, // Public food data is public
+		"/transit":                    false, // Public transport data is public
+		"/browser":                    false, // Public — the page; reading one costs and needs a session
+		"/shell":                      true,  // A machine with your files on it, so it needs a session
+		"/browser/shot/":              false, // A picture already taken, of a page anybody could open
+		"/maps":                       false, // Public — the page, and any tile already held
+		"/maps/":                      false, // A held tile is free to anybody; a cold one needs a session
+		"/islam":                      false, // Public knowledge service reference
+		"/prayer":                     false, // Public prayer times, daily verse and hadith
+		"/oauth2/google":              false, // Google sign-in start (no session yet)
+		"/oauth2/google/connect":      true,
+		"/oauth2/google/calendar":     true,
+		"/oauth2/google/contacts":     true,
+		"/oauth2/google/gmail":        true,
+		"/oauth2/google/drive":        true,
+		"/oauth2/google/disconnect":   true,  // Link Google to the current account
+		"/agents":                     false, // Public — the instance's own agents; yours needs a session, checked in the handler
+		"/agents/data":                true,  // JSON behind the chat's agent picker
+		"/oauth2/callback":            false, // Google sign-in callback (no session yet)
+		"/images":                     false, // Public daily image; generation needs login
+		"/img":                        false, // Public — cached article images (a prefix of /images, same answer)
+		"/events":                     true,  // Personal scheduled reminders — sign-in required
+		"/users":                      true,  // Who is on this instance — sign-in required
+		"/groups":                     true,
+		"/contacts":                   true, // Your address book — sign-in required
+		"/notes":                      true, // What you and your agents wrote down — sign-in required
+		"/notify":                     true, // What you were told, and where you can be reached — sign-in required
+		// Your own documents. Sign-in required, but checked in the handler
+		// rather than here: the map is matched by prefix, and /docs/<slug> is
+		// still a public redirect to the documentation that used to live there.
+		"/docs":  false,
+		"/forms": false, // Form management checks sessions; published forms accept visitors.
+		// Your texts. Sign-in is required and the handler requires it — not
+		// stated here, because this map is matched by prefix and /sms/webhook
+		// is the provider posting an inbound message with no session at all.
+		"/sms": false,
+		// Your WhatsApp threads. Sign-in checked in the handler, for the same
+		// reason as /sms: this map is matched by prefix and /whatsapp/twilio is
+		// the provider posting an inbound message with no session at all.
+		"/whatsapp":         false,
+		"/agent/session/":   true, // Deleting one of your conversations
+		"/bookmarks":        true,
+		"/recall":           true,  // Your own past — sign-in required
+		"/agent/connect":    true,  // How to reach one agent
+		"/agent/pending":    true,  // Has an in-flight run answered yet — your own conversations
+		"/tasks":            true,  // Your task list — sign-in required
+		"/social":           false, // Public viewing, auth for search
+		"/social/thread":    false, // Public thread view, auth for messaging
+		"/places":           false, // Public map, auth for search
+		"/weather":          false, // Public — the forecast, as a page or as JSON
+		"/hazards":          false, // Public — quakes and alerts are public record
+		"/flights":          false, // Public — aircraft broadcast their positions in clear
+		"/.well-known/jmap": false, // Mail token authentication in protocol handler
+		"/mail/jmap":        false,
+		"/mail":             true, // Require auth for inbox
+		// The token in the link is the credential, the same as /verify: it
+		// arrived at an address only the recipient reads. An unsubscribe link
+		// that asks you to sign in first is not an unsubscribe link.
+		"/mail/unsubscribe":  false,
+		"/logout":            true,
+		"/account":           true,
+		"/report":            true,  // Telling an operator about somebody else's item
+		"/verify":            false, // Public — token in URL is the credential
+		"/token":             true,  // PAT token management
+		"/passkey":           false, // Passkey login/register (auth checked in handler)
+		"/session":           false, // Public - used to check auth status
+		"/api":               false, // Public - API documentation
+		"/admin/flag":        true,
+		"/admin":             true,
+		"/admin/users":       true,
+		"/admin/flagged":     true,
+		"/admin/moderate":    true,
+		"/admin/blocklist":   true,
+		"/admin/spam":        true,
+		"/admin/email":       true,
+		"/admin/mail":        true,
+		"/admin/log":         true,
+		"/admin/config":      true,
+		"/admin/server":      true,
+		"/admin/usage":       true,
+		"/admin/diagnostics": true,
+		"/admin/status":      true,
+		"/admin/alerts":      true,
+		"/admin/backup":      true,
+		"/admin/invite":      true,
+		"/account/":          true, // Account funding and transfers
+		"/stripe/checkout":   true,
+		"/stripe/success":    true,
+		"/wallet/":           true, // Money: top-up, transfer, Stripe, the price list
+
+		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
+		"/code":      true,  // The Code agent's front door — see agent/code
+		"/code/":     true,  // and one file out of its workspace
+		"/web":       false, // Public - the open web: search it, read a page from it
+		"/search":    false, // Public - an old name for /web, redirected
+		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
+		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
+
+		"/status":                        false, // Public - server health status
+		"/privacy":                       false, // Public - privacy policy
+		"/checkin":                       true,
+		"/connect":                       false,
+		"/contact":                       false, // Public - how to reach the agent, which is the question an account is for
+		"/contact.vcf":                   false, // Public - the same list as a contact card; everything in it is on that page
+		"/about":                         false, // Public - what this is, for somebody who does not know yet
+		"/pricing":                       false, // Public - what it costs, which is what a stranger is deciding on
+		"/help":                          false,
+		"/install":                       false, // Public - run your own instance
+		"/mcp":                           false, // Public - MCP tools page
+		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
+		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
+		// Public at the door, decided per tool inside. The same answer /mcp
+		// gives, for the same reason: news and weather must not need an account.
+		"/api/v1":  false,
+		"/api/v1/": false,
+		"/agent":   false, // Redirects to the named page; auth checked in handler
+		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
+		"/push/":   true,  // Subscribing this device to notifications (old name)
+		"/notify/": true,  // The same, under the name the feature actually has
+		"/work":    true,
+		"/inbox":   true,  // The mailbox — yours, so it needs a session
+		"/inbox/":  true,  // One alias's mail
+		"/setup":   false, // First-run setup (open only until an admin exists)
+	}
+	return authenticated
 }
 
-/* Compact article previews share spacing regardless of publication or privacy. */
-.preview-entry{display:flex;flex-direction:column;gap:8px;min-width:0}
-.preview-entry>*{margin:0;min-width:0}
-.preview-entry+.preview-entry{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
-.preview-entry h3{font-size:1.05rem;line-height:1.35}
-.preview-entry p{overflow-wrap:anywhere}
-.preview-entry .metadata-row{margin:0}
+// staticSuffixes never require authentication.
+func staticSuffixes() []string {
+	return []string{
+		".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg",
+		".ico", ".webmanifest", ".json", ".woff2",
+	}
+}
+
+// registerRoutes attaches every handler to the default mux.
+func registerRoutes() {
+	http.HandleFunc("/robots.txt", robotsHandler)
+	// Older open pages ask this endpoint whether to use the assistant.
+	// Keep that handshake without restoring keyword execution.
+	http.HandleFunc("/command", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		app.RespondJSON(w, map[string]bool{"assistant": true})
+	})
+	api.Operations = append(agent.PublicOperations(), work.PublicOperations()...)
+	api.Operations = append(api.Operations, inbox.PublicOperations()...)
+	http.HandleFunc("/services/call/", api.ServiceCallHandler)
+	http.HandleFunc("/work", work.Handler)
+	http.HandleFunc("/work/", work.Handler)
+	// serve video
+	http.HandleFunc("/video", video.Handler)
+	http.HandleFunc("/video/thumb", video.ThumbHandler)
+
+	// serve news
+	http.HandleFunc("/news", news.Handler)
+	// serve chat
+	http.HandleFunc("/chat", chat.Handler)
+	// XMPP for the browser (RFC 7395), so the web page is a carrier of the chat
+	// protocol rather than a second protocol beside it — and host-meta, which is
+	// how a browser finds this endpoint from a domain, since it cannot look up
+	// the SRV record a desktop client uses.
+	http.HandleFunc("/xmpp-websocket", chat.XMPPWebSocketHandler)
+	http.HandleFunc("/.well-known/host-meta.json", chat.WellKnownHostMeta)
+
+	// serve blog (full list)
+	http.HandleFunc("/blog", blog.Handler)
+
+	// serve individual blog post (public, no auth)
+	// Serves ActivityPub JSON-LD when requested via Accept header
+	http.HandleFunc("/blog/post", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && blog.WantsActivityPub(r) {
+			blog.PostObjectHandler(w, r)
+			return
+		}
+		blog.PostHandler(w, r)
+	})
+
+	// handle comments on posts /blog/post/{id}/comment
+	http.HandleFunc("/blog/post/", blog.CommentHandler)
+
+	// flag content
+	http.HandleFunc("/admin/flag", admin.FlagHandler)
+
+	// admin dashboard
+	http.HandleFunc("/admin", admin.Handler)
+
+	// admin user management
+	http.HandleFunc("/admin/users", admin.UsersHandler)
+
+	// moderation queue
+	http.HandleFunc("/admin/flagged", admin.FlaggedHandler)
+	http.HandleFunc("/admin/moderate", func(w http.ResponseWriter, r *http.Request) {
+		target := "/admin/flagged"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+	})
+
+	// mail blocklist management
+	http.HandleFunc("/admin/blocklist", admin.BlocklistMoved)
+
+	// spam filter management
+	http.HandleFunc("/admin/spam", admin.SpamHandler)
+
+	// email log
+	http.HandleFunc("/admin/email", admin.MailLogMoved)
+
+	// external API call log
+
+	// system log
+	http.HandleFunc("/admin/log", admin.LogHandler)
+	http.HandleFunc("/admin/mail", admin.MailHandler)
+	http.HandleFunc("/admin/errors", admin.ErrorsHandler)
+	http.HandleFunc("/admin/activity", admin.ErrorsHandler)
+
+	// environment variables status
+	http.HandleFunc("/admin/config", admin.ConfigHandler)
+
+	// server update and restart
+	http.HandleFunc("/admin/server", admin.ServerHandler)
+
+	// AI usage tracking
+	http.HandleFunc("/admin/usage", admin.SpendMoved)
+	http.HandleFunc("/admin/traffic", admin.TrafficHandler)
+
+	// admin console
+	http.HandleFunc("/admin/status", admin.StatusHandler)
+	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
+	http.HandleFunc("/admin/work", work.AdminHandler)
+	// What this instance will wake you for. See admin/alert.go.
+	http.HandleFunc("/admin/alerts", admin.AlertsHandler)
+	http.HandleFunc("/admin/backup", admin.BackupHandler)
+	http.HandleFunc("/admin/invite", admin.InviteHandler)
+
+	// Billing pages belong to Account; provider callbacks keep their stable URLs.
+	http.HandleFunc("/account/", account.BalanceHandler)
+
+	// Stripe posts here. Named for the provider, at the top level, and that is
+	// the whole point: a webhook URL is a contract with somebody outside this
+	// process, configured once in their dashboard, and it has to survive every
+	// rearrangement of ours. It was /wallet/stripe/webhook, and when the money
+	// moved to the account the webhook could not follow — a redirect on a POST
+	// is a dropped payment, and /account is authenticated by prefix while a
+	// webhook must be public. Both of those are reasons the path should never
+	// have described where credits happened to live.
+	//
+	// This instance has made the same mistake once before in the other
+	// direction: /sms/webhook is named for our service rather than the provider,
+	// and Twilio — which bundles SMS and WhatsApp onto one webhook — posted
+	// WhatsApp messages to it that were refused for being the wrong kind.
+	//
+	// The old path is gone. It was kept live across the move so that no top-up
+	// was lost between the deploy and the dashboard edit; the dashboard now
+	// names this one.
+	http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)
+	http.HandleFunc("/stripe/checkout", account.BalanceHandler)
+	http.HandleFunc("/stripe/success", account.BalanceHandler)
+
+	// The service is web — searching the open web is one of the things it does,
+	// and a service is named for a domain rather than an action. Its page was
+	// at /search and everything under it at /web/fetch, /web/read,
+	// /web/preview, so one service had its URL tree split in half and was the
+	// only exception to service name == route in the catalogue.
+	//
+	// /search still answers, permanently redirected, because it is the address
+	// people have and search engines hold.
+	// A real browser, for the pages a fetch cannot read. /browser is the page;
+	// the pictures it takes are at /browser/shot/<id>.png. See service/browser.
+	// A machine of your own, in a container. See service/shell.
+	http.HandleFunc("/shell", shell.Handler)
+	http.HandleFunc("/shell/terminal.js", shell.TerminalScriptHandler)
+	// The address this had until it was renamed. Kept because links to it
+	// exist — in mail this instance has already sent, and in anybody's
+	// bookmarks — and breaking a URL to tidy a name is a bad trade.
+	http.HandleFunc("/browser", browser.Handler)
+	http.HandleFunc("/browser/shot/", browser.ShotHandler)
+
+	http.HandleFunc("/web", web.Handler)
+	// /search is the obvious URL and it answered 404.
+	//
+	// The apps SDK's mu.search() called it, so every app that searched got
+	// nothing, and it is the address a person types on a product whose front
+	// door is a search box. The SDK now names /web, but an address that has been
+	// handed out does not stop being used because the thing handing it out was
+	// corrected — and a 404 on /search is a worse answer than a redirect on any
+	// instance, forever.
+	//
+	// To /web rather than /archive: this is what the name meant everywhere it
+	// was used, which was searching the open web. 308 keeps the method and the
+	// query, and tells anything caching that the answer will not change.
+	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		to := "/web"
+		if q := r.URL.RawQuery; q != "" {
+			to += "?" + q
+		}
+		http.Redirect(w, r, to, http.StatusPermanentRedirect)
+	})
+
+	// serve web fetch page (fetch and clean a URL)
+	http.HandleFunc("/web/fetch", web.FetchHandler)
+
+	// serve clean reader page for web results
+	// Stopping the copies, from inside one of them. No session: see
+	// service/mail/unsubscribe.go.
+	http.HandleFunc("/mail/unsubscribe", mail.UnsubscribeHandler)
+	http.HandleFunc("/web/read", web.ReadHandler)
+	// A search that has an address. See service/web/shared.go.
+	http.HandleFunc("/web/r/", web.ResultsHandler)
+
+	// serve fact-check page and API
+
+	// Old shared entry URLs resolve to the conversation or optional Services feed.
+	http.HandleFunc("/home", home.Handler)
+	http.HandleFunc("/brief", agent.BriefHandler)
+	http.HandleFunc("/home/apps", home.AppsHandler)
+	http.HandleFunc("/home/library", home.LibraryHandler)
+	http.HandleFunc("/assistant", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			app.MethodNotAllowed(w, r)
+			return
+		}
+		u := *r.URL
+		u.Path = "/agent/" + agent.DefaultSlug
+		http.Redirect(w, r, u.String(), http.StatusTemporaryRedirect)
+	})
+	// Every MCP directory submission asks for a privacy policy URL, and this
+	// instance runs a mail server — so there is real correspondence to account
+	// for, not just a formality.
+	http.HandleFunc("/privacy", PrivacyHandler)
+	// Every way in, on one page. See contact.go.
+	http.HandleFunc("/contact", ContactHandler)
+	http.HandleFunc("/connect", ContactHandler)
+	http.HandleFunc("/checkin", agent.CheckinHandler)
+	// And the same list as a file a phone will save. See VCardHandler.
+	http.HandleFunc("/contact.vcf", VCardHandler)
+	// And what it is, for somebody who has not worked it out from the page they
+	// landed on. See about.go.
+	http.HandleFunc("/about", AboutHandler)
+	// And what it costs, which was a 404 while three comments described the page
+	// that rendered it. See pricing.go.
+	http.HandleFunc("/pricing", PricingHandler)
+
+	// The Code agent, at the address two pages of /apps have been linking to
+	// since before there was a handler for it. See agent/code.
+	http.HandleFunc("/code", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/agent/micro", http.StatusSeeOther) })
+
+	// first-run setup wizard (open only until an admin exists)
+	http.HandleFunc("/setup", setup.Handler)
+
+	// serve the agent
+	// The inbox is /inbox, and the agent family is /agent*.
+	//
+	// It was /agent for the conversation and /agents for the roster — a
+	// singular and a plural of the same word, one page apart, which is the
+	// confusion routes.go already records about /agent/agents. Naming the page
+	// after what it holds fixes it: /inbox is where you read and reply, and
+	// /agents, /agent/new and /agent/connect are where an agent is made,
+	// scoped and reached. Two families with two names.
+	//
+	// /agent still answers. A GET is redirected, because links to it exist; a
+	// POST is the chat asking a question and is handled here, because moving
+	// that is a change to the component every page embeds and it can follow.
+	// The inbox is the mailbox. It was agent.Handler — the chat — which is why
+	// ordinary mail never appeared on the page called Inbox; the chat is
+	// /agent/<name> now.
+	http.HandleFunc("/inbox", inbox.Handler)
+	// /inbox/<box> — one alias's mail. An alias is a mailbox: asim+research@
+	// goes to the research agent, so what arrives there is that agent's mail.
+	http.HandleFunc("/inbox/", inbox.Handler)
+	// /agent — the chat with no agent named. A GET goes to the one it is about,
+	// which is /agent/<name>: an agent is a place, and a place has an address
+	// rather than a query parameter. See agent/slug.go.
+	//
+	// ?id= and ?agent= still resolve, because links to them exist and breaking a
+	// URL to tidy a parameter is a bad trade — they redirect to the name, which
+	// is one hop and leaves the address bar saying something true.
+	http.HandleFunc("/agent", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || app.WantsJSON(r) {
+			agent.Handler(w, r)
+			return
+		}
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			id = r.URL.Query().Get("agent")
+		}
+		owner := ""
+		if sess, _ := auth.TrySession(r); sess != nil {
+			owner = sess.Account
+		}
+		to := agent.Path(owner, id)
+		// Everything except the agent's name, which is in the path now.
+		rest := r.URL.Query()
+		rest.Del("id")
+		rest.Del("agent")
+		if q := rest.Encode(); q != "" {
+			to += "?" + q
+		}
+		http.Redirect(w, r, to, http.StatusFound)
+	})
+	http.HandleFunc("/agent/handoff", agent.HandoffHandler)
+	http.HandleFunc("/agent/title", agent.TitleHandler)
+	http.HandleFunc("/agent/", agent.Handler)
+	http.HandleFunc("/agents/data", agent.AgentsHandler)
+	// The old path, so a page cached with the previous script keeps working.
+	http.HandleFunc("/agent/agents", agent.AgentsHandler)
+	http.HandleFunc("/agent/new", agent.NewAgentHandler)
+	http.HandleFunc("/agent/run", agent.RunHandler)
+	// Has the answer landed yet — see agent/pending.go.
+	http.HandleFunc("/agent/pending", agent.PendingHandler)
+
+	// serve mail inbox
+	http.HandleFunc("/mail", mail.Handler)
+	http.HandleFunc("/.well-known/jmap", mail.JMAPHandler)
+	http.HandleFunc("/mail/jmap", mail.JMAPHandler)
+	http.HandleFunc("/mail/jmap/", mail.JMAPHandler)
+
+	// serve markets page
+	http.HandleFunc("/markets", markets.Handler)
+	http.HandleFunc("/text", text.Handler)
+	http.HandleFunc("/food", food.Handler)
+	http.HandleFunc("/transit", transit.Handler)
+	// The basemap under anything spatial. /maps is the page; the images are at
+	// /tiles/<style>/<z>/<x>/<y>.png, which is the shape every map library
+	// takes and the only shape any of them take. See service/maps.
+	//
+	// Everything the service serves lives under the service's route, which is
+	// what "service name == route" means and what /apps/<slug>/icon.svg already
+	// does. The tile path was left at /tiles when the service was renamed, on
+	// the argument that map configs somewhere point at it — a guess about a
+	// service days old, which bought a top-level route with no service behind
+	// it.
+	//
+	// /tiles/ still answers, permanently redirected. Browsers and map libraries
+	// cache a 301, so a config that has not been updated costs one extra round
+	// trip and then stops costing anything.
+	http.HandleFunc("/maps", maps.Handler)
+	http.HandleFunc("/maps/", maps.TileHandler)
+	// What you have, and the key that can spend it. One destination: x402 is a
+	// substrate and a substrate does not get a page of its own, the same way
+	// SMTP has none and its connect details are a section under /inbox.
+	http.HandleFunc("/wallet", account.Wallet)
+	// Taking your key with you. A page action and never a tool: an agent that
+	// can read a private key is a prompt injection away from posting it
+	// somewhere. It re-checks the password, so it is not in authRequired()
+	// either — the handler wants the session *and* the password.
+	//
+	// Registered before the /wallet/ prefix below and matched ahead of it:
+	// net/http picks the longest matching pattern, and this is an exact one.
+	http.HandleFunc("/wallet/export", wallet.ExportHandler)
+	// Turning USDC in the wallet into credits — the one thing the crypto card
+	// could not do, so money sent to your own address here bought nothing here.
+	// Its own route rather than a case in BalanceHandler because it is a POST
+	// that moves money on a chain, and the CSRF and method checks want to be
+	// obvious rather than nested three switches deep.
+	http.HandleFunc("/wallet/convert", account.ConvertUSDC)
+	http.HandleFunc("/account/convert", account.ConvertUSDC)
+	http.HandleFunc("/account/crypto", account.CryptoHandler)
+	// The money actions. account/ owns them because it owns the ledger.
+	http.HandleFunc("/wallet/", account.BalanceHandler)
+	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
+	// Who is here. See service/users: the directory that did not exist, so a
+	// person could sign up alongside a hundred and eighty others and meet none
+	// of them.
+	http.HandleFunc("/users", users.Handler)
+	http.HandleFunc("/groups", groups.Handler)
+	http.HandleFunc("/contacts", contacts.Handler)
+	http.HandleFunc("/docs", docs.Handler)
+	http.HandleFunc("/forms", forms.Handler)
+	http.HandleFunc("/forms/view", forms.PublicHandler)
+	http.HandleFunc("/forms/submit", forms.SubmissionHandler)
+	http.HandleFunc("/forms/received", forms.ReceivedHandler)
+	http.HandleFunc("/notes", notes.Handler)
+	http.HandleFunc("/notify", notify.Handler)
+	// Preserve the complete conversation UI until the SDK app replaces it.
+	http.HandleFunc("/sms", sms.Handler)
+
+	// Twilio posts everything arriving on a Messaging Service to one webhook,
+	// so both paths answer and whichever is configured works.
+	http.HandleFunc("/whatsapp/twilio", sms.WebhookHandler)
+	http.HandleFunc("/sms/webhook", sms.WebhookHandler)
+	// What became of a message we sent. The provider's own signature is the
+	// credential, the same as the inbound webhook beside it.
+	http.HandleFunc("/sms/status", sms.StatusHandler)
+	http.HandleFunc("/contacts/", contacts.Handler)
+	taskPage := func(w http.ResponseWriter, r *http.Request) {
+		tasks.NamedHandler(w, r, func(owner, id string) string {
+			if id == "" {
+				return agent.DefaultName()
+			}
+			return agent.NameOf(owner, id)
+		})
+	}
+	http.HandleFunc("/tasks", taskPage)
+	http.HandleFunc("/tasks/", taskPage)
+	http.HandleFunc("/images", images.Handler)
+	http.HandleFunc("/images/daily/", images.DailyImageHandler)
+	http.HandleFunc("/images/file/", images.GeneratedImageHandler)
+	http.HandleFunc("/events", eventsPageHandler)
+	// /files lists a person's files; /files/<id> serves one. A stored file's URL
+	// has to be fetchable by an ordinary HTTP client, or handing someone a link
+	// to it is worthless.
+	http.HandleFunc("/files", files.Handler)
+	http.HandleFunc("/files/", files.Handler)
+
+	// serve social page
+	http.HandleFunc("/social", social.Handler)
+	http.HandleFunc("/social/thread", social.ThreadHandler)
+
+	// Stream (console) routes
+	http.HandleFunc("/stream", stream.Handler)
+	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
+
+	// Weather negotiates its forecast page and the existing JSON response.
+	http.HandleFunc("/weather", weather.Handler)
+	http.HandleFunc("/prayer", prayer.Handler)
+	http.HandleFunc("/islam", islam.Handler)
+
+	// Every service answers at its own name. This was the one that did not —
+	// see service/hazards/page.go for how the route went missing.
+	http.HandleFunc("/hazards", hazards.Handler)
+
+	// serve places page
+	http.HandleFunc("/places", places.Handler)
+	http.HandleFunc("/places/", places.Handler)
+
+	// serve weather page
+
+	// serve flights page
+	http.HandleFunc("/flights", flights.Handler)
+
+	// serve routes page
+	http.HandleFunc("/routes", routes.Handler)
+
+	// serve apps
+	http.HandleFunc("/apps", apps.Handler)
+	http.HandleFunc("/apps/", apps.Handler)
+
+	// Writing one. A door onto the apps service rather than a service of its
+	// own: the output is an app, the store is apps, and a service named for an
+	// action would have to import that one to do anything at all.
+
+	// Work is registered above as the delegated execution destination.
+
+	// content controls (flag, save, dismiss, block, share)
+
+	// auth
+	http.HandleFunc("/login", account.Login)
+	http.HandleFunc("/logout", account.Logout)
+	http.HandleFunc("/signup", account.Signup)
+	http.HandleFunc("/request-invite", account.RequestInvite)
+	http.HandleFunc("/invite", account.InviteHandler)
+	http.HandleFunc("/report", app.ReportHandler)
+	// What you are doing, set on your own profile. See internal/user/status.go.
+
+	http.HandleFunc("/inbox/settings", agent.ScheduledPreferencesHandler)
+	http.HandleFunc("/account", account.Account)
+	http.HandleFunc("/account/profile", account.Account)
+	http.HandleFunc("/account/avatar", account.Account)
+	http.HandleFunc("/account/billing", account.Account)
+	http.HandleFunc("/account/subscription", account.SubscriptionHandler)
+	http.HandleFunc("/account/usage", account.UsageHandler)
+	http.HandleFunc("/account/connections", account.Account)
+	http.HandleFunc("/account/developer", account.Account)
+	http.HandleFunc("/account/app-password", account.AppPasswordHandler)
+	http.HandleFunc("/account/codex", account.CodexHandler)
+	http.HandleFunc("/verify", account.Verify)
+	http.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) { account.Session(w, api.CredentialRequest(r)) })
+
+	http.HandleFunc("/account/clients", account.ClientsHandler)
+	http.HandleFunc("/account/tokens", account.TokenHandler)
+	http.HandleFunc("/token", account.TokenHandler)
+	http.HandleFunc("/passkey/", account.PasskeyHandler)
+
+	// OAuth 2.1 for MCP authentication
+	http.HandleFunc("/.well-known/oauth-authorization-server", auth.OAuthMetadataHandler)
+	http.HandleFunc("/.well-known/oauth-protected-resource", auth.OAuthResourceHandler)
+
+	// Proof of domain ownership for the MCP registry, which accepts either a
+	// DNS TXT record or this file. Serving it is the easier half: it ships with
+	// the binary, so an operator publishing their own instance needs no DNS
+	// access and nothing to remember to keep in sync.
+	//
+	// The value is a public key. It is safe to serve and useless without the
+	// private half, which stays with whoever publishes. MCP_REGISTRY_PROOF holds
+	// it; unset, this 404s like any other absent file.
+	http.HandleFunc("/.well-known/mcp-registry-auth", func(w http.ResponseWriter, r *http.Request) {
+		proof := strings.TrimSpace(settings.Get("MCP_REGISTRY_PROOF"))
+		if proof == "" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte(proof + "\n"))
+	})
+	// Google sign-in (Mu as an OAuth client of Google).
+	// One list of agents, whichever page you found it on.
+	//
+	// The chat at /agent already had user-defined agents — a name, a prompt and
+	// an allowed set of services — stored by agent/micro. /agents adds the two
+	// things those lacked: a scope that is enforced against a credential, and a
+	// token to hand out. Rather than a second concept wearing the same word,
+	// the record on /agents resolves as one of those agents, so an agent marked
+	// "runs here" can be talked to, with its own instructions and confined to
+	// its own services. Without this, that option on the create form stored a
+	// field nothing read.
+	// One store. Agents made in the chat used to live in agent/micro's own
+	// file while /agents wrote to the roster, so "my agents" depended on which
+	// page you asked and an agent made in the chat had no scope and no token.
+	// Existing ones are imported once, without minting credentials nobody asked
+	// for; the old file is left alone so this is reversible.
+	if n := agent.ImportUserAgents(micro.AllUserAgents()); n > 0 {
+		app.Log("agents", "imported %d agent(s) into the roster", n)
+	}
+	// /agents is a page, not a service, and deliberately has no RPC surface.
+	// A tool that created agents would let a scoped agent mint an unscoped one,
+	// which is privilege escalation dressed as a feature. Agents are created by
+	// a person in a browser or not at all.
+	http.HandleFunc("/agents", agent.RosterHandler)
+
+	http.HandleFunc("/oauth2/google", account.GoogleLogin)
+	http.HandleFunc("/oauth2/google/connect", account.GoogleConnect)
+	http.HandleFunc("/oauth2/callback", account.GoogleCallback)
+	http.HandleFunc("/oauth2/google/gmail", account.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/drive", account.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/calendar", account.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/contacts", account.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/disconnect", account.GoogleGrantDisconnect)
+
+	http.HandleFunc("/admin/oauth", admin.OAuthHandler)
+	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
+	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)
+	http.HandleFunc("/oauth/token", auth.OAuthTokenHandler)
+
+	// The doors that are not MCP, for the connect card on /tools.
+	//
+	// Keep API rendering independent of the services behind these addresses.
+	api.DevClientsFunc = func() []api.DevClient {
+		var out []api.DevClient
+		for _, c := range client.Developer() {
+			out = append(out, api.DevClient{Address: c.Address, Note: c.Note, Example: c.Example})
+		}
+		return out
+	}
+
+	// internal status (injected into admin server page)
+	app.DKIMStatusFunc = mail.DKIMStatus
+	app.DigestStatusFunc = digest.Status
+	app.BriefStatusFunc = brief.Status
+
+	// public status page - service health checks
+	app.HealthCheckFunc = runHealthChecks
+	http.HandleFunc("/status", app.StatusHandler)
+
+	// Installation stays minimal; optional operator guides live under /help.
+	http.HandleFunc("/install", help.InstallHandler)
+	http.HandleFunc("/help", help.Handler)
+	http.HandleFunc("/help/", help.Handler)
+
+	// ActivityPub: WebFinger discovery
+	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
+
+	// presence WebSocket endpoint
+	http.HandleFunc("/presence", user.PresenceHandler)
+
+	// /version — what's deployed and how it's wired, for verifying releases.
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(versionInfo())
+	})
+
+	// The runtime service API reference.
+	http.HandleFunc("/api", publicReferenceHandler)
+
+	// /api/v1/<service>/<method> — the door for a program that is not an agent.
+	//
+	// It has no auth story and no price table of its own; it turns a path into a
+	// tool name and calls the same function /mcp calls, which is why adding it
+	// is not adding a second way in. See internal/api/rest.go.
+	// Both forms, because serve() strips a trailing slash before routing: with
+	// only the subtree pattern the bare root redirects to itself forever. Every
+	// other subtree route here does the same.
+	http.HandleFunc(api.RESTRoot, publicRESTHandler)
+	http.HandleFunc(api.RESTPrefix, publicRESTHandler)
+
+	// Product operations have separate routes; runtime tools never switch by token.
+	http.HandleFunc("/developers", DevelopersHandler)
+	http.HandleFunc("/x402", X402PageHandler)
+
+	http.HandleFunc("/tools", api.ServiceToolsPageHandler)
+
+	// /tools/<name> — one tool. The smallest unit in the catalogue, and until
+	// now the only one with no page: clicking a tool jumped to a fragment on
+	// the playground. See internal/api/tool_page.go.
+	http.HandleFunc("/tools/", api.ToolPageHandler)
+	http.HandleFunc("/services", api.ToolsPageHandler)
+	// /services/<name> — one service as the thing you call: what it knows right
+	// now, every method with its arguments and its price, and a form that makes
+	// the call for real. See internal/api/service_ref.go.
+	http.HandleFunc("/services/", api.ServiceRefHandler)
+	http.HandleFunc("/service/", api.ServiceRefHandler)
+	// What your agents did. Flows were recorded and never served.
+	// Runs belong to the agent, so they live under it and the agent surface
+	// tabs between them. /runs still works — links to it exist.
+	http.HandleFunc("/agent/connect", agent.ConnectHandler)
+	// Search everything you have ever said to an agent. The list of your
+	// conversations is /agent; this is the search over all of them.
+	http.HandleFunc("/recall", recall.Handler)
+	http.HandleFunc("/bookmarks", bookmarks.Handler)
+	http.HandleFunc("/saved", bookmarks.Handler)
+	http.HandleFunc("/saved/search", bookmarks.Handler)
+	http.HandleFunc("/bookmarks/search", bookmarks.Handler)
+	// And the search over what the instance has collected, which is the other
+	// archive and belongs to nobody.
+	http.HandleFunc("/archive", archive.Handler)
+	// Deleting a conversation. The list of them is the rail on /agent.
+	http.HandleFunc("/agent/session/", inbox.SessionHandler)
+	// Putting a conversation back to unread. Its own path, because /inbox's POST
+	// is the instruction box and the two are not variations of each other.
+	http.HandleFunc("/inbox/unread", inbox.UnreadHandler)
+	http.HandleFunc("/inbox/delete", inbox.DeleteHandler)
+	http.HandleFunc("/inbox/held", inbox.HeldHandler)
+	// Writing one yourself. An exact route, because
+	// /inbox/<box> is a mailbox name and a box could be called anything.
+	http.HandleFunc("/inbox/new", inbox.NewHandler)
+	// What to type into a mail client, for the same reason and by the same
+	// rule: an exact route, because a box could be called imap.
+	http.HandleFunc("/inbox/imap", inbox.ImapHandler)
+	// Where you are, which every specialist needs and nothing server-side
+	// held — see account/place.go.
+	http.HandleFunc("/account/place", account.PlaceHandler)
+	// Telling a device something happened while the page is closed.
+	//
+	// Under /notify, which is what this feature is called. It was /push — so the
+	// product had /notify, a service with tools and a page, and /push, four
+	// endpoints doing the same feature under a second name, and nothing said
+	// which was which. One noun. internal/push stays what it is, the mechanism
+	// underneath, the way internal/x402 sits under the wallet.
+	//
+	// The old paths still answer. A service worker installed months ago has
+	// "/push/received" compiled into it and will go on posting there until the
+	// browser takes a new copy, and a receipt that 404s is the same silence this
+	// whole feature has been drowning in.
+	for _, p := range []string{"/notify/", "/push/"} {
+		http.HandleFunc(p+"subscribe", push.SubscribeHandler)
+		http.HandleFunc(p+"unsubscribe", push.SubscribeHandler)
+		http.HandleFunc(p+"test", push.SubscribeHandler)
+		http.HandleFunc(p+"received", push.SubscribeHandler)
+	}
+	// Two pages that were tabs and are not any more: one listed the same
+	// conversations the rail lists, the other listed the workflow records behind
+	// them. Both are on /agent now — the conversation, and the tools each answer
+	// came from beside the answer.
+	// /runs, /agent/runs and /agent/threads are gone. They were three routes
+	// redirecting to /inbox — the remains of a page listing every workflow
+	// record, prompt by prompt, which was a fourth name on a surface that
+	// already had three. A redirect kept for links that existed is worth
+	// keeping; three of them for one deleted page, long after anything linked
+	// to it, is a route table remembering something nobody does.
+	// A service rendered at a glance — see internal/api/card.go.
+	http.HandleFunc("/card", api.CardHandler)
+	http.HandleFunc("/card/", api.CardHandler)
+	// Your own usage — the caller-facing half of /admin/traffic.
+	http.HandleFunc("/usage", account.UsageMoved)
+	http.HandleFunc("/billing", account.BillingMoved)
+	http.HandleFunc("/mcp", publicMCPHandler)
+
+	// serve the app
+	http.Handle("/", app.Serve())
+}
+
+// Only redirects remain for shared links to retired entry pages.
+func conversationRedirect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	target := "/"
+	if r.URL.Query().Get("view") == "feed" || r.URL.Query().Get("mode") == "display" {
+		target = "/services"
+	} else if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	http.Redirect(w, r, target, http.StatusSeeOther)
+}
