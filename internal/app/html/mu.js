@@ -1895,126 +1895,68 @@ document.addEventListener('submit',function(event){if(event.target.matches('[dat
 document.addEventListener('click',function(event){var button=event.target.closest('[data-image-share]');if(button){imgShare(button);}});
 }
 
-// Voice is a lazy, opt-in client. Audio and speech models stay in its worker.
+// Voice is opt-in and uses the browser's speech services.
 (()=>{
- const panel=document.getElementById('voice-panel');
- if(!panel)return;
- const el=id=>document.getElementById('voice-'+id);
- let worker,stream,context,processor,source,output,ready=false,transcribing=false,recording=false,active=false,busy=false;
- let chunks=[],samples=0,heard=false,quiet=0,armedUntil=0,speechID=0,generation=0,mode='manual';
- const say=text=>{el('status').textContent=text;};
- const parentMessage=(type,extra={})=>{if(parent!==window)parent.postMessage({type,...extra},location.origin);};
- function interrupt(){speechID++;if(output){output.onended=null;try{output.stop();}catch{}output=null;}el('interrupt').disabled=true;}
- function stop(){generation++;active=false;ready=false;recording=false;transcribing=false;interrupt();if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;if(processor){processor.disconnect();processor.onaudioprocess=null;}if(source)source.disconnect();if(context)context.close().catch(()=>{});context=null;if(worker)worker.terminate();worker=null;chunks=[];samples=0;el('record').disabled=true;el('enable').disabled=false;el('enable').hidden=false;el('stop').hidden=true;say('Microphone off.');}
- function listen(kind){
-  if(!active||!ready||busy||transcribing)return;
-  mode=kind;chunks=[];samples=0;heard=false;quiet=0;recording=true;el('record').textContent='Stop recording';
-  say(kind==='wake'?'Listening locally for “Hey Micro”…':kind==='request'?'Yes? Say your request.':'Listening… pause when finished.');
- }
- function finish(){
-  if(!recording)return;
-  recording=false;el('record').textContent='Record';
-  if(!heard||samples<2400){chunks=[];if(el('wake').checked)listen('wake');else say('No speech heard. Try again.');return;}
-  const audio=new Float32Array(samples);let i=0;for(const chunk of chunks){audio.set(chunk,i);i+=chunk.length;}chunks=[];
-  transcribing=true;el('record').disabled=true;say('Recognising speech on this device…');worker.postMessage({type:'transcribe',audio},[audio.buffer]);
- }
- async function enable(){
-  if(active)return;
-  if(!isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.AudioContext){say('Voice needs a supported browser on HTTPS.');return;}
-  active=true;const current=++generation;el('enable').disabled=true;el('stop').hidden=false;
-  try{context=new AudioContext();await context.resume();}catch{if(generation===current){stop();say('Could not start audio. Tap Enable voice to try again.');}return;}
-  if(!active||generation!==current)return;
-  say('Loading local speech recognition…');
-  worker=new Worker('/voice/worker.js?v=1',{type:'module'});
-  worker.onerror=()=>{stop();say('Could not load local voice. Check your connection and try again.');};
-  worker.onmessage=async ({data})=>{
-   if(!active||generation!==current)return;
-   if(data.type==='status')say(data.text);
-   else if(data.type==='ready'){
-    try{
-     const acquired=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
-     if(!active||generation!==current){acquired.getTracks().forEach(t=>t.stop());return;}
-     stream=acquired;source=context.createMediaStreamSource(stream);processor=context.createScriptProcessor(4096,1,1);
-     processor.onaudioprocess=e=>{
-      if(!recording||transcribing||busy||output||!active)return;
-      const input=e.inputBuffer.getChannelData(0),ratio=context.sampleRate/16000;
-      const out=new Float32Array(Math.floor(input.length/ratio));let power=0;
-      for(let n=0;n<out.length;n++){const a=Math.floor(n*ratio),b=Math.min(input.length,Math.floor((n+1)*ratio));let total=0;for(let j=a;j<b;j++)total+=input[j];out[n]=total/Math.max(1,b-a);power+=out[n]*out[n];}
-      const talking=Math.sqrt(power/out.length)>.012;
-      if(talking){if(!heard)say(mode==='wake'?'Hearing you… pause after “Hey Micro”.':'Hearing your request… pause when finished.');heard=true;quiet=0;}else quiet+=out.length;
-      chunks.push(out);samples+=out.length;
-      // Before speech, retain just a short lead-in rather than idle audio.
-      if(!heard&&samples>8000){chunks=[out];samples=out.length;}
-      if(heard&&(quiet>16000||samples>=320000))finish();
-     };
-     source.connect(processor);processor.connect(context.destination);ready=true;el('enable').hidden=true;el('record').disabled=false;
-     if(el('wake').checked)listen('wake');else say('Ready. Press Record to speak.');
-    }catch{stop();say('Microphone unavailable. Allow microphone access in your browser to use voice.');}
-   }else if(data.type==='transcript'){
-    transcribing=false;el('record').disabled=false;
-    const text=data.text.trim();
-    if((mode==='wake'||mode==='request')&&!el('wake').checked){say('Wake listening off.');return;}
-    if(mode==='wake'){
-     const match=text.match(/^\s*hey[ ,.!-]+micro\b[ ,.!?:-]*(.*)$/i);
-     if(match){armedUntil=Date.now()+15000;if(match[1].trim()){el('text').value=match[1].trim();send();}else{listen('request');}}
-     else if(el('wake').checked){listen('wake');say(text?'Heard “'+text+'”. Say “Hey Micro” to start.':'No words recognised. Say “Hey Micro” again, or press Record.');}
-    }else if(mode==='request'&&Date.now()<armedUntil){el('text').value=text;if(text)send();else listen('wake');}
-    else{el('text').value=text;el('send').disabled=!text;say(text?'Check your message, then Send.':'No words recognised. Try again.');}
-   }else if(data.type==='audio'){
-    if(data.id!==speechID||!context)return;
-    const buffer=context.createBuffer(1,data.samples.length,data.rate);buffer.copyToChannel(data.samples,0);output=context.createBufferSource();output.buffer=buffer;output.connect(context.destination);el('interrupt').disabled=false;say('Speaking…');output.onended=()=>{output=null;el('interrupt').disabled=true;if(el('wake').checked)listen('wake');else say('Ready.');};output.start();
-   }else if(data.type==='error'){
-    if(data.operation==='load'){stop();say(data.text);}else{transcribing=false;el('record').disabled=!ready;say(data.text);}
-   }
-  };
-  worker.postMessage({type:'load'});
- }
- function send(){
-  const text=el('text').value.trim();if(!text||busy)return;
-  if(parent===window){say('Open voice using the microphone beside a conversation.');return;}
-  recording=false;interrupt();busy=true;el('send').disabled=true;say('Sending to Micro…');parentMessage('micro-voice-send',{text});
- }
- window.addEventListener('message',e=>{
-  if(e.origin!==location.origin||e.source!==parent)return;
-  if(e.data?.type==='micro-voice-rejected'){busy=false;el('send').disabled=false;say(e.data.text);}
-  if(e.data?.type==='micro-voice-answer'){
-   busy=false;el('text').value='';el('answer').textContent=e.data.text||'';
-   if(active&&el('speak').checked&&e.data.text){recording=false;const id=++speechID;el('interrupt').disabled=false;say('Preparing spoken reply…');worker.postMessage({type:'speak',text:e.data.text.slice(0,1500),id});}
-   else if(el('wake').checked)listen('wake');else say('Reply received.');
-  }
- });
- el('enable').addEventListener('click',enable);el('stop').addEventListener('click',stop);
- el('record').addEventListener('click',()=>{interrupt();recording?finish():listen('manual');});
- el('interrupt').addEventListener('click',()=>{interrupt();if(el('wake').checked)listen('wake');else say('Stopped speaking.');});
- el('send').addEventListener('click',send);el('text').addEventListener('input',()=>{el('send').disabled=busy||!el('text').value.trim();});
- el('wake').addEventListener('change',()=>{if(el('wake').checked&&ready)listen('wake');else{recording=false;armedUntil=0;say('Wake listening off.');}});
- el('speak').addEventListener('change',()=>{if(!el('speak').checked)interrupt();});
- document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);
-})();
-
-(()=>{
- const form=document.getElementById('command-form');
- const input=document.getElementById('command-input');
+ const form=document.getElementById('command-form'),input=document.getElementById('command-input');
  if(!form||!input||!document.body.classList.contains('signed-in'))return;
  const send=form.querySelector('button[type="submit"]');if(!send)return;
- const button=document.createElement('button');button.type='button';button.className='voice-open';button.setAttribute('aria-label','Talk to Micro');button.title='Talk to Micro';button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3m-4 0h8"/></svg>';send.before(button);
- let dialog,frame,awaiting=false;
- function close(){awaiting=false;if(frame)frame.remove();if(dialog){dialog.close();dialog.remove();}dialog=frame=null;button.focus();}
- button.addEventListener('click',()=>{
-  if(dialog)return;
-  dialog=document.createElement('dialog');dialog.className='voice-dialog';dialog.setAttribute('aria-label','Talk to Micro');
-  const stop=document.createElement('button');stop.type='button';stop.textContent='Close voice';stop.addEventListener('click',close);
-  frame=document.createElement('iframe');frame.src='/voice';frame.title='Voice controls';frame.allow='microphone';dialog.append(stop,frame);document.body.append(dialog);dialog.addEventListener('cancel',e=>{e.preventDefault();close();});dialog.showModal();
+ const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+ const button=document.createElement('button');button.type='button';button.className='voice-open';button.title='Enable Hey Micro — browser speech may process audio online';button.setAttribute('aria-label','Enable Hey Micro');button.setAttribute('aria-pressed','false');button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3m-4 0h8"/></svg>';send.before(button);
+ const status=document.createElement('p');status.className='text-sm text-muted';status.hidden=true;status.setAttribute('role','status');status.setAttribute('aria-live','polite');form.after(status);
+ const dialog=document.createElement('dialog');dialog.className='voice-overlay';dialog.setAttribute('aria-label','Hey Micro');
+ dialog.innerHTML='<div class="section-stack"><div class="form-actions"><strong>Hey Micro</strong><button type="button" data-voice-stop>Stop voice</button></div><p data-voice-state role="status" aria-live="polite"></p><p data-voice-text class="preserve-whitespace"></p><p data-voice-answer class="preserve-whitespace" aria-live="polite"></p><label class="check-label"><input type="checkbox" data-voice-speak checked> Speak replies</label><p class="text-sm text-muted">Listens while Micro is open and visible. Your browser may process audio online.</p></div>';
+ document.body.append(dialog);
+ const state=dialog.querySelector('[data-voice-state]'),transcript=dialog.querySelector('[data-voice-text]'),answer=dialog.querySelector('[data-voice-answer]'),speak=dialog.querySelector('[data-voice-speak]');speak.disabled=!window.speechSynthesis;
+ const preference=value=>{try{if(value!==undefined)localStorage.setItem('mu.voice',value?'on':'off');return localStorage.getItem('mu.voice')==='on';}catch{return false;}};
+ let recognition=null,enabled=false,awaiting=false,speaking=false,armed=false,restart,pause,expiry,utterance,pending='',voiceRequest=false;
+ const say=text=>{status.hidden=false;status.textContent=text;state.textContent=text;};
+ function clearRequest(){clearTimeout(pause);clearTimeout(expiry);armed=false;pending='';}
+ function halt(){clearTimeout(restart);if(recognition){const old=recognition;recognition=null;old.onend=null;old.onresult=null;old.onerror=null;old.abort();}}
+ function cancelSpeech(){if(utterance){utterance.onend=null;utterance.onerror=null;utterance=null;}speaking=false;window.speechSynthesis?.cancel();}
+ function stop(){enabled=false;clearRequest();halt();cancelSpeech();button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','Enable Hey Micro');button.title='Enable Hey Micro';}
+ function submit(){
+  if(!enabled||awaiting||!pending.trim())return;
+  const text=pending.trim();clearRequest();
+  if(input.value.trim()||send.disabled){stop();say('Send or clear your current message, then tap the microphone again.');return;}
+  if(input.maxLength>0&&text.length>input.maxLength){stop();say('That request is too long. Please try a shorter message.');return;}
+  input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));awaiting=true;voiceRequest=true;halt();say('Waiting for Micro…');form.requestSubmit();
+ }
+ function start(){
+  clearTimeout(restart);if(!Recognition||!enabled||awaiting||speaking||document.hidden||recognition)return;
+  const current=new Recognition();recognition=current;current.lang=document.documentElement.lang||'en-GB';current.continuous=false;current.interimResults=true;
+  current.onstart=()=>say(armed?'Yes? Say your request.':'Listening for “Hey Micro”…');
+  current.onresult=event=>{
+   if(recognition!==current||!enabled)return;
+   let text='';for(let i=0;i<event.results.length;i++)text+=event.results[i][0].transcript;
+   const match=text.match(/^\s*hey[ ,.!-]+micro\b[ ,.!?:-]*(.*)$/i);
+   if(!armed&&!match)return;
+   if(!armed){armed=true;answer.textContent='';transcript.textContent='';if(!dialog.open)dialog.show();expiry=setTimeout(()=>{clearRequest();dialog.close();say('Listening for “Hey Micro”…');},15000);}
+   text=match?match[1].trim():text.trim();pending=text;transcript.textContent=text;
+   clearTimeout(pause);say(text?'Listening…':'Yes? Say your request.');
+   if(text){clearTimeout(expiry);pause=setTimeout(submit,500);}
+  };
+  current.onerror=event=>{if(event.error==='no-speech')return;stop();say(event.error==='not-allowed'?'Tap the microphone to resume voice; allow microphone access if your browser asks.':'Browser speech failed ('+event.error+'). Tap the microphone to retry.');};
+  current.onend=()=>{if(recognition===current)recognition=null;if(enabled&&!awaiting&&!speaking)restart=setTimeout(start,500);};
+  try{current.start();}catch{stop();say('Tap the microphone to start voice in this browser.');}
+ }
+ function enable(){
+  status.hidden=false;if(!Recognition){say('Speech recognition is unavailable in this browser. You can still type your message.');return;}
+  enabled=true;button.setAttribute('aria-pressed','true');button.setAttribute('aria-label','Stop voice');button.title='Stop voice';say('Starting voice. Your browser may process audio online.');start();
+ }
+ function disable(){preference(false);stop();dialog.close();say('Voice off.');}
+ button.addEventListener('click',()=>{if(enabled||speaking){disable();return;}preference(true);enable();});
+ dialog.querySelector('[data-voice-stop]').addEventListener('click',disable);dialog.addEventListener('cancel',event=>{event.preventDefault();disable();});
+ speak.addEventListener('change',()=>{if(!speak.checked){cancelSpeech();start();}});
+ form.addEventListener('submit',()=>{if(!input.value.trim()&&!voiceRequest)return;halt();clearRequest();awaiting=true;});
+ form.addEventListener('voice-answer',event=>{
+  awaiting=false;if(!voiceRequest){start();return;}voiceRequest=false;answer.textContent=event.detail.text;
+  if(!enabled||!speak.checked||!window.speechSynthesis||document.hidden){start();return;}
+  halt();cancelSpeech();speaking=true;utterance=new SpeechSynthesisUtterance(event.detail.text);utterance.lang=document.documentElement.lang||'en-GB';say('Speaking…');
+  utterance.onend=()=>{speaking=false;utterance=null;start();};utterance.onerror=()=>{speaking=false;utterance=null;stop();say('Could not speak the reply. It is shown here. Tap the microphone to resume.');};window.speechSynthesis.speak(utterance);
  });
- window.addEventListener('message',e=>{
-  if(!frame||e.source!==frame.contentWindow||e.origin!==location.origin||e.data?.type!=='micro-voice-send')return;
-  const reject=text=>frame.contentWindow.postMessage({type:'micro-voice-rejected',text},location.origin);
-  if(send.disabled||awaiting){reject('Wait for Micro to finish, then try again.');return;}
-  if(input.value.trim()){reject('There is an unsent message in your conversation. Close voice to send or clear it first.');return;}
-  const text=e.data.text;if(typeof text!=='string'||!text.trim()||text.length>input.maxLength){reject('This message is too long. Please shorten it.');return;}
-  awaiting=true;input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));form.requestSubmit();
- });
- form.addEventListener('voice-answer',e=>{if(frame&&awaiting){awaiting=false;frame.contentWindow.postMessage({type:'micro-voice-answer',text:e.detail.text},location.origin);}});
- form.addEventListener('voice-error',()=>{if(frame&&awaiting){awaiting=false;frame.contentWindow.postMessage({type:'micro-voice-rejected',text:'Micro could not complete the request. Close voice to check the conversation before retrying.'},location.origin);}});
- form.addEventListener('thread-leaving',close);window.addEventListener('pagehide',close);
+ form.addEventListener('voice-error',()=>{awaiting=false;voiceRequest=false;stop();say('Micro could not complete the request. Check the conversation before retrying.');});
+ const leave=()=>{stop();dialog.close();say('Voice paused.');};
+ form.addEventListener('thread-leaving',()=>{voiceRequest=false;awaiting=false;leave();});window.addEventListener('pagehide',leave);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)leave();else if(preference())enable();});
+ if(preference())enable();
 })();
