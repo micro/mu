@@ -1542,6 +1542,3 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .preserve-whitespace{white-space:pre-wrap;overflow-wrap:anywhere}
 
 /* Voice is an explicit dialog; closing it releases the microphone. */
-.voice-open{display:inline-flex;align-items:center;justify-content:center;flex:none}
-
-.voice-open[aria-pressed="true"]{color:#fff;background:#426994}

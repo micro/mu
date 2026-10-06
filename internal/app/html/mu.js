@@ -403,7 +403,7 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
    if(response&&response.status===404)throw Error('Conversation not found.');
    if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to continue.');
    if(result){
-    if(!result.waiting){if(result.error)throw Error(result.error);answer.innerHTML=result.answer_html||'';form.dispatchEvent(new CustomEvent('voice-answer',{detail:{text:answer.innerText}}));return;}
+    if(!result.waiting){if(result.error)throw Error(result.error);answer.innerHTML=result.answer_html||'';return;}
     answer.textContent='Working…';
    }else answer.textContent='Reconnecting…';
   }
@@ -435,7 +435,7 @@ async function run(command){
  q.append(byline('You'),document.createTextNode(command));
  const response=document.createElement('div');response.className='answer';response.append(byline(form.dataset.agentName||'Micro'));const answer=document.createElement('div');answer.className='message-body';answer.setAttribute('aria-live','polite');answer.textContent='Working…';response.append(answer);turn.append(q,response);log.append(turn);
  requestAnimationFrame(anchorQuestion);
- try{await assistant(command,answer,version);if(version===viewVersion)status.textContent='';}catch(error){if(version===viewVersion){answer.textContent=error.message;answer.classList.add('error');status.textContent='Message not confirmed.';form.dispatchEvent(new Event('voice-error'));if(receipt&&!input.value)input.value=command;}}finally{if(version===viewVersion){busy=false;send.disabled=false;sizeInput();}}
+ try{await assistant(command,answer,version);if(version===viewVersion)status.textContent='';}catch(error){if(version===viewVersion){answer.textContent=error.message;answer.classList.add('error');status.textContent='Message not confirmed.';if(receipt&&!input.value)input.value=command;}}finally{if(version===viewVersion){busy=false;send.disabled=false;sizeInput();}}
 }
 function resumePending(){
 if(thread&&form.dataset.pending==='true'){
@@ -1894,62 +1894,3 @@ function imgShare(btn){
 document.addEventListener('submit',function(event){if(event.target.matches('[data-image-generate]')){event.preventDefault();imgGenerate();}});
 document.addEventListener('click',function(event){var button=event.target.closest('[data-image-share]');if(button){imgShare(button);}});
 }
-
-// Browser speech feeds the normal conversation composer.
-(()=>{
- const form=document.getElementById('command-form'),input=document.getElementById('command-input');
- if(!form||!input||!document.body.classList.contains('signed-in'))return;
- const send=form.querySelector('button[type="submit"]');if(!send)return;
- const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- const button=document.createElement('button');button.type='button';button.className='voice-open';button.title='Use microphone';button.setAttribute('aria-label','Use microphone');button.setAttribute('aria-pressed','false');button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3m-4 0h8"/></svg>';send.before(button);
- const status=document.createElement('p');status.className='text-sm text-muted';status.hidden=true;status.setAttribute('role','status');form.after(status);
- let enabled=false,recognition=null,awaiting=false,utterance=null,pending='',pause,idle,restart;
- const error=text=>{status.textContent=text;status.hidden=false;};
- function timers(){clearTimeout(pause);clearTimeout(idle);clearTimeout(restart);}
- function halt(){if(recognition){const old=recognition;recognition=null;old.onend=old.onresult=old.onerror=old.onspeechstart=old.onspeechend=null;old.abort();}}
- function stop(){enabled=false;timers();halt();if(utterance){utterance.onend=utterance.onerror=null;utterance=null;window.speechSynthesis?.cancel();}pending='';button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','Use microphone');button.title='Use microphone';}
- function inactivity(){clearTimeout(idle);idle=setTimeout(stop,10000);}
- function submit(){
-  if(!enabled||awaiting||!pending.trim())return;
-  if(send.disabled){stop();error('Wait for the current reply, then try the microphone again.');return;}
-  timers();halt();awaiting=true;pending='';form.requestSubmit();
- }
- function start(){
-  if(!enabled||awaiting||utterance||document.hidden||recognition)return;
-  const current=new Recognition(),prefix=pending;recognition=current;current.lang=document.documentElement.lang||'en-GB';current.continuous=false;current.interimResults=true;
-  current.onspeechstart=()=>{clearTimeout(pause);inactivity();};
-  current.onspeechend=()=>{clearTimeout(pause);if(pending.trim())pause=setTimeout(submit,1000);};
-  current.onresult=event=>{
-   if(!enabled||recognition!==current)return;
-   let text='';for(let i=0;i<event.results.length;i++)text+=event.results[i][0].transcript;
-   pending=[prefix,text.trim()].filter(Boolean).join(' ');
-   if(input.maxLength>0&&pending.length>input.maxLength){stop();error('That message is too long. Please shorten it before sending.');return;}
-   input.value=pending;input.dispatchEvent(new Event('input',{bubbles:true}));inactivity();clearTimeout(pause);
-   if(pending.trim())pause=setTimeout(submit,1000);
-  };
-  current.onerror=event=>{if(event.error==='no-speech')return;stop();error(event.error==='not-allowed'?'Allow microphone access in your browser to use voice.':'Speech recognition failed. Tap the microphone to try again.');};
-  current.onend=()=>{if(recognition===current)recognition=null;if(enabled&&!awaiting&&!utterance)restart=setTimeout(start,250);};
-  try{current.start();}catch{stop();error('Could not start speech recognition in this browser.');}
- }
- function listen(){if(!enabled)return;pending='';inactivity();start();}
- button.addEventListener('click',()=>{
-  if(enabled){stop();return;}status.hidden=true;
-  if(!Recognition){error('Speech recognition is unavailable in this browser.');return;}
-  if(send.disabled||input.value.trim()){error('Send or clear your current message before using the microphone.');return;}
-  enabled=true;awaiting=false;button.setAttribute('aria-pressed','true');button.setAttribute('aria-label','Turn microphone off');button.title='Turn microphone off';listen();
- });
- // Capture before the conversation handler clears the composer.
- form.addEventListener('submit',()=>{if(enabled&&input.value.trim()){timers();halt();pending='';awaiting=true;}},true);
- input.addEventListener('input',event=>{if(event.isTrusted&&enabled)stop();});
- form.addEventListener('voice-answer',event=>{
-  if(!enabled||!awaiting)return;awaiting=false;
-  if(document.hidden){stop();return;}
-  const text=event.detail.text;
-  if(!window.speechSynthesis||!text){listen();return;}
-  utterance=new SpeechSynthesisUtterance(text);utterance.lang=document.documentElement.lang||'en-GB';
-  utterance.onend=()=>{utterance=null;listen();};
-  utterance.onerror=()=>{utterance=null;stop();error('The reply is shown in the conversation. Tap the microphone to continue.');};
-  window.speechSynthesis.speak(utterance);
- });
- form.addEventListener('voice-error',stop);form.addEventListener('thread-leaving',stop);window.addEventListener('pagehide',stop);document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
-})();
