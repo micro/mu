@@ -1909,7 +1909,7 @@ document.addEventListener('click',function(event){var button=event.target.closes
  function listen(kind){
   if(!active||!ready||busy||transcribing)return;
   mode=kind;chunks=[];samples=0;heard=false;quiet=0;recording=true;el('record').textContent='Stop recording';
-  say(kind==='wake'?'Listening locally for “Hey Micro”…':'Listening… pause when finished.');
+  say(kind==='wake'?'Listening locally for “Hey Micro”…':kind==='request'?'Yes? Say your request.':'Listening… pause when finished.');
  }
  function finish(){
   if(!recording)return;
@@ -1921,7 +1921,10 @@ document.addEventListener('click',function(event){var button=event.target.closes
  async function enable(){
   if(active)return;
   if(!isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.AudioContext){say('Voice needs a supported browser on HTTPS.');return;}
-  active=true;const current=++generation;el('enable').disabled=true;el('stop').hidden=false;say('Loading local speech recognition…');
+  active=true;const current=++generation;el('enable').disabled=true;el('stop').hidden=false;
+  try{context=new AudioContext();await context.resume();}catch{if(generation===current){stop();say('Could not start audio. Tap Enable voice to try again.');}return;}
+  if(!active||generation!==current)return;
+  say('Loading local speech recognition…');
   worker=new Worker('/voice/worker.js?v=1',{type:'module'});
   worker.onerror=()=>{stop();say('Could not load local voice. Check your connection and try again.');};
   worker.onmessage=async ({data})=>{
@@ -1931,14 +1934,14 @@ document.addEventListener('click',function(event){var button=event.target.closes
     try{
      const acquired=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
      if(!active||generation!==current){acquired.getTracks().forEach(t=>t.stop());return;}
-     stream=acquired;context=new AudioContext();await context.resume();source=context.createMediaStreamSource(stream);processor=context.createScriptProcessor(4096,1,1);
+     stream=acquired;source=context.createMediaStreamSource(stream);processor=context.createScriptProcessor(4096,1,1);
      processor.onaudioprocess=e=>{
       if(!recording||transcribing||busy||output||!active)return;
       const input=e.inputBuffer.getChannelData(0),ratio=context.sampleRate/16000;
       const out=new Float32Array(Math.floor(input.length/ratio));let power=0;
       for(let n=0;n<out.length;n++){const a=Math.floor(n*ratio),b=Math.min(input.length,Math.floor((n+1)*ratio));let total=0;for(let j=a;j<b;j++)total+=input[j];out[n]=total/Math.max(1,b-a);power+=out[n]*out[n];}
       const talking=Math.sqrt(power/out.length)>.012;
-      if(talking){heard=true;quiet=0;}else quiet+=out.length;
+      if(talking){if(!heard)say(mode==='wake'?'Hearing you… pause after “Hey Micro”.':'Hearing your request… pause when finished.');heard=true;quiet=0;}else quiet+=out.length;
       chunks.push(out);samples+=out.length;
       // Before speech, retain just a short lead-in rather than idle audio.
       if(!heard&&samples>8000){chunks=[out];samples=out.length;}
@@ -1953,8 +1956,8 @@ document.addEventListener('click',function(event){var button=event.target.closes
     if((mode==='wake'||mode==='request')&&!el('wake').checked){say('Wake listening off.');return;}
     if(mode==='wake'){
      const match=text.match(/^\s*hey[ ,.!-]+micro\b[ ,.!?:-]*(.*)$/i);
-     if(match){armedUntil=Date.now()+15000;if(match[1].trim()){el('text').value=match[1].trim();send();}else{say('Yes? Say your request.');listen('request');}}
-     else if(el('wake').checked)listen('wake');
+     if(match){armedUntil=Date.now()+15000;if(match[1].trim()){el('text').value=match[1].trim();send();}else{listen('request');}}
+     else if(el('wake').checked){listen('wake');say(text?'Heard “'+text+'”. Say “Hey Micro” to start.':'No words recognised. Say “Hey Micro” again, or press Record.');}
     }else if(mode==='request'&&Date.now()<armedUntil){el('text').value=text;if(text)send();else listen('wake');}
     else{el('text').value=text;el('send').disabled=!text;say(text?'Check your message, then Send.':'No words recognised. Try again.');}
    }else if(data.type==='audio'){
