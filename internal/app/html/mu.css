@@ -1503,3 +1503,26 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 }
 
 @media(min-width:701px){.table-scroll>.data-table{display:table;width:100%}}
+
+/* Shared admin/service tables: contain dense data; stack editable records. */
+.table-scroll{min-width:0;max-width:100%}
+.data-table{width:100%}
+.data-table :is(th,td){overflow-wrap:anywhere}
+.data-table th{white-space:nowrap}
+.data-table :is(input,select){min-width:0;max-width:100%}
+.data-table .form-inline{margin:0}
+.table-scroll>.table-wide{display:table;min-width:48rem;white-space:normal}
+.table-wide :is(th,td){min-width:7rem;max-width:28rem}
+.table-wide td[colspan]{white-space:normal}
+.table-wide details :is(pre,dl){max-height:20rem;overflow:auto}
+.table-records{table-layout:fixed}
+.table-records :is(th,td):last-child{width:7rem}
+.table-records .collection-item{display:block;padding:8px 0}
+.table-records .collection-item:first-child{padding-top:0}
+@media(max-width:900px){
+ .data-table.table-records,.table-records tbody,.table-records tr,.table-records td{display:block;width:100%;table-layout:auto}
+ .table-records thead{display:none}
+ .table-records tr{padding-block:12px;border-bottom:1px solid var(--card-border)}
+ .table-records td,.table-records td:last-child{width:100%;padding:6px 0;border:0}
+ .table-records td[data-label]::before{content:attr(data-label);display:block;color:var(--text-muted);font-size:.8rem;margin-bottom:4px}
+}

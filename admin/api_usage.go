@@ -30,11 +30,11 @@ func spendCard() string {
 	}
 	sb.WriteString(` Renews at 00:00 UTC. Funded credit remains available.</p><p class="text-sm text-muted">Set DAILY_POOL_CREDITS or daily_pool_credits in quota.json. This limits free product credit, not provider invoices. Provider estimates below include paid and operator use too.</p>`)
 	fmt.Fprintf(&sb, `<h3>Daily provider estimates</h3><p class="text-sm text-muted">Collected since %s UTC; the first day may be partial. Up to 90 days. Estimates are not invoices; recent activity may take a few seconds to save.</p>`, since.UTC().Format("2006-01-02 15:04"))
-	sb.WriteString(`<div class="scroll-x"><table><thead><tr><th>UTC day</th><th>Calls</th><th>Estimated cost</th></tr></thead><tbody>`)
+	sb.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records"><table class="data-table"><thead><tr><th>UTC day</th><th>Calls</th><th>Estimated cost</th></tr></thead><tbody>`)
 	for _, d := range days {
 		fmt.Fprintf(&sb, `<tr><td>%s</td><td>%d</td><td>$%.4f</td></tr>`, d.Day, d.Calls, d.CostCents/100)
 	}
-	sb.WriteString(`</tbody></table></div><h3>Model cost by account</h3><p class="text-sm text-muted">Last 30 UTC days of attributed model estimates, including failed runs. Collection starts with this release. Excludes unattributed calls, tools, hosting and payment fees.</p><div class="scroll-x"><table><thead><tr><th>Account</th><th>Model records</th><th>Estimated cost</th></tr></thead><tbody>`)
+	sb.WriteString(`</tbody></table></div><h3>Model cost by account</h3><p class="text-sm text-muted">Last 30 UTC days of attributed model estimates, including failed runs. Collection starts with this release. Excludes unattributed calls, tools, hosting and payment fees.</p><div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records"><table class="data-table"><thead><tr><th>Account</th><th>Model records</th><th>Estimated cost</th></tr></thead><tbody>`)
 	costs := app.AccountCosts()
 	ids := make([]string, 0, len(costs))
 	for id := range costs {
@@ -57,7 +57,7 @@ func spendCard() string {
 
 	// Usage by service table
 	sb.WriteString(`<h3>By Service</h3>`)
-	sb.WriteString(`<div class="scroll-x"><table class="ai-usage-table"><thead><tr>
+	sb.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records"><table class="data-table"><thead><tr>
 		<th>Service</th><th>Calls</th><th>Cost</th>
 	</tr></thead><tbody>`)
 
@@ -70,7 +70,7 @@ func spendCard() string {
 
 	// Recent calls
 	sb.WriteString(`<h3>Recent Calls</h3>`)
-	sb.WriteString(`<div class="scroll-x"><table class="ai-usage-table"><thead><tr>
+	sb.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records"><table class="data-table"><thead><tr>
 		<th>Time</th><th>Service</th><th>Caller</th><th>Detail</th><th>Cost</th>
 	</tr></thead><tbody>`)
 

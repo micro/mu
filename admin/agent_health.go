@@ -50,7 +50,7 @@ func agentHealthCard() string {
 
 	if len(h.TopTools) > 0 {
 		sb.WriteString(`<h3>What it calls</h3>`)
-		sb.WriteString(`<div class="scroll-x"><table class="ai-usage-table"><thead><tr>` +
+		sb.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records"><table class="data-table"><thead><tr>` +
 			`<th>Tool</th><th>Calls</th></tr></thead><tbody>`)
 		for _, c := range h.TopTools {
 			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td></tr>`,
@@ -61,7 +61,7 @@ func agentHealthCard() string {
 
 	if len(h.TopErrors) > 0 {
 		sb.WriteString(`<h3>What goes wrong</h3>`)
-		sb.WriteString(`<div class="scroll-x"><table class="ai-usage-table"><thead><tr>` +
+		sb.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Log and usage records"><table class="data-table"><thead><tr>` +
 			`<th>Error</th><th>Runs</th></tr></thead><tbody>`)
 		for _, c := range h.TopErrors {
 			// A provider's message, so it is escaped: it is text from

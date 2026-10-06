@@ -187,7 +187,7 @@ func snapshotTable(snaps []backup.Snapshot) string {
 			`button above will say which.</p></div>`)
 		return sb.String()
 	}
-	sb.WriteString(`<div class="cohort-scroll"><table class="cohort">`)
+	sb.WriteString(`<div class="table-scroll" tabindex="0" role="region" aria-label="Snapshots"><table class="data-table">`)
 	sb.WriteString(`<tr><th>Taken</th><th>Age</th><th>Files</th><th>Size</th></tr>`)
 	for _, s := range snaps {
 		fmt.Fprintf(&sb, `<tr><td>%s</td><td>%s</td><td class="n">%d</td><td class="n">%s</td></tr>`,

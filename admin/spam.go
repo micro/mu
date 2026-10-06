@@ -126,7 +126,7 @@ func blocklistSection() string {
 		</div>`
 
 	if len(bl.Emails) > 0 {
-		content += `<table class="blacklist-table"><tbody>`
+		content += `<table class="data-table stacked"><tbody>`
 		for _, email := range bl.Emails {
 			content += blocklistEmailRow(email)
 		}
@@ -148,7 +148,7 @@ func blocklistSection() string {
 		</div>`
 
 	if len(bl.IPs) > 0 {
-		content += `<table class="blacklist-table"><tbody>`
+		content += `<table class="data-table stacked"><tbody>`
 		for _, ip := range bl.IPs {
 			content += blocklistIPRow(ip)
 		}
@@ -264,7 +264,7 @@ func spamSettings() string {
 	content := fmt.Sprintf(`
 	<div class="spam-settings">
 		<h3>Settings</h3>
-		<table class="blacklist-table">
+		<table class="data-table stacked">
 			<tr>
 				<td><strong>Filter Status</strong></td>
 				<td>%s</td>
@@ -320,7 +320,7 @@ func spamSettings() string {
 		</form>`
 
 	if len(sf.BlockedTLDs) > 0 {
-		content += `<table class="blacklist-table"><tbody>`
+		content += `<table class="data-table stacked"><tbody>`
 		for _, tld := range sf.BlockedTLDs {
 			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
 				<form method="POST" class="form-action d-inline">
@@ -343,7 +343,7 @@ func spamSettings() string {
 		</form>`
 
 	if len(sf.BlockedKeywords) > 0 {
-		content += `<table class="blacklist-table"><tbody>`
+		content += `<table class="data-table stacked"><tbody>`
 		for _, kw := range sf.BlockedKeywords {
 			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
 				<form method="POST" class="form-action d-inline">
@@ -367,7 +367,7 @@ func spamSettings() string {
 		</form>`
 
 	if len(sf.AllowedSenders) > 0 {
-		content += `<table class="blacklist-table"><tbody>`
+		content += `<table class="data-table stacked"><tbody>`
 		for _, s := range sf.AllowedSenders {
 			content += fmt.Sprintf(`<tr><td><code>%s</code></td><td class="text-center">
 				<form method="POST" class="form-action d-inline">
