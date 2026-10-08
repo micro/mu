@@ -1543,3 +1543,6 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .preserve-whitespace{white-space:pre-wrap;overflow-wrap:anywhere}
 
 /* Voice is an explicit dialog; closing it releases the microphone. */
+
+button.link-button{background:transparent;border:0;border-radius:0}
+button.link-button:hover{background:transparent;color:#555}
