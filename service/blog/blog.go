@@ -65,6 +65,7 @@ type listItem struct {
 	AuthorID  string
 	HTML      string
 	Search    string
+	Tags      string
 }
 
 // postsItems is every visible post, rendered, newest first.
@@ -145,7 +146,7 @@ func formatTags(tags string) string {
 	for _, tag := range parts {
 		tag = strings.TrimSpace(tag)
 		if tag != "" {
-			badges = append(badges, fmt.Sprintf(`<span class="category">%s</span>`, tag))
+			badges = append(badges, fmt.Sprintf(`<a class="category" href="/blog?tag=%s">%s</a>`, url.QueryEscape(tag), stdhtml.EscapeString(tag)))
 		}
 	}
 
@@ -281,6 +282,9 @@ func Load() {
 		}
 	}
 
+	for _, post := range posts {
+		repairReading(post)
+	}
 	app.RecordStartup("blog.readAndDecode", time.Since(readStarted))
 
 	// No seeded posts.
@@ -536,12 +540,12 @@ func updateCacheUnlocked() {
 		if post.AuthorID != "" {
 			author = `<a href="/@` + url.PathEscape(post.AuthorID) + `">` + author + `</a>`
 		}
-		item := fmt.Sprintf(`<article class="editorial-entry"><div class="metadata-row"><time datetime="%s">%s</time><span>%s</span></div><h2><a href="/blog/post?id=%s">%s</a></h2><p>%s</p></article>`, post.CreatedAt.Format(time.RFC3339), post.CreatedAt.Format("2 January 2006"), author, url.QueryEscape(post.ID), stdhtml.EscapeString(title), postExcerpt(post.Content))
+		item := fmt.Sprintf(`<article class="editorial-entry"><div class="metadata-row"><time datetime="%s">%s</time><span>%s</span></div><h2><a href="/blog/post?id=%s">%s</a></h2><p>%s</p><div class="metadata-row">%s</div></article>`, post.CreatedAt.Format(time.RFC3339), post.CreatedAt.Format("2 January 2006"), author, url.QueryEscape(post.ID), stdhtml.EscapeString(title), previewText(post.Content), formatTags(post.Tags))
 		at := post.UpdatedAt
 		if at.IsZero() {
 			at = post.CreatedAt
 		}
-		items = append(items, listItem{At: at, Community: post.Community, Editorial: post.Editorial, ID: post.ID, AuthorID: post.AuthorID, HTML: item, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
+		items = append(items, listItem{At: at, Community: post.Community, Editorial: post.Editorial, ID: post.ID, AuthorID: post.AuthorID, HTML: item, Tags: post.Tags, Search: strings.ToLower(post.Title + " " + post.Content + " " + post.Tags + " " + post.Author)})
 	}
 
 	postsItems = items
@@ -615,6 +619,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	if view != "community" && view != "archive" {
 		view = "editorial"
 	}
+	tag := strings.TrimSpace(r.URL.Query().Get("tag"))
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	matches := func(text string) bool {
 		for _, word := range strings.Fields(strings.ToLower(query)) {
@@ -638,7 +643,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Has("view") && postView(post) != view {
 				continue
 			}
-			if !flag.IsHidden("post", post.ID) && !auth.IsBanned(post.AuthorID) && matches(post.Title+" "+post.Content+" "+post.Tags+" "+post.Author) {
+			if !flag.IsHidden("post", post.ID) && !auth.IsBanned(post.AuthorID) && hasTag(post.Tags, tag) && matches(post.Title+" "+post.Content+" "+post.Tags+" "+post.Author) {
 				// Drafts have a separate owner-only listing.
 				if post.Private && (acc == nil || post.AuthorID != acc.ID || post.isDraft()) {
 					continue
@@ -670,7 +675,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	// round gives a page of nineteen because one of the twenty was blocked.
 	var selected []listItem
 	for _, item := range items {
-		if publication(item.Editorial, item.Community) == view {
+		if (publication(item.Editorial, item.Community) == view || tag != "" && !r.URL.Query().Has("view")) && hasTag(item.Tags, tag) {
 			selected = append(selected, item)
 		}
 	}
@@ -694,7 +699,10 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 	case list != "":
 		navURL := "/blog"
 		params := url.Values{}
-		if view != "editorial" {
+		if tag != "" {
+			params.Set("tag", tag)
+		}
+		if r.URL.Query().Has("view") {
 			params.Set("view", view)
 		}
 		if query != "" {
@@ -704,7 +712,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			navURL += "?" + params.Encode()
 		}
 		list += pager.Nav(navURL)
-	case query != "":
+	case query != "" || tag != "":
 		list = "<p>No matching posts.</p>"
 	case written > 0:
 		list = "<p>Nothing to show — you have hidden everything here.</p>"
@@ -871,7 +879,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		var nav string
 		for _, tab := range []struct{ view, label, href string }{{"editorial", "Editorial", "/blog"}, {"community", "Community", "/blog?view=community"}, {"archive", "Archive", "/blog?view=archive"}} {
 			current := ""
-			if view == tab.view {
+			if view == tab.view && (tag == "" || r.URL.Query().Has("view")) {
 				current = ` aria-current="page"`
 			}
 			nav += `<a href="` + tab.href + `"` + current + `>` + tab.label + `</a>`
@@ -882,15 +890,24 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		} else if view == "archive" {
 			description = "Earlier posts and generated digests."
 		}
+		if tag != "" {
+			description = "Posts tagged " + tag + "."
+		}
 		search := ""
-		if written > 0 || query != "" {
+		if written > 0 || query != "" || tag != "" {
 			hidden := ""
-			if view != "editorial" {
+			if r.URL.Query().Has("view") {
 				hidden = `<input type="hidden" name="view" value="` + view + `">`
+			}
+			if tag != "" {
+				hidden += `<input type="hidden" name="tag" value="` + stdhtml.EscapeString(tag) + `">`
 			}
 			search = `<form method="GET" action="/blog" class="search-bar">` + hidden + `<input type="search" name="q" placeholder="Search posts" aria-label="Search posts" value="` + stdhtml.EscapeString(query) + `"><button type="submit">Search</button></form>`
 		}
-		content = `<div id="blog" class="editorial-page"><p class="text-muted">` + description + `</p><nav class="section-actions view-tabs" aria-label="Blog">` + nav + actions + `</nav>` + search + `<div id="posts-list">` + list + `</div></div>`
+		if tag != "" {
+			search += `<p class="metadata-row">Tag: ` + stdhtml.EscapeString(tag) + ` <a href="/blog">Clear filter</a></p>`
+		}
+		content = `<div id="blog" class="editorial-page"><p class="text-muted">` + stdhtml.EscapeString(description) + `</p><nav class="section-actions view-tabs" aria-label="Blog">` + nav + actions + `</nav>` + search + `<div id="posts-list">` + list + `</div></div>`
 	}
 
 	app.Respond(w, r, app.Response{Title: "Blog", Description: "Writing about Micro and the ideas behind it.", BodyClass: "reading-page editorial-reading", HTML: content})
@@ -953,7 +970,7 @@ func SavePrivatePost(id, title, content, author, owner string) error {
 		}
 		return nil
 	}
-	post := &Post{ID: id, Title: title, Content: content, Author: author, AuthorID: owner, Private: true, Published: true, Community: true, Tags: "evening-reading", CreatedAt: time.Now()}
+	post := &Post{ID: id, Title: title, Content: content, Author: author, AuthorID: owner, Private: true, Published: true, Community: true, Tags: "Research", CreatedAt: time.Now()}
 	posts = append([]*Post{post}, posts...)
 	postsMap[id] = post
 	if err := save(); err != nil {
@@ -1584,6 +1601,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	contentSB.WriteString(`<div id="blog" class="editorial-page"><a class="editorial-back" href="` + back + `">← ` + backLabel + `</a>`)
 	contentSB.WriteString(`<div class="metadata-row"><time datetime="` + post.CreatedAt.Format(time.RFC3339) + `">` + post.CreatedAt.Format("2 January 2006") + `</time><span>` + authorLink + `</span></div>`)
+	contentSB.WriteString(`<div class="metadata-row">` + formatTags(post.Tags) + `</div>`)
 	if !post.UpdatedAt.IsZero() {
 		contentSB.WriteString(`<p class="text-muted text-sm">Updated ` + post.UpdatedAt.Format("2 January 2006") + `</p>`)
 	}

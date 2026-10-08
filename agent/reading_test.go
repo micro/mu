@@ -32,11 +32,11 @@ func TestReadingRejectsCatalogueAndUnsupportedOutput(t *testing.T) {
 		t.Fatal("accepted catalogue as source prose")
 	}
 	for _, raw := range []string{`{"substantive":false,"reading":"A shelf reveals a community."}`, `{"reading":"Unassessed essay"}`, `{"substantive":true,"reading":""}`, "An unvalidated essay"} {
-		if _, err := parseEveningReading(raw); err == nil {
+		if _, _, err := parseEveningReading(raw); err == nil {
 			t.Fatalf("accepted %s", raw)
 		}
 	}
-	if text, err := parseEveningReading("```json\n{\"substantive\":true,\"reading\":\"# Patience\\nSupported reading.\"}\n```"); err != nil || text != "# Patience\nSupported reading." {
+	if title, text, err := parseEveningReading("```json\n{\"substantive\":true,\"title\":\"Patience\",\"reading\":\"# Patience\\nSupported reading.\"}\n```"); err != nil || title != "Patience" || text != "# Patience\nSupported reading." {
 		t.Fatalf("%q %v", text, err)
 	}
 }

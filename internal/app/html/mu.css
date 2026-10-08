@@ -353,7 +353,8 @@ main{overflow-wrap:anywhere}
 .directory-row{display:flex;align-items:flex-start;align-self:start;gap:12px;min-width:0;padding:16px}
 .directory-content{display:flex;flex-direction:column;flex:1;min-width:0;text-decoration:none}
 .directory-content h3{margin:0 0 4px}
-.directory-content .form-actions{margin-top:8px}
+.directory-content>.form-actions{margin:8px 0 0}
+.form-actions>a:has(>svg){display:inline-flex;align-items:center}
 .directory-content>.directory-actions{margin-top:auto;padding-top:16px}
 .directory-row>.directory-icon{align-self:flex-start}
 .card-summary{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;line-height:1.5;max-height:4.5em}

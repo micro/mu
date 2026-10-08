@@ -18,10 +18,10 @@ func TestCompletedPrivateReadingsAreOwnerOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reading := &Post{ID: "reading-old", Title: "Existing completed reading", AuthorID: owner, Private: true, Tags: "evening-reading", Content: "A finished piece.", CreatedAt: time.Now()}
-	newer := &Post{ID: "new-reading", Title: "New completed reading", AuthorID: owner, Private: true, Published: true, Content: "Another finished piece.", CreatedAt: time.Now()}
+	reading := &Post{ID: "reading-old", Title: "Existing completed reading", AuthorID: owner, Private: true, Tags: "Research", Content: "A finished piece.", CreatedAt: time.Now()}
+	newer := &Post{ID: "new-reading", Title: "New completed reading", AuthorID: owner, Private: true, Published: true, Tags: "Research", Content: "Another finished piece.", CreatedAt: time.Now()}
 	draft := &Post{ID: "unfinished", Title: "Unfinished secret", AuthorID: owner, Private: true}
-	foreign := &Post{ID: "foreign", Title: "Someone else's secret", AuthorID: "other", Private: true, Published: true}
+	foreign := &Post{ID: "foreign", Title: "Someone else's secret", AuthorID: "other", Private: true, Published: true, Tags: "Research"}
 	mutex.Lock()
 	oldPosts, oldMap, oldItems := posts, postsMap, postsItems
 	posts = []*Post{newer, reading, draft, foreign}
@@ -34,7 +34,7 @@ func TestCompletedPrivateReadingsAreOwnerOnly(t *testing.T) {
 	defer func() { mutex.Lock(); posts, postsMap, postsItems = oldPosts, oldMap, oldItems; mutex.Unlock() }()
 	for _, accept := range []string{"text/html", "application/json"} {
 		for _, signedIn := range []bool{false, true} {
-			r := httptest.NewRequest("GET", "/blog", nil)
+			r := httptest.NewRequest("GET", "/blog?tag=research", nil)
 			r.Header.Set("Accept", accept)
 			if signedIn {
 				r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
@@ -65,5 +65,35 @@ func TestCompletedPrivateReadingsAreOwnerOnly(t *testing.T) {
 	}
 	if strings.Contains(Preview(), newer.Title) {
 		t.Fatal("reading leaked into shared preview")
+	}
+}
+
+func TestReadingMetadataRepair(t *testing.T) {
+	p := &Post{ID: "reading-old", Title: "Islam", Content: "# Patience and agency\n\nAn essay.", Tags: "evening-reading", Private: true}
+	repairReading(p)
+	if p.Title != "Patience and agency" || p.Tags != "Research" || p.isDraft() || !p.Private {
+		t.Fatalf("%+v", p)
+	}
+	repairReading(p)
+	p.Title = "My edit"
+	p.Tags = "evening-reading"
+	p.UpdatedAt = time.Now()
+	repairReading(p)
+	if p.Title != "My edit" {
+		t.Fatal("overwrote edited title")
+	}
+	ordinary := &Post{ID: "ordinary", Title: "Original", Tags: "evening-reading", Content: "# Another"}
+	repairReading(ordinary)
+	if ordinary.Title != "Original" || ordinary.Tags != "evening-reading" {
+		t.Fatal("changed ordinary post")
+	}
+}
+
+func TestTagLinksAndExactMatching(t *testing.T) {
+	if !hasTag("Islam, Research", "research") || hasTag("Researcher", "research") {
+		t.Fatal("tag matching")
+	}
+	if html := formatTags(`Research, <script>`); !strings.Contains(html, "/blog?tag=Research") || strings.Contains(html, "<script>") {
+		t.Fatal(html)
 	}
 }
