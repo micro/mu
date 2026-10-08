@@ -369,15 +369,15 @@ func entryRow(e entry) string {
 	if e.Status != "" {
 		b.WriteString(`<div class="activity-status">` + html.EscapeString(e.Status) + `</div>`)
 	}
-	b.WriteString(`<div class="form-actions"><div class="form-actions">`)
+	b.WriteString(`<div class="form-actions">`)
 	if e.Chat != "" {
 		b.WriteString(`<a href="` + e.Chat + `" aria-label="Chat with ` + html.EscapeString(e.Name) + `" title="Chat"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4h16v12H9l-5 4z"/></svg></a>`)
 	}
-	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `" aria-label="Connect to ` + html.EscapeString(e.Name) + `" title="Connect"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m9 15 6-6M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 10a4 4 0 0 0 6 0l4-4a4 4 0 0 0-6-6l-1 1"/></svg></a></div><div class="form-actions">`)
+	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `" aria-label="Connect to ` + html.EscapeString(e.Name) + `" title="Connect"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m9 15 6-6M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 10a4 4 0 0 0 6 0l4-4a4 4 0 0 0-6-6l-1 1"/></svg></a>`)
 	if e.Admin {
 		b.WriteString(`<a href="/agent/new?id=` + html.EscapeString(e.ID) + `">Edit</a>`)
 	}
-	b.WriteString(e.Extra + `</div></div></div></div>`)
+	b.WriteString(e.Extra + `</div></div></div>`)
 	return b.String()
 }
 
