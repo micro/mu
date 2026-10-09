@@ -2,7 +2,10 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
+	"html"
 	"mu/account"
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/files"
@@ -13,6 +16,10 @@ import (
 )
 
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
+	if IsX402Host(r) {
+		hostPricingHandler(w, r)
+		return
+	}
 	if app.WantsJSON(r) {
 		pricingHandlerJSON(w, r)
 		return
@@ -89,4 +96,29 @@ func pricingHandlerJSON(w http.ResponseWriter, r *http.Request) {
 		}(),
 		"daily": quota.DailyCredits(), "prices": account.Pricing(), "limits": limits,
 	})
+}
+
+// hostPricingHandler presents both payment options over the same service rates.
+func hostPricingHandler(w http.ResponseWriter, r *http.Request) {
+	plans := []account.Plan{}
+	var cards strings.Builder
+	for _, tier := range []string{"starter", "pro"} {
+		if p, ok := account.SubscriptionPlan(tier); ok {
+			plans = append(plans, p)
+			fmt.Fprintf(&cards, `<section class="card plan-card"><h2>%s</h2><p>$%.2f / month</p><p>%d credits each month for tool calls.</p><p class="text-muted">Monthly credits expire at renewal. Cancel any time.</p><a class="btn" href="/account?plan=%s#subscription">Choose %s</a></section>`, html.EscapeString(p.Name), float64(p.Cents)/100, p.Credits, p.Tier, html.EscapeString(p.Name))
+		}
+	}
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]any{"plans": plans, "prices": account.Pricing(), "credit_usd": 0.01})
+		return
+	}
+	body := `<div class="card-grid payment-options"><section class="card plan-card"><h2>Pay per call</h2><p>No subscription required.</p><p>Priced calls return an HTTP 402 payment request. Your client can pay with the supported wallet asset and retry. The response specifies the network and accepted assets.</p><a href="/tools">Explore tools</a></section><section class="card plan-card"><h2>Account credits</h2><p>1 credit = 1 US cent.</p><p>Use a service API token to pay from your available credits on the same MCP and HTTP endpoints. Credits can come from a subscription or a top-up.</p><a href="/account/tokens?access=services">Create a service token</a></section></div>`
+	if cards.Len() > 0 {
+		body += `<h2>Monthly credits</h2><div class="card-grid payment-options">` + cards.String() + `</div>`
+	}
+	if account.TopUpConfigured() || account.CryptoConfigured() {
+		body += `<p><a class="btn" href="/account/topup">Top up credits</a></p>`
+	}
+	body += `<h2>One catalogue, two ways to pay</h2><p>Authenticated calls use available account credits. Sending an x402 payment pays for that call directly instead. Account permissions and usage limits still apply; tools with no usage charge may require an account.</p><h2>Tool prices</h2>` + api.ToolPricesHTML()
+	app.Respond(w, r, app.Response{Title: "Pricing", Description: "Pay as you go, or use account credits for regular tool use.", HTML: body})
 }

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/origin"
 	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
@@ -381,6 +382,9 @@ func RenderHTML(title, desc, html string, acc *auth.Account) string {
 }
 
 func renderForRequest(title, desc, html, bodyClass string, r *http.Request) string {
+	if origin.IsX402Host(r) {
+		return hostHTML(title, desc, html, r)
+	}
 	lang := UserLanguage(r)
 	if !strings.Contains(html, `class="page-controls"`) && !strings.Contains(html, `class="editor-page"`) && r.URL.Query().Get("id") == "" && r.URL.Query().Get("view") == "" && r.URL.Query().Get("new") == "" {
 		for _, s := range service.Nav() {

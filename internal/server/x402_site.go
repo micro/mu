@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+	"mu/internal/api"
+	"mu/internal/app"
 	"net/http"
 	"strings"
 
@@ -16,19 +18,20 @@ const x402Description = "Tools for agents"
 // not enable, disable or partition any tools.
 func IsX402Host(r *http.Request) bool { return origin.IsX402Host(r) }
 
-// X402IndexHandler is the machine-first front page for the optional x402 hostname.
-// It deliberately has no Mu HTML shell, navigation or styling: this hostname is
-// an entry point for callers that want protocols and capabilities, not the app.
+// X402IndexHandler offers a browser landing page and preserves plain-text discovery.
 func X402IndexHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Vary", "Accept")
+	if strings.Contains(r.Header.Get("Accept"), "text/html") {
+		body := `<section class="x402-hero"><h1>Tools for agents</h1><p>Search the web, check the weather, follow markets and more.<br>One catalogue. Pay per call with x402.</p></section>` + api.FeaturedToolsHTML() + `<div class="x402-explore"><a class="btn" href="/tools">Explore tools</a></div><section class="x402-connect"><h2>Ready for your agent</h2><p>Connect through <a href="/mcp">MCP</a> or use the <a href="/api">HTTP API</a>. Discover tools, send a request and pay for priced calls with x402.</p><p><a href="/pricing">View pricing</a></p></section>`
+		app.Respond(w, r, app.Response{Title: "Tools for agents", HTML: body})
+		return
+	}
 	name := x402Name()
 	base := strings.TrimRight(origin.URL(r), "/")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	fmt.Fprintf(w, "%s\n%s\n\n", name, x402Description)
-	fmt.Fprintf(w, "MCP: %s/mcp\n", base)
-	fmt.Fprintf(w, "Tools: %s/tools\n", base)
-	fmt.Fprintf(w, "API: %s/api/v1/\n", base)
-	fmt.Fprintf(w, "LLMs: %s/llms.txt\n", base)
+	fmt.Fprintf(w, "MCP: %s/mcp\nTools: %s/tools\nAPI: %s/api/v1/\nLLMs: %s/llms.txt\n", base, base, base, base)
 	fmt.Fprintln(w, "\nPriced calls use HTTP 402/x402. MCP tools/list is the canonical live catalogue.")
 }
 
