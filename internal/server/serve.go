@@ -64,6 +64,9 @@ func serve(addr string, initialize func()) {
 			// Default every dynamic response to private. Public asset handlers may
 			// opt into caching explicitly; personalized JSON must never inherit it.
 			w.Header().Set("Cache-Control", "private, no-store")
+			if redirectHostAccount(w, r) {
+				return
+			}
 			// The legacy flag endpoint accepts ordinary users' content reports.
 			if r.URL.Path != "/admin/flag" && (r.URL.Path == "/admin" || strings.HasPrefix(r.URL.Path, "/admin/")) {
 				if _, _, err := auth.RequireAdmin(r); err != nil {

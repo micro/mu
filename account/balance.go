@@ -287,7 +287,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`<div class="card"><p>No payment methods available.</p></div>`)
 	}
 
-	app.Respond(w, r, app.Response{Title: "Top up", Description: "Buy credits", HTML: sb.String() + `</div>`})
+	app.Respond(w, r, app.Response{Title: "Top up", Description: "Buy credits", HTML: sb.String() + toolAccess(false) + `</div>`})
 }
 
 func renderStripeDeposit(userID, errMsg string) string {
