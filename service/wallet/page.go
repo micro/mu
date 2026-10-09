@@ -20,7 +20,7 @@ import (
 	"html"
 
 	"mu/internal/app"
-	"mu/internal/x402"
+	x402 "mu/x402/payment"
 )
 
 // SignedOut is the card for somebody who is not signed in.
@@ -37,7 +37,7 @@ func SignedOut() string {
 }
 
 // Page renders the signed-in wallet.
-func Page(accountID string) string {
+func Page(accountID string, paymentForm string) string {
 	bw, err := EnsureFor(accountID)
 	// Say so rather than vanishing. A card that renders with an empty address
 	// and a QR code of nothing is worse than no card: it looks like the feature
@@ -112,34 +112,5 @@ function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t
 </script>`,
 		html.EscapeString(human), unreadable, net,
 		html.EscapeString(bw.Address), html.EscapeString(bw.Address),
-		html.EscapeString(payURI), net, convertForm())
-}
-
-// convertForm turns what the wallet holds into credits on this instance.
-//
-// The missing half of the card. It offered an address to send USDC to and
-// nothing that could spend what arrived — every path out was outbound, the CLI
-// paying somebody else's priced endpoint — so money sent here bought nothing
-// here.
-//
-// A hundred credits to the dollar and no rate quoted, because there is not one:
-// a credit is a cent and USDC is dollars. That is what the switch off pence was
-// for, and it is why this form can say the number and stop.
-//
-// Absent when the instance takes no USDC. A form that can only fail is worse
-// than no form — it reads as broken rather than as unconfigured.
-func convertForm() string {
-	if x402.TopUpRequirement(100) == nil {
-		return ""
-	}
-	return `<form class="form cw-convert" method="POST" action="/account/convert">
-  <label for="cw-amount">Turn into credits</label>
-  <div class="form-row">
-    <span class="cw-convert-unit">$</span>
-    <input id="cw-amount" type="number" name="amount" min="1" step="1" placeholder="5" required>
-    <button class="btn" type="submit">Convert</button>
-  </div>
-  <p class="text-muted text-sm">Moves USDC from this address to the instance and adds it to your
-  balance. $1 is 100 credits.</p>
-</form>`
+		html.EscapeString(payURI), net, paymentForm)
 }

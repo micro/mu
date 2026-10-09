@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"mu/internal/auth"
-	"mu/internal/origin"
 	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
@@ -382,8 +381,8 @@ func RenderHTML(title, desc, html string, acc *auth.Account) string {
 }
 
 func renderForRequest(title, desc, html, bodyClass string, r *http.Request) string {
-	if origin.IsX402Host(r) {
-		return hostHTML(title, desc, html, r)
+	if render, ok := r.Context().Value(rendererKey{}).(Renderer); ok {
+		return render(title, desc, html, r)
 	}
 	lang := UserLanguage(r)
 	if !strings.Contains(html, `class="page-controls"`) && !strings.Contains(html, `class="editor-page"`) && r.URL.Query().Get("id") == "" && r.URL.Query().Get("view") == "" && r.URL.Query().Get("new") == "" {
@@ -537,7 +536,7 @@ func ServeHTML(html string) http.Handler {
 	})
 }
 
-func Serve() http.Handler {
+func Serve(scripts ...string) http.Handler {
 	var staticFS = fs.FS(htmlFiles)
 	htmlContent, err := fs.Sub(staticFS, "html")
 	if err != nil {
@@ -559,6 +558,17 @@ func Serve() http.Handler {
 			w.Header().Set("Cache-Control", "no-cache")
 			if r.URL.RawQuery == Version && r.Header.Get("Service-Worker") != "script" && r.Header.Get("Sec-Fetch-Dest") != "serviceworker" {
 				w.Header().Set("Cache-Control", "public, max-age=86400")
+			}
+			if len(scripts) > 0 {
+				source, _ := htmlFiles.ReadFile("html/mu.js")
+				w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+				if r.Method != http.MethodHead {
+					w.Write(source)
+					for _, script := range scripts {
+						w.Write([]byte("\n" + script))
+					}
+				}
+				return
 			}
 		case strings.HasSuffix(r.URL.Path, ".woff2"), strings.HasSuffix(r.URL.Path, ".css"),
 			strings.HasSuffix(r.URL.Path, ".js"),

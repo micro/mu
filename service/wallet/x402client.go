@@ -21,7 +21,7 @@ import (
 	"mu/internal/origin"
 	"mu/internal/settings"
 
-	"mu/internal/x402"
+	x402 "mu/x402/payment"
 )
 
 // Server402 is a named MCP endpoint this wallet may pay.

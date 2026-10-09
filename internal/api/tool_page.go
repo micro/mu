@@ -27,13 +27,20 @@ import (
 	"mu/internal/app"
 	"mu/internal/quota"
 	"mu/internal/service"
-	"mu/internal/x402"
+	x402 "mu/x402/payment"
 )
 
 // ToolPageHandler serves /tools/<name>.
-func ToolPageHandler(w http.ResponseWriter, r *http.Request) {
+func ToolPageHandler(w http.ResponseWriter, r *http.Request) { ToolPage(w, r, true) }
+
+// ToolPage optionally links to interactive service pages on hosts that serve them.
+func ToolPage(w http.ResponseWriter, r *http.Request, serviceLinks bool) {
 	name := strings.Trim(strings.TrimPrefix(r.URL.Path, "/tools"), "/")
 	if name == "" || strings.Contains(name, "/") {
+		if !serviceLinks {
+			app.NotFound(w, r, "Tool not found")
+			return
+		}
 		ToolsPageHandler(w, r)
 		return
 	}
@@ -61,13 +68,14 @@ func ToolPageHandler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{
 		Title:       found.Name,
 		Description: found.Description,
-		HTML:        toolPage(*found),
+		HTML:        toolPageWithLinks(*found, serviceLinks),
 	})
 }
 
 // toolPage is what one tool is: what it does, what it costs, what it takes, what
 // runs it, and how to call it.
-func toolPage(t Tool) string {
+func toolPage(t Tool) string { return toolPageWithLinks(t, true) }
+func toolPageWithLinks(t Tool, serviceLinks bool) string {
 	var b strings.Builder
 	b.WriteString(`<div class="tool-page">`)
 	b.WriteString(app.Actions(app.TextLink("Tools", "/tools?view=services")))
@@ -98,7 +106,7 @@ func toolPage(t Tool) string {
 	if svc := serviceBehind(t.Name); svc != nil {
 		where := html.EscapeString(svc.Description)
 		link := html.EscapeString(svc.NavLabel())
-		if svc.Page != "" {
+		if serviceLinks && svc.Page != "" {
 			link = `<a href="` + html.EscapeString(svc.Page) + `">` + link + `</a>`
 		}
 		b.WriteString(`<p class="tool-from">Runs on ` + link + ` — ` + where + `.</p>`)

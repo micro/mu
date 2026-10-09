@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"mu/internal/x402"
+	x402 "mu/x402/payment"
 )
 
 // runX402 prints the x402 configuration and, when CDP credentials are present

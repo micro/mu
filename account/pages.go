@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	htmlpkg "html"
+	"mu/x402/billing"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -131,8 +132,8 @@ func renderSignupInvite(errHTML, redirectParam, invite string) string {
 	values, _ := url.ParseQuery(strings.TrimPrefix(redirectParam, "?"))
 	for _, tier := range []string{"starter", "pro"} {
 		if values.Get("redirect") == "/account?plan="+tier+"#subscription" {
-			if plan, ok := SubscriptionPlan(tier); ok {
-				planHint = `<p class="text-center">` + plan.Name + ` · ` + money(plan.Cents) + `/month. Payment follows signup.</p>`
+			if plan, ok := billing.SubscriptionPlan(tier); ok {
+				planHint = `<p class="text-center">` + plan.Name + ` · ` + billing.Money(plan.Cents) + `/month. Payment follows signup.</p>`
 			}
 		}
 	}
@@ -308,7 +309,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		retrySignup(sess.Account)
+		billing.RetrySignup(sess.Account)
 
 		var secure bool
 
@@ -439,7 +440,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		claimed := false
 		if invCode != "" {
 			if existing := auth.UnclaimedFor(auth.InviteEmail(invCode)); existing != nil {
-				if err := auth.Claim(existing.ID, id, secret, SignupCredits); err != nil {
+				if err := auth.Claim(existing.ID, id, secret, billing.SignupCredits); err != nil {
 					w.Write([]byte(render(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
 					return
 				}
@@ -451,7 +452,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 				ID:            id,
 				Secret:        secret,
 				SecretSet:     true,
-				SignupCredits: SignupCredits,
+				SignupCredits: billing.SignupCredits,
 				Name:          name,
 				Created:       time.Now(),
 			}); err != nil {
@@ -472,7 +473,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		retrySignup(sess.Account)
+		billing.RetrySignup(sess.Account)
 
 		var secure bool
 
@@ -714,7 +715,16 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("linked") == "google" {
 		notice = app.Notice("Google connected.") + notice
 	}
-	content = billingSummary(acc) + subscriptionSummary(r, acc) + toolAccess(false)
+	content = billing.Summary(acc) + billing.SubscriptionSummary(r, acc)
+	if billing.Monthly(acc.ID).Credits > 0 {
+		content += `<nav class="form-actions"><a href="/agents?view=scheduled">Scheduled updates</a>`
+		if billing.Tier(acc.ID) == "pro" {
+			content += `<a href="/agents?view=scheduled#research">Research</a>`
+		}
+		content += `</nav>`
+	} else if _, enabled := billing.MonthlyPlan(); enabled {
+		content += `<p><a href="/agents?view=scheduled">Set up your included weekly brief</a></p>`
+	}
 	content += `<section id="details" class="account-group"><h2>Details</h2>` + profile + avatarCard(r, acc) + renderEmailCard(acc) + renderPhoneCard(acc.ID) + language + PlaceCard(r, acc.ID) + `</section>`
 	content += `<section id="security" class="account-group"><h2>Security</h2>` + passwordCard(acc) + PasskeyListHTML(acc.ID) + sshaccess.Card(r, acc.ID, "/account", "SSH keys", "Use a public SSH key for terminal and SFTP access. Add your .pub file contents and keep the private key on your device.", "ssh") + `</section>`
 	content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))

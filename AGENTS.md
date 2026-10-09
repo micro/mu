@@ -247,7 +247,7 @@ Enforced by `TestEverySpecLivesUnderService`, `TestNothingThatUsesToolsIsAServic
 `TestNoMethodRepeatsItsService`.
 
 **A balance is not a service.** How an account pays is the same shelf as
-changing your email or rotating a token, so it lives in `account/` with no Spec
+changing your email or rotating a token, so its shared implementation lives in `x402/billing/` with no Spec
 and no tools. What a service needs to know about money is `internal/quota`,
 which holds prices and deliberately does not know what a balance is.
 
@@ -365,15 +365,23 @@ eviction limit governed both, which is why it was wrong for each.
 ## Layering
 
 The fixed product packages are `account/`, `admin/`, `home/`, `agent/`,
-`inbox/` and `service/`. They evolve deliberately and slowly; do not
+`inbox/`, `service/` and `x402/`. They evolve deliberately and slowly; do not
 add top-level packages or navigation for implementation infrastructure.
 `main.go` is the front door; `internal/server` assembles the product.
 Internal event delivery and persistence belong under `internal/`.
 
+`x402/` owns the configured developer host, including its router, browser
+account flow and presentation. `x402/billing` owns the shared credit ledger and
+payment providers; `x402/payment` owns the wire protocol; `x402/gateway` owns
+API payment enforcement. Consumer pages reuse these implementations. Keep host
+branches out of consumer handlers and never duplicate payment implementations.
+
 **The product may import `internal/`. `internal/` may never import the
 product.** The two exceptions are the programs: `internal/server` and
 `internal/cli` assemble everything. Enforced by
-`TestInternalNeverImportsTheProduct`.
+`TestInternalNeverImportsTheProduct`. The reusable `x402/payment` protocol
+leaf is also available to API documentation and the wallet client; it has no
+dependency on the x402 host router or billing store.
 
 The top level is the sidebar, and that is the test for whether something belongs
 there — a user can name it and click it. It is why `tool/` is 280 lines sitting
@@ -456,7 +464,7 @@ reusable by anything that decides differently. Metering is the useful edge case:
 what something costs is a fact a service declares (`Cost` on its Endpoint); who
 may afford it is a judgement made at the door.
 
-A service never imports `account/`. `account/` fills in the half quota cannot
+A service never imports `account/`. `x402/billing/` fills in the half quota cannot
 answer, from its own `init`, because quota sits underneath it. Enforced by
 `TestNoServiceImportsTheAccount`. This does not touch `service/wallet`, which
 holds a key rather than a balance — and a sideways import from it would be
@@ -480,7 +488,7 @@ looked like a command and was a question, so it is `usage.Skipped`. Third person
 is the other way to say a question — `app.SendsJSON(r)`, `app.WantsJSON(r)`.
 
 **An action is a verb**, and says what it changes: `blog.CreatePost`,
-`account.ChargeAppUse`, `mail.SendMessageTo`.
+`billing.ChargeAppUse`, `mail.SendMessageTo`.
 
 **An HTTP handler ends in `Handler`.** A service's own page is just `Handler`;
 anything more specific says which page — `blog.PostHandler`.

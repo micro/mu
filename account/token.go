@@ -148,9 +148,6 @@ func apiTokenForm(r *http.Request, accountID string) string {
 	sb.WriteString(`<div class="form-actions"><button type="submit">Create token</button></div></form>`)
 	sb.WriteString(`<div id="token-result" class="section-card section-stack d-none" role="status" tabindex="-1"><strong>Token created</strong><p>Copy it now. It is shown only once.</p><pre id="new-token"></pre><button type="button" data-copy-token>Copy token</button><span data-token-copy-status aria-live="polite"></span></div>`)
 
-	if serviceAccess {
-		sb.WriteString(toolAccess(true))
-	}
 	return sb.String()
 }
 

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/internal/x402"
+	x402 "mu/x402/payment"
 )
 
 // EIP-712 type hashes (keccak256 of the canonical type strings). Verified in
