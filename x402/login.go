@@ -98,7 +98,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := `<p>Sign in with your existing account to manage credits, tokens and usage.</p>` + message + `<form method="POST" action="/login" class="form">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="redirect" value="` + html.EscapeString(destination(r)) + `"><label>Username<input name="id" autocomplete="username" required></label><label>Password<input type="password" name="secret" autocomplete="current-password" required></label><div class="form-actions"><button type="submit">Sign in</button></div></form>`
-	app.Respond(w, r, app.Response{Title: "Sign in", HTML: body + `<p><a href="/signup?redirect=` + url.QueryEscape(destination(r)) + `">Create an account</a></p>`})
+	app.Respond(w, r, app.Response{Title: "Sign in", HTML: `<div class="section-stack">` + body + `<p><a href="/signup?redirect=` + url.QueryEscape(destination(r)) + `">Create an account</a></p></div>`})
 }
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

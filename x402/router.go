@@ -52,6 +52,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		auth.OAuthResourceHandler(w, r)
 		return
 	}
+	if strings.Contains(r.Header.Get("Accept"), "text/html") && !app.WantsJSON(r) && !app.SendsJSON(r) {
+		response := &browserResponse{ResponseWriter: w, request: r}
+		defer response.finish()
+		w = response
+	}
 	if r.Method == http.MethodPost {
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	}
@@ -80,6 +85,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, app.Styles()+string(css))
 	case path == "/mu.js" || path == "/favicon.ico":
 		app.Serve(billing.Script).ServeHTTP(w, r)
+	case path == "/session":
+		SessionHandler(w, r)
 	case path == "/signup":
 		signupHandler(w, r)
 	case path == "/verify":

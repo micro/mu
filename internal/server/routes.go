@@ -668,7 +668,7 @@ func registerRoutes() {
 	http.HandleFunc("/account/app-password", account.AppPasswordHandler)
 	http.HandleFunc("/account/codex", account.CodexHandler)
 	http.HandleFunc("/verify", account.Verify)
-	http.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) { account.Session(w, api.CredentialRequest(r)) })
+	http.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) { host402.SessionHandler(w, api.CredentialRequest(r)) })
 
 	http.HandleFunc("/account/clients", account.ClientsHandler)
 	http.HandleFunc("/account/tokens", account.TokenHandler)
