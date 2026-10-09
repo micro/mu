@@ -122,3 +122,24 @@ func TestHostSignInUsesPrimaryAccount(t *testing.T) {
 		t.Fatal("Google state cookie missing or mismatched")
 	}
 }
+
+func TestHostAccountPreservesLegacyCredentials(t *testing.T) {
+	t.Setenv("X402_HOST", "m3o.test")
+	t.Setenv("MU_DOMAIN", "micro.test")
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		for _, path := range []string{"/account", "/account/tokens", "/account/topup"} {
+			for _, accept := range []string{"", "text/html", "*/*"} {
+				r := httptest.NewRequest(method, "https://m3o.test"+path, nil)
+				r.Header.Set("X-Micro-Token", "legacy-credential")
+				r.Header.Set("Accept", accept)
+				w := httptest.NewRecorder()
+				if redirectHostAccount(w, r) || w.Header().Get("Location") != "" {
+					t.Fatalf("redirected credential-bearing %s %s (%q)", method, path, accept)
+				}
+				if r.Header.Get("X-Micro-Token") != "legacy-credential" {
+					t.Fatal("changed request credential")
+				}
+			}
+		}
+	}
+}

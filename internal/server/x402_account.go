@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/origin"
 )
@@ -13,7 +14,7 @@ import (
 // OAuth state, passkeys and session cookies all use the same host. This does
 // not redirect protocol requests or forward credentials between origins.
 func redirectHostAccount(w http.ResponseWriter, r *http.Request) bool {
-	if !origin.IsX402Host(r) || (r.Method != http.MethodGet && r.Method != http.MethodHead) || app.WantsJSON(r) || r.Header.Get("Authorization") != "" {
+	if !origin.IsX402Host(r) || (r.Method != http.MethodGet && r.Method != http.MethodHead) || app.WantsJSON(r) || r.Header.Get("Authorization") != "" || r.Header.Get(api.TokenHeader) != "" {
 		return false
 	}
 	path := r.URL.Path
