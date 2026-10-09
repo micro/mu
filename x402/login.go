@@ -85,7 +85,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			billing.RetrySignup(sess.Account)
-			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: sess.Token, Path: "/", MaxAge: 2592000, HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteLaxMode})
+			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: sess.Token, Path: "/", MaxAge: 2592000, HttpOnly: true, Secure: secureBrowserRequest(r), SameSite: http.SameSiteLaxMode})
 			http.Redirect(w, r, destination(r), http.StatusSeeOther)
 			return
 		}
@@ -107,6 +107,15 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie("session"); err == nil {
 		auth.Logout(c.Value)
 	}
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: secureBrowserRequest(r), SameSite: http.SameSiteLaxMode})
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func secureBrowserRequest(r *http.Request) bool {
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		return true
+	}
+	// A same-origin browser submission can also identify upstream TLS.
+	u, err := url.Parse(r.Header.Get("Origin"))
+	return err == nil && u.Scheme == "https" && r.Header.Get("Sec-Fetch-Site") == "same-origin"
 }

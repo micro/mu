@@ -57,7 +57,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	auth.SetCSRFCookie(w, r)
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		if r.Header.Get("Origin") != "" && r.Header.Get("Origin") != origin.URL(r) || r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+		if !browserOriginAllowed(r) {
 			app.Forbidden(w, r, "Reopen this page and try again.")
 			return
 		}
@@ -168,4 +168,19 @@ func discoveryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	base := origin.URL(r)
 	fmt.Fprintf(w, "# %s\n\nTools for agents\n\n- MCP: %s/mcp\n- Tools: %s/tools\n- API: %s/api/v1/\n\n%s\n", x402Name(), base, base, base, hostPaymentDescription())
+}
+
+// Fetch Metadata is set by the browser and cannot be supplied by page scripts.
+// Prefer its same-origin verdict to reconstructing a public URL from proxy
+// headers: TLS may terminate upstream without forwarding the external scheme.
+// Older clients still have to match the configured public origin when supplied.
+func browserOriginAllowed(r *http.Request) bool {
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "same-origin":
+		return true
+	case "cross-site", "same-site":
+		return false
+	}
+	submitted := r.Header.Get("Origin")
+	return submitted == "" || submitted == origin.URL(r)
 }
