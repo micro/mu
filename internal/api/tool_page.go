@@ -27,6 +27,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/quota"
 	"mu/internal/service"
+	"mu/internal/x402"
 )
 
 // ToolPageHandler serves /tools/<name>.
@@ -77,16 +78,18 @@ func toolPage(t Tool) string {
 	// What it costs, said as a sentence rather than a badge. A number in the
 	// corner is something to look up; this is the thing somebody is deciding.
 	cost := 0
-	if t.WalletOp != "" {
+	if t.WalletOp != "" && quota.Charging() {
 		cost = quota.OperationCost(t.WalletOp)
 	}
 	b.WriteString(`<p class="tool-cost">`)
 	if cost > 0 {
 		b.WriteString(`<b>` + strconv.Itoa(cost) + ` ` + creditWord(cost) + `</b> per call, ` +
-			`from your balance — or paid per request in USDC with no account at all.`)
+			`from your balance.`)
+		if x402.Enabled() {
+			b.WriteString(` Or pay per request with x402 without an account.`)
+		}
 	} else {
-		b.WriteString(`<b>Free.</b> This one only touches this instance's own storage, ` +
-			`so there is nothing to charge for.`)
+		b.WriteString(`<b>No usage charge.</b> Account permissions and usage limits still apply.`)
 	}
 	b.WriteString(`</p>`)
 

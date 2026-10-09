@@ -24,7 +24,7 @@ func init() {
 		fmt.Fprintln(w, "Transport: streamable-http")
 		fmt.Fprintln(w, "Methods: initialize, tools/list, tools/call")
 		fmt.Fprintf(w, "Catalogue: %s/tools\n", base)
-		fmt.Fprintln(w, "Payments: HTTP 402/x402 on priced calls")
+		fmt.Fprintln(w, hostPaymentDescription())
 	})
 
 	http.HandleFunc("GET /tools", func(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +38,7 @@ func init() {
 		fmt.Fprintf(w, "%s tools\n\n", x402Name())
 		fmt.Fprintln(w, "The live tool catalogue is available through MCP tools/list.")
 		fmt.Fprintf(w, "MCP: %s/mcp\nHTTP API: %s/api/v1/\nAgent metadata: %s/llms.txt\n", base, base, base)
-		fmt.Fprintln(w, "Priced tools return HTTP 402 with x402 payment requirements.")
+		fmt.Fprintln(w, hostPaymentDescription())
 	})
 	http.HandleFunc("GET /tools/", api.ToolPageHandler)
 }

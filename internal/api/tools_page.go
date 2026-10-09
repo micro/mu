@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"mu/internal/origin"
+	"mu/internal/x402"
 	"net/http"
 	"net/url"
 	"sort"
@@ -516,7 +517,11 @@ func serviceOf(tool string) string {
 
 // ServiceToolsPageHandler documents the service contract used by scoped clients and x402.
 func ServiceToolsPageHandler(w http.ResponseWriter, r *http.Request) {
-	body := `<p>Connect through <a href="/mcp">MCP</a> or the <a href="/api">HTTP API</a>. Use account credits with a service token, or pay per call with x402. <a href="/pricing">View pricing</a>.</p>`
+	payment := "Use a service token for account access."
+	if x402.Enabled() {
+		payment = "Use account credits with a service token, or pay per call with x402."
+	}
+	body := `<p>Connect through <a href="/mcp">MCP</a> or the <a href="/api">HTTP API</a>. ` + payment + ` <a href="/pricing">View pricing</a>.</p>`
 	query, selected := r.URL.Query().Get("q"), r.URL.Query().Get("service")
 	body += `<form class="search-bar" method="GET" action="/tools"><input type="search" name="q" aria-label="Find a tool" placeholder="Find a tool" value="` + html.EscapeString(query) + `"><select name="service" aria-label="Filter by service"><option value="">All services</option>`
 	for _, g := range groupTools() {
@@ -540,7 +545,10 @@ func ServiceToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func cataloguePrice(t Tool, host bool) string {
-	if !host {
+	if host && !quota.Charging() {
+		return "No usage charge"
+	}
+	if !host || !x402.Enabled() {
 		return priceLabel(t)
 	}
 	cost := 0
