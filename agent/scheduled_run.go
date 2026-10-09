@@ -124,8 +124,19 @@ func researchReport(ctx context.Context, owner string, e *events.Event) (string,
 	var sourceURLs []string
 	read := 0
 	for i, item := range freshReadingSources(results.Items, recentReadingSources(owner, e), e.Prompt+"\n"+e.Note) {
-		if i == 3 {
+		// Limit successful sources, not attempts: blocked pages must not hide
+		// readable articles further down the search results.
+		if read == 3 || i == 10 || ctx.Err() != nil {
 			break
+		}
+		// The minimum reserves three fetches. Extra attempts must fit the
+		// remaining budget even when an operator gives web fetches a price.
+		if i >= 3 {
+			cost := quota.OperationCost(quota.OpWebFetch)
+			if remaining < cost {
+				break
+			}
+			remaining -= cost
 		}
 		var page web.FetchResponse
 		fetchErr := service.Call(service.WithAccount(ctx, owner), "web", "Server.Fetch", &web.FetchRequest{URL: item.URL}, &page)
