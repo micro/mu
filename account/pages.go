@@ -714,7 +714,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("linked") == "google" {
 		notice = app.Notice("Google connected.") + notice
 	}
-	content = billingSummary(acc) + subscriptionSummary(r, acc)
+	content = billingSummary(acc) + subscriptionSummary(r, acc) + toolAccess(false)
 	content += `<section id="details" class="account-group"><h2>Details</h2>` + profile + avatarCard(r, acc) + renderEmailCard(acc) + renderPhoneCard(acc.ID) + language + PlaceCard(r, acc.ID) + `</section>`
 	content += `<section id="security" class="account-group"><h2>Security</h2>` + passwordCard(acc) + PasskeyListHTML(acc.ID) + sshaccess.Card(r, acc.ID, "/account", "SSH keys", "Use a public SSH key for terminal and SFTP access. Add your .pub file contents and keep the private key on your device.", "ssh") + `</section>`
 	content += app.SectionID("notifications", "Notifications", forwardingToggle(acc), push.Card(r, acc.ID, "This device"))
