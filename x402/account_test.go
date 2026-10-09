@@ -178,7 +178,7 @@ func TestBrowserOriginBehindProxy(t *testing.T) {
 		{"cross-site", "https://evil.test", false},
 		{"same-site", "https://other.m3o.test", false},
 		{"", "https://evil.test", false},
-		{"", "http://m3o.test", true},
+		{"", "https://m3o.test", true},
 	} {
 		r := httptest.NewRequest("POST", "http://m3o.test/login", nil)
 		r.Header.Set("Origin", tc.origin)

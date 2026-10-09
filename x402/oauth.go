@@ -11,7 +11,12 @@ import (
 
 // Consent stays on the developer host; issuance and PKCE remain in auth.
 func authorizeHandler(w http.ResponseWriter, r *http.Request) {
-	if requireAccount(w, r) == nil {
+	acc := requireAccount(w, r)
+	if acc == nil {
+		return
+	}
+	if err := auth.CheckCredentialAccess(acc.ID); err != nil {
+		app.Respond(w, r, app.Response{Title: "Verify your account", HTML: verificationHTML(r, acc)})
 		return
 	}
 	if r.Method == http.MethodPost {

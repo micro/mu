@@ -80,6 +80,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, app.Styles()+string(css))
 	case path == "/mu.js" || path == "/favicon.ico":
 		app.Serve(billing.Script).ServeHTTP(w, r)
+	case path == "/signup":
+		signupHandler(w, r)
+	case path == "/verify":
+		verifyHandler(w, r)
 	case path == "/login":
 		loginHandler(w, r)
 	case path == "/logout":

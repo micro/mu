@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"mu/internal/auth"
 	"mu/internal/data"
+	publicorigin "mu/internal/origin"
 	"mu/internal/settings"
 )
 
@@ -379,7 +380,11 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string, ti
 		}
 	}
 	if s.Attempt == "" {
-		if err := ensureSubscriptionWebhook(ctx, origin); err != nil {
+		webhookOrigin := publicorigin.Self()
+		if webhookOrigin == "" {
+			webhookOrigin = origin
+		}
+		if err := ensureSubscriptionWebhook(ctx, webhookOrigin); err != nil {
 			return "", err
 		}
 		s.Attempt, s.AttemptAt = uuid.NewString(), time.Now().Unix()

@@ -19,7 +19,11 @@ import (
 // door to the same MCP/API tools, not where the tools themselves live.
 func URL(r *http.Request) string {
 	if h := requestHost(r); h != "" && sameHost(h, settings.Get("X402_HOST")) {
-		return scheme(r) + "://" + trimScheme(h)
+		configured := strings.TrimRight(strings.TrimSpace(settings.Get("X402_HOST")), "/")
+		if strings.HasPrefix(configured, "http://") || strings.HasPrefix(configured, "https://") {
+			return configured
+		}
+		return "https://" + trimScheme(h)
 	}
 	if u := Self(); u != "" {
 		return u

@@ -16,9 +16,16 @@ Account identity and credential persistence remain in `internal/auth`; the tool
 catalogue and dispatcher remain in `internal/api`. No duplicate stores or ledger
 migration are involved. Existing ledger filenames and webhook routes are kept.
 
-Browser flow: sign in with an existing username/password, add credits or choose a
+Browser flow: sign up or sign in with a username/password, verify your email,
+add credits or choose a
 subscription, create a service token, then use it as `Authorization: Bearer …` on
 this host's `/mcp` or `/api/v1/` endpoint. Checkout returns to the originating host.
+Password signup rules, captcha, invite enforcement, rate limiting and verification
+email delivery live in `registration` and are shared by both hosts. Stripe event
+setup targets the primary configured origin, while checkout/portal returns use
+the originating host. A bare `X402_HOST` denotes its public HTTPS origin; use an
+explicit `http://` URL for an HTTP development host.
+
 The `x402_session` cookie is host-only. Explicit API credentials take precedence;
 the consumer `session` cookie is ignored. Service tokens use the shared account
 and service scopes, not separate balances or identities. Token creation here is

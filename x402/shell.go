@@ -21,7 +21,7 @@ func renderHTML(title, description, body string, r *http.Request) string {
 	if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/tools/") {
 		body = `<h1>` + html.EscapeString(title) + `</h1><p class="text-muted">` + html.EscapeString(description) + `</p>` + body
 	}
-	nav := `<a href="/login">Sign in</a>`
+	nav := `<a href="/login">Sign in</a><a href="/signup">Sign up</a>`
 	if session, _, err := auth.RequireSession(r); err == nil && session.Type == "account" {
 		nav = `<a href="/account">Account</a><a href="/account/tokens">Tokens</a><a href="/account/usage">Usage</a><form method="POST" action="/logout">` + app.CSRFField(auth.CSRFToken(r)) + `<button type="submit">Sign out</button></form>`
 	}
