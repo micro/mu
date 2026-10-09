@@ -9,6 +9,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/origin"
 	"mu/x402/billing"
 )
 
@@ -85,7 +86,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			billing.RetrySignup(sess.Account)
-			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: sess.Token, Path: "/", MaxAge: 2592000, HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteLaxMode})
+			setSession(w, r, sess.Token)
 			http.Redirect(w, r, destination(r), http.StatusSeeOther)
 			return
 		}
@@ -97,7 +98,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := `<p>Sign in with your existing account to manage credits, tokens and usage.</p>` + message + `<form method="POST" action="/login" class="form">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="redirect" value="` + html.EscapeString(destination(r)) + `"><label>Username<input name="id" autocomplete="username" required></label><label>Password<input type="password" name="secret" autocomplete="current-password" required></label><div class="form-actions"><button type="submit">Sign in</button></div></form>`
-	app.Respond(w, r, app.Response{Title: "Sign in", HTML: body})
+	app.Respond(w, r, app.Response{Title: "Sign in", HTML: body + `<p><a href="/signup?redirect=` + url.QueryEscape(destination(r)) + `">Create an account</a></p>`})
 }
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -107,6 +108,10 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie("session"); err == nil {
 		auth.Logout(c.Value)
 	}
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: secureBrowserRequest(r), SameSite: http.SameSiteLaxMode})
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func secureBrowserRequest(r *http.Request) bool {
+	return strings.HasPrefix(origin.URL(r), "https://")
 }

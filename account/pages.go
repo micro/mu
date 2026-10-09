@@ -17,12 +17,10 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"mu/x402/billing"
+	"mu/x402/registration"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
-	"sync"
-	"time"
 
 	"mu/internal/app"
 	"mu/internal/push"
@@ -32,41 +30,6 @@ import (
 	"mu/internal/auth"
 	"mu/service/sms"
 )
-
-// SignupRateLimit returns true if the IP is allowed to sign up.
-// It also records the attempt against the bucket on success.
-// Configurable via SIGNUP_MAX_PER_IP (default 3) and SIGNUP_WINDOW_HOURS (default 24).
-func SignupRateLimit(ip string) bool {
-	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
-		return true // never rate-limit localhost (self-hosted, dev)
-	}
-	maxPerIP := app.EnvInt("SIGNUP_MAX_PER_IP", 3)
-	window := time.Duration(app.EnvInt("SIGNUP_WINDOW_HOURS", 24)) * time.Hour
-
-	signupMu.Lock()
-	defer signupMu.Unlock()
-
-	now := time.Now()
-	b, ok := signupAttempts[ip]
-	if !ok || now.After(b.resetAt) {
-		b = &signupBucket{count: 0, resetAt: now.Add(window)}
-		signupAttempts[ip] = b
-	}
-	if b.count >= maxPerIP {
-		return false
-	}
-	b.count++
-
-	// Opportunistic GC to avoid unbounded growth.
-	if len(signupAttempts) > 10000 {
-		for k, v := range signupAttempts {
-			if now.After(v.resetAt) {
-				delete(signupAttempts, k)
-			}
-		}
-	}
-	return true
-}
 
 var LoginTemplate = `
 	<p id="auth-status" role="status"></p><form id="login" action="/login%s" method="POST" class="form page-stack">
@@ -233,7 +196,7 @@ func RequestInvite(w http.ResponseWriter, r *http.Request) {
 
 	// Per-IP rate limit reuses the signup bucket — same spam concern.
 	ip := app.ClientIP(r)
-	if !SignupRateLimit(ip) {
+	if !registration.Allowed(ip) {
 		renderRequestInvitePage(w, r, `<p class="text-error">Too many requests from your network. Please try again later.</p>`)
 		return
 	}
@@ -375,105 +338,11 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
-		r.ParseForm()
-
-		// Captcha is checked before the IP rate limit so that a failed
-		// captcha doesn't burn an attempt against the IP bucket.
-		if err := app.VerifyCaptchaRequest(r); err != nil {
-			w.Write([]byte(render(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
-			return
-		}
-
-		// Per-IP signup rate limit (defends against bulk account creation).
-		ip := app.ClientIP(r)
-		if !SignupRateLimit(ip) {
-			app.Log("auth", "Signup rate limit hit for IP: %s", ip)
-			w.Write([]byte(render(`<p class="text-error">Too many sign-ups from your network. Please try again later.</p>`, redirectParam)))
-			return
-		}
-
-		id := r.Form.Get("id")
-		name := id
-		secret := r.Form.Get("secret")
-
-		const usernamePattern = "^[a-z][a-z0-9_]{3,23}$"
-
-		usernameRegex := regexp.MustCompile(usernamePattern)
-
-		if len(id) == 0 {
-			w.Write([]byte(render(`<p class="text-error">Username is required</p>`, redirectParam)))
-			return
-		}
-
-		if !usernameRegex.MatchString(id) {
-			w.Write([]byte(render(`<p class="text-error">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`, redirectParam)))
-			return
-		}
-
-		if reason := auth.ValidateUsername(id); reason != "" {
-			w.Write([]byte(render(fmt.Sprintf(`<p class="text-error">%s</p>`, reason), redirectParam)))
-			return
-		}
-
-		if len(secret) == 0 {
-			w.Write([]byte(render(`<p class="text-error">Password is required</p>`, redirectParam)))
-			return
-		}
-
-		if len(secret) < 6 {
-			w.Write([]byte(render(`<p class="text-error">Password must be at least 6 characters</p>`, redirectParam)))
-			return
-		}
-
-		// Claiming, where there is something to claim.
-		//
-		// Somebody who emailed agent@ already has an account: unclaimed, no
-		// password, holding the conversation they had. The invite mailed to
-		// them at the end of their free exchanges names their address, so
-		// signing up with it takes over that account rather than making a
-		// second one — which is the difference between "everything we have said
-		// is saved" being true and being a line in an email.
-		//
-		// Creating instead would leave the conversation filed under an id
-		// nobody can sign in to, and the person would arrive at an empty
-		// account having been invited to keep a full one.
-		claimed := false
-		if invCode != "" {
-			if existing := auth.UnclaimedFor(auth.InviteEmail(invCode)); existing != nil {
-				if err := auth.Claim(existing.ID, id, secret, billing.SignupCredits); err != nil {
-					w.Write([]byte(render(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
-					return
-				}
-				claimed = true
-			}
-		}
-		if !claimed {
-			if err := auth.Create(&auth.Account{
-				ID:            id,
-				Secret:        secret,
-				SecretSet:     true,
-				SignupCredits: billing.SignupCredits,
-				Name:          name,
-				Created:       time.Now(),
-			}); err != nil {
-				w.Write([]byte(render(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
-				return
-			}
-		}
-
-		// Consume invite code if present (marks it as used).
-		if invCode != "" {
-			auth.ConsumeInvite(invCode, id)
-		}
-
-		// login
-		sess, err := auth.Login(id, secret)
+		sess, err := registration.Create(r)
 		if err != nil {
-			w.Write([]byte(render(`<p class="text-error">Account created but login failed. Please try logging in.</p>`, redirectParam)))
+			w.Write([]byte(render(`<p class="text-error">`+htmlpkg.EscapeString(err.Error())+`</p>`, redirectParam)))
 			return
 		}
-
-		billing.RetrySignup(sess.Account)
 
 		var secure bool
 
@@ -881,18 +750,6 @@ func Session(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-// Signup rate limiting per IP — defends against bulk account creation.
-// Configurable via SIGNUP_MAX_PER_IP and SIGNUP_WINDOW_HOURS env vars.
-var (
-	signupMu       sync.Mutex
-	signupAttempts = map[string]*signupBucket{}
-)
-
-type signupBucket struct {
-	count   int
-	resetAt time.Time
-}
-
 // safeRedirect is where to send someone after they sign in or sign up.
 //
 // Same-site only: a path starting with a single slash. Anything else — an
@@ -958,37 +815,11 @@ func SafeRedirectTo(to string) string {
 // handleVerifyStart processes the email submission on /account, generates
 // a verification token, and sends an email containing the verify link.
 func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account, email string) {
-	if app.EmailSender == nil {
-		app.Forbidden(w, r, "Email verification is not configured on this instance.")
-		return
-	}
-	if !app.ValidEmail(email) {
-		app.BadRequest(w, r, "Please enter a valid email address.")
+	if err := registration.SendVerification(acc, email, app.PublicURL()); err != nil {
+		app.BadRequest(w, r, err.Error())
 		return
 	}
 
-	// Persist the pending email so the UI can show it.
-	if err := auth.SetAccountEmail(acc.ID, email); err != nil {
-		app.ServerError(w, r, "Failed to save email")
-		return
-	}
-
-	tok, err := auth.CreateEmailVerificationToken(acc.ID, email)
-	if err != nil {
-		app.ServerError(w, r, "Failed to create verification token")
-		return
-	}
-
-	link := app.PublicURL() + "/verify?token=" + tok
-	plain := fmt.Sprintf("Hi %s,\n\nClick the link below to verify your email address for Micro:\n\n%s\n\nThis link expires in 24 hours. If you didn't request this, you can ignore this email.\n\n— Micro", acc.Name, link)
-	html := fmt.Sprintf(`<p>Hi %s,</p><p>Click the link below to verify your email address for Micro:</p><p><a href="%s">%s</a></p><p>This link expires in 24 hours. If you didn't request this, you can ignore this email.</p><p>— Micro</p>`, htmlpkg.EscapeString(acc.Name), link, link)
-
-	if err := app.EmailSender(email, "Verify your Micro account", plain, html, ""); err != nil {
-		app.Log("auth", "Failed to send verification email to %s: %v", email, err)
-		app.ServerError(w, r, "Failed to send verification email. Please try again.")
-		return
-	}
-	app.Log("auth", "Sent verification email to %s for account %s", email, acc.ID)
 	http.Redirect(w, r, "/account", http.StatusSeeOther)
 }
 

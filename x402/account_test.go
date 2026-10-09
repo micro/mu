@@ -51,8 +51,13 @@ func TestHostAccountFlow(t *testing.T) {
 	if w.Code != 403 {
 		t.Fatal("cross-origin login accepted")
 	}
+	// TLS terminated at the proxy, with no forwarded scheme header.
+	proxied := hostRequest("POST", "/login", form, nil)
+	proxied.TLS = nil
+	proxied.URL.Scheme = "http"
+	proxied.Header.Set("Sec-Fetch-Site", "same-origin")
 	w = httptest.NewRecorder()
-	Handler(w, hostRequest("POST", "/login", form, nil))
+	Handler(w, proxied)
 	if w.Code != 303 || w.Header().Get("Location") != "/account/tokens" {
 		t.Fatalf("login: %d %s", w.Code, w.Body.String())
 	}
@@ -160,5 +165,26 @@ func TestLocalLoginDestination(t *testing.T) {
 	to := "/account?plan=pro#subscription"
 	if destination(hostRequest("GET", "/login?redirect="+url.QueryEscape(to), nil, nil)) != to {
 		t.Fatal("plan return lost")
+	}
+}
+
+func TestBrowserOriginBehindProxy(t *testing.T) {
+	t.Setenv("X402_HOST", "m3o.test")
+	for _, tc := range []struct {
+		site, origin string
+		allowed      bool
+	}{
+		{"same-origin", "https://m3o.test", true},
+		{"cross-site", "https://evil.test", false},
+		{"same-site", "https://other.m3o.test", false},
+		{"", "https://evil.test", false},
+		{"", "https://m3o.test", true},
+	} {
+		r := httptest.NewRequest("POST", "http://m3o.test/login", nil)
+		r.Header.Set("Origin", tc.origin)
+		r.Header.Set("Sec-Fetch-Site", tc.site)
+		if got := browserOriginAllowed(r); got != tc.allowed {
+			t.Errorf("site=%q origin=%q: got %v", tc.site, tc.origin, got)
+		}
 	}
 }

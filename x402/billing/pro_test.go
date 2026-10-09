@@ -65,6 +65,7 @@ func TestSubscriptionCheckoutReturnHosts(t *testing.T) {
 	for _, host := range []string{"micro.test", "m3o.test"} {
 		t.Run(host, func(t *testing.T) {
 			t.Setenv("X402_HOST", "m3o.test")
+			t.Setenv("MU_DOMAIN", "micro.test")
 			base := "https://" + host
 
 			acc := subscriptionFixture(t)
@@ -80,7 +81,7 @@ func TestSubscriptionCheckoutReturnHosts(t *testing.T) {
 			billingHTTP = &http.Client{Transport: stripeTransport(func(r *http.Request) (*http.Response, error) {
 				switch r.URL.Path {
 				case "/v1/webhook_endpoints":
-					return stripeResponse(map[string]any{"data": []any{map[string]any{"id": "we_flow", "url": base + "/stripe/webhook", "status": "enabled", "enabled_events": []string{"*"}}}}), nil
+					return stripeResponse(map[string]any{"data": []any{map[string]any{"id": "we_flow", "url": "https://micro.test/stripe/webhook", "status": "enabled", "enabled_events": []string{"*"}}}}), nil
 				case "/v1/checkout/sessions":
 					r.ParseForm()
 					if !strings.HasPrefix(r.PostForm.Get("success_url"), base+"/") || !strings.HasPrefix(r.PostForm.Get("cancel_url"), base+"/") {

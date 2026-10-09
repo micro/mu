@@ -27,6 +27,7 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := fmt.Sprintf(`<p>Signed in as <strong>%s</strong>.</p><section class="section-card"><h2>Credits</h2><p><strong>%d prepaid credits</strong></p><p>%d signup credits remaining · %d daily credits remaining</p><p>Use an API token with /api/v1 or /mcp to charge your credit balance. Wallet payments use x402 per request.</p><div class="form-actions"><a class="btn" href="/account/topup">Top up credits</a><a class="btn" href="/account/usage">View usage</a></div></section>`, html.EscapeString(acc.ID), billing.Balance(acc.ID), billing.SignupRemaining(acc.ID), billing.IncludedToday(acc.ID))
+	body = verificationHTML(r, acc) + body
 	body += billing.SubscriptionSummary(r, acc)
 	body += `<section class="section-card section-stack"><h2>Connect your agent</h2><p>Create a service token, then send it as an Authorization: Bearer header to this host.</p><a class="btn" href="/account/tokens">Manage API tokens</a></section>`
 	app.Respond(w, r, app.Response{Title: "Account", HTML: body})
@@ -35,6 +36,10 @@ func accountHandler(w http.ResponseWriter, r *http.Request) {
 func tokensHandler(w http.ResponseWriter, r *http.Request) {
 	acc := requireAccount(w, r)
 	if acc == nil {
+		return
+	}
+	if err := auth.CheckCredentialAccess(acc.ID); err != nil {
+		app.Respond(w, r, app.Response{Title: "API tokens", HTML: verificationHTML(r, acc)})
 		return
 	}
 	result := ""
