@@ -1,11 +1,11 @@
 /* Public x402 host: one dark developer shell over the shared components. */
-.x402-site{color-scheme:dark;background:#111315;color:#e7e9ec;--text-muted:#a3abb5;--card-border:#353b43;--section-gap:20px;--page-gutter:24px}
+.x402-site{color-scheme:dark;background:#111315;color:#e7e9ec;--bg:#191d22;--surface:#20262d;--accent-color:#9dc9ff;--hover-background:#293442;--text-primary:#e7e9ec;--text-secondary:#a3abb5;--link-color:#e7e9ec;--border:#353b43;--text-muted:#a3abb5;--card-border:#353b43;--section-gap:20px;--page-gutter:24px}
 .x402-site main,.x402-site header{width:min(100% - 40px,1100px);margin-inline:auto}
 .x402-site header{padding-inline:0}
 .x402-site main{padding-top:32px}
 .x402-site a:hover{color:#9dc9ff}
-.x402-site :is(.text-muted,.directory-description,.tool-tile-price,.card-meta,footer,dt){color:var(--text-muted)}
-.x402-site :is(.card,.section-card,.directory-row,pre,input,select,textarea,.tool-connect,.connect-card){background:#191d22;border-color:var(--card-border);color:inherit}
+.x402-site :is(.text-muted,.text-small,small,.note,.directory-description,.tool-tile-price,.card-meta,footer,dt){color:var(--text-muted)}
+.x402-site :is(.card,.section-card,.record-card,.record-editor,.page-section,.notice,.directory-row,pre,input,select,textarea,.tool-connect,.connect-card){background:#191d22;border-color:var(--card-border);color:inherit}
 .x402-site :is(th,td,hr,.tool-group){border-color:var(--card-border)}
 .x402-site :is(button,.btn){background:#e7e9ec;color:#111315;border-color:#e7e9ec}
 .x402-site :is(button,.btn):hover{background:#bcd9ff;color:#111315}
@@ -31,3 +31,6 @@
 .x402-site header nav form{margin:0}
 .x402-site header nav button{padding:4px 8px;font-size:inherit}
 .x402-site pre{max-width:100%;overflow:auto}
+
+.x402-site header nav .nav-link,.x402-site header nav .nav-link:hover{background:transparent;border:0;color:inherit;padding:0;font:inherit;cursor:pointer}
+.x402-site header nav .nav-link:hover{color:#9dc9ff}

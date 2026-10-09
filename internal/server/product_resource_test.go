@@ -2,13 +2,13 @@ package server
 
 import (
 	"encoding/json"
-	"mu/account"
 	"mu/agent"
 	"mu/agent/work"
 	"mu/inbox"
 	"mu/internal/api"
 	"mu/internal/auth"
 	"mu/internal/cli"
+	host402 "mu/x402"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -109,7 +109,7 @@ func TestScopedTokenCanVerifyIdentityOnly(t *testing.T) {
 			http.Error(w, "Scoped token blocked", http.StatusForbidden)
 			return
 		}
-		account.Session(w, api.CredentialRequest(r))
+		host402.SessionHandler(w, api.CredentialRequest(r))
 	}))
 	defer srv.Close()
 	client := cli.NewClient(&cli.ResolvedConfig{URL: srv.URL, Token: token})

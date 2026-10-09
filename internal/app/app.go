@@ -694,7 +694,12 @@ func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
 	body := `<div class="notice"><p>` + htmlpkg.EscapeString(message) + `</p></div>` +
 		`<p><a class="link" href="` + htmlpkg.EscapeString(errorBackTo(r)) + `">Back</a></p>`
 	_, acc := auth.TrySession(r)
-	page := renderWithLang(errorTitle(status), message, body, UserLanguage(r), acc)
+	page := ""
+	if render, ok := r.Context().Value(rendererKey{}).(Renderer); ok {
+		page = render(errorTitle(status), "", body, r)
+	} else {
+		page = renderWithLang(errorTitle(status), message, body, UserLanguage(r), acc)
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	w.Write([]byte(page))
