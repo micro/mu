@@ -127,15 +127,16 @@ func hostPricingHandler(w http.ResponseWriter, r *http.Request) {
 		body += `<div class="card-grid payment-options">`
 	}
 	body += `<section class="card plan-card"><h2>Account credits</h2><p>1 credit = 1 US cent.</p><p>Use a service API token to pay from your available credits on the same MCP and HTTP endpoints. Credits can come from a subscription or a top-up.</p><a href="/account/tokens?access=services">Create a service token</a></section></div>`
+	body = `<div class="section-stack">` + body
 	if cards.Len() > 0 {
 		body += `<h2>Monthly credits</h2><div class="card-grid payment-options">` + cards.String() + `</div>`
 	}
 	if account.TopUpConfigured() || account.CryptoConfigured() {
-		body += `<p><a class="btn" href="/account/topup">Top up credits</a></p>`
+		body += `<div class="form-actions"><a class="btn" href="/account/topup">Top up credits</a></div>`
 	}
 	if x402.Enabled() {
 		body += `<h2>One catalogue, two ways to pay</h2><p>Authenticated calls use available account credits. Sending an x402 payment pays for that call directly instead.</p>`
 	}
-	body += `<p>Account permissions and usage limits still apply; tools with no usage charge may require an account.</p><h2>Tool prices</h2>` + api.ToolPricesHTML()
+	body += `<p>Account permissions and usage limits still apply; tools with no usage charge may require an account.</p><h2>Tool prices</h2>` + api.ToolPricesHTML() + `</div>`
 	app.Respond(w, r, app.Response{Title: "Pricing", Description: description, HTML: body})
 }
