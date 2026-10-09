@@ -258,7 +258,7 @@ func filteredToolGrid(r *http.Request) string {
 		}
 		b.WriteString(`<div class="tool-group" id="svc-` + html.EscapeString(groupAnchor(g.Label)) + `">`)
 		b.WriteString(`<h3 class="tool-group-title">` + html.EscapeString(g.Label) + `</h3>`)
-		b.WriteString(`<div class="directory-list">`)
+		b.WriteString(`<div class="directory-list tools-grid">`)
 		for _, t := range matches {
 			b.WriteString(`<a class="directory-row directory-content" href="/tools/` + html.EscapeString(t.Name) + `">`)
 			b.WriteString(`<span class="directory-heading">` + html.EscapeString(t.Name) + `</span>`)

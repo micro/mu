@@ -1573,3 +1573,6 @@ button.link-button:hover{background:transparent;color:#555}
 
 .x402-site .payment-options{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:600px){.x402-site .payment-options{grid-template-columns:minmax(0,1fr)}}
+
+/* Tool catalogues share the same desktop density on both hosts. */
+@media(min-width:901px){.directory-list.tools-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
