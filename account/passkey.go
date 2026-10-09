@@ -3,6 +3,7 @@ package account
 import (
 	"encoding/json"
 	"fmt"
+	"mu/x402/billing"
 	"net/http"
 	"strings"
 	"sync"
@@ -270,7 +271,7 @@ func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 	// Create a session for the authenticated user
 	accountID := string(user.WebAuthnID())
 
-	retrySignup(accountID)
+	billing.RetrySignup(accountID)
 	sess, err := auth.CreateSession(accountID)
 	if err != nil {
 		app.RespondError(w, http.StatusInternalServerError, "failed to create session")

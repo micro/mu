@@ -1,10 +1,8 @@
 package api
 
 import (
-	"fmt"
 	"html"
-	"mu/internal/origin"
-	"mu/internal/x402"
+	x402 "mu/x402/payment"
 	"net/http"
 	"net/url"
 	"sort"
@@ -233,17 +231,16 @@ func groupAnchor(label string) string {
 }
 
 // toolGrid is the agent's lens: every callable tool, grouped by service, priced.
-func toolGrid() string { return filteredToolGrid(nil) }
+func toolGrid() string { return filteredToolGrid(nil, priceLabel) }
 
-func filteredToolGrid(r *http.Request) string {
+func filteredToolGrid(r *http.Request, price func(Tool) string) string {
 	query, selected := "", ""
-	host := r != nil && origin.IsX402Host(r)
 	if r != nil {
 		query = strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 		selected = r.URL.Query().Get("service")
 	}
 	var b strings.Builder
-	for _, g := range groupTools() {
+	for _, g := range Groups() {
 		if selected != "" && selected != groupAnchor(g.Label) {
 			continue
 		}
@@ -263,7 +260,7 @@ func filteredToolGrid(r *http.Request) string {
 			b.WriteString(`<a class="directory-row directory-content" href="/tools/` + html.EscapeString(t.Name) + `">`)
 			b.WriteString(`<span class="directory-heading">` + html.EscapeString(t.Name) + `</span>`)
 			b.WriteString(`<span class="directory-description">` + html.EscapeString(clipDesc(t.Description)) + `</span>`)
-			b.WriteString(`<span class="tool-tile-price">` + cataloguePrice(t, host) + `</span>`)
+			b.WriteString(`<span class="tool-tile-price">` + price(t) + `</span>`)
 			b.WriteString(`</a>`)
 		}
 		b.WriteString(`</div></div>`)
@@ -467,7 +464,7 @@ func clipDesc(s string) string {
 	return s
 }
 
-type toolGroup struct {
+type ToolGroup struct {
 	Label string
 	Tools []Tool
 }
@@ -475,7 +472,7 @@ type toolGroup struct {
 // groupTools buckets tools by the service in front of the underscore, which is
 // what the name is derived from. A tool with no service behind it — quran, pay,
 // the platform verbs — falls into Platform rather than inventing a group.
-func groupTools() []toolGroup {
+func Groups() []ToolGroup {
 	byService := map[string][]Tool{}
 	for _, t := range mcpTools() {
 		if t.OperatorOnly {
@@ -492,12 +489,12 @@ func groupTools() []toolGroup {
 	}
 	sort.Slice(names, func(i, j int) bool { return service.Label(names[i]) < service.Label(names[j]) })
 
-	out := make([]toolGroup, 0, len(byService))
+	out := make([]ToolGroup, 0, len(byService))
 	for _, n := range names {
-		out = append(out, toolGroup{Label: service.Label(n), Tools: byService[n]})
+		out = append(out, ToolGroup{Label: service.Label(n), Tools: byService[n]})
 	}
 	if rest := byService[""]; len(rest) > 0 {
-		out = append(out, toolGroup{Label: "Platform", Tools: rest})
+		out = append(out, ToolGroup{Label: "Platform", Tools: rest})
 	}
 	return out
 }
@@ -517,6 +514,11 @@ func serviceOf(tool string) string {
 
 // ServiceToolsPageHandler documents the service contract used by scoped clients and x402.
 func ServiceToolsPageHandler(w http.ResponseWriter, r *http.Request) {
+	app.Respond(w, r, app.Response{Title: "Tools", HTML: ToolsHTML(r, priceLabel)})
+}
+
+// ToolsHTML renders the shared catalogue using the caller's price presentation.
+func ToolsHTML(r *http.Request, price func(Tool) string) string {
 	payment := "Use a service token for account access."
 	if x402.Enabled() {
 		payment = "Use account credits with a service token, or pay per call with x402."
@@ -524,7 +526,7 @@ func ServiceToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	body := `<p>Connect through <a href="/mcp">MCP</a> or the <a href="/api">HTTP API</a>. ` + payment + ` <a href="/pricing">View pricing</a>.</p>`
 	query, selected := r.URL.Query().Get("q"), r.URL.Query().Get("service")
 	body += `<form class="search-bar" method="GET" action="/tools"><input type="search" name="q" aria-label="Find a tool" placeholder="Find a tool" value="` + html.EscapeString(query) + `"><select name="service" aria-label="Filter by service"><option value="">All services</option>`
-	for _, g := range groupTools() {
+	for _, g := range Groups() {
 		chosen := ""
 		if selected == groupAnchor(g.Label) {
 			chosen = " selected"
@@ -535,58 +537,11 @@ func ServiceToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	if query != "" || selected != "" {
 		body += `<p><a href="/tools">Clear filters</a></p>`
 	}
-	grid := filteredToolGrid(r)
+	grid := filteredToolGrid(r, price)
 	if grid == "" {
 		body += `<p role="status">No matching tools. <a href="/tools">Clear filters</a></p>`
 	} else {
 		body += grid
 	}
-	app.Respond(w, r, app.Response{Title: "Tools", HTML: body})
-}
-
-func cataloguePrice(t Tool, host bool) string {
-	if host && !quota.Charging() {
-		return "No usage charge"
-	}
-	if !host || !x402.Enabled() {
-		return priceLabel(t)
-	}
-	cost := 0
-	if t.WalletOp != "" {
-		cost = quota.OperationCost(t.WalletOp)
-	}
-	if cost <= 0 {
-		return "No usage charge"
-	}
-	return fmt.Sprintf("$%.2f / call · %d %s", float64(cost)/100, cost, creditWord(cost))
-}
-
-// FeaturedToolsHTML links a small selection into the live catalogue.
-func FeaturedToolsHTML() string {
-	var b strings.Builder
-	b.WriteString(`<div class="card-grid">`)
-	for _, featured := range []struct{ name, label string }{{"web_search", "Web search"}, {"weather_forecast", "Weather"}, {"markets_list", "Markets"}, {"news_search", "News"}, {"places_search", "Places"}, {"text_translate", "Translation"}} {
-		for _, t := range mcpTools() {
-			if t.Name != featured.name || t.OperatorOnly {
-				continue
-			}
-			b.WriteString(`<a class="directory-row directory-content" href="/tools/` + html.EscapeString(t.Name) + `"><span class="directory-heading">` + html.EscapeString(featured.label) + `</span><span class="directory-description">` + html.EscapeString(clipDesc(t.Description)) + `</span><span class="tool-tile-price">` + cataloguePrice(t, true) + `</span></a>`)
-			break
-		}
-	}
-	b.WriteString(`</div>`)
-	return b.String()
-}
-
-// ToolPricesHTML uses the same registry and rates as the call gate.
-func ToolPricesHTML() string {
-	var b strings.Builder
-	b.WriteString(`<table><thead><tr><th>Tool</th><th>Per call</th></tr></thead><tbody>`)
-	for _, g := range groupTools() {
-		for _, t := range g.Tools {
-			b.WriteString(`<tr><td><a href="/tools/` + html.EscapeString(t.Name) + `">` + html.EscapeString(t.Name) + `</a></td><td>` + cataloguePrice(t, true) + `</td></tr>`)
-		}
-	}
-	b.WriteString(`</tbody></table>`)
-	return b.String()
+	return body
 }

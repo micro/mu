@@ -3,10 +3,10 @@ package admin
 import (
 	"fmt"
 	"html"
+	"mu/x402/billing"
 	"sort"
 	"strings"
 
-	"mu/account"
 	"mu/internal/app"
 	"mu/internal/quota"
 )
@@ -22,7 +22,7 @@ func spendCard() string {
 
 	var sb strings.Builder
 	sb.WriteString(`<h3>Included usage today</h3>`)
-	fmt.Fprintf(&sb, `<p>%d credits used across accounts. `, account.IncludedUsage())
+	fmt.Fprintf(&sb, `<p>%d credits used across accounts. `, billing.IncludedUsage())
 	if cap := quota.DailyPoolCredits(); cap > 0 {
 		fmt.Fprintf(&sb, `Shared daily limit: %d credits.`, cap)
 	} else {

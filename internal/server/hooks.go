@@ -12,7 +12,8 @@ package server
 
 import (
 	"fmt"
-	"net/http"
+	"mu/x402/billing"
+	"mu/x402/gateway"
 	"strings"
 	"time"
 
@@ -35,7 +36,6 @@ import (
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
-	"mu/internal/abuse"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -53,7 +53,6 @@ import (
 	"mu/internal/thread"
 	"mu/internal/user"
 	"mu/internal/world"
-	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/bookmarks"
@@ -483,7 +482,7 @@ func wireHooks() {
 	app.AgentReady = ai.Configured
 
 	// And whether a wallet is a wallet here. Same shape, same reason.
-	app.TopUpConfigured = account.TopUpConfigured
+	app.TopUpConfigured = billing.TopUpConfigured
 
 	// Wire admin → blog callbacks (avoids blog importing admin)
 	admin.GetNewAccountBlog = blog.PostsByNewAccounts
@@ -499,7 +498,7 @@ func wireHooks() {
 		mail.DeleteInbox,
 		groups.Forget,
 		chat.Forget,
-		func(id string) { account.DeleteCredits(id) },
+		func(id string) { billing.DeleteCredits(id) },
 		app.ForgetAccountCosts,
 		home.Forget,
 		func(id string) { wallet.DeleteBaseWallet(id) },
@@ -602,87 +601,7 @@ func wireHooks() {
 	// here, the same way every other cycle in this file is broken. See
 	// internal/service/gateway.go for what it replaced: four different places a
 	// charge could live, and most operations landing in none of them.
-	service.Gate.Allow = func(account, op string) (bool, error) {
-		if account == "" {
-			if quota.OperationCost(op) > 0 {
-				return false, fmt.Errorf("authentication or verified payment required for paid operations")
-			}
-			return false, nil
-		}
-
-		if quota.OperationCost(op) > 0 {
-			if !api.IsWalletIdentity(account) {
-				acc, err := auth.GetAccount(account)
-				if err != nil || acc.Banned || (!acc.Agent && !acc.Admin && !acc.Approved && !acc.EmailVerified) {
-					return false, fmt.Errorf("a verified or approved account is required")
-				}
-			}
-			for _, b := range []struct {
-				key    string
-				max    int
-				window time.Duration
-			}{
-				{"paid:hour:", abuse.Limit("PAID_MAX_PER_HOUR", 300), time.Hour},
-				{"paid:day:", abuse.Limit("PAID_MAX_PER_DAY", 1000), 24 * time.Hour},
-			} {
-				wait, err := abuse.Take(b.key+account, b.max, b.window)
-				if err != nil {
-					return false, err
-				}
-				if wait > 0 {
-					return false, fmt.Errorf("paid operation limit reached; retry in %d seconds", int(wait.Seconds()))
-				}
-			}
-		}
-
-		// Somebody who paid in USDC has already paid, at the door, for this
-		// exact operation — VerifyAndSettle runs before the tool does, and the
-		// free trial is counted there too. There is no account behind a wallet
-		// identity by design: not signing up is the entire point of x402.
-		//
-		// So asking the wallet about one gets "account not found", and the
-		// gateway turns that into a refusal — of a call that has been paid for.
-		// The money is gone and the caller has nothing. This was live for every
-		// scoped priced service, and binding the caller on priced tools spread
-		// it to web_search, which is the example in the README.
-		//
-		// Allowed, recorded, and not charged again.
-		if api.IsWalletIdentity(account) {
-			quota.Record(account, op)
-			return false, nil
-		}
-
-		// A daily limit is checked before anything about money, because it is
-		// not about money. It is the second control: a price stops somebody who
-		// has to pay and does nothing about a loop, and what a loop spends on
-		// the three outbound operations is a domain's or a number's reputation,
-		// which no balance repairs. See the limit block in quota.json.
-		if over, why := quota.OverLimit(account, op); over {
-			return false, fmt.Errorf("%s", why)
-		}
-
-		ok, _, cost, err := quota.CheckQuota(account, op)
-		if err != nil {
-			return false, err
-		}
-		if !ok {
-			return false, fmt.Errorf("%s", quota.Shortfall(cost, quota.Available(account)))
-		}
-		return true, nil
-	}
-	service.Gate.Reserve = quota.Reserve
-	service.Gate.Charge = func(account, op string) {
-		if err := quota.Charge(account, op, nil); err != nil {
-			app.Log("wallet", "charging %s for %s: %v", account, op, err)
-		}
-	}
-	// Served without reaching a paid provider: recorded, because /usage should
-	// show what an account did, and not charged, because it cost nothing to
-	// answer. See internal/service/meter.go.
-	service.Gate.Free = func(account, op string) { quota.Record(account, op) }
-	// One counter, moved once, after the call succeeded — it is what both the
-	// free allowance and the daily limit read.
-	service.Gate.Done = quota.Done
+	gateway.Configure()
 
 	// How hard an account's agents may hit this at once.
 	service.Concurrency = func(account string) int {
@@ -724,107 +643,14 @@ func wireHooks() {
 		return 0, false
 	}
 
-	// Wire MCP quota checking using wallet credit system
-	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
-		// Nothing to charge, nobody to charge it to. A free tool has no
-		// business asking who is calling: news, web fetch, quran and video
-		// search are priced at zero because nothing bills us for them, and an
-		// anonymous caller was being turned away from all four with "this call
-		// is metered". It is not.
-		//
-		// This is the same mistake as the x402 gate in the HTTP layer, made
-		// independently here, which is why fixing that one alone left free
-		// tools unreachable. Both now ask what it costs before asking who you
-		// are.
-		if !quota.Metered(op) {
-			// Open, not unguarded. Credits price what a call costs us and rate
-			// limits stop bots — see the cost block in internal/quota. A free call
-			// is charged nothing, so the limit is the only one of the two
-			// doing any work here, and it applies to guests because a
-			// signed-in caller is already accountable.
-			if _, err := auth.GetSession(r); err != nil && !app.GuestAllowed(r) {
-				return false, 0, fmt.Errorf("too many free calls from this address — " +
-					"sign in at /account/tokens to keep going, or wait a few minutes")
-			}
-			return true, 0, nil
-		}
-		// Check for x402 payment (bypasses auth + credits).
-		// A wallet hint header is not proof of identity or payment.
-		// Every priced x402 request must pass verification before execution.
-		if r.Context().Value(x402.X402ContextKey) != nil {
-			// Verify, do not settle. The money moves once there is an answer
-			// to hand back — see x402.Finish. Everything that can refuse a
-			// caller happens here, so a verified payment is a promise that
-			// settling will work rather than a charge already taken.
-			if _, err := x402.Verify(r, op, r.URL.Path); err != nil {
-				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
-			}
-			return true, 0, nil
-		}
-		sess, err := auth.GetSession(r)
-		if err != nil {
-			// Not "authentication required", which is what an account-scoped
-			// tool answers with a 401 and a WWW-Authenticate header telling a
-			// client where to sign in. This is a different condition wearing
-			// the same words: the call is metered, and there is nobody to
-			// charge. Signing in is one answer; paying is the other, and a
-			// client told to authenticate would never find the second.
-			return false, 0, fmt.Errorf("this call is metered: sign in so it can be charged to your credits, or send an x402 payment")
-		}
-		canProceed, _, cost, err := quota.CheckQuota(sess.Account, op)
-		return canProceed, cost, err
-	}
-
-	// Wire agent quota checking (same wallet credit system)
-	agent.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
-		// Free is free here too — the third copy of this decision. See the
-		// note on api.QuotaCheck above.
-		if !quota.Metered(op) {
-			return true, 0, nil
-		}
-		// Check for x402 payment (bypasses auth + credits)
-		if r.Context().Value(x402.X402ContextKey) != nil {
-			// Verify, do not settle. The money moves once there is an answer
-			// to hand back — see x402.Finish. Everything that can refuse a
-			// caller happens here, so a verified payment is a promise that
-			// settling will work rather than a charge already taken.
-			if _, err := x402.Verify(r, op, r.URL.Path); err != nil {
-				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
-			}
-			return true, 0, nil
-		}
-		sess, err := auth.GetSession(r)
-		if err != nil {
-			// Not "authentication required", which is what an account-scoped
-			// tool answers with a 401 and a WWW-Authenticate header telling a
-			// client where to sign in. This is a different condition wearing
-			// the same words: the call is metered, and there is nobody to
-			// charge. Signing in is one answer; paying is the other, and a
-			// client told to authenticate would never find the second.
-			return false, 0, fmt.Errorf("this call is metered: sign in so it can be charged to your credits, or send an x402 payment")
-		}
-		canProceed, _, cost, err := quota.CheckQuota(sess.Account, op)
-		return canProceed, cost, err
-	}
+	agent.QuotaCheck = gateway.CheckAgent
 
 	apps.QuotaCheck = agent.QuotaCheck
 
-	apps.ChargeUse = account.ChargeAppUse
+	apps.ChargeUse = billing.ChargeAppUse
 
 	// Inline visual cards now come from the capability registry (core), which
 	// each service self-registers into from its Load(). No central wiring here.
-
-	// A paid wallet is an identity: an agent that has settled a payment can
-	// reach account-scoped tools without an account. Read from the settled
-	// payment only — never from the unauthenticated X-Wallet-Address header.
-	api.WalletPayer = func(r *http.Request) string { return x402.PayerFrom(r.Context()) }
-	// Read from the context rather than re-verified: the signature is checked
-	// once at the door, because its nonce is single-use.
-	api.WalletSigner = func(r *http.Request) string { return wallet.SignerFrom(r.Context()) }
-
-	// Wire x402 payment required response for MCP
-	if x402.Enabled() {
-	}
 
 	// Wire email sending for verification mails. Uses the platform's own
 	// SMTP relay so verification mails come from no-reply@<MAIL_DOMAIN>.
@@ -850,10 +676,10 @@ func wireHooks() {
 	// it. Wired as a hook because the wallet imports auth and cannot be imported
 	// back.
 	//
-	// account.Paid and not account.Balance. A balance includes the welcome
+	// billing.Paid and not billing.Balance. A balance includes the welcome
 	// grant, and reading a gift as a signal made every signup established the
 	// moment it existed.
-	auth.HasPaid = account.Paid
+	auth.HasPaid = billing.Paid
 
 	// The status page asks the AI package what the model is doing rather than
 	// guessing from one env var.

@@ -751,7 +751,7 @@ var VerificationRequired func() bool
 // It was HasCredit and it asked whether the balance was positive, which is a
 // different question and stopped being the same one the day new accounts were
 // given a hundred credits to start with. A grant is not a signal — see
-// account.Paid, which is what this points at.
+// billing.Paid, which is what this points at.
 var HasPaid func(accountID string) bool
 
 // trusted reports whether an account has shown it is a person rather than a

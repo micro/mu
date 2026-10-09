@@ -8,6 +8,8 @@ package server
 
 import (
 	"encoding/json"
+	host402 "mu/x402"
+	"mu/x402/billing"
 	"net/http"
 	"strings"
 
@@ -335,7 +337,7 @@ func registerRoutes() {
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
 	// Billing pages belong to Account; provider callbacks keep their stable URLs.
-	http.HandleFunc("/account/", account.BalanceHandler)
+	http.HandleFunc("/account/", billing.BalanceHandler)
 
 	// Stripe posts here. Named for the provider, at the top level, and that is
 	// the whole point: a webhook URL is a contract with somebody outside this
@@ -354,9 +356,9 @@ func registerRoutes() {
 	// The old path is gone. It was kept live across the move so that no top-up
 	// was lost between the deploy and the dashboard edit; the dashboard now
 	// names this one.
-	http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)
-	http.HandleFunc("/stripe/checkout", account.BalanceHandler)
-	http.HandleFunc("/stripe/success", account.BalanceHandler)
+	http.HandleFunc("/stripe/webhook", billing.HandleStripeWebhook)
+	http.HandleFunc("/stripe/checkout", billing.BalanceHandler)
+	http.HandleFunc("/stripe/success", billing.BalanceHandler)
 
 	// The service is web — searching the open web is one of the things it does,
 	// and a service is named for a domain rather than an action. Its page was
@@ -540,7 +542,7 @@ func registerRoutes() {
 	// What you have, and the key that can spend it. One destination: x402 is a
 	// substrate and a substrate does not get a page of its own, the same way
 	// SMTP has none and its connect details are a section under /inbox.
-	http.HandleFunc("/wallet", account.Wallet)
+	http.HandleFunc("/wallet", billing.Wallet)
 	// Taking your key with you. A page action and never a tool: an agent that
 	// can read a private key is a prompt injection away from posting it
 	// somewhere. It re-checks the password, so it is not in authRequired()
@@ -554,11 +556,11 @@ func registerRoutes() {
 	// Its own route rather than a case in BalanceHandler because it is a POST
 	// that moves money on a chain, and the CSRF and method checks want to be
 	// obvious rather than nested three switches deep.
-	http.HandleFunc("/wallet/convert", account.ConvertUSDC)
-	http.HandleFunc("/account/convert", account.ConvertUSDC)
-	http.HandleFunc("/account/crypto", account.CryptoHandler)
+	http.HandleFunc("/wallet/convert", billing.ConvertUSDC)
+	http.HandleFunc("/account/convert", billing.ConvertUSDC)
+	http.HandleFunc("/account/crypto", billing.CryptoHandler)
 	// The money actions. account/ owns them because it owns the ledger.
-	http.HandleFunc("/wallet/", account.BalanceHandler)
+	http.HandleFunc("/wallet/", billing.BalanceHandler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	// Who is here. See service/users: the directory that did not exist, so a
 	// person could sign up alongside a hundred and eighty others and meet none
@@ -659,8 +661,8 @@ func registerRoutes() {
 	http.HandleFunc("/account/profile", account.Account)
 	http.HandleFunc("/account/avatar", account.Account)
 	http.HandleFunc("/account/billing", account.Account)
-	http.HandleFunc("/account/subscription", account.SubscriptionHandler)
-	http.HandleFunc("/account/usage", account.UsageHandler)
+	http.HandleFunc("/account/subscription", billing.SubscriptionHandler)
+	http.HandleFunc("/account/usage", account.Usage)
 	http.HandleFunc("/account/connections", account.Account)
 	http.HandleFunc("/account/developer", account.Account)
 	http.HandleFunc("/account/app-password", account.AppPasswordHandler)
@@ -787,7 +789,7 @@ func registerRoutes() {
 
 	// Product operations have separate routes; runtime tools never switch by token.
 	http.HandleFunc("/developers", DevelopersHandler)
-	http.HandleFunc("/x402", X402PageHandler)
+	http.HandleFunc("/x402", host402.AboutHandler)
 
 	http.HandleFunc("/tools", api.ServiceToolsPageHandler)
 
@@ -837,7 +839,7 @@ func registerRoutes() {
 	// product had /notify, a service with tools and a page, and /push, four
 	// endpoints doing the same feature under a second name, and nothing said
 	// which was which. One noun. internal/push stays what it is, the mechanism
-	// underneath, the way internal/x402 sits under the wallet.
+	// underneath, the way x402/payment sits under the wallet.
 	//
 	// The old paths still answer. A service worker installed months ago has
 	// "/push/received" compiled into it and will go on posting there until the
@@ -868,7 +870,7 @@ func registerRoutes() {
 	http.HandleFunc("/mcp", publicMCPHandler)
 
 	// serve the app
-	http.Handle("/", app.Serve())
+	http.Handle("/", app.Serve(billing.Script))
 }
 
 // Only redirects remain for shared links to retired entry pages.

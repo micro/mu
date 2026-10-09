@@ -2,6 +2,7 @@ package account
 
 import (
 	"mu/internal/auth"
+	"mu/x402/billing"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -30,7 +31,7 @@ func TestAccountDestinations(t *testing.T) {
 		r.AddCookie(&http.Cookie{Name: "session", Value: session.Token})
 		w := httptest.NewRecorder()
 		if tc.path == "/account/usage" {
-			UsageHandler(w, r)
+			billing.UsageHandler(w, r)
 		} else {
 			Account(w, r)
 		}

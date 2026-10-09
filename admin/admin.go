@@ -3,13 +3,13 @@ package admin
 import (
 	"fmt"
 	"html"
+	"mu/x402/billing"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
 )
@@ -59,8 +59,8 @@ func alertBadge() string {
 
 // balanceCell separates prepaid funds from the non-transferable signup allowance.
 func balanceCell(userID string) string {
-	label := fmt.Sprintf("%d prepaid", account.Balance(userID))
-	if signup := account.SignupRemaining(userID); signup > 0 {
+	label := fmt.Sprintf("%d prepaid", billing.Balance(userID))
+	if signup := billing.SignupRemaining(userID); signup > 0 {
 		label += fmt.Sprintf(" · %d signup", signup)
 	}
 	return `<span class="text-sm">` + label + `</span>`
@@ -115,7 +115,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		case "delete":
 			if userID != acc.ID {
-				if err := account.EndSubscription(r.Context(), userID); err != nil {
+				if err := billing.EndSubscription(r.Context(), userID); err != nil {
 					app.BadRequest(w, r, "Cancel billing before deleting this account: "+err.Error())
 					return
 				}
@@ -143,7 +143,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Sscanf(strings.TrimSpace(r.FormValue("amount")), "%d", &amount)
 			if amount > 0 {
 				if u, err := auth.GetAccount(userID); err == nil {
-					if err := account.AddCredits(u.ID, amount, "admin_grant", map[string]interface{}{
+					if err := billing.AddCredits(u.ID, amount, "admin_grant", map[string]interface{}{
 						"by": acc.ID,
 					}); err != nil {
 						app.Log("admin", "granting %d to %s: %v", amount, u.ID, err)
@@ -189,7 +189,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		page := app.Paginate(r, len(filtered), userPageSize(r, len(filtered)))
 		rows := make([]map[string]any, 0, page.To-page.From)
 		for _, u := range filtered[page.From:page.To] {
-			rows = append(rows, map[string]any{"id": u.ID, "name": u.Name, "created": u.Created, "admin": u.Admin, "agent": u.Agent, "banned": u.Banned, "approved": u.Approved, "verified": u.EmailVerified, "balance": account.Balance(u.ID), "signup_remaining": account.SignupRemaining(u.ID), "self": u.ID == acc.ID})
+			rows = append(rows, map[string]any{"id": u.ID, "name": u.Name, "created": u.Created, "admin": u.Admin, "agent": u.Agent, "banned": u.Banned, "approved": u.Approved, "verified": u.EmailVerified, "balance": billing.Balance(u.ID), "signup_remaining": billing.SignupRemaining(u.ID), "self": u.ID == acc.ID})
 		}
 		app.RespondJSON(w, map[string]any{"items": rows, "page": page.Page, "total": len(filtered), "page_size": userPageSize(r, len(filtered)), "tab": tab})
 

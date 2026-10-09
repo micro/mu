@@ -22,7 +22,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/settings"
 
-	"mu/internal/x402"
+	x402 "mu/x402/payment"
 )
 
 // USDC on Base mainnet (6 decimals) — the asset x402 settles in.
