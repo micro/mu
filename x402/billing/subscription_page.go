@@ -225,7 +225,7 @@ func MonthlyPricingHTML(r *http.Request) string {
 		}
 		benefits := `<li>Daily morning brief included.</li>`
 		if tier == "pro" {
-			benefits += `<li>Optional daily plan included.</li><li>One recurring research topic; research uses credits.</li>`
+			benefits += `<li>Optional daily plan included.</li><li>Optional evening reflection from reminder.dev.</li>`
 		}
 		intro := "A daily helping hand."
 		if tier == "pro" {

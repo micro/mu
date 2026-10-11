@@ -104,7 +104,7 @@ func TestMomentSettingsRequireCSRF(t *testing.T) {
 }
 
 func TestPurposeAppliesToEveryPromptPath(t *testing.T) {
-	for _, opts := range []QueryOpts{{}, {System: "Specialist instructions"}, {System: includedBriefInstruction, NoTools: true}, {System: eveningReadingInstruction, NoTools: true}} {
+	for _, opts := range []QueryOpts{{}, {System: "Specialist instructions"}, {System: includedBriefInstruction, NoTools: true}} {
 		if !strings.Contains(nativeSystem(opts), purpose) {
 			t.Fatal("purpose missing from prompt path")
 		}

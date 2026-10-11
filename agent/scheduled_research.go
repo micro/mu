@@ -3,18 +3,14 @@ package agent
 import (
 	"fmt"
 	"html"
-	"mu/service/browser"
 	"mu/service/events"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"mu/internal/app"
 	"mu/internal/auth"
-
-	"mu/internal/quota"
 )
 
 func setBriefPlan(owner string, enabled bool) error {
@@ -44,31 +40,17 @@ func Research(owner string) *events.Event {
 	return nil
 }
 
-func researchMinimumCost() int {
-	return quota.OperationCost(quota.OpWebSearch) + 3*quota.OperationCost(quota.OpWebFetch) + quota.OperationCost(quota.OpAgentRun)
-}
-
-func ResearchCost() int {
-	cost := quota.OperationCost(quota.OpWebSearch) + 3*quota.OperationCost(quota.OpWebFetch) + 2*quota.OperationCost(quota.OpAgentRun)
-	if browser.Configured() {
-		cost += 3 * quota.OperationCost(quota.OpBrowserRead)
-	}
-	return cost
-}
-
 func researchHTML(owner, csrf string) string {
 	if auth.Plan(owner) != "pro" {
-		return `<p>Receive a short, thoughtful reading on your chosen topic, with sources and room for perspective. Private, on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
+		return `<p>A short evening reflection on gratitude, perspective and the day behind you. Private, on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
 	}
-	details := ""
-	topic, clock, zone, frequency, maxCredits := "", "20:30", "", "weekly", ResearchCost()
+	clock, zone, frequency := "20:30", "", "daily"
 	if acc, err := auth.GetAccount(owner); err == nil {
 		zone = acc.Zone
 	}
 	e := Research(owner)
 	if e != nil {
-		details = e.Note
-		topic, zone, frequency, maxCredits = e.Prompt, e.Zone, e.Repeat, e.MaxCredits
+		zone, frequency = e.Zone, e.Repeat
 		loc, err := time.LoadLocation(zone)
 		if err == nil {
 			clock = e.When.In(loc).Format("15:04")
@@ -93,13 +75,13 @@ func researchHTML(owner, csrf string) string {
 			status = "Disabled"
 		}
 	}
-	return `<div class="page-stack"><p>Follow one topic. Micro reads web sources and prepares a private, sourced piece for each scheduled reading.</p><p class="text-muted">` + status + ` · Up to ` + strconv.Itoa(maxCredits) + ` credits per reading.</p><details class="disclosure"><summary>Usage details</summary><p>Each reading uses credits for research and writing, starting from ` + strconv.Itoa(researchMinimumCost()) + ` credits. Searches, source pages and optional browser access count toward your limit. Cached searches may cost less.</p></details><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<input name="topic" maxlength="300" required value="` + html.EscapeString(topic) + `" placeholder="What should Micro follow?"></label><label class="field-label">Instructions<textarea name="instructions" rows="4" maxlength="4000" placeholder="Questions, areas to focus on, sources or the kind of reading you want">` + html.EscapeString(details) + `</textarea></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><label class="field-label">Maximum credits per check<input type="number" name="max_credits" min="1" max="1000" required value="` + strconv.Itoa(maxCredits) + `"></label><div class="form-actions">` + controls + `</div></form></div>`
+	return `<div class="page-stack"><p>The daily reminder from reminder.dev, with a quiet invitation to reflect on your day. No reply is required.</p><p class="text-muted">` + status + `. No credits are used.</p><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><div class="form-actions">` + controls + `</div></form></div>`
 }
 
 func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		app.Forbidden(w, r, "Sign in to schedule research")
+		app.Forbidden(w, r, "Sign in to schedule an evening reflection")
 		return
 	}
 	if !auth.StrictCSRF(r) {
@@ -108,26 +90,20 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	paused := r.FormValue("state") == "paused"
 	if !paused && auth.Plan(acc.ID) != "pro" {
-		app.Forbidden(w, r, "Recurring research is included with Pro")
+		app.Forbidden(w, r, "Evening reflection is included with Pro")
 		return
 	}
 	if r.FormValue("state") != "active" && !paused {
 		app.BadRequest(w, r, "Invalid schedule action")
 		return
 	}
-	topic := strings.TrimSpace(r.FormValue("topic"))
-	details := strings.TrimSpace(r.FormValue("instructions"))
+	topic := "Reflect on the day with gratitude, mercy and intention."
 	repeat := r.FormValue("repeat")
 	zone := r.FormValue("zone")
-	budget, e1 := strconv.Atoi(r.FormValue("max_credits"))
 	clock, e2 := time.Parse("15:04", r.FormValue("clock"))
 	loc, e3 := time.LoadLocation(zone)
-	if len([]rune(details)) > 4000 || topic == "" || len([]rune(topic)) > 300 || (repeat != "daily" && repeat != "weekly") || e1 != nil || budget < 1 || budget > 1000 || e2 != nil || e3 != nil || zone == "" || zone == "Local" {
-		app.BadRequest(w, r, "Choose a topic, daily or weekly frequency, time, timezone and credit limit")
-		return
-	}
-	if !paused && budget < researchMinimumCost() {
-		app.BadRequest(w, r, fmt.Sprintf("Evening Reading needs at least %d credits per run", researchMinimumCost()))
+	if (repeat != "daily" && repeat != "weekly") || e2 != nil || e3 != nil || zone == "" || zone == "Local" {
+		app.BadRequest(w, r, "Choose a daily or weekly frequency, time, timezone")
 		return
 	}
 	now := time.Now().In(loc)
@@ -147,11 +123,8 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		if old != nil {
 			e = *old
 		}
-		if e.Prompt != topic || e.Note != details {
-			e.ResearchDigest, e.ResearchReport = "", ""
-		}
-		e.Note = details
-		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused, e.MaxCredits = "Evening Reading: "+topic, topic, repeat, zone, next, paused, budget
+		e.ResearchDigest, e.ResearchReport = "", ""
+		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused = "Evening reflection", topic, repeat, zone, next, paused
 		e.Advance = scheduledAdvance(e.Kind)
 		e.Sequence++
 		e.Fired = false
@@ -160,26 +133,8 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		app.BadRequest(w, r, "Could not save research schedule")
+		app.BadRequest(w, r, "Could not save reflection schedule")
 		return
 	}
 	http.Redirect(w, r, "/agents?view=scheduled&event=research", http.StatusSeeOther)
-}
-
-// SaveResearch keeps the bounded comparison context with its owned schedule, so
-// canceling the schedule or deleting the account removes both together.
-func SaveResearch(source *events.Event, digest, report string) error {
-	return events.EditOwned(source.Owner, func(records map[string]*events.Event) error {
-		old := records[source.ID]
-		if old == nil || old.Owner != source.Owner || old.Kind != "research" || old.Paused || old.Sequence != source.Sequence {
-			return fmt.Errorf("research schedule changed during the check")
-		}
-		if len(report) > 8000 {
-			report = report[:8000]
-		}
-		cp := *old
-		cp.ResearchDigest, cp.ResearchReport = digest, report
-		records[cp.ID] = &cp
-		return nil
-	})
 }

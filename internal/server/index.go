@@ -59,9 +59,9 @@ func landingHTML() string {
 <dl class="landing-capabilities">
 <div><dt>Morning Brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>
 <div><dt>Daily Checkin</dt><dd>How's it going? Space to share whatever is going on, when you feel like it.</dd></div>
-<div><dt>Evening Reading</dt><dd>Choose a topic and schedule. Micro reads web sources and delivers a sourced piece to read at your chosen time.</dd></div>
+<div><dt>Evening reflection</dt><dd>Take a quiet moment to reflect on your day, notice what you are grateful for and look ahead with intention.</dd></div>
 </dl>
-<p class="landing-access">Free includes a weekly brief; Starter and Pro include daily briefs. Research is available with Pro and uses credits. You choose which events to enable.</p>
+<p class="landing-access">Free includes a weekly brief; Starter and Pro include daily briefs. Evening reflection is available with Pro. You choose which events to enable.</p>
 </section>
 <section class="landing-introduction landing-scheduled">
 <h2>Start with Micro</h2>
