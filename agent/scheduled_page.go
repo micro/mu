@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"html"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -66,7 +65,7 @@ func scheduledHandler(w http.ResponseWriter, r *http.Request) {
 		case "moment":
 			content = momentHTML(acc.ID, token)
 		case "research":
-			content = `<section class="section-card section-stack"><h2>Evening Reading</h2>` + researchHTML(acc.ID, token) + `</section>`
+			content = `<section class="section-card section-stack"><h2>Evening reflection</h2>` + researchHTML(acc.ID, token) + `</section>`
 		default:
 			customScheduleHandler(w, r, acc)
 			return
@@ -83,7 +82,7 @@ func scheduledHandler(w http.ResponseWriter, r *http.Request) {
 		{"brief", "Morning Brief", "Your day, useful headlines and a reminder.", Brief(acc.ID)},
 		{"checkin", "Daily Checkin", "How's it going?", Checkin(acc.ID)},
 		{"moment", "Take a moment", "A gentle invitation to pause, stretch or step outside.", Moment(acc.ID)},
-		{"research", "Evening Reading", "A private reading on your chosen topic.", Research(acc.ID)},
+		{"research", "Evening reflection", "A quiet pause to reflect on your day with gratitude and perspective.", Research(acc.ID)},
 	} {
 		body += scheduleCard(item.id, item.title, item.description, item.event)
 	}
@@ -101,9 +100,6 @@ func scheduleCard(id, title, description string, e *events.Event) string {
 		if e.Paused {
 			status = "Disabled"
 		}
-	}
-	if id == "research" && e != nil && !e.Paused {
-		status += fmt.Sprintf(" · Up to %d credits", e.MaxCredits)
 	}
 	anchor := id
 	if id == "brief" {
