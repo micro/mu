@@ -30,7 +30,7 @@ func configureScheduledAdvances() {
 	for _, acc := range auth.AllAccounts() {
 		needed := false
 		for _, e := range events.List(acc.ID) {
-			if e.Advance.Minutes == 0 && scheduledAdvance(e.Kind).Minutes > 0 {
+			if (e.Kind == "research" && e.Title != "Evening reflection") || (e.Advance.Minutes == 0 && scheduledAdvance(e.Kind).Minutes > 0) {
 				needed = true
 				break
 			}
@@ -40,6 +40,10 @@ func configureScheduledAdvances() {
 		}
 		if err := events.EditOwned(acc.ID, func(records map[string]*events.Event) error {
 			for _, e := range records {
+				if e.Kind == "research" && e.Title != "Evening reflection" {
+					e.Title = "Evening reflection"
+					e.Sequence++ // Invalidate any prepared reading from the old job.
+				}
 				if e.Advance.Minutes == 0 {
 					e.Advance = scheduledAdvance(e.Kind)
 				}
