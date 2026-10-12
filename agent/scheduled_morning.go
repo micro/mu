@@ -71,9 +71,9 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 			return briefSource{Name: "Daily reminder"}
 		}
 		// This source text is rendered verbatim after synthesis, never rewritten by a model.
-		text := "## Daily reminder\n\n" + d.Verse
+		text := "## Daily reminder\n\n**Quran verse**\n\n> " + strings.ReplaceAll(strings.TrimSpace(d.Verse), "\n", "\n> ")
 		if strings.TrimSpace(d.Message) != "" {
-			text += "\n\n" + d.Message
+			text += "\n\n## Reflection\n\n" + d.Message
 		}
 		text += "\n\n[Read the reminder](" + origin.Self() + "/prayer)"
 		return briefSource{Name: "Daily reminder", Text: text}
