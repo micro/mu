@@ -1,6 +1,6 @@
 # Mu
 
-The runtime for agents, tools and services
+The runtime for Micro, an open personal assistant
 
 ## Home
 
