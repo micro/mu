@@ -527,7 +527,7 @@ Looked-up content used to answer a prompt is sent to the configured AI provider,
 and answers may be retained in the conversation. Disconnect removes the local
 grant and requests revocation from Google.
 
-Shared blog digests and daily images are enabled. Set `BLOG_DIGESTS=off` or `DAILY_IMAGES=off` to disable them independently. Blog topic pieces run throughout the day (up to eight daily); a shared world roundup refreshes hourly. Evening Digest delivers the past 24 hours of public blog content with an optional topic filter. The daily image is generated after 06:00 in the site timezone and archived. News summaries, tagging and arrival triage remain disabled. Personal daily brief schedules and explicit requests remain available. Model failures do not retry on another provider.
+Shared blog digests and daily images are enabled. Set `BLOG_DIGESTS=off` or `DAILY_IMAGES=off` to disable them independently. Blog topic pieces run throughout the day (up to eight daily); a shared world roundup is published once per day, with existing posts checked across restarts. Evening Digest delivers the past 24 hours of public blog content with an optional topic filter. The daily image is generated after 06:00 in the site timezone and archived. News summaries, tagging and arrival triage remain disabled. Personal daily brief schedules and explicit requests remain available. Model failures do not retry on another provider.
 
 ### Checking Codex availability
 
