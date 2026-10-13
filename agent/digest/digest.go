@@ -133,9 +133,13 @@ func Generate() bool {
 
 // Today returns today's digest from the blog, or nil.
 func Today() *blog.Post {
+	return todayFrom(blog.PostsByAuthorID(auth.MicroID, "Micro"), time.Now())
+}
+
+// The persisted posts are the daily guard, so restarting cannot reset it.
+func todayFrom(posts []*blog.Post, now time.Time) *blog.Post {
 	var latest *blog.Post
-	now := time.Now()
-	for _, p := range blog.PostsByAuthorID(auth.MicroID, "Micro") {
+	for _, p := range posts {
 		if p.Private || p.AuthorID != auth.MicroID || p.CreatedAt.In(now.Location()).Format("2006-01-02") != now.Format("2006-01-02") {
 			continue
 		}
@@ -208,8 +212,8 @@ func generate() {
 	mu.Unlock()
 
 	existing := Today()
-	if existing == nil || time.Since(existing.CreatedAt) >= time.Hour {
-		app.Log("digest", "Refreshing shared world digest")
+	if existing == nil {
+		app.Log("digest", "Publishing today’s world digest")
 		createDigest()
 	} else {
 		app.Log("digest", "Shared digest is current (%s), skipping", existing.ID)
@@ -247,7 +251,7 @@ func createDigest() {
 	// other attributed and priced, for two posts by the same account on the
 	// same blog. Every other thing this agent does already goes through
 	// RunPlannedAs; the one write did not, which is the half that costs money.
-	title := "World Digest — " + time.Now().UTC().Format("2 Jan 2006, 15:04 UTC")
+	title := "World Digest — " + time.Now().Format("2 Jan 2006")
 	_, failed, err := api.ExecuteToolAs(auth.MicroID, "blog_create", map[string]any{
 		"title": title, "content": response, "tags": "digest",
 	})
