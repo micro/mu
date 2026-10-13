@@ -23,12 +23,6 @@ Connect from various places and it all goes in one inbox.
 tools. Services provide those tools: mail, files, calendar, search, weather,
 notes, shell, and more. You ask for an outcome; the agent chooses the tools.
 
-## Work
-
-Work can run in the background and return its result to the originating conversation. 
-Task records live in service/tasks. Agents own the daily brief and delivery logic, 
-while service/events schedules it and Work tracks each occurrence.
-
 ## Services
 
 Complete standalone services that agents can use as tools or you can browse with. 
