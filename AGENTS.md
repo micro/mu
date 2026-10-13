@@ -582,8 +582,10 @@ Keep mobile content near the top: a title, a compact search row and the content;
 group secondary actions separately and collapse infrequent filters.
 
 Personal daily brief schedules and the cached short Home summary remain available.
-No other automatic model content generation: no daily images, public digests, summaries, tagging, topic
-suggestions, greetings or arrival triage. User-requested jobs remain explicit.
+Shared blog digests and the daily image are enabled. Evening Digest delivers shared
+blog content, optionally filtered by topic. Other automatic model content generation
+(summaries, tagging, topic suggestions, greetings and arrival triage) remains disabled.
+User-requested jobs remain explicit.
 
 Remove obsolete page renderers when separating them from backend handlers.
 The command shell has one stylesheet; service results share one renderer.

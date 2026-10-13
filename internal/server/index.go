@@ -57,9 +57,9 @@ func landingHTML() string {
 <dl class="landing-capabilities">
 <div><dt>Morning Brief</dt><dd>Your schedule, weather, headlines, markets and daily reminder.</dd></div>
 <div><dt>Daily Checkin</dt><dd>A daily prompt to check in with Micro.</dd></div>
-<div><dt>Evening Reflection</dt><dd>The daily reminder from reminder.dev, delivered in the evening.</dd></div>
+<div><dt>Evening Digest</dt><dd>The day’s news and reading from the blog.</dd></div>
 </dl>
-<p class="landing-access">Weekly briefs are free. Daily briefs require Starter or Pro. Evening Reflection requires Pro.</p>
+<p class="landing-access">Weekly briefs are free. Daily briefs require Starter or Pro. Evening Digest requires Pro.</p>
 </section>
 <section class="landing-introduction landing-scheduled">
 <h2>Start with Micro</h2>

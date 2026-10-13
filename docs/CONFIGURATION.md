@@ -68,14 +68,9 @@ no manual catalogue setup is needed. Changed settings apply to new subscribers,
 not existing contracts.
 
 Free includes a weekly brief, Starter a daily brief, and Pro adds an optional
-daily plan in the same delivery and an optional evening reflection. All schedules
+daily plan in the same delivery and an optional evening digest. All schedules
 are opt-in in Agents. Brief and plan use bounded context with no tool calls and
-do not spend credits. Evening reflection delivers the dated daily reminder from reminder.dev, with an
-optional invitation to pause. It reuses the Prayer service cache and uses no
-model calls or credits. Benefits
-follow the paid period even if monthly credits are exhausted or renewal canceled.
-Downgrades enforce weekly briefs and pause Pro evening reflection. No service surcharge is
-added. Operator margins must cover processing and included generation costs.
+do not spend credits. Evening Digest delivers the latest shared world roundup and a paragraph linking to each fresh blog topic piece. Choose a specific topic to receive only that topic. Delivery uses no additional model calls or credits. Benefits follow the paid period even if monthly credits are exhausted or renewal is canceled. Downgrades enforce weekly briefs and pause Pro Evening Digest. No service surcharge is added. Operator margins must cover processing and included generation costs.
 
 Before the first subscription, Checkout finds this site's enabled
 `https://<your domain>/stripe/webhook` endpoint and adds the events below,
@@ -436,9 +431,9 @@ The full operation price list is in `quota.json`; account billing shows usage.
 | `MCP_GATEWAY_ADDR` | — | Run go-micro's MCP gateway on its own port |
 | `PUBLIC_URL` · `APP_URL` | — | Public origin, when it can't be derived |
 | `TOR_ONION` | — | Onion address, shown in the footer |
-| `OPINIONS` | on | The blog writes an opinion piece a day, and the daily briefing is written from them. Each piece is a research pass and a generation billed to the instance's own account, so `off` disables them — the briefing then falls back to summarising the raw feeds |
+| `OPINIONS` | on | The blog writes topic pieces throughout the day, and the daily briefing is written from them. Each piece is a research pass and a generation billed to the instance's own account, so `off` disables them — the briefing then falls back to summarising the raw feeds |
 | `CREDIT_COST_AGENT_RUN` | 3 | What one answered question costs the caller, in credits. Set to 0 to make the agent free, which is what a self-hosted instance paying its own model bill usually wants — an instance with no payments configured charges nothing regardless |
-| `OPINIONS_PER_DAY` | 1 | How many pieces a day. The topic picked is whichever has gone longest without one, so the whole topic list is covered over as many days as there are topics. Raise it for a busier blog; never exceeds the number of topics, and is capped at 8 |
+| `OPINIONS_PER_DAY` | 8 | How many pieces a day. Defaults to one per configured topic, capped at 8. Lower values rotate through the topics, selecting the one that has gone longest without a piece |
 
 ### CLI
 
@@ -532,7 +527,7 @@ Looked-up content used to answer a prompt is sent to the configured AI provider,
 and answers may be retained in the conversation. Disconnect removes the local
 grant and requests revocation from Google.
 
-Automatic AI content generation (daily images, public digests, news summaries, tagging and arrival triage) is disabled. Personal daily brief schedules and explicit requests remain available. Model failures do not retry on another provider.
+Shared blog digests and daily images are enabled. Set `BLOG_DIGESTS=off` or `DAILY_IMAGES=off` to disable them independently. Blog topic pieces run throughout the day (up to eight daily); a shared world roundup refreshes hourly. Evening Digest delivers the past 24 hours of public blog content with an optional topic filter. The daily image is generated after 06:00 in the site timezone and archived. News summaries, tagging and arrival triage remain disabled. Personal daily brief schedules and explicit requests remain available. Model failures do not retry on another provider.
 
 ### Checking Codex availability
 

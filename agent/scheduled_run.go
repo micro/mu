@@ -58,7 +58,7 @@ func RunScheduled(owner, id, revision string, due time.Time) (handled bool, answ
 		if auth.Plan(owner) != "pro" {
 			return true, "", nil
 		}
-		answer, err = eveningReflection(schedule, at)
+		answer, err = eveningDigest(schedule, at)
 	} else {
 		facts, reflection := morningFacts(ctx, owner, schedule, at)
 		var content BriefContent

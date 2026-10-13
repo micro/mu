@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"html"
+	"mu/service/blog"
 	"mu/service/events"
 	"net/http"
 	"strings"
@@ -42,8 +43,9 @@ func Research(owner string) *events.Event {
 
 func researchHTML(owner, csrf string) string {
 	if auth.Plan(owner) != "pro" {
-		return `<p>A short evening reflection on gratitude, perspective and the day behind you. Private, on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
+		return `<p>The day’s news and blog digests, with links to read more. Private, on a daily or weekly schedule. Available with <a href="/pricing">Pro</a>.</p>`
 	}
+	topic := ""
 	clock, zone, frequency := "20:30", "", "daily"
 	if acc, err := auth.GetAccount(owner); err == nil {
 		zone = acc.Zone
@@ -51,6 +53,9 @@ func researchHTML(owner, csrf string) string {
 	e := Research(owner)
 	if e != nil {
 		zone, frequency = e.Zone, e.Repeat
+		if e.Title == "Evening Digest" {
+			topic = e.Prompt
+		}
 		loc, err := time.LoadLocation(zone)
 		if err == nil {
 			clock = e.When.In(loc).Format("15:04")
@@ -64,6 +69,14 @@ func researchHTML(owner, csrf string) string {
 		}
 		options += `<option value="` + f + `"` + selected + `>` + strings.Title(f) + `</option>`
 	}
+	topicOptions := `<option value="">All topics</option>`
+	for _, t := range blog.Topics() {
+		selected := ""
+		if strings.EqualFold(t, topic) {
+			selected = " selected"
+		}
+		topicOptions += `<option value="` + html.EscapeString(t) + `"` + selected + `>` + html.EscapeString(t) + `</option>`
+	}
 	controls := `<button name="state" value="active">Save and enable</button>`
 	if e != nil && !e.Paused {
 		controls += `<button name="state" value="paused">Disable</button>`
@@ -75,13 +88,13 @@ func researchHTML(owner, csrf string) string {
 			status = "Disabled"
 		}
 	}
-	return `<div class="page-stack"><p>The daily reminder from reminder.dev, with a quiet invitation to reflect on your day. No reply is required.</p><p class="text-muted">` + status + `. No credits are used.</p><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><div class="form-actions">` + controls + `</div></form></div>`
+	return `<div class="page-stack"><p>The day’s news and blog digests. Choose a topic or receive the general roundup.</p><p class="text-muted">` + status + `. No credits are used.</p><form class="form" method="POST" action="/agents?view=scheduled">` + app.CSRFField(csrf) + `<input type="hidden" name="action" value="research-schedule"><label class="field-label">Topic<select name="topic">` + topicOptions + `</select></label><label class="field-label">Frequency<select name="repeat">` + options + `</select></label><label class="field-label">Time<input type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input name="zone" data-local-timezone required value="` + html.EscapeString(zone) + `"></label><div class="form-actions">` + controls + `</div></form></div>`
 }
 
 func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		app.Forbidden(w, r, "Sign in to schedule an evening reflection")
+		app.Forbidden(w, r, "Sign in to schedule an evening digest")
 		return
 	}
 	if !auth.StrictCSRF(r) {
@@ -90,14 +103,25 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	paused := r.FormValue("state") == "paused"
 	if !paused && auth.Plan(acc.ID) != "pro" {
-		app.Forbidden(w, r, "Evening reflection is included with Pro")
+		app.Forbidden(w, r, "Evening Digest is included with Pro")
 		return
 	}
 	if r.FormValue("state") != "active" && !paused {
 		app.BadRequest(w, r, "Invalid schedule action")
 		return
 	}
-	topic := "Reflect on the day with gratitude, mercy and intention."
+	topic := strings.TrimSpace(r.FormValue("topic"))
+	validTopic := topic == ""
+	for _, t := range blog.Topics() {
+		if strings.EqualFold(t, topic) {
+			topic = t
+			validTopic = true
+		}
+	}
+	if !validTopic {
+		app.BadRequest(w, r, "Choose a listed topic or all topics")
+		return
+	}
 	repeat := r.FormValue("repeat")
 	zone := r.FormValue("zone")
 	clock, e2 := time.Parse("15:04", r.FormValue("clock"))
@@ -124,7 +148,7 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 			e = *old
 		}
 		e.ResearchDigest, e.ResearchReport = "", ""
-		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused = "Evening reflection", topic, repeat, zone, next, paused
+		e.Title, e.Prompt, e.Repeat, e.Zone, e.When, e.Paused = "Evening Digest", topic, repeat, zone, next, paused
 		e.Advance = scheduledAdvance(e.Kind)
 		e.Sequence++
 		e.Fired = false
@@ -133,7 +157,7 @@ func researchScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		app.BadRequest(w, r, "Could not save reflection schedule")
+		app.BadRequest(w, r, "Could not save digest schedule")
 		return
 	}
 	http.Redirect(w, r, "/agents?view=scheduled&event=research", http.StatusSeeOther)
