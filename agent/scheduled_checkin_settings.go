@@ -85,7 +85,7 @@ func invitationHTML(owner, token, kind string) string {
 	title, description := "Daily Checkin", "How's it going? A little space to share whatever is going on, when you feel like it."
 	if kind == "moment" {
 		title = "Take a moment"
-		description = "A gentle invitation to pause, stretch, step outside or simply rest. No reply needed."
+		description = "An invitation to pause, stretch or step outside"
 	}
 	clock, zone, repeat, status := "09:00", "", "daily", "Not scheduled"
 	if kind == "moment" {
