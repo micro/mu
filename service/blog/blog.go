@@ -287,6 +287,8 @@ func Load() {
 	}
 	app.RecordStartup("blog.readAndDecode", time.Since(readStarted))
 
+	migrateGeneratedPosts()
+
 	// No seeded posts.
 	//
 	// A built-in announcement was published into every instance on every boot,
@@ -884,11 +886,11 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			}
 			nav += `<a href="` + tab.href + `"` + current + `>` + tab.label + `</a>`
 		}
-		description := "Writing about Micro and the ideas behind it."
+		description := "Daily digests, topic reading and writing about Micro."
 		if view == "community" {
 			description = "Posts from the community."
 		} else if view == "archive" {
-			description = "Earlier posts and generated digests."
+			description = "Archived posts."
 		}
 		if tag != "" {
 			description = "Posts tagged " + tag + "."
@@ -926,6 +928,10 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 		Tags:      tags,
 		Private:   private,
 		CreatedAt: time.Now(),
+	}
+
+	if generatedPost(post) {
+		post.Editorial, post.Community = true, false
 	}
 
 	// Persist and publish while holding the source lock. A later update must
@@ -1996,8 +2002,8 @@ func postExcerpt(markdown string) string {
 	return stdhtml.EscapeString(string(runes))
 }
 
-// Editorial selection is an operator decision, never inferred from a tag,
-// author or tool call. Existing posts stay in the archive until selected.
+// Operators can select or archive any public post. Shared system digests start
+// in Editorial; other posts require explicit selection.
 func selectEditorial(id string, selected bool) error {
 	mutex.Lock()
 	defer mutex.Unlock()
