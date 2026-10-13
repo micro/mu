@@ -81,7 +81,7 @@ func scheduledHandler(w http.ResponseWriter, r *http.Request) {
 	}{
 		{"brief", "Morning Brief", "Your day, useful headlines and a reminder.", Brief(acc.ID)},
 		{"checkin", "Daily Checkin", "How's it going?", Checkin(acc.ID)},
-		{"moment", "Take a moment", "A gentle invitation to pause, stretch or step outside.", Moment(acc.ID)},
+		{"moment", "Take a moment", "An invitation to pause, stretch or step outside", Moment(acc.ID)},
 		{"research", "Evening reflection", "A quiet pause to reflect on your day with gratitude and perspective.", Research(acc.ID)},
 	} {
 		body += scheduleCard(item.id, item.title, item.description, item.event)
