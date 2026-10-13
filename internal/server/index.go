@@ -32,8 +32,8 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
-<p class="landing-tagline">A personal assistant for everyday life.</p>
-<p>Ask a question, explore an idea or get stuff done.</p>
+<p class="landing-tagline">An open personal assistant.</p>
+<p>Ask questions, find information and manage tasks.</p>
 <ul class="landing-highlights" aria-label="Ways to use Micro">
 <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5"/></svg><span>Ask</span></li>
 <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg><span>Brief</span></li>
@@ -45,27 +45,25 @@ func landingHTML() string {
 </section>
 <section class="landing-introduction landing-scheduled">
 <h2>What Micro can do</h2>
-<p>Start a conversation whenever you need a hand.</p>
 <dl class="landing-capabilities">
-<div><dt>Find answers</dt><dd>Search the web, explore a topic or catch up on the latest news and local information.</dd></div>
-<div><dt>Get stuff done</dt><dd>Work with your notes, files and tasks. Connect Google Calendar to include your schedule.</dd></div>
-<div><dt>Talk your way</dt><dd>Use Micro on the web, by email, WhatsApp or XMPP.</dd></div>
+<div><dt>Find answers</dt><dd>Search the web, news and local information.</dd></div>
+<div><dt>Manage tasks</dt><dd>Work with notes, files, tasks and your calendar.</dd></div>
+<div><dt>Chat with Micro</dt><dd>Ask questions and follow up on the web or by email.</dd></div>
 </dl>
-<p class="landing-access">Tell Micro what you need in your own words. It can look things up, use the information you share and help you take the next step. Ask follow-up questions as you go.</p>
 </section>
 <section class="landing-introduction landing-scheduled">
 <h2>Scheduled Events</h2>
-<p>Opt into scheduled events and choose when they reach you.</p>
+<p>Choose which updates to receive and when.</p>
 <dl class="landing-capabilities">
-<div><dt>Morning Brief</dt><dd>Your day, weather, prayer times, headlines and a daily reminder in a familiar format.</dd></div>
-<div><dt>Daily Checkin</dt><dd>How's it going? Space to share whatever is going on, when you feel like it.</dd></div>
-<div><dt>Evening reflection</dt><dd>Take a quiet moment to reflect on your day, notice what you are grateful for and look ahead with intention.</dd></div>
+<div><dt>Morning Brief</dt><dd>Your schedule, weather, headlines, markets and daily reminder.</dd></div>
+<div><dt>Daily Checkin</dt><dd>A daily prompt to check in with Micro.</dd></div>
+<div><dt>Evening Reflection</dt><dd>The daily reminder from reminder.dev, delivered in the evening.</dd></div>
 </dl>
-<p class="landing-access">Free includes a weekly brief; Starter and Pro include daily briefs. Evening reflection is available with Pro. You choose which events to enable.</p>
+<p class="landing-access">Weekly briefs are free. Daily briefs require Starter or Pro. Evening Reflection requires Pro.</p>
 </section>
 <section class="landing-introduction landing-scheduled">
 <h2>Start with Micro</h2>
-<p>Ask your first question and get help with what’s on your mind. Start free, with no card required.</p>
+<p>Create an account to start. No card required.</p>
 <div class="form-actions"><a class="btn landing-primary" href="/signup">Create free account</a></div>
 </section>`
 }
