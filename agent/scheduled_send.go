@@ -49,7 +49,7 @@ func DeliverScheduled(r ScheduledResult, answer string, err error) error {
 		sender = "Micro"
 	}
 	if e := Research(r.Account); e != nil && e.ID == r.ID {
-		r.Title = "Evening reflection"
+		r.Title = "Evening Digest"
 	}
 	delivery := mail.Delivery{
 		Markdown: true,

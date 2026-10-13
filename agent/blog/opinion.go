@@ -83,7 +83,7 @@ func opinionCategories() []string { return blogsvc.Topics() }
 
 // Start begins the background opinion generation loop.
 func Start() {
-	if !ai.BackgroundEnabled() {
+	if !ai.BlogEnabled() {
 		return
 	}
 	memory = loadMemory()
@@ -111,28 +111,9 @@ func opinionEngageLoop() {
 	app.Log("opinion", "Engagement loop disabled to reduce API costs")
 }
 
-// One piece a day.
-//
-// This has been 1, then 8, and is 1 again. The argument for eight was
-// coverage: one per topic, so a blog that says it is about Finance does not
-// go a week without mentioning it. The argument against it is the one that
-// wins — nobody writes eight opinion pieces a day, and a blog that does is
-// not covering eight subjects, it is producing filler at a rate no reader
-// asked for and no human publication attempts.
-//
-// The cost is the same argument from the other side. Each piece is a
-// catalogue gather, a web research pass and a generation, all billed to
-// Micro's own account, and eight of those a day is the single largest
-// scheduled expense on the instance.
-//
-// Coverage is answered by rotation instead of by volume: publishNextOpinion
-// takes the category that has gone longest without one, so eight topics are
-// covered over eight days rather than eight times in one.
-//
-// OPINIONS_PER_DAY raises it on an instance that wants more, because this is
-// a judgement about editorial pace rather than a constant — the same shape as
-// OPINIONS=off below.
-const defaultDailyOpinions = 1
+// Publish across all configured topics daily, bounded by maxDailyOpinions.
+// OPINIONS_PER_DAY can reduce the pace; OPINIONS=off disables topic pieces.
+const defaultDailyOpinions = 8
 
 // maxDailyOpinions is the ceiling, kept because the topic list is a data file
 // and a data file can grow.
@@ -140,7 +121,7 @@ const maxDailyOpinions = 8
 
 // dailyOpinions is how many pieces today should have.
 //
-// One, unless an operator asked for more. Never more than there are topics —
+// Never more than there are topics —
 // a second piece on the only subject configured is the same subject twice —
 // and never more than the ceiling.
 func dailyOpinions() int {
@@ -176,7 +157,7 @@ func opinionsEnabled() bool {
 // publishNextOpinion finds the next category that needs an opinion today
 // and publishes it, respecting the spacing between posts.
 func publishNextOpinion() {
-	if !opinionsEnabled() {
+	if !ai.BlogEnabled() || !opinionsEnabled() {
 		return
 	}
 	categories := opinionCategories()
@@ -324,7 +305,7 @@ func OpinionsSince(t time.Time) []*blogsvc.Post {
 func opinions(when func(time.Time) bool) []*blogsvc.Post {
 	var result []*blogsvc.Post
 	for _, post := range blogsvc.PostsByAuthorID(auth.MicroID, "Micro") {
-		if !strings.Contains(post.Tags, opinionTag) {
+		if post.Private || post.AuthorID != auth.MicroID || !strings.Contains(post.Tags, opinionTag) {
 			continue
 		}
 		if when(post.CreatedAt) {

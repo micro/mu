@@ -117,7 +117,7 @@ var dailyThemes = []struct {
 	{"textile", "Handwoven cloth in undyed fibres, the weave visible, raking light across the texture. Warm, tactile, high detail, no text."},
 }
 
-// Load restores the image library. Images are generated only on request.
+// Load restores the image library and starts the shared daily image schedule.
 func Load() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("images", "service register failed: %v", err)
@@ -131,8 +131,11 @@ func Load() {
 		// The archive is newer than the daily record, so an instance upgrading
 		// from before it existed has a current image that was never archived.
 		// Pull it in, and fetch its bytes if the provider URL still resolves.
-		go backfill(d)
 	}
+	go func() {
+		backfill(d)
+		dailyLoop()
+	}()
 }
 
 // imageLocation uses an explicit IANA timezone even in minimal containers.

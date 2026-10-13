@@ -88,7 +88,7 @@ func Load() {
 		lastStatus = "ok"
 	}
 
-	if ai.BackgroundEnabled() {
+	if ai.BlogEnabled() {
 		go scheduler()
 	}
 }
@@ -132,7 +132,21 @@ func Generate() bool {
 }
 
 // Today returns today's digest from the blog, or nil.
-func Today() *blog.Post { return blog.FindTodayDigest() }
+func Today() *blog.Post {
+	var latest *blog.Post
+	now := time.Now()
+	for _, p := range blog.PostsByAuthorID(auth.MicroID, "Micro") {
+		if p.Private || p.AuthorID != auth.MicroID || p.CreatedAt.In(now.Location()).Format("2006-01-02") != now.Format("2006-01-02") {
+			continue
+		}
+		for _, tag := range strings.Split(p.Tags, ",") {
+			if strings.EqualFold(strings.TrimSpace(tag), "digest") && (latest == nil || p.CreatedAt.After(latest.CreatedAt)) {
+				latest = p
+			}
+		}
+	}
+	return latest
+}
 
 // TestGenerate runs the digest pipeline synchronously and returns the
 // result or error. Used by diagnostics to test without publishing.
@@ -146,23 +160,12 @@ func TestGenerate() (string, error) {
 }
 
 func scheduler() {
-	// Wait for blog callbacks to be wired in main.go
-	time.Sleep(5 * time.Second)
-	// Only create a digest on startup if one doesn't exist for today
-	if Today() == nil && ready() {
-		generate()
-	}
+	time.Sleep(30 * time.Second)
 	for {
-		// Run once per day — sleep until next 6am UTC
-		now := time.Now().UTC()
-		next := time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, time.UTC)
-		if !next.After(now) {
-			next = next.Add(24 * time.Hour)
-		}
-		time.Sleep(time.Until(next))
-		if ready() {
+		if ai.BlogEnabled() && ready() {
 			generate()
 		}
+		time.Sleep(time.Hour)
 	}
 }
 
@@ -205,11 +208,11 @@ func generate() {
 	mu.Unlock()
 
 	existing := Today()
-	if existing == nil {
-		app.Log("digest", "No existing digest for today, creating new one")
+	if existing == nil || time.Since(existing.CreatedAt) >= time.Hour {
+		app.Log("digest", "Refreshing shared world digest")
 		createDigest()
 	} else {
-		app.Log("digest", "Digest already exists for today (%s), skipping", existing.ID)
+		app.Log("digest", "Shared digest is current (%s), skipping", existing.ID)
 		setSuccess()
 	}
 }
@@ -244,7 +247,7 @@ func createDigest() {
 	// other attributed and priced, for two posts by the same account on the
 	// same blog. Every other thing this agent does already goes through
 	// RunPlannedAs; the one write did not, which is the half that costs money.
-	title := "Daily Digest — " + time.Now().Format("2 Jan 2006")
+	title := "World Digest — " + time.Now().UTC().Format("2 Jan 2006, 15:04 UTC")
 	_, failed, err := api.ExecuteToolAs(auth.MicroID, "blog_create", map[string]any{
 		"title": title, "content": response, "tags": "digest",
 	})
