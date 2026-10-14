@@ -760,6 +760,8 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .editorial-entry h2{font-size:clamp(1.2rem,3vw,1.55rem);line-height:1.3;font-weight:var(--font-weight-medium);letter-spacing:-.02em;margin:10px 0}
 .editorial-entry h2 a{text-decoration:none}
 
+.editorial-entry p+.metadata-row{margin-top:16px}
+.editorial-page>.metadata-row+.metadata-row{margin-top:16px}
 .editorial-entry p{margin:0;color:var(--text-secondary);line-height:1.65;overflow-wrap:anywhere}
 .editorial-back{display:inline-block;margin-bottom:20px}
 .editorial-notice{font-size:.8rem;color:var(--text-muted);margin-block:16px 24px}

@@ -56,6 +56,10 @@ func requestFor(e event.Record) (request, error) {
 			return request{}, nil
 		}
 		r.Kind, r.Title, r.Prompt = events.Kind, schedule.Title, strings.TrimSpace(schedule.Prompt)
+		switch schedule.Kind {
+		case "brief", "research", "checkin", "moment":
+			r.Builtin = true
+		}
 		r.Prepared = schedule.Advance.Recipient == "agent" && schedule.Advance.Minutes > 0
 	}
 	return r, nil
@@ -68,14 +72,14 @@ func consumeWork(e event.Record) error {
 	if err != nil {
 		return err
 	}
-	if r.Account != "" && r.Prompt != "" && r.Prepared {
+	if r.Account != "" && (r.Prompt != "" || r.Builtin) && r.Prepared {
 		return consumePrepared(r)
 	}
 	return consumeRequest(r, run)
 }
 
 func consumeRequest(r request, execute func(request)) error {
-	if r.Account == "" || r.Prompt == "" {
+	if r.Account == "" || (r.Prompt == "" && !r.Builtin) {
 		return nil
 	}
 	key := "work/events/" + r.EventID + ".json"

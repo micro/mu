@@ -4,6 +4,7 @@ import (
 	"mu/internal/event"
 	"mu/internal/persist"
 	"mu/internal/service"
+	"mu/service/events"
 	"mu/service/tasks"
 	"testing"
 	"time"
@@ -72,5 +73,32 @@ func TestWorkResolvesOwnedTaskAndRejectsStaleAttempt(t *testing.T) {
 	r, _ = requestFor(e)
 	if r.Prompt != "" {
 		t.Fatal("cross-account work")
+	}
+}
+
+func TestBuiltinScheduleWithoutPromptRuns(t *testing.T) {
+	const owner = "empty-digest-owner"
+	defer events.DeleteAll(owner)
+	due := time.Now().Add(-time.Second)
+	schedule := &events.Event{ID: "empty-digest", Owner: owner, Kind: "research", Title: "Evening Digest", Sequence: 1, When: due, Advance: events.Advance{Minutes: 15, Recipient: "agent"}}
+	if err := events.EditOwned(owner, func(records map[string]*events.Event) error { records[schedule.ID] = schedule; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	for _, typ := range []string{event.ScheduleAdvance, event.ScheduleDue} {
+		r, err := requestFor(event.Record{ID: typ + "-empty-digest", Type: typ, Account: owner, Resource: schedule.ID, Version: "1", Data: map[string]interface{}{"when": due, "recipient": "agent"}})
+		if err != nil || !r.Builtin || !r.Prepared || r.Prompt != "" {
+			t.Fatalf("built-in request lost: %+v %v", r, err)
+		}
+		calls := 0
+		if err := consumeRequest(r, func(request) { calls++ }); err != nil {
+			t.Fatal(err)
+		}
+		if calls != 1 {
+			t.Fatal("empty built-in prompt skipped")
+		}
+	}
+	ordinary := request{EventID: "ordinary-empty", Account: owner, Kind: events.Kind}
+	if err := consumeRequest(ordinary, func(request) { t.Fatal("ordinary event started agent work") }); err != nil {
+		t.Fatal(err)
 	}
 }
