@@ -38,6 +38,7 @@ func Load() {
 
 // request is one piece of work, off the bus.
 type request struct {
+	Builtin   bool // Built-in schedules execute even without a custom prompt.
 	Preparing bool
 	Prepared  bool
 	EventID   string

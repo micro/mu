@@ -252,6 +252,7 @@ func renderReminderCard(rd *ReminderData) string {
 
 // ReminderData represents the cached reminder data
 type ReminderData struct {
+	Date    string                 `json:"date,omitempty"`
 	Verse   string                 `json:"verse"`
 	Name    string                 `json:"name"`
 	Hadith  string                 `json:"hadith"`
@@ -663,19 +664,26 @@ func DailyReminderData() *ReminderData {
 // DailyReminderForDate fetches the daily reminder for a specific date (YYYY-MM-DD).
 // Results are cached per date.
 func DailyReminderForDate(date string) *ReminderData {
+	return dailyReminderForDate(date, "https://reminder.dev/api/daily")
+}
+
+func dailyReminderForDate(date, endpoint string) *ReminderData {
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		return nil
+	}
 	cacheFile := "reminder_daily_" + date + ".json"
 
 	// Check cache
 	b, err := data.LoadFile(cacheFile)
 	if err == nil {
 		var rd ReminderData
-		if json.Unmarshal(b, &rd) == nil {
+		if json.Unmarshal(b, &rd) == nil && rd.Date == date {
 			return &rd
 		}
 	}
 
 	// Fetch from reminder.dev/api/daily?date=YYYY-MM-DD
-	url := "https://reminder.dev/api/daily"
+	url := endpoint
 	if date != "" {
 		url += "?date=" + date
 	}
@@ -683,10 +691,6 @@ func DailyReminderForDate(date string) *ReminderData {
 	resp, err := (&http.Client{Timeout: 12 * time.Second}).Get(url)
 	if err != nil {
 		app.Log("reminder", "Error fetching daily reminder for %s: %v", date, err)
-		// Only fall back to latest for today
-		if date == time.Now().Format("2006-01-02") {
-			return GetReminderData()
-		}
 		return nil
 	}
 	defer resp.Body.Close()
@@ -705,7 +709,11 @@ func DailyReminderForDate(date string) *ReminderData {
 		return nil
 	}
 
-	// Cache
+	if rd.Date != date {
+		app.Log("reminder", "Daily reminder date mismatch: requested %s, received %s", date, rd.Date)
+		return nil
+	}
+	// Cache only a response explicitly dated for the requested day.
 	data.SaveFile(cacheFile, string(body))
 	app.Log("reminder", "Fetched daily reminder for %s", date)
 	return &rd
