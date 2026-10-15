@@ -19,7 +19,7 @@ func TestChannelLinksStayLocal(t *testing.T) {
 func TestWatchHasAudioControls(t *testing.T) {
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest("GET", "https://micro.mu/video?id=abcdefghijk&audio=1", nil))
-	for _, want := range []string{`id="audioBtn"`, `id="playBtn"`, `id="ytplayer"`, `enablejsapi=1`, `/mu.js?v=video-1`} {
+	for _, want := range []string{`id="audioBtn"`, `id="playBtn"`, `id="ytplayer"`, `enablejsapi=1`, `/mu.js?v=video-2`} {
 		if !strings.Contains(w.Body.String(), want) {
 			t.Fatalf("missing %s", want)
 		}
