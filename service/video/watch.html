@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
   <title>%s | Micro</title>
-  <link rel="stylesheet" href="/mu.css?%s">
+  <link rel="stylesheet" href="/mu.css?v=video-2-%s">
 </head>
 <body class="video-player-body">
   <div class="video-embed">
@@ -14,7 +14,7 @@
       <span></span><span></span><span></span><span></span><span></span>
     </div>
   </div>
-  <footer class="video-bar">
+  <nav class="video-bar" aria-label="Playback controls">
     <a href="/video">Video</a>
     <button id="audioBtn" type="button" aria-pressed="false">♫ Audio only</button>
     <button id="playBtn" type="button" class="d-none" aria-label="Play">▶</button>
@@ -27,9 +27,9 @@
         <div class="reading-actions">%s</div>
       </div>
     </details>
-  </footer>
+  </nav>
   %s
-  <script src="/mu.js?v=video-1"></script>
+  <script src="/mu.js?v=video-2"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
