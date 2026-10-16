@@ -76,7 +76,7 @@ func DemoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	answer, err := runNative("", req.Prompt, opts)
 	if err != nil {
-		app.RespondError(w, 503, "The demo could not answer just now. You can still read the public brief below.")
+		app.RespondError(w, 503, "The demo could not answer just now. Please try again.")
 		return
 	}
 	app.RespondJSON(w, map[string]string{"text": answer, "html": app.RenderString(answer)})
