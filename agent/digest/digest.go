@@ -342,9 +342,9 @@ func digestSystem(fromPieces bool) string {
 	// What the briefing is built on, said in the prompt rather than left for
 	// the model to infer from a heading. Two different jobs: reporting the
 	// day, and reporting what this instance made of the day.
-	source := `You will be given news headlines, market data, and video content from today.`
+	source := `You will be given recent news headlines, market data, and video content.`
 	if fromPieces {
-		source = `You will be given, in this order: the pieces Mu itself published since the last briefing, and then the raw news headlines, market data and video from today.
+		source = `You will be given, in this order: the pieces Mu itself published since the last briefing, and then the recent raw news headlines, market data and video.
 
 The pieces come first because they are the work. Each one is Mu reading a subject and forming a view on it, and the briefing is what those views add up to — so build on them, carry their conclusions forward, and use the raw feeds underneath for anything the pieces did not reach. Do not re-derive from the headlines what a piece has already worked out, and do not simply list the pieces: a reader who has read none of them should still get one briefing rather than eight summaries.`
 	}
@@ -370,6 +370,7 @@ Structure your briefing as 3-5 short paragraphs of flowing prose:
 - Close with anything else worth knowing
 
 Rules:
+- The generation timestamp is supplied. Source publication dates and event dates are different: preserve the actual event day. Never present yesterday’s developments as today’s or infer a current market session from an older article. Explicitly name the day for earlier events, and do not claim the supplied feeds are all from today.
 - Write in plain, direct prose — no bullet points, no lists, no headings
 - Do NOT start with a title or heading
 - Do NOT include preamble like "Here is today's briefing"
@@ -388,7 +389,7 @@ func generateDigestContent(context string, fromPieces bool) (string, error) {
 
 	prompt := &ai.Prompt{
 		System:   digestSystem(fromPieces),
-		Question: context,
+		Question: "Briefing generated at " + time.Now().UTC().Format("Monday 2 January 2006, 15:04 MST") + ".\n\n" + context,
 		Priority: ai.PriorityLow,
 		Model:    ai.BackgroundModel(),
 		Caller:   "daily-digest",
