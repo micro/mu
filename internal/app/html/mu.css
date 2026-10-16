@@ -1568,3 +1568,10 @@ button.link-button:hover{background:transparent;color:#555}
 .landing-activation{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;align-items:baseline;margin-top:16px;font-size:.875rem}
 .landing-activation span{color:var(--text-muted)}
 @media(max-width:600px){.landing-page main{padding-top:0}.landing-page main>.landing-introduction:first-child{padding-top:max(24px,calc(38svh - 187px))}.landing-introduction{padding:12px 0}.landing-introduction h1{font-size:24px}.landing-introduction+.landing-scheduled{margin-top:8px}}
+
+/* Keep the submitted public question and formatted answer in focus. */
+.landing-page.demo-active .demo-caption,.landing-page.demo-active .landing-activation,.landing-page.demo-active .landing-scheduled{display:none}
+.landing-page.demo-active main>.landing-introduction:first-child{padding-top:24px}
+.public-demo .turn{text-align:left}
+.public-demo .answer{line-height:1.7}
+.public-demo .answer pre,.public-demo .answer table{max-width:100%;overflow-x:auto}
