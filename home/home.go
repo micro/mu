@@ -149,7 +149,7 @@ func conversationsCard(owner string) string {
 		target := agent.Path(owner, conversation.Agent) + "?session=" + url.QueryEscape(conversation.ID)
 		b.WriteString(`<a class="collection-item" href="` + html.EscapeString(target) + `"><span>` + html.EscapeString(title) + `</span><time class="text-muted" datetime="` + conversation.Updated.Format("2006-01-02T15:04:05Z07:00") + `">` + conversation.Updated.Format("2 Jan · 15:04") + `</time></a>`)
 		count++
-		if count == 5 {
+		if count == 3 {
 			break
 		}
 	}
