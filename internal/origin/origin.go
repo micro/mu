@@ -4,6 +4,7 @@ package origin
 import (
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/settings"
@@ -92,4 +93,22 @@ func scheme(r *http.Request) string {
 
 func trimScheme(s string) string {
 	return strings.TrimPrefix(strings.TrimPrefix(s, "https://"), "http://")
+}
+
+// SameOrigin verifies a browser write against the configured public address.
+// A reverse proxy may replace Host; forwarded host headers are not trusted.
+func SameOrigin(r *http.Request) bool {
+	u, err := url.Parse(r.Header.Get("Origin"))
+	if err != nil || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		return false
+	}
+	expectedScheme, host := scheme(r), r.Host
+	if public := Self(); public != "" {
+		configured, err := url.Parse(public)
+		if err != nil || configured.Host == "" {
+			return false
+		}
+		expectedScheme, host = configured.Scheme, configured.Host
+	}
+	return u.Scheme == expectedScheme && strings.EqualFold(u.Host, host)
 }

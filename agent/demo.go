@@ -7,7 +7,6 @@ import (
 	gmai "go-micro.dev/v6/model"
 	"mime"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"mu/internal/abuse"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/origin"
 )
 
 // DemoHandler is a bounded public introduction through the same agent loop.
@@ -25,9 +25,8 @@ func DemoHandler(w http.ResponseWriter, r *http.Request) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
-	origin, err := url.Parse(r.Header.Get("Origin"))
 	media, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || origin.Host != r.Host || (origin.Scheme != "http" && origin.Scheme != "https") || media != "application/json" || !auth.StrictCSRF(r) {
+	if !origin.SameOrigin(r) || media != "application/json" || !auth.StrictCSRF(r) {
 		app.RespondError(w, 403, "Reopen the page and try again.")
 		return
 	}

@@ -2,8 +2,6 @@ package server
 
 import (
 	"net/http"
-	"net/url"
-	"strings"
 
 	"mu/internal/auth"
 	"mu/internal/origin"
@@ -26,26 +24,9 @@ func browserWriteAllowed(r *http.Request) bool {
 	if auth.StrictCSRF(r) {
 		return true
 	}
-	if submitted := r.Header.Get("Origin"); submitted != "" {
-		u, err := url.Parse(submitted)
-		if err != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
-			return false
-		}
-		scheme := "http"
-		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-			scheme = "https"
-		}
-		// The proxy may replace Host with its loopback upstream. Only the
-		// operator-configured origin can override it, never a forwarded host.
-		host := r.Host
-		if public := origin.Self(); public != "" {
-			configured, err := url.Parse(public)
-			if err != nil || configured.Host == "" {
-				return false
-			}
-			scheme, host = configured.Scheme, configured.Host
-		}
-		return u.Scheme == scheme && strings.EqualFold(u.Host, host)
+	if r.Header.Get("Origin") != "" {
+		return origin.SameOrigin(r)
 	}
+
 	return r.Header.Get("Sec-Fetch-Site") == "same-origin"
 }
