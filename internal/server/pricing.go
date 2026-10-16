@@ -20,7 +20,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(app.Column())
 
-	description := "Pay for your personal assistant. Choose a monthly plan or prepaid credits."
+	description := "Your personal assistant for everyday tasks. Choose a monthly plan or pay as you go."
 	if !billing.PaymentsEnabled() {
 		b.WriteString(`<p>No usage charges on this self-hosted instance.</p></div>`)
 		app.Respond(w, r, app.Response{Title: "Pricing", HTML: b.String()})
@@ -28,7 +28,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	messageCost := quota.OperationCost(quota.OpAgentRun)
 	_, _, sessionErr := auth.RequireSession(r)
-	b.WriteString(`<p>Try a short public chat and read the shared brief on <a href="/">the home page</a>. Personal assistant use is paid. No signup or daily credit grants.</p><div class="card-grid comparison-grid" aria-label="Compare plans">` + billing.MonthlyPricingHTML(r) + `</div><p class="text-muted">Monthly plans renew automatically; cancel any time. Choose which scheduled updates to enable.</p><section class="plan-section section-stack"><h2>Pay as you go</h2><p><strong>1 credit = 1 US cent</strong></p><p>Add prepaid credit to activate personal chat and paid tools. No subscription required. Scheduled briefs require a monthly plan.</p><p>Purchased credits do not expire.</p>`)
+	b.WriteString(`<p>Get a feel for Micro: <a href="/">try a chat and read today’s brief</a>.</p><div class="card-grid comparison-grid" aria-label="Compare plans">` + billing.MonthlyPricingHTML(r) + `</div><p class="text-muted">Monthly plans renew automatically; cancel any time. Choose which scheduled updates to enable.</p><section class="plan-section section-stack"><h2>Pay as you go</h2><p><strong>1 credit = 1 US cent</strong></p><p>Add prepaid credit to activate personal chat and paid tools. No subscription required. Scheduled briefs require a monthly plan.</p><p>Purchased credits do not expire.</p>`)
 	if billing.TopUpConfigured() {
 		if sessionErr == nil {
 			b.WriteString(`<p><a class="btn" href="/account/topup">Top up</a></p>`)
