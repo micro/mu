@@ -6,6 +6,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"mu/internal/auth"
+	"mu/internal/flag"
 )
 
 func (p *Post) isDraft() bool {
@@ -92,4 +95,31 @@ func hasTag(tags, selected string) bool {
 		}
 	}
 	return false
+}
+
+// LatestPreview returns one newest published post visible to the owner.
+// Select by creation time so editing an old reading does not displace new posts.
+func LatestPreview(owner string) string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	var latest *Post
+	for _, p := range posts {
+		if p.isDraft() || flag.IsHidden("post", p.ID) || auth.IsBanned(p.AuthorID) {
+			continue
+		}
+		if p.Private {
+			if owner == "" || p.AuthorID != owner {
+				continue
+			}
+		} else if p.AuthorID != "" && auth.IsNewAccount(p.AuthorID) {
+			continue
+		}
+		if latest == nil || p.CreatedAt.After(latest.CreatedAt) {
+			latest = p
+		}
+	}
+	if latest == nil {
+		return ""
+	}
+	return previewPost(latest)
 }
