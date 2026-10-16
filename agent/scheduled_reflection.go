@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"golang.org/x/net/html"
+	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/origin"
 	"mu/service/blog"
@@ -12,6 +14,9 @@ import (
 )
 
 func eveningDigest(e *events.Event, at time.Time) (string, error) {
+	if zone, err := time.LoadLocation(e.Zone); err == nil {
+		at = at.In(zone)
+	}
 	return renderEveningDigest(blog.PostsByAuthorID(auth.MicroID, "Micro"), e.Prompt, at)
 }
 
@@ -32,7 +37,7 @@ func renderEveningDigest(posts []*blog.Post, topic string, at time.Time) (string
 	var reading []*blog.Post
 	seen := map[string]bool{}
 	for _, p := range posts {
-		if p.Private || p.AuthorID != auth.MicroID || p.CreatedAt.After(at) || p.CreatedAt.Before(at.Add(-24*time.Hour)) || strings.TrimSpace(p.Content) == "" {
+		if p.Private || p.AuthorID != auth.MicroID || p.CreatedAt.After(at) || p.CreatedAt.In(at.Location()).Format("2006-01-02") != at.Format("2006-01-02") || strings.TrimSpace(p.Content) == "" {
 			continue
 		}
 		if topic == "" && roundup == nil && digestTag(p.Tags, "digest") {
@@ -55,7 +60,8 @@ func renderEveningDigest(posts []*blog.Post, topic string, at time.Time) (string
 	var b strings.Builder
 	b.WriteString("# Evening Digest\n\n")
 	if roundup != nil {
-		b.WriteString(strings.SplitN(roundup.Content, "<details", 2)[0])
+		b.WriteString("## World roundup\n\nPublished " + roundup.CreatedAt.In(at.Location()).Format("Monday 2 January, 15:04 MST") + ".\n\n")
+		b.WriteString(digestParagraph(strings.SplitN(roundup.Content, "<details", 2)[0]))
 		b.WriteString("\n\n[World roundup](" + origin.Self() + "/blog/post?id=" + url.QueryEscape(roundup.ID) + ")\n\n")
 	}
 	for _, p := range reading {
@@ -66,7 +72,7 @@ func renderEveningDigest(posts []*blog.Post, topic string, at time.Time) (string
 		if topic != "" {
 			subject = topic + " digests"
 		}
-		b.WriteString("No new " + subject + " were published in the past 24 hours.\n\n[Browse the blog](" + origin.Self() + "/blog)\n\n")
+		b.WriteString("No new " + subject + " were published today.\n\n[Browse the blog](" + origin.Self() + "/blog)\n\n")
 	}
 	b.WriteString("[Manage Evening Digest](" + origin.Self() + "/agents?view=scheduled&event=research)")
 	return b.String(), nil
@@ -78,11 +84,25 @@ func digestParagraph(content string) string {
 		if paragraph == "" || strings.HasPrefix(paragraph, "#") || strings.HasPrefix(paragraph, "<") {
 			continue
 		}
+		// Render first, then shorten visible text: never slice through link syntax.
+		tokenizer := html.NewTokenizer(strings.NewReader(app.RenderString(paragraph)))
+		var plain strings.Builder
+		for {
+			kind := tokenizer.Next()
+			if kind == html.ErrorToken {
+				break
+			}
+			if kind == html.TextToken {
+				plain.Write(tokenizer.Text())
+			}
+		}
+		paragraph = strings.TrimSpace(plain.String())
 		words := strings.Fields(paragraph)
 		if len(words) > 90 {
-			return strings.Join(words[:90], " ") + "…"
+			paragraph = strings.Join(words[:90], " ") + "…"
 		}
-		return paragraph
+		// This excerpt is embedded in Markdown; keep visible punctuation literal.
+		return strings.NewReplacer("\\", "\\\\", "[", "\\[", "]", "\\]", "*", "\\*", "_", "\\_", "`", "\\`", "<", "&lt;", ">", "&gt;").Replace(paragraph)
 	}
 	return "Read the full digest on the blog."
 }

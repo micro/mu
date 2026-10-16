@@ -67,3 +67,27 @@ func TestEveningDigestUsesFreshPublicTopicPosts(t *testing.T) {
 		t.Fatalf("empty topic: %s %v", text, err)
 	}
 }
+
+func TestDigestExcerptDoesNotCutMarkdownLinks(t *testing.T) {
+	content := strings.Repeat("word ", 87) + "[Dow rose 500 points](https://www.cnbc.com/2026/10/16/markets.html) after trading."
+	excerpt := digestParagraph(content)
+	if strings.Contains(excerpt, "https:") || strings.Contains(excerpt, "[Dow") || !strings.Contains(excerpt, "Dow rose 500") {
+		t.Fatalf("broken link in excerpt: %s", excerpt)
+	}
+}
+
+func TestEveningDigestUsesLocalCalendarDayAndLabelsRoundup(t *testing.T) {
+	zone, err := time.LoadLocation("Europe/London")
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 10, 16, 20, 0, 0, 0, zone)
+	posts := []*blog.Post{
+		{ID: "yesterday", AuthorID: auth.MicroID, Tags: "opinion,tech", Content: "Yesterday only.", CreatedAt: time.Date(2026, 10, 15, 23, 30, 0, 0, zone)},
+		{ID: "morning", AuthorID: auth.MicroID, Tags: "digest", Content: "Thursday's trading ended lower.", CreatedAt: time.Date(2026, 10, 16, 6, 0, 0, 0, zone)},
+	}
+	result, err := renderEveningDigest(posts, "", at)
+	if err != nil || strings.Contains(result, "Yesterday only") || !strings.Contains(result, "Published Friday 16 October, 06:00 BST") || !strings.Contains(result, "Thursday's trading") {
+		t.Fatalf("incorrect date handling: %s (%v)", result, err)
+	}
+}
