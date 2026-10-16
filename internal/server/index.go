@@ -52,7 +52,8 @@ func landingHTML() string {
 		summary = `<p>` + html.EscapeString(entry.Text) + `</p><p><a href="/blog">Read the digests</a></p>`
 	}
 	return `<section class="landing-introduction">
-<h1 class="landing-tagline">An open personal assistant.</h1>
+<h1>Micro</h1>
+<p class="landing-tagline">An open personal assistant.</p>
 
 <div class="public-demo"><form data-demo-form method="post" action="/"><label class="sr-only" for="demo-input">Ask Micro</label><div class="composer"><textarea id="demo-input" name="prompt" rows="1" maxlength="1000" placeholder="Ask Micro a question" required></textarea><button type="submit">Send</button></div><p class="demo-caption">A short preview. <a href="/pricing">Paid plans</a> include personal tools and saved conversations.</p></form><div data-demo-responses role="log" aria-label="Conversation"></div><p data-demo-status role="status"></p></div>
 <div class="landing-activation"><a href="/pricing">Activate your assistant</a><span>` + html.EscapeString(price) + `</span></div>
