@@ -87,7 +87,7 @@ func TestEveningDigestUsesLocalCalendarDayAndLabelsRoundup(t *testing.T) {
 		{ID: "morning", AuthorID: auth.MicroID, Tags: "digest", Content: "Thursday's trading ended lower.", CreatedAt: time.Date(2026, 10, 16, 6, 0, 0, 0, zone)},
 	}
 	result, err := renderEveningDigest(posts, "", at)
-	if err != nil || strings.Contains(result, "Yesterday only") || !strings.Contains(result, "Published Friday 16 October, 06:00 BST") || !strings.Contains(result, "Thursday's trading") {
+	if err != nil || strings.Contains(result, "Yesterday only") || !strings.Contains(result, "Published Friday 16 October, 06:00 BST") || !strings.Contains(result, "Thursday’s trading") {
 		t.Fatalf("incorrect date handling: %s (%v)", result, err)
 	}
 }
