@@ -416,6 +416,9 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		gmagent.ModelRetry(1, 0),
 		gmagent.WrapTool(toolWrappers...),
 	}
+	if opts.demo {
+		agentOpts = append(agentOpts, gmagent.Provider("public-demo-"+provider), gmagent.ModelRetry(1, 0))
+	}
 	if baseURL != "" {
 		agentOpts = append(agentOpts, gmagent.BaseURL(baseURL))
 	}
@@ -681,7 +684,7 @@ type StreamHooks struct {
 // and AGENTS.md for the rule that says so.
 func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr error) {
 	if accountID == "" {
-		if settings.Get("ALLOW_GUEST_AI") != "true" {
+		if !opts.demo && settings.Get("ALLOW_GUEST_AI") != "true" {
 			return "", fmt.Errorf("sign in to talk to Micro")
 		}
 	} else if !api.IsWalletIdentity(accountID) {

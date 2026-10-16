@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/service/events"
 
 	"strings"
@@ -42,6 +43,9 @@ func ScheduleBrief(owner, clock, zone, repeat, period string, paused bool) error
 func scheduleBrief(owner, clock, zone, repeat, period string, paused, builtin bool, news ...bool) error {
 	if owner == "" {
 		return fmt.Errorf("sign in to schedule a brief")
+	}
+	if !paused && !briefEntitled(owner) {
+		return fmt.Errorf("choose a paid plan at /pricing to enable your morning brief")
 	}
 	loc, err := time.LoadLocation(zone)
 	if err != nil || zone == "" || zone == "Local" {
@@ -130,6 +134,9 @@ func BriefWorldNews(e *events.Event) bool { return e == nil || e.WorldNews == ni
 
 // ConfigureBrief changes one owned schedule atomically. Toggles preserve its identity and cadence.
 func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...string) error {
+	if enabled && !briefEntitled(owner) {
+		return fmt.Errorf("choose a paid plan at /pricing to enable your morning brief")
+	}
 	period := "morning"
 	if len(periods) > 0 {
 		period = periods[0]
@@ -183,10 +190,7 @@ func ConfigureBrief(owner string, enabled, news bool, zone string, periods ...st
 	})
 }
 
-// Free accounts receive one included brief each week.
-func BriefFrequency(owner, requested string) string {
-	if auth.Plan(owner) == "free" {
-		return "weekly"
-	}
-	return requested
-}
+// Retain saved cadence; entitlement is checked separately before generation.
+func BriefFrequency(owner, requested string) string { return requested }
+
+func briefEntitled(owner string) bool { return !quota.Charging() || auth.Plan(owner) != "free" }

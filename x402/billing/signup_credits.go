@@ -1,48 +1,11 @@
 package billing
 
-import (
-	"github.com/google/uuid"
-	"mu/internal/app"
-	"mu/internal/auth"
-	"mu/internal/data"
-	"time"
-)
-
-// SignupCredits is the one-time usage allowance for a new personal account.
-// It is not Money: it cannot be transferred or establish paid-account trust.
-const SignupCredits = 100
+// SignupCredits is retained for API compatibility. New accounts receive no grant.
+const SignupCredits = 0
 const txSignup = "signup_allowance"
 
-func GrantSignup(id string) error {
-	acc, err := auth.GetAccount(id)
-	if err != nil {
-		return err
-	}
-	if !PaymentsEnabled() || acc.Admin || acc.Agent || acc.Unclaimed || acc.SignupCredits <= 0 {
-		return nil
-	}
-	return withLedger(func(l *ledger) error {
-		for _, tx := range transactions[id] {
-			if tx != nil && (tx.Type == txSignup || isWelcome(tx)) {
-				return nil
-			}
-		}
-		balance := 0
-		if w := balances[id]; w != nil {
-			balance = w.Balance
-		}
-		transactions[id] = append(transactions[id], &Transaction{
-			ID: uuid.NewString(), UserID: id, Type: txSignup, Operation: OpWelcome,
-			Balance: balance, CreatedAt: time.Now().UTC(),
-			Metadata: map[string]interface{}{"signup_credits": acc.SignupCredits},
-		})
-		if err := data.SaveJSON("transactions.json", transactions); err != nil {
-			transactions[id] = transactions[id][:len(transactions[id])-1]
-			return err
-		}
-		return nil
-	})
-}
+// GrantSignup no longer issues credit, including retries for older accounts.
+func GrantSignup(id string) error { return nil }
 
 func signupRemaining(_ *ledger, id string) int {
 	granted, used := 0, 0
@@ -68,8 +31,4 @@ func SignupRemaining(id string) int {
 	return withLedger(func(l *ledger) int { return signupRemaining(l, id) })
 }
 
-func RetrySignup(id string) {
-	if err := GrantSignup(id); err != nil {
-		app.Log("account", "signup allowance for %s: %v", id, err)
-	}
-}
+func RetrySignup(id string) {}

@@ -1,5 +1,5 @@
 {
-  "daily_credits": 20,
+  "daily_credits": 0,
   "daily_pool_credits": 0,
   "_comment": [
     "What each operation costs, in credits. One credit is one cent.",
@@ -18,9 +18,9 @@
     "priced. Everything else that reaches a model already was: text_* 1-6,",
     "app_build 19, image_generate 19, web_search 3.",
     "",
-    "Every account receives daily_credits included credits per UTC day, used",
-    "before its paid balance. Included credits do not roll over or fund transfers.",
-    "The welcome balance is separate. Outbound messaging retains its hard caps.",
+    "Personal usage is paid. Legacy daily_credits settings are ignored.",
+    "Paid monthly credits do not roll over or fund transfers.",
+    "Existing balances are preserved. Outbound messaging retains its hard caps.",
     "",
     "`agent_run` is the one operation here that is not the name of a tool, and",
     "it is not the first: quran_search, db_write, app_build, places_eta and",

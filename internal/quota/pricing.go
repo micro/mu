@@ -171,9 +171,7 @@ func apply(f priceFile) {
 	priceMu.Lock()
 	prices, ordered = byOp, list
 	dailyCredits = 0
-	if f.DailyCredits != nil {
-		dailyCredits = max(0, *f.DailyCredits)
-	}
+	// Legacy configuration cannot re-enable recurring free grants.
 	dailyPoolCredits = 0
 	if f.DailyPoolCredits != nil {
 		dailyPoolCredits = max(0, *f.DailyPoolCredits)

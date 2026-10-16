@@ -72,7 +72,7 @@ func ScheduledCurrent(owner, id, revision string) bool {
 	}
 	for _, e := range events.List(owner) {
 		if e.ID == id {
-			return !e.Paused && fmt.Sprint(e.Sequence) == revision && (e.Kind != "research" || auth.Plan(owner) == "pro")
+			return !e.Paused && fmt.Sprint(e.Sequence) == revision && (e.Kind != "research" || auth.Plan(owner) == "pro") && (e.Kind != "brief" || briefEntitled(owner))
 		}
 	}
 	return false

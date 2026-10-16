@@ -90,6 +90,9 @@ func reserveScheduled(source *events.Event, due, now time.Time) (bool, error) {
 			e.Paused = true
 			return nil
 		}
+		if e.Kind == "brief" && !briefEntitled(e.Owner) {
+			return nil
+		}
 		if e.Kind == "brief" {
 			e.Repeat = BriefFrequency(e.Owner, e.Repeat)
 			loc, err := time.LoadLocation(e.Zone)

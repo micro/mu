@@ -40,7 +40,7 @@ func TestLandingHomeAndLegacyConversationRoutes(t *testing.T) {
 		if w.Code != tc.code || w.Header().Get("Location") != tc.location {
 			t.Fatalf("%s: %d %q", tc.path, w.Code, w.Header().Get("Location"))
 		}
-		if !tc.signed && (strings.Contains(w.Body.String(), "command-form") || !strings.Contains(w.Body.String(), "Get started")) {
+		if !tc.signed && (!strings.Contains(w.Body.String(), "data-demo-form") || !strings.Contains(w.Body.String(), "Activate your assistant")) {
 			t.Fatal("landing contains authenticated composer or lacks signup")
 		}
 	}

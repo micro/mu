@@ -43,15 +43,19 @@ Callers pay in credits, prepaid against an account. Set the `STRIPE_*` keys to
 let people buy them by card; without those keys your instance runs with no
 metering, which is usually what you want for one you run for yourself.
 
-New personal signups receive 100 nontransferable usage credits once. Existing
-accounts and purchased/legacy balances are unchanged. The default daily allowance
-is 20 credits; an operator override in the data directory still takes precedence.
-Signup credits remain until spent and follow daily and monthly credit in the
-consumption order. Password and Google signup use the same grant.
+Personal assistant usage is paid by default on a metered instance. New signups
+receive no credits, and recurring free daily allowances are disabled, including
+legacy `daily_credits` overrides. Purchased balances, paid subscription credits
+and previously issued one-time credits are preserved.
 
-Operation prices and the free daily allowance are in `quota.json`. Provider
-estimates are under Admin → Traffic → Spend; product credits are not a provider
-spending limit.
+The public home page offers a bounded chat demo and the cached shared brief.
+The demo makes no tool calls, caps output at 400 tokens and accepts at most
+3 requests per browser, 10 per IP and 100 across the instance in 24 hours.
+Limits are persisted before model work and survive restarts. Failed attempts
+also count. Anonymous access to the full assistant remains disabled.
+
+Operation prices are in `quota.json`. Provider estimates are under Admin →
+Traffic → Spend; product credits are not a provider spending limit.
 
 ### Monthly subscriptions
 
@@ -67,10 +71,10 @@ these same settings. Stripe creates the recurring product/price during Checkout;
 no manual catalogue setup is needed. Changed settings apply to new subscribers,
 not existing contracts.
 
-Free includes a weekly brief, Starter a daily brief, and Pro adds an optional
+Starter includes a daily brief, and Pro adds an optional
 daily plan in the same delivery and an optional evening digest. All schedules
 are opt-in in Agents. Brief and plan use bounded context with no tool calls and
-do not spend credits. Evening Digest delivers the latest shared world roundup and a paragraph linking to each fresh blog topic piece. Choose a specific topic to receive only that topic. Delivery uses no additional model calls or credits. Benefits follow the paid period even if monthly credits are exhausted or renewal is canceled. Downgrades enforce weekly briefs and pause Pro Evening Digest. No service surcharge is added. Operator margins must cover processing and included generation costs.
+do not spend credits. Evening Digest delivers the latest shared world roundup and a paragraph linking to each fresh blog topic piece. Choose a specific topic to receive only that topic. Delivery uses no additional model calls or credits. Benefits follow the paid period even if monthly credits are exhausted or renewal is canceled. Without a paid plan, personal brief generation stops; stored schedules are preserved. Pro Evening Digest requires an active Pro period. No service surcharge is added. Operator margins must cover processing and included generation costs.
 
 Before the first subscription, Checkout finds this site's enabled
 `https://<your domain>/stripe/webhook` endpoint and adds the events below,

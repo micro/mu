@@ -42,8 +42,11 @@ func briefPeriodHTML(owner, token, period string) string {
 	}
 	title := "Morning Brief"
 	description := "A clear view of your day, useful headlines and a daily reminder."
-	if auth.Plan(owner) == "free" || repeat == "weekly" {
+	if repeat == "weekly" {
 		description = "A little perspective on the week, with your commitments, useful headlines and a reminder."
+	}
+	if !briefEntitled(owner) {
+		return `<section class="card page-stack"><h2>Morning Brief</h2><p>Your schedule, headlines and daily reminder, delivered when you choose.</p><p>A paid monthly plan is required. Existing schedule settings are kept.</p><a href="/pricing">Activate your assistant</a></section>`
 	}
 	var b strings.Builder
 	b.WriteString(`<section id="` + period + `-brief" class="card page-stack"><h2>` + title + `</h2><p>` + description + `</p><div class="page-stack"><p class="text-muted">` + html.EscapeString(status) + `</p><form method="POST" action="/agents?view=scheduled" class="form">` + app.CSRFField(token) + `<input type="hidden" name="action" value="brief-schedule">`)
@@ -60,11 +63,7 @@ func briefPeriodHTML(owner, token, period string) string {
 	}
 	b.WriteString(`<input type="hidden" name="period" value="` + period + `">`)
 	b.WriteString(`<label class="field-label">Time<input class="form-input" type="time" name="clock" required value="` + clock + `"></label><label class="field-label">Timezone<input class="form-input" name="zone" data-local-timezone required placeholder="Europe/London" value="` + html.EscapeString(zone) + `"></label>`)
-	if auth.Plan(owner) == "free" {
-		b.WriteString(`<input type="hidden" name="repeat" value="weekly"><p>Free includes a weekly brief. <a href="/pricing">Starter includes a daily brief.</a></p>`)
-	} else {
-		selectField("repeat", "Frequency", repeat, "daily", "weekdays", "weekly")
-	}
+	selectField("repeat", "Frequency", repeat, "daily", "weekdays", "weekly")
 	checked := ""
 	if BriefWorldNews(e) {
 		checked = " checked"
