@@ -1320,8 +1320,8 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .landing-page{--landing-accent:#386350}
 .landing-page .page{display:flex;flex-direction:column}
 .landing-page main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px 0}
-/* Offset the header, title and tagline to place the composer at mid-screen. */
-.landing-page main>.landing-introduction:first-child{display:flex;flex-direction:column;text-align:center;align-items:center;padding-top:max(24px,calc(50svh - 225px))}
+/* Offset the header, title and tagline to place the composer above mid-screen. */
+.landing-page main>.landing-introduction:first-child{display:flex;flex-direction:column;text-align:center;align-items:center;padding-top:max(24px,calc(38svh - 225px))}
 .landing-scheduled{border-top:1px solid var(--border)}
 .landing-introduction{width:100%;max-width:640px;text-align:center;padding:16px 0}
 .landing-introduction h1{font-size:28px;margin:0 0 8px}
@@ -1566,4 +1566,4 @@ button.link-button:hover{background:transparent;color:#555}
 .public-demo [data-demo-status]:empty{display:none}
 .landing-activation{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;align-items:baseline;margin-top:16px;font-size:.875rem}
 .landing-activation span{color:var(--text-muted)}
-@media(max-width:600px){.landing-page main{padding-top:0}.landing-page main>.landing-introduction:first-child{padding-top:max(24px,calc(50svh - 187px))}.landing-introduction{padding:12px 0}.landing-introduction h1{font-size:24px}.landing-introduction+.landing-scheduled{margin-top:8px;padding-top:20px}}
+@media(max-width:600px){.landing-page main{padding-top:0}.landing-page main>.landing-introduction:first-child{padding-top:max(24px,calc(38svh - 187px))}.landing-introduction{padding:12px 0}.landing-introduction h1{font-size:24px}.landing-introduction+.landing-scheduled{margin-top:8px;padding-top:20px}}
