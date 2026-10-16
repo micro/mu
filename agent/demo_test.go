@@ -57,6 +57,7 @@ func TestDemoRejectsCrossOriginAndOversizedInput(t *testing.T) {
 }
 
 func TestDemoUsesBoundedProviderAndPersistentAdmission(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "micro.test")
 	calls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]any
@@ -83,6 +84,7 @@ func TestDemoUsesBoundedProviderAndPersistentAdmission(t *testing.T) {
 		r := httptest.NewRequest("POST", "https://micro.test/", strings.NewReader(`{"prompt":"hello"}`))
 		r.Header.Set("Origin", "https://micro.test")
 		r.Header.Set("Content-Type", "application/json")
+		r.Host = "127.0.0.1:8080" // nginx upstream host differs from the public Origin
 		r.RemoteAddr = "192.0.2.199:1234"
 		r.AddCookie(&http.Cookie{Name: "mu_client", Value: "demo-test-browser-123456"})
 		w := httptest.NewRecorder()

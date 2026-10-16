@@ -1857,14 +1857,15 @@ if (typeof document !== "undefined") {
 (()=>{'use strict';
  const form=document.querySelector('[data-demo-form]');if(!form)return;
  const input=form.querySelector('textarea'),button=form.querySelector('button'),log=document.querySelector('[data-demo-responses]'),status=document.querySelector('[data-demo-status]');
+ const resize=()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,160)+'px';};input.addEventListener('input',resize);resize();
  const history=[];let busy=false;
  form.addEventListener('submit',async event=>{
   event.preventDefault();const prompt=input.value.trim();if(busy||!prompt)return;busy=true;button.disabled=true;status.textContent='';
-  const turn=document.createElement('section');turn.className='turn';const question=document.createElement('div');question.className='request';question.textContent=prompt;const answer=document.createElement('div');answer.className='answer';answer.textContent='Working…';turn.append(question,answer);log.append(turn);input.value='';
+  const turn=document.createElement('section');turn.className='turn';const question=document.createElement('div');question.className='request';question.textContent=prompt;const answer=document.createElement('div');answer.className='answer';answer.textContent='Working…';turn.append(question,answer);log.append(turn);input.value='';resize();
   try{
    const response=await fetch('/',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt,history:history.slice(-4)}),signal:AbortSignal.timeout(50000)});
    const result=await response.json();if(!response.ok)throw Error(result.error||'Please try again.');answer.innerHTML=result.html;history.push({Role:'user',Text:prompt},{Role:'assistant',Text:result.text.slice(0,2000)});
-  }catch(error){answer.textContent=error.message;const link=document.createElement('a');link.href='/pricing';link.textContent='Activate your assistant';status.append(link);}
+  }catch(error){answer.textContent=error.message;if(!input.value){input.value=prompt;resize();}const link=document.createElement('a');link.href='/pricing';link.textContent='Activate your assistant';status.append(link);}
   finally{busy=false;button.disabled=false;}
  });
 })();
