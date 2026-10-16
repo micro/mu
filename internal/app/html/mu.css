@@ -1575,3 +1575,5 @@ button.link-button:hover{background:transparent;color:#555}
 .public-demo .turn{text-align:left}
 .public-demo .answer{line-height:1.7}
 .public-demo .answer pre,.public-demo .answer table{max-width:100%;overflow-x:auto}
+
+@media(min-width:901px){.dashboard-columns.feed-columns{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}}

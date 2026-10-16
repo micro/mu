@@ -130,14 +130,14 @@ func overviewHTML(acc *auth.Account) string {
 
 func feedHTML(snapshot overviewSnapshot, owner string) string {
 	var left, right strings.Builder
-	reading := blog.PrivatePreview(owner) + blog.Preview()
+	reading := blog.LatestPreview(owner)
 	if reading == "" {
 		reading = `<p class="text-muted">Published articles will appear here.</p>`
 	}
 	left.WriteString(app.PreviewCard("home-blog", "Blog", "/blog", `<div class="home-card-content">`+reading+`</div>`))
 	for _, spec := range feedServices() {
 		column := &left
-		if spec.Name == "video" || spec.Name == "images" || spec.Name == "prayer" {
+		if spec.Name == "video" || spec.Name == "images" || spec.Name == "prayer" || spec.Name == "markets" {
 			column = &right
 		}
 		body := snapshot.cards[spec.Name]
@@ -146,5 +146,5 @@ func feedHTML(snapshot overviewSnapshot, owner string) string {
 		}
 		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
 	}
-	return `<div class="page-stack"><div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div></div>`
+	return `<div class="page-stack"><div class="dashboard-columns feed-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div></div>`
 }

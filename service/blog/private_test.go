@@ -97,3 +97,32 @@ func TestTagLinksAndExactMatching(t *testing.T) {
 		t.Fatal(html)
 	}
 }
+
+func TestLatestPreviewSelectsOneVisiblePostByCreationDate(t *testing.T) {
+	now := time.Now()
+	mutex.Lock()
+	old := posts
+	posts = []*Post{
+		{ID: "old-private", Title: "Old private", Private: true, Published: true, AuthorID: "owner", CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(time.Hour)},
+		{ID: "public-latest", Title: "Latest public", CreatedAt: now},
+		{ID: "foreign-private", Title: "Foreign secret", Private: true, Published: true, AuthorID: "other", CreatedAt: now.Add(time.Hour)},
+		{ID: "draft", Title: "Unfinished draft", Private: true, AuthorID: "owner", CreatedAt: now.Add(time.Hour)},
+	}
+	mutex.Unlock()
+	defer func() { mutex.Lock(); posts = old; mutex.Unlock() }()
+	for _, owner := range []string{"owner", ""} {
+		result := LatestPreview(owner)
+		if !strings.Contains(result, "Latest public") || strings.Contains(result, "Old private") || strings.Contains(result, "Foreign secret") || strings.Contains(result, "Unfinished draft") {
+			t.Fatalf("wrong preview for %q: %s", owner, result)
+		}
+	}
+	mutex.Lock()
+	posts[0].CreatedAt = now.Add(2 * time.Hour)
+	mutex.Unlock()
+	if result := LatestPreview("owner"); !strings.Contains(result, "Old private") || strings.Contains(result, "Latest public") {
+		t.Fatalf("newest owned post missing: %s", result)
+	}
+	if result := LatestPreview(""); strings.Contains(result, "Old private") {
+		t.Fatal("private post leaked")
+	}
+}
