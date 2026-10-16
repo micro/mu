@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestGoogleSignupGetsAllowanceOnlyOnce(t *testing.T) {
+func TestGoogleSignupDoesNotGrantCredits(t *testing.T) {
 	t.Setenv("ADMIN", "operator")
 	t.Setenv("STRIPE_SECRET_KEY", "test")
 	t.Setenv("STRIPE_WEBHOOK_SECRET", "test")
@@ -16,10 +16,10 @@ func TestGoogleSignupGetsAllowanceOnlyOnce(t *testing.T) {
 		t.Fatal("account not created")
 	}
 	t.Cleanup(func() { auth.RemoveAccountForTest(acc.ID) })
-	if billing.SignupRemaining(acc.ID) != 100 {
-		t.Fatal("no signup allowance")
+	if billing.SignupRemaining(acc.ID) != 0 {
+		t.Fatal("signup unexpectedly granted credits")
 	}
-	if again := findOrCreateGoogleAccount(info); again == nil || again.ID != acc.ID || billing.SignupRemaining(acc.ID) != 100 {
+	if again := findOrCreateGoogleAccount(info); again == nil || again.ID != acc.ID || billing.SignupRemaining(acc.ID) != 0 {
 		t.Fatal("returning Google login reissued allowance")
 	}
 	other := &auth.Account{ID: "nograntread", Secret: "test-password"}

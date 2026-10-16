@@ -15,6 +15,7 @@ import (
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/service/blog"
 	"mu/service/events"
@@ -57,7 +58,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	header := `<div data-home-overview class="home-date"><time datetime="` + now.Format("2006-01-02") + `">` + now.Format("Monday, 2 January") + `</time><span id="home-weather">` + weatherLine(acc.ID) + `</span></div>`
 	body := `<div class="section-body"><div data-home-overview>` + tabs(view) + `</div>`
 	if view == "overview" {
-		body += `<div>` + agent.Prompt(acc.ID) + `</div>`
+		if quota.Charging() && !acc.Admin && !acc.Agent && quota.Available(acc.ID) < quota.OperationCost(quota.OpAgentRun) {
+			body += `<section class="record-card"><h2>Activate your assistant</h2><p>Choose a monthly plan or add prepaid credits for personal chat and tools.</p><div class="form-actions"><a class="btn" href="/pricing">Choose a plan</a><a href="/account/topup">Add credit</a></div></section>`
+		} else {
+			body += `<div>` + agent.Prompt(acc.ID) + `</div>`
+		}
 	} else {
 		body += `<p>News, reading and live updates from your services.</p>`
 	}

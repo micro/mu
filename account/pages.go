@@ -591,7 +591,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		}
 		content += `</nav>`
 	} else if _, enabled := billing.MonthlyPlan(); enabled {
-		content += `<p><a href="/agents?view=scheduled">Set up your included weekly brief</a></p>`
+		content += `<p><a href="/pricing">Activate your assistant</a></p>`
 	}
 	content += `<section id="details" class="account-group"><h2>Details</h2>` + profile + avatarCard(r, acc) + renderEmailCard(acc) + renderPhoneCard(acc.ID) + language + PlaceCard(r, acc.ID) + `</section>`
 	content += `<section id="security" class="account-group"><h2>Security</h2>` + passwordCard(acc) + PasskeyListHTML(acc.ID) + sshaccess.Card(r, acc.ID, "/account", "SSH keys", "Use a public SSH key for terminal and SFTP access. Add your .pub file contents and keep the private key on your device.", "ssh") + `</section>`

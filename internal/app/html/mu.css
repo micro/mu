@@ -1320,7 +1320,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .landing-page{font-family:"DM Sans",system-ui,sans-serif;--landing-accent:#386350}
 .landing-page .page{display:flex;flex-direction:column}
 .landing-page main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 0}
-.landing-page main>.landing-introduction:first-child{min-height:calc(100svh - 160px);display:flex;flex-direction:column;justify-content:center}
+.landing-page main>.landing-introduction:first-child{display:flex;flex-direction:column}
 .landing-scheduled{border-top:1px solid var(--border)}
 .landing-introduction{width:100%;max-width:440px;text-align:center;padding:24px 0}
 .landing-introduction h1{font-size:28px;margin:0 0 8px}
@@ -1399,7 +1399,7 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 .landing-highlights{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin:12px 0 4px;padding:0}
 .landing-highlights li{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.8rem;color:var(--text-muted)}
 .landing-highlights svg{width:24px;height:24px;fill:none;stroke:var(--landing-accent);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.landing-introduction+.landing-scheduled{margin-top:48px;padding-top:48px}
+.landing-introduction+.landing-scheduled{margin-top:16px;padding-top:24px}
 
 /* Equal comparison columns share card styling; stack on narrow screens. */
 .card-grid.comparison-grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:16px}
@@ -1552,3 +1552,5 @@ button.link-button:hover{background:transparent;color:#555}
 
 /* Tool catalogues share the same desktop density on both hosts. */
 @media(min-width:901px){.directory-list.tools-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.public-demo{margin-block:24px;text-align:left}.public-demo .composer{display:flex;gap:8px;align-items:flex-end}.public-demo textarea{flex:1;min-width:0;resize:vertical}.public-demo .turn{margin-top:20px}.public-demo .request{font-weight:600;margin-bottom:8px}.public-demo .answer{overflow-wrap:anywhere}

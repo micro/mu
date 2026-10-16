@@ -49,7 +49,7 @@ func SubscriptionSummary(r *http.Request, acc *auth.Account) string {
 		return `<form method="POST" action="/account/subscription"` + confirm + `>` + csrf + `<input type="hidden" name="tier" value="` + selected + `"><input type="hidden" name="action" value="` + action + `"><button class="btn" type="submit">` + label + `</button></form>`
 	}
 	allowance := Monthly(acc.ID)
-	body := `<p><strong>Free</strong></p>`
+	body := `<p><strong>No monthly plan</strong></p><p>Activate your assistant with a plan, or add prepaid credit for personal chat and tools.</p>`
 	if allowance.Credits > 0 {
 		body = `<p><strong>` + currentName + `</strong> · ` + Money(s.Cents) + `/month</p><p>` + thousands(allowance.Remaining) + ` / ` + thousands(allowance.Credits) + ` credits remaining</p>`
 	}

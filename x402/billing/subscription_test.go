@@ -91,8 +91,8 @@ func TestMonthlyLedgerLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	daily := IncludedToday(acc.ID)
-	if daily != 5 {
-		t.Fatalf("expected a real daily allowance, got %d", daily)
+	if daily != 0 {
+		t.Fatalf("legacy configuration re-enabled a daily allowance, got %d", daily)
 	}
 	settle, err := reserveIncluded(acc.ID, "test", daily+4050)
 	if err != nil {
