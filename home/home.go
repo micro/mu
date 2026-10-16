@@ -4,8 +4,9 @@ package home
 import (
 	"fmt"
 	"html"
+	"mu/internal/thread"
 	"net/http"
-	"sort"
+	"net/url"
 	"strings"
 
 	"mu/account"
@@ -16,7 +17,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
-	"mu/internal/service"
 	"mu/service/blog"
 	"mu/service/events"
 	"mu/service/weather"
@@ -100,36 +100,22 @@ func shortBrief() string {
 
 func overviewHTML(acc *auth.Account) string {
 	var left, right strings.Builder
-	left.WriteString(shortBrief())
+	left.WriteString(conversationsCard(acc.ID))
 	if preview := inbox.Preview(acc.ID); preview != "" {
 		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
 	right.WriteString(work.ScheduledCard(acc.ID))
-	var pins strings.Builder
-	services := service.Pinned(acc.PinnedServices())
-	if len(services) == 0 {
-		services = service.Pinned([]string{"news", "markets", "video", "blog"})
-	}
-	sort.SliceStable(services, func(i, j int) bool {
-		return strings.ToLower(services[i].NavLabel()) < strings.ToLower(services[j].NavLabel())
-	})
-	for _, spec := range services {
-		pins.WriteString(`<a href="` + html.EscapeString(spec.Page) + `"><span class="service-shortcut-icon"><img src="/` + html.EscapeString(spec.NavIcon()) + `?` + app.Version + `" width="28" height="28" alt=""></span><span>` + html.EscapeString(spec.NavLabel()) + `</span></a>`)
-	}
-	pinned := ""
-	if pins.Len() > 0 {
-		pinned = `<section class="shortcut-section" aria-labelledby="pinned-services-title"><h2 id="pinned-services-title">Pinned</h2><nav class="service-shortcuts" aria-labelledby="pinned-services-title">` + pins.String() + `</nav></section>`
-	}
 	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-stack">` + pinned + columns + `</div>`
+	return `<div class="page-stack">` + columns + `</div>`
 }
 
 func feedHTML(snapshot overviewSnapshot, owner string) string {
 	var left, right strings.Builder
+	left.WriteString(shortBrief())
 	reading := blog.LatestPreview(owner)
 	if reading == "" {
 		reading = `<p class="text-muted">Published articles will appear here.</p>`
@@ -147,4 +133,29 @@ func feedHTML(snapshot overviewSnapshot, owner string) string {
 		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
 	}
 	return `<div class="page-stack"><div class="dashboard-columns feed-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div></div>`
+}
+
+func conversationsCard(owner string) string {
+	var b strings.Builder
+	count := 0
+	for _, conversation := range thread.List(owner, 0) {
+		if conversation.Client != thread.WebClient {
+			continue
+		}
+		title := conversation.Subject
+		if title == "" {
+			title = "Conversation with Micro"
+		}
+		target := agent.Path(owner, conversation.Agent) + "?session=" + url.QueryEscape(conversation.ID)
+		b.WriteString(`<a class="collection-item" href="` + html.EscapeString(target) + `"><span>` + html.EscapeString(title) + `</span><time class="text-muted" datetime="` + conversation.Updated.Format("2006-01-02T15:04:05Z07:00") + `">` + conversation.Updated.Format("2 Jan · 15:04") + `</time></a>`)
+		count++
+		if count == 5 {
+			break
+		}
+	}
+	body := `<p class="text-muted">Your recent conversations with Micro will appear here.</p><a href="/agent/micro">Start a conversation</a>`
+	if count > 0 {
+		body = `<div class="collection-list">` + b.String() + `</div>`
+	}
+	return app.PreviewCard("home-conversations", "Conversations", "/agent/micro", body)
 }

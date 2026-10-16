@@ -607,16 +607,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		links = ""
 		content += app.SectionID("clients", "Clients", `<p>Use Micro from a mail app, chat app or your own code.</p><div class="form-actions"><a class="btn" href="/account/clients">Client setup</a><a class="btn" href="/account/tokens">Tokens</a><a class="btn" href="/developers">Developers</a></div><p><a href="/api">API</a> · <a href="/tools">Tools</a> · <a href="/x402">x402</a></p><p>Tokens are passwords for your apps and programs.</p>`)
 	}
-	sections := `<nav class="page-menu anchor-nav" aria-label="On this page"><span class="text-muted">On this page</span><a href="#balance">Balance</a>`
-	if strings.Contains(content, `id="subscription"`) {
-		sections += `<a href="#subscription">Plan</a>`
-	}
-	sections += `<a href="#details">Details</a><a href="#security">Security</a><a href="#notifications">Notifications</a>`
-	if GoogleConfigured() {
-		sections += `<a href="#google">Google</a>`
-	}
-	sections += `<a href="#clients">Clients</a></nav>`
-	content = links + sections + notice + `<div class="page-stack settings-sections account-sections">` + content + `</div>`
+	content = links + notice + `<div class="page-stack settings-sections account-sections">` + content + `</div>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went

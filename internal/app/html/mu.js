@@ -1867,8 +1867,8 @@ if (typeof document !== "undefined") {
   const turn=document.createElement('section');turn.className='turn';const question=document.createElement('div');question.className='request';question.textContent=prompt;const answer=document.createElement('div');answer.className='answer';answer.textContent='Working…';turn.append(question,answer);log.replaceChildren(turn);input.value='';resize();form.scrollIntoView({block:'start',behavior:'instant'});
   try{
    const response=await fetch('/',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify({prompt,history:history.slice(-4)}),signal:AbortSignal.timeout(50000)});
-   const result=await response.json();if(!response.ok)throw Error(result.error||'Please try again.');answer.innerHTML=result.html;history.push({Role:'user',Text:prompt},{Role:'assistant',Text:result.text.slice(0,2000)});
-  }catch(error){answer.textContent=error.message;if(!input.value){input.value=prompt;resize();}const link=document.createElement('a');link.href='/pricing';link.textContent='Activate your assistant';status.append(link);}
+   const result=await response.json();if(!response.ok){const error=Error(result.error||'Please try again.');error.status=response.status;throw error;}answer.innerHTML=result.html;history.push({Role:'user',Text:prompt},{Role:'assistant',Text:result.text.slice(0,2000)});
+  }catch(error){answer.textContent=error.message;if(!input.value){input.value=prompt;resize();}if(error.status===429){const link=document.createElement('a');link.href='/pricing';link.textContent='Activate your assistant to continue';answer.replaceChildren(link);}}
   finally{busy=false;button.disabled=false;log.removeAttribute('aria-busy');}
  });
 })();
