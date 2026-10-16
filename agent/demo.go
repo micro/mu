@@ -53,17 +53,17 @@ func DemoHandler(w http.ResponseWriter, r *http.Request) {
 	limits := []struct {
 		key string
 		n   int
-	}{{"demo:ip:" + ip, 10}, {"demo:instance", 100}}
+	}{{"demo:ip:" + ip, 30}, {"demo:instance", 500}}
 	if id := app.ClientID(r); id != "" {
 		limits = append([]struct {
 			key string
 			n   int
-		}{{"demo:browser:" + id, 3}}, limits...)
+		}{{"demo:browser:" + id, 10}}, limits...)
 	}
 	for _, limit := range limits {
 		wait, err := abuse.Take(limit.key, limit.n, 24*time.Hour)
 		if err != nil || wait > 0 {
-			app.RespondError(w, 429, "That’s the public demo limit. Activate your assistant to continue.")
+			app.RespondError(w, 429, "Activate your assistant to continue.")
 			return
 		}
 	}

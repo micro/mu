@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func TestHomePinsAreShortcutsAndFeedIncludesPrayer(t *testing.T) {
+func TestHomeConversationsReplacePinsAndFeedIncludesPrayer(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	for _, name := range []string{"images", "prayer", "apps"} {
 		card := service.Glance(func() string { return "public test update" })
@@ -60,8 +60,8 @@ func TestHomePinsAreShortcutsAndFeedIncludesPrayer(t *testing.T) {
 			if strings.Contains(body, "private test context") != feed || strings.Contains(body, "public test update") != feed {
 				t.Fatalf("mixed views: feed=%v fragment=%v", feed, fragment)
 			}
-			if !feed && !strings.Contains(body, `href="/apps"`) {
-				t.Fatal("Apps pin missing")
+			if !feed && !strings.Contains(body, `id="home-conversations"`) {
+				t.Fatal("Conversations card missing")
 			}
 			if feed && strings.Contains(body, `data-path="/agent/micro"`) {
 				t.Fatal("feed contains composer")

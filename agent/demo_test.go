@@ -80,7 +80,7 @@ func TestDemoUsesBoundedProviderAndPersistentAdmission(t *testing.T) {
 	t.Setenv("OPENAI_MODEL", "demo-test-model")
 	t.Setenv("AGENT_MODEL", "")
 	t.Setenv("GUEST_MODEL", "")
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 11; i++ {
 		r := httptest.NewRequest("POST", "https://micro.test/", strings.NewReader(`{"prompt":"hello"}`))
 		r.Header.Set("Origin", "https://micro.test")
 		r.Header.Set("Content-Type", "application/json")
@@ -90,14 +90,14 @@ func TestDemoUsesBoundedProviderAndPersistentAdmission(t *testing.T) {
 		w := httptest.NewRecorder()
 		DemoHandler(w, r)
 		want := 200
-		if i == 3 {
+		if i == 10 {
 			want = 429
 		}
 		if w.Code != want {
 			t.Fatalf("request %d: %d %s", i, w.Code, w.Body.String())
 		}
 	}
-	if calls != 3 {
+	if calls != 10 {
 		t.Fatalf("provider called %d times", calls)
 	}
 }

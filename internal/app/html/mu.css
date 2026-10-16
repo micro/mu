@@ -328,14 +328,14 @@ main{overflow-wrap:anywhere}
 @media(max-width:480px){header nav a{padding-block:4px}.form-row,.form-inline{align-items:stretch}pre{padding:12px}}
 
 /* Mixed previews flow independently; uniform collections use a card grid. */
-.dashboard-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--section-gap);align-items:start}
+.dashboard-columns{display:grid;grid-template-columns:minmax(0,75fr) minmax(0,35fr);gap:var(--section-gap);align-items:start}
 .dashboard-columns>.page-stack{min-width:0;gap:var(--section-gap)}
 .dashboard-columns>.page-stack>:is(.record-card,.section-card){margin:0}
 @media(max-width:900px){
  .dashboard-columns{display:flex;flex-direction:column}
  .dashboard-columns>.page-stack{display:contents}
  .dashboard-columns>.page-stack>.section-card{order:2;width:100%}
- .dashboard-columns #home-brief{order:-7}
+ .dashboard-columns #home-brief,.dashboard-columns #home-conversations{order:-7}
  .dashboard-columns #home-inbox{order:-6}
  .dashboard-columns #home-events-card{order:-5}
  .dashboard-columns #home-scheduled-card{order:-4}
@@ -1575,5 +1575,3 @@ button.link-button:hover{background:transparent;color:#555}
 .public-demo .turn{text-align:left}
 .public-demo .answer{line-height:1.7}
 .public-demo .answer pre,.public-demo .answer table{max-width:100%;overflow-x:auto}
-
-@media(min-width:901px){.dashboard-columns.feed-columns{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}}
