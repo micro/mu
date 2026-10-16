@@ -1320,7 +1320,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .landing-page{--landing-accent:#386350}
 .landing-page .page{display:flex;flex-direction:column}
 .landing-page main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px 0}
-.landing-page main>.landing-introduction:first-child{display:flex;flex-direction:column}
+.landing-page main>.landing-introduction:first-child{display:flex;flex-direction:column;text-align:center;align-items:center}
 .landing-scheduled{border-top:1px solid var(--border)}
 .landing-introduction{width:100%;max-width:640px;text-align:left;padding:16px 0}
 .landing-introduction h1{font-size:28px;margin:0 0 8px}
@@ -1553,15 +1553,16 @@ button.link-button:hover{background:transparent;color:#555}
 /* Tool catalogues share the same desktop density on both hosts. */
 @media(min-width:901px){.directory-list.tools-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
- .public-demo{margin-top:20px;text-align:left}
-.public-demo .composer{display:flex;gap:8px;align-items:flex-end;padding:6px;border:1px solid var(--border);border-radius:8px;background:#fff}
-.public-demo textarea{flex:1;min-width:0;min-height:44px;max-height:160px;margin:0;padding:10px 8px;border:0;background:transparent;resize:none;box-sizing:border-box;font:inherit;line-height:1.5}
+.public-demo{width:100%;margin-top:20px;text-align:left}
+.public-demo .composer{display:flex;gap:8px;align-items:flex-end;padding:6px;border:1px solid #aeb5b1;border-radius:8px;background:#fff;box-sizing:border-box}
+.public-demo textarea{flex:1;min-width:0;min-height:44px;max-height:160px;margin:0;padding:10px 8px;border:0;background:transparent;resize:none;box-sizing:border-box;font:inherit;font-size:16px;line-height:1.5}
 .public-demo .composer button{flex-shrink:0;min-height:44px;margin:0;padding:8px 16px;border:0;border-radius:4px;background:var(--surface,#f4f4f4)}
-.public-demo .demo-caption{font-size:.8rem;color:var(--text-muted);margin:8px 0 0}
+.public-demo .composer:focus-within{border-color:var(--landing-accent);outline:2px solid #38635022;outline-offset:2px}
+.public-demo .demo-caption{text-align:center;font-size:.8rem;color:var(--text-muted);margin:8px 0 0}
 .public-demo .turn{padding:16px 0;border-bottom:1px solid var(--border)}
 .public-demo .request{font-weight:500;margin-bottom:8px;white-space:pre-wrap;overflow-wrap:anywhere}
 .public-demo .answer{overflow-wrap:anywhere}
 .public-demo [data-demo-status]:empty{display:none}
-.landing-activation{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;margin-top:16px;font-size:.875rem}
+.landing-activation{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;align-items:baseline;margin-top:16px;font-size:.875rem}
 .landing-activation span{color:var(--text-muted)}
 @media(max-width:600px){.landing-page main{padding-top:0}.landing-introduction{padding:12px 0}.landing-introduction h1{font-size:24px}.landing-introduction+.landing-scheduled{margin-top:8px;padding-top:20px}}
