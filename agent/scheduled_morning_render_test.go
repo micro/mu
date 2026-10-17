@@ -53,3 +53,19 @@ func TestMorningMarketsPreserveFreshness(t *testing.T) {
 		t.Fatal(result)
 	}
 }
+
+func TestMorningTravelAppearsOnlyAtEnd(t *testing.T) {
+	content, err := parseBriefContent(`{"day":[{"text":"Meeting at 09:00"}],"travel":[{"text":"TfL: Central line delays","url":"https://tfl.gov.uk/"}]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := renderMorningBrief(content, "", &events.Event{Zone: "UTC"}, time.Now(), "## Daily reminder\n\nA reminder.", false)
+	travel := strings.Index(result, "## Travel")
+	if travel < strings.Index(result, "## Daily reminder") || strings.Contains(result[:travel], "Central line") || !strings.Contains(result[travel:], "Central line delays") {
+		t.Fatal(result)
+	}
+	empty := renderMorningBrief(BriefContent{}, "", &events.Event{Zone: "UTC"}, time.Now(), "", false)
+	if strings.Contains(empty, "## Travel") {
+		t.Fatal("empty travel section rendered")
+	}
+}
