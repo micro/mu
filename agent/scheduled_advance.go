@@ -32,7 +32,7 @@ func configureScheduledAdvances() {
 	for _, acc := range auth.AllAccounts() {
 		needed := false
 		for _, e := range events.List(acc.ID) {
-			if (e.Kind == "research" && e.Title != "Evening Digest") || (e.Advance.Minutes == 0 && scheduledAdvance(e.Kind).Minutes > 0) {
+			if (e.Kind == "moment" && e.Title == "Take a moment") || (e.Kind == "research" && e.Title != "Evening Digest") || (e.Advance.Minutes == 0 && scheduledAdvance(e.Kind).Minutes > 0) {
 				needed = true
 				break
 			}
@@ -42,6 +42,10 @@ func configureScheduledAdvances() {
 		}
 		if err := events.EditOwned(acc.ID, func(records map[string]*events.Event) error {
 			for _, e := range records {
+				if e.Kind == "moment" && e.Title == "Take a moment" {
+					e.Title = "Take a break"
+					e.Sequence++ // Retire prepared messages carrying the old title.
+				}
 				if e.Kind == "research" && e.Title != "Evening Digest" {
 					e.Title = "Evening Digest"
 					topic := ""
