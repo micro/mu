@@ -67,7 +67,7 @@ func scheduleInvitation(owner, kind, clock, zone, repeat string, paused bool) er
 		e.Kind, e.Title, e.When, e.Zone, e.Repeat, e.Paused = kind, "Daily Checkin", next, zone, repeat, paused
 		e.Prompt = "Ask what is on my mind. Let me set the direction; wait for my reply before taking action."
 		if kind == "moment" {
-			e.Title = "Take a moment"
+			e.Title = "Take a break"
 			e.Prompt = "Offer a brief invitation to pause. No reply or task is needed."
 		}
 		e.Fired, e.FiredAt = false, time.Time{}
@@ -84,7 +84,7 @@ func momentHTML(owner, token string) string  { return invitationHTML(owner, toke
 func invitationHTML(owner, token, kind string) string {
 	title, description := "Daily Checkin", "How's it going? A little space to share whatever is going on, when you feel like it."
 	if kind == "moment" {
-		title = "Take a moment"
+		title = "Take a break"
 		description = "An invitation to pause, stretch or step outside"
 	}
 	clock, zone, repeat, status := "09:00", "", "daily", "Not scheduled"

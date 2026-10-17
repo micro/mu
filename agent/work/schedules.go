@@ -224,7 +224,7 @@ func ScheduledCard(owner string) string {
 	}{
 		{"Morning Brief", "brief", agent.Brief(owner)},
 		{"Daily Checkin", "checkin", agent.Checkin(owner)},
-		{"Take a moment", "moment", agent.Moment(owner)},
+		{"Take a break", "moment", agent.Moment(owner)},
 		{"Evening Digest", "research", agent.Research(owner)},
 	} {
 		if item.anchor == "moment" && (item.schedule == nil || item.schedule.Paused) {

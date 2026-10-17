@@ -91,3 +91,24 @@ func TestEveningDigestUsesLocalCalendarDayAndLabelsRoundup(t *testing.T) {
 		t.Fatalf("incorrect date handling: %s (%v)", result, err)
 	}
 }
+
+func TestBreakRenamePreservesSchedule(t *testing.T) {
+	const owner = "break-rename"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	defer events.DeleteAll(owner)
+	when := time.Now().Add(time.Hour)
+	old := events.Event{ID: "break", Owner: owner, Kind: "moment", Title: "Take a moment", When: when, Zone: "Europe/London", Repeat: "weekdays", Paused: true, Sequence: 7, Advance: scheduledAdvance("moment")}
+	if err := events.EditOwned(owner, func(records map[string]*events.Event) error { records[old.ID] = &old; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	configureScheduledAdvances()
+	got := Moment(owner)
+	if got.Title != "Take a break" || !got.When.Equal(when) || !got.Paused || got.Zone != old.Zone || got.Repeat != old.Repeat || got.Sequence != 8 {
+		t.Fatalf("changed schedule: %+v", got)
+	}
+	configureScheduledAdvances()
+	if Moment(owner).Sequence != 8 {
+		t.Fatal("rename repeated")
+	}
+}

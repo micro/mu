@@ -26,5 +26,5 @@ func momentMessage(schedule *events.Event, at time.Time) string {
 	if index < 0 {
 		index += len(messages)
 	}
-	return messages[index] + "\n\n[Manage Take a moment](" + origin.Self() + "/agents?view=scheduled#moment)"
+	return messages[index] + "\n\n[Manage Take a break](" + origin.Self() + "/agents?view=scheduled#moment)"
 }
