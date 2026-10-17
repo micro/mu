@@ -68,5 +68,8 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	} else {
 		b.WriteString("\n## Daily reminder\n\nToday's reminder is unavailable.\n")
 	}
+	if len(c.Travel) > 0 {
+		section("Travel", c.Travel, 3, "")
+	}
 	return strings.TrimSpace(b.String())
 }
