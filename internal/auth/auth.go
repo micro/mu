@@ -381,9 +381,22 @@ func AccountByUsername(username string) (*Account, error) {
 // avoids auth importing every other package.
 var AccountDeleteHooks []func(accountID string)
 
+// AccountDeletePrepare completes fallible resource cleanup before credentials
+// disappear. These callbacks run synchronously outside the auth lock; an error
+// leaves the account intact. Infallible projections use AccountDeleteHooks.
+var AccountDeletePrepare []func(accountID string) error
+
 func DeleteAccount(id string) error {
 	if id == OperatorID {
 		return errors.New("the operator account cannot be deleted")
+	}
+	if _, err := GetAccount(id); err != nil {
+		return err
+	}
+	for _, prepare := range AccountDeletePrepare {
+		if err := prepare(id); err != nil {
+			return err
+		}
 	}
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -418,8 +431,9 @@ func DeleteAccount(id string) error {
 	DeleteSSHKeysFor(id)
 
 	// Run all registered cleanup hooks outside the lock.
+	hooks := append([]func(string){}, AccountDeleteHooks...)
 	go func() {
-		for _, hook := range AccountDeleteHooks {
+		for _, hook := range hooks {
 			hook(id)
 		}
 	}()

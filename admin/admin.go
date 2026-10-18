@@ -119,7 +119,10 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 					app.BadRequest(w, r, "Cancel billing before deleting this account: "+err.Error())
 					return
 				}
-				auth.DeleteAccount(userID)
+				if err := auth.DeleteAccount(userID); err != nil {
+					app.BadRequest(w, r, "Cannot delete this account: "+err.Error())
+					return
+				}
 			}
 		case "ban":
 			auth.BanAccount(userID)

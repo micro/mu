@@ -2,10 +2,13 @@ package billing
 
 import (
 	"context"
+	"mu/internal/auth"
 	"mu/internal/group"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestGroupBudgetSerializesConcurrentSpending(t *testing.T) {
@@ -149,5 +152,78 @@ func TestGroupFundingRacesDeletion(t *testing.T) {
 		} else if deletion != nil || exists || Balance(payer) != 1 {
 			t.Fatal("failed transfer lost payer credit")
 		}
+	}
+}
+
+func TestAccountDeletionRejectsFundingAfterPreflight(t *testing.T) {
+	acc := subscriptionFixture(t)
+	g, err := group.Create(acc.ID, "Late funding", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldPrepare, oldHooks := auth.AccountDeletePrepare, auth.AccountDeleteHooks
+	auth.AccountDeletePrepare, auth.AccountDeleteHooks = []func(string) error{group.Forget}, nil
+	t.Cleanup(func() { auth.AccountDeletePrepare, auth.AccountDeleteHooks = oldPrepare, oldHooks })
+	if err := EndSubscription(context.Background(), acc.ID); err != nil {
+		t.Fatal(err)
+	}
+	// A payer arrives after billing preflight, before account deletion.
+	if err := AddCredits(group.Scope(g.ID), 1, "late funding", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := auth.DeleteAccount(acc.ID); err == nil {
+		t.Fatal("deleted account after late group funding")
+	}
+	if _, err := auth.GetAccount(acc.ID); err != nil {
+		t.Fatal("owner lost access")
+	}
+	if !group.Member(g.ID, acc.ID) {
+		t.Fatal("owner lost group membership")
+	}
+	if err := TransferCredits(group.Scope(g.ID), acc.ID, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := auth.DeleteAccount(acc.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := group.Details(g.ID); ok {
+		t.Fatal("group removal was deferred until after account deletion")
+	}
+	if err := AddCredits(group.Scope(g.ID), 1, "late funding", nil); err == nil {
+		t.Fatal("funded a retired group")
+	}
+}
+
+func TestAccountDeletionValidatesAllGroupsBeforeCancellingPlans(t *testing.T) {
+	acc := subscriptionFixture(t)
+	for _, name := range []string{"First", "Second"} {
+		g, err := group.Create(acc.ID, name, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			group.ProtectBilling(g.ID, time.Time{})
+			withLedger(func(l *ledger) bool { delete(balances, group.Scope(g.ID)); return true })
+			group.Change(g.ID, acc.ID, "delete", "", "")
+		})
+	}
+	gs, _, err := group.List(acc.ID)
+	if err != nil || len(gs) != 2 {
+		t.Fatal("missing groups", err)
+	}
+	first := group.Scope(gs[0].ID)
+	subscriptions[first] = subscription{ID: "sub_group", Status: "active"}
+	if err := AddCredits(group.Scope(gs[1].ID), 1, "test", nil); err != nil {
+		t.Fatal(err)
+	}
+	billingHTTP = &http.Client{Transport: stripeTransport(func(r *http.Request) (*http.Response, error) {
+		t.Fatal("changed subscription before checking every group")
+		return nil, nil
+	})}
+	if err := EndSubscription(context.Background(), acc.ID); err == nil {
+		t.Fatal("accepted funded group")
+	}
+	if subscriptions[first].Status != "active" {
+		t.Fatal("cancelled another group's plan")
 	}
 }
