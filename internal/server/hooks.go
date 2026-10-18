@@ -489,6 +489,9 @@ func wireHooks() {
 	admin.GetNewAccountBlog = blog.PostsByNewAccounts
 	admin.RefreshBlogCache = blog.RefreshCache
 
+	// Membership must be retired before its owner loses access.
+	auth.AccountDeletePrepare = append(auth.AccountDeletePrepare, groups.Forget)
+
 	// Register account deletion hooks — each package cleans up its own data.
 	auth.AccountDeleteHooks = append(auth.AccountDeleteHooks,
 		blog.DeletePostsByAuthor,
@@ -497,7 +500,6 @@ func wireHooks() {
 		stream.DeleteByAccount,
 		user.DeleteProfile,
 		mail.DeleteInbox,
-		groups.Forget,
 		chat.Forget,
 		func(id string) { billing.DeleteCredits(id) },
 		app.ForgetAccountCosts,

@@ -95,7 +95,7 @@ var paymentPortalConfig struct {
 	ID  string
 }
 
-func subscriptionPortal(ctx context.Context, acc *auth.Account, origin string) (string, error) {
+func subscriptionPortal(ctx context.Context, acc *auth.Account, origin, back string) (string, error) {
 	subscriptionMu.Lock()
 	defer subscriptionMu.Unlock()
 	s := subscriptions[acc.ID]
@@ -131,7 +131,7 @@ func subscriptionPortal(ctx context.Context, acc *auth.Account, origin string) (
 	var session struct {
 		URL string `json:"url"`
 	}
-	form := url.Values{"customer": {s.Customer}, "configuration": {paymentPortalConfig.ID}, "return_url": {origin + "/account#subscription"}}
+	form := url.Values{"customer": {s.Customer}, "configuration": {paymentPortalConfig.ID}, "return_url": {origin + back}}
 	if err := stripeRequest(ctx, "POST", "billing_portal/sessions", form, "", &session); err != nil {
 		return "", err
 	}

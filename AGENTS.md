@@ -145,7 +145,12 @@ Invitation secrets travel in fragments then POST bodies and are stored hashed.
 
 Group plans reuse PAYG, Starter and Pro with one shared allowance, no per-member
 subscription and no signup credits. Billing reserves against a persistent monthly
-spending cap. Group briefs are generated once and delivered to the shared chat and
+spending cap. Billing holds the ledger lock across group deletion checks and the
+membership commit; funded balances and pending usage block deletion. Account deletion
+retires group membership synchronously before removing credentials; cleanup failure
+keeps the account accessible. Events retires
+schedules whose group owner no longer exists before firing or rescheduling them.
+Group briefs are generated once and delivered to the shared chat and
 members' mailboxes. Existing encrypted XMPP groups remain assistant-free.
 
 ## The access model

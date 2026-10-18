@@ -435,6 +435,9 @@ func AddCredits(userID string, amount int, operation string, metadata map[string
 // addCredits is AddCredits behind the door, so that a caller needing to decide
 // and then write — CreditOnce — can do both without a gap.
 func addCredits(l *ledger, userID string, amount int, operation string, metadata map[string]interface{}) error {
+	if err := validGroupLedger(userID); err != nil {
+		return err
+	}
 	w, exists := balances[userID]
 	if !exists {
 		w = &Credits{
@@ -570,6 +573,12 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 
 // transferCredits is TransferCredits with the lock held.
 func transferCredits(l *ledger, fromUserID, toUserID string, amount int) error {
+	if err := validGroupLedger(fromUserID); err != nil {
+		return err
+	}
+	if err := validGroupLedger(toUserID); err != nil {
+		return err
+	}
 
 	// The same total DailyTransferTotal reports, from the same function. It was
 	// written out again here to avoid taking the lock twice, and a cap with two

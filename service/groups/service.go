@@ -91,11 +91,12 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateRespons
 	rsp.Result = "Updated"
 	return nil
 }
-func Forget(account string) {
+func Forget(account string) error {
 	if err := group.Forget(account); err != nil {
-		app.Log("groups", "account removal: %v", err)
+		return err
 	}
 	event.Publish(event.Event{Type: group.Changed})
+	return nil
 }
 func Load() {
 	if err := group.Load(); err != nil {

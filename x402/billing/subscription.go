@@ -506,6 +506,21 @@ func EndSubscription(ctx context.Context, id string) error {
 		if err != nil {
 			return err
 		}
+		// Validate the whole set before cancelling any plan. The synchronous
+		// account deletion prepare hook rechecks and commits group removal
+		// under the ledger lock before auth removes the owner's credentials.
+		if err := withLedger(func(l *ledger) error {
+			for _, g := range gs {
+				if g.Owner == id {
+					if err := groupDeletionAllowed(l, g.ID); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
 		for _, g := range gs {
 			if g.Owner == id {
 				if err := endSubscription(ctx, group.Scope(g.ID)); err != nil {
