@@ -17,6 +17,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/internal/group"
 	"mu/internal/service"
 )
 
@@ -251,6 +252,18 @@ func fireDueAt(now time.Time) {
 		previous[id] = &cp
 	}
 	for id, e := range events {
+		// Membership deletion is the durable retirement marker. Prune before
+		// firing or rescheduling, including orphaned records loaded on restart.
+		if strings.HasPrefix(e.Owner, "group:") {
+			if err := group.Load(); err != nil {
+				continue
+			}
+			if _, ok := group.FromScope(e.Owner); !ok {
+				delete(events, id)
+				changed = true
+				continue
+			}
+		}
 		if !e.Fired && !e.Paused && e.Advance.Minutes > 0 && e.When.After(now) && !e.When.Add(-time.Duration(e.Advance.Minutes)*time.Minute).After(now) && (!e.AdvanceFor.Equal(e.When) || e.AdvanceRevision != e.Sequence) {
 			e.AdvanceFor, e.AdvanceRevision = e.When, e.Sequence
 			changed = true

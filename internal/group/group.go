@@ -226,9 +226,25 @@ func Create(account, name string, encrypted bool) (Group, error) {
 	return clone(g), nil
 }
 
+// GuardDeletion is installed by billing to hold its ledger lock across the
+// eligibility checks and membership commit. Lock order is ledger, then groups.
+// The callback checks an opaque group ID without re-entering either store.
+var GuardDeletion = func(remove func(check func(string) error) error) error {
+	return remove(func(string) error { return nil })
+}
+
 // Change applies a single membership operation and commits it before it becomes
 // visible to access checks. Owners cannot accidentally leave an ownerless group.
 func Change(id, actor, action, target, value string) error {
+	if action == "delete" {
+		return GuardDeletion(func(check func(string) error) error {
+			return change(id, actor, action, target, value, check)
+		})
+	}
+	return change(id, actor, action, target, value, nil)
+}
+
+func change(id, actor, action, target, value string, check func(string) error) error {
 	if actor == "" {
 		return errors.New("sign in to manage groups")
 	}
@@ -308,6 +324,9 @@ func Change(id, actor, action, target, value string) error {
 			if role != "owner" {
 				return errors.New("only the owner can delete the group")
 			}
+			if err := check(id); err != nil {
+				return err
+			}
 			next := copyRecords()
 			delete(next, id)
 			return save(next)
@@ -323,6 +342,12 @@ func Change(id, actor, action, target, value string) error {
 // Forget removes a deleted identity, including pending invitations. Owned groups
 // are closed rather than silently granting ownership to somebody else.
 func Forget(account string) error {
+	return GuardDeletion(func(check func(string) error) error {
+		return forget(account, check)
+	})
+}
+
+func forget(account string, check func(string) error) error {
 	if err := Load(); err != nil {
 		return err
 	}
@@ -331,6 +356,9 @@ func Forget(account string) error {
 	next := copyRecords()
 	for id, stored := range next {
 		if stored.Owner == account {
+			if err := check(id); err != nil {
+				return err
+			}
 			if time.Now().Before(stored.BillingUntil) {
 				return errors.New("transfer or cancel owned group subscriptions before deleting this account")
 			}

@@ -183,7 +183,7 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Redirect(w, r, destination, http.StatusSeeOther)
 	case "manage":
-		destination, err := subscriptionPortal(r.Context(), acc, app.BaseURL(r))
+		destination, err := subscriptionPortal(r.Context(), acc, app.BaseURL(r), back)
 		if err != nil {
 			app.Log("stripe", "payment details: %v", err)
 			http.Error(w, "Payment details are unavailable. Please try again.", http.StatusServiceUnavailable)

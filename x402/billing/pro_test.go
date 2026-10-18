@@ -191,6 +191,7 @@ func TestProResumeAndPaymentPortal(t *testing.T) {
 	paymentPortalConfig.ID = ""
 	t.Cleanup(func() { paymentPortalConfig = oldPortal })
 	configs := 0
+	expectedReturn := "/account#subscription"
 	billingHTTP = &http.Client{Transport: stripeTransport(func(r *http.Request) (*http.Response, error) {
 		r.ParseForm()
 		switch r.URL.Path {
@@ -211,7 +212,7 @@ func TestProResumeAndPaymentPortal(t *testing.T) {
 			}
 			return stripeResponse(map[string]string{"id": "bpc_micro"}), nil
 		case "/v1/billing_portal/sessions":
-			if r.PostForm.Get("customer") != remote.Customer || r.PostForm.Get("configuration") != "bpc_micro" || r.PostForm.Get("return_url") != "https://micro.test/account#subscription" {
+			if r.PostForm.Get("customer") != remote.Customer || r.PostForm.Get("configuration") != "bpc_micro" || r.PostForm.Get("return_url") != "https://micro.test"+expectedReturn {
 				t.Fatal("portal ownership or return lost")
 			}
 			return stripeResponse(map[string]string{"url": "https://billing.stripe.com/p/test"}), nil
@@ -239,8 +240,9 @@ func TestProResumeAndPaymentPortal(t *testing.T) {
 			t.Fatalf("Account missing %s", text)
 		}
 	}
-	for range 2 {
-		if _, err := subscriptionPortal(context.Background(), acc, "https://micro.test"); err != nil {
+	for _, back := range []string{"/account#subscription", "/groups?id=opaque-group&tab=budget"} {
+		expectedReturn = back
+		if _, err := subscriptionPortal(context.Background(), acc, "https://micro.test", back); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -249,7 +251,7 @@ func TestProResumeAndPaymentPortal(t *testing.T) {
 	}
 	copy := *acc
 	copy.Created = copy.Created.Add(time.Second)
-	if _, err := subscriptionPortal(context.Background(), &copy, "https://micro.test"); err == nil {
+	if _, err := subscriptionPortal(context.Background(), &copy, "https://micro.test", "/account#subscription"); err == nil {
 		t.Fatal("reused name obtained former owner's portal")
 	}
 }

@@ -508,6 +508,9 @@ func EndSubscription(ctx context.Context, id string) error {
 		}
 		for _, g := range gs {
 			if g.Owner == id {
+				if err := withLedger(func(l *ledger) error { return groupDeletionAllowed(l, g.ID) }); err != nil {
+					return err
+				}
 				if err := endSubscription(ctx, group.Scope(g.ID)); err != nil {
 					return err
 				}
