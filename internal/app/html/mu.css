@@ -1575,3 +1575,10 @@ button.link-button:hover{background:transparent;color:#555}
 .public-demo .turn{text-align:left}
 .public-demo .answer{line-height:1.7}
 .public-demo .answer pre,.public-demo .answer table{max-width:100%;overflow-x:auto}
+
+.space-selector{position:relative;min-width:0;max-width:min(40vw,240px)}
+.space-selector>summary{min-height:44px;display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.space-options{position:absolute;right:0;top:100%;z-index:110;min-width:220px;max-width:calc(100vw - 32px);max-height:65vh;overflow:auto;padding:8px;background:var(--bg,#fff);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px #00000012}
+.space-options>a{display:block;min-height:44px;padding:10px 12px;white-space:normal;overflow-wrap:anywhere}
+
+.space-selector>summary::before{content:"⌄";font-size:1rem}

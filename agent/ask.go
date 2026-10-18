@@ -33,6 +33,7 @@ import (
 	"strings"
 	"sync"
 
+	"mu/internal/group"
 	"mu/internal/notes"
 	"mu/internal/quota"
 	"mu/internal/safety"
@@ -80,6 +81,7 @@ var errNoConversation = errors.New("no conversation with that id")
 
 // AskRequest is one message arriving from a client.
 type AskRequest struct {
+	History []QueryMessage // Optional authoritative carrier history, already access-checked.
 	Context ClientContext
 	Account string
 	// Client is which one: web, cli, mail. Named
@@ -274,6 +276,12 @@ func Ask(r AskRequest) (Answer, error) {
 		Public:      r.Public,
 		History:     requestHistory(r.Account, threadID(th), r.MessageRef),
 		Stream:      r.Stream,
+	}
+	if _, ok := group.FromScope(r.Account); ok {
+		opts.GroupActor = r.From
+	}
+	if r.History != nil {
+		opts.History = r.History
 	}
 	if !r.Public {
 		opts.Extra = conversationReading(r.Account, threadID(th))

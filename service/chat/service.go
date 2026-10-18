@@ -37,6 +37,7 @@ type RoomInfo struct {
 
 // Message is one line of a conversation.
 type Message struct {
+	ID        string    `json:"id,omitempty"`
 	Author    string    `json:"author"`
 	Content   string    `json:"content"`
 	IsAgent   bool      `json:"is_agent" description:"True when the agent said it"`
@@ -140,7 +141,7 @@ func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesR
 			continue
 		}
 		rsp.Messages = append(rsp.Messages, Message{
-			Author: m.UserID, Content: m.Content, IsAgent: m.IsLLM, Timestamp: m.Timestamp,
+			ID: m.ID, Author: m.UserID, Content: m.Content, IsAgent: m.IsLLM, Timestamp: m.Timestamp,
 		})
 	}
 	return nil

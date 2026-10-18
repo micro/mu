@@ -24,6 +24,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/codex"
 	"mu/internal/flag"
+	"mu/internal/group"
 	"mu/internal/privacy"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -348,7 +349,11 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// See nowContext. This is the half of the latency that is architecture
 	// rather than tuning: a question answered from here is one model call
 	// instead of three.
-	services := filterServices(nativeServices(opts.Public), opts.Tools)
+	available := nativeServices(opts.Public)
+	if _, ok := group.FromScope(accountID); ok {
+		available = filterServices(available, GroupTools())
+	}
+	services := filterServices(available, opts.Tools)
 	if opts.NoTools {
 		services = nil
 	}
@@ -370,7 +375,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
-	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID, len(opts.Tools) > 0 || opts.Public), dedupeNativeToolCalls(), limitNativeSearches(searchLimit()), retainEvidence(accountID, opts)}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), groupToolGuard(accountID, opts.GroupActor), blockDestructiveTools(), injectAccount(accountID, len(opts.Tools) > 0 || opts.Public), dedupeNativeToolCalls(), limitNativeSearches(searchLimit()), retainEvidence(accountID, opts)}, wrappers...)
 	if opts.Stream.wants() {
 		toolWrappers = append([]gmai.ToolWrapper{streamToolReporter(opts.Stream)}, toolWrappers...)
 	}
@@ -686,6 +691,11 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	if accountID == "" {
 		if !opts.demo && settings.Get("ALLOW_GUEST_AI") != "true" {
 			return "", fmt.Errorf("sign in to talk to Micro")
+		}
+	} else if strings.HasPrefix(accountID, "group:") {
+		g, ok := group.FromScope(accountID)
+		if !ok || (opts.GroupActor != "" && !group.AllowedAI(g, opts.GroupActor)) {
+			return "", fmt.Errorf("group access was revoked")
 		}
 	} else if !api.IsWalletIdentity(accountID) {
 		acc, err := auth.GetAccount(accountID)

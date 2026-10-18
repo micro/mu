@@ -37,6 +37,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	b.WriteString(`</div></section>` + billing.MonthlyPricingHTML(r) + `</div><p class="text-muted">Monthly plans renew automatically; cancel any time. Choose which scheduled updates to enable.</p>`)
+	b.WriteString(`<section class="plan-section section-stack"><h2>Share an assistant</h2><p>Create a group for shared conversations, agents and events. Invite people without adding subscriptions for each member. Each group has its own prepaid balance or Starter or Pro plan, with a shared credit allowance and spending limit.</p><p><a href="/groups">Create a group</a></p></section>`)
 	if billing.CryptoConfigured() {
 		b.WriteString(`<p><a class="btn" href="/account/topup#crypto">Pay with crypto</a></p><p>Buy credits directly from your wallet with USDC on Base. 1 USDC = 100 credits.</p>`)
 	}

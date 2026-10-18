@@ -7,6 +7,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/internal/group"
 	"mu/internal/thread"
 	"mu/internal/usage"
 	"mu/service/mail"
@@ -31,6 +32,9 @@ func DeliverScheduled(r ScheduledResult, answer string, err error) error {
 	}
 	if body == "" {
 		return nil
+	}
+	if g, ok := group.FromScope(r.Account); ok {
+		return deliverGroupScheduled(g, r, body)
 	}
 	acc, accErr := auth.GetAccount(r.Account)
 	if accErr != nil {

@@ -130,7 +130,8 @@ func Listable(roomID string) bool {
 // go in".
 func Member(roomID, account string) bool {
 	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(roomID)), group.RoomPrefix) {
-		return group.Member(strings.TrimPrefix(roomID, group.RoomPrefix), account)
+		g, _, ok := group.ConversationFor(roomID)
+		return ok && group.Member(g.ID, account)
 	}
 	if !Private(roomID) {
 		return true

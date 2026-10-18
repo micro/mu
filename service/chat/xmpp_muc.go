@@ -49,8 +49,10 @@ func mucSnapshot() map[string]*mucRoom {
 	return out
 }
 
-func mucDomain() string         { return "groups." + Domain() }
-func mucJID(room string) string { return groupID(room) + "@" + mucDomain() }
+func mucDomain() string { return "groups." + Domain() }
+func mucJID(room string) string {
+	return strings.TrimPrefix(room, group.RoomPrefix) + "@" + mucDomain()
+}
 func mucTarget(to string) (string, bool) {
 	bare := strings.ToLower(bareOf(to))
 	if bare == mucDomain() {
@@ -345,7 +347,7 @@ func (s *session) mucMessage(st stanza) bool {
 		s.mucError(st, "message", "item-not-found", "Group not found")
 		return true
 	}
-	m := RoomMessage{UserID: s.acc.ID, Content: strings.TrimSpace(st.Body), Timestamp: time.Now().UTC(), WireID: st.ID, Nick: nick}
+	m := RoomMessage{transport: "xmpp", UserID: s.acc.ID, Content: strings.TrimSpace(st.Body), Timestamp: time.Now().UTC(), WireID: st.ID, Nick: nick}
 	raw, encrypted := childElement(st.Inner, "", "encrypted")
 	if encrypted {
 		if !g.Encrypted {

@@ -136,6 +136,9 @@ func formatCredits(n int) string {
 // the difference between a product that looks broken and one that looks
 // unstarted.
 func CreditsBanner(r *http.Request) string {
+	if r.URL.Path == "/groups" || (r.URL.Path == "/chat" && strings.HasPrefix(r.URL.Query().Get("id"), "group_")) {
+		return ""
+	}
 	_, acc := auth.TrySession(r)
 	return creditsBannerFor(acc, r.URL.Path)
 }

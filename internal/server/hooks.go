@@ -151,6 +151,7 @@ func wireHooks() {
 	}
 
 	watchScheduleEvents()
+	watchGroupMessages()
 
 	// Work an agent is asked to do — a task assigned, a standing instruction
 	// falling due — reaches it on the bus rather than through this file.

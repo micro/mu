@@ -1873,4 +1873,16 @@ if (typeof document !== "undefined") {
  });
 })();
 
+(()=>{
+ const box=document.querySelector('[data-group-invitation]');if(!box)return;
+ const key='micro-group-invite-'+box.dataset.groupInvitation;
+ try {
+  const token=location.hash.slice(1);
+  if(/^[a-f0-9]{64}$/.test(token)){sessionStorage.setItem(key,token);history.replaceState(null,'',location.pathname+location.search);}
+  const saved=sessionStorage.getItem(key)||'';
+  if(saved)fetch(location.pathname+location.search,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'preview',token:saved})}).then(r=>r.json()).then(info=>{const p=box.querySelector('[data-invitation-description]');if(p)p.textContent=info.name?'@'+info.inviter+' invited you to '+info.name+'. Members can read earlier group conversations. Your personal messages stay private.':info.error||'Invitation unavailable.';}).catch(()=>{});
+  const field=box.querySelector('[data-invitation-token]');if(field){field.value=sessionStorage.getItem(key)||'';field.form.addEventListener('submit',()=>sessionStorage.removeItem(key));}
+ } catch (_) {}
+})();
+
 }

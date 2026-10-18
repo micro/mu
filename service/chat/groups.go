@@ -1,6 +1,8 @@
 package chat
 
 import (
+	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -9,7 +11,7 @@ import (
 	"mu/internal/group"
 )
 
-func groupID(room string) string { return strings.TrimPrefix(room, group.RoomPrefix) }
+func groupID(room string) string { return group.RoomGroup(room) }
 func isGroup(room string) bool   { return strings.HasPrefix(room, group.RoomPrefix) }
 func groupMembers(room string) []string {
 	g, ok := group.Details(groupID(room))
@@ -27,6 +29,10 @@ func groupTitle(room string) string {
 	g, ok := group.Details(groupID(room))
 	if !ok {
 		return "Private group"
+	}
+	_, c, ok := group.ConversationFor(room)
+	if ok {
+		return g.Name + " · " + c.Name
 	}
 	return g.Name
 }
@@ -71,4 +77,22 @@ func pruneGroups() {
 		r.mutex.Unlock()
 	}
 	pruneMUC()
+}
+
+// DeliverGroup is an internal delivery path, not a caller-controlled service
+// tool. It persists an assistant result even while nobody has the room open.
+func DeliverGroup(room, from, text string, refs ...string) error {
+	g, _, ok := group.ConversationFor(room)
+	if !ok || g.Encrypted {
+		return fmt.Errorf("group unavailable")
+	}
+	r := getOrCreateRoom(room)
+	if r == nil {
+		return fmt.Errorf("group unavailable")
+	}
+	ref := ""
+	if len(refs) > 0 {
+		ref = refs[0]
+	}
+	return post(context.Background(), r, RoomMessage{WireID: ref, UserID: from, Content: text, Timestamp: time.Now(), IsLLM: true})
 }

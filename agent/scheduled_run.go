@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/group"
 	"mu/service/events"
 )
 
@@ -21,6 +22,17 @@ func RunScheduled(owner, id, revision string, due time.Time) (handled bool, answ
 	}
 	if schedule == nil {
 		return true, "", nil
+	}
+	if schedule.Kind == "group_brief" {
+		g, ok := group.FromScope(owner)
+		if !ok || schedule.Paused || fmt.Sprint(schedule.Sequence) != revision {
+			return true, "", nil
+		}
+		if due.IsZero() {
+			due = time.Now()
+		}
+		answer, err := runGroupBrief(g, schedule, due)
+		return true, answer, err
 	}
 	if schedule.Kind != "brief" && schedule.Kind != "research" && schedule.Kind != "checkin" && schedule.Kind != "moment" {
 		return false, "", nil

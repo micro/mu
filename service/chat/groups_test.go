@@ -297,3 +297,37 @@ func TestGroupArchiveRetainsHistoryAndScopesPaging(t *testing.T) {
 		t.Fatal("wrong cursor page", ac.text())
 	}
 }
+
+func TestGroupAssistantDeliveryAndTopicAccess(t *testing.T) {
+	g, _, _, _, _ := groupFixture(t, false)
+	c, err := group.SaveConversation(g.ID, g.Owner, "", "Project", "none")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if Member(c.ID, "muc-member") {
+		t.Fatal("pending member read topic")
+	}
+	if err := group.Change(g.ID, "muc-member", "accept", "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if !Member(c.ID, "muc-member") || Member(c.ID+"_forged", "muc-member") {
+		t.Fatal("topic authorization failed")
+	}
+	if err := DeliverGroup(c.ID, "Researcher", "Shared result", "result-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := DeliverGroup(c.ID, "Researcher", "Shared result", "result-1"); err != nil {
+		t.Fatal(err)
+	}
+	var rsp MessagesResponse
+	if err := (Server{}).Messages(service.WithAccount(context.Background(), "muc-member"), &MessagesRequest{Room: c.ID}, &rsp); err != nil {
+		t.Fatal(err)
+	}
+	if len(rsp.Messages) != 1 || !rsp.Messages[0].IsAgent {
+		t.Fatalf("delivery not durable/idempotent: %+v", rsp.Messages)
+	}
+	_ = group.Change(g.ID, g.Owner, "remove", "muc-member", "")
+	if err := (Server{}).Messages(service.WithAccount(context.Background(), "muc-member"), &MessagesRequest{Room: c.ID}, &rsp); err == nil {
+		t.Fatal("removed member read history")
+	}
+}

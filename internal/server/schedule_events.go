@@ -7,10 +7,12 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/internal/group"
 	"mu/internal/origin"
 	"mu/internal/persist"
 	"mu/internal/push"
 	"mu/internal/service"
+	"mu/service/chat"
 	"mu/service/events"
 	"mu/service/mail"
 	"os"
@@ -110,7 +112,17 @@ func watchScheduleEvents() {
 					if err := persist.Write(key, []byte(`"attempted"`)); err != nil {
 						return err
 					}
-					push.Send(e.Account, push.Notification{Title: "⏰ " + title, Body: note, URL: "/events"})
+					if g, ok := group.FromScope(e.Account); ok {
+						_ = chat.DeliverGroup(group.RoomPrefix+g.ID, "micro", title+"\n\n"+note)
+						for member := range g.Members {
+							if g.Muted[member] {
+								continue
+							}
+							push.Send(member, push.Notification{Title: title, Body: note, URL: "/groups?id=" + g.ID + "&tab=events"})
+						}
+					} else {
+						push.Send(e.Account, push.Notification{Title: "⏰ " + title, Body: note, URL: "/events"})
+					}
 					return nil
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

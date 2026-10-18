@@ -68,8 +68,9 @@ type QueryMessage struct {
 }
 
 type QueryOpts struct {
-	demo              bool // Only the capped public demo handler can set this.
-	interactive       bool // Set by Ask, not scheduled QueryWithOpts callers.
+	GroupActor        string // Internal authenticated initiator; never supplied by the model.
+	demo              bool   // Only the capped public demo handler can set this.
+	interactive       bool   // Set by Ask, not scheduled QueryWithOpts callers.
 	RunContext        context.Context
 	OnStepStart       func(Step)
 	Context           ClientContext

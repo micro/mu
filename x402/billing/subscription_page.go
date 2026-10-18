@@ -107,11 +107,16 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 		app.RedirectToLogin(w, r)
 		return
 	}
+	acc, back, err := subscriptionActor(r, acc)
+	if err != nil {
+		app.NotFound(w, r, "Group not found")
+		return
+	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	if r.Method == http.MethodGet {
 		id := r.URL.Query().Get("session_id")
 		if id == "" {
-			http.Redirect(w, r, "/account#subscription", http.StatusSeeOther)
+			http.Redirect(w, r, back, http.StatusSeeOther)
 			return
 		}
 		subscriptionMu.Lock()
@@ -133,7 +138,7 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Payment could not be confirmed yet. Please try again.", http.StatusServiceUnavailable)
 			return
 		}
-		http.Redirect(w, r, "/account#subscription", http.StatusSeeOther)
+		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -202,7 +207,7 @@ func SubscriptionHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Plan change could not be confirmed. Please try again.", http.StatusServiceUnavailable)
 			return
 		}
-		http.Redirect(w, r, "/account#subscription", http.StatusSeeOther)
+		http.Redirect(w, r, back, http.StatusSeeOther)
 	default:
 		http.Error(w, "unknown action", http.StatusBadRequest)
 	}
