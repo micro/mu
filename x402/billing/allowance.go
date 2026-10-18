@@ -78,6 +78,9 @@ func includedUsed(id string, now time.Time) int {
 func reserveIncluded(id, operation string, amount int) (func(bool) error, error) {
 	var receipt string
 	err := withLedger(func(l *ledger) error {
+		if err := groupBudget(id, amount); err != nil {
+			return err
+		}
 		meta := map[string]interface{}{"pending": true}
 		funded := allowanceDebit(l, id, amount, meta)
 		if balances[id] == nil {
@@ -169,6 +172,9 @@ func recoverIncluded() {
 // app-author payments and escrow continue to require a funded balance.
 func chargeIncluded(id string, amount int, operation string, metadata map[string]interface{}) error {
 	return withLedger(func(l *ledger) error {
+		if err := groupBudget(id, amount); err != nil {
+			return err
+		}
 		meta := make(map[string]interface{}, len(metadata)+1)
 		for k, v := range metadata {
 			meta[k] = v

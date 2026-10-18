@@ -27,13 +27,23 @@ type Invitation struct {
 	Expires   time.Time `json:"expires"`
 }
 type Group struct {
-	ID          string                `json:"id"`
-	Name        string                `json:"name"`
-	Encrypted   bool                  `json:"encrypted"`
-	Owner       string                `json:"owner"`
-	Created     time.Time             `json:"created"`
-	Members     map[string]string     `json:"members"`
-	Invitations map[string]Invitation `json:"invitations,omitempty"`
+	Muted         map[string]bool         `json:"muted,omitempty"`
+	BillingUntil  time.Time               `json:"billing_until,omitempty"`
+	Activity      map[string]time.Time    `json:"activity,omitempty"`
+	Seen          map[string]time.Time    `json:"seen,omitempty"`
+	ID            string                  `json:"id"`
+	Name          string                  `json:"name"`
+	Conversations map[string]Conversation `json:"conversations,omitempty"`
+	Links         map[string]Invitation   `json:"links,omitempty"`
+	LinkHash      string                  `json:"link_hash,omitempty"`
+	LinkExpires   time.Time               `json:"link_expires,omitempty"`
+	SpendLimit    int                     `json:"spend_limit"`
+	MembersUseAI  bool                    `json:"members_use_ai"`
+	Encrypted     bool                    `json:"encrypted"`
+	Owner         string                  `json:"owner"`
+	Created       time.Time               `json:"created"`
+	Members       map[string]string       `json:"members"`
+	Invitations   map[string]Invitation   `json:"invitations,omitempty"`
 }
 type Pending struct {
 	ID   string `json:"id"`
@@ -78,6 +88,31 @@ func Load() error {
 }
 
 func clone(g Group) Group {
+	links := map[string]Invitation{}
+	for k, v := range g.Links {
+		links[k] = v
+	}
+	g.Links = links
+	muted := map[string]bool{}
+	for k, v := range g.Muted {
+		muted[k] = v
+	}
+	g.Muted = muted
+	activity := map[string]time.Time{}
+	for k, v := range g.Activity {
+		activity[k] = v
+	}
+	g.Activity = activity
+	seen := map[string]time.Time{}
+	for k, v := range g.Seen {
+		seen[k] = v
+	}
+	g.Seen = seen
+	conversations := map[string]Conversation{}
+	for id, c := range g.Conversations {
+		conversations[id] = c
+	}
+	g.Conversations = conversations
 	m := map[string]string{}
 	for a, role := range g.Members {
 		m[a] = role
@@ -124,6 +159,8 @@ func Read(id, account string) (Group, error) {
 		return Group{}, errors.New("group not found")
 	}
 	out := clone(g)
+	out.LinkHash = ""
+	out.Links = nil
 	if out.Members[account] == "member" {
 		out.Invitations = nil
 	}
@@ -143,6 +180,8 @@ func List(account string) ([]Group, []Pending, error) {
 	for _, g := range records {
 		if g.Members[account] != "" {
 			c := clone(g)
+			c.LinkHash = ""
+			c.Links = nil
 			if c.Members[account] == "member" {
 				c.Invitations = nil
 			}
@@ -178,7 +217,7 @@ func Create(account, name string, encrypted bool) (Group, error) {
 	if _, err := rand.Read(b[:]); err != nil {
 		return Group{}, err
 	}
-	g := Group{ID: hex.EncodeToString(b[:]), Name: name, Encrypted: encrypted, Owner: account, Created: time.Now().UTC(), Members: map[string]string{account: "owner"}, Invitations: map[string]Invitation{}}
+	g := Group{ID: hex.EncodeToString(b[:]), Name: name, Encrypted: encrypted, Owner: account, Created: time.Now().UTC(), SpendLimit: 1000, MembersUseAI: true, Members: map[string]string{account: "owner"}, Invitations: map[string]Invitation{}}
 	next := copyRecords()
 	next[g.ID] = g
 	if err := save(next); err != nil {
@@ -263,6 +302,9 @@ func Change(id, actor, action, target, value string) error {
 			}
 			g.Name = value
 		case "delete":
+			if time.Now().Before(g.BillingUntil) {
+				return errors.New("stop group billing in Budget before deleting this group")
+			}
 			if role != "owner" {
 				return errors.New("only the owner can delete the group")
 			}
@@ -289,6 +331,9 @@ func Forget(account string) error {
 	next := copyRecords()
 	for id, stored := range next {
 		if stored.Owner == account {
+			if time.Now().Before(stored.BillingUntil) {
+				return errors.New("transfer or cancel owned group subscriptions before deleting this account")
+			}
 			delete(next, id)
 			continue
 		}

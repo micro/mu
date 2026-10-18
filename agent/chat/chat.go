@@ -12,6 +12,7 @@ import (
 	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/event"
+	"mu/internal/group"
 	"mu/internal/thread"
 	"mu/service/chat"
 )
@@ -26,7 +27,7 @@ const Client = thread.ChatClient
 
 // Load consumes persisted chat facts. Public room response policy stays here.
 func Load() {
-	agent.WatchEvents("agent-chat", []string{"chat.posted", event.ChatAddressed}, prepareChat)
+	agent.WatchEvents("agent-chat", []string{"chat.posted", "chat.group.posted", event.ChatAddressed}, prepareChat)
 }
 
 func prepareChat(e event.Record) (func(), error) {
@@ -49,6 +50,24 @@ func prepareChat(e event.Record) (func(), error) {
 		if !shouldAnswer(facts) {
 			return nil, nil
 		}
+	}
+	if e.Type == "chat.group.posted" {
+		g, c, ok := group.ConversationFor(m.Conversation)
+		if !ok || g.Encrypted || !group.AllowedAI(g, e.Account) || c.Agent == "none" || (m.Facts["transport"] != "web" && m.Facts["transport"] != "xmpp") {
+			return nil, nil
+		}
+		name := "micro"
+		if c.Agent != "" {
+			a := agent.For(group.Scope(g.ID), c.Agent)
+			if a == nil {
+				return nil, nil
+			}
+			name = a.Name
+		}
+		if !strings.Contains(strings.ToLower(m.Text), "@"+strings.ToLower(name)) && !strings.Contains(strings.ToLower(m.Text), "@micro") {
+			return nil, nil
+		}
+		return func() { answerGroup(g.ID, c.ID, e.Account, m.ID, m.Text) }, nil
 	}
 	s := spoken{Ref: m.ID, Room: m.Conversation, Account: e.Account, Text: m.Text, Title: str("title"), Summary: str("summary"), URL: str("url")}
 	return func() { answer(s) }, nil

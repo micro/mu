@@ -12,7 +12,7 @@ func normalizedTier(tier string) string {
 
 // Tier follows a paid service period, even after cancellation or credit exhaustion.
 func Tier(owner string) string {
-	acc, err := auth.GetAccount(owner)
+	acc, err := billingAccount(owner)
 	if err != nil || acc == nil || acc.Banned {
 		return "free"
 	}

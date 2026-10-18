@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/group"
 	publicorigin "mu/internal/origin"
 	"mu/internal/settings"
 )
@@ -90,6 +91,17 @@ func init() {
 }
 
 func saveSubscription(id string, s subscription) error {
+	if g, ok := group.FromScope(id); ok {
+		until := time.Time{}
+		if s.ID != "" && s.Status != "canceled" && s.Status != "incomplete_expired" {
+			until = time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
+		} else if s.Attempt != "" && s.ID == "" {
+			until = time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
+		}
+		if err := group.ProtectBilling(g.ID, until); err != nil {
+			return err
+		}
+	}
 	old, existed := subscriptions[id]
 	if s.ID == "" && s.Attempt == "" && s.AccountCreated == "" {
 		delete(subscriptions, id)
@@ -413,6 +425,10 @@ func startSubscription(ctx context.Context, acc *auth.Account, origin string, ti
 		} else if acc.Customer != "" {
 			form.Set("customer", acc.Customer)
 		}
+		if g, ok := group.FromScope(acc.ID); ok {
+			form.Set("success_url", origin+"/account/subscription?group="+g.ID+"&session_id={CHECKOUT_SESSION_ID}")
+			form.Set("cancel_url", origin+"/groups?id="+g.ID+"&tab=budget")
+		}
 		s.CheckoutForm = form.Encode()
 		if err := saveSubscription(acc.ID, s); err != nil {
 			return "", err
@@ -478,13 +494,29 @@ func subscriptionEvent(ctx context.Context, kind string, raw json.RawMessage) er
 // Account names can be reused after deletion. A historic invoice must never
 // grant usage to a new owner of the same name.
 func subscriptionOwner(meta map[string]string) bool {
-	acc, err := auth.GetAccount(meta["user_id"])
+	acc, err := billingAccount(meta["user_id"])
 	return err == nil && meta["account_created"] == strconv.FormatInt(acc.Created.UnixNano(), 10)
 }
 
 // EndSubscription stops future billing before an administrator deletes an
 // account. Failure prevents deletion so the payer retains a way to cancel.
 func EndSubscription(ctx context.Context, id string) error {
+	if !strings.HasPrefix(id, "group:") {
+		gs, _, err := group.List(id)
+		if err != nil {
+			return err
+		}
+		for _, g := range gs {
+			if g.Owner == id {
+				if err := endSubscription(ctx, group.Scope(g.ID)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return endSubscription(ctx, id)
+}
+func endSubscription(ctx context.Context, id string) error {
 	subscriptionMu.Lock()
 	defer subscriptionMu.Unlock()
 	if subscriptionsLoadError != nil {

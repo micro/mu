@@ -32,7 +32,6 @@ import (
 
 	"mu/internal/quota"
 
-	"mu/internal/auth"
 	"mu/internal/data"
 
 	"github.com/google/uuid"
@@ -598,6 +597,8 @@ func transferCredits(l *ledger, fromUserID, toUserID string, amount int) error {
 		balances[toUserID] = receiver
 	}
 
+	oldSender, oldReceiver := *sender, *receiver
+	senderLen, receiverLen := len(transactions[fromUserID]), len(transactions[toUserID])
 	// Deduct from sender
 	sender.Balance -= amount
 	sender.UpdatedAt = time.Now()
@@ -641,9 +642,16 @@ func transferCredits(l *ledger, fromUserID, toUserID string, amount int) error {
 	}
 	transactions[toUserID] = append(transactions[toUserID], receiverTx)
 
-	// Persist
-	data.SaveJSON("wallets.json", balances)
-	data.SaveJSON("transactions.json", transactions)
+	// The transaction ledger is authoritative; a failed write rolls back both sides.
+	if err := data.SaveJSON("transactions.json", transactions); err != nil {
+		*sender, *receiver = oldSender, oldReceiver
+		transactions[fromUserID] = transactions[fromUserID][:senderLen]
+		transactions[toUserID] = transactions[toUserID][:receiverLen]
+		return err
+	}
+	if err := data.SaveJSON("wallets.json", balances); err != nil {
+		app.Log("billing", "transfer balance cache: %v", err)
+	}
 
 	return nil
 }
@@ -652,7 +660,7 @@ func transferCredits(l *ledger, fromUserID, toUserID string, amount int) error {
 // when there is no account to ask — a deleted one, or a wallet that outlived
 // it. Never empty, so a receipt always says something.
 func Label(id string) string {
-	if acc, err := auth.GetAccount(id); err == nil && strings.TrimSpace(acc.Name) != "" {
+	if acc, err := billingAccount(id); err == nil && strings.TrimSpace(acc.Name) != "" {
 		return acc.Name
 	}
 	return id

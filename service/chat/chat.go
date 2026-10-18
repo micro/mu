@@ -485,7 +485,7 @@ func getOrCreateRoom(id string) *Room {
 	// Fetch item details based on type (OUTSIDE roomsMutex to avoid deadlocks)
 	switch itemType {
 	case "group":
-		g, ok := group.Details(itemID)
+		g, _, ok := group.ConversationFor(id)
 		if !ok {
 			return nil
 		}
@@ -943,6 +943,18 @@ func (room *Room) run() {
 				app.Log("chat", "room %s: %v", room.ID, err)
 				continue
 			}
+			if isGroup(room.ID) && !message.System {
+				group.NoteMessage(groupID(room.ID), room.ID, message.Timestamp)
+				room.mutex.RLock()
+				viewers := []string{}
+				for _, c := range room.Clients {
+					viewers = append(viewers, c.UserID)
+				}
+				room.mutex.RUnlock()
+				for _, who := range viewers {
+					group.MarkRead(groupID(room.ID), who, room.ID)
+				}
+			}
 			announceMessage(room.ID, message)
 			broadcastMUC(room.ID, message)
 
@@ -1259,6 +1271,9 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	}
 
 	if isGroup(roomID) {
+		if _, acc := auth.TrySession(r); acc != nil {
+			group.MarkRead(groupID(roomID), acc.ID, roomID)
+		}
 		roomData["title"] = groupTitle(roomID)
 	}
 	if app.WantsJSON(r) {
@@ -1292,7 +1307,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	about := aboutRoom(roomData)
 	if isGroup(roomID) {
 		g, _ := group.Details(groupID(roomID))
-		about = `<a href="/groups?id=` + g.ID + `">Group settings</a>`
+		about = `<a href="/groups?id=` + g.ID + `">` + htmlpkg.EscapeString(g.Name) + `</a> · <a href="/groups?id=` + g.ID + `&tab=events">Events</a> · <a href="/groups?id=` + g.ID + `&tab=members">Members</a> · <a href="/groups?id=` + g.ID + `&tab=conversation&room=` + roomID + `">Assistant</a>`
 		if g.Encrypted {
 			guestNotice += `<p class="notice">This group uses end-to-end encryption. Read and send messages in your XMPP client; the web cannot decrypt them.</p>`
 			roomData["encrypted"] = true
@@ -1303,7 +1318,21 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 		guestNotice += `<p><a href="xmpp:` + htmlpkg.EscapeString(mucJID(roomID)) + `?join">Open in XMPP</a> · <span>` + htmlpkg.EscapeString(mucJID(roomID)) + `</span></p>`
 	}
 
-	content := fmt.Sprintf(Template, channels(roomID)+guestNotice, about) +
+	navigation := channels(roomID)
+	if isGroup(roomID) {
+		navigation = ""
+		if g, c, ok := group.ConversationFor(roomID); ok && !g.Encrypted {
+			guestNotice = `<p class="text-muted">Mention @micro to ask the selected assistant.</p>`
+			if c.Agent == "none" {
+				guestNotice = `<p class="text-muted">People-only conversation.</p>`
+			}
+		}
+	}
+	template := Template
+	if isGroup(roomID) {
+		template = strings.Replace(template, `<a href="/chat?view=rooms">All rooms</a>`, `<a href="/groups?id=`+groupID(roomID)+`">Conversations</a>`, 1)
+	}
+	content := fmt.Sprintf(template, navigation+guestNotice, about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content + `<script>` + clientJS + `</script>`})

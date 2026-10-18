@@ -44,7 +44,6 @@ import (
 	"mu/service/flights"
 	"mu/service/food"
 	"mu/service/forms"
-	"mu/service/groups"
 	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/islam"
@@ -120,7 +119,7 @@ func authRequired() map[string]bool {
 		"/img":                        false, // Public — cached article images (a prefix of /images, same answer)
 		"/events":                     true,  // Personal scheduled reminders — sign-in required
 		"/users":                      true,  // Who is on this instance — sign-in required
-		"/groups":                     true,
+		"/groups":                     false,
 		"/contacts":                   true, // Your address book — sign-in required
 		"/notes":                      true, // What you and your agents wrote down — sign-in required
 		"/notify":                     true, // What you were told, and where you can be reached — sign-in required
@@ -566,7 +565,7 @@ func registerRoutes() {
 	// person could sign up alongside a hundred and eighty others and meet none
 	// of them.
 	http.HandleFunc("/users", users.Handler)
-	http.HandleFunc("/groups", groups.Handler)
+	http.HandleFunc("/groups", groupsHandler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/forms", forms.Handler)

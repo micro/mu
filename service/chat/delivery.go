@@ -41,11 +41,18 @@ func (room *Room) keepMessage(message RoomMessage) error {
 	}
 	if isGroup(room.ID) && !message.System {
 		g, ok := group.Details(groupID(room.ID))
-		if !ok || !Member(room.ID, message.UserID) {
+		if !ok || (!message.IsLLM && !Member(room.ID, message.UserID)) {
 			return fmt.Errorf("no access to this group")
 		}
 		if g.Encrypted != (message.OMEMO != "") {
 			return fmt.Errorf("message encryption does not match the group; use its selected chat mode")
+		}
+	}
+	if isGroup(room.ID) && message.WireID != "" {
+		for _, existing := range room.Messages {
+			if existing.WireID == message.WireID && existing.UserID == message.UserID {
+				return nil
+			}
 		}
 	}
 	next := append(append([]RoomMessage(nil), room.Messages...), message)
@@ -54,7 +61,15 @@ func (room *Room) keepMessage(message RoomMessage) error {
 	}
 	var err error
 	if isGroup(room.ID) {
-		err = saveRoomMessages(room.ID, next)
+		if !message.System && !message.IsLLM && message.OMEMO == "" {
+			var b []byte
+			b, err = json.Marshal(next)
+			if err == nil {
+				_, err = keepSaved(message.UserID, Said{ID: message.ID, Conv: room.ID, From: message.UserID, Text: message.Content, At: message.Timestamp, Facts: map[string]interface{}{"transport": message.transport}}, map[string][]byte{"room_" + room.ID + ".json": b}, "chat.group.posted")
+			}
+		} else {
+			err = saveRoomMessages(room.ID, next)
+		}
 	} else if !message.System && !message.IsLLM {
 		var b []byte
 		b, err = json.Marshal(next)

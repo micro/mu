@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"mu/internal/auth"
+	"mu/internal/group"
 	"mu/internal/origin"
 )
 
@@ -181,6 +182,9 @@ func Metered(operation string) bool {
 func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// Get account to check admin status
 	acc, err := auth.GetAccount(userID)
+	if _, ok := group.FromScope(userID); ok {
+		acc, err = &auth.Account{ID: userID}, nil
+	}
 	if err != nil {
 		return false, false, 0, errors.New("account not found")
 	}
@@ -295,6 +299,9 @@ func TopupURL() string {
 func Charge(userID, operation string, meta map[string]interface{}) error {
 	// Get account to check admin status
 	acc, err := auth.GetAccount(userID)
+	if _, ok := group.FromScope(userID); ok {
+		acc, err = &auth.Account{ID: userID}, nil
+	}
 	if err != nil {
 		return errors.New("account not found")
 	}

@@ -57,7 +57,7 @@ func requestFor(e event.Record) (request, error) {
 		}
 		r.Kind, r.Title, r.Prompt = events.Kind, schedule.Title, strings.TrimSpace(schedule.Prompt)
 		switch schedule.Kind {
-		case "brief", "research", "checkin", "moment":
+		case "brief", "research", "checkin", "moment", "group_brief":
 			r.Builtin = true
 		}
 		r.Prepared = schedule.Advance.Recipient == "agent" && schedule.Advance.Minutes > 0

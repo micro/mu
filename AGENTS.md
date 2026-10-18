@@ -128,6 +128,26 @@ side — mail leaving, an x402 payment to another server — and `X402_SERVERS` 
 read by a client no tool exposes. Inbound has three good rungs; outbound has
 none.
 
+## Shared groups
+
+Groups are selectable spaces in the signed-in shell. The group product page is
+assembled in `internal/server/groups.go` over Groups, Chat, Events, Agent and
+Billing. `internal/group` owns membership, invitations, conversation settings and
+per-member read/notification preferences. Group room IDs remain opaque; the
+existing XMPP group address is the protocol address, not an email alias.
+
+Shared resources and credit ledgers use `group:<id>`, an internal owner that cannot
+sign in. Never substitute the creator's account for this owner. Group agents use
+only `agent.GroupTools`; membership and schedule permissions are checked again at
+tool dispatch. A person must be invited and accept before reading group history.
+New members can read earlier messages; removal revokes future reads and sends.
+Invitation secrets travel in fragments then POST bodies and are stored hashed.
+
+Group plans reuse PAYG, Starter and Pro with one shared allowance, no per-member
+subscription and no signup credits. Billing reserves against a persistent monthly
+spending cap. Group briefs are generated once and delivered to the shared chat and
+members' mailboxes. Existing encrypted XMPP groups remain assistant-free.
+
 ## The access model
 
 Four layers. They are not different capabilities — it is one catalogue all the
