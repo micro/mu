@@ -28,7 +28,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	messageCost := quota.OperationCost(quota.OpAgentRun)
 	_, _, sessionErr := auth.RequireSession(r)
-	b.WriteString(`<p>Get a feel for Micro: <a href="/">try a chat and read today’s brief</a>.</p><div class="card-grid comparison-grid" aria-label="Compare plans"><section class="card plan-card"><h2>Pay as you go</h2><p class="plan-price"><strong>1¢ / credit</strong></p><p>Personal chat and tools, without a subscription.</p><ul class="plan-benefits"><li>Add credit whenever you need it.</li><li>Purchased credits do not expire.</li><li>Scheduled briefs require a monthly plan.</li></ul><p class="text-sm text-muted">1 credit = 1 US cent.</p><div class="form-actions">`)
+	b.WriteString(`<p>Get a feel for Micro: <a href="/">try a chat</a>.</p><div class="card-grid comparison-grid" aria-label="Compare plans"><section class="card plan-card"><h2>Pay as you go</h2><p class="plan-price"><strong>1¢ / credit</strong></p><p>Personal chat and tools, without a subscription.</p><ul class="plan-benefits"><li>Add credit whenever you need it.</li><li>Purchased credits do not expire.</li><li>Scheduled briefs require a monthly plan.</li></ul><p class="text-sm text-muted">1 credit = 1 US cent.</p><div class="form-actions">`)
 	if billing.TopUpConfigured() {
 		if sessionErr == nil {
 			b.WriteString(`<a class="btn" href="/account/topup">Top up</a>`)

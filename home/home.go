@@ -4,9 +4,11 @@ package home
 import (
 	"fmt"
 	"html"
+	"mu/internal/service"
 	"mu/internal/thread"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 
 	"mu/account"
@@ -110,7 +112,7 @@ func overviewHTML(acc *auth.Account) string {
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
 	}
-	return `<div class="page-stack">` + columns + `</div>`
+	return `<div class="page-stack">` + pinnedApps(acc) + columns + `</div>`
 }
 
 func feedHTML(snapshot overviewSnapshot, owner string) string {
@@ -158,4 +160,17 @@ func conversationsCard(owner string) string {
 		body = `<div class="collection-list">` + b.String() + `</div>`
 	}
 	return app.PreviewCard("home-conversations", "Conversations", "/agent/micro", body)
+}
+
+func pinnedApps(acc *auth.Account) string {
+	services := service.Pinned(acc.PinnedServices())
+	sort.SliceStable(services, func(i, j int) bool {
+		return strings.ToLower(services[i].NavLabel()) < strings.ToLower(services[j].NavLabel())
+	})
+	var b strings.Builder
+	for _, spec := range services {
+		b.WriteString(`<a href="` + html.EscapeString(spec.Page) + `"><span class="service-shortcut-icon"><img src="/` + html.EscapeString(spec.NavIcon()) + `?` + app.Version + `" width="28" height="28" alt=""></span><span>` + html.EscapeString(spec.NavLabel()) + `</span></a>`)
+	}
+	b.WriteString(`<a href="/services"><span class="service-shortcut-icon" aria-hidden="true">+</span><span>All apps</span></a>`)
+	return `<nav class="service-shortcuts" aria-label="Pinned apps">` + b.String() + `</nav>`
 }
