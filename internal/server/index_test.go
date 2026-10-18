@@ -40,8 +40,20 @@ func TestLandingHomeAndLegacyConversationRoutes(t *testing.T) {
 		if w.Code != tc.code || w.Header().Get("Location") != tc.location {
 			t.Fatalf("%s: %d %q", tc.path, w.Code, w.Header().Get("Location"))
 		}
-		if !tc.signed && (!strings.Contains(w.Body.String(), "data-demo-form") || !strings.Contains(w.Body.String(), "Activate your assistant")) {
-			t.Fatal("landing contains authenticated composer or lacks signup")
+		if !tc.signed && (!strings.Contains(w.Body.String(), "data-demo-form") || !strings.Contains(w.Body.String(), `href="/pricing"`)) {
+			t.Fatal("landing lacks demo or pricing navigation")
 		}
+	}
+}
+
+func TestLandingOnlyOffersChat(t *testing.T) {
+	body := landingHTML()
+	for _, removed := range []string{"Today’s brief", "A short preview", "Activate your assistant", "From $12", "landing-scheduled", "landing-activation"} {
+		if strings.Contains(body, removed) {
+			t.Fatalf("landing still contains %q", removed)
+		}
+	}
+	if !strings.Contains(body, "data-demo-form") {
+		t.Fatal("chat removed")
 	}
 }

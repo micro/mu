@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func TestHomeConversationsReplacePinsAndFeedIncludesPrayer(t *testing.T) {
+func TestHomeShowsPinsAndConversationsAndFeedIncludesPrayer(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	for _, name := range []string{"images", "prayer", "apps"} {
 		card := service.Glance(func() string { return "public test update" })
@@ -60,7 +60,7 @@ func TestHomeConversationsReplacePinsAndFeedIncludesPrayer(t *testing.T) {
 			if strings.Contains(body, "private test context") != feed || strings.Contains(body, "public test update") != feed {
 				t.Fatalf("mixed views: feed=%v fragment=%v", feed, fragment)
 			}
-			if !feed && !strings.Contains(body, `id="home-conversations"`) {
+			if !feed && (!strings.Contains(body, `id="home-conversations"`) || !strings.Contains(body, `aria-label="Pinned apps"`) || !strings.Contains(body, `href="/apps"`)) {
 				t.Fatal("Conversations card missing")
 			}
 			if feed && strings.Contains(body, `data-path="/agent/micro"`) {
