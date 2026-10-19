@@ -994,16 +994,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 		}
 	}
 
+	// Authenticate before upgrade so an expired session cannot look like a successful reconnect.
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		http.Error(w, "Sign in required", http.StatusUnauthorized)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		app.Log("chat", "WebSocket upgrade error: %v", err)
-		return
-	}
-
-	// Get user session
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		conn.Close()
 		return
 	}
 

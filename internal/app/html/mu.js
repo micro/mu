@@ -1617,7 +1617,8 @@ if(typeof document!=='undefined'){
   }
   timer = setTimeout(check, reader ? 3000 : 10000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { clearTimeout(timer); check(); } });
-  window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
+  window.addEventListener('pageshow', e => { if(e.persisted) { roomRetries=0; initRoomChat(); } });
+window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
   window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; clearTimeout(timer); check(); } });
 })();
 
@@ -1889,6 +1890,7 @@ if (typeof document !== "undefined") {
 var topic="";
 let roomWs;
 let currentRoomId = null;
+let roomRetries = 0;
 function roomStatus(text, ready) {
  const status=document.getElementById('room-status'); if(status)status.textContent=text;
  const send=document.querySelector('#chat-form button'); if(send)send.disabled=!ready;
@@ -1920,6 +1922,7 @@ function connectRoomWebSocket(roomId) {
   roomWs.onopen = function() {
     if(roomWs !== socket)return;
     document.getElementById('messages').replaceChildren();
+    roomRetries = 0;
     roomStatus('', true);
   };
 
@@ -1941,7 +1944,9 @@ function connectRoomWebSocket(roomId) {
       showToast(event.reason, 'error');
     }
     if (roomFromPage()?.authenticated && currentRoomId === roomId) {
-      setTimeout(() => { if(roomWs === socket && roomFromPage()?.id === roomId) connectRoomWebSocket(roomId); }, 3000);
+      if(roomRetries >= 5) { roomStatus('Connection lost. Reload to reconnect.', false); return; }
+      const delay = Math.min(1000 * (2 ** roomRetries++), 16000);
+      setTimeout(() => { if(roomWs === socket && roomFromPage()?.id === roomId) connectRoomWebSocket(roomId); }, delay);
     }
   };
 
@@ -2151,7 +2156,7 @@ function initRoomChat() {
 
       const input = chatForm.querySelector('[name="prompt"]');
       if (input) {
-        input.addEventListener('keydown', function(e) { if(e.key==='Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatForm.requestSubmit(); } });
+        input.onkeydown = function(e) { if(e.key==='Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatForm.requestSubmit(); } };
         input.placeholder = 'Type your message...';
       }
     }
@@ -2159,6 +2164,7 @@ function initRoomChat() {
 }
 
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initRoomChat); else initRoomChat();
+window.addEventListener('pageshow', e => { if(e.persisted) { roomRetries=0; initRoomChat(); } });
 window.addEventListener('pagehide', () => { currentRoomId=null; if(roomWs){const s=roomWs;roomWs=null;s.close();} });
 
 
