@@ -664,7 +664,8 @@ Services, agents and app collections use the shared responsive card grid;
 messages and tables use rows. Sections share borders, padding and spacing.
 Use a generous responsive outer gutter. Align chat turns with their composer,
 and article headings and controls with the shared page origin; never center an
-isolated inner column while its surrounding controls span the canvas. Only prose
+isolated inner column while its surrounding controls span the canvas. The empty new-chat welcome and composer use a centered reading-width form;
+active chats retain the full canvas. Otherwise only prose
 and ordinary forms retain a reading measure; editors and maps use the canvas.
 Mixed dashboard previews use two independently flowing columns, not the directory
 grid: a long Inbox card must not create empty space beneath its neighbours.
