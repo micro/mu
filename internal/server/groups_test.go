@@ -44,6 +44,11 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 		return r
 	}
 	base := "/groups?id=" + g.ID
+	memberPage := httptest.NewRecorder()
+	groupsHandler(memberPage, request(member, "GET", base+"&tab=members", nil))
+	if strings.Contains(memberPage.Body.String(), "Delete group</button>") {
+		t.Fatal("member shown owner deletion control")
+	}
 	for _, tab := range []string{"", "events", "agents", "members", "budget"} {
 		w := httptest.NewRecorder()
 		groupsHandler(w, request(owner, "GET", base+"&tab="+tab, nil))
@@ -54,6 +59,9 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 			if !strings.Contains(w.Body.String(), link) {
 				t.Fatalf("group page lost global navigation: %s", link)
 			}
+		}
+		if tab == "members" && !strings.Contains(w.Body.String(), "Delete group</button>") {
+			t.Fatal("owner cannot find delete group")
 		}
 		if strings.Contains(w.Body.String(), "@groups.") {
 			t.Fatal("protocol address exposed as group identity")

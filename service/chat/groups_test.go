@@ -15,6 +15,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/group"
@@ -335,6 +336,7 @@ func TestGroupAssistantDeliveryAndTopicAccess(t *testing.T) {
 }
 
 func TestGroupWebSocketSendsAndReconnects(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "chat.example.test")
 	const owner = "group-websocket-owner"
 	auth.SetAccountForTest(&auth.Account{ID: owner})
 	defer auth.RemoveAccountForTest(owner)
@@ -347,11 +349,24 @@ func TestGroupWebSocketSendsAndReconnects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(http.HandlerFunc(Handler))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w, done := app.TimeRequest(w, r)
+		defer done()
+		Handler(w, r)
+	}))
 	defer server.Close()
 	target := "ws" + strings.TrimPrefix(server.URL, "http") + "/chat?id=" + group.RoomPrefix + g.ID
+	bad, response, err := websocket.DefaultDialer.Dial(target, http.Header{"Cookie": {"session=" + session.Token}, "Origin": {"https://evil.example"}, "X-Forwarded-Host": {"evil.example"}})
+	if bad != nil {
+		bad.Close()
+		t.Fatal("foreign origin connected")
+	}
+	if err == nil || response == nil || response.StatusCode != http.StatusForbidden {
+		t.Fatal("foreign origin was not rejected")
+	}
+	response.Body.Close()
 	for attempt := 0; attempt < 2; attempt++ {
-		conn, _, err := websocket.DefaultDialer.Dial(target, http.Header{"Cookie": {"session=" + session.Token}, "Origin": {server.URL}})
+		conn, _, err := websocket.DefaultDialer.Dial(target, http.Header{"Cookie": {"session=" + session.Token}, "Origin": {"https://chat.example.test"}})
 		if err != nil {
 			t.Fatal(err)
 		}
