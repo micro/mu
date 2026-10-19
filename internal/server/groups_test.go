@@ -45,11 +45,11 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 	}
 	base := "/groups?id=" + g.ID
 	memberPage := httptest.NewRecorder()
-	groupsHandler(memberPage, request(member, "GET", base+"&tab=members", nil))
+	groupsHandler(memberPage, request(member, "GET", base+"&tab=settings", nil))
 	if strings.Contains(memberPage.Body.String(), "Delete group</button>") {
 		t.Fatal("member shown owner deletion control")
 	}
-	for _, tab := range []string{"", "events", "agents", "members", "budget"} {
+	for _, tab := range []string{"", "events", "agents", "members", "budget", "settings"} {
 		w := httptest.NewRecorder()
 		groupsHandler(w, request(owner, "GET", base+"&tab="+tab, nil))
 		if w.Code != 200 || !strings.Contains(w.Body.String(), "Studio &amp; friends") {
@@ -60,7 +60,10 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 				t.Fatalf("group page lost global navigation: %s", link)
 			}
 		}
-		if tab == "members" && !strings.Contains(w.Body.String(), "Delete group</button>") {
+		if tab == "members" && strings.Contains(w.Body.String(), "Delete group</button>") {
+			t.Fatal("deletion belongs in settings, not members")
+		}
+		if tab == "settings" && !strings.Contains(w.Body.String(), "Delete group</button>") {
 			t.Fatal("owner cannot find delete group")
 		}
 		if strings.Contains(w.Body.String(), "@groups.") {

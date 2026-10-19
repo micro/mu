@@ -136,12 +136,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					b.WriteString(form(csrf, g.ID, "remove", inv.Account, `<span>@`+html.EscapeString(inv.Account)+` · Invited</span><button class="btn-secondary">Cancel invitation</button>`))
 				}
 			}
-			b.WriteString(`</section><details class="record-card"><summary>Group settings</summary>`)
-			b.WriteString(form(csrf, g.ID, "rename", "", `<label class="field-label">Group name<input name="value" value="`+html.EscapeString(g.Name)+`" required maxlength="100"></label><button>Rename</button>`))
-			if role == "owner" {
-				b.WriteString(`<p>Deleting the group closes its chat for everyone.</p>` + form(csrf, g.ID, "delete", "", `<button class="btn-secondary">Delete group</button>`))
-			}
-			b.WriteString(`</details>`)
+			b.WriteString(`</section><a class="btn" href="/groups?id=` + g.ID + `&tab=settings">Group settings</a>`)
 		}
 	} else {
 		if id != "" && notice == "" {
