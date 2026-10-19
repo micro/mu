@@ -11,7 +11,6 @@ import (
 	"mu/internal/thread"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -279,23 +278,14 @@ func chatsPage(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 			chats = append(chats, t)
 		}
 	}
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	pages := (len(chats) + 24) / 25
-	if page < 1 {
-		page = 1
-	}
-	if pages > 0 && page > pages {
-		page = pages
-	}
+	pager := app.Paginate(r, len(chats), 25)
 	var b strings.Builder
 	b.WriteString(`<h1>Chats</h1>` + app.CollectionControls("", `<a href="/agent/micro?new=1">New chat</a>`, ""))
 	if len(chats) == 0 {
 		b.WriteString(`<p class="text-muted">No chats yet. Start a chat with Micro.</p>`)
 	} else {
 		b.WriteString(`<div class="collection-list">`)
-		start := (page - 1) * 25
-		end := min(start+25, len(chats))
-		for _, t := range chats[start:end] {
+		for _, t := range chats[pager.From:pager.To] {
 			name := "Micro"
 			if a := For(acc.ID, t.Agent); a != nil {
 				name = a.Name
@@ -309,14 +299,7 @@ func chatsPage(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 			target := Path(acc.ID, t.Agent) + "?session=" + url.QueryEscape(t.ID)
 			b.WriteString(`<a class="collection-item" href="` + html.EscapeString(target) + `"><span>` + html.EscapeString(title) + `<span class="metadata-row text-muted">` + html.EscapeString(name) + `</span></span><time class="text-muted" datetime="` + t.Updated.Format(time.RFC3339) + `">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time></a>`)
 		}
-		b.WriteString(`</div><nav class="form-actions" aria-label="Chat pages">`)
-		if page > 1 {
-			fmt.Fprintf(&b, `<a href="/agent?view=chats&amp;page=%d">Previous</a>`, page-1)
-		}
-		if page < pages {
-			fmt.Fprintf(&b, `<a href="/agent?view=chats&amp;page=%d">Next</a>`, page+1)
-		}
-		b.WriteString(`</nav>`)
+		b.WriteString(`</div>` + pager.Nav("/agent?view=chats"))
 	}
 	fmt.Fprint(w, app.ConsoleHTML("Chats", b.String(), acc, r.URL.RequestURI()))
 }
