@@ -39,9 +39,10 @@ var f embed.FS
 var Template = `
 %s
 <div class="room-layout"><div class="room-main"><header class="room-toolbar"><div class="room-roster"><span>Here</span><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></div>%s</header><div id="messages"></div>
-<form class="form form-inline" id="chat-form" onsubmit="return false;">
+<p class="room-status" id="room-status" role="status"></p>
+<form class="form form-inline" id="chat-form">
 <input id="topic" name="topic" type="hidden">
-<textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.form.dispatchEvent(new Event('submit'))}"></textarea>
+<textarea id="prompt" name="prompt" rows="1" placeholder="Say something" autocomplete="off"></textarea>
 <button>Send</button>
 </form></div></div>`
 
@@ -1286,6 +1287,8 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 		guestNotice = guestChatAuthNotice()
 	}
 
+	_, viewer := auth.TrySession(r)
+	roomData["authenticated"] = viewer != nil
 	roomJSON, _ := json.Marshal(roomData)
 	title := "Chat"
 	if t, ok := roomData["title"].(string); ok && t != "" {
@@ -1307,7 +1310,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	about := aboutRoom(roomData)
 	if isGroup(roomID) {
 		g, _ := group.Details(groupID(roomID))
-		about = `<a href="/groups?id=` + g.ID + `">` + htmlpkg.EscapeString(g.Name) + `</a> · <a href="/groups?id=` + g.ID + `&tab=events">Events</a> · <a href="/groups?id=` + g.ID + `&tab=members">Members</a> · <a href="/groups?id=` + g.ID + `&tab=conversation&room=` + roomID + `">Assistant</a>`
+		about = `<a class="btn" href="/groups?id=` + g.ID + `">Group details</a>`
 		if g.Encrypted {
 			guestNotice += `<p class="notice">This group uses end-to-end encryption. Read and send messages in your XMPP client; the web cannot decrypt them.</p>`
 			roomData["encrypted"] = true
@@ -1315,7 +1318,6 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 		} else {
 			guestNotice += `<p class="text-muted">Private group chat. Messages are stored by Micro; personal notes and conversations are not shared.</p>`
 		}
-		guestNotice += `<p><a href="xmpp:` + htmlpkg.EscapeString(mucJID(roomID)) + `?join">Open in XMPP</a> · <span>` + htmlpkg.EscapeString(mucJID(roomID)) + `</span></p>`
 	}
 
 	navigation := channels(roomID)
@@ -1330,12 +1332,12 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	}
 	template := Template
 	if isGroup(roomID) {
-		template = strings.Replace(template, `<a href="/chat?view=rooms">All rooms</a>`, `<a href="/groups?id=`+groupID(roomID)+`">Chats</a>`, 1)
+		template = strings.Replace(template, `<header class="room-toolbar"><div class="room-roster"><span>Here</span><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></div>%s</header>`, `<div class="room-toolbar"><div class="form-actions"><a class="btn" href="/groups?id=`+groupID(roomID)+`">Back to chats</a>%s</div><div id="chat-users" class="metadata-row"></div></div>`, 1)
 	}
 	content := fmt.Sprintf(template, navigation+guestNotice, about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
-	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content + `<script>` + clientJS + `</script>`})
+	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})
 }
 
 // aboutRoom is what this room is about: the summary, foldable, and the thing it
@@ -1801,6 +1803,3 @@ func cleanupIdleRooms() {
 		}
 	}
 }
-
-//go:embed client.js
-var clientJS string

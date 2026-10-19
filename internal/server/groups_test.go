@@ -50,6 +50,14 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 		if w.Code != 200 || !strings.Contains(w.Body.String(), "Studio &amp; friends") {
 			t.Fatalf("tab %q: %d %s", tab, w.Code, w.Body.String())
 		}
+		for _, link := range []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`, `<span>Inbox</span>`, `class="menu-group-label"`} {
+			if !strings.Contains(w.Body.String(), link) {
+				t.Fatalf("group page lost global navigation: %s", link)
+			}
+		}
+		if strings.Contains(w.Body.String(), "@groups.") {
+			t.Fatal("protocol address exposed as group identity")
+		}
 		if dir := os.Getenv("GROUP_PREVIEW_DIR"); dir != "" {
 			_ = os.MkdirAll(dir, 0700)
 			name := tab
@@ -89,5 +97,24 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 	cs, _ := group.Conversations(g.ID, member)
 	if len(cs) != 2 {
 		t.Fatal("foreign agent admitted")
+	}
+}
+
+func TestCompactGroupInvitationPreview(t *testing.T) {
+	g, err := group.Create("compact-preview-owner", "Private team", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer group.Change(g.ID, g.Owner, "delete", "", "")
+	token, err := group.InvitationLink(g.ID, g.Owner, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest("POST", "/join", strings.NewReader(url.Values{"action": {"preview"}, "token": {token}}.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	groupJoinHandler(w, r)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Private team") {
+		t.Fatal(w.Code, w.Body.String())
 	}
 }

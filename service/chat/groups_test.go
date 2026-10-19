@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/group"
@@ -329,5 +331,50 @@ func TestGroupAssistantDeliveryAndTopicAccess(t *testing.T) {
 	_ = group.Change(g.ID, g.Owner, "remove", "muc-member", "")
 	if err := (Server{}).Messages(service.WithAccount(context.Background(), "muc-member"), &MessagesRequest{Room: c.ID}, &rsp); err == nil {
 		t.Fatal("removed member read history")
+	}
+}
+
+func TestGroupWebSocketSendsAndReconnects(t *testing.T) {
+	const owner = "group-websocket-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner})
+	defer auth.RemoveAccountForTest(owner)
+	g, err := group.Create(owner, "Web chat", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer group.Change(g.ID, owner, "delete", "", "")
+	session, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(Handler))
+	defer server.Close()
+	target := "ws" + strings.TrimPrefix(server.URL, "http") + "/chat?id=" + group.RoomPrefix + g.ID
+	for attempt := 0; attempt < 2; attempt++ {
+		conn, _, err := websocket.DefaultDialer.Dial(target, http.Header{"Cookie": {"session=" + session.Token}, "Origin": {server.URL}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+		text := fmt.Sprintf("message %d", attempt)
+		if err := conn.WriteJSON(map[string]string{"content": text}); err != nil {
+			t.Fatal(err)
+		}
+		received := false
+		for i := 0; i < 10; i++ {
+			var message map[string]interface{}
+			if err := conn.ReadJSON(&message); err != nil {
+				conn.Close()
+				t.Fatal(err)
+			}
+			if message["content"] == text {
+				received = true
+				break
+			}
+		}
+		conn.Close()
+		if !received {
+			t.Fatal("sent message was not received")
+		}
 	}
 }

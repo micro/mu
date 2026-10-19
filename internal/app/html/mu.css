@@ -1579,3 +1579,7 @@ button.link-button:hover{background:transparent;color:#555}
 /* One continuous menu for account actions and group switching. */
 .account-menu>.account-menu-links{width:260px;max-height:calc(100dvh - 96px);overflow-y:auto}
 .account-menu-links>a[aria-current="page"]{background:var(--surface,#f7f7f7);font-weight:600}
+
+.account-menu-links>a:has(.menu-group-label){gap:10px;align-items:baseline}
+.menu-group-label{flex:none;font-size:.75rem;color:var(--text-muted);font-weight:400}
+.room-status{margin:0;color:var(--text-muted);font-size:.875rem}

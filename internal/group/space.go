@@ -3,6 +3,7 @@ package group
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"strings"
@@ -161,11 +162,11 @@ func InvitationLink(id, actor string, revoke bool) (string, error) {
 		if len(g.Links) >= 100 {
 			return "", errors.New("revoke old invitation links before creating more")
 		}
-		var b [32]byte
+		var b [16]byte
 		if _, err := rand.Read(b[:]); err != nil {
 			return "", err
 		}
-		token = hex.EncodeToString(b[:])
+		token = base64.RawURLEncoding.EncodeToString(b[:])
 		sum := sha256.Sum256([]byte(token))
 		g.Links[hex.EncodeToString(sum[:])] = Invitation{InvitedBy: actor, Expires: time.Now().UTC().Add(7 * 24 * time.Hour)}
 	}
@@ -301,4 +302,24 @@ func PreviewLink(id, token string) (string, string, error) {
 		return "", "", errors.New("invitation expired or revoked")
 	}
 	return g.Name, inv.InvitedBy, nil
+}
+
+// InvitationGroup resolves a compact invitation without exposing a group ID in its URL.
+func InvitationGroup(token string) (string, error) {
+	if err := Load(); err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256([]byte(token))
+	hash := hex.EncodeToString(sum[:])
+	mu.RLock()
+	defer mu.RUnlock()
+	for id, g := range records {
+		if inv, ok := g.Links[hash]; ok && time.Now().Before(inv.Expires) {
+			return id, nil
+		}
+		if g.LinkHash == hash && time.Now().Before(g.LinkExpires) {
+			return id, nil
+		}
+	}
+	return "", errors.New("invitation expired or revoked")
 }
