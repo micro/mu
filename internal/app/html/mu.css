@@ -567,7 +567,11 @@ summary::-webkit-details-marker{display:none}
 summary::before{content:'+';display:inline-block;flex:none;width:1em;font-weight:var(--font-weight-medium)}
 details[open]>summary::before{content:'−'}
 details>summary+*{margin-top:12px}
-details.record-card{padding-block:12px}
+/* Native details contents do not participate in the outer flex gap. */
+details.record-card{display:block;padding-block:12px}
+details.record-card>summary{margin:0}
+details.record-card[open]>:not(summary){margin-block:12px 0}
+.record-card>.record-card{margin:0}
 details.record-card>.record-editor{padding:0;border:0;border-radius:0}
 details.record-card>:last-child{margin-bottom:0}
 .references{font-size:.85rem;color:var(--text-muted);margin-block:20px;border-top:1px solid var(--border);padding-top:12px}
@@ -1277,7 +1281,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .document-page:has([data-home-overview]) .assistant-toolbar{display:none}
 
 .section-card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
-.record-card>.section-card-head{margin-bottom:4px}
+.record-card>.section-card-head{margin:0}
 .section-card-head :is(h2,h3,h4){margin:0;font-size:1.05rem}
 .card-head-link{font-weight:var(--font-weight-medium);text-decoration:none}
 .card-head-link:hover{color:inherit;text-decoration:none}

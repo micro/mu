@@ -50,7 +50,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	tab := r.URL.Query().Get("tab")
-	if id == "" || (tab == "settings" && r.Method == "GET") {
+	if id == "" || (tab == "roles" && r.Method == "GET") {
 		groups.Handler(w, r)
 		return
 	}
@@ -194,7 +194,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="page-stack">`)
-	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Budget", URL: base + "&tab=budget", Key: "budget"}}, false))
+	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Budget", URL: base + "&tab=budget", Key: "budget"}, {Label: "Settings", URL: base + "&tab=settings", Key: "settings"}}, false))
 	if notice != "" {
 		b.WriteString(`<p class="notice" role="status">` + html.EscapeString(notice) + `</p>`)
 	}
@@ -248,7 +248,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			checked = " checked"
 		}
 		b.WriteString(form("notifications", `<label class="check-label"><input type="checkbox" name="muted" value="true"`+checked+`> Mute group notifications</label><button>Save preference</button>`))
-		b.WriteString(`<p>` + strconv.Itoa(len(g.Members)) + ` members · New members can read earlier chats.</p><a href="` + base + `&tab=settings">Manage members and roles</a>`)
+		b.WriteString(`<p>` + strconv.Itoa(len(g.Members)) + ` members · New members can read earlier chats.</p><a href="` + base + `&tab=roles">Manage members and roles</a>`)
 		names := []string{}
 		for name := range g.Members {
 			names = append(names, name)
@@ -266,6 +266,13 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			b.WriteString(form("link", `<button>Create invitation link</button>`) + form("email_invite", `<label>Email<input type="email" name="email" required></label><button>Email invitation</button>`) + form("revoke_link", `<button class="btn-secondary">Revoke invitation links</button>`))
 		}
+	case "settings":
+		if admin {
+			b.WriteString(`<section class="record-card"><h2>Group name</h2>` + form("rename", `<label>Group name<input name="value" value="`+html.EscapeString(g.Name)+`" required maxlength="100"></label><button>Save name</button>`) + `</section>`)
+		} else {
+			b.WriteString(`<p>Only group admins can change group settings.</p>`)
+		}
+
 		if g.Owner == acc.ID {
 			b.WriteString(`<section class="record-card"><h2>Delete group</h2><p>Closes this group and its chats for everyone.</p>` + strings.Replace(form("delete", `<button class="btn-secondary">Delete group</button>`), `<form `, `<form data-confirm="Delete this group for everyone? This cannot be undone." `, 1) + `</section>`)
 		}
