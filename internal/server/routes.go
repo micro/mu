@@ -566,6 +566,7 @@ func registerRoutes() {
 	// of them.
 	http.HandleFunc("/users", users.Handler)
 	http.HandleFunc("/groups", groupsHandler)
+	http.HandleFunc("/join", groupJoinHandler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/forms", forms.Handler)

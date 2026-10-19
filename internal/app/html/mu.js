@@ -1617,7 +1617,8 @@ if(typeof document!=='undefined'){
   }
   timer = setTimeout(check, reader ? 3000 : 10000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { clearTimeout(timer); check(); } });
-  window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
+  window.addEventListener('pageshow', e => { if(e.persisted) { roomRetries=0; initRoomChat(); } });
+window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
   window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; clearTimeout(timer); check(); } });
 })();
 
@@ -1878,11 +1879,295 @@ if (typeof document !== "undefined") {
  const key='micro-group-invite-'+box.dataset.groupInvitation;
  try {
   const token=location.hash.slice(1);
-  if(/^[a-f0-9]{64}$/.test(token)){sessionStorage.setItem(key,token);history.replaceState(null,'',location.pathname+location.search);}
+  if(/^(?:[a-f0-9]{64}|[A-Za-z0-9_-]{22})$/.test(token)){sessionStorage.setItem(key,token);history.replaceState(null,'',location.pathname+location.search);}
   const saved=sessionStorage.getItem(key)||'';
   if(saved)fetch(location.pathname+location.search,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'preview',token:saved})}).then(r=>r.json()).then(info=>{const p=box.querySelector('[data-invitation-description]');if(p)p.textContent=info.name?'@'+info.inviter+' invited you to '+info.name+'. Members can read earlier group conversations. Your personal messages stay private.':info.error||'Invitation unavailable.';}).catch(()=>{});
   const field=box.querySelector('[data-invitation-token]');if(field){field.value=sessionStorage.getItem(key)||'';field.form.addEventListener('submit',()=>sessionStorage.removeItem(key));}
  } catch (_) {}
+})();
+
+(()=>{
+var topic="";
+let roomWs;
+let currentRoomId = null;
+let roomRetries = 0;
+function roomStatus(text, ready) {
+ const status=document.getElementById('room-status'); if(status)status.textContent=text;
+ const send=document.querySelector('#chat-form button'); if(send)send.disabled=!ready;
+}
+
+function connectRoomWebSocket(roomId) {
+  if (roomWs && roomWs.readyState === WebSocket.OPEN && currentRoomId === roomId) {
+    return;
+  }
+
+  if (roomWs) {
+    roomWs.close();
+  }
+
+  const isReconnect = currentRoomId === roomId;
+  currentRoomId = roomId;
+
+  if (!isReconnect) {
+    const messagesDiv = document.getElementById('messages');
+    if (messagesDiv) {
+      messagesDiv.innerHTML = '';
+    }
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  roomStatus('Connecting…', false);
+  const socket = roomWs = new WebSocket(protocol + '//' + window.location.host + '/chat?id=' + roomId);
+
+  roomWs.onopen = function() {
+    if(roomWs !== socket)return;
+    document.getElementById('messages').replaceChildren();
+    roomRetries = 0;
+    roomStatus('', true);
+  };
+
+  roomWs.onmessage = function(event) {
+    if(roomWs !== socket)return;
+    const msg = JSON.parse(event.data);
+
+    if (msg.type === 'user_list') {
+      updateUserList(msg.users);
+    } else {
+      displayRoomMessage(msg, true);
+    }
+  };
+
+  roomWs.onclose = function(event) {
+    if(roomWs !== socket)return;
+    roomStatus('Disconnected. Reconnecting…', false);
+    if (event.code === 1013 && event.reason) {
+      showToast(event.reason, 'error');
+    }
+    if (roomFromPage()?.authenticated && currentRoomId === roomId) {
+      if(roomRetries >= 5) { roomStatus('Connection lost. Reload to reconnect.', false); return; }
+      const delay = Math.min(1000 * (2 ** roomRetries++), 16000);
+      setTimeout(() => { if(roomWs === socket && roomFromPage()?.id === roomId) connectRoomWebSocket(roomId); }, delay);
+    }
+  };
+
+  roomWs.onerror = function(error) {
+    console.error('WebSocket error:', error);
+  };
+}
+
+function displayRoomMessage(msg, shouldScroll = true) {
+  const messagesDiv = document.getElementById('messages');
+  if (!messagesDiv || (msg.system && /^@\S+ (joined|left)$/.test(msg.content))) return;
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'message';
+
+  const when = msg.timestamp ? Math.floor(Date.parse(msg.timestamp) / 1000) : 0;
+  const timeSpan = when > 0 ?
+    ' <span class="msg-when" data-timestamp="' + when + '">' + timeAgo(when) + '</span>' : '';
+
+  if (msg.system) {
+    msgDiv.className = 'message message-system';
+    msgDiv.textContent = msg.content;
+    if (timeSpan) msgDiv.innerHTML = msgDiv.innerHTML + timeSpan;
+    messagesDiv.appendChild(msgDiv);
+    if (shouldScroll) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    return;
+  }
+
+  const userSpan = msg.is_llm ?
+    '<span class="llm"><a href="/@micro">micro</a>' + timeSpan + '</span>' :
+    '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a>' + timeSpan + '</span>';
+
+  let content;
+  if (msg.is_llm) {
+    content = renderMarkdown(msg.content);
+  } else {
+    content = msg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    content = linkifyText(content);
+    content = '<p>' + content.replace(/\n/g, '<br>') + '</p>';
+  }
+
+  msgDiv.innerHTML = userSpan + content;
+  messagesDiv.appendChild(msgDiv);
+
+  if (shouldScroll) {
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+}
+
+function linkifyText(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function renderMarkdown(text) {
+  var esc = function (s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+
+  var fences = [];
+  var src = esc(text).replace(/```[a-z]*\n?([\s\S]*?)```/g, function (_, code) {
+    fences.push(code);
+    return '\u0000FENCE' + (fences.length - 1) + '\u0000';
+  });
+
+  var inline = function (s) {
+    return s
+      .replace(/`([^`]+?)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*]+?)\*/g, '$1<em>$2</em>')
+      .replace(/\[([^\]]+?)\]\((https?:\/\/[^)\s]+?)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  };
+
+  var out = [];
+  var list = null; // 'ul' or 'ol' while one is open
+  var closeList = function () {
+    if (list) { out.push('</' + list + '>'); list = null; }
+  };
+  var openList = function (kind) {
+    if (list !== kind) { closeList(); out.push('<' + kind + '>'); list = kind; }
+  };
+
+  var lines = src.split('\n');
+  var para = [];
+  var flushPara = function () {
+    if (para.length) { out.push('<p>' + inline(para.join('<br>')) + '</p>'); para = []; }
+  };
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var fence = line.match(/^\u0000FENCE(\d+)\u0000$/);
+    if (fence) {
+      flushPara(); closeList();
+      out.push('<pre><code>' + fences[+fence[1]] + '</code></pre>');
+      continue;
+    }
+    if (!line.trim()) { flushPara(); closeList(); continue; }
+
+    var heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      flushPara(); closeList();
+      var level = Math.min(heading[1].length + 2, 4);
+      out.push('<h' + level + '>' + inline(heading[2]) + '</h' + level + '>');
+      continue;
+    }
+    var bullet = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (bullet) {
+      flushPara(); openList('ul');
+      out.push('<li>' + inline(bullet[1]) + '</li>');
+      continue;
+    }
+    var numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (numbered) {
+      flushPara(); openList('ol');
+      out.push('<li>' + inline(numbered[1]) + '</li>');
+      continue;
+    }
+    var quote = line.match(/^&gt;\s?(.*)$/);
+    if (quote) {
+      flushPara(); closeList();
+      out.push('<blockquote>' + inline(quote[1]) + '</blockquote>');
+      continue;
+    }
+    if (/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/.test(line)) {
+      flushPara(); closeList();
+      out.push('<hr>');
+      continue;
+    }
+    para.push(line);
+  }
+  flushPara(); closeList();
+
+  return out.join('');
+}
+
+function updateUserList(users) {
+  var container = document.getElementById('chat-users');
+  if (!container) {
+    var messagesDiv = document.getElementById('messages');
+    if (!messagesDiv) return;
+    container = document.createElement('div');
+    container.id = 'chat-users';
+    messagesDiv.insertBefore(container, messagesDiv.firstChild);
+  }
+  container.replaceChildren();
+  (users || []).forEach(function(u) {
+    var link = document.createElement('a');
+    link.href = '/@' + encodeURIComponent(u);
+    link.title = 'View profile';
+    link.textContent = '@' + u;
+    container.appendChild(link);
+  });
+}
+
+function sendRoomMessage(form) {
+  const input = form.querySelector('[name="prompt"]');
+  if (!input) return;
+
+  const content = input.value.trim();
+
+  if (content && roomWs && roomWs.readyState === WebSocket.OPEN) {
+    roomWs.send(JSON.stringify({ content: content }));
+    input.value = '';
+  } else if(content) { roomStatus('Not connected yet. Your message has not been sent.', false);
+  }
+}
+
+function roomFromPage() {
+  const el = document.getElementById('room-data');
+  if (!el) return null;
+  try {
+    const d = JSON.parse(el.textContent);
+    return d && d.id ? d : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function initRoomChat() {
+  const currentRoomData = roomFromPage();
+
+  if (!currentRoomData) {
+    if (roomWs) { roomWs.close(); roomWs = null; }
+    currentRoomId = null;
+    return;
+  }
+
+  {
+    topic = currentRoomData.title;
+
+    const topicInput = document.getElementById('topic');
+    if (topicInput) {
+      topicInput.value = currentRoomData.title;
+    }
+
+    if(currentRoomData.authenticated && !currentRoomData.encrypted) connectRoomWebSocket(currentRoomData.id);
+
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+      chatForm.hidden = !!currentRoomData.encrypted;
+      chatForm.onsubmit = function(e) {
+        e.preventDefault();
+        sendRoomMessage(this);
+        return false;
+      };
+
+      const input = chatForm.querySelector('[name="prompt"]');
+      if (input) {
+        input.onkeydown = function(e) { if(e.key==='Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatForm.requestSubmit(); } };
+        input.placeholder = 'Type your message...';
+      }
+    }
+  }
+}
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initRoomChat); else initRoomChat();
+window.addEventListener('pageshow', e => { if(e.persisted) { roomRetries=0; initRoomChat(); } });
+window.addEventListener('pagehide', () => { currentRoomId=null; if(roomWs){const s=roomWs;roomWs=null;s.close();} });
+
+
 })();
 
 }

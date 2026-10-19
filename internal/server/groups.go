@@ -164,7 +164,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			var token string
 			token, err = group.InvitationLink(id, acc.ID, action == "revoke_link")
 			if err == nil && token != "" {
-				link = origin.URL(r) + base + "&join=1#" + token
+				link = origin.URL(r) + "/join#" + token
 				if action == "email_invite" {
 					_, err = mail.SendOut(acc.ID, acc.Name, r.PostFormValue("email"), "Join "+g.Name+" on Micro", acc.Name+" invited you to "+g.Name+". Join here: "+link+"\nMembers share the group's conversation history. No personal subscription is needed.", "", "")
 					if err == nil {
@@ -259,7 +259,6 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<div class="collection-item">@` + html.EscapeString(name) + ` · ` + g.Members[name] + `</div>`)
 		}
 		b.WriteString(`</div>`)
-		b.WriteString(`<p class="text-muted">Group chat address: <a href="xmpp:` + id + `@groups.` + html.EscapeString(chat.Domain()) + `?join">` + id + `@groups.` + html.EscapeString(chat.Domain()) + `</a></p>`)
 		if admin {
 			b.WriteString(`<p>Invitation links expire after seven days. Revoke links to cancel all outstanding link invitations.</p>`)
 			if link != "" {
@@ -317,11 +316,19 @@ func groupJoinHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	id := r.URL.Query().Get("id")
 	_, acc := auth.TrySession(r)
+	var err error
 	if r.Method == "POST" {
 		r.Body = http.MaxBytesReader(w, r.Body, 8192)
 		if r.ParseForm() != nil {
 			http.Error(w, "Invalid form", 400)
 			return
+		}
+		if id == "" {
+			id, err = group.InvitationGroup(r.PostFormValue("token"))
+			if err != nil {
+				app.RespondError(w, 404, "Invitation expired or revoked")
+				return
+			}
 		}
 		if r.PostFormValue("action") == "preview" {
 			name, inviter, err := group.PreviewLink(id, r.PostFormValue("token"))
@@ -354,7 +361,7 @@ func groupJoinHandler(w http.ResponseWriter, r *http.Request) {
 	auth.SetCSRFCookie(w, r)
 	body := `<div data-group-invitation="` + html.EscapeString(id) + `"><p data-invitation-description>Join a shared group on Micro. Members can read the group's conversation history. Your personal messages stay private.</p>`
 	if acc == nil {
-		dest := url.QueryEscape("/groups?id=" + id + "&join=1")
+		dest := url.QueryEscape(r.URL.RequestURI())
 		body += `<div class="form-actions"><a class="btn" href="/login?redirect=` + dest + `">Log in</a><a href="/signup?redirect=` + dest + `">Create account</a></div>`
 	} else {
 		body += `<form method="POST">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="token" data-invitation-token><button>Accept invitation</button></form>`

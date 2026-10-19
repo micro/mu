@@ -82,3 +82,34 @@ func TestSubscriptionProtectsGroupDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCompactInvitationResolvesAndRevokes(t *testing.T) {
+	g, err := Create("compact-owner", "Compact", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer Change(g.ID, "compact-owner", "delete", "", "")
+	token, err := InvitationLink(g.ID, "compact-owner", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(token) != 22 {
+		t.Fatalf("token length %d", len(token))
+	}
+	id, err := InvitationGroup(token)
+	if err != nil || id != g.ID {
+		t.Fatal("could not resolve invitation", err)
+	}
+	if _, err := InvitationGroup("invalid"); err == nil {
+		t.Fatal("invalid token resolved")
+	}
+	if err := AcceptLink(id, "compact-member", token); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := InvitationLink(id, "compact-owner", true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := InvitationGroup(token); err == nil {
+		t.Fatal("revoked token resolved")
+	}
+}
