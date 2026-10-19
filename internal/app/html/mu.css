@@ -831,7 +831,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 .assistant-workspace{position:relative;display:flex;flex:1;min-height:0;min-width:0}
 .command-page main:has(.assistant-workspace){width:calc(100% - 2*var(--page-gutter));max-width:none}
 .assistant-workspace>.conversation{flex:1;min-width:0;margin-inline:auto}
-.assistant-workspace>.conversation:not(.is-active){width:100%;max-width:var(--reading-width)}
+.command-page .assistant-workspace>.conversation:not(.is-active){width:100%;max-width:var(--reading-width)}
 .assistant-workspace .conversation>.assistant-toolbar,.assistant-workspace .assistant-thread-title,.assistant-workspace .prompt-panel{width:100%;box-sizing:border-box;margin-inline:auto}
 .assistant-workspace #responses>.turn{width:100%;box-sizing:border-box;margin:0}
 /* Leave room to anchor the question before a short or pending answer grows. */
