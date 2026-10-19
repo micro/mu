@@ -1330,7 +1330,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	}
 	template := Template
 	if isGroup(roomID) {
-		template = strings.Replace(template, `<a href="/chat?view=rooms">All rooms</a>`, `<a href="/groups?id=`+groupID(roomID)+`">Conversations</a>`, 1)
+		template = strings.Replace(template, `<a href="/chat?view=rooms">All rooms</a>`, `<a href="/groups?id=`+groupID(roomID)+`">Chats</a>`, 1)
 	}
 	content := fmt.Sprintf(template, navigation+guestNotice, about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
@@ -1498,7 +1498,7 @@ func listRooms(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
 	if acc != nil {
 		if mine := conversations(acc.ID); len(mine) > 0 {
-			b.WriteString(`<h3>Conversations</h3>`)
+			b.WriteString(`<h3>Chats</h3>`)
 			for _, c := range mine {
 				b.WriteString(roomRow(c.ID, c.Title, c.Last))
 			}
