@@ -209,7 +209,7 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 			attached = `<section class="record-card"><h2>Brief</h2><p>` + html.EscapeString(entry.Text) + `</p><a href="/brief?id=` + entry.ID() + `">Sources and details</a></section>`
 		}
 	}
-	toolbar := `<div class="assistant-toolbar"><a href="` + html.EscapeString(basePath) + `?new=1">New chat</a><a href="/agent?view=chats">All chats</a>`
+	toolbar := `<div class="assistant-toolbar" role="group" aria-label="Chat actions"><a class="btn" href="` + html.EscapeString(basePath) + `?new=1">New chat</a><a class="btn" href="/agent?view=chats">All chats</a>`
 	saved, token := false, ""
 	if t := thread.Get(owner, session); t != nil {
 		saved = t.Saved
