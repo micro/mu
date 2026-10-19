@@ -3,6 +3,7 @@ package agent
 import (
 	"mu/service/events"
 	"mu/service/markets"
+	"mu/service/prayer"
 	"strings"
 	"testing"
 	"time"
@@ -54,18 +55,35 @@ func TestMorningMarketsPreserveFreshness(t *testing.T) {
 	}
 }
 
-func TestMorningTravelAppearsOnlyAtEnd(t *testing.T) {
+func TestMorningTravelAppearsAfterWeather(t *testing.T) {
 	content, err := parseBriefContent(`{"day":[{"text":"Meeting at 09:00"}],"travel":[{"text":"TfL: Central line delays","url":"https://tfl.gov.uk/"}]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	result := renderMorningBrief(content, "", &events.Event{Zone: "UTC"}, time.Now(), "## Daily reminder\n\nA reminder.", false)
 	travel := strings.Index(result, "## Travel")
-	if travel < strings.Index(result, "## Daily reminder") || strings.Contains(result[:travel], "Central line") || !strings.Contains(result[travel:], "Central line delays") {
+	if travel < strings.Index(result, "## Weather") || travel > strings.Index(result, "## Prayer times") || strings.Contains(result[:travel], "Central line") || !strings.Contains(result[travel:], "Central line delays") {
 		t.Fatal(result)
 	}
 	empty := renderMorningBrief(BriefContent{}, "", &events.Event{Zone: "UTC"}, time.Now(), "", false)
 	if strings.Contains(empty, "## Travel") {
 		t.Fatal("empty travel section rendered")
+	}
+}
+
+func TestMorningReflectionMatchesDatedSourceWithoutRepeatingScripture(t *testing.T) {
+	const date = "2026-10-19"
+	d := &prayer.ReminderData{Date: date, Message: "Exact daily reflection.", Verse: "A long verse", Hadith: "A long hadith", Name: "A long name"}
+	result := morningReflection(d, date)
+	if !strings.Contains(result, d.Message) || !strings.Contains(result, "/prayer?date="+date+"&view=reflection") {
+		t.Fatal(result)
+	}
+	for _, unwanted := range []string{d.Verse, d.Hadith, d.Name} {
+		if strings.Contains(result, unwanted) {
+			t.Fatal("brief lengthened", result)
+		}
+	}
+	if morningReflection(d, "2026-10-20") != "" {
+		t.Fatal("stale reminder accepted")
 	}
 }

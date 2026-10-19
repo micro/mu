@@ -1,7 +1,7 @@
 // Who is allowed to send us mail.
 //
-// This instance does not accept mail from strangers. Four things get a message
-// through, and a sender needs only one of them:
+// Unknown senders to personal mailboxes are retained in Junk. Four existing
+// signals admit mail to the inbox, before spam scoring:
 //
 //  1. It is a reply to something we sent — In-Reply-To or References matches a
 //     Message-ID we generated.
@@ -17,8 +17,9 @@
 // nothing about a thousand senders. Operator aliases now share the same
 // inbound policy as ordinary mailboxes; none bypass this filter.
 //
-// Everything else is refused with a 550, so the sender's own server tells them
-// rather than the message vanishing.
+// Personal allow entries additionally admit authenticated senders for that
+// recipient only. SMTP blocks and spoof checks still apply. Junk does not
+// publish agent-arrival events; releasing it only updates the inbox.
 //
 // The list used to say three, and had said three for a while after it became
 // four. If you add a rule, say so here — this comment is the only place the
@@ -135,7 +136,7 @@ var domainWhitelist = map[string]bool{
 	// Apple
 	"apple.com": true, "icloud.com": false,
 	// GitHub
-	"github.com": true,
+	"github.com": true, "peerlist.io": true,
 	// Amazon
 	"amazon.com": true, "amazon.co.uk": true, "amazonaws.com": true,
 	// Stripe
@@ -242,18 +243,10 @@ func isWhitelistedDomain(domain string) bool {
 	return false
 }
 
-// CheckInboundAllowed decides whether an inbound email should be
-// accepted. Returns ("", true) if allowed, or (reason, false) if
-// it should be rejected.
+// CheckInboundAllowed checks instance-wide familiarity signals. Personal
+// recipients without one of these signals or a personal allow entry receive
+// the message in Junk; SMTP authentication and abuse blocks remain separate.
 func CheckInboundAllowed(fromAddr string, to []string, inReplyTo, references string) (string, bool) {
-	// There is no support bypass any more.
-	//
-	// support@ was the one address the whitelist did not apply to, because the
-	// point of it was to hear from people this instance had never heard of.
-	// That is also what made it the one address a spammer could reach, and a
-	// per-sender cap did nothing about a thousand senders. The whitelist is the
-	// whole rule now: mail here is from somebody the account knows, or it is a
-	// reply to something we sent.
 
 	// 1. Is it a reply to something we sent?
 	if inReplyTo != "" || references != "" {

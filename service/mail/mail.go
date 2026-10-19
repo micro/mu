@@ -578,6 +578,14 @@ func save(facts ...event.Record) error {
 // - Threading: uses In-Reply-To and References headers, no quoted text bloat
 // - Display: emails shown as-is in thread view, full conversation visible
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("view") == "filtered" || r.URL.Query().Get("view") == "junk" {
+		JunkHandler(w, r)
+		return
+	}
+	if r.URL.Query().Get("view") == "settings" {
+		SenderSettingsHandler(w, r)
+		return
+	}
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.Unauthorized(w, r)
@@ -614,25 +622,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// write. It falls through to the page below, which renders results the way
 	// it did when the term arrived in the query.
 	if r.Method == "POST" && !searching(r) {
-		// Handle spam filter actions
-		if r.URL.Query().Get("view") == "filtered" {
-			if err := r.ParseForm(); err == nil {
-				action := r.FormValue("action")
-				msgID := r.FormValue("msg_id")
-				switch action {
-				case "not_spam":
-					if err := NotSpamMessage(acc.ID, msgID); err != nil {
-						app.Log("mail", "Error marking not-spam: %v", err)
-					}
-				case "delete_spam":
-					if err := DeleteSpamMessage(acc.ID, msgID); err != nil {
-						app.Log("mail", "Error deleting spam: %v", err)
-					}
-				}
-			}
-			http.Redirect(w, r, "/mail?view=filtered", http.StatusSeeOther)
-			return
-		}
 
 		// JSON body for API/MCP callers (mail_send tool)
 		if app.SendsJSON(r) {
@@ -1065,22 +1054,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		spamActions := ""
 		if msg.Spam {
 			backToMail = "/mail?view=filtered"
-			spamActions = fmt.Sprintf(`
-			<div class="banner">
-				<span class="banner-text">This message was filtered as spam (score: %d)</span>
-				<div class="d-flex gap-2">
-					<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
-						<input type="hidden" name="action" value="not_spam">
-						<input type="hidden" name="msg_id" value="%s">
-						<button type="submit" class="btn text-sm">Not Spam</button>
-					</form>
-					<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
-						<input type="hidden" name="action" value="delete_spam">
-						<input type="hidden" name="msg_id" value="%s">
-						<button type="submit" class="btn btn-plain text-error text-sm">Delete</button>
-					</form>
-				</div>
-			</div>`, msg.SpamScore, msg.ID, msg.ID)
+			spamActions = `<div class="banner"><span class="banner-text">This message is in Junk.</span>` + junkActions(r, msg) + `</div>`
 		}
 
 		// Get the root ID for reply threading - this is the ID of the latest message being replied to
@@ -1312,84 +1286,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				items = append(items, renderThreadPreview(thread.Root.ID, thread.Latest, acc.ID, thread.HasUnread))
 			}
 		}
-	} else if view == "filtered" {
-		// Filtered view - show spam messages using same card format as inbox
-		spamMsgs := SpamMessages(acc.ID)
-		for _, msg := range spamMsgs {
-			reasons := ""
-			if len(msg.SpamReasons) > 0 {
-				reasons = strings.Join(msg.SpamReasons, ", ")
-			}
-			subject := html.EscapeString(decodeMIMEHeader(msg.Subject))
-			if subject == "" {
-				subject = "(no subject)"
-			}
-			fromDisplay := html.EscapeString(msg.From)
-			if fromDisplay == "" {
-				fromDisplay = html.EscapeString(msg.FromID)
-			}
-
-			// Body preview - same logic as inbox
-			bodyPreview := msg.Body
-			if strings.HasPrefix(bodyPreview, "base64:") || len(bodyPreview) > 500 {
-				bodyPreview = "[Message]"
-			} else {
-				bodyPreview = stripHTMLTags(bodyPreview)
-				if len(bodyPreview) > 100 {
-					bodyPreview = bodyPreview[:100] + "..."
-				}
-				bodyPreview = strings.ReplaceAll(bodyPreview, "\n", " ")
-				if len(bodyPreview) > 80 {
-					bodyPreview = bodyPreview[:80] + "..."
-				}
-			}
-
-			relativeTime := app.TimeAgo(msg.CreatedAt)
-
-			// The card reads before it offers: subject, who from, what it says,
-			// why it was filtered — and only then what you can do about it.
-			//
-			// Not Spam and Delete used to be the first thing in the card, above
-			// the subject, so every row led with two buttons and you had to
-			// look past them to find out what they applied to. On a screen of
-			// filtered mail that is a column of controls with the messages
-			// interleaved. They belong at the foot, after the reason, which is
-			// the thing the decision is actually made on.
-			items = append(items, fmt.Sprintf(
-				`<div class="section-card section-stack">
-					<div>
-						<a href="/mail?id=%s"><strong class="mail-thread-subject">%s</strong></a>
-					</div>
-					<div class="mail-thread-meta">%s</div>
-					<div class="mail-thread-row">
-						<div class="mail-thread-preview">%s</div>
-						<span class="mail-thread-time">%s</span>
-					</div>
-					<div class="spam-info text-muted text-sm">Spam score: %d — %s</div>
-					<div class="action-footer">
-						<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
-							<input type="hidden" name="action" value="not_spam">
-							<input type="hidden" name="msg_id" value="%s">
-							<button type="submit" class="btn-sm">Not Spam</button>
-						</form>
-						<form method="POST" action="/mail?view=filtered" class="form-action d-inline">
-							<input type="hidden" name="action" value="delete_spam">
-							<input type="hidden" name="msg_id" value="%s">
-							<button type="submit" class="btn-sm btn-danger">Delete</button>
-						</form>
-					</div>
-				</div>`,
-				msg.ID,
-				subject,
-				fromDisplay,
-				html.EscapeString(bodyPreview),
-				relativeTime,
-				msg.SpamScore,
-				html.EscapeString(reasons),
-				msg.ID,
-				msg.ID,
-			))
-		}
 	} else {
 		// Sent view - show threads where user has sent at least one message
 		threads := make([]*Thread, 0)
@@ -1441,7 +1337,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var navigation strings.Builder
 	navigation.WriteString(`<div class="form-actions"><form method="GET" action="/mail" class="form-inline"><select name="view" aria-label="Mail folder" data-submit-on-change>`)
-	for _, folder := range []struct{ value, label string }{{"", "Inbox"}, {"sent", "Sent"}, {"outbox", "Outbox"}, {"filtered", "Filtered"}} {
+	for _, folder := range []struct{ value, label string }{{"", "Inbox"}, {"sent", "Sent"}, {"outbox", "Outbox"}, {"filtered", "Junk"}} {
 		selected := ""
 		if view == folder.value {
 			selected = ` selected`
@@ -1895,9 +1791,14 @@ func DeleteSpamMessage(userID, msgID string) error {
 
 	for i, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID && msg.Spam {
+			previous := messages
 			setMessages(append(messages[:i:i], messages[i+1:]...))
+			if err := save(); err != nil {
+				setMessages(previous)
+				return err
+			}
 			unindexMessage(msg)
-			return save()
+			return nil
 		}
 	}
 	return fmt.Errorf("spam message not found")
@@ -2330,6 +2231,9 @@ func RecentMessages(limit int) []*Message {
 // The same shape of bug as the one internal/thread had: a record written by the
 // machinery rather than owned by a service, so nothing deleted it.
 func DeleteInbox(userID string) {
+	if err := forgetAllowedSenders(userID); err != nil {
+		app.Log("mail", "could not remove allowed senders: %v", err)
+	}
 	deleteOutbox(userID)
 	mutex.Lock()
 	kept := messages[:0]

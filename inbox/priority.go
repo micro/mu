@@ -54,6 +54,8 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 		{Key: "unread", Label: "Unread", URL: r.URL.Path + "?filter=unread"},
 		{Key: "saved", Label: "Saved", URL: r.URL.Path + "?filter=saved"},
 		{Key: "sent", Label: "Sent", URL: r.URL.Path + "?filter=sent"},
+		{Key: "junk", Label: "Junk", URL: "/inbox?view=junk"},
+		{Key: "settings", Label: "Settings", URL: "/inbox?view=mail-settings"},
 	}, false)
 	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a></div>` + searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r), messageFilter(r))
 	b.WriteString(app.PageControls(inboxDescription, filters, controls))

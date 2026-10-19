@@ -478,7 +478,7 @@ func registerRoutes() {
 	// URL to tidy a parameter is a bad trade — they redirect to the name, which
 	// is one hop and leaves the address bar saying something true.
 	http.HandleFunc("/agent", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || app.WantsJSON(r) {
+		if r.Method != http.MethodGet || app.WantsJSON(r) || r.URL.Query().Get("view") == "chats" {
 			agent.Handler(w, r)
 			return
 		}

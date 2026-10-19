@@ -55,6 +55,9 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	}
 	section("Your day", c.Day, 8, "No commitments or relevant work were available for this brief. Calendar coverage may be incomplete.")
 	section("Weather", c.Weather, 1, "Today's weather is unavailable.")
+	if len(c.Travel) > 0 {
+		section("Travel", c.Travel, 3, "")
+	}
 	section("Prayer times", c.Prayer, 1, "Today's prayer times are unavailable.")
 	if BriefWorldNews(e) {
 		section("Headlines", c.Headlines, 5, "No recent sourced headlines are available.")
@@ -66,10 +69,7 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	if reminder != "" {
 		b.WriteString("\n" + reminderTitle.ReplaceAllString(reminder, "##$1") + "\n")
 	} else {
-		b.WriteString("\n## Daily reminder\n\nToday's reminder is unavailable.\n")
-	}
-	if len(c.Travel) > 0 {
-		section("Travel", c.Travel, 3, "")
+		b.WriteString("\n## Reflection\n\nToday's reflection is unavailable.\n")
 	}
 	return strings.TrimSpace(b.String())
 }

@@ -11,6 +11,7 @@ import (
 	"mu/internal/thread"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -30,6 +31,14 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, acc := auth.TrySession(r)
+	if r.URL.Query().Get("view") == "chats" {
+		if acc == nil {
+			app.RedirectToLogin(w, r)
+			return
+		}
+		chatsPage(w, r, acc)
+		return
+	}
 	initial := ""
 	selected, agentName := "", "Micro"
 	agentDescription := "A personal assistant"
@@ -201,7 +210,7 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 			attached = `<section class="record-card"><h2>Brief</h2><p>` + html.EscapeString(entry.Text) + `</p><a href="/brief?id=` + entry.ID() + `">Sources and details</a></section>`
 		}
 	}
-	toolbar := `<div class="assistant-toolbar"><a href="` + html.EscapeString(basePath) + `?new=1">New conversation</a>`
+	toolbar := `<div class="assistant-toolbar"><a href="` + html.EscapeString(basePath) + `?new=1">New chat</a><a href="/agent?view=chats">All chats</a>`
 	saved, token := false, ""
 	if t := thread.Get(owner, session); t != nil {
 		saved = t.Saved
@@ -224,7 +233,7 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 			placeholder, button = "How's it going?", "Check in"
 		}
 	}
-	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + attached + `<div id="responses" role="log" aria-label="Conversation">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="` + html.EscapeString(placeholder) + `" required></textarea><button id="send" type="submit" aria-label="Send message">` + button + `</button></div><p id="status" role="status"></p></form></div></div></div>`
+	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + attached + `<div id="responses" role="log" aria-label="Chat">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="` + html.EscapeString(placeholder) + `" required></textarea><button id="send" type="submit" aria-label="Send message">` + button + `</button></div><p id="status" role="status"></p></form></div></div></div>`
 }
 
 // RecentConversation resumes the owner's most recently visited web conversation
@@ -260,4 +269,54 @@ func RecentConversation(owner, selected string) *thread.Thread {
 		}
 	}
 	return recent
+}
+
+// chatsPage lists only the signed-in owner's web chats, without resuming one.
+func chatsPage(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
+	var chats []thread.Thread
+	for _, t := range thread.List(acc.ID, 0) {
+		if t.Client == thread.WebClient {
+			chats = append(chats, t)
+		}
+	}
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	pages := (len(chats) + 24) / 25
+	if page < 1 {
+		page = 1
+	}
+	if pages > 0 && page > pages {
+		page = pages
+	}
+	var b strings.Builder
+	b.WriteString(`<h1>Chats</h1>` + app.CollectionControls("", `<a href="/agent/micro?new=1">New chat</a>`, ""))
+	if len(chats) == 0 {
+		b.WriteString(`<p class="text-muted">No chats yet. Start a chat with Micro.</p>`)
+	} else {
+		b.WriteString(`<div class="collection-list">`)
+		start := (page - 1) * 25
+		end := min(start+25, len(chats))
+		for _, t := range chats[start:end] {
+			name := "Micro"
+			if a := For(acc.ID, t.Agent); a != nil {
+				name = a.Name
+			} else if a := Platform(t.Agent); a != nil {
+				name = a.Name
+			}
+			title := t.Subject
+			if title == "" {
+				title = "Chat with " + name
+			}
+			target := Path(acc.ID, t.Agent) + "?session=" + url.QueryEscape(t.ID)
+			b.WriteString(`<a class="collection-item" href="` + html.EscapeString(target) + `"><span>` + html.EscapeString(title) + `<span class="metadata-row text-muted">` + html.EscapeString(name) + `</span></span><time class="text-muted" datetime="` + t.Updated.Format(time.RFC3339) + `">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time></a>`)
+		}
+		b.WriteString(`</div><nav class="form-actions" aria-label="Chat pages">`)
+		if page > 1 {
+			fmt.Fprintf(&b, `<a href="/agent?view=chats&amp;page=%d">Previous</a>`, page-1)
+		}
+		if page < pages {
+			fmt.Fprintf(&b, `<a href="/agent?view=chats&amp;page=%d">Next</a>`, page+1)
+		}
+		b.WriteString(`</nav>`)
+	}
+	fmt.Fprint(w, app.ConsoleHTML("Chats", b.String(), acc, r.URL.RequestURI()))
 }

@@ -146,7 +146,7 @@ func conversationsCard(owner string) string {
 		}
 		title := conversation.Subject
 		if title == "" {
-			title = "Conversation with Micro"
+			title = "Chat with Micro"
 		}
 		target := agent.Path(owner, conversation.Agent) + "?session=" + url.QueryEscape(conversation.ID)
 		b.WriteString(`<a class="collection-item" href="` + html.EscapeString(target) + `"><span>` + html.EscapeString(title) + `</span><time class="text-muted" datetime="` + conversation.Updated.Format("2006-01-02T15:04:05Z07:00") + `">` + conversation.Updated.Format("2 Jan · 15:04") + `</time></a>`)
@@ -155,11 +155,11 @@ func conversationsCard(owner string) string {
 			break
 		}
 	}
-	body := `<p class="text-muted">Your recent conversations with Micro will appear here.</p><a href="/agent/micro">Start a conversation</a>`
+	body := `<p class="text-muted">Your recent chats will appear here.</p><a href="/agent/micro?new=1">Start a chat</a>`
 	if count > 0 {
 		body = `<div class="collection-list">` + b.String() + `</div>`
 	}
-	return app.PreviewCard("home-conversations", "Conversations", "/agent/micro", body)
+	return app.PreviewCard("home-conversations", "Chats", "/agent?view=chats", body)
 }
 
 func pinnedApps(acc *auth.Account) string {

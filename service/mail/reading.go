@@ -62,7 +62,7 @@ func (Server) Read(ctx context.Context, req *ReadRequest, rsp *ReadResponse) err
 	mutex.RLock()
 	defer mutex.RUnlock()
 	for _, m := range messages {
-		if m.ID != strings.TrimSpace(req.ID) || (m.ToID != owner && !sentBy(m, owner)) {
+		if m.Spam || m.ID != strings.TrimSpace(req.ID) || (m.ToID != owner && !sentBy(m, owner)) {
 			continue
 		}
 		r := record(m, true)
