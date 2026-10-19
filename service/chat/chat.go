@@ -20,6 +20,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/group"
+	"mu/internal/origin"
 )
 
 //go:embed *.json
@@ -987,8 +988,7 @@ func (room *Room) run() {
 // handleWebSocket handles WebSocket connections for chat rooms
 func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 	if isGroup(room.ID) {
-		origin, err := url.Parse(r.Header.Get("Origin"))
-		if err != nil || (r.Header.Get("Origin") != "" && !strings.EqualFold(origin.Host, r.Host)) {
+		if r.Header.Get("Origin") != "" && !origin.SameOrigin(r) {
 			http.Error(w, "Invalid origin", http.StatusForbidden)
 			return
 		}

@@ -567,6 +567,9 @@ summary::-webkit-details-marker{display:none}
 summary::before{content:'+';display:inline-block;flex:none;width:1em;font-weight:var(--font-weight-medium)}
 details[open]>summary::before{content:'−'}
 details>summary+*{margin-top:12px}
+details.record-card{padding-block:12px}
+details.record-card>.record-editor{padding:0;border:0;border-radius:0}
+details.record-card>:last-child{margin-bottom:0}
 .references{font-size:.85rem;color:var(--text-muted);margin-block:20px;border-top:1px solid var(--border);padding-top:12px}
 .references[open]{color:inherit}
 .references ol,.references ul{padding-left:20px}
@@ -604,10 +607,10 @@ main:has(.room-layout,.conversation-layout){display:flex;flex-direction:column;f
 body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .room-toolbar{flex-shrink:0;max-height:30dvh;overflow:auto}
 .room-main{display:flex;flex-direction:column;flex:1;min-height:0;border:1px solid var(--border);border-radius:6px;overflow:hidden}
-header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(--border);font-size:.85rem}
+.room-main>.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(--border);font-size:.85rem}
 .room-roster,#chat-users{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 #messages{flex:1;min-height:0;overflow:auto;padding:12px;overscroll-behavior:contain}
-#chat-form{flex-shrink:0;margin:0;padding:12px;border-top:1px solid var(--border);background:white}
+#chat-form{flex-wrap:nowrap;gap:12px;flex-shrink:0;margin:0;padding:12px;border-top:1px solid var(--border);background:white}
 #chat-form input{flex:1 1 0;width:0;min-width:0}
 .room-about{margin-block:12px;max-width:var(--reading-width)}
 .thread-message{padding:18px 0;border:0}
@@ -1582,4 +1585,4 @@ button.link-button:hover{background:transparent;color:#555}
 
 .account-menu-links>a:has(.menu-group-label){gap:10px;align-items:baseline}
 .menu-group-label{flex:none;font-size:.75rem;color:var(--text-muted);font-weight:400}
-.room-status{margin:0;color:var(--text-muted);font-size:.875rem}
+.room-status{margin:0;padding-inline:12px;color:var(--text-muted);font-size:.875rem}

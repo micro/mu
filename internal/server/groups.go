@@ -266,6 +266,9 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			b.WriteString(form("link", `<button>Create invitation link</button>`) + form("email_invite", `<label>Email<input type="email" name="email" required></label><button>Email invitation</button>`) + form("revoke_link", `<button class="btn-secondary">Revoke invitation links</button>`))
 		}
+		if g.Owner == acc.ID {
+			b.WriteString(`<section class="record-card"><h2>Delete group</h2><p>Closes this group and its chats for everyone.</p>` + strings.Replace(form("delete", `<button class="btn-secondary">Delete group</button>`), `<form `, `<form data-confirm="Delete this group for everyone? This cannot be undone." `, 1) + `</section>`)
+		}
 	case "budget":
 		b.WriteString(fmt.Sprintf(`<p><strong>%d credits available</strong></p><p>%d of %d credits used this calendar month (UTC).</p><p>AI usage is shared. Members do not need their own subscription. Chat continues when credits run out.</p>`, quota.Available(scope), billing.GroupSpent(scope), g.SpendLimit))
 		if admin {
