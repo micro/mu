@@ -97,6 +97,16 @@ func boxTag(accountID, agentID string) string {
 
 // Handler serves /inbox and /inbox/<box>.
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/inbox" && !app.WantsJSON(r) && !app.SendsJSON(r) {
+		switch r.URL.Query().Get("view") {
+		case "junk":
+			mail.JunkHandler(w, r)
+			return
+		case "mail-settings":
+			mail.SenderSettingsHandler(w, r)
+			return
+		}
+	}
 	if app.WantsJSON(r) || app.SendsJSON(r) {
 		r = api.CredentialRequest(r)
 		if !api.AuthorizeProduct(w, r, "inbox", r.Method != "GET") {

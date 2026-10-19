@@ -130,6 +130,8 @@ none.
 
 ## Shared groups
 
+The UI calls web conversations Chats; internal conversation/thread identifiers remain unchanged. `/agent?view=chats` lists the owner’s web chats, while ordinary agent links resume the most recently visited chat. Home shows three recent chats and links to that list.
+
 Groups are selectable spaces in the signed-in shell. The group product page is
 assembled in `internal/server/groups.go` over Groups, Chat, Events, Agent and
 Billing. `internal/group` owns membership, invitations, conversation settings and
@@ -152,6 +154,21 @@ keeps the account accessible. Events retires
 schedules whose group owner no longer exists before firing or rescheduling them.
 Group briefs are generated once and delivered to the shared chat and
 members' mailboxes. Existing encrypted XMPP groups remain assistant-free.
+
+## Mail delivery and daily reminders
+
+Unfamiliar senders to personal mailboxes are retained in Junk. Personal allowed
+senders live in `service/mail` and apply to one recipient; they only bypass
+heuristic filtering when the visible sender is authenticated. SMTP blocks and
+shared-assistant ownership checks remain independent. Junk never publishes
+`mail.accepted`; releasing it publishes only `mail.received` for Inbox projection.
+Inbox exposes Junk and sender settings using the mail service's handlers.
+
+Scheduled morning briefs use `/api/daily/YYYY-MM-DD` for the schedule's local
+date. They quote only the daily reflection, with a dated `/prayer` link; the
+verse, hadith and name remain available on that same dated page. Never replace
+a missing daily reminder with the hourly `/api/latest` response. Travel follows
+Weather in the fixed brief renderer.
 
 ## The access model
 

@@ -295,11 +295,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rd := GetReminderData()
+	date := r.URL.Query().Get("date")
+	if date != "" {
+		if _, err := time.Parse("2006-01-02", date); err != nil {
+			app.BadRequest(w, r, "Invalid reminder date")
+			return
+		}
+		rd = DailyReminderForDate(date)
+	}
 	if app.WantsJSON(r) {
-		app.RespondJSON(w, GetReminderData())
+		app.RespondJSON(w, rd)
 		return
 	}
-	body := renderPrayerPage(GetReminderData(), r.URL.Query().Get("view"))
+	body := renderPrayerPage(rd, r.URL.Query().Get("view"), date)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Prayer",
@@ -568,7 +577,15 @@ func renderReflectionPage(rd *ReminderData) string {
 	return renderPrayerPage(rd, "verse")
 }
 
-func renderPrayerPage(rd *ReminderData, view string) string {
+func renderPrayerPage(rd *ReminderData, view string, dates ...string) string {
+	date := ""
+	if len(dates) > 0 {
+		date = dates[0]
+	}
+	dateQuery := ""
+	if _, err := time.Parse("2006-01-02", date); err == nil {
+		dateQuery = "&date=" + date
+	}
 	switch view {
 	case "verse", "saying", "name", "reflection", "times":
 	default:
@@ -577,9 +594,12 @@ func renderPrayerPage(rd *ReminderData, view string) string {
 	var b strings.Builder
 	b.WriteString(app.Column() + `<nav class="app-filters" aria-label="Prayer sections">`)
 	for _, tab := range []struct{ id, label string }{{"verse", "Verse"}, {"saying", "Saying"}, {"name", "Name"}, {"reflection", "Reflection"}, {"times", "Times & Qibla"}} {
-		b.WriteString(app.PillLink(tab.label, "/prayer?view="+tab.id, view == tab.id))
+		b.WriteString(app.PillLink(tab.label, "/prayer?view="+tab.id+dateQuery, view == tab.id))
 	}
 	b.WriteString(`</nav>`)
+	if dateQuery != "" {
+		b.WriteString(`<p class="text-sm text-muted">Daily reminder · ` + html.EscapeString(date) + `</p>`)
+	}
 	if view == "times" {
 		b.WriteString(prayerTimesHTML())
 		b.WriteString(app.Close())
@@ -671,7 +691,7 @@ func dailyReminderForDate(date, endpoint string) *ReminderData {
 	if _, err := time.Parse("2006-01-02", date); err != nil {
 		return nil
 	}
-	cacheFile := "reminder_daily_" + date + ".json"
+	cacheFile := "reminder_daily_v2_" + date + ".json"
 
 	// Check cache
 	b, err := data.LoadFile(cacheFile)
@@ -682,11 +702,8 @@ func dailyReminderForDate(date, endpoint string) *ReminderData {
 		}
 	}
 
-	// Fetch from reminder.dev/api/daily?date=YYYY-MM-DD
-	url := endpoint
-	if date != "" {
-		url += "?date=" + date
-	}
+	// The date is part of the API resource path, not a query parameter.
+	url := strings.TrimRight(endpoint, "/") + "/" + date
 
 	resp, err := (&http.Client{Timeout: 12 * time.Second}).Get(url)
 	if err != nil {

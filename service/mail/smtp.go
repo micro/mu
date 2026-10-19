@@ -537,16 +537,13 @@ func (s *Session) Data(r io.Reader) error {
 		return &smtpd.SMTPError{Code: 550, Message: "An authenticated personal email is required"}
 	}
 
-	// ── Strict inbound filter ──────────────────────────────────
-	// The whole policy is at the top of inbound_filter.go.
+	// Unknown personal-mail senders are retained in Junk. Shared assistant
+	// addresses keep their separate authenticated-owner admission policy.
+	inboundReason := ""
 	if !s.isLocalhost && !(sharedOnly && aligned) {
 		reason, allowed := CheckInboundAllowed(fromAddr.Address, s.to, inReplyTo, references)
 		if !allowed {
-			app.Log("mail", "Rejected inbound from %s: %s", fromAddr.Address, reason)
-			return &smtpd.SMTPError{
-				Code:    550,
-				Message: "Mail rejected: " + reason,
-			}
+			inboundReason = reason
 		}
 	}
 
@@ -759,12 +756,15 @@ func (s *Session) Data(r io.Reader) error {
 		if !isOwnVerifiedAddress(toAcc, fromAddr.Address) {
 			spamResult = CheckSpam(fromAddr.Address, subject, body, s.remoteIP, s.spfPass, dkimPass)
 		}
+		if !s.isLocalhost && !sharedAgentMail {
+			spamResult = classifyInbound(toAcc.ID, fromAddr.Address, aligned, inboundReason, spamResult)
+		}
 		if spamResult.IsSpam {
 			app.Log("mail", "Spam detected (score=%d) from %s: %v", spamResult.Score, fromAddr.Address, spamResult.Reasons)
 
 			// Auto-block the sender domain if enabled
 			sf := GetSpamFilter()
-			if sf.AutoBlockDomains {
+			if sf.AutoBlockDomains && inboundReason == "" {
 				if parts := strings.SplitN(fromAddr.Address, "@", 2); len(parts) == 2 {
 					_ = BlockEmail("*@" + parts[1])
 				}
@@ -800,7 +800,7 @@ func (s *Session) Data(r io.Reader) error {
 			Attachment: inboundAttachment,
 		}); err != nil {
 			app.Log("mail", "Error saving message: %v", err)
-			continue
+			return &smtpd.SMTPError{Code: 451, Message: "Could not save message; try again later"}
 		}
 
 		// Mail to agent@ is filed read, because you wrote it.

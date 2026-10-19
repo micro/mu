@@ -194,7 +194,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="page-stack">`)
-	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Conversations", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Budget", URL: base + "&tab=budget", Key: "budget"}}, false))
+	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Budget", URL: base + "&tab=budget", Key: "budget"}}, false))
 	if notice != "" {
 		b.WriteString(`<p class="notice" role="status">` + html.EscapeString(notice) + `</p>`)
 	}
@@ -209,9 +209,9 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 		if admin {
 			picker := groupAgentPicker(scope, g.Encrypted)
 			picker = strings.Replace(picker, `value="`+html.EscapeString(c.Agent)+`"`, `value="`+html.EscapeString(c.Agent)+`" selected`, 1)
-			b.WriteString(form("conversation", `<input type="hidden" name="room" value="`+c.ID+`"><label>Name<input name="name" value="`+html.EscapeString(c.Name)+`" required></label>`+picker+`<button>Save conversation</button>`))
+			b.WriteString(form("conversation", `<input type="hidden" name="room" value="`+c.ID+`"><label>Name<input name="name" value="`+html.EscapeString(c.Name)+`" required></label>`+picker+`<button>Save chat</button>`))
 		} else {
-			b.WriteString(`<p>Ask a group admin to change this conversation's assistant.</p>`)
+			b.WriteString(`<p>Ask a group admin to change this chat's assistant.</p>`)
 		}
 	case "events":
 		b.WriteString(`<div class="collection-list">`)
@@ -226,7 +226,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 		if admin {
 			b.WriteString(`<details class="record-card"><summary>New event</summary>` + form("event", `<label>Title<input name="title" required maxlength="200"></label><label>When<input type="datetime-local" name="when" required></label>`+groupZoneField()+`<label>Notes<textarea name="note" maxlength="4000"></textarea></label><label>Repeat<select name="repeat"><option value="">Once</option><option>daily</option><option>weekly</option><option>monthly</option></select></label><button>Create event</button>`) + `</details>`)
 			if !g.Encrypted {
-				b.WriteString(`<details class="record-card"><summary>Daily group brief</summary><p>A short update on your shared events and conversations, delivered once to the group. Requires Starter or Pro.</p>` + form("brief", `<label>Time<input name="time" type="time" required value="08:00"></label>`+groupZoneField()+`<button>Schedule brief</button>`) + `</details>`)
+				b.WriteString(`<details class="record-card"><summary>Daily group brief</summary><p>A short update on your shared events and chats, delivered once to the group. Requires Starter or Pro.</p>` + form("brief", `<label>Time<input name="time" type="time" required value="08:00"></label>`+groupZoneField()+`<button>Schedule brief</button>`) + `</details>`)
 			}
 		}
 	case "agents":
@@ -248,7 +248,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			checked = " checked"
 		}
 		b.WriteString(form("notifications", `<label class="check-label"><input type="checkbox" name="muted" value="true"`+checked+`> Mute group notifications</label><button>Save preference</button>`))
-		b.WriteString(`<p>` + strconv.Itoa(len(g.Members)) + ` members · New members can read earlier conversations.</p><a href="` + base + `&tab=settings">Manage members and roles</a>`)
+		b.WriteString(`<p>` + strconv.Itoa(len(g.Members)) + ` members · New members can read earlier chats.</p><a href="` + base + `&tab=settings">Manage members and roles</a>`)
 		names := []string{}
 		for name := range g.Members {
 			names = append(names, name)
@@ -268,7 +268,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(form("link", `<button>Create invitation link</button>`) + form("email_invite", `<label>Email<input type="email" name="email" required></label><button>Email invitation</button>`) + form("revoke_link", `<button class="btn-secondary">Revoke invitation links</button>`))
 		}
 	case "budget":
-		b.WriteString(fmt.Sprintf(`<p><strong>%d credits available</strong></p><p>%d of %d credits used this calendar month (UTC).</p><p>AI usage is shared. Members do not need their own subscription. Human conversation continues when credits run out.</p>`, quota.Available(scope), billing.GroupSpent(scope), g.SpendLimit))
+		b.WriteString(fmt.Sprintf(`<p><strong>%d credits available</strong></p><p>%d of %d credits used this calendar month (UTC).</p><p>AI usage is shared. Members do not need their own subscription. Chat continues when credits run out.</p>`, quota.Available(scope), billing.GroupSpent(scope), g.SpendLimit))
 		if admin {
 			checked := ""
 			if g.MembersUseAI {
@@ -295,7 +295,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			_, preview, _ := chat.Latest(c.ID)
 			b.WriteString(`<a class="collection-item" href="/chat?id=` + c.ID + `"><span class="collection-title">` + html.EscapeString(c.Name) + `</span><span class="text-muted">` + html.EscapeString(label) + `</span><span class="collection-preview">` + html.EscapeString(preview) + `</span></a>`)
 		}
-		b.WriteString(`</div><details class="record-card"><summary>New conversation</summary>` + form("conversation", `<label>Name<input name="name" required maxlength="100"></label>`+groupAgentPicker(scope, g.Encrypted)+`<button>Create conversation</button>`) + `</details>`)
+		b.WriteString(`</div><details class="record-card"><summary>New chat</summary>` + form("conversation", `<label>Name<input name="name" required maxlength="100"></label>`+groupAgentPicker(scope, g.Encrypted)+`<button>Create chat</button>`) + `</details>`)
 	}
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: g.Name, HTML: b.String()})

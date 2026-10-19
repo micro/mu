@@ -66,17 +66,8 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 		entries := events.ExternalEvents(owner, now, end, 30)
 		return briefSource{Name: "Calendar — visible records only; not proof of free time", Text: briefAgenda(events.Upcoming(owner), entries, now, end), URL: origin.Self() + "/events"}
 	}}, {"Daily reminder", func() briefSource {
-		d := prayer.DailyReminderForDate(now.Format("2006-01-02"))
-		if d == nil || strings.TrimSpace(d.Verse) == "" {
-			return briefSource{Name: "Daily reminder"}
-		}
-		// This source text is rendered verbatim after synthesis, never rewritten by a model.
-		text := "## Daily reminder\n\n**Quran verse**\n\n> " + strings.ReplaceAll(strings.TrimSpace(d.Verse), "\n", "\n> ")
-		if strings.TrimSpace(d.Message) != "" {
-			text += "\n\n## Reflection\n\n" + d.Message
-		}
-		text += "\n\n[Read the reminder](" + origin.Self() + "/prayer)"
-		return briefSource{Name: "Daily reminder", Text: text}
+		date := now.Format("2006-01-02")
+		return briefSource{Name: "Daily reminder", Text: morningReflection(prayer.DailyReminderForDate(date), date)}
 	}}}
 	havePlace := strings.TrimSpace(acc.Place) != "" || acc.Lat != 0 || acc.Lon != 0
 	if havePlace && (acc.Lat != 0 || acc.Lon != 0) {
@@ -296,4 +287,14 @@ func briefMarkets(prices map[string]markets.PriceData, now time.Time) string {
 		rows = append(rows, fmt.Sprintf("%s: %.8g USD; reported 24h change %+.2f%%; %s, retrieved %s; provider %s", symbol, p.Price, p.Change24h, freshness, p.UpdatedAt.Format(time.RFC3339), p.Source))
 	}
 	return strings.Join(rows, "\n")
+}
+
+// The reflection is the publisher's text, independent of model synthesis.
+// Its dated link keeps the verse, hadith and name available without lengthening
+// the email or sending the reader to an unrelated hourly reflection.
+func morningReflection(d *prayer.ReminderData, date string) string {
+	if d == nil || d.Date != date || strings.TrimSpace(d.Message) == "" {
+		return ""
+	}
+	return "## Reflection\n\n" + strings.TrimSpace(d.Message) + "\n\n[Read the daily reminder](" + origin.Self() + "/prayer?date=" + date + "&view=reflection)"
 }

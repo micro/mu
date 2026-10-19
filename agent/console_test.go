@@ -33,6 +33,10 @@ func TestAssistantHomeOwnsWebThreads(t *testing.T) {
 		agent.ConsoleHandler(w, r)
 		return w
 	}
+	list := request("/agent?view=chats")
+	if list.Code != 200 || !strings.Contains(list.Body.String(), "My saved conversation") || !strings.Contains(list.Body.String(), "session="+chat.ID) || strings.Contains(list.Body.String(), "Private mail") || strings.Contains(list.Body.String(), "Foreign conversation") {
+		t.Fatal("chat list missing or leaked another owner/channel")
+	}
 	w := request("/agent/micro?session=" + chat.ID)
 	body := w.Body.String()
 	if w.Code != 200 || !strings.Contains(body, "My saved conversation") || strings.Contains(body, `id="assistant-history"`) || !strings.Contains(body, `<textarea id="command-input"`) {
@@ -167,7 +171,7 @@ func TestAgentResumesVisitedThreadAndNewIsExplicit(t *testing.T) {
 		t.Fatal("marking unread lost the visited conversation")
 	}
 	w = request("/agent/micro?new=1")
-	if w.Code != 200 || strings.Contains(w.Body.String(), `conversation is-active`) || !strings.Contains(w.Body.String(), `New conversation`) {
+	if w.Code != 200 || strings.Contains(w.Body.String(), `conversation is-active`) || !strings.Contains(w.Body.String(), `New chat`) {
 		t.Fatal("cannot explicitly start new conversation")
 	}
 }
