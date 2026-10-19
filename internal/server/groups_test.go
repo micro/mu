@@ -84,6 +84,11 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 			_ = os.WriteFile(filepath.Join(dir, name+".html"), w.Body.Bytes(), 0600)
 		}
 	}
+	failedFund := httptest.NewRecorder()
+	groupsHandler(failedFund, request(member, "POST", base, url.Values{"id": {g.ID}, "action": {"fund"}, "amount": {"1"}}))
+	if !strings.Contains(failedFund.Body.String(), "<h2>Budget</h2>") {
+		t.Fatal("failed funding left Settings")
+	}
 	w := httptest.NewRecorder()
 	groupsHandler(w, request("", "GET", base, nil))
 	if w.Code == 200 {

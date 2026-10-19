@@ -138,7 +138,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			err = billing.EndSubscription(r.Context(), scope)
-			tab = "budget"
+			tab = "settings"
 		case "budget":
 			n, e := strconv.Atoi(r.PostFormValue("limit"))
 			if e != nil {
@@ -146,7 +146,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			err = group.Configure(id, acc.ID, n, r.PostFormValue("members_ai") == "true")
-			tab = "budget"
+			tab = "settings"
 		case "fund":
 			if !admin {
 				err = fmt.Errorf("only group admins can fund this balance")
@@ -158,7 +158,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			err = billing.TransferCredits(acc.ID, scope, n)
-			tab = "budget"
+			tab = "settings"
 		case "link", "revoke_link", "email_invite":
 			if !admin {
 				err = fmt.Errorf("only group admins can invite people")
