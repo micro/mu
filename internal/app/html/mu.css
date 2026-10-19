@@ -1,4 +1,4 @@
-:root{color-scheme:light;font:14px/1.5 system-ui,-apple-system,sans-serif;background:#fff;color:#222;--text-muted:#666;--font-weight-medium:500;--card-border:#ddd;--border-radius:6px;--space-2:8px;--space-4:16px;--space-6:24px;--space-1:4px;--space-3:12px;--space-8:32px;--control-gap:var(--space-2);--field-gap:var(--space-3)}
+:root{color-scheme:light;font:14px/1.5 system-ui,-apple-system,sans-serif;background:#fff;color:#222;--text-muted:#666;--font-weight-medium:500;--card-border:#ddd;--border-radius:6px;--space-2:8px;--space-4:16px;--space-6:24px;--space-1:4px;--space-3:12px;--space-8:32px;--control-gap:var(--space-2);--field-gap:var(--space-3);--button-bg:#eaf2fb;--button-hover:#d8e8f8;--button-border:#a9c4df;--button-text:#244d75}
 
 *{box-sizing:border-box}
 body{margin:0;min-height:100svh;min-height:100dvh;display:flex;flex-direction:column}
@@ -7,8 +7,8 @@ a:hover{color:#555;text-decoration:none}
 a:has(>.title){text-decoration:none}
 :is(.prose,.reader-content,.answer,.ib-body) a{font-weight:var(--font-weight-medium);text-decoration:none}
 button,input,textarea,select{font:inherit;color:inherit}
-button,.btn,.oauth-btn{font-weight:400;display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:5px 10px;min-height:32px;line-height:20px;border:1px solid #bbb;border-radius:6px;background:#f5f5f5;text-decoration:none;cursor:pointer;width:auto}
-button:hover,.btn:hover,.oauth-btn:hover{background:#e8e8e8}
+button,.btn,.oauth-btn{font-weight:400;display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:5px 10px;min-height:32px;line-height:20px;border:1px solid var(--button-border);border-radius:6px;background:var(--button-bg);color:var(--button-text);text-decoration:none;cursor:pointer;width:auto}
+button:hover,.btn:hover,.oauth-btn:hover,.mini-btn:hover,.btn-sm:hover,.btn-secondary:hover{background:var(--button-hover)}
 /* Action links retain button styling in every interaction state. */
 a:is(.btn,.oauth-btn,.mini-btn,.btn-sm,.btn-secondary,.pill,.category,.head,.rc-chip,.news-topic):is(:hover,:focus-visible){text-decoration:none}
 button:disabled{opacity:.5;cursor:wait}
@@ -509,7 +509,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 /* Keep forms close to their actions without shrinking wide workspaces. */
 .document-page main>.form:not(:has(textarea)),.document-page .page-col>.form:not(:has(textarea)){width:100%;max-width:var(--form-width)}
 .document-page main>.search-bar{width:100%}
-.mini-btn,.btn-sm,.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #bbb;border-radius:6px;background:#f5f5f5;padding:4px 10px;min-height:32px;text-decoration:none;font-size:.875rem;line-height:1.4}
+.mini-btn,.btn-sm,.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--button-border);border-radius:6px;background:var(--button-bg);color:var(--button-text);padding:4px 10px;min-height:32px;text-decoration:none;font-size:.875rem;line-height:1.4}
 .btn-quiet,.btn-plain{background:transparent}
 .danger,.btn-danger{color:#962323}
 .pill,.category,.head,.rc-chip,.news-topic{display:inline-flex;align-items:center;gap:6px;max-width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:.8rem;line-height:1.5;text-decoration:none;vertical-align:middle;background:white}
@@ -844,7 +844,6 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 /* Leave room to anchor the question before a short or pending answer grows. */
 .assistant-workspace #responses>.turn:last-child{min-height:100%}
 .assistant-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex-shrink:0;padding:8px 0 16px;font-size:1rem}
-.assistant-toolbar :is(.btn,button){min-height:44px;padding:8px 14px;font-size:inherit;margin:0}
 .assistant-thread-title{font-size:1rem;font-weight:var(--font-weight-medium);margin:0 0 12px;flex-shrink:0;overflow-wrap:anywhere}
 .assistant-workspace .conversation.is-active .prompt-panel{margin:0 auto;order:2;padding-bottom:env(safe-area-inset-bottom)}
 .assistant-workspace #responses{order:1}

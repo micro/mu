@@ -136,7 +136,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					b.WriteString(form(csrf, g.ID, "remove", inv.Account, `<span>@`+html.EscapeString(inv.Account)+` · Invited</span><button class="btn-secondary">Cancel invitation</button>`))
 				}
 			}
-			b.WriteString(`</section><a class="btn" href="/groups?id=` + g.ID + `&tab=settings">Group settings</a>`)
+			b.WriteString(`</section><div class="form-actions"><a class="btn" href="/groups?id=` + g.ID + `&tab=settings">Group settings</a></div>`)
 		}
 	} else {
 		if id != "" && notice == "" {

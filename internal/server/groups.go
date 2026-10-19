@@ -50,6 +50,9 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	tab := r.URL.Query().Get("tab")
+	if tab == "budget" {
+		tab = "settings"
+	}
 	if id == "" || (tab == "roles" && r.Method == "GET") {
 		groups.Handler(w, r)
 		return
@@ -135,7 +138,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			err = billing.EndSubscription(r.Context(), scope)
-			tab = "budget"
+			tab = "settings"
 		case "budget":
 			n, e := strconv.Atoi(r.PostFormValue("limit"))
 			if e != nil {
@@ -143,7 +146,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			err = group.Configure(id, acc.ID, n, r.PostFormValue("members_ai") == "true")
-			tab = "budget"
+			tab = "settings"
 		case "fund":
 			if !admin {
 				err = fmt.Errorf("only group admins can fund this balance")
@@ -155,7 +158,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			err = billing.TransferCredits(acc.ID, scope, n)
-			tab = "budget"
+			tab = "settings"
 		case "link", "revoke_link", "email_invite":
 			if !admin {
 				err = fmt.Errorf("only group admins can invite people")
@@ -194,7 +197,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="page-stack">`)
-	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Budget", URL: base + "&tab=budget", Key: "budget"}, {Label: "Settings", URL: base + "&tab=settings", Key: "settings"}}, false))
+	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Settings", URL: base + "&tab=settings", Key: "settings"}}, false))
 	if notice != "" {
 		b.WriteString(`<p class="notice" role="status">` + html.EscapeString(notice) + `</p>`)
 	}
@@ -273,10 +276,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<p>Only group admins can change group settings.</p>`)
 		}
 
-		if g.Owner == acc.ID {
-			b.WriteString(`<section class="record-card"><h2>Delete group</h2><p>Closes this group and its chats for everyone.</p>` + strings.Replace(form("delete", `<button class="btn-secondary">Delete group</button>`), `<form `, `<form data-confirm="Delete this group for everyone? This cannot be undone." `, 1) + `</section>`)
-		}
-	case "budget":
+		b.WriteString(`<section class="record-card"><h2>Budget</h2>`)
 		b.WriteString(fmt.Sprintf(`<p><strong>%d credits available</strong></p><p>%d of %d credits used this calendar month (UTC).</p><p>AI usage is shared. Members do not need their own subscription. Chat continues when credits run out.</p>`, quota.Available(scope), billing.GroupSpent(scope), g.SpendLimit))
 		if admin {
 			checked := ""
@@ -289,6 +289,10 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			if time.Now().Before(g.BillingUntil) {
 				b.WriteString(`<details><summary>Close group billing</summary><p>Stop the subscription and any pending checkout before deleting this group. Remaining monthly credits cannot be transferred.</p>` + strings.Replace(form("end_plan", `<button class="btn-secondary">Stop group billing</button>`), `<form `, `<form data-confirm="Stop group billing now?" `, 1) + `</details>`)
 			}
+		}
+		b.WriteString(`</section>`)
+		if g.Owner == acc.ID {
+			b.WriteString(`<section class="record-card"><h2>Delete group</h2><p>Closes this group and its chats for everyone.</p>` + strings.Replace(form("delete", `<button class="btn-secondary">Delete group</button>`), `<form `, `<form data-confirm="Delete this group for everyone? This cannot be undone." `, 1) + `</section>`)
 		}
 	default:
 		cs, _ := group.Conversations(id, acc.ID)
