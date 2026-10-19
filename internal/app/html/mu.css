@@ -526,6 +526,7 @@ input:focus,textarea:focus,select:focus{outline:none;box-shadow:none}
 
 .record-card,.record-editor{display:flex;flex-direction:column;gap:12px;min-width:0}
 .record-card>*{margin-block:0}
+:is(.record-card,.page-stack,.page-col,.section-stack) > :is(button,.btn){align-self:flex-start;max-width:100%}
 .record-card .record-title{font-size:1rem}
 .doc-toolbar,.doc-back,.doc-delete,.note-delete,.contact-actions,.file-actions,.action-footer,.article-actions,.article-meta,.mail-tabs,.markets-tabs,.rc-chips,.recent-searches-scroll,.here-strip{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-block:12px}
 .doc-view{line-height:1.7}
@@ -844,7 +845,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 /* Leave room to anchor the question before a short or pending answer grows. */
 .assistant-workspace #responses>.turn:last-child{min-height:100%}
 .assistant-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex-shrink:0;padding:8px 0 16px;font-size:1rem}
-.assistant-toolbar :is(.btn,button){min-height:44px;padding:8px 14px;font-size:inherit;margin:0}
+.assistant-toolbar :is(.btn,button){font-size:inherit;margin:0}
 .assistant-thread-title{font-size:1rem;font-weight:var(--font-weight-medium);margin:0 0 12px;flex-shrink:0;overflow-wrap:anywhere}
 .assistant-workspace .conversation.is-active .prompt-panel{margin:0 auto;order:2;padding-bottom:env(safe-area-inset-bottom)}
 .assistant-workspace #responses{order:1}
@@ -1512,7 +1513,7 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
  .lookup-form{margin-bottom:var(--space-3)}
 }
 @media(pointer:coarse){
- :is(.collection-head,.record-editor,.lookup-form) :is(button,.btn,input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select){min-height:44px}
+ :is(.collection-head,.record-editor,.lookup-form,.assistant-toolbar) :is(button,.btn,input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select){min-height:44px}
 }
 
 @media(min-width:701px){.table-scroll>.data-table{display:table;width:100%}}

@@ -63,8 +63,14 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 		if tab == "members" && strings.Contains(w.Body.String(), "Delete group</button>") {
 			t.Fatal("deletion belongs in settings, not members")
 		}
-		if tab == "settings" && !strings.Contains(w.Body.String(), "Delete group</button>") {
+		if (tab == "settings" || tab == "budget") && !strings.Contains(w.Body.String(), "Delete group</button>") {
 			t.Fatal("owner cannot find delete group")
+		}
+		if strings.Contains(w.Body.String(), ">Budget</a>") {
+			t.Fatal("separate budget tab remains")
+		}
+		if (tab == "settings" || tab == "budget") && !strings.Contains(w.Body.String(), "<h2>Budget</h2>") {
+			t.Fatal("settings missing budget")
 		}
 		if strings.Contains(w.Body.String(), "@groups.") {
 			t.Fatal("protocol address exposed as group identity")
