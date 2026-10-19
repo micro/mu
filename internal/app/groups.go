@@ -43,7 +43,7 @@ func spaceSelector(acc *auth.Account, here string) (string, string) {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<section class="menu-spaces" aria-label="Spaces"><p class="text-muted">Spaces</p><a href="/home"` + current("") + `>Personal</a>`)
+	b.WriteString(`<a href="/home"` + current("") + `>Personal</a>`)
 	for _, g := range gs {
 		b.WriteString(`<a href="/groups?id=` + g.ID + `"` + current(g.ID) + `>` + html.EscapeString(g.Name) + func() string {
 			if n := group.Unread(g, acc.ID); n > 0 {
@@ -52,6 +52,6 @@ func spaceSelector(acc *auth.Account, here string) (string, string) {
 			return ""
 		}() + `</a>`)
 	}
-	b.WriteString(`<a class="space-menu-action" href="/groups?new=1">Create group</a><a href="/groups">Groups and invitations</a></section>`)
+	b.WriteString(`<a href="/groups">Groups</a>`)
 	return b.String(), active
 }
