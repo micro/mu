@@ -830,7 +830,7 @@ header.room-toolbar{min-height:0;padding:10px 12px;border-bottom:1px solid var(-
 /* Assistant history and transcript share one workspace. */
 .assistant-workspace{position:relative;display:flex;flex:1;min-height:0;min-width:0}
 .command-page main:has(.assistant-workspace){width:calc(100% - 2*var(--page-gutter));max-width:none}
-.assistant-workspace>.conversation{flex:1;min-width:0;margin-inline:auto}
+.assistant-workspace>.conversation{flex:1;min-width:0;width:100%;max-width:var(--reading-width);margin-inline:auto}
 .assistant-workspace .conversation>.assistant-toolbar,.assistant-workspace .assistant-thread-title,.assistant-workspace .prompt-panel{width:100%;box-sizing:border-box;margin-inline:auto}
 .assistant-workspace #responses>.turn{width:100%;box-sizing:border-box;margin:0}
 /* Leave room to anchor the question before a short or pending answer grows. */
@@ -1576,15 +1576,11 @@ button.link-button:hover{background:transparent;color:#555}
 .public-demo .answer{line-height:1.7}
 .public-demo .answer pre,.public-demo .answer table{max-width:100%;overflow-x:auto}
 
-/* Space disclosure shares the product's + / minus convention. */
-.space-selector{position:relative;min-width:0;max-width:min(44vw,260px)}
-.space-selector>summary{min-height:44px;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg,#fff);cursor:pointer}
-.space-selector>summary>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.space-selector>summary::before{content:'+';font-size:1rem}
-.space-selector[open]>summary::before{content:'−'}
-.space-selector>summary:focus-visible,.space-options>a:focus-visible{outline:2px solid currentColor;outline-offset:2px}
-.space-options{display:block;position:absolute;right:0;top:calc(100% + 8px);z-index:110;width:280px;max-width:calc(100vw - 32px);max-height:65vh;overflow:auto;padding:8px;background:var(--bg,#fff);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px #00000018}
-.space-options>a{display:block;min-height:44px;padding:10px 12px;border-radius:6px;white-space:normal;overflow-wrap:anywhere;text-decoration:none}
-.space-options>a:hover,.space-options>a[aria-current="page"]{background:var(--surface,#f7f7f7)}
-.space-options>a[aria-current="page"]{font-weight:600}
-.space-options>a.space-menu-action{border-top:1px solid var(--border);border-radius:0;margin-top:8px;padding-top:16px}
+/* Space selection is part of the main account menu, not a second dropdown. */
+.account-menu>.account-menu-links{width:260px;max-height:calc(100dvh - 96px);overflow-y:auto}
+.menu-spaces{padding:8px 0;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.menu-spaces>p{padding:0 12px;margin:0 0 4px;font-size:.8rem}
+.menu-spaces>a{display:block;min-height:44px;padding:10px 12px;border-radius:4px;white-space:normal;overflow-wrap:anywhere}
+.menu-spaces>a:hover,.menu-spaces>a:focus-visible,.menu-spaces>a[aria-current="page"]{background:var(--surface,#f7f7f7);color:inherit}
+.menu-spaces>a[aria-current="page"]{font-weight:600}
+.menu-spaces>a.space-menu-action{margin-top:4px;border-top:1px solid var(--border);border-radius:0}

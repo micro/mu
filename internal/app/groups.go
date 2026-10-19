@@ -18,7 +18,6 @@ func spaceSelector(acc *auth.Account, here string) (string, string) {
 		return "", ""
 	}
 	active := ""
-	label := "Personal"
 	u, _ := url.Parse(here)
 	if u != nil {
 		if u.Path == "/groups" {
@@ -31,7 +30,6 @@ func spaceSelector(acc *auth.Account, here string) (string, string) {
 	valid := false
 	for _, g := range gs {
 		if g.ID == active {
-			label = g.Name
 			valid = true
 		}
 	}
@@ -45,7 +43,7 @@ func spaceSelector(acc *auth.Account, here string) (string, string) {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<details class="space-selector"><summary aria-label="Switch space"><span>` + html.EscapeString(label) + `</span></summary><nav class="space-options" aria-label="Spaces"><a href="/home"` + current("") + `>Personal</a>`)
+	b.WriteString(`<section class="menu-spaces" aria-label="Spaces"><p class="text-muted">Spaces</p><a href="/home"` + current("") + `>Personal</a>`)
 	for _, g := range gs {
 		b.WriteString(`<a href="/groups?id=` + g.ID + `"` + current(g.ID) + `>` + html.EscapeString(g.Name) + func() string {
 			if n := group.Unread(g, acc.ID); n > 0 {
@@ -54,6 +52,6 @@ func spaceSelector(acc *auth.Account, here string) (string, string) {
 			return ""
 		}() + `</a>`)
 	}
-	b.WriteString(`<a class="space-menu-action" href="/groups?new=1">Create group</a><a href="/groups">Groups and invitations</a></nav></details>`)
+	b.WriteString(`<a class="space-menu-action" href="/groups?new=1">Create group</a><a href="/groups">Groups and invitations</a></section>`)
 	return b.String(), active
 }
