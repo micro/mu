@@ -132,13 +132,13 @@ none.
 
 The UI calls web conversations Chats; internal conversation/thread identifiers remain unchanged. `/agent?view=chats` lists the owner’s web chats, while ordinary agent links resume the most recently visited chat. Home shows three recent chats and links to that list.
 
-Groups are named destinations in the main menu. The global Home, Inbox, Agents
+Groups has a dedicated primary navigation entry and lists named groups. The account menu contains only account actions; there is no global personal/group mode switch. The global Home, Inbox, Agents
 and Services navigation never changes when a group is opened. Group-specific
 navigation stays within the group page. XMPP protocol addresses are not exposed
 as everyday group identities. Invitation links use `/join#token` with 128-bit
 random URL-safe secrets; legacy invitation URLs remain accepted.
 
-Groups are selectable spaces in the signed-in shell. The group product page is
+Groups are destinations in the signed-in shell. The group product page is
 assembled in `internal/server/groups.go` over Groups, Chat, Events, Agent and
 Billing. `internal/group` owns membership, invitations, conversation settings and
 per-member read/notification preferences. Group room IDs remain opaque; the

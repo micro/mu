@@ -27,8 +27,9 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 }
 
 type CreateRequest struct {
-	Encrypted bool   `json:"encrypted,omitempty" description:"Require end-to-end encrypted XMPP clients; web chat cannot decrypt these messages"`
-	Name      string `json:"name" required:"true" description:"Group name"`
+	Description string `json:"description,omitempty" description:"What this group is for"`
+	Encrypted   bool   `json:"encrypted,omitempty" description:"Require end-to-end encrypted XMPP clients; web chat cannot decrypt these messages"`
+	Name        string `json:"name" required:"true" description:"Group name"`
 }
 type GroupResponse struct {
 	Group group.Group `json:"group"`
@@ -36,7 +37,7 @@ type GroupResponse struct {
 }
 
 func (Server) Create(ctx context.Context, req *CreateRequest, rsp *GroupResponse) error {
-	g, err := group.Create(service.AccountFrom(ctx), req.Name, req.Encrypted)
+	g, err := group.Create(service.AccountFrom(ctx), req.Name, req.Encrypted, req.Description)
 	if err != nil {
 		return err
 	}
@@ -61,9 +62,9 @@ func (Server) Read(ctx context.Context, req *ReadRequest, rsp *GroupResponse) er
 
 type UpdateRequest struct {
 	ID      string `json:"id" required:"true"`
-	Action  string `json:"action" required:"true" description:"invite, accept, decline, remove, role, rename or delete"`
+	Action  string `json:"action" required:"true" description:"invite, accept, decline, remove, role, rename, describe or delete"`
 	Account string `json:"account,omitempty" description:"Local username for invite, remove or role; defaults to yourself for remove"`
-	Value   string `json:"value,omitempty" description:"New name for rename, or member/admin/owner for role"`
+	Value   string `json:"value,omitempty" description:"Description for describe, new name for rename, or member/admin/owner for role"`
 }
 type UpdateResponse struct {
 	Result string `json:"result"`

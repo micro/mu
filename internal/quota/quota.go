@@ -18,6 +18,8 @@ package quota
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"mu/internal/auth"
 	"mu/internal/group"
@@ -229,12 +231,16 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// Where to go is a whole address when this instance knows its own. The
 	// reader here is often a program on another machine, and "/account/topup"
 	// is only a destination if you already know what it is relative to.
-	return false, false, cost, errors.New(Shortfall(cost, balance))
+	return false, false, cost, errors.New(Shortfall(cost, balance, userID))
 }
 
 // Shortfall explains the recurring allowance as well as optional paid use.
-func Shortfall(cost, available int) string {
+func Shortfall(cost, available int, owner ...string) string {
 	message := fmt.Sprintf("This needs %d credits; %d are available.", cost, available)
+	if len(owner) > 0 && strings.HasPrefix(owner[0], "group:") {
+		id := strings.TrimPrefix(owner[0], "group:")
+		return message + " A group owner or admin can add shared credit in group Settings: " + origin.Self() + "/groups?id=" + url.QueryEscape(id) + "&tab=settings."
+	}
 	if DailyCredits() > 0 {
 		message += " Your free allowance renews at 00:00 UTC."
 	}
@@ -257,7 +263,7 @@ func Reserve(userID, operation string) (func(bool) error, error) {
 		return nil, err
 	}
 	if !ok {
-		return nil, errors.New(Shortfall(cost, Available(userID)))
+		return nil, errors.New(Shortfall(cost, Available(userID), userID))
 	}
 	if cost == 0 {
 		return func(success bool) error {

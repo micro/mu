@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"mu/internal/auth"
+	"mu/internal/group"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"net/url"
@@ -16,10 +17,9 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 	if len(returnTo) > 0 && strings.HasPrefix(returnTo[0], "/") && !strings.HasPrefix(returnTo[0], "//") {
 		login += "?redirect=" + url.QueryEscape(returnTo[0])
 	}
-	spaces, _ := spaceSelector(acc, strings.Join(returnTo, ""))
 	links := `<a href="` + html.EscapeString(login) + `">Login</a><a href="/pricing">Pricing</a>`
 	if acc != nil {
-		links = `<details class="account-menu"><summary aria-label="Main menu" title="` + html.EscapeString(acc.ID) + `">` + Avatar(acc) + `</summary><div class="account-menu-links">` + accountMenuSummary(acc) + spaces + `<a href="/account">Account</a><a href="/@` + html.EscapeString(acc.ID) + `">Profile</a>`
+		links = `<details class="account-menu"><summary aria-label="Main menu" title="` + html.EscapeString(acc.ID) + `">` + Avatar(acc) + `</summary><div class="account-menu-links">` + accountMenuSummary(acc) + `<a href="/account">Account</a><a href="/@` + html.EscapeString(acc.ID) + `">Profile</a>`
 		if acc.Admin {
 			links += `<a href="/admin">Admin</a>`
 		}
@@ -30,6 +30,9 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 		here := ""
 		if len(returnTo) > 0 {
 			here = strings.SplitN(returnTo[0], "?", 2)[0]
+			if u, err := url.Parse(returnTo[0]); err == nil && u.Path == "/chat" && group.RoomGroup(u.Query().Get("id")) != "" {
+				here = "/groups"
+			}
 		}
 		navigation = `<a class="runtime-brand" href="/home">Micro</a>` + runtimeNavigation(here)
 	}
@@ -64,7 +67,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 	if acc == nil || publicPage {
 		footer = `<footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer>`
 	}
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=layout-139"><script defer src="/mu.js?v=prompt-94"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header><a href="/" class="brand">Micro</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=layout-140"><script defer src="/mu.js?v=prompt-94"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header><a href="/" class="brand">Micro</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
 }
 
 // The product destinations stay the same across screen sizes. Services retain
@@ -74,6 +77,8 @@ func runtimeNavigation(path string) string {
 	switch {
 	case path == "/home" || strings.HasPrefix(path, "/home/"):
 		active = "Home"
+	case path == "/groups":
+		active = "Groups"
 	case path == "/inbox" || strings.HasPrefix(path, "/inbox/"):
 		active = "Inbox"
 	case path == "/agents" || path == "/agent" || strings.HasPrefix(path, "/agent/"):
@@ -96,6 +101,7 @@ func runtimeNavigation(path string) string {
 		{"/home", "Home", `M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9`},
 		{"/inbox", "Inbox", `M4 4h16l2 11v5H2v-5L4 4ZM2 15h6l2 3h4l2-3h6`},
 		{"/agents", "Agents", `M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5`},
+		{"/groups", "Groups", `M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75`},
 		{"/services", "Services", `M3 3h7v7H3V3ZM14 3h7v7h-7V3ZM3 14h7v7H3v-7ZM14 14h7v7h-7v-7Z`},
 	} {
 		current := ""

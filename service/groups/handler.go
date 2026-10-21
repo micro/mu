@@ -41,7 +41,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		ctx := service.WithAccount(r.Context(), acc.ID)
 		if r.PostFormValue("action") == "create" {
 			var rsp GroupResponse
-			err = (Server{}).Create(ctx, &CreateRequest{Name: r.PostFormValue("name"), Encrypted: r.PostFormValue("encrypted") == "true"}, &rsp)
+			err = (Server{}).Create(ctx, &CreateRequest{Description: r.PostFormValue("description"), Name: r.PostFormValue("name"), Encrypted: r.PostFormValue("encrypted") == "true"}, &rsp)
 			if err == nil {
 				id = rsp.Group.ID
 			}
@@ -56,6 +56,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			dest := "/groups"
 			if id != "" {
 				dest += "?id=" + id
+				if r.PostFormValue("action") == "describe" {
+					dest += "&tab=details"
+				}
 			}
 			http.Redirect(w, r, dest, http.StatusSeeOther)
 			return
@@ -72,7 +75,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	auth.SetCSRFCookie(w, r)
 	csrf := auth.CSRFToken(r)
 	if !app.WantsJSON(r) && ((r.Method == http.MethodGet && r.URL.Query().Get("new") == "1") || (r.Method == http.MethodPost && r.PostFormValue("action") == "create" && notice != "")) {
-		editor := form(csrf, "", "create", "", `<label class="field-label">Group name<input name="name" required maxlength="100" placeholder="Family"></label><label class="field-label">Chat privacy<select name="encrypted"><option value="false">Web and XMPP chat</option><option value="true">End-to-end encrypted · XMPP clients only</option></select></label><p class="text-muted">Web chat uses an encrypted connection; Micro stores its messages. End-to-end encrypted groups require an XMPP client such as Conversations.</p><div class="form-actions"><button>Create group</button></div>`)
+		editor := form(csrf, "", "create", "", `<label class="field-label">Group name<input name="name" required maxlength="100" placeholder="Family"></label><label>Description (optional)<textarea name="description" maxlength="1000" placeholder="What brings you together?"></textarea></label><label class="field-label">Chat privacy<select name="encrypted"><option value="false">Web and XMPP chat</option><option value="true">End-to-end encrypted · XMPP clients only</option></select></label><p class="text-muted">Web chat uses an encrypted connection; Micro stores its messages. End-to-end encrypted groups require an XMPP client such as Conversations.</p><div class="form-actions"><button>Create group</button></div>`)
 		if notice != "" {
 			editor = app.Problem(notice) + editor
 		}
@@ -152,7 +155,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.RespondJSON(w, ListResponse{Groups: gs, Invitations: pending})
 			return
 		}
-		b.WriteString(app.CollectionControls("", app.ActionLink("/groups?new=1", "New"), ""))
+		b.WriteString(app.CollectionControls("", app.ActionLink("/groups?new=1", "New group"), ""))
 		if len(pending) > 0 {
 			b.WriteString(`<section class="record-card"><h2>Invitations</h2>`)
 			for _, inv := range pending {
@@ -163,7 +166,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`<section><div class="collection-list">`)
 		for _, g := range gs {
-			fmt.Fprintf(&b, `<a class="collection-item" href="/groups?id=%s"><span class="collection-title">%s</span><span class="collection-preview">%d members · %s</span></a>`, g.ID, html.EscapeString(g.Name), len(g.Members), g.Members[acc.ID])
+			fmt.Fprintf(&b, `<a class="collection-item" href="/groups?id=%s"><span class="collection-title">%s</span><span class="collection-preview">%d members · %s</span></a>`, g.ID, html.EscapeString(g.Name), len(g.Members), html.EscapeString(g.Description))
 		}
 		if len(gs) == 0 {
 			b.WriteString(`<p>No groups yet. Create one for your family, friends or community.</p>`)

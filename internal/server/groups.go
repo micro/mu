@@ -44,7 +44,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == "POST" {
 		switch r.PostFormValue("action") {
-		case "create", "accept", "decline", "invite", "remove", "role", "rename", "delete":
+		case "create", "describe", "accept", "decline", "invite", "remove", "role", "rename", "delete":
 			groups.Handler(w, r)
 			return
 		}
@@ -200,12 +200,26 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="page-stack">`)
-	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Settings", URL: base + "&tab=settings", Key: "settings"}}, false))
+	if g.Description != "" && tab != "details" {
+		b.WriteString(`<p class="text-muted">` + html.EscapeString(g.Description) + `</p>`)
+	}
+	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Details", URL: base + "&tab=details", Key: "details"}, {Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Settings", URL: base + "&tab=settings", Key: "settings"}}, false))
 	if notice != "" {
 		b.WriteString(`<p class="notice" role="status">` + html.EscapeString(notice) + `</p>`)
 	}
 	admin := group.Admin(id, acc.ID)
 	switch tab {
+	case "details":
+		b.WriteString(`<section class="record-card"><h2>About this group</h2>`)
+		if g.Description != "" {
+			b.WriteString(`<p class="text-prewrap">` + html.EscapeString(g.Description) + `</p>`)
+		} else {
+			b.WriteString(`<p class="text-muted">A place to talk, make plans and get help together.</p>`)
+		}
+		b.WriteString(`<p>` + strconv.Itoa(len(g.Members)) + ` members · Created ` + g.Created.Format("2 Jan 2006") + `</p><div class="form-actions"><a class="btn" href="` + base + `">Open chats</a><a class="btn" href="` + base + `&tab=members">Members and invitations</a></div></section>`)
+		if admin {
+			b.WriteString(`<details class="record-card"><summary>Edit description</summary>` + form("describe", `<label>What is this group for?<textarea name="value" maxlength="1000" rows="3" placeholder="Plans, ideas, and everyday life…">`+html.EscapeString(g.Description)+`</textarea></label><button>Save description</button>`) + `</details>`)
+		}
 	case "conversation":
 		_, c, ok := group.ConversationFor(r.URL.Query().Get("room"))
 		if !ok || group.RoomGroup(c.ID) != id {

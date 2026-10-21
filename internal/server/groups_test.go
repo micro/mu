@@ -49,13 +49,13 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 	if strings.Contains(memberPage.Body.String(), "Delete group</button>") {
 		t.Fatal("member shown owner deletion control")
 	}
-	for _, tab := range []string{"", "events", "agents", "members", "budget", "settings"} {
+	for _, tab := range []string{"", "details", "events", "agents", "members", "budget", "settings"} {
 		w := httptest.NewRecorder()
 		groupsHandler(w, request(owner, "GET", base+"&tab="+tab, nil))
 		if w.Code != 200 || !strings.Contains(w.Body.String(), "Studio &amp; friends") {
 			t.Fatalf("tab %q: %d %s", tab, w.Code, w.Body.String())
 		}
-		for _, link := range []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`, `<span>Inbox</span>`, `class="menu-group-label"`} {
+		for _, link := range []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`, `<span>Inbox</span>`, `href="/groups" aria-current="page"`} {
 			if !strings.Contains(w.Body.String(), link) {
 				t.Fatalf("group page lost global navigation: %s", link)
 			}
