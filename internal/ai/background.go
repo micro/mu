@@ -22,7 +22,7 @@ func BlogEnabled() bool {
 
 func checkBackground(caller string) error {
 	switch caller {
-	case "daily-digest", "opinion-generate":
+	case "daily-digest", "opinion-generate", "publication-review":
 		if !BlogEnabled() {
 			return fmt.Errorf("blog digests are disabled")
 		}

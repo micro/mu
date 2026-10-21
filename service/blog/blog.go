@@ -23,6 +23,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/editorial"
 	"mu/internal/event"
 	"mu/internal/flag"
 	"mu/internal/service"
@@ -931,6 +932,9 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 	}
 
 	if generatedPost(post) {
+		if err := editorial.Validate(title, content); err != nil {
+			return err
+		}
 		post.Editorial, post.Community = true, false
 	}
 

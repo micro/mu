@@ -133,6 +133,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			err = group.Mute(id, acc.ID, r.PostFormValue("muted") == "true")
 			tab = "members"
 		case "end_plan":
+			tab = "settings"
 			if !admin {
 				err = fmt.Errorf("only group admins can end billing")
 				break
@@ -140,6 +141,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			err = billing.EndSubscription(r.Context(), scope)
 			tab = "settings"
 		case "budget":
+			tab = "settings"
 			n, e := strconv.Atoi(r.PostFormValue("limit"))
 			if e != nil {
 				err = fmt.Errorf("enter a credit limit")
@@ -148,6 +150,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			err = group.Configure(id, acc.ID, n, r.PostFormValue("members_ai") == "true")
 			tab = "settings"
 		case "fund":
+			tab = "settings"
 			if !admin {
 				err = fmt.Errorf("only group admins can fund this balance")
 				break

@@ -58,3 +58,26 @@ func TestGeneratedPostMigrationPreservesArchiveAndPrivacy(t *testing.T) {
 		t.Fatal("failed migration was not rolled back")
 	}
 }
+
+func TestMalformedSystemPostsBecomePrivate(t *testing.T) {
+	old, unreadable := posts, postsUnreadable
+	t.Cleanup(func() { posts, postsUnreadable = old, unreadable })
+	postsUnreadable = false
+	broken := &Post{ID: "bad-system-post", AuthorID: auth.MicroID, Tags: "opinion,uk", Editorial: true, Title: `<?xml version="1.0"?>`, Content: "<function_calls>news_read</function_calls>"}
+	human := &Post{ID: "human-code", AuthorID: "reader", Tags: "opinion", Community: true, Title: broken.Title, Content: broken.Content}
+	posts = []*Post{broken, human}
+	migrateGeneratedPosts()
+	if !broken.Private || broken.Editorial || broken.Community {
+		t.Fatal("malformed system post remains public")
+	}
+	if human.Private {
+		t.Fatal("human code article changed")
+	}
+	if broken.Content != human.Content {
+		t.Fatal("evidence altered")
+	}
+	migrateGeneratedPosts()
+	if !broken.Private {
+		t.Fatal("quarantine not stable")
+	}
+}

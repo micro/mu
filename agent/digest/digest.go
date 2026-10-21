@@ -242,6 +242,12 @@ func createDigest() {
 		return
 	}
 
+	title := "World Digest — " + time.Now().Format("2 Jan 2006")
+	if err := agentblog.Review(title, response, pieces+context); err != nil {
+		agentblog.RetainRejected("world-digest", title, response, err)
+		setError(err.Error())
+		return
+	}
 	response += buildReferences(refs)
 
 	// Published through the door, like the pieces it was written from.
@@ -251,7 +257,6 @@ func createDigest() {
 	// other attributed and priced, for two posts by the same account on the
 	// same blog. Every other thing this agent does already goes through
 	// RunPlannedAs; the one write did not, which is the half that costs money.
-	title := "World Digest — " + time.Now().Format("2 Jan 2006")
 	_, failed, err := api.ExecuteToolAs(auth.MicroID, "blog_create", map[string]any{
 		"title": title, "content": response, "tags": "digest",
 	})
@@ -406,7 +411,7 @@ func generateDigestContent(context string, fromPieces bool) (string, error) {
 		return "", err
 	}
 
-	return cleanResponse(draft), nil
+	return draft, nil
 }
 
 type ref struct {

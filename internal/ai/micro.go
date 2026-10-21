@@ -209,7 +209,7 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 	recordUsage(caller, useModel, resp.Usage.InputTokens, resp.Usage.OutputTokens, 0, 0)
 	app.Log("ai", "[LLM] Usage [%s]: input=%d output=%d (go-micro %s)",
 		caller, resp.Usage.InputTokens, resp.Usage.OutputTokens, provider)
-	return resp.Reply, nil
+	return completedText(resp)
 }
 
 // streamViaMicro streams a model response through go-micro, invoking onToken
@@ -335,4 +335,22 @@ func logModelCall(provider, model, caller, method string, started time.Time, err
 	duration := time.Since(started)
 	app.RecordExternalCall(app.APILogEntry{Kind: "model", Time: started, Service: provider, Method: method, Model: model, Outcome: outcome, Error: detail, ErrorKind: string(gmai.ClassifyError(err)), Duration: duration, InputTokens: used.InputTokens, OutputTokens: used.OutputTokens})
 	app.Log("timing", "phase=model caller=%s provider=%s model=%s status=%s duration_ms=%.3f", caller, provider, model, outcome, float64(duration)/float64(time.Millisecond))
+}
+
+// Text-only requests must never treat pending tool calls as completed writing.
+func completedText(resp *gmai.Response) (string, error) {
+	if resp == nil {
+		return "", fmt.Errorf("model returned no response")
+	}
+	if len(resp.ToolCalls) > 0 {
+		return "", fmt.Errorf("model returned tool calls to a text-only request")
+	}
+	switch strings.ToLower(resp.StopReason) {
+	case "length", "max_tokens", "tool_calls", "tool_use", "content_filter":
+		return "", fmt.Errorf("model response is incomplete: %s", resp.StopReason)
+	}
+	if strings.TrimSpace(resp.Reply) == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+	return resp.Reply, nil
 }
