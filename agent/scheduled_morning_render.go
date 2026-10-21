@@ -69,7 +69,7 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	if reminder != "" {
 		b.WriteString("\n" + reminderTitle.ReplaceAllString(reminder, "##$1") + "\n")
 	} else {
-		b.WriteString("\n## Reflection\n\nToday's reflection is unavailable.\n")
+		b.WriteString("\n## Daily reminder\n\nToday's verse is unavailable.\n")
 	}
 	return strings.TrimSpace(b.String())
 }

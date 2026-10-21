@@ -67,7 +67,7 @@ func morningFacts(ctx context.Context, owner string, schedule *events.Event, now
 		return briefSource{Name: "Calendar — visible records only; not proof of free time", Text: briefAgenda(events.Upcoming(owner), entries, now, end), URL: origin.Self() + "/events"}
 	}}, {"Daily reminder", func() briefSource {
 		date := now.Format("2006-01-02")
-		return briefSource{Name: "Daily reminder", Text: morningReflection(prayer.DailyReminderForDate(date), date)}
+		return briefSource{Name: "Daily reminder", Text: morningReminder(prayer.DailyReminderForDate(date), date)}
 	}}}
 	havePlace := strings.TrimSpace(acc.Place) != "" || acc.Lat != 0 || acc.Lon != 0
 	if havePlace && (acc.Lat != 0 || acc.Lon != 0) {
@@ -289,12 +289,12 @@ func briefMarkets(prices map[string]markets.PriceData, now time.Time) string {
 	return strings.Join(rows, "\n")
 }
 
-// The reflection is the publisher's text, independent of model synthesis.
+// The verse is the publisher's text, independent of model synthesis.
 // Its dated link keeps the verse, hadith and name available without lengthening
 // the email or sending the reader to an unrelated hourly reflection.
-func morningReflection(d *prayer.ReminderData, date string) string {
-	if d == nil || d.Date != date || strings.TrimSpace(d.Message) == "" {
+func morningReminder(d *prayer.ReminderData, date string) string {
+	if d == nil || d.Date != date || strings.TrimSpace(d.Verse) == "" {
 		return ""
 	}
-	return "## Reflection\n\n" + strings.TrimSpace(d.Message) + "\n\n[Read the daily reminder](" + origin.Self() + "/prayer?date=" + date + "&view=reflection)"
+	return "## Daily reminder\n\n" + strings.TrimSpace(d.Verse) + "\n\n[Read the daily reminder](" + origin.Self() + "/prayer?date=" + date + ")"
 }
