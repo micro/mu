@@ -161,6 +161,16 @@ schedules whose group owner no longer exists before firing or rescheduling them.
 Group briefs are generated once and delivered to the shared chat and
 members' mailboxes. Existing encrypted XMPP groups remain assistant-free.
 
+## Generated publication review
+
+Automatic opinions and world digests must pass structural validation and a separate
+source-grounded model review before publication. Reviewer errors, malformed verdicts
+and rejection fail closed. Do not strip model protocol from a draft and publish the
+remainder. Keep rejected output in private diagnostic storage, outside blog/index.
+The blog write boundary independently rejects malformed system-generated articles.
+On load, system opinion/digest posts with leaked protocol markup become private;
+preserve their original contents and withdraw them from the public index.
+
 ## Mail delivery and daily reminders
 
 Unfamiliar senders to personal mailboxes are retained in Junk. Personal allowed

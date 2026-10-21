@@ -23,6 +23,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/editorial"
 	"mu/internal/event"
 	"mu/internal/flag"
 	"mu/internal/service"
@@ -931,6 +932,9 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 	}
 
 	if generatedPost(post) {
+		if err := editorial.Validate(title, content); err != nil {
+			return err
+		}
 		post.Editorial, post.Community = true, false
 	}
 
@@ -1119,6 +1123,17 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 	post := postsMap[id]
 	if post == nil {
 		return fmt.Errorf("post not found")
+	}
+
+	// Validate the proposed public state before changing storage or indexes.
+	candidate := *post
+	candidate.Title, candidate.Content, candidate.Tags, candidate.Private = title, content, tags, private
+	originalPublic := *post
+	originalPublic.Private = false
+	if !private && (generatedPost(&candidate) || generatedPost(&originalPublic)) {
+		if err := editorial.Validate(title, content); err != nil {
+			return err
+		}
 	}
 
 	// Withdraw before acknowledging a private change. If the index cannot be
