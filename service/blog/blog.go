@@ -1125,6 +1125,17 @@ func UpdatePost(id, title, content, tags string, private bool) error {
 		return fmt.Errorf("post not found")
 	}
 
+	// Validate the proposed public state before changing storage or indexes.
+	candidate := *post
+	candidate.Title, candidate.Content, candidate.Tags, candidate.Private = title, content, tags, private
+	originalPublic := *post
+	originalPublic.Private = false
+	if !private && (generatedPost(&candidate) || generatedPost(&originalPublic)) {
+		if err := editorial.Validate(title, content); err != nil {
+			return err
+		}
+	}
+
 	// Withdraw before acknowledging a private change. If the index cannot be
 	// updated, the source remains public and the caller receives the error.
 	if private {

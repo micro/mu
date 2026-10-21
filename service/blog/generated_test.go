@@ -2,6 +2,7 @@ package blog
 
 import (
 	"mu/internal/auth"
+	"reflect"
 	"testing"
 )
 
@@ -79,5 +80,23 @@ func TestMalformedSystemPostsBecomePrivate(t *testing.T) {
 	migrateGeneratedPosts()
 	if !broken.Private {
 		t.Fatal("quarantine not stable")
+	}
+}
+
+func TestUpdateRejectsMalformedGeneratedPost(t *testing.T) {
+	old := postsMap
+	t.Cleanup(func() { postsMap = old })
+	for _, private := range []bool{false, true} {
+		post := &Post{ID: "generated", AuthorID: auth.MicroID, Tags: "opinion,uk", Title: "Original title", Content: "Original content", Private: private}
+		postsMap = map[string]*Post{post.ID: post}
+		before := *post
+		for _, tags := range []string{"opinion,uk", "announcement"} {
+			if err := UpdatePost(post.ID, "<?xml version=\"1.0\"?>", "<function_calls>news_read</function_calls>", tags, false); err == nil {
+				t.Fatal("malformed update accepted")
+			}
+			if !reflect.DeepEqual(*post, before) {
+				t.Fatal("rejected update changed post")
+			}
+		}
 	}
 }
