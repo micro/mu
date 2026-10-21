@@ -110,3 +110,23 @@ func TestExpiredInviteAndFailedSave(t *testing.T) {
 		t.Fatal("failed write changed live membership")
 	}
 }
+
+func TestGroupDescriptionPermissions(t *testing.T) {
+	g, err := Create("description-owner", "Family", false, "Our plans")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.Description != "Our plans" {
+		t.Fatal("description missing")
+	}
+	if err := Change(g.ID, "stranger", "describe", "", "Changed"); err == nil {
+		t.Fatal("outsider edited description")
+	}
+	if err := Change(g.ID, g.Owner, "describe", "", "New purpose"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Read(g.ID, g.Owner)
+	if err != nil || got.Description != "New purpose" {
+		t.Fatal("description not saved", err)
+	}
+}

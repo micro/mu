@@ -87,7 +87,7 @@ func reserveIncluded(id, operation string, amount int) (func(bool) error, error)
 			balances[id] = &Credits{UserID: id, Currency: "USD"}
 		}
 		if balances[id].Balance < funded {
-			return errors.New(quota.Shortfall(amount, balances[id].Balance+amount-funded))
+			return errors.New(quota.Shortfall(amount, balances[id].Balance+amount-funded, id))
 		}
 		if err := deductCredits(l, id, funded, operation, meta); err != nil {
 			return err
@@ -184,7 +184,7 @@ func chargeIncluded(id string, amount int, operation string, metadata map[string
 			balances[id] = &Credits{UserID: id, Currency: "USD"}
 		}
 		if balances[id].Balance < funded {
-			return errors.New(quota.Shortfall(amount, balances[id].Balance+amount-funded))
+			return errors.New(quota.Shortfall(amount, balances[id].Balance+amount-funded, id))
 		}
 		return deductCredits(l, id, funded, operation, meta)
 	})

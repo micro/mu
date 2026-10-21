@@ -180,7 +180,7 @@ func workCredits(account string) error {
 			if err != nil {
 				return api.Fail(402, "insufficient_credits", err.Error())
 			}
-			return api.Fail(402, "insufficient_credits", quota.Shortfall(cost, quota.Available(account)))
+			return api.Fail(402, "insufficient_credits", quota.Shortfall(cost, quota.Available(account), account))
 		}
 	}
 	return nil

@@ -27,6 +27,7 @@ type Invitation struct {
 	Expires   time.Time `json:"expires"`
 }
 type Group struct {
+	Description   string                  `json:"description,omitempty"`
 	Muted         map[string]bool         `json:"muted,omitempty"`
 	BillingUntil  time.Time               `json:"billing_until,omitempty"`
 	Activity      map[string]time.Time    `json:"activity,omitempty"`
@@ -194,7 +195,14 @@ func List(account string) ([]Group, []Pending, error) {
 	sort.Slice(pending, func(i, j int) bool { return pending[i].ID < pending[j].ID })
 	return groups, pending, nil
 }
-func Create(account, name string, encrypted bool) (Group, error) {
+func Create(account, name string, encrypted bool, descriptions ...string) (Group, error) {
+	description := ""
+	if len(descriptions) > 0 {
+		description = strings.TrimSpace(descriptions[0])
+	}
+	if len([]rune(description)) > 1000 {
+		return Group{}, errors.New("description must be at most 1000 characters")
+	}
 	name = strings.TrimSpace(name)
 	if account == "" || name == "" || len([]rune(name)) > 100 {
 		return Group{}, errors.New("a group needs a name of up to 100 characters")
@@ -217,7 +225,7 @@ func Create(account, name string, encrypted bool) (Group, error) {
 	if _, err := rand.Read(b[:]); err != nil {
 		return Group{}, err
 	}
-	g := Group{ID: hex.EncodeToString(b[:]), Name: name, Encrypted: encrypted, Owner: account, Created: time.Now().UTC(), SpendLimit: 1000, MembersUseAI: true, Members: map[string]string{account: "owner"}, Invitations: map[string]Invitation{}}
+	g := Group{Description: description, ID: hex.EncodeToString(b[:]), Name: name, Encrypted: encrypted, Owner: account, Created: time.Now().UTC(), SpendLimit: 1000, MembersUseAI: true, Members: map[string]string{account: "owner"}, Invitations: map[string]Invitation{}}
 	next := copyRecords()
 	next[g.ID] = g
 	if err := save(next); err != nil {
@@ -311,6 +319,12 @@ func change(id, actor, action, target, value string, check func(string) error) e
 				g.Owner = target
 			}
 			g.Members[target] = value
+		case "describe":
+			value = strings.TrimSpace(value)
+			if !admin || len([]rune(value)) > 1000 {
+				return errors.New("an owner or admin can set a description of up to 1000 characters")
+			}
+			g.Description = value
 		case "rename":
 			value = strings.TrimSpace(value)
 			if !admin || value == "" || len([]rune(value)) > 100 {

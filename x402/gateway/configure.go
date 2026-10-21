@@ -80,7 +80,7 @@ func Configure() {
 			return false, err
 		}
 		if !ok {
-			return false, fmt.Errorf("%s", quota.Shortfall(cost, quota.Available(account)))
+			return false, fmt.Errorf("%s", quota.Shortfall(cost, quota.Available(account), account))
 		}
 		return true, nil
 	}
