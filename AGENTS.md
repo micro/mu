@@ -171,8 +171,8 @@ shared-assistant ownership checks remain independent. Junk never publishes
 Inbox exposes Junk and sender settings using the mail service's handlers.
 
 Scheduled morning briefs use `/api/daily/YYYY-MM-DD` for the schedule's local
-date. They quote only the daily reflection, with a dated `/prayer` link; the
-verse, hadith and name remain available on that same dated page. Never replace
+date. They quote only the daily verse, with a dated `/prayer` link; the
+hadith, name and reflection remain available on that same dated page. Never replace
 a missing daily reminder with the hourly `/api/latest` response. Travel follows
 Weather in the fixed brief renderer.
 

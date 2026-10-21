@@ -582,31 +582,13 @@ func renderPrayerPage(rd *ReminderData, view string, dates ...string) string {
 	if len(dates) > 0 {
 		date = dates[0]
 	}
-	dateQuery := ""
-	if _, err := time.Parse("2006-01-02", date); err == nil {
-		dateQuery = "&date=" + date
-	}
-	switch view {
-	case "verse", "saying", "name", "reflection", "times":
-	default:
-		view = "verse"
-	}
 	var b strings.Builder
-	b.WriteString(app.Column() + `<nav class="app-filters" aria-label="Prayer sections">`)
-	for _, tab := range []struct{ id, label string }{{"verse", "Verse"}, {"saying", "Saying"}, {"name", "Name"}, {"reflection", "Reflection"}, {"times", "Times & Qibla"}} {
-		b.WriteString(app.PillLink(tab.label, "/prayer?view="+tab.id+dateQuery, view == tab.id))
-	}
-	b.WriteString(`</nav>`)
-	if dateQuery != "" {
+	b.WriteString(app.Column())
+	if _, err := time.Parse("2006-01-02", date); err == nil {
 		b.WriteString(`<p class="text-sm text-muted">Daily reminder · ` + html.EscapeString(date) + `</p>`)
 	}
-	if view == "times" {
-		b.WriteString(prayerTimesHTML())
-		b.WriteString(app.Close())
-		return b.String()
-	}
 	if rd == nil {
-		b.WriteString(`<p class="text-muted">The reminder is not available yet. Please try again shortly.</p>` + app.Close())
+		b.WriteString(`<p class="text-muted">The reminder is not available yet. Please try again shortly.</p>` + prayerTimesHTML() + app.Close())
 		return b.String()
 	}
 	section := func(title, content, linkKey, linkLabel string) {
@@ -625,17 +607,11 @@ func renderPrayerPage(rd *ReminderData, view string, dates ...string) string {
 		}
 		b.WriteString(`</section>`)
 	}
-	switch view {
-	case "verse":
-		section("Verse", deduplicateVerseName(rd.Verse), "verse", "Read in the Quran")
-	case "saying":
-		section("Saying", rd.Hadith, "hadith", "Read the hadith")
-	case "name":
-		section("Name", rd.Name, "name", "The 99 names of Allah")
-	}
-	if view == "verse" || view == "reflection" {
-		section("Reflection", rd.Message, "", "")
-	}
+	section("Verse", deduplicateVerseName(rd.Verse), "verse", "Read in the Quran")
+	section("Saying", rd.Hadith, "hadith", "Read the hadith")
+	section("Name", rd.Name, "name", "The 99 names of Allah")
+	section("Reflection", rd.Message, "", "")
+	b.WriteString(prayerTimesHTML())
 	b.WriteString(`<p class="text-xs text-muted">From <a href="https://reminder.dev">reminder.dev</a>. Ask Micro about this reminder using its Quran and hadith tools.</p>`)
 	b.WriteString(app.Close())
 	return b.String()

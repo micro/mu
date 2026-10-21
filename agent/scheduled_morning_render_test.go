@@ -71,19 +71,19 @@ func TestMorningTravelAppearsAfterWeather(t *testing.T) {
 	}
 }
 
-func TestMorningReflectionMatchesDatedSourceWithoutRepeatingScripture(t *testing.T) {
+func TestMorningReminderQuotesDatedVerse(t *testing.T) {
 	const date = "2026-10-19"
 	d := &prayer.ReminderData{Date: date, Message: "Exact daily reflection.", Verse: "A long verse", Hadith: "A long hadith", Name: "A long name"}
-	result := morningReflection(d, date)
-	if !strings.Contains(result, d.Message) || !strings.Contains(result, "/prayer?date="+date+"&view=reflection") {
+	result := morningReminder(d, date)
+	if !strings.Contains(result, d.Verse) || !strings.Contains(result, "/prayer?date="+date+")") {
 		t.Fatal(result)
 	}
-	for _, unwanted := range []string{d.Verse, d.Hadith, d.Name} {
+	for _, unwanted := range []string{d.Message, d.Hadith, d.Name} {
 		if strings.Contains(result, unwanted) {
 			t.Fatal("brief lengthened", result)
 		}
 	}
-	if morningReflection(d, "2026-10-20") != "" {
+	if morningReminder(d, "2026-10-20") != "" {
 		t.Fatal("stale reminder accepted")
 	}
 }

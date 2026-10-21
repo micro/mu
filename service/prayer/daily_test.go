@@ -44,19 +44,18 @@ func TestDailyReminderDoesNotUseLatestOnFailure(t *testing.T) {
 	}
 }
 
-func TestDatedReminderPageKeepsEveryTabOnSameDay(t *testing.T) {
+func TestDatedReminderPageShowsWholeReminderOnce(t *testing.T) {
 	const date = "2041-01-02"
 	rd := &ReminderData{Date: date, Verse: "Exact verse", Message: "Exact reflection", Hadith: "Exact hadith", Name: "Exact name"}
-	for _, view := range []string{"verse", "saying", "name", "reflection"} {
+	for _, view := range []string{"", "verse", "saying", "name", "reflection", "times"} {
 		page := renderPrayerPage(rd, view, date)
-		for _, tab := range []string{"verse", "saying", "name", "reflection", "times"} {
-			if !strings.Contains(page, "view="+tab+"&amp;date="+date) && !strings.Contains(page, "view="+tab+"&date="+date) {
-				t.Fatal("tab lost date", page)
+		for _, content := range []string{rd.Verse, rd.Hadith, rd.Name, rd.Message, date} {
+			if strings.Count(page, content) != 1 {
+				t.Fatalf("content missing or duplicated: %s", content)
 			}
 		}
-	}
-	page := renderPrayerPage(rd, "reflection", date)
-	if !strings.Contains(page, rd.Message) || strings.Contains(page, rd.Verse) {
-		t.Fatal("reflection view changed source")
+		if strings.Contains(page, "Prayer sections") {
+			t.Fatal("tabs remain")
+		}
 	}
 }
