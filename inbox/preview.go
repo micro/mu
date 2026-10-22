@@ -1,20 +1,5 @@
 package inbox
 
-// The inbox, on the screen you arrive at.
-//
-// Home said "Or write to it at <address> — Your inbox", and the link was the
-// whole of it: a word pointing at a page. So the one thing the product claims —
-// that the agent is reachable and answers whether or not you have this page
-// open — was only ever visible to somebody who clicked through to check. If mail
-// arrived overnight and was answered, Home looked exactly as it had the night
-// before.
-//
-// There is an older comment in home/home.go saying an inbox preview is "three
-// subject lines beside a Mail page one click away", and that was right about
-// what it was written about: a preview of *mail*, next to a Mail page. This is
-// the record — every conversation this account has had with an agent, on
-// whichever client it arrived — and it is what Home is now for.
-
 import (
 	"html"
 	"net/url"
@@ -33,14 +18,21 @@ const previewShown = 3
 // previewSnippet bounds the line of text under a subject.
 const previewSnippet = 90
 
-// Preview is the most recent conversations, for Home. Empty when there are
-// none — an empty list is worse than the address line on its own, which at least
-// says what to do about it.
+// Preview shows incoming conversations on Home. Personal web and CLI chats
+// belong in the adjacent Chats card, including when their replies are unread.
 func Preview(accountID string) string {
 	if accountID == "" {
 		return ""
 	}
-	all := thread.List(accountID, held)
+	var all []thread.Thread
+	for _, t := range thread.List(accountID, 0) {
+		if thread.Arrived(t) {
+			all = append(all, t)
+			if len(all) == previewShown {
+				break
+			}
+		}
+	}
 	if len(all) == 0 {
 		return ""
 	}

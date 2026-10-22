@@ -80,7 +80,7 @@ Breadth behind one account is the value.
 Micro consistently in its header, page titles and PWA. Mu names the runtime in
 code and technical documentation. The four primary
 product destinations are Home, Inbox, Agents and Services. Agents contains
-Agents, Scheduled and Work tabs; existing /work links remain valid. They use bottom
+Agents, Chats, Scheduled and Work tabs; existing /work links remain valid. They use bottom
 navigation on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
@@ -130,7 +130,7 @@ none.
 
 ## Shared groups
 
-The UI calls web conversations Chats; internal conversation/thread identifiers remain unchanged. `/agent?view=chats` lists personal web chats and accessible group chats, while ordinary agent links resume the most recently visited chat. Home shows three recent chats and links to that list.
+The UI calls web conversations Chats; internal conversation/thread identifiers remain unchanged. `/agent?view=chats` lists personal web chats and accessible group chats, while ordinary agent links resume the most recently visited chat. Home shows three recent chats and links to that list. Its Inbox preview excludes web and CLI chats so the same conversation does not appear twice on Overview.
 
 Groups is a service, not a primary navigation destination. Home and Inbox compose personal and shared chats; New chat chooses a personal or group context. Agents exposes assistants available through current group membership. Group management remains in Services and the group-name link in chat. The account menu contains only account actions; there is no global personal/group mode switch. The global Home, Inbox, Agents
 and Services navigation never changes when a group is opened. Group-specific

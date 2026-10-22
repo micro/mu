@@ -343,10 +343,11 @@ func RecentSearches(formID, storageKey string) string {
 	return `<div id="recent-searches-container" class="page-stack compact-stack" data-recent-searches="` + htmlpkg.EscapeString(formID) + `" data-storage-key="` + htmlpkg.EscapeString(storageKey) + `"></div>`
 }
 
-// AgentViews groups agent setup, schedules and their work history.
+// AgentViews groups conversations, agent setup, schedules and work history.
 func AgentViews(active string) string {
 	return ViewNavigation("Agent views", active, []ViewLink{
 		{Key: "agents", Label: "Agents", URL: "/agents"},
+		{Key: "chats", Label: "Chats", URL: "/agent?view=chats"},
 		{Key: "scheduled", Label: "Scheduled", URL: "/agents?view=scheduled"},
 		{Key: "work", Label: "Work", URL: "/work"},
 	}, false)

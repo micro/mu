@@ -280,7 +280,7 @@ func chatsPage(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	chats := inbox.Chats(acc.ID)
 	pager := app.Paginate(r, len(chats), 25)
 	var b strings.Builder
-	b.WriteString(`<h1>Chats</h1>` + app.CollectionControls("", `<a class="btn" href="/agent?view=new-chat">New chat</a>`, ""))
+	b.WriteString(`<h1>Chats</h1>` + app.PageControls("", app.AgentViews("chats"), `<div class="form-actions"><a class="btn" href="/agent?view=new-chat">New chat</a></div>`))
 	if len(chats) == 0 {
 		b.WriteString(`<p class="text-muted">Start a conversation with an assistant or your group.</p>`)
 	} else {
