@@ -56,6 +56,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			dest := "/groups"
 			if id != "" {
 				dest += "?id=" + id
+				if r.PostFormValue("action") == "accept" {
+					dest = "/chat?id=" + group.RoomPrefix + id
+				}
 				if r.PostFormValue("action") == "describe" {
 					dest += "&tab=details"
 				}

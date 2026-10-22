@@ -8,6 +8,7 @@ import (
 	"mu/internal/thread"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -57,7 +58,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 		{Key: "junk", Label: "Junk", URL: "/inbox?view=junk"},
 		{Key: "settings", Label: "Settings", URL: "/inbox?view=mail-settings"},
 	}, false)
-	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a></div>` + searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r), messageFilter(r))
+	controls := `<div class="form-actions"><a class="btn" href="/inbox/new">New message</a><a class="btn" href="/agent?view=new-chat">New chat</a></div>` + searchBox(box, strings.TrimSpace(r.PostFormValue("q")), auth.CSRFToken(r), messageFilter(r))
 	b.WriteString(app.PageControls(inboxDescription, filters, controls))
 	if r.Method == http.MethodGet {
 		b.WriteString(`<div data-inbox-list>`)
@@ -65,12 +66,34 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 		b.WriteString(`<div>`)
 	}
 	b.WriteString(waitingHTML(r, owner))
+	if box == "" && messageFilter(r) == "all" {
+		b.WriteString(invitations(owner, auth.CSRFToken(r)))
+	}
 	if q := strings.TrimSpace(r.PostFormValue("q")); q != "" {
 		found(&b, r, owner, box, q)
 	} else {
 		all := filterThreads(r, inboxThreads(owner, r.URL.Path))
-		pager := app.Paginate(r, len(all), shown)
-		if len(all) == 0 {
+		type entry struct {
+			t    *thread.Thread
+			chat *Chat
+			at   time.Time
+		}
+		var entries []entry
+		for i := range all {
+			entries = append(entries, entry{t: &all[i], at: all[i].Updated})
+		}
+		if box == "" && (messageFilter(r) == "all" || unreadOnly(r)) {
+			for _, c := range Chats(owner) {
+				if !c.Shared || (unreadOnly(r) && !c.Unread) {
+					continue
+				}
+				c := c
+				entries = append(entries, entry{chat: &c, at: c.Updated})
+			}
+		}
+		sort.SliceStable(entries, func(i, j int) bool { return entries[i].at.After(entries[j].at) })
+		pager := app.Paginate(r, len(entries), shown)
+		if len(entries) == 0 {
 			if messageFilter(r) == "saved" {
 				b.WriteString(`<p class="text-muted">No saved conversations. Open a conversation and choose Save to keep it here.</p>`)
 			} else if messageFilter(r) == "sent" {
@@ -90,9 +113,14 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 		if unread > 0 {
 			b.WriteString(`<form method="post" action="` + html.EscapeString(r.URL.Path) + `" class="bulk-read">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="action" value="mark_read"><input type="hidden" name="reviewed" value="` + reviewed.Format(time.RFC3339Nano) + `">`)
 			b.WriteString(`<input type="hidden" name="filter" value="` + messageFilter(r) + `">`)
-			b.WriteString(fmt.Sprintf(`<div class="form-actions"><button name="scope" value="selected">Mark selected as read</button><button name="scope" value="all">Mark all %d as read</button></div>`, unread))
+			b.WriteString(fmt.Sprintf(`<div class="form-actions"><button name="scope" value="selected">Mark selected as read</button><button name="scope" value="all">Mark all %d personal conversations as read</button></div>`, unread))
 		}
-		for _, t := range all[pager.From:pager.To] {
+		for _, item := range entries[pager.From:pager.To] {
+			if item.chat != nil {
+				b.WriteString(ChatRow(*item.chat))
+				continue
+			}
+			t := *item.t
 			if unread > 0 {
 				b.WriteString(`<div class="selectable-row">`)
 				if thread.Unread(t) {

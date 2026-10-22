@@ -130,9 +130,9 @@ none.
 
 ## Shared groups
 
-The UI calls web conversations Chats; internal conversation/thread identifiers remain unchanged. `/agent?view=chats` lists the owner’s web chats, while ordinary agent links resume the most recently visited chat. Home shows three recent chats and links to that list.
+The UI calls web conversations Chats; internal conversation/thread identifiers remain unchanged. `/agent?view=chats` lists personal web chats and accessible group chats, while ordinary agent links resume the most recently visited chat. Home shows three recent chats and links to that list.
 
-Groups has a dedicated primary navigation entry and lists named groups. The account menu contains only account actions; there is no global personal/group mode switch. The global Home, Inbox, Agents
+Groups is a service, not a primary navigation destination. Home and Inbox compose personal and shared chats; New chat chooses a personal or group context. Agents exposes assistants available through current group membership. Group management remains in Services and the group-name link in chat. The account menu contains only account actions; there is no global personal/group mode switch. The global Home, Inbox, Agents
 and Services navigation never changes when a group is opened. Group-specific
 navigation stays within the group page. XMPP protocol addresses are not exposed
 as everyday group identities. Invitation links use `/join#token` with 128-bit

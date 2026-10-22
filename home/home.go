@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"html"
 	"mu/internal/service"
-	"mu/internal/thread"
 	"net/http"
-	"net/url"
 	"sort"
 	"strings"
 
@@ -138,28 +136,19 @@ func feedHTML(snapshot overviewSnapshot, owner string) string {
 }
 
 func conversationsCard(owner string) string {
+	chats := inbox.Chats(owner)
+	if len(chats) > 3 {
+		chats = chats[:3]
+	}
 	var b strings.Builder
-	count := 0
-	for _, conversation := range thread.List(owner, 0) {
-		if conversation.Client != thread.WebClient {
-			continue
-		}
-		title := conversation.Subject
-		if title == "" {
-			title = "Chat with Micro"
-		}
-		target := agent.Path(owner, conversation.Agent) + "?session=" + url.QueryEscape(conversation.ID)
-		b.WriteString(`<a class="collection-item" href="` + html.EscapeString(target) + `"><span>` + html.EscapeString(title) + `</span><time class="text-muted" datetime="` + conversation.Updated.Format("2006-01-02T15:04:05Z07:00") + `">` + conversation.Updated.Format("2 Jan · 15:04") + `</time></a>`)
-		count++
-		if count == 3 {
-			break
-		}
+	for _, c := range chats {
+		b.WriteString(inbox.ChatRow(c))
 	}
-	body := `<p class="text-muted">Your recent chats will appear here.</p><a href="/agent/micro?new=1">Start a chat</a>`
-	if count > 0 {
-		body = `<div class="collection-list">` + b.String() + `</div>`
+	if len(chats) == 0 {
+		b.WriteString(`<p class="text-muted">Start a conversation with an assistant or your group.</p>`)
 	}
-	return app.PreviewCard("home-conversations", "Chats", "/agent?view=chats", body)
+	b.WriteString(`<div class="form-actions"><a class="btn" href="/agent?view=new-chat">New chat</a></div>`)
+	return app.PreviewCard("home-conversations", "Chats", "/agent?view=chats", b.String())
 }
 
 func pinnedApps(acc *auth.Account) string {

@@ -55,7 +55,7 @@ func TestGroupSpacePagesAndActions(t *testing.T) {
 		if w.Code != 200 || !strings.Contains(w.Body.String(), "Studio &amp; friends") {
 			t.Fatalf("tab %q: %d %s", tab, w.Code, w.Body.String())
 		}
-		for _, link := range []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`, `<span>Inbox</span>`, `href="/groups" aria-current="page"`} {
+		for _, link := range []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`, `<span>Inbox</span>`, `<span>Services</span>`} {
 			if !strings.Contains(w.Body.String(), link) {
 				t.Fatalf("group page lost global navigation: %s", link)
 			}

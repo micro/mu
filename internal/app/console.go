@@ -31,7 +31,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 		if len(returnTo) > 0 {
 			here = strings.SplitN(returnTo[0], "?", 2)[0]
 			if u, err := url.Parse(returnTo[0]); err == nil && u.Path == "/chat" && group.RoomGroup(u.Query().Get("id")) != "" {
-				here = "/groups"
+				here = "/inbox"
 			}
 		}
 		navigation = `<a class="runtime-brand" href="/home">Micro</a>` + runtimeNavigation(here)
@@ -77,8 +77,6 @@ func runtimeNavigation(path string) string {
 	switch {
 	case path == "/home" || strings.HasPrefix(path, "/home/"):
 		active = "Home"
-	case path == "/groups":
-		active = "Groups"
 	case path == "/inbox" || strings.HasPrefix(path, "/inbox/"):
 		active = "Inbox"
 	case path == "/agents" || path == "/agent" || strings.HasPrefix(path, "/agent/"):
@@ -101,7 +99,6 @@ func runtimeNavigation(path string) string {
 		{"/home", "Home", `M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9`},
 		{"/inbox", "Inbox", `M4 4h16l2 11v5H2v-5L4 4ZM2 15h6l2 3h4l2-3h6`},
 		{"/agents", "Agents", `M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5`},
-		{"/groups", "Groups", `M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75`},
 		{"/services", "Services", `M3 3h7v7H3V3ZM14 3h7v7h-7V3ZM3 14h7v7H3v-7ZM14 14h7v7h-7v-7Z`},
 	} {
 		current := ""
