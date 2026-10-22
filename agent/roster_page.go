@@ -20,7 +20,9 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/group"
 	"mu/internal/service"
+	"net/url"
 )
 
 // Handler serves /agents.
@@ -200,6 +202,19 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
 	}
 	b.WriteString(`</div>`)
+	if gs, _, err := group.List(owner); err == nil {
+		for _, g := range gs {
+			shared := Agents(group.Scope(g.ID))
+			if len(shared) == 0 {
+				continue
+			}
+			b.WriteString(`<section class="section-stack"><h2>` + html.EscapeString(g.Name) + `</h2><div class="collection-list">`)
+			for _, a := range shared {
+				b.WriteString(`<a class="collection-item" href="/agent?view=new-chat&amp;group=` + url.QueryEscape(g.ID) + `&amp;agent=` + url.QueryEscape(a.ID) + `"><span class="collection-title">` + html.EscapeString(a.Name) + `</span><span class="collection-preview">Start a shared chat</span></a>`)
+			}
+			b.WriteString(`</div></section>`)
+		}
+	}
 
 	// One way to make an agent. This page used to carry its own create form
 	// alongside the builder at /agent/new, and the two disagreed: one asked for

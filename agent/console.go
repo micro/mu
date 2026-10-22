@@ -6,6 +6,7 @@ import (
 	"html"
 	"mu/agent/brief"
 	"mu/agent/hello"
+	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
@@ -18,6 +19,10 @@ import (
 
 // ConsoleHandler is the web front door. Nothing runs until a request is sent.
 func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("view") == "new-chat" {
+		newChatHandler(w, r)
+		return
+	}
 	if r.Method == http.MethodPost {
 		TitleHandler(w, r)
 		return
@@ -270,36 +275,19 @@ func RecentConversation(owner, selected string) *thread.Thread {
 	return recent
 }
 
-// chatsPage lists only the signed-in owner's web chats, without resuming one.
+// chatsPage lists personal and shared conversations without resuming one.
 func chatsPage(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
-	var chats []thread.Thread
-	for _, t := range thread.List(acc.ID, 0) {
-		if t.Client == thread.WebClient {
-			chats = append(chats, t)
-		}
-	}
+	chats := inbox.Chats(acc.ID)
 	pager := app.Paginate(r, len(chats), 25)
 	var b strings.Builder
-	b.WriteString(`<h1>Chats</h1>` + app.CollectionControls("", `<a href="/agent/micro?new=1">New chat</a>`, ""))
+	b.WriteString(`<h1>Chats</h1>` + app.CollectionControls("", `<a class="btn" href="/agent?view=new-chat">New chat</a>`, ""))
 	if len(chats) == 0 {
-		b.WriteString(`<p class="text-muted">No chats yet. Start a chat with Micro.</p>`)
+		b.WriteString(`<p class="text-muted">Start a conversation with an assistant or your group.</p>`)
 	} else {
-		b.WriteString(`<div class="collection-list">`)
-		for _, t := range chats[pager.From:pager.To] {
-			name := "Micro"
-			if a := For(acc.ID, t.Agent); a != nil {
-				name = a.Name
-			} else if a := Platform(t.Agent); a != nil {
-				name = a.Name
-			}
-			title := t.Subject
-			if title == "" {
-				title = "Chat with " + name
-			}
-			target := Path(acc.ID, t.Agent) + "?session=" + url.QueryEscape(t.ID)
-			b.WriteString(`<a class="collection-item" href="` + html.EscapeString(target) + `"><span>` + html.EscapeString(title) + `<span class="metadata-row text-muted">` + html.EscapeString(name) + `</span></span><time class="text-muted" datetime="` + t.Updated.Format(time.RFC3339) + `">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</time></a>`)
+		for _, c := range chats[pager.From:pager.To] {
+			b.WriteString(inbox.ChatRow(c))
 		}
-		b.WriteString(`</div>` + pager.Nav("/agent?view=chats"))
+		b.WriteString(pager.Nav("/agent?view=chats"))
 	}
 	fmt.Fprint(w, app.ConsoleHTML("Chats", b.String(), acc, r.URL.RequestURI()))
 }

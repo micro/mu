@@ -1309,7 +1309,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	about := aboutRoom(roomData)
 	if isGroup(roomID) {
 		g, _ := group.Details(groupID(roomID))
-		about = `<a class="btn" href="/groups?id=` + g.ID + `&tab=details">Group details</a>`
+		about = `<a class="btn" href="/groups?id=` + g.ID + `&tab=details">` + htmlpkg.EscapeString(g.Name) + `</a>`
 		if g.Encrypted {
 			guestNotice += `<p class="notice">This group uses end-to-end encryption. Read and send messages in your XMPP client; the web cannot decrypt them.</p>`
 			roomData["encrypted"] = true
