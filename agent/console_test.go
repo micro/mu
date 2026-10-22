@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
@@ -36,6 +37,16 @@ func TestAssistantHomeOwnsWebThreads(t *testing.T) {
 	list := request("/agent?view=chats")
 	if list.Code != 200 || !strings.Contains(list.Body.String(), "My saved conversation") || !strings.Contains(list.Body.String(), "session="+chat.ID) || strings.Contains(list.Body.String(), "Private mail") || strings.Contains(list.Body.String(), "Foreign conversation") {
 		t.Fatal("chat list missing or leaked another owner/channel")
+	}
+	for _, link := range []string{`href="/agents"`, `href="/agent?view=chats" aria-current="page"`, `href="/agents?view=scheduled"`, `href="/work"`} {
+		if !strings.Contains(list.Body.String(), link) {
+			t.Fatalf("Chats missing shared navigation: %s", link)
+		}
+	}
+	if file := os.Getenv("CHAT_NAV_PREVIEW"); file != "" {
+		if err := os.WriteFile(file, list.Body.Bytes(), 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	w := request("/agent/micro?session=" + chat.ID)
 	body := w.Body.String()
