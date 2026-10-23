@@ -3,7 +3,6 @@ package work
 import (
 	"fmt"
 	"html"
-	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
@@ -207,73 +206,6 @@ func occurrenceDelivery(t *tasks.Task) string {
 	return t.Occurrence.Delivery
 }
 
-// ScheduledCard reads local records only. Content is the primary destination;
-// run history and configuration remain separate, secondary links.
-func ScheduledCard(owner string) string {
-	var b strings.Builder
-	b.WriteString(`<div class="compact-list">`)
-	loc := time.UTC
-	if acc, err := auth.GetAccount(owner); err == nil {
-		if l, err := time.LoadLocation(acc.Zone); err == nil {
-			loc = l
-		}
-	}
-	for _, item := range []struct {
-		title, anchor string
-		schedule      *events.Event
-	}{
-		{"Morning Brief", "brief", agent.Brief(owner)},
-		{"Daily Checkin", "checkin", agent.Checkin(owner)},
-		{"Take a break", "moment", agent.Moment(owner)},
-		{"Evening Digest", "research", agent.Research(owner)},
-	} {
-		if item.anchor == "moment" && (item.schedule == nil || item.schedule.Paused) {
-			continue
-		}
-		href := "/agents?view=scheduled&event=" + item.anchor
-		status := "Not scheduled"
-		history := ""
-		if e := item.schedule; e != nil {
-			if e.Paused {
-				status = "Paused"
-			} else {
-				status = "Next: " + e.When.In(loc).Format("Mon 2 Jan, 15:04")
-			}
-			runs := tasks.Occurrences(owner, e.ID)
-			history = `<a href="/work?schedule=` + url.QueryEscape(e.ID) + `">History</a>`
-			for _, t := range runs {
-				if t.Occurrence.State != "done" || t.Occurrence.Failure != "" || strings.TrimSpace(t.Result) == "" {
-					continue
-				}
-				href = "/work?id=" + url.QueryEscape(t.ID)
-				if th := thread.ByRef(owner, t.Occurrence.MessageID); t.Occurrence.MessageID != "" && th != nil {
-					href = "/inbox?id=" + url.QueryEscape(th.ID)
-					if e.Kind == "checkin" {
-						href = agent.ScheduledNotificationURL("checkin", href)
-					}
-				}
-				status = "Ready · " + t.Due.In(loc).Format("Mon 2 Jan, 15:04")
-				break
-			}
-			if len(runs) > 0 {
-				latest := runs[0]
-				_, label := occurrenceStatus(latest, e)
-				if latest.Occurrence.State != "done" || latest.Occurrence.Failure != "" || strings.TrimSpace(latest.Result) == "" {
-					status += " · " + label
-					if strings.HasPrefix(href, "/agents") {
-						href = "/work?id=" + url.QueryEscape(latest.ID)
-					}
-				}
-			}
-		}
-		b.WriteString(`<div class="compact-list-item"><div><a href="` + html.EscapeString(href) + `">` + item.title + `</a><div class="text-muted text-sm">` + html.EscapeString(status) + `</div></div><small class="event-date">` + history + `</small></div>`)
-	}
-	b.WriteString(`</div>`)
-	return app.PreviewCard("home-scheduled-card", "Scheduled", "/agents?view=scheduled", b.String())
-}
-
-// ScheduledAttention returns only the latest failed or blocked run per schedule.
-// Superseded failures and canceled runs do not create stale Home actions.
 func ScheduledAttention(owner string) []*tasks.Task {
 	var out []*tasks.Task
 	for _, g := range scheduledGroups(owner) {

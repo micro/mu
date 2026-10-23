@@ -6,7 +6,6 @@ import (
 	"html"
 	"mu/agent/brief"
 	"mu/agent/hello"
-	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
@@ -19,6 +18,10 @@ import (
 
 // ConsoleHandler is the web front door. Nothing runs until a request is sent.
 func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("view") == "activity-status" {
+		conversationActivityHandler(w, r)
+		return
+	}
 	if r.URL.Query().Get("view") == "new-chat" {
 		newChatHandler(w, r)
 		return
@@ -134,7 +137,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			content = `<div class="ib-from metadata-row"><span class="ib-who-l">` + html.EscapeString(who) + `</span><time class="ib-at" datetime="` + message.At.Format(time.RFC3339) + `" title="` + message.At.Format("2 Jan 2006, 15:04 MST") + `">` + html.EscapeString(app.TimeAgo(message.At)) + `</time></div><div class="message-body">` + content + `</div>`
 			delivery := ""
-			if strings.HasPrefix(message.Ref, "app-build:") {
+			if strings.HasPrefix(message.Ref, "app-build:") || strings.HasPrefix(message.Ref, "task-result:") {
 				delivery = ` data-delivery-id="` + html.EscapeString(message.Ref) + `"`
 			}
 			initial += `<section class="turn"` + delivery + `><div class="` + class + `">` + content + `</div></section>`
@@ -214,7 +217,7 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 			attached = `<section class="record-card"><h2>Brief</h2><p>` + html.EscapeString(entry.Text) + `</p><a href="/brief?id=` + entry.ID() + `">Sources and details</a></section>`
 		}
 	}
-	toolbar := `<div class="assistant-toolbar form-actions" role="group" aria-label="Chat actions"><a class="btn" href="` + html.EscapeString(basePath) + `?new=1">New chat</a><a class="btn" href="/agent?view=chats">All chats</a>`
+	toolbar := `<div class="assistant-toolbar form-actions" role="group" aria-label="Chat actions"><a class="btn" href="` + html.EscapeString(basePath) + `?new=1">New chat</a><a class="btn" href="/agent?view=chats&amp;agent=` + url.QueryEscape(SlugFor(owner, selected)) + `">` + html.EscapeString(agentName) + ` chats</a>`
 	saved, token := false, ""
 	if t := thread.Get(owner, session); t != nil {
 		saved = t.Saved
@@ -224,6 +227,9 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 	}
 	toolbar += app.ConversationSave(session, saved, token, basePath+"?session="+url.QueryEscape(session))
 	toolbar += `</div>`
+	if session != "" {
+		attached += app.ConversationActivity("/agent?view=activity-status&thread=" + url.QueryEscape(session))
+	}
 	placeholder, button := "What do you need?", "Send"
 	if t := thread.Get(owner, session); t != nil && strings.HasPrefix(t.Key, "checkin:") {
 		first := true
@@ -273,21 +279,4 @@ func RecentConversation(owner, selected string) *thread.Thread {
 		}
 	}
 	return recent
-}
-
-// chatsPage lists personal and shared conversations without resuming one.
-func chatsPage(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
-	chats := inbox.Chats(acc.ID)
-	pager := app.Paginate(r, len(chats), 25)
-	var b strings.Builder
-	b.WriteString(`<h1>Chats</h1>` + app.PageControls("", app.AgentViews("chats"), `<div class="form-actions"><a class="btn" href="/agent?view=new-chat">New chat</a></div>`))
-	if len(chats) == 0 {
-		b.WriteString(`<p class="text-muted">Start a conversation with an assistant or your group.</p>`)
-	} else {
-		for _, c := range chats[pager.From:pager.To] {
-			b.WriteString(inbox.ChatRow(c))
-		}
-		b.WriteString(pager.Nav("/agent?view=chats"))
-	}
-	fmt.Fprint(w, app.ConsoleHTML("Chats", b.String(), acc, r.URL.RequestURI()))
 }

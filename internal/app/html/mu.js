@@ -367,6 +367,7 @@ function remember(title){
  let heading=conversation.querySelector('.assistant-thread-title');
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
  heading.replaceChildren();const titleButton=document.createElement('button');titleButton.type='button';titleButton.dataset.editThread='';titleButton.title='Rename thread';titleButton.textContent=title||'Thread';heading.append(titleButton);
+ let activity=conversation.querySelector('[data-conversation-activity]');if(!activity){activity=document.createElement('div');activity.setAttribute('aria-live','polite');log.before(activity);}activity.dataset.conversationActivity='/agent?view=activity-status&thread='+encodeURIComponent(thread);
 
 }
 conversation.addEventListener('click',event=>{
@@ -454,7 +455,10 @@ resumePending();
 // interactive widgets, selection, or the draft being composed.
 let deliveryPolling=false;
 async function checkDeliveries(){
- if(deliveryPolling||busy||navigating||!thread||document.hidden||!navigator.onLine||!log.querySelector("[data-build-id]"))return;
+ if(deliveryPolling||busy||navigating||!thread||document.hidden||!navigator.onLine)return;
+ const activity=conversation.querySelector('[data-conversation-activity]'),expected=JSON.parse(activity?.dataset.deliveries||'[]');
+ const observed=new Set(Array.from(log.querySelectorAll('[data-delivery-id]')).map(n=>n.dataset.deliveryId));
+ if(!log.querySelector("[data-build-id]")&&activity?.dataset.workPending!=='true'&&!expected.some(id=>!observed.has(id)))return;
  const version=viewVersion,target=thread;deliveryPolling=true;
  try{
   const response=await fetch((form.dataset.path||'/')+'?session='+encodeURIComponent(target),{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:AbortSignal.timeout(15000)});
@@ -496,6 +500,7 @@ async function navigateThread(url,push=true){
   const toolbar=conversation.querySelector('.assistant-toolbar'),nextToolbar=page.querySelector('.assistant-toolbar');if(toolbar&&nextToolbar)toolbar.replaceWith(nextToolbar);
   conversation.querySelector('.assistant-thread-title')?.remove();
   const heading=page.querySelector('.assistant-thread-title');if(heading)log.before(heading);
+  conversation.querySelector('[data-conversation-activity]')?.remove();const activity=page.querySelector('[data-conversation-activity]');if(activity)log.before(activity);
   const welcome=conversation.querySelector('.prompt-welcome');welcome.replaceChildren(...page.querySelector('.prompt-welcome').childNodes);
   conversation.classList.toggle('is-active',!!thread);status.textContent='';
   form.dispatchEvent(new CustomEvent('thread-changed',{detail:{thread}}));sizeInput();
@@ -2171,3 +2176,24 @@ window.addEventListener('pagehide', () => { currentRoomId=null; if(roomWs){const
 })();
 
 }
+
+// One live work projection for personal chats, Inbox and shared rooms.
+(function(){
+ const inFlight=new WeakSet();
+ async function refresh(root){
+  if(inFlight.has(root)||document.hidden||!navigator.onLine)return;
+  const source=root.dataset.conversationActivity;inFlight.add(root);
+  try{
+   const response=await fetch(source,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+   if(!root.isConnected||root.dataset.conversationActivity!==source)return;
+   if(response.status===401||response.status===403||response.status===404){root.replaceChildren();root.dataset.workPending='false';root.dataset.deliveries='[]';delete root.dataset.rendered;return;}
+   if(!response.ok)return;
+   const result=await response.json();
+   if(!root.isConnected||root.dataset.conversationActivity!==source)return;
+   root.dataset.workPending=String(result.pending===true);root.dataset.deliveries=JSON.stringify(result.deliveries||[]);
+   if(root.dataset.rendered!==result.html&&!root.contains(document.activeElement)){const expanded=!!root.querySelector('details[open]');root.innerHTML=result.html;root.dataset.rendered=result.html;if(expanded&&root.querySelector('details'))root.querySelector('details').open=true;}
+  }catch{}finally{inFlight.delete(root);}
+ }
+ function update(){document.querySelectorAll('[data-conversation-activity]').forEach(refresh);}
+ update();setInterval(update,5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)update();});
+})();

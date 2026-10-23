@@ -275,30 +275,12 @@ func assignee(t *tasks.Task) string {
 	}
 	return agent.NameOf(t.Owner, t.Agent)
 }
-func badge(status string) string {
-	return `<span class="status-badge status-` + html.EscapeString(status) + `">` + state(status) + `</span>`
-}
-func state(status string) string {
-	switch status {
-	case tasks.StatusTodo:
-		return "Queued"
-	case tasks.StatusDoing:
-		return "Running"
-	case tasks.StatusBlocked:
-		return "Needs input"
-	case tasks.StatusFailed:
-		return "Failed"
-	case tasks.StatusDone:
-		return "Done"
-	case tasks.StatusCanceled:
-		return "Stopped"
-	}
-	return status
-}
+func badge(status string) string { return app.WorkBadge(status) }
+func state(status string) string { return app.WorkState(status) }
 func workDetail(t *tasks.Task, csrf string) string {
 	var b strings.Builder
 	if t.Thread != "" {
-		b.WriteString(`<div class="section-actions"><a href="/inbox?id=` + url.QueryEscape(t.Thread) + `">Conversation</a></div>`)
+		b.WriteString(`<div class="section-actions"><a href="/?session=` + url.QueryEscape(t.Thread) + `">Conversation</a></div>`)
 	}
 	b.WriteString(`<h2>` + html.EscapeString(t.Title) + `</h2><div class="metadata-row">` + badge(t.Status) + `<span>` + html.EscapeString(assignee(t)) + `</span><span>Updated ` + app.TimeAgo(t.Updated) + `</span></div>`)
 	if t.Result != "" {
@@ -386,6 +368,6 @@ func stepHTML(steps []tasks.Step) string {
 const workPollJS = `<script>(function(){var root=document.getElementById('work-detail');var count=0;async function poll(){if(!root||!root.isConnected||++count>360)return;try{var r=await fetch(location.pathname+location.search,{headers:{Accept:'application/json'}});if(!r.ok)return;var d=await r.json();var rendered=!root.contains(document.activeElement)&&!root.querySelector('details[open]');if(rendered)root.innerHTML=d.html;if(rendered&&d.status!=='doing')return;}catch(e){}setTimeout(poll,3000);}setTimeout(poll,3000);})();</script>`
 
 func respond(w http.ResponseWriter, r *http.Request, response app.Response) {
-	response.HTML = `<div class="page-stack">` + app.AgentViews("work") + `<div>` + response.HTML + `</div></div>`
+	response.HTML = `<div class="page-stack">` + app.AgentViews("agents") + `<div class="form-actions"><a href="/home?view=activity">Recent activity</a></div>` + `<div>` + response.HTML + `</div></div>`
 	app.Respond(w, r, response)
 }

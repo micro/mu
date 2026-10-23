@@ -108,6 +108,7 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 		b.WriteString(`<h2 class="ib-title">` + html.EscapeString(subject) + `</h2>`)
 	}
 	b.WriteString(partyLine(accountID, t))
+	b.WriteString(app.ConversationActivity("/agent?view=activity-status&thread=" + url.QueryEscape(t.ID)))
 	if trimmed {
 		b.WriteString(`<p class="ib-trimmed">Showing the most recent ` +
 			strconv.Itoa(MessagesShown) + `. ` +
