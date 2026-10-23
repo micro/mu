@@ -35,7 +35,6 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(usage.CSS)
 
 	if r.Method == http.MethodPost {
 		if !auth.ValidCSRF(r) {

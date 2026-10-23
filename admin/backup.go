@@ -61,7 +61,6 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 	snaps := backup.List()
 
 	var sb strings.Builder
-	sb.WriteString(usage.CSS)
 	sb.WriteString(notice)
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)

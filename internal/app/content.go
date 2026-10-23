@@ -112,7 +112,7 @@ func renderMenu(actions []Action) string {
 		case a.Confirm != "":
 			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){location.reload()})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		default:
-			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="var el=this;fetch('%s',{method:'POST'}).then(function(){el.textContent='Done';el.style.color='#1a7f37'});event.stopPropagation();return false;">%s</a>`, style, a.URL, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="var el=this;fetch('%s',{method:'POST'}).then(function(){el.textContent='Done';el.classList.add('text-success')});event.stopPropagation();return false;">%s</a>`, style, a.URL, a.Label))
 		}
 	}
 

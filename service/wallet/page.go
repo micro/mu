@@ -108,7 +108,7 @@ if(!data)return;
 try{var qr=qrcode(0,'M');qr.addData(data);qr.make();q.innerHTML=qr.createImgTag(4,8);}catch(e){}})();
 function cwCopy(el){var a=el.getAttribute('data-addr');function done(){var c=document.getElementById('cw-copied');if(c){c.hidden=false;setTimeout(function(){c.hidden=true;},1800);}}
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(a).then(done).catch(function(){cwFallback(a,done);});}else{cwFallback(a,done);}}
-function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(t);}
+function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t.className='clipboard-fallback';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(t);}
 </script>`,
 		html.EscapeString(human), unreadable, net,
 		html.EscapeString(bw.Address), html.EscapeString(bw.Address),

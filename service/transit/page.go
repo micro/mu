@@ -195,7 +195,7 @@ const pageScript = `<script>
      button.addEventListener('click',function(){
       out.dataset.selectedStop=s.id;button.disabled=true;var box=document.createElement('div');box.className='xarr';box.textContent='Loading arrivals…';row.appendChild(box);
       fetch('/transit?stop='+encodeURIComponent(s.id)).then(function(r){if(!r.ok)throw Error();return r.json();}).then(function(a){
-       box.textContent=a.arrivals&&a.arrivals.length?a.arrivals.map(function(x){return x.line+' to '+x.to+' — '+x['in'];}).join('\n'):'Nothing due.';box.style.whiteSpace='pre-line';
+       box.textContent=a.arrivals&&a.arrivals.length?a.arrivals.map(function(x){return x.line+' to '+x.to+' — '+x['in'];}).join('\n'):'Nothing due.';box.classList.add('pre-line');
       }).catch(function(){box.textContent='Could not load arrivals. Try again.';button.disabled=false;});
      });
     });
@@ -206,7 +206,7 @@ const pageScript = `<script>
   if(shared.get('stop')){
    var selected=shared.get('stop');out.dataset.selectedStop=selected;
    var box=document.createElement('div');box.className='xarr';box.textContent='Loading shared stop…';out.appendChild(box);
-   fetch('/transit?stop='+encodeURIComponent(selected)).then(function(r){if(!r.ok)throw Error();return r.json();}).then(function(a){box.textContent=(a.arrivals||[]).map(function(x){return x.line+' to '+x.to+' — '+x['in'];}).join('\n')||'Nothing due.';box.style.whiteSpace='pre-line';}).catch(function(){box.textContent='Could not load this stop.';});
+   fetch('/transit?stop='+encodeURIComponent(selected)).then(function(r){if(!r.ok)throw Error();return r.json();}).then(function(a){box.textContent=(a.arrivals||[]).map(function(x){return x.line+' to '+x.to+' — '+x['in'];}).join('\n')||'Nothing due.';box.classList.add('pre-line');}).catch(function(){box.textContent='Could not load this stop.';});
   }
   form.addEventListener('submit',function(e){e.preventDefault();var q=document.getElementById('xquery').value.trim();if(!q)return;out.textContent='Searching…';load('q='+encodeURIComponent(q),++request);});
   near.addEventListener('click',function(){

@@ -515,10 +515,8 @@ func sandboxPage(slug, title string, widget ...bool) string {
 	// browser which one to use. Two words, no media query, and it follows the
 	// reader rather than a guess made here.
 	b.WriteString(`<link rel="stylesheet" href="/mu.css">`)
-	b.WriteString(`<style>html,body{margin:0;padding:0;height:100%;background:Canvas;color-scheme:light dark}
-body{display:flex;flex-direction:column}
-#app-frame{display:block;width:100%;flex:1;min-height:0;border:0;background:Canvas}</style>`)
-	b.WriteString(`</head><body>`)
+
+	b.WriteString(`</head><body class="app-frame-page">`)
 	b.WriteString(`<div id="app-agent-access" class="access-notice section-actions" hidden><span>Agent access allowed for this page.</span><button id="app-agent-revoke" class="btn btn-quiet" type="button">Revoke access</button></div>`)
 	// The app itself, not /run. That word is retired — see embed.go — and the
 	// document is at the app's own address with raw=1.

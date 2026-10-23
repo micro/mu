@@ -482,7 +482,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		title, form := "Import image", uploadForm(r)
 		if r.URL.Query().Get("generate") == "1" {
 			title = "Generate image"
-			form = `<form class="form record-editor" data-image-generate><label for="img-prompt">Describe the image</label><textarea id="img-prompt" name="prompt" rows="6" required placeholder="A cat astronaut drifting past Saturn, watercolour"></textarea><div class="form-actions"><button id="img-go" type="submit">Generate</button><span id="img-status" class="text-sm text-muted" role="status"></span></div><div id="img-result" aria-live="polite"></div></form>`
+			form = `<form class="form record-editor" data-image-generate><label for="img-prompt">Describe the image</label><div class="composer"><textarea id="img-prompt" name="prompt" rows="3" required placeholder="A cat astronaut drifting past Saturn, watercolour"></textarea><button id="img-go" type="submit">Generate</button></div><span id="img-status" class="text-sm text-muted" role="status"></span><div id="img-result" aria-live="polite"></div></form>`
 		}
 		app.Respond(w, r, app.Response{Title: title, HTML: app.EditorPage("/images", "All images", form)})
 		return

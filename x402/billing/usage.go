@@ -45,7 +45,7 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 	win := usage.WindowFor(r.URL.Query().Get("window"))
 
 	var sb strings.Builder
-	sb.WriteString(`<p><a href="/account">Back to Account</a></p>` + `<div class="page-col">` + usage.CSS)
+	sb.WriteString(`<p><a href="/account">Back to Account</a></p>` + `<div class="page-col">`)
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
 	usage.Stat(&sb, "Last hour", usage.TotalForOver(account, usage.Minute, 60))

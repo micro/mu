@@ -918,7 +918,7 @@ function runSavedSearch(type, q, near, nearLat, nearLon, radius, sortBy) {
 function filterByType(btn) {
   var cat = btn.dataset.filter || '';
   document.querySelectorAll('.place-card').forEach(function(c) {
-    c.style.display = (!cat || c.dataset.category === cat) ? '' : 'none';
+    c.hidden = !!cat && c.dataset.category !== cat;
   });
   document.querySelectorAll('.type-filter-btn').forEach(function(b) {
     b.classList.toggle('active', b === btn);

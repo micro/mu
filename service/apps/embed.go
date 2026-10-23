@@ -51,7 +51,7 @@ func EmbedHTML(base, slug, name string) string {
 	src := strings.TrimRight(base, "/") + "/apps/" + slug + "?raw=1"
 	return `<iframe src="` + html.EscapeString(src) + `" ` +
 		`title="` + html.EscapeString(name) + `" ` +
-		`width="100%" height="480" style="border:0" ` +
+		`width="100%" height="480" class="embedded-app" ` +
 		`sandbox="allow-scripts allow-forms allow-popups allow-modals" ` +
 		`loading="lazy"></iframe>`
 }

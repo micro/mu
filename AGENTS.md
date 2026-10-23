@@ -707,5 +707,8 @@ row. Short forms keep the shared form width; document/code editors opt into
 `document-editor`. Lookup tools use `lookup-form`; results retain the right
 visualisation for their content. Do not turn every list, search or form into a
 card. Use the shared spacing scale and component gaps instead of adding local
-margin utilities. Mobile compacts spacing while coarse-pointer controls retain
+margin utilities. Search bars and prompt composers share one bordered input/action row,
+with the submit button inside. Standard buttons and single-line inputs use the
+shared compact control tokens on desktop and touch screens. Keep cosmetic styles
+in mu.css; use semantic classes and hidden for state, not inline style attributes. Mobile compacts spacing while coarse-pointer controls retain
 comfortable touch targets. Home shortcuts sort by their displayed labels.
