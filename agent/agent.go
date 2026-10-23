@@ -152,6 +152,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if r.URL.Query().Get("view") == "new-chat" {
+		newChatHandler(w, r)
+		return
+	}
 	if r.URL.Query().Get("view") == "activity-status" {
 		conversationActivityHandler(w, r)
 		return

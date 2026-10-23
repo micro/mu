@@ -6,6 +6,7 @@ import (
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/thread"
 	"net/http"
 	"net/url"
 	"sort"
@@ -31,7 +32,21 @@ func activityPage(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 // Scheduled failures remain visible when no notification was delivered.
 func recentActivity(owner string) []inbox.Chat {
 	rows := agent.RecentActivity(owner, true)
+	index := map[string]int{}
+	for i, row := range rows {
+		index[row.ID] = i
+	}
 	for _, t := range work.ScheduledAttention(owner) {
+		if th := thread.ByRef(owner, t.Occurrence.MessageID); t.Occurrence.MessageID != "" && th != nil {
+			if i, ok := index[th.ID]; ok {
+				rows[i].Status = t.Status
+				if t.Updated.After(rows[i].Updated) {
+					rows[i].Updated = t.Updated
+					rows[i].Preview = inbox.PreviewText(t.Occurrence.Failure)
+				}
+				continue
+			}
+		}
 		rows = append(rows, inbox.Chat{ID: "work:" + t.ID, Title: t.Title, Context: "Scheduled", URL: "/work?id=" + url.QueryEscape(t.ID), Status: t.Status, Updated: t.Updated, Preview: inbox.PreviewText(t.Occurrence.Failure)})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {

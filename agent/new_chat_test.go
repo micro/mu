@@ -32,7 +32,7 @@ func TestNewSharedChatAccess(t *testing.T) {
 			r.Header.Set("X-CSRF-Token", auth.CSRFToken(r))
 		}
 		w := httptest.NewRecorder()
-		ConsoleHandler(w, r)
+		Handler(w, r)
 		return w
 	}
 	if w := send(g.ID, false); w.Code != 403 {

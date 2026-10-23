@@ -15,6 +15,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/internal/group"
 	"mu/internal/origin"
 	"mu/internal/thread"
 	"mu/internal/version"
@@ -319,7 +320,11 @@ func finishTask(r request, answer string, steps []tasks.Step, err error) {
 	if from == "" {
 		from = agent.DefaultName()
 	}
-	reply += "\n\n[View work](" + origin.Self() + "/work?id=" + url.QueryEscape(r.ID) + ")"
+	// Group outcomes are delivered into the shared chat. Personal work-detail
+	// URLs cannot be opened with a member's own account.
+	if _, shared := group.FromScope(r.Account); !shared {
+		reply += "\n\n[View work](" + origin.Self() + "/work?id=" + url.QueryEscape(r.ID) + ")"
+	}
 	t, saveErr := tasks.RecordOutcome(r.Account, r.ID, status, result, reply, from, steps)
 	if saveErr != nil {
 		app.Log("work", "saving task outcome %s: %v", r.ID, saveErr)
