@@ -232,7 +232,7 @@ func conversationActivityHandler(w http.ResponseWriter, r *http.Request) {
 		if t.Open() || count == 1 {
 			label = app.WorkState(t.Status)
 		}
-		pending = pending || t.Status == tasks.StatusDoing || t.Status == tasks.StatusTodo
+		pending = pending || t.Status == tasks.StatusDoing || t.Status == tasks.StatusTodo || t.Delivery != nil
 		b.WriteString(`<div class="collection-item"><div class="section-stack"><div class="metadata-row">` + app.WorkBadge(t.Status) + `<span>` + html.EscapeString(t.Title) + `</span></div>`)
 		if t.Result != "" {
 			b.WriteString(`<p class="text-muted">` + html.EscapeString(inbox.PreviewText(t.Result)) + `</p>`)
@@ -246,5 +246,11 @@ func conversationActivityHandler(w http.ResponseWriter, r *http.Request) {
 	if count > 0 {
 		body = `<details><summary>Work · ` + html.EscapeString(label) + `</summary><div class="collection-list">` + body + `</div></details>`
 	}
-	app.RespondJSON(w, map[string]any{"html": body, "pending": pending})
+	deliveries := []string{}
+	for _, m := range thread.Messages(owner, id, 100) {
+		if strings.HasPrefix(m.Ref, "task-result:") {
+			deliveries = append(deliveries, m.Ref)
+		}
+	}
+	app.RespondJSON(w, map[string]any{"html": body, "pending": pending, "deliveries": deliveries})
 }

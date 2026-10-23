@@ -170,4 +170,36 @@ func TestActivityFlowOwnershipAndGrouping(t *testing.T) {
 			t.Fatal("old outcome replaced newer message", c.Preview)
 		}
 	}
+	// Terminal status alone does not mean the final message has arrived.
+	awaiting, err := tasks.RecordOutcome(owner, task.ID, tasks.StatusDone, "Final outcome", "Final outcome", "Micro", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var poll struct {
+		Pending    bool     `json:"pending"`
+		Deliveries []string `json:"deliveries"`
+	}
+	w := request(agent.Handler, statusPath, session.Token)
+	if err := json.Unmarshal(w.Body.Bytes(), &poll); err != nil || !poll.Pending {
+		t.Fatal("undelivered outcome stopped polling", err)
+	}
+	ref := "task-result:" + awaiting.Delivery.ID
+	thread.Add(thread.Message{Account: owner, Thread: th.ID, Role: thread.RoleAgent, Text: "Final outcome", Ref: ref})
+	if err := tasks.AcknowledgeDelivery(owner, task.ID, awaiting.Delivery.ID); err != nil {
+		t.Fatal(err)
+	}
+	w = request(agent.Handler, statusPath, session.Token)
+	if err := json.Unmarshal(w.Body.Bytes(), &poll); err != nil || poll.Pending {
+		t.Fatal("terminal delivery kept polling", err)
+	}
+	found = false
+	for _, id := range poll.Deliveries {
+		if id == ref {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("client cannot detect missing terminal output")
+	}
+
 }

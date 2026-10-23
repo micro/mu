@@ -455,7 +455,10 @@ resumePending();
 // interactive widgets, selection, or the draft being composed.
 let deliveryPolling=false;
 async function checkDeliveries(){
- if(deliveryPolling||busy||navigating||!thread||document.hidden||!navigator.onLine||(!log.querySelector("[data-build-id]")&&!conversation.querySelector('[data-conversation-activity][data-has-work="true"]')))return;
+ if(deliveryPolling||busy||navigating||!thread||document.hidden||!navigator.onLine)return;
+ const activity=conversation.querySelector('[data-conversation-activity]'),expected=JSON.parse(activity?.dataset.deliveries||'[]');
+ const observed=new Set(Array.from(log.querySelectorAll('[data-delivery-id]')).map(n=>n.dataset.deliveryId));
+ if(!log.querySelector("[data-build-id]")&&activity?.dataset.workPending!=='true'&&!expected.some(id=>!observed.has(id)))return;
  const version=viewVersion,target=thread;deliveryPolling=true;
  try{
   const response=await fetch((form.dataset.path||'/')+'?session='+encodeURIComponent(target),{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:AbortSignal.timeout(15000)});
@@ -2183,11 +2186,11 @@ window.addEventListener('pagehide', () => { currentRoomId=null; if(roomWs){const
   try{
    const response=await fetch(source,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
    if(!root.isConnected||root.dataset.conversationActivity!==source)return;
-   if(response.status===401||response.status===403||response.status===404){root.replaceChildren();root.dataset.hasWork='false';delete root.dataset.rendered;return;}
+   if(response.status===401||response.status===403||response.status===404){root.replaceChildren();root.dataset.workPending='false';root.dataset.deliveries='[]';delete root.dataset.rendered;return;}
    if(!response.ok)return;
    const result=await response.json();
    if(!root.isConnected||root.dataset.conversationActivity!==source)return;
-   root.dataset.hasWork=String(!!result.html);
+   root.dataset.workPending=String(result.pending===true);root.dataset.deliveries=JSON.stringify(result.deliveries||[]);
    if(root.dataset.rendered!==result.html&&!root.contains(document.activeElement)){const expanded=!!root.querySelector('details[open]');root.innerHTML=result.html;root.dataset.rendered=result.html;if(expanded&&root.querySelector('details'))root.querySelector('details').open=true;}
   }catch{}finally{inFlight.delete(root);}
  }
