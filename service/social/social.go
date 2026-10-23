@@ -667,7 +667,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
     ta.addEventListener('input',function(){
       var n=ta.value.length;
       cc.textContent=n+'/500';
-      cc.style.color=n>500?'red':'#888';
+      cc.classList.toggle('text-error',n>500);cc.classList.toggle('text-muted',n<=500);
     });
   </script>
 </div>`, p.ID))
@@ -932,7 +932,7 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
     ta.addEventListener('input',function(){
       var n=ta.value.length;
       cc.textContent=n+'/500';
-      cc.style.color=n>500?'red':'#888';
+      cc.classList.toggle('text-error',n>500);cc.classList.toggle('text-muted',n<=500);
     });
   </script>
 </div>`)
@@ -1061,7 +1061,7 @@ func renderLinkCard(rawURL string) string {
 		// than once per reader, and the card stops depending on whether that
 		// CDN, or the reader's blocker, feels like allowing a cross-origin
 		// embed today. See internal/imageproxy.
-		sb.WriteString(fmt.Sprintf(`<div class="w-full bg-soft"><img src="%s" class="so-image" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`, htmlpkg.EscapeString(imageproxy.URL(md.Image))))
+		sb.WriteString(fmt.Sprintf(`<div class="w-full bg-soft"><img src="%s" class="so-image" loading="lazy" onerror="this.parentElement.hidden=true"></div>`, htmlpkg.EscapeString(imageproxy.URL(md.Image))))
 	}
 
 	sb.WriteString(`<div class="so-pad">`)

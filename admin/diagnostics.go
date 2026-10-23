@@ -53,11 +53,11 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	if errors == 0 && warnings == 0 {
 		b.WriteString(`<div class="card edge good"><h3 class="text-success">All systems operational</h3></div>`)
 	} else {
-		color := "#f39c12"
+		state := "warning"
 		if errors > 0 {
-			color = "#e74c3c"
+			state = "bad"
 		}
-		b.WriteString(fmt.Sprintf(`<div class="card edge" style="border-left-color:%s"><h3 style="color:%s">%d issue(s) detected</h3></div>`, color, color, errors+warnings))
+		b.WriteString(fmt.Sprintf(`<div class="card edge %s"><h3 class="text-%s">%d issue(s) detected</h3></div>`, state, map[string]string{"warning": "warning", "bad": "error"}[state], errors+warnings))
 	}
 
 	b.WriteString(renderChecks(checks))
@@ -87,19 +87,19 @@ func renderChecks(checks []healthCheck) string {
 	var b strings.Builder
 	for _, c := range checks {
 		icon := "✓"
-		color := "#27ae60"
+		color := "text-success"
 		if c.Status == "warning" {
 			icon = "⚠"
-			color = "#f39c12"
+			color = "text-warning"
 		} else if c.Status == "error" {
 			icon = "✗"
-			color = "#e74c3c"
+			color = "text-error"
 		}
 
 		b.WriteString(`<div class="card pad-row mb-2">`)
 		b.WriteString(fmt.Sprintf(`<div class="d-flex between items-center">
 			<strong>%s</strong>
-			<span class="text-18" style="color:%s">%s</span>
+			<span class="text-18 %s">%s</span>
 		</div>`, html.EscapeString(c.Name), color, icon))
 		// Escaped, because a Detail is plain text and the interesting ones are
 		// error messages. The federation check reported `starttls refused:
@@ -114,7 +114,7 @@ func renderChecks(checks []healthCheck) string {
 		b.WriteString(fmt.Sprintf(`<p class="text-sm text-secondary mt-1 m-0">%s</p>`,
 			html.EscapeString(c.Detail)))
 		if c.Fix != "" {
-			b.WriteString(fmt.Sprintf(`<p class="text-xs mt-1 m-0" style="color:%s">→ %s</p>`, color, c.Fix))
+			b.WriteString(fmt.Sprintf(`<p class="text-xs mt-1 m-0 %s">→ %s</p>`, color, c.Fix))
 		}
 		b.WriteString(`</div>`)
 	}

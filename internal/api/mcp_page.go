@@ -159,7 +159,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`if(t.params&&t.params.length){`)
 	b.WriteString(`for(var i=0;i<t.params.length;i++){var p=t.params[i];`)
 	b.WriteString(`h+='<div class="mb-2">';`)
-	b.WriteString(`h+='<label class="d-block text-sm mb-1 field-label">'+p.name+(p.required?' <span style=\"color:#e55\">*</span>':'')+'</label>';`)
+	b.WriteString(`h+='<label class="d-block text-sm mb-1 field-label">'+p.name+(p.required?' <span class=\"text-error\">*</span>':'')+'</label>';`)
 	b.WriteString(`h+='<div class="text-xs text-muted mb-1">'+p.description+'</div>';`)
 	b.WriteString(`if(p.type==='string'&&(p.name==='prompt'||p.name==='body'||p.name==='content'||p.name==='message'||p.name==='text')){`)
 	b.WriteString(`h+='<textarea name="'+p.name+'" rows="3" class="form-area text-sm" placeholder="'+p.name+'"></textarea>';`)
@@ -190,13 +190,13 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`.then(function(r){return r.json()})`)
 	b.WriteString(`.then(function(j){`)
 	b.WriteString(`var ms=Date.now()-t0;tm.textContent=ms+'ms';btn.disabled=false;`)
-	b.WriteString(`if(j.error){res.textContent='Error: '+j.error.message;res.style.color='#c00';return;}`)
-	b.WriteString(`res.style.color='';`)
+	b.WriteString(`if(j.error){res.textContent='Error: '+j.error.message;res.classList.add('text-error');return;}`)
+	b.WriteString(`res.classList.remove('text-error');`)
 	b.WriteString(`if(j.result&&j.result.content&&j.result.content.length){`)
 	b.WriteString(`var txt=j.result.content.map(function(c){return c.text||JSON.stringify(c)}).join('\n');`)
 	b.WriteString(`try{var parsed=JSON.parse(txt);res.textContent=JSON.stringify(parsed,null,2)}catch(e){res.textContent=txt}`)
 	b.WriteString(`}else{res.textContent=JSON.stringify(j.result||j,null,2)}`)
-	b.WriteString(`}).catch(function(err){btn.disabled=false;res.textContent='Error: '+err;res.style.color='#c00';});`)
+	b.WriteString(`}).catch(function(err){btn.disabled=false;res.textContent='Error: '+err;res.classList.add('text-error');});`)
 	b.WriteString(`}`)
 	b.WriteString(`</script>`)
 	b.WriteString(`</div>`)
@@ -301,7 +301,7 @@ func mcpToolsHTML() string {
 			for _, p := range t.Params {
 				req := ""
 				if p.Required {
-					req = " <span style=\"color:#e55\">*</span>"
+					req = " <span class=\"text-error\">*</span>"
 				}
 				b.WriteString(fmt.Sprintf(`<tr><td >%s%s</td><td class="text-muted">%s</td><td >%s</td></tr>`,
 					html.EscapeString(p.Name), req,

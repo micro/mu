@@ -499,7 +499,7 @@ func jsString(s string) string {
 // sandboxPage wraps an app in the frame that isolates it.
 func sandboxPage(slug, title string, widget ...bool) string {
 	var b strings.Builder
-	b.WriteString(`<!doctype html><html><head><meta charset="utf-8">`)
+	b.WriteString(`<!doctype html><html class="app-frame-root"><head><meta charset="utf-8">`)
 	b.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">`)
 	b.WriteString(`<title>` + html.EscapeString(title) + `</title>`)
 	// The white flash between the two documents.
@@ -515,10 +515,8 @@ func sandboxPage(slug, title string, widget ...bool) string {
 	// browser which one to use. Two words, no media query, and it follows the
 	// reader rather than a guess made here.
 	b.WriteString(`<link rel="stylesheet" href="/mu.css">`)
-	b.WriteString(`<style>html,body{margin:0;padding:0;height:100%;background:Canvas;color-scheme:light dark}
-body{display:flex;flex-direction:column}
-#app-frame{display:block;width:100%;flex:1;min-height:0;border:0;background:Canvas}</style>`)
-	b.WriteString(`</head><body>`)
+
+	b.WriteString(`</head><body class="app-frame-page">`)
 	b.WriteString(`<div id="app-agent-access" class="access-notice section-actions" hidden><span>Agent access allowed for this page.</span><button id="app-agent-revoke" class="btn btn-quiet" type="button">Revoke access</button></div>`)
 	// The app itself, not /run. That word is retired — see embed.go — and the
 	// document is at the app's own address with raw=1.

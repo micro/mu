@@ -843,10 +843,10 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 					const len = textarea.value.length;
 					if (len < 50) {
 						charCount.textContent = 'Min 50 chars (' + len + ')';
-						charCount.style.color = '#666';
+						charCount.classList.add('text-muted');
 					} else {
 						charCount.textContent = len + ' chars';
-						charCount.style.color = '#666';
+						charCount.classList.add('text-muted');
 					}
 				}
 

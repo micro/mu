@@ -1084,7 +1084,7 @@ if ('serviceWorker' in navigator) {
 }
 }
 
-function muToggleSyslog(id){const row=document.getElementById(id);if(row)row.style.display=row.style.display==='none'?'table-row':'none';}
+function muToggleSyslog(id){const row=document.getElementById(id);if(row)row.hidden=!row.hidden;}
 
 // Service forms use the shared browser script.
 if(typeof document !== "undefined"){
@@ -1177,7 +1177,7 @@ if (typeof document !== 'undefined') {
   const frame = document.getElementById(source.dataset.previewTarget);
   if (!frame) return;
   let timer;
-  const refresh = () => { frame.srcdoc = source.value || '<p style="font:14px system-ui;color:#666;padding:12px">Your app preview appears here.</p>'; };
+  const refresh = () => { frame.srcdoc = source.value || '<link rel="stylesheet" href="/mu.css"><p class="text-muted p-4">Your app preview appears here.</p>'; };
   source.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(refresh,350); });
   refresh();
  });
@@ -1456,7 +1456,7 @@ codeEl.addEventListener('keydown', function(e) {
 function showPreview() {
   var html = codeEl.value;
   if (!html.trim()) return;
-  preview.style.display = '';
+  preview.hidden = false;
   preview.srcdoc = html;
 }
 
@@ -1721,7 +1721,7 @@ if(typeof document !== "undefined" && document.querySelector(".video-embed") && 
     function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60),r=s%60;return m+':'+(r<10?'0':'')+r;}
     audio.addEventListener('click',function(){
       var on=embed.classList.toggle('audio-only');
-      document.getElementById('audioVis').style.display=on?'flex':'none';
+      document.getElementById('audioVis').hidden=!on;
       audio.textContent=on?'▶ Show video':'♫ Audio only';
       audio.setAttribute('aria-pressed',String(on));
       play.classList.toggle('d-none',!on);

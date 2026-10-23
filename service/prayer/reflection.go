@@ -520,7 +520,7 @@ func prayerTimesHTML() string {
       // iOS: needs a user gesture, so ask on tap rather than silently failing.
       var dial=document.getElementById('qibla-dial');
       if(dial){
-        dial.style.cursor='pointer';
+        dial.classList.add('is-clickable');
         if(hint){hint.textContent='Tap the dial to use your compass.';}
         dial.addEventListener('click',function(){
           DeviceOrientationEvent.requestPermission().then(function(p){

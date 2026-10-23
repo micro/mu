@@ -151,7 +151,6 @@ func conversationsCard(owner string) string {
 	if len(chats) == 0 {
 		b.WriteString(`<p class="text-muted">Start a conversation with an assistant or your group.</p>`)
 	}
-	b.WriteString(app.SectionLink("New chat", "/agent?view=new-chat"))
 	return app.PreviewCard("home-conversations", "Chats", "/agent?view=chats", b.String())
 }
 

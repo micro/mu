@@ -442,7 +442,7 @@ func generateNewsHtml() string {
 			if len(post.Image) > 0 {
 				// Served from here, not from the publisher's CDN — see
 				// internal/imageproxy for why.
-				imgTag = fmt.Sprintf(`<img class="cover" src="%s" onerror="this.style.display='none'">`, htmlpkg.EscapeString(imageproxy.URL(post.Image)))
+				imgTag = fmt.Sprintf(`<img class="cover" src="%s" onerror="this.hidden=true">`, htmlpkg.EscapeString(imageproxy.URL(post.Image)))
 			}
 			val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -991,7 +991,7 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 		return fmt.Sprintf(`
 	<div id="%s" class="news">
 	  %s
-	  <a href="%s" rel="noopener noreferrer" target="_blank"><img class="cover" src="%s" onerror="this.style.display='none'">
+	  <a href="%s" rel="noopener noreferrer" target="_blank"><img class="cover" src="%s" onerror="this.hidden=true">
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
@@ -1418,7 +1418,7 @@ func formatSummary(text string) string {
 
 		if isList {
 			// Format as HTML list
-			formatted = append(formatted, "<ul style=\"margin: 10px 0; padding-left: 20px;\">")
+			formatted = append(formatted, "<ul>")
 			for _, line := range lines {
 				trimmed := strings.TrimSpace(line)
 				if trimmed == "" {
@@ -1433,7 +1433,7 @@ func formatSummary(text string) string {
 			formatted = append(formatted, "</ul>")
 		} else {
 			// Regular paragraph
-			formatted = append(formatted, fmt.Sprintf("<p style=\"margin: 10px 0;\">%s</p>", para))
+			formatted = append(formatted, fmt.Sprintf("<p>%s</p>", para))
 		}
 	}
 
@@ -1542,7 +1542,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	// escapes anyway, and the raw one came out of a publisher's markup.
 	imageSection := ""
 	if image != "" {
-		imageSection = fmt.Sprintf(`<img src="%s" class="article-image" onerror="this.style.display='none'">`,
+		imageSection = fmt.Sprintf(`<img src="%s" class="article-image" onerror="this.hidden=true">`,
 			htmlpkg.EscapeString(imageproxy.URL(image)))
 	}
 

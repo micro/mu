@@ -41,7 +41,6 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 	spend := r.URL.Query().Get("tab") == "spend"
 
 	var sb strings.Builder
-	sb.WriteString(usage.CSS)
 	sb.WriteString(`<div class="page-stack">`)
 	sb.WriteString(trafficTabs(spend))
 	if spend {

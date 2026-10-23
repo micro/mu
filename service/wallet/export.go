@@ -147,10 +147,6 @@ func exportedKey(bw *BaseWallet) string {
   MetaMask, Rabby, Coinbase Wallet — as a raw private key on <b>%s</b>.</p>
   <p class="mt-14"><a href="/wallet">Back to your wallet</a></p>
 </div>
-<style>
-.cw-mono{font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222}
-.cw-secret{background:#fff8e6;border-color:#f0dfae}
-.cw-net{font-size:13px;color:#8a5a00;background:#fff8e6;border:1px solid #f0dfae;border-radius:6px;padding:9px 11px;margin:0 0 14px}
-</style>`,
+`,
 		html.EscapeString(bw.Address), html.EscapeString(bw.PrivateKey), html.EscapeString(chainName()))
 }

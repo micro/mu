@@ -210,7 +210,7 @@ func table(sb *strings.Builder, title string, rows []Count, selected string, hre
 			cls += " selected"
 		}
 		// The bar behind the row is the comparison; the number is the fact.
-		inner := fmt.Sprintf(`<span class="traffic-rowbar" style="width:%d%%"></span>`+
+		inner := fmt.Sprintf(`<svg class="traffic-rowbar" aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 100 1"><rect width="%d" height="1"/></svg>`+
 			`<span class="traffic-label">%s</span><span class="traffic-n">%d</span>`,
 			pct, html.EscapeString(row.Key), row.Count)
 		if to != "" {
@@ -228,7 +228,7 @@ func table(sb *strings.Builder, title string, rows []Count, selected string, hre
 		// difference between the caller's total and what the breakdown could
 		// account for, and hiding it is what made the two tables disagree.
 		fmt.Fprintf(sb, `<div class="traffic-row traffic-rest">`+
-			`<span class="traffic-rowbar" style="width:%d%%"></span>`+
+			`<svg class="traffic-rowbar" aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 100 1"><rect width="%d" height="1"/></svg>`+
 			`<span class="traffic-label">not broken down</span>`+
 			`<span class="traffic-n">%d</span></div>`, pct, rest)
 	}
@@ -248,36 +248,3 @@ func Since(t time.Time) string {
 	}
 	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
 }
-
-// CSS is the styling both usage pages share.
-const CSS = `<style>
-.traffic-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px}
-.traffic-stat{display:flex;flex-direction:column;gap:2px}
-.traffic-stat-n{font-size:24px;font-weight: 550;font-variant-numeric:tabular-nums}
-.traffic-stat-l{font-size:12px;color:var(--text-muted)}
-.traffic-tabs{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
-.traffic-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
-.traffic-tab.active{color:var(--text-primary);font-weight: 550}
-.traffic-chart svg{width:100%;height:160px;display:block}
-.traffic-bar{fill:var(--accent-color,#000);opacity:.75}
-.traffic-bar:hover{opacity:1}
-.traffic-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px}
-.traffic-drill{margin-top:16px}
-.traffic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--section-gap)}
-.traffic-rows{display:flex;flex-direction:column}
-.traffic-row{position:relative;display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:3px;font-size:13px;color:inherit;text-decoration:none}
-.traffic-rowbar{position:absolute;left:0;top:0;bottom:0;background:var(--hover-background);border-radius:3px;z-index:0}
-.traffic-label{position:relative;z-index:1;flex:1;min-width:0;word-break:break-all}
-.traffic-n{position:relative;z-index:1;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-a.traffic-row{cursor:pointer}
-a.traffic-row:hover .traffic-rowbar,a.traffic-row:focus-visible .traffic-rowbar{background:var(--card-border)}
-a.traffic-row:hover .traffic-label{text-decoration:underline}
-a.traffic-row:focus-visible{outline:2px solid var(--text-primary);outline-offset:-2px}
-.traffic-row.selected{font-weight: 550}
-.traffic-row.selected .traffic-rowbar{background:var(--card-border)}
-.traffic-rest{color:var(--text-muted)}
-.traffic-rest .traffic-rowbar{opacity:.45}
-@media only screen and (max-width:600px){
-  .traffic-stat-n{font-size:20px}
-}
-</style>`
