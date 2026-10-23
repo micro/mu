@@ -152,6 +152,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if r.URL.Query().Get("view") == "activity-status" {
+		conversationActivityHandler(w, r)
+		return
+	}
 	path := r.URL.Path
 	if strings.HasPrefix(path, "/agent/flow/") {
 		id := strings.TrimPrefix(path, "/agent/flow/")

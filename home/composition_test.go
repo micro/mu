@@ -60,8 +60,8 @@ func TestHomeShowsPinsAndConversationsAndFeedIncludesPrayer(t *testing.T) {
 			if strings.Contains(body, "private test context") != feed || strings.Contains(body, "public test update") != feed {
 				t.Fatalf("mixed views: feed=%v fragment=%v", feed, fragment)
 			}
-			if !feed && (!strings.Contains(body, `id="home-conversations"`) || !strings.Contains(body, `href="/agent?view=chats"`) || !strings.Contains(body, `aria-label="Pinned apps"`) || !strings.Contains(body, `href="/apps"`)) {
-				t.Fatal("Conversations card missing")
+			if !feed && (!strings.Contains(body, `id="home-conversations"`) || !strings.Contains(body, `href="/home?view=activity"`) || !strings.Contains(body, `aria-label="Pinned apps"`) || !strings.Contains(body, `href="/apps"`)) {
+				t.Fatal("Recent activity missing")
 			}
 			if feed && strings.Contains(body, `data-path="/agent/micro"`) {
 				t.Fatal("feed contains composer")

@@ -1331,7 +1331,8 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	}
 	template := Template
 	if isGroup(roomID) {
-		template = strings.Replace(template, `<header class="room-toolbar"><div class="room-roster"><span>Here</span><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></div>%s</header>`, `<div class="room-toolbar"><div class="form-actions"><a class="btn" href="/groups?id=`+groupID(roomID)+`">Back to chats</a>%s</div><div id="chat-users" class="metadata-row"></div></div>`, 1)
+		template = strings.Replace(template, `<header class="room-toolbar"><div class="room-roster"><span>Here</span><div id="chat-users"></div><a href="/chat?view=rooms">All rooms</a></div>%s</header>`, `<div class="room-toolbar"><div class="form-actions"><a class="btn" href="/agent?view=chats&amp;group=`+groupID(roomID)+`">Group chats</a><a class="btn" href="/agent?view=chats">All chats</a>%s</div><div id="chat-users" class="metadata-row"></div></div>`, 1)
+		guestNotice += app.ConversationActivity("/agent?view=activity-status&room=" + url.QueryEscape(roomID))
 	}
 	content := fmt.Sprintf(template, navigation+guestNotice, about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`

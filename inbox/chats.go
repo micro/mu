@@ -18,6 +18,7 @@ import (
 // Chat is a navigation projection, not a second message store.
 type Chat struct {
 	ID, Title, Context, URL, Preview string
+	Agent, Group, Status             string
 	Updated                          time.Time
 	Shared, Unread                   bool
 }
@@ -33,7 +34,11 @@ func Chats(owner string) []Chat {
 		if title == "" {
 			title = "Chat with Micro"
 		}
-		out = append(out, Chat{ID: t.ID, Title: title, Context: "Personal", URL: "/?session=" + url.QueryEscape(t.ID), Updated: t.Updated, Unread: thread.Unread(t)})
+		preview := ""
+		if messages := thread.Messages(owner, t.ID, 1); len(messages) > 0 {
+			preview = PreviewText(messages[0].Text)
+		}
+		out = append(out, Chat{Agent: t.Agent, Preview: preview, ID: t.ID, Title: title, Context: "Personal", URL: "/?session=" + url.QueryEscape(t.ID), Updated: t.Updated, Unread: thread.Unread(t)})
 	}
 	gs, _, err := group.List(owner)
 	if err == nil {
@@ -50,12 +55,12 @@ func Chats(owner string) []Chat {
 				preview, at := "", c.Created
 				if len(messages.Messages) > 0 {
 					last := messages.Messages[len(messages.Messages)-1]
-					preview, at = plainPreview(last.Content), last.Timestamp
+					preview, at = PreviewText(last.Content), last.Timestamp
 				}
 				if at.IsZero() {
 					at = c.Created
 				}
-				out = append(out, Chat{ID: c.ID, Title: c.Name, Context: g.Name, URL: "/chat?id=" + url.QueryEscape(c.ID), Preview: preview, Updated: at, Shared: true, Unread: g.Activity[c.ID].After(g.Seen[owner+"/"+c.ID])})
+				out = append(out, Chat{Agent: c.Agent, Group: g.ID, ID: c.ID, Title: c.Name, Context: g.Name, URL: "/chat?id=" + url.QueryEscape(c.ID), Preview: preview, Updated: at, Shared: true, Unread: g.Activity[c.ID].After(g.Seen[owner+"/"+c.ID])})
 			}
 		}
 	}
@@ -73,7 +78,7 @@ func ChatRow(c Chat) string {
 	if c.Unread {
 		unread = `<span class="unread-dot" aria-label="Unread"></span>`
 	}
-	return `<a class="conversation-row" href="` + html.EscapeString(c.URL) + `"><span class="conversation-title">` + unread + html.EscapeString(c.Title) + `</span><time datetime="` + c.Updated.Format(time.RFC3339) + `">` + html.EscapeString(app.TimeAgo(c.Updated)) + `</time><span class="conversation-context">` + html.EscapeString(c.Context) + `</span><span class="conversation-preview">` + html.EscapeString(c.Preview) + `</span></a>`
+	return `<a class="conversation-row" href="` + html.EscapeString(c.URL) + `"><span class="conversation-title">` + unread + html.EscapeString(c.Title) + `</span><time datetime="` + c.Updated.Format(time.RFC3339) + `">` + html.EscapeString(app.TimeAgo(c.Updated)) + `</time><span class="conversation-context">` + html.EscapeString(c.Context) + app.WorkBadge(c.Status) + `</span><span class="conversation-preview">` + html.EscapeString(c.Preview) + `</span></a>`
 }
 
 func invitations(owner, csrf string) string {

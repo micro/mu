@@ -130,7 +130,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// The button is the standard one, in the standard place: the top, where
 	// every other page in this product puts its primary action.
-	b.WriteString(app.PageControls(agentsDescription, scheduledTabs(false), `<div class="form-actions">`+newAgentAction(owner)+`</div>`))
+	b.WriteString(app.PageControls(agentsDescription, scheduledTabs(false), `<div class="form-actions"><a class="btn" href="/agent?view=new-chat">New chat</a><a href="/agent?view=chats">All chats</a>`+newAgentAction(owner)+`</div>`))
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit
@@ -210,7 +210,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			b.WriteString(`<section class="section-stack"><h2>` + html.EscapeString(g.Name) + `</h2><div class="collection-list">`)
 			for _, a := range shared {
-				b.WriteString(`<a class="collection-item" href="/agent?view=new-chat&amp;group=` + url.QueryEscape(g.ID) + `&amp;agent=` + url.QueryEscape(a.ID) + `"><span class="collection-title">` + html.EscapeString(a.Name) + `</span><span class="collection-preview">Start a shared chat</span></a>`)
+				b.WriteString(`<a class="collection-item" href="/agent?view=chats&amp;group=` + url.QueryEscape(g.ID) + `&amp;agent=` + url.QueryEscape(a.ID) + `"><span class="collection-title">` + html.EscapeString(a.Name) + `</span><span class="collection-preview">` + html.EscapeString(a.Description) + `</span></a>`)
 			}
 			b.WriteString(`</div></section>`)
 		}
@@ -253,7 +253,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// into a 720px div and rendered halfway up the page: #content is a flex
 	// child sized to hold the footer at the bottom, and an unclosed div puts
 	// the footer inside the content instead of after it.
-	b.WriteString(`</div>`)
+	b.WriteString(`<div class="form-actions"><a href="/work">Work history</a></div></div>`)
 	app.Respond(w, r, app.Response{Title: "Agents", Description: "The agents that act for you, and what each one may reach", HTML: b.String()})
 }
 
@@ -377,7 +377,7 @@ type entry struct {
 // the feature rather than offering it.
 func entryRow(e entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="directory-row"><div class="directory-content"><div class="agent-head"><a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a></div>`)
+	b.WriteString(`<div class="directory-row"><div class="directory-content"><div class="agent-head"><a class="agent-name" href="` + html.EscapeString(e.Path) + `">` + html.EscapeString(e.Name) + `</a></div>`)
 	if e.For != "" {
 		b.WriteString(`<div class="directory-description">` + html.EscapeString(e.For) + `</div>`)
 	}
@@ -386,7 +386,7 @@ func entryRow(e entry) string {
 	}
 	b.WriteString(`<div class="form-actions">`)
 	if e.Chat != "" {
-		b.WriteString(`<a class="link-button" href="` + e.Chat + `">Chat</a>`)
+		b.WriteString(`<a class="link-button" href="` + html.EscapeString(e.Chat) + `">Chat</a>`)
 	}
 	b.WriteString(`<a class="link-button" href="/agent/connect?id=` + html.EscapeString(e.ID) + `">Connect</a>`)
 	if e.Admin {
@@ -438,7 +438,7 @@ func agentRow(a *Agent, csrf, base string) string {
 	// Every agent runs here and answers at POST /agent/<name>; a token is a
 	// thing you additionally give something outside, not a different kind of
 	// agent. See the Kind field in roster.go.
-	open, chat := Path(a.Owner, a.ID), Path(a.Owner, a.ID)
+	open, chat := "/agent?view=chats&agent="+url.QueryEscape(a.ID), Path(a.Owner, a.ID)+"?new=1"
 
 	owner, _ := auth.GetAccount(a.Owner)
 	return entryRow(entry{
@@ -485,6 +485,8 @@ func platformRow(name string, viewers ...string) string {
 		ID:   strings.ToLower(name),
 	}
 	if len(viewers) > 0 {
+		e.Path = "/agent?view=chats&agent=" + url.QueryEscape(name)
+		e.Chat = path + "?new=1"
 		e.Status = activity(viewers[0], name)
 		e.Seen = seenLine(viewers[0], name)
 		e.When = seenWhen(viewers[0], name)

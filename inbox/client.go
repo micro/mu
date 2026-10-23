@@ -30,7 +30,7 @@ func summary(owner string, t thread.Thread) clientRow {
 	who, _ := party(owner, t)
 	preview := ""
 	if ms := thread.Messages(owner, t.ID, 1); len(ms) > 0 {
-		preview = plainPreview(ms[len(ms)-1].Text)
+		preview = PreviewText(ms[len(ms)-1].Text)
 	}
 	canBlock := t.Held && t.Client == thread.SMSClient && strings.TrimSpace(t.Key) != ""
 	return clientRow{Saved: t.Saved, ID: t.ID, Subject: t.Subject, Sender: who, Kind: t.Client, Preview: preview, Updated: t.Updated, Unread: thread.Unread(t), Held: t.Held, CanBlock: canBlock, Blocked: canBlock && sms.OptedOut(t.Key)}
@@ -111,7 +111,7 @@ func clientData(w http.ResponseWriter, r *http.Request, owner string) {
 	app.RespondJSON(w, map[string]any{"items": rows, "page": p.Page, "total": len(all), "page_size": shown, "query": q, "request_count": thread.HeldCount(owner)})
 }
 
-func plainPreview(text string) string {
+func PreviewText(text string) string {
 	text = strings.Join(strings.Fields(plain(text)), " ")
 	if utf8.RuneCountInString(text) > 180 {
 		text = string([]rune(text)[:180]) + "…"

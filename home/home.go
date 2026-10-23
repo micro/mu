@@ -12,7 +12,6 @@ import (
 	"mu/account"
 	"mu/agent"
 	"mu/agent/brief"
-	"mu/agent/work"
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -37,6 +36,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	auth.SetCSRFCookie(w, r)
+	if r.URL.Query().Get("view") == "activity" {
+		activityPage(w, r, acc)
+		return
+	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	view := "overview"
 	if r.URL.Query().Get("view") == "feed" {
@@ -101,11 +104,8 @@ func shortBrief() string {
 func overviewHTML(acc *auth.Account) string {
 	var left, right strings.Builder
 	left.WriteString(conversationsCard(acc.ID))
-	if preview := inbox.Preview(acc.ID); preview != "" {
-		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
-	}
 	right.WriteString(events.Preview(acc.ID, events.CachedOverview(acc.ID)))
-	right.WriteString(work.ScheduledCard(acc.ID))
+	right.WriteString(`<div class="form-actions"><a href="/agents?view=scheduled">Scheduled updates</a></div>`)
 	columns := `<div class="dashboard-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div>`
 	if left.Len() == 0 {
 		columns = `<div class="page-col">` + right.String() + `</div>`
@@ -136,7 +136,7 @@ func feedHTML(snapshot overviewSnapshot, owner string) string {
 }
 
 func conversationsCard(owner string) string {
-	chats := inbox.Chats(owner)
+	chats := recentActivity(owner)
 	if len(chats) > 3 {
 		chats = chats[:3]
 	}
@@ -148,7 +148,7 @@ func conversationsCard(owner string) string {
 		b.WriteString(`<p class="text-muted">Start a conversation with an assistant or your group.</p>`)
 	}
 	b.WriteString(`<div class="form-actions"><a class="btn" href="/agent?view=new-chat">New chat</a></div>`)
-	return app.PreviewCard("home-conversations", "Chats", "/agent?view=chats", b.String())
+	return app.PreviewCard("home-conversations", "Recent activity", "/home?view=activity", b.String())
 }
 
 func pinnedApps(acc *auth.Account) string {

@@ -3,6 +3,7 @@ package home
 import (
 	"mu/internal/auth"
 	"mu/internal/thread"
+	"mu/service/tasks"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -54,5 +55,23 @@ func TestHomeOverviewIsPrivateAndDoesNotRepeatDailyBrief(t *testing.T) {
 	Handler(w, httptest.NewRequest("GET", "/home?view=overview", nil))
 	if w.Code != 303 || !strings.HasPrefix(w.Header().Get("Location"), "/login") {
 		t.Fatal("private overview unprotected")
+	}
+}
+
+func TestActivityRetainsFailedScheduledRuns(t *testing.T) {
+	owner := "home-failed-schedule"
+	run, err := tasks.RecordOccurrence(owner, "Evening Digest", time.Now(), tasks.Occurrence{Key: "failed-evening", Schedule: "evening", State: "done", Failure: "Could not deliver"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := recentActivity(owner)
+	if len(rows) != 1 || rows[0].Status != tasks.StatusFailed || !strings.Contains(rows[0].URL, run.ID) {
+		t.Fatalf("missing scheduled failure: %+v", rows)
+	}
+	if err := tasks.ArchiveTask(owner, run.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if len(recentActivity(owner)) != 0 {
+		t.Fatal("dismissed failure remains in activity")
 	}
 }

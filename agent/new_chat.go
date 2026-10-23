@@ -69,7 +69,7 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	auth.SetCSRFCookie(w, r)
 	var b strings.Builder
-	b.WriteString(`<div class="page-stack">`)
+	b.WriteString(`<div class="page-stack"><div class="form-actions"><a href="/agents">Agents</a><a href="/agent?view=chats">All chats</a></div>`)
 	if notice != "" {
 		b.WriteString(app.Problem(notice))
 	}
@@ -95,14 +95,22 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`<label>Assistant<select name="agent">`)
 	if !g.Encrypted {
-		b.WriteString(`<option value="">Micro</option>`)
+		microSelected := ""
+		if r.URL.Query().Get("agent") == "" || r.URL.Query().Get("agent") == DefaultPlatformAgent {
+			microSelected = " selected"
+		}
+		b.WriteString(`<option value=""` + microSelected + `>Micro</option>`)
 		if id == "" {
 			for _, key := range PlatformNames() {
 				if key == DefaultPlatformAgent {
 					continue
 				}
 				if a := Platform(key); a != nil {
-					b.WriteString(`<option value="` + html.EscapeString(a.ID) + `">` + html.EscapeString(a.Name) + `</option>`)
+					selected := ""
+					if a.ID == r.URL.Query().Get("agent") {
+						selected = " selected"
+					}
+					b.WriteString(`<option value="` + html.EscapeString(a.ID) + `"` + selected + `>` + html.EscapeString(a.Name) + `</option>`)
 				}
 			}
 		}
