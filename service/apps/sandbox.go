@@ -499,7 +499,7 @@ func jsString(s string) string {
 // sandboxPage wraps an app in the frame that isolates it.
 func sandboxPage(slug, title string, widget ...bool) string {
 	var b strings.Builder
-	b.WriteString(`<!doctype html><html><head><meta charset="utf-8">`)
+	b.WriteString(`<!doctype html><html class="app-frame-root"><head><meta charset="utf-8">`)
 	b.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">`)
 	b.WriteString(`<title>` + html.EscapeString(title) + `</title>`)
 	// The white flash between the two documents.

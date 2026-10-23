@@ -1646,5 +1646,6 @@ a.traffic-row:focus-visible{outline:2px solid var(--text-primary);outline-offset
 .cw-net{font-size:13px;color:#8a5a00;background:#fff8e6;border:1px solid #f0dfae;border-radius:6px;padding:9px 11px;margin:0 0 14px}
 
 
-.app-frame-page{margin:0;padding:0;height:100dvh;display:flex;flex-direction:column}
-.app-frame-page #app-frame{display:block;width:100%;flex:1;min-height:0;border:0;background:#fff}
+.app-frame-root,.app-frame-page{margin:0;padding:0;height:100%;background:Canvas;color-scheme:light dark}
+.app-frame-page{display:flex;flex-direction:column}
+.app-frame-page #app-frame{display:block;width:100%;flex:1;min-height:0;border:0;background:Canvas}
