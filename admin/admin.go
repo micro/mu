@@ -256,9 +256,6 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		if u.Banned {
 			badges = append(badges, `<span class="count-badge">banned</span>`)
 		}
-		if u.EmailVerified {
-			badges = append(badges, `<span class="text-muted text-xs">Email verified</span>`)
-		}
 		if u.Approved {
 			badges = append(badges, `<span class="count-badge info">approved</span>`)
 		}
@@ -306,10 +303,20 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 
 		actionsHTML := strings.Join(actions, "")
 		actionsHTML = strings.ReplaceAll(actionsHTML, `<input type="hidden" name="action"`, `<input type="hidden" name="size" value="`+userPageChoice(r)+`">`+app.CSRFField(auth.CSRFToken(r))+`<input type="hidden" name="action"`)
-		sb.WriteString(`<article class="collection-item"><div class="directory-content">` +
+		email := "No email address"
+		if u.Email != "" {
+			email = html.EscapeString(u.Email) + " · Unverified"
+			if u.EmailVerified {
+				email = html.EscapeString(u.Email) + " · Verified"
+				if !u.EmailVerifiedAt.IsZero() {
+					email += " on " + u.EmailVerifiedAt.Format("2006-01-02")
+				}
+			}
+		}
+		sb.WriteString(`<details class="collection-item collection-disclosure"><summary><div class="directory-content">` +
 			`<div class="directory-heading"><a href="/@` + html.EscapeString(u.ID) + `">` + html.EscapeString(u.ID) + `</a><span class="text-muted">` + html.EscapeString(u.Name) + `</span></div>` +
 			`<div class="metadata-row"><span>Joined ` + created + `</span><span>Credits: ` + balanceCell(u.ID) + `</span></div><div class="metadata-row">` + statusHTML + `</div>` +
-			`</div><details class="action-menu"><summary>Manage <span class="sr-only">` + html.EscapeString(u.ID) + `</span></summary><div class="action-grid">` + actionsHTML + `</div></details></article>`)
+			`<div class="metadata-row"><span>Email: ` + email + `</span></div></div><span class="btn">Manage<span class="sr-only"> ` + html.EscapeString(u.ID) + `</span></span></summary><div class="action-grid">` + actionsHTML + `</div></details>`)
 	}
 	sb.WriteString(`</div>`)
 	if query == "" {

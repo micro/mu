@@ -188,12 +188,12 @@ func restMethods() []restMethod {
 }
 
 // restReference renders the index and the per-method cards, in the same
-// document, with a collapsible index above the method cards.
+// document, with a sticky desktop index and a collapsible mobile index.
 func restReference(base string) string {
 	methods := restMethods()
 
 	var nav strings.Builder
-	nav.WriteString(`<details class="disclosure"><summary>Methods</summary><nav class="reference-index" aria-label="API methods">`)
+	nav.WriteString(`<details class="disclosure reference-sidebar" data-reference-index open><summary>Methods</summary><nav class="reference-index" aria-label="API methods">`)
 	last := ""
 	for _, m := range methods {
 		if m.Service != last {
@@ -214,7 +214,7 @@ func restReference(base string) string {
 		cards.WriteString(restMethodCard(m, base))
 	}
 
-	return `<div class="section-stack">` + nav.String() + app.List(cards.String()) + `</div>`
+	return `<div class="reference-layout">` + nav.String() + app.List(cards.String()) + `</div>`
 }
 
 func restMethodCard(m restMethod, base string) string {
