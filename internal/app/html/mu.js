@@ -2197,3 +2197,15 @@ window.addEventListener('pagehide', () => { currentRoomId=null; if(roomWs){const
  function update(){document.querySelectorAll('[data-conversation-activity]').forEach(refresh);}
  update();setInterval(update,5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)update();});
 })();
+
+if (typeof document !== 'undefined') {
+  const initReferenceIndex = () => {
+    const wide = matchMedia('(min-width:901px)');
+    document.querySelectorAll('[data-reference-index]').forEach(index => {
+      const fit = () => { index.open = wide.matches; };
+      fit(); wide.addEventListener('change', fit);
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initReferenceIndex);
+  else initReferenceIndex();
+}
