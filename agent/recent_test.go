@@ -64,6 +64,10 @@ func TestActivityFlowOwnershipAndGrouping(t *testing.T) {
 	if w := request(agent.Handler, statusPath, ""); w.Code != 401 {
 		t.Fatal("anonymous work readable", w.Code)
 	}
+	if dir := os.Getenv("ACTIVITY_PREVIEW_DIR"); dir != "" {
+		w := request(home.Handler, "/home", memberSession.Token)
+		os.WriteFile(filepath.Join(dir, "home-empty.html"), w.Body.Bytes(), 0600)
+	}
 	g, err := group.Create(owner, "Family plans", false)
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +115,7 @@ func TestActivityFlowOwnershipAndGrouping(t *testing.T) {
 			}
 		}
 	}
-	capture("home", home.Handler, "/home")
+	capture("home-empty-inbox", home.Handler, "/home")
 	capture("agents", agent.RosterHandler, "/agents")
 	capture("scheduled", agent.RosterHandler, "/agents?view=scheduled")
 	capture("feed", home.Handler, "/home?view=feed")
@@ -127,6 +131,10 @@ func TestActivityFlowOwnershipAndGrouping(t *testing.T) {
 	thread.Name(owner, mail.ID, "Launch notes")
 	thread.Add(thread.Message{Account: owner, Thread: mail.ID, From: "colleague@example.test", Text: "Notes for the launch.", Role: thread.RolePerson})
 	capture("inbox", inbox.Handler, "/inbox?id="+mail.ID)
+	capture("home", home.Handler, "/home")
+	if body := request(home.Handler, "/home", session.Token).Body.String(); !strings.Contains(body, `id="home-inbox"`) || !strings.Contains(body, "Launch notes") || !strings.Contains(body, `id="home-scheduled-card"`) {
+		t.Fatal("Home lost Inbox or Scheduled preview")
+	}
 	if dir := os.Getenv("ACTIVITY_PREVIEW_DIR"); dir != "" {
 		var v map[string]any
 		json.Unmarshal(status.Body.Bytes(), &v)

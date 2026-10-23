@@ -84,7 +84,7 @@ Agents and Scheduled tabs. Agent names open their chats and purpose; All chats a
 navigation on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
-Home has Overview and Feed views. Overview owns the prompt, recent activity, pinned shortcuts and upcoming events; Feed composes blog, news, markets, video and additional
+Home has Overview and Feed views. Overview owns the prompt, Chats, Inbox, Scheduled, pinned shortcuts and upcoming events; Feed composes blog, news, markets, video and additional
 service cards, including Images and account-scoped Prayer. Pins are compact service shortcuts on Overview. Home Library
 composes owned notes, documents, apps and files; it is not saved messages.
 Inbox owns messages. All, Unread, Saved and Sent filter conversations; Saved
@@ -129,7 +129,7 @@ none.
 
 ## Shared groups
 
-The UI calls web conversations Chats; internal conversation/thread identifiers remain unchanged. `/agent?view=chats` lists personal web chats and accessible group chats, while ordinary agent links resume the most recently visited chat. Home shows three recent activity rows, composing personal and shared chats, incoming messages and delegated work. Work is folded into its originating conversation rather than listed twice. An activity row opens that conversation, with work details as a fallback for jobs without a conversation. A shared live work projection appears in chats and Inbox; final outputs arrive in the original transcript.
+The UI calls web conversations Chats; internal conversation/thread identifiers remain unchanged. `/agent?view=chats` lists personal web chats and accessible group chats, while ordinary agent links resume the most recently visited chat. Home shows three recent personal and shared chats, with separate Inbox and Scheduled previews. The activity history composes chats, incoming messages and delegated work. Work is folded into its originating conversation rather than listed twice. An activity row opens that conversation, with work details as a fallback for jobs without a conversation. A shared live work projection appears in chats and Inbox; final outputs arrive in the original transcript.
 
 Groups is a service, not a primary navigation destination. Home and Inbox compose personal and shared chats; New chat chooses a personal or group context. Agents exposes assistants available through current group membership. Group management remains in Services and the group-name link in chat. The account menu contains only account actions; there is no global personal/group mode switch. The global Home, Inbox, Agents
 and Services navigation never changes when a group is opened. Group-specific
