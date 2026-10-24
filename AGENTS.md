@@ -172,8 +172,10 @@ preserve their original contents and withdraw them from the public index.
 
 ## Mail delivery and daily reminders
 
-Unfamiliar senders to personal mailboxes are retained in Junk. Personal allowed
-senders live in `service/mail` and apply to one recipient; they only bypass
+Unfamiliar senders to personal mailboxes are rejected at SMTP before storage,
+unless admitted by the instance whitelist, existing correspondence, a verified
+account address or an authenticated personal allow entry. All recipients must
+qualify before any delivery. Personal allowed senders live in `service/mail` and apply to one recipient; they only bypass
 heuristic filtering when the visible sender is authenticated. SMTP blocks and
 shared-assistant ownership checks remain independent. Junk never publishes
 `mail.accepted`; releasing it publishes only `mail.received` for Inbox projection.
