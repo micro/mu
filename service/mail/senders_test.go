@@ -3,6 +3,8 @@ package mail
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	smtpd "github.com/emersion/go-smtp"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -55,15 +57,13 @@ func TestPersonalSenderRulesAreScopedAndAuthenticated(t *testing.T) {
 	}
 }
 
-func TestUnknownSMTPMailIsRecoverableWithoutAgentEvents(t *testing.T) {
+func TestExistingJunkIsRecoverableWithoutAgentEvents(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "mail.test")
 	const owner = "junk-recipient"
 	auth.SetAccountForTest(&auth.Account{ID: owner, Name: owner, Approved: true})
 	defer auth.RemoveAccountForTest(owner)
-	s := &Session{from: "verify@unknown-vendor.test", to: []string{owner + "@mail.test"}, spfPass: true}
-	raw := "From: verify@unknown-vendor.test\r\nTo: " + owner + "@mail.test\r\nSubject: Verify email\r\nMessage-ID: <junk-test@unknown-vendor.test>\r\nContent-Type: text/plain\r\n\r\nYour verification link: https://unknown-vendor.test/verify"
-	if err := s.Data(strings.NewReader(raw)); err != nil {
-		t.Fatal("SMTP rejected recoverable mail", err)
+	if err := SendMessageTo(Delivery{FromID: "verify@unknown-vendor.test", ToID: owner, Subject: "Verify email", Body: "Existing junk", MessageID: "<junk-test@unknown-vendor.test>", Spam: true}); err != nil {
+		t.Fatal(err)
 	}
 	m := FindMessageByMessageID("<junk-test@unknown-vendor.test>")
 	if m == nil || !m.Spam || m.ToID != owner {
@@ -168,6 +168,13 @@ func TestSMTPAppliesPersonalAllowlistPerRecipient(t *testing.T) {
 	defer changeAllowedSender("allowed-recipient", "unfamiliar.test", true)
 	s := &Session{from: "person@unfamiliar.test", to: []string{"allowed-recipient@mail.test", "other-recipient@mail.test"}, spfPass: true}
 	raw := "From: person@unfamiliar.test\r\nTo: allowed-recipient@mail.test, other-recipient@mail.test\r\nSubject: Hello\r\nMessage-ID: <per-recipient@unfamiliar.test>\r\nContent-Type: text/plain\r\n\r\nA message for both recipients."
+	if err := s.Data(strings.NewReader(raw)); err == nil {
+		t.Fatal("mixed allowed and unallowed recipients accepted")
+	}
+	if FindMessageByMessageID("<per-recipient@unfamiliar.test>") != nil {
+		t.Fatal("rejected transaction partially delivered")
+	}
+	s.to = []string{"allowed-recipient+test@mail.test"}
 	if err := s.Data(strings.NewReader(raw)); err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +192,7 @@ func TestSMTPAppliesPersonalAllowlistPerRecipient(t *testing.T) {
 			}
 		}
 	}
-	if count != 2 {
+	if count != 1 {
 		t.Fatal("missing recipient delivery", count)
 	}
 }
@@ -226,5 +233,56 @@ func TestMailPreferencesPagesAndIsolation(t *testing.T) {
 	w = get(junkURL+"&id=foreign", JunkHandler)
 	if w.Code != 404 {
 		t.Fatal("foreign message exposed", w.Code)
+	}
+}
+
+func TestSMTPRejectsUnknownBeforeStorage(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "mail.test")
+	const owner = "blocked-recipient"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	for _, aligned := range []bool{false, true} {
+		s := &Session{from: "stranger@unlisted.test", to: []string{owner + "@mail.test"}, spfPass: aligned}
+		raw := "From: stranger@unlisted.test\r\nSubject: Hello\r\nMessage-ID: <blocked@unlisted.test>\r\n\r\nHello"
+		var smtpErr *smtpd.SMTPError
+		if err := s.Data(strings.NewReader(raw)); !errors.As(err, &smtpErr) || smtpErr.Code != 550 {
+			t.Fatalf("expected SMTP rejection, got %v", err)
+		}
+		if FindMessageByMessageID("<blocked@unlisted.test>") != nil {
+			t.Fatal("blocked mail was stored")
+		}
+	}
+}
+
+func TestSMTPInboundAllowSources(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "mail.test")
+	const owner = "admission-recipient"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	if err := changeAllowedSender(owner, "personal.test", false); err != nil {
+		t.Fatal(err)
+	}
+	defer changeAllowedSender(owner, "personal.test", true)
+	RecordOutbound("<outbound-admission@mail.test>", "friend@correspondent.test")
+	if err := AddAllowedSender("operator@custom.test"); err != nil {
+		t.Fatal(err)
+	}
+	defer RemoveAllowedSender("operator@custom.test")
+	for _, from := range []string{"notice@peerlist.io", "person@personal.test", "friend@correspondent.test", "operator@custom.test"} {
+		t.Run(from, func(t *testing.T) {
+			s := &Session{from: from, to: []string{owner + "@mail.test"}, spfPass: true}
+			id := "<admission-" + from + ">"
+			raw := "From: " + from + "\r\nSubject: Hello\r\nMessage-ID: " + id + "\r\n\r\nHello there, this is a normal message."
+			if err := s.Data(strings.NewReader(raw)); err != nil {
+				t.Fatal(err)
+			}
+			if FindMessageByMessageID(id) == nil {
+				t.Fatal("allowed mail not stored")
+			}
+		})
+	}
+	s := &Session{from: "person@personal.test", to: []string{owner + "@mail.test"}}
+	if err := s.Data(strings.NewReader("From: person@personal.test\r\nSubject: Hello\r\n\r\nHello")); err == nil {
+		t.Fatal("unauthenticated personal allow bypass")
 	}
 }

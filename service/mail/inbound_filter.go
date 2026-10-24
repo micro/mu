@@ -1,7 +1,7 @@
 // Who is allowed to send us mail.
 //
-// Unknown senders to personal mailboxes are retained in Junk. Four existing
-// signals admit mail to the inbox, before spam scoring:
+// Unknown senders to personal mailboxes are rejected at SMTP. Four existing
+// signals admit mail, before spam scoring:
 //
 //  1. It is a reply to something we sent — In-Reply-To or References matches a
 //     Message-ID we generated.
@@ -244,8 +244,8 @@ func isWhitelistedDomain(domain string) bool {
 }
 
 // CheckInboundAllowed checks instance-wide familiarity signals. Personal
-// recipients without one of these signals or a personal allow entry receive
-// the message in Junk; SMTP authentication and abuse blocks remain separate.
+// recipients without one of these signals or an authenticated personal allow
+// entry cause SMTP rejection before delivery; abuse blocks remain separate.
 func CheckInboundAllowed(fromAddr string, to []string, inReplyTo, references string) (string, bool) {
 
 	// 1. Is it a reply to something we sent?
@@ -264,6 +264,14 @@ func CheckInboundAllowed(fromAddr string, to []string, inReplyTo, references str
 	parts := strings.Split(strings.ToLower(fromAddr), "@")
 	if len(parts) == 2 && isWhitelistedDomain(parts[1]) {
 		return "", true
+	}
+
+	// Explicit operator-managed sender rules also admit mail at the SMTP gate.
+	for _, rule := range GetSpamFilter().AllowedSenders {
+		rule = strings.ToLower(rule)
+		if strings.EqualFold(fromAddr, rule) || (strings.HasPrefix(rule, "@") && strings.HasSuffix(strings.ToLower(fromAddr), rule)) {
+			return "", true
+		}
 	}
 
 	// 4. Is the sender a verified email on an account here?

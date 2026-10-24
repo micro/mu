@@ -537,13 +537,27 @@ func (s *Session) Data(r io.Reader) error {
 		return &smtpd.SMTPError{Code: 550, Message: "An authenticated personal email is required"}
 	}
 
-	// Unknown personal-mail senders are retained in Junk. Shared assistant
-	// addresses keep their separate authenticated-owner admission policy.
+	// Reject unknown senders before storing anything. SMTP DATA has one result
+	// for the entire transaction, so check every recipient before any delivery.
 	inboundReason := ""
 	if !s.isLocalhost && !(sharedOnly && aligned) {
 		reason, allowed := CheckInboundAllowed(fromAddr.Address, s.to, inReplyTo, references)
 		if !allowed {
 			inboundReason = reason
+			for _, recipient := range s.to {
+				if sharedRecipient(recipient) {
+					continue // Shared mailboxes retain their own admission policy.
+				}
+				local, _, _ := strings.Cut(recipient, "@")
+				owner, _ := SplitAlias(local)
+				if id, _ := operatorMailbox(local); id != "" {
+					owner = id
+				}
+				if !aligned || !personalSenderAllowed(owner, fromAddr.Address) {
+					app.Log("mail", "Rejected mail from %s: %s", fromAddr.Address, reason)
+					return &smtpd.SMTPError{Code: 550, Message: "Sender blocked by inbound policy; ask the recipient to add your address or domain to Allowed senders"}
+				}
+			}
 		}
 	}
 
