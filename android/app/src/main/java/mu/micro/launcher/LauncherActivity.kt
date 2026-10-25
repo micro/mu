@@ -68,7 +68,7 @@ class LauncherActivity : Activity() {
             setPadding(dp(24), dp(24), dp(24), dp(24))
             setBackgroundColor(Color.WHITE)
             addView(TextView(context).apply {
-                text = "Micro couldn’t load.\nCheck your connection and try again."
+                setText(R.string.load_error)
                 textSize = 18f
                 gravity = Gravity.CENTER
             })
