@@ -318,10 +318,12 @@ class LauncherActivity : Activity() {
             val download = pendingDownload
             pendingDownload = null
             val target = data?.data
-            if (resultCode == RESULT_OK && target != null && download != null) saveDownload(download, target)
+            if (resultCode == RESULT_OK && target?.scheme == "content" && download != null) saveDownload(download, target)
         }
         if (requestCode == FILE_PICKER) {
-            fileCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
+            val selected = WebChromeClient.FileChooserParams.parseResult(resultCode, data)
+                ?.filter { it.scheme == "content" }?.toTypedArray()
+            fileCallback?.onReceiveValue(selected?.takeIf { it.isNotEmpty() })
             fileCallback = null
         }
     }
