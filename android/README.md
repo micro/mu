@@ -3,7 +3,7 @@
 A small Android Home app for the hosted Micro interface at https://micro.mu/home.
 Android still runs the phone; Mu runs on the server. No root or bootloader changes.
 The native shell provides Home, an alphabetical installed-app drawer, Settings,
-a retry screen and file selection. The website retains its existing navigation,
+a retry screen, file selection and authenticated downloads through Android’s save dialog. The website retains its existing navigation,
 Overview and Feed. No new server endpoints, native bridge or copied web UI.
 
 ## Build and install

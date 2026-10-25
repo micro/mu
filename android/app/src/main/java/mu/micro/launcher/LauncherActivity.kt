@@ -16,6 +16,9 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import java.net.HttpURLConnection
+import java.net.URL
+import android.webkit.URLUtil
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -44,6 +47,8 @@ class LauncherActivity : Activity() {
     private var failed = false
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var drawerOpen = false
+    private data class Download(val url: String, val cookie: String, val userAgent: String)
+    private var pendingDownload: Download? = null
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -167,7 +172,50 @@ class LauncherActivity : Activity() {
                 return true
             }
         }
-        web.setDownloadListener { url, _, _, _, _ -> openExternal(url) }
+        web.setDownloadListener { url, userAgent, disposition, mime, _ ->
+            if (Navigation.destination(url) != Navigation.Destination.MICRO) {
+                openExternal(url)
+            } else {
+                pendingDownload = Download(url, CookieManager.getInstance().getCookie(url).orEmpty(), userAgent.orEmpty())
+                val save = Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType(mime?.substringBefore(';')?.takeIf { it.contains('/') } ?: "application/octet-stream")
+                    .putExtra(Intent.EXTRA_TITLE, URLUtil.guessFileName(url, disposition, mime))
+                try { startActivityForResult(save, DOWNLOAD_PICKER) }
+                catch (_: ActivityNotFoundException) {
+                    pendingDownload = null
+                    Toast.makeText(this, "No file picker available", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun saveDownload(download: Download, target: Uri) {
+        val context = applicationContext
+        Thread {
+            var connection: HttpURLConnection? = null
+            val result = try {
+                // Never forward the account cookie across a download redirect.
+                check(Navigation.destination(download.url) == Navigation.Destination.MICRO)
+                connection = URL(download.url).openConnection() as HttpURLConnection
+                connection.instanceFollowRedirects = false
+                connection.connectTimeout = 15000
+                connection.readTimeout = 30000
+                connection.setRequestProperty("Cookie", download.cookie)
+                connection.setRequestProperty("User-Agent", download.userAgent)
+                check(connection.responseCode == HttpURLConnection.HTTP_OK)
+                connection.inputStream.use { input ->
+                    checkNotNull(context.contentResolver.openOutputStream(target, "wt")).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                "File saved"
+            } catch (_: Exception) {
+                "Download failed. Please retry from Micro."
+            } finally {
+                connection?.disconnect()
+            }
+            runOnUiThread { Toast.makeText(context, result, Toast.LENGTH_LONG).show() }
+        }.start()
     }
 
     private fun route(url: String, userGesture: Boolean): Boolean {
@@ -266,6 +314,12 @@ class LauncherActivity : Activity() {
     @Deprecated("Framework file picker result")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == DOWNLOAD_PICKER) {
+            val download = pendingDownload
+            pendingDownload = null
+            val target = data?.data
+            if (resultCode == RESULT_OK && target != null && download != null) saveDownload(download, target)
+        }
         if (requestCode == FILE_PICKER) {
             fileCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
             fileCallback = null
@@ -279,5 +333,5 @@ class LauncherActivity : Activity() {
         web.destroy()
         super.onDestroy()
     }
-    companion object { private const val FILE_PICKER = 1; private const val HOME_ROLE = 2 }
+    companion object { private const val FILE_PICKER = 1; private const val HOME_ROLE = 2; private const val DOWNLOAD_PICKER = 3 }
 }
