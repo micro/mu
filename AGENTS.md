@@ -629,14 +629,6 @@ cost; rate limits stop bots.
   `docs/README.md`. Do not copy service registries or price catalogues into docs;
   `/services`, `/tools`, `quota.json` and layering tests remain authoritative.
 
-## Android launcher
-
-`android/` is a standalone Kotlin Android Home app, not a Go package or service.
-It displays the hosted Micro UI and owns only native Home/app navigation and
-Android integration. Keep web UI in the shared shell; do not copy pages into the
-APK. The prototype uses existing password login; browser OAuth cookies are not
-shared with WebView. Build/test/lint it through the Android launcher workflow.
-
 ## UI composition
 
 The signed-in front door is Home. Its prompt calls Agent directly, while
