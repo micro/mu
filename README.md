@@ -2,9 +2,13 @@
 
 The runtime for Micro, an open personal assistant
 
+## Overview
+
+Mu is a runtime that integrates agents, tools and services along side your calendar, email and other events like morning brief and evening reading. It supports a full SMTP server, XMPP, WhatsApp and SMS via twilio.
+
 ## Home
 
-A place to view and do things e.g prompt, see what's happening, etc.
+A place to view and do things e.g prompt, see what's happening, etc. Includes a Feed tab news and world events.
 
 ## Inbox
 
