@@ -4,3 +4,6 @@
 local.properties
 **/build/
 *.iml
+
+app/libs/*.aar
+app/libs/*-sources.jar

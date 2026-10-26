@@ -631,11 +631,16 @@ cost; rate limits stop bots.
 
 ## Android launcher
 
-`android/` is a standalone Kotlin Android Home app, not a Go package or service.
-It displays the hosted Micro UI and owns only native Home/app navigation and
-Android integration. Keep web UI in the shared shell; do not copy pages into the
-APK. The prototype uses existing password login; browser OAuth cookies are not
-shared with WebView. Build/test/lint it through the Android launcher workflow.
+`android/` is a standalone Kotlin app with optional Home/launcher integration.
+Hosted Home stays in the WebView. The native Assistant screen embeds `agent/local`
+through `android/runtime` (a separate Go module and gomobile binding), with an
+explicit model provider and a read-only Android app-list tool. It starts no server
+and exposes no JavaScript bridge. Keep hosted pages in the shared web shell.
+Device conversations remain in private app storage; model context bounds never
+truncate the saved transcript. API keys stay in memory. Model requests disclose
+conversation context and requested tool results to the configured provider, not
+to the hosted Micro agent. No automatic replay or background jobs in this prototype.
+Build/test/lint both the binding and APK through the Android workflow.
 
 ## UI composition
 

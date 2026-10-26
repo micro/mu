@@ -91,6 +91,7 @@ class LauncherActivity : Activity() {
             setPadding(dp(4), 0, dp(4), 0)
         }
         toolbar.addView(button("Home") { home() }, LinearLayout.LayoutParams(0, dp(48), 1f))
+        toolbar.addView(button("Assistant") { launch(Intent(this, LocalAssistantActivity::class.java)) }, LinearLayout.LayoutParams(0, dp(48), 1f))
         toolbar.addView(button("Apps") { showApps() }, LinearLayout.LayoutParams(0, dp(48), 1f))
         toolbar.addView(button("Settings") { showSettings() }, LinearLayout.LayoutParams(0, dp(48), 1f))
         root.addView(toolbar)

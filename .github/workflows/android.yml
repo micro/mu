@@ -2,9 +2,9 @@ name: Android launcher
 on:
   push:
     branches: [main]
-    paths: ['android/**', '.github/workflows/android.yml']
+    paths: ['android/**', 'agent/local/**', 'go.mod', 'go.sum', '.github/workflows/android.yml']
   pull_request:
-    paths: ['android/**', '.github/workflows/android.yml']
+    paths: ['android/**', 'agent/local/**', 'go.mod', 'go.sum', '.github/workflows/android.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,6 +21,21 @@ jobs:
         with:
           packages: platform-tools platforms;android-35 build-tools;35.0.0
           log-accepted-android-sdk-licenses: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install NDK
+        run: sdkmanager 'ndk;27.2.12479018'
+      - name: Build embedded Mu
+        working-directory: android/runtime
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
+        run: |
+          go test ./...
+          go install golang.org/x/mobile/cmd/gomobile
+          go install golang.org/x/mobile/cmd/gobind
+          mkdir -p ../app/libs
+          gomobile bind -target=android/arm64,android/arm,android/amd64 -androidapi 26 -o ../app/libs/mu.aar .
       - uses: gradle/actions/setup-gradle@v4
       - name: Build, test and lint
         working-directory: android
