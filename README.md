@@ -1,6 +1,6 @@
 # Mu
 
-The runtime for Micro, an open personal assistant
+The runtime for a open personal assistant
 
 ## Overview
 
