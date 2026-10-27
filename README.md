@@ -57,10 +57,15 @@ curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
 ~/.local/bin/mu --serve --address 127.0.0.1:8080
 ```
 
+## Web
+
 Open **http://localhost:8080** to create your account and choose an AI provider.
 
-See [Install Micro](docs/INSTALL.md) for the quick start. Optional
-[documentation](docs/README.md) covers hosting, configuration, mail and development.
+See [Install Micro](docs/INSTALL.md) for the quick start. 
+
+Optional [documentation](docs/README.md) covers hosting, configuration, mail and development.
+
+The web app can be installed on desktop or mobile as a progressive web app (PWA).
 
 ## CLI
 
