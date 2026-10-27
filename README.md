@@ -6,11 +6,27 @@ The runtime for a personal assistant
 
 Mu is a runtime that integrates agents, tools and services along side your calendar, email and other events like morning brief and evening reading. It supports a full SMTP server, XMPP, WhatsApp and SMS via twilio.
 
-## Home
+## Features
+
+- Open runtime - Single Go binary you can run yourself anywhere
+- Many clients - Interact via PWA, API, SMS, XMPP and WhatsApp
+- Integrations - Connect your google mail, calendar and more
+- Tools included - Comes with 30+ built-in tools (may require API keys)
+
+## Navigation
+
+A bit about the navigation
+
+- Home - overview and exploration. Also includes a feed
+- Inbox - single place for all interaction and notifications
+- Agents - chat or create new agents with your own instructions
+- Services - interact with the tools the agents have access to
+
+### Home
 
 A place to view and do things e.g prompt, see what's happening, etc. Includes a Feed tab news and world events.
 
-## Inbox
+### Inbox
 
 Connect from various places and it all goes in one inbox.
 
@@ -22,13 +38,13 @@ Connect from various places and it all goes in one inbox.
 | XMPP | Connect with your account and a Chat token from Client access, then message the agent. |
 | WhatsApp  |  Like SMS use a verified phone number to message agents and interact.  |
 
-## Agents
+### Agents
 
 **Micro** is the default agent. Agents have instructions and a set of
 tools. Services provide those tools: mail, files, calendar, search, weather,
 notes, shell, and more. You ask for an outcome; the agent chooses the tools.
 
-## Services
+### Services
 
 Complete standalone services that agents can use as tools or you can browse with. 
 For example a complete Mail client and server. Web search via brave. News aggregation, 
