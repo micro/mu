@@ -1,4 +1,4 @@
-**# Mu
+# Mu
 
 The runtime for a personal assistant
 
