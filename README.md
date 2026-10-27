@@ -20,6 +20,7 @@ Connect from various places and it all goes in one inbox.
 | SMTP | Send a message to `agent@your-domain` from your verified email address |
 | SMS | Verify your phone number in Account, then text the configured number. |
 | XMPP | Connect with your account and a Chat token from Client access, then message the agent. |
+| WhatsApp  |  Like SMS use a verified phone number to message agents and interact.  |
 
 ## Agents
 
