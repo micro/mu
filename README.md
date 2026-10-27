@@ -1,4 +1,4 @@
-# Mu
+**# Mu
 
 The runtime for a personal assistant
 
@@ -8,19 +8,19 @@ Mu is a runtime that integrates agents, tools and services along side your calen
 
 ## Features
 
-- Open runtime - Single Go binary you can run yourself anywhere
-- Many clients - Interact via PWA, API, SMS, XMPP and WhatsApp
-- Integrations - Connect your google mail, calendar and more
-- Tools included - Comes with 30+ built-in tools (may require API keys)
+- **Open runtime** - Single Go binary you can run yourself anywhere
+- **Many clients** - Interact via PWA, API, SMS, XMPP and WhatsApp
+- **Integrations** - Connect your google mail, calendar and more
+- **Tools included** - Comes with 30+ built-in tools (may require API keys)
 
 ## Navigation
 
 A bit about the navigation
 
-- Home - overview and exploration. Also includes a feed
-- Inbox - single place for all interaction and notifications
-- Agents - chat or create new agents with your own instructions
-- Services - interact with the tools the agents have access to
+- **Home** - overview and exploration. Also includes a feed
+- **Inbox** - single place for all interaction and notifications
+- **Agents** - chat or create new agents with your own instructions
+- **Services** - interact with the tools the agents have access to
 
 ### Home
 
