@@ -1,6 +1,6 @@
 # Mu
 
-The runtime for a open personal assistant
+The runtime for a personal assistant
 
 ## Overview
 
