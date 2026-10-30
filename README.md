@@ -90,3 +90,7 @@ curl "$MU_URL/agent" \
 The response includes `text` and `thread`; send the thread identifier
 back to continue. Requests and credentials belong in request bodies and headers.
 A separately configured x402 host provides paid service calls.
+
+## Commercial
+
+If you want to run your own for commercial use please reach out for licensing terms and conditions. Fees are applicable.
