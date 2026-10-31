@@ -13,6 +13,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      CHROME_PATH: /opt/google/chrome/chrome
     steps:
       - uses: actions/checkout@v4
 
@@ -38,16 +40,14 @@ jobs:
         run: test -z "$(gofmt -l internal/ai/image.go internal/ai/image_test.go service/images/images.go service/images/upload.go)"
 
       - name: Require browser isolation test runtime
-        run: command -v google-chrome || command -v chromium
+        run: test -x "$CHROME_PATH"
 
       - name: Allow Chrome to create its sandbox on the CI runner
         run: |
           # Ubuntu's user-namespace policy needs a profile for the real binary.
           # This grants only Chrome permission to create its own sandbox.
-          if command -v apparmor_parser >/dev/null; then
-            printf '%s\n' 'abi <abi/4.0>,' 'include <tunables/global>' 'profile mu-ci-chrome /opt/google/chrome/chrome flags=(unconfined) {' '  userns,' '}' | sudo tee /etc/apparmor.d/mu-ci-chrome >/dev/null
-            sudo apparmor_parser -r /etc/apparmor.d/mu-ci-chrome
-          fi
+          printf '%s\n' 'abi <abi/4.0>,' 'include <tunables/global>' 'profile mu-ci-chrome /opt/google/chrome/chrome flags=(unconfined) {' '  userns,' '}' | sudo tee /etc/apparmor.d/mu-ci-chrome >/dev/null
+          sudo /usr/sbin/apparmor_parser -r /etc/apparmor.d/mu-ci-chrome
 
       - name: Test security boundaries and backend
         run: go test ./... -short -count=1
