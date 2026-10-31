@@ -39,7 +39,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
-<p class="landing-tagline">An open personal assistant.</p>
+<p class="landing-tagline">A personal assistant</p>
 
 <div class="public-demo"><form data-demo-form method="post" action="/"><label class="sr-only" for="demo-input">Ask Micro</label><div class="composer"><textarea id="demo-input" name="prompt" rows="1" maxlength="1000" placeholder="Ask Micro a question" required></textarea><button type="submit">Send</button></div></form><div data-demo-responses role="log" aria-label="Conversation"></div><p data-demo-status role="status"></p></div>
 </section>`
