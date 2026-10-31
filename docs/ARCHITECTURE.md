@@ -69,32 +69,7 @@ and `/mcp`. A separately configured x402 host retains its existing contract.
 
 ### Services running outside Mu
 
-Mu can discover separately running go-micro services through mDNS. The external
-service must register its RPC handlers with a go-micro mDNS registry and use a
-compatible HTTP transport. Its advertised address must be reachable from Mu.
-Use a unique service name that does not collide with a built-in service.
-
-Start Mu in the corresponding discovery mode:
-
-```sh
-MU_REGISTRY=mdns mu --serve
-```
-
-Run the external service separately on the same discovery network. Mu reads
-service names and endpoints from the registry and can invoke them dynamically;
-adding another compatible service does not require rebuilding Mu. Discovery
-of RPC methods does not supply a custom service web page.
-
-This mode is for an isolated, trusted network. Registry entries and RPC calls
-are not authenticated by this mechanism. Mu also advertises its own services,
-and switching to mDNS switches its internal calls from in-memory transport to
-HTTP. Do not expose these RPC listeners to an untrusted network. The event
-broker remains in memory; service discovery does not establish a shared event
-bus. Configure `MU_REGISTRY` in the process environment and restart Mu when
-changing discovery mode.
-
-Use your process manager, such as systemd or Docker, to start, supervise and
-stop the external service. Mu currently discovers and calls it; Mu does not
-install or manage its process. A separately written Go module linked into Mu
-is different again: importing that module requires a rebuild. Forking is only
-necessary when you want to maintain changes to Mu itself.
+External mDNS discovery is disabled. Mu uses in-process service transport even
+when `MU_REGISTRY=mdns` is set, and logs that the setting was refused. The old
+network RPC mode accepted unauthenticated account metadata. External services
+need authenticated, account-scoped transport before discovery can be restored.

@@ -29,11 +29,9 @@
 // without an Ordnance Survey key.
 //
 // What keeps the binary single is that the browser does not have to be here.
-// BROWSER_URL points at a DevTools endpoint anywhere — a container on the same
-// host, a box on the network, one of the hosted ones — and chromedp talks to it
-// over the wire. CHROME_PATH is for an operator who does want it local. Neither
-// is required to build or run Mu; both are required to use this service, which
-// is the honest shape for a capability that needs a program we did not write.
+// Local Chromium is required. Remote browser endpoints are refused because
+// Mu cannot enforce their network isolation. Each request uses a fresh local
+// browser behind a destination-checking proxy.
 //
 // # What an agent is pointed at
 //
@@ -79,7 +77,7 @@ const maxText = 40000
 //
 // Named for the question rather than the setting, because there are three ways
 // to answer it and a caller should not have to know which one applies.
-func Configured() bool { return endpoint() != "" || binary() != "" }
+func Configured() bool { return endpoint() == "" && binary() != "" }
 
 // endpoint is a DevTools address to connect to, if one is set.
 func endpoint() string { return strings.TrimSpace(settings.Get("BROWSER_URL")) }
@@ -216,9 +214,12 @@ func checked(raw string) (string, error) {
 	if err := hosts.FetchableString(raw); err != nil {
 		return "", err
 	}
+	if endpoint() != "" {
+		return "", fmt.Errorf("remote browsers are disabled: use local Chromium with checked network access")
+	}
 	if !Configured() {
 		return "", fmt.Errorf("this instance has no browser and could not find one: install Chromium, " +
-			"or set CHROME_PATH to one, or BROWSER_URL to a DevTools endpoint elsewhere")
+			"or set CHROME_PATH to one")
 	}
 	return raw, nil
 }

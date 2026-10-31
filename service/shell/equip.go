@@ -10,26 +10,10 @@ package shell
 // time; HTTP hands a program the glue to write; a shell hands you a language
 // for putting things together that everybody already speaks.
 //
-// # Capability by default, credential by authentication
-//
-// The binary goes in every box, always. It is harmless on its own — a CLI with
-// no URL and no token cannot reach anything, so mounting it costs nothing and
-// hiding it behind a setting would only mean nobody ever finds it.
-//
-// The credential does not. It is minted for one interactive session, passed in
-// that exec's environment, and revoked when the session ends. It is never
-// written to the volume and never given to an agent's command.
-//
-// That line is the whole security argument. Today the sandbox is safe because
-// it holds nothing: no capabilities, tight limits, and no secrets. An agent
-// runs code in there that it fetched off the internet, and the reason that is
-// acceptable is that there is nothing to steal. A token sitting in the box
-// would end that — one `cat` and a `curl` in a script the agent was talked
-// into running, and the account's API access is gone.
-//
-// An SSH session is different in the one way that matters: a person
-// authenticated with a key, for a bounded time. That is what earns a
-// credential, and it expires with the session that earned it.
+// Workspaces are shared with agent commands. Never inject account credentials
+// into an interactive process: other processes can read its environment.
+// Users may explicitly supply credentials, but these are available to all code
+// they run in that workspace.
 //
 // # Mounted, not baked
 //
@@ -45,7 +29,6 @@ import (
 	"sync"
 
 	"mu/internal/app"
-	"mu/internal/origin"
 )
 
 // muPath is where the CLI appears inside a box.
@@ -108,20 +91,4 @@ func static(path string) bool {
 		}
 	}
 	return true
-}
-
-// session is the environment one interactive shell gets.
-//
-// Both halves are needed or neither is useful: the CLI reads MU_URL and
-// MU_TOKEN from the environment — see internal/cli/config.go — so this is the
-// entire integration, and there is no CLI change anywhere in this feature.
-//
-// Empty when this instance does not know its own public address. A token
-// without somewhere to send it is a credential handed out for nothing.
-func sessionEnv(token string) map[string]string {
-	at := strings.TrimSuffix(origin.Self(), "/")
-	if at == "" || token == "" {
-		return nil
-	}
-	return map[string]string{"MU_URL": at, "MU_TOKEN": token}
 }

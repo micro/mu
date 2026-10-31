@@ -1122,6 +1122,10 @@ func tokenFor(rawToken string) (*Token, error) {
 	if t == nil {
 		return nil, errors.New("invalid token")
 	}
+	// Retire credentials previously injected into shared shell workspaces.
+	if t.Name == "shell session" && len(t.Permissions) == 0 {
+		return nil, errors.New("shell session credential retired")
+	}
 	if !t.ExpiresAt.IsZero() && time.Now().After(t.ExpiresAt) {
 		return nil, errors.New("token expired")
 	}

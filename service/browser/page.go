@@ -71,7 +71,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(app.Problem("This instance has no browser and could not find one on " +
 			"this machine. Chromium cannot be built into the binary — it is a separate " +
 			"program — so an admin installs one, or sets CHROME_PATH to a particular one, " +
-			"or BROWSER_URL to a DevTools endpoint somewhere else."))
+			"and unsets BROWSER_URL: remote browsers are disabled for account isolation."))
 		b.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{Title: "Browser", Description: Spec.Description, HTML: b.String()})
 		return

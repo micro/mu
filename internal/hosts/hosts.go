@@ -26,6 +26,7 @@ package hosts
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"strings"
 )
@@ -78,6 +79,30 @@ func Private(host string) bool {
 // PrivateIP reports whether an address is one nobody outside this network could
 // have reached anyway.
 func PrivateIP(ip net.IP) bool {
-	return ip == nil || ip.IsLoopback() || ip.IsPrivate() ||
-		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
+	if ip == nil || !ip.IsGlobalUnicast() || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+		return true
+	}
+	addr, ok := netip.AddrFromSlice(ip)
+	if !ok {
+		return true
+	}
+	addr = addr.Unmap()
+	for _, prefix := range nonPublicRanges {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
+}
+
+var nonPublicRanges = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),
+	netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("192.0.0.0/24"),
+	netip.MustParsePrefix("198.18.0.0/15"),
+	netip.MustParsePrefix("240.0.0.0/4"),
+	// Cloud platform service and IPv4 translation ranges must not bypass the gate.
+	netip.MustParsePrefix("168.63.129.16/32"),
+	netip.MustParsePrefix("64:ff9b::/96"),
+	netip.MustParsePrefix("64:ff9b:1::/48"),
 }

@@ -34,10 +34,17 @@ jobs:
           restore-keys: |
             go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-
 
-      - name: Verify image provider logging
-        run: |
-          test -z "$(gofmt -l internal/ai/image.go internal/ai/image_test.go service/images/images.go service/images/upload.go)"
-          go test ./internal/ai -run '^TestImageRequestsRecordOutcomes$' -count=1
+      - name: Verify formatting
+        run: test -z "$(gofmt -l internal/ai/image.go internal/ai/image_test.go service/images/images.go service/images/upload.go)"
+
+      - name: Require browser isolation test runtime
+        run: command -v google-chrome || command -v chromium
+
+      - name: Test security boundaries and backend
+        run: go test ./... -short -count=1
+
+      - name: Race-test security boundaries
+        run: go test -race ./internal/auth ./internal/hosts ./internal/service ./internal/api ./internal/server ./service/browser ./service/shell ./x402/billing -short -count=1
 
       # PRs verify every release platform; main builds deployment artifacts only.
       - name: Build binaries

@@ -92,37 +92,8 @@ func Init() {
 	if inited.Load() {
 		return
 	}
-	// MU_REGISTRY selects how services find each other, and so whether a
-	// service can live outside this process at all.
-	//
-	//	unset / "memory"  — everything in one binary. The default: no ports, no
-	//	                    daemon, nothing to configure, and nothing external
-	//	                    can register.
-	//	"mdns"            — zero-config discovery on the local network. A
-	//	                    service run as its own process from any repo shows
-	//	                    up in Mu without Mu importing it.
-	//
-	// mdns is not a free upgrade, and is not the default for two reasons.
-	// Discovery is symmetric: Mu does not only listen, it announces. Every
-	// service this process hosts — wallet, mail, db — is published on the
-	// local network and reachable by anything on it, and nothing
-	// authenticates an RPC. And every internal call becomes an HTTP round
-	// trip (~400µs) instead of a channel send, several times per page render.
-	// Turn it on for a trusted network where an external service is actually
-	// wanted; leave it off otherwise.
-	//
-	// etcd, consul and nats registries exist in go-micro subpackages and are
-	// deliberately not imported: each drags a substantial dependency tree into
-	// a binary that mostly runs standalone. Add one here when an instance needs
-	// discovery beyond a single network.
-	//
-	// Anything other than memory means calls cross a process boundary, so the
-	// in-memory transport cannot be used.
-	//
-	// Note nothing authenticates a registry entry. On a shared registry,
-	// anything that can reach it can register under any name — see the guard in
-	// Services(), which keeps a remote node from taking over a local one, and
-	// treat the network itself as the trust boundary until there is a real one.
+	// Network RPC previously trusted caller-supplied account metadata. Until
+	// transport authentication exists, all services stay inside this process.
 	switch spec := registrySpec(); spec {
 	case "", "memory":
 		reg = registry.NewMemoryRegistry()
@@ -133,8 +104,9 @@ func Init() {
 		// round-trip.
 		tr = transport.NewMemoryTransport()
 	case "mdns":
-		reg = registry.NewMDNSRegistry()
-		tr = transport.NewHTTPTransport()
+		log.Printf("service: unauthenticated mDNS RPC is disabled; using in-process transport")
+		reg = registry.NewMemoryRegistry()
+		tr = transport.NewMemoryTransport()
 	default:
 		log.Printf("service: unknown MU_REGISTRY %q, falling back to in-process", spec)
 		reg = registry.NewMemoryRegistry()
@@ -163,18 +135,8 @@ func registrySpec() string {
 	return strings.TrimSpace(strings.ToLower(os.Getenv("MU_REGISTRY")))
 }
 
-// Advertise is the address an out-of-process service should be reachable on.
-// In-process services advertise loopback with an ephemeral port; when the
-// registry is networked, that address has to be one other hosts can dial.
-func advertiseAddress() string {
-	if addr := strings.TrimSpace(os.Getenv("MU_ADVERTISE")); addr != "" {
-		return addr
-	}
-	if spec := registrySpec(); spec != "" && spec != "memory" {
-		return ":0" // all interfaces, ephemeral port
-	}
-	return "127.0.0.1:0"
-}
+// The transport is in-process; never advertise a network-facing address.
+func advertiseAddress() string { return "127.0.0.1:0" }
 
 // newDurableStore returns a file-backed store (bbolt under ~/.mu/store) so data
 // written through the shared store — snapshots today, durable events next —

@@ -212,7 +212,6 @@ func terminalHandler(w http.ResponseWriter, r *http.Request) {
 	defer input.Close()
 	defer keys.Close()
 	var sh *container.Session
-	var token, tokenID string
 	err = quota.Run(acc.ID, quota.OpShellRun, func() error {
 		boot, done := context.WithTimeout(ctx, time.Minute)
 		err := ready(boot, acc.ID)
@@ -220,16 +219,11 @@ func terminalHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		token, tokenID = sessionToken(acc.ID)
-		env := sessionEnv(token)
-		if env == nil {
-			env = make(map[string]string)
-		}
+		env := make(map[string]string)
 		env["TERM"] = "xterm-256color"
 		sh, err = container.Shell(ctx, container.Run{Name: machineFor(acc.ID), Dir: home(acc.ID), User: runAs(acc.ID), Env: env}, input, output)
 		return err
 	})
-	defer revoke(acc.ID, tokenID)
 	if err != nil {
 		output.status(err.Error())
 		return

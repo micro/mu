@@ -2,11 +2,7 @@ package browser
 
 // Driving the browser.
 //
-// One allocator, shared, and a fresh tab per request. Starting a browser costs
-// a second and a few hundred megabytes; starting one per call would make the
-// price of this service the price of process creation. A tab is cheap and is
-// the isolation that matters — its own cookies, its own storage, nothing
-// carried from whoever asked last.
+// Browser state and network access are isolated for each request.
 
 import (
 	"context"
@@ -14,115 +10,47 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 
-	"mu/internal/app"
 	"mu/internal/blob"
 	"mu/internal/origin"
 )
 
-var (
-	allocOnce   sync.Once
-	allocCtx    context.Context
-	allocCancel context.CancelFunc
-)
-
-// allocator is the browser, started or connected to on first use.
-//
-// Lazily, because most instances have no browser configured and every one of
-// them would otherwise pay for the attempt at boot. It is never torn down: the
-// process holding it is the server, and a browser that exits between requests
-// is one that has to start again on the next.
-func allocator() context.Context {
-	allocOnce.Do(func() {
-		if url := endpoint(); url != "" {
-			// Somebody else's browser, over the wire. This is what keeps Mu a
-			// single binary: the dependency is a network address rather than a
-			// program that has to be on this disk.
-			allocCtx, allocCancel = chromedp.NewRemoteAllocator(context.Background(), url)
-			app.Log("browser", "using the DevTools endpoint at %s", url)
-			return
-		}
-		// binary() is either what an operator named or what was found on the
-		// PATH, and it is never empty here — Configured() gates every path in.
-		// Passing an empty ExecPath would defeat chromedp's own search, which
-		// is what this was doing before it looked for one itself.
-		opts := append(chromedp.DefaultExecAllocatorOptions[:],
-			chromedp.ExecPath(binary()),
-			// Headless, and told not to give itself away as automation any more
-			// than it has to. Not evasion — a site that refuses robots should be
-			// able to refuse this one — but the default flags trip protections on
-			// sites that are perfectly happy to be read.
-			chromedp.Flag("headless", "new"),
-			chromedp.Flag("disable-gpu", true),
-			chromedp.Flag("no-sandbox", false),
-			chromedp.Flag("disable-dev-shm-usage", true),
-			chromedp.WindowSize(viewWide, viewTall),
-		)
-		allocCtx, allocCancel = chromedp.NewExecAllocator(context.Background(), opts...)
-		app.Log("browser", "using the Chromium at %s", binary())
-	})
-	return allocCtx
-}
-
-// Close shuts a locally started browser down.
-//
-// Not called by anything yet, and that is worth saying rather than hiding: this
-// server has no shutdown hook to hang it on, so a Chromium started by
-// CHROME_PATH is cleaned up by the operating system when the process goes
-// rather than by us. It is here because the cancel function has to be kept
-// somewhere for that to ever be possible, and because the alternative — a
-// package-level cancel nobody can reach — is worse. A BROWSER_URL instance has
-// nothing to close: the browser is somebody else's process.
-func Close() {
-	if allocCancel != nil {
-		allocCancel()
-	}
-}
-
-// viewWide and viewTall are the window every page is opened in.
-//
-// A desktop shape, because a page rendered at phone width is a different page —
-// half the sites on the web serve a cut-down layout below 768 and an agent
-// reading one gets the cut-down answer without being told.
+// Each request owns a fresh local browser and a checked egress proxy. Remote
+// browsers cannot inherit this host's network boundary and are refused.
 const (
 	viewWide = 1280
 	viewTall = 900
 )
 
-// tab is one page's context, and the function that gives it back.
-func tab(parent context.Context) (context.Context, context.CancelFunc) {
-	// The caller's own deadline still applies — an HTTP request that went away
-	// should not leave a browser working on it — and the shorter of the two
-	// wins, which is what taking the caller's first and then layering the page
-	// timeout on top gives.
-	//
-	// The allocator is the parent of the browser context on purpose: chromedp
-	// hangs its browser off whatever it is given, and rooting a tab in a
-	// request context would take the browser down with the request.
-	ctx, cancelTab := chromedp.NewContext(allocator())
-	cancels := []context.CancelFunc{cancelTab}
-	if parent != nil {
-		if deadline, ok := parent.Deadline(); ok {
-			var cancelCaller context.CancelFunc
-			ctx, cancelCaller = context.WithDeadline(ctx, deadline)
-			cancels = append(cancels, cancelCaller)
-		}
+func tab(parent context.Context) (context.Context, context.CancelFunc, error) {
+	ctx, cancel := context.WithTimeout(parent, wait)
+	proxy, stop, err := startProxy(ctx)
+	if err != nil {
+		cancel()
+		return nil, nil, err
 	}
-	ctx, cancelWait := context.WithTimeout(ctx, wait)
-	cancels = append(cancels, cancelWait)
-
-	return ctx, func() {
-		for i := len(cancels) - 1; i >= 0; i-- {
-			cancels[i]()
-		}
-	}
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.ExecPath(binary()),
+		chromedp.Flag("no-sandbox", false),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("proxy-server", proxy),
+		chromedp.Flag("proxy-bypass-list", "<-loopback>"),
+		chromedp.Flag("disable-quic", true),
+		chromedp.Flag("force-webrtc-ip-handling-policy", "disable_non_proxied_udp"),
+		chromedp.WindowSize(viewWide, viewTall),
+	)
+	alloc, closeAlloc := chromedp.NewExecAllocator(ctx, opts...)
+	page, closePage := chromedp.NewContext(alloc)
+	return page, func() { closePage(); closeAlloc(); stop(); cancel() }, nil
 }
+
+// Close is retained for lifecycle callers; each request owns its browser.
+func Close() {}
 
 // page is what came back.
 type page struct {
@@ -149,11 +77,14 @@ const settleFor = 750 * time.Millisecond
 
 // read opens a page and returns its text.
 func read(parent context.Context, target, selector string) (page, error) {
-	ctx, done := tab(parent)
+	ctx, done, err := tab(parent)
+	if err != nil {
+		return page{}, err
+	}
 	defer done()
 
 	var out page
-	err := chromedp.Run(ctx,
+	err = chromedp.Run(ctx,
 		emulation.SetUserAgentOverride(userAgent),
 		chromedp.Navigate(target),
 		settle(selector),
@@ -189,7 +120,10 @@ type shot struct {
 
 // capture photographs a page and stores the picture.
 func capture(parent context.Context, target, selector string, full bool) (shot, error) {
-	ctx, done := tab(parent)
+	ctx, done, err := tab(parent)
+	if err != nil {
+		return shot{}, err
+	}
 	defer done()
 
 	var buf []byte
@@ -198,7 +132,7 @@ func capture(parent context.Context, target, selector string, full bool) (shot, 
 	if full {
 		grab = chromedp.FullScreenshot(&buf, shotQuality)
 	}
-	err := chromedp.Run(ctx,
+	err = chromedp.Run(ctx,
 		emulation.SetUserAgentOverride(userAgent),
 		emulation.SetDeviceMetricsOverride(viewWide, viewTall, 1, false),
 		chromedp.Navigate(target),
@@ -267,7 +201,7 @@ func browserErr(err error) error {
 		return fmt.Errorf("that page did not finish loading within %s", wait)
 	case strings.Contains(err.Error(), "connection refused"),
 		strings.Contains(err.Error(), "websocket"):
-		return fmt.Errorf("this instance cannot reach its browser — an admin should check BROWSER_URL")
+		return fmt.Errorf("this instance cannot start its local browser — an admin should check CHROME_PATH")
 	case strings.Contains(err.Error(), "exec:"), strings.Contains(err.Error(), "no such file"):
 		return fmt.Errorf("this instance cannot start its browser — an admin should check CHROME_PATH")
 	}
