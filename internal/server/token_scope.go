@@ -9,11 +9,11 @@ import (
 	"mu/internal/auth"
 )
 
-// Service scopes are enforced by the MCP/REST tool dispatcher. Other doors
-// authenticate an account, but cannot preserve a restricted caller's grant.
+// Every PAT uses a permission-aware endpoint. Browser pages cannot preserve
+// read/write grants, even when a token has no service restriction.
 func scopedRequestAllowed(r *http.Request) bool {
 	token := auth.TokenFromRequest(api.CredentialRequest(r))
-	if token == nil || !token.Scoped() {
+	if token == nil {
 		return true
 	}
 	p := strings.TrimSuffix(r.URL.Path, "/")

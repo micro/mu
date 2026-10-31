@@ -360,8 +360,8 @@ token.
 | `TRANSIT_FEEDS` | Optional. Published timetables to load, comma separated, named by agency or place: `reading buses, bart, vbb`. Matched against the Mobility Database catalogue, which lists about 1,160 keyless feeds. Nothing is downloaded that is not named here — a feed is tens of megabytes. Each is checked once a day and only re-fetched when it has actually changed, and a feed that fails to download or build leaves the previous one serving |
 | `BODS_API_KEY` | Optional. Bus Open Data Service key, free at data.bus-data.dft.gov.uk. Live bus positions across England, which is what `transit_buses` answers from. Without it transit still has stops and timetables; it just cannot say where anything is |
 | `LDBWS_TOKEN` | Optional. National Rail Live Departure Boards token, free at realtime.nationalrail.co.uk. Powers `transit_trains` — the board at any British station. Not the Darwin real-time feed, which is a Kafka consumer group and a different kind of program: this is request in, board out, and a restart loses nothing |
-| `BROWSER_URL` | Optional. A Chrome DevTools endpoint for `/browser` — a Chromium container on this host, a box on the network, or a hosted browser. This is what keeps Mu a single binary: the dependency is an address rather than a program on this disk. Neither this nor `CHROME_PATH` is needed on a machine that already has Chromium or Chrome installed; the service looks on the PATH first |
-| `CHROME_PATH` | Optional. Path to a particular Chromium, when the one found on the PATH is not the one you want. Unset, the service looks for `chromium`, `chromium-browser`, `google-chrome` and the macOS bundle, so an installed browser needs no configuration. `BROWSER_URL` wins over both |
+| `BROWSER_URL` | Remote browsers are disabled because Mu cannot enforce their network isolation. Unset this and use local Chromium. |
+| `CHROME_PATH` | Optional path to local Chromium. Each request uses a fresh browser and a destination-checking proxy. Otherwise Chromium is discovered on PATH. |
 | `ALERTS` | Optional, default on. `off` stops this instance telling you anything. What it watches and what it would say is at `/admin/alerts`, including a button that sends one so you can check delivery works |
 | `ALERT_CALLS_PER_HOUR` | Optional, default 5000. Tool calls an hour across the whole instance before you are told. `0` stops watching it |
 | `ALERT_ACCOUNT_CALLS_PER_HOUR` | Optional, default 1000. The same for any one account, which is the one that catches an agent in a retry loop — expensive long before it is a noticeable share of a small instance's traffic. `0` stops watching it |
@@ -429,7 +429,7 @@ The full operation price list is in `quota.json`; account billing shows usage.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `MU_REGISTRY` | in-process | `mdns` puts services on the local network — note it *announces* every service this process hosts |
+| `MU_REGISTRY` | in-process | Network discovery is disabled; `mdns` falls back to in-process transport with a warning. |
 | `MU_ADVERTISE` | loopback | Address to advertise when the registry is networked |
 | `MU_USE_SQLITE` | `1` | SQLite with FTS5 for the search index. On by default — set it to `0` for the older file store, a map read end to end on every query. Switching decides where the *index* lives and nothing else; the first boot after turning it on migrates `index.json` into it once, so an instance that has been running keeps everything it had indexed |
 | `MCP_GATEWAY_ADDR` | — | Run go-micro's MCP gateway on its own port |

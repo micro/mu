@@ -13,6 +13,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      CHROME_PATH: /opt/google/chrome/chrome
     steps:
       - uses: actions/checkout@v4
 
@@ -34,10 +36,26 @@ jobs:
           restore-keys: |
             go-build-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ github.job }}-all-
 
-      - name: Verify image provider logging
+      - name: Verify formatting
+        run: test -z "$(gofmt -l internal/ai/image.go internal/ai/image_test.go service/images/images.go service/images/upload.go)"
+
+      - name: Require browser isolation test runtime
+        run: test -x "$CHROME_PATH"
+
+      - name: Allow Chrome to create its sandbox on the CI runner
         run: |
-          test -z "$(gofmt -l internal/ai/image.go internal/ai/image_test.go service/images/images.go service/images/upload.go)"
-          go test ./internal/ai -run '^TestImageRequestsRecordOutcomes$' -count=1
+          # Ubuntu's user-namespace policy needs a profile for the real binary.
+          # This grants only Chrome permission to create its own sandbox.
+          printf '%s\n' 'abi <abi/4.0>,' 'include <tunables/global>' 'profile mu-ci-chrome /opt/google/chrome/chrome flags=(unconfined) {' '  userns,' '}' | sudo tee /etc/apparmor.d/mu-ci-chrome >/dev/null
+          sudo /usr/sbin/apparmor_parser -r /etc/apparmor.d/mu-ci-chrome
+          sudo chown root:root /opt/google/chrome/chrome-sandbox
+          sudo chmod 4755 /opt/google/chrome/chrome-sandbox
+
+      - name: Test security boundaries and backend
+        run: go test ./... -short -count=1
+
+      - name: Race-test security boundaries
+        run: go test -race ./internal/auth ./internal/hosts ./internal/service ./internal/api ./internal/server ./service/browser ./service/shell ./x402/billing -short -count=1
 
       # PRs verify every release platform; main builds deployment artifacts only.
       - name: Build binaries

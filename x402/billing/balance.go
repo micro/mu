@@ -413,6 +413,11 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if sess.Type != "account" {
+		http.Error(w, "Transfers require a browser session", http.StatusForbidden)
+		return
+	}
+
 	var to string
 	var amount int
 
