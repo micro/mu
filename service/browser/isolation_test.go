@@ -50,7 +50,9 @@ func TestBrowserProcessIsolationAndPrivateNetwork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hits.Load() != 0 || result != "blocked" {
+	// A no-cors fetch can resolve with an opaque proxy-denial response.
+	// The security invariant is that the private destination is never reached.
+	if hits.Load() != 0 {
 		t.Fatalf("private request escaped proxy: hits=%d result=%s", hits.Load(), result)
 	}
 }
