@@ -48,6 +48,8 @@ jobs:
           # This grants only Chrome permission to create its own sandbox.
           printf '%s\n' 'abi <abi/4.0>,' 'include <tunables/global>' 'profile mu-ci-chrome /opt/google/chrome/chrome flags=(unconfined) {' '  userns,' '}' | sudo tee /etc/apparmor.d/mu-ci-chrome >/dev/null
           sudo /usr/sbin/apparmor_parser -r /etc/apparmor.d/mu-ci-chrome
+          sudo chown root:root /opt/google/chrome/chrome-sandbox
+          sudo chmod 4755 /opt/google/chrome/chrome-sandbox
 
       - name: Test security boundaries and backend
         run: go test ./... -short -count=1
