@@ -32,6 +32,7 @@ import (
 	"mu/internal/settings"
 	"mu/internal/setup"
 	"mu/internal/user"
+	"mu/service/alerts"
 	"mu/service/apps"
 	"mu/service/archive"
 	"mu/service/blog"
@@ -138,6 +139,7 @@ func authRequired() map[string]bool {
 		"/whatsapp":         false,
 		"/agent/session/":   true, // Deleting one of your conversations
 		"/bookmarks":        true,
+		"/alerts":           true,
 		"/recall":           true,  // Your own past — sign-in required
 		"/agent/connect":    true,  // How to reach one agent
 		"/agent/pending":    true,  // Has an in-flight run answered yet — your own conversations
@@ -811,6 +813,7 @@ func registerRoutes() {
 	// conversations is /agent; this is the search over all of them.
 	http.HandleFunc("/recall", recall.Handler)
 	http.HandleFunc("/bookmarks", bookmarks.Handler)
+	http.HandleFunc("/alerts", alerts.Handler)
 	http.HandleFunc("/saved", bookmarks.Handler)
 	http.HandleFunc("/saved/search", bookmarks.Handler)
 	http.HandleFunc("/bookmarks/search", bookmarks.Handler)

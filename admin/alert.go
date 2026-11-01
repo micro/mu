@@ -1,50 +1,7 @@
 package admin
 
-// Telling the operator when something is worth knowing.
-//
-// An instance that is running is an instance nobody is looking at. The
-// admin pages answer every question here — usage, spend, the log, the
-// diagnostics — and answering a question is not the same as raising one: you
-// have to already suspect something to go and look, and the things worth
-// knowing are exactly the ones you did not suspect.
-//
-// # Facts below, judgement here
-//
-// Nothing under service/ or internal/ decides that something is notable.
-// internal/auth publishes that an account was created and knows nothing about
-// who cares — see event.AccountCreated, and the note there about why a
-// building block must not encode a product requirement. This package is where
-// "an account was created" becomes "wake somebody", because the operator is a
-// product decision and admin is where the operator lives.
-//
-// # Two shapes of thing, two mechanisms
-//
-// Discrete facts arrive on the bus: an account was created. There is nothing to
-// poll and no threshold to pick, and the alert is the fact.
-//
-// Levels and rates do not arrive at all — nothing publishes "the disk is 91%
-// full", because being 91% full is not an event, it is a state somebody has to
-// go and look at. Those are read on a timer and compared against a threshold an
-// operator set. Trying to make them events would mean a publisher deciding what
-// counts, which is the judgement this package exists to hold.
-//
-// # Why the inbox
-//
-// Delivery is mail to the admin's own mailbox here, which lands in
-// internal/thread and shows up at /inbox like anything else. Not a new channel:
-// the product's claim is that an address is the smallest interface there is, and
-// an instance that needed its own private notification pipe to tell its operator
-// something would be arguing against itself. It also means the alert threads,
-// is searchable through recall, and can be replied to — and a reply to a
-// notice about a spike goes to the agent, which has the tools to go and look.
-//
-// # The cooldown is the feature
-//
-// An alert that repeats every tick is noise, and noise is indistinguishable
-// from nothing within about two days. Every alert has a key, and a key that
-// fired recently does not fire again — see fired. That is why thresholds are
-// safe to set aggressively: crossing one costs one message, not one a minute
-// until you fix it.
+// Admin owns detection and notification policy. The reusable alert store owns
+// deduplication and lifecycle; notifications remain mail and push deliveries.
 
 import (
 	"fmt"
@@ -55,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	store "mu/internal/alerts"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/origin"
@@ -152,6 +110,7 @@ func somethingWrong() {
 	if first || n <= was {
 		return
 	}
+	recoverCondition("wrong")
 	raise(alert{
 		Key:  "wrong",
 		What: fmt.Sprintf("%d new thing(s) this instance had to refuse or work around", n-was),
@@ -176,6 +135,7 @@ func instanceRate() {
 	}
 	n := usage.TotalOver(usage.Minute, 60)
 	if n < limit {
+		recoverCondition("rate:instance")
 		return
 	}
 	raise(alert{
@@ -201,6 +161,7 @@ func accountRates() {
 	for _, acc := range auth.AllAccounts() {
 		n := usage.TotalForOver(acc.ID, usage.Minute, 60)
 		if n < limit {
+			recoverCondition("rate:" + acc.ID)
 			continue
 		}
 		raise(alert{
@@ -225,7 +186,11 @@ func diskFilling() {
 		return
 	}
 	used, total, percent := app.DiskUsage()
-	if total == 0 || percent < float64(at) {
+	if total == 0 {
+		return
+	}
+	if percent < float64(at) {
+		recoverCondition("disk")
 		return
 	}
 	raise(alert{
@@ -242,9 +207,9 @@ func gigabytes(b uint64) string {
 	return strconv.FormatFloat(float64(b)/(1024*1024*1024), 'f', 1, 64) + "GB"
 }
 
-// raise sends an alert to every admin, unless it has just been sent.
+// raise records one condition per admin; only new episodes notify.
 func raise(a alert) {
-	if !enabled() || !fired(a.Key) {
+	if !enabled() {
 		return
 	}
 	admins := admins()
@@ -284,6 +249,14 @@ func raise(a alert) {
 			html.EscapeString(link) + `</a></p>`
 	}
 	for _, id := range admins {
+		_, fresh, err := store.Raise(id, store.Item{Source: "system", Key: a.Key, Title: a.What, Detail: a.Why, URL: a.Where})
+		if err != nil {
+			app.Log("alert", "could not record alert: %v", err)
+			continue
+		}
+		if !fresh || !fired(id+":"+a.Key) {
+			continue
+		}
 		if err := mail.DeliverHere(mail.Local{
 			Display: "Micro",
 			From:    "no-reply@" + mail.ConfiguredDomain(),
@@ -294,6 +267,15 @@ func raise(a alert) {
 			app.Log("alert", "could not tell %s: %v", id, err)
 		}
 		push.Send(id, push.Notification{Title: a.What, Body: a.Why, URL: a.Where})
+	}
+}
+
+// Recovery permits a later threshold crossing to start a new episode.
+func recoverCondition(key string) {
+	for _, id := range admins() {
+		if err := store.Recover(id, "system", key); err != nil {
+			app.Log("alert", "could not resolve alert: %v", err)
+		}
 	}
 }
 
@@ -312,9 +294,8 @@ func admins() []string {
 // fired reports whether an alert may be sent now, and records that it was.
 //
 // The cooldown is what makes a threshold safe to set aggressively: crossing one
-// costs a message, not a message every five minutes until it is fixed. In
-// memory, so a restart may repeat one — which is the right way round, since the
-// failure that matters is a missed alert and not a duplicated one.
+// costs a message, not a message every five minutes until it is fixed. This cooldown limits flapping within a process; durable active records
+// independently suppress repeats across restarts.
 func fired(key string) bool {
 	cool := time.Duration(number(settings.Get("ALERT_COOLDOWN_MINUTES"), 360)) * time.Minute
 	firedMu.Lock()

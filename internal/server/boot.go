@@ -13,6 +13,7 @@ import (
 	"mu/internal/settings"
 	"mu/internal/usage"
 	"mu/internal/user"
+	"mu/service/alerts"
 	"mu/service/apps"
 	"mu/service/archive"
 	"mu/service/blog"
@@ -102,6 +103,7 @@ func boot() {
 	// that every client writes to. See service/recall.
 	startupStep("recall.Load", recall.Load)
 	startupStep("bookmarks.Load", bookmarks.Load)
+	startupStep("alerts.Load", alerts.Load)
 	// One search across everything this instance has collected. Six services
 	// write to that index and every reader over it was filtered to one type.
 	startupStep("archive.Load", archive.Load)
