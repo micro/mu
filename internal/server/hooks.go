@@ -53,6 +53,7 @@ import (
 	"mu/internal/thread"
 	"mu/internal/user"
 	"mu/internal/world"
+	"mu/service/alerts"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/bookmarks"
@@ -542,6 +543,7 @@ func wireHooks() {
 		// and the only thing in the catalogue that knows it exists.
 		recall.Delete,
 		bookmarks.DeleteAll,
+		alerts.DeleteAll,
 	)
 
 	// Enable indexing after all content is loaded

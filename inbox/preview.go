@@ -7,6 +7,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/thread"
+	"mu/service/alerts"
 )
 
 // previewShown is how many conversations Home carries.
@@ -33,8 +34,9 @@ func Preview(accountID string) string {
 			}
 		}
 	}
+	attention := alerts.Summary(accountID)
 	if len(all) == 0 {
-		return ""
+		return attention
 	}
 	threads := all
 	if len(threads) > previewShown {
@@ -42,6 +44,7 @@ func Preview(accountID string) string {
 	}
 
 	var b strings.Builder
+	b.WriteString(attention)
 	b.WriteString(`<div class="inbox-peek">`)
 	for _, t := range threads {
 		title := t.Subject

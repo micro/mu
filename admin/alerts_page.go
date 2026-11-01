@@ -24,6 +24,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/settings"
 	"mu/internal/usage"
+	"mu/service/alerts"
 )
 
 // AlertsHandler serves /admin/alerts.
@@ -34,25 +35,30 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth.SetCSRFCookie(w, r)
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		app.MethodNotAllowed(w, r)
+		return
+	}
 	var sb strings.Builder
+	sb.WriteString(alerts.Preview(acc.ID))
+	sb.WriteString(`<p><a href="/alerts">Manage alerts</a></p>`)
 
 	if r.Method == http.MethodPost {
-		if !auth.ValidCSRF(r) {
+		if !auth.StrictCSRF(r) {
 			sb.WriteString(app.Problem("That form was stale. Reload and try again."))
 		} else {
 			// Straight to raise, through the same cooldown and the same
 			// delivery as a real one. A test that took a shortcut would prove
 			// the shortcut works.
+			recoverCondition("test:" + acc.ID)
 			raise(alert{
 				Key:   "test:" + acc.ID,
 				What:  "Test alert",
 				Why:   "You pressed the button on /admin/alerts. If this arrived, alerts work.",
 				Where: "/admin/alerts",
 			})
-			sb.WriteString(app.NoteHTML(`Sent to every admin, at their inbox here and ` +
-				`as a push notification where one is registered. It goes through the same ` +
-				`cooldown as a real alert, so pressing it again within ` +
-				strconv.Itoa(number(settings.Get("ALERT_COOLDOWN_MINUTES"), 360)) + ` minutes does nothing.`))
+			sb.WriteString(app.NoteHTML(`Test condition recorded when alerts are enabled. Delivery is attempted to every admin unless the test is still within the notification cooldown. Check your Inbox and device notifications.`))
 		}
 	}
 
@@ -109,17 +115,12 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 			`<td data-label="Setting">` + setting + `</td></tr>`)
 	}
 	sb.WriteString(`</tbody></table>`)
-	sb.WriteString(`<p class="card-desc">Set a threshold to <code>0</code> to stop ` +
-		`watching that one; set <code>ALERTS</code> to <code>off</code> to stop all of ` +
-		`them. Anything that trips stays quiet for ` +
-		strconv.Itoa(number(settings.Get("ALERT_COOLDOWN_MINUTES"), 360)) + ` minutes afterwards ` +
-		`(<code>ALERT_COOLDOWN_MINUTES</code>) — which is what makes a threshold safe ` +
-		`to set low: crossing one costs a message, not a message every five minutes ` +
-		`until it is fixed. Edit them at ` + app.TextLink("config", "/admin/config") + `.</p>`)
+	sb.WriteString(`<p class="card-desc">Set a threshold to <code>0</code> to stop watching it, or <code>ALERTS=off</code> to stop all delivery. A condition notifies once and stays quiet until it recovers. Acknowledging or dismissing it does not create another notification. Rapid new episodes also respect <code>ALERT_COOLDOWN_MINUTES</code>. Edit thresholds at ` + app.TextLink("config", "/admin/config") + `.</p>`)
+
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<form method="post" action="/admin/alerts" class="form alerts-test">` +
-		`<input type="hidden" name="csrf_token" value="` +
+		`<input type="hidden" name="_csrf" value="` +
 		html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<button type="submit">Send a test alert</button></form>`)
 

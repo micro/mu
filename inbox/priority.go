@@ -6,6 +6,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
+	"mu/service/alerts"
 	"net/http"
 	"net/url"
 	"sort"
@@ -67,6 +68,7 @@ func priority(w http.ResponseWriter, r *http.Request, owner string) {
 	}
 	b.WriteString(waitingHTML(r, owner))
 	if box == "" && messageFilter(r) == "all" {
+		b.WriteString(alerts.Preview(owner))
 		b.WriteString(invitations(owner, auth.CSRFToken(r)))
 	}
 	if q := strings.TrimSpace(r.PostFormValue("q")); q != "" {
