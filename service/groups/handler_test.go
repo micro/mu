@@ -63,3 +63,32 @@ func TestGroupUIAndServiceIsolation(t *testing.T) {
 		t.Fatal("invite auto-joined recipient")
 	}
 }
+
+func TestCreateGroupOpensInvitations(t *testing.T) {
+	const owner = "group-create-journey"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	sess, _ := auth.CreateSession(owner)
+	r := httptest.NewRequest("POST", "/groups", strings.NewReader(url.Values{"action": {"create"}, "name": {"Family"}, "description": {"Our plans"}}.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	r.Header.Set("X-CSRF-Token", auth.CSRFToken(r))
+	w := httptest.NewRecorder()
+	Handler(w, r)
+	if w.Code != http.StatusSeeOther {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	dest, err := url.Parse(w.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := dest.Query().Get("id")
+	defer group.Change(id, owner, "delete", "", "")
+	g, err := group.Read(id, owner)
+	if err != nil || g.Description != "Our plans" || dest.Query().Get("tab") != "members" {
+		t.Fatal("creation did not lead to invitations", g, err, dest)
+	}
+	if _, _, ok := group.ConversationFor(group.General(g).ID); !ok {
+		t.Fatal("default chat missing")
+	}
+}

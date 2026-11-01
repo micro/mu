@@ -200,10 +200,23 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="page-stack">`)
+	b.WriteString(`<div class="form-actions"><a href="/home">Home</a><a href="/groups">All groups</a></div>`)
+	fmt.Fprintf(&b, `<p class="text-muted">%d members · Shared group context. Your personal messages stay private.</p>`, len(g.Members))
+	b.WriteString(`<div class="form-actions"><a class="btn" href="/chat?id=` + group.General(g).ID + `">Open chat</a>`)
+	if group.Admin(id, acc.ID) {
+		b.WriteString(`<a class="btn" href="` + base + `&tab=members">Invite people</a>`)
+	}
+	b.WriteString(`</div>`)
+
 	if g.Description != "" && tab != "details" {
 		b.WriteString(`<p class="text-muted">` + html.EscapeString(g.Description) + `</p>`)
 	}
-	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Details", URL: base + "&tab=details", Key: "details"}, {Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}, {Label: "Agents", URL: base + "&tab=agents", Key: "agents"}, {Label: "Members", URL: base + "&tab=members", Key: "members"}, {Label: "Settings", URL: base + "&tab=settings", Key: "settings"}}, false))
+	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}}, false))
+	manageOpen := ""
+	if tab != "" && tab != "events" {
+		manageOpen = " open"
+	}
+	b.WriteString(`<details class="disclosure"` + manageOpen + `><summary>Group details and settings</summary><div class="form-actions"><a href="` + base + `&tab=details">About</a><a href="` + base + `&tab=members">Members</a><a href="` + base + `&tab=agents">Assistants</a><a href="` + base + `&tab=settings">Settings and budget</a></div></details>`)
 	if notice != "" {
 		b.WriteString(`<p class="notice" role="status">` + html.EscapeString(notice) + `</p>`)
 	}

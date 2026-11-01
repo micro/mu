@@ -16,6 +16,7 @@ import (
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/group"
 	"mu/internal/quota"
 	"mu/service/blog"
 	"mu/service/events"
@@ -104,6 +105,7 @@ func shortBrief() string {
 
 func overviewHTML(acc *auth.Account) string {
 	var left, right strings.Builder
+	left.WriteString(groupsCard(acc.ID))
 	left.WriteString(conversationsCard(acc.ID))
 	if preview := inbox.Preview(acc.ID); preview != "" {
 		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
@@ -119,6 +121,7 @@ func overviewHTML(acc *auth.Account) string {
 
 func feedHTML(snapshot overviewSnapshot, owner string) string {
 	var left, right strings.Builder
+	left.WriteString(groupsCard(owner))
 	left.WriteString(shortBrief())
 	reading := blog.LatestPreview(owner)
 	if reading == "" {
@@ -165,4 +168,31 @@ func pinnedApps(acc *auth.Account) string {
 	}
 	b.WriteString(`<a href="/services"><span class="service-shortcut-icon" aria-hidden="true">+</span><span>All apps</span></a>`)
 	return `<nav class="service-shortcuts" aria-label="Pinned apps">` + b.String() + `</nav>`
+}
+
+// groupsCard makes shared contexts reachable without visiting the service catalogue.
+func groupsCard(owner string) string {
+	groups, pending, err := group.List(owner)
+	var b strings.Builder
+	b.WriteString(`<div class="form-actions"><a href="/groups?new=1">Create group</a></div>`)
+	if err != nil {
+		b.WriteString(`<p class="text-muted">Groups are temporarily unavailable.</p>`)
+	} else {
+		if len(pending) > 0 {
+			fmt.Fprintf(&b, `<p><a href="/groups">%d pending invitations</a></p>`, len(pending))
+		}
+		sort.SliceStable(groups, func(i, j int) bool { return strings.ToLower(groups[i].Name) < strings.ToLower(groups[j].Name) })
+		if len(groups) > 5 {
+			groups = groups[:5]
+		}
+		b.WriteString(`<div class="collection-list">`)
+		for _, g := range groups {
+			fmt.Fprintf(&b, `<a class="collection-item" href="/groups?id=%s"><span class="collection-title">%s</span><span class="collection-preview">%d members</span></a>`, html.EscapeString(g.ID), html.EscapeString(g.Name), len(g.Members))
+		}
+		b.WriteString(`</div>`)
+		if len(groups) == 0 {
+			b.WriteString(`<p class="text-muted">A shared place for your family, friends or community. Invite people to chat and get help together.</p>`)
+		}
+	}
+	return app.PreviewCard("home-groups", "Your groups", "/groups", b.String())
 }

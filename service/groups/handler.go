@@ -56,6 +56,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			dest := "/groups"
 			if id != "" {
 				dest += "?id=" + id
+				if r.PostFormValue("action") == "create" {
+					dest += "&tab=members"
+				}
 				if r.PostFormValue("action") == "accept" {
 					dest = "/chat?id=" + group.RoomPrefix + id
 				}
@@ -78,11 +81,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	auth.SetCSRFCookie(w, r)
 	csrf := auth.CSRFToken(r)
 	if !app.WantsJSON(r) && ((r.Method == http.MethodGet && r.URL.Query().Get("new") == "1") || (r.Method == http.MethodPost && r.PostFormValue("action") == "create" && notice != "")) {
-		editor := form(csrf, "", "create", "", `<label class="field-label">Group name<input name="name" required maxlength="100" placeholder="Family"></label><label>Description (optional)<textarea name="description" maxlength="1000" placeholder="What brings you together?"></textarea></label><label class="field-label">Chat privacy<select name="encrypted"><option value="false">Web and XMPP chat</option><option value="true">End-to-end encrypted · XMPP clients only</option></select></label><p class="text-muted">Web chat uses an encrypted connection; Micro stores its messages. End-to-end encrypted groups require an XMPP client such as Conversations.</p><div class="form-actions"><button>Create group</button></div>`)
+		editor := form(csrf, "", "create", "", `<label class="field-label">Group name<input name="name" required maxlength="100" placeholder="Family"></label><label>Description (optional)<textarea name="description" maxlength="1000" placeholder="What brings you together?"></textarea></label><details><summary>Advanced chat privacy</summary><label class="field-label">Chat privacy<select name="encrypted"><option value="false">Web and XMPP chat</option><option value="true">End-to-end encrypted · XMPP clients only</option></select></label><p class="text-muted">Web chat uses an encrypted connection; Micro stores its messages. End-to-end encrypted groups require an XMPP client such as Conversations.</p></details><p class="text-muted">Next, invite people to join. Your personal messages stay private.</p><div class="form-actions"><button>Create group</button></div>`)
 		if notice != "" {
 			editor = app.Problem(notice) + editor
 		}
-		app.Respond(w, r, app.Response{Title: "New group", HTML: app.EditorPage("/groups", "All groups", editor)})
+		app.Respond(w, r, app.Response{Title: "New group", HTML: app.EditorPage("/home", "Home", editor)})
 		return
 	}
 	var b strings.Builder
