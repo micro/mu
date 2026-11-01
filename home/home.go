@@ -174,12 +174,11 @@ func pinnedApps(acc *auth.Account) string {
 func groupsCard(owner string) string {
 	groups, pending, err := group.List(owner)
 	var b strings.Builder
-	b.WriteString(`<div class="form-actions"><a href="/groups?new=1">Create group</a></div>`)
 	if err != nil {
 		b.WriteString(`<p class="text-muted">Groups are temporarily unavailable.</p>`)
 	} else {
 		if len(pending) > 0 {
-			fmt.Fprintf(&b, `<p><a href="/groups">%d pending invitations</a></p>`, len(pending))
+			fmt.Fprintf(&b, `<p class="text-muted">%d pending invitations</p>`, len(pending))
 		}
 		sort.SliceStable(groups, func(i, j int) bool { return strings.ToLower(groups[i].Name) < strings.ToLower(groups[j].Name) })
 		if len(groups) > 5 {
@@ -194,5 +193,5 @@ func groupsCard(owner string) string {
 			b.WriteString(`<p class="text-muted">A shared place for your family, friends or community. Invite people to chat and get help together.</p>`)
 		}
 	}
-	return app.PreviewCard("home-groups", "Your groups", "/groups", b.String())
+	return app.PreviewCard("home-groups", "Groups", "/groups", b.String())
 }
