@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mu/internal/usage"
 	"net/http"
 	"net/url"
 	"os"
@@ -372,8 +373,9 @@ func VerifyAndSettle(r *http.Request, operation, resource string) (*SettleRespon
 // Verify says the money is good and moves none of it. Settle moves it, once
 // there is something to hand back.
 type Verified struct {
-	payload map[string]any
-	req     *PaymentRequirements
+	host, path, operation string
+	payload               map[string]any
+	req                   *PaymentRequirements
 }
 
 // Verify checks a payment without moving any money.
@@ -406,7 +408,7 @@ func Verify(r *http.Request, operation, resource string) (*Verified, error) {
 		return nil, err
 	}
 
-	v := &Verified{payload: payload, req: req}
+	v := &Verified{payload: payload, req: req, host: r.Host, path: r.URL.Path, operation: operation}
 	// Hand it to the writer, which settles once it knows the work succeeded.
 	if h, ok := r.Context().Value(X402SettleKey).(*SettleHolder); ok && h != nil {
 		h.Verified = v
@@ -419,7 +421,11 @@ func (v *Verified) Settle() (*SettleResponse, error) {
 	if v == nil {
 		return nil, fmt.Errorf("nothing verified to settle")
 	}
-	return settleVerified(v.payload, v.req)
+	settled, err := settleVerified(v.payload, v.req)
+	if err == nil && v.host != "" {
+		usage.RecordActivity(usage.Activity{Surface: "payment", Host: v.host, Path: v.path, Operation: v.operation, Account: settled.Payer, PaymentMethod: "x402", Outcome: "ok", AmountAtomic: v.req.AmountAtomic(), Asset: v.req.Asset, Network: v.req.Network, Transaction: settled.Transaction})
+	}
+	return settled, err
 }
 
 // Payer is the address that signed this payment.

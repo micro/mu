@@ -45,14 +45,17 @@ func TimeRequest(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, f
 			usage.RecordOutcome(strconv.Itoa(status) + " " + usage.Endpoint(r.URL.Path))
 		}
 
-		if status >= 400 || (time.Since(start) > 10*time.Second && !strings.HasPrefix(wrapped.Header().Get("Content-Type"), "text/event-stream")) {
+		if status >= 400 || r.URL.Path == "/mcp" || strings.HasPrefix(r.URL.Path, "/api/v1/") || (time.Since(start) > 10*time.Second && !strings.HasPrefix(wrapped.Header().Get("Content-Type"), "text/event-stream")) {
 			account := ""
 			if _, acc := auth.TrySession(r); acc != nil {
 				account = acc.ID
 			}
 			outcome := usage.FailureKind(status, "")
 			if status < 400 {
-				outcome = "slow request"
+				outcome = "ok"
+				if time.Since(start) > 10*time.Second {
+					outcome = "slow request"
+				}
 			}
 			usage.RecordActivity(usage.Activity{Surface: "http", Operation: r.Method + " " + usage.Endpoint(r.URL.Path), Account: account, Path: r.URL.Path, Host: r.Host, IP: ClientIP(r), UserAgent: r.UserAgent(), Status: status, Outcome: outcome, DurationMS: time.Since(start).Milliseconds()})
 		}
