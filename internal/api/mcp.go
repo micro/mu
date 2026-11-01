@@ -642,7 +642,18 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (result stri
 				tokenID = token.ID
 			}
 		}
-		usage.RecordActivity(usage.Activity{Surface: toolSurface(r), Operation: name, Account: toolCaller(r), TokenID: tokenID, Outcome: outcome, DurationMS: time.Since(started).Milliseconds()})
+		entry := usage.Activity{Surface: toolSurface(r), Operation: name, Account: toolCaller(r), TokenID: tokenID, Outcome: outcome, DurationMS: time.Since(started).Milliseconds()}
+		if r != nil {
+			entry.Host = r.Host
+			entry.Path = r.URL.Path
+		}
+		entry.PaymentMethod = "anonymous"
+		if IsWalletIdentity(entry.Account) {
+			entry.PaymentMethod = "wallet"
+		} else if entry.Account != "" && entry.Account != "guest" {
+			entry.PaymentMethod = "account"
+		}
+		usage.RecordActivity(entry)
 	}()
 
 	tools := Tools()

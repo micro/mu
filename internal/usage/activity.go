@@ -7,18 +7,23 @@ import (
 
 // Activity contains operational metadata only, never arguments, bodies or secrets.
 type Activity struct {
-	At         time.Time `json:"at"`
-	Surface    string    `json:"surface"`
-	Operation  string    `json:"operation"`
-	Account    string    `json:"account"`
-	Host       string    `json:"host,omitempty"`
-	IP         string    `json:"ip,omitempty"`
-	UserAgent  string    `json:"user_agent,omitempty"`
-	Path       string    `json:"path,omitempty"`
-	TokenID    string    `json:"token_id,omitempty"`
-	Outcome    string    `json:"outcome"`
-	Status     int       `json:"status,omitempty"`
-	DurationMS int64     `json:"duration_ms,omitempty"`
+	PaymentMethod string    `json:"payment_method,omitempty"`
+	AmountAtomic  string    `json:"amount_atomic,omitempty"`
+	Asset         string    `json:"asset,omitempty"`
+	Network       string    `json:"network,omitempty"`
+	Transaction   string    `json:"transaction,omitempty"`
+	At            time.Time `json:"at"`
+	Surface       string    `json:"surface"`
+	Operation     string    `json:"operation"`
+	Account       string    `json:"account"`
+	Host          string    `json:"host,omitempty"`
+	IP            string    `json:"ip,omitempty"`
+	UserAgent     string    `json:"user_agent,omitempty"`
+	Path          string    `json:"path,omitempty"`
+	TokenID       string    `json:"token_id,omitempty"`
+	Outcome       string    `json:"outcome"`
+	Status        int       `json:"status,omitempty"`
+	DurationMS    int64     `json:"duration_ms,omitempty"`
 }
 
 const maxActivity = 5000

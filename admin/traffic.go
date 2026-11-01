@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -83,6 +84,9 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 	// were doing — the two facts were on the same page, one row apart, and
 	// unconnectable. "asim: 400" is a number an operator cannot act on.
 	who := strings.TrimSpace(r.URL.Query().Get("caller"))
+
+	duration := map[string]time.Duration{"live": 2 * time.Hour, "day": 24 * time.Hour, "week": 7 * 24 * time.Hour, "quarter": 90 * 24 * time.Hour}[win.Slug]
+	sb.WriteString(hostUsageCard(usage.Activities(false), time.Now().Add(-duration), who))
 
 	// Breakdowns over the same window.
 	sb.WriteString(`<div class="traffic-grid">`)

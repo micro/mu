@@ -45,7 +45,7 @@ func activityLogCard(r *http.Request, activity bool) string {
 	}
 
 	fmt.Fprintf(&b, `<form class="search-bar" method="POST" action="%s">%s<input name="account" aria-label="Username" placeholder="Username (exact)" value="%s"><select name="surface" aria-label="Source"><option value="">All sources</option>`, target, app.CSRFField(auth.CSRFToken(r)), html.EscapeString(account))
-	for _, s := range []string{"mcp", "api", "agent", "http", "provider", "credentials"} {
+	for _, s := range []string{"mcp", "api", "agent", "http", "provider", "credentials", "payment"} {
 		selected := ""
 		if s == surface {
 			selected = " selected"
@@ -104,7 +104,7 @@ func activityLogCard(r *http.Request, activity bool) string {
 		}
 		request := "—"
 		if e.Host != "" || e.Path != "" || e.IP != "" || e.UserAgent != "" {
-			request = `<details class="disclosure"><summary>Details</summary><dl><dt>Host</dt><dd>` + html.EscapeString(e.Host) + `</dd><dt>Path</dt><dd>` + html.EscapeString(e.Path) + `</dd><dt>IP</dt><dd>` + html.EscapeString(e.IP) + `</dd><dt>User agent</dt><dd>` + html.EscapeString(e.UserAgent) + `</dd></dl></details>`
+			request = `<details class="disclosure"><summary>Details</summary><dl><dt>Host</dt><dd>` + html.EscapeString(e.Host) + `</dd><dt>Path</dt><dd>` + html.EscapeString(e.Path) + `</dd><dt>IP</dt><dd>` + html.EscapeString(e.IP) + `</dd><dt>User agent</dt><dd>` + html.EscapeString(e.UserAgent) + `</dd><dt>Payment method</dt><dd>` + html.EscapeString(e.PaymentMethod) + `</dd><dt>Settled atomic amount</dt><dd>` + html.EscapeString(e.AmountAtomic) + `</dd><dt>Asset / network</dt><dd>` + html.EscapeString(e.Asset+" / "+e.Network) + `</dd><dt>Transaction</dt><dd>` + html.EscapeString(e.Transaction) + `</dd></dl></details>`
 		}
 		fmt.Fprintf(&b, `<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%d</td><td>%d ms</td><td>%s</td><td>%s</td></tr>`, e.At.UTC().Format("Jan 2 15:04:05"), html.EscapeString(e.Account), html.EscapeString(e.Surface), html.EscapeString(e.Operation), html.EscapeString(e.Outcome), e.Status, e.DurationMS, html.EscapeString(e.TokenID), request)
 	}
