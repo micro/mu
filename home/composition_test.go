@@ -58,7 +58,7 @@ func TestHomeShowsPinsAndConversationsAndFeedIncludesPrayer(t *testing.T) {
 				}
 				body = data.HTML
 			}
-			if !strings.Contains(body, `id="home-groups"`) || !strings.Contains(body, `href="/groups?new=1"`) {
+			if !strings.Contains(body, `id="home-groups"`) || strings.Contains(body, `href="/groups?new=1"`) {
 				t.Fatal("group entry missing", body)
 			}
 			if strings.Contains(body, "private test context") != feed || strings.Contains(body, "public test update") != feed {
@@ -123,7 +123,7 @@ func TestHomeGroupsAreAccountScoped(t *testing.T) {
 	}
 	defer group.Change(other.ID, "home-group-other", "delete", "", "")
 	body := groupsCard("home-group-owner")
-	if !strings.Contains(body, "/groups?new=1") || !strings.Contains(body, "/groups?id="+own.ID) || !strings.Contains(body, "Family &lt;home&gt;") || strings.Contains(body, other.ID) || strings.Contains(body, other.Name) {
+	if strings.Contains(body, "/groups?new=1") || !strings.Contains(body, "/groups?id="+own.ID) || !strings.Contains(body, "Family &lt;home&gt;") || strings.Contains(body, other.ID) || strings.Contains(body, other.Name) {
 		t.Fatal(body)
 	}
 }
