@@ -252,7 +252,10 @@ func raise(a alert) {
 		_, fresh, err := store.Raise(id, store.Item{Source: "system", Key: a.Key, Title: a.What, Detail: a.Why, URL: a.Where})
 		if err != nil {
 			app.Log("alert", "could not record alert: %v", err)
-			continue
+			// A full disk can prevent the alert record itself being saved.
+			// Preserve the old cooldown-limited delivery path in that case,
+			// especially push, which does not need a local mailbox write.
+			fresh = true
 		}
 		if !fresh || !fired(id+":"+a.Key) {
 			continue

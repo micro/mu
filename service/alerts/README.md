@@ -15,7 +15,8 @@ This first slice provides:
 - Existing Admin disk/traffic checks as producers. Recovery resolves the condition;
   a later crossing starts a new episode. Log warnings remain discrete occurrences.
   Existing mail/push delivery is attempted once per new episode, subject to the
-  configured cooldown. Delivery is best-effort, not a durable retry queue.
+  configured cooldown. If storage fails, operational alerts still attempt delivery
+  under the in-memory cooldown. Delivery is best-effort, not a durable retry queue.
 
 Custom API alerts use the `custom` source and cannot overwrite system records.
 Resolving a custom alert marks its condition recovered, allowing the next Raise
