@@ -69,7 +69,7 @@ func TestEveningDigestUsesFreshPublicTopicPosts(t *testing.T) {
 }
 
 func TestDigestExcerptDoesNotCutMarkdownLinks(t *testing.T) {
-	content := strings.Repeat("word ", 87) + "[Dow rose 500 points](https://www.cnbc.com/2026/10/16/markets.html) after trading."
+	content := strings.Repeat("word ", 32) + "[Dow rose 500 points](https://www.cnbc.com/2026/10/16/markets.html) after trading."
 	excerpt := digestParagraph(content)
 	if strings.Contains(excerpt, "https:") || strings.Contains(excerpt, "[Dow") || !strings.Contains(excerpt, "Dow rose 500") {
 		t.Fatalf("broken link in excerpt: %s", excerpt)
@@ -110,5 +110,23 @@ func TestBreakRenamePreservesSchedule(t *testing.T) {
 	configureScheduledAdvances()
 	if Moment(owner).Sequence != 8 {
 		t.Fatal("rename repeated")
+	}
+}
+
+func TestEveningDigestIsCompactWithoutDocumentTitle(t *testing.T) {
+	at := time.Date(2026, 11, 1, 20, 0, 0, 0, time.UTC)
+	var posts []*blog.Post
+	for _, topic := range []string{"world", "tech", "finance", "uk", "islam", "science"} {
+		posts = append(posts, &blog.Post{ID: topic, AuthorID: auth.MicroID, Title: topic, Tags: "opinion," + topic, Content: strings.Repeat("word ", 100), CreatedAt: at})
+	}
+	result, err := renderEveningDigest(posts, "", at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(result, "#") || strings.Contains(result, "# Evening Digest") || strings.Count(result, "- **[") != 4 || len(strings.Fields(result)) > 180 {
+		t.Fatal("digest should contain four short linked previews, without a large title", result)
+	}
+	if !strings.HasPrefix(result, "Sunday, 1 November 2026") {
+		t.Fatal(result)
 	}
 }

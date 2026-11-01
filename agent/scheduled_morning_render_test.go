@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"mu/internal/app"
 	"mu/service/events"
 	"mu/service/markets"
 	"mu/service/prayer"
@@ -85,5 +86,24 @@ func TestMorningReminderQuotesDatedVerse(t *testing.T) {
 	}
 	if morningReminder(d, "2026-10-20") != "" {
 		t.Fatal("stale reminder accepted")
+	}
+}
+
+func TestMorningBriefSeparatesContentFromSources(t *testing.T) {
+	c := BriefContent{
+		Day:       []BriefItem{{Text: "09:00 meeting", URL: "https://micro.mu/events"}, {Text: "14:00 appointment", URL: "https://micro.mu/events"}},
+		Headlines: []BriefItem{{Title: "Rail service resumes", Text: "Repairs finished overnight.", URL: "https://example.com/rail"}},
+	}
+	result := renderMorningBrief(c, "", &events.Event{Zone: "UTC"}, time.Now(), "", false)
+	if strings.Contains(result, "[Source]") || !strings.Contains(result, "- **Rail service resumes** — Repairs finished overnight.") {
+		t.Fatal(result)
+	}
+	rendered := app.RenderString(result)
+	if !strings.Contains(rendered, "<strong>Rail service resumes</strong>") || !strings.Contains(rendered, `href="https://example.com/rail"`) {
+		t.Fatal("rendered hierarchy lost", rendered)
+	}
+	sources := strings.Index(result, "Sources:")
+	if sources < strings.Index(result, "## Daily reminder") || strings.Contains(result[:sources], "https://") || strings.Count(result, "https://micro.mu/events") != 1 {
+		t.Fatal("sources must be deduplicated and follow the content", result)
 	}
 }
