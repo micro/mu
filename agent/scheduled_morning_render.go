@@ -31,6 +31,8 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n\n%s\n", greeting, now.In(loc).Format("Monday, 2 January 2006"))
+	var sources []string
+	seenSources := map[string]bool{}
 	section := func(title string, items []BriefItem, limit int, fallback string) {
 		fmt.Fprintf(&b, "\n## %s\n\n", title)
 		count := 0
@@ -41,7 +43,19 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 			}
 			u, err := url.Parse(item.URL)
 			if err == nil && u.Host != "" && (u.Scheme == "https" || u.Scheme == "http") && !strings.ContainsAny(item.URL, "\n\r<>") {
-				text += " [Source](<" + u.String() + ">)"
+				if !seenSources[u.String()] {
+					seenSources[u.String()] = true
+					label := title
+					if item.Title != "" {
+						label = item.Title
+					}
+					sources = append(sources, "["+briefText(label+" · "+u.Hostname())+"](<"+u.String()+">)")
+				}
+			}
+			if label := briefText(item.Title); label != "" {
+				text = "**" + label + "** — " + text
+			} else if title == "Headlines" {
+				text = "**" + text + "**"
 			}
 			fmt.Fprintf(&b, "- %s\n", text)
 			count++
@@ -70,6 +84,9 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 		b.WriteString("\n" + reminderTitle.ReplaceAllString(reminder, "##$1") + "\n")
 	} else {
 		b.WriteString("\n## Daily reminder\n\nToday's verse is unavailable.\n")
+	}
+	if len(sources) > 0 {
+		b.WriteString("\nSources: " + strings.Join(sources, " · ") + "\n")
 	}
 	return strings.TrimSpace(b.String())
 }
