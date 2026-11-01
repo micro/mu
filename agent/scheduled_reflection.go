@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 )
 
 func eveningDigest(e *events.Event, at time.Time) (string, error) {
@@ -67,7 +68,11 @@ func renderEveningDigest(posts []*blog.Post, topic string, at time.Time) (string
 			if paragraph == "" || strings.HasPrefix(paragraph, "#") || strings.HasPrefix(paragraph, "<") {
 				continue
 			}
-			b.WriteString("- " + digestParagraph(paragraph) + "\n\n")
+			preview := digestParagraph(paragraph)
+			if preview == "" {
+				continue
+			}
+			b.WriteString("- " + preview + "\n\n")
 			count++
 			if count == 3 {
 				break
@@ -79,7 +84,11 @@ func renderEveningDigest(posts []*blog.Post, topic string, at time.Time) (string
 		b.WriteString("## Further reading\n\n")
 	}
 	for _, p := range reading {
-		b.WriteString("- **[" + briefText(p.Title) + "](" + origin.Self() + "/blog/post?id=" + url.QueryEscape(p.ID) + ")** — " + digestParagraph(p.Content) + "\n\n")
+		b.WriteString("- **[" + briefText(p.Title) + "](" + origin.Self() + "/blog/post?id=" + url.QueryEscape(p.ID) + ")**")
+		if preview := digestParagraph(p.Content); preview != "" {
+			b.WriteString(" — " + preview)
+		}
+		b.WriteString("\n\n")
 	}
 	if roundup == nil && len(reading) == 0 {
 		subject := "blog digests"
@@ -113,7 +122,19 @@ func digestParagraph(content string) string {
 		paragraph = strings.TrimSpace(plain.String())
 		words := strings.Fields(paragraph)
 		if len(words) > 35 {
-			paragraph = strings.Join(words[:35], " ") + "…"
+			// Keep only complete sentences inside the preview budget. A linked
+			// title is preferable to a fragment when the opening sentence is too long.
+			runes := []rune(strings.Join(words[:35], " "))
+			end := 0
+			for i, r := range runes {
+				if (r == '.' || r == '!' || r == '?') && (i+1 == len(runes) || unicode.IsSpace(runes[i+1])) {
+					end = i + 1
+				}
+			}
+			if end == 0 {
+				return ""
+			}
+			paragraph = string(runes[:end])
 		}
 		// This excerpt is embedded in Markdown; keep visible punctuation literal.
 		return strings.NewReplacer("\\", "\\\\", "[", "\\[", "]", "\\]", "*", "\\*", "_", "\\_", "`", "\\`", "<", "&lt;", ">", "&gt;").Replace(paragraph)

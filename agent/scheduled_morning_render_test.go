@@ -22,7 +22,7 @@ func TestBriefRendererOwnsStructure(t *testing.T) {
 		t.Fatal("timezone lost", result)
 	}
 	previous := -1
-	for _, heading := range []string{"## Your day", "## Weather", "## Prayer times", "## Markets", "## Daily reminder", "## Spiritual Reflection"} {
+	for _, heading := range []string{"## Your day", "## Daily reminder", "## Spiritual Reflection"} {
 		position := strings.Index(result, heading)
 		if position <= previous {
 			t.Fatal(result)
@@ -63,7 +63,7 @@ func TestMorningTravelAppearsAfterWeather(t *testing.T) {
 	}
 	result := renderMorningBrief(content, "", &events.Event{Zone: "UTC"}, time.Now(), "## Daily reminder\n\nA reminder.", false)
 	travel := strings.Index(result, "## Travel")
-	if travel < strings.Index(result, "## Weather") || travel > strings.Index(result, "## Prayer times") || strings.Contains(result[:travel], "Central line") || !strings.Contains(result[travel:], "Central line delays") {
+	if travel < strings.Index(result, "## Your day") || travel > strings.Index(result, "## Daily reminder") || strings.Contains(result[:travel], "Central line") || !strings.Contains(result[travel:], "Central line delays") {
 		t.Fatal(result)
 	}
 	empty := renderMorningBrief(BriefContent{}, "", &events.Event{Zone: "UTC"}, time.Now(), "", false)
@@ -105,5 +105,18 @@ func TestMorningBriefSeparatesContentFromSources(t *testing.T) {
 	sources := strings.Index(result, "Sources:")
 	if sources < strings.Index(result, "## Daily reminder") || strings.Contains(result[:sources], "https://") || strings.Count(result, "https://micro.mu/events") != 1 {
 		t.Fatal("sources must be deduplicated and follow the content", result)
+	}
+}
+
+func TestBriefOmitsEmptyOptionalSections(t *testing.T) {
+	c := BriefContent{Weather: []BriefItem{{Text: "  "}}, Travel: []BriefItem{{Text: ""}}, Priorities: []BriefItem{{Text: ""}}}
+	got := renderMorningBrief(c, "", &events.Event{Zone: "UTC"}, time.Now(), "", true)
+	for _, heading := range []string{"## Weather", "## Travel", "## Prayer times", "## Headlines", "## Markets", "## One small step"} {
+		if strings.Contains(got, heading) {
+			t.Fatal("empty section", got)
+		}
+	}
+	if !strings.Contains(got, "may not include all your commitments") || !strings.Contains(got, "Today's verse is unavailable") {
+		t.Fatal("missing important availability notice", got)
 	}
 }
