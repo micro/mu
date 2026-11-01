@@ -69,7 +69,7 @@ func TestEveningDigestUsesFreshPublicTopicPosts(t *testing.T) {
 }
 
 func TestDigestExcerptDoesNotCutMarkdownLinks(t *testing.T) {
-	content := strings.Repeat("word ", 32) + "[Dow rose 500 points](https://www.cnbc.com/2026/10/16/markets.html) after trading."
+	content := "Markets rallied. [Dow rose 500 points](https://www.cnbc.com/2026/10/16/markets.html) after trading."
 	excerpt := digestParagraph(content)
 	if strings.Contains(excerpt, "https:") || strings.Contains(excerpt, "[Dow") || !strings.Contains(excerpt, "Dow rose 500") {
 		t.Fatalf("broken link in excerpt: %s", excerpt)
@@ -128,5 +128,20 @@ func TestEveningDigestIsCompactWithoutDocumentTitle(t *testing.T) {
 	}
 	if !strings.HasPrefix(result, "Sunday, 1 November 2026") {
 		t.Fatal(result)
+	}
+}
+
+func TestDigestPreviewStopsAtCompleteSentence(t *testing.T) {
+	got := digestParagraph("A complete opening sentence. " + strings.Repeat("additional ", 60))
+	if got != "A complete opening sentence." {
+		t.Fatal(got)
+	}
+	if got := digestParagraph(strings.Repeat("long ", 60) + "sentence."); got != "" {
+		t.Fatal("incomplete preview", got)
+	}
+	at := time.Now()
+	got, err := renderEveningDigest([]*blog.Post{{ID: "long", Title: "Read this story", AuthorID: auth.MicroID, Tags: "opinion,tech", CreatedAt: at, Content: strings.Repeat("long ", 60) + "sentence."}}, "", at)
+	if err != nil || !strings.Contains(got, "Read this story") || strings.Contains(got, "** —") || strings.Contains(got, "…") {
+		t.Fatal(got, err)
 	}
 }

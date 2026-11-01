@@ -34,12 +34,14 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	var sources []string
 	seenSources := map[string]bool{}
 	section := func(title string, items []BriefItem, limit int, fallback string) {
-		fmt.Fprintf(&b, "\n## %s\n\n", title)
 		count := 0
 		for _, item := range items {
 			text := briefText(item.Text)
 			if text == "" {
 				continue
+			}
+			if count == 0 {
+				fmt.Fprintf(&b, "\n## %s\n\n", title)
 			}
 			u, err := url.Parse(item.URL)
 			if err == nil && u.Host != "" && (u.Scheme == "https" || u.Scheme == "http") && !strings.ContainsAny(item.URL, "\n\r<>") {
@@ -63,20 +65,21 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 				break
 			}
 		}
-		if count == 0 {
+		if count == 0 && fallback != "" {
+			fmt.Fprintf(&b, "\n## %s\n\n", title)
 			b.WriteString(fallback + "\n")
 		}
 	}
-	section("Your day", c.Day, 8, "No commitments or relevant work were available for this brief. Calendar coverage may be incomplete.")
-	section("Weather", c.Weather, 1, "Today's weather is unavailable.")
+	section("Your day", c.Day, 8, "No calendar items were available. This may not include all your commitments.")
+	section("Weather", c.Weather, 1, "")
 	if len(c.Travel) > 0 {
 		section("Travel", c.Travel, 3, "")
 	}
-	section("Prayer times", c.Prayer, 1, "Today's prayer times are unavailable.")
+	section("Prayer times", c.Prayer, 1, "")
 	if BriefWorldNews(e) {
-		section("Headlines", c.Headlines, 5, "No recent sourced headlines are available.")
+		section("Headlines", c.Headlines, 5, "")
 	}
-	section("Markets", c.Markets, 4, "Market prices are unavailable for this brief.")
+	section("Markets", c.Markets, 4, "")
 	if plan && len(c.Priorities) > 0 {
 		section("One small step", c.Priorities, 1, "")
 	}
