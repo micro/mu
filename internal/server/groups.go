@@ -233,7 +233,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`<p>` + strconv.Itoa(len(g.Members)) + ` members · Created ` + g.Created.Format("2 Jan 2006") + `</p><div class="form-actions"><a class="btn" href="` + base + `">Open chats</a><a class="btn" href="` + base + `&tab=members">Members and invitations</a></div></section>`)
 		if admin {
-			b.WriteString(`<details class="record-card"><summary>Edit description</summary>` + form("describe", `<label>What is this group for?<textarea name="value" maxlength="1000" rows="3" placeholder="Plans, ideas, and everyday life…">`+html.EscapeString(g.Description)+`</textarea></label><button>Save description</button>`) + `</details>`)
+			b.WriteString(`<section class="record-card"><h2>Edit description</h2>` + form("describe", `<label>What is this group for?<textarea name="value" maxlength="1000" rows="3" placeholder="Plans, ideas, and everyday life…">`+html.EscapeString(g.Description)+`</textarea></label><button>Save description</button>`) + `</section>`)
 		}
 	case "conversation":
 		_, c, ok := group.ConversationFor(r.URL.Query().Get("room"))
@@ -259,23 +259,23 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</div>`)
 		if admin {
-			b.WriteString(`<details class="record-card"><summary>New event</summary>` + form("event", `<label>Title<input name="title" required maxlength="200"></label><label>When<input type="datetime-local" name="when" required></label>`+groupZoneField()+`<label>Notes<textarea name="note" maxlength="4000"></textarea></label><label>Repeat<select name="repeat"><option value="">Once</option><option>daily</option><option>weekly</option><option>monthly</option></select></label><button>Create event</button>`) + `</details>`)
+			b.WriteString(`<section class="record-card"><h2>New event</h2>` + form("event", `<label>Title<input name="title" required maxlength="200"></label><label>When<input type="datetime-local" name="when" required></label>`+groupZoneField()+`<label>Notes<textarea name="note" maxlength="4000"></textarea></label><label>Repeat<select name="repeat"><option value="">Once</option><option>daily</option><option>weekly</option><option>monthly</option></select></label><button>Create event</button>`) + `</section>`)
 			if !g.Encrypted {
-				b.WriteString(`<details class="record-card"><summary>Daily group brief</summary><p>A short update on your shared events and chats, delivered once to the group. Requires Starter or Pro.</p>` + form("brief", `<label>Time<input name="time" type="time" required value="08:00"></label>`+groupZoneField()+`<button>Schedule brief</button>`) + `</details>`)
+				b.WriteString(`<section class="record-card"><h2>Daily group brief</h2><p>A short update on your shared events and chats, delivered once to the group. Requires Starter or Pro.</p>` + form("brief", `<label>Time<input name="time" type="time" required value="08:00"></label>`+groupZoneField()+`<button>Schedule brief</button>`) + `</section>`)
 			}
 		}
 	case "agents":
 		b.WriteString(`<p>Micro is available by default. Group assistants use shared context; personal accounts stay private.</p><div class="collection-list"><div class="collection-item"><strong>Micro</strong><span>Default assistant</span></div>`)
 		for _, a := range agent.Agents(scope) {
-			b.WriteString(`<div class="collection-item"><strong>` + html.EscapeString(a.Name) + `</strong>`)
+			b.WriteString(`<div class="collection-item"><div class="record-card"><strong>` + html.EscapeString(a.Name) + `</strong>`)
 			if admin {
-				b.WriteString(`<details><summary>Edit assistant</summary>` + form("agent", `<input type="hidden" name="agent_id" value="`+a.ID+`"><label>Name<input name="name" value="`+html.EscapeString(a.Name)+`" required></label><label>Instructions<textarea name="prompt" required>`+html.EscapeString(a.Prompt)+`</textarea></label><button>Save assistant</button>`) + `</details>`)
+				b.WriteString(`<section class="record-card"><h3>Edit assistant</h3>` + form("agent", `<input type="hidden" name="agent_id" value="`+a.ID+`"><label>Name<input name="name" value="`+html.EscapeString(a.Name)+`" required></label><label>Instructions<textarea name="prompt" required>`+html.EscapeString(a.Prompt)+`</textarea></label><button>Save assistant</button>`) + `</section>`)
 			}
-			b.WriteString(`</div>`)
+			b.WriteString(`</div></div>`)
 		}
 		b.WriteString(`</div>`)
 		if admin && !g.Encrypted {
-			b.WriteString(`<details class="record-card"><summary>New assistant</summary>` + form("agent", `<label>Name<input name="name" maxlength="60" required></label><label>Instructions<textarea name="prompt" maxlength="8000" required></textarea></label><button>Create assistant</button>`) + `</details>`)
+			b.WriteString(`<section class="record-card"><h2>New assistant</h2>` + form("agent", `<label>Name<input name="name" maxlength="60" required></label><label>Instructions<textarea name="prompt" maxlength="8000" required></textarea></label><button>Create assistant</button>`) + `</section>`)
 		}
 	case "members":
 		checked := ""
@@ -319,7 +319,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(form("fund", `<label>Transfer prepaid credits from your balance<input type="number" min="1" name="amount" required></label><button>Fund group</button>`) + `<a href="/account/topup">Top up your prepaid balance</a>`)
 			b.WriteString(billing.GroupSubscriptionSummary(r, g))
 			if time.Now().Before(g.BillingUntil) {
-				b.WriteString(`<details><summary>Close group billing</summary><p>Stop the subscription and any pending checkout before deleting this group. Remaining monthly credits cannot be transferred.</p>` + strings.Replace(form("end_plan", `<button class="btn-secondary">Stop group billing</button>`), `<form `, `<form data-confirm="Stop group billing now?" `, 1) + `</details>`)
+				b.WriteString(`<section class="record-card"><h3>Close group billing</h3><p>Stop the subscription and any pending checkout before deleting this group. Remaining monthly credits cannot be transferred.</p>` + strings.Replace(form("end_plan", `<button class="btn-secondary">Stop group billing</button>`), `<form `, `<form data-confirm="Stop group billing now?" `, 1) + `</section>`)
 			}
 		}
 		b.WriteString(`</section>`)
@@ -340,7 +340,7 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 			_, preview, _ := chat.Latest(c.ID)
 			b.WriteString(`<a class="collection-item" href="/chat?id=` + c.ID + `"><span class="collection-title">` + html.EscapeString(c.Name) + `</span><span class="text-muted">` + html.EscapeString(label) + `</span><span class="collection-preview">` + html.EscapeString(preview) + `</span></a>`)
 		}
-		b.WriteString(`</div><details class="record-card"><summary>New chat</summary>` + form("conversation", `<label>Name<input name="name" required maxlength="100"></label>`+groupAgentPicker(scope, g.Encrypted)+`<button>Create chat</button>`) + `</details>`)
+		b.WriteString(`</div><section class="record-card"><h2>New chat</h2>` + form("conversation", `<label>Name<input name="name" required maxlength="100"></label>`+groupAgentPicker(scope, g.Encrypted)+`<button>Create chat</button>`) + `</section>`)
 	}
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: g.Name, HTML: b.String()})

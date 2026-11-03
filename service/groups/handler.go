@@ -81,7 +81,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	auth.SetCSRFCookie(w, r)
 	csrf := auth.CSRFToken(r)
 	if !app.WantsJSON(r) && ((r.Method == http.MethodGet && r.URL.Query().Get("new") == "1") || (r.Method == http.MethodPost && r.PostFormValue("action") == "create" && notice != "")) {
-		editor := form(csrf, "", "create", "", `<label class="field-label">Group name<input name="name" required maxlength="100" placeholder="Family"></label><label>Description (optional)<textarea name="description" maxlength="1000" placeholder="What brings you together?"></textarea></label><details><summary>Advanced chat privacy</summary><label class="field-label">Chat privacy<select name="encrypted"><option value="false">Web and XMPP chat</option><option value="true">End-to-end encrypted · XMPP clients only</option></select></label><p class="text-muted">Web chat uses an encrypted connection; Micro stores its messages. End-to-end encrypted groups require an XMPP client such as Conversations.</p></details><p class="text-muted">Next, invite people to join. Your personal messages stay private.</p><div class="form-actions"><button>Create group</button></div>`)
+		editor := form(csrf, "", "create", "", `<label class="field-label">Group name<input name="name" required maxlength="100" placeholder="Family"></label><label>Description (optional)<textarea name="description" maxlength="1000" placeholder="What brings you together?"></textarea></label><section class="record-card"><h2>Chat privacy</h2><label class="field-label">Chat privacy<select name="encrypted"><option value="false">Web and XMPP chat</option><option value="true">End-to-end encrypted · XMPP clients only</option></select></label><p class="text-muted">Web chat uses an encrypted connection; Micro stores its messages. End-to-end encrypted groups require an XMPP client such as Conversations.</p></section><p class="text-muted">Next, invite people to join. Your personal messages stay private.</p><div class="form-actions"><button>Create group</button></div>`)
 		if notice != "" {
 			editor = app.Problem(notice) + editor
 		}
@@ -115,7 +115,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		sort.Strings(names)
 		role := g.Members[acc.ID]
 		for _, a := range names {
-			b.WriteString(`<div class="collection-item"><div class="metadata-row"><a href="/@` + html.EscapeString(a) + `">@` + html.EscapeString(a) + `</a><span>` + g.Members[a] + `</span></div>`)
+			b.WriteString(`<div class="collection-item"><div class="record-card"><div class="metadata-row"><a href="/@` + html.EscapeString(a) + `">@` + html.EscapeString(a) + `</a><span>` + g.Members[a] + `</span></div>`)
 			if a != acc.ID && role == "owner" {
 				options := ""
 				for _, choice := range []struct{ value, label string }{{"member", "Member"}, {"admin", "Admin"}, {"owner", "Transfer ownership"}} {
@@ -125,7 +125,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					}
 					options += `<option value="` + choice.value + `"` + selected + `>` + choice.label + `</option>`
 				}
-				b.WriteString(`<details><summary>Manage member</summary>` + form(csrf, g.ID, "role", a, `<label class="field-label">Role<select name="value">`+options+`</select></label><button>Save role</button>`) + `</details>`)
+				b.WriteString(`<section class="record-card"><h3>Manage member</h3>` + form(csrf, g.ID, "role", a, `<label class="field-label">Role<select name="value">`+options+`</select></label><button>Save role</button>`) + `</section>`)
 			}
 			if a != g.Owner && (a == acc.ID || role == "owner" || (role == "admin" && g.Members[a] != "admin")) {
 				label := "Remove"
@@ -134,7 +134,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 				b.WriteString(form(csrf, g.ID, "remove", a, `<button class="btn-secondary">`+label+`</button>`))
 			}
-			b.WriteString(`</div>`)
+			b.WriteString(`</div></div>`)
 		}
 		b.WriteString(`</div></section>`)
 		if role == "owner" || role == "admin" {
