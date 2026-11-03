@@ -211,12 +211,14 @@ func groupsHandler(w http.ResponseWriter, r *http.Request) {
 	if g.Description != "" && tab != "details" {
 		b.WriteString(`<p class="text-muted">` + html.EscapeString(g.Description) + `</p>`)
 	}
-	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{{Label: "Chats", URL: base, Key: ""}, {Label: "Events", URL: base + "&tab=events", Key: "events"}}, false))
-	manageOpen := ""
-	if tab != "" && tab != "events" {
-		manageOpen = " open"
-	}
-	b.WriteString(`<details class="disclosure"` + manageOpen + `><summary>Group details and settings</summary><div class="form-actions"><a href="` + base + `&tab=details">About</a><a href="` + base + `&tab=members">Members</a><a href="` + base + `&tab=agents">Assistants</a><a href="` + base + `&tab=settings">Settings and budget</a></div></details>`)
+	b.WriteString(app.ViewNavigation("Group", tab, []app.ViewLink{
+		{Label: "Chats", URL: base, Key: ""},
+		{Label: "Events", URL: base + "&tab=events", Key: "events"},
+		{Label: "About", URL: base + "&tab=details", Key: "details"},
+		{Label: "Members", URL: base + "&tab=members", Key: "members"},
+		{Label: "Assistants", URL: base + "&tab=agents", Key: "agents"},
+		{Label: "Settings and budget", URL: base + "&tab=settings", Key: "settings"},
+	}, false))
 	if notice != "" {
 		b.WriteString(`<p class="notice" role="status">` + html.EscapeString(notice) + `</p>`)
 	}
