@@ -25,7 +25,7 @@ type BriefContent struct {
 	Priorities []BriefItem `json:"priorities"`
 }
 
-func IncludedBrief(ctx context.Context, owner, prompt string) (BriefContent, error) {
+func IncludedBrief(ctx context.Context, owner, prompt string, marketItems []BriefItem) (BriefContent, error) {
 	if len(prompt) > 24000 {
 		prompt = prompt[:24000]
 	}
@@ -33,17 +33,22 @@ func IncludedBrief(ctx context.Context, owner, prompt string) (BriefContent, err
 	if err != nil {
 		return BriefContent{}, err
 	}
-	return parseBriefContent(raw)
+	return parseBriefContent(raw, marketItems...)
 }
-func parseBriefContent(raw string) (BriefContent, error) {
+func parseBriefContent(raw string, marketItems ...BriefItem) (BriefContent, error) {
 	raw = strings.TrimSpace(raw)
 	if strings.HasPrefix(raw, "```json") && strings.HasSuffix(raw, "```") {
 		raw = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(raw, "```json"), "```"))
 	}
 	var result BriefContent
+	if !strings.HasPrefix(raw, "{") {
+		return result, fmt.Errorf("could not format the morning brief; please try again")
+	}
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 		return result, fmt.Errorf("could not format the morning brief; please try again")
 	}
+	// Application-owned quotes count toward usable content; model prices never do.
+	result.Markets = marketItems
 	if len(result.Day)+len(result.Travel)+len(result.Weather)+len(result.Prayer)+len(result.Headlines)+len(result.Markets) == 0 {
 		return result, fmt.Errorf("morning brief returned no usable sections")
 	}
@@ -57,7 +62,7 @@ Travel: at most three short items for useful supplied travel times or disruption
 Weather: one compact item with today's location, conditions, temperatures and rain when supplied.
 Prayer: one compact item with supplied Fajr, Dhuhr, Asr, Maghrib and Isha times plus the calculation convention, not congregation times.
 Headlines: three to five recent sourced developments, each with a short title (at most eight words), its original article URL and one concise explanatory sentence in text. Keep text to at most 25 words and cover only one story per item. Do not repeat the title in text. Fewer if fewer are supplied; empty if world news is disabled.
-Markets: a compact snapshot of supplied crypto, commodities, currencies and stocks, with prices in USD and reported percentage changes. Present the quotes directly. Omit routine retrieval timestamps, cache labels and "not live" disclaimers. Retrieval metadata is for assessing freshness, not for repeating to the reader. If prices are marked stale, qualify those prices briefly as older figures; do not imply they are current. Currency values are USD per unit of the named currency. Never call cached quotes live, infer market opening status, or invent explanations for movements. Empty if no market data is supplied.
+Markets: return an empty array. The application appends market prices directly from its timestamped quotes, one asset per row. Do not write market-price summaries or move them into other sections.
 Priorities: at most ONE optional micro-action ONLY when a suggested plan is explicitly requested. It must take less than five minutes, be a single step with no hidden preparation, focus on a controllable input rather than an outcome, and be feasible with almost no energy. Ground it in supplied facts and stated capacity, with a clear stopping point. If no suitable action is supported, leave the array empty. Never invent time slots.
 Aim for 180–250 words in total, less when little is known. The sourced daily reminder is appended separately: never generate or paraphrase scripture.
 Keep the brief focused on the information itself. Do not narrate fetching, caching, provider access, missing sources or other collection mechanics. You have no tools. Lookups were performed before this request. Never say you tried to fetch, checked, investigated, or could not reach tools yourself. Never invent facts, sources, appointments, task blockers, replies owed, urgency or things you changed.

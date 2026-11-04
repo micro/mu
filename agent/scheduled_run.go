@@ -8,6 +8,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/group"
 	"mu/service/events"
+	"mu/service/markets"
 )
 
 // Included brief facts come from bounded owned records, never an open-ended
@@ -72,9 +73,10 @@ func RunScheduled(owner, id, revision string, due time.Time) (handled bool, answ
 		}
 		answer, err = eveningDigest(schedule, at)
 	} else {
+		marketItems := briefMarketItems(markets.AllPriceData(), time.Now())
 		facts, reflection := morningFacts(ctx, owner, schedule, at)
 		var content BriefContent
-		content, err = IncludedBrief(ctx, owner, facts)
+		content, err = IncludedBrief(ctx, owner, facts, marketItems)
 		if err == nil {
 			answer = renderMorningBrief(content, acc.Name, schedule, at, reflection, auth.Plan(owner) == "pro" && schedule.Plan)
 		}
