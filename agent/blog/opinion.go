@@ -435,17 +435,21 @@ Line 2: Empty line
 Line 3+: The piece body
 
 Rules:
-- Write 4-6 paragraphs of flowing prose
+- Focus on one argument, not a tour of loosely related headlines. State the central point in the opening paragraph.
+- Write 180-260 words in short paragraphs of one or two sentences, at most 45 words per paragraph.
+- Use one or two short Markdown subheadings (##) when they help separate the argument, evidence and implications. No heading before the opening paragraph.
 - Be clear and direct — inform, don't lecture
 - Use plain language, no jargon
 - Do NOT start with "Today" or "In today's"
-- Do NOT include bullet points, lists, or headings in the body
+- Keep the main argument in prose. A short list is allowed only for concrete takeaways; do not turn the article into a checklist.
+- Distinguish sourced facts from your interpretation. Avoid inflated claims, repeated conclusions and generic observations about what developers or society must do.
 - Do NOT include a references section
 - Link to what you name, INLINE, as markdown: "[BirdNET-Go](https://...)" — take the URLs from the research above, and link the first mention of each thing
 - Every specific project, company, paper or event you name should be reachable from the piece
 - Write dollar amounts as plain numbers like $94 or $1.2 trillion — NEVER use LaTeX formatting
 - Do NOT include preamble like "Here is my opinion"
-- CRITICAL: Keep under 2500 characters total (title + body).`, category, category)
+- Finish with a specific implication supported by the argument, not a generic moral or invitation to keep reading.
+- Complete every sentence and Markdown link. Never truncate text or URLs to meet the length target; remove a less useful point instead.`, category, category)
 }
 
 // splitOpinion takes the model's answer apart: the first line is the title and
