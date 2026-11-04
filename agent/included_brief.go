@@ -25,7 +25,7 @@ type BriefContent struct {
 	Priorities []BriefItem `json:"priorities"`
 }
 
-func IncludedBrief(ctx context.Context, owner, prompt string) (BriefContent, error) {
+func IncludedBrief(ctx context.Context, owner, prompt string, marketItems []BriefItem) (BriefContent, error) {
 	if len(prompt) > 24000 {
 		prompt = prompt[:24000]
 	}
@@ -33,17 +33,22 @@ func IncludedBrief(ctx context.Context, owner, prompt string) (BriefContent, err
 	if err != nil {
 		return BriefContent{}, err
 	}
-	return parseBriefContent(raw)
+	return parseBriefContent(raw, marketItems...)
 }
-func parseBriefContent(raw string) (BriefContent, error) {
+func parseBriefContent(raw string, marketItems ...BriefItem) (BriefContent, error) {
 	raw = strings.TrimSpace(raw)
 	if strings.HasPrefix(raw, "```json") && strings.HasSuffix(raw, "```") {
 		raw = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(raw, "```json"), "```"))
 	}
 	var result BriefContent
+	if !strings.HasPrefix(raw, "{") {
+		return result, fmt.Errorf("could not format the morning brief; please try again")
+	}
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 		return result, fmt.Errorf("could not format the morning brief; please try again")
 	}
+	// Application-owned quotes count toward usable content; model prices never do.
+	result.Markets = marketItems
 	if len(result.Day)+len(result.Travel)+len(result.Weather)+len(result.Prayer)+len(result.Headlines)+len(result.Markets) == 0 {
 		return result, fmt.Errorf("morning brief returned no usable sections")
 	}
