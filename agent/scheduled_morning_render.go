@@ -79,7 +79,7 @@ func renderMorningBrief(c BriefContent, name string, e *events.Event, now time.T
 	if BriefWorldNews(e) {
 		section("Headlines", c.Headlines, 5, "")
 	}
-	section("Markets", c.Markets, 4, "")
+	section("Markets", c.Markets, 8, "")
 	if plan && len(c.Priorities) > 0 {
 		section("One small step", c.Priorities, 1, "")
 	}

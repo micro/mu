@@ -33,26 +33,49 @@ func TestBriefRendererOwnsStructure(t *testing.T) {
 
 func TestMorningMarketsPreserveFreshness(t *testing.T) {
 	now := time.Date(2026, 9, 29, 6, 0, 0, 0, time.UTC)
-	facts := briefMarkets(map[string]markets.PriceData{
+	items := briefMarketItems(map[string]markets.PriceData{
 		"BTC":  {Price: 65000, Change24h: -2.5, UpdatedAt: now.Add(-time.Minute), Source: "provider"},
 		"GOLD": {Price: 2500, UpdatedAt: now.Add(-24 * time.Hour)},
-		"GBP":  {Price: 1.3}, // Undated prices cannot be presented as current.
+		"GBP":  {Price: 1.3},
+		"ETH":  {Price: 2500, UpdatedAt: now.Add(time.Hour)},
 	}, now)
-	for _, want := range []string{"BTC: 65000 USD", "-2.50%", "stale cached", "2026-09-28T06:00:00Z"} {
-		if !strings.Contains(facts, want) {
-			t.Fatalf("missing %q: %s", want, facts)
+	if len(items) != 2 || items[0].Title != "BTC" || items[1].Title != "GOLD" {
+		t.Fatalf("unexpected market rows: %+v", items)
+	}
+	result := renderMorningBrief(BriefContent{Markets: items}, "", &events.Event{Zone: "UTC"}, now, "", false)
+	for _, want := range []string{"- **BTC** — $65000.00 (-2.50%)", "- **GOLD** — $2500.00 (+0.00%) — as of 28 Sep, 06:00 UTC"} {
+		if !strings.Contains(result, want) {
+			t.Fatalf("missing %q: %s", want, result)
 		}
 	}
-	if strings.Contains(facts, "GBP") {
-		t.Fatal("undated price included", facts)
+	if strings.Contains(items[0].Text, "as of") {
+		t.Fatal("fresh quote marked as old")
 	}
-	content, err := parseBriefContent(`{"markets":[{"text":"BTC: 65000 USD, cached","url":"https://micro.mu/markets"}]}`)
-	if err != nil {
-		t.Fatal(err)
+}
+
+func TestMorningMarketsRenderEveryAssetInOrder(t *testing.T) {
+	now := time.Now().UTC()
+	symbols := []string{"BTC", "ETH", "GOLD", "OIL", "GBP", "EUR", "AAPL", "MSFT"}
+	prices := map[string]markets.PriceData{}
+	for _, symbol := range symbols {
+		prices[symbol] = markets.PriceData{Price: 1.34604, Change24h: 0.38, UpdatedAt: now}
 	}
-	result := renderMorningBrief(content, "", &events.Event{Zone: "UTC"}, now, "", false)
-	if !strings.Contains(result, "## Markets\n\n- BTC: 65000 USD, cached") {
-		t.Fatal(result)
+	items := briefMarketItems(prices, now)
+	result := renderMorningBrief(BriefContent{Markets: items}, "", &events.Event{Zone: "UTC"}, now, "", false)
+	previous := -1
+	for _, symbol := range symbols {
+		needle := "\n- **" + symbol + "** — "
+		position := strings.Index(result, needle)
+		if position <= previous || strings.Count(result, needle) != 1 {
+			t.Fatalf("missing, repeated or unordered %s: %s", symbol, result)
+		}
+		previous = position
+	}
+	if !strings.Contains(result, "- **GBP** — $1.34604 (+0.38%)") {
+		t.Fatal("currency precision lost", result)
+	}
+	if len(briefMarketItems(nil, now)) != 0 {
+		t.Fatal("invented market rows without quotes")
 	}
 }
 
