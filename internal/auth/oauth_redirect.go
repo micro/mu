@@ -104,7 +104,17 @@ func loopback(u *url.URL) bool {
 // Localhost or HTTPS, which is what the MCP authorization spec requires. An
 // http:// address anywhere else is a code travelling in clear text, and there
 // is no reason to accept one that is not simply a mistake.
+// Native callbacks are an explicit allowlist, not permission to register arbitrary
+// app schemes. PKCE remains mandatory for these public clients.
+func nativeRedirect(raw string) bool {
+	return raw == "mu.client.android://oauth/callback" ||
+		raw == "mu.client.android.debug://oauth/callback"
+}
+
 func RegisterableRedirect(raw string) bool {
+	if nativeRedirect(raw) {
+		return true
+	}
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" {
 		return false

@@ -34,9 +34,12 @@ jobs:
 
       - name: Resolve tag
         id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+            [[ "$INPUT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
           elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           else
@@ -62,6 +65,40 @@ jobs:
                 -o "${out}" .
           done
           ls -lh dist
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Build Android client
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            export ANDROID_KEYSTORE="$RUNNER_TEMP/micro-release.jks"
+            trap 'rm -f "$ANDROID_KEYSTORE"' EXIT
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE"
+            chmod 600 "$ANDROID_KEYSTORE"
+            test -n "$ANDROID_STORE_PASSWORD"
+            test -n "$ANDROID_KEY_ALIAS"
+            test -n "$ANDROID_KEY_PASSWORD"
+          fi
+          gradle -p client/android --no-daemon testDebugUnitTest lintDebug assembleRelease -PreleaseVersion="$TAG"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            cp client/android/app/build/outputs/apk/release/app-release.apk dist/micro-android.apk
+          else
+            cp client/android/app/build/outputs/apk/release/app-release-unsigned.apk dist/micro-android-unsigned.apk
+            echo "::warning::Android signing is not configured. The unsigned APK cannot be installed until signed."
+          fi
 
       - name: Publish release with binaries
         env:

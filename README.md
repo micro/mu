@@ -67,6 +67,11 @@ Open **http://localhost:8080** to create your account and choose an AI provider.
 
 The web app can be installed on desktop or mobile as a progressive web app (PWA).
 
+## Clients
+
+Native and protocol clients provide direct agent use. See the [client map](client/README.md)
+and [Android voice and text client](client/android/README.md).
+
 ## CLI
 
 The binary acts as a client. It defaults to the hosted instance; set
