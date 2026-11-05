@@ -54,6 +54,9 @@ jobs:
       - name: Test security boundaries and backend
         run: go test ./... -short -count=1
 
+      - name: Test mobile navigation in Chrome
+        run: go test ./internal/app -run '^TestMobileNavigationDrawer$' -count=3 -timeout=5m
+
       - name: Race-test security boundaries
         run: go test -race ./internal/auth ./internal/hosts ./internal/service ./internal/api ./internal/server ./service/browser ./service/shell ./x402/billing -short -count=1
 
