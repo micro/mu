@@ -118,6 +118,8 @@ public class MainActivity extends Activity {
     }
     private void update() {
         if (destroyed) return;
+        if (foreground && speaking) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         send.setEnabled(!busy && signedIn());
         speak.setEnabled(!busy && signedIn());
         settings.setText(signedIn() ? "Account" : "Sign in");
@@ -129,7 +131,11 @@ public class MainActivity extends Activity {
         TextView view = new TextView(this);
         view.setTextSize(16); view.setTextIsSelectable(true);
         int gap = (int) (12 * getResources().getDisplayMetrics().density);
-        view.setPadding(0, gap, 0, gap);
+        view.setPadding(gap, gap, gap, gap);
+        view.setBackgroundResource(R.drawable.message_card);
+        LinearLayout.LayoutParams spacing = new LinearLayout.LayoutParams(-1, -2);
+        spacing.bottomMargin = gap;
+        view.setLayoutParams(spacing);
         markdown.setMarkdown(view, "**" + who + "**\n\n" + text);
         messages.addView(view);
         scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
@@ -197,7 +203,7 @@ public class MainActivity extends Activity {
                     if (foreground && pendingVoice >= 0) startVoice(pendingVoice == 1);
                 }
                 public void wake(String command) {
-                    controlsOnly = speaking || video.active();
+                    controlsOnly = speaking || video.playing();
                     if (command.isEmpty()) startVoice(false);
                     else handleVoice(command);
                 }
@@ -291,9 +297,14 @@ public class MainActivity extends Activity {
     }
     private void showResults() {
         final JSONArray shownResults = results;
+        boolean embedded = false;
         for (int i = 0; i < shownResults.length(); i++) {
             JSONObject item = shownResults.optJSONObject(i);
             if (item == null || item.optString("title").isEmpty()) continue;
+            if (!embedded && item.optString("kind").equals("video") && VoiceCommands.validVideo(item.optString("id"))) {
+                video.show(item.optString("id"), item.optString("title"), false);
+                resultIndex = i; embedded = true;
+            }
             final int index = i;
             Button button = new Button(this, null, 0, R.style.CompactButton);
             button.setText((i + 1) + ". " + item.optString("title"));

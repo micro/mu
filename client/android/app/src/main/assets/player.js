@@ -1,6 +1,7 @@
 'use strict';
 let player;
 let ready = false;
+window.microPlayerPlaying = false;
 let desired = new URLSearchParams(location.search).get('autoplay') === '1' ? 'play' : 'pause';
 window.microPlayerCommand = function(command) {
   if (command !== 'play' && command !== 'pause') return;
@@ -17,6 +18,7 @@ window.onYouTubeIframeAPIReady = function() {
     videoId: id,
     playerVars: {playsinline:1, origin:location.origin},
     events: {
+      onStateChange: function(event) { window.microPlayerPlaying = event.data === YT.PlayerState.PLAYING; },
       onReady: function() { ready = true; window.microPlayerCommand(desired); },
       onError: function() {
         document.getElementById('status').textContent = 'Playback unavailable here. Use Open in YouTube.';
