@@ -345,8 +345,14 @@ public class MainActivity extends Activity {
         LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL);
         int pad = (int) (20 * getResources().getDisplayMetrics().density); form.setPadding(pad, pad, pad, pad);
         EditText server = new EditText(this); server.setSingleLine(true); server.setHint("Server");
+        server.setId(View.generateViewId());
+        TextView serverLabel = new TextView(this); serverLabel.setText("Server address"); serverLabel.setLabelFor(server.getId());
+        form.addView(serverLabel);
         server.setText(account.optString("server", "https://micro.mu")); form.addView(server);
-        EditText name = new EditText(this); name.setSingleLine(true); name.setHint("Agent"); name.setText(agent); form.addView(name);
+        EditText name = new EditText(this); name.setSingleLine(true); name.setHint("Agent"); name.setText(agent);
+        name.setId(View.generateViewId());
+        TextView agentLabel = new TextView(this); agentLabel.setText("Agent name"); agentLabel.setLabelFor(name.getId());
+        agentLabel.setPadding(0, pad / 2, 0, 0); form.addView(agentLabel); form.addView(name);
         TextView info = new TextView(this);
         info.setText("Sign in or create an account in your browser. Your existing plan and credits apply. Voice is English and runs on this device.");
         form.addView(info);
