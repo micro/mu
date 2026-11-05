@@ -108,7 +108,10 @@ final class VideoPlayer {
     private void button(LinearLayout parent, String text, Runnable action) {
         Button button = new Button(context, null, 0, R.style.CompactButton);
         button.setText(text); button.setOnClickListener(v -> action.run());
-        parent.addView(button, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(0, -2, 1);
+        int gap = (int) (4 * context.getResources().getDisplayMetrics().density);
+        layout.setMargins(gap, 0, gap, 0);
+        parent.addView(button, layout);
     }
     // Read only the local player's state; no JavaScript bridge or account credentials.
     private final Runnable pollPlayback = new Runnable() {
