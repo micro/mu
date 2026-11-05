@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Micro</string>
+    <string name="settings">Connection</string>
+    <string name="new_chat">New chat</string>
+    <string name="prompt">Ask Micro</string>
+    <string name="send">Send</string>
+    <string name="speak">Speak</string>
+    <string name="stop">Stop</string>
+    <string name="wake">Listen for “Hey Micro” while open</string>
+    <string name="spoken">Read replies aloud</string>
+</resources>

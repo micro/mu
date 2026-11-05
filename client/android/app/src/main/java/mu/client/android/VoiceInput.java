@@ -1,0 +1,71 @@
+package mu.client.android;
+
+import android.content.Context;
+import org.json.JSONObject;
+import org.vosk.Model;
+import org.vosk.Recognizer;
+import org.vosk.android.RecognitionListener;
+import org.vosk.android.SpeechService;
+import org.vosk.android.StorageService;
+
+// All audio stays on the device. Foreground only: the activity stops this on pause.
+final class VoiceInput {
+    interface Listener { void ready(); void heard(String text); void wake(); void error(String message); }
+    private Model model;
+    private SpeechService speech;
+    private Recognizer recognizer;
+    private int generation;
+    private boolean closed;
+    final Listener listener;
+    VoiceInput(Context context, Listener listener) {
+        this.listener = listener;
+        StorageService.unpack(context, "model-en-us", "speech", m -> {
+            if (closed) { m.close(); return; }
+            model = m;
+            listener.ready();
+        }, e -> { if (!closed) listener.error("Voice model could not load. You can still type."); });
+    }
+    boolean ready() { return model != null && !closed; }
+    void listen(boolean wakeOnly) {
+        stop();
+        if (!ready()) { listener.error("Voice is still loading. You can type meanwhile."); return; }
+        int current = generation;
+        try {
+            recognizer = wakeOnly ? new Recognizer(model, 16000, "[\"hey micro\", \"[unk]\"]") : new Recognizer(model, 16000);
+            speech = new SpeechService(recognizer, 16000);
+            RecognitionListener callbacks = new RecognitionListener() {
+                private void result(String json) {
+                    if (current != generation || closed) return;
+                    try {
+                        String text = new JSONObject(json).optString("text").trim();
+                        if (text.isEmpty()) return;
+                        if (wakeOnly) {
+                            if (text.equals("hey micro")) { stop(); listener.wake(); }
+                        } else { stop(); listener.heard(text); }
+                    } catch (Exception e) { stop(); listener.error("Could not understand that. Please try again."); }
+                }
+                public void onPartialResult(String json) {}
+                public void onResult(String json) { result(json); }
+                public void onFinalResult(String json) { result(json); }
+                public void onError(Exception e) {
+                    if (current != generation) return;
+                    stop(); listener.error("Microphone unavailable. Please try again.");
+                }
+                public void onTimeout() {
+                    if (current != generation) return;
+                    stop(); listener.error("Listening stopped. Tap Speak to try again.");
+                }
+            };
+            if (wakeOnly) speech.startListening(callbacks); else speech.startListening(callbacks, 30000);
+        } catch (Exception e) { stop(); listener.error("Microphone unavailable. You can still type."); }
+    }
+    void stop() {
+        generation++;
+        if (speech != null) { speech.cancel(); speech.shutdown(); speech = null; }
+        if (recognizer != null) { recognizer.close(); recognizer = null; }
+    }
+    void close() {
+        closed = true; stop();
+        if (model != null) { model.close(); model = null; }
+    }
+}

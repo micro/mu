@@ -258,6 +258,9 @@ func ExchangeAuthorizationCode(code, clientID, redirectURI, codeVerifier string)
 		return "", errors.New("redirect_uri mismatch")
 	}
 
+	if nativeRedirect(redirectURI) && (authCode.CodeChallenge == "" || authCode.CodeChallengeMethod != "S256") {
+		return "", errors.New("native clients require S256 PKCE")
+	}
 	// Validate PKCE
 	if authCode.CodeChallenge != "" {
 		if codeVerifier == "" {
@@ -512,6 +515,11 @@ func OAuthAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if nativeRedirect(redirectURI) && (r.URL.Query().Get("code_challenge_method") != "S256" || len(r.URL.Query().Get("code_challenge")) != 43) {
+		http.Error(w, "Native clients require S256 PKCE", http.StatusBadRequest)
+		return
+	}
+
 	// Check if already logged in
 	sess, _ := TrySession(r)
 	if sess != nil {
@@ -545,6 +553,10 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 	redirectURI, err := RedirectFor(clientID, r.PostFormValue("redirect_uri"))
 	if err != nil {
 		http.Error(w, err.Error(), 400)
+		return
+	}
+	if nativeRedirect(redirectURI) && (r.PostFormValue("code_challenge_method") != "S256" || len(r.PostFormValue("code_challenge")) != 43) {
+		http.Error(w, "Native clients require S256 PKCE", http.StatusBadRequest)
 		return
 	}
 	permissions := []string{"read"}

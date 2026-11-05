@@ -1,0 +1,33 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:background="#FAFAF8">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:text="@string/app_name" android:textSize="24sp" android:textStyle="bold" />
+        <Button android:id="@+id/new_chat" style="@style/CompactButton" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="@string/new_chat" />
+        <Button android:id="@+id/settings" style="@style/CompactButton" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="@string/settings" />
+    </LinearLayout>
+    <ScrollView android:id="@+id/scroll" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:fillViewport="true">
+        <LinearLayout android:id="@+id/messages" android:orientation="vertical"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+    </ScrollView>
+    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:accessibilityLiveRegion="polite" android:paddingTop="8dp" android:paddingBottom="8dp" />
+    <Switch android:id="@+id/wake" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="48dp" android:text="@string/wake" android:checked="false" />
+    <Switch android:id="@+id/spoken" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="48dp" android:text="@string/spoken" android:checked="true" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+        <EditText android:id="@+id/prompt" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:maxLines="4"
+            android:inputType="textCapSentences" android:imeOptions="actionSend" android:hint="@string/prompt"
+            android:importantForAutofill="no" />
+        <Button android:id="@+id/send" style="@style/CompactButton" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="@string/send" />
+        <Button android:id="@+id/speak" style="@style/CompactButton" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="@string/speak" />
+    </LinearLayout>
+</LinearLayout>

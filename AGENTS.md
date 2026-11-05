@@ -422,6 +422,15 @@ in as conversation history — and they have different lifetimes. A workflow
 record is debugging and may expire; a message is memory and should not. One
 eviction limit governed both, which is why it was wrong for each.
 
+## Native clients
+
+Separately built user clients live in `client/`, beginning with `client/android`.
+This source directory is not a new sidebar destination or runtime service.
+Clients use the existing account-scoped product API; the runtime owns agent
+execution, permissions, credits and conversation history. Native Android uses
+browser OAuth with S256 PKCE, not embedded password forms. Protocol servers
+remain with their services; the client map is in `client/README.md`.
+
 ## Layering
 
 The fixed product packages are `account/`, `admin/`, `home/`, `agent/`,

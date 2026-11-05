@@ -1,0 +1,82 @@
+plugins { id 'com.android.application' }
+
+def releaseName = providers.gradleProperty('releaseVersion').getOrElse('0.0.0').replaceFirst('^v', '')
+def parts = releaseName.tokenize('.')
+if (parts.size() != 3 || parts.any { !(it ==~ /[0-9]+/) || it.toInteger() > 999 }) {
+    throw new GradleException('releaseVersion must be major.minor.patch (each 0–999)')
+}
+android {
+    namespace 'mu.client.android'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'mu.client.android'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        minSdk 26
+        targetSdk 36
+        versionCode parts[0].toInteger() * 1000000 + parts[1].toInteger() * 1000 + parts[2].toInteger() + 1
+        versionName releaseName
+    }
+    buildFeatures { buildConfig true }
+    signingConfigs {
+        release {
+            if (System.getenv('ANDROID_KEYSTORE')) {
+                storeFile file(System.getenv('ANDROID_KEYSTORE'))
+                storePassword System.getenv('ANDROID_STORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            manifestPlaceholders = [oauthScheme: 'mu.client.android.debug']
+            buildConfigField 'String', 'OAUTH_REDIRECT', '"mu.client.android.debug://oauth/callback"'
+        }
+        release {
+            manifestPlaceholders = [oauthScheme: 'mu.client.android']
+            buildConfigField 'String', 'OAUTH_REDIRECT', '"mu.client.android://oauth/callback"'
+            if (System.getenv('ANDROID_KEYSTORE')) { signingConfig signingConfigs.release }
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError true }
+}
+dependencies {
+    implementation 'com.alphacephei:vosk-android:0.3.75@aar'
+    implementation 'net.java.dev.jna:jna:5.18.1@aar'
+    implementation 'io.noties.markwon:core:4.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+}
+
+def modelAssets = layout.buildDirectory.dir('generated/voice-assets')
+android.sourceSets.main.assets.srcDir(modelAssets)
+tasks.register('prepareVoiceModel') {
+    outputs.dir(modelAssets)
+    doLast {
+        def checksum = '30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498'
+        def archive = layout.buildDirectory.file('vosk-model.zip').get().asFile
+        archive.parentFile.mkdirs()
+        def connection = new URI('https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip').toURL().openConnection()
+        connection.connectTimeout = 30000
+        connection.readTimeout = 60000
+        connection.inputStream.withCloseable { input -> archive.withOutputStream { it << input } }
+        def digest = java.security.MessageDigest.getInstance('SHA-256').digest(archive.bytes).encodeHex().toString()
+        if (digest != checksum) { archive.delete(); throw new GradleException('Voice model checksum mismatch') }
+        copy {
+            from zipTree(archive)
+            into modelAssets
+            eachFile { path = path.replaceFirst('vosk-model-small-en-us-0.15', 'model-en-us') }
+            includeEmptyDirs = false
+        }
+        new File(modelAssets.get().asFile, 'model-en-us/uuid').text = checksum
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'prepareVoiceModel' }
