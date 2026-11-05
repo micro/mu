@@ -80,8 +80,7 @@ Breadth behind one account is the value.
 Micro consistently in its header, page titles and PWA. Mu names the runtime in
 code and technical documentation. The four primary
 product destinations are Home, Inbox, Agents and Services. Agents contains
-Agents and Scheduled tabs. Agent names open their chats and purpose; All chats and New chat are actions, not tabs. Work details remain reachable from conversations and Work history; existing /work links remain valid. They use bottom
-navigation on phones, a narrow rail on tablets and a left navigation on desktop.
+Agents and Scheduled tabs. Agent names open their chats and purpose; All chats and New chat are actions, not tabs. Work details remain reachable from conversations and Work history; existing /work links remain valid. They use a slide-out menu on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
 Home has Overview and Feed views. Overview owns the prompt, Chats, Inbox, Scheduled, pinned shortcuts and upcoming events; Feed composes blog, news, markets, video and additional
