@@ -29,6 +29,7 @@ public class MainActivity extends Activity {
     private Button send, speak, settings, newChat;
     private Switch wake, spoken;
     private VoiceInput voice;
+    private int pendingVoice = -1; // -1 cancelled, 0 dictate, 1 wake
     private TextToSpeech tts;
     private Markwon markdown;
 
@@ -159,6 +160,7 @@ public class MainActivity extends Activity {
     }
     private void startVoice(boolean wakeOnly) {
         if (!foreground || busy || !signedIn()) return;
+        pendingVoice = wakeOnly ? 1 : 0;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1); return;
         }
@@ -167,7 +169,9 @@ public class MainActivity extends Activity {
         if (voice == null) {
             status.setText("Preparing offline voice…");
             voice = new VoiceInput(getApplicationContext(), new VoiceInput.Listener() {
-                public void ready() { if (foreground) startVoice(wake.isChecked()); }
+                public void ready() {
+                    if (foreground && pendingVoice >= 0) startVoice(pendingVoice == 1);
+                }
                 public void wake() { startVoice(false); }
                 public void heard(String text) {
                     listening = false; update(); prompt.setText(text); prompt.setSelection(text.length());
@@ -178,6 +182,7 @@ public class MainActivity extends Activity {
             return;
         }
         if (!voice.ready()) { status.setText("Preparing offline voice…"); return; }
+        pendingVoice = -1;
         listening = true; update();
         status.setText(wakeOnly ? "Listening locally for “Hey Micro”…" : "Listening… Pause when finished.");
         voice.listen(wakeOnly);
@@ -186,13 +191,17 @@ public class MainActivity extends Activity {
         if (foreground && !busy && !speaking && wake.isChecked() && prompt.length() == 0) startVoice(true);
     }
     private void stopAudio() {
+        pendingVoice = -1;
         if (voice != null) voice.stop();
         if (tts != null) tts.stop();
         listening = false; speaking = false; update();
     }
     @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(request, permissions, results);
-        if (request == 1 && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) startVoice(wake.isChecked());
+        if (request == 1 && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+            if (pendingVoice >= 0) startVoice(pendingVoice == 1);
+            else status.setText("Microphone enabled. Tap Speak when ready.");
+        }
         else { wake.setChecked(false); status.setText("Microphone permission denied. You can still type."); }
     }
     private void connection() {
@@ -233,7 +242,7 @@ public class MainActivity extends Activity {
         worker.execute(() -> {
             try {
                 JSONObject pending = OAuth.begin(server, BuildConfig.OAUTH_REDIRECT);
-                JSONObject stored = new JSONObject().put("pending", pending).put("server", server);
+                JSONObject stored = new JSONObject().put("pending", pending).put("server", server).put("agent", agent);
                 String url = OAuth.authorize(pending);
                 runOnUiThread(() -> {
                     if (destroyed) return;

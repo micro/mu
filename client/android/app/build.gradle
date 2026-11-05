@@ -10,6 +10,7 @@ android {
     compileSdk 36
     defaultConfig {
         applicationId 'mu.client.android'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         minSdk 26
         targetSdk 36
         versionCode parts[0].toInteger() * 1000000 + parts[1].toInteger() * 1000 + parts[2].toInteger() + 1
@@ -49,6 +50,8 @@ dependencies {
     implementation 'com.alphacephei:vosk-android:0.3.75@aar'
     implementation 'net.java.dev.jna:jna:5.18.1@aar'
     implementation 'io.noties.markwon:core:4.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20240303'
 }

@@ -27,6 +27,18 @@ jobs:
       - name: Test and build
         working-directory: client/android
         run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease -PreleaseVersion="$(cat ../../VERSION)"
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Check account screen on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          disable-animations: true
+          script: gradle -p client/android --no-daemon connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
           name: micro-android-preview
