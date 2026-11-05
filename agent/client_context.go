@@ -9,6 +9,7 @@ import (
 // ClientContext belongs to one request, never account or conversation state.
 // Queued requests retain it only until their outcome has been saved.
 type ClientContext struct {
+	Voice    bool            `json:"voice,omitempty"`
 	Location *DeviceLocation `json:"location,omitempty"`
 	Timezone string          `json:"timezone,omitempty"`
 }

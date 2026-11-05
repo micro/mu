@@ -10,7 +10,7 @@ import org.vosk.android.StorageService;
 
 // All audio stays on the device. Foreground only: the activity stops this on pause.
 final class VoiceInput {
-    interface Listener { void ready(); void heard(String text); void wake(); void error(String message); }
+    interface Listener { void ready(); void heard(String text); void wake(String command); void error(String message); }
     private Model model;
     private SpeechService speech;
     private Recognizer recognizer;
@@ -31,7 +31,7 @@ final class VoiceInput {
         if (!ready()) { listener.error("Voice is still loading. You can type meanwhile."); return; }
         int current = generation;
         try {
-            recognizer = wakeOnly ? new Recognizer(model, 16000, "[\"hey micro\", \"[unk]\"]") : new Recognizer(model, 16000);
+            recognizer = new Recognizer(model, 16000);
             speech = new SpeechService(recognizer, 16000);
             RecognitionListener callbacks = new RecognitionListener() {
                 private void result(String json) {
@@ -40,7 +40,8 @@ final class VoiceInput {
                         String text = new JSONObject(json).optString("text").trim();
                         if (text.isEmpty()) return;
                         if (wakeOnly) {
-                            if (text.equals("hey micro")) { stop(); listener.wake(); }
+                            String command = VoiceCommands.afterWake(text);
+                            if (command != null) { stop(); listener.wake(command); }
                         } else { stop(); listener.heard(text); }
                     } catch (Exception e) { stop(); listener.error("Could not understand that. Please try again."); }
                 }

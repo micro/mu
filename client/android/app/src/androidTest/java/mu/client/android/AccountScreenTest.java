@@ -13,6 +13,20 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public class AccountScreenTest {
+    @Test public void browserReturnIntentResolvesToInstalledApp() throws Exception {
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        String app = context.getPackageName();
+        android.content.Intent intent = android.content.Intent.parseUri(
+                "intent://oauth/callback?code=test&state=test#Intent;scheme=" + app + ";package=" + app + ";end",
+                android.content.Intent.URI_INTENT_SCHEME);
+        intent.addCategory(android.content.Intent.CATEGORY_BROWSABLE);
+        android.content.pm.ResolveInfo resolved = context.getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        assertNotNull(resolved);
+        assertEquals(app, resolved.activityInfo.packageName);
+        assertEquals("mu.client.android.MainActivity", resolved.activityInfo.name);
+        assertEquals("test", intent.getData().getQueryParameter("state"));
+    }
+
     @Test public void signedOutAppStartsWithoutMicrophoneOrAccount() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {

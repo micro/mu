@@ -168,7 +168,8 @@ type AskRequest struct {
 
 // Answer is what came back, and where it was written down.
 type Answer struct {
-	Text string
+	Results []result.Item
+	Text    string
 	// Flow is the workflow record's id, so a client that later learns delivery
 	// failed can mark it against the right run.
 	Flow string
@@ -393,7 +394,7 @@ func Ask(r AskRequest) (Answer, error) {
 	}
 	recordAnswer(r.Account, threadID(th), answer, id, r.As, answerRef, items...)
 
-	return Answer{Text: answer, Flow: id, Thread: threadID(th)}, err
+	return Answer{Text: answer, Flow: id, Thread: threadID(th), Results: items}, err
 }
 
 // Opened is the conversation a message belongs to, started if it is new.

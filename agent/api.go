@@ -36,6 +36,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/result"
 	"mu/internal/thread"
 )
 
@@ -58,7 +59,7 @@ type apiAsk struct {
 	// sent, because it is the name.
 	Text string `json:"text,omitempty"`
 	// Thread is a conversation id from a previous answer.
-	Thread string `json:"thread,omitempty"`
+	Thread  string        `json:"thread,omitempty"`
 }
 
 // ask is what was actually asked, under whichever name it arrived.
@@ -75,9 +76,10 @@ func (a apiAsk) ask() string {
 // wants a second turn needs it and has no other way to learn it. Execution
 // records remain internal; callers continue conversations using Thread.
 type apiAnswer struct {
-	Text   string `json:"text"`
-	Thread string `json:"thread,omitempty"`
-	Agent  string `json:"agent,omitempty"`
+	Results []result.Item `json:"results,omitempty"`
+	Text    string        `json:"text"`
+	Thread  string        `json:"thread,omitempty"`
+	Agent   string        `json:"agent,omitempty"`
 }
 
 // askLimit bounds one question. Long enough for a paragraph with a document
@@ -175,7 +177,12 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 	// id and an agent that had never heard of the first question — the exact
 	// failure the field exists to prevent, on the exact endpoint whose whole
 	// claim is that passing the id back continues the conversation.
+	voiceInstruction := ""
+	if req.Context.Voice {
+		voiceInstruction = "The user is speaking through a voice client. Keep spoken answers concise and clear, while preserving important caveats. Use your permitted services for their requests. For a request to play a video, search if necessary, choose the best relevant result, then use video Read so the client receives a selected playable result. Do not claim playback has started: the client handles playback. Never claim to have fetched a personal brief or headlines without reading the available source. YouTube playback requires a visible player; do not promise audio-only or background playback."
+	}
 	res, err := Ask(AskRequest{
+		System:  voiceInstruction,
 		Context: req.Context,
 		Account: accountID,
 		Client:  thread.WebClient,
@@ -191,9 +198,10 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	thread.MarkSeen(accountID, res.Thread)
 	app.RespondJSON(w, apiAnswer{
-		Text:   res.Text,
-		Thread: res.Thread,
-		Agent:  SlugFor(accountID, agentID),
+		Results: res.Results,
+		Text:    res.Text,
+		Thread:  res.Thread,
+		Agent:   SlugFor(accountID, agentID),
 	})
 }
 

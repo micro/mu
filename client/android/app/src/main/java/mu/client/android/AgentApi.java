@@ -26,10 +26,11 @@ final class AgentApi {
         return name;
     }
 
-    static JSONObject ask(String server, String token, String agent, String thread, String prompt) throws Exception {
+    static JSONObject ask(String server, String token, String agent, String thread, String prompt, boolean voice) throws Exception {
         if (prompt.getBytes(StandardCharsets.UTF_8).length > 8000)
             throw new IOException("Keep the message below 8,000 bytes.");
-        JSONObject body = new JSONObject().put("prompt", prompt).put("thread", thread);
+        JSONObject body = new JSONObject().put("prompt", prompt).put("thread", thread)
+                .put("context", new JSONObject().put("voice", voice));
         return post(origin(server) + "/agent/" + agent(agent), token, body.toString(), "application/json");
     }
 
