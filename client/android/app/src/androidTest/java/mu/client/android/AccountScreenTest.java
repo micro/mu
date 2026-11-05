@@ -33,8 +33,10 @@ public class AccountScreenTest {
                 VideoPlayer player = new VideoPlayer(activity, () -> {});
                 android.widget.LinearLayout messages = activity.findViewById(R.id.messages);
                 int before = messages.getChildCount();
+                activity.findViewById(R.id.prompt).requestFocus();
                 player.show("abcdefghijk", "Playback test", false);
                 assertEquals(before + 1, messages.getChildCount());
+                assertFalse(activity.findViewById(R.id.prompt).hasFocus());
                 assertTrue(player.active());
                 assertFalse(player.playing());
                 player.pause();

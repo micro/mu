@@ -131,8 +131,7 @@ public class MainActivity extends Activity {
         TextView view = new TextView(this);
         view.setTextSize(16); view.setTextIsSelectable(true);
         int gap = (int) (12 * getResources().getDisplayMetrics().density);
-        view.setPadding(gap, gap, gap, gap);
-        view.setBackgroundResource(R.drawable.message_card);
+        view.setPadding(0, gap, 0, gap);
         LinearLayout.LayoutParams spacing = new LinearLayout.LayoutParams(-1, -2);
         spacing.bottomMargin = gap;
         view.setLayoutParams(spacing);

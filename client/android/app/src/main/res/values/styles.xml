@@ -1,7 +1,7 @@
 <resources>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#425D72</item>
+        <item name="android:colorAccent">#666666</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>
@@ -9,5 +9,11 @@
         <item name="android:minHeight">48dp</item>
         <item name="android:minWidth">48dp</item>
         <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">#333333</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:background">@drawable/control</item>
+        <item name="android:paddingLeft">10dp</item>
+        <item name="android:paddingRight">10dp</item>
+        <item name="android:layout_margin">4dp</item>
     </style>
 </resources>
