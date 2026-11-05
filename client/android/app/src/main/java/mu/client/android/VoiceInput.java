@@ -10,7 +10,7 @@ import org.vosk.android.StorageService;
 
 // All audio stays on the device. Foreground only: the activity stops this on pause.
 final class VoiceInput {
-    interface Listener { void ready(); void heard(String text); void wake(String command); void error(String message); }
+    interface Listener { void ready(); void detected(); void partial(String text); void heard(String text); void wake(String command); void error(String message); }
     private Model model;
     private SpeechService speech;
     private Recognizer recognizer;
@@ -34,18 +34,36 @@ final class VoiceInput {
             recognizer = new Recognizer(model, 16000);
             speech = new SpeechService(recognizer, 16000);
             RecognitionListener callbacks = new RecognitionListener() {
+                private boolean detected;
+                private void acknowledge() {
+                    if (!detected) { detected = true; listener.detected(); }
+                }
                 private void result(String json) {
                     if (current != generation || closed) return;
                     try {
                         String text = new JSONObject(json).optString("text").trim();
-                        if (text.isEmpty()) return;
+                        if (text.isEmpty()) {
+                            if (!wakeOnly || detected) { stop(); listener.error("I didn’t catch that. Tap Speak to try again."); }
+                            return;
+                        }
                         if (wakeOnly) {
                             String command = VoiceCommands.afterWake(text);
-                            if (command != null) { stop(); listener.wake(command); }
+                            if (command != null) { acknowledge(); stop(); listener.wake(command); }
+                            else if (detected) { stop(); listener.error("I didn’t catch that. Tap Speak to try again."); }
                         } else { stop(); listener.heard(text); }
                     } catch (Exception e) { stop(); listener.error("Could not understand that. Please try again."); }
                 }
-                public void onPartialResult(String json) {}
+                public void onPartialResult(String json) {
+                    if (current != generation || closed) return;
+                    try {
+                        String text = new JSONObject(json).optString("partial").trim();
+                        if (wakeOnly) {
+                            String command = VoiceCommands.afterWake(text);
+                            if (command == null) return;
+                            acknowledge(); listener.partial(command);
+                        } else listener.partial(text);
+                    } catch (Exception ignored) { /* Wait for a complete recognizer result. */ }
+                }
                 public void onResult(String json) { result(json); }
                 public void onFinalResult(String json) { result(json); }
                 public void onError(Exception e) {
@@ -54,7 +72,7 @@ final class VoiceInput {
                 }
                 public void onTimeout() {
                     if (current != generation) return;
-                    stop(); listener.error("Listening stopped. Tap Speak to try again.");
+                    stop(); listener.error("I didn’t catch that. Tap Speak or toggle hands-free to try again.");
                 }
             };
             if (wakeOnly) speech.startListening(callbacks); else speech.startListening(callbacks, 30000);

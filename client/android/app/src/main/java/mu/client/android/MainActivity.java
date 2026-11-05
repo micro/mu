@@ -201,8 +201,16 @@ public class MainActivity extends Activity {
                 public void ready() {
                     if (foreground && pendingVoice >= 0) startVoice(pendingVoice == 1);
                 }
-                public void wake(String command) {
+                public void detected() {
                     controlsOnly = speaking || video.playing();
+                    speak.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                    status.setText("Heard ‘Hey Micro’. Listening…");
+                }
+                public void partial(String text) {
+                    status.setText(text.isEmpty() ? "Listening… Say your request." : "Hearing: “" + text + "”");
+                }
+                public void wake(String command) {
+                    controlsOnly = controlsOnly || speaking || video.playing();
                     if (command.isEmpty()) startVoice(false);
                     else handleVoice(command);
                 }
