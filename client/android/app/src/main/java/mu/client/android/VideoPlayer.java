@@ -38,11 +38,14 @@ final class VideoPlayer {
         playing = autoplay;
         container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setBackgroundResource(R.drawable.message_card);
         int gap = (int) (12 * context.getResources().getDisplayMetrics().density);
-        container.setPadding(gap, gap, gap, gap);
+        LinearLayout.LayoutParams mediaSpacing = new LinearLayout.LayoutParams(-1, -2);
+        mediaSpacing.topMargin = gap; mediaSpacing.bottomMargin = gap * 2;
+        container.setLayoutParams(mediaSpacing);
+        title.setPadding(0, 0, 0, gap);
         title.setText(label); title.setMaxLines(2); container.addView(title);
         messages.addView(container);
+        dismissKeyboard();
         web = new WebView(context);
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setDomStorageEnabled(true);
@@ -65,6 +68,12 @@ final class VideoPlayer {
         });
         web.setWebChromeClient(new WebChromeClient());
         container.addView(web, new LinearLayout.LayoutParams(-1, (int) (260 * context.getResources().getDisplayMetrics().density)));
+        web.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            int height = Math.max((int) (232 * context.getResources().getDisplayMetrics().density), (r - l) * 9 / 16 + (int) (32 * context.getResources().getDisplayMetrics().density));
+            if (web != null && web.getLayoutParams().height != height) {
+                web.getLayoutParams().height = height; web.requestLayout();
+            }
+        });
         web.post(pollPlayback);
         LinearLayout controls = new LinearLayout(context);
         button(controls, "Play", () -> { resumeView(); command("play"); });
@@ -76,6 +85,7 @@ final class VideoPlayer {
         original.setOnClickListener(v -> context.startActivity(new Intent(Intent.ACTION_VIEW,
                 Uri.parse("https://www.youtube.com/watch?v=" + id))));
         container.addView(original);
+        controls.setPadding(0, gap, 0, 0);
         container.addView(controls);
         container.setVisibility(View.VISIBLE);
         LinearLayout shown = container;
@@ -87,6 +97,13 @@ final class VideoPlayer {
         });
         // This origin is the installed application identifier, as required by YouTube's WebView integration.
         web.loadUrl("https://" + BuildConfig.APPLICATION_ID + "/assets/player.html?id=" + id + "&autoplay=" + (autoplay ? "1" : "0"));
+    }
+    private void dismissKeyboard() {
+        Activity activity = (Activity) context;
+        View prompt = activity.findViewById(R.id.prompt);
+        prompt.clearFocus();
+        android.view.inputmethod.InputMethodManager keyboard = (android.view.inputmethod.InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+        keyboard.hideSoftInputFromWindow(prompt.getWindowToken(), 0);
     }
     private void button(LinearLayout parent, String text, Runnable action) {
         Button button = new Button(context, null, 0, R.style.CompactButton);
@@ -108,10 +125,11 @@ final class VideoPlayer {
         }
     };
     void command(String action) {
+        if (action.equals("play")) dismissKeyboard();
         if (web != null && (action.equals("play") || action.equals("pause")))
             web.evaluateJavascript("window.microPlayerCommand && window.microPlayerCommand('" + action + "')", null);
     }
-    void pause() { playing = false; paused = true; command("pause"); if (web != null) { web.setKeepScreenOn(false); web.onPause(); } }
+    void pause() { playing = false; paused = true; command("pause"); if (web != null) { web.setKeepScreenOn(false); } }
     void resumeView() { paused = false; if (web != null) web.onResume(); }
     void close() {
         if (web != null) {
