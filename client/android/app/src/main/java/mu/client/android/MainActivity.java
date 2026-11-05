@@ -203,7 +203,7 @@ public class MainActivity extends Activity {
                     if (foreground && pendingVoice >= 0) startVoice(pendingVoice == 1);
                 }
                 public void wake(String command) {
-                    controlsOnly = speaking || video.active();
+                    controlsOnly = speaking || video.playing();
                     if (command.isEmpty()) startVoice(false);
                     else handleVoice(command);
                 }

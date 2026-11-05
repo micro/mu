@@ -16,6 +16,7 @@ final class VideoPlayer {
     private LinearLayout container;
     private final LinearLayout messages;
     private boolean paused;
+    private boolean playing;
     private final Runnable talk;
     private final Context context;
     private final TextView title;
@@ -28,11 +29,13 @@ final class VideoPlayer {
     }
     void notice(String message) { title.setText(message); }
     boolean active() { return web != null; }
+    boolean playing() { return web != null && !paused && playing; }
     @SuppressLint("SetJavaScriptEnabled")
     void show(String video, String label, boolean autoplay) {
         if (!VoiceCommands.validVideo(video)) return;
         close(); id = video;
         paused = false;
+        playing = autoplay;
         container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setBackgroundResource(R.drawable.message_card);
@@ -67,7 +70,7 @@ final class VideoPlayer {
         button(controls, "Play", () -> { resumeView(); command("play"); });
         button(controls, "Pause", () -> command("pause"));
         button(controls, "Speak", talk);
-        button(controls, "Hide", this::close);
+        button(controls, "Close", this::close);
         Button original = new Button(context, null, 0, R.style.CompactButton);
         original.setText("Open in YouTube");
         original.setOnClickListener(v -> context.startActivity(new Intent(Intent.ACTION_VIEW,
@@ -75,6 +78,13 @@ final class VideoPlayer {
         container.addView(original);
         container.addView(controls);
         container.setVisibility(View.VISIBLE);
+        LinearLayout shown = container;
+        shown.post(() -> {
+            if (container == shown) {
+                ScrollView scroll = ((Activity) context).findViewById(R.id.scroll);
+                scroll.smoothScrollTo(0, shown.getTop());
+            }
+        });
         // This origin is the installed application identifier, as required by YouTube's WebView integration.
         web.loadUrl("https://" + BuildConfig.APPLICATION_ID + "/assets/player.html?id=" + id + "&autoplay=" + (autoplay ? "1" : "0"));
     }
@@ -89,7 +99,10 @@ final class VideoPlayer {
             WebView current = web;
             if (current == null) return;
             current.evaluateJavascript("window.microPlayerPlaying === true", value -> {
-                if (web == current) current.setKeepScreenOn(!paused && "true".equals(value));
+                if (web == current) {
+                    playing = "true".equals(value);
+                    current.setKeepScreenOn(!paused && playing);
+                }
             });
             current.postDelayed(this, 500);
         }
@@ -98,13 +111,14 @@ final class VideoPlayer {
         if (web != null && (action.equals("play") || action.equals("pause")))
             web.evaluateJavascript("window.microPlayerCommand && window.microPlayerCommand('" + action + "')", null);
     }
-    void pause() { paused = true; command("pause"); if (web != null) { web.setKeepScreenOn(false); web.onPause(); } }
+    void pause() { playing = false; paused = true; command("pause"); if (web != null) { web.setKeepScreenOn(false); web.onPause(); } }
     void resumeView() { paused = false; if (web != null) web.onResume(); }
     void close() {
         if (web != null) {
             command("pause"); web.removeCallbacks(pollPlayback); web.setKeepScreenOn(false); container.removeView(web); web.destroy(); web = null;
         }
         if (container != null) { container.removeAllViews(); messages.removeView(container); container = null; }
+        playing = false;
         id = "";
     }
 }

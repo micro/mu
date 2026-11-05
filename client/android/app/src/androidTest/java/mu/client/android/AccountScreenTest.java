@@ -36,6 +36,7 @@ public class AccountScreenTest {
                 player.show("abcdefghijk", "Playback test", false);
                 assertEquals(before + 1, messages.getChildCount());
                 assertTrue(player.active());
+                assertFalse(player.playing());
                 player.pause();
                 player.close();
                 assertFalse(player.active());
