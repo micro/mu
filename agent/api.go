@@ -59,7 +59,7 @@ type apiAsk struct {
 	// sent, because it is the name.
 	Text string `json:"text,omitempty"`
 	// Thread is a conversation id from a previous answer.
-	Thread  string        `json:"thread,omitempty"`
+	Thread string `json:"thread,omitempty"`
 }
 
 // ask is what was actually asked, under whichever name it arrived.
