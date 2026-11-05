@@ -695,7 +695,7 @@ active chats retain the full canvas. Otherwise only prose
 and ordinary forms retain a reading measure; editors and maps use the canvas.
 Mixed dashboard previews use two independently flowing columns, not the directory
 grid: a long Inbox card must not create empty space beneath its neighbours.
-The Mu mark is centered in the shared header on desktop and mobile, with a divider beneath it and the account menu on the right. All grid/flex children must shrink and long content must wrap.
+The Mu text link to / is centered in the shared header on desktop and mobile, with a divider beneath it and the account menu on the right. All grid/flex children must shrink and long content must wrap.
 Mobile forms wrap, tables scroll or stack, previews fit their container, and
 conversation composers remain reachable. Bound images and give SVG shapes
 explicit fills and strokes. Keep optional references in a collapsed disclosure.
