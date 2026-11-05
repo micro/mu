@@ -30,16 +30,18 @@ fallback.
 
 ## Voice
 
-Tap **Speak**, dictate, review the transcription and tap **Send**. Enable the
-“Hey Micro” switch to use that phrase instead of tapping Speak, pause for the
-Listening prompt, then dictate. Turning the screen off or leaving the app stops
-listening and disables the switch. Nothing starts at boot.
+Tap **Speak**, dictate, review the transcription and tap **Send**. For direct
+voice requests, enable **Hands-free “Hey Micro” while open** and include your
+request after the wake phrase. This submits recognised requests automatically,
+except during playback as described below. Turning the screen off or leaving
+the app stops listening and disables the switch. Nothing starts at boot.
 
 Vosk transcribes locally using the bundled English model. No microphone audio
 is uploaded. Only submitted text goes to your Mu server and its configured AI
 provider. Spoken replies use an installed offline English Android TTS voice;
-if none is installed, text still works. Very long replies are spoken up to the
-Android engine's per-utterance limit and remain fully readable on screen.
+if none is installed, text still works. Long replies are spoken in bounded
+chunks and remain fully readable on screen. Resuming a paused readout restarts
+the current chunk.
 Wake recognition is experimental and uses CPU speech recognition, not a
 low-power hardware wake detector. It needs real-device accuracy/battery testing.
 
@@ -92,3 +94,32 @@ Vosk Android 0.3.75 and the small US English 0.15 model: Apache 2.0,
 JNA 5.18.1: LGPL 2.1 or Apache 2.0.
 Markwon 4.6.2: Apache 2.0.
 Model attribution/README is packaged with the model.
+
+## Hands-free service use
+
+With **Hands-free “Hey Micro” while open** enabled, say the wake phrase and
+your request together, for example “Hey Micro read the headlines” or “Hey Micro
+play K-pop demon hunters”. The text is submitted to your existing agent, using
+its normal tools and permissions. Turning the switch off restores review-before-
+send voice input. Leaving the app still disables the microphone.
+
+The agent API now returns its existing typed result objects as well as text.
+Android displays those results and opens selected YouTube videos in a visible
+player. Explicit play/watch requests may start the selected video automatically;
+provider restrictions can still require tapping Play. The player provides
+Play, Pause, Speak, Close and Open in YouTube controls.
+
+Say “Hey Micro pause”, “resume”, “next”, “previous”, “read first”, “read that”,
+or “back”. Include the wake phrase for each command when not already dictating.
+Next/previous moves through returned results or through a long spoken response.
+Long briefs are spoken in chunks instead of being cut off.
+
+While audio is playing, only local playback controls are executed automatically.
+Other recognised requests are shown for confirmation, so a video or spoken
+article cannot issue account actions through the microphone. Close playback to
+make a new hands-free service request. General service requests still go through
+the agent: this is not a second tool runner or a native screen for every service.
+
+YouTube requires a visible player: “audio only” explains that restriction rather
+than hiding its video. Headlines, briefs and other text answers can be spoken
+without video. No YouTube downloads, extracted audio or background playback.

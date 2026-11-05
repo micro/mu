@@ -53,6 +53,7 @@ android {
     lint { abortOnError true }
 }
 dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
     implementation 'com.alphacephei:vosk-android:0.3.75@aar'
     implementation 'net.java.dev.jna:jna:5.18.1@aar'
     implementation 'io.noties.markwon:core:4.6.2'

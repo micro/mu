@@ -12,6 +12,9 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.*;
 import io.noties.markwon.Markwon;
 import org.json.JSONObject;
+import org.json.JSONArray;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,6 +35,13 @@ public class MainActivity extends Activity {
     private int pendingVoice = -1; // -1 cancelled, 0 dictate, 1 wake
     private TextToSpeech tts;
     private Markwon markdown;
+    private VideoPlayer video;
+    private JSONArray results = new JSONArray();
+    private int resultIndex = -1, pageIndex;
+    private List<String> pages = new ArrayList<>();
+    private String lastReply = "", utterance = "";
+    private long speechEpoch;
+    private boolean voiceRequest, controlsOnly;
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -54,6 +64,7 @@ public class MainActivity extends Activity {
         catch (Exception e) { vault.clear(); }
         agent = account.optString("agent", "micro");
         markdown = Markwon.create(this);
+        video = new VideoPlayer(this, () -> { controlsOnly = true; startVoice(false); });
         messages = findViewById(R.id.messages);
         scroll = findViewById(R.id.scroll);
         prompt = findViewById(R.id.prompt);
@@ -71,7 +82,7 @@ public class MainActivity extends Activity {
         });
         speak.setOnClickListener(v -> { if (listening || speaking) stopAudio(); else startVoice(false); });
         settings.setOnClickListener(v -> connection());
-        newChat.setOnClickListener(v -> { stopAudio(); thread = ""; messages.removeAllViews(); status.setText("New conversation"); });
+        newChat.setOnClickListener(v -> { stopAudio(); video.close(); results = new JSONArray(); lastReply = ""; pages.clear(); thread = ""; messages.removeAllViews(); status.setText("New conversation"); resumeWake(); });
         wake.setOnCheckedChangeListener((v, enabled) -> { if (enabled) startVoice(true); else stopAudio(); });
         spoken.setOnCheckedChangeListener((v, enabled) -> { if (!enabled) stopAudio(); });
         tts = new TextToSpeech(this, result -> {
@@ -85,8 +96,12 @@ public class MainActivity extends Activity {
         });
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             public void onStart(String id) {}
-            public void onDone(String id) { runOnUiThread(() -> { speaking = false; update(); resumeWake(); }); }
-            public void onError(String id) { runOnUiThread(() -> { speaking = false; update(); }); }
+            public void onDone(String id) { runOnUiThread(() -> {
+                if (!id.equals(utterance) || destroyed) return;
+                if (++pageIndex < pages.size()) speakPage();
+                else { speaking = false; update(); resumeWake(); }
+            }); }
+            public void onError(String id) { runOnUiThread(() -> { if (id.equals(utterance)) { speaking = false; update(); resumeWake(); } }); }
         });
         status.setText(signedIn() ? "Ask Micro, or tap Speak." : "Sign in to your Micro account to begin.");
         if (saved != null && signedIn()) {
@@ -123,31 +138,38 @@ public class MainActivity extends Activity {
         if (busy || !signedIn()) { if (!signedIn()) connection(); return; }
         String text = prompt.getText().toString().trim();
         if (text.isEmpty()) return;
-        stopAudio();
+        boolean spokenRequest = voiceRequest;
+        voiceRequest = false;
+        if (localCommand(text)) { prompt.setText(""); resumeWake(); return; }
+        stopAudio(); video.pause();
         busy = true; update(); prompt.setText("");
         message("You", text); status.setText("Micro is working…");
         final String server = account.optString("server"), token = account.optString("token");
         final String currentThread = thread, currentAgent = agent;
         worker.execute(() -> {
             try {
-                JSONObject reply = AgentApi.ask(server, token, currentAgent, currentThread, text);
+                JSONObject reply = AgentApi.ask(server, token, currentAgent, currentThread, text, spokenRequest);
                 String response = reply.getString("text");
                 String next = reply.getString("thread");
                 runOnUiThread(() -> {
                     if (destroyed) return;
                     thread = next; busy = false;
-                    message("Micro", response); status.setText(""); update();
-                    if (foreground && spoken.isChecked() && ttsReady) {
-                        speaking = true; update();
-                        String plain = markdown.toMarkdown(response).toString();
-                        int limit = TextToSpeech.getMaxSpeechInputLength();
-                        int result = tts.speak(plain.substring(0, Math.min(plain.length(), limit)),
-                                TextToSpeech.QUEUE_FLUSH, null, "reply");
-                        if (result == TextToSpeech.ERROR) { speaking = false; update(); }
-                    } else {
-                        if (spoken.isChecked() && !ttsReady) status.setText("Install an offline English voice in Android settings for spoken replies.");
-                        resumeWake();
+                    lastReply = response; results = reply.optJSONArray("results");
+                    if (results == null) results = new JSONArray();
+                    resultIndex = -1;
+                    message("Micro", response); showResults(); status.setText(""); update();
+                    boolean played = false;
+                    if (foreground && VoiceCommands.wantsVideo(text)) {
+                        for (int i = 0; i < results.length(); i++) {
+                            JSONObject item = results.optJSONObject(i);
+                            if (item != null && item.optString("kind").equals("video")
+                                    && VoiceCommands.validVideo(item.optString("id"))) {
+                                openResult(i, true); played = true; break;
+                            }
+                        }
                     }
+                    if (!played && foreground && spoken.isChecked()) readAloud(response);
+                    else resumeWake();
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
@@ -164,18 +186,23 @@ public class MainActivity extends Activity {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1); return;
         }
-        if (tts != null) tts.stop();
-        speaking = false;
+        if (!wakeOnly) {
+            if (tts != null) tts.stop();
+            utterance = ""; speaking = false; video.pause();
+        }
         if (voice == null) {
             status.setText("Preparing offline voice…");
             voice = new VoiceInput(getApplicationContext(), new VoiceInput.Listener() {
                 public void ready() {
                     if (foreground && pendingVoice >= 0) startVoice(pendingVoice == 1);
                 }
-                public void wake() { startVoice(false); }
+                public void wake(String command) {
+                    controlsOnly = speaking || video.active();
+                    if (command.isEmpty()) startVoice(false);
+                    else handleVoice(command);
+                }
                 public void heard(String text) {
-                    listening = false; update(); prompt.setText(text); prompt.setSelection(text.length());
-                    status.setText("Check your message, then tap Send.");
+                    handleVoice(text);
                 }
                 public void error(String text) { listening = false; update(); status.setText(text); }
             });
@@ -188,10 +215,10 @@ public class MainActivity extends Activity {
         voice.listen(wakeOnly);
     }
     private void resumeWake() {
-        if (foreground && !busy && !speaking && wake.isChecked() && prompt.length() == 0) startVoice(true);
+        if (foreground && !busy && wake.isChecked() && prompt.length() == 0) startVoice(true);
     }
     private void stopAudio() {
-        pendingVoice = -1;
+        pendingVoice = -1; utterance = ""; speechEpoch++;
         if (voice != null) voice.stop();
         if (tts != null) tts.stop();
         listening = false; speaking = false; update();
@@ -203,6 +230,104 @@ public class MainActivity extends Activity {
             else status.setText("Microphone enabled. Tap Speak when ready.");
         }
         else { wake.setChecked(false); status.setText("Microphone permission denied. You can still type."); }
+    }
+    private void handleVoice(String text) {
+        listening = false; update();
+        boolean restricted = controlsOnly; controlsOnly = false;
+        if ((!restricted || VoiceCommands.playbackControl(text)) && localCommand(text)) { resumeWake(); return; }
+        prompt.setText(text); prompt.setSelection(text.length()); voiceRequest = true;
+        if (wake.isChecked() && !restricted) { voiceRequest = true; send(); }
+        else status.setText(restricted ? "Playback cannot issue account requests. Check the message and tap Send." : "Check your message, then tap Send.");
+    }
+    boolean localCommand(String text) {
+        switch (VoiceCommands.normalize(text)) {
+            case "stop listening":
+                if (!wake.isChecked() && !listening && pendingVoice < 0) return false;
+                wake.setChecked(false); stopAudio(); status.setText("Listening stopped."); return true;
+            case "stop": case "pause":
+                if (!speaking && !listening && !video.active()) return false;
+                stopAudio(); video.pause(); status.setText("Paused."); resumeWake(); return true;
+            case "resume": case "continue":
+                if (video.active()) { video.resumeView(); video.command("play"); }
+                else if (pageIndex < pages.size()) speakPage();
+                else return false;
+                resumeWake(); return true;
+            case "back": case "close video":
+                if (!video.active()) return false;
+                video.close(); status.setText("Back to chat."); resumeWake(); return true;
+            case "next": case "next headline":
+                if (resultIndex + 1 < results.length()) openResult(++resultIndex, true);
+                else if (pageIndex + 1 < pages.size()) { pageIndex++; speakPage(); }
+                else return false;
+                return true;
+            case "previous": case "previous headline":
+                if (resultIndex > 0) openResult(--resultIndex, true);
+                else if (pageIndex > 0 && !pages.isEmpty()) { pageIndex--; speakPage(); }
+                else return false;
+                return true;
+            case "play first": case "open first": case "read first":
+                if (results.length() == 0) return false;
+                openResult(0, true); return true;
+            case "read that": case "read aloud": case "read it":
+                if (lastReply.isEmpty()) return false;
+                readAloud(lastReply); return true;
+            case "audio only":
+                if (video.active()) {
+                    String explanation = "YouTube requires a visible player. Audio-only is unavailable for this source.";
+                    video.notice(explanation); readAloud(explanation);
+                }
+                else if (!lastReply.isEmpty()) readAloud(lastReply);
+                else return false;
+                return true;
+            case "show video":
+                if (resultIndex < 0 || results.optJSONObject(resultIndex) == null ||
+                        !results.optJSONObject(resultIndex).optString("kind").equals("video")) return false;
+                openResult(resultIndex, false); return true;
+            case "show text":
+                if (!speaking && !video.active()) return false;
+                stopAudio(); video.close(); resumeWake(); return true;
+            default: return false;
+        }
+    }
+    private void showResults() {
+        final JSONArray shownResults = results;
+        for (int i = 0; i < shownResults.length(); i++) {
+            JSONObject item = shownResults.optJSONObject(i);
+            if (item == null || item.optString("title").isEmpty()) continue;
+            final int index = i;
+            Button button = new Button(this, null, 0, R.style.CompactButton);
+            button.setText((i + 1) + ". " + item.optString("title"));
+            button.setOnClickListener(v -> { results = shownResults; openResult(index, true); });
+            messages.addView(button);
+        }
+    }
+    private void openResult(int index, boolean play) {
+        JSONObject item = results.optJSONObject(index);
+        if (item == null) return;
+        resultIndex = index;
+        if (item.optString("kind").equals("video")) {
+            stopAudio(); video.show(item.optString("id"), item.optString("title"), play); resumeWake();
+        } else {
+            video.close();
+            String text = item.optString("body", item.optString("summary"));
+            if (text.isEmpty()) text = "Ask Micro to read this item for more detail.";
+            readAloud(item.optString("title") + ". " + text);
+        }
+    }
+    private void readAloud(String text) {
+        if (text.isEmpty()) return;
+        stopAudio(); video.pause();
+        if (!ttsReady) { status.setText("Install an offline English voice in Android settings for spoken replies."); resumeWake(); return; }
+        pages = SpeechPages.split(markdown.toMarkdown(text).toString(), Math.min(2500, TextToSpeech.getMaxSpeechInputLength()));
+        pageIndex = 0; speakPage();
+    }
+    private void speakPage() {
+        if (!foreground || !ttsReady || pageIndex < 0 || pageIndex >= pages.size()) return;
+        speechEpoch++; utterance = "reply-" + speechEpoch; speaking = true; update();
+        if (tts.speak(pages.get(pageIndex), TextToSpeech.QUEUE_FLUSH, null, utterance) == TextToSpeech.ERROR) {
+            speaking = false; update();
+        }
+        resumeWake();
     }
     private void connection() {
         if (busy) return;
@@ -233,7 +358,7 @@ public class MainActivity extends Activity {
         dialog.show();
     }
     private void signOut() {
-        stopAudio(); wake.setChecked(false); vault.clear(); account = new JSONObject();
+        stopAudio(); video.close(); results = new JSONArray(); pages.clear(); lastReply = ""; wake.setChecked(false); vault.clear(); account = new JSONObject();
         thread = ""; messages.removeAllViews(); prompt.setText(""); update();
         status.setText("Signed out on this device. You can revoke access in Account → Tokens.");
     }
@@ -290,9 +415,9 @@ public class MainActivity extends Activity {
             }
         });
     }
-    @Override protected void onResume() { super.onResume(); foreground = true; update(); }
+    @Override protected void onResume() { super.onResume(); foreground = true; if (video != null) video.resumeView(); update(); }
     @Override protected void onPause() {
-        foreground = false; stopAudio();
+        foreground = false; stopAudio(); if (video != null) video.pause();
         if (wake != null) wake.setChecked(false); // Never silently resume ambient listening.
         super.onPause();
     }
@@ -300,7 +425,7 @@ public class MainActivity extends Activity {
         out.putString("thread", thread); out.putString("agent", agent); super.onSaveInstanceState(out);
     }
     @Override protected void onDestroy() {
-        destroyed = true; if (voice != null) voice.close();
+        destroyed = true; if (video != null) video.close(); if (voice != null) voice.close();
         if (tts != null) { tts.stop(); tts.shutdown(); }
         worker.shutdown(); super.onDestroy();
     }
