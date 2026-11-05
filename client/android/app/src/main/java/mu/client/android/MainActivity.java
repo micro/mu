@@ -51,6 +51,7 @@ public class MainActivity extends Activity {
         vault = new Vault(this);
         try { account = vault.read(); }
         catch (Exception e) { vault.clear(); }
+        agent = account.optString("agent", "micro");
         markdown = Markwon.create(this);
         messages = findViewById(R.id.messages);
         scroll = findViewById(R.id.scroll);
@@ -103,6 +104,7 @@ public class MainActivity extends Activity {
         if (destroyed) return;
         send.setEnabled(!busy && signedIn());
         speak.setEnabled(!busy && signedIn());
+        settings.setText(signedIn() ? "Account" : "Sign in");
         settings.setEnabled(!busy); newChat.setEnabled(!busy);
         wake.setEnabled(!busy && signedIn());
         speak.setText(listening || speaking ? R.string.stop : R.string.speak);
@@ -269,7 +271,7 @@ public class MainActivity extends Activity {
                         .put("expires", System.currentTimeMillis() + token.getLong("expires_in") * 1000);
                 runOnUiThread(() -> {
                     if (destroyed) return;
-                    try { vault.write(connected); }
+                    try { connected.put("agent", agent); vault.write(connected); }
                     catch (Exception e) { busy = false; update(); status.setText("Could not save sign-in securely. Please reconnect."); return; }
                     account = connected; thread = ""; messages.removeAllViews(); busy = false; update();
                     status.setText("Connected to " + connected.optString("server") + ". Ask Micro or tap Speak.");
