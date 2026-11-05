@@ -40,6 +40,12 @@ android {
             minifyEnabled false
         }
     }
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach {
+            outputFileName = variant.buildType.name == 'debug' ? 'micro-android-preview.apk' :
+                (System.getenv('ANDROID_KEYSTORE') ? 'micro-android.apk' : 'micro-android-unsigned.apk')
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

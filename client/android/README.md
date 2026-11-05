@@ -7,7 +7,7 @@ while the app is visible. No dashboard, service catalogue, or embedded web app.
 ## Account and conversation
 
 Tap **Connection**, keep `https://micro.mu` or enter your own HTTPS Mu origin,
-and sign in. Your browser handles login, signup and consent. Existing browser
+and sign in. Your browser handles login, signup and consent. After allowing access, tap **Open Micro** to return to the app. Existing browser
 sessions can be reused. Choose Assistant API / agent access and allow actions.
 The app uses S256 PKCE and validates a single-use, expiring state; it never sees
 your password. Credentials are encrypted using Android Keystore and excluded
@@ -57,7 +57,7 @@ gradle -p client/android testDebugUnitTest lintDebug assembleDebug
 
 Open `client/android` in Android Studio if preferred. The first build downloads
 the pinned Vosk model and checks SHA-256 before packaging. Android 8+ is required.
-Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
+Debug APK: `app/build/outputs/apk/debug/micro-android-preview.apk`.
 
 PRs and main builds run Android unit tests, lint and APK compilation separately
 from Go builds. Download **micro-android-preview** from the Android Actions run

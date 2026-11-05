@@ -601,7 +601,7 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := CreateAuthorizationCode(clientID, session.Account, redirectURI, r.PostFormValue("code_challenge"), r.PostFormValue("code_challenge_method"), permissions...)
-	http.Redirect(w, r, authorizationRedirect(redirectURI, code, r.PostFormValue("state")), http.StatusSeeOther)
+	finishAuthorization(w, r, redirectURI, code, r.PostFormValue("state"))
 }
 
 // OAuthTokenHandler handles POST /oauth/token — exchanges code for access token.

@@ -97,9 +97,9 @@ jobs:
           fi
           gradle -p client/android --no-daemon testDebugUnitTest lintDebug assembleRelease -PreleaseVersion="$TAG"
           if [ -n "$KEYSTORE_BASE64" ]; then
-            cp client/android/app/build/outputs/apk/release/app-release.apk dist/micro-android.apk
+            cp client/android/app/build/outputs/apk/release/micro-android.apk dist/micro-android.apk
           else
-            cp client/android/app/build/outputs/apk/release/app-release-unsigned.apk dist/micro-android-unsigned.apk
+            cp client/android/app/build/outputs/apk/release/micro-android-unsigned.apk dist/micro-android-unsigned.apk
             echo "::warning::Android signing is not configured. The unsigned APK cannot be installed until signed."
           fi
 
