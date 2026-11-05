@@ -30,16 +30,18 @@ fallback.
 
 ## Voice
 
-Tap **Speak**, dictate, review the transcription and tap **Send**. Enable the
-“Hey Micro” switch to use that phrase instead of tapping Speak, pause for the
-Listening prompt, then dictate. Turning the screen off or leaving the app stops
-listening and disables the switch. Nothing starts at boot.
+Tap **Speak**, dictate, review the transcription and tap **Send**. For direct
+voice requests, enable **Hands-free “Hey Micro” while open** and include your
+request after the wake phrase. This submits recognised requests automatically,
+except during playback as described below. Turning the screen off or leaving
+the app stops listening and disables the switch. Nothing starts at boot.
 
 Vosk transcribes locally using the bundled English model. No microphone audio
 is uploaded. Only submitted text goes to your Mu server and its configured AI
 provider. Spoken replies use an installed offline English Android TTS voice;
-if none is installed, text still works. Very long replies are spoken up to the
-Android engine's per-utterance limit and remain fully readable on screen.
+if none is installed, text still works. Long replies are spoken in bounded
+chunks and remain fully readable on screen. Resuming a paused readout restarts
+the current chunk.
 Wake recognition is experimental and uses CPU speech recognition, not a
 low-power hardware wake detector. It needs real-device accuracy/battery testing.
 

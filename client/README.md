@@ -30,6 +30,11 @@ server a mobile client. The CLI is still part of the Mu binary and remains under
 
 `POST /agent/<name>`, `Accept: application/json`, bearer authentication.
 Send `{"prompt":"…","thread":"…"}`; receive `{"text":"…","thread":"…","agent":"…"}`.
+Responses may also include `results`: the runtime's typed result objects from
+successful tool calls. Render known kinds as data, never execute model-authored
+HTML or infer playback commands from prose. Voice clients may set
+`context: {"voice": true}` for concise spoken framing; this grants no extra tools.
+
 Omit the thread on the first message. The runtime owns conversation history,
 tool access, account isolation and credit charging. Clients never retry
 unconfirmed actions automatically.
