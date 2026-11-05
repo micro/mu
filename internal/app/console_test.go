@@ -12,7 +12,7 @@ func TestAppShellKeepsPublicFooterOutOfSignedInPages(t *testing.T) {
 		if strings.Contains(page, `aria-label="Site information"`) {
 			t.Fatalf("website footer on %s", path)
 		}
-		if !strings.Contains(page, `class="brand">Micro</a>`) || !strings.Contains(page, `aria-label="Main navigation"`) {
+		if !strings.Contains(page, `class="brand" aria-label="Mu home">`) || !strings.Contains(page, `aria-label="Main navigation"`) {
 			t.Fatalf("missing app identity/navigation on %s", path)
 		}
 	}
@@ -36,7 +36,7 @@ func TestSignedInShellPreservesContentLayoutClasses(t *testing.T) {
 	if !strings.Contains(page, `class="document-page reading-page editorial-reading signed-in"`) {
 		t.Fatal("lost content or account layout classes")
 	}
-	if !strings.Contains(page, `class="runtime-brand" href="/home">Micro</a>`) {
-		t.Fatal("missing desktop sidebar brand")
+	if strings.Contains(page, `class="runtime-brand"`) || !strings.Contains(page, `alt="Mu"`) {
+		t.Fatal("expected one shared Mu header mark")
 	}
 }

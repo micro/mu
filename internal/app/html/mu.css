@@ -18,10 +18,12 @@ input[type=checkbox],input[type=radio]{width:auto}
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--control-focus);outline-offset:3px}
 
 .page{flex:1;min-height:0}
-header{min-height:80px;height:auto;padding:20px var(--page-gutter);display:flex;justify-content:space-between;align-items:center;gap:16px}
+header{min-height:80px;height:auto;padding:20px var(--page-gutter);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;border-bottom:1px solid var(--card-border)}
 header a{text-decoration:none}
 header nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 16px;font-size:.875rem}
-.brand{font-weight:var(--font-weight-medium)}
+.brand{font-weight:var(--font-weight-medium);grid-column:2;justify-self:center}
+.brand img{display:block;width:40px;height:40px}
+header>.desktop-navigation{grid-column:3;justify-self:end}
 main{width:min(100% - 40px,760px);margin:0 auto;padding:16px 0 40px}
 footer{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;padding:28px 20px max(36px,env(safe-area-inset-bottom));flex-shrink:0;color:#666;font-size:.8rem}
 footer a{text-decoration:none}
@@ -1257,12 +1259,6 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .home-card-content>:is(.post-item,.thumbnail){border:0;border-radius:0;padding:0}
 .home-card-content>:first-child{margin-top:0}
 .home-card-content>:last-child{margin-bottom:0}
-.runtime-brand{display:none}
-@media(min-width:1101px){
- .runtime-brand{display:block;position:fixed;z-index:31;top:24px;left:24px;font-size:1.1rem;font-weight:var(--font-weight-medium);text-decoration:none}
- .signed-in>.page>header>.brand{display:none}
- .signed-in>.page>header{justify-content:flex-end}
-}
 @media(min-width:701px) and (max-width:1100px){
  .runtime-navigation{width:88px;padding-inline:6px}
  .runtime-navigation a{flex-direction:column;gap:4px;padding:10px 4px;font-size:.75rem}
