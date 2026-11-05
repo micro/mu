@@ -140,7 +140,7 @@ public class MainActivity extends Activity {
         if (text.isEmpty()) return;
         boolean spokenRequest = voiceRequest;
         voiceRequest = false;
-        if (localCommand(text)) { prompt.setText(""); return; }
+        if (localCommand(text)) { prompt.setText(""); resumeWake(); return; }
         stopAudio(); video.pause();
         busy = true; update(); prompt.setText("");
         message("You", text); status.setText("Micro is working…");
@@ -239,38 +239,52 @@ public class MainActivity extends Activity {
         if (wake.isChecked() && !restricted) { voiceRequest = true; send(); }
         else status.setText(restricted ? "Playback cannot issue account requests. Check the message and tap Send." : "Check your message, then tap Send.");
     }
-    private boolean localCommand(String text) {
+    boolean localCommand(String text) {
         switch (VoiceCommands.normalize(text)) {
             case "stop listening":
+                if (!wake.isChecked() && !listening && pendingVoice < 0) return false;
                 wake.setChecked(false); stopAudio(); status.setText("Listening stopped."); return true;
             case "stop": case "pause":
+                if (!speaking && !listening && !video.active()) return false;
                 stopAudio(); video.pause(); status.setText("Paused."); resumeWake(); return true;
             case "resume": case "continue":
                 if (video.active()) { video.resumeView(); video.command("play"); }
-                else if (!pages.isEmpty()) speakPage();
+                else if (pageIndex < pages.size()) speakPage();
+                else return false;
                 resumeWake(); return true;
             case "back": case "close video":
+                if (!video.active()) return false;
                 video.close(); status.setText("Back to chat."); resumeWake(); return true;
             case "next": case "next headline":
                 if (resultIndex + 1 < results.length()) openResult(++resultIndex, true);
                 else if (pageIndex + 1 < pages.size()) { pageIndex++; speakPage(); }
-                else status.setText("No more results.");
+                else return false;
                 return true;
             case "previous": case "previous headline":
                 if (resultIndex > 0) openResult(--resultIndex, true);
-                else if (pageIndex > 0) { pageIndex--; speakPage(); }
+                else if (pageIndex > 0 && !pages.isEmpty()) { pageIndex--; speakPage(); }
+                else return false;
                 return true;
             case "play first": case "open first": case "read first":
-                if (results.length() > 0) openResult(0, true); return true;
+                if (results.length() == 0) return false;
+                openResult(0, true); return true;
             case "read that": case "read aloud": case "read it":
+                if (lastReply.isEmpty()) return false;
                 readAloud(lastReply); return true;
             case "audio only":
-                if (video.active()) video.notice("YouTube requires a visible player. Audio-only is unavailable for this source.");
-                else readAloud(lastReply);
+                if (video.active()) {
+                    String explanation = "YouTube requires a visible player. Audio-only is unavailable for this source.";
+                    video.notice(explanation); readAloud(explanation);
+                }
+                else if (!lastReply.isEmpty()) readAloud(lastReply);
+                else return false;
                 return true;
             case "show video":
-                if (resultIndex >= 0) openResult(resultIndex, false); return true;
+                if (resultIndex < 0 || results.optJSONObject(resultIndex) == null ||
+                        !results.optJSONObject(resultIndex).optString("kind").equals("video")) return false;
+                openResult(resultIndex, false); return true;
             case "show text":
+                if (!speaking && !video.active()) return false;
                 stopAudio(); video.close(); resumeWake(); return true;
             default: return false;
         }

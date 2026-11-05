@@ -27,6 +27,30 @@ public class AccountScreenTest {
         assertEquals("test", intent.getData().getQueryParameter("state"));
     }
 
+    @Test public void visiblePlayerOpensAndClosesWithoutAnAccountCredential() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                VideoPlayer player = new VideoPlayer(activity, () -> {});
+                player.show("abcdefghijk", "Playback test", false);
+                assertTrue(player.active());
+                player.pause();
+                player.close();
+                assertFalse(player.active());
+                player.show("javascript:alert(1)", "Invalid", true);
+                assertFalse(player.active());
+            });
+        }
+    }
+    @Test public void conversationWordsAreNotConsumedWithoutPlayback() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                assertFalse(activity.localCommand("continue"));
+                assertFalse(activity.localCommand("next"));
+                assertFalse(activity.localCommand("previous"));
+                assertFalse(activity.localCommand("back"));
+            });
+        }
+    }
     @Test public void signedOutAppStartsWithoutMicrophoneOrAccount() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
