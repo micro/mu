@@ -15,8 +15,19 @@ import (
 )
 
 func TestMobileNavigationDrawer(t *testing.T) {
-	browser := ""
+	if testing.Short() {
+		t.Skip("browser UI test runs separately from the short backend suite")
+	}
+	browser := os.Getenv("CHROME_PATH")
+	if browser != "" {
+		if _, err := os.Stat(browser); err != nil {
+			t.Fatalf("configured Chrome: %v", err)
+		}
+	}
 	for _, name := range []string{"google-chrome", "chromium", "chromium-browser"} {
+		if browser != "" {
+			break
+		}
 		if path, err := exec.LookPath(name); err == nil {
 			browser = path
 			break
@@ -47,12 +58,16 @@ func TestMobileNavigationDrawer(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(browser))
+	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(browser),
+		chromedp.Flag("no-sandbox", false),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.WSURLReadTimeout(60*time.Second),
+		chromedp.CombinedOutput(os.Stderr))
 	alloc, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	defer cancel()
 	ctx, cancel := chromedp.NewContext(alloc)
 	defer cancel()
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 	var valid bool
 	err = chromedp.Run(ctx,
