@@ -31,11 +31,15 @@ public class AccountScreenTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 VideoPlayer player = new VideoPlayer(activity, () -> {});
+                android.widget.LinearLayout messages = activity.findViewById(R.id.messages);
+                int before = messages.getChildCount();
                 player.show("abcdefghijk", "Playback test", false);
+                assertEquals(before + 1, messages.getChildCount());
                 assertTrue(player.active());
                 player.pause();
                 player.close();
                 assertFalse(player.active());
+                assertEquals(before, messages.getChildCount());
                 player.show("javascript:alert(1)", "Invalid", true);
                 assertFalse(player.active());
             });
