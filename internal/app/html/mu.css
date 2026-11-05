@@ -18,13 +18,12 @@ input[type=checkbox],input[type=radio]{width:auto}
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--control-focus);outline-offset:3px}
 
 .page{flex:1;min-height:0}
-header{min-height:80px;height:auto;padding:20px var(--page-gutter);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;border-bottom:1px solid var(--card-border)}
+header{min-height:56px;height:auto;padding:12px var(--page-gutter) 4px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;border-bottom:1px solid var(--card-border)}
 header a{text-decoration:none}
 header nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 16px;font-size:.875rem}
 .brand{font-weight:var(--font-weight-medium);grid-column:2;justify-self:center}
-.brand img{display:block;width:40px;height:40px}
 header>.desktop-navigation{grid-column:3;justify-self:end}
-main{width:min(100% - 40px,760px);margin:0 auto;padding:16px 0 40px}
+main{width:min(100% - 40px,760px);margin:0 auto;padding:24px 0 40px}
 footer{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;padding:28px 20px max(36px,env(safe-area-inset-bottom));flex-shrink:0;color:#666;font-size:.8rem}
 footer a{text-decoration:none}
 
@@ -53,7 +52,7 @@ dd{margin:0 0 12px;overflow-wrap:anywhere}
 .command-page .page{min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .command-page{height:100svh;height:100dvh}
 .command-page header{flex-shrink:0}
-.command-page main{flex:1;min-height:0;padding:0;display:flex;flex-direction:column;align-items:stretch}
+.command-page main{flex:1;min-height:0;padding:24px 0 0;display:flex;flex-direction:column;align-items:stretch}
 .conversation{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
 .prompt-panel{flex-shrink:0;width:100%;min-width:0;margin-block:auto;position:relative;z-index:2;background:#fff}
 .prompt-welcome{text-align:center;margin:0}
@@ -142,9 +141,9 @@ dialog.modal .form-actions>button{margin:0}
 .m-0{margin:0}
 .fixed-w{flex-shrink:0}
 
-@media(max-width:480px){header{min-height:64px;height:auto;padding:16px 20px}
+@media(max-width:480px){header{min-height:52px;height:auto;padding:8px 20px 4px}
 header nav{gap:16px}
-main{padding-top:4px}
+main{padding-top:24px}
 
 h1{font-size:1.4rem}
 footer{gap:16px}
@@ -877,7 +876,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 
 /* Navigation stays visible above the content on desktop and mobile. */
 .desktop-navigation{display:flex;margin-left:auto}
-@media(max-width:700px){header{flex-wrap:wrap;gap:4px 16px;padding:12px var(--page-gutter);min-height:64px}.desktop-navigation{gap:8px 16px}header nav a{padding-block:8px}}
+@media(max-width:700px){header{flex-wrap:wrap;gap:4px 16px;padding:8px var(--page-gutter) 4px;min-height:52px}.desktop-navigation{gap:8px 16px}header nav a{padding-block:8px}}
 
 
 /* Account controls stay compact at every screen width. */
@@ -1237,6 +1236,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .document-page:has([data-home-overview]) .prompt-welcome{display:none}
 .document-page:has([data-home-overview]) #responses:empty{display:none}
 
+.mobile-menu-toggle{display:none}
 /* Mu hosts the assistant and service pages within one responsive shell. */
 .runtime-navigation{position:fixed;z-index:30;inset:0 auto 0 0;width:168px;display:flex;flex-direction:column;gap:6px;padding:92px 12px 24px;border-right:1px solid var(--border);background:var(--bg,#fff)}
 .runtime-navigation a{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 12px;border-radius:6px;text-decoration:none;color:#666;font-size:.9rem}
@@ -1244,7 +1244,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .runtime-navigation a:hover{background:#f6f6f6;color:#222}
 .runtime-navigation svg{flex:none}
 .signed-in>.page,.signed-in>footer{margin-left:168px}
-.signed-in>.page>header{padding-block:12px;min-height:72px;flex-wrap:nowrap}
+.signed-in>.page>header{padding-block:12px 4px;min-height:56px;flex-wrap:nowrap}
 /* Reusable sections and shortcuts within the shared canvas. */
 .section-heading{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin:32px 0 16px}
 .section-heading h2{margin:0;font-size:1.15rem}
@@ -1265,13 +1265,15 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
  .signed-in>.page,.signed-in>footer{margin-left:88px}
 }
 @media(max-width:700px){
- .runtime-navigation{inset:auto 0 0;width:auto;height:calc(64px + env(safe-area-inset-bottom));flex-direction:row;justify-content:space-around;gap:0;padding:4px max(4px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left));border-right:0;border-top:1px solid var(--border)}
- .runtime-navigation a{flex:1;min-width:0;flex-direction:column;gap:3px;padding:7px 2px;font-size:.72rem;min-height:50px;border-radius:4px}
- .signed-in{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+ .signed-in>.runtime-navigation{display:none}
+ .mobile-menu-toggle{display:block;grid-column:1;justify-self:start;min-width:44px;min-height:44px;font-size:20px;padding:4px 8px}
+ .mobile-drawer{margin:0;inset:0 auto 0 0;width:min(280px,85vw);max-width:none;height:100dvh;max-height:none;padding:16px;padding-top:max(16px,env(safe-area-inset-top));border:0;border-right:1px solid var(--border);background:#fff;color:var(--text-primary);overflow-y:auto}
+ .mobile-drawer::backdrop{background:rgb(0 0 0 / .3)}
+ .mobile-drawer .runtime-navigation{position:static;width:auto;padding:20px 0;border:0}
+ .drawer-close{display:block;margin-left:auto;min-height:44px}
+ body:has(.mobile-drawer[open]){overflow:hidden}
  .signed-in>.page,.signed-in>footer{margin-left:0}
- .signed-in>.page>header{min-height:60px;padding:8px var(--page-gutter)}
- .signed-in.keyboard-open{padding-bottom:0}
- .keyboard-open>.runtime-navigation{display:none}
+ .signed-in>.page>header{min-height:52px;padding:8px var(--page-gutter) 4px}
  :root{--page-gutter:16px;--section-gap:20px;--section-padding:16px}
  .card-grid,.directory-list{grid-template-columns:minmax(0,1fr)}
  .section-heading{margin-top:24px}
@@ -1462,11 +1464,11 @@ body:not(.signed-in) .desktop-navigation{flex-wrap:wrap}
 @media(min-width:701px) and (max-width:1100px){
  .signed-in{--page-gutter:32px;--section-gap:20px;--section-padding:20px}
  .signed-in.document-page main>h1{margin-bottom:16px}
- .signed-in.document-page main{padding-top:12px}
+ .signed-in.document-page main{padding-top:24px}
 }
 @media(max-width:700px){
  .signed-in{--section-gap:12px}
- .signed-in.document-page main{padding-top:8px}
+ .signed-in.document-page main{padding-top:24px}
  .signed-in.document-page main>h1{margin-bottom:10px}
  .signed-in .page-controls{gap:8px;padding-bottom:12px}
  .signed-in .view-controls{gap:8px}

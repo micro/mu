@@ -26,6 +26,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 		links += `<a href="/logout">Logout</a></div></details>`
 	}
 	navigation := ""
+	menuButton := ""
 	if acc != nil {
 		here := ""
 		if len(returnTo) > 0 {
@@ -34,7 +35,8 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 				here = "/agents"
 			}
 		}
-		navigation = runtimeNavigation(here)
+		navigation = runtimeNavigation(here) + `<dialog class="mobile-drawer" id="mobile-navigation" aria-label="Main menu"><button type="button" class="drawer-close" aria-label="Close menu">Close</button></dialog>`
+		menuButton = `<button type="button" class="mobile-menu-toggle" aria-label="Open menu" aria-controls="mobile-navigation" aria-expanded="false">☰</button>`
 	}
 
 	if title != "Micro" {
@@ -67,7 +69,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 	if acc == nil || publicPage {
 		footer = `<footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer>`
 	}
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=` + stylesVersion + `"><script defer src="/mu.js?v=` + scriptsVersion + `"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header><a href="/" class="brand" aria-label="Mu home"><img src="/icon-192.png" alt="Mu" width="40" height="40"></a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Micro"><meta name="application-name" content="Micro"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=` + stylesVersion + `"><script defer src="/mu.js?v=` + scriptsVersion + `"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header>` + menuButton + `<a href="/" class="brand" aria-label="Mu home">Mu</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
 }
 
 // The product destinations stay the same across screen sizes. Services retain

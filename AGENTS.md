@@ -80,8 +80,7 @@ Breadth behind one account is the value.
 Micro consistently in its header, page titles and PWA. Mu names the runtime in
 code and technical documentation. The four primary
 product destinations are Home, Inbox, Agents and Services. Agents contains
-Agents and Scheduled tabs. Agent names open their chats and purpose; All chats and New chat are actions, not tabs. Work details remain reachable from conversations and Work history; existing /work links remain valid. They use bottom
-navigation on phones, a narrow rail on tablets and a left navigation on desktop.
+Agents and Scheduled tabs. Agent names open their chats and purpose; All chats and New chat are actions, not tabs. Work details remain reachable from conversations and Work history; existing /work links remain valid. They use a slide-out menu on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
 
 Home has Overview and Feed views. Overview owns the prompt, Chats, Inbox, Scheduled, pinned shortcuts and upcoming events; Feed composes blog, news, markets, video and additional
@@ -695,7 +694,7 @@ active chats retain the full canvas. Otherwise only prose
 and ordinary forms retain a reading measure; editors and maps use the canvas.
 Mixed dashboard previews use two independently flowing columns, not the directory
 grid: a long Inbox card must not create empty space beneath its neighbours.
-The Mu mark is centered in the shared header on desktop and mobile, with a divider beneath it and the account menu on the right. All grid/flex children must shrink and long content must wrap.
+The Mu text link to / is centered in the shared header on desktop and mobile, with a divider beneath it and the account menu on the right. All grid/flex children must shrink and long content must wrap.
 Mobile forms wrap, tables scroll or stack, previews fit their container, and
 conversation composers remain reachable. Bound images and give SVG shapes
 explicit fills and strokes. Keep optional references in a collapsed disclosure.

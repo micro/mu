@@ -36,7 +36,7 @@ func TestSignedInShellPreservesContentLayoutClasses(t *testing.T) {
 	if !strings.Contains(page, `class="document-page reading-page editorial-reading signed-in"`) {
 		t.Fatal("lost content or account layout classes")
 	}
-	if strings.Contains(page, `class="runtime-brand"`) || !strings.Contains(page, `alt="Mu"`) {
+	if strings.Contains(page, `class="runtime-brand"`) || !strings.Contains(page, `aria-label="Mu home">Mu</a>`) {
 		t.Fatal("expected one shared Mu header mark")
 	}
 }
