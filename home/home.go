@@ -121,7 +121,6 @@ func overviewHTML(acc *auth.Account) string {
 
 func feedHTML(snapshot overviewSnapshot, owner string) string {
 	var left, right strings.Builder
-	left.WriteString(groupsCard(owner))
 	left.WriteString(shortBrief())
 	reading := blog.LatestPreview(owner)
 	if reading == "" {
