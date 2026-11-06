@@ -43,13 +43,14 @@ public class MainActivity extends Activity {
     private long speechEpoch;
     private boolean voiceRequest, controlsOnly;
     private JSONArray agents = new JSONArray();
-    private boolean agentAvailable, agentLinkPending;
+    private boolean agentAvailable, agentLinkPending, launchHandled;
     private String agentName = "Micro", agentDescription = "A personal assistant";
     private Button agentPicker;
     private TextView description;
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        launchHandled = saved != null && saved.getBoolean("launch_handled", false);
         setContentView(R.layout.main);
         View root = findViewById(R.id.root);
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
@@ -120,8 +121,8 @@ public class MainActivity extends Activity {
             if (!thread.isEmpty()) message(agentName, "Continuing your conversation. Earlier messages are in your web Inbox.");
         }
         update();
-        // Process launch data after creation so consuming the intent cannot
-        // disrupt activity lifecycle observers or open a dialog during creation.
+        // Process launch data after creation. Keep the original intent stable;
+        // remember consumption separately across lifecycle recreation.
         root.post(() -> {
             if (destroyed) return;
             callback(getIntent());
@@ -469,7 +470,7 @@ public class MainActivity extends Activity {
     private boolean openAgentLink(Intent intent) {
         Uri uri = intent.getData();
         if (uri == null || !"micro-agent".equals(uri.getScheme())) return false;
-        intent.setData(null);
+        launchHandled = true;
         if (busy) { status.setText("Finish the current request before opening another agent."); return true; }
         try {
             if (!"open".equals(uri.getHost()) || uri.getUserInfo() != null || uri.getPort() != -1 || uri.getFragment() != null || (uri.getPath() != null && !uri.getPath().isEmpty())) throw new IllegalArgumentException();
@@ -556,14 +557,15 @@ public class MainActivity extends Activity {
             }
         });
     }
-    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); callback(intent); }
+    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); launchHandled = false; callback(intent); }
     private void callback(Intent intent) {
+        if (launchHandled) return;
         if (openAgentLink(intent)) return;
         Uri uri = intent.getData();
         if (uri == null || busy) return;
         Uri expected = Uri.parse(BuildConfig.OAUTH_REDIRECT);
         if (!expected.equals(uri.buildUpon().clearQuery().fragment(null).build()) || uri.getFragment() != null) return;
-        intent.setData(null);
+        launchHandled = true;
         JSONObject pending = account.optJSONObject("pending");
         String code = uri.getQueryParameter("code");
         if (pending == null || code == null || !OAuth.validState(pending, uri.getQueryParameter("state"), System.currentTimeMillis())) {
@@ -597,6 +599,7 @@ public class MainActivity extends Activity {
         super.onPause();
     }
     @Override protected void onSaveInstanceState(Bundle out) {
+        out.putBoolean("launch_handled", launchHandled);
         out.putString("thread", thread); out.putString("agent", agent); super.onSaveInstanceState(out);
     }
     @Override protected void onDestroy() {
