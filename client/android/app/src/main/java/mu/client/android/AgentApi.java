@@ -34,6 +34,16 @@ final class AgentApi {
         return post(origin(server) + "/agent/" + agent(agent), token, body.toString(), "application/json");
     }
 
+    static JSONObject askPublic(String server, String token, String prompt) throws Exception {
+        // Old runtimes ignore unknown JSON fields: never send a restricted request
+        // until the authenticated server explicitly advertises that boundary.
+        if (!catalog(server, token).optBoolean("public_voice", false))
+            throw new IOException("This server does not support locked-phone questions. Unlock to continue.");
+        if (prompt.getBytes(StandardCharsets.UTF_8).length > 8000) throw new IOException("Keep the message below 8,000 bytes.");
+        return post(origin(server) + "/agent", token,
+            new JSONObject().put("prompt", prompt).put("public_only", true).toString(), "application/json");
+    }
+
     static JSONObject catalog(String server, String token) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(origin(server) + "/agent?view=agents").openConnection();
         c.setInstanceFollowRedirects(false); c.setConnectTimeout(15000); c.setReadTimeout(15000);

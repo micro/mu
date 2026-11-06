@@ -99,12 +99,7 @@ public class MainActivity extends Activity {
         spoken.setOnCheckedChangeListener((v, enabled) -> { if (!enabled) stopAudio(); });
         tts = new TextToSpeech(this, result -> {
             if (destroyed || result != TextToSpeech.SUCCESS) return;
-            // Do not send replies to a cloud speech engine.
-            if (tts.getVoices() != null) for (Voice v : tts.getVoices()) {
-                if (!v.isNetworkConnectionRequired() && v.getLocale().getLanguage().equals(Locale.ENGLISH.getLanguage())) {
-                    ttsReady = tts.setVoice(v) == TextToSpeech.SUCCESS; break;
-                }
-            }
+            ttsReady = OfflineSpeech.select(tts);
         });
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             public void onStart(String id) {}
@@ -444,8 +439,19 @@ public class MainActivity extends Activity {
                 .setNeutralButton("Advanced", (d, w) -> advancedConnection()).setNegativeButton("Cancel", null).show();
             return;
         }
-        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Advanced", "Sign out"}, (d, index) -> {
+        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Advanced", "Sign out", "Use Mu as phone assistant"}, (d, index) -> {
             switch (index) {
+                case 6:
+                    if (android.os.Build.VERSION.SDK_INT >= 29) {
+                        android.app.role.RoleManager roles = getSystemService(android.app.role.RoleManager.class);
+                        if (roles != null && roles.isRoleAvailable(android.app.role.RoleManager.ROLE_ASSISTANT) && !roles.isRoleHeld(android.app.role.RoleManager.ROLE_ASSISTANT)) {
+                            startActivityForResult(roles.createRequestRoleIntent(android.app.role.RoleManager.ROLE_ASSISTANT), 7); break;
+                        }
+                    }
+                    Intent assistantSettings = new Intent(android.provider.Settings.ACTION_VOICE_INPUT_SETTINGS);
+                    if (assistantSettings.resolveActivity(getPackageManager()) != null) startActivity(assistantSettings);
+                    else status.setText("Open Android Settings → Default apps → Digital assistant and select Mu.");
+                    break;
                 case 0: loadAgents(true); break;
                 case 1:
                     if (!agentAvailable) { status.setText("Choose an available agent first."); break; }
