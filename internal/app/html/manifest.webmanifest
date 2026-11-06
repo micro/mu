@@ -1,29 +1,29 @@
 {
-  "name": "Micro",
-  "short_name": "Micro",
-  "description": "A personal AI agent. Ask Micro here, or write by mail, text or WhatsApp — with news, web search, your mail, markets, weather, places and storage behind it.",
+  "name": "Mu",
+  "short_name": "Mu",
+  "description": "Your personal agents, conversations and services.",
   "id": "/",
   "scope": "/",
   "start_url": "/?from=app",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
-  "display": "standalone", 
+  "display": "standalone",
   "icons": [
-      {
-        "src": "/icon-192.png",
-        "type": "image/png",
-        "sizes": "192x192"
-      },
-      {
-        "src": "/mu.png",
-        "type": "image/png",
-        "sizes": "256x256"
-      },
-      {
-        "src": "/icon-512.png",
-        "type": "image/png",
-        "sizes": "512x512",
-	"purpose": "maskable"
-      }
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/mu.png",
+      "type": "image/png",
+      "sizes": "256x256"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
   ]
 }

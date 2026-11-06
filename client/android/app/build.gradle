@@ -42,8 +42,8 @@ android {
     }
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach {
-            outputFileName = variant.buildType.name == 'debug' ? 'micro-android-preview.apk' :
-                (System.getenv('ANDROID_KEYSTORE') ? 'micro-android.apk' : 'micro-android-unsigned.apk')
+            outputFileName = variant.buildType.name == 'debug' ? 'mu-android-preview.apk' :
+                (System.getenv('ANDROID_KEYSTORE') ? 'mu-android.apk' : 'mu-android-unsigned.apk')
         }
     }
     compileOptions {

@@ -1,4 +1,4 @@
-# Micro for Android
+# Mu for Android
 
 A focused native client for your Micro account: text conversations, offline
 English speech input, local spoken replies, and an optional “Hey Micro” listener
@@ -59,10 +59,10 @@ gradle -p client/android testDebugUnitTest lintDebug assembleDebug
 
 Open `client/android` in Android Studio if preferred. The first build downloads
 the pinned Vosk model and checks SHA-256 before packaging. Android 8+ is required.
-Debug APK: `app/build/outputs/apk/debug/micro-android-preview.apk`.
+Debug APK: `app/build/outputs/apk/debug/mu-android-preview.apk`.
 
 PRs and main builds run Android unit tests, lint and APK compilation separately
-from Go builds. Download **micro-android-preview** from the Android Actions run
+from Go builds. Download **mu-android-preview** from the Android Actions run
 for a debug-signed installable preview. Debug keys on hosted runners are not
 stable; uninstall a previous preview if Android reports a signature conflict.
 
@@ -81,8 +81,8 @@ Configure these repository Actions secrets once for installable release APKs:
 
 Keep and back up the signing key outside this repository; subsequent upgrades
 must use the same key. No key is generated or committed by this project.
-With signing configured, releases attach `micro-android.apk`. Without it,
-they attach explicitly named `micro-android-unsigned.apk`, which must be signed
+With signing configured, releases attach `mu-android.apk`. Without it,
+they attach explicitly named `mu-android-unsigned.apk`, which must be signed
 before installation; CI still builds an installable debug preview.
 
 This does not publish to Google Play or create a new release tag automatically.
@@ -127,6 +127,8 @@ without video. No YouTube downloads, extracted audio or background playback.
 
 Agent entry: tap the agent name to choose from the account-scoped catalogue. The saved name and description are shown directly; instructions are never downloaded by the client. The last selection and separate thread IDs are encrypted alongside account state. Manual server/agent entry is under Account → Advanced.
 
-Android visitors can use “Open in Android” on an agent chat page. Links use `micro-agent://open?server=<HTTPS origin>&agent=<agent ID>&name=<display name>&description=<description>`. Links never contain credentials, instructions or messages, and do not grant access to private agents. A different server requires confirmation and a new sign-in. Shared private-agent links identify the agent by ID rather than selecting a same-named agent in another account.
+Android visitors can use “Open in Android” on an agent chat page. Links use `micro-agent://open?server=<HTTPS origin>&agent=<agent ID>`. Links never contain credentials, names, descriptions, instructions or messages, and do not grant access to private agents. A different server requires confirmation and a new sign-in. Shared private-agent links identify the agent by ID rather than selecting a same-named agent in another account.
 
 Account → Add agent to home screen requests a launcher shortcut; Account → Share agent link shares an explicit app link. These require the app to be installed. Normal HTTPS agent links remain web links; verified Android App Links require a release signing certificate and domain association and are not configured here.
+
+The installed app and APKs are named Mu; Micro remains the general-purpose agent. Choose an agent → Create agent opens the existing web builder for instructions, permissions and tools.

@@ -43,7 +43,7 @@ public class MainActivity extends Activity {
     private long speechEpoch;
     private boolean voiceRequest, controlsOnly;
     private JSONArray agents = new JSONArray();
-    private boolean agentAvailable = true;
+    private boolean agentAvailable = true, agentLinkPending;
     private String agentName = "Micro", agentDescription = "A personal assistant";
     private Button agentPicker;
     private TextView description;
@@ -121,7 +121,7 @@ public class MainActivity extends Activity {
         }
         update();
         callback(getIntent());
-        if (signedIn()) loadAgents(false);
+        if (signedIn() && !agentLinkPending) loadAgents(false);
     }
 
     private boolean signedIn() {
@@ -417,14 +417,16 @@ public class MainActivity extends Activity {
                         new AlertDialog.Builder(this).setTitle("Choose an agent").setItems(labels, (d, index) -> {
                             JSONObject item = agents.optJSONObject(index);
                             selectAgent(item.optString("id", item.optString("slug")), item.optString("name"), item.optString("description"));
-                        }).setNegativeButton("Cancel", null).show();
+                        }).setNeutralButton("Create agent", (d, w) -> startActivity(new Intent(Intent.ACTION_VIEW,
+                            Uri.parse(AgentApi.origin(account.optString("server")) + "/agent/new"))))
+                            .setNegativeButton("Cancel", null).show();
                     }
                 });
             } catch (Exception e) { runOnUiThread(() -> { if (!destroyed) { busy = false; update(); status.setText(e.getMessage()); } }); }
         });
     }
     private Uri agentLink() {
-        return new Uri.Builder().scheme("micro-agent").authority("open").appendQueryParameter("server", account.optString("server", "https://micro.mu")).appendQueryParameter("agent", agent).appendQueryParameter("name", agentName).appendQueryParameter("description", agentDescription).build();
+        return new Uri.Builder().scheme("micro-agent").authority("open").appendQueryParameter("server", account.optString("server", "https://micro.mu")).appendQueryParameter("agent", agent).build();
     }
     private void connection() {
         if (busy) return;
@@ -466,21 +468,21 @@ public class MainActivity extends Activity {
             if (!"open".equals(uri.getHost()) || uri.getUserInfo() != null || uri.getPort() != -1 || uri.getFragment() != null || (uri.getPath() != null && !uri.getPath().isEmpty())) throw new IllegalArgumentException();
             String server = AgentApi.origin(uri.getQueryParameter("server"));
             String slug = AgentApi.agent(uri.getQueryParameter("agent"));
-            String label = uri.getQueryParameter("name"), about = uri.getQueryParameter("description");
-            final String display = label != null && !label.trim().isEmpty() && label.length() <= 80 ? label.trim() : "Agent";
-            final String detail = about != null && about.length() <= 300 ? about : "";
+
             Runnable open = () -> {
+                agentLinkPending = false;
                 if (!server.equals(account.optString("server", "https://micro.mu"))) {
                     signOut(); account = new JSONObject();
                 }
                 try { account.put("server", server); } catch (Exception ignored) {}
-                selectAgent(slug, display, detail);
+                selectAgent(slug, slug.equals("micro") ? "Micro" : "Agent", "Sign in to load this agent’s details.");
                 agentAvailable = false; update();
                 if (signedIn()) loadAgents(false); else connection();
             };
             if (!server.equals(account.optString("server", "https://micro.mu"))) {
+                agentLinkPending = true;
                 new AlertDialog.Builder(this).setTitle("Change server?").setMessage("Open this agent on " + server + "? You will need to sign in there. Your current account credentials will not be sent.")
-                    .setPositiveButton("Continue", (d,w) -> open.run()).setNegativeButton("Cancel", null).show();
+                    .setPositiveButton("Continue", (d,w) -> open.run()).setNegativeButton("Cancel", (d,w) -> { agentLinkPending = false; if (signedIn()) loadAgents(false); }).setOnCancelListener(d -> { agentLinkPending = false; if (signedIn()) loadAgents(false); }).show();
             } else open.run();
         } catch (Exception e) { status.setText("That agent link is invalid."); }
         return true;
@@ -507,7 +509,7 @@ public class MainActivity extends Activity {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(AgentApi.origin(server.getText().toString()) + "/account"))); }
             catch (Exception e) { status.setText("Enter a valid HTTPS server address."); }
         });
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Micro account").setView(form)
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Mu account").setView(form)
                 .setPositiveButton("Sign in", null).setNegativeButton("Cancel", null)
                 .setNeutralButton("Sign out", (d, w) -> signOut()).create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {

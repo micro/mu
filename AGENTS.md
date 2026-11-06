@@ -76,9 +76,7 @@ one protocol. An earlier line said *real tools, not wrappers*, which made "did
 we build it" the measure and capped breadth at what one team can operate.
 Breadth behind one account is the value.
 
-**Mu is the runtime; Micro is the assistant it hosts.** The consumer app uses
-Micro consistently in its header, page titles and PWA. Mu names the runtime in
-code and technical documentation. The four primary
+**Mu is the runtime and client app; Micro is its general-purpose agent.** The web/PWA and Android installed app use Mu. Conversations show the selected agent’s name and saved description. The four primary
 product destinations are Home, Inbox, Agents and Services. Agents contains
 Agents and Scheduled tabs. Agent names open their chats and purpose; All chats and New chat are actions, not tabs. Work details remain reachable from conversations and Work history; existing /work links remain valid. They use a slide-out menu on phones, a narrow rail on tablets and a left navigation on desktop.
 Account and Admin stay in the account menu. Keep the styling sparse.
