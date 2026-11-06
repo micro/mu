@@ -18,7 +18,7 @@ func clientCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "private, no-store")
-	app.RespondJSON(w, map[string]any{"agents": ClientAgents(acc.ID)})
+	app.RespondJSON(w, map[string]any{"agents": ClientAgents(acc.ID), "public_voice": true})
 }
 
 // ClientAgent is the presentation of an accessible conversational agent.

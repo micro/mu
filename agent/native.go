@@ -365,7 +365,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// turns rather than as prose — see memory.go, which is also where the
 	// reason the whole conversation used to be sent twice is written down.
 	retrieved := ""
-	if !opts.NoTools {
+	if !opts.NoTools && !opts.anonymousTools {
 		retrieved = retrievedContext(accountID, prompt, opts, services)
 	}
 	sys += "\n\n" + retrievalInstructions
@@ -789,7 +789,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 		}
 	}
 	ctx = privacy.With(ctx)
-	if owner, err := auth.GetAccount(accountID); err == nil {
+	if owner, err := auth.GetAccount(accountID); err == nil && !opts.anonymousTools {
 		privacy.From(ctx).Remember(owner.Name)
 		privacy.From(ctx).Forget(owner.Secret)
 	}

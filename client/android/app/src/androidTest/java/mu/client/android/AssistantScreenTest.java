@@ -19,6 +19,12 @@ public class AssistantScreenTest {
         for (Class<?> service : new Class<?>[]{AssistantService.class, AssistantSessionService.class}) {
             assertEquals("android.permission.BIND_VOICE_INTERACTION", pm.getServiceInfo(new ComponentName(c, service), 0).permission);
         }
+        assertEquals("android.permission.BIND_SPEECH_RECOGNITION_SERVICE", pm.getServiceInfo(new ComponentName(c, LocalRecognitionService.class), 0).permission);
+        android.content.res.XmlResourceParser xml = c.getResources().getXml(R.xml.voice_interaction);
+        try {
+            while (xml.next() != org.xmlpull.v1.XmlPullParser.START_TAG) { }
+            assertEquals(LocalRecognitionService.class.getName(), xml.getAttributeValue("http://schemas.android.com/apk/res/android", "recognitionService"));
+        } finally { xml.close(); }
         assertFalse(pm.getActivityInfo(new ComponentName(c, AssistantActivity.class), 0).exported);
     }
     @Test public void signedOutAssistantCannotStartMicrophoneOrAccountRequest() {

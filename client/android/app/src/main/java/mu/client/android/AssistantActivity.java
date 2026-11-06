@@ -21,6 +21,7 @@ public final class AssistantActivity extends Activity {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private VoiceInput voice;
     private TextToSpeech tts;
+    private io.noties.markwon.Markwon markdown;
     private TextView name, status, answer;
     private Button speak, open;
     private JSONObject account = new JSONObject();
@@ -35,6 +36,7 @@ public final class AssistantActivity extends Activity {
         setShowWhenLocked(true); setTurnScreenOn(true);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         setContentView(R.layout.assistant);
+        markdown = io.noties.markwon.Markwon.create(this);
         name = findViewById(R.id.assistant_name); status = findViewById(R.id.assistant_status);
         answer = findViewById(R.id.assistant_answer); speak = findViewById(R.id.assistant_speak); open = findViewById(R.id.assistant_open);
         findViewById(R.id.assistant_close).setOnClickListener(v -> finish());
@@ -122,8 +124,13 @@ public final class AssistantActivity extends Activity {
                             threads.put(selected, thread); latest.put("threads", threads); vault.write(latest);
                         } catch (Exception e) { status.setText("Answer received, but could not save the conversation on this device."); }
                     }
-                    String response = reply.optString("text"); answer.setText(response); status.setText(restricted ? "Public answer · unlock for personal requests" : label);
-                    if (ttsReady) { speaking = true; tts.speak(response, TextToSpeech.QUEUE_FLUSH, null, "reply-" + generation); }
+                    String response = reply.optString("text"); markdown.setMarkdown(answer, response); status.setText(restricted ? "Public answer · unlock for personal requests" : label);
+                    if (ttsReady) {
+                        java.util.List<String> pages = SpeechPages.split(answer.getText().toString(), TextToSpeech.getMaxSpeechInputLength() - 100);
+                        speaking = !pages.isEmpty();
+                        for (int i = 0; i < pages.size(); i++) tts.speak(pages.get(i), i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, null,
+                            i == pages.size() - 1 ? "reply-" + generation : "part-" + generation + "-" + i);
+                    }
                     update();
                 });
             } catch (Exception e) { runOnUiThread(() -> { if (active && request == generation) { working = false; status.setText(e.getMessage()); update(); } }); }
