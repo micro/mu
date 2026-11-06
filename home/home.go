@@ -105,8 +105,7 @@ func shortBrief() string {
 
 func overviewHTML(acc *auth.Account) string {
 	var left, right strings.Builder
-	left.WriteString(groupsCard(acc.ID))
-	left.WriteString(conversationsCard(acc.ID))
+	left.WriteString(agentsCard(acc.ID))
 	if preview := inbox.Preview(acc.ID); preview != "" {
 		left.WriteString(app.PreviewCard("home-inbox", "Inbox", "/inbox", preview))
 	}
@@ -138,22 +137,18 @@ func feedHTML(snapshot overviewSnapshot, owner string) string {
 		}
 		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
 	}
+	left.WriteString(groupsCard(owner))
 	return `<div class="page-stack"><div class="dashboard-columns feed-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div></div>`
 }
 
-func conversationsCard(owner string) string {
-	chats := inbox.Chats(owner)
-	if len(chats) > 3 {
-		chats = chats[:3]
-	}
+func agentsCard(owner string) string {
 	var b strings.Builder
-	for _, c := range chats {
-		b.WriteString(inbox.ChatRow(c))
+	b.WriteString(`<div class="collection-list">`)
+	for _, a := range agent.ClientAgents(owner) {
+		fmt.Fprintf(&b, `<a class="collection-item" href="%s"><span class="collection-title">%s</span><span class="collection-preview">%s</span></a>`, html.EscapeString(agent.Path(owner, a.ID)), html.EscapeString(a.Name), html.EscapeString(a.Description))
 	}
-	if len(chats) == 0 {
-		b.WriteString(`<p class="text-muted">Start a conversation with an assistant or your group.</p>`)
-	}
-	return app.PreviewCard("home-conversations", "Chats", "/agent?view=chats", b.String())
+	b.WriteString(`</div>`)
+	return app.PreviewCard("home-agents", "Agents", "/agents", b.String())
 }
 
 func pinnedApps(acc *auth.Account) string {
@@ -169,7 +164,7 @@ func pinnedApps(acc *auth.Account) string {
 	return `<nav class="service-shortcuts" aria-label="Pinned apps">` + b.String() + `</nav>`
 }
 
-// groupsCard makes shared contexts reachable without visiting the service catalogue.
+// groupsCard previews account-scoped groups alongside the other Feed services.
 func groupsCard(owner string) string {
 	groups, pending, err := group.List(owner)
 	var b strings.Builder

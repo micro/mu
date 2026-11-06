@@ -17,27 +17,34 @@ func clientCatalog(w http.ResponseWriter, r *http.Request) {
 		app.Unauthorized(w, r)
 		return
 	}
-	type entry struct {
-		ID          string `json:"id"`
-		Slug        string `json:"slug"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-	}
-	entries := []entry{}
+	w.Header().Set("Cache-Control", "private, no-store")
+	app.RespondJSON(w, map[string]any{"agents": ClientAgents(acc.ID)})
+}
+
+// ClientAgent is the presentation of an accessible conversational agent.
+type ClientAgent struct {
+	ID          string `json:"id"`
+	Slug        string `json:"slug"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// ClientAgents lists owned hosted agents and built-ins, resolving name collisions consistently.
+func ClientAgents(owner string) []ClientAgent {
+	entries := []ClientAgent{}
 	seen := map[string]bool{}
-	for _, a := range Agents(acc.ID) {
+	for _, a := range Agents(owner) {
 		if a.Kind != Hosted {
 			continue
 		}
 		slug := Slug(a)
 		seen[slug] = true
-		entries = append(entries, entry{a.ID, slug, a.Name, a.Description})
+		entries = append(entries, ClientAgent{a.ID, slug, a.Name, a.Description})
 	}
 	for _, a := range Builtins() {
 		if !seen[a.ID] {
-			entries = append(entries, entry{a.ID, a.ID, a.Name, a.Description})
+			entries = append(entries, ClientAgent{a.ID, a.ID, a.Name, a.Description})
 		}
 	}
-	w.Header().Set("Cache-Control", "private, no-store")
-	app.RespondJSON(w, map[string]any{"agents": entries})
+	return entries
 }
