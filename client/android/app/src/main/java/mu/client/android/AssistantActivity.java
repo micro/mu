@@ -11,7 +11,6 @@ import android.speech.tts.UtteranceProgressListener;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONObject;
@@ -44,8 +43,7 @@ public final class AssistantActivity extends Activity {
         speak.setOnClickListener(v -> { if (listening || speaking || working) cancel(); else listen(); });
         open.setOnClickListener(v -> unlockAndOpen());
         tts = new TextToSpeech(this, result -> {
-            ttsReady = result == TextToSpeech.SUCCESS;
-            if (ttsReady) tts.setLanguage(Locale.getDefault());
+            if (!isDestroyed() && result == TextToSpeech.SUCCESS) ttsReady = OfflineSpeech.select(tts);
         });
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             public void onStart(String id) {}
@@ -133,6 +131,7 @@ public final class AssistantActivity extends Activity {
                         for (int i = 0; i < pages.size(); i++) tts.speak(pages.get(i), i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, null,
                             i == pages.size() - 1 ? "reply-" + generation : "part-" + generation + "-" + i);
                     }
+                    if (!ttsReady) status.append(" · Install an offline English voice for spoken replies.");
                     update();
                 });
             } catch (Exception e) { runOnUiThread(() -> { if (active && request == generation) { working = false; status.setText(e.getMessage()); update(); } }); }

@@ -99,12 +99,7 @@ public class MainActivity extends Activity {
         spoken.setOnCheckedChangeListener((v, enabled) -> { if (!enabled) stopAudio(); });
         tts = new TextToSpeech(this, result -> {
             if (destroyed || result != TextToSpeech.SUCCESS) return;
-            // Do not send replies to a cloud speech engine.
-            if (tts.getVoices() != null) for (Voice v : tts.getVoices()) {
-                if (!v.isNetworkConnectionRequired() && v.getLocale().getLanguage().equals(Locale.ENGLISH.getLanguage())) {
-                    ttsReady = tts.setVoice(v) == TextToSpeech.SUCCESS; break;
-                }
-            }
+            ttsReady = OfflineSpeech.select(tts);
         });
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             public void onStart(String id) {}
