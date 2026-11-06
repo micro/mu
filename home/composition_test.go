@@ -58,14 +58,14 @@ func TestHomeShowsPinsAndConversationsAndFeedIncludesPrayer(t *testing.T) {
 				}
 				body = data.HTML
 			}
-			if strings.Contains(body, `id="home-groups"`) == feed || strings.Contains(body, `href="/groups?new=1"`) {
-				t.Fatalf("groups must appear only on Overview: feed=%v fragment=%v", feed, fragment)
+			if strings.Contains(body, `id="home-groups"`) != feed || strings.Contains(body, `href="/groups?new=1"`) {
+				t.Fatalf("groups must appear only on Feed: feed=%v fragment=%v", feed, fragment)
 			}
 			if strings.Contains(body, "private test context") != feed || strings.Contains(body, "public test update") != feed {
 				t.Fatalf("mixed views: feed=%v fragment=%v", feed, fragment)
 			}
-			if !feed && (!strings.Contains(body, `id="home-conversations"`) || !strings.Contains(body, `href="/agent?view=chats"`) || !strings.Contains(body, `aria-label="Pinned apps"`) || !strings.Contains(body, `href="/apps"`)) {
-				t.Fatal("Chats or pinned apps missing")
+			if !feed && (!strings.Contains(body, `id="home-agents"`) || !strings.Contains(body, `href="/agents"`) || !strings.Contains(body, `aria-label="Pinned apps"`) || !strings.Contains(body, `href="/apps"`)) {
+				t.Fatal("Agents or pinned apps missing")
 			}
 			if !feed && !strings.Contains(body, `id="home-scheduled-card"`) {
 				t.Fatal("Scheduled card missing")

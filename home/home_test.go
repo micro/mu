@@ -37,8 +37,8 @@ func TestHomeOverviewIsPrivateAndDoesNotRepeatDailyBrief(t *testing.T) {
 		if w.Code != 200 || strings.Contains(body, "The end of the daily brief.") || strings.Contains(body, "Foreign secret") {
 			t.Fatalf("incorrect overview at %s: %d", path, w.Code)
 		}
-		if strings.Count(body, "My little app") != 1 || !strings.Contains(body, "home-conversations") {
-			t.Fatal("recent agent conversation missing")
+		if strings.Contains(body, "My little app") || !strings.Contains(body, "home-agents") {
+			t.Fatal("overview must show agents rather than individual conversations")
 		}
 		if strings.Contains(body, "home-todo-title") {
 			t.Fatal("removed Todo card rendered on Home")
