@@ -6,7 +6,7 @@ the broader overview and management interface.
 
 ## Android
 
-[Micro for Android](android/README.md) is a native voice and text client.
+[Mu for Android](android/README.md) is a native voice and text client.
 Sign in to an existing account, choose an agent, and talk to it.
 
 ## Where the existing code lives

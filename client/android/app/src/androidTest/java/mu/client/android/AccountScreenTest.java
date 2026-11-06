@@ -13,6 +13,33 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public class AccountScreenTest {
+    @Test public void selectedAgentAndSeparateThreadsSurviveRecreation() throws Exception {
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        Vault vault = new Vault(context); vault.clear();
+        vault.write(new org.json.JSONObject().put("agent", "micro").put("threads", new org.json.JSONObject().put("micro", "micro-thread").put("malten", "malten-thread")));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> activity.selectAgent("malten", "Malten", "For reflection"));
+            scenario.recreate();
+            scenario.onActivity(activity -> {
+                assertEquals("Malten", ((Button) activity.findViewById(R.id.agent_picker)).getText().toString());
+                assertEquals("For reflection", ((android.widget.TextView) activity.findViewById(R.id.agent_description)).getText().toString());
+            });
+            org.json.JSONObject saved = vault.read();
+            assertEquals("malten", saved.getString("agent"));
+            assertEquals("micro-thread", saved.getJSONObject("threads").getString("micro"));
+            assertEquals("malten-thread", saved.getJSONObject("threads").getString("malten"));
+        } finally { vault.clear(); }
+    }
+    @Test public void invalidAgentLinkCannotSwitchServer() {
+        android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        new Vault(context).clear();
+        android.content.Intent link = new android.content.Intent(context, MainActivity.class).setAction(android.content.Intent.ACTION_VIEW)
+            .setData(android.net.Uri.parse("micro-agent://open?server=http%3A%2F%2Fevil.example&agent=malten"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(link)) {
+            scenario.onActivity(activity -> assertEquals("That agent link is invalid.", ((android.widget.TextView) activity.findViewById(R.id.status)).getText().toString()));
+        } finally { new Vault(context).clear(); }
+    }
+
     @Test public void browserReturnIntentResolvesToInstalledApp() throws Exception {
         android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         String app = context.getPackageName();

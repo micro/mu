@@ -42,9 +42,15 @@ public class MainActivity extends Activity {
     private String lastReply = "", utterance = "";
     private long speechEpoch;
     private boolean voiceRequest, controlsOnly;
+    private JSONArray agents = new JSONArray();
+    private boolean agentAvailable, agentLinkPending, launchHandled;
+    private String agentName = "Micro", agentDescription = "A personal assistant";
+    private Button agentPicker;
+    private TextView description;
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        launchHandled = saved != null && saved.getBoolean("launch_handled", false);
         setContentView(R.layout.main);
         View root = findViewById(R.id.root);
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
@@ -63,6 +69,9 @@ public class MainActivity extends Activity {
         try { account = vault.read(); }
         catch (Exception e) { vault.clear(); }
         agent = account.optString("agent", "micro");
+        agentName = account.optString("agent_name", agent.equals("micro") ? "Micro" : agent);
+        agentDescription = account.optString("agent_description", agent.equals("micro") ? "A personal assistant" : "");
+        thread = account.optJSONObject("threads") == null ? "" : account.optJSONObject("threads").optString(agent);
         markdown = Markwon.create(this);
         video = new VideoPlayer(this, () -> { controlsOnly = true; startVoice(false); });
         messages = findViewById(R.id.messages);
@@ -70,6 +79,9 @@ public class MainActivity extends Activity {
         prompt = findViewById(R.id.prompt);
         status = findViewById(R.id.status);
         send = findViewById(R.id.send); speak = findViewById(R.id.speak);
+        agentPicker = findViewById(R.id.agent_picker);
+        description = findViewById(R.id.agent_description);
+        agentPicker.setOnClickListener(v -> { if (signedIn()) loadAgents(true); else connection(); });
         settings = findViewById(R.id.settings); newChat = findViewById(R.id.new_chat);
         wake = findViewById(R.id.wake); spoken = findViewById(R.id.spoken);
         send.setOnClickListener(v -> send());
@@ -82,7 +94,7 @@ public class MainActivity extends Activity {
         });
         speak.setOnClickListener(v -> { if (listening || speaking) stopAudio(); else startVoice(false); });
         settings.setOnClickListener(v -> connection());
-        newChat.setOnClickListener(v -> { stopAudio(); video.close(); results = new JSONArray(); lastReply = ""; pages.clear(); thread = ""; messages.removeAllViews(); status.setText("New conversation"); resumeWake(); });
+        newChat.setOnClickListener(v -> { stopAudio(); video.close(); results = new JSONArray(); lastReply = ""; pages.clear(); thread = ""; persistSelection(); messages.removeAllViews(); status.setText("New conversation with " + agentName); resumeWake(); });
         wake.setOnCheckedChangeListener((v, enabled) -> { if (enabled) startVoice(true); else stopAudio(); });
         spoken.setOnCheckedChangeListener((v, enabled) -> { if (!enabled) stopAudio(); });
         tts = new TextToSpeech(this, result -> {
@@ -103,14 +115,19 @@ public class MainActivity extends Activity {
             }); }
             public void onError(String id) { runOnUiThread(() -> { if (id.equals(utterance)) { speaking = false; update(); resumeWake(); } }); }
         });
-        status.setText(signedIn() ? "Ask Micro, or tap Speak." : "Sign in to your Micro account to begin.");
+        status.setText(signedIn() ? "Type a message or tap Speak." : "Sign in to start talking.");
         if (saved != null && signedIn()) {
-            thread = saved.getString("thread", "");
-            agent = saved.getString("agent", "micro");
-            if (!thread.isEmpty()) message("Micro", "Continuing your conversation. Earlier messages are in your web Inbox.");
+            if (agent.equals(saved.getString("agent", "micro"))) thread = saved.getString("thread", thread);
+            if (!thread.isEmpty()) message(agentName, "Continuing your conversation. Earlier messages are in your web Inbox.");
         }
         update();
-        callback(getIntent());
+        // Process launch data after creation. Keep the original intent stable;
+        // remember consumption separately across lifecycle recreation.
+        root.post(() -> {
+            if (destroyed) return;
+            callback(getIntent());
+            if (signedIn() && !agentLinkPending) loadAgents(false);
+        });
     }
 
     private boolean signedIn() {
@@ -118,13 +135,19 @@ public class MainActivity extends Activity {
     }
     private void update() {
         if (destroyed) return;
+        if (agentPicker != null) {
+            agentPicker.setText(agentName); agentPicker.setEnabled(!busy);
+            agentPicker.setContentDescription("Change agent. Current agent: " + agentName);
+            description.setText(agentDescription);
+            prompt.setHint("Message " + agentName);
+        }
         if (foreground && speaking) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        send.setEnabled(!busy && signedIn());
-        speak.setEnabled(!busy && signedIn());
+        send.setEnabled(!busy && signedIn() && agentAvailable);
+        speak.setEnabled(!busy && signedIn() && agentAvailable);
         settings.setText(signedIn() ? "Account" : "Sign in");
         settings.setEnabled(!busy); newChat.setEnabled(!busy);
-        wake.setEnabled(!busy && signedIn());
+        wake.setEnabled(!busy && signedIn() && agentAvailable);
         speak.setText(listening || speaking ? R.string.stop : R.string.speak);
     }
     private void message(String who, String text) {
@@ -141,6 +164,7 @@ public class MainActivity extends Activity {
     }
     private void send() {
         if (busy || !signedIn()) { if (!signedIn()) connection(); return; }
+        if (!agentAvailable) { status.setText("Choose an available agent first."); return; }
         String text = prompt.getText().toString().trim();
         if (text.isEmpty()) return;
         boolean spokenRequest = voiceRequest;
@@ -148,7 +172,7 @@ public class MainActivity extends Activity {
         if (localCommand(text)) { prompt.setText(""); resumeWake(); return; }
         stopAudio(); video.pause();
         busy = true; update(); prompt.setText("");
-        message("You", text); status.setText("Micro is working…");
+        message("You", text); status.setText(agentName + " is working…");
         final String server = account.optString("server"), token = account.optString("token");
         final String currentThread = thread, currentAgent = agent;
         worker.execute(() -> {
@@ -162,7 +186,7 @@ public class MainActivity extends Activity {
                     lastReply = response; results = reply.optJSONArray("results");
                     if (results == null) results = new JSONArray();
                     resultIndex = -1;
-                    message("Micro", response); showResults(); status.setText(""); update();
+                    persistSelection(); message(agentName, response); showResults(); status.setText(""); update();
                     boolean played = false;
                     if (foreground && VoiceCommands.wantsVideo(text)) {
                         for (int i = 0; i < results.length(); i++) {
@@ -186,7 +210,7 @@ public class MainActivity extends Activity {
         });
     }
     private void startVoice(boolean wakeOnly) {
-        if (!foreground || busy || !signedIn()) return;
+        if (!foreground || busy || !signedIn() || !agentAvailable) return;
         pendingVoice = wakeOnly ? 1 : 0;
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1); return;
@@ -328,7 +352,7 @@ public class MainActivity extends Activity {
         } else {
             video.close();
             String text = item.optString("body", item.optString("summary"));
-            if (text.isEmpty()) text = "Ask Micro to read this item for more detail.";
+            if (text.isEmpty()) text = "Ask " + agentName + " to read this item for more detail.";
             readAloud(item.optString("title") + ". " + text);
         }
     }
@@ -347,7 +371,131 @@ public class MainActivity extends Activity {
         }
         resumeWake();
     }
+    private void persistSelection() {
+        try {
+            JSONObject threads = account.optJSONObject("threads");
+            if (threads == null) threads = new JSONObject();
+            threads.put(agent, thread);
+            account.put("threads", threads).put("agent", agent).put("agent_name", agentName).put("agent_description", agentDescription);
+            vault.write(account);
+        } catch (Exception e) { status.setText("Could not save your selected agent on this device."); }
+    }
+    void selectAgent(String slug, String name, String about) {
+        if (busy) return;
+        persistSelection(); stopAudio(); video.close(); wake.setChecked(false);
+        agent = AgentApi.agent(slug); agentAvailable = true; agentName = name; agentDescription = about;
+        JSONObject threads = account.optJSONObject("threads");
+        thread = threads == null ? "" : threads.optString(agent);
+        messages.removeAllViews(); prompt.setText(""); results = new JSONArray(); pages.clear(); lastReply = "";
+        persistSelection(); update();
+        status.setText(thread.isEmpty() ? "Start talking: type a message or tap Speak." : "Continuing with " + agentName + ". Earlier messages are in your web Inbox.");
+    }
+    private void loadAgents(boolean choose) {
+        if (!signedIn() || busy) return;
+        busy = true; update();
+        String server = account.optString("server"), token = account.optString("token");
+        worker.execute(() -> {
+            try {
+                JSONArray available = AgentApi.catalog(server, token).getJSONArray("agents");
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    busy = false; agents = available;
+                    boolean found = false;
+                    for (int i = 0; i < agents.length(); i++) {
+                        JSONObject item = agents.optJSONObject(i);
+                        if (item != null && (agent.equals(item.optString("slug")) || agent.equals(item.optString("id")))) {
+                            String previous = agent;
+                            agent = item.optString("id", item.optString("slug"));
+                            if (!previous.equals(agent) && account.optJSONObject("threads") != null && thread.isEmpty()) thread = account.optJSONObject("threads").optString(agent);
+                            agentName = item.optString("name", agent); agentDescription = item.optString("description"); found = true; break;
+                        }
+                    }
+                    agentAvailable = found;
+                    if (found) persistSelection();
+                    else status.setText("This agent is not available to this account. Tap its name to choose another.");
+                    update();
+                    if (choose) {
+                        String[] labels = new String[agents.length()];
+                        for (int i = 0; i < agents.length(); i++) {
+                            JSONObject item = agents.optJSONObject(i);
+                            labels[i] = item.optString("name") + (item.optString("description").isEmpty() ? "" : "\n" + item.optString("description"));
+                        }
+                        new AlertDialog.Builder(this).setTitle("Choose an agent").setItems(labels, (d, index) -> {
+                            JSONObject item = agents.optJSONObject(index);
+                            selectAgent(item.optString("id", item.optString("slug")), item.optString("name"), item.optString("description"));
+                        }).setNeutralButton("Create agent", (d, w) -> startActivity(new Intent(Intent.ACTION_VIEW,
+                            Uri.parse(AgentApi.origin(account.optString("server")) + "/agent/new"))))
+                            .setNegativeButton("Cancel", null).show();
+                    }
+                });
+            } catch (Exception e) { runOnUiThread(() -> { if (!destroyed) { busy = false; update(); status.setText(e.getMessage()); } }); }
+        });
+    }
+    private Uri agentLink() {
+        return new Uri.Builder().scheme("micro-agent").authority("open").appendQueryParameter("server", account.optString("server", "https://micro.mu")).appendQueryParameter("agent", agent).build();
+    }
     private void connection() {
+        if (busy) return;
+        stopAudio();
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(signedIn() ? "Account" : "Start talking to " + agentName);
+        if (!signedIn()) {
+            dialog.setMessage(agentDescription + "\n\nSign in on " + account.optString("server", "https://micro.mu") + " with your existing account, or create one in your browser.")
+                .setPositiveButton("Sign in", (d, w) -> beginSignIn(account.optString("server", "https://micro.mu")))
+                .setNeutralButton("Advanced", (d, w) -> advancedConnection()).setNegativeButton("Cancel", null).show();
+            return;
+        }
+        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Advanced", "Sign out"}, (d, index) -> {
+            switch (index) {
+                case 0: loadAgents(true); break;
+                case 1:
+                    if (!agentAvailable) { status.setText("Choose an available agent first."); break; }
+                    android.content.pm.ShortcutManager shortcuts = getSystemService(android.content.pm.ShortcutManager.class);
+                    if (shortcuts != null && shortcuts.isRequestPinShortcutSupported()) {
+                        Intent open = new Intent(this, MainActivity.class).setAction(Intent.ACTION_VIEW).setData(agentLink());
+                        android.content.pm.ShortcutInfo shortcut = new android.content.pm.ShortcutInfo.Builder(this, "agent-" + account.optString("server").hashCode() + "-" + agent)
+                            .setShortLabel(agentName).setIntent(open).build();
+                        shortcuts.requestPinShortcut(shortcut, null);
+                    } else status.setText("This launcher does not support pinned shortcuts.");
+                    break;
+                case 2:
+                    if (!agentAvailable) { status.setText("Choose an available agent first."); break; }
+                    Intent share = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, agentLink().toString());
+                    startActivity(Intent.createChooser(share, "Share agent")); break;
+                case 3: startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(AgentApi.origin(account.optString("server")) + "/account"))); break;
+                case 4: advancedConnection(); break;
+                case 5: signOut(); break;
+            }
+        }).setNegativeButton("Close", null).show();
+    }
+    private boolean openAgentLink(Intent intent) {
+        Uri uri = intent.getData();
+        if (uri == null || !"micro-agent".equals(uri.getScheme())) return false;
+        launchHandled = true;
+        if (busy) { status.setText("Finish the current request before opening another agent."); return true; }
+        try {
+            if (!"open".equals(uri.getHost()) || uri.getUserInfo() != null || uri.getPort() != -1 || uri.getFragment() != null || (uri.getPath() != null && !uri.getPath().isEmpty())) throw new IllegalArgumentException();
+            String server = AgentApi.origin(uri.getQueryParameter("server"));
+            String slug = AgentApi.agent(uri.getQueryParameter("agent"));
+
+            Runnable open = () -> {
+                agentLinkPending = false;
+                if (!server.equals(account.optString("server", "https://micro.mu"))) {
+                    signOut(); account = new JSONObject();
+                }
+                try { account.put("server", server); } catch (Exception ignored) {}
+                selectAgent(slug, slug.equals("micro") ? "Micro" : "Agent", "Sign in to load this agent’s details.");
+                agentAvailable = false; update();
+                if (signedIn()) loadAgents(false); else connection();
+            };
+            if (!server.equals(account.optString("server", "https://micro.mu"))) {
+                agentLinkPending = true;
+                new AlertDialog.Builder(this).setTitle("Change server?").setMessage("Open this agent on " + server + "? You will need to sign in there. Your current account credentials will not be sent.")
+                    .setPositiveButton("Continue", (d,w) -> open.run()).setNegativeButton("Cancel", (d,w) -> { agentLinkPending = false; if (signedIn()) loadAgents(false); }).setOnCancelListener(d -> { agentLinkPending = false; if (signedIn()) loadAgents(false); }).show();
+            } else open.run();
+        } catch (Exception e) { status.setText("That agent link is invalid."); }
+        return true;
+    }
+    private void advancedConnection() {
         if (busy) return;
         stopAudio();
         LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL);
@@ -369,15 +517,17 @@ public class MainActivity extends Activity {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(AgentApi.origin(server.getText().toString()) + "/account"))); }
             catch (Exception e) { status.setText("Enter a valid HTTPS server address."); }
         });
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Micro account").setView(form)
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Mu account").setView(form)
                 .setPositiveButton("Sign in", null).setNegativeButton("Cancel", null)
                 .setNeutralButton("Sign out", (d, w) -> signOut()).create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            try {
-                String origin = AgentApi.origin(server.getText().toString());
-                String selected = AgentApi.agent(name.getText().toString().trim());
-                dialog.dismiss(); signOut(); agent = selected; beginSignIn(origin);
-            } catch (IllegalArgumentException e) { server.setError(e.getMessage()); }
+            server.setError(null); name.setError(null);
+            String origin, selected;
+            try { origin = AgentApi.origin(server.getText().toString()); }
+            catch (IllegalArgumentException e) { server.setError(e.getMessage()); return; }
+            try { selected = AgentApi.agent(name.getText().toString().trim()); }
+            catch (IllegalArgumentException e) { name.setError(e.getMessage()); return; }
+            dialog.dismiss(); signOut(); agent = selected; agentName = selected; agentDescription = ""; beginSignIn(origin);
         }));
         dialog.show();
     }
@@ -387,11 +537,12 @@ public class MainActivity extends Activity {
         status.setText("Signed out on this device. You can revoke access in Account → Tokens.");
     }
     private void beginSignIn(String server) {
+        agentAvailable = false;
         busy = true; update(); status.setText("Opening sign-in…");
         worker.execute(() -> {
             try {
                 JSONObject pending = OAuth.begin(server, BuildConfig.OAUTH_REDIRECT);
-                JSONObject stored = new JSONObject().put("pending", pending).put("server", server).put("agent", agent);
+                JSONObject stored = new JSONObject().put("pending", pending).put("server", server).put("agent", agent).put("agent_name", agentName).put("agent_description", agentDescription);
                 String url = OAuth.authorize(pending);
                 runOnUiThread(() -> {
                     if (destroyed) return;
@@ -406,13 +557,15 @@ public class MainActivity extends Activity {
             }
         });
     }
-    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); callback(intent); }
+    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); launchHandled = false; callback(intent); }
     private void callback(Intent intent) {
+        if (launchHandled) return;
+        if (openAgentLink(intent)) return;
         Uri uri = intent.getData();
         if (uri == null || busy) return;
         Uri expected = Uri.parse(BuildConfig.OAUTH_REDIRECT);
         if (!expected.equals(uri.buildUpon().clearQuery().fragment(null).build()) || uri.getFragment() != null) return;
-        intent.setData(null);
+        launchHandled = true;
         JSONObject pending = account.optJSONObject("pending");
         String code = uri.getQueryParameter("code");
         if (pending == null || code == null || !OAuth.validState(pending, uri.getQueryParameter("state"), System.currentTimeMillis())) {
@@ -432,7 +585,7 @@ public class MainActivity extends Activity {
                     try { connected.put("agent", agent); vault.write(connected); }
                     catch (Exception e) { busy = false; update(); status.setText("Could not save sign-in securely. Please reconnect."); return; }
                     account = connected; thread = ""; messages.removeAllViews(); busy = false; update();
-                    status.setText("Connected to " + connected.optString("server") + ". Ask Micro or tap Speak.");
+                    status.setText("Type a message or tap Speak."); loadAgents(false);
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> { if (!destroyed) { busy = false; account = new JSONObject(); update(); status.setText("Sign-in failed. Please try again."); } });
@@ -446,6 +599,7 @@ public class MainActivity extends Activity {
         super.onPause();
     }
     @Override protected void onSaveInstanceState(Bundle out) {
+        out.putBoolean("launch_handled", launchHandled);
         out.putString("thread", thread); out.putString("agent", agent); super.onSaveInstanceState(out);
     }
     @Override protected void onDestroy() {

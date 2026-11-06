@@ -25,7 +25,7 @@ final class OAuth {
     static JSONObject begin(String server, String redirect) throws Exception {
         server = AgentApi.origin(server);
         JSONObject registration = AgentApi.post(server + "/oauth/register", "",
-                new JSONObject().put("client_name", "Micro for Android")
+                new JSONObject().put("client_name", "Mu for Android")
                         .put("redirect_uris", new JSONArray().put(redirect)).toString(), "application/json");
         return new JSONObject().put("server", server).put("client", registration.getString("client_id"))
                 .put("verifier", random()).put("state", random()).put("created", System.currentTimeMillis())

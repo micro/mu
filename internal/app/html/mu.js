@@ -129,6 +129,7 @@ self.addEventListener('message', function (e) {
 });
 
 } else {
+if (/Android/i.test(navigator.userAgent)) document.querySelectorAll(".android-agent-link").forEach(link => { link.hidden = false; });
 // The same navigation moves into a native modal drawer on narrow screens.
 (function () {
   const button = document.querySelector('.mobile-menu-toggle');

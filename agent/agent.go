@@ -146,6 +146,10 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet && r.URL.Query().Get("view") == "agents" {
+		clientCatalog(w, api.CredentialRequest(r))
+		return
+	}
 	r = api.CredentialRequest(r)
 	if tok := auth.TokenFromRequest(r); tok != nil && tok.Scoped() {
 		if !api.AuthorizeProduct(w, r, "agent", r.Method != "GET") {
