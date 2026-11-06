@@ -25,7 +25,7 @@ public final class AssistantActivity extends Activity {
     private TextView name, status, answer;
     private Button speak, open;
     private JSONObject account = new JSONObject();
-    private boolean active, listening, working, speaking, ttsReady, publicMode;
+    private boolean active, listening, working, speaking, ttsReady, publicMode, invoked, wantListen;
     private int generation;
     private String agent = "micro", label = "Micro", thread = "";
 
@@ -63,7 +63,7 @@ public final class AssistantActivity extends Activity {
         status.setText(publicMode ? "Ask public questions, such as weather in a town. Unlock for your agent." : "Speak to " + label);
         update();
         // Begin only after the UI is visible, never from an unsolicited broadcast.
-        speak.post(() -> { if (active) listen(); });
+        if (!invoked) { invoked = true; speak.post(() -> { if (active) listen(); }); }
     }
     private boolean signedIn() { return !account.optString("token").isEmpty() && account.optLong("expires") > System.currentTimeMillis(); }
     private void update() {
@@ -72,7 +72,7 @@ public final class AssistantActivity extends Activity {
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
     private void cancel() {
-        generation++; listening = false; working = false; speaking = false;
+        generation++; wantListen = false; listening = false; working = false; speaking = false;
         if (voice != null) voice.stop();
         if (tts != null) tts.stop();
         status.setText("Stopped. A request already sent may still complete; it will not be retried."); update();
@@ -85,10 +85,11 @@ public final class AssistantActivity extends Activity {
             if (locked()) { status.setText("Unlock and open Mu to allow microphone access."); return; }
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1); return;
         }
+        wantListen = true;
         if (voice == null) {
             status.setText("Preparing offline voice…");
             voice = new VoiceInput(getApplicationContext(), new VoiceInput.Listener() {
-                public void ready() { if (active) listen(); }
+                public void ready() { if (active && wantListen) listen(); }
                 public void detected() {}
                 public void partial(String text) { if (active) status.setText(text.isEmpty() ? "Listening…" : "Hearing: “" + text + "”"); }
                 public void heard(String text) { submit(text); }
@@ -105,7 +106,7 @@ public final class AssistantActivity extends Activity {
     }
     private void submit(String text) {
         if (!active || working || (!publicMode && locked())) return;
-        listening = false; working = true; answer.setText(""); status.setText("“" + text + "”\nWorking…"); update();
+        wantListen = false; listening = false; working = true; answer.setText(""); status.setText("“" + text + "”\nWorking…"); update();
         final int request = ++generation;
         final boolean restricted = publicMode;
         final String server = account.optString("server"), token = account.optString("token"), selected = agent, previous = thread;
