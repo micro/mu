@@ -68,6 +68,7 @@ type QueryMessage struct {
 }
 
 type QueryOpts struct {
+	anonymousTools    bool   // Public voice: tools must not inherit the payer's account or profile.
 	GroupActor        string // Internal authenticated initiator; never supplied by the model.
 	demo              bool   // Only the capped public demo handler can set this.
 	interactive       bool   // Set by Ask, not scheduled QueryWithOpts callers.

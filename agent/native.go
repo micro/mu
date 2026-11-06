@@ -375,7 +375,11 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
-	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), groupToolGuard(accountID, opts.GroupActor), blockDestructiveTools(), injectAccount(accountID, len(opts.Tools) > 0 || opts.Public), dedupeNativeToolCalls(), limitNativeSearches(searchLimit()), retainEvidence(accountID, opts)}, wrappers...)
+	toolAccount := accountID
+	if opts.anonymousTools {
+		toolAccount = ""
+	}
+	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), groupToolGuard(accountID, opts.GroupActor), blockDestructiveTools(), injectAccount(toolAccount, len(opts.Tools) > 0 || opts.Public), dedupeNativeToolCalls(), limitNativeSearches(searchLimit()), retainEvidence(accountID, opts)}, wrappers...)
 	if opts.Stream.wants() {
 		toolWrappers = append([]gmai.ToolWrapper{streamToolReporter(opts.Stream)}, toolWrappers...)
 	}

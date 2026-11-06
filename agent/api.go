@@ -47,7 +47,8 @@ import (
 // difference between an agent and a completion endpoint. Leave it out and one
 // is opened.
 type apiAsk struct {
-	Context ClientContext `json:"context,omitempty"`
+	PublicOnly bool          `json:"public_only,omitempty"`
+	Context    ClientContext `json:"context,omitempty"`
 	// Prompt is the question. It is what everything else in this codebase
 	// calls the thing you send an agent — the page posts a prompt, QueryOpts
 	// takes one, a task's Run builds one — and this door called it "text",
@@ -153,6 +154,25 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(req.Text) > askLimit {
 		req.Text = req.Text[:askLimit]
+	}
+	// Restricted requests never resolve private history, instructions, memory or tools.
+	if req.PublicOnly {
+		if req.Thread != "" {
+			app.BadRequest(w, r, "public requests cannot resume a conversation")
+			return
+		}
+		if _, ok := affordable(accountID); !ok {
+			w.WriteHeader(http.StatusPaymentRequired)
+			return
+		}
+		answer, err := QueryWithOpts(accountID, req.Text, publicVoiceOptions(r.Context()))
+		if err != nil {
+			app.ServerError(w, r, "Public answer unavailable. Try again after unlocking.")
+			return
+		}
+		w.Header().Set("Cache-Control", "private, no-store")
+		app.RespondJSON(w, apiAnswer{Text: answer})
+		return
 	}
 	// A conversation belonging to somebody else is not a conversation. Checked
 	// before the model is asked, so a forged id is a refusal rather than an

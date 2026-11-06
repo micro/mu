@@ -132,3 +132,24 @@ Android visitors can use “Open in Android” on an agent chat page. Links use 
 Account → Add agent to home screen requests a launcher shortcut; Account → Share agent link shares an explicit app link. These require the app to be installed. Normal HTTPS agent links remain web links; verified Android App Links require a release signing certificate and domain association and are not configured here.
 
 The installed app and APKs are named Mu; Micro remains the general-purpose agent. Choose an agent → Create agent opens the existing web builder for instructions, permissions and tools.
+
+### Phone assistant
+
+After signing in and allowing microphone access, choose **Account → Use Mu as
+phone assistant**, then select Mu in Android's assistant settings. Invoke the
+phone's supported assistant button/gesture to speak directly to the selected
+agent. The exact shortcut and lock-screen availability depend on the device.
+This does not enable background wake-word detection.
+
+A locked phone opens a distinct **Public questions** mode. It can answer public
+questions and look up weather for a named town/city. It does not use saved
+location, personal agent instructions, conversation history, memory or private
+tools. Personal requests require unlocking. Public requests still use the
+signed-in account's credits, use the configured model provider, and require
+connectivity. No screen contents or screenshots are requested by the assistant.
+
+Unlock opens the full app; an unlocked invocation resumes the selected agent's
+conversation. Closing or stopping silences playback and stops listening; an
+already submitted request may still complete on the server. Agent-to-agent
+messaging, shared-agent participation and screen-off wake words are separate
+features, not part of this integration.
