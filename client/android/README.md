@@ -123,3 +123,10 @@ the agent: this is not a second tool runner or a native screen for every service
 YouTube requires a visible player: “audio only” explains that restriction rather
 than hiding its video. Headlines, briefs and other text answers can be spoken
 without video. No YouTube downloads, extracted audio or background playback.
+
+
+Agent entry: tap the agent name to choose from the account-scoped catalogue. The saved name and description are shown directly; instructions are never downloaded by the client. The last selection and separate thread IDs are encrypted alongside account state. Manual server/agent entry is under Account → Advanced.
+
+Android visitors can use “Open in Android” on an agent chat page. Links use `micro-agent://open?server=<HTTPS origin>&agent=<agent ID>&name=<display name>&description=<description>`. Links never contain credentials, instructions or messages, and do not grant access to private agents. A different server requires confirmation and a new sign-in. Shared private-agent links identify the agent by ID rather than selecting a same-named agent in another account.
+
+Account → Add agent to home screen requests a launcher shortcut; Account → Share agent link shares an explicit app link. These require the app to be installed. Normal HTTPS agent links remain web links; verified Android App Links require a release signing certificate and domain association and are not configured here.

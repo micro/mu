@@ -34,6 +34,24 @@ final class AgentApi {
         return post(origin(server) + "/agent/" + agent(agent), token, body.toString(), "application/json");
     }
 
+    static JSONObject catalog(String server, String token) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(origin(server) + "/agent?view=agents").openConnection();
+        c.setInstanceFollowRedirects(false); c.setConnectTimeout(15000); c.setReadTimeout(15000);
+        c.setRequestProperty("Accept", "application/json");
+        c.setRequestProperty("Authorization", "Bearer " + token);
+        try {
+            if (c.getResponseCode() != 200) throw new IOException("Could not load your agents. Check your connection or sign in again.");
+            try (InputStream in = c.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                byte[] buffer = new byte[8192]; int n;
+                while ((n = in.read(buffer)) != -1) {
+                    if (out.size() + n > 1024 * 1024) throw new IOException("Agent list too large.");
+                    out.write(buffer, 0, n);
+                }
+                return new JSONObject(out.toString("UTF-8"));
+            }
+        } finally { c.disconnect(); }
+    }
+
     static JSONObject post(String endpoint, String token, String body, String contentType) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(endpoint).openConnection();
         c.setInstanceFollowRedirects(false); // Never forward credentials or replay an action.

@@ -8,6 +8,7 @@ import (
 	"mu/agent/hello"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/origin"
 	"mu/internal/thread"
 	"net/http"
 	"net/url"
@@ -218,6 +219,15 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 		}
 	}
 	toolbar := `<div class="assistant-toolbar form-actions" role="group" aria-label="Chat actions"><a class="btn" href="` + html.EscapeString(basePath) + `?new=1">New chat</a><a class="btn" href="/agent?view=chats&amp;agent=` + url.QueryEscape(SlugFor(owner, selected)) + `">` + html.EscapeString(agentName) + ` chats</a>`
+	if server := origin.Self(); server != "" {
+		ref := SlugFor(owner, selected)
+		if For(owner, selected) != nil {
+			ref = selected
+		}
+		target := "intent://open?server=" + url.QueryEscape(server) + "&agent=" + url.QueryEscape(ref) + "&name=" + url.QueryEscape(agentName) + "&description=" + url.QueryEscape(agentDescription) + "#Intent;scheme=micro-agent;S.browser_fallback_url=" + url.QueryEscape(server+basePath) + ";end"
+		toolbar += `<a class="btn android-agent-link" hidden href="` + html.EscapeString(target) + `">Open in Android</a>`
+	}
+
 	saved, token := false, ""
 	if t := thread.Get(owner, session); t != nil {
 		saved = t.Saved
