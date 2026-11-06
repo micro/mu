@@ -120,8 +120,13 @@ public class MainActivity extends Activity {
             if (!thread.isEmpty()) message(agentName, "Continuing your conversation. Earlier messages are in your web Inbox.");
         }
         update();
-        callback(getIntent());
-        if (signedIn() && !agentLinkPending) loadAgents(false);
+        // Process launch data after creation so consuming the intent cannot
+        // disrupt activity lifecycle observers or open a dialog during creation.
+        root.post(() -> {
+            if (destroyed) return;
+            callback(getIntent());
+            if (signedIn() && !agentLinkPending) loadAgents(false);
+        });
     }
 
     private boolean signedIn() {
@@ -346,7 +351,7 @@ public class MainActivity extends Activity {
         } else {
             video.close();
             String text = item.optString("body", item.optString("summary"));
-            if (text.isEmpty()) text = "Ask Micro to read this item for more detail.";
+            if (text.isEmpty()) text = "Ask " + agentName + " to read this item for more detail.";
             readAloud(item.optString("title") + ". " + text);
         }
     }

@@ -1,6 +1,6 @@
 # Mu for Android
 
-A focused native client for your Micro account: text conversations, offline
+A focused native client for your Mu account: text conversations, offline
 English speech input, local spoken replies, and an optional “Hey Micro” listener
 while the app is visible. No dashboard, service catalogue, or embedded web app.
 
