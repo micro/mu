@@ -43,7 +43,7 @@ public class MainActivity extends Activity {
     private long speechEpoch;
     private boolean voiceRequest, controlsOnly;
     private JSONArray agents = new JSONArray();
-    private boolean agentAvailable = true, agentLinkPending;
+    private boolean agentAvailable, agentLinkPending;
     private String agentName = "Micro", agentDescription = "A personal assistant";
     private Button agentPicker;
     private TextView description;
@@ -447,6 +447,7 @@ public class MainActivity extends Activity {
             switch (index) {
                 case 0: loadAgents(true); break;
                 case 1:
+                    if (!agentAvailable) { status.setText("Choose an available agent first."); break; }
                     android.content.pm.ShortcutManager shortcuts = getSystemService(android.content.pm.ShortcutManager.class);
                     if (shortcuts != null && shortcuts.isRequestPinShortcutSupported()) {
                         Intent open = new Intent(this, MainActivity.class).setAction(Intent.ACTION_VIEW).setData(agentLink());
@@ -456,6 +457,7 @@ public class MainActivity extends Activity {
                     } else status.setText("This launcher does not support pinned shortcuts.");
                     break;
                 case 2:
+                    if (!agentAvailable) { status.setText("Choose an available agent first."); break; }
                     Intent share = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, agentLink().toString());
                     startActivity(Intent.createChooser(share, "Share agent")); break;
                 case 3: startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(AgentApi.origin(account.optString("server")) + "/account"))); break;
@@ -534,6 +536,7 @@ public class MainActivity extends Activity {
         status.setText("Signed out on this device. You can revoke access in Account → Tokens.");
     }
     private void beginSignIn(String server) {
+        agentAvailable = false;
         busy = true; update(); status.setText("Opening sign-in…");
         worker.execute(() -> {
             try {
