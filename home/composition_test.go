@@ -58,8 +58,8 @@ func TestHomeShowsPinsAndConversationsAndFeedIncludesPrayer(t *testing.T) {
 				}
 				body = data.HTML
 			}
-			if !strings.Contains(body, `id="home-groups"`) || strings.Contains(body, `href="/groups?new=1"`) {
-				t.Fatal("group entry missing", body)
+			if strings.Contains(body, `id="home-groups"`) == feed || strings.Contains(body, `href="/groups?new=1"`) {
+				t.Fatalf("groups must appear only on Overview: feed=%v fragment=%v", feed, fragment)
 			}
 			if strings.Contains(body, "private test context") != feed || strings.Contains(body, "public test update") != feed {
 				t.Fatalf("mixed views: feed=%v fragment=%v", feed, fragment)
