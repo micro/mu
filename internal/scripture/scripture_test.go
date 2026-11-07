@@ -89,3 +89,22 @@ func TestScriptureContextAndValidation(t *testing.T) {
 		t.Fatal("unbounded query")
 	}
 }
+
+func TestLegacyCollectionRetainsLargerBound(t *testing.T) {
+	body := `{"books":[{"text":"` + strings.Repeat("x", 4<<20) + `"}]}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/hadith" {
+			t.Error("wrong legacy endpoint")
+		}
+		w.Write([]byte(body))
+	}))
+	defer server.Close()
+	client := Client{BaseURL: server.URL, HTTP: server.Client()}
+	var response SayingResponse
+	if err := client.Saying(context.Background(), &SayingRequest{}, &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Text != body {
+		t.Fatal("legacy record changed")
+	}
+}

@@ -37,12 +37,16 @@ func (c Client) request(ctx context.Context, method, path, body string) (string,
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("reminder API returned status %d", resp.StatusCode)
 	}
-	const maxBody = 4 << 20
+	maxBody := int64(4 << 20)
+	// Legacy Saying without a book returns the complete collection.
+	if path == "/hadith" {
+		maxBody = 32 << 20
+	}
 	b, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
 	if err != nil {
 		return "", err
 	}
-	if len(b) > maxBody {
+	if int64(len(b)) > maxBody {
 		return "", fmt.Errorf("reminder response is too large")
 	}
 	if len(strings.TrimSpace(string(b))) == 0 {
