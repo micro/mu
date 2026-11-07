@@ -80,7 +80,7 @@ Keep responses concise but informative. Use markdown for structure when helpful.
 func BuildSystemPrompt(p *Prompt) (string, error) {
 	if p.System != "" {
 		if len(p.Rag) == 0 {
-			return p.System, nil
+			return withFoundation(p.System), nil
 		}
 		var sb strings.Builder
 		sb.WriteString(p.System)
@@ -88,7 +88,7 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 		for i, r := range p.Rag {
 			sb.WriteString(fmt.Sprintf("[%d] %s\n", i, r))
 		}
-		return sb.String(), nil
+		return withFoundation(sb.String()), nil
 	}
 	sb := &strings.Builder{}
 	data := &systemPromptData{
@@ -98,7 +98,7 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 	if err := systemPrompt.Execute(sb, data); err != nil {
 		return "", err
 	}
-	return sb.String(), nil
+	return withFoundation(sb.String()), nil
 }
 
 // Ask sends a prompt to the LLM and returns the response

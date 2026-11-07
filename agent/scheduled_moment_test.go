@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -104,8 +105,8 @@ func TestMomentSettingsRequireCSRF(t *testing.T) {
 }
 
 func TestPurposeAppliesToEveryPromptPath(t *testing.T) {
-	for _, opts := range []QueryOpts{{}, {System: "Specialist instructions"}, {System: includedBriefInstruction, NoTools: true}} {
-		if !strings.Contains(nativeSystem(opts), purpose) {
+	for _, opts := range []QueryOpts{{}, {System: "You are Malten. For reflection."}, {System: includedBriefInstruction, NoTools: true}, publicVoiceOptions(context.Background())} {
+		if !strings.HasPrefix(nativeSystem(opts), purpose) {
 			t.Fatal("purpose missing from prompt path")
 		}
 	}
