@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -166,8 +167,11 @@ func (Server) Read(ctx context.Context, req *ReadRequest, rsp *ReadResponse) err
 var Spec = service.Spec{
 	Name: "islam", Page: "/islam", Handler: new(Server), Description: "Search Islamic knowledge",
 	Endpoints: map[string]service.Endpoint{
-		"Search": {Doc: "Search Aslam.org's Quran, hadith, names of Allah, Seerah, Ghazali, IslamQA, adhkar and Riyad us-Salihin. Returns reference excerpts, not generated answers. Distinguish Quran and hadith from biography and scholarly interpretation; cite the source."},
-		"Read":   {Doc: "Read the full Islamic source passage from an islam_search result, with its source and reference. Preserve distinctions between original text, translation and commentary."},
+		"References": {Doc: "Search Quran, hadith and names of Allah by meaning through Reminder. Returns source passages and original metadata, never a generated answer. Use full source context before interpretation; missing authenticity metadata is not a grading.", Cost: quota.OpQuranSearch},
+		"Verse":      {Doc: "Read a Quran chapter or verse from Reminder, preserving its reference and translation."},
+		"Saying":     {Doc: "Read Reminder’s Sahih al-Bukhari collection, optionally selecting a book. This is not a lookup by hadith number."},
+		"Search":     {Doc: "Search Aslam.org's Quran, hadith, names of Allah, Seerah, Ghazali, IslamQA, adhkar and Riyad us-Salihin. Returns reference excerpts, not generated answers. Distinguish Quran and hadith from biography and scholarly interpretation; cite the source."},
+		"Read":       {Doc: "Read the full Islamic source passage from an islam_search result, with its source and reference. Preserve distinctions between original text, translation and commentary."},
 	},
 }
 
