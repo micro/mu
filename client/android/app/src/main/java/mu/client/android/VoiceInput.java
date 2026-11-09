@@ -26,7 +26,8 @@ final class VoiceInput {
         }, e -> { if (!closed) listener.error("Voice model could not load. You can still type."); });
     }
     boolean ready() { return model != null && !closed; }
-    void listen(boolean wakeOnly) {
+    void listen(boolean wakeOnly) { listen(wakeOnly, "Micro"); }
+    void listen(boolean wakeOnly, String wakeName) {
         stop();
         if (!ready()) { listener.error("Voice is still loading. You can type meanwhile."); return; }
         int current = generation;
@@ -47,7 +48,7 @@ final class VoiceInput {
                             return;
                         }
                         if (wakeOnly) {
-                            String command = VoiceCommands.afterWake(text);
+                            String command = VoiceCommands.afterWake(text, wakeName);
                             if (command != null) { acknowledge(); stop(); listener.wake(command); }
                             else if (detected) { stop(); listener.error("I didn’t catch that. Tap Speak to try again."); }
                         } else { stop(); listener.heard(text); }
@@ -58,7 +59,7 @@ final class VoiceInput {
                     try {
                         String text = new JSONObject(json).optString("partial").trim();
                         if (wakeOnly) {
-                            String command = VoiceCommands.afterWake(text);
+                            String command = VoiceCommands.afterWake(text, wakeName);
                             if (command == null) return;
                             acknowledge(); listener.partial(command);
                         } else listener.partial(text);

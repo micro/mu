@@ -6,11 +6,21 @@ final class VoiceCommands {
     static String normalize(String text) {
         return text.trim().toLowerCase(Locale.ROOT).replaceAll("[.!?]+$", "").trim();
     }
-    static String afterWake(String text) {
-        String normalized = normalize(text);
-        if (normalized.equals("hey micro")) return "";
-        if (!normalized.startsWith("hey micro ")) return null;
-        return text.trim().substring(10).trim();
+    static String afterWake(String text) { return afterWake(text, "Micro"); }
+    static String afterWake(String text, String agentName) {
+        String name = agentName.trim();
+        if (name.isEmpty()) return null;
+        String[] words = name.split("\\s+");
+        StringBuilder prefix = new StringBuilder("^\\s*hey\\s+");
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) prefix.append("\\s+");
+            prefix.append(java.util.regex.Pattern.quote(words[i]));
+        }
+        prefix.append("(?=$|[\\s,.!?])");
+        java.util.regex.Matcher match = java.util.regex.Pattern.compile(prefix.toString(),
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE).matcher(text);
+        if (!match.find()) return null;
+        return text.substring(match.end()).replaceFirst("^[\\s,.!?]+", "").trim();
     }
     static boolean wantsVideo(String text) {
         return normalize(text).matches("^(play|watch|listen to) .+");

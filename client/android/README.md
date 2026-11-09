@@ -97,9 +97,11 @@ Model attribution/README is packaged with the model.
 
 ## Hands-free service use
 
-With **Hands-free “Hey Micro” while open** enabled, say the wake phrase and
-your request together, for example “Hey Micro read the headlines” or “Hey Micro
-play K-pop demon hunters”. The text is submitted to your existing agent, using
+With **Hands-free “Hey [agent name]” while open** enabled, say the selected agent’s name and
+your request together (for Micro, for example “Hey Micro read the headlines” or “Hey Micro
+play K-pop demon hunters”). Selecting Malten changes both the label and recognition
+to “Hey Malten”. Recognition depends on the bundled English voice model
+recognizing the name; tap Speak when a name is not recognized. The text is submitted to your existing agent, using
 its normal tools and permissions. Turning the switch off restores review-before-
 send voice input. Leaving the app still disables the microphone.
 

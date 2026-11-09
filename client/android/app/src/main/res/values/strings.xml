@@ -6,6 +6,6 @@
     <string name="send">Send</string>
     <string name="speak">Speak</string>
     <string name="stop">Stop</string>
-    <string name="wake">Hands-free “Hey Micro” while open</string>
+    <string name="wake">Hands-free “Hey %1$s” while open</string>
     <string name="spoken">Read replies aloud</string>
 </resources>
