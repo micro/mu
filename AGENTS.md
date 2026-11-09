@@ -91,7 +91,7 @@ summary from agent/brief; it does not repeat the full scheduled daily brief. Age
 controls. Services are directly usable by people as well as callable by agents;
 the directory is not admin-only. Each service retains its permissions. Apps are
 small tools that can be opened or embedded, not additional primary destinations.
-The public landing offers a bounded, tool-free chat demo and the cached shared brief. Personal assistant usage is paid on metered instances: no new signup or daily grants. Existing balances and paid subscriptions are preserved. Personal brief generation requires a paid plan.
+The public landing opens the account-based assistant and offers platform download/install options, with self-hosting and developer tools secondary. It does not embed a chat demo or brief. The legacy anonymous POST demo remains bounded and tool-free for compatibility. The current PWA still uses the console; do not describe it as the focused assistant client until that client exists. Android download links must only offer the signed release APK, never unsigned or debug builds. Personal assistant usage is paid on metered instances: no new signup or daily grants. Existing balances and paid subscriptions are preserved. Personal brief generation requires a paid plan.
 Public landing and informational pages belong to internal/server; `/` redirects
 signed-in visitors to `/home`. Preserve protocols, API responses, authorisation,
 mutations and shared links.
