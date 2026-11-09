@@ -128,7 +128,7 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		android = `<p>We could not confirm an Android download yet. Please check again shortly, or use the assistant in your browser.</p>`
 	}
 	if release.URL != "" {
-		android = `<div class="form-actions">` + app.ActionLink("/download/android", "Download for Android") + `</div><p class="text-muted">` + html.EscapeString(release.Version) + ` · APK</p><p>Open the downloaded file and allow installation from your browser when Android asks. Updates are installed from this page over your existing app.</p>`
+		android = `<div class="section-body"><div class="form-actions">` + app.ActionLink("/download/android", "Download for Android") + `<span class="action-note">` + html.EscapeString(release.Version) + ` · APK</span></div><p>Open the downloaded file and allow installation from your browser when Android asks. Updates are installed from this page over your existing app.</p></div>`
 	}
 	body := `<h1>Use your assistant</h1><p>Open it in your browser or install it on your device.</p><div class="form-actions">` + app.ActionLink("/assistant", "Open assistant") + `</div>
 <section class="page-section" id="android"><h2>Android</h2>` + android + `</section>
