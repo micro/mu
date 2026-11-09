@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package mu.assistant.v1;
+
+option go_package = "mu/proto/assistant/v1;assistantv1";
+option java_package = "mu.client.proto.assistant.v1";
+option java_multiple_files = true;
+option java_outer_classname = "AssistantProtocol";
+
+// Client-facing contract implemented by the agent layer, not service/assistant.
+// This declaration does not expose a listener or grant access to internal RPC.
+// Credentials and MUCP correlation metadata belong in the authenticated binding.
+service Assistant {
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+  rpc Ask(AskRequest) returns (AskResponse);
+}
+
+message ListAgentsRequest {}
+
+message ListAgentsResponse {
+  // Only agents accessible to the authenticated caller. Never private prompts.
+  repeated Agent agents = 1;
+  // False unless the runtime implements the restricted PUBLIC mode below.
+  bool public_questions = 2;
+}
+
+message Agent {
+  // Opaque, account-scoped selector; pass unchanged to AskRequest.agent_id.
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message AskRequest {
+  // Empty selects the runtime's default agent. PUBLIC requires this empty.
+  string agent_id = 1;
+  // Empty starts a conversation. Otherwise an opaque ID returned by Ask.
+  // Must belong to this caller and the selected agent. PUBLIC requires empty.
+  string conversation_id = 2;
+  // Nonblank UTF-8 text, at most 8,000 bytes. Reject overflow; never truncate.
+  string prompt = 3;
+  // Must be explicitly selected. Unknown/unspecified modes are rejected.
+  AccessMode mode = 4;
+  // Presentation hint only: concise spoken wording, no additional authority.
+  bool voice = 5;
+}
+
+enum AccessMode {
+  ACCESS_MODE_UNSPECIFIED = 0;
+  // Normal account-scoped execution using the selected agent's permissions.
+  ACCESS_MODE_PERSONAL = 1;
+  // Authenticated and metered, but without private history, memory, saved
+  // location or personal agent instructions/tools. No conversation is persisted.
+  // Unsupported runtimes must reject this mode, never downgrade to PERSONAL.
+  ACCESS_MODE_PUBLIC = 2;
+}
+
+message AskResponse {
+  // Nonempty for PERSONAL; empty for PUBLIC. Not an RPC request/stream ID.
+  string conversation_id = 1;
+  // Resolved agent ID for PERSONAL; empty for PUBLIC.
+  string agent_id = 2;
+  // Markdown answer, usable without rendering any content blocks.
+  string text = 3;
+  repeated Content content = 4;
+}
+
+message Content {
+  // Plain text fallback required for every block, including unknown future types.
+  string fallback = 1;
+  oneof value {
+    Source source = 2;
+    Image image = 3;
+    Audio audio = 4;
+    Video video = 5;
+    Route route = 6;
+    Resource resource = 7;
+  }
+}
+
+message Source {
+  string title = 1;
+  string url = 2;
+  string summary = 3;
+}
+
+message Image {
+  string url = 1;
+  string description = 2;
+}
+
+message Audio {
+  string url = 1;
+  string title = 2;
+  string mime_type = 3;
+}
+
+message Video {
+  string provider = 1; // For example "youtube"; unknown providers use fallback.
+  string id = 2; // Provider identifier, never executable player markup.
+  string url = 3;
+  string title = 4;
+  // False means audio-only playback must not be offered. True is a capability,
+  // not permission to ignore provider restrictions or start playback unprompted.
+  bool audio_only_allowed = 5;
+}
+
+message Route {
+  repeated Point shape = 1;
+  repeated string steps = 2;
+}
+
+message Point {
+  double latitude = 1; // WGS84, finite and in [-90, 90].
+  double longitude = 2; // WGS84, finite and in [-180, 180].
+}
+
+message Resource {
+  // A navigable document, file, app or other resource, not executable HTML.
+  // Unknown kinds render the fallback and optionally a validated link.
+  string kind = 1;
+  string id = 2;
+  string url = 3;
+  string title = 4;
+  string summary = 5;
+}
