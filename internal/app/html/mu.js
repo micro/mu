@@ -2247,6 +2247,7 @@ window.addEventListener('pagehide', () => { currentRoomId=null; if(roomWs){const
 
 // One live work projection for personal chats, Inbox and shared rooms.
 (function(){
+ if(typeof document === 'undefined')return;
  const inFlight=new WeakSet();
  async function refresh(root){
   if(inFlight.has(root)||document.hidden||!navigator.onLine)return;
