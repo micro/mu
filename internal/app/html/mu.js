@@ -2292,6 +2292,7 @@ if (typeof document !== 'undefined') {
 // review; only Send executes an agent request. Browsers may use remote speech
 // recognition, so explain that before requesting microphone access.
 (function () {
+ if (typeof document === 'undefined') return;
  const controls = document.querySelector('[data-voice-controls]');
  if (!controls) return;
  const dictate = controls.querySelector('[data-dictate]');

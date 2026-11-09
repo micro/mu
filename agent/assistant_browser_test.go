@@ -41,6 +41,9 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 		switch r.URL.Path {
 		case "/mu.css", "/mu.js":
 			http.ServeFile(w, r, filepath.Join("../internal/app/html", r.URL.Path[1:]))
+		case "/session":
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{"account": owner, "type": "user"})
 		case "/agent":
 			if r.Method != "POST" {
 				http.NotFound(w, r)
