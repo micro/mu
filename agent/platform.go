@@ -92,9 +92,7 @@ func PlatformOpts(a *micro.Agent) QueryOpts {
 	prompt := a.SystemPrompt
 	if a.ID == "hello" {
 		if address := origin.Self(); address != "" {
-			prompt += " To continue with the main assistant, give this absolute link: " + address + "/?new=1. Existing users can sign in; do not tell them to create another account."
-		} else {
-			prompt += " To continue with the main assistant, direct the person to Home in Micro. Do not invent a website address."
+			prompt += " Runtime help: " + address + "/help. Main assistant: " + address + "/assistant/micro."
 		}
 	}
 	return QueryOpts{System: namedSystem(a.Name, prompt), Tools: a.Tools, Model: a.Model, NoTools: a.NoTools}

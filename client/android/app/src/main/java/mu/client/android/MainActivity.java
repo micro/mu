@@ -239,6 +239,7 @@ public class MainActivity extends Activity {
                 }
                 public void detected() {
                     controlsOnly = speaking || video.playing();
+                    interruptReply();
                     speak.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                     status.setText("Heard ‘Hey " + agentName + "’. Listening…");
                 }
@@ -247,7 +248,7 @@ public class MainActivity extends Activity {
                 }
                 public void wake(String command) {
                     controlsOnly = controlsOnly || speaking || video.playing();
-                    if (command.isEmpty()) startVoice(false);
+                    if (command.isEmpty()) { controlsOnly = false; startVoice(false); }
                     else handleVoice(command);
                 }
                 public void heard(String text) {
@@ -261,7 +262,38 @@ public class MainActivity extends Activity {
         pendingVoice = -1;
         listening = true; update();
         status.setText(wakeOnly ? "Listening locally for “Hey " + agentName + "”…" : "Listening… Pause when finished.");
-        voice.listen(wakeOnly, agentName);
+        voice.listen(wakeOnly, wakeNames());
+    }
+    // Keep recognition alive so the rest of the request can still be captured.
+    void interruptReply() {
+        utterance = ""; speechEpoch++;
+        if (tts != null) tts.stop();
+        speaking = false; video.pause(); update();
+    }
+    private String[] wakeNames() {
+        JSONObject aliases = account.optJSONObject("wake_aliases");
+        return VoiceCommands.names(agentName, aliases == null ? "" : aliases.optString(agent));
+    }
+    private void wakeAliases() {
+        LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL);
+        int pad = getResources().getDimensionPixelSize(R.dimen.control_gap);
+        form.setPadding(pad * 2, pad, pad * 2, pad);
+        TextView label = new TextView(this);
+        label.setText("Other spellings of " + agentName + " heard by voice recognition (comma separated)");
+        EditText input = new EditText(this); input.setSingleLine(true); input.setHint("e.g. molten, maltin");
+        JSONObject aliases = account.optJSONObject("wake_aliases");
+        input.setText(aliases == null ? "" : aliases.optString(agent));
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(160)});
+        form.addView(label); form.addView(input);
+        new AlertDialog.Builder(this).setTitle("Wake aliases for " + agentName).setView(form)
+            .setPositiveButton("Save", (d, w) -> {
+                try {
+                    JSONObject saved = account.optJSONObject("wake_aliases");
+                    if (saved == null) saved = new JSONObject();
+                    saved.put(agent, input.getText().toString().trim()); account.put("wake_aliases", saved);
+                    vault.write(account); stopAudio(); resumeWake();
+                } catch (Exception e) { status.setText("Could not save wake aliases."); }
+            }).setNegativeButton("Cancel", null).show();
     }
     private void resumeWake() {
         if (foreground && !busy && wake.isChecked() && prompt.length() == 0) startVoice(true);
@@ -294,7 +326,7 @@ public class MainActivity extends Activity {
                 if (!wake.isChecked() && !listening && pendingVoice < 0) return false;
                 wake.setChecked(false); stopAudio(); status.setText("Listening stopped."); return true;
             case "stop": case "pause":
-                if (!speaking && !listening && !video.active()) return false;
+                if (!speaking && !listening && !video.active() && pageIndex >= pages.size()) return false;
                 stopAudio(); video.pause(); status.setText("Paused."); resumeWake(); return true;
             case "resume": case "continue":
                 if (video.active()) { video.resumeView(); video.command("play"); }
@@ -333,7 +365,7 @@ public class MainActivity extends Activity {
                         !results.optJSONObject(resultIndex).optString("kind").equals("video")) return false;
                 openResult(resultIndex, false); return true;
             case "show text":
-                if (!speaking && !video.active()) return false;
+                if (!speaking && !video.active() && pageIndex >= pages.size()) return false;
                 stopAudio(); video.close(); resumeWake(); return true;
             default: return false;
         }
@@ -352,7 +384,9 @@ public class MainActivity extends Activity {
             Button button = new Button(this, null, 0, R.style.CompactButton);
             button.setText((i + 1) + ". " + item.optString("title"));
             button.setOnClickListener(v -> { results = shownResults; openResult(index, true); });
-            messages.addView(button);
+            LinearLayout.LayoutParams spacing = new LinearLayout.LayoutParams(-1, -2);
+            spacing.bottomMargin = getResources().getDimensionPixelSize(R.dimen.control_gap);
+            messages.addView(button, spacing);
         }
     }
     private void openResult(int index, boolean play) {
@@ -456,8 +490,9 @@ public class MainActivity extends Activity {
                 .setNeutralButton("Advanced", (d, w) -> advancedConnection()).setNegativeButton("Cancel", null).show();
             return;
         }
-        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Advanced", "Sign out", "Use Mu as phone assistant"}, (d, index) -> {
+        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Advanced", "Sign out", "Use Mu as phone assistant", "Wake aliases"}, (d, index) -> {
             switch (index) {
+                case 7: wakeAliases(); break;
                 case 6:
                     if (android.os.Build.VERSION.SDK_INT >= 29) {
                         android.app.role.RoleManager roles = getSystemService(android.app.role.RoleManager.class);
