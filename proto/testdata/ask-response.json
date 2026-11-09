@@ -1,0 +1,1 @@
+{"thread":"thread-example","agentId":"micro","text":"Here is the forecast.","content":[{"fallback":"Forecast: clear skies","source":{"title":"Forecast","url":"https://example.org/weather","summary":"Clear skies"}},{"fallback":"A future widget can still be read","futureWidget":{"name":"future"}}]}

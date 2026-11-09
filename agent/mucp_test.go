@@ -3,7 +3,9 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"google.golang.org/protobuf/encoding/protojson"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -166,5 +168,19 @@ func TestMUCPDisconnectKeepsAcceptedWork(t *testing.T) {
 	raw, _ := json.Marshal(page)
 	if calls != 1 || page.Pending || !strings.Contains(string(raw), "Recovered answer") {
 		t.Fatalf("missing recovered outcome: %s", raw)
+	}
+}
+
+func TestMUCPSharedWireFixture(t *testing.T) {
+	raw, err := os.ReadFile("../proto/testdata/ask-response.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response pb.AskResponse
+	if err = (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(raw, &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Thread != "thread-example" || len(response.Content) != 2 || response.Content[1].Fallback != "A future widget can still be read" {
+		t.Fatal("wire fixture lost fallback")
 	}
 }

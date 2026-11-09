@@ -53,7 +53,13 @@ android {
     lint { abortOnError true }
 }
 android.sourceSets.main.proto.srcDir('../../../proto')
-protobuf { protoc { artifact = 'com.google.protobuf:protoc:4.31.1' } }
+android.sourceSets.test.resources.srcDir('../../../proto/testdata')
+protobuf {
+    protoc { artifact = 'com.google.protobuf:protoc:4.31.1' }
+    generateProtoTasks {
+        all().configureEach { task -> task.builtins { java { } } }
+    }
+}
 dependencies {
     implementation 'com.google.protobuf:protobuf-java:4.31.1'
     implementation 'com.google.protobuf:protobuf-java-util:4.31.1'

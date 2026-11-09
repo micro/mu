@@ -36,3 +36,11 @@ func TestTokenCannotTransferThroughBrowserRoute(t *testing.T) {
 		}
 	}
 }
+
+func TestMUCPUsesProductTokenBoundary(t *testing.T) {
+	r := httptest.NewRequest("POST", "/mucp", strings.NewReader("{}"))
+	r.Header.Set("Content-Type", "application/json")
+	if !productClientRequest(r) {
+		t.Fatal("MUCP bypasses product credential normalization")
+	}
+}
