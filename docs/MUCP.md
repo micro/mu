@@ -1,6 +1,6 @@
 # Micro Communication Protocol (MUCP)
 
-Status: initial HTTPS/JSON binding implemented at `/mucp`. Android uses generated
+Status: initial HTTPS/JSON binding implemented at `/`. Android uses generated
 Java types; the focused PWA sends ordinary JSON. Mu continues to use go-micro
 internally. Streaming, cancellation and additional transports remain future work.
 
@@ -141,7 +141,10 @@ synthesis can remain local; the initial contract does not require raw audio.
 
 ## HTTPS binding: mucp/1
 
-`GET /mucp` returns public capabilities without account data. Calls are `POST /mucp`
+`GET /` with `Micro-Protocol: mucp/1` returns public capabilities without account data.
+Ordinary requests without the protocol header retain the landing/Home behaviour.
+The protocol header selects dispatch at the root; unknown versions fail explicitly.
+`/mucp` remains a compatibility alias, including its headerless GET discovery. Calls are `POST /`
 with `Content-Type: application/json` and exactly one of each header:
 
 | Header | Value |

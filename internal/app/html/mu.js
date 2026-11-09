@@ -396,7 +396,7 @@ function savedReceipt(key){try{const r=JSON.parse(sessionStorage.getItem(key)||'
 
 function focusedClient(){return (form.dataset.path||'').startsWith('/assistant/');}
 async function mucp(operation,body,id=crypto.randomUUID()){
- const response=await fetch('/mucp',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(135000),headers:{'Content-Type':'application/json','Micro-Protocol':'mucp/1','Micro-Service':'assistant','Micro-Endpoint':'Assistant.'+operation,'Micro-Id':id,'X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify(body)});
+ const response=await fetch('/',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(135000),headers:{'Content-Type':'application/json','Micro-Protocol':'mucp/1','Micro-Service':'assistant','Micro-Endpoint':'Assistant.'+operation,'Micro-Id':id,'X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify(body)});
  const accepted=response.headers.get('Micro-Thread');
  if(!response.ok){const error=Error(await failure(response));error.status=response.status;error.acceptedThread=accepted;throw error;}
  if(response.headers.get('Micro-Protocol')!=='mucp/1'||response.headers.get('Micro-Id')!==id)throw Error('The runtime needs an update to support this client.');

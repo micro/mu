@@ -87,7 +87,7 @@ Specs and implementation types remain authoritative for current APIs and tools.
    | render / speak             |                              |
 ```
 
-The `/mucp` adapter implements discovery, personal thread reads and Ask. Existing execution
+The `/` adapter implements discovery, personal thread reads and Ask. Existing execution
 already resolves agents, checks permissions, uses tools and retains personal
 threads. `thread` is the existing identifier for what the UI calls a conversation;
 there is no second conversation-ID namespace. A request ID identifies an exchange,

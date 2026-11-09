@@ -62,3 +62,33 @@ func TestLandingOffersClients(t *testing.T) {
 		t.Fatal("landing still opens an anonymous demo")
 	}
 }
+
+func TestRootProtocolDispatch(t *testing.T) {
+	for _, tc := range []struct {
+		method, protocol string
+		code             int
+	}{
+		{"GET", "mucp/1", 200}, {"GET", "mucp/99", 400}, {"GET", "", 400},
+		{"POST", "mucp/99", 400}, {"POST", "mucp/1", 401},
+	} {
+		r := httptest.NewRequest(tc.method, "/", strings.NewReader("{}"))
+		r.Header.Set("Micro-Protocol", tc.protocol)
+		r.Header.Set("Micro-Service", "assistant")
+		r.Header.Set("Micro-Endpoint", "Assistant.ListAgents")
+		r.Header.Set("Micro-Id", "root-request-12345678")
+		r.Header.Set("Content-Type", "application/json")
+		if !productClientRequest(r) {
+			t.Fatal("root protocol missed credential normalization")
+		}
+		w := httptest.NewRecorder()
+		IndexHandler(w, r)
+		if w.Code != tc.code || !strings.Contains(w.Header().Get("Content-Type"), "application/json") || w.Header().Get("Location") != "" {
+			t.Fatalf("%s %q: %d %s", tc.method, tc.protocol, w.Code, w.Body.String())
+		}
+	}
+	r := httptest.NewRequest("POST", "/", strings.NewReader("{}"))
+	r.Header.Set("Content-Type", "application/json")
+	if productClientRequest(r) {
+		t.Fatal("ordinary root POST gained protocol token access")
+	}
+}
