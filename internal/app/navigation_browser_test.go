@@ -2,10 +2,12 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,7 +16,7 @@ import (
 	"mu/internal/auth"
 )
 
-func TestMobileNavigationDrawer(t *testing.T) {
+func TestResponsiveRuntimeNavigation(t *testing.T) {
 	if testing.Short() {
 		t.Skip("browser UI test runs separately from the short backend suite")
 	}
@@ -54,7 +56,17 @@ func TestMobileNavigationDrawer(t *testing.T) {
 			w.Write(js)
 		default:
 			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(ConsoleHTML("Home", "<h1>Home</h1>", &auth.Account{ID: "drawer-test"}, "/home")))
+			body := `<h1>Home</h1><div class="section-stack"><section class="record-card"><h2>Agents</h2><p>Micro</p><p>A personal assistant</p></section><section class="record-card"><h2>Inbox</h2><p>No unread messages.</p></section><section class="record-card"><h2>Scheduled</h2><p>Morning Brief</p></section></div>`
+			title := "Home"
+			if r.URL.Path == "/agents" {
+				title = "Agents"
+				body = `<h1>Agents</h1><p>Choose an agent to start a conversation.</p>`
+			}
+			if r.URL.Path == "/agent/micro" {
+				title = "Micro"
+				body = `<div class="assistant-workspace"><div class="conversation is-active"><h1>Weather</h1><div id="responses" role="log"><section class="turn"><div class="answer"><p>Clear skies this afternoon.</p></div></section></div><div class="prompt-panel"><div class="prompt-welcome"><h1>Micro</h1></div><form id="command-form" data-account="navigation-test" data-path="/agent/micro"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" placeholder="What do you need?"></textarea><button id="send">Send</button></div><p id="status"></p></form></div></div></div>`
+			}
+			w.Write([]byte(ConsoleHTML(title, body, &auth.Account{ID: "navigation-test"}, r.URL.Path)))
 		}
 	}))
 	defer server.Close()
@@ -69,44 +81,52 @@ func TestMobileNavigationDrawer(t *testing.T) {
 	defer cancel()
 	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
-	var valid bool
-	err = chromedp.Run(ctx,
-		emulation.SetDeviceMetricsOverride(390, 844, 1, true),
-		chromedp.Navigate(server.URL+"/home"),
-		chromedp.WaitVisible(".mobile-menu-toggle"),
-		chromedp.Click(".mobile-menu-toggle"),
-		chromedp.Poll(`document.querySelector('.mobile-drawer').open`, nil),
-		chromedp.Evaluate(`document.querySelector('.mobile-drawer').contains(document.activeElement) && document.querySelectorAll('.runtime-navigation a').length === 4 && document.querySelector('.runtime-navigation [aria-current="page"]').textContent === 'Home'`, &valid),
-	)
-	if err != nil {
-		t.Fatal(err)
+
+	capture := func(name string) {
+		if dir := os.Getenv("UI_SCREENSHOTS"); dir != "" {
+			var image []byte
+			if err := chromedp.Run(ctx, chromedp.CaptureScreenshot(&image)); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, name+".png"), image, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
-	if !valid {
-		t.Fatal("drawer focus/navigation")
-	}
-	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`history.back()`, nil),
-		chromedp.Poll(`!document.querySelector('.mobile-drawer').open`, nil),
-		chromedp.Evaluate(`document.activeElement === document.querySelector('.mobile-menu-toggle')`, &valid),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !valid {
-		t.Fatal("focus not restored")
-	}
-	err = chromedp.Run(ctx,
-		chromedp.Click(".mobile-menu-toggle"),
-		chromedp.MouseClickXY(380, 200),
-		chromedp.Poll(`!document.querySelector('.mobile-drawer').open`, nil),
-		emulation.SetDeviceMetricsOverride(1280, 900, 1, false),
-		chromedp.Poll(`document.querySelector('.runtime-navigation').parentElement === document.body`, nil),
-		chromedp.Evaluate(`getComputedStyle(document.querySelector('.mobile-menu-toggle')).display === 'none' && getComputedStyle(document.querySelector('.runtime-navigation')).display !== 'none'`, &valid),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !valid {
-		t.Fatal("desktop navigation not restored")
+	for _, width := range []int64{320, 390, 900, 1440} {
+		var valid bool
+		err := chromedp.Run(ctx,
+			emulation.SetDeviceMetricsOverride(width, 844, 1, width <= 700),
+			chromedp.Navigate(server.URL+"/home"),
+			chromedp.WaitVisible(".runtime-navigation"),
+			chromedp.Evaluate(`(()=>{const nav=document.querySelector('.runtime-navigation'),r=nav.getBoundingClientRect();return document.querySelectorAll('.runtime-navigation a').length===4 && !document.querySelector('.mobile-menu-toggle,.mobile-drawer') && document.querySelector('.runtime-navigation [aria-current="page"]').textContent==='Home' && document.documentElement.scrollWidth<=innerWidth && (innerWidth<=700 ? Math.abs(r.bottom-innerHeight)<1 && r.width===innerWidth && parseFloat(getComputedStyle(document.body).paddingBottom)>=r.height : r.width===88 && document.querySelector('.page').getBoundingClientRect().left===88)})()`, &valid),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !valid {
+			t.Fatalf("navigation layout at %d", width)
+		}
+		capture(fmt.Sprintf("runtime-home-%d", width))
+		_, err = chromedp.RunResponse(ctx, chromedp.Click(`.runtime-navigation a[href="/agents"]`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = chromedp.Run(ctx,
+			chromedp.WaitVisible(`.runtime-navigation a[href="/agents"][aria-current="page"]`),
+			chromedp.Navigate(server.URL+"/agent/micro"),
+			chromedp.WaitVisible("#command-input"),
+			chromedp.Evaluate(`(()=>{const box=document.querySelector('#command-form').getBoundingClientRect(),nav=document.querySelector('.runtime-navigation').getBoundingClientRect();return box.bottom<=(innerWidth<=700?nav.top:innerHeight) && box.left>=(innerWidth<=700?0:nav.right) && box.right<=innerWidth})()`, &valid),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !valid {
+			t.Fatalf("navigation covers composer at %d", width)
+		}
+		capture(fmt.Sprintf("runtime-chat-%d", width))
 	}
 }

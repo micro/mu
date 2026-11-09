@@ -130,56 +130,6 @@ self.addEventListener('message', function (e) {
 
 } else {
 if (/Android/i.test(navigator.userAgent)) document.querySelectorAll(".android-agent-link").forEach(link => { link.hidden = false; });
-// The same navigation moves into a native modal drawer on narrow screens.
-(function () {
-  const button = document.querySelector('.mobile-menu-toggle');
-  const drawer = document.querySelector('.mobile-drawer');
-  const navigation = document.querySelector('.runtime-navigation');
-  if (!button || !drawer || !navigation) return;
-  const mobile = matchMedia('(max-width:700px)');
-  let pendingURL = null;
-  let ownsHistory = false;
-  function finish() {
-    if (drawer.open) drawer.close();
-    button.setAttribute('aria-expanded', 'false');
-    if (mobile.matches) button.focus();
-  }
-  function close() {
-    if (ownsHistory) { history.back(); return; }
-    finish();
-  }
-  function layout() {
-    if (mobile.matches) drawer.appendChild(navigation);
-    else { close(); document.body.prepend(navigation); }
-  }
-  button.addEventListener('click', () => {
-    if (!mobile.matches || drawer.open) return;
-    history.pushState(history.state, '', location.href);
-    ownsHistory = true;
-    drawer.showModal();
-    button.setAttribute('aria-expanded', 'true');
-  });
-  drawer.querySelector('.drawer-close').addEventListener('click', close);
-  drawer.addEventListener('cancel', event => { event.preventDefault(); close(); });
-  drawer.addEventListener('click', event => {
-    const rect = drawer.getBoundingClientRect();
-    if (event.target === drawer && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) close();
-    const link = event.target.closest('a');
-    if (link && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
-      event.preventDefault(); pendingURL = link.href; close();
-    }
-  });
-  window.addEventListener('popstate', event => {
-    if (!ownsHistory) return;
-    ownsHistory = false;
-    event.stopImmediatePropagation();
-    finish();
-    if (pendingURL) { const url = pendingURL; pendingURL = null; location.assign(url); }
-  });
-  mobile.addEventListener('change', layout);
-  layout();
-})();
-
 function getCsrfToken() {
   var m = document.cookie.match('(?:^|; )csrf_token=([^;]*)');
   return m ? decodeURIComponent(m[1]) : '';
