@@ -29,6 +29,7 @@ var pages = []page{
 	{Path: "/help/configuration", Filename: "CONFIGURATION.md", Title: "Configuration"},
 	{Path: "/help/channels", Filename: "CHANNELS.md", Title: "Mail and messaging"},
 	{Path: "/help/architecture", Filename: "ARCHITECTURE.md", Title: "Architecture and development"},
+	{Path: "/help/mucp", Filename: "MUCP.md", Title: "Micro Communication Protocol"},
 }
 
 // Redirects maps every address the documentation used to answer on to the page

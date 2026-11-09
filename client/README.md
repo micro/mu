@@ -28,6 +28,9 @@ server a mobile client. The CLI is still part of the Mu binary and remains under
 
 ## Shared contract
 
+The current HTTPS interface below remains supported. The proposed MUCP assistant
+contract is documented in [MUCP](../docs/MUCP.md); clients do not use that binding yet.
+
 `POST /agent/<name>`, `Accept: application/json`, bearer authentication.
 Send `{"prompt":"…","thread":"…"}`; receive `{"text":"…","thread":"…","agent":"…"}`.
 Responses may also include `results`: the runtime's typed result objects from

@@ -21,6 +21,9 @@ See [Developers](/developers) for client examples and [Tools](/tools) for the
 service catalogue. Deployment belongs in [Hosting](HOSTING.md); settings belong
 in [Configuration](CONFIGURATION.md).
 
+The proposed shared client contract is documented in [MUCP](MUCP.md). It reuses
+go-micro RPC while retaining Mu's authentication and execution boundaries.
+
 ## Build from source
 
 You need Git and Go 1.26 or later:
