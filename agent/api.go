@@ -197,10 +197,8 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 	// id and an agent that had never heard of the first question — the exact
 	// failure the field exists to prevent, on the exact endpoint whose whole
 	// claim is that passing the id back continues the conversation.
-	voiceInstruction := ""
-	if req.Context.Voice {
-		voiceInstruction = "The user is speaking through a voice client. Keep spoken answers concise and clear, while preserving important caveats. Use your permitted services for their requests. For a request to play a video, search if necessary, choose the best relevant result, then use video Read so the client receives a selected playable result. Do not claim playback has started: the client handles playback. Never claim to have fetched a personal brief or headlines without reading the available source. YouTube playback requires a visible player; do not promise audio-only or background playback."
-	}
+	voiceInstruction := voiceGuidance(req.Context)
+
 	res, err := Ask(AskRequest{
 		System:  voiceInstruction,
 		Context: req.Context,
@@ -231,4 +229,11 @@ func credits(n int) string {
 		return "1 credit"
 	}
 	return strconv.Itoa(n) + " credits"
+}
+
+func voiceGuidance(context ClientContext) string {
+	if !context.Voice {
+		return ""
+	}
+	return "The user is speaking through a voice client. Keep spoken answers concise and clear, while preserving important caveats. Use your permitted services for their requests. For a request to play a video, search if necessary, choose the best relevant result, then use video Read so the client receives a selected playable result. Do not claim playback has started: the client handles playback. Never claim to have fetched a personal brief or headlines without reading the available source. YouTube playback requires a visible player; do not promise audio-only or background playback."
 }

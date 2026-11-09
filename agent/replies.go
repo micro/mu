@@ -253,7 +253,7 @@ func processReply(ask func(AskRequest) (Answer, error)) {
 		switch original {
 		case "queued":
 			// Recheck the captured specialist; never silently replace it on execution.
-			answer, err := ask(AskRequest{Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: replyMessageRef(job), AnswerRef: "reply-answer:" + job.ID})
+			answer, err := ask(AskRequest{System: voiceGuidance(job.Context), Context: job.Context, Account: job.Account, On: job.Thread, Client: t.Client, Agent: job.Agent, Text: job.Text, MessageRef: replyMessageRef(job), AnswerRef: "reply-answer:" + job.ID})
 			if err == nil && strings.TrimSpace(answer.Text) == "" {
 				err = fmt.Errorf("no answer was recorded")
 			}

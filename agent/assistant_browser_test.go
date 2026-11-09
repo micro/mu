@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -37,24 +38,66 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 	}
 	chat := thread.Open(owner, thread.WebClient, "focused-browser-chat")
 	thread.Name(owner, chat.ID, "Browser conversation")
+	var recoveryReads atomic.Int32
+	var failRender atomic.Bool
+	var slowStarted atomic.Bool
+	releaseSlow := make(chan struct{})
+	defer func() {
+		select {
+		case <-releaseSlow:
+		default:
+			close(releaseSlow)
+		}
+	}()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/mu.css", "/mu.js":
 			http.ServeFile(w, r, filepath.Join("../internal/app/html", r.URL.Path[1:]))
+		case "/slow-started":
+			json.NewEncoder(w).Encode(slowStarted.Load())
 		case "/session":
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]string{"account": owner, "type": "user"})
-		case "/agent":
-			if r.Method != "POST" {
-				http.NotFound(w, r)
+		case "/mucp":
+			if r.Method != "POST" || r.Header.Get("Micro-Protocol") != "mucp/1" || r.Header.Get("Micro-Service") != "assistant" || (r.Header.Get("Micro-Endpoint") != "Assistant.Ask" && r.Header.Get("Micro-Endpoint") != "Assistant.ReadThread") {
+				t.Error("client did not use MUCP")
+				http.Error(w, "bad request", 400)
 				return
 			}
+			if r.Header.Get("Micro-Endpoint") == "Assistant.ReadThread" {
+				if recoveryReads.Add(1) == 1 {
+					failRender.Store(true)
+					thread.Add(thread.Message{Account: owner, Thread: chat.ID, Role: thread.RoleAgent, Text: "**Recovered** reply"})
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Micro-Protocol", "mucp/1")
+				w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
+				json.NewEncoder(w).Encode(map[string]any{"pending": false, "messages": []any{}})
+				return
+			}
+			var request map[string]any
+			if json.NewDecoder(r.Body).Decode(&request) != nil || request["mode"] != "ACCESS_MODE_PERSONAL" || (request["prompt"] != "Weather please" && request["prompt"] != "Wait please") {
+				t.Error("invalid MUCP body")
+			}
+			if request["prompt"] == "Wait please" {
+				slowStarted.Store(true)
+				select {
+				case <-releaseSlow:
+				case <-r.Context().Done():
+					return
+				}
+			}
+			thread.Add(thread.Message{Account: owner, Thread: chat.ID, Role: thread.RolePerson, Text: "Weather please"})
+			thread.Add(thread.Message{Account: owner, Thread: chat.ID, Role: thread.RoleAgent, Text: "**Forecast**\n\n- Clear skies"})
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]string{"thread": chat.ID, "title": "Browser conversation"})
-		case "/agent/pending":
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]any{"waiting": false, "answer_html": "<p><strong>Forecast</strong></p><ul><li>Clear skies</li></ul>"})
+			w.Header().Set("Micro-Protocol", "mucp/1")
+			w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
+			json.NewEncoder(w).Encode(map[string]string{"thread": chat.ID, "agentId": "micro", "text": "**Forecast**\n\n- Clear skies"})
 		default:
+			if failRender.Swap(false) {
+				http.Error(w, "temporary render failure", 503)
+				return
+			}
 			r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 			agent.AssistantHandler(w, r)
 		}
@@ -140,4 +183,36 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 			t.Fatal("chat navigation")
 		}
 	}
+	thread.Add(thread.Message{Account: owner, Thread: chat.ID, Role: thread.RolePerson, Text: "A request accepted before disconnect"})
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(server.URL+"/assistant/micro?session="+chat.ID),
+		chromedp.Poll(`Array.from(document.querySelectorAll('#responses .answer strong')).some(e=>e.textContent==='Recovered')`, nil),
+	); err != nil {
+		t.Fatalf("MUCP reconnect recovery: %v", err)
+	}
+
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(server.URL+"/assistant/micro?new=1"),
+		chromedp.WaitVisible("#command-input"),
+		chromedp.Evaluate(`(()=>{const original=window.fetch;window.slowDone=false;window.fetch=async(...args)=>{const response=await original(...args);if(args[0]==='/mucp' && args[1]?.body?.includes('Wait please'))window.slowDone=true;return response;};})()`, nil),
+		chromedp.SendKeys("#command-input", "Wait please"),
+		chromedp.Evaluate(`document.querySelector('#command-form').requestSubmit()`, nil),
+		chromedp.Poll(`fetch('/slow-started').then(r=>r.json())`, nil),
+		chromedp.Click(`a[href="/assistant/micro?new=1"]`),
+		chromedp.Poll(`document.querySelector('#responses').children.length===0`, nil),
+	); err != nil {
+		t.Fatalf("navigate during running request: %v", err)
+	}
+	close(releaseSlow)
+	var validAfterNavigation bool
+	if err := chromedp.Run(ctx,
+		chromedp.Poll(`window.slowDone`, nil),
+		chromedp.Evaluate(`document.querySelector('#responses').children.length===0 && location.search==='?new=1'`, &validAfterNavigation),
+	); err != nil {
+		t.Fatal(err)
+	}
+	if !validAfterNavigation {
+		t.Fatal("late response replaced the new chat")
+	}
+
 }

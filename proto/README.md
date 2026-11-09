@@ -1,19 +1,19 @@
 # Protocol contracts
 
-`assistant/v1/assistant.proto` is the initial **draft** assistant interface.
+`assistant/v1/assistant.proto` is the initial assistant interface.
 It declares ListAgents, ListThreads, ReadThread and Ask. Clients discover an agent,
 list/read its personal threads, then ask a question using the existing `thread`
 identifier or omit it to start a new thread. The implementation belongs in
-`agent/`; server composition will register its authenticated MUCP boundary.
-There is no `service/assistant` package and no public MUCP listener yet.
+`agent/`; server composition registers its authenticated MUCP boundary.
+There is no `service/assistant` package. `/mucp` is the public HTTPS/JSON adapter.
 
-The schema compiles, but existing Android/PWA clients still use their current
-HTTPS routes. These messages are not a drop-in replacement for that JSON.
-See [MUCP](../docs/MUCP.md) for architecture and the binding work still required.
+Android uses generated Java types; the focused PWA uses ordinary JSON for Ask and
+pending recovery. Legacy routes remain compatible. See [MUCP](../docs/MUCP.md)
+for the exact headers, authentication, errors and recovery rules.
 
 ## Contract and wire format
 
-Proto supplies concrete types and operation signatures. The planned external MUCP
+Proto supplies concrete types and operation signatures. The external MUCP
 binding uses HTTPS and human-readable JSON with protobuf JSON mapping. Generated
 Go/Java code is optional for clients; binary RPC and gRPC are not requirements.
 The draft rename from `conversation_id` to `thread` retains the field numbers;
@@ -42,7 +42,7 @@ no public binding or client has shipped using the former JSON name.
   oversized input rather than copy the legacy HTTP handler's truncation behaviour.
 - RPC errors use MUCP's error mechanism, not success-shaped response bodies.
   Authentication, permission, missing-resource, invalid-input and quota failures
-  must retain distinct outcomes. Exact wire error codes await binding tests.
+  must retain distinct outcomes. Wire errors are documented in MUCP.
 - There is no idempotency or durable operation ID in this initial interface.
   Do not retry an ambiguous Ask automatically: execution may have taken place.
   A disconnect does not prove cancellation, rollback or a refund.
@@ -66,12 +66,12 @@ semantics are implemented. Adding an RPC declaration does not make it supported.
 | ListAgents | `GET /agent?view=agents` | Public descriptors and `public_voice` capability |
 | Ask | `POST /agent/<slug>` | Resolve opaque agent ID; retain existing execution/permissions |
 | thread | `thread` | Ownership and selected-agent binding |
-| ListThreads / ReadThread | Internal thread store and existing web chat views | Authorised personal-history projection and opaque pagination; no equivalent public MUCP endpoint yet |
+| ListThreads / ReadThread | Internal thread store and existing web chat views | Authorised personal-history projection and opaque pagination and pending recovery |
 | PERSONAL / PUBLIC | `public_only` | Explicit mode validation and capability check |
 | voice | `context.voice` | Presentation hint only |
 | content | `results` | Convert known kinds; preserve other resources as safe references |
 
-The future adapter must call the existing execution path, not make a second
+The adapter calls the existing execution path, rather than making a second
 agent loop or bypass account, tool and billing gates. The legacy routes stay
 compatible while clients migrate. Tool-service contracts are outside this change.
 
@@ -84,8 +84,8 @@ protoc -I proto --descriptor_set_out=/tmp/mu-assistant.pb --include_imports \
   proto/assistant/v1/assistant.proto
 ```
 
-CI compiles the schema to a descriptor set.
-Generated client bindings are not committed until a client consumes them.
+CI compiles the schema and checks committed Go types for drift. Android generates
+Java types at build time using protoc 4.31.1 (compiler 31.1).
 For Go, use protoc-gen-go v1.36.11 with `--go_out` and
 `--go_opt=paths=source_relative`. That generates message types, not gRPC or MUCP
 handlers. RPC glue must use go-micro's compatible generator or an adapter proven

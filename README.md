@@ -36,14 +36,12 @@ binary, using Go Micro as its underlying framework.
       +----------------------+
 ```
 
-(*) MUCP's public client binding is in design. Today's clients use the existing
-HTTPS API. The draft protobuf interface defines shared types; it does not require
-binary RPC, generated clients or a protobuf runtime in the browser.
+(*) MUCP uses readable JSON over HTTPS at `/mucp`. Proto defines shared Go/Java
+message types; binary RPC and generated browser clients are not required.
 
 See [Architecture](docs/ARCHITECTURE.md) for the layers and assistant interaction,
-[MUCP](docs/MUCP.md) for the protocol design, and [contracts](proto/README.md) for
-the draft interface. These documents distinguish implemented behaviour from the
-planned client binding.
+[MUCP](docs/MUCP.md) for the wire binding and recovery rules, and
+[contracts](proto/README.md) for the assistant interface.
 
 ## Purpose
 

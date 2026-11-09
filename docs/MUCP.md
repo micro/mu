@@ -1,8 +1,8 @@
 # Micro Communication Protocol (MUCP)
 
-Status: design draft. Mu already uses go-micro's RPC client/server internally.
-The initial assistant protobuf interface is drafted; native/browser MUCP bindings
-remain proposed; existing clients continue to use the current HTTPS API.
+Status: initial HTTPS/JSON binding implemented at `/mucp`. Android uses generated
+Java types; the focused PWA sends ordinary JSON. Mu continues to use go-micro
+internally. Streaming, cancellation and additional transports remain future work.
 
 ## Purpose
 
@@ -85,11 +85,10 @@ metadata supplied by a caller is not authentication.
 
 ## Assistant contract
 
-The initial draft is `proto/assistant/v1/assistant.proto`, with protobuf package
+The initial contract is `proto/assistant/v1/assistant.proto`, with protobuf package
 `mu.assistant.v1`. It defines ListAgents, ListThreads, ReadThread and unary Ask with typed results
-and explicit personal/public access modes. No public binding is implemented yet.
-The table includes both draft operations and later lifecycle work; none is a
-registered public MUCP endpoint yet.
+and explicit personal/public access modes. All four operations are registered.
+The table also includes later lifecycle work, which is not yet supported.
 `proto/` owns public wire definitions, not runtime services or UI navigation.
 Generate Go and Android Java bindings from the same schema. Specify protobuf
 JSON mapping for browser clients, including enum, timestamp and integer handling.
@@ -140,26 +139,68 @@ synthesis can remain local; the initial contract does not require raw audio.
 - Define schema evolution, unsupported operations/content and capability negotiation.
   Reserve removed protobuf field numbers; do not reuse them for new meanings.
 
-## Transport and implementation plan
+## HTTPS binding: mucp/1
 
-Start with human-readable JSON over HTTPS. Test which go-micro metadata and
-dispatch conventions can be reused by native Android and ordinary browser APIs. A browser
-adapter may be necessary; ordinary HTTP support does not establish compatibility
-with browser bidirectional streaming. Document framing, authentication, errors,
-stream termination and supported operations for each binding. Do not advertise
-transport independence as identical capabilities on every transport.
+`GET /mucp` returns public capabilities without account data. Calls are `POST /mucp`
+with `Content-Type: application/json` and exactly one of each header:
 
-1. Inventory the existing client requests and typed results; preserve their routes
-   while introducing a compatible adapter over the same execution path.
-2. Validate the draft schema against existing agent/thread behaviour and specify
-   exact URL/header, JSON, error and version-negotiation rules for the HTTPS binding.
-3. Prove an authenticated request, structured response and cancellation end to end
-   against Mu using go-micro's existing implementation.
-4. Add shared wire fixtures and conformance tests for Android and browser clients,
-   including permission failures, unknown content, duplicate submission and
-   disconnect recovery before claiming those behaviours are supported.
-5. Migrate both clients incrementally. Add further transports only for a concrete
-   client requirement.
+| Header | Value |
+| --- | --- |
+| Micro-Protocol | `mucp/1` |
+| Micro-Service | `assistant` |
+| Micro-Endpoint | `Assistant.ListAgents`, `Assistant.ListThreads`, `Assistant.ReadThread` or `Assistant.Ask` |
+| Micro-Id | Caller-generated 16–128 ASCII letters, digits, hyphens or underscores |
+| Authorization | `Bearer <token>` for native/programmatic clients |
+
+Browser clients may use the same-origin session cookie and `X-CSRF-Token`.
+An explicit token overrides cookies. Reads require read access; Ask requires write
+access, with `api:agent` for scoped product tokens. Service-only tokens cannot run
+agents. Identity is derived from credentials; caller-supplied account metadata is
+never forwarded to internal go-micro services.
+
+Example body for `Assistant.Ask`:
+
+```json
+{"agentId":"micro","thread":"","prompt":"What is the weather?","mode":"ACCESS_MODE_PERSONAL","voice":false}
+```
+
+Responses echo protocol, service, endpoint and correlation ID. Successful responses
+are protobuf JSON. Requests reject unknown fields and unknown access modes; bodies
+are limited to 64 KiB. Clients must tolerate additive response fields. No SDK is
+required. Native Java and generated Go types use the same JSON mapping.
+
+Failures use non-2xx HTTP status, `Micro-Error`, and a JSON `error` object with
+`code` and `message`. Authentication/authorization failures retain the existing
+product API error body. Important statuses are 400 invalid arguments, 401 sign-in,
+403 permission/verification, 404 inaccessible resource, 402 credit, 409 acceptance
+conflict, 413 body size, 415 encoding, 429 rate limit and 504 pending outcome.
+There is no automatic mutation retry or fallback to a legacy endpoint.
+
+PERSONAL Ask submits to the existing durable reply queue and waits up to 120 seconds.
+Disconnecting stops that HTTP wait, not execution. A known accepted thread is also
+returned in `Micro-Thread`, including pending-outcome errors. If acceptance was lost,
+use ListThreads to find the new chat. ReadThread returns messages and `pending`;
+clients can poll it and recover the saved reply. PUBLIC remains an authenticated,
+metered, stateless restricted question and does not create a recoverable thread.
+
+Request IDs correlate exchanges. The existing personal queue deduplicates retained
+submissions, but this is not a general, permanent idempotency guarantee. Never
+resend an ambiguous Ask automatically. Restarted in-flight work records interruption
+rather than blindly replaying tools. Cancellation is not implemented.
+
+Pagination tokens are signed, scoped to account/operation/filter, and expire after
+15 minutes or a runtime restart. Restart pagination on an expired token, deduplicating
+by record ID. These are live pages, not snapshots. ReadThread is oldest-first.
+
+Android offers Chats, New chat and paginated history. The focused PWA uses MUCP for
+Ask and pending recovery, and retains the shared server-rendered chat pages for safe
+Markdown and widgets. Its agent/chat navigation is still server-rendered; it is not
+a standalone JavaScript app. The broader runtime console retains its existing API.
+
+Go types are committed and checked for generation drift. Java types are generated
+by the Android build from the same proto. The adapter is implemented in `agent/`,
+registered by `internal/server`, and calls the existing agent execution path. It
+does not expose the internal RPC listener or introduce another agent/tool loop.
 
 Assistant-specific requirements stay in Mu. Changes to go-micro must be justified
 by general framework needs. This work does not require a new broker, network

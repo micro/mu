@@ -34,8 +34,9 @@ into a running system that clients can use.
                                                       +-------------------+
 ```
 
-(*) The external MUCP binding is proposed. Current clients use existing HTTPS
-handlers; the server already uses go-micro with an in-memory transport internally.
+(*) Android uses the MUCP HTTPS/JSON binding. The focused PWA uses it for Ask and
+pending recovery, with shared server-rendered views for navigation and content.
+The server uses go-micro with an in-memory transport internally.
 The web console is server-rendered composition, not currently an independent MUCP
 client. It remains useful for overview, administration and direct service use.
 
@@ -58,7 +59,7 @@ Services do not call each other or launch agent reasoning; they publish facts an
 higher-level subscribers decide what work to run. Server composition may reach
 both layers; that does not authorise upward dependencies from services.
 
-`proto/assistant/v1` owns the draft assistant contract. Future capability contracts
+`proto/assistant/v1` owns the assistant contract. Future capability contracts
 may live under `proto/service/<name>/v1`; wholesale service extraction is deferred
 until the assistant binding demonstrates interoperability. The existing service
 Specs and implementation types remain authoritative for current APIs and tools.
@@ -86,8 +87,7 @@ Specs and implementation types remain authoritative for current APIs and tools.
    | render / speak             |                              |
 ```
 
-This is the intended client contract. The draft declares discovery and thread
-reads alongside Ask, but no MUCP adapter is registered yet. Existing execution
+The `/mucp` adapter implements discovery, personal thread reads and Ask. Existing execution
 already resolves agents, checks permissions, uses tools and retains personal
 threads. `thread` is the existing identifier for what the UI calls a conversation;
 there is no second conversation-ID namespace. A request ID identifies an exchange,

@@ -208,6 +208,7 @@ func authRequired() map[string]bool {
 		"/about":                         false, // Public - what this is, for somebody who does not know yet
 		"/pricing":                       false, // Public - what it costs, which is what a stranger is deciding on
 		"/help":                          false,
+		"/mucp":                          false,
 		"/install":                       false, // Public - run your own instance
 		"/mcp":                           false, // Public - MCP tools page
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
@@ -425,6 +426,7 @@ func registerRoutes() {
 	http.HandleFunc("/brief", agent.BriefHandler)
 	http.HandleFunc("/home/apps", home.AppsHandler)
 	http.HandleFunc("/home/library", home.LibraryHandler)
+	http.HandleFunc("/mucp", agent.MUCPHandler)
 	http.HandleFunc("/assistant", agent.AssistantHandler)
 	http.HandleFunc("/assistant/", agent.AssistantHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this

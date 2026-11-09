@@ -5,6 +5,21 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class ClientTest {
+    @Test public void sharedWireFixturePreservesUnknownContentFallback() throws Exception {
+        String raw;
+        try (java.io.InputStream in=getClass().getResourceAsStream("/ask-response.json")) {
+            assertNotNull(in); raw=new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        mu.client.proto.assistant.v1.AskResponse.Builder response=mu.client.proto.assistant.v1.AskResponse.newBuilder();
+        com.google.protobuf.util.JsonFormat.parser().ignoringUnknownFields().merge(raw,response);
+        assertEquals("thread-example",response.getThread());
+        JSONObject mapped=new JSONObject(com.google.protobuf.util.JsonFormat.printer().print(response.build()));
+        org.json.JSONArray items=AgentApi.results(mapped.getJSONArray("content"));
+        assertEquals("article",items.getJSONObject(0).getString("kind"));
+        assertEquals("A future widget can still be read",items.getJSONObject(1).getString("title"));
+        assertEquals("text",items.getJSONObject(1).getString("kind"));
+    }
+
     @Test public void acceptsOnlyServerOrigins() {
         assertEquals("https://micro.mu", AgentApi.origin("https://micro.mu/"));
         assertEquals("https://example.org:8443", AgentApi.origin("https://example.org:8443"));

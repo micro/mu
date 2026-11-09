@@ -33,6 +33,7 @@ message Agent {
   string id = 1;
   string name = 2;
   string description = 3;
+  string slug = 4; // Navigation/legacy selection hint; id remains authoritative.
 }
 
 // Personal assistant threads only; never a raw listing of the thread store.
@@ -68,6 +69,7 @@ message ReadThreadResponse {
   // side effects. Tokens must be reauthorised; they never grant thread access.
   repeated Message messages = 2;
   string next_page_token = 3;
+  bool pending = 4; // Runtime has an outstanding durable reply for this thread.
 }
 
 message Message {
