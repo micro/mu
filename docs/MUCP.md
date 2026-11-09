@@ -1,8 +1,8 @@
 # Micro Communication Protocol (MUCP)
 
 Status: design draft. Mu already uses go-micro's RPC client/server internally.
-The public assistant contract and native/browser MUCP bindings described below
-are proposed; existing clients continue to use the current HTTPS API.
+The initial assistant protobuf interface is drafted; native/browser MUCP bindings
+remain proposed; existing clients continue to use the current HTTPS API.
 
 ## Purpose
 
@@ -52,8 +52,10 @@ metadata supplied by a caller is not authentication.
 
 ## Assistant contract
 
-The proposed source of truth is `proto/assistant/v1/assistant.proto`, with
-protobuf package `mu.assistant.v1`. This schema has not been introduced yet.
+The initial draft is `proto/assistant/v1/assistant.proto`, with protobuf package
+`mu.assistant.v1`. It defines ListAgents and unary Ask with typed results and
+explicit personal/public access modes. No public binding is implemented yet.
+The remaining operation families below are the roadmap, not declared RPCs.
 `proto/` owns public wire definitions, not runtime services or UI navigation.
 Generate Go and Android Java bindings from the same schema. Specify protobuf
 JSON mapping for browser clients, including enum, timestamp and integer handling.
@@ -69,7 +71,7 @@ Do not treat the current hand-written JSON API as automatically protobuf JSON.
 | Cancellation | Request cancellation and report its actual outcome |
 | Updates | Resume authorised conversation/operation events after disconnection |
 
-Exact RPC names and protobuf field numbers will be defined in the schema.
+The schema defines RPC names and field numbers for the initial two operations.
 Conversation and operation IDs belong in message bodies because their lifetimes
 extend beyond an RPC. Account identity comes from verified credentials. Existing
 MUCP metadata stays in headers rather than being duplicated in every body.
