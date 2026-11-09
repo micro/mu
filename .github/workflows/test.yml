@@ -58,7 +58,17 @@ jobs:
         run: go test ./internal/app -run '^TestMobileNavigationDrawer$' -count=3 -timeout=5m
 
       - name: Test focused assistant in Chrome
+        env:
+          UI_SCREENSHOTS: ${{ runner.temp }}/assistant-screenshots
         run: go test ./agent -run '^TestFocusedAssistantBrowser$' -count=1 -timeout=3m
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: assistant-screenshots
+          path: ${{ runner.temp }}/assistant-screenshots
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Race-test security boundaries
         run: go test -race ./internal/auth ./internal/hosts ./internal/service ./internal/api ./internal/server ./service/browser ./service/shell ./x402/billing -short -count=1
