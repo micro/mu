@@ -11,6 +11,16 @@ public class VoiceCommandsTest {
         assertEquals("", VoiceCommands.afterWake("Hey Micro."));
         assertEquals("play K-pop demon hunters", VoiceCommands.afterWake("Hey Micro play K-pop demon hunters"));
     }
+    @Test public void wakeFollowsSelectedAgentAndRequiresWholeName() {
+        assertEquals("", VoiceCommands.afterWake("Hey Malten.", "Malten"));
+        assertEquals("help me reflect", VoiceCommands.afterWake("HEY MALTEN, help me reflect", "Malten"));
+        assertNull(VoiceCommands.afterWake("hey micro help me reflect", "Malten"));
+        assertNull(VoiceCommands.afterWake("hey maltenish help", "Malten"));
+        assertNull(VoiceCommands.afterWake("someone said hey malten help", "Malten"));
+        assertEquals("read the headlines", VoiceCommands.afterWake("hey   daily   guide read the headlines", "Daily Guide"));
+        assertNull(VoiceCommands.afterWake("hey anything help", ".*"));
+        assertNull(VoiceCommands.afterWake("hey help", ""));
+    }
     @Test public void playbackCannotIssueAccountActions() {
         assertTrue(VoiceCommands.playbackControl("pause"));
         assertTrue(VoiceCommands.playbackControl("Stop listening"));

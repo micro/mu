@@ -18,10 +18,14 @@ public class AccountScreenTest {
         Vault vault = new Vault(context); vault.clear();
         vault.write(new org.json.JSONObject().put("agent", "micro").put("threads", new org.json.JSONObject().put("micro", "micro-thread").put("malten", "malten-thread")));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> activity.selectAgent("malten", "Malten", "For reflection"));
+            scenario.onActivity(activity -> {
+                activity.selectAgent("malten", "Malten", "For reflection");
+                assertEquals("Hands-free “Hey Malten” while open", ((android.widget.Switch) activity.findViewById(R.id.wake)).getText().toString());
+            });
             scenario.recreate();
             scenario.onActivity(activity -> {
                 assertEquals("Malten", ((Button) activity.findViewById(R.id.agent_picker)).getText().toString());
+                assertEquals("Hands-free “Hey Malten” while open", ((android.widget.Switch) activity.findViewById(R.id.wake)).getText().toString());
                 assertEquals("For reflection", ((android.widget.TextView) activity.findViewById(R.id.agent_description)).getText().toString());
             });
             org.json.JSONObject saved = vault.read();
@@ -30,6 +34,26 @@ public class AccountScreenTest {
             assertEquals("malten-thread", saved.getJSONObject("threads").getString("malten"));
         } finally { vault.clear(); }
     }
+    @Test public void tappingOutsideComposerClearsFocusWithoutLosingDraft() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                EditText input = activity.findViewById(R.id.prompt);
+                input.setText("Unsent draft"); input.requestFocus();
+                assertTrue(input.hasFocus());
+                android.graphics.Rect bounds = new android.graphics.Rect();
+                input.getGlobalVisibleRect(bounds);
+                long now = android.os.SystemClock.uptimeMillis();
+                android.view.MotionEvent inside = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.centerY(), 0);
+                activity.dispatchTouchEvent(inside); inside.recycle();
+                assertTrue(input.hasFocus());
+                android.view.MotionEvent outside = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_DOWN, 1, 1, 0);
+                activity.dispatchTouchEvent(outside); outside.recycle();
+                assertFalse(input.hasFocus());
+                assertEquals("Unsent draft", input.getText().toString());
+            });
+        }
+    }
+
     @Test public void invalidAgentLinkCannotSwitchServer() {
         android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         new Vault(context).clear();

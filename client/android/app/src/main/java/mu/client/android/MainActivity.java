@@ -125,6 +125,21 @@ public class MainActivity extends Activity {
         });
     }
 
+    @Override public boolean dispatchTouchEvent(MotionEvent event) {
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && prompt != null && prompt.hasFocus()) {
+            android.graphics.Rect bounds = new android.graphics.Rect();
+            prompt.getGlobalVisibleRect(bounds);
+            if (!bounds.contains((int) event.getRawX(), (int) event.getRawY())) dismissKeyboard();
+        }
+        return super.dispatchTouchEvent(event);
+    }
+    private void dismissKeyboard() {
+        prompt.clearFocus();
+        android.view.inputmethod.InputMethodManager keyboard =
+                (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (keyboard != null) keyboard.hideSoftInputFromWindow(prompt.getWindowToken(), 0);
+    }
+
     private boolean signedIn() {
         return !account.optString("token").isEmpty() && account.optLong("expires") > System.currentTimeMillis();
     }
@@ -143,6 +158,7 @@ public class MainActivity extends Activity {
         settings.setText(signedIn() ? "Account" : "Sign in");
         settings.setEnabled(!busy); newChat.setEnabled(!busy);
         wake.setEnabled(!busy && signedIn() && agentAvailable);
+        wake.setText(getString(R.string.wake, agentName));
         speak.setText(listening || speaking ? R.string.stop : R.string.speak);
     }
     private void message(String who, String text) {
@@ -162,6 +178,7 @@ public class MainActivity extends Activity {
         if (!agentAvailable) { status.setText("Choose an available agent first."); return; }
         String text = prompt.getText().toString().trim();
         if (text.isEmpty()) return;
+        dismissKeyboard();
         boolean spokenRequest = voiceRequest;
         voiceRequest = false;
         if (localCommand(text)) { prompt.setText(""); resumeWake(); return; }
@@ -223,7 +240,7 @@ public class MainActivity extends Activity {
                 public void detected() {
                     controlsOnly = speaking || video.playing();
                     speak.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
-                    status.setText("Heard ‘Hey Micro’. Listening…");
+                    status.setText("Heard ‘Hey " + agentName + "’. Listening…");
                 }
                 public void partial(String text) {
                     status.setText(text.isEmpty() ? "Listening… Say your request." : "Hearing: “" + text + "”");
@@ -243,8 +260,8 @@ public class MainActivity extends Activity {
         if (!voice.ready()) { status.setText("Preparing offline voice…"); return; }
         pendingVoice = -1;
         listening = true; update();
-        status.setText(wakeOnly ? "Listening locally for “Hey Micro”…" : "Listening… Pause when finished.");
-        voice.listen(wakeOnly);
+        status.setText(wakeOnly ? "Listening locally for “Hey " + agentName + "”…" : "Listening… Pause when finished.");
+        voice.listen(wakeOnly, agentName);
     }
     private void resumeWake() {
         if (foreground && !busy && wake.isChecked() && prompt.length() == 0) startVoice(true);
