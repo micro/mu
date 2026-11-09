@@ -399,7 +399,7 @@ async function mucp(operation,body,id=crypto.randomUUID()){
  const response=await fetch('/mucp',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(135000),headers:{'Content-Type':'application/json','Micro-Protocol':'mucp/1','Micro-Service':'assistant','Micro-Endpoint':'Assistant.'+operation,'Micro-Id':id,'X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify(body)});
  const accepted=response.headers.get('Micro-Thread');
  if(accepted){thread=accepted;remember();}
- if(!response.ok)throw Error(await failure(response));
+ if(!response.ok){const error=Error(await failure(response));error.status=response.status;error.acceptedThread=accepted;throw error;}
  if(response.headers.get('Micro-Protocol')!=='mucp/1'||response.headers.get('Micro-Id')!==id)throw Error('The runtime needs an update to support this client.');
  return response.json();
 }
@@ -428,7 +428,7 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
      result={waiting:true};
     }else response=await fetch('/agent/pending?thread='+encodeURIComponent(targetThread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
     if(response?.ok&&!response.redirected)result=await response.json();
-   }catch{}
+   }catch(error){result=null;if([400,401,403,404].includes(error.status))throw error;}
    if(version!==viewVersion)return;
    if(response&&response.status===404)throw Error('Conversation not found.');
    if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to continue.');
@@ -447,7 +447,10 @@ async function assistant(command,answer,version){
   receipt=null;
   submission=mucp('Ask',{prompt:command,thread,agentId:form.dataset.agent||'',mode:'ACCESS_MODE_PERSONAL'});
   let result;
-  try{result=await submission;}finally{submission=null;}
+  try{result=await submission;}catch(error){
+   if(error.status===504&&error.acceptedThread&&version===viewVersion){await waitForAnswer(answer,undefined,version,error.acceptedThread);return;}
+   throw error;
+  }finally{submission=null;}
   if(version!==viewVersion)return;
   thread=result.thread;remember(command.slice(0,80));form.dispatchEvent(new Event('message-accepted'));
   answer.textContent=result.text||'';

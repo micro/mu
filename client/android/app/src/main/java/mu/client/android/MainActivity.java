@@ -24,6 +24,7 @@ public class MainActivity extends Activity {
     private Vault vault;
     private JSONObject account = new JSONObject();
     private String thread = "", agent = "micro";
+    private final java.util.Set<String> displayedMessages = new java.util.HashSet<>();
     private boolean busy, foreground, listening, ttsReady, destroyed, speaking;
     private LinearLayout messages;
     private ScrollView scroll;
@@ -470,19 +471,21 @@ public class MainActivity extends Activity {
     private void restoreChat(String page, boolean clear) {
         if (busy || thread.isEmpty()) return;
         stopAudio(); busy=true; update();status.setText("Loading chat…");
-        final String server=account.optString("server"),token=account.optString("token"),target=thread;
+        final String server=account.optString("server"),token=account.optString("token"),target=thread,selected=agent;
         worker.execute(()->{
             try {
                 JSONObject response=AgentApi.history(server,token,target,page);
+                if(!response.getJSONObject("thread").optString("agentId").equals(selected)) throw new java.io.IOException("This chat belongs to a different agent. Select it from Chats.");
                 runOnUiThread(()->{
                     if (destroyed) return;
                     busy=false;
                     if(!thread.equals(target)){update();return;}
-                    if(clear){video.close();messages.removeAllViews();results=new JSONArray();lastReply="";}
+                    if(clear){video.close();messages.removeAllViews();displayedMessages.clear();results=new JSONArray();lastReply="";}
                     JSONArray history=response.optJSONArray("messages");
                     try {
                         for(int i=0;history!=null && i<history.length();i++){
                             JSONObject m=history.getJSONObject(i);
+                            if(!displayedMessages.add(m.getString("id"))) continue;
                             boolean assistant=m.optString("role").equals("ROLE_AGENT");
                             message(assistant?agentName:"You",m.optString("text"));
                             if(assistant){lastReply=m.optString("text");results=AgentApi.results(m.optJSONArray("content"));showResults();}
@@ -496,7 +499,7 @@ public class MainActivity extends Activity {
                     boolean pending=response.optBoolean("pending");
                     status.setText(pending?"Working… Your reply will appear here.":"");update();
                     if(pending && next.isEmpty()) scroll.postDelayed(()->{
-                        if(!destroyed && foreground && !busy && thread.equals(target)) restoreChat("",true);
+                        if(!destroyed && foreground && !busy && thread.equals(target)) restoreChat(page,false);
                     },3000);
                 });
             }catch(Exception e){runOnUiThread(()->{if(!destroyed){busy=false;update();status.setText(e.getMessage()+" Open Chats to try again.");}});}

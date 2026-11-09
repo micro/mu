@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -37,6 +38,8 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 	}
 	chat := thread.Open(owner, thread.WebClient, "focused-browser-chat")
 	thread.Name(owner, chat.ID, "Browser conversation")
+	var recoveryReads atomic.Int32
+	var failRender atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/mu.css", "/mu.js":
@@ -45,9 +48,20 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]string{"account": owner, "type": "user"})
 		case "/mucp":
-			if r.Method != "POST" || r.Header.Get("Micro-Protocol") != "mucp/1" || r.Header.Get("Micro-Service") != "assistant" || r.Header.Get("Micro-Endpoint") != "Assistant.Ask" {
+			if r.Method != "POST" || r.Header.Get("Micro-Protocol") != "mucp/1" || r.Header.Get("Micro-Service") != "assistant" || (r.Header.Get("Micro-Endpoint") != "Assistant.Ask" && r.Header.Get("Micro-Endpoint") != "Assistant.ReadThread") {
 				t.Error("client did not use MUCP")
 				http.Error(w, "bad request", 400)
+				return
+			}
+			if r.Header.Get("Micro-Endpoint") == "Assistant.ReadThread" {
+				if recoveryReads.Add(1) == 1 {
+					failRender.Store(true)
+					thread.Add(thread.Message{Account: owner, Thread: chat.ID, Role: thread.RoleAgent, Text: "**Recovered** reply"})
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Micro-Protocol", "mucp/1")
+				w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
+				json.NewEncoder(w).Encode(map[string]any{"pending": false, "messages": []any{}})
 				return
 			}
 			var request map[string]any
@@ -61,6 +75,10 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 			w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
 			json.NewEncoder(w).Encode(map[string]string{"thread": chat.ID, "agentId": "micro", "text": "**Forecast**\n\n- Clear skies"})
 		default:
+			if failRender.Swap(false) {
+				http.Error(w, "temporary render failure", 503)
+				return
+			}
 			r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 			agent.AssistantHandler(w, r)
 		}
@@ -146,4 +164,12 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 			t.Fatal("chat navigation")
 		}
 	}
+	thread.Add(thread.Message{Account: owner, Thread: chat.ID, Role: thread.RolePerson, Text: "A request accepted before disconnect"})
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(server.URL+"/assistant/micro?session="+chat.ID),
+		chromedp.Poll(`Array.from(document.querySelectorAll('#responses .answer strong')).some(e=>e.textContent==='Recovered')`, nil),
+	); err != nil {
+		t.Fatalf("MUCP reconnect recovery: %v", err)
+	}
+
 }
