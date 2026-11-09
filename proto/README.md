@@ -1,14 +1,23 @@
 # Protocol contracts
 
 `assistant/v1/assistant.proto` is the initial **draft** assistant interface.
-It declares two unary operations: list accessible agents and ask a question,
-optionally continuing a personal conversation. The implementation belongs in
+It declares ListAgents, ListThreads, ReadThread and Ask. Clients discover an agent,
+list/read its personal threads, then ask a question using the existing `thread`
+identifier or omit it to start a new thread. The implementation belongs in
 `agent/`; server composition will register its authenticated MUCP boundary.
 There is no `service/assistant` package and no public MUCP listener yet.
 
 The schema compiles, but existing Android/PWA clients still use their current
 HTTPS routes. These messages are not a drop-in replacement for that JSON.
 See [MUCP](../docs/MUCP.md) for architecture and the binding work still required.
+
+## Contract and wire format
+
+Proto supplies concrete types and operation signatures. The planned external MUCP
+binding uses HTTPS and human-readable JSON with protobuf JSON mapping. Generated
+Go/Java code is optional for clients; binary RPC and gRPC are not requirements.
+The draft rename from `conversation_id` to `thread` retains the field numbers;
+no public binding or client has shipped using the former JSON name.
 
 ## Behaviour
 
@@ -19,6 +28,13 @@ See [MUCP](../docs/MUCP.md) for architecture and the binding work still required
   conversation owned by the caller and bound to the selected agent. Omitting
   `agent_id` selects the runtime default; it does not select a foreign agent from
   the conversation. The adapter must validate both ownership and agent binding.
+- ListThreads/ReadThread expose only the caller's personal assistant history and
+  accessible agents, excluding mail, group threads and internal execution records.
+  Listing is ordered by updated time descending then ID ascending; message reads
+  by time then ID ascending. Reads do not mark threads seen. Page tokens are
+  opaque and bound to identity, operation and filter/thread, rechecked on every
+  call. Invalid/expired tokens are errors, not silently restarted pages. Live
+  pagination is not a frozen snapshot; clients deduplicate by ID.
 - Access mode is explicit. Unknown or unspecified values fail closed. PUBLIC is
   still authenticated and billed but excludes private context and does not retain
   a conversation. Discover support before use; never fall back to PERSONAL.
@@ -39,7 +55,7 @@ See [MUCP](../docs/MUCP.md) for architecture and the binding work still required
   to other origins. Validate media IDs, MIME types and provider restrictions.
   A video result alone does not authorise autoplay or a hidden YouTube player.
 
-Streaming, cancellation, history pagination, subscriptions and confirmation
+Streaming, cancellation, subscriptions and confirmation
 operations are deliberately not declared until their lifecycle and permission
 semantics are implemented. Adding an RPC declaration does not make it supported.
 
@@ -49,7 +65,8 @@ semantics are implemented. Adding an RPC declaration does not make it supported.
 | --- | --- | --- |
 | ListAgents | `GET /agent?view=agents` | Public descriptors and `public_voice` capability |
 | Ask | `POST /agent/<slug>` | Resolve opaque agent ID; retain existing execution/permissions |
-| conversation_id | `thread` | Ownership and selected-agent binding |
+| thread | `thread` | Ownership and selected-agent binding |
+| ListThreads / ReadThread | Internal thread store and existing web chat views | Authorised personal-history projection and opaque pagination; no equivalent public MUCP endpoint yet |
 | PERSONAL / PUBLIC | `public_only` | Explicit mode validation and capability check |
 | voice | `context.voice` | Presentation hint only |
 | content | `results` | Convert known kinds; preserve other resources as safe references |
