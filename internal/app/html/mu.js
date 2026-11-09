@@ -2247,6 +2247,7 @@ window.addEventListener('pagehide', () => { currentRoomId=null; if(roomWs){const
 
 // One live work projection for personal chats, Inbox and shared rooms.
 (function(){
+ if(typeof document === 'undefined')return;
  const inFlight=new WeakSet();
  async function refresh(root){
   if(inFlight.has(root)||document.hidden||!navigator.onLine)return;
@@ -2287,3 +2288,71 @@ if (typeof document !== 'undefined') {
   downloads.prepend(android);
  }
 }
+
+// Voice is opt-in and capability-detected. Dictation fills the composer for
+// review; only Send executes an agent request. Browsers may use remote speech
+// recognition, so explain that before requesting microphone access.
+(function () {
+ if (typeof document === 'undefined') return;
+ const controls = document.querySelector('[data-voice-controls]');
+ if (!controls) return;
+ const dictate = controls.querySelector('[data-dictate]');
+ const read = controls.querySelector('[data-read-reply]');
+ const stop = controls.querySelector('[data-stop-voice]');
+ const status = document.querySelector('[data-voice-status]');
+ const input = document.getElementById('command-input');
+ const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+ let recognition = null;
+ function reset() {
+  if (recognition) { recognition.abort(); recognition = null; }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  stop.hidden = true;
+  dictate.disabled = false;
+ }
+ if (Recognition) {
+  dictate.hidden = false;
+  dictate.addEventListener('click', () => {
+   if (!window.confirm('Your browser may send audio to its speech provider. Start dictation?')) return;
+   reset();
+   const session = new Recognition();
+   recognition = session;
+   session.lang = document.documentElement.lang || 'en';
+   session.interimResults = true;
+   const before = input.value;
+   session.onstart = () => { status.textContent = 'Listening…'; stop.hidden = false; dictate.disabled = true; };
+   session.onresult = event => {
+    if (recognition !== session) return;
+    const transcript = Array.from(event.results).map(result => result[0].transcript).join(' ');
+    input.value = (before ? before + ' ' : '') + transcript;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    status.textContent = 'Listening… Your words appear in the message box.';
+   };
+   session.onerror = event => { status.textContent = event.error === 'not-allowed' ? 'Microphone access was denied. You can still type.' : 'Dictation stopped. Check your message or try again.'; };
+   session.onend = () => {
+    if (recognition !== session) return;
+    recognition = null; stop.hidden = true; dictate.disabled = false;
+    if (status.textContent.startsWith('Listening')) status.textContent = 'Review your message, then send it.';
+   };
+   try { session.start(); } catch (_) { reset(); status.textContent = 'Dictation is unavailable. You can still type.'; }
+  });
+ }
+ if (window.speechSynthesis) {
+  read.hidden = false;
+  read.addEventListener('click', () => {
+   reset();
+   const replies = document.querySelectorAll('#responses .answer .message-body');
+   const reply = replies[replies.length - 1];
+   if (!reply) { status.textContent = 'There is no reply to read yet.'; return; }
+   const utterance = new SpeechSynthesisUtterance(reply.innerText);
+   utterance.onend = () => { stop.hidden = true; status.textContent = ''; };
+   utterance.onerror = () => { stop.hidden = true; status.textContent = 'Playback stopped.'; };
+   stop.hidden = false; status.textContent = 'Reading reply…';
+   window.speechSynthesis.speak(utterance);
+  });
+ }
+ stop.addEventListener('click', () => { reset(); status.textContent = 'Stopped.'; });
+ document.getElementById('command-form').addEventListener('thread-leaving', () => { reset(); status.textContent = ''; });
+ document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
+ window.addEventListener('pagehide', reset);
+ document.getElementById('command-form').addEventListener('submit', reset);
+})();

@@ -38,13 +38,12 @@ func TestNavigationRedirectsTerminateThroughLegacyMiddleware(t *testing.T) {
 		http.Redirect(w, r, "/agent/micro?"+r.URL.RawQuery, http.StatusSeeOther)
 	})
 	mux.HandleFunc("/agent/", agent.Handler)
+	mux.HandleFunc("/assistant", agent.AssistantHandler)
+	mux.HandleFunc("/assistant/", agent.AssistantHandler)
 	// Same ordering as serve.go: root handler, then legacy redirects, then mux.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			IndexHandler(w, r)
-			return
-		}
-		if consoleRedirect(w, r) {
 			return
 		}
 		mux.ServeHTTP(w, r)
@@ -66,7 +65,7 @@ func TestNavigationRedirectsTerminateThroughLegacyMiddleware(t *testing.T) {
 		{"/", "/home"}, {"/home", "/home"}, {"/home/apps", "/home/apps"},
 		{"/agent", "/agent/micro"}, {"/agent/micro", "/agent/micro"},
 		{"/?session=" + th.ID, "/agent/micro"}, {"/home?session=" + th.ID, "/agent/micro"},
-		{"/agent/micro?session=" + th.ID, "/agent/micro"}, {"/assistant?session=" + th.ID, "/agent/micro"},
+		{"/agent/micro?session=" + th.ID, "/agent/micro"}, {"/assistant?session=" + th.ID, "/assistant/micro"},
 	} {
 		rsp, err := client.Get(srv.URL + tc.path)
 		if err != nil {
@@ -104,9 +103,6 @@ func TestServiceNavigationIsNotAnAdminOrAgentDetour(t *testing.T) {
 		r := httptest.NewRequest("GET", tc.path, nil)
 		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 		w := httptest.NewRecorder()
-		if consoleRedirect(w, r) {
-			t.Fatalf("service redirected: %s", tc.path)
-		}
 		tc.handler(w, r)
 		if w.Code != 200 {
 			t.Fatalf("%s: %d %s", tc.path, w.Code, w.Body.String())

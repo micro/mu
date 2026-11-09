@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/http/httptest"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -38,5 +39,21 @@ func TestStylesOnlyCacheMatchingContentVersion(t *testing.T) {
 		if w.Body.String() != Styles() {
 			t.Fatal("unexpected stylesheet")
 		}
+	}
+}
+
+// mu.js is served both as the page script and as the installed PWA worker.
+func TestScriptInitializesAsServiceWorker(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("Node unavailable")
+	}
+	script := `const fs=require('fs'), vm=require('vm'); const events=[];
+ vm.runInNewContext(fs.readFileSync('html/mu.js','utf8'), {self:{addEventListener:name=>events.push(name)}});
+ for (const name of ['fetch','install','activate','push','notificationclick']) {
+  if (!events.includes(name)) throw Error('Missing worker handler: '+name);
+ }`
+	if out, err := exec.Command(node, "-e", script).CombinedOutput(); err != nil {
+		t.Fatalf("worker startup: %v\n%s", err, out)
 	}
 }
