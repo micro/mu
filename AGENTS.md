@@ -6,11 +6,12 @@ the focused PWA are clients. The broader web console composes Home, Inbox, Agent
 and Services for overview and management. Go Micro is the underlying framework.
 
 See docs/ARCHITECTURE.md for ownership and interaction diagrams, and docs/MUCP.md
-for the proposed external protocol. Proto defines shared contracts/types; the
-planned client binding is human-readable JSON over HTTPS, not mandatory binary
+for the external protocol. Proto defines shared contracts/types; the
+client binding is human-readable JSON over HTTPS, not mandatory binary
 RPC. Generated Go/Java types and handwritten JSON clients must interoperate.
-Current clients still use existing HTTPS handlers; the draft schema is not an
-implemented public binding. The assistant implementation stays in agent/, with
+Android uses generated Java types over `/mucp`; the focused PWA uses JSON for Ask
+and pending recovery while retaining shared server-rendered navigation and content.
+The assistant implementation stays in agent/, with
 server composition registering the boundary; do not add service/assistant or
 allow bottom-layer services to invoke agent execution. Use the existing `thread`
 identifier rather than introducing a separate conversation ID.

@@ -94,7 +94,8 @@ public class MainActivity extends Activity {
         });
         speak.setOnClickListener(v -> { if (listening || speaking) stopAudio(); else startVoice(false); });
         settings.setOnClickListener(v -> connection());
-        newChat.setOnClickListener(v -> { stopAudio(); video.close(); results = new JSONArray(); lastReply = ""; pages.clear(); thread = ""; persistSelection(); messages.removeAllViews(); status.setText("New conversation with " + agentName); resumeWake(); });
+        newChat.setText("Chats");
+        newChat.setOnClickListener(v -> { if (signedIn()) chooseChat(""); else connection(); });
         wake.setOnCheckedChangeListener((v, enabled) -> { if (enabled) startVoice(true); else stopAudio(); });
         spoken.setOnCheckedChangeListener((v, enabled) -> { if (!enabled) stopAudio(); });
         tts = new TextToSpeech(this, result -> {
@@ -113,7 +114,7 @@ public class MainActivity extends Activity {
         status.setText(signedIn() ? "Type a message or tap Speak." : "Sign in to start talking.");
         if (saved != null && signedIn()) {
             if (agent.equals(saved.getString("agent", "micro"))) thread = saved.getString("thread", thread);
-            if (!thread.isEmpty()) message(agentName, "Continuing your conversation. Earlier messages are in your web Inbox.");
+
         }
         update();
         // Process launch data after creation. Keep the original intent stable;
@@ -216,7 +217,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     if (destroyed) return;
                     busy = false; update();
-                    status.setText(e.getMessage() + " Nothing was retried. Check your web Inbox before sending again.");
+                    status.setText(e.getMessage() + " Nothing was retried. Open Chats to check for your reply before sending again.");
                 });
             }
         });
@@ -434,7 +435,72 @@ public class MainActivity extends Activity {
         thread = threads == null ? "" : threads.optString(agent);
         messages.removeAllViews(); prompt.setText(""); results = new JSONArray(); pages.clear(); lastReply = "";
         persistSelection(); update();
-        status.setText(thread.isEmpty() ? "Start talking: type a message or tap Speak." : "Continuing with " + agentName + ". Earlier messages are in your web Inbox.");
+        status.setText("Start talking: type a message or tap Speak.");
+        if (signedIn() && !thread.isEmpty()) restoreChat("", true);
+    }
+    private void startChat() {
+        stopAudio(); video.close(); results = new JSONArray(); lastReply = ""; pages.clear();
+        thread = ""; persistSelection(); messages.removeAllViews(); prompt.setText("");
+        status.setText("New conversation with " + agentName); update();
+    }
+    private void chooseChat(String page) {
+        if (busy) return;
+        dismissKeyboard(); stopAudio(); busy=true; update();
+        final String server=account.optString("server"), token=account.optString("token"), selected=agent;
+        worker.execute(() -> {
+            try {
+                JSONObject response=AgentApi.threads(server,token,selected,page);
+                JSONArray chats=response.getJSONArray("threads");
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    busy=false; update();
+                    String[] labels=new String[chats.length()];
+                    for(int i=0;i<chats.length();i++) labels[i]=chats.optJSONObject(i).optString("subject", "Chat");
+                    AlertDialog.Builder dialog=new AlertDialog.Builder(this).setTitle(agentName+" chats")
+                        .setItems(labels,(d,index)->{
+                            thread=chats.optJSONObject(index).optString("id");persistSelection();restoreChat("",true);
+                        }).setPositiveButton("New chat",(d,w)->startChat()).setNegativeButton("Cancel",null);
+                    if (!response.optString("nextPageToken").isEmpty())
+                        dialog.setNeutralButton("More",(d,w)->chooseChat(response.optString("nextPageToken")));
+                    dialog.show();
+                });
+            } catch(Exception e) {runOnUiThread(()->{if(!destroyed){busy=false;update();status.setText(e.getMessage());}});}
+        });
+    }
+    private void restoreChat(String page, boolean clear) {
+        if (busy || thread.isEmpty()) return;
+        stopAudio(); busy=true; update();status.setText("Loading chat…");
+        final String server=account.optString("server"),token=account.optString("token"),target=thread;
+        worker.execute(()->{
+            try {
+                JSONObject response=AgentApi.history(server,token,target,page);
+                runOnUiThread(()->{
+                    if (destroyed) return;
+                    busy=false;
+                    if(!thread.equals(target)){update();return;}
+                    if(clear){video.close();messages.removeAllViews();results=new JSONArray();lastReply="";}
+                    JSONArray history=response.optJSONArray("messages");
+                    try {
+                        for(int i=0;history!=null && i<history.length();i++){
+                            JSONObject m=history.getJSONObject(i);
+                            boolean assistant=m.optString("role").equals("ROLE_AGENT");
+                            message(assistant?agentName:"You",m.optString("text"));
+                            if(assistant){lastReply=m.optString("text");results=AgentApi.results(m.optJSONArray("content"));showResults();}
+                        }
+                    } catch(Exception e){status.setText("Some chat content could not be displayed.");}
+                    String next=response.optString("nextPageToken");
+                    if(!next.isEmpty()){
+                        Button more=new Button(this,null,0,R.style.CompactButton);more.setText("Load more messages");
+                        more.setOnClickListener(v->{messages.removeView(more);restoreChat(next,false);});messages.addView(more);
+                    }
+                    boolean pending=response.optBoolean("pending");
+                    status.setText(pending?"Working… Your reply will appear here.":"");update();
+                    if(pending && next.isEmpty()) scroll.postDelayed(()->{
+                        if(!destroyed && foreground && !busy && thread.equals(target)) restoreChat("",true);
+                    },3000);
+                });
+            }catch(Exception e){runOnUiThread(()->{if(!destroyed){busy=false;update();status.setText(e.getMessage()+" Open Chats to try again.");}});}
+        });
     }
     private void loadAgents(boolean choose) {
         if (!signedIn() || busy) return;
@@ -460,6 +526,7 @@ public class MainActivity extends Activity {
                     if (found) persistSelection();
                     else status.setText("This agent is not available to this account. Tap its name to choose another.");
                     update();
+                    if (found && !choose && !thread.isEmpty()) restoreChat("", true);
                     if (choose) {
                         String[] labels = new String[agents.length()];
                         for (int i = 0; i < agents.length(); i++) {

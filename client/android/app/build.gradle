@@ -1,4 +1,4 @@
-plugins { id 'com.android.application' }
+plugins { id 'com.android.application'; id 'com.google.protobuf' }
 
 def releaseName = providers.gradleProperty('releaseVersion').getOrElse('0.0.0').replaceFirst('^v', '')
 def parts = releaseName.tokenize('.')
@@ -52,7 +52,11 @@ android {
     }
     lint { abortOnError true }
 }
+android.sourceSets.main.proto.srcDir('../../../proto')
+protobuf { protoc { artifact = 'com.google.protobuf:protoc:4.31.1' } }
 dependencies {
+    implementation 'com.google.protobuf:protobuf-java:4.31.1'
+    implementation 'com.google.protobuf:protobuf-java-util:4.31.1'
     implementation 'androidx.webkit:webkit:1.12.1'
     implementation 'com.alphacephei:vosk-android:0.3.75@aar'
     implementation 'net.java.dev.jna:jna:5.18.1@aar'

@@ -394,14 +394,40 @@ let receipt=null;
 function receiptKey(){return 'micro-message-receipt:'+JSON.stringify([form.dataset.account,form.dataset.agent||'',thread]);}
 function savedReceipt(key){try{const r=JSON.parse(sessionStorage.getItem(key)||'null');if(r&&typeof r.id==='string'&&r.id.length>=16&&r.id.length<=128&&typeof r.text==='string'&&r.text.length<=8000&&r.thread===thread&&Number.isFinite(r.at)&&Date.now()-r.at>=0&&Date.now()-r.at<86400000)return r;sessionStorage.removeItem(key);}catch{}return null;}
 
+function focusedClient(){return (form.dataset.path||'').startsWith('/assistant/');}
+async function mucp(operation,body,id=crypto.randomUUID()){
+ const response=await fetch('/mucp',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(135000),headers:{'Content-Type':'application/json','Micro-Protocol':'mucp/1','Micro-Service':'assistant','Micro-Endpoint':'Assistant.'+operation,'Micro-Id':id,'X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify(body)});
+ const accepted=response.headers.get('Micro-Thread');
+ if(accepted){thread=accepted;remember();}
+ if(!response.ok)throw Error(await failure(response));
+ if(response.headers.get('Micro-Protocol')!=='mucp/1'||response.headers.get('Micro-Id')!==id)throw Error('The runtime needs an update to support this client.');
+ return response.json();
+}
+// Presentation stays with the shared server renderer; the protocol carries data,
+// never HTML. Fetch only our authenticated page, checking its account and thread.
+async function focusedAnswer(answer,version,target){
+ const response=await fetch((form.dataset.path||'/assistant/micro')+'?session='+encodeURIComponent(target),{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:AbortSignal.timeout(15000)});
+ if(!response.ok||response.redirected)throw Error('Could not load the reply. Open Chats to recover it.');
+ const page=new DOMParser().parseFromString(await response.text(),'text/html');
+ if(version!==viewVersion)return;
+ if(page.querySelector('#command-form')?.dataset.account!==form.dataset.account)throw Error('Sign in again to continue.');
+ const replies=page.querySelectorAll('#responses .answer .message-body'),last=replies[replies.length-1];
+ if(!last)throw Error('Reply saved. Open Chats to read it.');
+ answer.replaceChildren(...last.childNodes);
+}
 async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=thread){
  while(version===viewVersion){
   let result=null;
   if(!document.hidden&&navigator.onLine){
    let response;
    try{
-    response=await fetch('/agent/pending?thread='+encodeURIComponent(targetThread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
-    if(response.ok&&!response.redirected)result=await response.json();
+    if(focusedClient()){
+     result=await mucp('ReadThread',{thread:targetThread,pageSize:1});
+     if(version!==viewVersion)return;
+     if(!result.pending){await focusedAnswer(answer,version,targetThread);return;}
+     result={waiting:true};
+    }else response=await fetch('/agent/pending?thread='+encodeURIComponent(targetThread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+    if(response?.ok&&!response.redirected)result=await response.json();
    }catch{}
    if(version!==viewVersion)return;
    if(response&&response.status===404)throw Error('Conversation not found.');
@@ -415,6 +441,19 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
  }
 }
 async function assistant(command,answer,version){
+ if(focusedClient()){
+  // No automatic resend after an ambiguous transport failure. The durable
+  // thread is discoverable in Chats even if acceptance never reached us.
+  receipt=null;
+  submission=mucp('Ask',{prompt:command,thread,agentId:form.dataset.agent||'',mode:'ACCESS_MODE_PERSONAL'});
+  let result;
+  try{result=await submission;}finally{submission=null;}
+  if(version!==viewVersion)return;
+  thread=result.thread;remember(command.slice(0,80));form.dispatchEvent(new Event('message-accepted'));
+  answer.textContent=result.text||'';
+  await focusedAnswer(answer,version,thread);return;
+ }
+
  const key=receiptKey();
  if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt=savedReceipt(key);
  if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt={text:command,thread,id:crypto.randomUUID(),at:Date.now()};

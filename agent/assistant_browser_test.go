@@ -44,16 +44,22 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 		case "/session":
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]string{"account": owner, "type": "user"})
-		case "/agent":
-			if r.Method != "POST" {
-				http.NotFound(w, r)
+		case "/mucp":
+			if r.Method != "POST" || r.Header.Get("Micro-Protocol") != "mucp/1" || r.Header.Get("Micro-Service") != "assistant" || r.Header.Get("Micro-Endpoint") != "Assistant.Ask" {
+				t.Error("client did not use MUCP")
+				http.Error(w, "bad request", 400)
 				return
 			}
+			var request map[string]any
+			if json.NewDecoder(r.Body).Decode(&request) != nil || request["mode"] != "ACCESS_MODE_PERSONAL" || request["prompt"] != "Weather please" {
+				t.Error("invalid MUCP body")
+			}
+			thread.Add(thread.Message{Account: owner, Thread: chat.ID, Role: thread.RolePerson, Text: "Weather please"})
+			thread.Add(thread.Message{Account: owner, Thread: chat.ID, Role: thread.RoleAgent, Text: "**Forecast**\n\n- Clear skies"})
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]string{"thread": chat.ID, "title": "Browser conversation"})
-		case "/agent/pending":
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]any{"waiting": false, "answer_html": "<p><strong>Forecast</strong></p><ul><li>Clear skies</li></ul>"})
+			w.Header().Set("Micro-Protocol", "mucp/1")
+			w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
+			json.NewEncoder(w).Encode(map[string]string{"thread": chat.ID, "agentId": "micro", "text": "**Forecast**\n\n- Clear skies"})
 		default:
 			r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 			agent.AssistantHandler(w, r)
