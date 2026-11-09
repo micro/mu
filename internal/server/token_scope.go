@@ -16,6 +16,9 @@ func scopedRequestAllowed(r *http.Request) bool {
 	if token == nil {
 		return true
 	}
+	if mucpRootRequest(r) {
+		return true
+	}
 	p := strings.TrimSuffix(r.URL.Path, "/")
 	if path.Clean(p) != p {
 		return false

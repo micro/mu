@@ -44,3 +44,40 @@ func TestMUCPUsesProductTokenBoundary(t *testing.T) {
 		t.Fatal("MUCP bypasses product credential normalization")
 	}
 }
+
+func TestMUCPRootAcceptsScopedToken(t *testing.T) {
+	const owner = "root-protocol-token-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
+	defer auth.RemoveAccountForTest(owner)
+	for _, tc := range []struct {
+		permissions []string
+		status      int
+	}{
+		{[]string{"read", "api:agent"}, 200},
+		{[]string{"read", "service:news"}, 403},
+	} {
+		_, raw, err := auth.CreateToken(owner, "root", tc.permissions, time.Time{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := httptest.NewRequest("POST", "/", strings.NewReader("{}"))
+		r.Header.Set("Authorization", "Bearer "+raw)
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Micro-Protocol", "mucp/1")
+		r.Header.Set("Micro-Service", "assistant")
+		r.Header.Set("Micro-Endpoint", "Assistant.ListAgents")
+		r.Header.Set("Micro-Id", "root-token-12345678")
+		if !scopedRequestAllowed(r) {
+			t.Fatal("root rejected before permission-aware dispatch")
+		}
+		w := httptest.NewRecorder()
+		IndexHandler(w, r)
+		if w.Code != tc.status {
+			t.Fatalf("%d: %s", w.Code, w.Body.String())
+		}
+		r.Header.Del("Micro-Protocol")
+		if scopedRequestAllowed(r) {
+			t.Fatal("token admitted to ordinary root")
+		}
+	}
+}
