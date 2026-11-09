@@ -105,6 +105,21 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 		if !valid {
 			t.Fatalf("populated client at %d", width)
 		}
+		err = chromedp.Run(ctx, chromedp.Evaluate(`(()=>{
+            const status=document.querySelector('[data-voice-status]'), form=document.querySelector('#command-form');
+            const top=form.getBoundingClientRect().top;
+            for(const text of ['Reading reply…','Microphone access was denied. You can still type.','']) {
+                status.textContent=text;
+                if(Math.abs(form.getBoundingClientRect().top-top)>0.5)return false;
+            }
+            return true;
+        })()`, &valid))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !valid {
+			t.Fatalf("voice feedback shifts composer at %d", width)
+		}
 		if dir := os.Getenv("UI_SCREENSHOTS"); dir != "" {
 			var image []byte
 			if err := chromedp.Run(ctx, chromedp.CaptureScreenshot(&image)); err != nil {
