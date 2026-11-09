@@ -35,12 +35,14 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, app.ConsoleHTML("Micro", landingHTML(), nil))
 }
 
-// The public page demonstrates Micro without creating a personal account.
+// The public front door separates using the assistant from running the runtime.
 func landingHTML() string {
 	return `<section class="landing-introduction">
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant</p>
-
-<div class="public-demo"><form data-demo-form method="post" action="/"><label class="sr-only" for="demo-input">Ask Micro</label><div class="composer"><textarea id="demo-input" name="prompt" rows="1" maxlength="1000" placeholder="Ask Micro a question" required></textarea><button type="submit">Send</button></div></form><div data-demo-responses role="log" aria-label="Conversation"></div><p data-demo-status role="status"></p></div>
+<p>Talk, get things done, and make room for what matters.</p>
+<div class="form-actions" data-client-downloads><a class="btn" href="/agent/micro" data-open-assistant>Open assistant</a><a class="btn" href="/download#android" data-android-download>Android</a></div>
+<p class="landing-access"><a href="/download">Other platforms and installation</a></p>
+<p class="landing-access"><a href="/install">Self-host Mu</a> · <a href="/developers">Developer tools</a></p>
 </section>`
 }

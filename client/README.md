@@ -41,3 +41,15 @@ unconfirmed actions automatically.
 
 OAuth uses browser authorization, S256 PKCE and explicit consent for
 `read write api:agent`. No model keys or account passwords belong in clients.
+
+## Distribution
+
+The public landing opens the assistant or links to `/download`, with self-hosting
+kept separate. `/download` explains browser/Home Screen installation and Android.
+Android availability is refreshed in the background from the latest stable GitHub
+release; only `mu-android.apk` is offered, never unsigned or debug APKs. The existing
+release workflow requires the `ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`,
+`ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` secrets to produce that signed asset.
+Keep the same signing key for updates. Do not label runtime Linux/macOS binaries
+as desktop clients. The current PWA still includes the console; the focused web
+client is a separate piece of work.
