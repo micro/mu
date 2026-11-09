@@ -229,7 +229,7 @@ public class MainActivity extends Activity {
         }
         if (!wakeOnly) {
             if (tts != null) tts.stop();
-            utterance = ""; speaking = false; video.pause(); controlsOnly = false;
+            utterance = ""; speaking = false; video.pause();
         }
         if (voice == null) {
             status.setText("Preparing offline voice…");
@@ -248,7 +248,7 @@ public class MainActivity extends Activity {
                 }
                 public void wake(String command) {
                     controlsOnly = controlsOnly || speaking || video.playing();
-                    if (command.isEmpty()) startVoice(false);
+                    if (command.isEmpty()) { controlsOnly = false; startVoice(false); }
                     else handleVoice(command);
                 }
                 public void heard(String text) {
