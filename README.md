@@ -1,54 +1,56 @@
 # Mu
 
-The runtime for a personal assistant
+An open runtime for personal assistants.
 
-## Overview
+Mu brings together agents, connected services, accounts, permissions and persistent
+history. Run it yourself or use a hosted instance, then access your assistants
+through a focused client or the broader web console.
 
-Mu is a runtime that integrates agents, tools and services along side your calendar, email and other events like morning brief and evening reading. It supports a full SMTP server, XMPP, WhatsApp and SMS via twilio.
+**Micro** is the general-purpose assistant. Other agents can have their own
+instructions and permitted tools. The Android app and focused PWA provide voice
+and text interaction; the web console provides Home, Inbox, Agents and Services
+for overview, configuration and direct access to capabilities.
 
-## Features
+Services supply mail, calendar, contacts, information, media and storage. Agents
+use those capabilities to carry out requests. Mu runs them together as one Go
+binary, using Go Micro as its underlying framework.
 
-- **Open runtime** - Single Go binary you can run yourself anywhere
-- **Many clients** - Interact via PWA, API, SMS, XMPP and WhatsApp
-- **Integrations** - Connect your google mail, calendar and more
-- **Tools included** - Comes with 30+ built-in tools (may require API keys)
+## Client, protocol and runtime
 
-## Navigation
+```text
+  Android / PWA / other clients
+              |
+       assistant contract
+              |
+   MUCP over HTTPS + JSON (*)
+              |
+      Mu runtime (server)
+      +----------------------+
+      | Authenticated entry  |
+      |          |           |
+      | Agent + thread       |
+      |          |           |
+      | Permitted tools      |
+      |          |           |
+      | Services             |
+      +----------------------+
+```
 
-A bit about the navigation
+(*) MUCP's public client binding is in design. Today's clients use the existing
+HTTPS API. The draft protobuf interface defines shared types; it does not require
+binary RPC, generated clients or a protobuf runtime in the browser.
 
-- **Home** - overview and exploration. Also includes a feed
-- **Inbox** - single place for all interaction and notifications
-- **Agents** - chat or create new agents with your own instructions
-- **Services** - interact with the tools the agents have access to
+See [Architecture](docs/ARCHITECTURE.md) for the layers and assistant interaction,
+[MUCP](docs/MUCP.md) for the protocol design, and [contracts](proto/README.md) for
+the draft interface. These documents distinguish implemented behaviour from the
+planned client binding.
 
-### Home
+## Purpose
 
-A place to view and do things e.g prompt, see what's happening, etc. Includes a Feed tab news and world events.
-
-### Inbox
-
-Connect from various places and it all goes in one inbox.
-
-| Protocol | Info |
-|---|---|
-| HTTP | Start a conversation or reopen one from Inbox. |
-| SMTP | Send a message to `agent@your-domain` from your verified email address |
-| SMS | Verify your phone number in Account, then text the configured number. |
-| XMPP | Connect with your account and a Chat token from Client access, then message the agent. |
-| WhatsApp  |  Like SMS use a verified phone number to message agents and interact.  |
-
-### Agents
-
-**Micro** is the default agent. Agents have instructions and a set of
-tools. Services provide those tools: mail, files, calendar, search, weather,
-notes, shell, and more. You ask for an outcome; the agent chooses the tools.
-
-### Services
-
-Complete standalone services that agents can use as tools or you can browse with. 
-For example a complete Mail client and server. Web search via brave. News aggregation, 
-headlines and summary via RSS. Video search via YouTube. All behind one MCP interface.
+Mu is intended to provide a deliberate way to use connected services without an
+advertising-driven or engagement-driven experience. You choose the agents and
+connections. Self-hosting gives you control of the runtime; model providers and
+connected services still receive the data needed for the operations you enable.
 
 ## Install
 
@@ -65,7 +67,8 @@ Optional [documentation](docs/README.md) covers hosting, configuration, mail and
 
 Open **http://localhost:8080** to create your account and choose an AI provider.
 
-The web app can be installed on desktop or mobile as a progressive web app (PWA).
+The focused assistant at `/assistant` can be installed as a PWA. The broader
+runtime console remains at `/home`.
 
 ## Clients
 

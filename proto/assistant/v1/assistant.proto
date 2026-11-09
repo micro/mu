@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package mu.assistant.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "mu/proto/assistant/v1;assistantv1";
 option java_package = "mu.client.proto.assistant.v1";
 option java_multiple_files = true;
@@ -12,6 +14,8 @@ option java_outer_classname = "AssistantProtocol";
 // Credentials and MUCP correlation metadata belong in the authenticated binding.
 service Assistant {
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+  rpc ListThreads(ListThreadsRequest) returns (ListThreadsResponse);
+  rpc ReadThread(ReadThreadRequest) returns (ReadThreadResponse);
   rpc Ask(AskRequest) returns (AskResponse);
 }
 
@@ -31,12 +35,61 @@ message Agent {
   string description = 3;
 }
 
+// Personal assistant threads only; never a raw listing of the thread store.
+message ListThreadsRequest {
+  string agent_id = 1; // Empty lists all accessible personal assistant agents.
+  int32 page_size = 2; // 0 means 25; valid explicit values are 1..100.
+  string page_token = 3; // Opaque, bound to caller, operation and agent filter.
+}
+
+message ListThreadsResponse {
+  // Most recently updated first; ties ordered by ID. Live pages are not snapshots.
+  repeated Thread threads = 1;
+  string next_page_token = 2; // Empty means no further page.
+}
+
+message Thread {
+  string id = 1; // Pass unchanged as AskRequest.thread or ReadThreadRequest.thread.
+  string agent_id = 2;
+  string subject = 3;
+  google.protobuf.Timestamp started = 4;
+  google.protobuf.Timestamp updated = 5;
+}
+
+message ReadThreadRequest {
+  string thread = 1; // Required; must be an accessible personal assistant thread.
+  int32 page_size = 2; // 0 means 50; valid explicit values are 1..100.
+  string page_token = 3; // Opaque, bound to caller, operation and thread.
+}
+
+message ReadThreadResponse {
+  Thread thread = 1;
+  // Oldest first, stable ordering by timestamp then ID. Reading has no read-state
+  // side effects. Tokens must be reauthorised; they never grant thread access.
+  repeated Message messages = 2;
+  string next_page_token = 3;
+}
+
+message Message {
+  string id = 1;
+  Role role = 2;
+  string text = 3; // Safe Markdown; internal prompts and tool traces are excluded.
+  google.protobuf.Timestamp at = 4;
+  repeated Content content = 5;
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_PERSON = 1;
+  ROLE_AGENT = 2;
+}
+
 message AskRequest {
   // Empty selects the runtime's default agent. PUBLIC requires this empty.
   string agent_id = 1;
   // Empty starts a conversation. Otherwise an opaque ID returned by Ask.
   // Must belong to this caller and the selected agent. PUBLIC requires empty.
-  string conversation_id = 2;
+  string thread = 2;
   // Nonblank UTF-8 text, at most 8,000 bytes. Reject overflow; never truncate.
   string prompt = 3;
   // Must be explicitly selected. Unknown/unspecified modes are rejected.
@@ -57,7 +110,7 @@ enum AccessMode {
 
 message AskResponse {
   // Nonempty for PERSONAL; empty for PUBLIC. Not an RPC request/stream ID.
-  string conversation_id = 1;
+  string thread = 1;
   // Resolved agent ID for PERSONAL; empty for PUBLIC.
   string agent_id = 2;
   // Markdown answer, usable without rendering any content blocks.

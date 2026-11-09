@@ -1,8 +1,12 @@
 # Clients
 
 Clients are focused interfaces to Mu's agents. They do not run a second agent
-loop, own service permissions, or bypass account billing. The web app remains
-the broader overview and management interface.
+loop, own service permissions, or bypass account billing. The web console remains the broader overview and management interface. Micro is
+the general-purpose agent, not the name of every client or agent.
+
+The target architecture is client + MUCP + Mu runtime. Proto supplies shared types;
+the proposed external binding uses human-readable JSON over HTTPS. A client need
+not use generated code or a protobuf runtime. See the [architecture diagrams](../docs/ARCHITECTURE.md).
 
 ## Android
 

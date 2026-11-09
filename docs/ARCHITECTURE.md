@@ -1,28 +1,124 @@
 # Architecture and development
 
-Micro is the personal assistant; Mu is the runtime that hosts it. One Go binary
-provides the web app, CLI, APIs and protocol servers over the same services.
+Mu is an open runtime for personal assistants. Micro is its general-purpose agent;
+other agents can have different instructions and permitted tools. Go Micro is the
+underlying framework. Mu combines agents, services, accounts and persistent history
+into a running system that clients can use.
 
-## How the parts fit together
+## Client, protocol and server
 
-- **Services** own capabilities and their data. Their declared endpoints supply
-  the tools available to agents and external clients.
-- **Agents** combine instructions, permitted tools and a model provider to answer
-  requests. Each run is subject to the caller's permissions.
-- **Inbox** brings correspondence and agent conversations into one account-scoped
-  view. Mail, chat and SMS retain their original service records.
-- **Work** tracks delegated tasks. Execution lives under `agent/exec`; task storage
-  lives under `service/tasks`. Schedules publish events that can start execution.
-- **Clients** reach the same runtime through the web, CLI, HTTP, MCP and messaging
-  protocols. Changing the client does not change the account's permissions.
+```text
+ CLIENT                       BOUNDARY                MU RUNTIME
+ +-------------------+                                +-------------------+
+ | Android           |                                | Authentication    |
+ | Focused PWA       | -- assistant requests --------> | + authorisation   |
+ | Future clients    |    MUCP / HTTPS / JSON (*)      +---------+---------+
+ |                   |                                          |
+ | Text, voice,      |                                +---------v---------+
+ | result rendering  | <--- answers + typed results -- | Assistant entry   |
+ +-------------------+                                | in agent/         |
+                                                      +---------+---------+
+                                                                |
+                                                      +---------v---------+
+                                                      | Selected agent    |
+                                                      | + thread history  |
+                                                      +---------+---------+
+                                                                |
+                                                      +---------v---------+
+                                                      | Permitted tools   |
+                                                      +---------+---------+
+                                                                |
+                                                      +---------v---------+
+                                                      | Services          |
+                                                      | mail, events, ... |
+                                                      +-------------------+
+```
 
-The source tree and service registry are authoritative for implementation details.
-See [Developers](/developers) for client examples and [Tools](/tools) for the
-service catalogue. Deployment belongs in [Hosting](HOSTING.md); settings belong
-in [Configuration](CONFIGURATION.md).
+(*) The external MUCP binding is proposed. Current clients use existing HTTPS
+handlers; the server already uses go-micro with an in-memory transport internally.
+The web console is server-rendered composition, not currently an independent MUCP
+client. It remains useful for overview, administration and direct service use.
 
-The proposed shared client contract is documented in [MUCP](MUCP.md). It reuses
-go-micro RPC while retaining Mu's authentication and execution boundaries.
+## Layers and ownership
+
+| Layer / package | Responsibility |
+| --- | --- |
+| `client/` and focused PWA | Input, voice capture, playback and safe result rendering |
+| `proto/` | Shared interface/type definitions; not runtime implementation |
+| `internal/server` | Compose routes, authenticated protocol entry points and product pages |
+| `agent/` | Assistant operations, agent selection and execution; uses permitted services |
+| `service/` | Bottom-layer capabilities and their data; independently callable through authorised interfaces |
+| `internal/` | Shared substrate including identity, threads, quota and storage |
+| Home / Inbox / Agents / Services views | Web composition over those capabilities |
+
+The assistant is the client-facing interface to agents, not an additional service
+beneath them. There is no `service/assistant` wrapper calling upward into `agent/`.
+A protobuf `service Assistant` is an RPC declaration, not a package-layer rule.
+Services do not call each other or launch agent reasoning; they publish facts and
+higher-level subscribers decide what work to run. Server composition may reach
+both layers; that does not authorise upward dependencies from services.
+
+`proto/assistant/v1` owns the draft assistant contract. Future capability contracts
+may live under `proto/service/<name>/v1`; wholesale service extraction is deferred
+until the assistant binding demonstrates interoperability. The existing service
+Specs and implementation types remain authoritative for current APIs and tools.
+
+## One assistant interaction
+
+```text
+ Client                 Assistant / agent                  Services
+   |                            |                              |
+   | list agents, list threads  |                              |
+   |--------------------------->|                              |
+   | descriptors, thread IDs    |                              |
+   |<---------------------------|                              |
+   | ask(agent, thread, prompt) |                              |
+   |--------------------------->| authenticate / check scope   |
+   |                            | resolve agent + history      |
+   |                            | reason / choose tools        |
+   |                            | permitted capability call    |
+   |                            |----------------------------->|
+   |                            | tool result                  |
+   |                            |<-----------------------------|
+   |                            | finish answer, retain turn   |
+   | text + content + thread    |                              |
+   |<---------------------------|                              |
+   | render / speak             |                              |
+```
+
+This is the intended client contract. The draft declares discovery and thread
+reads alongside Ask, but no MUCP adapter is registered yet. Existing execution
+already resolves agents, checks permissions, uses tools and retains personal
+threads. `thread` is the existing identifier for what the UI calls a conversation;
+there is no second conversation-ID namespace. A request ID identifies an exchange,
+not the persistent thread. Listing and reading must project authorised personal
+assistant threads, not dump mail, other users' records or internal execution logs.
+
+Clients render typed content as data. A video reference is not proof of playback
+and does not override provider restrictions. Stopping speech is local and immediate;
+cancelling server work is separate, best effort and not yet defined in the draft.
+
+## Cross-cutting guarantees
+
+Authentication establishes account identity at the boundary; caller-supplied IDs
+or metadata cannot establish it. Agent instructions and tool permissions are
+resolved on the server. Quotas, billing and service authorisation remain enforced
+when requests arrive through another client or encoding. Public-question mode is
+explicitly restricted and must never silently become a personal request.
+
+`internal/thread` stores conversation history. Inbox projects incoming messages
+and notifications; it is not a second execution engine. `agent/exec` owns delegated
+execution and `agent/work` its product view; `service/tasks` retains task records.
+Transport retries do not imply idempotency, and a lost connection does not prove
+that an action failed. Clients must not automatically repeat ambiguous mutations.
+
+Self-hosting controls the runtime but does not make external model calls local.
+Data boundaries must hold when tools access private sources and when information
+is sent to configured model providers. MUCP does not itself promise federation,
+end-to-end encryption, offline execution or portability of stored account data.
+
+See [MUCP](MUCP.md) for the contract/transport distinction and implementation status.
+Deployment belongs in [Hosting](HOSTING.md); settings in [Configuration](CONFIGURATION.md).
 
 ## Build from source
 
