@@ -111,9 +111,12 @@ func TestResponsiveRuntimeNavigation(t *testing.T) {
 			t.Fatalf("navigation layout at %d", width)
 		}
 		capture(fmt.Sprintf("runtime-home-%d", width))
+		_, err = chromedp.RunResponse(ctx, chromedp.Click(`.runtime-navigation a[href="/agents"]`))
+		if err != nil {
+			t.Fatal(err)
+		}
 		err = chromedp.Run(ctx,
-			chromedp.Click(`.runtime-navigation a[href="/agents"]`),
-			chromedp.Poll(`document.querySelector('.runtime-navigation [aria-current="page"]').textContent==='Agents'`, nil),
+			chromedp.WaitVisible(`.runtime-navigation a[href="/agents"][aria-current="page"]`),
 			chromedp.Navigate(server.URL+"/agent/micro"),
 			chromedp.WaitVisible("#command-input"),
 			chromedp.Evaluate(`(()=>{const box=document.querySelector('#command-form').getBoundingClientRect(),nav=document.querySelector('.runtime-navigation').getBoundingClientRect();return box.bottom<=(innerWidth<=700?nav.top:innerHeight) && box.left>=(innerWidth<=700?0:nav.right) && box.right<=innerWidth})()`, &valid),
