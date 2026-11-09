@@ -1238,14 +1238,13 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .document-page:has([data-home-overview]) .prompt-welcome{display:none}
 .document-page:has([data-home-overview]) #responses:empty{display:none}
 
-.mobile-menu-toggle{display:none}
 /* Mu hosts the assistant and service pages within one responsive shell. */
-.runtime-navigation{position:fixed;z-index:30;inset:0 auto 0 0;width:168px;display:flex;flex-direction:column;gap:6px;padding:92px 12px 24px;border-right:1px solid var(--border);background:var(--bg,#fff)}
-.runtime-navigation a{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 12px;border-radius:6px;text-decoration:none;color:#666;font-size:.9rem}
+.runtime-navigation{position:fixed;z-index:30;inset:0 auto 0 0;width:88px;display:flex;flex-direction:column;gap:6px;padding:92px 6px 24px;border-right:1px solid var(--border);background:var(--bg,#fff)}
+.runtime-navigation a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:44px;padding:10px 4px;border-radius:6px;text-decoration:none;color:#666;font-size:.75rem}
 .runtime-navigation a[aria-current="page"]{color:#222;background:#f3f3f3}
 .runtime-navigation a:hover{background:#f6f6f6;color:#222}
 .runtime-navigation svg{flex:none}
-.signed-in>.page,.signed-in>footer{margin-left:168px}
+.signed-in>.page,.signed-in>footer{margin-left:88px}
 .signed-in>.page>header{padding-block:12px 4px;min-height:56px;flex-wrap:nowrap}
 /* Reusable sections and shortcuts within the shared canvas. */
 .section-heading{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin:32px 0 16px}
@@ -1261,19 +1260,10 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .home-card-content>:is(.post-item,.thumbnail){border:0;border-radius:0;padding:0}
 .home-card-content>:first-child{margin-top:0}
 .home-card-content>:last-child{margin-bottom:0}
-@media(min-width:701px) and (max-width:1100px){
- .runtime-navigation{width:88px;padding-inline:6px}
- .runtime-navigation a{flex-direction:column;gap:4px;padding:10px 4px;font-size:.75rem}
- .signed-in>.page,.signed-in>footer{margin-left:88px}
-}
 @media(max-width:700px){
- .signed-in>.runtime-navigation{display:none}
- .mobile-menu-toggle{display:block;grid-column:1;justify-self:start;min-width:44px;min-height:44px;font-size:20px;padding:4px 8px}
- .mobile-drawer{margin:0;inset:0 auto 0 0;width:min(280px,85vw);max-width:none;height:100dvh;max-height:none;padding:16px;padding-top:max(16px,env(safe-area-inset-top));border:0;border-right:1px solid var(--border);background:#fff;color:var(--text-primary);overflow-y:auto}
- .mobile-drawer::backdrop{background:rgb(0 0 0 / .3)}
- .mobile-drawer .runtime-navigation{position:static;width:auto;padding:20px 0;border:0}
- .drawer-close{display:block;margin-left:auto;min-height:44px}
- body:has(.mobile-drawer[open]){overflow:hidden}
+ .signed-in{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+ .runtime-navigation{inset:auto 0 0;width:100%;height:calc(64px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px 8px calc(4px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--border)}
+ .runtime-navigation a{min-width:0;padding:4px;gap:2px}
  .signed-in>.page,.signed-in>footer{margin-left:0}
  .signed-in>.page>header{min-height:52px;padding:8px var(--page-gutter) 4px}
  :root{--page-gutter:16px;--section-gap:20px;--section-padding:16px}

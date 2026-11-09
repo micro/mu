@@ -44,8 +44,7 @@ func shellHTML(title, body string, acc *auth.Account, focused bool, returnTo ...
 				here = "/agents"
 			}
 		}
-		navigation = runtimeNavigation(here) + `<dialog class="mobile-drawer" id="mobile-navigation" aria-label="Main menu"><button type="button" class="drawer-close" aria-label="Close menu">Close</button></dialog>`
-		menuButton = `<button type="button" class="mobile-menu-toggle" aria-label="Open menu" aria-controls="mobile-navigation" aria-expanded="false">☰</button>`
+		navigation = runtimeNavigation(here)
 	}
 
 	if title != "Micro" {
