@@ -49,10 +49,18 @@ public class AccountScreenTest {
                     }
                     java.lang.reflect.Field speaking = MainActivity.class.getDeclaredField("speaking"); speaking.setAccessible(true); speaking.setBoolean(activity, true);
                     java.lang.reflect.Field utterance = MainActivity.class.getDeclaredField("utterance"); utterance.setAccessible(true); utterance.set(activity, "old-reply");
+                    java.lang.reflect.Field pages = MainActivity.class.getDeclaredField("pages"); pages.setAccessible(true);
+                    pages.set(activity, new java.util.ArrayList<>(java.util.Arrays.asList("A reply in progress")));
                     activity.interruptReply();
                     assertFalse(speaking.getBoolean(activity));
                     assertEquals("", utterance.get(activity));
                     assertEquals("Speak", ((Button)activity.findViewById(R.id.speak)).getText().toString());
+                    java.lang.reflect.Method heard = MainActivity.class.getDeclaredMethod("handleVoice", String.class); heard.setAccessible(true);
+                    java.lang.reflect.Field restricted = MainActivity.class.getDeclaredField("controlsOnly"); restricted.setAccessible(true);
+                    restricted.setBoolean(activity, true); heard.invoke(activity, "pause");
+                    assertEquals("Paused.", ((android.widget.TextView)activity.findViewById(R.id.status)).getText().toString());
+                    assertEquals("", ((EditText)activity.findViewById(R.id.prompt)).getText().toString());
+                    assertTrue(activity.localCommand("show text"));
                 } catch (Exception e) { throw new AssertionError(e); }
             });
         }

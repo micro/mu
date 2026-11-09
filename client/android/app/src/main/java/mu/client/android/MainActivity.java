@@ -326,7 +326,7 @@ public class MainActivity extends Activity {
                 if (!wake.isChecked() && !listening && pendingVoice < 0) return false;
                 wake.setChecked(false); stopAudio(); status.setText("Listening stopped."); return true;
             case "stop": case "pause":
-                if (!speaking && !listening && !video.active()) return false;
+                if (!speaking && !listening && !video.active() && pageIndex >= pages.size()) return false;
                 stopAudio(); video.pause(); status.setText("Paused."); resumeWake(); return true;
             case "resume": case "continue":
                 if (video.active()) { video.resumeView(); video.command("play"); }
@@ -365,7 +365,7 @@ public class MainActivity extends Activity {
                         !results.optJSONObject(resultIndex).optString("kind").equals("video")) return false;
                 openResult(resultIndex, false); return true;
             case "show text":
-                if (!speaking && !video.active()) return false;
+                if (!speaking && !video.active() && pageIndex >= pages.size()) return false;
                 stopAudio(); video.close(); resumeWake(); return true;
             default: return false;
         }
