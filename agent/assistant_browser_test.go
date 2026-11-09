@@ -58,7 +58,7 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 		case "/session":
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]string{"account": owner, "type": "user"})
-		case "/mucp":
+		case "/":
 			if r.Method != "POST" || r.Header.Get("Micro-Protocol") != "mucp/1" || r.Header.Get("Micro-Service") != "assistant" || (r.Header.Get("Micro-Endpoint") != "Assistant.Ask" && r.Header.Get("Micro-Endpoint") != "Assistant.ReadThread") {
 				t.Error("client did not use MUCP")
 				http.Error(w, "bad request", 400)
@@ -194,7 +194,7 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 	if err := chromedp.Run(ctx,
 		chromedp.Navigate(server.URL+"/assistant/micro?new=1"),
 		chromedp.WaitVisible("#command-input"),
-		chromedp.Evaluate(`(()=>{const original=window.fetch;window.slowDone=false;window.fetch=async(...args)=>{const response=await original(...args);if(args[0]==='/mucp' && args[1]?.body?.includes('Wait please'))window.slowDone=true;return response;};})()`, nil),
+		chromedp.Evaluate(`(()=>{const original=window.fetch;window.slowDone=false;window.fetch=async(...args)=>{const response=await original(...args);if(args[0]==='/' && args[1]?.body?.includes('Wait please'))window.slowDone=true;return response;};})()`, nil),
 		chromedp.SendKeys("#command-input", "Wait please"),
 		chromedp.Evaluate(`document.querySelector('#command-form').requestSubmit()`, nil),
 		chromedp.Poll(`fetch('/slow-started').then(r=>r.json())`, nil),

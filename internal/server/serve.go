@@ -240,6 +240,10 @@ func serve(addr string, initialize func()) {
 						}
 					}
 				} else if r.URL.Path == "/" {
+					if mucpRootRequest(r) {
+						IndexHandler(w, r)
+						return
+					}
 
 					// Fresh instance with no admin yet → guide the operator
 					// through the one-time setup wizard.

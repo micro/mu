@@ -5,7 +5,7 @@ It declares ListAgents, ListThreads, ReadThread and Ask. Clients discover an age
 list/read its personal threads, then ask a question using the existing `thread`
 identifier or omit it to start a new thread. The implementation belongs in
 `agent/`; server composition registers its authenticated MUCP boundary.
-There is no `service/assistant` package. `/mucp` is the public HTTPS/JSON adapter.
+There is no `service/assistant` package. `/` is the public HTTPS/JSON adapter.
 
 Android uses generated Java types; the focused PWA uses ordinary JSON for Ask and
 pending recovery. Legacy routes remain compatible. See [MUCP](../docs/MUCP.md)

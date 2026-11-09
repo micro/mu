@@ -61,7 +61,7 @@ final class AgentApi {
             .setPageToken(page).setPageSize(100).build(), ReadThreadResponse.newBuilder());
     }
     private static JSONObject call(String server, String token, String operation, Message request, Message.Builder response) throws Exception {
-        JSONObject raw = post(origin(server)+"/mucp", token, JsonFormat.printer().print(request), "application/json", operation);
+        JSONObject raw = post(origin(server)+"/", token, JsonFormat.printer().print(request), "application/json", operation);
         // Ignore additive fields from a newer runtime; always retain content fallbacks.
         JsonFormat.parser().ignoringUnknownFields().merge(raw.toString(), response);
         return new JSONObject(JsonFormat.printer().includingDefaultValueFields().print(response.build()));

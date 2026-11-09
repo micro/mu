@@ -9,7 +9,7 @@ See docs/ARCHITECTURE.md for ownership and interaction diagrams, and docs/MUCP.m
 for the external protocol. Proto defines shared contracts/types; the
 client binding is human-readable JSON over HTTPS, not mandatory binary
 RPC. Generated Go/Java types and handwritten JSON clients must interoperate.
-Android uses generated Java types over `/mucp`; the focused PWA uses JSON for Ask
+Android uses generated Java types over `/`; the focused PWA uses JSON for Ask
 and pending recovery while retaining shared server-rendered navigation and content.
 The assistant implementation stays in agent/, with
 server composition registering the boundary; do not add service/assistant or

@@ -16,6 +16,9 @@ func scopedRequestAllowed(r *http.Request) bool {
 	if token == nil {
 		return true
 	}
+	if mucpRootRequest(r) {
+		return true
+	}
 	p := strings.TrimSuffix(r.URL.Path, "/")
 	if path.Clean(p) != p {
 		return false
@@ -24,7 +27,14 @@ func scopedRequestAllowed(r *http.Request) bool {
 }
 
 // Only content-negotiated resource handlers may receive product-scoped credentials.
+func mucpRootRequest(r *http.Request) bool {
+	return r.URL.Path == "/" && len(r.Header.Values("Micro-Protocol")) > 0
+}
+
 func productClientRequest(r *http.Request) bool {
+	if mucpRootRequest(r) {
+		return true
+	}
 	p := r.URL.Path
 	if r.Method == "GET" {
 		if !strings.Contains(r.Header.Get("Accept"), "application/json") {

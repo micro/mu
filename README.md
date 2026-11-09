@@ -36,7 +36,7 @@ binary, using Go Micro as its underlying framework.
       +----------------------+
 ```
 
-(*) MUCP uses readable JSON over HTTPS at `/mucp`. Proto defines shared Go/Java
+(*) MUCP uses readable JSON over HTTPS at `/`. Proto defines shared Go/Java
 message types; binary RPC and generated browser clients are not required.
 
 See [Architecture](docs/ARCHITECTURE.md) for the layers and assistant interaction,

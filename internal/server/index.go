@@ -11,6 +11,10 @@ import (
 // IndexHandler owns the public front door. Legacy conversation URLs remain
 // usable, but signed-in visits without a conversation go to Home.
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
+	if mucpRootRequest(r) {
+		agent.MUCPHandler(w, r)
+		return
+	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	if r.Method == http.MethodPost {
 		if _, acc := auth.TrySession(r); acc == nil {

@@ -47,6 +47,10 @@ func MUCPHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Micro-Protocol", mucpVersion)
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method == http.MethodGet {
+		if values := r.Header.Values("Micro-Protocol"); len(values) > 0 && (len(values) != 1 || values[0] != mucpVersion) {
+			mucpError(w, 400, "unsupported_protocol", "Unsupported MUCP version")
+			return
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"protocol": mucpVersion, "service": "assistant", "contract": "mu.assistant.v1", "encoding": "protobuf-json", "operations": []string{"Assistant.ListAgents", "Assistant.ListThreads", "Assistant.ReadThread", "Assistant.Ask"}})
 		return
 	}
