@@ -59,7 +59,7 @@ func ConsoleHTML(title, body string, acc *auth.Account, returnTo ...string) stri
 	publicPage := false
 	if len(returnTo) > 0 {
 		switch strings.SplitN(returnTo[0], "?", 2)[0] {
-		case "/", "/about", "/contact", "/pricing", "/privacy", "/status", "/blog", "/blog/post", "/connect", "/api", "/tools", "/developers", "/x402":
+		case "/", "/download", "/download/android", "/about", "/contact", "/pricing", "/privacy", "/status", "/blog", "/blog/post", "/connect", "/api", "/tools", "/developers", "/x402":
 			publicPage = true
 		}
 	}

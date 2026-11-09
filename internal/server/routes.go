@@ -75,19 +75,21 @@ import (
 // authRequired reports, per path, whether a caller must be signed in.
 func authRequired() map[string]bool {
 	authenticated := map[string]bool{
-		"/developers":  false,
-		"/x402":        false,
-		"/tools":       false, // Public — the catalogue, agent lens
-		"/tools/":      false, // Public — one tool, same as the catalogue
-		"/services":    false, // Public — the catalogue, person lens
-		"/service/":    false,
-		"/services/":   false, // Public — one service, what it is and how to call it
-		"/card/":       false, // Public — a service rendered at a glance
-		"/usage":       true,  // Your own calls and spend
-		"/video":       false, // Public viewing, auth for interactive features
-		"/video/thumb": false, // Public — thumbnails for the public feed
-		"/news":        false, // Public viewing, auth for search
-		"/chat":        false, // Public viewing, auth for chatting
+		"/developers":       false,
+		"/download":         false,
+		"/download/android": false,
+		"/x402":             false,
+		"/tools":            false, // Public — the catalogue, agent lens
+		"/tools/":           false, // Public — one tool, same as the catalogue
+		"/services":         false, // Public — the catalogue, person lens
+		"/service/":         false,
+		"/services/":        false, // Public — one service, what it is and how to call it
+		"/card/":            false, // Public — a service rendered at a glance
+		"/usage":            true,  // Your own calls and spend
+		"/video":            false, // Public viewing, auth for interactive features
+		"/video/thumb":      false, // Public — thumbnails for the public feed
+		"/news":             false, // Public viewing, auth for search
+		"/chat":             false, // Public viewing, auth for chatting
 		// SASL inside the stream, with an access token — so no session is
 		// required to open it and none would be honoured. See xmpp_ws.go.
 		"/xmpp-websocket":             false,
@@ -235,6 +237,9 @@ func staticSuffixes() []string {
 
 // registerRoutes attaches every handler to the default mux.
 func registerRoutes() {
+	startDownloadRefresh()
+	http.HandleFunc("/download", DownloadHandler)
+	http.HandleFunc("/download/", DownloadHandler)
 	http.HandleFunc("/robots.txt", robotsHandler)
 	// Older open pages ask this endpoint whether to use the assistant.
 	// Keep that handshake without restoring keyword execution.

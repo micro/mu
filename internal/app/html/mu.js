@@ -2277,3 +2277,13 @@ if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initReferenceIndex);
   else initReferenceIndex();
 }
+
+// Prefer Android on Android without hiding browser access or other platforms.
+if (typeof document !== 'undefined') {
+ const downloads = document.querySelector('[data-client-downloads]');
+ if (downloads && /Android/i.test(navigator.userAgent)) {
+  const android = downloads.querySelector('[data-android-download]');
+  android.textContent = 'Get Android app';
+  downloads.prepend(android);
+ }
+}
