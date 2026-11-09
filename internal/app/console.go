@@ -78,12 +78,14 @@ func shellHTML(title, body string, acc *auth.Account, focused bool, returnTo ...
 	if acc == nil || publicPage {
 		footer = `<footer aria-label="Site information">` + strings.ReplaceAll(FooterLinks(), " · ", "") + `</footer>`
 	}
+	brandPath := "/"
 	if focused {
+		brandPath = "/assistant"
 		menuButton = `<nav aria-label="Assistant"><a href="/assistant?view=agents">Agents</a><a href="/assistant?view=chats">Chats</a></nav>`
 		links = `<a href="/assistant?view=account">Account</a>`
 		footer = ""
 	}
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Mu"><meta name="application-name" content="Mu"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=` + stylesVersion + `"><script defer src="/mu.js?v=` + scriptsVersion + `"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header>` + menuButton + `<a href="/" class="brand" aria-label="Mu home">Mu</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"><meta name="apple-mobile-web-app-title" content="Mu"><meta name="application-name" content="Mu"><link rel="manifest" href="/manifest.webmanifest"><meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/mu.css?v=` + stylesVersion + `"><script defer src="/mu.js?v=` + scriptsVersion + `"></script><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#ffffff"></head><body class="` + pageClass + `">` + navigation + `<div class="page"><header>` + menuButton + `<a href="` + brandPath + `" class="brand" aria-label="Mu home">Mu</a><nav class="desktop-navigation" aria-label="Navigation">` + links + `</nav></header><main>` + body + `</main></div>` + footer + `</body></html>`
 }
 
 // The product destinations stay the same across screen sizes. Services retain

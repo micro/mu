@@ -51,7 +51,7 @@ func TestFocusedAssistantOwnershipAndNavigation(t *testing.T) {
 		t.Fatal("foreign chat accessible")
 	}
 	w := get("/assistant/micro?session="+own.ID, true)
-	for _, want := range []string{`data-path="/assistant/micro"`, `data-voice-controls`, `href="/assistant/micro?new=1"`, "My focused chat"} {
+	for _, want := range []string{`href="/assistant" class="brand"`, `data-path="/assistant/micro"`, `data-voice-controls`, `href="/assistant/micro?new=1"`, "My focused chat"} {
 		if !strings.Contains(w.Body.String(), want) {
 			t.Fatalf("missing %s", want)
 		}
