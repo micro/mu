@@ -97,10 +97,10 @@ jobs:
           fi
           gradle -p client/android --no-daemon testDebugUnitTest lintDebug assembleRelease -PreleaseVersion="$TAG"
           if [ -n "$KEYSTORE_BASE64" ]; then
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs client/android/app/build/outputs/apk/release/mu-android.apk
             cp client/android/app/build/outputs/apk/release/mu-android.apk dist/mu-android.apk
           else
-            cp client/android/app/build/outputs/apk/release/mu-android-unsigned.apk dist/mu-android-unsigned.apk
-            echo "::warning::Android signing is not configured. The unsigned APK cannot be installed until signed."
+            echo "::warning::Android signing is not configured. No Android APK will be published."
           fi
 
       - name: Publish release with binaries

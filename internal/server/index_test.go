@@ -53,7 +53,7 @@ func TestLandingOffersClients(t *testing.T) {
 			t.Fatalf("landing still contains %q", removed)
 		}
 	}
-	for _, link := range []string{`href="/agent/micro"`, `href="/download#android"`, `href="/download"`, `href="/install"`, `href="/developers"`} {
+	for _, link := range []string{`href="/assistant"`, `href="/download#android"`, `href="/download"`, `href="/install"`, `href="/developers"`} {
 		if !strings.Contains(body, link) {
 			t.Fatalf("missing entry %s", link)
 		}

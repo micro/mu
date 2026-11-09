@@ -57,6 +57,9 @@ jobs:
       - name: Test mobile navigation in Chrome
         run: go test ./internal/app -run '^TestMobileNavigationDrawer$' -count=3 -timeout=5m
 
+      - name: Test focused assistant in Chrome
+        run: go test ./agent -run '^TestFocusedAssistantBrowser$' -count=1 -timeout=3m
+
       - name: Race-test security boundaries
         run: go test -race ./internal/auth ./internal/hosts ./internal/service ./internal/api ./internal/server ./service/browser ./service/shell ./x402/billing -short -count=1
 

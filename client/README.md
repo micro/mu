@@ -51,5 +51,9 @@ release; only `mu-android.apk` is offered, never unsigned or debug APKs. The exi
 release workflow requires the `ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`,
 `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` secrets to produce that signed asset.
 Keep the same signing key for updates. Do not label runtime Linux/macOS binaries
-as desktop clients. The current PWA still includes the console; the focused web
-client is a separate piece of work.
+as desktop clients. The PWA starts at `/assistant`: agent selection, personal chats, shared tool-result
+rendering, and optional tap-to-dictate/read-reply controls where the browser supports
+them. Dictation is reviewed before sending and may use the browser
+provider’s speech service. It does not offer background wake words. Account
+and billing changes and agent creation open the runtime console. The console
+remains at `/home`; installing the PWA does not remove it.

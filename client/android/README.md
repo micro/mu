@@ -81,9 +81,9 @@ Configure these repository Actions secrets once for installable release APKs:
 
 Keep and back up the signing key outside this repository; subsequent upgrades
 must use the same key. No key is generated or committed by this project.
-With signing configured, releases attach `mu-android.apk`. Without it,
-they attach explicitly named `mu-android-unsigned.apk`, which must be signed
-before installation; CI still builds an installable debug preview.
+With signing configured, releases verify the APK signature before attaching
+`mu-android.apk`. Without signing secrets, no Android release APK is published;
+CI still builds an installable debug preview.
 
 This does not publish to Google Play or create a new release tag automatically.
 

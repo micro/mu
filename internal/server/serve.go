@@ -350,9 +350,6 @@ func serve(addr string, initialize func()) {
 				}()
 			}
 
-			if consoleRedirect(w, r) {
-				return
-			}
 			gateway.Handler(http.DefaultServeMux).ServeHTTP(w, r)
 			writeCompleted = true
 		}),

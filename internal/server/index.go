@@ -41,7 +41,7 @@ func landingHTML() string {
 <h1>Micro</h1>
 <p class="landing-tagline">A personal assistant</p>
 <p>Talk, get things done, and make room for what matters.</p>
-<div class="form-actions" data-client-downloads><a class="btn" href="/agent/micro" data-open-assistant>Open assistant</a><a class="btn" href="/download#android" data-android-download>Android</a></div>
+<div class="form-actions" data-client-downloads><a class="btn" href="/assistant" data-open-assistant>Open assistant</a><a class="btn" href="/download#android" data-android-download>Android</a></div>
 <p class="landing-access"><a href="/download">Other platforms and installation</a></p>
 <p class="landing-access"><a href="/install">Self-host Mu</a> · <a href="/developers">Developer tools</a></p>
 </section>`

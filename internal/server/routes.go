@@ -95,6 +95,7 @@ func authRequired() map[string]bool {
 		"/xmpp-websocket":             false,
 		"/.well-known/host-meta.json": false, // How a browser finds the above
 		"/assistant":                  false,
+		"/assistant/":                 false,
 		"/home":                       false, // Public viewing
 		"/blog":                       false, // Public viewing, auth for posting
 		"/markets":                    false, // Public viewing
@@ -424,15 +425,8 @@ func registerRoutes() {
 	http.HandleFunc("/brief", agent.BriefHandler)
 	http.HandleFunc("/home/apps", home.AppsHandler)
 	http.HandleFunc("/home/library", home.LibraryHandler)
-	http.HandleFunc("/assistant", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			app.MethodNotAllowed(w, r)
-			return
-		}
-		u := *r.URL
-		u.Path = "/agent/" + agent.DefaultSlug
-		http.Redirect(w, r, u.String(), http.StatusTemporaryRedirect)
-	})
+	http.HandleFunc("/assistant", agent.AssistantHandler)
+	http.HandleFunc("/assistant/", agent.AssistantHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
