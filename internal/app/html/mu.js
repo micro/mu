@@ -398,7 +398,6 @@ function focusedClient(){return (form.dataset.path||'').startsWith('/assistant/'
 async function mucp(operation,body,id=crypto.randomUUID()){
  const response=await fetch('/mucp',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(135000),headers:{'Content-Type':'application/json','Micro-Protocol':'mucp/1','Micro-Service':'assistant','Micro-Endpoint':'Assistant.'+operation,'Micro-Id':id,'X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify(body)});
  const accepted=response.headers.get('Micro-Thread');
- if(accepted){thread=accepted;remember();}
  if(!response.ok){const error=Error(await failure(response));error.status=response.status;error.acceptedThread=accepted;throw error;}
  if(response.headers.get('Micro-Protocol')!=='mucp/1'||response.headers.get('Micro-Id')!==id)throw Error('The runtime needs an update to support this client.');
  return response.json();
@@ -445,12 +444,14 @@ async function assistant(command,answer,version){
   // No automatic resend after an ambiguous transport failure. The durable
   // thread is discoverable in Chats even if acceptance never reached us.
   receipt=null;
-  submission=mucp('Ask',{prompt:command,thread,agentId:form.dataset.agent||'',mode:'ACCESS_MODE_PERSONAL'});
+  const request=mucp('Ask',{prompt:command,thread,agentId:form.dataset.agent||'',mode:'ACCESS_MODE_PERSONAL'});
+  submission=request;
   let result;
-  try{result=await submission;}catch(error){
+  try{result=await request;}catch(error){
+   if(error.acceptedThread&&version===viewVersion){thread=error.acceptedThread;remember(command.slice(0,80));}
    if(error.status===504&&error.acceptedThread&&version===viewVersion){await waitForAnswer(answer,undefined,version,error.acceptedThread);return;}
    throw error;
-  }finally{submission=null;}
+  }finally{if(submission===request)submission=null;}
   if(version!==viewVersion)return;
   thread=result.thread;remember(command.slice(0,80));form.dispatchEvent(new Event('message-accepted'));
   answer.textContent=result.text||'';
@@ -524,7 +525,7 @@ async function navigateThread(url,push=true){
  const navigation=++navigationVersion;
  navigating=true;send.disabled=true;
  try{
-  if(submission)try{await submission;}catch{}
+  if(submission&&!focusedClient())try{await submission;}catch{}
   if(navigation!==navigationVersion)return;
   const response=await fetch(url.pathname+url.search,{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:AbortSignal.timeout(15000)});
   if(!response.ok||response.redirected)throw Error('Could not open the conversation. Try again.');
