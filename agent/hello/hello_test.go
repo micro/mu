@@ -2,6 +2,7 @@ package hello
 
 import (
 	"fmt"
+	"mu/agent/micro"
 	"strings"
 	"testing"
 	"time"
@@ -144,5 +145,15 @@ func TestCorruptStoreFailsClosed(t *testing.T) {
 		if err := Receive("bad@example.net", "<bad>", "hello", "question"); err == nil {
 			t.Fatal("corrupt store reset trial")
 		}
+	}
+}
+
+func TestAuthenticatedHelpIsSeparateFromEmailIntroduction(t *testing.T) {
+	a := micro.Get("hello")
+	if a == nil || a.SystemPrompt != help || !a.NoTools || len(a.Tools) != 0 {
+		t.Fatal("Hello must register the account help prompt without tools")
+	}
+	if a.SystemPrompt == instruction || !strings.Contains(a.SystemPrompt, "already signed in") {
+		t.Fatal("account help must not use anonymous introduction guidance")
 	}
 }

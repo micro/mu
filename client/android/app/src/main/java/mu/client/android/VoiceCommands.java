@@ -7,7 +7,23 @@ final class VoiceCommands {
         return text.trim().toLowerCase(Locale.ROOT).replaceAll("[.!?]+$", "").trim();
     }
     static String afterWake(String text) { return afterWake(text, "Micro"); }
-    static String afterWake(String text, String agentName) {
+    static String[] names(String agentName, String aliases) {
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        names.add(agentName.trim());
+        for (String alias : aliases.split(",")) {
+            String name = alias.trim();
+            if (!name.isEmpty() && name.length() <= 40 && names.size() < 9) names.add(name);
+        }
+        return names.toArray(new String[0]);
+    }
+    static String afterWake(String text, String... names) {
+        for (String name : names) {
+            String command = afterName(text, name);
+            if (command != null) return command;
+        }
+        return null;
+    }
+    private static String afterName(String text, String agentName) {
         String name = agentName.trim();
         if (name.isEmpty()) return null;
         String[] words = name.split("\\s+");

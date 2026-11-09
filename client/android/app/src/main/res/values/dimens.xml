@@ -1,0 +1,3 @@
+<resources>
+    <dimen name="control_gap">8dp</dimen>
+</resources>

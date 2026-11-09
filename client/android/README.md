@@ -101,7 +101,10 @@ With **Hands-free “Hey [agent name]” while open** enabled, say the selected 
 your request together (for Micro, for example “Hey Micro read the headlines” or “Hey Micro
 play K-pop demon hunters”). Selecting Malten changes both the label and recognition
 to “Hey Malten”. Recognition depends on the bundled English voice model
-recognizing the name; tap Speak when a name is not recognized. The text is submitted to your existing agent, using
+recognizing the name. In Account → Wake aliases, add spellings the recognizer hears
+for the selected agent (for Malten, try `molten, maltin`). Aliases are stored on this
+device, per agent; they do not rename the agent or activate other agents. Include
+only the name, without “Hey”. Tap Speak if the name is still not recognized. The text is submitted to your existing agent, using
 its normal tools and permissions. Turning the switch off restores review-before-
 send voice input. Leaving the app still disables the microphone.
 
@@ -116,10 +119,13 @@ or “back”. Include the wake phrase for each command when not already dictati
 Next/previous moves through returned results or through a long spoken response.
 Long briefs are spoken in chunks instead of being cut off.
 
+Recognizing the wake phrase immediately pauses playback, including spoken replies,
+while continuing to capture your words. Say the wake phrase, wait for “Listening”,
+then ask your next question. Requests captured in the same utterance as playing
+audio still require review; this prevents an article or video issuing account actions.
 While audio is playing, only local playback controls are executed automatically.
 Other recognised requests are shown for confirmation, so a video or spoken
-article cannot issue account actions through the microphone. Close playback to
-make a new hands-free service request. General service requests still go through
+article cannot issue account actions through the microphone. Say the wake phrase on its own to stop playback and start a fresh hands-free request. General service requests still go through
 the agent: this is not a second tool runner or a native screen for every service.
 
 YouTube requires a visible player: “audio only” explains that restriction rather
@@ -155,3 +161,7 @@ conversation. Closing or stopping silences playback and stops listening; an
 already submitted request may still complete on the server. Agent-to-agent
 messaging, shared-agent participation and screen-off wake words are separate
 features, not part of this integration.
+
+Spoken replies select a high-quality installed offline English voice, preferring the
+device locale. Available quality depends on the Android speech engine and installed
+voice data; this does not download voices or send reply text to a cloud speech service.

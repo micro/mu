@@ -21,6 +21,16 @@ public class VoiceCommandsTest {
         assertNull(VoiceCommands.afterWake("hey anything help", ".*"));
         assertNull(VoiceCommands.afterWake("hey help", ""));
     }
+    @Test public void wakeAliasesAreExplicitAndScopedToTheSelectedAgent() {
+        String[] malten = VoiceCommands.names("Malten", "molten, maltin, , molten");
+        assertArrayEquals(new String[]{"Malten", "molten", "maltin"}, malten);
+        assertEquals("help me reflect", VoiceCommands.afterWake("hey molten help me reflect", malten));
+        assertEquals("", VoiceCommands.afterWake("hey maltin", malten));
+        assertNull(VoiceCommands.afterWake("hey molten help", VoiceCommands.names("Micro", "")));
+        assertNull(VoiceCommands.afterWake("hey moltenish help", malten));
+        assertNull(VoiceCommands.afterWake("someone said hey molten help", malten));
+        assertNull(VoiceCommands.afterWake("hey anything help", VoiceCommands.names("Malten", ".*")));
+    }
     @Test public void playbackCannotIssueAccountActions() {
         assertTrue(VoiceCommands.playbackControl("pause"));
         assertTrue(VoiceCommands.playbackControl("Stop listening"));

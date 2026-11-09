@@ -34,6 +34,30 @@ public class AccountScreenTest {
             assertEquals("malten-thread", saved.getJSONObject("threads").getString("malten"));
         } finally { vault.clear(); }
     }
+    @Test public void resultButtonsHaveClearanceAndWakeInterruptsReadout() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                try {
+                    java.lang.reflect.Field results = MainActivity.class.getDeclaredField("results"); results.setAccessible(true);
+                    results.set(activity, new org.json.JSONArray("[{\"kind\":\"news\",\"title\":\"First source\"},{\"kind\":\"news\",\"title\":\"Second source\"}]"));
+                    java.lang.reflect.Method show = MainActivity.class.getDeclaredMethod("showResults"); show.setAccessible(true); show.invoke(activity);
+                    android.widget.LinearLayout messages = activity.findViewById(R.id.messages);
+                    for (int i = messages.getChildCount() - 2; i < messages.getChildCount(); i++) {
+                        android.view.View button = messages.getChildAt(i);
+                        assertTrue(button instanceof Button);
+                        assertTrue(((android.widget.LinearLayout.LayoutParams)button.getLayoutParams()).bottomMargin > 0);
+                    }
+                    java.lang.reflect.Field speaking = MainActivity.class.getDeclaredField("speaking"); speaking.setAccessible(true); speaking.setBoolean(activity, true);
+                    java.lang.reflect.Field utterance = MainActivity.class.getDeclaredField("utterance"); utterance.setAccessible(true); utterance.set(activity, "old-reply");
+                    activity.interruptReply();
+                    assertFalse(speaking.getBoolean(activity));
+                    assertEquals("", utterance.get(activity));
+                    assertEquals("Speak", ((Button)activity.findViewById(R.id.speak)).getText().toString());
+                } catch (Exception e) { throw new AssertionError(e); }
+            });
+        }
+    }
+
     @Test public void tappingOutsideComposerClearsFocusWithoutLosingDraft() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
