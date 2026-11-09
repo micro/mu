@@ -1878,9 +1878,9 @@ function imgGenerate(){
   // you landed back on /images and had to scroll to find your own picture.
   var r=document.getElementById('img-result');
   r.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="img-full"></a>'+
-              '<p class="text-sm text-muted mt-half m-0">'+
-              '<button data-id="'+res.j.id+'" data-next="true" data-image-share class="mini-btn mr-2">Share</button>'+
-              'Saved to your images.</p>';
+              '<div class="form-actions"><button type="button" data-id="'+res.j.id+'" data-next="true" data-image-share class="mini-btn">Share</button>'+
+              '<button type="button" data-id="'+res.j.id+'" data-image-delete class="mini-btn btn-danger">Delete</button></div>'+
+              '<p data-image-status role="status" class="text-sm text-muted">Saved to your images.</p>';
   r.scrollIntoView({block:'nearest'});
   // Add it to the gallery too, so the page matches what a reload would show.
   var g=document.getElementById('img-gallery'),e=document.getElementById('img-empty');if(e)e.remove();
@@ -1905,6 +1905,23 @@ function imgShare(btn){
  }).catch(function(){btn.disabled=false;});
 }
 
+async function imgDelete(btn){
+ if(!window.confirm('Delete this image? This cannot be undone.'))return;
+ var status=btn.parentElement.parentElement.querySelector('[data-image-status]');
+ btn.disabled=true;
+ if(status)status.textContent='Deleting…';
+ try{
+  var response=await fetch('/images',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':getCsrfToken()},body:JSON.stringify({id:btn.dataset.id,action:'delete'})});
+  var result=await response.json();
+  if(!response.ok||!result.deleted)throw Error(result.error||'Could not delete the image. Please try again.');
+  // Reload the collection so public and search copies disappear as well.
+  window.location.assign('/images');
+ }catch(error){
+  btn.disabled=false;
+  if(status)status.textContent=error.message||'Could not delete the image. Please try again.';
+ }
+}
+ document.addEventListener('click',function(event){var button=event.target.closest('[data-image-delete]');if(button){event.preventDefault();imgDelete(button);}});
 document.addEventListener('submit',function(event){if(event.target.matches('[data-image-generate]')){event.preventDefault();imgGenerate();}});
 document.addEventListener('click',function(event){var button=event.target.closest('[data-image-share]');if(button){imgShare(button);}});
 }
