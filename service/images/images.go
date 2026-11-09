@@ -6,6 +6,7 @@ package images
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
@@ -397,12 +398,40 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]string{"error": "Sign in to generate images."})
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 8192)
+	if !auth.StrictCSRF(r) {
+		app.RespondError(w, http.StatusForbidden, "Invalid CSRF token")
+		return
+	}
 	var req struct {
+		Action string `json:"action"`
 		Prompt string `json:"prompt"`
 		ID     string `json:"id"`
 		Public bool   `json:"public"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		app.RespondError(w, http.StatusBadRequest, "Invalid image request")
+		return
+	}
+	if req.Action == "delete" {
+		var rsp DeleteResponse
+		err := (Server{}).Delete(service.WithAccount(r.Context(), acc.ID), &GetRequest{ID: req.ID}, &rsp)
+		if err != nil {
+			if errors.Is(err, userdb.ErrNotFound) || errors.Is(err, userdb.ErrForbidden) {
+				app.RespondError(w, http.StatusNotFound, "Image not found")
+			} else {
+				app.Log("images", "deleting image: %v", err)
+				app.RespondError(w, http.StatusInternalServerError, "Could not completely delete the image. Please try again.")
+			}
+			return
+		}
+		app.RespondJSON(w, rsp)
+		return
+	}
+	if req.Action != "" {
+		app.RespondError(w, http.StatusBadRequest, "Unknown image action")
+		return
+	}
 
 	// Publish toggle.
 	if strings.TrimSpace(req.ID) != "" {
@@ -534,7 +563,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</div></div>`)
 	}
 
-	// Your images — each with a share-to-stock toggle.
+	// Your images — owner controls stay beneath the image.
 	if acc != nil {
 		recs := gallery(acc.ID)
 		b.WriteString(`<div class="page-section">`)
@@ -556,7 +585,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 			}
 			b.WriteString(`<div class="relative">`)
 			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url+"?size=thumb") + `" decoding="async" alt="` + html.EscapeString(prompt) + `" class="w-full rounded-lg d-block" loading="lazy"><span class="text-sm d-block mt-2">` + html.EscapeString(prompt) + `</span></a>`)
-			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" data-image-share class="overlay-btn">` + label + `</button>`)
+			b.WriteString(`<div class="form-actions"><button type="button" data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" data-image-share class="mini-btn">` + label + `</button><button type="button" data-image-delete data-id="` + html.EscapeString(rec.ID) + `" class="mini-btn btn-danger">Delete</button></div><p data-image-status role="status" class="text-sm text-muted"></p>`)
 			b.WriteString(`</div>`)
 		}
 		b.WriteString(`</div></div>`)
