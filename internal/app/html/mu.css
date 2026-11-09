@@ -23,6 +23,8 @@ header a{text-decoration:none}
 header nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 16px;font-size:.875rem}
 .brand{font-weight:var(--font-weight-medium);grid-column:2;justify-self:center}
 header>.desktop-navigation{grid-column:3;justify-self:end}
+header>.assistant-navigation{justify-content:flex-start}
+.voice-controls{padding-top:var(--space-2)}
 main{width:min(100% - 40px,760px);margin:0 auto;padding:24px 0 40px}
 footer{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;padding:28px 20px max(36px,env(safe-area-inset-bottom));flex-shrink:0;color:#666;font-size:.8rem}
 footer a{text-decoration:none}

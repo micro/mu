@@ -81,6 +81,18 @@ func TestFocusedAssistantBrowser(t *testing.T) {
 		if !valid {
 			t.Fatalf("empty client layout at %d", width)
 		}
+		if dir := os.Getenv("UI_SCREENSHOTS"); dir != "" {
+			var image []byte
+			if err := chromedp.Run(ctx, chromedp.CaptureScreenshot(&image)); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("assistant-empty-%d.png", width)), image, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
 		err = chromedp.Run(ctx,
 			chromedp.SendKeys("#command-input", "Weather please"),
 			chromedp.Evaluate(`document.querySelector('#command-form').requestSubmit()`, nil),

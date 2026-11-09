@@ -81,7 +81,7 @@ func shellHTML(title, body string, acc *auth.Account, focused bool, returnTo ...
 	brandPath := "/"
 	if focused {
 		brandPath = "/assistant"
-		menuButton = `<nav aria-label="Assistant"><a href="/assistant?view=agents">Agents</a><a href="/assistant?view=chats">Chats</a></nav>`
+		menuButton = `<nav class="assistant-navigation" aria-label="Assistant"><a href="/assistant?view=agents">Agents</a><a href="/assistant?view=chats">Chats</a></nav>`
 		links = `<a href="/assistant?view=account">Account</a>`
 		footer = ""
 	}

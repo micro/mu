@@ -274,7 +274,7 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 	}
 	voice := ""
 	if strings.HasPrefix(basePath, "/assistant/") {
-		voice = `<div class="form-actions" data-voice-controls><button type="button" data-dictate hidden>Speak</button><button type="button" data-read-reply hidden>Read reply</button><button type="button" data-stop-voice hidden>Stop</button></div><p class="text-muted" data-voice-status role="status"></p>`
+		voice = `<div class="form-actions voice-controls" data-voice-controls><button type="button" data-dictate hidden>Speak</button><button type="button" data-read-reply hidden>Read reply</button><button type="button" data-stop-voice hidden>Stop</button></div><p class="text-muted" data-voice-status role="status"></p>`
 	}
 	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + attached + `<div id="responses" role="log" aria-label="Chat">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + launch + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="` + html.EscapeString(placeholder) + `" required></textarea><button id="send" type="submit" aria-label="Send message">` + button + `</button></div><p id="status" role="status"></p>` + voice + `</form></div></div></div>`
 }
