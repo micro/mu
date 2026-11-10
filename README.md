@@ -17,7 +17,7 @@ Services supply mail, calendar, contacts, information, media and storage. Agents
 use those capabilities to carry out requests. Mu runs them together as one Go
 binary, using Go Micro as its underlying framework.
 
-## Client, protocol and runtime
+## Architecture 
 
 ```text
   Android / PWA / other clients
