@@ -1662,3 +1662,13 @@ a.traffic-row:focus-visible{outline:2px solid var(--text-primary);outline-offset
 .reference-sidebar .ep-price{float:right;color:var(--text-muted)}
 @media(min-width:901px){.reference-sidebar>summary{display:none}}
 @media(max-width:900px){.reference-layout{grid-template-columns:minmax(0,1fr)}.reference-sidebar{position:static;max-height:none}.reference-sidebar .reference-index{max-height:50dvh;overflow:auto;margin-top:12px}}
+
+/* Focused client: shared controls, explicit spacing for structured results. */
+.web-client .client-result { margin-block: 1rem; overflow-wrap: anywhere; }
+.web-client .client-result iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; }
+.web-client .client-result img, .web-client .client-result audio { max-width: 100%; }
+.web-client .message-body pre { overflow-x: auto; }
+.web-client .message-body { overflow-wrap: anywhere; }
+.web-client #status { min-height: 1.5em; }
+.web-client #connection:empty { display: none; }
+.web-client [hidden] { display: none !important; }

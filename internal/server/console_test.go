@@ -38,8 +38,6 @@ func TestNavigationRedirectsTerminateThroughLegacyMiddleware(t *testing.T) {
 		http.Redirect(w, r, "/agent/micro?"+r.URL.RawQuery, http.StatusSeeOther)
 	})
 	mux.HandleFunc("/agent/", agent.Handler)
-	mux.HandleFunc("/assistant", agent.AssistantHandler)
-	mux.HandleFunc("/assistant/", agent.AssistantHandler)
 	// Same ordering as serve.go: root handler, then legacy redirects, then mux.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
@@ -65,7 +63,7 @@ func TestNavigationRedirectsTerminateThroughLegacyMiddleware(t *testing.T) {
 		{"/", "/home"}, {"/home", "/home"}, {"/home/apps", "/home/apps"},
 		{"/agent", "/agent/micro"}, {"/agent/micro", "/agent/micro"},
 		{"/?session=" + th.ID, "/agent/micro"}, {"/home?session=" + th.ID, "/agent/micro"},
-		{"/agent/micro?session=" + th.ID, "/agent/micro"}, {"/assistant?session=" + th.ID, "/assistant/micro"},
+		{"/agent/micro?session=" + th.ID, "/agent/micro"},
 	} {
 		rsp, err := client.Get(srv.URL + tc.path)
 		if err != nil {

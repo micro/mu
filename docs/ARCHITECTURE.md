@@ -34,8 +34,9 @@ into a running system that clients can use.
                                                       +-------------------+
 ```
 
-(*) Android uses the MUCP HTTPS/JSON binding. The focused PWA uses it for Ask and
-pending recovery, with shared server-rendered views for navigation and content.
+(*) Android and the focused client in `client/web` use the MUCP HTTPS/JSON
+binding for agents, threads and replies. The web client renders data locally and
+is served at `/app/`, independently of the server-rendered full web experience.
 The server uses go-micro with an in-memory transport internally.
 The web console is server-rendered composition, not currently an independent MUCP
 client. It remains useful for overview, administration and direct service use.

@@ -103,6 +103,9 @@ jobs:
             echo "::warning::Android signing is not configured. No Android APK will be published."
           fi
 
+      - name: Build focused web client
+        run: python3 client/web/build.py dist/mu-web.zip
+
       - name: Publish release with binaries
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

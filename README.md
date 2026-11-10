@@ -65,8 +65,8 @@ Optional [documentation](docs/README.md) covers hosting, configuration, mail and
 
 Open **http://localhost:8080** to create your account and choose an AI provider.
 
-The focused assistant at `/assistant` can be installed as a PWA. The broader
-runtime console remains at `/home`.
+The focused [web client](client/web/README.md) at `/app/` installs as **Mu Web**.
+The full web experience and its **Mu** PWA remain at `/home`.
 
 ## Clients
 

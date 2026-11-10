@@ -62,7 +62,7 @@ jobs:
       - name: Test focused assistant in Chrome
         env:
           UI_SCREENSHOTS: ${{ runner.temp }}/assistant-screenshots
-        run: go test ./agent -run '^TestFocusedAssistantBrowser$' -count=1 -timeout=3m
+        run: go test ./client/web -run '^TestFocusedClientBrowser$' -count=1 -timeout=3m
 
       - uses: actions/upload-artifact@v4
         if: always()

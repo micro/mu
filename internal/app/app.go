@@ -570,11 +570,12 @@ func Serve(scripts ...string) http.Handler {
 				}
 				return
 			}
+		case strings.HasSuffix(r.URL.Path, ".webmanifest"):
+			w.Header().Set("Cache-Control", "no-cache")
 		case strings.HasSuffix(r.URL.Path, ".woff2"), strings.HasSuffix(r.URL.Path, ".css"),
 			strings.HasSuffix(r.URL.Path, ".js"),
 			strings.HasSuffix(r.URL.Path, ".png"),
-			strings.HasSuffix(r.URL.Path, ".ico"),
-			strings.HasSuffix(r.URL.Path, ".webmanifest"):
+			strings.HasSuffix(r.URL.Path, ".ico"):
 			w.Header().Set("Cache-Control", "public, max-age=86400") // 1 day
 		}
 		if compressed(w, r, htmlContent) {

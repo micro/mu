@@ -216,7 +216,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	accountID := acc.ID
-	assistant := r.URL.Path == "/assistant" || r.URL.Path == "/"
+	assistant := r.URL.Path == "/"
 	w.Header().Set("Cache-Control", "private, no-store")
 
 	sessionID := r.URL.Query().Get("session")

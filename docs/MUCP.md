@@ -195,10 +195,10 @@ Pagination tokens are signed, scoped to account/operation/filter, and expire aft
 15 minutes or a runtime restart. Restart pagination on an expired token, deduplicating
 by record ID. These are live pages, not snapshots. ReadThread is oldest-first.
 
-Android offers Chats, New chat and paginated history. The focused PWA uses MUCP for
-Ask and pending recovery, and retains the shared server-rendered chat pages for safe
-Markdown and widgets. Its agent/chat navigation is still server-rendered; it is not
-a standalone JavaScript app. The broader runtime console retains its existing API.
+Android and Mu Web offer agents, Chats, New chat and paginated history through
+MUCP. The static web client renders Markdown and typed results locally; it does
+not fetch server-rendered chat pages. The broader runtime web experience retains
+its existing API. Browser authentication currently requires the same origin.
 
 Go types are committed and checked for generation drift. Java types are generated
 by the Android build from the same proto. The adapter is implemented in `agent/`,

@@ -130,10 +130,10 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	if release.URL != "" {
 		android = `<div class="section-body"><div class="form-actions">` + app.ActionLink("/download/android", "Download for Android") + `<span class="action-note">` + html.EscapeString(release.Version) + ` · APK</span></div><p>Open the downloaded file and allow installation from your browser when Android asks. Updates are installed from this page over your existing app.</p></div>`
 	}
-	body := `<h1>Use your assistant</h1><p>Open it in your browser or install it on your device.</p><div class="form-actions">` + app.ActionLink("/assistant", "Open assistant") + `</div>
+	body := `<h1>Use your assistant</h1><p>Open it in your browser or install it on your device.</p><div class="form-actions">` + app.ActionLink("/app/", "Open assistant") + `</div>
 <section class="page-section" id="android"><h2>Android</h2>` + android + `</section>
-<section class="page-section" id="iphone"><h2>iPhone and iPad</h2><p>Open this site in Safari, tap Share, then Add to Home Screen. Enable Open as Web App if offered. No App Store download is needed.</p></section>
-<section class="page-section" id="desktop"><h2>Desktop</h2><p>Use the assistant in your browser on Linux, macOS or Windows. Native desktop clients are not available yet.</p></section>
+<section class="page-section" id="iphone"><h2>iPhone and iPad</h2><p>Open the assistant at /app/ in Safari, tap Share, then Add to Home Screen to install Mu Web. Enable Open as Web App if offered. No App Store download is needed.</p></section>
+<section class="page-section" id="desktop"><h2>Desktop</h2><p>Use the assistant in your browser on Linux, macOS or Windows. You can install Mu Web from a supported browser. Downloadable desktop installers are not available yet.</p></section>
 <section class="page-section"><h2>Run Mu yourself</h2><p>Host the runtime and web console on your own server. The Linux and macOS release binaries are server software, not desktop assistant apps.</p><div class="form-actions">` + app.ActionLink("/install", "Self-host Mu") + app.ActionLink("/developers", "Developer tools") + `</div></section>`
 	_, acc := auth.TrySession(r)
 	w.Header().Set("Cache-Control", "private, no-store")

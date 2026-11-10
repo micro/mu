@@ -20,6 +20,7 @@ import (
 	"mu/agent/digest"
 	"mu/agent/micro"
 	"mu/agent/work"
+	webclient "mu/client/web"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -94,8 +95,7 @@ func authRequired() map[string]bool {
 		// required to open it and none would be honoured. See xmpp_ws.go.
 		"/xmpp-websocket":             false,
 		"/.well-known/host-meta.json": false, // How a browser finds the above
-		"/assistant":                  false,
-		"/assistant/":                 false,
+		"/app/":                       false,
 		"/home":                       false, // Public viewing
 		"/blog":                       false, // Public viewing, auth for posting
 		"/markets":                    false, // Public viewing
@@ -427,8 +427,10 @@ func registerRoutes() {
 	http.HandleFunc("/home/apps", home.AppsHandler)
 	http.HandleFunc("/home/library", home.LibraryHandler)
 	http.HandleFunc("/mucp", agent.MUCPHandler)
-	http.HandleFunc("/assistant", agent.AssistantHandler)
-	http.HandleFunc("/assistant/", agent.AssistantHandler)
+	http.Handle("/app/", http.StripPrefix("/app", webclient.Handler()))
+	for _, asset := range []string{"mu.css", "theme.css", "dm-sans-latin.woff2", "geist-mono-latin.woff2", "icon-192.png", "icon-512.png"} {
+		http.Handle("/app/"+asset, http.StripPrefix("/app", app.Serve()))
+	}
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
