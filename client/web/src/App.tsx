@@ -235,6 +235,7 @@ function Client({
     };
   }, [session]);
   function newChat() {
+    if (!agent) return;
     epoch.current++;
     if (timer.current) clearTimeout(timer.current);
     setBusy(false);
@@ -400,7 +401,7 @@ function Client({
     <section id="chat" className="assistant-workspace">
       <div className={"conversation" + (messages.length ? " is-active" : "")}>
         <div className="assistant-toolbar form-actions">
-          <button id="new-chat" onClick={newChat}>
+          <button id="new-chat" disabled={!agent} onClick={newChat}>
             New chat
           </button>
         </div>

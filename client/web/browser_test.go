@@ -31,6 +31,15 @@ func TestFocusedClientBrowser(t *testing.T) {
 		t.Skip("Chrome unavailable")
 	}
 	var calls atomic.Int32
+	var catalogStarted atomic.Bool
+	catalogRelease := make(chan struct{})
+	defer func() {
+		select {
+		case <-catalogRelease:
+		default:
+			close(catalogRelease)
+		}
+	}()
 	var mu sync.Mutex
 	var callback, challenge string
 	client := httptest.NewServer(web.Handler())
@@ -91,6 +100,13 @@ func TestFocusedClientBrowser(t *testing.T) {
 		w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
 		switch r.Header.Get("Micro-Endpoint") {
 		case "Assistant.ListAgents":
+			if !catalogStarted.Swap(true) {
+				select {
+				case <-catalogRelease:
+				case <-r.Context().Done():
+					return
+				}
+			}
 			json.NewEncoder(w).Encode(map[string]any{"agents": []any{map[string]string{"id": "micro", "slug": "micro", "name": "Micro", "description": "A personal assistant"}}})
 		case "Assistant.ListThreads":
 			json.NewEncoder(w).Encode(map[string]any{"threads": []any{map[string]string{"id": "own-thread", "agentId": "micro", "subject": "Browser conversation"}}})
@@ -123,9 +139,17 @@ func TestFocusedClientBrowser(t *testing.T) {
 	defer cancel()
 	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
-	err := chromedp.Run(ctx, chromedp.Navigate(client.URL), chromedp.WaitVisible("#runtime"), chromedp.SetValue("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitEnabled("#send"))
+	err := chromedp.Run(ctx, chromedp.Navigate(client.URL), chromedp.WaitVisible("#runtime"), chromedp.SetValue("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitReady("#new-chat"))
 	if err != nil {
 		t.Fatalf("independent sign-in: %v", err)
+	}
+	var disabled bool
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector('#new-chat').disabled`, &disabled)); err != nil || !disabled {
+		t.Fatalf("new chat interrupted agent discovery: %v", err)
+	}
+	close(catalogRelease)
+	if err := chromedp.Run(ctx, chromedp.WaitEnabled("#send")); err != nil {
+		t.Fatal(err)
 	}
 	for _, width := range []int64{320, 390, 1440} {
 		var valid bool

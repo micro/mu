@@ -31,11 +31,18 @@ export function Voice({
   const [active, setActive] = useState(false),
     recognition = useRef<Recognition | null>(null),
     lock = useRef<WakeLockSentinel | null>(null),
-    consent = useRef(false);
+    consent = useRef(false),
+    speechRef = useRef<SpeechSynthesisUtterance | null>(null),
+    generation = useRef(0);
   const RecognitionAPI =
     (window as SpeechWindow).SpeechRecognition ||
     (window as SpeechWindow).webkitSpeechRecognition;
   function stop() {
+    generation.current++;
+    if (speechRef.current) {
+      speechRef.current.onend = speechRef.current.onerror = null;
+      speechRef.current = null;
+    }
     if (recognition.current) {
       recognition.current.onend =
         recognition.current.onresult =
@@ -50,7 +57,13 @@ export function Voice({
   }
   async function awake() {
     try {
-      lock.current = (await navigator.wakeLock?.request("screen")) || null;
+      const version = generation.current;
+      const acquired = (await navigator.wakeLock?.request("screen")) || null;
+      if (version !== generation.current) {
+        acquired?.release();
+        return;
+      }
+      lock.current = acquired;
     } catch {}
   }
   useEffect(() => {
@@ -98,10 +111,11 @@ export function Voice({
       {"speechSynthesis" in window && (
         <button
           type="button"
-          disabled={!reply}
+          disabled={!reply || busy}
           onClick={() => {
             stop();
             const speech = new SpeechSynthesisUtterance(reply);
+            speechRef.current = speech;
             speech.onend = speech.onerror = () => {
               setActive(false);
               onStatus("");
