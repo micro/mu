@@ -209,9 +209,13 @@ func TestHostedClientBrowser(t *testing.T) {
 		http.Redirect(w, r, "/app/", 303)
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		cookie, err := r.Cookie("session")
 		if r.URL.Path != "/" || r.Method != "POST" || err != nil || cookie.Value != "browser-session" || r.Header.Get("Authorization") != "" || r.Header.Get("X-CSRF-Token") != "csrf-proof" {
-			t.Error("hosted client did not reuse its session safely")
+			t.Errorf("hosted client did not reuse its session safely: %s %s", r.Method, r.URL.Path)
 			http.Error(w, "unauthorized", 401)
 			return
 		}
