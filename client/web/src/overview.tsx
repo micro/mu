@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke, type Agent, type Message, type Session } from "./protocol";
-import { Turn } from "./content";
+import { Turn, safeURL } from "./content";
+import Markdown from "react-markdown";
 
 type InboxItem = {
   id: string;
@@ -166,7 +167,9 @@ export function Overview({
               <h2>Pinned services</h2>
               <ul>
                 {home.pinnedServices.map((s) => (
-                  <li key={s}>{s}</li>
+                  <li key={s}>
+                    <a href={"?view=services#" + encodeURIComponent(s)}>{s}</a>
+                  </li>
                 ))}
               </ul>
               <a href="?view=services">Browse services</a>
@@ -174,7 +177,6 @@ export function Overview({
           )}
           {home.brief && (
             <>
-              <h2>Brief</h2>
               <Turn
                 name="Brief"
                 server={session.server}
@@ -200,12 +202,25 @@ export function Overview({
               {selected.unread ? "Mark read" : "Mark unread"}
             </button>
             {messages.map((m, i) => (
-              <Turn
-                name="Assistant"
-                server={session.server}
-                key={m.id || i}
-                message={m}
-              />
+              <article className="collection-item" key={m.id || i}>
+                <div className="message-body">
+                  <Markdown
+                    skipHtml
+                    urlTransform={(url) => safeURL(url, session.server)}
+                    components={{
+                      a: (props) => (
+                        <a
+                          {...props}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        />
+                      ),
+                    }}
+                  >
+                    {m.text}
+                  </Markdown>
+                </div>
+              </article>
             ))}
             {messagePage && (
               <button
@@ -239,25 +254,13 @@ export function Overview({
         ))}
       {view === "services" && (
         <>
-          <p className="text-muted">
-            Capabilities available to your assistant. Direct client operations
-            are listed where supported.
-          </p>
+          <p className="text-muted">Ask your agent to use these services.</p>
           <div className="collection-list">
             {services.map((s) => (
-              <article className="collection-item" key={s.name}>
+              <article className="collection-item" id={s.name} key={s.name}>
                 <div>
                   <strong>{s.name}</strong>
                   <p>{s.description}</p>
-                  {s.operations.length > 0 && (
-                    <ul>
-                      {s.operations.map((o) => (
-                        <li key={o.endpoint}>
-                          {o.endpoint}: {o.description}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
               </article>
             ))}
