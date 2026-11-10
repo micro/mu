@@ -2,6 +2,8 @@
 
 An open runtime for personal assistants.
 
+## Overview
+
 Mu brings together agents, connected services, accounts, permissions and persistent
 history. Run it yourself or use a hosted instance, then access your assistants
 through a focused client or the broader web console.
