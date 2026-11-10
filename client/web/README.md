@@ -2,7 +2,8 @@
 
 A standalone React + TypeScript client for Mu, built with Vite. It runs
 independently, connects to a runtime you choose, and signs in through that
-runtime's browser OAuth flow. It uses MUCP for agents, chats and replies.
+runtime's browser OAuth flow. When served at `/app/` by the selected runtime, it
+reuses the website session and normal login/signup flow. It uses MUCP for agents, chats and replies.
 
 The runtime's PWA is separate: install the full Home/Inbox/Agents/Services web
 experience from your runtime. This client has no PWA manifest or service worker.
@@ -17,8 +18,7 @@ npm ci
 npm run dev
 ```
 
-Open the local address Vite prints. Enter `https://micro.mu` or your own runtime
-address, sign in and approve access. No local Mu server, reverse proxy, model
+Open the local address Vite prints. Sign in to micro.mu, or choose your own server under Settings. No local Mu server, reverse proxy, model
 keys or dashboard session is required. The runtime must support browser-client
 OAuth/CORS and MUCP. Local runtimes may use HTTP on a loopback address.
 
@@ -36,9 +36,8 @@ launcher; it needs Node.js, but no npm install or build. `PORT` and `HOST` confi
 the launcher; it listens only on loopback by default. For public hosting, serve
 `static/` over HTTPS with any static web server.
 
-This is a runnable browser client, not an Electron/Tauri desktop installer.
-Desktop packaging is separate work. Mu's Linux/macOS runtime binaries are not
-client installers.
+Desktop installers live in [client/desktop](../desktop/README.md) and bundle this app.
+Mu's Linux/macOS runtime binaries remain server software.
 
 ## Build and test
 
@@ -64,7 +63,8 @@ OAuth uses S256 PKCE, state verification, explicit consent and `read write api:a
 permissions. Tokens and pending sign-in data stay in tab-scoped session storage;
 only the selected runtime address is remembered in local storage. Disconnect
 clears this client's session. Revoke access in the runtime account settings.
-Client requests omit cookies. Cross-origin browser access is restricted to MUCP
+Independent client requests omit cookies. Same-origin `/app/` uses the existing
+HttpOnly session cookie and a verified CSRF token for writes. Cross-origin browser access is restricted to MUCP
 and the OAuth registration/token endpoints; it does not expose dashboard routes.
 
 The runtime owns history, tools, permissions, billing and model execution. Replies

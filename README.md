@@ -70,12 +70,12 @@ Open **http://localhost:8080** to create your account and choose an AI provider.
 The full web experience at `/home` installs as the **Mu PWA**.
 The separate [React/TypeScript client](client/web/README.md) runs independently
 with `npm run dev` or from the `mu-web.zip` release using `node serve.mjs`.
-Mu also serves its production build at `/app/`.
+Mu also serves its production build at `/app/`, reusing your website sign-in.
 
 ## Clients
 
 Native and protocol clients provide direct agent use. See the [client map](client/README.md)
-and [Android voice and text client](client/android/README.md).
+and the [Android](client/android/README.md) and [desktop apps](client/desktop/README.md).
 
 ## CLI
 

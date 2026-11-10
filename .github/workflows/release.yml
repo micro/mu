@@ -24,6 +24,8 @@ permissions:
 
 jobs:
   release:
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -129,3 +131,10 @@ jobs:
             --title "${TAG}" \
             --generate-notes \
           || gh release upload "${TAG}" dist/* --clobber
+
+  desktop:
+    needs: release
+    uses: ./.github/workflows/desktop.yml
+    with:
+      release_tag: ${{ needs.release.outputs.tag }}
+    secrets: inherit

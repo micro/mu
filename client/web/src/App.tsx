@@ -7,50 +7,88 @@ import {
   type Session,
   type Thread,
 } from "./protocol";
-import { defaultRuntime, disconnect, signIn } from "./auth";
+import {
+  defaultRuntime,
+  disconnect,
+  signIn,
+  hosted,
+  accountURL,
+  saveRuntime,
+} from "./auth";
 import { Turn } from "./content";
 import { Voice } from "./voice";
 
-function Connect({ error = "" }: { error?: string }) {
+function ConnectionSettings() {
   const [server, setServer] = useState(defaultRuntime),
-    [status, setStatus] = useState(error),
-    [busy, setBusy] = useState(false);
+    [error, setError] = useState("");
   return (
     <section className="section-stack">
-      <h1>Connect to Mu</h1>
-      <p>Choose the runtime where your agents live.</p>
+      <h1>Settings</h1>
       <form
-        onSubmit={async (e) => {
+        className="form record-editor"
+        onSubmit={(e) => {
           e.preventDefault();
-          setBusy(true);
-          setStatus("Opening sign-in…");
           try {
-            await signIn(server);
-          } catch (error) {
-            setStatus(
-              error instanceof Error ? error.message : "Could not connect.",
+            saveRuntime(server);
+            location.assign(location.pathname);
+          } catch (err) {
+            setError(
+              err instanceof Error ? err.message : "Invalid server address.",
             );
-            setBusy(false);
           }
         }}
       >
-        <label htmlFor="runtime">Runtime address</label>
-        <div className="search-bar">
-          <input
-            id="runtime"
-            type="url"
-            required
-            value={server}
-            onChange={(e) => setServer(e.target.value)}
-            autoComplete="url"
-          />
-          <button disabled={busy}>Sign in</button>
+        <label htmlFor="runtime">Server address</label>
+        <input
+          id="runtime"
+          type="url"
+          required
+          value={server}
+          onChange={(e) => setServer(e.target.value)}
+          autoComplete="url"
+        />
+        <p className="text-muted">
+          Use micro.mu or connect to your own Mu server. Changing servers
+          disconnects this app from the current account.
+        </p>
+        <div className="form-actions">
+          <button>Save</button>
+          <a href="./">Cancel</a>
         </div>
-        <p role="status">{status}</p>
+        <p role="status">{error}</p>
       </form>
-      <p className="text-muted">
-        Your account, agents and chats stay on the runtime you choose.
-      </p>
+    </section>
+  );
+}
+function Connect({ error = "" }: { error?: string }) {
+  const [status, setStatus] = useState(error),
+    [busy, setBusy] = useState(false);
+  return (
+    <section className="section-stack">
+      <h1>Welcome to Mu</h1>
+      <p>Sign in to talk to your agents.</p>
+      <div className="form-actions">
+        <button
+          id="sign-in"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setStatus("Opening sign-in…");
+            try {
+              await signIn(defaultRuntime());
+            } catch (err) {
+              setStatus(
+                err instanceof Error ? err.message : "Could not sign in.",
+              );
+              setBusy(false);
+            }
+          }}
+        >
+          Sign in
+        </button>
+        {hosted() && <a href={accountURL("signup")}>Create account</a>}
+      </div>
+      <p role="status">{status}</p>
     </section>
   );
 }
@@ -64,6 +102,10 @@ export default function App({
   const [session, setSession] = useState(initial);
   const leave = () => {
     disconnect();
+    if (session?.cookie) {
+      location.assign(session.server + "/logout");
+      return;
+    }
     setSession(null);
   };
   return (
@@ -85,11 +127,15 @@ export default function App({
             <a href="?view=account">Account</a>
           </nav>
         ) : (
-          <span />
+          <nav className="desktop-navigation">
+            <a href="?view=settings">Settings</a>
+          </nav>
         )}
       </header>
       <main>
-        {session ? (
+        {new URLSearchParams(location.search).get("view") === "settings" ? (
+          <ConnectionSettings />
+        ) : session ? (
           <Client session={session} disconnect={leave} />
         ) : (
           <Connect error={error} />
@@ -334,7 +380,10 @@ function Client({
           </a>
         </div>
         <div className="form-actions">
-          <button onClick={disconnect}>Disconnect</button>
+          <a href="?view=settings">Settings</a>
+          <button onClick={disconnect}>
+            {session.cookie ? "Sign out" : "Disconnect"}
+          </button>
         </div>
         <p className="text-muted">
           Disconnect clears this client’s sign-in. Revoke its access from your
