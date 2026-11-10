@@ -11,7 +11,7 @@ const el = (tag, text, className) => {
   return node;
 };
 function safeURL(value) {
-  try { const u = new URL(value, location.origin); return ['https:', 'http:'].includes(u.protocol) && !u.username && !u.password ? u.href : ''; } catch { return ''; }
+  try { const u = new URL(value, location.href); return ['https:', 'http:'].includes(u.protocol) && !u.username && !u.password ? u.href : ''; } catch { return ''; }
 }
 function link(text, href, className) {
   const node = el('a', text, className), url = safeURL(href);
@@ -78,6 +78,7 @@ function contentBlock(block) {
   return card;
 }
 function message(role, text, content = []) {
+  document.querySelector('#chat .conversation').classList.add('is-active');
   const section = el('section', undefined, 'turn');
   const body = el('div', undefined, role === 'ROLE_PERSON' ? 'request' : 'answer');
   body.append(el('strong', role === 'ROLE_PERSON' ? 'You' : agent?.name || 'Assistant', 'metadata-row'));
@@ -137,6 +138,7 @@ function recover(error, id, version) {
   setTimeout(() => { if (version === epoch) readThread(id, version).catch(error => recover(error, id, version)); }, 5000);
 }
 function newChat() {
+  document.querySelector('#chat .conversation').classList.remove('is-active');
   epoch++; recovering = false; setBusy(false); setThread(''); $('responses').replaceChildren(); lastReply = '';
   $('agent-name').textContent = agent.name; status.textContent = ''; stopVoice(); $('prompt').focus();
 }
@@ -166,6 +168,7 @@ $('prompt').addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('compose').requestSubmit(); }
 });
 async function directory(view, pageToken = '', append = false) {
+  document.body.classList.replace('command-page', 'document-page');
   $('chat').hidden = true; const panel = $('directory'); panel.hidden = false;
   if (!append) panel.replaceChildren(el('h1', view === 'agents' ? 'Choose an agent' : 'Chats'));
   const list = el('div', undefined, 'collection-list'); panel.append(list);
@@ -188,14 +191,15 @@ async function directory(view, pageToken = '', append = false) {
   }
 }
 // Browser voice is optional and explicit. Dictation fills the composer for review.
-let recognition, wakeLock;
+let recognition, wakeLock, speechConsent = false;
 async function keepAwake() { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {} }
 function stopVoice() { recognition?.stop(); window.speechSynthesis?.cancel(); wakeLock?.release(); $('stop').hidden = true; }
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (Recognition) {
   $('dictate').hidden = false;
   $('dictate').addEventListener('click', () => {
-    stopVoice(); recognition = new Recognition(); recognition.interimResults = true;
+    if (!speechConsent && !window.confirm('Your browser may send audio to its speech recognition provider. Continue?')) return;
+    speechConsent = true; stopVoice(); recognition = new Recognition(); recognition.interimResults = true;
     const before = $('prompt').value; status.textContent = 'Listening…'; $('stop').hidden = false;
     recognition.onresult = event => { $('prompt').value = before + (before ? ' ' : '') + Array.from(event.results, r => r[0].transcript).join(' '); };
     recognition.onerror = () => { status.textContent = 'Could not hear you. Try again or type your message.'; };
@@ -222,6 +226,7 @@ async function start() {
   if (!agent) throw Error('This agent is not available on your account.');
   const view = params.get('view');
   if (view === 'account') {
+    document.body.classList.replace('command-page', 'document-page');
     const panel = $('directory'); panel.hidden = false;
     panel.append(el('h1', 'Account'), el('p', 'Connected to ' + location.origin));
     const list = el('div', undefined, 'collection-list');

@@ -70,3 +70,17 @@ func TestDownloadPageAndRedirect(t *testing.T) {
 		t.Fatal("accepted POST")
 	}
 }
+
+func TestWebReleaseUsesItsOwnVerifiedAsset(t *testing.T) {
+	for _, url := range []string{"https://github.com/micro/mu/releases/download/v3.0.0/mu-web.zip", "https://example.org/mu-web.zip", "https://github.com/micro/mu/releases/download/v3.0.0/mu-android.apk"} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(`{"tag_name":"v3.0.0","assets":[{"name":"mu-web.zip","browser_download_url":"` + url + `"}]}`))
+		}))
+		got, err := fetchAndroidRelease(context.Background(), server.Client(), server.URL)
+		server.Close()
+		valid := url == "https://github.com/micro/mu/releases/download/v3.0.0/mu-web.zip"
+		if err != nil || (got.WebURL != "") != valid || got.URL != "" {
+			t.Fatalf("web asset: %+v %v", got, err)
+		}
+	}
+}

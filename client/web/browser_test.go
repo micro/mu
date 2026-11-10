@@ -75,7 +75,7 @@ func TestFocusedClientBrowser(t *testing.T) {
 	defer cancel()
 	for _, width := range []int64{320, 390, 1440} {
 		var valid bool
-		err := chromedp.Run(ctx, emulation.SetDeviceMetricsOverride(width, 900, 1, width < 500), chromedp.Navigate(server.URL+"/app/"), chromedp.WaitVisible("#chat"), chromedp.SendKeys("#prompt", "Weather please\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('.answer strong').textContent==='Micro' && document.querySelector('.message-body strong').textContent==='Forecast' && !window.pwned && !document.querySelector('a[href^="javascript:"]') && document.querySelector('#responses').textContent.includes('Future widget') && document.documentElement.scrollWidth<=innerWidth`, &valid))
+		err := chromedp.Run(ctx, emulation.SetDeviceMetricsOverride(width, 900, 1, width < 500), chromedp.Navigate(server.URL+"/app/"), chromedp.WaitVisible("#chat"), chromedp.SendKeys("#prompt", "Weather please\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('.answer strong').textContent==='Micro' && document.querySelector('.message-body strong').textContent==='Forecast' && !window.pwned && !document.querySelector('a[href^="javascript:"]') && document.querySelector('#responses').textContent.includes('Future widget') && document.documentElement.scrollWidth<=innerWidth && document.querySelector('#send').getBoundingClientRect().bottom<=innerHeight && document.querySelector('#send').getBoundingClientRect().top>document.querySelector('.answer').getBoundingClientRect().top`, &valid))
 		if err != nil || !valid {
 			t.Fatalf("width %d: %v valid=%v", width, err, valid)
 		}
@@ -98,11 +98,11 @@ func TestFocusedClientBrowser(t *testing.T) {
 		t.Fatalf("unexpected resubmissions: %d", calls.Load())
 	}
 	var valid bool
-	err := chromedp.Run(ctx, chromedp.Navigate(server.URL+"/app/?view=chats"), chromedp.WaitVisible(".collection-item"), chromedp.Click(".collection-item"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
+	err := chromedp.Run(ctx, chromedp.Navigate(server.URL+"/app/?view=chats"), chromedp.WaitVisible(".collection-item"), chromedp.Click(".collection-item"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`location.pathname==='/app/' && document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
 	if err != nil || !valid {
 		t.Fatalf("thread history: %v", err)
 	}
-	err = chromedp.Run(ctx, chromedp.Click("#new-chat"), chromedp.SendKeys("#prompt", "Pending\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
+	err = chromedp.Run(ctx, chromedp.Click("#new-chat"), chromedp.SendKeys("#prompt", "Pending\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`location.pathname==='/app/' && document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
 	if err != nil || !valid {
 		t.Fatalf("pending recovery: %v", err)
 	}

@@ -2,6 +2,8 @@
 
 An open runtime for personal assistants.
 
+## Overview
+
 Mu brings together agents, connected services, accounts, permissions and persistent
 history. Run it yourself or use a hosted instance, then access your assistants
 through a focused client or the broader web console.
@@ -15,7 +17,7 @@ Services supply mail, calendar, contacts, information, media and storage. Agents
 use those capabilities to carry out requests. Mu runs them together as one Go
 binary, using Go Micro as its underlying framework.
 
-## Client, protocol and runtime
+## Architecture
 
 ```text
   Android / PWA / other clients
@@ -57,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
 ~/.local/bin/mu --serve --address 127.0.0.1:8080
 ```
 
-See [Install Micro](docs/INSTALL.md) for the quick start. 
+See [Install Mu](docs/INSTALL.md) for the quick start. 
 
 Optional [documentation](docs/README.md) covers hosting, configuration, mail and development.
 

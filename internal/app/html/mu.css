@@ -864,7 +864,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .command-page:has(.assistant-workspace){height:100svh;height:var(--workspace-height,100dvh);min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .command-page:has(.assistant-workspace) .page{height:auto;flex:1;min-height:0}
 .command-page:has(.assistant-workspace)>footer{display:none}
-.assistant-workspace #status:empty{display:none}
+.assistant-workspace:not(#chat) #status:empty{display:none}
 
 /* Linked records share a row highlight without moving their content. */
 :is(a.conversation-row,a.collection-item,a.directory-content,a.rc-hit,a.list-link,a.peek-row,a.compact-list-item){font-weight:400;text-decoration:none}
@@ -1670,5 +1670,6 @@ a.traffic-row:focus-visible{outline:2px solid var(--text-primary);outline-offset
 .web-client .message-body pre { overflow-x: auto; }
 .web-client .message-body { overflow-wrap: anywhere; }
 .web-client #status { min-height: 1.5em; }
+.web-client #compose { margin: 0; padding-block: 8px; }
 .web-client #connection:empty { display: none; }
 .web-client [hidden] { display: none !important; }
