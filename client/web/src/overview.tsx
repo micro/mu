@@ -72,6 +72,9 @@ export function Overview({
   }
   useEffect(() => {
     void load();
+    const id = new URLSearchParams(location.search).get("item");
+    if (view === "inbox" && id)
+      void read({ id, subject: "", channel: "", unread: false });
   }, [session, view]);
   async function read(item: InboxItem, page = "") {
     setBusy(true);
@@ -235,18 +238,21 @@ export function Overview({
           <>
             <div className="collection-list">
               {items.map((i) => (
-                <button
+                <a
                   className="collection-item"
-                  disabled={busy}
+                  href={"?view=inbox&item=" + encodeURIComponent(i.id)}
                   key={i.id}
-                  onClick={() => void read(i)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!busy) void read(i);
+                  }}
                 >
                   <span>
                     {i.subject || "Untitled"}
                     {i.unread ? " · Unread" : ""}
                     <small> · {i.channel}</small>
                   </span>
-                </button>
+                </a>
               ))}
             </div>
             {!items.length && !status && <p>Your inbox is clear.</p>}

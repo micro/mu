@@ -226,6 +226,10 @@ func TestHostedClientBrowser(t *testing.T) {
 		w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
 		w.Header().Set("Content-Type", "application/json")
 		switch r.Header.Get("Micro-Endpoint") {
+		case "Inbox.Read":
+			w.Write([]byte(`{"item":{"id":"inbox-one","subject":"A useful update","channel":"mail","unread":true},"messages":[{"id":"mail-one","role":"ROLE_PERSON","text":"Your appointment is confirmed."}],"nextPageToken":""}`))
+		case "Inbox.MarkRead":
+			w.Write([]byte(`{"id":"inbox-one","subject":"A useful update","channel":"mail","unread":false}`))
 		case "Home.Overview", "Inbox.List", "Services.List":
 			op := r.Header.Get("Micro-Endpoint")
 			if empty.Load() {
@@ -290,6 +294,12 @@ func TestHostedClientBrowser(t *testing.T) {
 				}
 			}
 		}
+	}
+
+	empty.Store(false)
+	err = chromedp.Run(ctx, chromedp.Navigate(runtime.URL+"/app/?view=inbox"), chromedp.WaitVisible(".collection-item"), chromedp.Click(".collection-item"), chromedp.Poll(`document.body.textContent.includes('Your appointment is confirmed.')`, nil), chromedp.Evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Mark read').click()`, nil), chromedp.Poll(`Array.from(document.querySelectorAll('button')).some(b=>b.textContent==='Mark unread')`, nil))
+	if err != nil {
+		t.Fatalf("inbox read state: %v", err)
 	}
 
 }
