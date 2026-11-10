@@ -19,14 +19,11 @@ import (
 
 // ConsoleHandler is the web front door. Nothing runs until a request is sent.
 func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
-	consoleHandler(w, r, false)
+	consoleHandler(w, r)
 }
 
-func consoleHandler(w http.ResponseWriter, r *http.Request, focused bool) {
+func consoleHandler(w http.ResponseWriter, r *http.Request) {
 	chatPath := Path
-	if focused {
-		chatPath = assistantPath
-	}
 	if r.URL.Query().Get("view") == "activity-status" {
 		conversationActivityHandler(w, r)
 		return
@@ -60,9 +57,7 @@ func consoleHandler(w http.ResponseWriter, r *http.Request, focused bool) {
 	agentDescription := "A personal assistant"
 
 	ref := r.URL.Query().Get("agent")
-	if focused {
-		ref = strings.TrimPrefix(r.URL.Path, "/assistant/")
-	} else if strings.HasPrefix(r.URL.Path, "/agent/") {
+	if strings.HasPrefix(r.URL.Path, "/agent/") {
 		ref = strings.TrimPrefix(r.URL.Path, "/agent/")
 	}
 	if ref != "" {
@@ -183,10 +178,6 @@ func consoleHandler(w http.ResponseWriter, r *http.Request, focused bool) {
 		description = `<p>` + html.EscapeString(agentDescription) + `</p>`
 	}
 	body := consoleBody(acc.ID, selected, session, agentName, description, initial, heading, state, basePath, auth.CSRFToken(r))
-	if focused {
-		fmt.Fprint(w, app.AssistantHTML(agentName, body, acc, r.URL.RequestURI()))
-		return
-	}
 	fmt.Fprint(w, app.ConsoleHTML(agentName, body, acc, r.URL.RequestURI()))
 }
 
@@ -233,11 +224,8 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 		}
 	}
 	toolbar := `<div class="assistant-toolbar form-actions" role="group" aria-label="Chat actions"><a class="btn" href="` + html.EscapeString(basePath) + `?new=1">New chat</a><a class="btn" href="/agent?view=chats&amp;agent=` + url.QueryEscape(SlugFor(owner, selected)) + `">` + html.EscapeString(agentName) + ` chats</a>`
-	if strings.HasPrefix(basePath, "/assistant/") {
-		toolbar = `<div class="assistant-toolbar form-actions" role="group" aria-label="Chat actions">` + app.ActionLink(basePath+"?new=1", "New chat")
-	}
 	launch := ""
-	if server := origin.Self(); server != "" && !strings.HasPrefix(basePath, "/assistant/") {
+	if server := origin.Self(); server != "" {
 		ref := SlugFor(owner, selected)
 		if For(owner, selected) != nil {
 			ref = selected
@@ -272,11 +260,8 @@ func consoleBody(owner, selected, session, agentName, description, initial, head
 			placeholder, button = "How's it going?", "Check in"
 		}
 	}
-	voice := ""
-	if strings.HasPrefix(basePath, "/assistant/") {
-		voice = `<div class="form-actions voice-controls" data-voice-controls><button type="button" data-dictate hidden>Speak</button><button type="button" data-read-reply hidden>Read reply</button><button type="button" data-stop-voice hidden>Stop</button></div><p class="voice-status" data-voice-status role="status"></p>`
-	}
-	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + attached + `<div id="responses" role="log" aria-label="Chat">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + launch + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="` + html.EscapeString(placeholder) + `" required></textarea><button id="send" type="submit" aria-label="Send message">` + button + `</button></div><p id="status" role="status"></p>` + voice + `</form></div></div></div>`
+
+	return `<div class="assistant-workspace"><div class="` + state + `">` + toolbar + heading + attached + `<div id="responses" role="log" aria-label="Chat">` + initial + `</div><div class="prompt-panel"><div class="prompt-welcome"><h1>` + html.EscapeString(agentName) + `</h1>` + description + launch + `</div><form id="command-form" data-path="` + html.EscapeString(basePath) + `" data-account="` + html.EscapeString(owner) + `" data-pending="` + fmt.Sprint(session != "" && Pending(owner, session)) + `" data-agent="` + html.EscapeString(selected) + `" data-agent-name="` + html.EscapeString(agentName) + `"><label class="sr-only" for="command-input">Message</label><div class="composer"><textarea id="command-input" rows="1" maxlength="8000" placeholder="` + html.EscapeString(placeholder) + `" required></textarea><button id="send" type="submit" aria-label="Send message">` + button + `</button></div><p id="status" role="status"></p>` + `</form></div></div></div>`
 }
 
 // RecentConversation resumes the owner's most recently visited web conversation

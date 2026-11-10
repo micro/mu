@@ -1,0 +1,31 @@
+{
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-markdown": "10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.7"
+  },
+  "name": "mu-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && node notices.mjs",
+    "start": "node serve.mjs",
+    "test": "node --import tsx --test src/*.test.ts",
+    "format": "prettier --write src vite.config.ts serve.mjs notices.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -57,7 +57,7 @@ self.addEventListener('activate', function (e) {
       console.log('Clearing all old caches');
       return Promise.all(
         keys.map(key => {
-          if (key !== CACHE_NAME) {
+          if (key.startsWith(APP_PREFIX) && key !== CACHE_NAME) {
             console.log('Deleting cache:', key);
             return caches.delete(key);
           }
@@ -394,38 +394,13 @@ let receipt=null;
 function receiptKey(){return 'micro-message-receipt:'+JSON.stringify([form.dataset.account,form.dataset.agent||'',thread]);}
 function savedReceipt(key){try{const r=JSON.parse(sessionStorage.getItem(key)||'null');if(r&&typeof r.id==='string'&&r.id.length>=16&&r.id.length<=128&&typeof r.text==='string'&&r.text.length<=8000&&r.thread===thread&&Number.isFinite(r.at)&&Date.now()-r.at>=0&&Date.now()-r.at<86400000)return r;sessionStorage.removeItem(key);}catch{}return null;}
 
-function focusedClient(){return (form.dataset.path||'').startsWith('/assistant/');}
-async function mucp(operation,body,id=crypto.randomUUID()){
- const response=await fetch('/',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(135000),headers:{'Content-Type':'application/json','Micro-Protocol':'mucp/1','Micro-Service':'assistant','Micro-Endpoint':'Assistant.'+operation,'Micro-Id':id,'X-CSRF-Token':decodeURIComponent((document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1]||'')},body:JSON.stringify(body)});
- const accepted=response.headers.get('Micro-Thread');
- if(!response.ok){const error=Error(await failure(response));error.status=response.status;error.acceptedThread=accepted;throw error;}
- if(response.headers.get('Micro-Protocol')!=='mucp/1'||response.headers.get('Micro-Id')!==id)throw Error('The runtime needs an update to support this client.');
- return response.json();
-}
-// Presentation stays with the shared server renderer; the protocol carries data,
-// never HTML. Fetch only our authenticated page, checking its account and thread.
-async function focusedAnswer(answer,version,target){
- const response=await fetch((form.dataset.path||'/assistant/micro')+'?session='+encodeURIComponent(target),{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:AbortSignal.timeout(15000)});
- if(!response.ok||response.redirected)throw Error('Could not load the reply. Open Chats to recover it.');
- const page=new DOMParser().parseFromString(await response.text(),'text/html');
- if(version!==viewVersion)return;
- if(page.querySelector('#command-form')?.dataset.account!==form.dataset.account)throw Error('Sign in again to continue.');
- const replies=page.querySelectorAll('#responses .answer .message-body'),last=replies[replies.length-1];
- if(!last)throw Error('Reply saved. Open Chats to read it.');
- answer.replaceChildren(...last.childNodes);
-}
 async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=thread){
  while(version===viewVersion){
   let result=null;
   if(!document.hidden&&navigator.onLine){
    let response;
    try{
-    if(focusedClient()){
-     result=await mucp('ReadThread',{thread:targetThread,pageSize:1});
-     if(version!==viewVersion)return;
-     if(!result.pending){await focusedAnswer(answer,version,targetThread);return;}
-     result={waiting:true};
-    }else response=await fetch('/agent/pending?thread='+encodeURIComponent(targetThread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+    response=await fetch('/agent/pending?thread='+encodeURIComponent(targetThread)+(messageID?'&message='+encodeURIComponent(messageID):''),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
     if(response?.ok&&!response.redirected)result=await response.json();
    }catch(error){result=null;if([400,401,403,404].includes(error.status))throw error;}
    if(version!==viewVersion)return;
@@ -440,23 +415,7 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
  }
 }
 async function assistant(command,answer,version){
- if(focusedClient()){
-  // No automatic resend after an ambiguous transport failure. The durable
-  // thread is discoverable in Chats even if acceptance never reached us.
-  receipt=null;
-  const request=mucp('Ask',{prompt:command,thread,agentId:form.dataset.agent||'',mode:'ACCESS_MODE_PERSONAL'});
-  submission=request;
-  let result;
-  try{result=await request;}catch(error){
-   if(error.acceptedThread&&version===viewVersion){thread=error.acceptedThread;remember(command.slice(0,80));}
-   if(error.status===504&&error.acceptedThread&&version===viewVersion){await waitForAnswer(answer,undefined,version,error.acceptedThread);return;}
-   throw error;
-  }finally{if(submission===request)submission=null;}
-  if(version!==viewVersion)return;
-  thread=result.thread;remember(command.slice(0,80));form.dispatchEvent(new Event('message-accepted'));
-  answer.textContent=result.text||'';
-  await focusedAnswer(answer,version,thread);return;
- }
+
 
  const key=receiptKey();
  if(!receipt||receipt.text!==command||receipt.thread!==thread)receipt=savedReceipt(key);
@@ -2282,70 +2241,19 @@ if (typeof document !== 'undefined') {
  }
 }
 
-// Voice is opt-in and capability-detected. Dictation fills the composer for
-// review; only Send executes an agent request. Browsers may use remote speech
-// recognition, so explain that before requesting microphone access.
+// Explain the two installed experiences once, without changing installation identity.
 (function () {
  if (typeof document === 'undefined') return;
- const controls = document.querySelector('[data-voice-controls]');
- if (!controls) return;
- const dictate = controls.querySelector('[data-dictate]');
- const read = controls.querySelector('[data-read-reply]');
- const stop = controls.querySelector('[data-stop-voice]');
- const status = document.querySelector('[data-voice-status]');
- const input = document.getElementById('command-input');
- const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
- let recognition = null;
- function reset() {
-  if (recognition) { recognition.abort(); recognition = null; }
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
-  stop.hidden = true;
-  dictate.disabled = false;
- }
- if (Recognition) {
-  dictate.hidden = false;
-  dictate.addEventListener('click', () => {
-   if (!window.confirm('Your browser may send audio to its speech provider. Start dictation?')) return;
-   reset();
-   const session = new Recognition();
-   recognition = session;
-   session.lang = document.documentElement.lang || 'en';
-   session.interimResults = true;
-   const before = input.value;
-   session.onstart = () => { status.textContent = 'Listening…'; stop.hidden = false; dictate.disabled = true; };
-   session.onresult = event => {
-    if (recognition !== session) return;
-    const transcript = Array.from(event.results).map(result => result[0].transcript).join(' ');
-    input.value = (before ? before + ' ' : '') + transcript;
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    status.textContent = 'Listening… Your words appear in the message box.';
-   };
-   session.onerror = event => { status.textContent = event.error === 'not-allowed' ? 'Microphone access was denied. You can still type.' : 'Dictation stopped. Check your message or try again.'; };
-   session.onend = () => {
-    if (recognition !== session) return;
-    recognition = null; stop.hidden = true; dictate.disabled = false;
-    if (status.textContent.startsWith('Listening')) status.textContent = 'Review your message, then send it.';
-   };
-   try { session.start(); } catch (_) { reset(); status.textContent = 'Dictation is unavailable. You can still type.'; }
-  });
- }
- if (window.speechSynthesis) {
-  read.hidden = false;
-  read.addEventListener('click', () => {
-   reset();
-   const replies = document.querySelectorAll('#responses .answer .message-body');
-   const reply = replies[replies.length - 1];
-   if (!reply) { status.textContent = 'There is no reply to read yet.'; return; }
-   const utterance = new SpeechSynthesisUtterance(reply.innerText);
-   utterance.onend = () => { stop.hidden = true; status.textContent = ''; };
-   utterance.onerror = () => { stop.hidden = true; status.textContent = 'Playback stopped.'; };
-   stop.hidden = false; status.textContent = 'Reading reply…';
-   window.speechSynthesis.speak(utterance);
-  });
- }
- stop.addEventListener('click', () => { reset(); status.textContent = 'Stopped.'; });
- document.getElementById('command-form').addEventListener('thread-leaving', () => { reset(); status.textContent = ''; });
- document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
- window.addEventListener('pagehide', reset);
- document.getElementById('command-form').addEventListener('submit', reset);
+ if (!(window.matchMedia('(display-mode: standalone)').matches || navigator.standalone)) return;
+ if (location.pathname !== '/home') return;
+ try { if (localStorage.getItem('mu-install-experiences-v1')) return; } catch (_) { return; }
+ const main = document.querySelector('main');
+ if (!main) return;
+ const notice = document.createElement('section'); notice.className = 'record-card';
+ const text = document.createElement('p'); text.textContent = 'The Mu PWA opens your full home. The standalone assistant client is available separately.';
+ const actions = document.createElement('div'); actions.className = 'form-actions';
+ const open = document.createElement('a'); open.className = 'btn'; open.href = '/app/'; open.textContent = 'Open client';
+ const dismiss = document.createElement('button'); dismiss.type = 'button'; dismiss.textContent = 'Dismiss';
+ dismiss.addEventListener('click', () => { try { localStorage.setItem('mu-install-experiences-v1', '1'); } catch (_) {} notice.remove(); });
+ actions.append(open, dismiss); notice.append(text, actions); main.prepend(notice);
 })();

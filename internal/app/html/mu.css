@@ -849,7 +849,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .assistant-workspace{position:relative;display:flex;flex:1;min-height:0;min-width:0}
 .command-page main:has(.assistant-workspace){width:calc(100% - 2*var(--page-gutter));max-width:none}
 .assistant-workspace>.conversation{flex:1;min-width:0;margin-inline:auto}
-.command-page .assistant-workspace>.conversation:not(.is-active){width:100%;max-width:var(--reading-width)}
+.command-page .assistant-workspace>.conversation:not(.is-active),.web-client .assistant-workspace>.conversation{width:100%;max-width:var(--reading-width)}
 .assistant-workspace .conversation>.assistant-toolbar,.assistant-workspace .assistant-thread-title,.assistant-workspace .prompt-panel{width:100%;box-sizing:border-box;margin-inline:auto}
 .assistant-workspace #responses>.turn{width:100%;box-sizing:border-box;margin:0}
 /* Leave room to anchor the question before a short or pending answer grows. */
@@ -864,7 +864,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .command-page:has(.assistant-workspace){height:100svh;height:var(--workspace-height,100dvh);min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .command-page:has(.assistant-workspace) .page{height:auto;flex:1;min-height:0}
 .command-page:has(.assistant-workspace)>footer{display:none}
-.assistant-workspace #status:empty{display:none}
+.assistant-workspace:not(#chat) #status:empty{display:none}
 
 /* Linked records share a row highlight without moving their content. */
 :is(a.conversation-row,a.collection-item,a.directory-content,a.rc-hit,a.list-link,a.peek-row,a.compact-list-item){font-weight:400;text-decoration:none}
@@ -1319,7 +1319,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .discovery-option small{display:block;font-size:.8rem}
 
 /* A compact, lightly accented public introduction. */
-@font-face{font-family:"DM Sans";src:url("/dm-sans-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"DM Sans";src:url("dm-sans-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
 .landing-page{--landing-accent:#386350}
 .landing-page .page{display:flex;flex-direction:column}
 .landing-page main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px 0}
@@ -1662,3 +1662,18 @@ a.traffic-row:focus-visible{outline:2px solid var(--text-primary);outline-offset
 .reference-sidebar .ep-price{float:right;color:var(--text-muted)}
 @media(min-width:901px){.reference-sidebar>summary{display:none}}
 @media(max-width:900px){.reference-layout{grid-template-columns:minmax(0,1fr)}.reference-sidebar{position:static;max-height:none}.reference-sidebar .reference-index{max-height:50dvh;overflow:auto;margin-top:12px}}
+
+/* Focused client: shared controls, explicit spacing for structured results. */
+.web-client .client-result { margin-block: 1rem; overflow-wrap: anywhere; }
+.web-client .client-result iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; }
+.web-client .client-result img, .web-client .client-result audio { max-width: 100%; }
+.web-client .message-body pre { overflow-x: auto; }
+.web-client .message-body { overflow-wrap: anywhere; }
+.web-client #status { min-height: 1.5em; }
+.web-client #compose { margin: 0; padding-block: 8px; }
+.web-client #connection:empty { display: none; }
+.web-client [hidden] { display: none !important; }
+
+/* The standalone React root participates in the same full-height client layout. */
+.web-client #root{display:flex;flex-direction:column;flex:1;min-height:0}
+.web-client:not(.command-page) main{max-width:760px}

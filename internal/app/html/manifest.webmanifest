@@ -1,10 +1,10 @@
 {
   "name": "Mu",
   "short_name": "Mu",
-  "description": "Talk to your personal agents.",
+  "description": "Your Mu home, inbox, agents and services.",
   "id": "/",
   "scope": "/",
-  "start_url": "/assistant",
+  "start_url": "/home",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "display": "standalone",

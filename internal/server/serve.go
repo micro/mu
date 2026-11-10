@@ -67,6 +67,9 @@ func serve(addr string, initialize func()) {
 				host402.Handler(w, r)
 				return
 			}
+			if clientCORS(w, r) {
+				return
+			}
 			// The legacy flag endpoint accepts ordinary users' content reports.
 			if r.URL.Path != "/admin/flag" && (r.URL.Path == "/admin" || strings.HasPrefix(r.URL.Path, "/admin/")) {
 				if _, _, err := auth.RequireAdmin(r); err != nil {
@@ -88,19 +91,7 @@ func serve(addr string, initialize func()) {
 				w.Header().Set("Onion-Location", "http://"+onion+r.URL.RequestURI())
 			}
 
-			if Env == "dev" {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-				if r.Method == "OPTIONS" {
-					w.WriteHeader(http.StatusOK)
-					return
-				}
-			}
-
-			if v := len(r.URL.Path); v > 1 && strings.HasSuffix(r.URL.Path, "/") {
+			if v := len(r.URL.Path); v > 1 && r.URL.Path != "/app/" && strings.HasSuffix(r.URL.Path, "/") {
 				r.URL.Path = r.URL.Path[:v-1]
 			}
 

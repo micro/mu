@@ -92,7 +92,7 @@ func PlatformOpts(a *micro.Agent) QueryOpts {
 	prompt := a.SystemPrompt
 	if a.ID == "hello" {
 		if address := origin.Self(); address != "" {
-			prompt += " Runtime help: " + address + "/help. Main assistant: " + address + "/assistant/micro."
+			prompt += " Runtime help: " + address + "/help. Main assistant: " + address + "/app/?agent=micro."
 		}
 	}
 	return QueryOpts{System: namedSystem(a.Name, prompt), Tools: a.Tools, Model: a.Model, NoTools: a.NoTools}

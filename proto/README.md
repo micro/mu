@@ -7,8 +7,8 @@ identifier or omit it to start a new thread. The implementation belongs in
 `agent/`; server composition registers its authenticated MUCP boundary.
 There is no `service/assistant` package. `/` is the public HTTPS/JSON adapter.
 
-Android uses generated Java types; the focused PWA uses ordinary JSON for Ask and
-pending recovery. Legacy routes remain compatible. See [MUCP](../docs/MUCP.md)
+Android uses generated Java types; Mu Web uses ordinary JSON for all four
+operations. See [MUCP](../docs/MUCP.md)
 for the exact headers, authentication, errors and recovery rules.
 
 ## Contract and wire format

@@ -9,7 +9,7 @@ history. Run it yourself or use a hosted instance, then access your assistants
 through a focused client or the broader web console.
 
 **Micro** is the general-purpose assistant. Other agents can have their own
-instructions and permitted tools. The Android app and focused PWA provide voice
+instructions and permitted tools. The Android app and standalone web client provide voice
 and text interaction; the web console provides Home, Inbox, Agents and Services
 for overview, configuration and direct access to capabilities.
 
@@ -20,7 +20,7 @@ binary, using Go Micro as its underlying framework.
 ## Architecture 
 
 ```text
-  Android / PWA / other clients
+  Android / web / other clients
               |
        assistant contract
               |
@@ -59,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
 ~/.local/bin/mu --serve --address 127.0.0.1:8080
 ```
 
-See [Install Micro](docs/INSTALL.md) for the quick start. 
+See [Install Mu](docs/INSTALL.md) for the quick start.
 
 Optional [documentation](docs/README.md) covers hosting, configuration, mail and development.
 
@@ -67,8 +67,10 @@ Optional [documentation](docs/README.md) covers hosting, configuration, mail and
 
 Open **http://localhost:8080** to create your account and choose an AI provider.
 
-The focused assistant at `/assistant` can be installed as a PWA. The broader
-runtime console remains at `/home`.
+The full web experience at `/home` installs as the **Mu PWA**.
+The separate [React/TypeScript client](client/web/README.md) runs independently
+with `npm run dev` or from the `mu-web.zip` release using `node serve.mjs`.
+Mu also serves its production build at `/app/`.
 
 ## Clients
 

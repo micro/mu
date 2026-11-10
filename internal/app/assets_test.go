@@ -57,3 +57,21 @@ func TestScriptInitializesAsServiceWorker(t *testing.T) {
 		t.Fatalf("worker startup: %v\n%s", err, out)
 	}
 }
+
+func TestWorkerPreservesOtherInstallationCaches(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("Node unavailable")
+	}
+	script := `const fs=require('fs'), vm=require('vm'); const events={}, removed=[];
+ vm.runInNewContext(fs.readFileSync('html/mu.js','utf8'), {
+ console:{log(){}},self:{addEventListener:(n,f)=>events[n]=f,clients:{claim:async()=>{}}},
+ caches:{keys:async()=>['mu_old','mu_v3-compact','mu-web-v1','another-app'],delete:async k=>removed.push(k)}
+ });
+ events.activate({waitUntil:p=>p.then(()=>{
+ if(JSON.stringify(removed)!==JSON.stringify(['mu_old']))throw Error('Deleted unrelated app caches');
+ }).catch(e=>{console.error(e);process.exitCode=1;})});`
+	if out, err := exec.Command(node, "-e", script).CombinedOutput(); err != nil {
+		t.Fatalf("cache isolation: %v\n%s", err, out)
+	}
+}
