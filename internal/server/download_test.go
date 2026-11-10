@@ -86,7 +86,7 @@ func TestWebReleaseUsesItsOwnVerifiedAsset(t *testing.T) {
 }
 
 func TestDesktopDownloadsOnlyUseExpectedReleaseAssets(t *testing.T) {
-	for _, filename := range []string{"mu-windows-x64-setup.exe", "mu-macos-arm64.dmg", "mu-macos-x64.dmg", "mu-linux-x64.deb", "mu-linux-x64.AppImage"} {
+	for _, filename := range []string{"mu-windows-x64-setup.exe", "mu-macos-arm64.dmg", "mu-macos-x64.dmg", "mu-linux-amd64.deb", "mu-linux-x86_64.AppImage"} {
 		for _, host := range []string{"https://github.com/micro/mu/releases/download/v3.0.0/", "https://example.com/"} {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte(`{"tag_name":"v3.0.0","assets":[{"name":"` + filename + `","browser_download_url":"` + host + filename + `"}]}`))

@@ -36,6 +36,7 @@ jobs:
           npm test --prefix client/web
           npm run build --prefix client/web
           npm ci --prefix client/desktop
+          node client/desktop/node_modules/electron/install.js
           npm test --prefix client/desktop
           npm run prepare:app --prefix client/desktop
       - name: Enable Electron sandbox on Linux

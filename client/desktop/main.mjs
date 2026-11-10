@@ -37,6 +37,18 @@ else {
           throw Error("Untrusted caller");
       };
       const vault = join(app.getPath("userData"), "session.enc");
+      const preference = join(app.getPath("userData"), "runtime.json");
+      ipcMain.handle("runtime-load", async (event) => {
+        trusted(event);
+        try { return secureOrigin(JSON.parse(await readFile(preference, "utf8"))); }
+        catch { return null; }
+      });
+      ipcMain.handle("runtime-save", async (event, value) => {
+        trusted(event);
+        const origin = secureOrigin(value);
+        await mkdir(dirname(preference), { recursive: true });
+        await writeFile(preference, JSON.stringify(origin), { mode: 0o600 });
+      });
       const encrypted = () =>
         safeStorage.isEncryptionAvailable() &&
         (process.platform !== "linux" ||

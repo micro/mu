@@ -230,6 +230,6 @@ terminal outcomes, cursor scope/retention, reconnect gaps, cancellation outcomes
 idempotency conflict handling and authentication revocation. None of these
 semantics may be inferred from a TCP connection, an RPC stream or a broker queue.
 
-See [Architecture](ARCHITECTURE.md), [contracts](../proto/README.md) and
-[clients](../client/README.md). The historical MUCP RPC proposal and go-micro's
+See [Architecture](ARCHITECTURE.md), [contracts](https://github.com/micro/mu/tree/main/proto) and
+[clients](https://github.com/micro/mu/tree/main/client). The historical MUCP RPC proposal and go-micro's
 internal metadata are background; this implemented binding is the client contract.

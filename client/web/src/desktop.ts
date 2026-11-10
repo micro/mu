@@ -8,6 +8,8 @@ export interface Callback {
 declare global {
   interface Window {
     muDesktop?: {
+      loadRuntime(): Promise<string | null>;
+      saveRuntime(server: string): Promise<void>;
       redirect(): Promise<string>;
       authorize(url: string): Promise<void>;
       loadSession(): Promise<Session | null>;

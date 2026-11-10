@@ -93,7 +93,7 @@ func fetchAndroidRelease(ctx context.Context, client *http.Client, endpoint stri
 	for _, asset := range release.Assets {
 		// Release CI only gives this name to a release-signed APK. Never offer
 		// unsigned or preview builds as the consumer installer.
-		desktop := map[string]bool{"mu-windows-x64-setup.exe": true, "mu-macos-arm64.dmg": true, "mu-macos-x64.dmg": true, "mu-linux-x64.AppImage": true, "mu-linux-x64.deb": true}
+		desktop := map[string]bool{"mu-windows-x64-setup.exe": true, "mu-macos-arm64.dmg": true, "mu-macos-x64.dmg": true, "mu-linux-x86_64.AppImage": true, "mu-linux-amd64.deb": true}
 		if asset.Name != "mu-android.apk" && asset.Name != "mu-web.zip" && !desktop[asset.Name] {
 			continue
 		}
@@ -145,7 +145,7 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}{
 		{"Windows", []struct{ file, label string }{{"mu-windows-x64-setup.exe", "Download for Windows"}}},
 		{"Mac", []struct{ file, label string }{{"mu-macos-arm64.dmg", "Apple silicon"}, {"mu-macos-x64.dmg", "Intel"}}},
-		{"Linux", []struct{ file, label string }{{"mu-linux-x64.deb", "Download .deb"}, {"mu-linux-x64.AppImage", "Download AppImage"}}},
+		{"Linux", []struct{ file, label string }{{"mu-linux-amd64.deb", "Download .deb"}, {"mu-linux-x86_64.AppImage", "Download AppImage"}}},
 	} {
 		links := ""
 		for _, asset := range platform.assets {

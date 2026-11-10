@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("muDesktop", {
+  loadRuntime: () => ipcRenderer.invoke("runtime-load"),
+  saveRuntime: (server) => ipcRenderer.invoke("runtime-save", server),
   redirect: () => ipcRenderer.invoke("auth-redirect"),
   authorize: (url) => ipcRenderer.invoke("auth-authorize", url),
   loadSession: () => ipcRenderer.invoke("session-load"),

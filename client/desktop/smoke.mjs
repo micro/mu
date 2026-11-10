@@ -1,7 +1,8 @@
 import { _electron as electron } from "playwright-core";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
-import { mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import assert from "node:assert/strict";
 let redirect,
   state,
@@ -52,7 +53,9 @@ const runtime = createServer(async (req, res) => {
   }
 });
 await new Promise((ok) => runtime.listen(0, "127.0.0.1", ok));
-const app = await electron.launch({ args: [resolve(".")], timeout: 60000 });
+const profile = await mkdtemp(resolve(tmpdir(), "mu-desktop-"));
+const launch = () => electron.launch({ args: [resolve("."), "--user-data-dir=" + profile], timeout: 60000 });
+let app = await launch();
 try {
   await app.evaluate(({ shell, safeStorage }) => {
     safeStorage.isEncryptionAvailable = () => false;
@@ -60,7 +63,7 @@ try {
       await fetch(url);
     };
   });
-  const page = await app.firstWindow();
+  let page = await app.firstWindow();
   await page.locator("#sign-in").waitFor();
   assert.equal(await page.locator("#runtime").count(), 0);
   await page.getByRole("link", { name: "Settings", exact: true }).click();
@@ -68,6 +71,24 @@ try {
     .locator("#runtime")
     .fill("http://127.0.0.1:" + runtime.address().port);
   await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.locator("#sign-in").waitFor();
+  const previousOrigin = new URL(page.url()).origin;
+  await app.close();
+  app = await launch();
+  page = await app.firstWindow();
+  await page.locator("#sign-in").waitFor();
+  assert.notEqual(new URL(page.url()).origin, previousOrigin);
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  assert.equal(await page.locator("#runtime").inputValue(), "http://127.0.0.1:" + runtime.address().port);
+  await page.getByRole("link", { name: "Cancel", exact: true }).click();
+  await app.evaluate(({ shell, safeStorage }) => {
+    safeStorage.isEncryptionAvailable = () => false;
+    shell.openExternal = async () => {};
+  });
+  await page.locator("#sign-in").click();
+  await page.getByText("Complete sign-in in your browser, or try again.", { exact: true }).waitFor();
+  assert.equal(await page.locator("#sign-in").isEnabled(), true);
+  await app.evaluate(({ shell }) => { shell.openExternal = async (url) => { await fetch(url); }; });
   await page.locator("#sign-in").click();
   await page.locator("#send:not([disabled])").waitFor({ timeout: 20000 });
   await page.locator("#prompt").fill("Hello");
@@ -80,4 +101,5 @@ try {
 } finally {
   await app.close();
   runtime.close();
+  await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }

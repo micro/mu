@@ -80,8 +80,13 @@ export function hosted(value = defaultRuntime()): boolean {
     runtimeOrigin(value) === location.origin
   );
 }
-export function saveRuntime(value: string) {
+export async function restoreRuntime() {
+  const server = await window.muDesktop?.loadRuntime();
+  if (server) localStorage.setItem("mu-web-runtime", runtimeOrigin(server));
+}
+export async function saveRuntime(value: string) {
   const server = runtimeOrigin(value);
+  await window.muDesktop?.saveRuntime(server);
   disconnect();
   localStorage.setItem("mu-web-runtime", server);
 }

@@ -26,10 +26,10 @@ function ConnectionSettings() {
       <h1>Settings</h1>
       <form
         className="form record-editor"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           try {
-            saveRuntime(server);
+            await saveRuntime(server);
             location.assign(location.pathname);
           } catch (err) {
             setError(
@@ -76,6 +76,10 @@ function Connect({ error = "" }: { error?: string }) {
             setStatus("Opening sign-in…");
             try {
               await signIn(defaultRuntime());
+              if (window.muDesktop) {
+                setBusy(false);
+                setStatus("Complete sign-in in your browser, or try again.");
+              }
             } catch (err) {
               setStatus(
                 err instanceof Error ? err.message : "Could not sign in.",
