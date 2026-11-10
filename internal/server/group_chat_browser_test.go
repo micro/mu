@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -55,7 +54,10 @@ func TestGroupChatBrowser(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	t.Setenv("MU_DOMAIN", strings.TrimPrefix(server.URL, "http://"))
+	// This fixture is plain HTTP; do not configure a production HTTPS origin.
+	for _, key := range []string{"MU_DOMAIN", "PUBLIC_URL", "APP_URL"} {
+		t.Setenv(key, "localhost")
+	}
 	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(browser), chromedp.Flag("no-sandbox", false), chromedp.Flag("disable-dev-shm-usage", true))
 	alloc, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	defer cancel()
