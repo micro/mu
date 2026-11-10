@@ -3,7 +3,6 @@ package groups
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -64,13 +63,13 @@ type UpdateResponse = pb.UpdateResponse
 func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *UpdateResponse) error {
 	actor := service.AccountFrom(ctx)
 	if actor == "" {
-		return errors.New("sign in to manage groups")
+		return service.Fail(401, "sign in to manage groups")
 	}
 	target := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(req.Account), "@"))
 	if req.Action == "invite" {
 		acc, err := auth.GetAccount(target)
 		if err != nil || acc == nil || acc.Agent || auth.IsBanned(target) {
-			return errors.New("choose an existing person's Micro username")
+			return service.Fail(400, "choose an existing person's Micro username")
 		}
 	}
 	if req.Action == "remove" && target == "" {

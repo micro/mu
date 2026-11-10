@@ -14,10 +14,12 @@ import (
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/chromedp"
 	"mu/agent"
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/group"
 	"mu/service/chat"
+	host402 "mu/x402"
 )
 
 func TestGroupChatBrowser(t *testing.T) {
@@ -42,6 +44,8 @@ func TestGroupChatBrowser(t *testing.T) {
 		switch r.URL.Path {
 		case "/mu.js", "/mu.css":
 			http.ServeFile(w, r, filepath.Join("../app/html", filepath.Base(r.URL.Path)))
+		case "/session":
+			host402.SessionHandler(w, api.CredentialRequest(r))
 		case "/chat":
 			chat.Handler(w, r)
 		case "/agent":

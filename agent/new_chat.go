@@ -111,10 +111,14 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`<option value="` + html.EscapeString(item.ID) + `"` + selected + `>` + html.EscapeString(item.Name) + `</option>`)
 	}
-	b.WriteString(`</select></label><div class="form-actions"><noscript><button>Choose</button></noscript><a href="/agent?view=new-chat&amp;group=new">Create a group</a></div></form>`)
+	b.WriteString(`</select></label><div class="form-actions"><noscript><button>Choose</button></noscript>`)
+	if !creating {
+		b.WriteString(`<a href="/agent?view=new-chat&amp;group=new">Create a group</a>`)
+	}
+	b.WriteString(`</div></form>`)
 	b.WriteString(`<form class="form record-editor" method="post" action="/agent?view=new-chat">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="group" value="` + html.EscapeString(id) + `">`)
 	if creating {
-		b.WriteString(`<label>Group name<input name="name" required maxlength="100" placeholder="Family"></label><label>Description (optional)<input name="description" maxlength="1000"></label><label>Invite people (optional)<input name="people" placeholder="@alice, @bob" autocomplete="off"></label><p class="muted">Use usernames from this Mu server. People must accept before they can read the chat. You can also share an invitation link from the group.</p>`)
+		b.WriteString(`<label>Group name<input name="name" required maxlength="100" placeholder="Family"></label><label>Description (optional)<input name="description" maxlength="1000"></label><label>Invite people (optional)<input name="people" placeholder="@alice, @bob" autocomplete="off"></label><p class="text-muted">Invite by username. People can read the chat after accepting. You can also share a link from the group.</p>`)
 	} else if id != "" {
 		b.WriteString(`<p>Shared with ` + html.EscapeString(g.Name) + `.</p><label>Chat name<input name="name" required maxlength="100" value="` + html.EscapeString(r.PostFormValue("name")) + `" placeholder="Weekend plans"></label>`)
 	} else {
@@ -158,7 +162,7 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</select></label>`)
 	if id != "" && !g.Encrypted {
-		b.WriteString(`<p class="muted">Mention @micro to ask the assistant. Assistant usage uses the group's balance.</p>`)
+		b.WriteString(`<p class="text-muted">An assistant uses the group's balance and shared resources.</p>`)
 	}
 	b.WriteString(`<div class="form-actions"><button>Start chat</button></div></form></div>`)
 	app.Respond(w, r, app.Response{Title: "New chat", HTML: b.String()})

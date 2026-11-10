@@ -2,7 +2,6 @@ package chat
 
 import (
 	"context"
-	"fmt"
 
 	"sort"
 	"strings"
@@ -92,7 +91,7 @@ type MessagesResponse = pb.MessagesResponse
 func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesResponse) error {
 	id := strings.TrimSpace(req.Room)
 	if id == "" {
-		return fmt.Errorf("room is required")
+		return service.Fail(400, "room is required")
 	}
 
 	// A private room answers to its members and to nobody else.
@@ -103,7 +102,7 @@ func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesR
 	// two usernames, by construction. Same wording as the page: refusing by name
 	// confirms the name.
 	if !Member(id, service.AccountFrom(ctx)) {
-		return fmt.Errorf("no room here called %q", id)
+		return service.Fail(404, "Chat not found")
 	}
 
 	roomsMutex.RLock()
@@ -156,21 +155,21 @@ type SendResponse = pb.SendResponse
 func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) error {
 	who := service.AccountFrom(ctx)
 	if who == "" {
-		return fmt.Errorf("sign in to post to a discussion")
+		return service.Fail(401, "sign in to post to a discussion")
 	}
 	id := strings.TrimSpace(req.Room)
 	text := strings.TrimSpace(req.Message)
 	if id == "" {
-		return fmt.Errorf("room is required — chat_rooms lists them")
+		return service.Fail(400, "room is required — chat_rooms lists them")
 	}
 	if text == "" || !utf8.ValidString(text) || len(text) > 8000 {
-		return fmt.Errorf("message must contain 1 to 8000 UTF-8 bytes")
+		return service.Fail(400, "message must contain 1 to 8000 UTF-8 bytes")
 	}
 	// And not into a conversation you are not in. Reading it was the leak;
 	// speaking into it is the other half, and a stranger's line appearing in a
 	// private room is worse than a stranger reading one.
 	if !Member(id, who) {
-		return fmt.Errorf("no room here called %q", id)
+		return service.Fail(404, "Chat not found")
 	}
 
 	roomsMutex.RLock()
@@ -181,7 +180,7 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 		ok = room != nil
 	}
 	if !ok {
-		return fmt.Errorf("no live discussion called %q — chat_rooms lists the ones there are", id)
+		return service.Fail(404, "Chat not found")
 	}
 
 	if err := post(ctx, room, RoomMessage{UserID: who, Content: text, Timestamp: time.Now()}); err != nil {

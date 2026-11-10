@@ -65,6 +65,9 @@ func TestImplementedServiceContracts(t *testing.T) {
 		{product, "groups", "Groups.List", "{}", 403},
 		{readonly, "groups", "Groups.Create", `{"name":"Forbidden"}`, 403},
 		{own, "groups", "Groups.Read", `{"id":"` + id + `"}`, 200},
+		{own, "groups", "Groups.Create", `{"name":""}`, 400},
+		{own, "groups", "Groups.Update", `{"id":"` + id + `","action":"unknown"}`, 400},
+		{own, "chat", "Chat.Send", `{"room":"` + group.RoomPrefix + id + `","message":"` + strings.Repeat("a", 8001) + `"}`, 400},
 		{own, "chat", "Chat.Send", `{"room":"` + group.RoomPrefix + id + `","message":"Hello together"}`, 200},
 		{own, "chat", "Chat.Messages", `{"room":"` + group.RoomPrefix + id + `"}`, 200},
 		{own, "groups", "Groups.Read", `{"id":"` + id + `","account":"` + other + `"}`, 400},
@@ -81,7 +84,7 @@ func TestImplementedServiceContracts(t *testing.T) {
 			body = `{"room":"` + group.RoomPrefix + id + `"}`
 		}
 		w = compositionCall(foreign, svc, method, body)
-		if w.Code == 200 || strings.Contains(w.Body.String(), "Hello together") || strings.Contains(w.Body.String(), "Contract family") {
+		if w.Code != 404 || strings.Contains(w.Body.String(), "Hello together") || strings.Contains(w.Body.String(), "Contract family") {
 			t.Fatal("foreign account read group", w.Code, w.Body.String())
 		}
 	}

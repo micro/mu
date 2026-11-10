@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"reflect"
 
+	microerrors "go-micro.dev/v6/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"mu/internal/api"
 	"mu/internal/mucp"
 	"mu/internal/service"
 )
@@ -41,6 +43,13 @@ func contractOperations(spec service.Spec, contract protoreflect.ServiceDescript
 			Handle: func(_ http.ResponseWriter, r *http.Request, owner, _ string, q proto.Message) (proto.Message, error) {
 				response := dynamicpb.NewMessage(method.Output())
 				err := service.Call(service.WithAccount(r.Context(), owner), spec.Name, service.HandlerName(spec.Handler)+"."+name, q, response)
+				if err != nil {
+					e := microerrors.FromError(err)
+					code := map[int32]string{400: "invalid_arguments", 401: "unauthenticated", 403: "forbidden", 404: "not_found", 409: "conflict", 413: "invalid_arguments", 422: "invalid_arguments", 429: "rate_limited"}[e.Code]
+					if code != "" {
+						return nil, api.Fail(int(e.Code), code, e.Detail)
+					}
+				}
 				return response, err
 			},
 		})
