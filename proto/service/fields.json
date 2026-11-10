@@ -1,0 +1,4952 @@
+{
+  "alerts.Item": {
+    "active": {
+      "number": 8,
+      "type": "bool"
+    },
+    "created": {
+      "number": 9,
+      "type": "google.protobuf.Timestamp"
+    },
+    "detail": {
+      "number": 5,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "key": {
+      "number": 3,
+      "type": "string"
+    },
+    "source": {
+      "number": 2,
+      "type": "string"
+    },
+    "state": {
+      "number": 7,
+      "type": "string"
+    },
+    "title": {
+      "number": 4,
+      "type": "string"
+    },
+    "updated": {
+      "number": 10,
+      "type": "google.protobuf.Timestamp"
+    },
+    "url": {
+      "number": 6,
+      "type": "string"
+    }
+  },
+  "alerts.ItemResponse": {
+    "created": {
+      "number": 2,
+      "type": "bool"
+    },
+    "item": {
+      "number": 1,
+      "type": "Item"
+    }
+  },
+  "alerts.ListRequest": {
+    "group": {
+      "number": 1,
+      "type": "string"
+    },
+    "limit": {
+      "number": 4,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 3,
+      "type": "int64"
+    },
+    "state": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "alerts.ListResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Item"
+    },
+    "total": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "alerts.RaiseRequest": {
+    "detail": {
+      "number": 4,
+      "type": "string"
+    },
+    "group": {
+      "number": 1,
+      "type": "string"
+    },
+    "key": {
+      "number": 2,
+      "type": "string"
+    },
+    "title": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 5,
+      "type": "string"
+    }
+  },
+  "alerts.Response": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "alerts.UpdateRequest": {
+    "group": {
+      "number": 1,
+      "type": "string"
+    },
+    "id": {
+      "number": 2,
+      "type": "string"
+    },
+    "state": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "apps.AppReadRequest": {
+    "slug": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "apps.AppReadResponse": {
+    "html": {
+      "number": 2,
+      "type": "string"
+    },
+    "item": {
+      "number": 3,
+      "type": "ResultEmbed"
+    },
+    "source": {
+      "number": 1,
+      "type": "string"
+    },
+    "text": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "apps.AppSearchRequest": {
+    "query": {
+      "number": 1,
+      "type": "string"
+    },
+    "tag": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "apps.AppSearchResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "apps.BuildRequest": {
+    "prompt": {
+      "number": 2,
+      "type": "string"
+    },
+    "request_key": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "apps.BuildResponse": {
+    "id": {
+      "number": 2,
+      "type": "string"
+    },
+    "item": {
+      "number": 1,
+      "type": "ResultEmbed"
+    },
+    "name": {
+      "number": 4,
+      "type": "string"
+    },
+    "run": {
+      "number": 7,
+      "type": "string"
+    },
+    "slug": {
+      "number": 5,
+      "type": "string"
+    },
+    "state": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 6,
+      "type": "string"
+    }
+  },
+  "apps.BuildStatusRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "apps.BuildStatusResponse": {
+    "attempts": {
+      "number": 8,
+      "type": "int64"
+    },
+    "created": {
+      "number": 3,
+      "type": "google.protobuf.Timestamp"
+    },
+    "error": {
+      "number": 10,
+      "type": "string"
+    },
+    "id": {
+      "number": 6,
+      "type": "string"
+    },
+    "item": {
+      "number": 5,
+      "type": "ResultEmbed"
+    },
+    "prompt": {
+      "number": 2,
+      "type": "string"
+    },
+    "recoveries": {
+      "number": 9,
+      "type": "int64"
+    },
+    "state": {
+      "number": 7,
+      "type": "string"
+    },
+    "thread": {
+      "number": 1,
+      "type": "string"
+    },
+    "updated": {
+      "number": 4,
+      "type": "google.protobuf.Timestamp"
+    },
+    "url": {
+      "number": 11,
+      "type": "string"
+    }
+  },
+  "apps.BuildsResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated BuildStatusResponse"
+    }
+  },
+  "apps.CollectionResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated SavedApp"
+    }
+  },
+  "apps.CreateRequest": {
+    "description": {
+      "number": 6,
+      "type": "string"
+    },
+    "html": {
+      "number": 4,
+      "type": "string"
+    },
+    "icon": {
+      "number": 8,
+      "type": "string"
+    },
+    "name": {
+      "number": 3,
+      "type": "string"
+    },
+    "price": {
+      "number": 9,
+      "type": "int64"
+    },
+    "private": {
+      "number": 2,
+      "type": "bool"
+    },
+    "public": {
+      "number": 1,
+      "type": "bool"
+    },
+    "slug": {
+      "number": 5,
+      "type": "string"
+    },
+    "tags": {
+      "number": 7,
+      "type": "string"
+    }
+  },
+  "apps.CreateResponse": {
+    "item": {
+      "number": 1,
+      "type": "ResultEmbed"
+    },
+    "result": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "apps.EditRequest": {
+    "description": {
+      "number": 3,
+      "type": "string"
+    },
+    "html": {
+      "number": 5,
+      "type": "string"
+    },
+    "icon": {
+      "number": 6,
+      "type": "string"
+    },
+    "name": {
+      "number": 2,
+      "type": "string"
+    },
+    "price": {
+      "number": 7,
+      "type": "optional int64"
+    },
+    "slug": {
+      "number": 1,
+      "type": "string"
+    },
+    "tags": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "apps.EditResponse": {
+    "item": {
+      "number": 1,
+      "type": "ResultEmbed"
+    },
+    "result": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "apps.EmbedRequest": {
+    "slug": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "apps.EmbedResponse": {
+    "item": {
+      "number": 1,
+      "type": "ResultEmbed"
+    },
+    "result": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "apps.ForkRequest": {
+    "new_slug": {
+      "number": 2,
+      "type": "string"
+    },
+    "slug": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "apps.ForkResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "apps.ResultEmbed": {
+    "body": {
+      "number": 1,
+      "type": "string"
+    },
+    "id": {
+      "number": 3,
+      "type": "string"
+    },
+    "kind": {
+      "number": 2,
+      "type": "string"
+    },
+    "shape": {
+      "number": 7,
+      "type": "repeated ResultPoint"
+    },
+    "steps": {
+      "number": 8,
+      "type": "repeated string"
+    },
+    "summary": {
+      "number": 6,
+      "type": "string"
+    },
+    "title": {
+      "number": 5,
+      "type": "string"
+    },
+    "url": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "apps.ResultPoint": {
+    "Lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "Lon": {
+      "number": 2,
+      "type": "double"
+    }
+  },
+  "apps.SavedApp": {
+    "description": {
+      "number": 3,
+      "type": "string"
+    },
+    "name": {
+      "number": 2,
+      "type": "string"
+    },
+    "slug": {
+      "number": 1,
+      "type": "string"
+    },
+    "source": {
+      "number": 4,
+      "type": "string"
+    },
+    "updated": {
+      "number": 5,
+      "type": "google.protobuf.Timestamp"
+    }
+  },
+  "apps.TestRequest": {
+    "slug": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "apps.TestResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "archive.ListRequest": {
+    "kind": {
+      "number": 1,
+      "type": "string"
+    },
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "archive.ListResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "archive.SearchRequest": {
+    "kind": {
+      "number": 2,
+      "type": "string"
+    },
+    "limit": {
+      "number": 3,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "archive.SearchResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "blog.CreateRequest": {
+    "content": {
+      "number": 1,
+      "type": "string"
+    },
+    "private": {
+      "number": 4,
+      "type": "bool"
+    },
+    "tags": {
+      "number": 3,
+      "type": "string"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "blog.CreateResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "blog.DeleteRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "blog.DeleteResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "blog.ListRequest": {
+    "limit": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "blog.ListResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "blog.ReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "blog.ReadResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "blog.UpdateRequest": {
+    "content": {
+      "number": 3,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "tags": {
+      "number": 4,
+      "type": "string"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "blog.UpdateResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "bookmarks.AddRequest": {
+    "note": {
+      "number": 4,
+      "type": "string"
+    },
+    "ref": {
+      "number": 1,
+      "type": "string"
+    },
+    "title": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "bookmarks.AnnotateRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "note": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "bookmarks.GetRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "bookmarks.Item": {
+    "created": {
+      "number": 9,
+      "type": "google.protobuf.Timestamp"
+    },
+    "excerpt": {
+      "number": 7,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "kind": {
+      "number": 5,
+      "type": "string"
+    },
+    "note": {
+      "number": 8,
+      "type": "string"
+    },
+    "ref": {
+      "number": 2,
+      "type": "string"
+    },
+    "source": {
+      "number": 6,
+      "type": "string"
+    },
+    "title": {
+      "number": 4,
+      "type": "string"
+    },
+    "url": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "bookmarks.ItemResponse": {
+    "item": {
+      "number": 1,
+      "type": "Item"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "bookmarks.ListRequest": {
+    "kind": {
+      "number": 2,
+      "type": "string"
+    },
+    "limit": {
+      "number": 4,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 3,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "bookmarks.ListResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Item"
+    },
+    "text": {
+      "number": 3,
+      "type": "string"
+    },
+    "total": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "bookmarks.Response": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "browser.ReadRequest": {
+    "url": {
+      "number": 1,
+      "type": "string"
+    },
+    "wait": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "browser.ReadResponse": {
+    "text": {
+      "number": 2,
+      "type": "string"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    },
+    "url": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "browser.ShotRequest": {
+    "full": {
+      "number": 2,
+      "type": "bool"
+    },
+    "url": {
+      "number": 1,
+      "type": "string"
+    },
+    "wait": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "browser.ShotResponse": {
+    "title": {
+      "number": 2,
+      "type": "string"
+    },
+    "url": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "chat.Message": {
+    "author": {
+      "number": 2,
+      "type": "string"
+    },
+    "content": {
+      "number": 3,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "is_agent": {
+      "number": 4,
+      "type": "bool"
+    },
+    "timestamp": {
+      "number": 5,
+      "type": "google.protobuf.Timestamp"
+    }
+  },
+  "chat.MessagesRequest": {
+    "room": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "chat.MessagesResponse": {
+    "messages": {
+      "number": 1,
+      "type": "repeated Message"
+    }
+  },
+  "chat.RoomInfo": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "last_activity": {
+      "number": 5,
+      "type": "google.protobuf.Timestamp"
+    },
+    "participants": {
+      "number": 4,
+      "type": "int64"
+    },
+    "title": {
+      "number": 3,
+      "type": "string"
+    },
+    "type": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "chat.RoomsRequest": {
+    "limit": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "chat.RoomsResponse": {
+    "rooms": {
+      "number": 1,
+      "type": "repeated RoomInfo"
+    }
+  },
+  "chat.SendRequest": {
+    "message": {
+      "number": 2,
+      "type": "string"
+    },
+    "room": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "chat.SendResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "chat.ServiceSourceMessage": {
+    "at": {
+      "number": 14,
+      "type": "google.protobuf.Timestamp"
+    },
+    "channel": {
+      "number": 12,
+      "type": "string"
+    },
+    "conversation": {
+      "number": 7,
+      "type": "string"
+    },
+    "direction": {
+      "number": 13,
+      "type": "string"
+    },
+    "facts": {
+      "number": 1,
+      "type": "map\u003cstring, google.protobuf.Value\u003e"
+    },
+    "from": {
+      "number": 10,
+      "type": "string"
+    },
+    "html": {
+      "number": 4,
+      "type": "string"
+    },
+    "id": {
+      "number": 5,
+      "type": "string"
+    },
+    "in_reply_to": {
+      "number": 2,
+      "type": "string"
+    },
+    "ref": {
+      "number": 6,
+      "type": "string"
+    },
+    "references": {
+      "number": 3,
+      "type": "string"
+    },
+    "subject": {
+      "number": 8,
+      "type": "string"
+    },
+    "text": {
+      "number": 9,
+      "type": "string"
+    },
+    "to": {
+      "number": 11,
+      "type": "string"
+    }
+  },
+  "chat.ServiceSourceRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "chat.ServiceSourceResponse": {
+    "item": {
+      "number": 1,
+      "type": "ServiceSourceMessage"
+    }
+  },
+  "chat.ServiceSourcesRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "chat.ServiceSourcesResponse": {
+    "ids": {
+      "number": 1,
+      "type": "repeated string"
+    },
+    "next": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "docs.DeleteRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "docs.DeleteResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "docs.Doc": {
+    "content": {
+      "number": 3,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "public": {
+      "number": 4,
+      "type": "bool"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    },
+    "updated": {
+      "number": 5,
+      "type": "google.protobuf.Timestamp"
+    }
+  },
+  "docs.ListRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "docs.ListResponse": {
+    "docs": {
+      "number": 2,
+      "type": "repeated Doc"
+    },
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "docs.ReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "docs.ReadResponse": {
+    "doc": {
+      "number": 2,
+      "type": "Doc"
+    },
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "docs.WriteRequest": {
+    "content": {
+      "number": 2,
+      "type": "string"
+    },
+    "id": {
+      "number": 3,
+      "type": "string"
+    },
+    "public": {
+      "number": 4,
+      "type": "bool"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "docs.WriteResponse": {
+    "doc": {
+      "number": 3,
+      "type": "Doc"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    },
+    "url": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "events.Advance": {
+    "minutes": {
+      "number": 1,
+      "type": "int64"
+    },
+    "recipient": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "events.CreateRequest": {
+    "advance": {
+      "number": 1,
+      "type": "Advance"
+    },
+    "minutes": {
+      "number": 5,
+      "type": "int64"
+    },
+    "note": {
+      "number": 4,
+      "type": "string"
+    },
+    "prompt": {
+      "number": 7,
+      "type": "string"
+    },
+    "repeat": {
+      "number": 6,
+      "type": "string"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    },
+    "when": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "events.CreateResponse": {
+    "item": {
+      "number": 1,
+      "type": "Event"
+    },
+    "result": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "events.DeleteRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "events.DeleteResponse": {
+    "status": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "events.Event": {
+    "advance": {
+      "number": 1,
+      "type": "Advance"
+    },
+    "advance_for": {
+      "number": 2,
+      "type": "google.protobuf.Timestamp"
+    },
+    "advance_revision": {
+      "number": 3,
+      "type": "int64"
+    },
+    "builtin": {
+      "number": 10,
+      "type": "bool"
+    },
+    "created": {
+      "number": 23,
+      "type": "google.protobuf.Timestamp"
+    },
+    "fired": {
+      "number": 24,
+      "type": "bool"
+    },
+    "fired_at": {
+      "number": 25,
+      "type": "google.protobuf.Timestamp"
+    },
+    "id": {
+      "number": 15,
+      "type": "string"
+    },
+    "kind": {
+      "number": 11,
+      "type": "string"
+    },
+    "last_brief": {
+      "number": 7,
+      "type": "google.protobuf.Timestamp"
+    },
+    "max_credits": {
+      "number": 8,
+      "type": "int64"
+    },
+    "minutes": {
+      "number": 20,
+      "type": "int64"
+    },
+    "note": {
+      "number": 19,
+      "type": "string"
+    },
+    "owner": {
+      "number": 16,
+      "type": "string"
+    },
+    "paused": {
+      "number": 13,
+      "type": "bool"
+    },
+    "plan": {
+      "number": 6,
+      "type": "bool"
+    },
+    "prompt": {
+      "number": 22,
+      "type": "string"
+    },
+    "repeat": {
+      "number": 21,
+      "type": "string"
+    },
+    "research_digest": {
+      "number": 4,
+      "type": "string"
+    },
+    "research_report": {
+      "number": 5,
+      "type": "string"
+    },
+    "sequence": {
+      "number": 14,
+      "type": "int64"
+    },
+    "title": {
+      "number": 17,
+      "type": "string"
+    },
+    "when": {
+      "number": 18,
+      "type": "google.protobuf.Timestamp"
+    },
+    "world_news": {
+      "number": 9,
+      "type": "optional bool"
+    },
+    "zone": {
+      "number": 12,
+      "type": "string"
+    }
+  },
+  "events.External": {
+    "all_day": {
+      "number": 6,
+      "type": "bool"
+    },
+    "end": {
+      "number": 4,
+      "type": "google.protobuf.Timestamp"
+    },
+    "location": {
+      "number": 5,
+      "type": "string"
+    },
+    "source": {
+      "number": 7,
+      "type": "string"
+    },
+    "start": {
+      "number": 3,
+      "type": "google.protobuf.Timestamp"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    },
+    "url": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "events.FreeRequest": {
+    "day_end": {
+      "number": 5,
+      "type": "int64"
+    },
+    "day_start": {
+      "number": 4,
+      "type": "int64"
+    },
+    "from": {
+      "number": 1,
+      "type": "string"
+    },
+    "minutes": {
+      "number": 3,
+      "type": "int64"
+    },
+    "to": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "events.FreeResponse": {
+    "slots": {
+      "number": 1,
+      "type": "repeated Slot"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "events.ListRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "events.ListResponse": {
+    "events": {
+      "number": 8,
+      "type": "string"
+    },
+    "external": {
+      "number": 1,
+      "type": "repeated External"
+    },
+    "external_next_offset": {
+      "number": 3,
+      "type": "optional int64"
+    },
+    "external_total": {
+      "number": 2,
+      "type": "int64"
+    },
+    "items": {
+      "number": 4,
+      "type": "repeated Event"
+    },
+    "next_offset": {
+      "number": 7,
+      "type": "optional int64"
+    },
+    "offset": {
+      "number": 6,
+      "type": "int64"
+    },
+    "total": {
+      "number": 5,
+      "type": "int64"
+    }
+  },
+  "events.ReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "events.ReadResponse": {
+    "item": {
+      "number": 1,
+      "type": "Event"
+    }
+  },
+  "events.Slot": {
+    "end": {
+      "number": 2,
+      "type": "google.protobuf.Timestamp"
+    },
+    "start": {
+      "number": 1,
+      "type": "google.protobuf.Timestamp"
+    }
+  },
+  "events.UpdateRequest": {
+    "advance": {
+      "number": 1,
+      "type": "Advance"
+    },
+    "id": {
+      "number": 2,
+      "type": "string"
+    },
+    "minutes": {
+      "number": 6,
+      "type": "optional int64"
+    },
+    "note": {
+      "number": 5,
+      "type": "optional string"
+    },
+    "prompt": {
+      "number": 8,
+      "type": "optional string"
+    },
+    "repeat": {
+      "number": 7,
+      "type": "optional string"
+    },
+    "title": {
+      "number": 3,
+      "type": "optional string"
+    },
+    "when": {
+      "number": 4,
+      "type": "optional string"
+    }
+  },
+  "events.UpdateResponse": {
+    "item": {
+      "number": 1,
+      "type": "Event"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "files.DeleteRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "files.DeleteResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "files.DriveReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "files.DriveSearchRequest": {
+    "limit": {
+      "number": 3,
+      "type": "int64"
+    },
+    "page": {
+      "number": 2,
+      "type": "string"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "files.File": {
+    "checksum": {
+      "number": 8,
+      "type": "string"
+    },
+    "created": {
+      "number": 9,
+      "type": "google.protobuf.Timestamp"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "name": {
+      "number": 2,
+      "type": "string"
+    },
+    "owner": {
+      "number": 6,
+      "type": "string"
+    },
+    "public": {
+      "number": 5,
+      "type": "bool"
+    },
+    "size": {
+      "number": 4,
+      "type": "int64"
+    },
+    "type": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 7,
+      "type": "string"
+    }
+  },
+  "files.GetRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "files.GetResponse": {
+    "binary": {
+      "number": 3,
+      "type": "bool"
+    },
+    "content": {
+      "number": 2,
+      "type": "string"
+    },
+    "file": {
+      "number": 1,
+      "type": "File"
+    }
+  },
+  "files.GoogleDriveContent": {
+    "file": {
+      "number": 1,
+      "type": "GoogleDriveFile"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "files.GoogleDriveFile": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "mimeType": {
+      "number": 3,
+      "type": "string"
+    },
+    "modifiedTime": {
+      "number": 4,
+      "type": "string"
+    },
+    "name": {
+      "number": 2,
+      "type": "string"
+    },
+    "webViewLink": {
+      "number": 5,
+      "type": "string"
+    }
+  },
+  "files.GoogleDrivePage": {
+    "files": {
+      "number": 1,
+      "type": "repeated GoogleDriveFile"
+    },
+    "nextPageToken": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "files.ListResponse": {
+    "files": {
+      "number": 1,
+      "type": "repeated File"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "files.PutRequest": {
+    "content": {
+      "number": 2,
+      "type": "string"
+    },
+    "encoding": {
+      "number": 3,
+      "type": "string"
+    },
+    "name": {
+      "number": 1,
+      "type": "string"
+    },
+    "type": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "files.PutResponse": {
+    "file": {
+      "number": 1,
+      "type": "File"
+    },
+    "result": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "files.ShareRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "public": {
+      "number": 2,
+      "type": "bool"
+    }
+  },
+  "files.ShareResponse": {
+    "file": {
+      "number": 1,
+      "type": "File"
+    },
+    "result": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "flights.AirportRequest": {
+    "code": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "flights.AirportResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "flights.FlightStatus": {
+    "arrival": {
+      "number": 4,
+      "type": "FlightTime"
+    },
+    "departure": {
+      "number": 3,
+      "type": "FlightTime"
+    },
+    "flight": {
+      "number": 5,
+      "type": "FlightStatusFlight"
+    },
+    "flight_date": {
+      "number": 1,
+      "type": "string"
+    },
+    "flight_status": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "flights.FlightStatusFlight": {
+    "iata": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "flights.FlightTime": {
+    "actual": {
+      "number": 5,
+      "type": "string"
+    },
+    "airport": {
+      "number": 1,
+      "type": "string"
+    },
+    "estimated": {
+      "number": 4,
+      "type": "string"
+    },
+    "gate": {
+      "number": 7,
+      "type": "string"
+    },
+    "iata": {
+      "number": 2,
+      "type": "string"
+    },
+    "scheduled": {
+      "number": 3,
+      "type": "string"
+    },
+    "terminal": {
+      "number": 6,
+      "type": "string"
+    }
+  },
+  "flights.OverheadRequest": {
+    "lat": {
+      "number": 2,
+      "type": "double"
+    },
+    "lon": {
+      "number": 3,
+      "type": "double"
+    },
+    "near": {
+      "number": 1,
+      "type": "string"
+    },
+    "radius": {
+      "number": 4,
+      "type": "int64"
+    }
+  },
+  "flights.OverheadResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "flights.StatusRequest": {
+    "airport": {
+      "number": 2,
+      "type": "string"
+    },
+    "direction": {
+      "number": 3,
+      "type": "string"
+    },
+    "flight": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "flights.StatusResponse": {
+    "fetched_at": {
+      "number": 2,
+      "type": "string"
+    },
+    "flights": {
+      "number": 1,
+      "type": "repeated FlightStatus"
+    }
+  },
+  "flights.TrackRequest": {
+    "flight": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "flights.TrackResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "food.HygieneRequest": {
+    "lat": {
+      "number": 3,
+      "type": "double"
+    },
+    "limit": {
+      "number": 5,
+      "type": "int64"
+    },
+    "lon": {
+      "number": 4,
+      "type": "double"
+    },
+    "name": {
+      "number": 1,
+      "type": "string"
+    },
+    "where": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "food.HygieneResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "food.ProductRequest": {
+    "barcode": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "food.ProductResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "food.SearchRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "food.SearchResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "forms.DeleteRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "response_id": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "forms.DeleteResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "forms.Field": {
+    "label": {
+      "number": 2,
+      "type": "string"
+    },
+    "name": {
+      "number": 1,
+      "type": "string"
+    },
+    "required": {
+      "number": 4,
+      "type": "bool"
+    },
+    "type": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "forms.Form": {
+    "closed": {
+      "number": 6,
+      "type": "bool"
+    },
+    "description": {
+      "number": 3,
+      "type": "string"
+    },
+    "fields": {
+      "number": 4,
+      "type": "repeated Field"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "public": {
+      "number": 5,
+      "type": "bool"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "forms.FormResponse": {
+    "form": {
+      "number": 1,
+      "type": "Form"
+    },
+    "text": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "forms.ListRequest": {
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "forms.ListResponse": {
+    "forms": {
+      "number": 1,
+      "type": "repeated Form"
+    },
+    "more": {
+      "number": 2,
+      "type": "bool"
+    }
+  },
+  "forms.ReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "forms.ResponsesRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "offset": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "forms.ResponsesResponse": {
+    "more": {
+      "number": 2,
+      "type": "bool"
+    },
+    "responses": {
+      "number": 1,
+      "type": "repeated Submission"
+    }
+  },
+  "forms.Submission": {
+    "answers": {
+      "number": 4,
+      "type": "map\u003cstring, string\u003e"
+    },
+    "created": {
+      "number": 2,
+      "type": "google.protobuf.Timestamp"
+    },
+    "fields": {
+      "number": 3,
+      "type": "repeated Field"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "forms.WriteRequest": {
+    "closed": {
+      "number": 6,
+      "type": "bool"
+    },
+    "description": {
+      "number": 3,
+      "type": "string"
+    },
+    "fields": {
+      "number": 4,
+      "type": "repeated Field"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "public": {
+      "number": 5,
+      "type": "bool"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "groups.CreateRequest": {
+    "description": {
+      "number": 1,
+      "type": "string"
+    },
+    "encrypted": {
+      "number": 2,
+      "type": "bool"
+    },
+    "name": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "groups.GroupConversation": {
+    "agent": {
+      "number": 3,
+      "type": "string"
+    },
+    "created": {
+      "number": 4,
+      "type": "google.protobuf.Timestamp"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "name": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "groups.GroupGroup": {
+    "activity": {
+      "number": 4,
+      "type": "map\u003cstring, google.protobuf.Timestamp\u003e"
+    },
+    "billing_until": {
+      "number": 3,
+      "type": "google.protobuf.Timestamp"
+    },
+    "conversations": {
+      "number": 8,
+      "type": "map\u003cstring, GroupConversation\u003e"
+    },
+    "created": {
+      "number": 16,
+      "type": "google.protobuf.Timestamp"
+    },
+    "description": {
+      "number": 1,
+      "type": "string"
+    },
+    "encrypted": {
+      "number": 14,
+      "type": "bool"
+    },
+    "id": {
+      "number": 6,
+      "type": "string"
+    },
+    "invitations": {
+      "number": 18,
+      "type": "map\u003cstring, GroupInvitation\u003e"
+    },
+    "link_expires": {
+      "number": 11,
+      "type": "google.protobuf.Timestamp"
+    },
+    "link_hash": {
+      "number": 10,
+      "type": "string"
+    },
+    "links": {
+      "number": 9,
+      "type": "map\u003cstring, GroupInvitation\u003e"
+    },
+    "members": {
+      "number": 17,
+      "type": "map\u003cstring, string\u003e"
+    },
+    "members_use_ai": {
+      "number": 13,
+      "type": "bool"
+    },
+    "muted": {
+      "number": 2,
+      "type": "map\u003cstring, bool\u003e"
+    },
+    "name": {
+      "number": 7,
+      "type": "string"
+    },
+    "owner": {
+      "number": 15,
+      "type": "string"
+    },
+    "seen": {
+      "number": 5,
+      "type": "map\u003cstring, google.protobuf.Timestamp\u003e"
+    },
+    "spend_limit": {
+      "number": 12,
+      "type": "int64"
+    }
+  },
+  "groups.GroupInvitation": {
+    "account": {
+      "number": 1,
+      "type": "string"
+    },
+    "expires": {
+      "number": 3,
+      "type": "google.protobuf.Timestamp"
+    },
+    "invited_by": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "groups.GroupPending": {
+    "account": {
+      "number": 3,
+      "type": "string"
+    },
+    "expires": {
+      "number": 5,
+      "type": "google.protobuf.Timestamp"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "invited_by": {
+      "number": 4,
+      "type": "string"
+    },
+    "name": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "groups.GroupResponse": {
+    "chat": {
+      "number": 2,
+      "type": "string"
+    },
+    "group": {
+      "number": 1,
+      "type": "GroupGroup"
+    }
+  },
+  "groups.ListResponse": {
+    "groups": {
+      "number": 1,
+      "type": "repeated GroupGroup"
+    },
+    "invitations": {
+      "number": 2,
+      "type": "repeated GroupPending"
+    }
+  },
+  "groups.ReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "groups.UpdateRequest": {
+    "account": {
+      "number": 3,
+      "type": "string"
+    },
+    "action": {
+      "number": 2,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "value": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "groups.UpdateResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "hazards.AlertsRequest": {
+    "lat": {
+      "number": 2,
+      "type": "double"
+    },
+    "level": {
+      "number": 1,
+      "type": "string"
+    },
+    "lon": {
+      "number": 3,
+      "type": "double"
+    },
+    "within_km": {
+      "number": 4,
+      "type": "double"
+    }
+  },
+  "hazards.AlertsResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "hazards.FloodsRequest": {
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    },
+    "severe": {
+      "number": 4,
+      "type": "bool"
+    },
+    "within_km": {
+      "number": 3,
+      "type": "double"
+    }
+  },
+  "hazards.FloodsResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "hazards.QuakesRequest": {
+    "lat": {
+      "number": 3,
+      "type": "double"
+    },
+    "lon": {
+      "number": 4,
+      "type": "double"
+    },
+    "min": {
+      "number": 1,
+      "type": "double"
+    },
+    "period": {
+      "number": 2,
+      "type": "string"
+    },
+    "within_km": {
+      "number": 5,
+      "type": "double"
+    }
+  },
+  "hazards.QuakesResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "images.DailyRequest": {
+    "date": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "images.DeleteResponse": {
+    "deleted": {
+      "number": 1,
+      "type": "bool"
+    }
+  },
+  "images.GenerateRequest": {
+    "prompt": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "images.GenerateResponse": {
+    "image": {
+      "number": 1,
+      "type": "Image"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "images.GetRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "images.Image": {
+    "created_at": {
+      "number": 9,
+      "type": "string"
+    },
+    "description": {
+      "number": 4,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "prompt": {
+      "number": 6,
+      "type": "string"
+    },
+    "source": {
+      "number": 7,
+      "type": "string"
+    },
+    "tags": {
+      "number": 5,
+      "type": "repeated string"
+    },
+    "title": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    },
+    "visibility": {
+      "number": 8,
+      "type": "string"
+    }
+  },
+  "images.ImageResponse": {
+    "image": {
+      "number": 1,
+      "type": "Image"
+    }
+  },
+  "images.ListRequest": {
+    "cursor": {
+      "number": 3,
+      "type": "string"
+    },
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "scope": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "images.ListResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Image"
+    },
+    "next_cursor": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "images.SearchRequest": {
+    "cursor": {
+      "number": 2,
+      "type": "string"
+    },
+    "limit": {
+      "number": 4,
+      "type": "int64"
+    },
+    "query": {
+      "number": 3,
+      "type": "string"
+    },
+    "scope": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "images.SearchResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Image"
+    },
+    "next_cursor": {
+      "number": 2,
+      "type": "string"
+    },
+    "text": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "images.ShareRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "public": {
+      "number": 2,
+      "type": "bool"
+    }
+  },
+  "images.UpdateRequest": {
+    "description": {
+      "number": 3,
+      "type": "optional string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "tags": {
+      "number": 4,
+      "type": "repeated string"
+    },
+    "title": {
+      "number": 2,
+      "type": "optional string"
+    }
+  },
+  "images.UploadRequest": {
+    "data": {
+      "number": 1,
+      "type": "string"
+    },
+    "description": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "islam.ReadRequest": {
+    "path": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "islam.ReadResponse": {
+    "kind": {
+      "number": 1,
+      "type": "string"
+    },
+    "resource": {
+      "number": 4,
+      "type": "map\u003cstring, google.protobuf.Value\u003e"
+    },
+    "source": {
+      "number": 2,
+      "type": "string"
+    },
+    "url": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "islam.Result": {
+    "content": {
+      "number": 3,
+      "type": "string"
+    },
+    "kind": {
+      "number": 1,
+      "type": "string"
+    },
+    "role": {
+      "number": 4,
+      "type": "string"
+    },
+    "source": {
+      "number": 5,
+      "type": "string"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    },
+    "url": {
+      "number": 6,
+      "type": "string"
+    }
+  },
+  "islam.ScriptureReference": {
+    "metadata": {
+      "number": 3,
+      "type": "map\u003cstring, string\u003e"
+    },
+    "score": {
+      "number": 2,
+      "type": "double"
+    },
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "islam.ScriptureReferencesResponse": {
+    "q": {
+      "number": 1,
+      "type": "string"
+    },
+    "references": {
+      "number": 2,
+      "type": "repeated ScriptureReference"
+    }
+  },
+  "islam.ScriptureSayingRequest": {
+    "book": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "islam.ScriptureSayingResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "islam.ScriptureSearchRequest": {
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "islam.ScriptureVerseRequest": {
+    "chapter": {
+      "number": 1,
+      "type": "int64"
+    },
+    "verse": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "islam.ScriptureVerseResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "islam.SearchRequest": {
+    "collection": {
+      "number": 2,
+      "type": "string"
+    },
+    "limit": {
+      "number": 3,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "islam.SearchResponse": {
+    "results": {
+      "number": 1,
+      "type": "repeated Result"
+    }
+  },
+  "mail.GmailReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "mail.GmailSearchRequest": {
+    "limit": {
+      "number": 3,
+      "type": "int64"
+    },
+    "page": {
+      "number": 2,
+      "type": "string"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "mail.GoogleGmailMessage": {
+    "date": {
+      "number": 6,
+      "type": "string"
+    },
+    "from": {
+      "number": 4,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "snippet": {
+      "number": 7,
+      "type": "string"
+    },
+    "subject": {
+      "number": 3,
+      "type": "string"
+    },
+    "text": {
+      "number": 8,
+      "type": "string"
+    },
+    "thread_id": {
+      "number": 2,
+      "type": "string"
+    },
+    "to": {
+      "number": 5,
+      "type": "string"
+    },
+    "url": {
+      "number": 9,
+      "type": "string"
+    }
+  },
+  "mail.GoogleGmailPage": {
+    "messages": {
+      "number": 1,
+      "type": "repeated GoogleGmailMessage"
+    },
+    "next_page": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "mail.InboxRequest": {
+    "limit": {
+      "number": 3,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 2,
+      "type": "int64"
+    },
+    "tag": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "mail.InfoRequest": {
+    "tag": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "mail.InfoResponse": {
+    "address": {
+      "number": 2,
+      "type": "string"
+    },
+    "domain": {
+      "number": 4,
+      "type": "string"
+    },
+    "external": {
+      "number": 3,
+      "type": "bool"
+    },
+    "handle": {
+      "number": 1,
+      "type": "string"
+    },
+    "reach": {
+      "number": 5,
+      "type": "string"
+    },
+    "text": {
+      "number": 6,
+      "type": "string"
+    }
+  },
+  "mail.MarkReadRequest": {
+    "all": {
+      "number": 2,
+      "type": "bool"
+    },
+    "ids": {
+      "number": 1,
+      "type": "repeated string"
+    }
+  },
+  "mail.MarkReadResponse": {
+    "text": {
+      "number": 2,
+      "type": "string"
+    },
+    "updated": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "mail.MessageView": {
+    "attachment_name": {
+      "number": 9,
+      "type": "string"
+    },
+    "attachment_type": {
+      "number": 10,
+      "type": "string"
+    },
+    "body": {
+      "number": 5,
+      "type": "string"
+    },
+    "created": {
+      "number": 8,
+      "type": "google.protobuf.Timestamp"
+    },
+    "from": {
+      "number": 2,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "snippet": {
+      "number": 6,
+      "type": "string"
+    },
+    "subject": {
+      "number": 4,
+      "type": "string"
+    },
+    "tag": {
+      "number": 7,
+      "type": "string"
+    },
+    "to": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "mail.ReadRequest": {
+    "id": {
+      "number": 3,
+      "type": "string"
+    },
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "mail.ReadResponse": {
+    "item": {
+      "number": 3,
+      "type": "MessageView"
+    },
+    "next_offset": {
+      "number": 2,
+      "type": "int64"
+    },
+    "text": {
+      "number": 4,
+      "type": "string"
+    },
+    "total": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "mail.SearchRequest": {
+    "limit": {
+      "number": 4,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 2,
+      "type": "int64"
+    },
+    "query": {
+      "number": 3,
+      "type": "string"
+    },
+    "tag": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "mail.SearchResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated MessageView"
+    },
+    "next_offset": {
+      "number": 4,
+      "type": "optional int64"
+    },
+    "offset": {
+      "number": 3,
+      "type": "int64"
+    },
+    "text": {
+      "number": 5,
+      "type": "string"
+    },
+    "total": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "mail.SendRequest": {
+    "body": {
+      "number": 3,
+      "type": "string"
+    },
+    "subject": {
+      "number": 2,
+      "type": "string"
+    },
+    "to": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "mail.SendResponse": {
+    "message_id": {
+      "number": 1,
+      "type": "string"
+    },
+    "result": {
+      "number": 3,
+      "type": "string"
+    },
+    "state": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "mail.ServiceSourceMessage": {
+    "at": {
+      "number": 14,
+      "type": "google.protobuf.Timestamp"
+    },
+    "channel": {
+      "number": 12,
+      "type": "string"
+    },
+    "conversation": {
+      "number": 7,
+      "type": "string"
+    },
+    "direction": {
+      "number": 13,
+      "type": "string"
+    },
+    "facts": {
+      "number": 1,
+      "type": "map\u003cstring, google.protobuf.Value\u003e"
+    },
+    "from": {
+      "number": 10,
+      "type": "string"
+    },
+    "html": {
+      "number": 4,
+      "type": "string"
+    },
+    "id": {
+      "number": 5,
+      "type": "string"
+    },
+    "in_reply_to": {
+      "number": 2,
+      "type": "string"
+    },
+    "ref": {
+      "number": 6,
+      "type": "string"
+    },
+    "references": {
+      "number": 3,
+      "type": "string"
+    },
+    "subject": {
+      "number": 8,
+      "type": "string"
+    },
+    "text": {
+      "number": 9,
+      "type": "string"
+    },
+    "to": {
+      "number": 11,
+      "type": "string"
+    }
+  },
+  "mail.ServiceSourceRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "mail.ServiceSourceResponse": {
+    "item": {
+      "number": 1,
+      "type": "ServiceSourceMessage"
+    }
+  },
+  "mail.ServiceSourcesRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "mail.ServiceSourcesResponse": {
+    "ids": {
+      "number": 1,
+      "type": "repeated string"
+    },
+    "next": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "maps.AreaRequest": {
+    "east": {
+      "number": 3,
+      "type": "double"
+    },
+    "north": {
+      "number": 1,
+      "type": "double"
+    },
+    "south": {
+      "number": 2,
+      "type": "double"
+    },
+    "style": {
+      "number": 6,
+      "type": "string"
+    },
+    "west": {
+      "number": 4,
+      "type": "double"
+    },
+    "zoom": {
+      "number": 5,
+      "type": "int64"
+    }
+  },
+  "maps.AreaResponse": {
+    "cached": {
+      "number": 4,
+      "type": "int64"
+    },
+    "cols": {
+      "number": 2,
+      "type": "int64"
+    },
+    "rows": {
+      "number": 3,
+      "type": "int64"
+    },
+    "text": {
+      "number": 5,
+      "type": "string"
+    },
+    "urls": {
+      "number": 1,
+      "type": "repeated string"
+    }
+  },
+  "maps.TileRequest": {
+    "style": {
+      "number": 4,
+      "type": "string"
+    },
+    "x": {
+      "number": 2,
+      "type": "int64"
+    },
+    "y": {
+      "number": 3,
+      "type": "int64"
+    },
+    "z": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "maps.TileResponse": {
+    "cached": {
+      "number": 2,
+      "type": "bool"
+    },
+    "style": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "markets.ConvertRequest": {
+    "amount": {
+      "number": 1,
+      "type": "double"
+    },
+    "date": {
+      "number": 4,
+      "type": "string"
+    },
+    "from": {
+      "number": 2,
+      "type": "string"
+    },
+    "to": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "markets.ConvertResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "markets.HistoryRequest": {
+    "end": {
+      "number": 5,
+      "type": "string"
+    },
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    },
+    "start": {
+      "number": 4,
+      "type": "string"
+    },
+    "symbol": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "markets.HistoryResponse": {
+    "currency": {
+      "number": 4,
+      "type": "string"
+    },
+    "interval": {
+      "number": 6,
+      "type": "string"
+    },
+    "items": {
+      "number": 7,
+      "type": "repeated Point"
+    },
+    "next_offset": {
+      "number": 2,
+      "type": "optional int64"
+    },
+    "source": {
+      "number": 5,
+      "type": "string"
+    },
+    "symbol": {
+      "number": 3,
+      "type": "string"
+    },
+    "text": {
+      "number": 8,
+      "type": "string"
+    },
+    "total": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "markets.ListRequest": {
+    "category": {
+      "number": 3,
+      "type": "string"
+    },
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "markets.ListResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Price"
+    },
+    "next_offset": {
+      "number": 4,
+      "type": "optional int64"
+    },
+    "offset": {
+      "number": 3,
+      "type": "int64"
+    },
+    "text": {
+      "number": 5,
+      "type": "string"
+    },
+    "total": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "markets.Point": {
+    "close": {
+      "number": 2,
+      "type": "double"
+    },
+    "time": {
+      "number": 1,
+      "type": "google.protobuf.Timestamp"
+    }
+  },
+  "markets.Price": {
+    "change_24h": {
+      "number": 4,
+      "type": "double"
+    },
+    "currency": {
+      "number": 2,
+      "type": "string"
+    },
+    "price": {
+      "number": 3,
+      "type": "double"
+    },
+    "source": {
+      "number": 6,
+      "type": "string"
+    },
+    "stale": {
+      "number": 7,
+      "type": "bool"
+    },
+    "symbol": {
+      "number": 1,
+      "type": "string"
+    },
+    "updated": {
+      "number": 5,
+      "type": "google.protobuf.Timestamp"
+    }
+  },
+  "markets.QuoteRequest": {
+    "symbol": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "markets.QuoteResponse": {
+    "item": {
+      "number": 1,
+      "type": "Price"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "news.Headline": {
+    "category": {
+      "number": 3,
+      "type": "string"
+    },
+    "description": {
+      "number": 4,
+      "type": "string"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "news.HeadlinesResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Headline"
+    }
+  },
+  "news.ListRequest": {
+    "day": {
+      "number": 1,
+      "type": "string"
+    },
+    "limit": {
+      "number": 3,
+      "type": "int64"
+    },
+    "topic": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "news.ListResponse": {
+    "items": {
+      "number": 2,
+      "type": "repeated Headline"
+    },
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "news.ReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "news.ReadResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "news.SearchRequest": {
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "news.SearchResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "notes.AddRequest": {
+    "text": {
+      "number": 2,
+      "type": "string"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "notes.AddResponse": {
+    "item": {
+      "number": 1,
+      "type": "ResultEmbed"
+    },
+    "result": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "notes.DeleteRequest": {
+    "title": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "notes.DeleteResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "notes.GetRequest": {
+    "title": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "notes.GetResponse": {
+    "item": {
+      "number": 1,
+      "type": "ResultEmbed"
+    },
+    "note": {
+      "number": 3,
+      "type": "string"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "notes.ListResponse": {
+    "notes": {
+      "number": 1,
+      "type": "repeated Note"
+    }
+  },
+  "notes.Note": {
+    "source_thread": {
+      "number": 1,
+      "type": "string"
+    },
+    "text": {
+      "number": 4,
+      "type": "string"
+    },
+    "title": {
+      "number": 3,
+      "type": "string"
+    },
+    "updated_at": {
+      "number": 2,
+      "type": "google.protobuf.Timestamp"
+    }
+  },
+  "notes.ResultEmbed": {
+    "body": {
+      "number": 1,
+      "type": "string"
+    },
+    "id": {
+      "number": 3,
+      "type": "string"
+    },
+    "kind": {
+      "number": 2,
+      "type": "string"
+    },
+    "shape": {
+      "number": 7,
+      "type": "repeated ResultPoint"
+    },
+    "steps": {
+      "number": 8,
+      "type": "repeated string"
+    },
+    "summary": {
+      "number": 6,
+      "type": "string"
+    },
+    "title": {
+      "number": 5,
+      "type": "string"
+    },
+    "url": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "notes.ResultPoint": {
+    "Lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "Lon": {
+      "number": 2,
+      "type": "double"
+    }
+  },
+  "notify.Device": {
+    "added": {
+      "number": 2,
+      "type": "string"
+    },
+    "label": {
+      "number": 1,
+      "type": "string"
+    },
+    "last": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "notify.DevicesResponse": {
+    "devices": {
+      "number": 1,
+      "type": "repeated Device"
+    },
+    "reachable": {
+      "number": 2,
+      "type": "bool"
+    }
+  },
+  "notify.SendRequest": {
+    "body": {
+      "number": 2,
+      "type": "string"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    },
+    "url": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "notify.SendResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "places.AddressRequest": {
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    }
+  },
+  "places.AddressResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "places.ElevationRequest": {
+    "lat": {
+      "number": 2,
+      "type": "double"
+    },
+    "lon": {
+      "number": 3,
+      "type": "double"
+    },
+    "place": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "places.ElevationResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "places.GeocodeRequest": {
+    "address": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "places.GeocodeResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "places.NearbyRequest": {
+    "lat": {
+      "number": 2,
+      "type": "double"
+    },
+    "lon": {
+      "number": 3,
+      "type": "double"
+    },
+    "near": {
+      "number": 1,
+      "type": "string"
+    },
+    "query": {
+      "number": 4,
+      "type": "string"
+    },
+    "radius": {
+      "number": 5,
+      "type": "int64"
+    }
+  },
+  "places.PlacesResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "places.SearchRequest": {
+    "lat": {
+      "number": 3,
+      "type": "double"
+    },
+    "lon": {
+      "number": 4,
+      "type": "double"
+    },
+    "near": {
+      "number": 2,
+      "type": "string"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    },
+    "radius": {
+      "number": 5,
+      "type": "int64"
+    }
+  },
+  "prayer.QiblaRequest": {
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    }
+  },
+  "prayer.QiblaResponse": {
+    "direction": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "prayer.ReflectionResponse": {
+    "reminder": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "prayer.ScriptureSayingRequest": {
+    "book": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "prayer.ScriptureSayingResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "prayer.ScriptureSearchRequest": {
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "prayer.ScriptureSearchResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "prayer.ScriptureVerseRequest": {
+    "chapter": {
+      "number": 1,
+      "type": "int64"
+    },
+    "verse": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "prayer.ScriptureVerseResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "prayer.TimesRequest": {
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    },
+    "method": {
+      "number": 4,
+      "type": "string"
+    },
+    "tz": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "prayer.TimesResponse": {
+    "times": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "recall.ConversationRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "recall.ConversationResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "recall.ListRequest": {
+    "client": {
+      "number": 1,
+      "type": "string"
+    },
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "recall.ListResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "recall.SearchRequest": {
+    "client": {
+      "number": 2,
+      "type": "string"
+    },
+    "limit": {
+      "number": 3,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "recall.SearchResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "routes.DirectionsRequest": {
+    "arrive_by": {
+      "number": 9,
+      "type": "string"
+    },
+    "depart_at": {
+      "number": 8,
+      "type": "string"
+    },
+    "from": {
+      "number": 1,
+      "type": "string"
+    },
+    "from_lat": {
+      "number": 3,
+      "type": "double"
+    },
+    "from_lon": {
+      "number": 4,
+      "type": "double"
+    },
+    "mode": {
+      "number": 7,
+      "type": "string"
+    },
+    "to": {
+      "number": 2,
+      "type": "string"
+    },
+    "to_lat": {
+      "number": 5,
+      "type": "double"
+    },
+    "to_lon": {
+      "number": 6,
+      "type": "double"
+    }
+  },
+  "routes.DirectionsResponse": {
+    "estimate": {
+      "number": 4,
+      "type": "bool"
+    },
+    "instructions": {
+      "number": 3,
+      "type": "repeated string"
+    },
+    "shape": {
+      "number": 2,
+      "type": "repeated ResultPoint"
+    },
+    "summary": {
+      "number": 1,
+      "type": "string"
+    },
+    "text": {
+      "number": 5,
+      "type": "string"
+    }
+  },
+  "routes.ETARequest": {
+    "arrive_by": {
+      "number": 9,
+      "type": "string"
+    },
+    "depart_at": {
+      "number": 8,
+      "type": "string"
+    },
+    "from": {
+      "number": 1,
+      "type": "string"
+    },
+    "from_lat": {
+      "number": 3,
+      "type": "double"
+    },
+    "from_lon": {
+      "number": 4,
+      "type": "double"
+    },
+    "mode": {
+      "number": 7,
+      "type": "string"
+    },
+    "to": {
+      "number": 2,
+      "type": "string"
+    },
+    "to_lat": {
+      "number": 5,
+      "type": "double"
+    },
+    "to_lon": {
+      "number": 6,
+      "type": "double"
+    }
+  },
+  "routes.ETAResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "routes.NearestRequest": {
+    "from": {
+      "number": 1,
+      "type": "string"
+    },
+    "from_lat": {
+      "number": 2,
+      "type": "double"
+    },
+    "from_lon": {
+      "number": 3,
+      "type": "double"
+    },
+    "mode": {
+      "number": 5,
+      "type": "string"
+    },
+    "to": {
+      "number": 4,
+      "type": "repeated string"
+    }
+  },
+  "routes.NearestResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "routes.ResultPoint": {
+    "Lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "Lon": {
+      "number": 2,
+      "type": "double"
+    }
+  },
+  "shell.RunRequest": {
+    "command": {
+      "number": 1,
+      "type": "string"
+    },
+    "dir": {
+      "number": 2,
+      "type": "string"
+    },
+    "timeout": {
+      "number": 3,
+      "type": "int64"
+    }
+  },
+  "shell.RunResponse": {
+    "code": {
+      "number": 2,
+      "type": "int64"
+    },
+    "output": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "shell.WriteRequest": {
+    "content": {
+      "number": 2,
+      "type": "string"
+    },
+    "path": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "shell.WriteResponse": {
+    "bytes": {
+      "number": 2,
+      "type": "int64"
+    },
+    "path": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "sms.HistoryRequest": {
+    "limit": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "sms.HistoryResponse": {
+    "messages": {
+      "number": 1,
+      "type": "repeated Message"
+    },
+    "number": {
+      "number": 2,
+      "type": "string"
+    },
+    "numbers": {
+      "number": 3,
+      "type": "repeated string"
+    }
+  },
+  "sms.Message": {
+    "at": {
+      "number": 8,
+      "type": "google.protobuf.Timestamp"
+    },
+    "channel": {
+      "number": 6,
+      "type": "string"
+    },
+    "direction": {
+      "number": 2,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "number": {
+      "number": 3,
+      "type": "string"
+    },
+    "segments": {
+      "number": 5,
+      "type": "int64"
+    },
+    "sid": {
+      "number": 7,
+      "type": "string"
+    },
+    "status": {
+      "number": 9,
+      "type": "string"
+    },
+    "status_at": {
+      "number": 10,
+      "type": "google.protobuf.Timestamp"
+    },
+    "text": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "sms.NumberResponse": {
+    "countries": {
+      "number": 6,
+      "type": "repeated string"
+    },
+    "from": {
+      "number": 1,
+      "type": "string"
+    },
+    "limit": {
+      "number": 5,
+      "type": "int64"
+    },
+    "sending": {
+      "number": 2,
+      "type": "repeated string"
+    },
+    "sent_today": {
+      "number": 4,
+      "type": "int64"
+    },
+    "yours": {
+      "number": 3,
+      "type": "repeated string"
+    }
+  },
+  "sms.SendRequest": {
+    "channel": {
+      "number": 3,
+      "type": "string"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    },
+    "to": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "sms.SendResponse": {
+    "message": {
+      "number": 1,
+      "type": "Message"
+    },
+    "result": {
+      "number": 3,
+      "type": "string"
+    },
+    "segments": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "sms.ServiceSourceMessage": {
+    "at": {
+      "number": 14,
+      "type": "google.protobuf.Timestamp"
+    },
+    "channel": {
+      "number": 12,
+      "type": "string"
+    },
+    "conversation": {
+      "number": 7,
+      "type": "string"
+    },
+    "direction": {
+      "number": 13,
+      "type": "string"
+    },
+    "facts": {
+      "number": 1,
+      "type": "map\u003cstring, google.protobuf.Value\u003e"
+    },
+    "from": {
+      "number": 10,
+      "type": "string"
+    },
+    "html": {
+      "number": 4,
+      "type": "string"
+    },
+    "id": {
+      "number": 5,
+      "type": "string"
+    },
+    "in_reply_to": {
+      "number": 2,
+      "type": "string"
+    },
+    "ref": {
+      "number": 6,
+      "type": "string"
+    },
+    "references": {
+      "number": 3,
+      "type": "string"
+    },
+    "subject": {
+      "number": 8,
+      "type": "string"
+    },
+    "text": {
+      "number": 9,
+      "type": "string"
+    },
+    "to": {
+      "number": 11,
+      "type": "string"
+    }
+  },
+  "sms.ServiceSourceRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "sms.ServiceSourceResponse": {
+    "item": {
+      "number": 1,
+      "type": "ServiceSourceMessage"
+    }
+  },
+  "sms.ServiceSourcesRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "sms.ServiceSourcesResponse": {
+    "ids": {
+      "number": 1,
+      "type": "repeated string"
+    },
+    "next": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "sms.VerifyRequest": {
+    "code": {
+      "number": 2,
+      "type": "string"
+    },
+    "number": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "sms.VerifyResponse": {
+    "result": {
+      "number": 1,
+      "type": "string"
+    },
+    "verified": {
+      "number": 2,
+      "type": "bool"
+    }
+  },
+  "social.ListRequest": {
+    "limit": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "social.ListResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "social.SearchRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "social.SearchResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "stream.Item": {
+    "at": {
+      "number": 5,
+      "type": "google.protobuf.Timestamp"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "service": {
+      "number": 2,
+      "type": "string"
+    },
+    "text": {
+      "number": 3,
+      "type": "string"
+    },
+    "url": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "stream.ListRequest": {
+    "limit": {
+      "number": 1,
+      "type": "int64"
+    }
+  },
+  "stream.ListResponse": {
+    "entries": {
+      "number": 1,
+      "type": "repeated Item"
+    }
+  },
+  "tasks.Attempt": {
+    "error": {
+      "number": 8,
+      "type": "string"
+    },
+    "finished": {
+      "number": 3,
+      "type": "google.protobuf.Timestamp"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "report": {
+      "number": 7,
+      "type": "string"
+    },
+    "started": {
+      "number": 2,
+      "type": "google.protobuf.Timestamp"
+    },
+    "status": {
+      "number": 5,
+      "type": "string"
+    },
+    "steps": {
+      "number": 6,
+      "type": "repeated Step"
+    },
+    "version": {
+      "number": 4,
+      "type": "string"
+    }
+  },
+  "tasks.CreateRequest": {
+    "assignee": {
+      "number": 3,
+      "type": "string"
+    },
+    "detail": {
+      "number": 2,
+      "type": "string"
+    },
+    "due": {
+      "number": 4,
+      "type": "string"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "tasks.DeleteRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "tasks.DeleteResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "tasks.Delivery": {
+    "from": {
+      "number": 3,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "tasks.ListRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 1,
+      "type": "int64"
+    },
+    "status": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "tasks.ListResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Task"
+    },
+    "next_offset": {
+      "number": 4,
+      "type": "optional int64"
+    },
+    "offset": {
+      "number": 3,
+      "type": "int64"
+    },
+    "text": {
+      "number": 5,
+      "type": "string"
+    },
+    "total": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "tasks.Occurrence": {
+    "delivery": {
+      "number": 5,
+      "type": "string"
+    },
+    "execution": {
+      "number": 4,
+      "type": "string"
+    },
+    "failure": {
+      "number": 7,
+      "type": "string"
+    },
+    "key": {
+      "number": 1,
+      "type": "string"
+    },
+    "message_id": {
+      "number": 8,
+      "type": "string"
+    },
+    "revision": {
+      "number": 3,
+      "type": "string"
+    },
+    "schedule": {
+      "number": 2,
+      "type": "string"
+    },
+    "state": {
+      "number": 6,
+      "type": "string"
+    }
+  },
+  "tasks.Step": {
+    "args": {
+      "number": 5,
+      "type": "string"
+    },
+    "detail": {
+      "number": 9,
+      "type": "string"
+    },
+    "error": {
+      "number": 7,
+      "type": "string"
+    },
+    "finished": {
+      "number": 3,
+      "type": "google.protobuf.Timestamp"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "ok": {
+      "number": 10,
+      "type": "bool"
+    },
+    "output": {
+      "number": 6,
+      "type": "string"
+    },
+    "seconds": {
+      "number": 11,
+      "type": "double"
+    },
+    "started": {
+      "number": 2,
+      "type": "google.protobuf.Timestamp"
+    },
+    "status": {
+      "number": 4,
+      "type": "string"
+    },
+    "tool": {
+      "number": 8,
+      "type": "string"
+    }
+  },
+  "tasks.Task": {
+    "agent": {
+      "number": 16,
+      "type": "string"
+    },
+    "archived": {
+      "number": 3,
+      "type": "bool"
+    },
+    "assignee": {
+      "number": 8,
+      "type": "string"
+    },
+    "attempts": {
+      "number": 2,
+      "type": "repeated Attempt"
+    },
+    "created": {
+      "number": 11,
+      "type": "google.protobuf.Timestamp"
+    },
+    "delivery": {
+      "number": 17,
+      "type": "Delivery"
+    },
+    "detail": {
+      "number": 6,
+      "type": "string"
+    },
+    "due": {
+      "number": 10,
+      "type": "google.protobuf.Timestamp"
+    },
+    "id": {
+      "number": 4,
+      "type": "string"
+    },
+    "occurrence": {
+      "number": 1,
+      "type": "Occurrence"
+    },
+    "owner": {
+      "number": 13,
+      "type": "string"
+    },
+    "result": {
+      "number": 9,
+      "type": "string"
+    },
+    "status": {
+      "number": 7,
+      "type": "string"
+    },
+    "steps": {
+      "number": 14,
+      "type": "repeated Step"
+    },
+    "thread": {
+      "number": 15,
+      "type": "string"
+    },
+    "title": {
+      "number": 5,
+      "type": "string"
+    },
+    "updated": {
+      "number": 12,
+      "type": "google.protobuf.Timestamp"
+    }
+  },
+  "tasks.TaskResponse": {
+    "item": {
+      "number": 1,
+      "type": "Task"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "tasks.UpdateRequest": {
+    "detail": {
+      "number": 3,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "result": {
+      "number": 5,
+      "type": "string"
+    },
+    "status": {
+      "number": 4,
+      "type": "string"
+    },
+    "title": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "text.ClassifyRequest": {
+    "labels": {
+      "number": 2,
+      "type": "string"
+    },
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "text.ClassifyResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "text.ExtractRequest": {
+    "schema": {
+      "number": 2,
+      "type": "string"
+    },
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "text.ExtractResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "text.SummariseRequest": {
+    "lines": {
+      "number": 3,
+      "type": "int64"
+    },
+    "style": {
+      "number": 2,
+      "type": "string"
+    },
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "text.SummariseResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "text.TranslateRequest": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    },
+    "to": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "text.TranslateResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.ArrivalsRequest": {
+    "stop": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.ArrivalsResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.BusesRequest": {
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "limit": {
+      "number": 4,
+      "type": "int64"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    },
+    "within_km": {
+      "number": 3,
+      "type": "double"
+    }
+  },
+  "transit.BusesResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.FeedsRequest": {
+    "country": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.FeedsResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.NearbyRequest": {
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    },
+    "radius": {
+      "number": 3,
+      "type": "int64"
+    }
+  },
+  "transit.NearbyResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.StatusRequest": {
+    "modes": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.StatusResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.TrainsRequest": {
+    "arrivals": {
+      "number": 3,
+      "type": "bool"
+    },
+    "rows": {
+      "number": 2,
+      "type": "int64"
+    },
+    "station": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "transit.TrainsResponse": {
+    "text": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "users.Account": {
+    "agent": {
+      "number": 2,
+      "type": "bool"
+    },
+    "joined": {
+      "number": 3,
+      "type": "google.protobuf.Timestamp"
+    },
+    "name": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "users.FindRequest": {
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "users.FindResponse": {
+    "text": {
+      "number": 2,
+      "type": "string"
+    },
+    "users": {
+      "number": 1,
+      "type": "repeated User"
+    }
+  },
+  "users.GetRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "users.GetResponse": {
+    "text": {
+      "number": 2,
+      "type": "string"
+    },
+    "user": {
+      "number": 1,
+      "type": "User"
+    }
+  },
+  "users.ListRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "online": {
+      "number": 1,
+      "type": "bool"
+    }
+  },
+  "users.ListResponse": {
+    "text": {
+      "number": 3,
+      "type": "string"
+    },
+    "total": {
+      "number": 2,
+      "type": "int64"
+    },
+    "users": {
+      "number": 1,
+      "type": "repeated User"
+    }
+  },
+  "users.Profile": {
+    "online": {
+      "number": 1,
+      "type": "bool"
+    },
+    "page": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "users.User": {
+    "account": {
+      "number": 3,
+      "type": "Account"
+    },
+    "address": {
+      "number": 2,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "profile": {
+      "number": 4,
+      "type": "Profile"
+    }
+  },
+  "video.ListRequest": {
+    "category": {
+      "number": 1,
+      "type": "string"
+    },
+    "limit": {
+      "number": 3,
+      "type": "int64"
+    },
+    "offset": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "video.ListResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Result"
+    },
+    "next_offset": {
+      "number": 4,
+      "type": "optional int64"
+    },
+    "offset": {
+      "number": 3,
+      "type": "int64"
+    },
+    "text": {
+      "number": 5,
+      "type": "string"
+    },
+    "total": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "video.ReadRequest": {
+    "id": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "video.ReadResponse": {
+    "item": {
+      "number": 1,
+      "type": "Result"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "video.Result": {
+    "category": {
+      "number": 9,
+      "type": "string"
+    },
+    "channel": {
+      "number": 7,
+      "type": "string"
+    },
+    "channel_id": {
+      "number": 8,
+      "type": "string"
+    },
+    "description": {
+      "number": 4,
+      "type": "string"
+    },
+    "id": {
+      "number": 1,
+      "type": "string"
+    },
+    "playlist_id": {
+      "number": 10,
+      "type": "string"
+    },
+    "published": {
+      "number": 6,
+      "type": "google.protobuf.Timestamp"
+    },
+    "thumbnail": {
+      "number": 11,
+      "type": "string"
+    },
+    "title": {
+      "number": 3,
+      "type": "string"
+    },
+    "type": {
+      "number": 2,
+      "type": "string"
+    },
+    "url": {
+      "number": 5,
+      "type": "string"
+    }
+  },
+  "video.SearchRequest": {
+    "channel": {
+      "number": 1,
+      "type": "string"
+    },
+    "query": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "video.SearchResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated Result"
+    },
+    "text": {
+      "number": 3,
+      "type": "string"
+    },
+    "total": {
+      "number": 2,
+      "type": "int64"
+    }
+  },
+  "wallet.AddressResponse": {
+    "address": {
+      "number": 1,
+      "type": "string"
+    },
+    "network": {
+      "number": 2,
+      "type": "string"
+    },
+    "text": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "wallet.BalanceResponse": {
+    "address": {
+      "number": 1,
+      "type": "string"
+    },
+    "network": {
+      "number": 3,
+      "type": "string"
+    },
+    "text": {
+      "number": 4,
+      "type": "string"
+    },
+    "usdc": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "weather.AirRequest": {
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    }
+  },
+  "weather.AirResponse": {
+    "summary": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "weather.ForecastRequest": {
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    }
+  },
+  "weather.ForecastResponse": {
+    "summary": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "weather.HistoryRequest": {
+    "end": {
+      "number": 4,
+      "type": "string"
+    },
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    },
+    "start": {
+      "number": 3,
+      "type": "string"
+    }
+  },
+  "weather.HistoryResponse": {
+    "summary": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "weather.LookupRequest": {
+    "day": {
+      "number": 1,
+      "type": "string"
+    },
+    "focus": {
+      "number": 3,
+      "type": "string"
+    },
+    "place": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "weather.MarineRequest": {
+    "days": {
+      "number": 3,
+      "type": "int64"
+    },
+    "lat": {
+      "number": 1,
+      "type": "double"
+    },
+    "lon": {
+      "number": 2,
+      "type": "double"
+    }
+  },
+  "weather.MarineResponse": {
+    "summary": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "web.BraveResult": {
+    "age": {
+      "number": 4,
+      "type": "string"
+    },
+    "description": {
+      "number": 3,
+      "type": "string"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "web.FetchRequest": {
+    "url": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "web.FetchResponse": {
+    "content": {
+      "number": 2,
+      "type": "string"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "web.ImagesRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "web.ImagesResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated WebImage"
+    }
+  },
+  "web.SearchRequest": {
+    "limit": {
+      "number": 2,
+      "type": "int64"
+    },
+    "query": {
+      "number": 1,
+      "type": "string"
+    }
+  },
+  "web.SearchResponse": {
+    "items": {
+      "number": 1,
+      "type": "repeated BraveResult"
+    },
+    "text": {
+      "number": 2,
+      "type": "string"
+    }
+  },
+  "web.WebImage": {
+    "source": {
+      "number": 5,
+      "type": "string"
+    },
+    "source_url": {
+      "number": 4,
+      "type": "string"
+    },
+    "thumbnail": {
+      "number": 3,
+      "type": "string"
+    },
+    "title": {
+      "number": 1,
+      "type": "string"
+    },
+    "url": {
+      "number": 2,
+      "type": "string"
+    }
+  }
+}

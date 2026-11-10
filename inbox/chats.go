@@ -55,7 +55,7 @@ func Chats(owner string) []Chat {
 				preview, at := "", c.Created
 				if len(messages.Messages) > 0 {
 					last := messages.Messages[len(messages.Messages)-1]
-					preview, at = PreviewText(last.Content), last.Timestamp
+					preview, at = PreviewText(last.Content), last.Timestamp.AsTime()
 				}
 				if at.IsZero() {
 					at = c.Created

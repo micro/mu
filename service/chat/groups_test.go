@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -391,5 +392,118 @@ func TestGroupWebSocketSendsAndReconnects(t *testing.T) {
 		if !received {
 			t.Fatal("sent message was not received")
 		}
+	}
+}
+
+func TestGroupRetryPersistsAndBroadcastsOnce(t *testing.T) {
+	g, a, _, _, _ := groupFixture(t, false)
+	room := getOrCreateRoom(group.RoomPrefix + g.ID)
+	message := RoomMessage{UserID: a.acc.ID, Content: "Only once", WireID: "stable-message-identifier", Timestamp: time.Now()}
+	if err := post(context.Background(), room, message); err != nil {
+		t.Fatal(err)
+	}
+	room.mutex.RLock()
+	first := room.Messages[len(room.Messages)-1]
+	room.mutex.RUnlock()
+	if err := post(context.Background(), room, message); err != nil {
+		t.Fatal("retry failed", err)
+	}
+	room.mutex.RLock()
+	count := 0
+	for _, m := range room.Messages {
+		if m.WireID == message.WireID {
+			count++
+			if m.ID != first.ID {
+				t.Error("retry changed ID")
+			}
+		}
+	}
+	room.mutex.RUnlock()
+	if count != 1 {
+		t.Fatalf("stored %d copies", count)
+	}
+	message.Content = "Conflicting retry"
+	if err := post(context.Background(), room, message); err == nil {
+		t.Fatal("conflicting reuse accepted")
+	}
+	// A storage-level duplicate is a distinct outcome so the room never relays it again.
+	message.Content = "Only once"
+	if err := room.keepMessage(message); !errors.Is(err, errDuplicateMessage) {
+		t.Fatal("duplicate not identified", err)
+	}
+}
+
+func TestGroupWebSocketReceiptAndRevokedSession(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "chat.example.test")
+	const owner = "receipt-test-owner"
+	auth.SetAccountForTest(&auth.Account{ID: owner})
+	defer auth.RemoveAccountForTest(owner)
+	g, err := group.Create(owner, "Receipts", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer group.Change(g.ID, owner, "delete", "", "")
+	session, err := auth.CreateSession(owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w, done := app.TimeRequest(w, r)
+		defer done()
+		Handler(w, r)
+	}))
+	defer server.Close()
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http")+"/chat?id="+group.RoomPrefix+g.ID, http.Header{"Cookie": {"session=" + session.Token}, "Origin": {"https://chat.example.test"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	for i := 0; i < 2; i++ {
+		if err := conn.WriteJSON(map[string]string{"content": "Durable receipt", "message_id": "browser-stable-id-123"}); err != nil {
+			t.Fatal(err)
+		}
+		for {
+			var frame map[string]interface{}
+			if err := conn.ReadJSON(&frame); err != nil {
+				t.Fatal(err)
+			}
+			if frame["type"] == "receipt" {
+				if frame["status"] != "saved" || frame["message_id"] != "browser-stable-id-123" {
+					t.Fatal(frame)
+				}
+				break
+			}
+		}
+	}
+	if err := auth.Logout(session.Token); err != nil {
+		t.Fatal(err)
+	}
+	conn.WriteJSON(map[string]string{"content": "Must not be accepted"})
+	for {
+		var frame map[string]interface{}
+		err := conn.ReadJSON(&frame)
+		if err != nil {
+			if !websocket.IsCloseError(err, websocket.ClosePolicyViolation) {
+				t.Fatal(err)
+			}
+			break
+		}
+		if frame["content"] == "Must not be accepted" {
+			t.Fatal("revoked session posted")
+		}
+	}
+	saved := loadRoomMessages(group.RoomPrefix + g.ID)
+	count := 0
+	for _, m := range saved {
+		if m.Content == "Durable receipt" {
+			count++
+		}
+		if m.Content == "Must not be accepted" {
+			t.Fatal("revoked message stored")
+		}
+	}
+	if count != 1 {
+		t.Fatal("retry stored duplicates", count)
 	}
 }

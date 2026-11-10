@@ -127,11 +127,12 @@ func params(t reflect.Type) []api.ToolParam {
 		// said every field was optional, so a model could omit the one the
 		// method cannot work without and find out from an error. Opt-in by tag,
 		// so a service that says nothing keeps exactly the schema it had.
+		description, required := service.FieldMetadata(t, f)
 		out = append(out, api.ToolParam{
 			Name:        name,
 			Type:        jsonType(f.Type),
-			Description: f.Tag.Get("description"),
-			Required:    f.Tag.Get("required") == "true",
+			Description: description,
+			Required:    required,
 		})
 	}
 	return out

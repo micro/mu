@@ -1916,6 +1916,8 @@ var topic="";
 let roomWs;
 let currentRoomId = null;
 let roomRetries = 0;
+let roomPending = null;
+const roomMessageIDs = new Set();
 function roomStatus(text, ready) {
  const status=document.getElementById('room-status'); if(status)status.textContent=text;
  const send=document.querySelector('#chat-form button'); if(send)send.disabled=!ready;
@@ -1934,6 +1936,8 @@ function connectRoomWebSocket(roomId) {
   currentRoomId = roomId;
 
   if (!isReconnect) {
+    roomPending = null;
+    roomMessageIDs.clear();
     const messagesDiv = document.getElementById('messages');
     if (messagesDiv) {
       messagesDiv.innerHTML = '';
@@ -1946,7 +1950,6 @@ function connectRoomWebSocket(roomId) {
 
   roomWs.onopen = function() {
     if(roomWs !== socket)return;
-    document.getElementById('messages').replaceChildren();
     roomRetries = 0;
     roomStatus('', true);
   };
@@ -1955,6 +1958,14 @@ function connectRoomWebSocket(roomId) {
     if(roomWs !== socket)return;
     const msg = JSON.parse(event.data);
 
+    if (msg.type === 'receipt') {
+      if (roomPending && msg.message_id === roomPending.id) {
+        if (msg.status === 'saved') completeRoomMessage(msg.message_id);
+        else { roomPending.sending = false; roomStatus(msg.error || 'Message not saved. Try again.', true); }
+      }
+      return;
+    }
+    if (msg.wire_id && msg.username === roomFromPage()?.username) completeRoomMessage(msg.wire_id);
     if (msg.type === 'user_list') {
       updateUserList(msg.users);
     } else {
@@ -1964,10 +1975,12 @@ function connectRoomWebSocket(roomId) {
 
   roomWs.onclose = function(event) {
     if(roomWs !== socket)return;
+    if(roomPending) roomPending.sending = false;
     roomStatus('Disconnected. Reconnecting…', false);
     if (event.code === 1013 && event.reason) {
       showToast(event.reason, 'error');
     }
+    if(event.code === 1008) { roomStatus(event.reason || 'Sign in again to continue.', false); return; }
     if (roomFromPage()?.authenticated && currentRoomId === roomId) {
       if(roomRetries >= 5) { roomStatus('Connection lost. Reload to reconnect.', false); return; }
       const delay = Math.min(1000 * (2 ** roomRetries++), 16000);
@@ -1984,6 +1997,9 @@ function displayRoomMessage(msg, shouldScroll = true) {
   const messagesDiv = document.getElementById('messages');
   if (!messagesDiv || (msg.system && /^@\S+ (joined|left)$/.test(msg.content))) return;
 
+  const messageKey = msg.id || JSON.stringify([msg.username, msg.timestamp, msg.content, msg.system]);
+  if(roomMessageIDs.has(messageKey)) return;
+  roomMessageIDs.add(messageKey);
   const msgDiv = document.createElement('div');
   msgDiv.className = 'message';
 
@@ -2000,9 +2016,16 @@ function displayRoomMessage(msg, shouldScroll = true) {
     return;
   }
 
-  const userSpan = msg.is_llm ?
-    '<span class="llm"><a href="/@micro">micro</a>' + timeSpan + '</span>' :
-    '<span class="you"><a href="/@' + msg.username + '">' + msg.username + '</a>' + timeSpan + '</span>';
+  const byline = document.createElement('span');
+  byline.className = msg.is_llm ? 'llm' : 'you';
+  if(msg.is_llm) byline.textContent = msg.username || 'Assistant';
+  else {
+    const author = document.createElement('a');
+    author.href = '/@' + encodeURIComponent(msg.username || '');
+    author.textContent = msg.username || '';
+    byline.appendChild(author);
+  }
+  byline.insertAdjacentHTML('beforeend', timeSpan);
 
   let content;
   if (msg.is_llm) {
@@ -2013,7 +2036,8 @@ function displayRoomMessage(msg, shouldScroll = true) {
     content = '<p>' + content.replace(/\n/g, '<br>') + '</p>';
   }
 
-  msgDiv.innerHTML = userSpan + content;
+  msgDiv.appendChild(byline);
+  msgDiv.insertAdjacentHTML('beforeend', content);
   messagesDiv.appendChild(msgDiv);
 
   if (shouldScroll) {
@@ -2134,10 +2158,21 @@ function sendRoomMessage(form) {
   const content = input.value.trim();
 
   if (content && roomWs && roomWs.readyState === WebSocket.OPEN) {
-    roomWs.send(JSON.stringify({ content: content }));
-    input.value = '';
+    if(roomPending?.sending) return;
+    if(!roomPending || roomPending.content !== content) roomPending = {id: crypto.randomUUID(), content, sending: false};
+    roomPending.sending = true;
+    roomStatus('Sending…', false);
+    roomWs.send(JSON.stringify({ content, message_id: roomPending.id }));
   } else if(content) { roomStatus('Not connected yet. Your message has not been sent.', false);
   }
+}
+
+function completeRoomMessage(id) {
+  if(!roomPending || roomPending.id !== id) return;
+  const input = document.querySelector('#chat-form [name="prompt"]');
+  if(input && input.value.trim() === roomPending.content) input.value = '';
+  roomPending = null;
+  roomStatus('', true);
 }
 
 function roomFromPage() {

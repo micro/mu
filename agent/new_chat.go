@@ -37,7 +37,8 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	scope := acc.ID
 	var g group.Group
-	if id != "" {
+	creating := id == "new"
+	if id != "" && !creating {
 		g, err = group.Read(id, acc.ID)
 		if err != nil {
 			app.NotFound(w, r, "Group not found")
@@ -48,6 +49,25 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 	notice := ""
 	if r.Method == "POST" {
 		selected := r.PostFormValue("agent")
+		if creating {
+			invitees := strings.FieldsFunc(r.PostFormValue("people"), func(r rune) bool { return r == ',' || r == ' ' || r == '\n' || r == '\t' })
+			for i, who := range invitees {
+				who = strings.ToLower(strings.TrimPrefix(who, "@"))
+				person, e := auth.GetAccount(who)
+				if e != nil || person == nil || person.Agent || auth.IsBanned(who) {
+					app.BadRequest(w, r, "Choose existing people's usernames. You can share an invitation link from the group after creating it.")
+					return
+				}
+				invitees[i] = who
+			}
+			created, e := group.Start(acc.ID, r.PostFormValue("name"), r.PostFormValue("description"), selected, invitees)
+			if e != nil {
+				app.BadRequest(w, r, e.Error())
+				return
+			}
+			http.Redirect(w, r, "/chat?id="+group.RoomPrefix+created.ID, http.StatusSeeOther)
+			return
+		}
 		if id == "" {
 			if selected != "" && For(acc.ID, selected) == nil && Platform(selected) == nil {
 				app.BadRequest(w, r, "Choose an assistant")
@@ -79,6 +99,11 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 		app.Error(w, r, 503, "Groups are temporarily unavailable")
 		return
 	}
+	newSelected := ""
+	if creating {
+		newSelected = " selected"
+	}
+	b.WriteString(`<option value="new"` + newSelected + `>New group</option>`)
 	for _, item := range gs {
 		selected := ""
 		if item.ID == id {
@@ -86,9 +111,11 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`<option value="` + html.EscapeString(item.ID) + `"` + selected + `>` + html.EscapeString(item.Name) + `</option>`)
 	}
-	b.WriteString(`</select></label><div class="form-actions"><noscript><button>Choose</button></noscript><a href="/groups?new=1">Create a group</a></div></form>`)
+	b.WriteString(`</select></label><div class="form-actions"><noscript><button>Choose</button></noscript><a href="/agent?view=new-chat&amp;group=new">Create a group</a></div></form>`)
 	b.WriteString(`<form class="form record-editor" method="post" action="/agent?view=new-chat">` + app.CSRFField(auth.CSRFToken(r)) + `<input type="hidden" name="group" value="` + html.EscapeString(id) + `">`)
-	if id != "" {
+	if creating {
+		b.WriteString(`<label>Group name<input name="name" required maxlength="100" placeholder="Family"></label><label>Description (optional)<input name="description" maxlength="1000"></label><label>Invite people (optional)<input name="people" placeholder="@alice, @bob" autocomplete="off"></label><p class="muted">Use usernames from this Mu server. People must accept before they can read the chat. You can also share an invitation link from the group.</p>`)
+	} else if id != "" {
 		b.WriteString(`<p>Shared with ` + html.EscapeString(g.Name) + `.</p><label>Chat name<input name="name" required maxlength="100" value="` + html.EscapeString(r.PostFormValue("name")) + `" placeholder="Weekend plans"></label>`)
 	} else {
 		b.WriteString(`<p>A private conversation with your assistant.</p>`)
@@ -114,7 +141,11 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		for _, a := range Agents(scope) {
+		available := Agents(scope)
+		if creating {
+			available = nil
+		}
+		for _, a := range available {
 			selected := ""
 			if a.ID == r.URL.Query().Get("agent") {
 				selected = " selected"
@@ -125,6 +156,10 @@ func newChatHandler(w http.ResponseWriter, r *http.Request) {
 	if id != "" {
 		b.WriteString(`<option value="none">People only</option>`)
 	}
-	b.WriteString(`</select></label><div class="form-actions"><button>Start chat</button></div></form></div>`)
+	b.WriteString(`</select></label>`)
+	if id != "" && !g.Encrypted {
+		b.WriteString(`<p class="muted">Mention @micro to ask the assistant. Assistant usage uses the group's balance.</p>`)
+	}
+	b.WriteString(`<div class="form-actions"><button>Start chat</button></div></form></div>`)
 	app.Respond(w, r, app.Response{Title: "New chat", HTML: b.String()})
 }

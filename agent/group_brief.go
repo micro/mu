@@ -88,7 +88,7 @@ func runGroupBrief(g group.Group, schedule *events.Event, at time.Time) (string,
 			recent = recent[len(recent)-30:]
 		}
 		for _, m := range recent {
-			if m.Timestamp.After(at.Add(-24*time.Hour)) && !m.Timestamp.After(at) {
+			if m.Timestamp.AsTime().After(at.Add(-24*time.Hour)) && !m.Timestamp.AsTime().After(at) {
 				fmt.Fprintf(&facts, "%s: %s\n", m.Author, groupExcerpt(m.Content))
 			}
 		}

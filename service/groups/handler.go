@@ -43,11 +43,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			var rsp GroupResponse
 			err = (Server{}).Create(ctx, &CreateRequest{Description: r.PostFormValue("description"), Name: r.PostFormValue("name"), Encrypted: r.PostFormValue("encrypted") == "true"}, &rsp)
 			if err == nil {
-				id = rsp.Group.ID
+				id = rsp.Group.Id
 			}
 		} else {
 			var rsp UpdateResponse
-			err = (Server{}).Update(ctx, &UpdateRequest{ID: id, Action: r.PostFormValue("action"), Account: r.PostFormValue("account"), Value: r.PostFormValue("value")}, &rsp)
+			err = (Server{}).Update(ctx, &UpdateRequest{Id: id, Action: r.PostFormValue("action"), Account: r.PostFormValue("account"), Value: r.PostFormValue("value")}, &rsp)
 			if err == nil && !group.Member(id, acc.ID) {
 				id = ""
 			}
@@ -101,7 +101,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if app.WantsJSON(r) {
-			app.RespondJSON(w, GroupResponse{Group: g, Chat: "/chat?id=" + group.RoomPrefix + g.ID})
+			app.RespondJSON(w, map[string]any{"group": g, "chat": "/chat?id=" + group.RoomPrefix + g.ID})
 			return
 		}
 		title = g.Name
@@ -158,7 +158,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if app.WantsJSON(r) {
-			app.RespondJSON(w, ListResponse{Groups: gs, Invitations: pending})
+			app.RespondJSON(w, map[string]any{"groups": gs, "invitations": pending})
 			return
 		}
 		b.WriteString(app.CollectionControls("", app.ActionLink("/groups?new=1", "New group"), ""))

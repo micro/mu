@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	htmlpkg "html"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gorilla/websocket"
 
@@ -232,16 +234,17 @@ type Room struct {
 
 // RoomMessage represents a message in a chat room
 type RoomMessage struct {
-	ID        string     `json:"id,omitempty"`
-	OMEMO     string     `json:"omemo,omitempty"`
-	WireID    string     `json:"wire_id,omitempty"`
-	Nick      string     `json:"nick,omitempty"`
-	transport string     // Ingress fact; tool/API posts must not recursively start an agent.
-	ack       chan error // optional acknowledgement after durable room storage
-	UserID    string     `json:"username"`
-	Content   string     `json:"content"`
-	Timestamp time.Time  `json:"timestamp"`
-	IsLLM     bool       `json:"is_llm"`
+	ID        string          `json:"id,omitempty"`
+	OMEMO     string          `json:"omemo,omitempty"`
+	WireID    string          `json:"wire_id,omitempty"`
+	Nick      string          `json:"nick,omitempty"`
+	transport string          // Ingress fact; tool/API posts must not recursively start an agent.
+	ack       chan error      // optional acknowledgement after durable room storage
+	sender    *websocket.Conn // receipt is written by the room, the sole data-frame writer
+	UserID    string          `json:"username"`
+	Content   string          `json:"content"`
+	Timestamp time.Time       `json:"timestamp"`
+	IsLLM     bool            `json:"is_llm"`
 
 	// System marks a line the room is saying about itself — somebody arriving
 	// or leaving — rather than a line somebody said.
@@ -263,8 +266,21 @@ type Client struct {
 	Conn           *websocket.Conn
 	UserID         string
 	Room           *Room
+	sessionRequest *http.Request
 	InMicroConvo   bool      // true if user started a conversation with @micro
 	LastMicroReply time.Time // when micro last replied to this user
+}
+
+// Recheck the session before delivering private messages, not just on connect.
+func (client *Client) allowed() bool {
+	if !Member(client.Room.ID, client.UserID) {
+		return false
+	}
+	if client.sessionRequest == nil {
+		return true
+	}
+	_, current, err := auth.RequireSession(client.sessionRequest)
+	return err == nil && current != nil && current.ID == client.UserID && !auth.IsBanned(client.UserID)
 }
 
 var rooms = make(map[string]*Room)
@@ -851,7 +867,7 @@ func (room *Room) broadcastUserList() {
 
 	room.mutex.RLock()
 	for conn, client := range room.Clients {
-		if !Member(room.ID, client.UserID) {
+		if !client.allowed() {
 			continue
 		}
 		conn.WriteJSON(userListMsg)
@@ -875,7 +891,7 @@ func (room *Room) run() {
 			return
 
 		case client := <-room.Register:
-			if !Member(room.ID, client.UserID) {
+			if !client.allowed() {
 				client.Conn.Close()
 				continue
 			}
@@ -884,7 +900,7 @@ func (room *Room) run() {
 			// registration so live broadcasts cannot race or overtake the replay.
 			failed := false
 			for _, msg := range room.Messages {
-				if !Member(room.ID, client.UserID) {
+				if !client.allowed() {
 					failed = true
 					break
 				}
@@ -931,15 +947,34 @@ func (room *Room) run() {
 			room.broadcastUserList()
 
 		case message := <-room.Broadcast:
-			if isGroup(room.ID) {
+			if message.ID == "" {
 				message.ID = newID()
 				if message.WireID == "" {
 					message.WireID = message.ID
 				}
 			}
 			err := room.keepMessage(message)
+			duplicate := errors.Is(err, errDuplicateMessage)
+			if message.sender != nil {
+				receipt := map[string]string{"type": "receipt", "message_id": message.WireID, "status": "saved"}
+				if err != nil && !duplicate {
+					receipt["status"] = "failed"
+					receipt["error"] = "Your message was not saved. Try again."
+				}
+				message.sender.SetWriteDeadline(time.Now().Add(5 * time.Second))
+				if message.sender.WriteJSON(receipt) != nil {
+					message.sender.Close()
+				}
+			}
 			if message.ack != nil {
-				message.ack <- err
+				if duplicate {
+					message.ack <- nil
+				} else {
+					message.ack <- err
+				}
+			}
+			if duplicate {
+				continue
 			}
 			if err != nil {
 				app.Log("chat", "room %s: %v", room.ID, err)
@@ -965,7 +1000,7 @@ func (room *Room) run() {
 			room.mutex.RLock()
 			var clients []*websocket.Conn
 			for conn, client := range room.Clients {
-				if !Member(room.ID, client.UserID) {
+				if !client.allowed() {
 					conn.Close()
 					continue
 				}
@@ -1008,9 +1043,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 	conn.SetReadLimit(65536)
 	client := &Client{
-		Conn:   conn,
-		UserID: acc.ID,
-		Room:   room,
+		sessionRequest: r,
+		Conn:           conn,
+		UserID:         acc.ID,
+		Room:           room,
 	}
 
 	room.Register <- client
@@ -1031,22 +1067,35 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				break
 			}
 
-			if content, ok := msg["content"].(string); ok && len(content) > 0 {
+			if _, current, authErr := auth.RequireSession(r); authErr != nil || current == nil || current.ID != client.UserID || auth.IsBanned(client.UserID) {
+				_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Sign in again to continue."), time.Now().Add(time.Second))
+				conn.Close()
+				return
+			}
+			if content, ok := msg["content"].(string); ok && strings.TrimSpace(content) != "" {
+				ref, _ := msg["message_id"].(string)
+				if !utf8.ValidString(content) || len(content) > 8000 || (ref != "" && !validClientMessageID(ref)) {
+					_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Invalid message or message identifier."), time.Now().Add(time.Second))
+					conn.Close()
+					return
+				}
 				// Broadcast user message
 				userMsg := RoomMessage{
 					transport: "web",
+					sender:    conn,
+					WireID:    ref,
 					UserID:    client.UserID,
 					Content:   content,
 					Timestamp: time.Now(),
 					IsLLM:     false,
 				}
-				if !Member(room.ID, client.UserID) {
+				if !client.allowed() {
 					conn.Close()
 					return
 				}
 				if err := post(context.Background(), room, userMsg); err != nil {
 					// Control frames may be written concurrently with the room writer.
-					_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "Your message was not saved. Please retry."), time.Now().Add(time.Second))
+					_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseTryAgainLater, "Delivery was not confirmed. Reconnect to check the chat before retrying."), time.Now().Add(time.Second))
 					conn.Close()
 					return
 				}
@@ -1288,6 +1337,9 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 
 	_, viewer := auth.TrySession(r)
 	roomData["authenticated"] = viewer != nil
+	if viewer != nil {
+		roomData["username"] = viewer.ID
+	}
 	roomJSON, _ := json.Marshal(roomData)
 	title := "Chat"
 	if t, ok := roomData["title"].(string); ok && t != "" {

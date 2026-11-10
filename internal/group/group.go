@@ -200,6 +200,22 @@ func Create(account, name string, encrypted bool, descriptions ...string) (Group
 	if len(descriptions) > 0 {
 		description = strings.TrimSpace(descriptions[0])
 	}
+	return create(account, name, encrypted, description, nil, "")
+}
+
+// Start creates a plaintext group's first chat and invitations in one commit.
+// The product validates invitee identities and the selected assistant first.
+func Start(account, name, description, assistant string, invitees []string) (Group, error) {
+	if assistant != "" && assistant != "none" {
+		return Group{}, errors.New("choose Micro or people only for a new group")
+	}
+	if len(invitees) > 32 {
+		return Group{}, errors.New("invite up to 32 people at a time")
+	}
+	return create(account, name, false, strings.TrimSpace(description), invitees, assistant)
+}
+
+func create(account, name string, encrypted bool, description string, invitees []string, assistant string) (Group, error) {
 	if len([]rune(description)) > 1000 {
 		return Group{}, errors.New("description must be at most 1000 characters")
 	}
@@ -226,6 +242,17 @@ func Create(account, name string, encrypted bool, descriptions ...string) (Group
 		return Group{}, err
 	}
 	g := Group{Description: description, ID: hex.EncodeToString(b[:]), Name: name, Encrypted: encrypted, Owner: account, Created: time.Now().UTC(), SpendLimit: 1000, MembersUseAI: true, Members: map[string]string{account: "owner"}, Invitations: map[string]Invitation{}}
+	if !encrypted {
+		c := General(g)
+		c.Agent = assistant
+		g.Conversations = map[string]Conversation{c.ID: c}
+	}
+	for _, invitee := range invitees {
+		if invitee == "" || invitee == account {
+			continue
+		}
+		g.Invitations[invitee] = Invitation{Account: invitee, InvitedBy: account, Expires: time.Now().UTC().Add(7 * 24 * time.Hour)}
+	}
 	next := copyRecords()
 	next[g.ID] = g
 	if err := save(next); err != nil {

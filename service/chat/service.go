@@ -7,9 +7,12 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"mu/internal/app"
 	"mu/internal/service"
+	pb "mu/proto/service/chat/v1"
 )
 
 // Server exposes live discussion as a service. Rooms are attached to an item —
@@ -36,34 +39,24 @@ type RoomInfo struct {
 }
 
 // Message is one line of a conversation.
-type Message struct {
-	ID        string    `json:"id,omitempty"`
-	Author    string    `json:"author"`
-	Content   string    `json:"content"`
-	IsAgent   bool      `json:"is_agent" description:"True when the agent said it"`
-	Timestamp time.Time `json:"timestamp"`
-}
+type Message = pb.Message
 
 // ── Rooms ───────────────────────────────────────────────────────
 
-type RoomsRequest struct {
-	Limit int `json:"limit,omitempty" description:"How many rooms to return (default 20)"`
-}
+type RoomsRequest = pb.RoomsRequest
 
-type RoomsResponse struct {
-	Rooms []RoomInfo `json:"rooms" description:"Active discussions, most recently active first"`
-}
+type RoomsResponse = pb.RoomsResponse
 
 // Rooms lists discussions that currently have activity.
 // @example {}
 func (Server) Rooms(_ context.Context, req *RoomsRequest, rsp *RoomsResponse) error {
-	limit := req.Limit
+	limit := int(req.Limit)
 	if limit <= 0 {
 		limit = 20
 	}
 
 	roomsMutex.RLock()
-	out := make([]RoomInfo, 0, len(rooms))
+	out := make([]*pb.RoomInfo, 0, len(rooms))
 	for _, r := range rooms {
 		// Not somebody's conversation. This is the list a tool call gets and the
 		// list Card puts on Home, so a pair room reaching it would put "@asim and
@@ -72,15 +65,15 @@ func (Server) Rooms(_ context.Context, req *RoomsRequest, rsp *RoomsResponse) er
 			continue
 		}
 		r.mutex.RLock()
-		out = append(out, RoomInfo{
-			ID: r.ID, Type: r.Type, Title: r.Title,
-			Participants: len(r.Clients), LastActivity: r.LastActivity,
+		out = append(out, &pb.RoomInfo{
+			Id: r.ID, Type: r.Type, Title: r.Title,
+			Participants: int32(len(r.Clients)), LastActivity: timestamppb.New(r.LastActivity),
 		})
 		r.mutex.RUnlock()
 	}
 	roomsMutex.RUnlock()
 
-	sort.Slice(out, func(i, j int) bool { return out[i].LastActivity.After(out[j].LastActivity) })
+	sort.Slice(out, func(i, j int) bool { return out[i].LastActivity.AsTime().After(out[j].LastActivity.AsTime()) })
 	if len(out) > limit {
 		out = out[:limit]
 	}
@@ -90,13 +83,9 @@ func (Server) Rooms(_ context.Context, req *RoomsRequest, rsp *RoomsResponse) er
 
 // ── Messages ────────────────────────────────────────────────────
 
-type MessagesRequest struct {
-	Room string `json:"room" description:"Room id, as returned by Rooms"`
-}
+type MessagesRequest = pb.MessagesRequest
 
-type MessagesResponse struct {
-	Messages []Message `json:"messages" description:"Recent messages, oldest first"`
-}
+type MessagesResponse = pb.MessagesResponse
 
 // Messages returns the recent conversation in a room.
 // @example {"room": "news_456"}
@@ -131,7 +120,7 @@ func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesR
 		msgs = loadRoomMessages(id)
 	}
 
-	rsp.Messages = make([]Message, 0, len(msgs))
+	rsp.Messages = make([]*Message, 0, len(msgs))
 	for _, m := range msgs {
 		// Arrivals and departures are the room talking about itself. A reader
 		// asking for the transcript wants what was said, and an entry with no
@@ -140,8 +129,8 @@ func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesR
 		if m.System {
 			continue
 		}
-		rsp.Messages = append(rsp.Messages, Message{
-			ID: m.ID, Author: m.UserID, Content: m.Content, IsAgent: m.IsLLM, Timestamp: m.Timestamp,
+		rsp.Messages = append(rsp.Messages, &Message{
+			Id: m.ID, Author: m.UserID, Content: m.Content, IsAgent: m.IsLLM, Timestamp: timestamppb.New(m.Timestamp),
 		})
 	}
 	return nil
@@ -149,26 +138,9 @@ func (Server) Messages(ctx context.Context, req *MessagesRequest, rsp *MessagesR
 
 // ── Send ────────────────────────────────────────────────────────
 
-type SendRequest struct {
-	Room string `json:"room" required:"true" description:"Room id, as returned by chat_rooms"`
-	// Message, not Content. "Content" is the right word for a document body —
-	// files.Content is the file's contents, blog.Content is the post body,
-	// web.Content is a page with the navigation stripped out. A chat message is
-	// not a document with a body; you send somebody a message, which is what
-	// sms.Message already calls it. XMPP names the element <body>, but that is
-	// the element inside a <message>: the noun is still the message.
-	//
-	// Renamed rather than aliased. Required parameters are checked before the
-	// handler runs (see missingRequired), so a "content" kept for compatibility
-	// would never be reached while "message" is required — an alias that looks
-	// like compatibility and is not. A caller on the old name gets an error
-	// naming the new one.
-	Message string `json:"message" required:"true" description:"What to say"`
-}
+type SendRequest = pb.SendRequest
 
-type SendResponse struct {
-	Result string `json:"result"`
-}
+type SendResponse = pb.SendResponse
 
 // Send posts a message to a room as the caller.
 //
@@ -191,8 +163,8 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	if id == "" {
 		return fmt.Errorf("room is required — chat_rooms lists them")
 	}
-	if text == "" {
-		return fmt.Errorf("message is required")
+	if text == "" || !utf8.ValidString(text) || len(text) > 8000 {
+		return fmt.Errorf("message must contain 1 to 8000 UTF-8 bytes")
 	}
 	// And not into a conversation you are not in. Reading it was the leak;
 	// speaking into it is the other half, and a stranger's line appearing in a
@@ -238,7 +210,8 @@ func Card() string {
 	}
 
 	var live []RoomInfo
-	for _, r := range rsp.Rooms {
+	for _, item := range rsp.Rooms {
+		r := RoomInfo{ID: item.Id, Type: item.Type, Title: item.Title, Participants: int(item.Participants), LastActivity: item.LastActivity.AsTime()}
 		if r.Participants > 0 || !r.LastActivity.IsZero() {
 			live = append(live, r)
 		}

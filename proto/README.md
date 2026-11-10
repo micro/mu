@@ -2,7 +2,10 @@
 
 `assistant/v1` defines the client composition surface: Home, Inbox, Assistant
 (agent discovery, personal threads and execution), and Services (catalogue).
-`service/contacts/v1` is the first direct service contract. Mu adapts these to
+`service/<name>/v1` defines contracts for all 40 existing services. Chat and Groups use their generated request/response types in the service
+implementations and are exposed through MUCP alongside Contacts. The other
+contracts are draft schemas derived from existing service RPC types, not a claim
+that those operations are available over MUCP. Mu adapts these to
 existing packages; there is no second assistant engine or `service/assistant`.
 
 The shared HTTPS/JSON binding lives in `internal/mucp`; `internal/server` composes
@@ -73,7 +76,7 @@ semantics are implemented. Adding an RPC declaration does not make it supported.
 
 The adapter calls the existing execution path, rather than making a second
 agent loop or bypass account, tool and billing gates. The legacy routes stay
-compatible while clients migrate. Contacts demonstrates the typed service adapter; other services migrate incrementally.
+compatible while clients migrate. Chat and Groups bind the same generated types through MUCP and the existing service gateway. Contacts retains its explicit pagination adapter; other services migrate incrementally.
 
 ## Validation and generation
 
@@ -93,3 +96,33 @@ against its pinned version; declaring `service` does not mandate gRPC.
 
 Wire fixtures and authenticated integration checks guard the implemented binding. Once stable, retain field numbers, reserve deleted names
 and numbers, and make compatible additions without changing existing meanings.
+
+## Service schema maintenance
+
+Run `go run ./proto/generate` from the repository root after changing service RPC
+request/response types, then regenerate Go types with protoc. CI runs
+`go run ./proto/generate -check`, compiles every schema, and checks generated Go
+code for drift. The generator reads each existing `Spec.Handler` and endpoint
+description without starting services or exposing new endpoints. A coverage test
+requires every service to be included. Chat and Groups are now proto-first: edit their source `.proto` files and
+regenerate their Go types, rather than deriving schemas from Go. Their handlers
+use generated types directly (local type aliases preserve package call sites).
+Storage records remain separate and are projected into public response messages.
+Contacts retains its explicit published pagination contract.
+
+`service/fields.json` is the field-number ledger. Keep it in version control:
+reordering Go fields must not renumber the wire contract; deleted numbers are
+reserved, and changing an existing field's type fails generation. New operations
+or adapters still require semantic review, authorization and interoperability
+tests. Generated schemas describe existing API shapes, including legacy action
+strings; they do not replace runtime validation with protobuf validation.
+
+The transport uses protobuf JSON mapping, not arbitrary `encoding/json` output:
+64-bit integers encode as strings, bytes as base64, and timestamps as RFC 3339.
+Nested containers use a named `values` wrapper. Explicit `json_name` preserves
+existing field spellings where possible. An adapter must handle these differences
+and apply the existing service gateway, scopes, account checks and billing.
+Required-input and description options in `service/options.proto` keep MCP tool
+metadata and generated SDK requiredness aligned with proto-first contracts.
+Only registered MUCP operations appear in discovery. Schema-only services remain
+accessible through their existing REST/MCP interfaces until an adapter ships.
