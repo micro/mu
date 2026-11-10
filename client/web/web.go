@@ -11,7 +11,7 @@ import (
 var assets embed.FS
 
 // Handler serves the exact same static files distributed in mu-web.zip.
-// Mount at /app/; shared design assets are supplied by the runtime composition.
+// Mount at /app/. The build includes every design asset; no runtime HTML is used.
 func Handler() http.Handler {
 	files, err := fs.Sub(assets, "static")
 	if err != nil {
@@ -27,9 +27,7 @@ func Handler() http.Handler {
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		if r.URL.Path == "/manifest.webmanifest" {
-			w.Header().Set("Content-Type", "application/manifest+json")
-		}
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://[::1]:*; img-src 'self' data: https:; media-src 'self' https:; frame-src https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 		server.ServeHTTP(w, r)
 	})
 }

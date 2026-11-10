@@ -28,6 +28,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build standalone web client
+        run: |
+          npm ci --prefix client/web
+          npm test --prefix client/web
+          npm run build --prefix client/web
+          git diff --exit-code -- client/web/static
+          test -z "$(git ls-files --others --exclude-standard client/web/static)"
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26'

@@ -428,9 +428,6 @@ func registerRoutes() {
 	http.HandleFunc("/home/library", home.LibraryHandler)
 	http.HandleFunc("/mucp", agent.MUCPHandler)
 	http.Handle("/app/", http.StripPrefix("/app", webclient.Handler()))
-	for _, asset := range []string{"mu.css", "theme.css", "dm-sans-latin.woff2", "geist-mono-latin.woff2", "icon-192.png", "icon-512.png"} {
-		http.Handle("/app/"+asset, http.StripPrefix("/app", app.Serve()))
-	}
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.

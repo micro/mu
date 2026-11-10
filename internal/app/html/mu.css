@@ -1319,7 +1319,7 @@ body.signed-in:has(.room-layout,.conversation-layout)>footer{display:none}
 .discovery-option small{display:block;font-size:.8rem}
 
 /* A compact, lightly accented public introduction. */
-@font-face{font-family:"DM Sans";src:url("/dm-sans-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"DM Sans";src:url("dm-sans-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
 .landing-page{--landing-accent:#386350}
 .landing-page .page{display:flex;flex-direction:column}
 .landing-page main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px 0}
@@ -1673,3 +1673,7 @@ a.traffic-row:focus-visible{outline:2px solid var(--text-primary);outline-offset
 .web-client #compose { margin: 0; padding-block: 8px; }
 .web-client #connection:empty { display: none; }
 .web-client [hidden] { display: none !important; }
+
+/* The standalone React root participates in the same full-height client layout. */
+.web-client #root{display:flex;flex-direction:column;flex:1;min-height:0}
+.web-client:not(.command-page) main{max-width:760px}

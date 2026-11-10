@@ -19,7 +19,7 @@ Sign in to an existing account, choose an agent, and talk to it.
 | --- | --- | --- |
 | Android | `client/android` | `agent/mucp.go` via MUCP |
 | CLI | `internal/cli`, including `ask.go` | `agent/api.go` via HTTPS |
-| Focused web / PWA | `client/web` | `agent/mucp.go` via MUCP |
+| Standalone web | `client/web` | `agent/mucp.go` via MUCP |
 | Full web / PWA | `internal/app/html`, product page renderers | `agent`, `home`, `inbox` |
 | Email / IMAP | External mail applications | `service/mail`; agent replies in `agent/mail` |
 | XMPP | External XMPP applications | `service/chat`; agent replies in `agent/chat` |
@@ -41,12 +41,11 @@ structured content safely and never automatically resend an unconfirmed action.
 
 ## Distribution
 
-Android releases provide the signed `mu-android.apk`. Mu Web is served at `/app/`,
-installs as a separate PWA, and is packaged as `mu-web.zip` using the same static
-files. The existing full-web Mu PWA starts at `/home` and keeps its original
+Android releases provide the signed `mu-android.apk`. The React/TypeScript web client runs independently with `npm run dev`,
+or from `mu-web.zip` using `node serve.mjs`. Mu also serves its build at `/app/`. The existing full-web Mu PWA starts at `/home` and keeps its original
 installation identity. `/assistant` is removed.
 
-Mu Web currently uses same-origin runtime login; separate hosting requires a
-reverse proxy on the same origin. Cross-origin OAuth and downloadable desktop
-installers are not implemented. Do not advertise runtime binaries or the web ZIP
-as desktop installers. See [Mu Web](web/README.md) for installation and limitations.
+The runtime PWA is the full Home/Inbox/Agents/Services experience. The standalone
+client has no PWA manifest. Browser clients select a runtime and use OAuth with
+S256 PKCE and explicit bearer tokens over MUCP, without dashboard cookies.
+Desktop installers are not implemented. See [the web client](web/README.md).

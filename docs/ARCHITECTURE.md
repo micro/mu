@@ -11,7 +11,7 @@ into a running system that clients can use.
  CLIENT                       BOUNDARY                MU RUNTIME
  +-------------------+                                +-------------------+
  | Android           |                                | Authentication    |
- | Focused PWA       | -- assistant requests --------> | + authorisation   |
+ | Web client        | -- assistant requests --------> | + authorisation   |
  | Future clients    |    MUCP / HTTPS / JSON (*)      +---------+---------+
  |                   |                                          |
  | Text, voice,      |                                +---------v---------+
@@ -35,8 +35,9 @@ into a running system that clients can use.
 ```
 
 (*) Android and the focused client in `client/web` use the MUCP HTTPS/JSON
-binding for agents, threads and replies. The web client renders data locally and
-is served at `/app/`, independently of the server-rendered full web experience.
+binding for agents, threads and replies. The React/TypeScript web client runs independently and connects to a selected
+runtime using OAuth/PKCE and explicit tokens. Mu can also serve its build at `/app/`.
+The PWA belongs to the full runtime web experience, not the standalone client.
 The server uses go-micro with an in-memory transport internally.
 The web console is server-rendered composition, not currently an independent MUCP
 client. It remains useful for overview, administration and direct service use.
@@ -45,7 +46,7 @@ client. It remains useful for overview, administration and direct service use.
 
 | Layer / package | Responsibility |
 | --- | --- |
-| `client/` and focused PWA | Input, voice capture, playback and safe result rendering |
+| `client/` and standalone web client | Input, voice capture, playback and safe result rendering |
 | `proto/` | Shared interface/type definitions; not runtime implementation |
 | `internal/server` | Compose routes, authenticated protocol entry points and product pages |
 | `agent/` | Assistant operations, agent selection and execution; uses permitted services |

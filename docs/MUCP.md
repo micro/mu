@@ -1,7 +1,7 @@
 # Micro Communication Protocol (MUCP)
 
 Status: initial HTTPS/JSON binding implemented at `/`. Android uses generated
-Java types; the focused PWA sends ordinary JSON. Mu continues to use go-micro
+Java types; the standalone web client sends ordinary JSON. Mu continues to use go-micro
 internally. Streaming, cancellation and additional transports remain future work.
 
 ## Purpose
@@ -13,7 +13,7 @@ clients present its results using their own platform controls.
 
 A conventional HTTP API remains sufficient for individual requests. The value
 here is a shared, documented contract for conversations, structured results,
-completion, cancellation and recovery across Android, the PWA and future clients.
+completion, cancellation and recovery across Android, the web client and future clients.
 The protocol must make another client implementable without copying undocumented
 behaviour from the existing apps.
 
@@ -155,7 +155,9 @@ with `Content-Type: application/json` and exactly one of each header:
 | Micro-Id | Caller-generated 16–128 ASCII letters, digits, hyphens or underscores |
 | Authorization | `Bearer <token>` for native/programmatic clients |
 
-Browser clients may use the same-origin session cookie and `X-CSRF-Token`.
+The built-in runtime web experience may use same-origin session cookies and
+`X-CSRF-Token`. The standalone web client uses OAuth bearer tokens with cookies
+omitted, including when its build is served by Mu.
 An explicit token overrides cookies. Reads require read access; Ask requires write
 access, with `api:agent` for scoped product tokens. Service-only tokens cannot run
 agents. Identity is derived from credentials; caller-supplied account metadata is
@@ -198,7 +200,10 @@ by record ID. These are live pages, not snapshots. ReadThread is oldest-first.
 Android and Mu Web offer agents, Chats, New chat and paginated history through
 MUCP. The static web client renders Markdown and typed results locally; it does
 not fetch server-rendered chat pages. The broader runtime web experience retains
-its existing API. Browser authentication currently requires the same origin.
+its existing API. Browser clients use OAuth with S256 PKCE and explicit scoped bearer tokens.
+The runtime permits non-credentialed CORS only at the MUCP and OAuth
+registration/token endpoints, never dashboard pages. No account authority is
+granted by CORS; MUCP still enforces the token permissions and account ownership.
 
 Go types are committed and checked for generation drift. Java types are generated
 by the Android build from the same proto. The adapter is implemented in `agent/`,

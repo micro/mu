@@ -2250,9 +2250,9 @@ if (typeof document !== 'undefined') {
  const main = document.querySelector('main');
  if (!main) return;
  const notice = document.createElement('section'); notice.className = 'record-card';
- const text = document.createElement('p'); text.textContent = 'Mu opens your full home. For a focused assistant, you can also install Mu Web.';
+ const text = document.createElement('p'); text.textContent = 'The Mu PWA opens your full home. The standalone assistant client is available separately.';
  const actions = document.createElement('div'); actions.className = 'form-actions';
- const open = document.createElement('a'); open.className = 'btn'; open.href = '/app/'; open.textContent = 'Open Mu Web';
+ const open = document.createElement('a'); open.className = 'btn'; open.href = '/app/'; open.textContent = 'Open client';
  const dismiss = document.createElement('button'); dismiss.type = 'button'; dismiss.textContent = 'Dismiss';
  dismiss.addEventListener('click', () => { try { localStorage.setItem('mu-install-experiences-v1', '1'); } catch (_) {} notice.remove(); });
  actions.append(open, dismiss); notice.append(text, actions); main.prepend(notice);

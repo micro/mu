@@ -136,12 +136,12 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	webDownload := ""
 	if release.WebURL != "" {
-		webDownload = `<section class="page-section" id="web"><h2>Host the web client</h2><p>Deploy Mu Web separately behind the same origin as your runtime. This ZIP contains website files, not a desktop installer.</p><div class="form-actions">` + app.ActionLink(release.WebURL, "Download Mu Web ZIP") + `</div></section>`
+		webDownload = `<section class="page-section" id="web"><h2>Host the web client</h2><p>Download and extract the standalone web client, then run <code>node serve.mjs</code> with Node.js 24 or later. Open the local address and connect to your runtime. No local Mu server is needed. This is not a desktop installer.</p><div class="form-actions">` + app.ActionLink(release.WebURL, "Download Mu Web ZIP") + `</div></section>`
 	}
 	body := `<h1>Use your assistant</h1><p>Open it in your browser or install it on your device.</p><div class="form-actions">` + app.ActionLink("/app/", "Open assistant") + `</div>
 <section class="page-section" id="android"><h2>Android</h2>` + android + `</section>
-<section class="page-section" id="iphone"><h2>iPhone and iPad</h2><p>Open <a href="/app/">Mu Web</a> in Safari, tap Share, then Add to Home Screen to install Mu Web. Enable Open as Web App if offered. No App Store download is needed. The full <a href="/home">Mu web experience</a> can also be installed separately.</p></section>
-<section class="page-section" id="desktop"><h2>Desktop</h2><p>Use the assistant in your browser on Linux, macOS or Windows. You can install Mu Web from a supported browser. Downloadable desktop installers are not available yet.</p></section>
+<section class="page-section" id="iphone"><h2>iPhone and iPad</h2><p>Open <a href="/home">the Mu runtime</a> in Safari, tap Share, then Add to Home Screen. Enable Open as Web App if offered. No App Store download is needed. This installs the full Home, Inbox, Agents and Services experience.</p></section>
+<section class="page-section" id="desktop"><h2>Desktop</h2><p>Use the assistant in your browser on Linux, macOS or Windows. Run the standalone web client locally, or open <a href="/app/">the hosted client</a>. The full runtime can also be installed as a PWA. Downloadable desktop installers are not available yet.</p></section>
 ` + webDownload + `<section class="page-section"><h2>Run Mu yourself</h2><p>Host the runtime and web console on your own server. The Linux and macOS release binaries are server software, not desktop assistant apps.</p><div class="form-actions">` + app.ActionLink("/install", "Self-host Mu") + app.ActionLink("/developers", "Developer tools") + `</div></section>`
 	_, acc := auth.TrySession(r)
 	w.Header().Set("Cache-Control", "private, no-store")

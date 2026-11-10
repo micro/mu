@@ -2,12 +2,15 @@ package web_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -15,9 +18,10 @@ import (
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/chromedp"
 	web "mu/client/web"
-	"mu/internal/app"
 )
 
+// Two real origins: client files never come from the runtime. Exercise browser
+// OAuth, CORS, explicit tokens, navigation, rendering and recovery end-to-end.
 func TestFocusedClientBrowser(t *testing.T) {
 	if testing.Short() {
 		t.Skip("browser gate runs separately")
@@ -27,17 +31,64 @@ func TestFocusedClientBrowser(t *testing.T) {
 		t.Skip("Chrome unavailable")
 	}
 	var calls atomic.Int32
-	mux := http.NewServeMux()
-	mux.Handle("/app/", http.StripPrefix("/app", web.Handler()))
-	mux.Handle("/app/mu.css", http.StripPrefix("/app", app.Serve()))
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" || r.URL.Path != "/" || r.Header.Get("Micro-Protocol") != "mucp/1" || r.Header.Get("Micro-Service") != "assistant" {
-			http.NotFound(w, r)
+	var mu sync.Mutex
+	var callback, challenge string
+	client := httptest.NewServer(web.Handler())
+	defer client.Close()
+	runtime := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Micro-Protocol, Micro-Service, Micro-Endpoint, Micro-Id")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Expose-Headers", "Micro-Protocol, Micro-Id, Micro-Thread")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(204)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/oauth/register":
+			var body struct {
+				Redirects []string `json:"redirect_uris"`
+			}
+			json.NewDecoder(r.Body).Decode(&body)
+			if len(body.Redirects) != 1 || body.Redirects[0] != client.URL+"/" {
+				t.Error("wrong callback")
+			}
+			mu.Lock()
+			callback = body.Redirects[0]
+			mu.Unlock()
+			json.NewEncoder(w).Encode(map[string]string{"client_id": "web-client"})
+			return
+		case "/oauth/authorize":
+			q := r.URL.Query()
+			if q.Get("scope") != "read write api:agent" || q.Get("code_challenge_method") != "S256" {
+				t.Error("wrong grant")
+			}
+			mu.Lock()
+			challenge = q.Get("code_challenge")
+			target := callback + "?code=test-code&state=" + url.QueryEscape(q.Get("state"))
+			mu.Unlock()
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "ambient-cookie", Path: "/"})
+			http.Redirect(w, r, target, http.StatusSeeOther)
+			return
+		case "/oauth/token":
+			r.ParseForm()
+			digest := sha256.Sum256([]byte(r.Form.Get("code_verifier")))
+			mu.Lock()
+			valid := base64.RawURLEncoding.EncodeToString(digest[:]) == challenge && r.Form.Get("redirect_uri") == callback
+			mu.Unlock()
+			if !valid || r.Form.Get("code") != "test-code" || r.Header.Get("Cookie") != "" {
+				t.Error("invalid PKCE exchange or ambient credentials")
+			}
+			json.NewEncoder(w).Encode(map[string]any{"access_token": "scoped-token", "token_type": "Bearer", "expires_in": 86400})
+			return
+		}
+		if r.URL.Path != "/" || r.Method != "POST" || r.Header.Get("Micro-Protocol") != "mucp/1" || r.Header.Get("Authorization") != "Bearer scoped-token" || r.Header.Get("Cookie") != "" {
+			http.Error(w, "invalid client request", 401)
 			return
 		}
 		w.Header().Set("Micro-Protocol", "mucp/1")
 		w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
-		w.Header().Set("Content-Type", "application/json")
 		switch r.Header.Get("Micro-Endpoint") {
 		case "Assistant.ListAgents":
 			json.NewEncoder(w).Encode(map[string]any{"agents": []any{map[string]string{"id": "micro", "slug": "micro", "name": "Micro", "description": "A personal assistant"}}})
@@ -48,10 +99,10 @@ func TestFocusedClientBrowser(t *testing.T) {
 		case "Assistant.Ask":
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
+			calls.Add(1)
 			if body["mode"] != "ACCESS_MODE_PERSONAL" || body["agentId"] != "micro" {
 				t.Error("wrong request scope")
 			}
-			calls.Add(1)
 			if body["prompt"] == "Pending" {
 				w.Header().Set("Micro-Thread", "own-thread")
 				w.WriteHeader(504)
@@ -63,9 +114,8 @@ func TestFocusedClientBrowser(t *testing.T) {
 			t.Error("unknown protocol call")
 			http.Error(w, "unknown", 400)
 		}
-	})
-	server := httptest.NewServer(mux)
-	defer server.Close()
+	}))
+	defer runtime.Close()
 	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(chrome), chromedp.Flag("no-sandbox", false), chromedp.Flag("disable-dev-shm-usage", true))
 	alloc, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	defer cancel()
@@ -73,9 +123,13 @@ func TestFocusedClientBrowser(t *testing.T) {
 	defer cancel()
 	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
+	err := chromedp.Run(ctx, chromedp.Navigate(client.URL), chromedp.WaitVisible("#runtime"), chromedp.SetValue("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitEnabled("#send"))
+	if err != nil {
+		t.Fatalf("independent sign-in: %v", err)
+	}
 	for _, width := range []int64{320, 390, 1440} {
 		var valid bool
-		err := chromedp.Run(ctx, emulation.SetDeviceMetricsOverride(width, 900, 1, width < 500), chromedp.Navigate(server.URL+"/app/"), chromedp.WaitVisible("#chat"), chromedp.SendKeys("#prompt", "Weather please\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('.answer strong').textContent==='Micro' && document.querySelector('.message-body strong').textContent==='Forecast' && !window.pwned && !document.querySelector('a[href^="javascript:"]') && document.querySelector('#responses').textContent.includes('Future widget') && document.documentElement.scrollWidth<=innerWidth && document.querySelector('#send').getBoundingClientRect().bottom<=innerHeight && document.querySelector('#send').getBoundingClientRect().top>document.querySelector('.answer').getBoundingClientRect().top`, &valid))
+		err := chromedp.Run(ctx, emulation.SetDeviceMetricsOverride(width, 900, 1, width < 500), chromedp.Navigate(client.URL), chromedp.WaitEnabled("#send"), chromedp.SendKeys("#prompt", "Weather please\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('.message-body strong').textContent==='Forecast' && !window.pwned && !document.querySelector('a[href^="javascript:"]') && document.querySelector('#responses').textContent.includes('Future widget') && document.documentElement.scrollWidth<=innerWidth && document.querySelector('#send').getBoundingClientRect().bottom<=innerHeight && document.querySelector('#send').getBoundingClientRect().top>document.querySelector('.answer').getBoundingClientRect().top`, &valid))
 		if err != nil || !valid {
 			t.Fatalf("width %d: %v valid=%v", width, err, valid)
 		}
@@ -98,16 +152,12 @@ func TestFocusedClientBrowser(t *testing.T) {
 		t.Fatalf("unexpected resubmissions: %d", calls.Load())
 	}
 	var valid bool
-	err := chromedp.Run(ctx, chromedp.Navigate(server.URL+"/app/?view=chats"), chromedp.WaitVisible(".collection-item"), chromedp.Click(".collection-item"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`location.pathname==='/app/' && document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
+	err = chromedp.Run(ctx, chromedp.Navigate(client.URL+"/?view=chats"), chromedp.WaitVisible(".collection-item"), chromedp.Click(".collection-item"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
 	if err != nil || !valid {
 		t.Fatalf("thread history: %v", err)
 	}
-	err = chromedp.Run(ctx, chromedp.Click("#new-chat"), chromedp.SendKeys("#prompt", "Pending\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`location.pathname==='/app/' && document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
+	err = chromedp.Run(ctx, chromedp.Click("#new-chat"), chromedp.WaitEnabled("#send"), chromedp.SendKeys("#prompt", "Pending\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
 	if err != nil || !valid {
 		t.Fatalf("pending recovery: %v", err)
-	}
-	// No runtime-rendered HTML endpoint exists in the fixture: every page is static.
-	if strings.Contains(server.URL, "/assistant") {
-		t.Fatal("unexpected old route")
 	}
 }

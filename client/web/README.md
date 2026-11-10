@@ -1,55 +1,77 @@
-# Mu Web
+# Mu web client
 
-The focused assistant client, served at `/app/` by Mu. Choose an agent, speak or
-type, open personal chats, and view structured results. The full built-in web
-experience remains at `/home`, with Inbox, Agents and Services.
+A standalone React + TypeScript client for Mu, built with Vite. It runs
+independently, connects to a runtime you choose, and signs in through that
+runtime's browser OAuth flow. It uses MUCP for agents, chats and replies.
 
-The client uses MUCP's JSON binding at `/` for ListAgents, ListThreads,
-ReadThread and Ask. It renders the data locally; it does not fetch runtime-rendered
-chat HTML. Model output is never executable markup. Account identity, history,
-permissions and billing remain the runtime's responsibility.
+The runtime's PWA is separate: install the full Home/Inbox/Agents/Services web
+experience from your runtime. This client has no PWA manifest or service worker.
+Mu also serves the client's production build at `/app/`. `/assistant` is removed.
 
-## Install
+## Run from source
 
-Open `/app/` and use the browser's Install or Add to Home Screen option. This
-installs **Mu Web**, with its own manifest identity and service-worker scope.
-The original **Mu** installation retains identity `/` and starts at `/home`.
-Browsers decide when installed manifest metadata updates; no reinstall is required
-to use either experience. `/assistant` is removed, not retained as an alias.
-
-Browser speech is optional and explicitly activated. Dictation fills the composer
-for review before sending. Speech recognition may use the browser vendor's online
-service. There is no background wake word. YouTube remains a visible video player;
-audio results with playable URLs have native audio controls.
-
-## Build and host
+With Node.js 24 or later, from this directory:
 
 ```sh
-python3 client/web/build.py /tmp/mu-web.zip
+npm ci
+npm run dev
 ```
 
-Releases include `mu-web.zip`. It contains the same static files embedded by Mu,
-plus the canonical shared stylesheet and icons. Serve it at `/app/` over HTTPS.
-For local development, loopback HTTP is sufficient. Do not open it as `file://`.
+Open the local address Vite prints. Enter `https://micro.mu` or your own runtime
+address, sign in and approve access. No local Mu server, reverse proxy, model
+keys or dashboard session is required. The runtime must support browser-client
+OAuth/CORS and MUCP. Local runtimes may use HTTP on a loopback address.
 
-**Current authentication is same-origin:** use Mu's bundled serving, or put these
-files and the runtime behind the same reverse proxy. Forward `/` MUCP requests and
-runtime account/login routes to Mu. Static hosting on an unrelated origin is not
-yet supported; it needs browser OAuth and an explicit runtime origin policy.
-No credentials, transcripts or private replies are cached or stored by this client.
-The service worker provides a separate installation scope, not offline chat.
+## Run a release
 
-This ZIP is a web deployment, not a desktop installer. Packaging this interface in
-a desktop shell and supporting connections to independently selected runtimes are
-subsequent work. Linux/macOS Mu binaries are runtime releases, not desktop clients.
+Download `mu-web.zip` from [Mu releases](https://github.com/micro/mu/releases),
+extract it, then run:
 
-## Development
+```sh
+node serve.mjs
+```
 
-Keep protocol and rendering behaviour in `static/client.js`. Shared design rules
-remain in `internal/app/html/mu.css`; the release build copies that source rather
-than maintaining a second stylesheet. `web.go` only embeds and serves static files.
-The composition in `internal/server` mounts them and the shared assets.
+Open **http://127.0.0.1:5173**. The ZIP includes the compiled app, styles, fonts and
+launcher; it needs Node.js, but no npm install or build. `PORT` and `HOST` configure
+the launcher; it listens only on loopback by default. For public hosting, serve
+`static/` over HTTPS with any static web server.
 
-Run `go test ./client/web -short`. With Chrome installed, set `CHROME_PATH` and run
-`go test ./client/web -run TestFocusedClientBrowser`; `UI_SCREENSHOTS` selects the
-screenshot output directory. CI exercises mobile and desktop sizes.
+This is a runnable browser client, not an Electron/Tauri desktop installer.
+Desktop packaging is separate work. Mu's Linux/macOS runtime binaries are not
+client installers.
+
+## Build and test
+
+```sh
+npm test
+npm run build
+npm start
+python3 build.py /tmp/mu-web.zip
+```
+
+The production build in `static/` is committed so `go build` remains self-contained
+and does not require Node. CI rebuilds and checks for drift. The build consumes
+the canonical stylesheet in `internal/app/html/mu.css`; there is no separate theme.
+
+`go test ./client/web -short` checks the embedded client boundary. With Chrome,
+set `CHROME_PATH` and run `go test ./client/web -run TestFocusedClientBrowser`.
+That test hosts client and runtime at different origins and exercises sign-in,
+explicit bearer authentication, responsive rendering, chats and reply recovery.
+
+## Accounts and capabilities
+
+OAuth uses S256 PKCE, state verification, explicit consent and `read write api:agent`
+permissions. Tokens and pending sign-in data stay in tab-scoped session storage;
+only the selected runtime address is remembered in local storage. Disconnect
+clears this client's session. Revoke access in the runtime account settings.
+Client requests omit cookies. Cross-origin browser access is restricted to MUCP
+and the OAuth registration/token endpoints; it does not expose dashboard routes.
+
+The runtime owns history, tools, permissions, billing and model execution. Replies
+and structured results are rendered as data, never executable model-authored HTML.
+Unknown content uses its text fallback. Unconfirmed messages are never resent
+automatically. Chats recover accepted replies after a connection failure.
+
+Browser speech is optional and explicitly activated. Dictation is reviewed before
+sending, and may use the browser vendor's speech service. There is no background
+wake word. YouTube stays a visible player; playable audio results use audio controls.

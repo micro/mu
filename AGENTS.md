@@ -2,7 +2,7 @@
 
 **An open runtime for personal assistants.** One Go binary hosts agents, services,
 accounts and persistent threads. Micro is its general-purpose agent; Android and
-the focused PWA are clients. The broader web console composes Home, Inbox, Agents
+the standalone web app are clients. The broader web console composes Home, Inbox, Agents
 and Services for overview and management. Go Micro is the underlying framework.
 
 See docs/ARCHITECTURE.md for ownership and interaction diagrams, and docs/MUCP.md
@@ -29,7 +29,7 @@ negotiation, not separate API routes. `/developers` documents those requests;
 | Door | Where | For |
 |---|---|---|
 | Web app | `/` | a person, signed in |
-| Focused client | `client/web`, `/app/` | MUCP client, separately installable as Mu Web |
+| Standalone web client | React/TypeScript in `client/web`, also served at `/app/` | independently runnable MUCP client |
 | Full web PWA | `/home`, root `manifest.webmanifest`, `mu.js` | complete runtime web experience |
 | API | `/api/v1/<service>/<method>` | a program somebody wrote |
 | MCP | `/mcp` | somebody else's agent, holding a token |
@@ -101,7 +101,7 @@ summary from agent/brief; it does not repeat the full scheduled daily brief. Age
 controls. Services are directly usable by people as well as callable by agents;
 the directory is not admin-only. Each service retains its permissions. Apps are
 small tools that can be opened or embedded, not additional primary destinations.
-The public landing opens the account-based assistant and offers platform download/install options, with self-hosting and developer tools secondary. It does not embed a chat demo or brief. The legacy anonymous POST demo remains bounded and tool-free for compatibility. The focused client at `/app/` lives in `client/web`, renders MUCP JSON locally and installs as Mu Web. The original Mu PWA retains identity `/` and starts at `/home`. Do not restore `/assistant` aliases. The runtime console remains at `/home`; account management and agent creation remain there. Browser speech is optional, explicit and capability-detected; do not promise background wake words. Android download links must only offer the signed release APK, never unsigned or debug builds. Personal assistant usage is paid on metered instances: no new signup or daily grants. Existing balances and paid subscriptions are preserved. Personal brief generation requires a paid plan.
+The public landing opens the account-based assistant and offers platform download/install options, with self-hosting and developer tools secondary. It does not embed a chat demo or brief. The legacy anonymous POST demo remains bounded and tool-free for compatibility. The standalone React/TypeScript client lives in `client/web`, selects a runtime, signs in with OAuth/PKCE and renders MUCP JSON locally. Mu also serves its production build at `/app/`. It has no PWA manifest: the PWA belongs to the full runtime web experience. The original Mu PWA retains identity `/` and starts at `/home`. Do not restore `/assistant` aliases. The runtime console remains at `/home`; account management and agent creation remain there. Browser speech is optional, explicit and capability-detected; do not promise background wake words. Android download links must only offer the signed release APK, never unsigned or debug builds. Personal assistant usage is paid on metered instances: no new signup or daily grants. Existing balances and paid subscriptions are preserved. Personal brief generation requires a paid plan.
 Public landing and informational pages belong to internal/server; `/` redirects
 signed-in visitors to `/home`. Preserve protocols, API responses, authorisation,
 mutations and shared links.
