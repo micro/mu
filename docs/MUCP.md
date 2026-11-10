@@ -109,7 +109,7 @@ refreshes the readable CSRF cookie. Every cookie-authenticated write MUST includ
 users go through the normal login/signup flow and return to `/app/`.
 
 **Independent web, Android and desktop apps:** use browser OAuth authorization
-code flow with S256 PKCE, state verification and `read write api:agent` scope.
+code flow with S256 PKCE, state verification and `read write api:agent api:home api:inbox api:services` scopes.
 Native apps use the system browser. The desktop callback uses a loopback listener,
 a fresh state and a ten-minute validity window. Authorization codes are consumed
 once; the PKCE verifier is not sent in the authorization URL. Client tokens MUST
@@ -118,8 +118,13 @@ only be sent to the selected runtime. Switching servers clears the app's session
 Native/programmatic calls send `Authorization: Bearer <token>`. Browser bearer
 calls omit cookies. An explicit credential takes precedence over any cookie and
 an invalid token MUST NOT fall back to cookie identity. Reads require read access;
-Ask requires write access. Product-scoped tokens require `api:agent`; service-only
-tokens cannot invoke agents. All account, verification, quota and tool checks
+Writes require write access. Product capabilities are explicit: `api:agent`
+for Assistant operations, `api:home` for the composed Home overview (including its
+recent inbox preview), `api:inbox` for Inbox, and `api:services` for catalogue
+metadata. Existing tokens need renewed consent for newly requested capabilities.
+Service-only tokens cannot invoke product operations; product-only tokens cannot
+call raw services. Direct Contacts calls require `service:contacts` plus read/write
+permissions as appropriate. Discovery never grants execution rights. All account, verification, quota and tool checks
 remain enforced at the runtime boundary.
 
 Cross-origin CORS is non-credentialed and limited to MUCP plus `/oauth/register`
@@ -134,6 +139,14 @@ provider API keys remain on the runtime, never in clients.
 | `Assistant.ListAgents` | Empty object | Accessible agents and public descriptions; no private prompts |
 | `Assistant.ListThreads` | Optional agent filter, page size and page token | Authorized personal assistant threads and next-page token |
 | `Assistant.ReadThread` | Thread ID and optional pagination | Thread metadata, ordered messages, next-page token and `pending` |
+| `Home.Overview` | Empty object | Accessible agents, recent inbox, pinned services, cached events and current public brief |
+| `Inbox.List` | Pagination and unread filter | Owned inbox items across channels; held items excluded |
+| `Inbox.Read` | Item ID and pagination | Safe messages without changing read state |
+| `Inbox.MarkRead` | Item ID and unread boolean | Persisted read state |
+| `Services.List` | Pagination | Service descriptions and supported direct contracts |
+| `Services.Describe` | Service name | Description and implemented direct operations |
+| `Assistant.Submit` | Stable message ID and PERSONAL Ask request | Durable operation receipt |
+| `Assistant.ReadOperation` | Operation ID | Owned operation state and terminal result |
 | `Assistant.Ask` | Agent ID, thread ID or empty string, prompt, access mode and voice preference | Thread ID, responding agent, Markdown text and typed content |
 
 The protobuf schema defines all fields and enum values. Use `thread`, not a second
@@ -146,6 +159,43 @@ thread history. Inaccessible and nonexistent threads both return 404.
 is stateless: it cannot continue a thread. Unspecified or unknown modes fail.
 The `voice` field describes the interaction; it does not grant background listening
 or require an audio transport. Clients own dictation and playback.
+
+
+### Durable personal submission
+
+`Assistant.Submit` returns an operation after the request and queue receipt have
+been persisted. `messageId` is 16–120 ASCII alphanumeric, hyphen or underscore
+characters, scoped to the caller. It is distinct from the exchange's `Micro-Id`.
+Reusing it with the same request returns the same operation; changing the agent,
+thread, prompt or voice preference returns a conflict. Leading/trailing prompt
+whitespace is normalized. Omitted thread and the returned thread identify the same
+submission. Completed receipts are retained for at least seven days from creation;
+clients MUST NOT replay an ambiguous submission after that window. Account/thread
+deletion or revoked agent access revokes recovery. This is deduplicated submission,
+not a guarantee that an external tool produces its side effects exactly once.
+
+ReadOperation returns queued, running, succeeded, failed or interrupted. A success
+contains the same answer/content as Ask. Resume by operation ID; if the acceptance
+response was lost, repeat Submit with the original message ID and unchanged body
+within the retention window. Never generate a new message ID merely to retry.
+A runtime restart preserves queued work and records interrupted in-flight work.
+Operations are not universal approval or cancellation handles.
+
+### Direct service contracts
+
+`Micro-Service: contacts` uses `Contacts.List`, `Contacts.Find`, `Contacts.Add`
+and `Contacts.Delete`, defined in `proto/service/contacts/v1`. These adapt the
+existing service gateway and its account/metering checks. Delete is an explicit
+write and remains unavailable as an autonomous destructive model tool. Other
+services remain available to agents through their existing tools; their catalogue
+entries have no direct MUCP contract until a tested adapter ships.
+
+Home reads local projections and schedules the existing bounded background cache
+refresh. It does not wait on remote calendars,
+invoke a model, or spend credits to render an overview. `calendarPending` signals
+stale/missing calendar cache. Inbox reads do not grant permission to execute agents
+on mail/group contexts. Current Inbox message projection exposes text and role;
+personal assistant threads additionally expose structured result blocks.
 
 ## Completion and recovery
 

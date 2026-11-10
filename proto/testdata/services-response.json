@@ -1,0 +1,1 @@
+{"services":[{"name":"contacts","description":"Manage your address book","contract":"mu.service.contacts.v1","operations":[{"endpoint":"Contacts.List","description":"List your contacts","writes":false,"destructive":false}]},{"name":"video","description":"Find videos","contract":"","operations":[]}],"nextPageToken":""}

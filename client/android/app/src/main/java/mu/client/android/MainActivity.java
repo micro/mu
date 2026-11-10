@@ -547,6 +547,61 @@ public class MainActivity extends Activity {
             } catch (Exception e) { runOnUiThread(() -> { if (!destroyed) { busy = false; update(); status.setText(e.getMessage()); } }); }
         });
     }
+
+    private void overview(String view, String page) {
+        if (busy || !signedIn()) return;
+        dismissKeyboard(); stopAudio(); busy=true; update();
+        final String server=account.optString("server"), token=account.optString("token");
+        worker.execute(() -> {
+            try {
+                JSONObject response=view.equals("home")?AgentApi.home(server,token):view.equals("inbox")?AgentApi.inbox(server,token,page):AgentApi.services(server,token,page);
+                runOnUiThread(() -> {
+                    if(destroyed) return;
+                    busy=false;update();
+                    AlertDialog.Builder dialog=new AlertDialog.Builder(this).setTitle(view.equals("home")?"Home":view.equals("inbox")?"Inbox":"Services").setNegativeButton("Close",null);
+                    if(view.equals("home")) {
+                        JSONArray events=response.optJSONArray("events");
+                        StringBuilder summary=new StringBuilder();
+                        if(events!=null) for(int i=0;i<events.length();i++){JSONObject e=events.optJSONObject(i);summary.append(e.optString("title")).append(" · ").append(e.optString("start")).append("\n");}
+                        if(summary.length()==0) summary.append("No cached events.\n");
+                        if(response.optBoolean("calendarPending")) summary.append("Calendar updates are pending.\n");
+                        summary.append("\n").append(response.optString("brief"));
+                        dialog.setMessage(summary.toString()).setPositiveButton("Inbox",(d,w)->overview("inbox","")).setNeutralButton("Services",(d,w)->overview("services",""));
+                    } else {
+                        JSONArray rows=response.optJSONArray(view.equals("inbox")?"items":"services");
+                        if(rows==null) rows=new JSONArray();
+                        final JSONArray entries=rows;
+                        String[] labels=new String[entries.length()];
+                        for(int i=0;i<labels.length;i++){JSONObject item=entries.optJSONObject(i);labels[i]=view.equals("inbox")?item.optString("subject","Untitled")+(item.optBoolean("unread")?" · Unread":""):item.optString("name")+" — "+item.optString("description");}
+                        if(labels.length==0)dialog.setMessage("Nothing here yet.");
+                        else dialog.setItems(labels,(d,index)->{JSONObject item=entries.optJSONObject(index);if(view.equals("inbox"))readInbox(item.optString("id"),"");else new AlertDialog.Builder(this).setTitle(item.optString("name")).setMessage(item.optString("description")).setPositiveButton("Close",null).show();});
+                        if(!response.optString("nextPageToken").isEmpty())dialog.setNeutralButton("More",(d,w)->overview(view,response.optString("nextPageToken")));
+                    }
+                    dialog.show();
+                });
+            } catch(Exception e){runOnUiThread(()->{if(!destroyed){busy=false;update();status.setText(e.getMessage());}});}
+        });
+    }
+    private void readInbox(String id,String page) {
+        if(busy)return;
+        busy=true;update();final String server=account.optString("server"),token=account.optString("token");
+        worker.execute(()->{
+            try{
+                JSONObject response=AgentApi.readInbox(server,token,id,page),item=response.getJSONObject("item");
+                StringBuilder text=new StringBuilder();JSONArray entries=response.getJSONArray("messages");
+                for(int i=0;i<entries.length();i++)text.append(entries.getJSONObject(i).optString("text")).append("\n\n");
+                runOnUiThread(()->{
+                    if(destroyed)return;busy=false;update();
+                    AlertDialog.Builder dialog=new AlertDialog.Builder(this).setTitle(item.optString("subject","Inbox")).setMessage(text.toString()).setNegativeButton("Close",null)
+                        .setPositiveButton(item.optBoolean("unread")?"Mark read":"Mark unread",(d,w)->{
+                            busy=true;update();worker.execute(()->{try{AgentApi.markInbox(server,token,id,!item.optBoolean("unread"));runOnUiThread(()->{if(!destroyed){busy=false;update();overview("inbox","");}});}catch(Exception e){runOnUiThread(()->{if(!destroyed){busy=false;update();status.setText(e.getMessage());}});}});
+                        });
+                    if(!response.optString("nextPageToken").isEmpty())dialog.setNeutralButton("More",(d,w)->readInbox(id,response.optString("nextPageToken")));
+                    dialog.show();
+                });
+            }catch(Exception e){runOnUiThread(()->{if(!destroyed){busy=false;update();status.setText(e.getMessage());}});}
+        });
+    }
     private Uri agentLink() {
         return new Uri.Builder().scheme("micro-agent").authority("open").appendQueryParameter("server", account.optString("server", "https://micro.mu")).appendQueryParameter("agent", agent).build();
     }
@@ -560,8 +615,11 @@ public class MainActivity extends Activity {
                 .setNeutralButton("Settings", (d, w) -> advancedConnection()).setNegativeButton("Cancel", null).show();
             return;
         }
-        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Settings", "Sign out", "Use Mu as phone assistant", "Wake aliases"}, (d, index) -> {
+        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Settings", "Sign out", "Use Mu as phone assistant", "Wake aliases", "Home", "Inbox", "Services"}, (d, index) -> {
             switch (index) {
+                case 8: overview("home", ""); break;
+                case 9: overview("inbox", ""); break;
+                case 10: overview("services", ""); break;
                 case 7: wakeAliases(); break;
                 case 6:
                     if (android.os.Build.VERSION.SDK_INT >= 29) {

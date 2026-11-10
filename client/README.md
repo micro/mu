@@ -38,7 +38,17 @@ Android, desktop and [Mu Web](web/README.md) use MUCP: JSON over HTTPS at `/`, w
 `Micro-Protocol: mucp/1` and the assistant operations in [proto](../proto/README.md).
 See [MUCP](../docs/MUCP.md) for headers, authentication and error handling.
 The runtime owns execution, history, permissions and billing. Clients render
-structured content safely and never automatically resend an unconfirmed action.
+structured content safely. Personal requests use durable Submit/ReadOperation;
+public locked-phone questions retain the restricted stateless Ask mode. New OAuth
+consent includes Home, Inbox and service discovery. Previously issued agent-only
+tokens need reconnection for those views.
+
+Web/desktop expose Home, Inbox, Agents and Services through the shared contract;
+Android keeps its voice/chat focus and offers Home, Inbox and Services from its
+account menu. The runtime PWA retains direct service pages and administration.
+The existing operator CLI and channel bridges keep their current interfaces; the
+[independent JSON example](../proto/examples/client.py) demonstrates MUCP without
+Mu implementation dependencies.
 
 ## Distribution
 

@@ -1,0 +1,26 @@
+syntax = "proto3";
+package mu.assistant.v1;
+option go_package = "mu/proto/assistant/v1;assistantv1";
+option java_package = "mu.client.proto.assistant.v1";
+option java_multiple_files = true;
+import "google/protobuf/timestamp.proto";
+import "assistant/v1/assistant.proto";
+service Inbox {
+ rpc List(ListInboxRequest) returns (ListInboxResponse);
+ rpc Read(ReadInboxRequest) returns (ReadInboxResponse);
+ rpc MarkRead(MarkInboxReadRequest) returns (InboxItem);
+}
+message InboxItem {
+ string id = 1;
+ string subject = 2;
+ string channel = 3;
+ bool unread = 4;
+ bool held = 5;
+ google.protobuf.Timestamp updated = 6;
+ repeated string actions = 7;
+}
+message ListInboxRequest { int32 page_size = 1; string page_token = 2; bool unread_only = 3; }
+message ListInboxResponse { repeated InboxItem items = 1; string next_page_token = 2; }
+message ReadInboxRequest { string id = 1; int32 page_size = 2; string page_token = 3; }
+message ReadInboxResponse { InboxItem item = 1; repeated Message messages = 2; string next_page_token = 3; }
+message MarkInboxReadRequest { string id = 1; bool unread = 2; }

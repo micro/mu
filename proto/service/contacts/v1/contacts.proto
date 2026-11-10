@@ -1,0 +1,19 @@
+syntax = "proto3";
+package mu.service.contacts.v1;
+option go_package = "mu/proto/service/contacts/v1;contactsv1";
+option java_package = "mu.client.proto.service.contacts.v1";
+option java_multiple_files = true;
+service Contacts {
+ rpc List(ListRequest) returns (ListResponse);
+ rpc Find(FindRequest) returns (FindResponse);
+ rpc Add(AddRequest) returns (Contact);
+ rpc Delete(DeleteRequest) returns (DeleteResponse);
+}
+message Contact { string id = 1; string name = 2; string email = 3; string phone = 4; string note = 5; }
+message ListRequest { int32 page_size = 1; string page_token = 2; }
+message ListResponse { repeated Contact contacts = 1; string next_page_token = 2; }
+message FindRequest { string query = 1; }
+message FindResponse { repeated Contact contacts = 1; string text = 2; }
+message AddRequest { string name = 1; string email = 2; string phone = 3; string note = 4; }
+message DeleteRequest { string id = 1; }
+message DeleteResponse { string id = 1; }

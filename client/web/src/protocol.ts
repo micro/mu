@@ -112,6 +112,66 @@ export async function call<K extends keyof Operations>(
   operation: K,
   body: Operations[K]["request"],
 ): Promise<Operations[K]["response"]> {
+  if (operation === "Ask") {
+    type Receipt = {
+      id: string;
+      thread: string;
+      state: string;
+      result?: Operations["Ask"]["response"];
+      error?: string;
+    };
+    let receipt = await invoke<Receipt>(
+      session,
+      "assistant",
+      "Assistant.Submit",
+      { messageId: crypto.randomUUID(), request: body },
+    );
+    const deadline = Date.now() + 120000;
+    for (;;) {
+      if (receipt.state === "OPERATION_STATE_SUCCEEDED" && receipt.result)
+        return receipt.result as Operations[K]["response"];
+      if (
+        ["OPERATION_STATE_FAILED", "OPERATION_STATE_INTERRUPTED"].includes(
+          receipt.state,
+        )
+      )
+        throw new ProtocolError(
+          receipt.error ||
+            "Execution stopped. Check Chats before trying again.",
+          500,
+          receipt.thread,
+        );
+      if (Date.now() >= deadline)
+        throw new ProtocolError(
+          "Your request is still running. Open Chats to recover the reply.",
+          504,
+          receipt.thread,
+        );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      try {
+        receipt = await invoke<Receipt>(
+          session,
+          "assistant",
+          "Assistant.ReadOperation",
+          { id: receipt.id },
+        );
+      } catch (e) {
+        throw new ProtocolError(
+          e instanceof Error ? e.message : "Connection lost. Check Chats.",
+          e instanceof ProtocolError ? e.status : 0,
+          receipt.thread,
+        );
+      }
+    }
+  }
+  return invoke(session, "assistant", "Assistant." + operation, body);
+}
+export async function invoke<T>(
+  session: Session,
+  service: string,
+  endpoint: string,
+  body: unknown,
+): Promise<T> {
   if (session.cookie && runtimeOrigin(session.server) !== location.origin)
     throw new ProtocolError(
       "Session cookies cannot be used with another server.",
@@ -132,13 +192,13 @@ export async function call<K extends keyof Operations>(
     credentials: session.cookie ? "same-origin" : "omit",
     cache: "no-store",
     redirect: "error",
-    signal: AbortSignal.timeout(operation === "Ask" ? 135000 : 20000),
+    signal: AbortSignal.timeout(endpoint === "Assistant.Ask" ? 135000 : 20000),
     headers: {
       "Content-Type": "application/json",
       ...credentials,
       "Micro-Protocol": "mucp/1",
-      "Micro-Service": "assistant",
-      "Micro-Endpoint": "Assistant." + operation,
+      "Micro-Service": service,
+      "Micro-Endpoint": endpoint,
       "Micro-Id": id,
     },
     body: JSON.stringify(body),

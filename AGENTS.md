@@ -433,7 +433,12 @@ eviction limit governed both, which is why it was wrong for each.
 
 Separately built user clients live in `client/`, beginning with `client/android`.
 This source directory is not a new sidebar destination or runtime service.
-Clients use the existing account-scoped product API; the runtime owns agent
+Clients use MUCP through explicit adapters composed by `internal/server`.
+`proto/assistant/v1` covers Home, Inbox, agents and service discovery;
+`proto/service/<name>/v1` covers direct services (Contacts first). Shared binding
+code in `internal/mucp` must not import product packages. Discovery grants no
+permissions. Product scopes and direct service scopes remain separate.
+The runtime owns agent
 execution, permissions, credits and conversation history. Native Android uses
 browser OAuth with S256 PKCE, not embedded password forms. Protocol servers
 remain with their services; the client map is in `client/README.md`.

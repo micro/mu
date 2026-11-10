@@ -10,9 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
-	"mime"
 	"net/http"
 	"sort"
 	"strings"
@@ -20,139 +18,50 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"mu/internal/api"
 	"mu/internal/auth"
+	"mu/internal/mucp"
 	"mu/internal/result"
 	"mu/internal/thread"
 	pb "mu/proto/assistant/v1"
 )
 
-const mucpVersion = "mucp/1"
-
-var mucpJSON = protojson.MarshalOptions{EmitUnpopulated: true}
-
-func mucpError(w http.ResponseWriter, status int, code, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Micro-Error", code)
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"code": code, "message": message, "status": status}})
+// MUCPHandler retains the agent-only adapter for embedded callers and tests.
+func MUCPHandler(w http.ResponseWriter, r *http.Request) { mucp.Handler(MUCPOperations())(w, r) }
+func MUCPOperations() []mucp.Operation {
+	return []mucp.Operation{
+		{Service: "assistant", Endpoint: "Assistant.Submit", Capability: "agent", Writes: true, Request: func() proto.Message { return &pb.SubmitRequest{} }, Handle: assistantCall},
+		{Service: "assistant", Endpoint: "Assistant.ReadOperation", Capability: "agent", Request: func() proto.Message { return &pb.ReadOperationRequest{} }, Handle: assistantCall},
+		{Service: "assistant", Endpoint: "Assistant.ListAgents", Capability: "agent", Request: func() proto.Message { return &pb.ListAgentsRequest{} }, Handle: assistantCall},
+		{Service: "assistant", Endpoint: "Assistant.ListThreads", Capability: "agent", Request: func() proto.Message { return &pb.ListThreadsRequest{} }, Handle: assistantCall},
+		{Service: "assistant", Endpoint: "Assistant.ReadThread", Capability: "agent", Request: func() proto.Message { return &pb.ReadThreadRequest{} }, Handle: assistantCall},
+		{Service: "assistant", Endpoint: "Assistant.Ask", Capability: "agent", Writes: true, Request: func() proto.Message { return &pb.AskRequest{} }, Handle: assistantCall},
+	}
 }
-
-// MUCPHandler authenticates calls before dispatching into the agent layer.
-func MUCPHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "private, no-store")
-	w.Header().Set("Micro-Protocol", mucpVersion)
-	w.Header().Set("Content-Type", "application/json")
-	if r.Method == http.MethodGet {
-		if values := r.Header.Values("Micro-Protocol"); len(values) > 0 && (len(values) != 1 || values[0] != mucpVersion) {
-			mucpError(w, 400, "unsupported_protocol", "Unsupported MUCP version")
-			return
-		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"protocol": mucpVersion, "service": "assistant", "contract": "mu.assistant.v1", "encoding": "protobuf-json", "features": map[string]bool{"streaming": false, "cancellation": false, "automaticRetry": false, "threadRecovery": true}, "limits": map[string]int{"requestBytes": 65536, "waitSeconds": 120, "pageSize": 100}, "operations": []string{"Assistant.ListAgents", "Assistant.ListThreads", "Assistant.ReadThread", "Assistant.Ask"}})
-		return
-	}
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "GET, POST")
-		mucpError(w, 405, "method_not_allowed", "Use POST for calls")
-		return
-	}
-	for _, h := range []string{"Micro-Protocol", "Micro-Service", "Micro-Endpoint", "Micro-Id"} {
-		if len(r.Header.Values(h)) != 1 {
-			mucpError(w, 400, "invalid_headers", "Supply one "+h+" header")
-			return
-		}
-	}
-	if r.Header.Get("Micro-Protocol") != mucpVersion {
-		mucpError(w, 400, "unsupported_protocol", "Unsupported MUCP version")
-		return
-	}
-	if r.Header.Get("Micro-Service") != "assistant" {
-		mucpError(w, 404, "not_found", "Unknown service")
-		return
-	}
-	id := r.Header.Get("Micro-Id")
-	if len(id) < 16 || len(id) > 128 || strings.IndexFunc(id, func(c rune) bool {
-		return !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_')
-	}) >= 0 {
-		mucpError(w, 400, "invalid_id", "Use a 16–128 character request ID")
-		return
-	}
-	w.Header().Set("Micro-Id", id)
-	w.Header().Set("Micro-Service", "assistant")
-	endpoint := r.Header.Get("Micro-Endpoint")
-	w.Header().Set("Micro-Endpoint", endpoint)
-	var request proto.Message
-	switch endpoint {
-	case "Assistant.ListAgents":
-		request = &pb.ListAgentsRequest{}
-	case "Assistant.ListThreads":
-		request = &pb.ListThreadsRequest{}
-	case "Assistant.ReadThread":
-		request = &pb.ReadThreadRequest{}
-	case "Assistant.Ask":
-		request = &pb.AskRequest{}
-	default:
-		mucpError(w, 404, "not_found", "Unknown operation")
-		return
-	}
-	kind, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || kind != "application/json" {
-		mucpError(w, 415, "unsupported_encoding", "Use application/json")
-		return
-	}
-	r = api.CredentialRequest(r)
-	w.Header().Set("Micro-Error", "authorization_failed")
-	if !api.AuthorizeProduct(w, r, "agent", endpoint == "Assistant.Ask") {
-		return
-	}
-	w.Header().Del("Micro-Error")
-	_, acc, err := auth.RequireSession(r)
-	if err != nil || acc == nil {
-		mucpError(w, 401, "unauthenticated", "Sign in to continue")
-		return
-	}
-	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 65536))
-	if err != nil {
-		mucpError(w, 413, "too_large", "Request exceeds 64 KiB")
-		return
-	}
-	if len(strings.TrimSpace(string(raw))) == 0 || strings.TrimSpace(string(raw))[0] != '{' || protojson.Unmarshal(raw, request) != nil {
-		mucpError(w, 400, "invalid_arguments", "Send one valid protobuf JSON object")
-		return
-	}
+func assistantCall(w http.ResponseWriter, r *http.Request, owner, id string, q proto.Message) (proto.Message, error) {
 	var response proto.Message
-	switch q := request.(type) {
+	var err error
+	switch q := q.(type) {
+	case *pb.SubmitRequest:
+		response, err = assistantSubmit(owner, q)
+	case *pb.ReadOperationRequest:
+		response, err = assistantOperation(owner, q.Id)
 	case *pb.ListAgentsRequest:
-		response = assistantAgents(acc.ID)
+		response = assistantAgents(owner)
 	case *pb.ListThreadsRequest:
-		response, err = assistantThreads(acc.ID, q)
+		response, err = assistantThreads(owner, q)
 	case *pb.ReadThreadRequest:
-		response, err = assistantThread(acc.ID, q)
+		response, err = assistantThread(owner, q)
 	case *pb.AskRequest:
-		if rate := auth.CheckPostRate(acc.ID); rate != nil {
-			mucpError(w, 429, "rate_limited", rate.Error())
-			return
-		}
-		response, err = assistantAsk(w, r, acc.ID, id, q)
+		response, err = assistantAsk(w, r, owner, id, q)
 	}
-	if err != nil {
-		var e *assistantError
-		if errors.As(err, &e) {
-			mucpError(w, e.status, e.code, e.message)
-		} else {
-			mucpError(w, 500, "execution_failed", "Request could not be completed. Review your chats before trying again.")
-		}
-		return
+	var e *assistantError
+	if errors.As(err, &e) {
+		err = api.Fail(e.status, e.code, e.message)
 	}
-	body, err := mucpJSON.Marshal(response)
-	if err != nil {
-		mucpError(w, 500, "encoding_failed", "Response unavailable; review your chats")
-		return
-	}
-	_, _ = w.Write(body)
+	return response, err
 }
 
 type assistantError struct {

@@ -12,7 +12,7 @@ import (
 // usable, but signed-in visits without a conversation go to Home.
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	if mucpRootRequest(r) {
-		agent.MUCPHandler(w, r)
+		MUCPHandler(w, r)
 		return
 	}
 	w.Header().Set("Cache-Control", "private, no-store")

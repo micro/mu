@@ -426,7 +426,7 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 		}
 	}
 	if len(selected) == 0 {
-		for _, cap := range []string{"agent", "inbox", "work"} {
+		for _, cap := range []string{"agent", "inbox", "work", "home", "services"} {
 			if requested["api:"+cap] {
 				access = "api"
 				selected = append(selected, cap)
@@ -476,7 +476,7 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 		b.WriteString(`<label class="choice"><input type="checkbox" name="service" value="` + e(sp.Name) + `"` + checked(requested[ScopePrefix+sp.Name]) + `>` + e(sp.Name) + `</label>`)
 	}
 	b.WriteString(`</div><p id="oauth-no-results" hidden>No matching services.</p></fieldset><fieldset data-oauth-access="api"><legend>Assistant API</legend><p class="text-muted">Agents can use their configured tools across your account.</p><div class="choices">`)
-	for _, cap := range []string{"agent", "inbox", "work"} {
+	for _, cap := range []string{"agent", "inbox", "work", "home", "services"} {
 		b.WriteString(`<label class="choice"><input type="checkbox" name="capability" value="` + cap + `"` + checked(requested["api:"+cap]) + `>` + cap + `</label>`)
 	}
 	b.WriteString(`</div></fieldset></div></details><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow changes and actions</label><p class="text-muted text-sm">Expires in 24 hours. Revoke anytime in <a href="/account/tokens">Tokens</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
@@ -585,7 +585,7 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case "api":
 		for _, name := range r.PostForm["capability"] {
-			if name != "agent" && name != "inbox" && name != "work" {
+			if name != "agent" && name != "inbox" && name != "work" && name != "home" && name != "services" {
 				http.Error(w, "Unknown capability", 400)
 				return
 			}

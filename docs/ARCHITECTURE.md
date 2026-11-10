@@ -7,35 +7,20 @@ into a running system that clients can use.
 
 ## Client, protocol and server
 
-```text
- CLIENT                       BOUNDARY                MU RUNTIME
- +-------------------+                                +-------------------+
- | Android           |                                | Authentication    |
- | Web client        | -- assistant requests --------> | + authorisation   |
- | Desktop apps      |    MUCP / HTTPS / JSON (*)      +---------+---------+
- |                   |                                          |
- | Text, voice,      |                                +---------v---------+
- | result rendering  | <--- answers + typed results -- | Assistant entry   |
- +-------------------+                                | in agent/         |
-                                                      +---------+---------+
-                                                                |
-                                                      +---------v---------+
-                                                      | Selected agent    |
-                                                      | + thread history  |
-                                                      +---------+---------+
-                                                                |
-                                                      +---------v---------+
-                                                      | Permitted tools   |
-                                                      +---------+---------+
-                                                                |
-                                                      +---------v---------+
-                                                      | Services          |
-                                                      | mail, events, ... |
-                                                      +-------------------+
+```mermaid
+flowchart TD
+  Clients["Android, Web and Desktop"] --> MUCP["MUCP headers + typed JSON"]
+  Bridges["Email, WhatsApp and XMPP bridges"] --> Composition
+  MUCP --> Boundary["Identity, scopes and request validation"]
+  Boundary --> Composition["Home · Inbox · Agents · Services"]
+  Composition --> Execution["Agent execution and durable replies"]
+  Composition --> Projections["Cached views and owned history"]
+  Execution --> Services["Permitted service tools"]
+  Services --> Infrastructure["Go Micro · models · storage"]
 ```
 
-(*) Android and the focused client in `client/web` use the MUCP HTTPS/JSON
-binding for agents, threads and replies. The React/TypeScript web client runs independently and connects to a selected
+Android and the focused client in `client/web` use the MUCP HTTPS/JSON
+binding for Home, Inbox, agents, service discovery and durable replies. The React/TypeScript web client runs independently and connects to a selected
 runtime using OAuth/PKCE and explicit tokens. Mu also serves the build at `/app/`,
 where it reuses same-origin session cookies with CSRF protection. Desktop installers
 bundle the React app with Electron and use system-browser OAuth.
@@ -63,10 +48,10 @@ Services do not call each other or launch agent reasoning; they publish facts an
 higher-level subscribers decide what work to run. Server composition may reach
 both layers; that does not authorise upward dependencies from services.
 
-`proto/assistant/v1` owns the assistant contract. Future capability contracts
-may live under `proto/service/<name>/v1`; wholesale service extraction is deferred
-until the assistant binding demonstrates interoperability. The existing service
-Specs and implementation types remain authoritative for current APIs and tools.
+`proto/assistant/v1` owns the composition contract. `proto/service/contacts/v1`
+provides the first direct service interface through the existing gateway. Other
+services migrate incrementally, with typed adapters and permission tests. The
+existing Specs remain authoritative for current APIs and agent tools.
 
 ## One assistant interaction
 
@@ -91,7 +76,8 @@ Specs and implementation types remain authoritative for current APIs and tools.
    | render / speak             |                              |
 ```
 
-The `/` adapter implements discovery, personal thread reads and Ask. Existing execution
+The `/` adapter implements the composition contracts, personal thread reads,
+Ask, durable Submit and ReadOperation. Existing execution
 already resolves agents, checks permissions, uses tools and retains personal
 threads. `thread` is the existing identifier for what the UI calls a conversation;
 there is no second conversation-ID namespace. A request ID identifies an exchange,
@@ -176,3 +162,18 @@ External mDNS discovery is disabled. Mu uses in-process service transport even
 when `MU_REGISTRY=mdns` is set, and logs that the setting was refused. The old
 network RPC mode accepted unauthenticated account metadata. External services
 need authenticated, account-scoped transport before discovery can be restored.
+
+## Contract ownership
+
+`proto/assistant/v1` describes product composition; `proto/service/<name>/v1`
+describes individual services. Contracts do not import runtime implementation.
+The HTTPS binding (`internal/mucp`) imports no product packages. Explicit server
+composition selects supported adapters, rather than exposing every internal RPC.
+Contacts is the first independently callable typed service. Discovery lists the
+remaining services honestly without claiming direct protocol support.
+
+Durable submission reuses the agent reply queue and existing thread store. Home
+and Inbox are projections; they never implement an agent loop. Account identity,
+permissions, provider keys and spending policy remain runtime concerns. Clients
+render typed results and recover operations; bridges translate their channels into
+the same agent layer without making internal HTTP calls.

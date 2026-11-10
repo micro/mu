@@ -36,7 +36,17 @@ final class AgentApi {
             throw new IOException("Keep the message below 8,000 bytes.");
         AskRequest q = AskRequest.newBuilder().setAgentId(agent(agent)).setThread(thread).setPrompt(prompt)
             .setVoice(voice).setMode(AccessMode.ACCESS_MODE_PERSONAL).build();
-        JSONObject reply = call(server, token, "Ask", q, AskResponse.newBuilder());
+        JSONObject receipt = submit(server, token, UUID.randomUUID().toString(), q);
+        long deadline = System.nanoTime() + 120_000_000_000L;
+        while (!receipt.optString("state").equals("OPERATION_STATE_SUCCEEDED")) {
+            String state = receipt.optString("state");
+            if (state.equals("OPERATION_STATE_FAILED") || state.equals("OPERATION_STATE_INTERRUPTED"))
+                throw new IOException(receipt.optString("error", "Execution stopped. Check Chats before trying again."));
+            if (System.nanoTime() >= deadline) throw new IOException("Your request is still running. Open Chats to recover the reply.");
+            java.lang.Thread.sleep(1000);
+            receipt = operation(server, token, receipt.getString("id"));
+        }
+        JSONObject reply = receipt.getJSONObject("result");
         reply.put("results", results(reply.optJSONArray("content")));
         return reply;
     }
@@ -59,6 +69,27 @@ final class AgentApi {
     static JSONObject history(String server, String token, String thread, String page) throws Exception {
         return call(server, token, "ReadThread", ReadThreadRequest.newBuilder().setThread(thread)
             .setPageToken(page).setPageSize(100).build(), ReadThreadResponse.newBuilder());
+    }
+    static JSONObject home(String server, String token) throws Exception {
+        return call(server, token, "Home.Overview", HomeRequest.getDefaultInstance(), HomeResponse.newBuilder());
+    }
+    static JSONObject inbox(String server, String token, String page) throws Exception {
+        return call(server, token, "Inbox.List", ListInboxRequest.newBuilder().setPageToken(page).build(), ListInboxResponse.newBuilder());
+    }
+    static JSONObject readInbox(String server, String token, String id, String page) throws Exception {
+        return call(server, token, "Inbox.Read", ReadInboxRequest.newBuilder().setId(id).setPageToken(page).build(), ReadInboxResponse.newBuilder());
+    }
+    static JSONObject markInbox(String server, String token, String id, boolean unread) throws Exception {
+        return call(server, token, "Inbox.MarkRead", MarkInboxReadRequest.newBuilder().setId(id).setUnread(unread).build(), InboxItem.newBuilder());
+    }
+    static JSONObject services(String server, String token, String page) throws Exception {
+        return call(server, token, "Services.List", ListServicesRequest.newBuilder().setPageToken(page).build(), ListServicesResponse.newBuilder());
+    }
+    static JSONObject submit(String server, String token, String messageId, AskRequest request) throws Exception {
+        return call(server, token, "Submit", SubmitRequest.newBuilder().setMessageId(messageId).setRequest(request).build(), Operation.newBuilder());
+    }
+    static JSONObject operation(String server, String token, String id) throws Exception {
+        return call(server, token, "ReadOperation", ReadOperationRequest.newBuilder().setId(id).build(), Operation.newBuilder());
     }
     private static JSONObject call(String server, String token, String operation, Message request, Message.Builder response) throws Exception {
         JSONObject raw = post(origin(server)+"/", token, JsonFormat.printer().print(request), "application/json", operation);
@@ -99,7 +130,7 @@ final class AgentApi {
         if (!operation.isEmpty()) {
             c.setRequestProperty("Micro-Protocol", "mucp/1");
             c.setRequestProperty("Micro-Service", "assistant");
-            c.setRequestProperty("Micro-Endpoint", "Assistant."+operation);
+            c.setRequestProperty("Micro-Endpoint", (operation.contains(".") ? operation : "Assistant."+operation));
             c.setRequestProperty("Micro-Id", requestId);
         }
         c.setDoOutput(true);

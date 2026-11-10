@@ -47,10 +47,16 @@ const runtime = createServer(async (req, res) => {
   res.setHeader("Micro-Id", req.headers["micro-id"]);
   if (req.headers["micro-endpoint"] === "Assistant.ListAgents")
     res.end('{"agents":[{"id":"micro","slug":"micro","name":"Micro"}]}');
-  else {
+  else if (req.headers["micro-endpoint"] === "Assistant.Submit") {
     requests++;
-    res.end('{"thread":"one","text":"**Desktop reply**","content":[]}');
-  }
+    const body=JSON.parse(raw);
+    assert.ok(body.messageId);
+    assert.equal(body.request.mode,"ACCESS_MODE_PERSONAL");
+    res.end('{"id":"operation-one","thread":"one","state":"OPERATION_STATE_QUEUED"}');
+  } else if (req.headers["micro-endpoint"] === "Assistant.ReadOperation") {
+    assert.equal(JSON.parse(raw).id,"operation-one");
+    res.end('{"id":"operation-one","thread":"one","state":"OPERATION_STATE_SUCCEEDED","result":{"thread":"one","text":"**Desktop reply**","content":[]}}');
+  } else { res.writeHead(404);res.end('{"error":{"message":"Unsupported test operation"}}'); }
 });
 await new Promise((ok) => runtime.listen(0, "127.0.0.1", ok));
 const profile = await mkdtemp(resolve(tmpdir(), "mu-desktop-"));

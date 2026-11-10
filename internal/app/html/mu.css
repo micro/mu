@@ -23,7 +23,7 @@ header a{text-decoration:none}
 header nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 16px;font-size:.875rem}
 .brand{font-weight:var(--font-weight-medium);grid-column:2;justify-self:center}
 header>.desktop-navigation{grid-column:3;justify-self:end}
-header>.assistant-navigation{justify-content:flex-start}
+.assistant-navigation{display:flex;justify-content:center;flex-wrap:wrap;gap:16px;padding:8px var(--page-gutter)}
 .voice-controls{padding-top:var(--space-2)}
 .voice-status{height:3em;line-height:1.5;overflow-y:auto;margin:var(--space-1) 0 0;color:var(--text-muted);font-size:.8rem}
 main{width:min(100% - 40px,760px);margin:0 auto;padding:24px 0 40px}

@@ -41,6 +41,13 @@ public class ClientTest {
         }
     }
 
+    @Test public void compositionFixturesMatchGeneratedTypes() throws Exception {
+        String[] names={"home","inbox","services","contacts","operation"};
+        com.google.protobuf.Message.Builder[] builders={mu.client.proto.assistant.v1.HomeResponse.newBuilder(),mu.client.proto.assistant.v1.ListInboxResponse.newBuilder(),mu.client.proto.assistant.v1.ListServicesResponse.newBuilder(),mu.client.proto.service.contacts.v1.ListResponse.newBuilder(),mu.client.proto.assistant.v1.Operation.newBuilder()};
+        for(int i=0;i<names.length;i++)try(java.io.InputStream in=getClass().getResourceAsStream("/"+names[i]+"-response.json")){
+            assertNotNull(in);com.google.protobuf.util.JsonFormat.parser().merge(new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8),builders[i]);assertNotNull(builders[i].build());
+        }
+    }
     @Test public void acceptsOnlyServerOrigins() {
         assertEquals("https://micro.mu", AgentApi.origin("https://micro.mu/"));
         assertEquals("https://example.org:8443", AgentApi.origin("https://example.org:8443"));

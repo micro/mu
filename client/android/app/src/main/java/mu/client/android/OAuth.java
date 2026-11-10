@@ -35,7 +35,7 @@ final class OAuth {
         return pending.getString("server") + "/oauth/authorize?response_type=code"
                 + "&client_id=" + encode(pending.getString("client"))
                 + "&redirect_uri=" + encode(pending.getString("redirect"))
-                + "&scope=" + encode("read write api:agent")
+                + "&scope=" + encode("read write api:agent api:home api:inbox api:services")
                 + "&state=" + encode(pending.getString("state"))
                 + "&code_challenge_method=S256&code_challenge=" + encode(challenge(pending.getString("verifier")));
     }
