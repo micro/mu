@@ -54,7 +54,7 @@ func TestDownloadPageAndRedirect(t *testing.T) {
 			if w.Code != 200 {
 				t.Fatal(w.Code)
 			}
-			for _, text := range []string{"iPhone and iPad", "Desktop", "Self-host Mu", "/app/"} {
+			for _, text := range []string{"iPhone and iPad", "Mu Web", "Open Mu Web", "setup guide", "/app/"} {
 				if !strings.Contains(w.Body.String(), text) {
 					t.Fatalf("missing %s", text)
 				}
