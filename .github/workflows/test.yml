@@ -70,6 +70,11 @@ jobs:
           UI_SCREENSHOTS: ${{ runner.temp }}/assistant-screenshots
         run: go test ./internal/app -run '^TestResponsiveRuntimeNavigation$' -count=1 -timeout=5m
 
+      - name: Test group creation and reliable messaging in Chrome
+        env:
+          UI_SCREENSHOTS: ${{ runner.temp }}/assistant-screenshots
+        run: go test ./internal/server -run '^TestGroupChatBrowser$' -count=1 -timeout=3m
+
       - name: Test focused assistant in Chrome
         env:
           UI_SCREENSHOTS: ${{ runner.temp }}/assistant-screenshots

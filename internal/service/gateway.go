@@ -35,7 +35,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	microerrors "go-micro.dev/v6/errors"
 
 	"go-micro.dev/v6/server"
 )
@@ -92,6 +94,16 @@ func gateway(spec Spec) server.HandlerWrapper {
 		// actually returned — everybody waiting on it as a duplicate gets the
 		// same answer, including the same failure.
 		return func(ctx context.Context, req server.Request, rsp interface{}) (retErr error) {
+			defer func() {
+				var known interface {
+					error
+					HTTPStatus() int
+				}
+				if errors.As(retErr, &known) {
+					retErr = microerrors.New(spec.Name, known.Error(), int32(known.HTTPStatus()))
+				}
+			}()
+
 			// Enforce private-service identity at dispatch as well as at each
 			// entrypoint. A missing caller must never select shared/default data.
 			ep := spec.Endpoints[methodName(req.Method())]

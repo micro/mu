@@ -39,11 +39,11 @@ func TestRoomArrivalAndArchiveCommitTogetherWithoutEventBodies(t *testing.T) {
 		if len(e.Data) != 0 {
 			t.Fatal("event should carry a source reference")
 		}
-		var rsp service.SourceResponse
-		if err := (Server{}).Source(service.WithAccount(context.Background(), e.Account), &service.SourceRequest{ID: e.Resource}, &rsp); err != nil {
+		var rsp SourceResponse
+		if err := (Server{}).Source(service.WithAccount(context.Background(), e.Account), &SourceRequest{Id: e.Resource}, &rsp); err != nil {
 			t.Fatal(err)
 		}
-		if rsp.Item == nil || rsp.Item.Text != "private room text" || rsp.Item.Facts["transport"] != "web" || rsp.Item.Direction != "out" {
+		if rsp.Item == nil || rsp.Item.Text != "private room text" || rsp.Item.Facts["transport"].GetStringValue() != "web" || rsp.Item.Direction != "out" {
 			t.Fatalf("%+v", rsp.Item)
 		}
 	}

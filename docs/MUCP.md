@@ -183,6 +183,21 @@ Operations are not universal approval or cancellation handles.
 
 ### Direct service contracts
 
+`Micro-Service: chat` supports `Chat.Rooms`, `Chat.Messages`, `Chat.Send`,
+`Chat.Source` and `Chat.Sources`. `Micro-Service: groups` supports `Groups.List`,
+`Groups.Read`, `Groups.Create` and `Groups.Update`. These require their own
+`service:chat` or `service:groups` scope plus read/write permission; assistant
+product scopes do not grant them. Both services implement generated protobuf
+request/response types and use the same gateway as REST and MCP. Group reads and
+sends check current membership, including after invitation acceptance or removal.
+Invitation hashes are storage-only and absent from the public contract.
+
+Direct `Chat.Send` is a service/tool post, not an instruction to run an agent.
+Interactive group-agent execution remains in the runtime chat ingress, where
+mentions, group tool restrictions and group billing apply. Clients must not infer
+assistant execution from successful delivery. Other service schemas under
+`proto/service` do not imply available MUCP endpoints; consult discovery.
+
 `Micro-Service: contacts` uses `Contacts.List`, `Contacts.Find`, `Contacts.Add`
 and `Contacts.Delete`, defined in `proto/service/contacts/v1`. These adapt the
 existing service gateway and its account/metering checks. Delete is an explicit

@@ -195,7 +195,8 @@ func commandsFor(spec Spec, method string, ep Endpoint) []Command {
 	defaults := map[string]any{}
 	for i := 0; i < req.NumField(); i++ {
 		f := req.Field(i)
-		if f.Tag.Get("required") == "true" || f.Anonymous {
+		_, required := FieldMetadata(req, f)
+		if required || f.Anonymous {
 			return out
 		}
 		if strings.Split(f.Tag.Get("json"), ",")[0] == "limit" {

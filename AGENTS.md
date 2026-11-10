@@ -9,7 +9,7 @@ See docs/ARCHITECTURE.md for ownership and interaction diagrams, and docs/MUCP.m
 for the external protocol. Proto defines shared contracts/types; the
 client binding is human-readable JSON over HTTPS, not mandatory binary
 RPC. Generated Go/Java types and handwritten JSON clients must interoperate.
-Android uses generated Java types over `/`; the focused web client in client/web uses JSON for all four assistant operations
+Android uses generated Java types over `/`; the focused web client in client/web uses JSON for the assistant composition operations
 and renders content locally.
 The assistant implementation stays in agent/, with
 server composition registering the boundary; do not add service/assistant or
@@ -435,7 +435,11 @@ Separately built user clients live in `client/`, beginning with `client/android`
 This source directory is not a new sidebar destination or runtime service.
 Clients use MUCP through explicit adapters composed by `internal/server`.
 `proto/assistant/v1` covers Home, Inbox, agents and service discovery;
-`proto/service/<name>/v1` covers direct services (Contacts first). Shared binding
+`proto/service/<name>/v1` covers all service schemas; Chat and Groups use generated types directly,
+and have MUCP bindings through the service gateway alongside Contacts.
+Chat and Groups schemas are authoritative; edit proto and regenerate Go types.
+Other service schemas are derived with `go run ./proto/generate`; preserve the field
+ledger. A schema declaration does not expose a service or bypass its gateway. Shared binding
 code in `internal/mucp` must not import product packages. Discovery grants no
 permissions. Product scopes and direct service scopes remain separate.
 The runtime owns agent

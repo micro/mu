@@ -25,8 +25,8 @@ func watchGroupMessages() {
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
-				var rsp service.SourceResponse
-				if err := (chat.Server{}).Source(service.WithAccount(ctx, e.Account), &service.SourceRequest{ID: e.Resource}, &rsp); err != nil {
+				var rsp chat.SourceResponse
+				if err := (chat.Server{}).Source(service.WithAccount(ctx, e.Account), &chat.SourceRequest{Id: e.Resource}, &rsp); err != nil {
 					return err
 				}
 				if rsp.Item == nil {

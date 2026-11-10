@@ -1,0 +1,99 @@
+// Source contract for the groups service. Generate Go types with protoc.
+syntax = "proto3";
+import "service/options.proto";
+package mu.service.groups.v1;
+option go_package = "mu/proto/service/groups/v1;groupsv1";
+option java_package = "mu.client.proto.service.groups.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+
+service Groups {
+  // Create a private group
+  rpc Create(CreateRequest) returns (GroupResponse);
+  // List your groups and pending invitations
+  rpc List(ListRequest) returns (ListResponse);
+  // Read a group you belong to and open its chat
+  rpc Read(ReadRequest) returns (GroupResponse);
+  // Manage invitations, membership and roles. Accept invitations before accessing a group. Removing yourself leaves; owners must transfer ownership first. Delete closes the group for everyone.
+  rpc Update(UpdateRequest) returns (UpdateResponse);
+}
+
+message CreateRequest {
+  string description = 1 [json_name = "description", (mu.service.description) = "What this group is for"];
+  bool encrypted = 2 [json_name = "encrypted", (mu.service.description) = "Require end-to-end encrypted XMPP clients; web chat cannot decrypt these messages"];
+  string name = 3 [json_name = "name", (mu.service.description) = "Group name", (mu.service.required) = true];
+}
+
+message GroupConversation {
+  string id = 1 [json_name = "id"];
+  string name = 2 [json_name = "name"];
+  string agent = 3 [json_name = "agent"];
+  google.protobuf.Timestamp created = 4 [json_name = "created"];
+}
+
+message GroupGroup {
+  string description = 1 [json_name = "description"];
+  map<string, bool> muted = 2 [json_name = "muted"];
+  google.protobuf.Timestamp billing_until = 3 [json_name = "billing_until"];
+  map<string, google.protobuf.Timestamp> activity = 4 [json_name = "activity"];
+  map<string, google.protobuf.Timestamp> seen = 5 [json_name = "seen"];
+  string id = 6 [json_name = "id"];
+  string name = 7 [json_name = "name"];
+  map<string, GroupConversation> conversations = 8 [json_name = "conversations"];
+  reserved 9;
+  reserved "links";
+  reserved 10;
+  reserved "link_hash";
+  google.protobuf.Timestamp link_expires = 11 [json_name = "link_expires"];
+  int32 spend_limit = 12 [json_name = "spend_limit"];
+  bool members_use_ai = 13 [json_name = "members_use_ai"];
+  bool encrypted = 14 [json_name = "encrypted"];
+  string owner = 15 [json_name = "owner"];
+  google.protobuf.Timestamp created = 16 [json_name = "created"];
+  map<string, string> members = 17 [json_name = "members"];
+  map<string, GroupInvitation> invitations = 18 [json_name = "invitations"];
+}
+
+message GroupInvitation {
+  string account = 1 [json_name = "account"];
+  string invited_by = 2 [json_name = "invited_by"];
+  google.protobuf.Timestamp expires = 3 [json_name = "expires"];
+}
+
+message GroupPending {
+  string id = 1 [json_name = "id"];
+  string name = 2 [json_name = "name"];
+  string account = 3 [json_name = "account"];
+  string invited_by = 4 [json_name = "invited_by"];
+  google.protobuf.Timestamp expires = 5 [json_name = "expires"];
+}
+
+message GroupResponse {
+  GroupGroup group = 1 [json_name = "group"];
+  string chat = 2 [json_name = "chat"];
+}
+
+message ListRequest {
+}
+
+message ListResponse {
+  repeated GroupGroup groups = 1 [json_name = "groups"];
+  repeated GroupPending invitations = 2 [json_name = "invitations"];
+}
+
+message ReadRequest {
+  string id = 1 [json_name = "id", (mu.service.description) = "Group ID", (mu.service.required) = true];
+}
+
+message UpdateRequest {
+  string id = 1 [json_name = "id", (mu.service.required) = true];
+  string action = 2 [json_name = "action", (mu.service.description) = "invite, accept, decline, remove, role, rename, describe or delete", (mu.service.required) = true];
+  string account = 3 [json_name = "account", (mu.service.description) = "Local username for invite, remove or role; defaults to yourself for remove"];
+  string value = 4 [json_name = "value", (mu.service.description) = "Description for describe, new name for rename, or member/admin/owner for role"];
+}
+
+message UpdateResponse {
+  string result = 1 [json_name = "result"];
+}
+

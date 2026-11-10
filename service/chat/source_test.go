@@ -13,8 +13,8 @@ func TestSourceIsAccountScoped(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, owner := range []string{"source-owner", "other"} {
-		var rsp service.SourceResponse
-		if err := (Server{}).Source(service.WithAccount(context.Background(), owner), &service.SourceRequest{ID: id}, &rsp); err != nil {
+		var rsp SourceResponse
+		if err := (Server{}).Source(service.WithAccount(context.Background(), owner), &SourceRequest{Id: id}, &rsp); err != nil {
 			t.Fatal(err)
 		}
 		if (rsp.Item != nil) != (owner == "source-owner") {

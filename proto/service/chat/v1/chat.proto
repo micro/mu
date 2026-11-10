@@ -1,0 +1,100 @@
+// Source contract for the chat service. Generate Go types with protoc.
+syntax = "proto3";
+import "service/options.proto";
+package mu.service.chat.v1;
+option go_package = "mu/proto/service/chat/v1;chatv1";
+option java_package = "mu.client.proto.service.chat.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+service Chat {
+  // Read the recent conversation in a discussion room
+  rpc Messages(MessagesRequest) returns (MessagesResponse);
+  // List discussion rooms that currently have activity
+  rpc Rooms(RoomsRequest) returns (RoomsResponse);
+  // Say something in a discussion room, as the caller. Use chat_rooms to find the room id
+  rpc Send(SendRequest) returns (SendResponse);
+  // Read one stored message owned by the caller, by id
+  rpc Source(ServiceSourceRequest) returns (ServiceSourceResponse);
+  // List stored message ids owned by the caller
+  rpc Sources(ServiceSourcesRequest) returns (ServiceSourcesResponse);
+}
+
+message Message {
+  string id = 1 [json_name = "id"];
+  string author = 2 [json_name = "author"];
+  string content = 3 [json_name = "content"];
+  bool is_agent = 4 [json_name = "is_agent", (mu.service.description) = "True when the agent said it"];
+  google.protobuf.Timestamp timestamp = 5 [json_name = "timestamp"];
+}
+
+message MessagesRequest {
+  string room = 1 [json_name = "room", (mu.service.description) = "Room id, as returned by Rooms"];
+}
+
+message MessagesResponse {
+  repeated Message messages = 1 [json_name = "messages", (mu.service.description) = "Recent messages, oldest first"];
+}
+
+message RoomInfo {
+  string id = 1 [json_name = "id", (mu.service.description) = "Room id, e.g. news_456"];
+  string type = 2 [json_name = "type", (mu.service.description) = "What the room is attached to: post, news or video"];
+  string title = 3 [json_name = "title"];
+  int32 participants = 4 [json_name = "participants", (mu.service.description) = "How many people are connected right now"];
+  google.protobuf.Timestamp last_activity = 5 [json_name = "last_activity"];
+}
+
+message RoomsRequest {
+  int32 limit = 1 [json_name = "limit", (mu.service.description) = "How many rooms to return (default 20)"];
+}
+
+message RoomsResponse {
+  repeated RoomInfo rooms = 1 [json_name = "rooms", (mu.service.description) = "Active discussions, most recently active first"];
+}
+
+message SendRequest {
+  string room = 1 [json_name = "room", (mu.service.description) = "Room id, as returned by chat_rooms", (mu.service.required) = true];
+  string message = 2 [json_name = "message", (mu.service.description) = "What to say", (mu.service.required) = true];
+}
+
+message SendResponse {
+  string result = 1 [json_name = "result"];
+}
+
+message ServiceSourceMessage {
+  map<string, google.protobuf.Value> facts = 1 [json_name = "facts"];
+  string in_reply_to = 2 [json_name = "in_reply_to"];
+  string references = 3 [json_name = "references"];
+  string html = 4 [json_name = "html"];
+  string id = 5 [json_name = "id"];
+  string ref = 6 [json_name = "ref"];
+  string conversation = 7 [json_name = "conversation"];
+  string subject = 8 [json_name = "subject"];
+  string text = 9 [json_name = "text"];
+  string from = 10 [json_name = "from"];
+  string to = 11 [json_name = "to"];
+  string channel = 12 [json_name = "channel"];
+  string direction = 13 [json_name = "direction"];
+  google.protobuf.Timestamp at = 14 [json_name = "at"];
+}
+
+message ServiceSourceRequest {
+  string id = 1 [json_name = "id", (mu.service.description) = "Stored message id", (mu.service.required) = true];
+}
+
+message ServiceSourceResponse {
+  ServiceSourceMessage item = 1 [json_name = "item"];
+}
+
+message ServiceSourcesRequest {
+  int32 offset = 1 [json_name = "offset"];
+  int32 limit = 2 [json_name = "limit"];
+}
+
+message ServiceSourcesResponse {
+  repeated string ids = 1 [json_name = "ids"];
+  int32 next = 2 [json_name = "next"];
+}
+

@@ -21,7 +21,7 @@ func answerGroup(id, room, actor, ref, text string) {
 	}
 	history := []agent.QueryMessage{}
 	for _, m := range messages.Messages {
-		if m.ID == ref {
+		if m.Id == ref {
 			break
 		}
 		role := "user"

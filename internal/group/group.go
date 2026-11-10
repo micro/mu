@@ -157,7 +157,7 @@ func Read(id, account string) (Group, error) {
 	defer mu.RUnlock()
 	g, ok := records[id]
 	if !ok || account == "" || g.Members[account] == "" {
-		return Group{}, errors.New("group not found")
+		return Group{}, fail(404, "group not found")
 	}
 	out := clone(g)
 	out.LinkHash = ""
@@ -169,7 +169,7 @@ func Read(id, account string) (Group, error) {
 }
 func List(account string) ([]Group, []Pending, error) {
 	if account == "" {
-		return nil, nil, errors.New("sign in to view groups")
+		return nil, nil, fail(401, "sign in to view groups")
 	}
 	if err := Load(); err != nil {
 		return nil, nil, err
@@ -200,12 +200,28 @@ func Create(account, name string, encrypted bool, descriptions ...string) (Group
 	if len(descriptions) > 0 {
 		description = strings.TrimSpace(descriptions[0])
 	}
+	return create(account, name, encrypted, description, nil, "")
+}
+
+// Start creates a plaintext group's first chat and invitations in one commit.
+// The product validates invitee identities and the selected assistant first.
+func Start(account, name, description, assistant string, invitees []string) (Group, error) {
+	if assistant != "" && assistant != "none" {
+		return Group{}, fail(400, "choose Micro or people only for a new group")
+	}
+	if len(invitees) > 32 {
+		return Group{}, fail(400, "invite up to 32 people at a time")
+	}
+	return create(account, name, false, strings.TrimSpace(description), invitees, assistant)
+}
+
+func create(account, name string, encrypted bool, description string, invitees []string, assistant string) (Group, error) {
 	if len([]rune(description)) > 1000 {
-		return Group{}, errors.New("description must be at most 1000 characters")
+		return Group{}, fail(400, "description must be at most 1000 characters")
 	}
 	name = strings.TrimSpace(name)
 	if account == "" || name == "" || len([]rune(name)) > 100 {
-		return Group{}, errors.New("a group needs a name of up to 100 characters")
+		return Group{}, fail(400, "a group needs a name of up to 100 characters")
 	}
 	if err := Load(); err != nil {
 		return Group{}, err
@@ -219,13 +235,24 @@ func Create(account, name string, encrypted bool, descriptions ...string) (Group
 		}
 	}
 	if count >= 50 {
-		return Group{}, errors.New("you can own up to 50 groups")
+		return Group{}, fail(409, "you can own up to 50 groups")
 	}
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
 		return Group{}, err
 	}
 	g := Group{Description: description, ID: hex.EncodeToString(b[:]), Name: name, Encrypted: encrypted, Owner: account, Created: time.Now().UTC(), SpendLimit: 1000, MembersUseAI: true, Members: map[string]string{account: "owner"}, Invitations: map[string]Invitation{}}
+	if !encrypted {
+		c := General(g)
+		c.Agent = assistant
+		g.Conversations = map[string]Conversation{c.ID: c}
+	}
+	for _, invitee := range invitees {
+		if invitee == "" || invitee == account {
+			continue
+		}
+		g.Invitations[invitee] = Invitation{Account: invitee, InvitedBy: account, Expires: time.Now().UTC().Add(7 * 24 * time.Hour)}
+	}
 	next := copyRecords()
 	next[g.ID] = g
 	if err := save(next); err != nil {
@@ -254,7 +281,7 @@ func Change(id, actor, action, target, value string) error {
 
 func change(id, actor, action, target, value string, check func(string) error) error {
 	if actor == "" {
-		return errors.New("sign in to manage groups")
+		return fail(401, "sign in to manage groups")
 	}
 	if err := Load(); err != nil {
 		return err
@@ -263,14 +290,14 @@ func change(id, actor, action, target, value string, check func(string) error) e
 	defer mu.Unlock()
 	stored, ok := records[id]
 	if !ok {
-		return errors.New("group not found")
+		return fail(404, "group not found")
 	}
 	g := clone(stored)
 	role := g.Members[actor]
 	if action == "accept" || action == "decline" {
 		inv, ok := g.Invitations[actor]
 		if !ok || !time.Now().Before(inv.Expires) {
-			return errors.New("invitation not found or expired")
+			return fail(404, "invitation not found or expired")
 		}
 		delete(g.Invitations, actor)
 		if action == "accept" {
@@ -278,16 +305,16 @@ func change(id, actor, action, target, value string, check func(string) error) e
 		}
 	} else {
 		if role == "" {
-			return errors.New("group not found")
+			return fail(404, "group not found")
 		}
 		admin := role == "owner" || role == "admin"
 		switch action {
 		case "invite":
 			if !admin {
-				return errors.New("only owners and admins can invite people")
+				return fail(403, "only owners and admins can invite people")
 			}
 			if target == "" || g.Members[target] != "" {
-				return errors.New("choose someone who is not already a member")
+				return fail(400, "choose someone who is not already a member")
 			}
 			for a, inv := range g.Invitations {
 				if time.Now().After(inv.Expires) {
@@ -295,24 +322,24 @@ func change(id, actor, action, target, value string, check func(string) error) e
 				}
 			}
 			if len(g.Members)+len(g.Invitations) >= 100 {
-				return errors.New("a group can have up to 100 members and invitations")
+				return fail(409, "a group can have up to 100 members and invitations")
 			}
 			g.Invitations[target] = Invitation{Account: target, InvitedBy: actor, Expires: time.Now().UTC().Add(7 * 24 * time.Hour)}
 		case "remove":
 			if target == g.Owner {
-				return errors.New("transfer ownership before leaving")
+				return fail(409, "transfer ownership before leaving")
 			}
 			if target != actor && (!admin || (role != "owner" && g.Members[target] == "admin")) {
-				return errors.New("you cannot remove this member")
+				return fail(403, "you cannot remove this member")
 			}
 			delete(g.Members, target)
 			delete(g.Invitations, target)
 		case "role":
 			if role != "owner" || g.Members[target] == "" || target == actor {
-				return errors.New("only the owner can change another member's role")
+				return fail(403, "only the owner can change another member's role")
 			}
 			if value != "member" && value != "admin" && value != "owner" {
-				return errors.New("invalid role")
+				return fail(400, "invalid role")
 			}
 			if value == "owner" {
 				g.Members[actor] = "admin"
@@ -321,22 +348,28 @@ func change(id, actor, action, target, value string, check func(string) error) e
 			g.Members[target] = value
 		case "describe":
 			value = strings.TrimSpace(value)
-			if !admin || len([]rune(value)) > 1000 {
-				return errors.New("an owner or admin can set a description of up to 1000 characters")
+			if !admin {
+				return fail(403, "only owners and admins can describe the group")
+			}
+			if len([]rune(value)) > 1000 {
+				return fail(400, "description must be at most 1000 characters")
 			}
 			g.Description = value
 		case "rename":
 			value = strings.TrimSpace(value)
-			if !admin || value == "" || len([]rune(value)) > 100 {
-				return errors.New("an owner or admin must supply a name of up to 100 characters")
+			if !admin {
+				return fail(403, "only owners and admins can rename the group")
+			}
+			if value == "" || len([]rune(value)) > 100 {
+				return fail(400, "a group needs a name of up to 100 characters")
 			}
 			g.Name = value
 		case "delete":
 			if time.Now().Before(g.BillingUntil) {
-				return errors.New("stop group billing in Budget before deleting this group")
+				return fail(409, "stop group billing in Budget before deleting this group")
 			}
 			if role != "owner" {
-				return errors.New("only the owner can delete the group")
+				return fail(403, "only the owner can delete the group")
 			}
 			if err := check(id); err != nil {
 				return err
@@ -345,7 +378,7 @@ func change(id, actor, action, target, value string, check func(string) error) e
 			delete(next, id)
 			return save(next)
 		default:
-			return errors.New("unknown group action")
+			return fail(400, "unknown group action")
 		}
 	}
 	next := copyRecords()

@@ -70,7 +70,8 @@ func TypeScriptSDK(specs []Spec) string {
 			if requestType.Kind() == reflect.Struct {
 				for i := 0; i < requestType.NumField(); i++ {
 					field := requestType.Field(i)
-					if field.IsExported() && field.Tag.Get("required") == "true" && field.Tag.Get("json") != "-" {
+					_, required := FieldMetadata(requestType, field)
+					if field.IsExported() && required && field.Tag.Get("json") != "-" {
 						args = "args"
 					}
 				}
@@ -86,6 +87,12 @@ func TypeScriptSDK(specs []Spec) string {
 func sdkType(t reflect.Type, seen map[reflect.Type]bool, request bool) string {
 	if t.Kind() == reflect.Pointer {
 		return sdkType(t.Elem(), seen, request)
+	}
+	if t.PkgPath() == "google.golang.org/protobuf/types/known/timestamppb" && t.Name() == "Timestamp" {
+		return "string"
+	}
+	if t.PkgPath() == "google.golang.org/protobuf/types/known/structpb" {
+		return "unknown"
 	}
 	if t.PkgPath() == "time" && t.Name() == "Time" {
 		return "string"
@@ -128,7 +135,8 @@ func sdkType(t reflect.Type, seen map[reflect.Type]bool, request bool) string {
 				name = f.Name
 			}
 			optional := ""
-			if strings.Contains(f.Tag.Get("json"), "omitempty") || request && f.Tag.Get("required") != "true" {
+			_, required := FieldMetadata(t, f)
+			if strings.Contains(f.Tag.Get("json"), "omitempty") && !required || request && !required {
 				optional = "?"
 			}
 			fields = append(fields, fmt.Sprintf("%q%s: %s", name, optional, sdkType(f.Type, seen, request)))

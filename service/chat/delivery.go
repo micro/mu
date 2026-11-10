@@ -3,11 +3,14 @@ package chat
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mu/internal/group"
 	"strings"
 	"time"
 )
+
+var errDuplicateMessage = errors.New("message already saved")
 
 // post waits for the room to persist the message, not for a browser to remain
 // connected. A stopped room or a failed disk write must not report "sent".
@@ -48,10 +51,13 @@ func (room *Room) keepMessage(message RoomMessage) error {
 			return fmt.Errorf("message encryption does not match the group; use its selected chat mode")
 		}
 	}
-	if isGroup(room.ID) && message.WireID != "" {
+	if message.WireID != "" {
 		for _, existing := range room.Messages {
 			if existing.WireID == message.WireID && existing.UserID == message.UserID {
-				return nil
+				if existing.Content != message.Content || existing.OMEMO != message.OMEMO || existing.IsLLM != message.IsLLM {
+					return fmt.Errorf("message identifier already used for different content")
+				}
+				return errDuplicateMessage
 			}
 		}
 	}
@@ -87,4 +93,16 @@ func (room *Room) keepMessage(message RoomMessage) error {
 	room.Messages = next
 	room.LastActivity = time.Now()
 	return nil
+}
+
+func validClientMessageID(id string) bool {
+	if len(id) < 16 || len(id) > 128 {
+		return false
+	}
+	for _, c := range id {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_') {
+			return false
+		}
+	}
+	return true
 }

@@ -15,6 +15,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"mu/internal/dir"
 	"os"
@@ -273,6 +275,9 @@ func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 	// timeout/receive cleanup race. Networked registries keep their transport.
 	if cl.Options().Local {
 		body, err := json.Marshal(req)
+		if message, ok := req.(proto.Message); ok {
+			body, err = protojson.Marshal(message)
+		}
 		if err != nil {
 			return err
 		}
@@ -282,6 +287,9 @@ func Call(ctx context.Context, svcName, endpoint string, req, rsp any) error {
 		}
 		if rsp == nil || len(reply.Data) == 0 {
 			return nil
+		}
+		if message, ok := rsp.(proto.Message); ok {
+			return protojson.Unmarshal(reply.Data, message)
 		}
 		return json.Unmarshal(reply.Data, rsp)
 	}

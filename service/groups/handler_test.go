@@ -44,7 +44,7 @@ func TestGroupUIAndServiceIsolation(t *testing.T) {
 		t.Fatal("CSRF-less delete succeeded")
 	}
 	var rsp GroupResponse
-	if err := (Server{}).Read(service.WithAccount(context.Background(), "groups-ui-other"), &ReadRequest{ID: g.ID}, &rsp); err == nil {
+	if err := (Server{}).Read(service.WithAccount(context.Background(), "groups-ui-other"), &ReadRequest{Id: g.ID}, &rsp); err == nil {
 		t.Fatal("service disclosed foreign group")
 	}
 	w = httptest.NewRecorder()
