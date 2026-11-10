@@ -190,7 +190,8 @@ write and remains unavailable as an autonomous destructive model tool. Other
 services remain available to agents through their existing tools; their catalogue
 entries have no direct MUCP contract until a tested adapter ships.
 
-Home reads cached local projections only. It does not fetch remote calendars,
+Home reads local projections and schedules the existing bounded background cache
+refresh. It does not wait on remote calendars,
 invoke a model, or spend credits to render an overview. `calendarPending` signals
 stale/missing calendar cache. Inbox reads do not grant permission to execute agents
 on mail/group contexts. Current Inbox message projection exposes text and role;

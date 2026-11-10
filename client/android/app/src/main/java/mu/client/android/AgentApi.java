@@ -43,7 +43,7 @@ final class AgentApi {
             if (state.equals("OPERATION_STATE_FAILED") || state.equals("OPERATION_STATE_INTERRUPTED"))
                 throw new IOException(receipt.optString("error", "Execution stopped. Check Chats before trying again."));
             if (System.nanoTime() >= deadline) throw new IOException("Your request is still running. Open Chats to recover the reply.");
-            Thread.sleep(1000);
+            java.lang.Thread.sleep(1000);
             receipt = operation(server, token, receipt.getString("id"));
         }
         JSONObject reply = receipt.getJSONObject("result");
