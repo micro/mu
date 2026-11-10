@@ -132,14 +132,14 @@ func TestFocusedClientBrowser(t *testing.T) {
 		}
 	}))
 	defer runtime.Close()
-	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(chrome), chromedp.Flag("no-sandbox", false), chromedp.Flag("disable-dev-shm-usage", true))
+	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(chrome), chromedp.Flag("no-sandbox", false), chromedp.Flag("disable-dev-shm-usage", true), chromedp.Flag("host-resolver-rules", "MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost"))
 	alloc, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	defer cancel()
 	ctx, cancel := chromedp.NewContext(alloc)
 	defer cancel()
 	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
-	err := chromedp.Run(ctx, chromedp.Navigate(client.URL), chromedp.WaitVisible("#runtime"), chromedp.SetValue("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitReady("#new-chat"))
+	err := chromedp.Run(ctx, chromedp.Navigate(client.URL), chromedp.WaitVisible("#runtime"), chromedp.SetValue("#runtime", ""), chromedp.SendKeys("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitReady("#new-chat"))
 	if err != nil {
 		t.Fatalf("independent sign-in: %v", err)
 	}
