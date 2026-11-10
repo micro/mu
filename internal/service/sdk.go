@@ -88,6 +88,12 @@ func sdkType(t reflect.Type, seen map[reflect.Type]bool, request bool) string {
 	if t.Kind() == reflect.Pointer {
 		return sdkType(t.Elem(), seen, request)
 	}
+	if t.PkgPath() == "google.golang.org/protobuf/types/known/timestamppb" && t.Name() == "Timestamp" {
+		return "string"
+	}
+	if t.PkgPath() == "google.golang.org/protobuf/types/known/structpb" {
+		return "unknown"
+	}
 	if t.PkgPath() == "time" && t.Name() == "Time" {
 		return "string"
 	}
