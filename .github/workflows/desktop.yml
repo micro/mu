@@ -73,6 +73,10 @@ jobs:
           APPLE_TEAM_ID: ${{ inputs.release_tag != '' && secrets.APPLE_TEAM_ID || '' }}
         run: |
           if [ "$TARGET" != mac ]; then unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; fi
+          # electron-builder treats an empty signing path as the working directory.
+          for name in CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name:-}" ]; then unset "$name"; fi
+          done
           npm run package -- --"$TARGET"
       - uses: actions/upload-artifact@v4
         with:
