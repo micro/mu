@@ -1,3 +1,4 @@
+import type { Callback } from "./desktop";
 import { runtimeOrigin, type Session } from "./protocol";
 const sessionKey = "mu-web-session",
   pendingKey = "mu-web-signin";
@@ -28,6 +29,7 @@ async function request(url: string, body: string, type: string) {
     method: "POST",
     credentials: "omit",
     cache: "no-store",
+    redirect: "error",
     signal: AbortSignal.timeout(20000),
     headers: { "Content-Type": type },
     body,
@@ -61,6 +63,7 @@ export function loadSession(): Session | null {
 export function disconnect() {
   sessionStorage.removeItem(sessionKey);
   sessionStorage.removeItem(pendingKey);
+  window.muDesktop?.saveSession(null).catch(() => {});
 }
 export function defaultRuntime(): string {
   try {
@@ -71,9 +74,54 @@ export function defaultRuntime(): string {
     ? location.origin
     : "https://micro.mu";
 }
+export function hosted(value = defaultRuntime()): boolean {
+  return (
+    location.pathname.startsWith("/app/") &&
+    runtimeOrigin(value) === location.origin
+  );
+}
+export async function restoreRuntime() {
+  const server = await window.muDesktop?.loadRuntime();
+  if (server) localStorage.setItem("mu-web-runtime", runtimeOrigin(server));
+}
+export async function saveRuntime(value: string) {
+  const server = runtimeOrigin(value);
+  await window.muDesktop?.saveRuntime(server);
+  disconnect();
+  localStorage.setItem("mu-web-runtime", server);
+}
+export function accountURL(action: "login" | "signup") {
+  return (
+    defaultRuntime() +
+    "/" +
+    action +
+    "?redirect=" +
+    encodeURIComponent(location.pathname)
+  );
+}
+async function browserSession(): Promise<Session | null> {
+  if (!hosted()) return null;
+  const r = await fetch("/session", {
+    credentials: "same-origin",
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!r.ok) throw Error("Could not check your sign-in. Please reload.");
+  const data = await r.json();
+  return data.account
+    ? { server: location.origin, token: "", expires: 0, cookie: true }
+    : null;
+}
 export async function signIn(value: string) {
+  if (hosted(value)) {
+    location.assign(accountURL("login"));
+    return;
+  }
   const server = runtimeOrigin(value),
-    redirect = location.origin + location.pathname;
+    redirect = window.muDesktop
+      ? await window.muDesktop.redirect()
+      : location.origin + location.pathname;
   const registered = await request(
     server + "/oauth/register",
     JSON.stringify({ client_name: "Mu Web", redirect_uris: [redirect] }),
@@ -100,7 +148,9 @@ export async function signIn(value: string) {
     code_challenge_method: "S256",
     code_challenge: await challenge(pending.verifier),
   });
-  location.assign(server + "/oauth/authorize?" + query);
+  const url = server + "/oauth/authorize?" + query;
+  if (window.muDesktop) await window.muDesktop.authorize(url);
+  else location.assign(url);
 }
 export function validCallback(
   p: Pending | null,
@@ -118,9 +168,21 @@ export function validCallback(
     runtimeOrigin(p.server) === p.server
   );
 }
-export async function finishSignIn(): Promise<Session | null> {
-  const query = new URLSearchParams(location.search);
-  if (!query.has("code") && !query.has("error")) return loadSession();
+export async function finishSignIn(
+  callback?: Callback,
+): Promise<Session | null> {
+  const query = callback
+    ? new URLSearchParams(
+        Object.entries(callback).filter(([key]) => key !== "callback"),
+      )
+    : new URLSearchParams(location.search);
+  if (!query.has("code") && !query.has("error")) {
+    if (hosted()) return browserSession();
+    return (
+      loadSession() ||
+      (window.muDesktop ? await window.muDesktop.loadSession() : null)
+    );
+  }
   let pending: Pending | null = null;
   try {
     pending = JSON.parse(sessionStorage.getItem(pendingKey) || "null");
@@ -132,7 +194,7 @@ export async function finishSignIn(): Promise<Session | null> {
     !validCallback(
       pending,
       query.get("state"),
-      location.origin + location.pathname,
+      callback?.callback || location.origin + location.pathname,
       Date.now(),
     )
   )
@@ -162,6 +224,7 @@ export async function finishSignIn(): Promise<Session | null> {
     expires: Date.now() + Math.min(result.expires_in, 86400) * 1000,
   };
   sessionStorage.setItem(sessionKey, JSON.stringify(session));
+  await window.muDesktop?.saveSession(session);
   localStorage.setItem("mu-web-runtime", session.server);
   history.replaceState(null, "", location.pathname + pending.query);
   return session;

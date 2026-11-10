@@ -1,0 +1,90 @@
+[
+  {
+    "operation": "ListAgents",
+    "request": {},
+    "response": {
+      "agents": [
+        {
+          "id": "micro",
+          "slug": "micro",
+          "name": "Micro",
+          "description": "A personal assistant"
+        }
+      ]
+    }
+  },
+  {
+    "operation": "ListThreads",
+    "request": {
+      "agentId": "micro",
+      "pageSize": 20
+    },
+    "response": {
+      "threads": [
+        {
+          "id": "thread-example",
+          "agentId": "micro",
+          "subject": "Weather",
+          "started": "2026-11-10T08:00:00Z",
+          "updated": "2026-11-10T08:01:00Z"
+        }
+      ],
+      "nextPageToken": ""
+    }
+  },
+  {
+    "operation": "ReadThread",
+    "request": {
+      "thread": "thread-example",
+      "pageSize": 20
+    },
+    "response": {
+      "thread": {
+        "id": "thread-example",
+        "agentId": "micro",
+        "subject": "Weather"
+      },
+      "messages": [
+        {
+          "id": "message-one",
+          "role": "ROLE_AGENT",
+          "text": "Clear skies",
+          "at": "2026-11-10T08:01:00Z"
+        }
+      ],
+      "nextPageToken": "",
+      "pending": false
+    }
+  },
+  {
+    "operation": "Ask",
+    "request": {
+      "agentId": "micro",
+      "thread": "",
+      "prompt": "Hello",
+      "mode": "ACCESS_MODE_PERSONAL",
+      "voice": false
+    },
+    "response": {
+      "thread": "thread-example",
+      "agentId": "micro",
+      "text": "Here is the forecast.",
+      "content": [
+        {
+          "fallback": "Forecast: clear skies",
+          "source": {
+            "title": "Forecast",
+            "url": "https://example.org/weather",
+            "summary": "Clear skies"
+          }
+        },
+        {
+          "fallback": "A future widget can still be read",
+          "futureWidget": {
+            "name": "future"
+          }
+        }
+      ]
+    }
+  }
+]

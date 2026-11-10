@@ -80,3 +80,77 @@ test("MUCP uses only explicit credentials and accepts the shared wire fixture", 
     globalThis.fetch = previous;
   }
 });
+test("session transport keeps cookies and CSRF on the same origin only", async () => {
+  const oldFetch = globalThis.fetch;
+  Object.defineProperty(globalThis, "location", {
+    configurable: true,
+    value: { origin: session.server },
+  });
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: { cookie: "csrf_token=csrf-proof" },
+  });
+  let calls = 0;
+  globalThis.fetch = async (_url, init) => {
+    calls++;
+    assert.equal(init?.credentials, "same-origin");
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("Authorization"), null);
+    assert.equal(headers.get("X-CSRF-Token"), "csrf-proof");
+    return new Response('{"agents":[]}', {
+      headers: {
+        "Micro-Protocol": "mucp/1",
+        "Micro-Id": headers.get("Micro-Id")!,
+      },
+    });
+  };
+  try {
+    await call({ ...session, cookie: true, token: "" }, "ListAgents", {});
+    await assert.rejects(
+      call(
+        { ...session, cookie: true, server: "https://other.example" },
+        "ListAgents",
+        {},
+      ),
+    );
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = oldFetch;
+    Reflect.deleteProperty(globalThis, "location");
+    Reflect.deleteProperty(globalThis, "document");
+  }
+});
+test("all assistant exchanges follow the shared JSON contract", async () => {
+  const cases = JSON.parse(
+    readFileSync(
+      new URL("../../../proto/testdata/exchanges.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const oldFetch = globalThis.fetch;
+  try {
+    for (const item of cases) {
+      globalThis.fetch = async (_url, init) => {
+        const headers = new Headers(init?.headers);
+        assert.equal(
+          headers.get("Micro-Endpoint"),
+          "Assistant." + item.operation,
+        );
+        assert.equal(init?.redirect, "error");
+        assert.deepEqual(JSON.parse(String(init?.body)), item.request);
+        return new Response(JSON.stringify(item.response), {
+          headers: {
+            "Micro-Protocol": "mucp/1",
+            "Micro-Id": headers.get("Micro-Id")!,
+          },
+        });
+      };
+      assert.deepEqual(
+        await call(session, item.operation, item.request),
+        item.response,
+      );
+    }
+  } finally {
+    globalThis.fetch = oldFetch;
+  }
+});

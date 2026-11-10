@@ -1,0 +1,93 @@
+{
+  "name": "mu-desktop",
+  "productName": "Mu",
+  "version": "2.17.6",
+  "description": "Mu personal assistant",
+  "author": {
+    "name": "Micro XYZ Ltd",
+    "email": "admin@micro.mu"
+  },
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "prepare:app": "node prepare.mjs",
+    "start": "electron .",
+    "test": "node --test *.test.mjs",
+    "package": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "playwright-core": "1.65.0"
+  },
+  "build": {
+    "appId": "mu.micro.desktop",
+    "productName": "Mu",
+    "asar": true,
+    "files": [
+      "main.mjs",
+      "server.mjs",
+      "preload.cjs",
+      "web/**/*",
+      "LICENSE"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Mu uses your microphone when you ask it to listen."
+      },
+      "artifactName": "mu-macos-${arch}.${ext}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "mu-windows-${arch}-setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility",
+      "artifactName": "mu-linux-${arch}.${ext}"
+    }
+  },
+  "homepage": "https://micro.mu"
+}

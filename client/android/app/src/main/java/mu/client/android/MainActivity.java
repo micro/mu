@@ -555,12 +555,12 @@ public class MainActivity extends Activity {
         stopAudio();
         AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(signedIn() ? "Account" : "Start talking to " + agentName);
         if (!signedIn()) {
-            dialog.setMessage(agentDescription + "\n\nSign in on " + account.optString("server", "https://micro.mu") + " with your existing account, or create one in your browser.")
+            dialog.setMessage(agentDescription + "\n\nSign in with your existing account, or create one in your browser.")
                 .setPositiveButton("Sign in", (d, w) -> beginSignIn(account.optString("server", "https://micro.mu")))
-                .setNeutralButton("Advanced", (d, w) -> advancedConnection()).setNegativeButton("Cancel", null).show();
+                .setNeutralButton("Settings", (d, w) -> advancedConnection()).setNegativeButton("Cancel", null).show();
             return;
         }
-        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Advanced", "Sign out", "Use Mu as phone assistant", "Wake aliases"}, (d, index) -> {
+        dialog.setItems(new String[]{"Choose an agent", "Add agent to home screen", "Share agent link", "Open account", "Settings", "Sign out", "Use Mu as phone assistant", "Wake aliases"}, (d, index) -> {
             switch (index) {
                 case 7: wakeAliases(); break;
                 case 6:

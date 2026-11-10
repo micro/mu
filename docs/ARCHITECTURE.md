@@ -12,7 +12,7 @@ into a running system that clients can use.
  +-------------------+                                +-------------------+
  | Android           |                                | Authentication    |
  | Web client        | -- assistant requests --------> | + authorisation   |
- | Future clients    |    MUCP / HTTPS / JSON (*)      +---------+---------+
+ | Desktop apps      |    MUCP / HTTPS / JSON (*)      +---------+---------+
  |                   |                                          |
  | Text, voice,      |                                +---------v---------+
  | result rendering  | <--- answers + typed results -- | Assistant entry   |
@@ -36,7 +36,9 @@ into a running system that clients can use.
 
 (*) Android and the focused client in `client/web` use the MUCP HTTPS/JSON
 binding for agents, threads and replies. The React/TypeScript web client runs independently and connects to a selected
-runtime using OAuth/PKCE and explicit tokens. Mu can also serve its build at `/app/`.
+runtime using OAuth/PKCE and explicit tokens. Mu also serves the build at `/app/`,
+where it reuses same-origin session cookies with CSRF protection. Desktop installers
+bundle the React app with Electron and use system-browser OAuth.
 The PWA belongs to the full runtime web experience, not the standalone client.
 The server uses go-micro with an in-memory transport internally.
 The web console is server-rendered composition, not currently an independent MUCP

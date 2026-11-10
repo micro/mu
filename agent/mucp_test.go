@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -182,5 +184,76 @@ func TestMUCPSharedWireFixture(t *testing.T) {
 	}
 	if response.Thread != "thread-example" || len(response.Content) != 2 || response.Content[1].Fallback != "A future widget can still be read" {
 		t.Fatal("wire fixture lost fallback")
+	}
+}
+
+func TestMUCPBrowserSessionRequiresCSRFForWrites(t *testing.T) {
+	const id = "mucp_browser_session"
+	if err := auth.Create(&auth.Account{ID: id, Admin: true}); err != nil {
+		t.Fatal(err)
+	}
+	sess, err := auth.CreateSession(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, csrf := range []bool{false, true} {
+		r := httptest.NewRequest("POST", "/", strings.NewReader(`{"prompt":"hello"}`))
+		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		r.Header.Set("Micro-Protocol", "mucp/1")
+		r.Header.Set("Micro-Service", "assistant")
+		r.Header.Set("Micro-Endpoint", "Assistant.Ask")
+		r.Header.Set("Micro-Id", "browser-request-1234")
+		r.Header.Set("Content-Type", "application/json")
+		if csrf {
+			r.Header.Set("X-CSRF-Token", auth.CSRFToken(r))
+		}
+		w := httptest.NewRecorder()
+		MUCPHandler(w, r)
+		want := 403
+		if csrf {
+			want = 400
+		} // Missing access mode reaches validation only after authorization.
+		if w.Code != want {
+			t.Fatalf("csrf=%v: %d %s", csrf, w.Code, w.Body.String())
+		}
+	}
+}
+
+func TestMUCPSharedExchanges(t *testing.T) {
+	raw, err := os.ReadFile("../proto/testdata/exchanges.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases []struct {
+		Operation         string
+		Request, Response json.RawMessage
+	}
+	if err = json.Unmarshal(raw, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range cases {
+		var request, response proto.Message
+		switch item.Operation {
+		case "ListAgents":
+			request = &pb.ListAgentsRequest{}
+			response = &pb.ListAgentsResponse{}
+		case "ListThreads":
+			request = &pb.ListThreadsRequest{}
+			response = &pb.ListThreadsResponse{}
+		case "ReadThread":
+			request = &pb.ReadThreadRequest{}
+			response = &pb.ReadThreadResponse{}
+		case "Ask":
+			request = &pb.AskRequest{}
+			response = &pb.AskResponse{}
+		default:
+			t.Fatal("unknown operation", item.Operation)
+		}
+		if err := protojson.Unmarshal(item.Request, request); err != nil {
+			t.Fatal(item.Operation, err)
+		}
+		if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(item.Response, response); err != nil {
+			t.Fatal(item.Operation, err)
+		}
 	}
 }

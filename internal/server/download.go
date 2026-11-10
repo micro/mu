@@ -17,6 +17,7 @@ import (
 )
 
 type androidRelease struct {
+	Desktop map[string]string
 	WebURL  string
 	URL     string
 	Version string
@@ -85,14 +86,15 @@ func fetchAndroidRelease(ctx context.Context, client *http.Client, endpoint stri
 	if err := json.Unmarshal(body, &release); err != nil {
 		return androidRelease{}, err
 	}
-	result := androidRelease{Checked: true}
+	result := androidRelease{Checked: true, Desktop: map[string]string{}}
 	if release.Draft || release.Prerelease || release.Tag == "" {
 		return result, nil
 	}
 	for _, asset := range release.Assets {
 		// Release CI only gives this name to a release-signed APK. Never offer
 		// unsigned or preview builds as the consumer installer.
-		if asset.Name != "mu-android.apk" && asset.Name != "mu-web.zip" {
+		desktop := map[string]bool{"mu-windows-x64-setup.exe": true, "mu-macos-arm64.dmg": true, "mu-macos-x64.dmg": true, "mu-linux-x86_64.AppImage": true, "mu-linux-amd64.deb": true}
+		if asset.Name != "mu-android.apk" && asset.Name != "mu-web.zip" && !desktop[asset.Name] {
 			continue
 		}
 		u, err := url.Parse(asset.URL)
@@ -102,7 +104,9 @@ func fetchAndroidRelease(ctx context.Context, client *http.Client, endpoint stri
 		if u.Path != "/micro/mu/releases/download/"+release.Tag+"/"+asset.Name || strings.Contains(release.Tag, "/") {
 			continue
 		}
-		if asset.Name == "mu-web.zip" {
+		if desktop[asset.Name] {
+			result.Desktop[asset.Name] = asset.URL
+		} else if asset.Name == "mu-web.zip" {
 			result.WebURL = asset.URL
 		} else {
 			result.URL = asset.URL
@@ -134,10 +138,29 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	if release.URL != "" {
 		android = `<div class="section-body"><div class="form-actions">` + app.ActionLink("/download/android", "Download for Android") + `<span class="action-note">` + html.EscapeString(release.Version) + ` · APK</span></div><p>Open the downloaded file and allow installation from your browser when Android asks. Updates are installed from this page over your existing app.</p></div>`
 	}
+	desktopHTML := ""
+	for _, platform := range []struct {
+		name   string
+		assets []struct{ file, label string }
+	}{
+		{"Windows", []struct{ file, label string }{{"mu-windows-x64-setup.exe", "Download for Windows"}}},
+		{"Mac", []struct{ file, label string }{{"mu-macos-arm64.dmg", "Apple silicon"}, {"mu-macos-x64.dmg", "Intel"}}},
+		{"Linux", []struct{ file, label string }{{"mu-linux-amd64.deb", "Download .deb"}, {"mu-linux-x86_64.AppImage", "Download AppImage"}}},
+	} {
+		links := ""
+		for _, asset := range platform.assets {
+			if url := release.Desktop[asset.file]; url != "" {
+				links += app.ActionLink(url, asset.label)
+			}
+		}
+		if links != "" {
+			desktopHTML += `<section class="page-section"><h2>Mu for ` + platform.name + `</h2><div class="form-actions">` + links + `</div></section>`
+		}
+	}
 	body := `<h1>Mu apps</h1><p>Use Mu in your browser or download the app for your device.</p>
 <section class="page-section" id="web"><h2>Mu Web</h2><p>Talk to your agents in your browser, on your phone, tablet or computer.</p><div class="form-actions">` + app.ActionLink("/app/", "Open Mu Web") + `</div></section>
 <section class="page-section" id="android"><h2>Mu for Android</h2>` + android + `</section>
-<section class="page-section" id="iphone"><h2>iPhone and iPad</h2><p>Use <a href="/app/">Mu Web</a> in Safari. To keep Home, Inbox, Agents and Services on your Home Screen, open <a href="/home">Mu Home</a>, tap Share, then Add to Home Screen.</p></section>
+` + desktopHTML + `<section class="page-section" id="iphone"><h2>iPhone and iPad</h2><p>Use <a href="/app/">Mu Web</a> in Safari. To keep Home, Inbox, Agents and Services on your Home Screen, open <a href="/home">Mu Home</a>, tap Share, then Add to Home Screen.</p></section>
 <p class="text-muted">Want to run Mu yourself? See the <a href="/install">setup guide</a>.</p>`
 	_, acc := auth.TrySession(r)
 	w.Header().Set("Cache-Control", "private, no-store")

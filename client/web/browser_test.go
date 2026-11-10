@@ -139,7 +139,7 @@ func TestFocusedClientBrowser(t *testing.T) {
 	defer cancel()
 	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
-	err := chromedp.Run(ctx, chromedp.Navigate(client.URL), chromedp.WaitVisible("#runtime"), chromedp.Evaluate(`document.querySelector("#runtime").select()`, nil), chromedp.SendKeys("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitReady("#new-chat"))
+	err := chromedp.Run(ctx, chromedp.Navigate(client.URL+"/?view=settings"), chromedp.WaitVisible("#runtime"), chromedp.Evaluate(`document.querySelector("#runtime").select()`, nil), chromedp.SendKeys("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitVisible("#sign-in"), chromedp.Click("#sign-in"), chromedp.WaitReady("#new-chat"))
 	if err != nil {
 		t.Fatalf("independent sign-in: %v", err)
 	}
@@ -183,5 +183,71 @@ func TestFocusedClientBrowser(t *testing.T) {
 	err = chromedp.Run(ctx, chromedp.Click("#new-chat"), chromedp.WaitEnabled("#send"), chromedp.SendKeys("#prompt", "Pending\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('#responses').textContent.includes('Recovered')`, &valid))
 	if err != nil || !valid {
 		t.Fatalf("pending recovery: %v", err)
+	}
+}
+
+func TestHostedClientBrowser(t *testing.T) {
+	if testing.Short() || os.Getenv("CHROME_PATH") == "" {
+		t.Skip("browser gate runs separately")
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/app/", http.StripPrefix("/app", web.Handler()))
+	mux.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := r.Cookie("session"); err != nil {
+			w.Write([]byte(`{"type":"guest"}`))
+			return
+		}
+		http.SetCookie(w, &http.Cookie{Name: "csrf_token", Value: "csrf-proof", Path: "/"})
+		w.Write([]byte(`{"account":"owner","type":"session"}`))
+	})
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("redirect") != "/app/" {
+			t.Error("login lost app destination")
+		}
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "browser-session", Path: "/", HttpOnly: true})
+		http.Redirect(w, r, "/app/", 303)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		cookie, err := r.Cookie("session")
+		if r.URL.Path != "/" || r.Method != "POST" || err != nil || cookie.Value != "browser-session" || r.Header.Get("Authorization") != "" || r.Header.Get("X-CSRF-Token") != "csrf-proof" {
+			t.Errorf("hosted client did not reuse its session safely: %s %s", r.Method, r.URL.Path)
+			http.Error(w, "unauthorized", 401)
+			return
+		}
+		w.Header().Set("Micro-Protocol", "mucp/1")
+		w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
+		w.Header().Set("Content-Type", "application/json")
+		switch r.Header.Get("Micro-Endpoint") {
+		case "Assistant.ListAgents":
+			w.Write([]byte(`{"agents":[{"id":"micro","slug":"micro","name":"Micro"}]}`))
+		case "Assistant.Ask":
+			w.Write([]byte(`{"thread":"browser-thread","text":"Session reply","content":[]}`))
+		default:
+			t.Error("unexpected operation")
+			http.Error(w, "unknown", 400)
+		}
+	})
+	runtime := httptest.NewServer(mux)
+	defer runtime.Close()
+	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ExecPath(os.Getenv("CHROME_PATH")), chromedp.Flag("no-sandbox", false), chromedp.Flag("disable-dev-shm-usage", true))
+	alloc, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancel()
+	ctx, cancel := chromedp.NewContext(alloc)
+	defer cancel()
+	ctx, cancel = context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	var valid bool
+	err := chromedp.Run(ctx, chromedp.Navigate(runtime.URL+"/app/"), chromedp.WaitVisible("#sign-in"), chromedp.Evaluate(`!document.querySelector('#runtime') && !!document.querySelector('a[href*="/signup?"]')`, &valid))
+	if err != nil || !valid {
+		t.Fatalf("default sign-in: %v valid=%v", err, valid)
+	}
+	err = chromedp.Run(ctx, chromedp.Click("#sign-in"), chromedp.WaitEnabled("#send"), chromedp.SendKeys("#prompt", "Hello\r"), chromedp.WaitVisible(".answer"), chromedp.Evaluate(`document.querySelector('#responses').textContent.includes('Session reply')`, &valid))
+	if err != nil || !valid {
+		t.Fatalf("session reuse: %v valid=%v", err, valid)
 	}
 }

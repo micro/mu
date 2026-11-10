@@ -20,6 +20,27 @@ public class ClientTest {
         assertEquals("text",items.getJSONObject(1).getString("kind"));
     }
 
+    @Test public void sharedExchangesMatchGeneratedContracts() throws Exception {
+        org.json.JSONArray cases;
+        try (java.io.InputStream in=getClass().getResourceAsStream("/exchanges.json")) {
+            assertNotNull(in); cases=new org.json.JSONArray(new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
+        }
+        for(int i=0;i<cases.length();i++) {
+            JSONObject item=cases.getJSONObject(i);
+            com.google.protobuf.Message.Builder request,response;
+            switch(item.getString("operation")) {
+            case "ListAgents":request=mu.client.proto.assistant.v1.ListAgentsRequest.newBuilder();response=mu.client.proto.assistant.v1.ListAgentsResponse.newBuilder();break;
+            case "ListThreads":request=mu.client.proto.assistant.v1.ListThreadsRequest.newBuilder();response=mu.client.proto.assistant.v1.ListThreadsResponse.newBuilder();break;
+            case "ReadThread":request=mu.client.proto.assistant.v1.ReadThreadRequest.newBuilder();response=mu.client.proto.assistant.v1.ReadThreadResponse.newBuilder();break;
+            case "Ask":request=mu.client.proto.assistant.v1.AskRequest.newBuilder();response=mu.client.proto.assistant.v1.AskResponse.newBuilder();break;
+            default:throw new AssertionError("Unknown operation");
+            }
+            com.google.protobuf.util.JsonFormat.parser().merge(item.getJSONObject("request").toString(),request);
+            com.google.protobuf.util.JsonFormat.parser().ignoringUnknownFields().merge(item.getJSONObject("response").toString(),response);
+            assertNotNull(request.build());assertNotNull(response.build());
+        }
+    }
+
     @Test public void acceptsOnlyServerOrigins() {
         assertEquals("https://micro.mu", AgentApi.origin("https://micro.mu/"));
         assertEquals("https://example.org:8443", AgentApi.origin("https://example.org:8443"));

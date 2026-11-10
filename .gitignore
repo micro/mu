@@ -52,3 +52,9 @@ screenshot*.png
 internal/app/node_modules
 
 client/web/node_modules/
+client/desktop/node_modules/
+client/desktop/dist/
+client/desktop/web/
+client/desktop/resources/
+client/desktop/LICENSE
+client/desktop/screenshots/

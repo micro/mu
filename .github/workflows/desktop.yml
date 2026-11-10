@@ -1,0 +1,102 @@
+name: Desktop apps
+on:
+  pull_request:
+    paths: ['client/web/**', 'client/desktop/**', 'VERSION', '.github/workflows/desktop.yml', '.github/workflows/release.yml']
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+          - os: windows-latest
+            target: win
+          - os: macos-latest
+            target: mac
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build app
+        shell: bash
+        run: |
+          npm ci --prefix client/web
+          npm test --prefix client/web
+          npm run build --prefix client/web
+          npm ci --prefix client/desktop
+          node client/desktop/node_modules/electron/install.js
+          npm test --prefix client/desktop
+          npm run prepare:app --prefix client/desktop
+      - name: Enable Electron sandbox on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          binary="$(realpath client/desktop/node_modules/electron/dist/electron)"
+          printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile mu-electron %s flags=(unconfined) {\n userns,\n}\n' "$binary" | sudo tee /etc/apparmor.d/mu-electron >/dev/null
+          sudo apparmor_parser -r /etc/apparmor.d/mu-electron
+          sudo chown root:root client/desktop/node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 client/desktop/node_modules/electron/dist/chrome-sandbox
+      - name: Test desktop sign-in and chat
+        shell: bash
+        working-directory: client/desktop
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a node smoke.mjs; else node smoke.mjs; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-screenshots-${{ matrix.target }}
+          path: client/desktop/screenshots
+          if-no-files-found: ignore
+      - name: Package desktop apps
+        shell: bash
+        working-directory: client/desktop
+        env:
+          TARGET: ${{ matrix.target }}
+          CSC_LINK: ${{ inputs.release_tag != '' && secrets.DESKTOP_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ inputs.release_tag != '' && secrets.DESKTOP_CSC_KEY_PASSWORD || '' }}
+          WIN_CSC_LINK: ${{ inputs.release_tag != '' && secrets.DESKTOP_WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ inputs.release_tag != '' && secrets.DESKTOP_WIN_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ inputs.release_tag != '' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.release_tag != '' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.release_tag != '' && secrets.APPLE_TEAM_ID || '' }}
+        run: |
+          if [ "$TARGET" != mac ]; then unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; fi
+          npm run package -- --"$TARGET"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mu-desktop-${{ matrix.target }}
+          path: |
+            client/desktop/dist/*.dmg
+            client/desktop/dist/*.exe
+            client/desktop/dist/*.AppImage
+            client/desktop/dist/*.deb
+          if-no-files-found: error
+      - name: Publish installers
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.release_tag }}
+          TARGET: ${{ matrix.target }}
+          MAC_SIGNING: ${{ inputs.release_tag != '' && secrets.DESKTOP_CSC_LINK || '' }}
+          APPLE_ID: ${{ inputs.release_tag != '' && secrets.APPLE_ID || '' }}
+        run: |
+          if [ "$TARGET" = mac ] && { [ -z "$MAC_SIGNING" ] || [ -z "$APPLE_ID" ]; }; then
+            echo '::warning::macOS installers are available as build artifacts. Configure Developer ID signing and notarization before publishing consumer downloads.'
+            exit 0
+          fi
+          shopt -s nullglob
+          files=(client/desktop/dist/*.dmg client/desktop/dist/*.exe client/desktop/dist/*.AppImage client/desktop/dist/*.deb)
+          gh release upload "$TAG" "${files[@]}" --clobber

@@ -76,6 +76,7 @@ export interface Session {
   server: string;
   token: string;
   expires: number;
+  cookie?: boolean;
 }
 export class ProtocolError extends Error {
   constructor(
@@ -111,15 +112,30 @@ export async function call<K extends keyof Operations>(
   operation: K,
   body: Operations[K]["request"],
 ): Promise<Operations[K]["response"]> {
+  if (session.cookie && runtimeOrigin(session.server) !== location.origin)
+    throw new ProtocolError(
+      "Session cookies cannot be used with another server.",
+    );
   const id = crypto.randomUUID();
+  const credentials: Record<string, string> = session.cookie
+    ? {
+        "X-CSRF-Token": decodeURIComponent(
+          document.cookie
+            .split("; ")
+            .find((c) => c.startsWith("csrf_token="))
+            ?.slice(11) || "",
+        ),
+      }
+    : { Authorization: "Bearer " + session.token };
   const response = await fetch(runtimeOrigin(session.server) + "/", {
     method: "POST",
-    credentials: "omit",
+    credentials: session.cookie ? "same-origin" : "omit",
     cache: "no-store",
+    redirect: "error",
     signal: AbortSignal.timeout(operation === "Ask" ? 135000 : 20000),
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer " + session.token,
+      ...credentials,
       "Micro-Protocol": "mucp/1",
       "Micro-Service": "assistant",
       "Micro-Endpoint": "Assistant." + operation,

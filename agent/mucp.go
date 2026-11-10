@@ -51,7 +51,7 @@ func MUCPHandler(w http.ResponseWriter, r *http.Request) {
 			mucpError(w, 400, "unsupported_protocol", "Unsupported MUCP version")
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"protocol": mucpVersion, "service": "assistant", "contract": "mu.assistant.v1", "encoding": "protobuf-json", "operations": []string{"Assistant.ListAgents", "Assistant.ListThreads", "Assistant.ReadThread", "Assistant.Ask"}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"protocol": mucpVersion, "service": "assistant", "contract": "mu.assistant.v1", "encoding": "protobuf-json", "features": map[string]bool{"streaming": false, "cancellation": false, "automaticRetry": false, "threadRecovery": true}, "limits": map[string]int{"requestBytes": 65536, "waitSeconds": 120, "pageSize": 100}, "operations": []string{"Assistant.ListAgents", "Assistant.ListThreads", "Assistant.ReadThread", "Assistant.Ask"}})
 		return
 	}
 	if r.Method != http.MethodPost {
