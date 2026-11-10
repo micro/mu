@@ -139,7 +139,7 @@ func TestFocusedClientBrowser(t *testing.T) {
 	defer cancel()
 	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
-	err := chromedp.Run(ctx, chromedp.Navigate(client.URL), chromedp.WaitVisible("#runtime"), chromedp.SetValue("#runtime", ""), chromedp.SendKeys("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitReady("#new-chat"))
+	err := chromedp.Run(ctx, chromedp.Navigate(client.URL), chromedp.WaitVisible("#runtime"), chromedp.Evaluate(`document.querySelector("#runtime").select()`, nil), chromedp.SendKeys("#runtime", runtime.URL), chromedp.Click("form button"), chromedp.WaitReady("#new-chat"))
 	if err != nil {
 		t.Fatalf("independent sign-in: %v", err)
 	}
