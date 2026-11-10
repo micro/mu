@@ -143,7 +143,7 @@ export async function signIn(value: string) {
     response_type: "code",
     client_id: pending.client,
     redirect_uri: redirect,
-    scope: "read write api:agent",
+    scope: "read write api:agent api:home api:inbox api:services",
     state: pending.state,
     code_challenge_method: "S256",
     code_challenge: await challenge(pending.verifier),

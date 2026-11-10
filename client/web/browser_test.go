@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -70,7 +71,7 @@ func TestFocusedClientBrowser(t *testing.T) {
 			return
 		case "/oauth/authorize":
 			q := r.URL.Query()
-			if q.Get("scope") != "read write api:agent" || q.Get("code_challenge_method") != "S256" {
+			if q.Get("scope") != "read write api:agent api:home api:inbox api:services" || q.Get("code_challenge_method") != "S256" {
 				t.Error("wrong grant")
 			}
 			mu.Lock()
@@ -112,9 +113,10 @@ func TestFocusedClientBrowser(t *testing.T) {
 			json.NewEncoder(w).Encode(map[string]any{"threads": []any{map[string]string{"id": "own-thread", "agentId": "micro", "subject": "Browser conversation"}}})
 		case "Assistant.ReadThread":
 			json.NewEncoder(w).Encode(map[string]any{"thread": map[string]string{"id": "own-thread", "agentId": "micro", "subject": "Browser conversation"}, "messages": []any{map[string]string{"id": "one", "role": "ROLE_AGENT", "text": "**Recovered** reply"}}})
-		case "Assistant.Ask":
+		case "Assistant.Submit":
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
+			body = body["request"].(map[string]any)
 			calls.Add(1)
 			if body["mode"] != "ACCESS_MODE_PERSONAL" || body["agentId"] != "micro" {
 				t.Error("wrong request scope")
@@ -125,7 +127,7 @@ func TestFocusedClientBrowser(t *testing.T) {
 				json.NewEncoder(w).Encode(map[string]any{"error": map[string]string{"message": "Working"}})
 				return
 			}
-			json.NewEncoder(w).Encode(map[string]any{"thread": "own-thread", "text": "**Forecast**\n\n- Clear skies\n\n<script>window.pwned=true</script>\n\n[Unsafe](javascript:alert(1))", "content": []any{map[string]any{"fallback": "Future widget", "future": map[string]string{"html": "<script>bad()</script>"}}, map[string]any{"source": map[string]string{"title": "Weather source", "url": "https://example.com/weather"}}}})
+			json.NewEncoder(w).Encode(map[string]any{"id": "op-one", "thread": "own-thread", "state": "OPERATION_STATE_SUCCEEDED", "result": map[string]any{"thread": "own-thread", "text": "**Forecast**\n\n- Clear skies\n\n<script>window.pwned=true</script>\n\n[Unsafe](javascript:alert(1))", "content": []any{map[string]any{"fallback": "Future widget", "future": map[string]string{"html": "<script>bad()</script>"}}, map[string]any{"source": map[string]string{"title": "Weather source", "url": "https://example.com/weather"}}}}})
 		default:
 			t.Error("unknown protocol call")
 			http.Error(w, "unknown", 400)
@@ -190,6 +192,7 @@ func TestHostedClientBrowser(t *testing.T) {
 	if testing.Short() || os.Getenv("CHROME_PATH") == "" {
 		t.Skip("browser gate runs separately")
 	}
+	var empty atomic.Bool
 	mux := http.NewServeMux()
 	mux.Handle("/app/", http.StripPrefix("/app", web.Handler()))
 	mux.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
@@ -223,10 +226,29 @@ func TestHostedClientBrowser(t *testing.T) {
 		w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
 		w.Header().Set("Content-Type", "application/json")
 		switch r.Header.Get("Micro-Endpoint") {
+		case "Home.Overview", "Inbox.List", "Services.List":
+			op := r.Header.Get("Micro-Endpoint")
+			if empty.Load() {
+				switch op {
+				case "Home.Overview":
+					w.Write([]byte(`{"agents":[],"inbox":[],"pinnedServices":[],"events":[],"brief":"","calendarPending":true}`))
+				case "Inbox.List":
+					w.Write([]byte(`{"items":[],"nextPageToken":""}`))
+				case "Services.List":
+					w.Write([]byte(`{"services":[],"nextPageToken":""}`))
+				}
+				return
+			}
+			name := map[string]string{"Home.Overview": "home-response.json", "Inbox.List": "inbox-response.json", "Services.List": "services-response.json"}[op]
+			data, err := os.ReadFile(filepath.Join("../../proto/testdata", name))
+			if err != nil {
+				t.Error(err)
+			}
+			w.Write(data)
 		case "Assistant.ListAgents":
 			w.Write([]byte(`{"agents":[{"id":"micro","slug":"micro","name":"Micro"}]}`))
-		case "Assistant.Ask":
-			w.Write([]byte(`{"thread":"browser-thread","text":"Session reply","content":[]}`))
+		case "Assistant.Submit":
+			w.Write([]byte(`{"id":"op-one","thread":"browser-thread","state":"OPERATION_STATE_SUCCEEDED","result":{"thread":"browser-thread","text":"Session reply","content":[]}}`))
 		default:
 			t.Error("unexpected operation")
 			http.Error(w, "unknown", 400)
@@ -239,7 +261,7 @@ func TestHostedClientBrowser(t *testing.T) {
 	defer cancel()
 	ctx, cancel := chromedp.NewContext(alloc)
 	defer cancel()
-	ctx, cancel = context.WithTimeout(ctx, 45*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 	var valid bool
 	err := chromedp.Run(ctx, chromedp.Navigate(runtime.URL+"/app/"), chromedp.WaitVisible("#sign-in"), chromedp.Evaluate(`!document.querySelector('#runtime') && !!document.querySelector('a[href*="/signup?"]')`, &valid))
@@ -250,4 +272,24 @@ func TestHostedClientBrowser(t *testing.T) {
 	if err != nil || !valid {
 		t.Fatalf("session reuse: %v valid=%v", err, valid)
 	}
+	for _, width := range []int64{390, 1280} {
+		for _, isEmpty := range []bool{false, true} {
+			empty.Store(isEmpty)
+			for _, view := range []string{"home", "inbox", "services"} {
+				var screenshot []byte
+				var overflow bool
+				err := chromedp.Run(ctx, emulation.SetDeviceMetricsOverride(width, 900, 1, width < 700), chromedp.Navigate(runtime.URL+"/app/?view="+view), chromedp.WaitVisible("h1"), chromedp.Poll(`!document.querySelector('[role="status"]')`, nil), chromedp.Evaluate(`document.documentElement.scrollWidth>innerWidth`, &overflow), chromedp.FullScreenshot(&screenshot, 90))
+				if err != nil || overflow {
+					t.Fatalf("%s width=%d empty=%t: %v overflow=%t", view, width, isEmpty, err, overflow)
+				}
+				if dir := os.Getenv("UI_SCREENSHOTS"); dir != "" {
+					os.MkdirAll(dir, 0755)
+					if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("composition-%s-%d-%t.png", view, width, isEmpty)), screenshot, 0644); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+		}
+	}
+
 }

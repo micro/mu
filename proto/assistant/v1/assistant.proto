@@ -17,6 +17,8 @@ service Assistant {
   rpc ListThreads(ListThreadsRequest) returns (ListThreadsResponse);
   rpc ReadThread(ReadThreadRequest) returns (ReadThreadResponse);
   rpc Ask(AskRequest) returns (AskResponse);
+  rpc Submit(SubmitRequest) returns (Operation);
+  rpc ReadOperation(ReadOperationRequest) returns (Operation);
 }
 
 message ListAgentsRequest {}
@@ -178,4 +180,29 @@ message Resource {
   string url = 3;
   string title = 4;
   string summary = 5;
+}
+
+// A durable personal request. message_id is stable across retries; Micro-Id is
+// the individual exchange. Reuse with changed content is rejected.
+message SubmitRequest {
+ string message_id = 1;
+ AskRequest request = 2;
+}
+message ReadOperationRequest { string id = 1; }
+message Operation {
+ string id = 1;
+ string thread = 2;
+ string agent_id = 3;
+ OperationState state = 4;
+ AskResponse result = 5;
+ string error = 6;
+ google.protobuf.Timestamp created = 7;
+}
+enum OperationState {
+ OPERATION_STATE_UNSPECIFIED = 0;
+ OPERATION_STATE_QUEUED = 1;
+ OPERATION_STATE_RUNNING = 2;
+ OPERATION_STATE_SUCCEEDED = 3;
+ OPERATION_STATE_FAILED = 4;
+ OPERATION_STATE_INTERRUPTED = 5;
 }

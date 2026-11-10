@@ -79,7 +79,10 @@ curl "$MU_URL/agent" \
 
 The response includes `text` and `thread`; send the thread identifier
 back to continue. Requests and credentials belong in request bodies and headers.
-The [MUCP contract](docs/MUCP.md) provides shared assistant operations for clients.
+The [MUCP contract](docs/MUCP.md) provides Home, Inbox, agent and service discovery
+interfaces, with durable personal requests and typed results. Mu is its first
+runtime implementation. [Service contracts](proto/service) begin with Contacts;
+other services remain available through agent tools.
 A separately configured x402 host provides paid service calls.
 
 ### CLI

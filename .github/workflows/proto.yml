@@ -17,15 +17,17 @@ jobs:
           python-version: '3.12'
       - name: Install compiler
         run: python -m pip install grpcio-tools==1.76.0
+      - name: Independent JSON client
+        run: python proto/examples/test_client.py
       - name: Compile assistant contract
         run: |
           mkdir -p "$RUNNER_TEMP/mu-proto"
-          python -m grpc_tools.protoc -I proto --include_imports --descriptor_set_out="$RUNNER_TEMP/mu-proto/assistant.pb" proto/assistant/v1/assistant.proto
+          python -m grpc_tools.protoc -I proto --include_imports --descriptor_set_out="$RUNNER_TEMP/mu-proto/assistant.pb" $(find proto -name '*.proto' | sort)
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: Check generated Go types
         run: |
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
-          python -m grpc_tools.protoc -I proto --go_out=proto --go_opt=paths=source_relative proto/assistant/v1/assistant.proto
+          python -m grpc_tools.protoc -I proto --go_out=proto --go_opt=paths=source_relative $(find proto -name '*.proto' | sort)
           git diff --exit-code -- proto

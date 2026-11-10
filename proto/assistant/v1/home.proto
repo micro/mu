@@ -1,0 +1,20 @@
+syntax = "proto3";
+package mu.assistant.v1;
+option go_package = "mu/proto/assistant/v1;assistantv1";
+option java_package = "mu.client.proto.assistant.v1";
+option java_multiple_files = true;
+import "google/protobuf/timestamp.proto";
+import "assistant/v1/assistant.proto";
+import "assistant/v1/inbox.proto";
+service Home { rpc Overview(HomeRequest) returns (HomeResponse); }
+message HomeRequest {}
+message HomeResponse {
+ repeated Agent agents = 1;
+ repeated InboxItem inbox = 2;
+ repeated string pinned_services = 3;
+ repeated HomeEvent events = 4;
+ string brief = 5;
+ bool calendar_pending = 6;
+ google.protobuf.Timestamp at = 7;
+}
+message HomeEvent { string title = 1; google.protobuf.Timestamp start = 2; google.protobuf.Timestamp end = 3; string location = 4; string source = 5; }

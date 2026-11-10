@@ -1,15 +1,15 @@
 # Protocol contracts
 
-`assistant/v1/assistant.proto` is the initial assistant interface.
-It declares ListAgents, ListThreads, ReadThread and Ask. Clients discover an agent,
-list/read its personal threads, then ask a question using the existing `thread`
-identifier or omit it to start a new thread. The implementation belongs in
-`agent/`; server composition registers its authenticated MUCP boundary.
-There is no `service/assistant` package. `/` is the public HTTPS/JSON adapter.
+`assistant/v1` defines the client composition surface: Home, Inbox, Assistant
+(agent discovery, personal threads and execution), and Services (catalogue).
+`service/contacts/v1` is the first direct service contract. Mu adapts these to
+existing packages; there is no second assistant engine or `service/assistant`.
 
-Android uses generated Java types; Mu Web uses ordinary JSON for all four
-operations. See [MUCP](../docs/MUCP.md)
-for the exact headers, authentication, errors and recovery rules.
+The shared HTTPS/JSON binding lives in `internal/mucp`; `internal/server` composes
+explicit adapters from home, inbox, agent and services. `/` detects MUCP headers;
+ordinary browser traffic continues to use the runtime web experience.
+Android generates Java types; web/desktop and the independent Python example use
+readable JSON. See [MUCP](../docs/MUCP.md) for wire and authorization semantics.
 
 ## Contract and wire format
 
@@ -43,7 +43,7 @@ no public binding or client has shipped using the former JSON name.
 - RPC errors use MUCP's error mechanism, not success-shaped response bodies.
   Authentication, permission, missing-resource, invalid-input and quota failures
   must retain distinct outcomes. Wire errors are documented in MUCP.
-- There is no idempotency or durable operation ID in this initial interface.
+- Submit provides a durable operation ID and seven-day minimum receipt window.
   Do not retry an ambiguous Ask automatically: execution may have taken place.
   A disconnect does not prove cancellation, rollback or a refund.
 - Render `text` as safe Markdown. Content blocks are structured data, never HTML
@@ -73,7 +73,7 @@ semantics are implemented. Adding an RPC declaration does not make it supported.
 
 The adapter calls the existing execution path, rather than making a second
 agent loop or bypass account, tool and billing gates. The legacy routes stay
-compatible while clients migrate. Tool-service contracts are outside this change.
+compatible while clients migrate. Contacts demonstrates the typed service adapter; other services migrate incrementally.
 
 ## Validation and generation
 
@@ -91,6 +91,5 @@ For Go, use protoc-gen-go v1.36.11 with `--go_out` and
 handlers. RPC glue must use go-micro's compatible generator or an adapter proven
 against its pinned version; declaring `service` does not mandate gRPC.
 
-Before publication as stable v1, add wire fixtures and authenticated integration
-checks for both clients. Once stable, retain field numbers, reserve deleted names
+Wire fixtures and authenticated integration checks guard the implemented binding. Once stable, retain field numbers, reserve deleted names
 and numbers, and make compatible additions without changing existing meanings.

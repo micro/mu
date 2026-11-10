@@ -19,16 +19,18 @@ import (
 )
 
 type pendingReply struct {
-	MessageRef string        `json:"message_ref,omitempty"`
-	Context    ClientContext `json:"context,omitempty"`
-	Digest     string        `json:"digest"`
-	ID         string        `json:"id"`
-	Account    string        `json:"account"`
-	Thread     string        `json:"thread"`
-	Text       string        `json:"text,omitempty"`
-	Agent      string        `json:"agent,omitempty"`
-	State      string        `json:"state"`
-	Created    time.Time     `json:"created"`
+	Ref            string        `json:"ref,omitempty"`
+	EnvelopeDigest string        `json:"envelope_digest,omitempty"`
+	MessageRef     string        `json:"message_ref,omitempty"`
+	Context        ClientContext `json:"context,omitempty"`
+	Digest         string        `json:"digest"`
+	ID             string        `json:"id"`
+	Account        string        `json:"account"`
+	Thread         string        `json:"thread"`
+	Text           string        `json:"text,omitempty"`
+	Agent          string        `json:"agent,omitempty"`
+	State          string        `json:"state"`
+	Created        time.Time     `json:"created"`
 }
 
 const repliesFile = "agent_replies.json"
@@ -151,7 +153,7 @@ func submitReply(accountID, threadID, text, ref string, context ClientContext) e
 	}
 	if j, ok := replies.jobs[id]; ok {
 		digest := sha256.Sum256([]byte(text))
-		if j.Digest != hex.EncodeToString(digest[:]) {
+		if j.Digest != hex.EncodeToString(digest[:]) || (j.EnvelopeDigest != "" && j.EnvelopeDigest != replyEnvelope(text, t.Agent, context.Voice)) {
 			return fmt.Errorf("message identifier already used")
 		}
 		if j.State == "queued" {
@@ -186,7 +188,7 @@ func submitReply(accountID, threadID, text, ref string, context ClientContext) e
 		return err
 	}
 	digest := sha256.Sum256([]byte(text))
-	j := pendingReply{Context: context, Digest: hex.EncodeToString(digest[:]), ID: id, Account: accountID, Thread: threadID, Text: text, Agent: t.Agent, State: "queued", Created: time.Now().UTC()}
+	j := pendingReply{Ref: ref, EnvelopeDigest: replyEnvelope(text, t.Agent, context.Voice), Context: context, Digest: hex.EncodeToString(digest[:]), ID: id, Account: accountID, Thread: threadID, Text: text, Agent: t.Agent, State: "queued", Created: time.Now().UTC()}
 	if strings.HasPrefix(ref, "<") && strings.HasSuffix(ref, ">") && !strings.ContainsAny(ref, "\r\n ") && len(ref) <= 998 {
 		j.MessageRef = ref
 	}
@@ -369,4 +371,9 @@ func replyMessageRef(j pendingReply) string {
 		return j.MessageRef
 	}
 	return "reply:" + j.ID
+}
+
+func replyEnvelope(text, agent string, voice bool) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%t\x00%s", agent, voice, strings.TrimSpace(text))))
+	return hex.EncodeToString(sum[:])
 }

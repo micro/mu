@@ -124,6 +124,64 @@ func (AccessMode) EnumDescriptor() ([]byte, []int) {
 	return file_assistant_v1_assistant_proto_rawDescGZIP(), []int{1}
 }
 
+type OperationState int32
+
+const (
+	OperationState_OPERATION_STATE_UNSPECIFIED OperationState = 0
+	OperationState_OPERATION_STATE_QUEUED      OperationState = 1
+	OperationState_OPERATION_STATE_RUNNING     OperationState = 2
+	OperationState_OPERATION_STATE_SUCCEEDED   OperationState = 3
+	OperationState_OPERATION_STATE_FAILED      OperationState = 4
+	OperationState_OPERATION_STATE_INTERRUPTED OperationState = 5
+)
+
+// Enum value maps for OperationState.
+var (
+	OperationState_name = map[int32]string{
+		0: "OPERATION_STATE_UNSPECIFIED",
+		1: "OPERATION_STATE_QUEUED",
+		2: "OPERATION_STATE_RUNNING",
+		3: "OPERATION_STATE_SUCCEEDED",
+		4: "OPERATION_STATE_FAILED",
+		5: "OPERATION_STATE_INTERRUPTED",
+	}
+	OperationState_value = map[string]int32{
+		"OPERATION_STATE_UNSPECIFIED": 0,
+		"OPERATION_STATE_QUEUED":      1,
+		"OPERATION_STATE_RUNNING":     2,
+		"OPERATION_STATE_SUCCEEDED":   3,
+		"OPERATION_STATE_FAILED":      4,
+		"OPERATION_STATE_INTERRUPTED": 5,
+	}
+)
+
+func (x OperationState) Enum() *OperationState {
+	p := new(OperationState)
+	*p = x
+	return p
+}
+
+func (x OperationState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (OperationState) Descriptor() protoreflect.EnumDescriptor {
+	return file_assistant_v1_assistant_proto_enumTypes[2].Descriptor()
+}
+
+func (OperationState) Type() protoreflect.EnumType {
+	return &file_assistant_v1_assistant_proto_enumTypes[2]
+}
+
+func (x OperationState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use OperationState.Descriptor instead.
+func (OperationState) EnumDescriptor() ([]byte, []int) {
+	return file_assistant_v1_assistant_proto_rawDescGZIP(), []int{2}
+}
+
 type ListAgentsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1419,6 +1477,196 @@ func (x *Resource) GetSummary() string {
 	return ""
 }
 
+// A durable personal request. message_id is stable across retries; Micro-Id is
+// the individual exchange. Reuse with changed content is rejected.
+type SubmitRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	Request       *AskRequest            `protobuf:"bytes,2,opt,name=request,proto3" json:"request,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubmitRequest) Reset() {
+	*x = SubmitRequest{}
+	mi := &file_assistant_v1_assistant_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubmitRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubmitRequest) ProtoMessage() {}
+
+func (x *SubmitRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_assistant_v1_assistant_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubmitRequest.ProtoReflect.Descriptor instead.
+func (*SubmitRequest) Descriptor() ([]byte, []int) {
+	return file_assistant_v1_assistant_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *SubmitRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *SubmitRequest) GetRequest() *AskRequest {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
+type ReadOperationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadOperationRequest) Reset() {
+	*x = ReadOperationRequest{}
+	mi := &file_assistant_v1_assistant_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadOperationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadOperationRequest) ProtoMessage() {}
+
+func (x *ReadOperationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_assistant_v1_assistant_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadOperationRequest.ProtoReflect.Descriptor instead.
+func (*ReadOperationRequest) Descriptor() ([]byte, []int) {
+	return file_assistant_v1_assistant_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ReadOperationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type Operation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Thread        string                 `protobuf:"bytes,2,opt,name=thread,proto3" json:"thread,omitempty"`
+	AgentId       string                 `protobuf:"bytes,3,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	State         OperationState         `protobuf:"varint,4,opt,name=state,proto3,enum=mu.assistant.v1.OperationState" json:"state,omitempty"`
+	Result        *AskResponse           `protobuf:"bytes,5,opt,name=result,proto3" json:"result,omitempty"`
+	Error         string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	Created       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created,proto3" json:"created,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Operation) Reset() {
+	*x = Operation{}
+	mi := &file_assistant_v1_assistant_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Operation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Operation) ProtoMessage() {}
+
+func (x *Operation) ProtoReflect() protoreflect.Message {
+	mi := &file_assistant_v1_assistant_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Operation.ProtoReflect.Descriptor instead.
+func (*Operation) Descriptor() ([]byte, []int) {
+	return file_assistant_v1_assistant_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *Operation) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Operation) GetThread() string {
+	if x != nil {
+		return x.Thread
+	}
+	return ""
+}
+
+func (x *Operation) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *Operation) GetState() OperationState {
+	if x != nil {
+		return x.State
+	}
+	return OperationState_OPERATION_STATE_UNSPECIFIED
+}
+
+func (x *Operation) GetResult() *AskResponse {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *Operation) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *Operation) GetCreated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Created
+	}
+	return nil
+}
+
 var File_assistant_v1_assistant_proto protoreflect.FileDescriptor
 
 const file_assistant_v1_assistant_proto_rawDesc = "" +
@@ -1512,7 +1760,21 @@ const file_assistant_v1_assistant_proto_rawDesc = "" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x10\n" +
 	"\x03url\x18\x03 \x01(\tR\x03url\x12\x14\n" +
 	"\x05title\x18\x04 \x01(\tR\x05title\x12\x18\n" +
-	"\asummary\x18\x05 \x01(\tR\asummary*=\n" +
+	"\asummary\x18\x05 \x01(\tR\asummary\"e\n" +
+	"\rSubmitRequest\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x01 \x01(\tR\tmessageId\x125\n" +
+	"\arequest\x18\x02 \x01(\v2\x1b.mu.assistant.v1.AskRequestR\arequest\"&\n" +
+	"\x14ReadOperationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x87\x02\n" +
+	"\tOperation\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06thread\x18\x02 \x01(\tR\x06thread\x12\x19\n" +
+	"\bagent_id\x18\x03 \x01(\tR\aagentId\x125\n" +
+	"\x05state\x18\x04 \x01(\x0e2\x1f.mu.assistant.v1.OperationStateR\x05state\x124\n" +
+	"\x06result\x18\x05 \x01(\v2\x1c.mu.assistant.v1.AskResponseR\x06result\x12\x14\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\x124\n" +
+	"\acreated\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\acreated*=\n" +
 	"\x04Role\x12\x14\n" +
 	"\x10ROLE_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vROLE_PERSON\x10\x01\x12\x0e\n" +
@@ -1522,14 +1784,23 @@ const file_assistant_v1_assistant_proto_rawDesc = "" +
 	"AccessMode\x12\x1b\n" +
 	"\x17ACCESS_MODE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14ACCESS_MODE_PERSONAL\x10\x01\x12\x16\n" +
-	"\x12ACCESS_MODE_PUBLIC\x10\x022\xd5\x02\n" +
+	"\x12ACCESS_MODE_PUBLIC\x10\x02*\xc6\x01\n" +
+	"\x0eOperationState\x12\x1f\n" +
+	"\x1bOPERATION_STATE_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16OPERATION_STATE_QUEUED\x10\x01\x12\x1b\n" +
+	"\x17OPERATION_STATE_RUNNING\x10\x02\x12\x1d\n" +
+	"\x19OPERATION_STATE_SUCCEEDED\x10\x03\x12\x1a\n" +
+	"\x16OPERATION_STATE_FAILED\x10\x04\x12\x1f\n" +
+	"\x1bOPERATION_STATE_INTERRUPTED\x10\x052\xef\x03\n" +
 	"\tAssistant\x12U\n" +
 	"\n" +
 	"ListAgents\x12\".mu.assistant.v1.ListAgentsRequest\x1a#.mu.assistant.v1.ListAgentsResponse\x12X\n" +
 	"\vListThreads\x12#.mu.assistant.v1.ListThreadsRequest\x1a$.mu.assistant.v1.ListThreadsResponse\x12U\n" +
 	"\n" +
 	"ReadThread\x12\".mu.assistant.v1.ReadThreadRequest\x1a#.mu.assistant.v1.ReadThreadResponse\x12@\n" +
-	"\x03Ask\x12\x1b.mu.assistant.v1.AskRequest\x1a\x1c.mu.assistant.v1.AskResponseBV\n" +
+	"\x03Ask\x12\x1b.mu.assistant.v1.AskRequest\x1a\x1c.mu.assistant.v1.AskResponse\x12D\n" +
+	"\x06Submit\x12\x1e.mu.assistant.v1.SubmitRequest\x1a\x1a.mu.assistant.v1.Operation\x12R\n" +
+	"\rReadOperation\x12%.mu.assistant.v1.ReadOperationRequest\x1a\x1a.mu.assistant.v1.OperationBV\n" +
 	"\x1cmu.client.proto.assistant.v1B\x11AssistantProtocolP\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
 
 var (
@@ -1544,64 +1815,76 @@ func file_assistant_v1_assistant_proto_rawDescGZIP() []byte {
 	return file_assistant_v1_assistant_proto_rawDescData
 }
 
-var file_assistant_v1_assistant_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_assistant_v1_assistant_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_assistant_v1_assistant_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_assistant_v1_assistant_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_assistant_v1_assistant_proto_goTypes = []any{
 	(Role)(0),                     // 0: mu.assistant.v1.Role
 	(AccessMode)(0),               // 1: mu.assistant.v1.AccessMode
-	(*ListAgentsRequest)(nil),     // 2: mu.assistant.v1.ListAgentsRequest
-	(*ListAgentsResponse)(nil),    // 3: mu.assistant.v1.ListAgentsResponse
-	(*Agent)(nil),                 // 4: mu.assistant.v1.Agent
-	(*ListThreadsRequest)(nil),    // 5: mu.assistant.v1.ListThreadsRequest
-	(*ListThreadsResponse)(nil),   // 6: mu.assistant.v1.ListThreadsResponse
-	(*Thread)(nil),                // 7: mu.assistant.v1.Thread
-	(*ReadThreadRequest)(nil),     // 8: mu.assistant.v1.ReadThreadRequest
-	(*ReadThreadResponse)(nil),    // 9: mu.assistant.v1.ReadThreadResponse
-	(*Message)(nil),               // 10: mu.assistant.v1.Message
-	(*AskRequest)(nil),            // 11: mu.assistant.v1.AskRequest
-	(*AskResponse)(nil),           // 12: mu.assistant.v1.AskResponse
-	(*Content)(nil),               // 13: mu.assistant.v1.Content
-	(*Source)(nil),                // 14: mu.assistant.v1.Source
-	(*Image)(nil),                 // 15: mu.assistant.v1.Image
-	(*Audio)(nil),                 // 16: mu.assistant.v1.Audio
-	(*Video)(nil),                 // 17: mu.assistant.v1.Video
-	(*Route)(nil),                 // 18: mu.assistant.v1.Route
-	(*Point)(nil),                 // 19: mu.assistant.v1.Point
-	(*Resource)(nil),              // 20: mu.assistant.v1.Resource
-	(*timestamppb.Timestamp)(nil), // 21: google.protobuf.Timestamp
+	(OperationState)(0),           // 2: mu.assistant.v1.OperationState
+	(*ListAgentsRequest)(nil),     // 3: mu.assistant.v1.ListAgentsRequest
+	(*ListAgentsResponse)(nil),    // 4: mu.assistant.v1.ListAgentsResponse
+	(*Agent)(nil),                 // 5: mu.assistant.v1.Agent
+	(*ListThreadsRequest)(nil),    // 6: mu.assistant.v1.ListThreadsRequest
+	(*ListThreadsResponse)(nil),   // 7: mu.assistant.v1.ListThreadsResponse
+	(*Thread)(nil),                // 8: mu.assistant.v1.Thread
+	(*ReadThreadRequest)(nil),     // 9: mu.assistant.v1.ReadThreadRequest
+	(*ReadThreadResponse)(nil),    // 10: mu.assistant.v1.ReadThreadResponse
+	(*Message)(nil),               // 11: mu.assistant.v1.Message
+	(*AskRequest)(nil),            // 12: mu.assistant.v1.AskRequest
+	(*AskResponse)(nil),           // 13: mu.assistant.v1.AskResponse
+	(*Content)(nil),               // 14: mu.assistant.v1.Content
+	(*Source)(nil),                // 15: mu.assistant.v1.Source
+	(*Image)(nil),                 // 16: mu.assistant.v1.Image
+	(*Audio)(nil),                 // 17: mu.assistant.v1.Audio
+	(*Video)(nil),                 // 18: mu.assistant.v1.Video
+	(*Route)(nil),                 // 19: mu.assistant.v1.Route
+	(*Point)(nil),                 // 20: mu.assistant.v1.Point
+	(*Resource)(nil),              // 21: mu.assistant.v1.Resource
+	(*SubmitRequest)(nil),         // 22: mu.assistant.v1.SubmitRequest
+	(*ReadOperationRequest)(nil),  // 23: mu.assistant.v1.ReadOperationRequest
+	(*Operation)(nil),             // 24: mu.assistant.v1.Operation
+	(*timestamppb.Timestamp)(nil), // 25: google.protobuf.Timestamp
 }
 var file_assistant_v1_assistant_proto_depIdxs = []int32{
-	4,  // 0: mu.assistant.v1.ListAgentsResponse.agents:type_name -> mu.assistant.v1.Agent
-	7,  // 1: mu.assistant.v1.ListThreadsResponse.threads:type_name -> mu.assistant.v1.Thread
-	21, // 2: mu.assistant.v1.Thread.started:type_name -> google.protobuf.Timestamp
-	21, // 3: mu.assistant.v1.Thread.updated:type_name -> google.protobuf.Timestamp
-	7,  // 4: mu.assistant.v1.ReadThreadResponse.thread:type_name -> mu.assistant.v1.Thread
-	10, // 5: mu.assistant.v1.ReadThreadResponse.messages:type_name -> mu.assistant.v1.Message
+	5,  // 0: mu.assistant.v1.ListAgentsResponse.agents:type_name -> mu.assistant.v1.Agent
+	8,  // 1: mu.assistant.v1.ListThreadsResponse.threads:type_name -> mu.assistant.v1.Thread
+	25, // 2: mu.assistant.v1.Thread.started:type_name -> google.protobuf.Timestamp
+	25, // 3: mu.assistant.v1.Thread.updated:type_name -> google.protobuf.Timestamp
+	8,  // 4: mu.assistant.v1.ReadThreadResponse.thread:type_name -> mu.assistant.v1.Thread
+	11, // 5: mu.assistant.v1.ReadThreadResponse.messages:type_name -> mu.assistant.v1.Message
 	0,  // 6: mu.assistant.v1.Message.role:type_name -> mu.assistant.v1.Role
-	21, // 7: mu.assistant.v1.Message.at:type_name -> google.protobuf.Timestamp
-	13, // 8: mu.assistant.v1.Message.content:type_name -> mu.assistant.v1.Content
+	25, // 7: mu.assistant.v1.Message.at:type_name -> google.protobuf.Timestamp
+	14, // 8: mu.assistant.v1.Message.content:type_name -> mu.assistant.v1.Content
 	1,  // 9: mu.assistant.v1.AskRequest.mode:type_name -> mu.assistant.v1.AccessMode
-	13, // 10: mu.assistant.v1.AskResponse.content:type_name -> mu.assistant.v1.Content
-	14, // 11: mu.assistant.v1.Content.source:type_name -> mu.assistant.v1.Source
-	15, // 12: mu.assistant.v1.Content.image:type_name -> mu.assistant.v1.Image
-	16, // 13: mu.assistant.v1.Content.audio:type_name -> mu.assistant.v1.Audio
-	17, // 14: mu.assistant.v1.Content.video:type_name -> mu.assistant.v1.Video
-	18, // 15: mu.assistant.v1.Content.route:type_name -> mu.assistant.v1.Route
-	20, // 16: mu.assistant.v1.Content.resource:type_name -> mu.assistant.v1.Resource
-	19, // 17: mu.assistant.v1.Route.shape:type_name -> mu.assistant.v1.Point
-	2,  // 18: mu.assistant.v1.Assistant.ListAgents:input_type -> mu.assistant.v1.ListAgentsRequest
-	5,  // 19: mu.assistant.v1.Assistant.ListThreads:input_type -> mu.assistant.v1.ListThreadsRequest
-	8,  // 20: mu.assistant.v1.Assistant.ReadThread:input_type -> mu.assistant.v1.ReadThreadRequest
-	11, // 21: mu.assistant.v1.Assistant.Ask:input_type -> mu.assistant.v1.AskRequest
-	3,  // 22: mu.assistant.v1.Assistant.ListAgents:output_type -> mu.assistant.v1.ListAgentsResponse
-	6,  // 23: mu.assistant.v1.Assistant.ListThreads:output_type -> mu.assistant.v1.ListThreadsResponse
-	9,  // 24: mu.assistant.v1.Assistant.ReadThread:output_type -> mu.assistant.v1.ReadThreadResponse
-	12, // 25: mu.assistant.v1.Assistant.Ask:output_type -> mu.assistant.v1.AskResponse
-	22, // [22:26] is the sub-list for method output_type
-	18, // [18:22] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	14, // 10: mu.assistant.v1.AskResponse.content:type_name -> mu.assistant.v1.Content
+	15, // 11: mu.assistant.v1.Content.source:type_name -> mu.assistant.v1.Source
+	16, // 12: mu.assistant.v1.Content.image:type_name -> mu.assistant.v1.Image
+	17, // 13: mu.assistant.v1.Content.audio:type_name -> mu.assistant.v1.Audio
+	18, // 14: mu.assistant.v1.Content.video:type_name -> mu.assistant.v1.Video
+	19, // 15: mu.assistant.v1.Content.route:type_name -> mu.assistant.v1.Route
+	21, // 16: mu.assistant.v1.Content.resource:type_name -> mu.assistant.v1.Resource
+	20, // 17: mu.assistant.v1.Route.shape:type_name -> mu.assistant.v1.Point
+	12, // 18: mu.assistant.v1.SubmitRequest.request:type_name -> mu.assistant.v1.AskRequest
+	2,  // 19: mu.assistant.v1.Operation.state:type_name -> mu.assistant.v1.OperationState
+	13, // 20: mu.assistant.v1.Operation.result:type_name -> mu.assistant.v1.AskResponse
+	25, // 21: mu.assistant.v1.Operation.created:type_name -> google.protobuf.Timestamp
+	3,  // 22: mu.assistant.v1.Assistant.ListAgents:input_type -> mu.assistant.v1.ListAgentsRequest
+	6,  // 23: mu.assistant.v1.Assistant.ListThreads:input_type -> mu.assistant.v1.ListThreadsRequest
+	9,  // 24: mu.assistant.v1.Assistant.ReadThread:input_type -> mu.assistant.v1.ReadThreadRequest
+	12, // 25: mu.assistant.v1.Assistant.Ask:input_type -> mu.assistant.v1.AskRequest
+	22, // 26: mu.assistant.v1.Assistant.Submit:input_type -> mu.assistant.v1.SubmitRequest
+	23, // 27: mu.assistant.v1.Assistant.ReadOperation:input_type -> mu.assistant.v1.ReadOperationRequest
+	4,  // 28: mu.assistant.v1.Assistant.ListAgents:output_type -> mu.assistant.v1.ListAgentsResponse
+	7,  // 29: mu.assistant.v1.Assistant.ListThreads:output_type -> mu.assistant.v1.ListThreadsResponse
+	10, // 30: mu.assistant.v1.Assistant.ReadThread:output_type -> mu.assistant.v1.ReadThreadResponse
+	13, // 31: mu.assistant.v1.Assistant.Ask:output_type -> mu.assistant.v1.AskResponse
+	24, // 32: mu.assistant.v1.Assistant.Submit:output_type -> mu.assistant.v1.Operation
+	24, // 33: mu.assistant.v1.Assistant.ReadOperation:output_type -> mu.assistant.v1.Operation
+	28, // [28:34] is the sub-list for method output_type
+	22, // [22:28] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_assistant_v1_assistant_proto_init() }
@@ -1622,8 +1905,8 @@ func file_assistant_v1_assistant_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_assistant_v1_assistant_proto_rawDesc), len(file_assistant_v1_assistant_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   19,
+			NumEnums:      3,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

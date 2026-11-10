@@ -16,6 +16,7 @@ import {
   saveRuntime,
 } from "./auth";
 import { Turn } from "./content";
+import { Overview } from "./overview";
 import { Voice } from "./voice";
 
 function ConnectionSettings() {
@@ -115,14 +116,7 @@ export default function App({
   return (
     <div className="page">
       <header>
-        {session ? (
-          <nav className="assistant-navigation" aria-label="Assistant">
-            <a href="?view=agents">Agents</a>
-            <a href="?view=chats">Chats</a>
-          </nav>
-        ) : (
-          <span />
-        )}
+        <span />
         <a className="brand" href="./">
           Mu
         </a>
@@ -136,6 +130,17 @@ export default function App({
           </nav>
         )}
       </header>
+      {session ? (
+        <nav className="assistant-navigation" aria-label="Assistant">
+          <a href="?view=home">Home</a>
+          <a href="?view=inbox">Inbox</a>
+          <a href="?view=agents">Agents</a>
+          <a href="?view=services">Services</a>
+        </nav>
+      ) : (
+        <span />
+      )}
+
       <main>
         {new URLSearchParams(location.search).get("view") === "settings" ? (
           <ConnectionSettings />
@@ -352,6 +357,8 @@ function Client({
       {failedAuth && <button onClick={disconnect}>Sign in again</button>}
     </>
   );
+  if (["home", "inbox", "services"].includes(view))
+    return <Overview session={session} view={view} />;
   if (view === "account")
     return (
       <section>
@@ -400,6 +407,9 @@ function Client({
     return (
       <section id="directory">
         <h1>Choose an agent</h1>
+        <p>
+          <a href="?view=chats">All chats</a>
+        </p>
         {notice}
         <div className="collection-list">
           {agents.map((a) => (

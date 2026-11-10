@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { runtimeOrigin, call, type Session } from "./protocol.ts";
+import { runtimeOrigin, call, invoke, type Session } from "./protocol.ts";
 import { challenge, validCallback } from "./auth.ts";
 const session: Session = {
   server: "https://runtime.example",
@@ -53,12 +53,22 @@ test("MUCP uses only explicit credentials and accepts the shared wire fixture", 
     assert.equal(init?.credentials, "omit");
     const headers = new Headers(init?.headers);
     assert.equal(headers.get("Authorization"), "Bearer scoped-token");
-    assert.equal(headers.get("Micro-Endpoint"), "Assistant.Ask");
+    assert.equal(headers.get("Micro-Endpoint"), "Assistant.Submit");
     return new Response(
-      readFileSync(
-        new URL("../../../proto/testdata/ask-response.json", import.meta.url),
-        "utf8",
-      ),
+      JSON.stringify({
+        id: "operation-one",
+        thread: "own-thread",
+        state: "OPERATION_STATE_SUCCEEDED",
+        result: JSON.parse(
+          readFileSync(
+            new URL(
+              "../../../proto/testdata/ask-response.json",
+              import.meta.url,
+            ),
+            "utf8",
+          ),
+        ),
+      }),
       {
         headers: {
           "Micro-Protocol": "mucp/1",
@@ -146,7 +156,12 @@ test("all assistant exchanges follow the shared JSON contract", async () => {
         });
       };
       assert.deepEqual(
-        await call(session, item.operation, item.request),
+        await invoke(
+          session,
+          "assistant",
+          "Assistant." + item.operation,
+          item.request,
+        ),
         item.response,
       );
     }
