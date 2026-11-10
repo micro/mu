@@ -63,32 +63,12 @@ See [Install Mu](docs/INSTALL.md) for the quick start.
 
 Optional [documentation](docs/README.md) covers hosting, configuration, mail and development.
 
-## Web
-
-Open **http://localhost:8080** to create your account and choose an AI provider.
-
-The full web experience at `/home` installs as the **Mu PWA**.
-The separate [React/TypeScript client](client/web/README.md) runs independently
-with `npm run dev` or from the `mu-web.zip` release using `node serve.mjs`.
-Mu also serves its production build at `/app/`, reusing your website sign-in.
-
 ## Clients
 
-Native and protocol clients provide direct agent use. See the [client map](client/README.md)
-and the [Android](client/android/README.md) and [desktop apps](client/desktop/README.md).
+Use Mu through the API, CLI, web or mobile apps. See the [client map](client/README.md)
+for implementation details.
 
-## CLI
-
-The binary acts as a client. It defaults to the hosted instance; set
-`MU_URL` or use `mu login https://your.host` for your own server.
-
-```bash
-mu ask "What needs my attention?"
-mu inbox list
-mu help
-```
-
-## API
+### API
 
 ```bash
 curl "$MU_URL/agent" \
@@ -99,7 +79,36 @@ curl "$MU_URL/agent" \
 
 The response includes `text` and `thread`; send the thread identifier
 back to continue. Requests and credentials belong in request bodies and headers.
+The [MUCP contract](docs/MUCP.md) provides shared assistant operations for clients.
 A separately configured x402 host provides paid service calls.
+
+### CLI
+
+The binary acts as a client. It defaults to the hosted instance; set
+`MU_URL` or use `mu login https://your.host` for your own server.
+
+```bash
+mu ask "What needs my attention?"
+mu inbox list
+mu help
+```
+
+### Web
+
+Open **http://localhost:8080** to create your account and choose an AI provider.
+
+The full web experience at `/home` installs as the **Mu PWA**.
+The separate [React/TypeScript client](client/web/README.md) runs independently
+with `npm run dev` or from the `mu-web.zip` release using `node serve.mjs`.
+Mu also serves its production build at `/app/`, reusing your website sign-in.
+[Desktop apps](client/desktop/README.md) package this client for Windows, Mac and Linux.
+
+### Mobile
+
+The [Android app](client/android/README.md) provides voice and text interaction
+with your agents. It connects to micro.mu by default; choose your own server in Settings.
+Use the web client on iPhone and iPad, or install the runtime PWA for the full web experience.
+Find available apps on the [downloads page](https://micro.mu/download).
 
 ## Commercial
 
