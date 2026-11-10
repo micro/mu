@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/emulation"
+	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"mu/agent"
 	"mu/internal/api"
@@ -79,6 +80,12 @@ func TestGroupChatBrowser(t *testing.T) {
 			}
 		}
 	}
+	if err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+		_, err := page.AddScriptToEvaluateOnNewDocument(`window.WebSocket = class extends WebSocket { constructor(...args) { super(...args); window.testRoomSocket = this; } };`).Do(ctx)
+		return err
+	})); err != nil {
+		t.Fatal(err)
+	}
 	for _, width := range []int64{390, 1440} {
 		if err := chromedp.Run(ctx, emulation.SetDeviceMetricsOverride(width, 900, 1, width < 700), chromedp.Navigate(server.URL+"/agent?view=new-chat&group=new"), chromedp.WaitVisible(`input[name="name"]`), chromedp.SendKeys(`input[name="name"]`, "Family plans")); err != nil {
 			t.Fatal(err)
@@ -96,7 +103,10 @@ func TestGroupChatBrowser(t *testing.T) {
 			t.Fatal(err)
 		}
 		// A dropped connection replays history but must not duplicate rendered messages.
-		if err := chromedp.Run(ctx, chromedp.Evaluate(`roomWs.close()`, nil), chromedp.Poll(`roomWs.readyState === WebSocket.OPEN && document.querySelector('#chat-form button').disabled === false`, nil), chromedp.Poll(`document.querySelectorAll('#messages .message:not(.message-system)').length === 1`, nil)); err != nil {
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`window.testRoomSocket.close()`, nil), chromedp.Poll(`window.testRoomSocket.readyState === WebSocket.OPEN && document.querySelector('#chat-form button').disabled === false`, nil), chromedp.Poll(`document.querySelectorAll('#messages .message:not(.message-system)').length === 1`, nil)); err != nil {
+			t.Fatal(err)
+		}
+		if err := chromedp.Run(ctx, chromedp.SendKeys(`#chat-form [name="prompt"]`, "After reconnect"), chromedp.Click(`#chat-form button`), chromedp.Poll(`document.querySelector('#chat-form [name="prompt"]').value === '' && document.querySelector('#messages').textContent.includes('After reconnect')`, nil), chromedp.Poll(`document.querySelectorAll('#messages .message:not(.message-system)').length === 2`, nil)); err != nil {
 			t.Fatal(err)
 		}
 		var fits bool
