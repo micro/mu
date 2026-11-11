@@ -51,7 +51,11 @@ export function loadSession(): Session | null {
       runtimeOrigin(value.server) === value.server &&
       typeof value.token === "string" &&
       value.token.length > 0 &&
-      value.expires > Date.now()
+      (value.expires > Date.now() ||
+        (typeof value.refresh === "string" &&
+          value.refresh &&
+          typeof value.client === "string" &&
+          value.client))
     )
       return value;
   } catch {
@@ -60,7 +64,9 @@ export function loadSession(): Session | null {
   sessionStorage.removeItem(sessionKey);
   return null;
 }
+let sessionGeneration = 0;
 export function disconnect() {
+  sessionGeneration++;
   sessionStorage.removeItem(sessionKey);
   sessionStorage.removeItem(pendingKey);
   window.muDesktop?.saveSession(null).catch(() => {});
@@ -222,10 +228,63 @@ export async function finishSignIn(
     server: pending.server,
     token: result.access_token,
     expires: Date.now() + Math.min(result.expires_in, 86400) * 1000,
+    client: pending.client,
+    refresh:
+      typeof result.refresh_token === "string"
+        ? result.refresh_token
+        : undefined,
   };
   sessionStorage.setItem(sessionKey, JSON.stringify(session));
   await window.muDesktop?.saveSession(session);
   localStorage.setItem("mu-web-runtime", session.server);
   history.replaceState(null, "", location.pathname + pending.query);
   return session;
+}
+
+// Share renewal between concurrent reads. Never retry an assistant action.
+const renewing = new WeakMap<Session, Promise<void>>();
+export async function renewSession(session: Session): Promise<void> {
+  if (
+    session.cookie ||
+    session.expires > Date.now() + 60000 ||
+    (!session.refresh && session.expires > Date.now())
+  )
+    return;
+  const pending = renewing.get(session);
+  if (pending) return pending;
+  if (!session.refresh || !session.client) throw Error("Please sign in again.");
+  const generation = sessionGeneration;
+  const renewal = (async () => {
+    const result = await request(
+      runtimeOrigin(session.server) + "/oauth/token",
+      new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: session.client!,
+        refresh_token: session.refresh!,
+      }).toString(),
+      "application/x-www-form-urlencoded",
+    );
+    if (
+      typeof result.access_token !== "string" ||
+      !result.access_token ||
+      typeof result.refresh_token !== "string" ||
+      !result.refresh_token ||
+      result.token_type !== "Bearer" ||
+      !Number.isFinite(result.expires_in) ||
+      result.expires_in <= 0
+    )
+      throw Error("Invalid session renewal response.");
+    if (generation !== sessionGeneration) throw Error("Account disconnected.");
+    session.token = result.access_token;
+    session.refresh = result.refresh_token;
+    session.expires = Date.now() + Math.min(result.expires_in, 86400) * 1000;
+    sessionStorage.setItem(sessionKey, JSON.stringify(session));
+    await window.muDesktop?.saveSession(session);
+  })();
+  renewing.set(session, renewal);
+  try {
+    await renewal;
+  } finally {
+    renewing.delete(session);
+  }
 }

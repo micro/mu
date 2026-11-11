@@ -128,15 +128,18 @@ type Session struct {
 
 // Token represents a Personal Access Token (PAT) for API automation
 type Token struct {
-	OAuthClientID string    `json:"oauth_client_id,omitempty"`
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`    // User-friendly name for the token
-	Token         string    `json:"token"`   // The actual token value (hashed in storage)
-	Account       string    `json:"account"` // Account ID this token belongs to
-	Created       time.Time `json:"created"`
-	LastUsed      time.Time `json:"last_used"`
-	ExpiresAt     time.Time `json:"expires_at"`  // Optional expiration
-	Permissions   []string  `json:"permissions"` // e.g., "read", "write", "admin"
+	RefreshUsed    map[string]time.Time `json:"refresh_used,omitempty"`
+	RefreshHash    string               `json:"refresh_hash,omitempty"`
+	RefreshExpires time.Time            `json:"refresh_expires,omitempty"`
+	OAuthClientID  string               `json:"oauth_client_id,omitempty"`
+	ID             string               `json:"id"`
+	Name           string               `json:"name"`    // User-friendly name for the token
+	Token          string               `json:"token"`   // The actual token value (hashed in storage)
+	Account        string               `json:"account"` // Account ID this token belongs to
+	Created        time.Time            `json:"created"`
+	LastUsed       time.Time            `json:"last_used"`
+	ExpiresAt      time.Time            `json:"expires_at"`  // Optional expiration
+	Permissions    []string             `json:"permissions"` // e.g., "read", "write", "admin"
 
 	// Lookup is sha256 of the raw token, hex, and it is how a token is found.
 	//
@@ -1003,7 +1006,7 @@ func createToken(accountID, name string, permissions []string, expiresAt time.Ti
 	if !accounts[accountID].Admin {
 		count := 0
 		for _, token := range tokens {
-			if token.Account == accountID && (token.ExpiresAt.IsZero() || token.ExpiresAt.After(time.Now())) {
+			if token.Account == accountID && (token.ExpiresAt.IsZero() || token.ExpiresAt.After(time.Now()) || token.RefreshExpires.After(time.Now())) {
 				count++
 			}
 		}
@@ -1162,7 +1165,7 @@ func ListTokens(accountID string) []*Token {
 	now := time.Now()
 	for _, token := range tokens {
 		oauth := token.OAuthClientID != "" || strings.HasPrefix(token.Name, "OAuth: ")
-		if oauth && !token.ExpiresAt.IsZero() && !token.ExpiresAt.After(now) {
+		if oauth && !token.ExpiresAt.IsZero() && !token.ExpiresAt.After(now) && !token.RefreshExpires.After(now) {
 			continue
 		}
 		if token.Account == accountID {

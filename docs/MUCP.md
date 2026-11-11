@@ -115,6 +115,19 @@ a fresh state and a ten-minute validity window. Authorization codes are consumed
 once; the PKCE verifier is not sent in the authorization URL. Client tokens MUST
 only be sent to the selected runtime. Switching servers clears the app's session.
 
+The token response includes a 24-hour access token and a rotating refresh token.
+Clients renew before expiry with a form POST to `/oauth/token` containing
+`grant_type=refresh_token`, `client_id` and `refresh_token`, then securely replace
+both credentials. Refresh tokens expire after 90 days without renewal; active
+connections remain signed in. Renewal preserves approved scopes and the connection
+ID. Deleting the connection/account, disabling the account, or removing the OAuth
+client prevents renewal. Reusing a spent refresh token revokes that connection.
+Clients serialize renewal and do not replay assistant actions to recover authentication.
+Android stores credentials with the Keystore; desktop uses OS-encrypted storage;
+independent browser sessions use session storage. Network failures retain local
+credentials. Existing installations without a refresh token need one new sign-in
+with the updated client; expired access tokens cannot be upgraded.
+
 Native/programmatic calls send `Authorization: Bearer <token>`. Browser bearer
 calls omit cookies. An explicit credential takes precedence over any cookie and
 an invalid token MUST NOT fall back to cookie identity. Reads require read access;

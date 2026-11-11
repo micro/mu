@@ -53,7 +53,7 @@ public final class AssistantActivity extends Activity {
     }
     @Override public void onResume() {
         super.onResume(); active = true; publicMode = locked(); answer.setText("");
-        try { account = new Vault(this).read(); } catch (Exception e) { account = new JSONObject(); }
+        try { AgentApi.vault = new Vault(this); account = AgentApi.vault.read(); } catch (Exception e) { account = new JSONObject(); }
         agent = account.optString("agent", "micro"); label = account.optString("agent_name", "Micro");
         JSONObject threads = account.optJSONObject("threads");
         thread = threads == null ? "" : threads.optString(agent);
@@ -64,7 +64,7 @@ public final class AssistantActivity extends Activity {
         // Begin only after the UI is visible, never from an unsolicited broadcast.
         if (!invoked) { invoked = true; speak.post(() -> { if (active) listen(); }); }
     }
-    private boolean signedIn() { return !account.optString("token").isEmpty() && account.optLong("expires") > System.currentTimeMillis(); }
+    private boolean signedIn() { return !account.optString("token").isEmpty() && (account.optLong("expires") > System.currentTimeMillis() || !account.optString("refresh").isEmpty()); }
     private void update() {
         speak.setText(listening || speaking || working ? "Stop" : "Speak");
         if (active && (listening || speaking || working)) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -108,7 +108,7 @@ public final class AssistantActivity extends Activity {
         wantListen = false; listening = false; working = true; answer.setText(""); status.setText("“" + text + "”\nWorking…"); update();
         final int request = ++generation;
         final boolean restricted = publicMode;
-        final String server = account.optString("server"), token = account.optString("token"), selected = agent, previous = thread;
+        final String server = account.optString("server"), token = account.optString("client", account.optString("token")), selected = agent, previous = thread;
         worker.execute(() -> {
             try {
                 JSONObject reply = restricted ? AgentApi.askPublic(server, token, text) : AgentApi.ask(server, token, selected, previous, text, true);
@@ -119,7 +119,7 @@ public final class AssistantActivity extends Activity {
                         thread = reply.optString("thread");
                         try {
                             Vault vault = new Vault(this); JSONObject latest = vault.read();
-                            if (!token.equals(latest.optString("token")) || !server.equals(latest.optString("server"))) { finish(); return; }
+                            if (!token.equals(latest.optString("client", latest.optString("token"))) || !server.equals(latest.optString("server"))) { finish(); return; }
                             JSONObject threads = latest.optJSONObject("threads"); if (threads == null) threads = new JSONObject();
                             threads.put(selected, thread); latest.put("threads", threads); vault.write(latest);
                         } catch (Exception e) { status.setText("Answer received, but could not save the conversation on this device."); }

@@ -61,7 +61,7 @@ else {
           value.token.length > 16384 ||
           value.cookie ||
           !Number.isFinite(value.expires) ||
-          value.expires <= Date.now() ||
+          (value.expires <= Date.now() && !(typeof value.refresh === "string" && value.refresh && typeof value.client === "string" && value.client)) ||
           value.expires > Date.now() + 86400000
         )
           throw Error("Invalid session");
@@ -69,6 +69,8 @@ else {
           server: secureOrigin(value.server),
           token: value.token,
           expires: value.expires,
+          client: typeof value.client === "string" && value.client.length <= 256 ? value.client : undefined,
+          refresh: typeof value.refresh === "string" && value.refresh.length <= 16384 ? value.refresh : undefined,
         };
       };
       ipcMain.handle("auth-redirect", (event) => {

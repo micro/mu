@@ -11,6 +11,7 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 
 final class AgentApi {
+    static volatile Vault vault;
     static String origin(String value) {
         try {
             URI u = new URI(value.trim());
@@ -92,6 +93,7 @@ final class AgentApi {
         return call(server, token, "ReadOperation", ReadOperationRequest.newBuilder().setId(id).build(), Operation.newBuilder());
     }
     private static JSONObject call(String server, String token, String operation, Message request, Message.Builder response) throws Exception {
+        if (vault != null) token = vault.accessToken(server, token);
         JSONObject raw = post(origin(server)+"/", token, JsonFormat.printer().print(request), "application/json", operation);
         // Ignore additive fields from a newer runtime; always retain content fallbacks.
         JsonFormat.parser().ignoringUnknownFields().merge(raw.toString(), response);

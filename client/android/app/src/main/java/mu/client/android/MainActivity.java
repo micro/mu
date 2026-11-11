@@ -67,6 +67,7 @@ public class MainActivity extends Activity {
             return insets;
         });
         vault = new Vault(this);
+        AgentApi.vault = vault;
         try { account = vault.read(); }
         catch (Exception e) { vault.clear(); }
         agent = account.optString("agent", "micro");
@@ -143,7 +144,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean signedIn() {
-        return !account.optString("token").isEmpty() && account.optLong("expires") > System.currentTimeMillis();
+        return !account.optString("token").isEmpty() && (account.optLong("expires") > System.currentTimeMillis() || !account.optString("refresh").isEmpty());
     }
     private void update() {
         if (destroyed) return;
@@ -187,7 +188,7 @@ public class MainActivity extends Activity {
         stopAudio(); video.pause();
         busy = true; update(); prompt.setText("");
         message("You", text); status.setText(agentName + " is working…");
-        final String server = account.optString("server"), token = account.optString("token");
+        final String server = account.optString("server"), token = account.optString("client", account.optString("token"));
         final String currentThread = thread, currentAgent = agent;
         worker.execute(() -> {
             try {
@@ -447,7 +448,7 @@ public class MainActivity extends Activity {
     private void chooseChat(String page) {
         if (busy) return;
         dismissKeyboard(); stopAudio(); busy=true; update();
-        final String server=account.optString("server"), token=account.optString("token"), selected=agent;
+        final String server=account.optString("server"), token=account.optString("client", account.optString("token")), selected=agent;
         worker.execute(() -> {
             try {
                 JSONObject response=AgentApi.threads(server,token,selected,page);
@@ -471,7 +472,7 @@ public class MainActivity extends Activity {
     private void restoreChat(String page, boolean clear) {
         if (busy || thread.isEmpty()) return;
         stopAudio(); busy=true; update();status.setText("Loading chat…");
-        final String server=account.optString("server"),token=account.optString("token"),target=thread,selected=agent;
+        final String server=account.optString("server"),token=account.optString("client", account.optString("token")),target=thread,selected=agent;
         worker.execute(()->{
             try {
                 JSONObject response=AgentApi.history(server,token,target,page);
@@ -508,7 +509,7 @@ public class MainActivity extends Activity {
     private void loadAgents(boolean choose) {
         if (!signedIn() || busy) return;
         busy = true; update();
-        String server = account.optString("server"), token = account.optString("token");
+        String server = account.optString("server"), token = account.optString("client", account.optString("token"));
         worker.execute(() -> {
             try {
                 JSONArray available = AgentApi.catalog(server, token).getJSONArray("agents");
@@ -551,7 +552,7 @@ public class MainActivity extends Activity {
     private void overview(String view, String page) {
         if (busy || !signedIn()) return;
         dismissKeyboard(); stopAudio(); busy=true; update();
-        final String server=account.optString("server"), token=account.optString("token");
+        final String server=account.optString("server"), token=account.optString("client", account.optString("token"));
         worker.execute(() -> {
             try {
                 JSONObject response=view.equals("home")?AgentApi.home(server,token):view.equals("inbox")?AgentApi.inbox(server,token,page):AgentApi.services(server,token,page);
@@ -584,7 +585,7 @@ public class MainActivity extends Activity {
     }
     private void readInbox(String id,String page) {
         if(busy)return;
-        busy=true;update();final String server=account.optString("server"),token=account.optString("token");
+        busy=true;update();final String server=account.optString("server"),token=account.optString("client", account.optString("token"));
         worker.execute(()->{
             try{
                 JSONObject response=AgentApi.readInbox(server,token,id,page),item=response.getJSONObject("item");
@@ -764,6 +765,8 @@ public class MainActivity extends Activity {
                 // Callback is single-use even if the process stops during exchange.
                 JSONObject token = OAuth.exchange(pending, code);
                 JSONObject connected = new JSONObject().put("server", pending.getString("server"))
+                        .put("client", pending.getString("client"))
+                        .put("refresh", token.optString("refresh_token"))
                         .put("token", token.getString("access_token"))
                         .put("expires", System.currentTimeMillis() + token.getLong("expires_in") * 1000);
                 runOnUiThread(() -> {
