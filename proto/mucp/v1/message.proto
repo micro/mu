@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package mu.mucp.v1;
+
+option go_package = "mu/proto/mucp/v1;mucpv1";
+option java_package = "mu.client.proto.mucp.v1";
+option java_multiple_files = true;
+option java_outer_classname = "MessageProtocol";
+
+// Transport-independent representation of one MUCP message. This is not an
+// additional HTTP request format: the HTTPS binding carries headers natively
+// and sends body directly as the HTTP entity, without a wrapper or base64.
+// Defining the envelope does not implement additional transports or methods.
+message Message {
+  // Canonical lowercase metadata names, with one value per name. A binding
+  // must reject duplicate singleton headers before constructing this map.
+  // mucp/1 calls require micro-protocol, micro-service, micro-endpoint,
+  // micro-id and content-type. Responses echo routing/correlation metadata
+  // when established; failures may include micro-error and micro-thread.
+  // This map is protocol metadata, not a copy of all transport headers.
+  // Never place Authorization, cookies, CSRF tokens or caller identities here.
+  map<string, string> headers = 1;
+
+  // Exact encoded payload bytes; content-type determines their interpretation.
+  // mucp/1 over HTTPS uses protobuf JSON for the addressed operation's type.
+  // No google.protobuf.Any wrapper or type URL is required. If this envelope
+  // itself is rendered as protobuf JSON, bytes use standard base64 encoding.
+  bytes body = 2;
+}

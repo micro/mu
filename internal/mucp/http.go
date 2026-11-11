@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"mu/internal/api"
 	"mu/internal/auth"
+	mucpv1 "mu/proto/mucp/v1"
 )
 
 const Version = "mucp/1"
@@ -77,16 +78,23 @@ func Handler(operations []Operation) http.HandlerFunc {
 				return
 			}
 		}
-		if r.Header.Get("Micro-Protocol") != Version {
+		message := &mucpv1.Message{Headers: map[string]string{
+			"micro-protocol": r.Header.Get("Micro-Protocol"),
+			"micro-service":  r.Header.Get("Micro-Service"),
+			"micro-endpoint": r.Header.Get("Micro-Endpoint"),
+			"micro-id":       r.Header.Get("Micro-Id"),
+			"content-type":   r.Header.Get("Content-Type"),
+		}}
+		if message.Headers["micro-protocol"] != Version {
 			Error(w, 400, "unsupported_protocol", "Unsupported MUCP version")
 			return
 		}
-		id := r.Header.Get("Micro-Id")
+		id := message.Headers["micro-id"]
 		if !ValidID(id) {
 			Error(w, 400, "invalid_id", "Use a 16–128 character request ID")
 			return
 		}
-		name, endpoint := r.Header.Get("Micro-Service"), r.Header.Get("Micro-Endpoint")
+		name, endpoint := message.Headers["micro-service"], message.Headers["micro-endpoint"]
 		op, ok := registry[name+"/"+endpoint]
 		if !ok {
 			Error(w, 404, "not_found", "Unknown operation")
@@ -95,7 +103,7 @@ func Handler(operations []Operation) http.HandlerFunc {
 		w.Header().Set("Micro-Id", id)
 		w.Header().Set("Micro-Service", name)
 		w.Header().Set("Micro-Endpoint", endpoint)
-		kind, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		kind, _, err := mime.ParseMediaType(message.Headers["content-type"])
 		if err != nil || kind != "application/json" {
 			Error(w, 415, "unsupported_encoding", "Use application/json")
 			return
@@ -128,9 +136,10 @@ func Handler(operations []Operation) http.HandlerFunc {
 			Error(w, 413, "too_large", "Request exceeds 64 KiB")
 			return
 		}
+		message.Body = raw
 		request := op.Request()
-		trim := strings.TrimSpace(string(raw))
-		if len(trim) == 0 || trim[0] != '{' || protojson.Unmarshal(raw, request) != nil {
+		trim := strings.TrimSpace(string(message.Body))
+		if len(trim) == 0 || trim[0] != '{' || protojson.Unmarshal(message.Body, request) != nil {
 			Error(w, 400, "invalid_arguments", "Send one valid protobuf JSON object")
 			return
 		}

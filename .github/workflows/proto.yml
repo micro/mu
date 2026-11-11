@@ -19,7 +19,7 @@ jobs:
         run: python -m pip install grpcio-tools==1.76.0
       - name: Independent JSON client
         run: python proto/examples/test_client.py
-      - name: Compile assistant contract
+      - name: Compile protocol contracts
         run: |
           mkdir -p "$RUNNER_TEMP/mu-proto"
           python -m grpc_tools.protoc -I proto --include_imports --descriptor_set_out="$RUNNER_TEMP/mu-proto/assistant.pb" $(find proto -name '*.proto' | sort)
