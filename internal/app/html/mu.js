@@ -396,6 +396,7 @@ function receiptKey(){return 'micro-message-receipt:'+JSON.stringify([form.datas
 function savedReceipt(key){try{const r=JSON.parse(sessionStorage.getItem(key)||'null');if(r&&typeof r.id==='string'&&r.id.length>=16&&r.id.length<=128&&typeof r.text==='string'&&r.text.length<=8000&&r.thread===thread&&Number.isFinite(r.at)&&Date.now()-r.at>=0&&Date.now()-r.at<86400000)return r;sessionStorage.removeItem(key);}catch{}return null;}
 
 async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=thread){
+ const started=Date.now();let failures=0;
  while(version===viewVersion){
   let result=null;
   if(!document.hidden&&navigator.onLine){
@@ -408,11 +409,12 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
    if(response&&response.status===404)throw Error('Conversation not found.');
    if(response&&(response.status===401||response.status===403||response.redirected))throw Error('Sign in again to continue.');
    if(result){
+    failures=0;
     if(!result.waiting){if(result.error)throw Error(result.error);answer.innerHTML=result.answer_html||'';return;}
     answer.textContent='Working…';
-   }else answer.textContent='Reconnecting…';
+   }else {failures++;answer.textContent='Reconnecting…';}
   }
-  await new Promise(resolve=>setTimeout(resolve,3000));
+  await new Promise(resolve=>setTimeout(resolve,failures?Math.min(60000*2**(failures-1),300000):muPollDelay(started,3000)));
  }
 }
 async function assistant(command,answer,version){
@@ -466,7 +468,7 @@ async function checkDeliveries(){
  const version=viewVersion,target=thread;deliveryPolling=true;
  try{
   const response=await fetch((form.dataset.path||'/')+'?session='+encodeURIComponent(target),{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:AbortSignal.timeout(15000)});
-  if(!response.ok||response.redirected)return;
+  if(!response.ok||response.redirected)throw Error('Delivery refresh failed');
   const page=new DOMParser().parseFromString(await response.text(),'text/html');
   if(version!==viewVersion||busy||navigating||page.querySelector('#command-form')?.dataset.account!==form.dataset.account)return;
   const seen=new Set(Array.from(log.querySelectorAll('[data-delivery-id]')).map(n=>n.dataset.deliveryId));
@@ -477,10 +479,12 @@ async function checkDeliveries(){
    for(const pending of log.querySelectorAll('[data-build-id]'))if(pending.dataset.buildId===id)pending.remove();
   }
   log.scrollTop=position;
- }catch{}finally{deliveryPolling=false;}
+  return 5000;
+ }finally{deliveryPolling=false;}
 }
-setInterval(checkDeliveries,5000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDeliveries();});
+const updateDeliveries=muPoll(checkDeliveries,5000);
+document.addEventListener('mu:activity',updateDeliveries);
+document.addEventListener('mu:conversation',updateDeliveries);
 async function navigateThread(url,push=true){
  const navigation=++navigationVersion;
  navigating=true;send.disabled=true;
@@ -1580,10 +1584,14 @@ if(typeof document!=='undefined'){
 }
 
 // Visible views check once a minute when idle. A refresh may request a shorter
-// delay while work is active; failures back off. Never overlap requests or keep
+// delay while work is active, easing to 30 seconds for prolonged work. Failures
+// back off separately. Never overlap requests or keep
 // timers running in hidden/offline pages. Returning to a view refreshes it once.
+function muPollDelay(started, base) {
+  return Math.min(30000, base * 2 ** Math.min(4, Math.floor(Math.max(0, Date.now() - started) / 60000)));
+}
 function muPoll(refresh, initial = 60000) {
-  let timer, busy = false, stopped = false, again = false, failures = 0;
+  let timer, busy = false, stopped = false, again = false, failures = 0, activeSince = null;
   const visible = () => !stopped && !document.hidden && navigator.onLine;
   function schedule(delay) {
     clearTimeout(timer);
@@ -1595,7 +1603,13 @@ function muPoll(refresh, initial = 60000) {
     if (busy) { again = true; return; }
     busy = true;
     let delay = 60000;
-    try { delay = await refresh() || 60000; failures = 0; }
+    try {
+      delay = await refresh() || 60000; failures = 0;
+      if (delay < 60000) {
+        if (activeSince === null) activeSince = Date.now();
+        delay = muPollDelay(activeSince, delay);
+      } else activeSince = null;
+    }
     catch (_) { delay = Math.min(60000 * 2 ** failures++, 300000); }
     finally { busy = false; const retry = again; again = false; schedule(retry ? 0 : delay); }
   }

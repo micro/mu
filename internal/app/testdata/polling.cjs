@@ -1,6 +1,6 @@
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const source = fs.readFileSync('html/mu.js', 'utf8');
-const scheduler = source.slice(source.indexOf('function muPoll('), source.indexOf('// Update only message/list regions.'));
+const scheduler = source.slice(source.indexOf('function muPollDelay('), source.indexOf('// Update only message/list regions.'));
 const inbox = source.slice(source.indexOf('// Update only message/list regions.'), source.indexOf('// The remaining controls run in pages'));
 const activity = source.slice(source.indexOf('// One live work projection'), source.indexOf("if (typeof document !== 'undefined') {\n  const initReferenceIndex"));
 function harness() {
@@ -13,7 +13,7 @@ function harness() {
     window: {addEventListener: on}, navigator: {onLine: true},
     setTimeout(fn, delay) { const id = ++serial; timers.set(id, {fn, at: now + delay}); return id; },
     clearTimeout: id => timers.delete(id), Event: class { constructor(type) { this.type = type; } },
-    AbortSignal, console,
+    AbortSignal, console, Date: {now: () => now},
   };
   vm.createContext(context); vm.runInContext(scheduler, context);
   async function settle() { for (let i = 0; i < 30; i++) await Promise.resolve(); }
@@ -73,6 +73,26 @@ function harness() {
   assert.equal(inboxCalls, idleInbox + 2);
   h.emit('pagehide'); await h.advance(3600000); assert.equal(inboxCalls, idleInbox + 2);
   h.emit('pageshow', {persisted: true}); await h.settle(); assert.equal(inboxCalls, idleInbox + 3);
+
+  // Persistent background work must not sustain thousands of hourly requests.
+  const active = harness(); let activeCalls = 0;
+  active.context.refresh = async () => { activeCalls++; return 3000; };
+  vm.runInContext('muPoll(refresh, 0)', active.context);
+  await active.advance(3600000);
+  assert(activeCalls < 160, `active work made ${activeCalls} calls in one hour`);
+  assert(activeCalls > 100, 'long-running work still needs regular updates');
+
+  // Exercise the actual prompt-response loop, including failed reconnects.
+  const waitingSource = source.slice(source.indexOf('async function waitForAnswer('), source.indexOf('async function assistant('));
+  for (const failedResponse of [false, true]) {
+    const waiting = harness(), wc = waiting.context; let requests = 0;
+    wc.viewVersion = 0; wc.thread = 'test'; wc.answer = {};
+    wc.fetch = async () => { requests++; if (failedResponse) throw Error('network'); return {ok: true, json: async () => ({waiting: true})}; };
+    vm.runInContext(waitingSource + "\nwaitForAnswer(answer, 'message');", wc);
+    await waiting.settle(); await waiting.advance(3600000);
+    assert(requests < (failedResponse ? 20 : 160), `prompt loop made ${requests} hourly requests`);
+    wc.viewVersion = 1; await waiting.advance(300000);
+  }
 
   // A request taking longer than its interval cannot overlap or lose a resume.
   const slow = harness(); let calls = 0, finish;
