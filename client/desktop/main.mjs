@@ -119,7 +119,12 @@ else {
         }
         const session = validSession(value);
         memorySession = session;
-        if (!encrypted()) return;
+        if (!encrypted()) {
+          // Do not restore an older account if encryption becomes available
+          // again after this temporary sign-in.
+          await rm(vault, { force: true });
+          return;
+        }
         await mkdir(dirname(vault), { recursive: true });
         await writeFile(
           vault,

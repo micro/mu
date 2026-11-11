@@ -1,7 +1,7 @@
 import { _electron as electron } from "playwright-core";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
-import { mkdir, mkdtemp, rm, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import assert from "node:assert/strict";
 let redirect,
@@ -136,6 +136,7 @@ try {
     safeStorage.isEncryptionAvailable = () => false;
     shell.openExternal = async () => {};
   });
+  await writeFile(resolve(profile, "session.enc"), "stale encrypted session");
   await page.locator("#sign-in").click();
   await page
     .getByText("Complete sign-in in your browser, or try again.", {
