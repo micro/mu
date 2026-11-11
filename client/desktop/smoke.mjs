@@ -86,6 +86,16 @@ const launch = () =>
     timeout: 60000,
   });
 let app = await launch();
+async function screenshot(page, path) {
+  await page.bringToFront();
+  await page.evaluate(
+    () =>
+      new Promise((done) => {
+        requestAnimationFrame(() => requestAnimationFrame(done));
+      }),
+  );
+  await page.screenshot({ path });
+}
 try {
   await app.evaluate(({ shell, safeStorage }) => {
     safeStorage.isEncryptionAvailable = () => false;
@@ -99,7 +109,7 @@ try {
   await page.locator("#sign-in").waitFor();
   await page.locator('[data-session-storage="temporary"]').waitFor();
   await mkdir("screenshots", { recursive: true });
-  await page.screenshot({ path: "screenshots/desktop-sign-in.png" });
+  await screenshot(page, "screenshots/desktop-sign-in.png");
   assert.equal(await page.locator("#runtime").count(), 0);
   await app.evaluate(({ Menu }) =>
     Menu.getApplicationMenu().getMenuItemById("settings").click(),
@@ -157,7 +167,7 @@ try {
   assert.match(await page.locator(".answer").innerText(), /Desktop reply/);
   assert.equal(requests, 1);
   assert.equal(renewals, 1);
-  await page.screenshot({ path: "screenshots/desktop.png" });
+  await screenshot(page, "screenshots/desktop.png");
   // Temporary sign-in survives navigation/window recreation in this process,
   // but is never written to the vault when OS-backed encryption is unavailable.
   assert.equal(
@@ -174,7 +184,7 @@ try {
   );
   await page.getByRole("heading", { name: "Account", exact: true }).waitFor();
   await page.locator('[data-session-storage="temporary"]').waitFor();
-  await page.screenshot({ path: "screenshots/desktop-account.png" });
+  await screenshot(page, "screenshots/desktop-account.png");
   await app.evaluate(({ Menu }) =>
     Menu.getApplicationMenu().getMenuItemById("new-chat").click(),
   );
@@ -185,6 +195,18 @@ try {
   app = await launch();
   page = await app.firstWindow();
   await page.locator("#sign-in").waitFor();
+} catch (error) {
+  for (const page of app.windows()) {
+    console.error(
+      "Desktop failure view:",
+      await page
+        .locator("body")
+        .innerText()
+        .catch(() => "unavailable"),
+    );
+    await screenshot(page, "screenshots/desktop-failure.png").catch(() => {});
+  }
+  throw error;
 } finally {
   await app.close();
   runtime.close();
