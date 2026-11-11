@@ -1,0 +1,165 @@
+[
+  {
+    "id": "HTTP-02-version",
+    "headers": {
+      "Micro-Protocol": "mucp/99"
+    },
+    "status": 400,
+    "code": "unsupported_protocol"
+  },
+  {
+    "id": "HTTP-01-method",
+    "method": "PUT",
+    "status": 405,
+    "code": "method_not_allowed"
+  },
+  {
+    "id": "HTTP-02-id",
+    "headers": {
+      "Micro-Id": "short"
+    },
+    "status": 400,
+    "code": "invalid_id"
+  },
+  {
+    "id": "HTTP-02-route",
+    "headers": {
+      "Micro-Endpoint": "Conformance.Unknown"
+    },
+    "status": 404,
+    "code": "not_found"
+  },
+  {
+    "id": "HTTP-02-media",
+    "headers": {
+      "Content-Type": "text/plain"
+    },
+    "status": 415,
+    "code": "unsupported_encoding"
+  },
+  {
+    "id": "HTTP-02-duplicate-Micro-Protocol",
+    "duplicates": [
+      "Micro-Protocol"
+    ],
+    "status": 400,
+    "code": "invalid_headers"
+  },
+  {
+    "id": "HTTP-02-duplicate-Micro-Service",
+    "duplicates": [
+      "Micro-Service"
+    ],
+    "status": 400,
+    "code": "invalid_headers"
+  },
+  {
+    "id": "HTTP-02-duplicate-Micro-Endpoint",
+    "duplicates": [
+      "Micro-Endpoint"
+    ],
+    "status": 400,
+    "code": "invalid_headers"
+  },
+  {
+    "id": "HTTP-02-duplicate-Micro-Id",
+    "duplicates": [
+      "Micro-Id"
+    ],
+    "status": 400,
+    "code": "invalid_headers"
+  },
+  {
+    "id": "HTTP-02-duplicate-Content-Type",
+    "duplicates": [
+      "Content-Type"
+    ],
+    "status": 400,
+    "code": "invalid_headers"
+  },
+  {
+    "id": "HTTP-02-missing-Micro-Service",
+    "headers": {
+      "Micro-Service": null
+    },
+    "status": 400,
+    "code": "invalid_headers"
+  },
+  {
+    "id": "HTTP-02-missing-Micro-Endpoint",
+    "headers": {
+      "Micro-Endpoint": null
+    },
+    "status": 400,
+    "code": "invalid_headers"
+  },
+  {
+    "id": "HTTP-02-missing-Micro-Id",
+    "headers": {
+      "Micro-Id": null
+    },
+    "status": 400,
+    "code": "invalid_headers"
+  },
+  {
+    "id": "HTTP-03-unknown-field",
+    "body": "{\"notInSchema\":true}",
+    "authenticated": true,
+    "status": 400,
+    "code": "invalid_arguments"
+  },
+  {
+    "id": "HTTP-03-root",
+    "body": "[]",
+    "authenticated": true,
+    "status": 400,
+    "code": "invalid_arguments"
+  },
+  {
+    "id": "HTTP-03-multiple",
+    "body": "{} {}",
+    "authenticated": true,
+    "status": 400,
+    "code": "invalid_arguments"
+  },
+  {
+    "id": "HTTP-03-malformed",
+    "body": "{",
+    "authenticated": true,
+    "status": 400,
+    "code": "invalid_arguments"
+  },
+  {
+    "id": "HTTP-03-size",
+    "oversized": true,
+    "authenticated": true,
+    "status": 413,
+    "code": "too_large"
+  },
+  {
+    "id": "HTTP-05-success",
+    "authenticated": true,
+    "status": 200
+  },
+  {
+    "id": "HTTP-03-duplicate-field",
+    "headers": {
+      "Micro-Endpoint": "Assistant.ReadThread"
+    },
+    "body": "{\"thread\":\"x\",\"thread\":\"x\"}",
+    "authenticated": true,
+    "status": 400,
+    "code": "invalid_arguments"
+  },
+  {
+    "id": "HTTP-03-inclusive-limit",
+    "paddedBytes": 65536,
+    "authenticated": true,
+    "status": 200
+  },
+  {
+    "id": "HTTP-06-no-credential",
+    "status": 401,
+    "code": "authorization_failed"
+  }
+]

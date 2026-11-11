@@ -78,6 +78,10 @@ func Handler(operations []Operation) http.HandlerFunc {
 				return
 			}
 		}
+		if len(r.Header.Values("Content-Type")) > 1 {
+			Error(w, 400, "invalid_headers", "Supply one Content-Type header")
+			return
+		}
 		message := &mucpv1.Message{Headers: map[string]string{
 			"micro-protocol": r.Header.Get("Micro-Protocol"),
 			"micro-service":  r.Header.Get("Micro-Service"),

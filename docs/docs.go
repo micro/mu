@@ -30,6 +30,9 @@ var pages = []page{
 	{Path: "/help/channels", Filename: "CHANNELS.md", Title: "Mail and messaging"},
 	{Path: "/help/architecture", Filename: "ARCHITECTURE.md", Title: "Architecture and development"},
 	{Path: "/help/mucp", Filename: "MUCP.md", Title: "Micro Communication Protocol"},
+	{Path: "/help/mucp-http", Filename: "MUCP-HTTP.md", Title: "MUCP HTTPS binding"},
+	{Path: "/help/mucp-runtime", Filename: "MUCP-RUNTIME.md", Title: "Mu runtime contracts"},
+	{Path: "/help/mucp-conformance", Filename: "MUCP-CONFORMANCE.md", Title: "Testing MUCP implementations"},
 }
 
 // Redirects maps every address the documentation used to answer on to the page

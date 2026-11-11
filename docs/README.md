@@ -7,7 +7,7 @@
 - [Mail and messaging](CHANNELS.md) — mail domains, mail clients, XMPP and groups.
 - [Architecture and development](ARCHITECTURE.md) — the parts of the system, building from source and extensions.
 
-- [MUCP and the assistant contract](MUCP.md) — existing protocol foundation and proposed client contract.
+- [Micro Communication Protocol](MUCP.md) — core protocol, HTTPS binding, Mu contracts and conformance tests.
 
 For client commands and API examples, see [Developers](/developers).
 The service catalogue is at [Tools](/tools).

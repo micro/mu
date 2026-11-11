@@ -2,330 +2,147 @@
 
 # Micro Communication Protocol (MUCP)
 
-MUCP is Mu's public service-layer communication contract. Clients address an
-operation with headers and send a typed body. The runtime owns execution,
-identity, permissions, provider credentials, billing and persistent history.
+## Status and purpose
 
-**Implemented binding: `mucp/1`, JSON over HTTPS.** This document specifies that
-binding. Streaming, cancellation, publish/subscribe and other transports are not
-implemented. They must not be advertised or inferred from go-micro's internal
-capabilities. MUST, MUST NOT and SHOULD express interoperability requirements.
+MUCP defines client-to-server communication for addressed, typed operations.
+Clients may be applications, scripts or agents. Services and assistants define
+the operations carried by the protocol. Mu (short for Micro) is a runtime using
+it; Mu's assistant and service contracts are separate from the communication core.
 
-## Layers
+This is a working specification of `mucp/1`, not an IETF submission or an adopted
+Internet Standard. Its implemented binding is JSON over HTTPS. The goal is that
+independent implementations can interoperate without reading Mu's source code.
+Known gaps are recorded rather than silently treated as conformance requirements.
 
-```mermaid
-flowchart TD
-    Clients["Android, Web and Desktop apps"] --> Protocol["MUCP: addressing, correlation and contracts"]
-    Protocol --> Binding["HTTPS headers and JSON"]
-    Binding --> Boundary["Mu authentication and permissions"]
-    Boundary --> Assistant["Assistant operations"]
-    Assistant --> Agents["Agents and permitted service tools"]
-```
+The key words MUST, MUST NOT, REQUIRED, SHOULD, SHOULD NOT and MAY are interpreted
+as in BCP 14 ([RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and
+[RFC 8174](https://www.rfc-editor.org/rfc/rfc8174)) only when capitalized.
 
-The envelope lives in `proto/mucp/v1/message.proto`; assistant operations live in
-`proto/assistant/v1`, and service contracts in `proto/service/<name>/v1`. Protobuf supplies
-schemas and generated types, not mandatory binary RPC. Handwritten JSON clients
-interoperate with generated Go and Java clients. Go Micro remains server-side
-infrastructure; clients do not need its registry, transport or implementation.
+## Document set
 
-Transport independence means preserving these semantics across bindings. It does
-not replace TCP, UDP or QUIC. A future binding over NATS, RabbitMQ or another
-carrier must specify addressing, authentication, framing, ordering, failures and
-limits before it is supported. Broker delivery guarantees are not MUCP guarantees.
-
-## Message model
-
-An exchange has metadata and an encoded body. Required request metadata:
-
-| Header | Meaning and permitted value |
+| Document | Defines |
 | --- | --- |
-| `Micro-Protocol` | Exact protocol identifier `mucp/1` |
-| `Micro-Service` | Target contract; currently `assistant` |
-| `Micro-Endpoint` | Exact, case-sensitive operation name |
-| `Micro-Id` | Caller-generated correlation ID: 16–128 ASCII letters, digits, `_` or `-` |
-| `Content-Type` | `application/json`; optional charset parameter is accepted |
+| This core | Roles, addressing, correlation, contract boundaries and evolution |
+| [HTTPS binding](MUCP-HTTP.md) | Exact requests, discovery, responses and errors for `mucp/1` |
+| [Mu runtime contracts](MUCP-RUNTIME.md) | Assistant operations, durable work, Home, Inbox and direct services |
+| [Conformance](MUCP-CONFORMANCE.md) | Executable checks, live-instance testing and unproven requirements |
 
-Header names are case-insensitive in HTTP; values are case-sensitive. Required
-headers MUST appear exactly once. Clients SHOULD generate a fresh UUID per new
-exchange. An ID correlates a request and response; it is **not an idempotency key**.
-Account IDs supplied in headers or bodies never confer identity or permissions.
+The specification and schemas must be used at the same pinned repository
+revision. There is not yet a separately released, immutable specification bundle.
 
-Bodies use the standard protobuf JSON mapping: lowerCamelCase keys, enum names,
-RFC3339 timestamps, base64 bytes and quoted 64-bit integers. A request MUST be one
-JSON object, no more than 65,536 bytes. Unknown fields, duplicate fields and
-unknown access modes are rejected. Clients MUST tolerate additive response
-fields and render an unknown content block's `fallback` when available.
+## Roles and boundaries
 
-`mu.mucp.v1.Message` defines the shared message representation:
+A **client** originates an exchange. A **server** authenticates the caller, routes
+the operation and returns a result or failure. An **agent** may act in either role.
+A **service** is an addressable collection of operations. A **contract** defines
+their typed requests, results, authorization requirements and behaviour.
 
-- `headers`: a map of canonical lowercase metadata names to single string values.
-  Bindings must reject duplicate singleton headers before populating the map.
-- `body`: the exact encoded payload bytes, interpreted according to `content-type`
-  and the addressed operation's request or response contract.
+Speaking MUCP and implementing a particular contract are separate claims. A server
+can speak MUCP without implementing personal assistants. A Mu-compatible assistant
+server additionally implements the named Mu contract and its semantics.
 
-The HTTPS binding projects native headers and the unwrapped entity body into
-this envelope. It does **not** accept an envelope wrapper as an HTTP request body.
-When the envelope itself is serialized as protobuf JSON, `body` is base64, as
-required by protobuf's bytes mapping; the current HTTP body remains readable JSON.
-There is no `Any` type URL and no dependency on assistant or service messages.
+Go-micro is intended to provide a reusable client/server implementation of this
+communication layer. Today the public HTTPS binding is implemented in Mu's
+`internal/mucp`; moving it into go-micro is subsequent work. Historical go-micro
+MUCP transports are not automatically compatible with this binding. Implementers
+in other languages do not need Go, go-micro or Mu implementation packages.
 
-Only protocol metadata belongs in the envelope. Authorization, cookies, CSRF
-tokens and caller identity remain in the binding's authentication context and
-MUST NOT be copied into the envelope or forwarded into tool metadata. The schema
-does not grant trust to a header or introduce a new transport. Future bindings
-must define their framing, authentication and delivery semantics separately.
+## Addressing and messages
 
-## HTTPS binding
+An invocation identifies a protocol version, service, endpoint and correlation
+identifier. The pair (service, endpoint) selects an operation in a contract.
+Names are case-sensitive and MUST NOT be interpreted as executable code, file
+paths or instructions to expose an internal registry. The server MUST explicitly
+support an operation before invoking it. Discovery is not authorization.
 
-The base address is the runtime origin, for example `https://micro.mu`.
+Each message consists of metadata and an encoded body. The
+[envelope schema](https://github.com/micro/mu/blob/main/proto/mucp/v1/message.proto)
+represents metadata as lowercase singleton keys and the body as bytes. It does
+not require bindings to serialize an extra wrapper; the HTTPS binding uses
+native HTTP headers and an unwrapped JSON body.
 
-- `GET /` with `Micro-Protocol: mucp/1` returns public capabilities.
-- `POST /` with the required metadata invokes an operation.
-- Requests without the protocol header retain the normal website behaviour.
-- `/mucp` remains the existing compatibility alias. New clients use `/`.
-- HTTPS is required except for HTTP on a loopback address during local use.
-- Clients MUST NOT follow redirects for authenticated protocol calls or silently
-  fall back to another endpoint or version.
+The contract supplies the body schema. This version uses protobuf JSON mapping;
+clients MAY encode JSON without generated code. Schema field numbers and internal
+Go/Java package names are not operation addresses. The core imposes no assistant,
+conversation, credit balance, model or application navigation model.
 
-Discovery returns `protocol`, `service`, `contract`, `encoding`, `operations`,
-`features` and `limits`. The current features are `threadRecovery: true`,
-`streaming: false`, `cancellation: false`, `automaticRetry: false`. Limits include
-`requestBytes: 65536`, `waitSeconds: 120` and `pageSize: 100`. Older servers may
-omit features/limits; absence MUST NOT be interpreted as support. Discovery
-contains no account data. A client may support `mucp/1` directly but MUST fail
-clearly if the server returns an incompatible protocol.
+Credentials and authenticated identity belong to the binding's security context.
+They MUST NOT be copied into the message metadata or passed onward to tools as
+protocol metadata. Caller-supplied account IDs MUST NOT grant authority.
 
-Example request:
+## Exchange semantics
 
-```http
-POST / HTTP/1.1
-Host: micro.mu
-Micro-Protocol: mucp/1
-Micro-Service: assistant
-Micro-Endpoint: Assistant.Ask
-Micro-Id: 1c0778d6-eebd-4b82-8aa8-327c72b32b79
-Content-Type: application/json
-Authorization: Bearer <scoped-token>
+A correlation ID associates a request and its response. It MUST be echoed on a
+successful invocation. It is NOT an idempotency key. Clients SHOULD use a new ID
+for each exchange, including an explicitly permitted retry of the same operation.
 
-{"agentId":"micro","thread":"","prompt":"What is the weather?","mode":"ACCESS_MODE_PERSONAL","voice":false}
-```
+A client MUST verify protocol version and correlation before accepting a successful
+invocation response. A transport failure is an unknown outcome, not evidence
+that the operation did not execute. Closing a connection does not cancel work.
+Clients MUST NOT automatically replay an invocation unless its contract explicitly
+permits the retry and defines its deduplication or idempotency semantics.
 
-Successful responses are HTTP 200 protobuf JSON and echo `Micro-Protocol`,
-`Micro-Service`, `Micro-Endpoint` and `Micro-Id`. Clients MUST verify at least
-protocol and correlation before accepting a successful response. Response
-headers are not duplicated in the JSON body. Errors before valid routing headers
-are established may lack correlation; clients must still handle the HTTP failure.
+An operation contract MUST define inputs, outputs, access rules, observable
+side effects, failures and whether/how a caller can recover an uncertain outcome.
+Durable operation IDs, retention and replay windows are contract-level concepts.
+They are not inferred from correlation IDs or a reliable transport.
 
-## Accounts and sign-in
+## Discovery and extensions
 
-**Hosted web app:** when `/app/` and the selected runtime have the same origin,
-the app uses the existing HttpOnly session cookie. `/session` checks sign-in and
-refreshes the readable CSRF cookie. Every cookie-authenticated write MUST include
-`X-CSRF-Token`; the runtime verifies it against the authenticated session. Logged-out
-users go through the normal login/signup flow and return to `/app/`.
+Servers expose their supported contract through binding-specific discovery.
+Clients MUST NOT infer permission from an advertised capability. Absence of a
+feature means it is not established as supported. A client MUST reject an
+incompatible version rather than silently changing protocols or destinations.
 
-**Independent web, Android and desktop apps:** use browser OAuth authorization
-code flow with S256 PKCE, state verification and `read write api:agent api:home api:inbox api:services` scopes.
-Native apps use the system browser. The desktop callback uses a loopback listener,
-a fresh state and a ten-minute validity window. Authorization codes are consumed
-once; the PKCE verifier is not sent in the authorization URL. Client tokens MUST
-only be sent to the selected runtime. Switching servers clears the app's session.
+In `mucp/1`, discovery names one primary service/contract. Mu uses its Services
+contract for additional service discovery. Generic multi-contract discovery,
+contract-version selection and a namespace allocation policy remain open design
+work. This draft does not reserve arbitrary third-party service names globally.
 
-The token response includes a 24-hour access token and a rotating refresh token.
-Clients renew before expiry with a form POST to `/oauth/token` containing
-`grant_type=refresh_token`, `client_id` and `refresh_token`, then securely replace
-both credentials. Refresh tokens expire after 90 days without renewal; active
-connections remain signed in. Renewal preserves approved scopes and the connection
-ID. Deleting the connection/account, disabling the account, or removing the OAuth
-client prevents renewal. Reusing a spent refresh token revokes that connection.
-Clients serialize renewal and do not replay assistant actions to recover authentication.
-Android stores credentials with the Keystore; desktop uses OS-encrypted storage;
-independent browser sessions use session storage. Network failures retain local
-credentials. Existing installations without a refresh token need one new sign-in
-with the updated client; expired access tokens cannot be upgraded.
+Additive response fields are compatible; clients MUST tolerate them. Requests
+are validated against the selected schema: unknown request fields are rejected.
+Therefore adding an optional request field does not make it safe to send to an
+older server without establishing support. A changed field meaning, required
+header or operation meaning requires an explicit versioned contract/binding.
+Protobuf field numbers MUST NOT be reused after deletion.
 
-Native/programmatic calls send `Authorization: Bearer <token>`. Browser bearer
-calls omit cookies. An explicit credential takes precedence over any cookie and
-an invalid token MUST NOT fall back to cookie identity. Reads require read access;
-Writes require write access. Product capabilities are explicit: `api:agent`
-for Assistant operations, `api:home` for the composed Home overview (including its
-recent inbox preview), `api:inbox` for Inbox, and `api:services` for catalogue
-metadata. Existing tokens need renewed consent for newly requested capabilities.
-Service-only tokens cannot invoke product operations; product-only tokens cannot
-call raw services. Direct Contacts calls require `service:contacts` plus read/write
-permissions as appropriate. Discovery never grants execution rights. All account, verification, quota and tool checks
-remain enforced at the runtime boundary.
+Streaming, cancellation, subscriptions and other transport bindings are not
+defined by `mucp/1`. A future binding must define framing, security, ordering,
+failures and limits, and preserve the applicable contract semantics. Transport
+independence is a design boundary, not a claim that every transport works today.
 
-Cross-origin CORS is non-credentialed and limited to MUCP plus `/oauth/register`
-and `/oauth/token`. It never grants account access or exposes dashboard pages.
-Session cookies and CSRF tokens MUST NOT be sent to another origin. Models and
-provider API keys remain on the runtime, never in clients.
+## Security and privacy considerations
 
-## Assistant operations
+The network may observe, modify, redirect or replay unprotected traffic. Clients
+and servers must also treat peers and returned content as potentially malicious.
+HTTPS authenticates the server and protects traffic; application authorization
+still determines what a caller can do. A malicious authorized caller must not
+obtain another principal's history, work or service records.
 
-| Endpoint | Request | Result |
-| --- | --- | --- |
-| `Assistant.ListAgents` | Empty object | Accessible agents and public descriptions; no private prompts |
-| `Assistant.ListThreads` | Optional agent filter, page size and page token | Authorized personal assistant threads and next-page token |
-| `Assistant.ReadThread` | Thread ID and optional pagination | Thread metadata, ordered messages, next-page token and `pending` |
-| `Home.Overview` | Empty object | Accessible agents, recent inbox, pinned services, cached events and current public brief |
-| `Inbox.List` | Pagination and unread filter | Owned inbox items across channels; held items excluded |
-| `Inbox.Read` | Item ID and pagination | Safe messages without changing read state |
-| `Inbox.MarkRead` | Item ID and unread boolean | Persisted read state |
-| `Services.List` | Pagination | Service descriptions and supported direct contracts |
-| `Services.Describe` | Service name | Description and implemented direct operations |
-| `Assistant.Submit` | Stable message ID and PERSONAL Ask request | Durable operation receipt |
-| `Assistant.ReadOperation` | Operation ID | Owned operation state and terminal result |
-| `Assistant.Ask` | Agent ID, thread ID or empty string, prompt, access mode and voice preference | Thread ID, responding agent, Markdown text and typed content |
+Credentials MUST be scoped to the selected server and MUST NOT be forwarded to a
+redirect target, a result URL, another agent or a tool. Discovery and model output
+MUST NOT confer permissions. Servers MUST recheck authorization when recovering
+work; possession of an operation ID is not authorization. Applications MUST treat
+returned text/content as data, never executable authority.
 
-The protobuf schema defines all fields and enum values. Use `thread`, not a second
-conversation identifier. The runtime derives ownership from credentials, checks
-access on each call and excludes service-owned mail/chat records from assistant
-thread history. Inaccessible and nonexistent threads both return 404.
+Implementations need bounds on input size, parsing, execution and recovery reads.
+Repeated status polling can exhaust a server even without model calls. Retry
+scheduling belongs in the applicable binding/contract and must be bounded; a
+pending state is not permission for unlimited rapid polling.
 
-`ACCESS_MODE_PERSONAL` creates or continues a durable personal assistant thread.
-`ACCESS_MODE_PUBLIC` is still authenticated and metered, has restricted tools and
-is stateless: it cannot continue a thread. Unspecified or unknown modes fail.
-The `voice` field describes the interaction; it does not grant background listening
-or require an audio transport. Clients own dictation and playback.
+Prompt and credential contents MUST NOT be put in URLs. Logging and retention
+policies must account for private request/response data. TLS does not protect
+against a compromised runtime or an external provider to which the runtime
+legitimately sends data. Federated identity, onward delegation and cross-runtime
+trust are outside this version's scope.
 
+## Registrations and references
 
-### Durable personal submission
+No IANA registrations are requested by this repository draft. Before an Internet-
+Draft submission, review HTTP field registration, namespace/extension policy and
+IETF publication requirements; do not describe these private fields as registered.
+See [RFC 8126](https://www.rfc-editor.org/rfc/rfc8126) for registry policy guidance
+and [RFC 3552](https://www.rfc-editor.org/rfc/rfc3552) for security review guidance.
+Normative wire dependencies are listed in the HTTPS binding.
 
-`Assistant.Submit` returns an operation after the request and queue receipt have
-been persisted. `messageId` is 16–120 ASCII alphanumeric, hyphen or underscore
-characters, scoped to the caller. It is distinct from the exchange's `Micro-Id`.
-Reusing it with the same request returns the same operation; changing the agent,
-thread, prompt or voice preference returns a conflict. Leading/trailing prompt
-whitespace is normalized. Omitted thread and the returned thread identify the same
-submission. Completed receipts are retained for at least seven days from creation;
-clients MUST NOT replay an ambiguous submission after that window. Account/thread
-deletion or revoked agent access revokes recovery. This is deduplicated submission,
-not a guarantee that an external tool produces its side effects exactly once.
-
-ReadOperation returns queued, running, succeeded, failed or interrupted. A success
-contains the same answer/content as Ask. Resume by operation ID; if the acceptance
-response was lost, repeat Submit with the original message ID and unchanged body
-within the retention window. Never generate a new message ID merely to retry.
-A runtime restart preserves queued work and records interrupted in-flight work.
-Operations are not universal approval or cancellation handles.
-
-### Direct service contracts
-
-`Micro-Service: chat` supports `Chat.Rooms`, `Chat.Messages`, `Chat.Send`,
-`Chat.Source` and `Chat.Sources`. `Micro-Service: groups` supports `Groups.List`,
-`Groups.Read`, `Groups.Create` and `Groups.Update`. These require their own
-`service:chat` or `service:groups` scope plus read/write permission; assistant
-product scopes do not grant them. Both services implement generated protobuf
-request/response types and use the same gateway as REST and MCP. Group reads and
-sends check current membership, including after invitation acceptance or removal.
-Invitation hashes are storage-only and absent from the public contract.
-
-Direct `Chat.Send` is a service/tool post, not an instruction to run an agent.
-Interactive group-agent execution remains in the runtime chat ingress, where
-mentions, group tool restrictions and group billing apply. Clients must not infer
-assistant execution from successful delivery. Other service schemas under
-`proto/service` do not imply available MUCP endpoints; consult discovery.
-
-`Micro-Service: contacts` uses `Contacts.List`, `Contacts.Find`, `Contacts.Add`
-and `Contacts.Delete`, defined in `proto/service/contacts/v1`. These adapt the
-existing service gateway and its account/metering checks. Delete is an explicit
-write and remains unavailable as an autonomous destructive model tool. Other
-services remain available to agents through their existing tools; their catalogue
-entries have no direct MUCP contract until a tested adapter ships.
-
-Home reads local projections and schedules the existing bounded background cache
-refresh. It does not wait on remote calendars,
-invoke a model, or spend credits to render an overview. `calendarPending` signals
-stale/missing calendar cache. Inbox reads do not grant permission to execute agents
-on mail/group contexts. Current Inbox message projection exposes text and role;
-personal assistant threads additionally expose structured result blocks.
-
-## Completion and recovery
-
-PERSONAL Ask submits to the existing persistent reply queue and waits up to 120
-seconds. HTTP 200 returns the completed answer. Once acceptance is known, the
-runtime exposes the thread in `Micro-Thread`, including on pending failures.
-
-A 504 with `Micro-Thread` means the HTTP wait ended without a verified completed
-response. ReadThread can recover saved messages and reports whether work remains
-pending. A disconnected client can resume with its known thread; if the thread ID
-was not received, ListThreads lets the user find the new chat. Clients SHOULD use
-bounded polling and stop polling when the view is left or the outcome is terminal.
-
-A network failure or generic intermediary 504 does **not** prove acceptance or
-rejection. Clients MUST NOT automatically resend Ask. The queue deduplicates some
-retained personal submissions, but there is no general replay window or permanent
-idempotency guarantee. Retries can repeat paid work and external side effects.
-
-Closing a socket, changing agents, interrupting speech or stopping local playback
-MUST NOT be described as cancelling server work. There is no cancel operation.
-Restarted in-flight work records interruption instead of blindly replaying tools.
-PUBLIC requests have no durable-thread recovery guarantee.
-
-Pagination is live, not a snapshot. Tokens are signed and scoped to account,
-operation and filter; they expire after fifteen minutes or a runtime restart.
-Clients restart pagination after expiration and deduplicate by record ID.
-ReadThread is oldest-first. Maximum page size is 100.
-
-## Errors
-
-Protocol failures return a non-2xx HTTP status, `Micro-Error` machine code and:
-
-```json
-{"error":{"code":"invalid_arguments","message":"Send one valid protobuf JSON object","status":400}}
-```
-
-Authentication/authorization gates retain their existing product error bodies;
-clients MUST use HTTP status even when the JSON error is absent or a plain string.
-`Micro-Error: authorization_failed` marks failures from that gate. Error text is
-for display, not branching. Never render an error body as executable HTML.
-
-| Status | Meaning / client behaviour |
-| --- | --- |
-| 400 | Invalid metadata, version or arguments; correct the request |
-| 401 | Sign in again; do not retry an action automatically |
-| 402 | Credit required; direct the user to account management |
-| 403 | Permission, verification or CSRF failure; do not downgrade authentication |
-| 404 | Unknown operation/service or inaccessible resource |
-| 405 | Unsupported HTTP method |
-| 409 | Acceptance conflict; inspect the thread before resubmitting |
-| 413 / 415 | Body too large / unsupported encoding |
-| 429 | Rate limited; do not replay mutations automatically |
-| 5xx | Failure or uncertain outcome; recover through history when possible |
-
-## Content and client safety
-
-A reply has Markdown text and typed content blocks: sources, images, audio, video,
-routes and resource references. Unknown fields are additive; unknown blocks use
-fallback text. Clients MUST treat content as data, reject unsafe URL schemes and
-avoid executing model-authored HTML, scripts or commands. Media references do not
-promise background playback or override provider restrictions.
-
-Rendered links are not tool permissions. Server-held confirmations and executable
-actions require a future contract; clients MUST NOT invent them from model text.
-Do not put prompts, credentials or private search text in URLs or access logs.
-Opaque thread IDs may appear in navigation; protocol payloads carry them in bodies.
-
-## Evolution and conformance
-
-Additive response fields and content blocks are compatible. Removed protobuf field
-numbers MUST be reserved and never reused. Changed field meanings, operation
-semantics or required headers need a new protocol/contract version. Unsupported
-features fail explicitly rather than masquerading as successful empty responses.
-
-Shared examples in `proto/testdata` are consumed by Go, TypeScript and Java tests.
-Server tests cover authentication, ownership, CSRF, parsing and recovery. Browser
-and desktop tests exercise the actual client transports, sign-in and rendering.
-A new client must pass these cases before claiming compatibility.
-
-Before adding streaming or another binding, define event types and ordering,
-terminal outcomes, cursor scope/retention, reconnect gaps, cancellation outcomes,
-idempotency conflict handling and authentication revocation. None of these
-semantics may be inferred from a TCP connection, an RPC stream or a broker queue.
-
-See [Architecture](ARCHITECTURE.md), [contracts](https://github.com/micro/mu/tree/main/proto) and
-[clients](https://github.com/micro/mu/tree/main/client). The historical MUCP RPC proposal and go-micro's
-internal metadata are background; this implemented binding is the client contract.
-
-This specification is licensed under [Apache-2.0](../proto/LICENSE).
+Licensed under [Apache-2.0](../proto/LICENSE).

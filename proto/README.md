@@ -19,7 +19,10 @@ The shared HTTPS/JSON binding lives in `internal/mucp`; `internal/server` compos
 explicit adapters from home, inbox, agent and services. `/` detects MUCP headers;
 ordinary browser traffic continues to use the runtime web experience.
 Android generates Java types; web/desktop and the independent Python example use
-readable JSON. See [MUCP](../docs/MUCP.md) for wire and authorization semantics.
+readable JSON. See the [HTTPS binding](../docs/MUCP-HTTP.md) for wire semantics and the
+[Mu runtime profile](../docs/MUCP-RUNTIME.md) for authorization and recovery.
+The [conformance guide](../docs/MUCP-CONFORMANCE.md) covers the independent client
+and live agent-to-agent checks.
 
 ## Licence
 
