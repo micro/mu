@@ -42,7 +42,7 @@ binary, using Go Micro as its underlying framework.
 message types; binary RPC and generated browser clients are not required.
 
 See [Architecture](docs/ARCHITECTURE.md) for the layers and assistant interaction,
-[MUCP](docs/MUCP.md) for the wire binding and recovery rules, and
+[MUCP](docs/MUCP.md) for the protocol and its specifications, and
 [contracts](proto/README.md) for the assistant interface.
 
 ## Purpose
@@ -79,7 +79,7 @@ curl "$MU_URL/agent" \
 
 The response includes `text` and `thread`; send the thread identifier
 back to continue. Requests and credentials belong in request bodies and headers.
-The [MUCP contract](docs/MUCP.md) provides Home, Inbox, agent and service discovery
+The [Mu runtime contracts](docs/MUCP-RUNTIME.md) provide Home, Inbox, agent and service discovery
 interfaces, with durable personal requests and typed results. Mu is its first
 runtime implementation. [Service contracts](proto/service) begin with Contacts;
 other services remain available through agent tools.

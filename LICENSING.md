@@ -8,7 +8,7 @@ following explicit exceptions apply:
 | Mu runtime and existing clients, including `internal/`, `service/` and `client/` | AGPL-3.0 |
 | `proto/`, including schemas, generated contract types, examples, fixtures and contract tests | [Apache-2.0](proto/LICENSE), except `proto/generate/` |
 | `proto/generate/` schema-generation implementation | [AGPL-3.0](proto/generate/LICENSE) |
-| `docs/MUCP.md` protocol specification | [Apache-2.0](proto/LICENSE) |
+| `docs/MUCP.md`, `docs/MUCP-HTTP.md`, `docs/MUCP-RUNTIME.md`, `docs/MUCP-CONFORMANCE.md` specifications and conformance guide | [Apache-2.0](proto/LICENSE) |
 | Other material without an explicit notice | Root AGPL-3.0 licence |
 
 Generated contract code produced from the Apache-licensed schemas is covered by
