@@ -19,6 +19,28 @@ import { Turn } from "./content";
 import { Overview } from "./overview";
 import { Voice } from "./voice";
 
+function SessionStorageNotice() {
+  const [persistent, setPersistent] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    window.muDesktop
+      ?.sessionPersistent()
+      .then((value) => {
+        if (active) setPersistent(value);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+  return persistent === false ? (
+    <p className="text-muted" data-session-storage="temporary">
+      Secure storage is unavailable on this device. You’ll need to sign in again
+      after quitting Mu.
+    </p>
+  ) : null;
+}
+
 function ConnectionSettings() {
   const [server, setServer] = useState(defaultRuntime),
     [error, setError] = useState("");
@@ -68,6 +90,7 @@ function Connect({ error = "" }: { error?: string }) {
     <section className="section-stack">
       <h1>Welcome to Mu</h1>
       <p>Sign in to talk to your agents.</p>
+      <SessionStorageNotice />
       <div className="form-actions">
         <button
           id="sign-in"
@@ -364,6 +387,7 @@ function Client({
       <section>
         <h1>Account</h1>
         <p>Connected to {session.server}</p>
+        <SessionStorageNotice />
         <div className="collection-list">
           <a
             className="collection-item"

@@ -5,19 +5,23 @@ import {
   shell,
   safeStorage,
   dialog,
+  Menu,
+  screen,
 } from "electron";
 import { readFile, writeFile, rm, mkdir } from "node:fs/promises";
+import { writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve, secureOrigin } from "./server.mjs";
+import { restoreWindow, menuTemplate } from "./window.mjs";
 const directory = dirname(fileURLToPath(import.meta.url));
 let window, server;
+let showWindow = () => {};
 app.enableSandbox();
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on("second-instance", () => {
-    window?.show();
-    window?.focus();
+    showWindow();
   });
   app
     .whenReady()
@@ -38,10 +42,18 @@ else {
       };
       const vault = join(app.getPath("userData"), "session.enc");
       const preference = join(app.getPath("userData"), "runtime.json");
+      const geometry = join(app.getPath("userData"), "window.json");
+      let savedWindow;
+      try {
+        savedWindow = JSON.parse(await readFile(geometry, "utf8"));
+      } catch {}
       ipcMain.handle("runtime-load", async (event) => {
         trusted(event);
-        try { return secureOrigin(JSON.parse(await readFile(preference, "utf8"))); }
-        catch { return null; }
+        try {
+          return secureOrigin(JSON.parse(await readFile(preference, "utf8")));
+        } catch {
+          return null;
+        }
       });
       ipcMain.handle("runtime-save", async (event, value) => {
         trusted(event);
@@ -53,6 +65,11 @@ else {
         safeStorage.isEncryptionAvailable() &&
         (process.platform !== "linux" ||
           safeStorage.getSelectedStorageBackend() !== "basic_text");
+      let memorySession = null;
+      ipcMain.handle("session-persistent", (event) => {
+        trusted(event);
+        return encrypted();
+      });
       const validSession = (value) => {
         if (
           !value ||
@@ -61,7 +78,13 @@ else {
           value.token.length > 16384 ||
           value.cookie ||
           !Number.isFinite(value.expires) ||
-          (value.expires <= Date.now() && !(typeof value.refresh === "string" && value.refresh && typeof value.client === "string" && value.client)) ||
+          (value.expires <= Date.now() &&
+            !(
+              typeof value.refresh === "string" &&
+              value.refresh &&
+              typeof value.client === "string" &&
+              value.client
+            )) ||
           value.expires > Date.now() + 86400000
         )
           throw Error("Invalid session");
@@ -69,8 +92,14 @@ else {
           server: secureOrigin(value.server),
           token: value.token,
           expires: value.expires,
-          client: typeof value.client === "string" && value.client.length <= 256 ? value.client : undefined,
-          refresh: typeof value.refresh === "string" && value.refresh.length <= 16384 ? value.refresh : undefined,
+          client:
+            typeof value.client === "string" && value.client.length <= 256
+              ? value.client
+              : undefined,
+          refresh:
+            typeof value.refresh === "string" && value.refresh.length <= 16384
+              ? value.refresh
+              : undefined,
         };
       };
       ipcMain.handle("auth-redirect", (event) => {
@@ -84,10 +113,12 @@ else {
       ipcMain.handle("session-save", async (event, value) => {
         trusted(event);
         if (value === null) {
+          memorySession = null;
           await rm(vault, { force: true });
           return;
         }
         const session = validSession(value);
+        memorySession = session;
         if (!encrypted()) return;
         await mkdir(dirname(vault), { recursive: true });
         await writeFile(
@@ -98,7 +129,13 @@ else {
       });
       ipcMain.handle("session-load", async (event) => {
         trusted(event);
-        if (!encrypted()) return null;
+        if (!encrypted()) {
+          try {
+            return memorySession ? validSession(memorySession) : null;
+          } catch {
+            return null;
+          }
+        }
         try {
           return validSession(
             JSON.parse(safeStorage.decryptString(await readFile(vault))),
@@ -107,14 +144,22 @@ else {
           return null;
         }
       });
-      function open() {
+      function open(view = "") {
+        const primary = screen.getPrimaryDisplay();
+        const displays = [
+          primary,
+          ...screen.getAllDisplays().filter((d) => d.id !== primary.id),
+        ];
+        const { maximized, ...bounds } = restoreWindow(
+          savedWindow,
+          displays.map((d) => d.workArea),
+        );
         window = new BrowserWindow({
-          width: 1000,
-          height: 800,
+          ...bounds,
           minWidth: 360,
           minHeight: 480,
           title: "Mu",
-          autoHideMenuBar: true,
+          autoHideMenuBar: false,
           webPreferences: {
             preload: join(directory, "preload.cjs"),
             nodeIntegration: false,
@@ -167,14 +212,51 @@ else {
             callback(answer.response === 1);
           },
         );
+        window.on("close", () => {
+          savedWindow = {
+            ...window.getNormalBounds(),
+            maximized: window.isMaximized(),
+          };
+          // Synchronous because the process may quit immediately after close.
+          try {
+            writeFileSync(geometry, JSON.stringify(savedWindow), {
+              mode: 0o600,
+            });
+          } catch {}
+        });
         window.on("closed", () => {
           window = null;
         });
-        window.loadURL(server.url);
+        window.loadURL(server.url + (view ? "?view=" + view : ""));
+        if (maximized) window.maximize();
       }
+      showWindow = () => {
+        if (!window) open();
+        if (window.isMinimized()) window.restore();
+        window.show();
+        window.focus();
+      };
+      Menu.setApplicationMenu(
+        Menu.buildFromTemplate(
+          menuTemplate(
+            process.platform,
+            (view) => {
+              if (!window) {
+                open(view);
+                return;
+              }
+              showWindow();
+              window.loadURL(server.url + (view ? "?view=" + view : ""));
+            },
+            () => {
+              shell.openExternal("https://micro.mu/download").catch(() => {});
+            },
+          ),
+        ),
+      );
       open();
       app.on("activate", () => {
-        if (!window) open();
+        showWindow();
       });
     })
     .catch((error) => {

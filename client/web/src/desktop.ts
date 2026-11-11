@@ -13,6 +13,7 @@ declare global {
       redirect(): Promise<string>;
       authorize(url: string): Promise<void>;
       loadSession(): Promise<Session | null>;
+      sessionPersistent(): Promise<boolean>;
       saveSession(session: Session | null): Promise<void>;
       onCallback(callback: (result: Callback) => void): () => void;
     };

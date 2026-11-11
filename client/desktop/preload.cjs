@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("muDesktop", {
   redirect: () => ipcRenderer.invoke("auth-redirect"),
   authorize: (url) => ipcRenderer.invoke("auth-authorize", url),
   loadSession: () => ipcRenderer.invoke("session-load"),
+  sessionPersistent: () => ipcRenderer.invoke("session-persistent"),
   saveSession: (session) => ipcRenderer.invoke("session-save", session),
   onCallback: (callback) => {
     const listener = (_event, result) => callback(result);
