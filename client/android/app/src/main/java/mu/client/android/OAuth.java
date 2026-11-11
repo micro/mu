@@ -52,4 +52,9 @@ final class OAuth {
                         + "&code_verifier=" + encode(pending.getString("verifier"))
                         + "&code=" + encode(code), "application/x-www-form-urlencoded");
     }
+    static JSONObject refresh(String server, JSONObject account) throws Exception {
+        return AgentApi.post(AgentApi.origin(server) + "/oauth/token", "",
+            "grant_type=refresh_token&client_id=" + encode(account.getString("client")) +
+            "&refresh_token=" + encode(account.getString("refresh")), "application/x-www-form-urlencoded");
+    }
 }

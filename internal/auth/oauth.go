@@ -311,7 +311,7 @@ func OAuthMetadataHandler(w http.ResponseWriter, r *http.Request) {
 		"registration_endpoint":                 issuer + "/oauth/register",
 		"scopes_supported":                      []string{"read", "write"},
 		"response_types_supported":              []string{"code"},
-		"grant_types_supported":                 []string{"authorization_code"},
+		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
 		"code_challenge_methods_supported":      []string{"S256", "plain"},
 		"token_endpoint_auth_methods_supported": []string{"none"},
 	})
@@ -379,7 +379,7 @@ func OAuthRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		"client_secret":              client.ClientSecret,
 		"client_name":                client.Name,
 		"redirect_uris":              client.RedirectURIs,
-		"grant_types":                []string{"authorization_code"},
+		"grant_types":                []string{"authorization_code", "refresh_token"},
 		"response_types":             []string{"code"},
 		"token_endpoint_auth_method": "none",
 	})
@@ -479,7 +479,7 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 	for _, cap := range []string{"agent", "inbox", "work", "home", "services"} {
 		b.WriteString(`<label class="choice"><input type="checkbox" name="capability" value="` + cap + `"` + checked(requested["api:"+cap]) + `>` + cap + `</label>`)
 	}
-	b.WriteString(`</div></fieldset></div></details><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow changes and actions</label><p class="text-muted text-sm">Expires in 24 hours. Revoke anytime in <a href="/account/tokens">Tokens</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
+	b.WriteString(`</div></fieldset></div></details><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow changes and actions</label><p class="text-muted text-sm">Stays connected with automatic renewal. Access tokens last 24 hours; the connection expires after 90 days without renewal. Revoke anytime in <a href="/account/tokens">Tokens</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(b.String()))
 }
@@ -611,35 +611,35 @@ func OAuthTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
-	grantType := r.FormValue("grant_type")
-	code := r.FormValue("code")
-	clientID := r.FormValue("client_id")
-	redirectURI := r.FormValue("redirect_uri")
-	codeVerifier := r.FormValue("code_verifier")
-
-	if grantType != "authorization_code" {
-		w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	r.Body = http.MaxBytesReader(w, r.Body, 16384)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form", 400)
+		return
+	}
+	var result *tokenResponse
+	var err error
+	switch r.PostForm.Get("grant_type") {
+	case "authorization_code":
+		var raw string
+		raw, err = ExchangeAuthorizationCode(r.PostForm.Get("code"), r.PostForm.Get("client_id"), r.PostForm.Get("redirect_uri"), r.PostForm.Get("code_verifier"))
+		if err == nil {
+			result, err = renewableToken(raw)
+		}
+	case "refresh_token":
+		result, err = refreshToken(r.PostForm.Get("refresh_token"), r.PostForm.Get("client_id"))
+	default:
 		w.WriteHeader(400)
 		json.NewEncoder(w).Encode(map[string]string{"error": "unsupported_grant_type"})
 		return
 	}
-
-	token, err := ExchangeAuthorizationCode(code, clientID, redirectURI, codeVerifier)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant", "error_description": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant", "error_description": "Sign-in expired or was revoked. Please sign in again."})
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"access_token": token,
-		"token_type":   "Bearer",
-		"expires_in":   86400,
-	})
+	json.NewEncoder(w).Encode(result)
 }
 
 // OAuthConnection contains audit metadata only; never return token secrets.
@@ -665,7 +665,11 @@ func OAuthConnections() map[string][]OAuthConnection {
 		if clientID == "" {
 			continue
 		}
-		result[clientID] = append(result[clientID], OAuthConnection{token.Account, token.Created, token.LastUsed, token.ExpiresAt, legacy})
+		expires := token.ExpiresAt
+		if token.RefreshExpires.After(expires) {
+			expires = token.RefreshExpires
+		}
+		result[clientID] = append(result[clientID], OAuthConnection{token.Account, token.Created, token.LastUsed, expires, legacy})
 	}
 	for id := range result {
 		sort.Slice(result[id], func(i, j int) bool { return result[id][i].Created.After(result[id][j].Created) })

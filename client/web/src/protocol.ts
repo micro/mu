@@ -1,3 +1,4 @@
+import { renewSession } from "./auth";
 // JSON representation of proto/assistant/v1/assistant.proto. Unknown content
 // remains usable through its required fallback; execution belongs to the runtime.
 export interface Agent {
@@ -73,6 +74,8 @@ interface Operations {
   };
 }
 export interface Session {
+  client?: string;
+  refresh?: string;
   server: string;
   token: string;
   expires: number;
@@ -176,6 +179,7 @@ export async function invoke<T>(
     throw new ProtocolError(
       "Session cookies cannot be used with another server.",
     );
+  await renewSession(session);
   const id = crypto.randomUUID();
   const credentials: Record<string, string> = session.cookie
     ? {
