@@ -369,6 +369,7 @@ function remember(title){
  if(!heading){heading=document.createElement('h1');heading.className='assistant-thread-title';log.before(heading);}
  heading.replaceChildren();const titleButton=document.createElement('button');titleButton.type='button';titleButton.dataset.editThread='';titleButton.title='Rename thread';titleButton.textContent=title||'Thread';heading.append(titleButton);
  let activity=conversation.querySelector('[data-conversation-activity]');if(!activity){activity=document.createElement('div');activity.setAttribute('aria-live','polite');log.before(activity);}activity.dataset.conversationActivity='/agent?view=activity-status&thread='+encodeURIComponent(thread);
+  document.dispatchEvent(new Event('mu:conversation'));
 
 }
 conversation.addEventListener('click',event=>{
@@ -504,6 +505,7 @@ async function navigateThread(url,push=true){
   conversation.querySelector('.assistant-thread-title')?.remove();
   const heading=page.querySelector('.assistant-thread-title');if(heading)log.before(heading);
   conversation.querySelector('[data-conversation-activity]')?.remove();const activity=page.querySelector('[data-conversation-activity]');if(activity)log.before(activity);
+  document.dispatchEvent(new Event('mu:conversation'));
   const welcome=conversation.querySelector('.prompt-welcome');welcome.replaceChildren(...page.querySelector('.prompt-welcome').childNodes);
   conversation.classList.toggle('is-active',!!thread);status.textContent='';
   form.dispatchEvent(new CustomEvent('thread-changed',{detail:{thread}}));sizeInput();
@@ -1577,57 +1579,81 @@ if(typeof document!=='undefined'){
  }
 }
 
+// Visible views check once a minute when idle. A refresh may request a shorter
+// delay while work is active; failures back off. Never overlap requests or keep
+// timers running in hidden/offline pages. Returning to a view refreshes it once.
+function muPoll(refresh, initial = 60000) {
+  let timer, busy = false, stopped = false, again = false, failures = 0;
+  const visible = () => !stopped && !document.hidden && navigator.onLine;
+  function schedule(delay) {
+    clearTimeout(timer);
+    if (visible()) timer = setTimeout(run, delay);
+  }
+  async function run() {
+    clearTimeout(timer);
+    if (!visible()) return;
+    if (busy) { again = true; return; }
+    busy = true;
+    let delay = 60000;
+    try { delay = await refresh() || 60000; failures = 0; }
+    catch (_) { delay = Math.min(60000 * 2 ** failures++, 300000); }
+    finally { busy = false; const retry = again; again = false; schedule(retry ? 0 : delay); }
+  }
+  function resume() { clearTimeout(timer); if (visible()) run(); }
+  document.addEventListener('visibilitychange', resume);
+  window.addEventListener('online', resume);
+  window.addEventListener('offline', () => clearTimeout(timer));
+  window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
+  window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; resume(); } });
+  schedule(initial);
+  return run;
+}
+
 // Update only message/list regions. Composers, focus and drafts stay mounted.
 (function () {
   if (typeof document === 'undefined') return;
   const reader = document.querySelector('[data-inbox-watch]');
   const list = document.querySelector('[data-inbox-list]');
   if (!reader && !list) return;
-  let stopped = false, busy = false, timer;
-  async function check() {
-    if (busy || stopped) return;
-    busy = true;
-    try {
-      if (stopped || document.hidden || !navigator.onLine) return;
-      if (window.getSelection()?.toString()) return;
-      const region = reader ? reader.querySelector('[data-inbox-messages]') : list;
-      if (!region || region.contains(document.activeElement) || region.querySelector('input[name="id"]:checked')) return;
-      // Never replace messages while an existing synchronous streaming client
-      // is writing into the same reader.
-      if (reader?.querySelector('button[type="submit"]:disabled')) return;
-      const response = await fetch(location.href, {headers: {Accept: 'text/html'}, cache: 'no-store'});
-      if (!response.ok || response.redirected || !response.headers.get('content-type')?.includes('text/html')) return;
-      const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-      const incoming = page.querySelector(reader ? '[data-inbox-messages]' : '[data-inbox-list]');
-      if (!incoming || stopped || document.hidden || window.getSelection()?.toString()) return;
-      if (region.contains(document.activeElement) || region.querySelector('input[name="id"]:checked')) return;
-      const y = window.scrollY;
-      if (reader) {
-        const state = reader.querySelector('[data-inbox-state]');
-        const nextState = page.querySelector('[data-inbox-state]');
-        if (state && nextState) state.textContent = nextState.textContent;
-        const old = new Map(Array.from(region.children).map(node => [node.dataset.messageId, node]));
-        // Reuse unchanged messages so open disclosures and embedded media survive.
-        const nodes = Array.from(incoming.children).map(node => (old.get(node.dataset.messageId)?.innerHTML === node.innerHTML ? old.get(node.dataset.messageId) : node));
-        if (nodes.length !== region.children.length || nodes.some((node,i) => node !== region.children[i])) {
-          region.replaceChildren(...nodes);
-        }
-      } else if (region.innerHTML !== incoming.innerHTML) {
-        region.replaceChildren(...incoming.childNodes);
-      }
-      window.scrollTo(window.scrollX, y);
-    } catch (_) {
-      // A failed poll never discards the last usable page or the draft.
-    } finally {
-      busy = false;
-      if (!stopped) timer = setTimeout(check, reader ? 3000 : 10000);
-    }
+  let stopped = false;
+  function delay() {
+    return reader && (reader.querySelector('[data-work-pending="true"]') || reader.querySelector('[data-inbox-state]')?.textContent.trim()) ? 3000 : 60000;
   }
-  timer = setTimeout(check, reader ? 3000 : 10000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { clearTimeout(timer); check(); } });
-  window.addEventListener('pageshow', e => { if(e.persisted) { roomRetries=0; initRoomChat(); } });
-window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); });
-  window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; clearTimeout(timer); check(); } });
+  async function check() {
+    if (stopped || document.hidden || !navigator.onLine) return;
+    if (window.getSelection()?.toString()) return;
+    const region = reader ? reader.querySelector('[data-inbox-messages]') : list;
+    if (!region || region.contains(document.activeElement) || region.querySelector('input[name="id"]:checked')) return;
+    // Never replace messages while an existing synchronous streaming client
+    // is writing into the same reader.
+    if (reader?.querySelector('button[type="submit"]:disabled')) return;
+    const response = await fetch(location.href, {headers: {Accept: 'text/html'}, cache: 'no-store', signal: AbortSignal.timeout(15000)});
+    if (!response.ok || response.redirected || !response.headers.get('content-type')?.includes('text/html')) throw Error('Inbox refresh failed');
+    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const incoming = page.querySelector(reader ? '[data-inbox-messages]' : '[data-inbox-list]');
+    if (!incoming || stopped || document.hidden || window.getSelection()?.toString()) return;
+    if (region.contains(document.activeElement) || region.querySelector('input[name="id"]:checked')) return;
+    const y = window.scrollY;
+    if (reader) {
+      const state = reader.querySelector('[data-inbox-state]');
+      const nextState = page.querySelector('[data-inbox-state]');
+      if (state && nextState) state.textContent = nextState.textContent;
+      const old = new Map(Array.from(region.children).map(node => [node.dataset.messageId, node]));
+      // Reuse unchanged messages so open disclosures and embedded media survive.
+      const nodes = Array.from(incoming.children).map(node => (old.get(node.dataset.messageId)?.innerHTML === node.innerHTML ? old.get(node.dataset.messageId) : node));
+      if (nodes.length !== region.children.length || nodes.some((node,i) => node !== region.children[i])) {
+        region.replaceChildren(...nodes);
+      }
+    } else if (region.innerHTML !== incoming.innerHTML) {
+      region.replaceChildren(...incoming.childNodes);
+    }
+    window.scrollTo(window.scrollX, y);
+    return delay();
+  }
+  window.addEventListener('pagehide', () => { stopped = true; });
+  window.addEventListener('pageshow', event => { if (event.persisted) stopped = false; });
+  const refresh = muPoll(check, delay());
+  document.addEventListener('mu:activity', refresh);
 })();
 
 // The remaining controls run in pages, never in the push service worker.
@@ -2243,15 +2269,22 @@ window.addEventListener('pagehide', () => { currentRoomId=null; if(roomWs){const
    const response=await fetch(source,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
    if(!root.isConnected||root.dataset.conversationActivity!==source)return;
    if(response.status===401||response.status===403||response.status===404){root.replaceChildren();root.dataset.workPending='false';root.dataset.deliveries='[]';delete root.dataset.rendered;return;}
-   if(!response.ok)return;
+   if(!response.ok)throw Error('Activity refresh failed');
    const result=await response.json();
    if(!root.isConnected||root.dataset.conversationActivity!==source)return;
-   root.dataset.workPending=String(result.pending===true);root.dataset.deliveries=JSON.stringify(result.deliveries||[]);
+   const pending=String(result.pending===true), deliveries=JSON.stringify(result.deliveries||[]);
+   const changed=(root.dataset.workPending!==pending&&(pending==='true'||root.dataset.workPending!==undefined))||(root.dataset.deliveries!==undefined&&root.dataset.deliveries!==deliveries);
+   root.dataset.workPending=pending;root.dataset.deliveries=deliveries;
    if(root.dataset.rendered!==result.html&&!root.contains(document.activeElement)){const expanded=!!root.querySelector('details[open]');root.innerHTML=result.html;root.dataset.rendered=result.html;if(expanded&&root.querySelector('details'))root.querySelector('details').open=true;}
-  }catch{}finally{inFlight.delete(root);}
+   if(changed)document.dispatchEvent(new Event('mu:activity'));
+  }finally{inFlight.delete(root);}
  }
- function update(){document.querySelectorAll('[data-conversation-activity]').forEach(refresh);}
- update();setInterval(update,5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)update();});
+ const update=muPoll(async()=>{
+  const roots=Array.from(document.querySelectorAll('[data-conversation-activity]'));
+  await Promise.all(roots.map(refresh));
+  return roots.some(root=>root.dataset.workPending==='true')?5000:60000;
+ },0);
+ document.addEventListener('mu:conversation',update);
 })();
 
 if (typeof document !== 'undefined') {

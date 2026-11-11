@@ -168,8 +168,8 @@ func accountRates() {
 			Key:  "rate:" + acc.ID,
 			What: fmt.Sprintf("%s made %s calls in the last hour", acc.ID, usage.HumanCount(n)),
 			Why: fmt.Sprintf("The threshold is %s an hour per account "+
-				"(ALERT_ACCOUNT_CALLS_PER_HOUR). One account at this rate is usually a "+
-				"loop rather than a person.", usage.HumanCount(limit)),
+				"(ALERT_ACCOUNT_CALLS_PER_HOUR). This includes page refreshes and status checks, "+
+				"not just paid model calls. Check the endpoint breakdown for excessive polling or retries.", usage.HumanCount(limit)),
 			Where: "/admin/traffic?window=day",
 		})
 	}
