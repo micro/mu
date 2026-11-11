@@ -20,7 +20,8 @@ flowchart TD
     Assistant --> Agents["Agents and permitted service tools"]
 ```
 
-The contract lives in `proto/assistant/v1/assistant.proto`. Protobuf supplies
+The envelope lives in `proto/mucp/v1/envelope.proto`; assistant operations live in
+`proto/assistant/v1`, and service contracts in `proto/service/<name>/v1`. Protobuf supplies
 schemas and generated types, not mandatory binary RPC. Handwritten JSON clients
 interoperate with generated Go and Java clients. Go Micro remains server-side
 infrastructure; clients do not need its registry, transport or implementation.
@@ -53,11 +54,24 @@ JSON object, no more than 65,536 bytes. Unknown fields, duplicate fields and
 unknown access modes are rejected. Clients MUST tolerate additive response
 fields and render an unknown content block's `fallback` when available.
 
-On transports without native headers, a future binding can carry metadata in an
-envelope, for example `{"headers":{"micro-protocol":"mucp/1",...},"body":{...}}`.
-Envelope metadata names would be canonical lowercase. This is an illustration,
-not an additional accepted HTTP request format. Credentials belong to the
-binding's authenticated channel and MUST NOT be forwarded into tool metadata.
+`mu.mucp.v1.Envelope` defines the shared message representation:
+
+- `headers`: a map of canonical lowercase metadata names to single string values.
+  Bindings must reject duplicate singleton headers before populating the map.
+- `body`: the exact encoded payload bytes, interpreted according to `content-type`
+  and the addressed operation's request or response contract.
+
+The HTTPS binding projects native headers and the unwrapped entity body into
+this envelope. It does **not** accept an envelope wrapper as an HTTP request body.
+When the envelope itself is serialized as protobuf JSON, `body` is base64, as
+required by protobuf's bytes mapping; the current HTTP body remains readable JSON.
+There is no `Any` type URL and no dependency on assistant or service messages.
+
+Only protocol metadata belongs in the envelope. Authorization, cookies, CSRF
+tokens and caller identity remain in the binding's authentication context and
+MUST NOT be copied into the envelope or forwarded into tool metadata. The schema
+does not grant trust to a header or introduce a new transport. Future bindings
+must define their framing, authentication and delivery semantics separately.
 
 ## HTTPS binding
 

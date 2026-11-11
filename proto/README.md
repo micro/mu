@@ -1,5 +1,10 @@
 # Protocol contracts
 
+`mucp/v1` defines the transport-independent envelope: canonical metadata headers
+and encoded body bytes. The HTTPS adapter uses this generated type internally,
+while carrying headers natively and sending the JSON body without a wrapper.
+Credentials are binding context, not envelope metadata.
+
 `assistant/v1` defines the client composition surface: Home, Inbox, Assistant
 (agent discovery, personal threads and execution), and Services (catalogue).
 `service/<name>/v1` defines contracts for all 40 existing services. Chat and Groups use their generated request/response types in the service
@@ -84,7 +89,7 @@ From the repository root, with protoc 31.1 (also bundled in grpcio-tools 1.76.0)
 
 ```sh
 protoc -I proto --descriptor_set_out=/tmp/mu-assistant.pb --include_imports \
-  proto/assistant/v1/assistant.proto
+  proto/mucp/v1/envelope.proto proto/assistant/v1/assistant.proto
 ```
 
 CI compiles the schema and checks committed Go types for drift. Android generates
