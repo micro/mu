@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Source contract for the chat service. Generate Go types with protoc.
 syntax = "proto3";
 import "service/options.proto";

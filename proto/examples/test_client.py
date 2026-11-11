@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Independent binding conformance; fake server has no Mu implementation imports."""
 import json
 import threading

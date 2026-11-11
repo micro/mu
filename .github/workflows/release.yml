@@ -119,6 +119,12 @@ jobs:
       - name: Build focused web client
         run: python3 client/web/build.py dist/mu-web.zip
 
+      - name: Include software licences
+        run: |
+          cp LICENSE dist/LICENSE-AGPL-3.0.txt
+          cp proto/LICENSE dist/LICENSE-APACHE-2.0.txt
+          cp LICENSING.md dist/LICENSING.md
+
       - name: Publish release with binaries
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

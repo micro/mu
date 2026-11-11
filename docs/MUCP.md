@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Micro Communication Protocol (MUCP)
 
 MUCP is Mu's public service-layer communication contract. Clients address an
@@ -325,3 +327,5 @@ semantics may be inferred from a TCP connection, an RPC stream or a broker queue
 See [Architecture](ARCHITECTURE.md), [contracts](https://github.com/micro/mu/tree/main/proto) and
 [clients](https://github.com/micro/mu/tree/main/client). The historical MUCP RPC proposal and go-micro's
 internal metadata are background; this implemented binding is the client contract.
+
+This specification is licensed under [Apache-2.0](../proto/LICENSE).
