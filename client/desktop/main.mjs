@@ -12,7 +12,7 @@ import { readFile, writeFile, rm, mkdir } from "node:fs/promises";
 import { writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { serve, secureOrigin } from "./server.mjs";
+import { serve, secureOrigin, validSession } from "./server.mjs";
 import { restoreWindow, menuTemplate } from "./window.mjs";
 const directory = dirname(fileURLToPath(import.meta.url));
 let window, server;
@@ -70,38 +70,7 @@ else {
         trusted(event);
         return encrypted();
       });
-      const validSession = (value) => {
-        if (
-          !value ||
-          typeof value.token !== "string" ||
-          !value.token ||
-          value.token.length > 16384 ||
-          value.cookie ||
-          !Number.isFinite(value.expires) ||
-          (value.expires <= Date.now() &&
-            !(
-              typeof value.refresh === "string" &&
-              value.refresh &&
-              typeof value.client === "string" &&
-              value.client
-            )) ||
-          value.expires > Date.now() + 86400000
-        )
-          throw Error("Invalid session");
-        return {
-          server: secureOrigin(value.server),
-          token: value.token,
-          expires: value.expires,
-          client:
-            typeof value.client === "string" && value.client.length <= 256
-              ? value.client
-              : undefined,
-          refresh:
-            typeof value.refresh === "string" && value.refresh.length <= 16384
-              ? value.refresh
-              : undefined,
-        };
-      };
+
       ipcMain.handle("auth-redirect", (event) => {
         trusted(event);
         return server.callback;

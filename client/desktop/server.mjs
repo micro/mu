@@ -140,3 +140,38 @@ export async function serve(root, onCallback) {
     },
   };
 }
+
+export function validSession(value, now = Date.now()) {
+  if (
+    !value ||
+    typeof value.token !== "string" ||
+    !value.token ||
+    value.token.length > 16384 ||
+    value.cookie ||
+    !Number.isFinite(value.expires) ||
+    (value.expires <= now &&
+      !(
+        typeof value.refresh === "string" &&
+        value.refresh &&
+        typeof value.client === "string" &&
+        value.client
+      )) ||
+    value.expires > now + 86400000 + 60000
+  )
+    throw Error("Invalid session");
+  return {
+    server: secureOrigin(value.server),
+    token: value.token,
+    // Renderer and main-process clocks can differ slightly. Do not store
+    // a local expiry beyond the normal 24-hour lifetime.
+    expires: Math.min(value.expires, now + 86400000),
+    client:
+      typeof value.client === "string" && value.client.length <= 256
+        ? value.client
+        : undefined,
+    refresh:
+      typeof value.refresh === "string" && value.refresh.length <= 16384
+        ? value.refresh
+        : undefined,
+  };
+}
