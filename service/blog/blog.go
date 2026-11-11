@@ -154,7 +154,7 @@ func formatTags(tags string) string {
 	if len(badges) == 0 {
 		return ""
 	}
-	return strings.Join(badges, " · ")
+	return strings.Join(badges, "")
 }
 
 // parseTags parses comma-separated tags, validates, and normalizes them
@@ -1622,9 +1622,11 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	contentSB.WriteString(`<div id="blog" class="editorial-page"><a class="editorial-back" href="` + back + `">← ` + backLabel + `</a>`)
 	contentSB.WriteString(`<div class="metadata-row"><time datetime="` + post.CreatedAt.Format(time.RFC3339) + `">` + post.CreatedAt.Format("2 January 2006") + `</time><span>` + authorLink + `</span></div>`)
-	contentSB.WriteString(`<div class="metadata-row">` + formatTags(post.Tags) + `</div>`)
+	if tags := formatTags(post.Tags); tags != "" {
+		contentSB.WriteString(`<div class="metadata-row">` + tags + `</div>`)
+	}
 	if !post.UpdatedAt.IsZero() {
-		contentSB.WriteString(`<p class="text-muted text-sm">Updated ` + post.UpdatedAt.Format("2 January 2006") + `</p>`)
+		contentSB.WriteString(`<div class="metadata-row"><time datetime="` + post.UpdatedAt.Format(time.RFC3339) + `">Updated ` + post.UpdatedAt.Format("2 January 2006") + `</time></div>`)
 	}
 	if post.Private {
 		contentSB.WriteString(`<p class="text-muted text-sm">Private article</p>`)
