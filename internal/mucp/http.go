@@ -78,7 +78,7 @@ func Handler(operations []Operation) http.HandlerFunc {
 				return
 			}
 		}
-		message := &mucpv1.Envelope{Headers: map[string]string{
+		message := &mucpv1.Message{Headers: map[string]string{
 			"micro-protocol": r.Header.Get("Micro-Protocol"),
 			"micro-service":  r.Header.Get("Micro-Service"),
 			"micro-endpoint": r.Header.Get("Micro-Endpoint"),

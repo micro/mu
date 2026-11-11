@@ -20,7 +20,7 @@ flowchart TD
     Assistant --> Agents["Agents and permitted service tools"]
 ```
 
-The envelope lives in `proto/mucp/v1/envelope.proto`; assistant operations live in
+The envelope lives in `proto/mucp/v1/message.proto`; assistant operations live in
 `proto/assistant/v1`, and service contracts in `proto/service/<name>/v1`. Protobuf supplies
 schemas and generated types, not mandatory binary RPC. Handwritten JSON clients
 interoperate with generated Go and Java clients. Go Micro remains server-side
@@ -54,7 +54,7 @@ JSON object, no more than 65,536 bytes. Unknown fields, duplicate fields and
 unknown access modes are rejected. Clients MUST tolerate additive response
 fields and render an unknown content block's `fallback` when available.
 
-`mu.mucp.v1.Envelope` defines the shared message representation:
+`mu.mucp.v1.Message` defines the shared message representation:
 
 - `headers`: a map of canonical lowercase metadata names to single string values.
   Bindings must reject duplicate singleton headers before populating the map.

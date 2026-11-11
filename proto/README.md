@@ -89,7 +89,7 @@ From the repository root, with protoc 31.1 (also bundled in grpcio-tools 1.76.0)
 
 ```sh
 protoc -I proto --descriptor_set_out=/tmp/mu-assistant.pb --include_imports \
-  proto/mucp/v1/envelope.proto proto/assistant/v1/assistant.proto
+  proto/mucp/v1/message.proto proto/assistant/v1/assistant.proto
 ```
 
 CI compiles the schema and checks committed Go types for drift. Android generates

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.31.1
-// source: mucp/v1/envelope.proto
+// source: mucp/v1/message.proto
 
 package mucpv1
 
@@ -25,7 +25,7 @@ const (
 // additional HTTP request format: the HTTPS binding carries headers natively
 // and sends body directly as the HTTP entity, without a wrapper or base64.
 // Defining the envelope does not implement additional transports or methods.
-type Envelope struct {
+type Message struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Canonical lowercase metadata names, with one value per name. A binding
 	// must reject duplicate singleton headers before constructing this map.
@@ -44,21 +44,21 @@ type Envelope struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Envelope) Reset() {
-	*x = Envelope{}
-	mi := &file_mucp_v1_envelope_proto_msgTypes[0]
+func (x *Message) Reset() {
+	*x = Message{}
+	mi := &file_mucp_v1_message_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Envelope) String() string {
+func (x *Message) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Envelope) ProtoMessage() {}
+func (*Message) ProtoMessage() {}
 
-func (x *Envelope) ProtoReflect() protoreflect.Message {
-	mi := &file_mucp_v1_envelope_proto_msgTypes[0]
+func (x *Message) ProtoReflect() protoreflect.Message {
+	mi := &file_mucp_v1_message_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -69,58 +69,58 @@ func (x *Envelope) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Envelope.ProtoReflect.Descriptor instead.
-func (*Envelope) Descriptor() ([]byte, []int) {
-	return file_mucp_v1_envelope_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use Message.ProtoReflect.Descriptor instead.
+func (*Message) Descriptor() ([]byte, []int) {
+	return file_mucp_v1_message_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Envelope) GetHeaders() map[string]string {
+func (x *Message) GetHeaders() map[string]string {
 	if x != nil {
 		return x.Headers
 	}
 	return nil
 }
 
-func (x *Envelope) GetBody() []byte {
+func (x *Message) GetBody() []byte {
 	if x != nil {
 		return x.Body
 	}
 	return nil
 }
 
-var File_mucp_v1_envelope_proto protoreflect.FileDescriptor
+var File_mucp_v1_message_proto protoreflect.FileDescriptor
 
-const file_mucp_v1_envelope_proto_rawDesc = "" +
+const file_mucp_v1_message_proto_rawDesc = "" +
 	"\n" +
-	"\x16mucp/v1/envelope.proto\x12\n" +
-	"mu.mucp.v1\"\x97\x01\n" +
-	"\bEnvelope\x12;\n" +
-	"\aheaders\x18\x01 \x03(\v2!.mu.mucp.v1.Envelope.HeadersEntryR\aheaders\x12\x12\n" +
+	"\x15mucp/v1/message.proto\x12\n" +
+	"mu.mucp.v1\"\x95\x01\n" +
+	"\aMessage\x12:\n" +
+	"\aheaders\x18\x01 \x03(\v2 .mu.mucp.v1.Message.HeadersEntryR\aheaders\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\fR\x04body\x1a:\n" +
 	"\fHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01BF\n" +
-	"\x17mu.client.proto.mucp.v1B\x10EnvelopeProtocolP\x01Z\x17mu/proto/mucp/v1;mucpv1b\x06proto3"
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01BE\n" +
+	"\x17mu.client.proto.mucp.v1B\x0fMessageProtocolP\x01Z\x17mu/proto/mucp/v1;mucpv1b\x06proto3"
 
 var (
-	file_mucp_v1_envelope_proto_rawDescOnce sync.Once
-	file_mucp_v1_envelope_proto_rawDescData []byte
+	file_mucp_v1_message_proto_rawDescOnce sync.Once
+	file_mucp_v1_message_proto_rawDescData []byte
 )
 
-func file_mucp_v1_envelope_proto_rawDescGZIP() []byte {
-	file_mucp_v1_envelope_proto_rawDescOnce.Do(func() {
-		file_mucp_v1_envelope_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_mucp_v1_envelope_proto_rawDesc), len(file_mucp_v1_envelope_proto_rawDesc)))
+func file_mucp_v1_message_proto_rawDescGZIP() []byte {
+	file_mucp_v1_message_proto_rawDescOnce.Do(func() {
+		file_mucp_v1_message_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_mucp_v1_message_proto_rawDesc), len(file_mucp_v1_message_proto_rawDesc)))
 	})
-	return file_mucp_v1_envelope_proto_rawDescData
+	return file_mucp_v1_message_proto_rawDescData
 }
 
-var file_mucp_v1_envelope_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_mucp_v1_envelope_proto_goTypes = []any{
-	(*Envelope)(nil), // 0: mu.mucp.v1.Envelope
-	nil,              // 1: mu.mucp.v1.Envelope.HeadersEntry
+var file_mucp_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_mucp_v1_message_proto_goTypes = []any{
+	(*Message)(nil), // 0: mu.mucp.v1.Message
+	nil,             // 1: mu.mucp.v1.Message.HeadersEntry
 }
-var file_mucp_v1_envelope_proto_depIdxs = []int32{
-	1, // 0: mu.mucp.v1.Envelope.headers:type_name -> mu.mucp.v1.Envelope.HeadersEntry
+var file_mucp_v1_message_proto_depIdxs = []int32{
+	1, // 0: mu.mucp.v1.Message.headers:type_name -> mu.mucp.v1.Message.HeadersEntry
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -128,26 +128,26 @@ var file_mucp_v1_envelope_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_mucp_v1_envelope_proto_init() }
-func file_mucp_v1_envelope_proto_init() {
-	if File_mucp_v1_envelope_proto != nil {
+func init() { file_mucp_v1_message_proto_init() }
+func file_mucp_v1_message_proto_init() {
+	if File_mucp_v1_message_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mucp_v1_envelope_proto_rawDesc), len(file_mucp_v1_envelope_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mucp_v1_message_proto_rawDesc), len(file_mucp_v1_message_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_mucp_v1_envelope_proto_goTypes,
-		DependencyIndexes: file_mucp_v1_envelope_proto_depIdxs,
-		MessageInfos:      file_mucp_v1_envelope_proto_msgTypes,
+		GoTypes:           file_mucp_v1_message_proto_goTypes,
+		DependencyIndexes: file_mucp_v1_message_proto_depIdxs,
+		MessageInfos:      file_mucp_v1_message_proto_msgTypes,
 	}.Build()
-	File_mucp_v1_envelope_proto = out.File
-	file_mucp_v1_envelope_proto_goTypes = nil
-	file_mucp_v1_envelope_proto_depIdxs = nil
+	File_mucp_v1_message_proto = out.File
+	file_mucp_v1_message_proto_goTypes = nil
+	file_mucp_v1_message_proto_depIdxs = nil
 }

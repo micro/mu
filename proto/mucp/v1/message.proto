@@ -5,13 +5,13 @@ package mu.mucp.v1;
 option go_package = "mu/proto/mucp/v1;mucpv1";
 option java_package = "mu.client.proto.mucp.v1";
 option java_multiple_files = true;
-option java_outer_classname = "EnvelopeProtocol";
+option java_outer_classname = "MessageProtocol";
 
 // Transport-independent representation of one MUCP message. This is not an
 // additional HTTP request format: the HTTPS binding carries headers natively
 // and sends body directly as the HTTP entity, without a wrapper or base64.
 // Defining the envelope does not implement additional transports or methods.
-message Envelope {
+message Message {
   // Canonical lowercase metadata names, with one value per name. A binding
   // must reject duplicate singleton headers before constructing this map.
   // mucp/1 calls require micro-protocol, micro-service, micro-endpoint,

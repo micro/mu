@@ -11,9 +11,9 @@ import (
 	mucpv1 "mu/proto/mucp/v1"
 )
 
-func TestEnvelopePreservesPayloadAcrossEncodings(t *testing.T) {
+func TestMessagePreservesPayloadAcrossEncodings(t *testing.T) {
 	for _, body := range [][]byte{[]byte(`{"prompt":"Hello","voice":true}`), {0, 255, 1, 128}} {
-		original := &mucpv1.Envelope{Headers: map[string]string{
+		original := &mucpv1.Message{Headers: map[string]string{
 			"micro-protocol": "mucp/1", "micro-service": "assistant", "micro-endpoint": "Assistant.Ask",
 			"micro-id": "12345678-1234-1234-1234-123456789abc", "content-type": "application/json",
 		}, Body: body}
@@ -21,7 +21,7 @@ func TestEnvelopePreservesPayloadAcrossEncodings(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		restored := new(mucpv1.Envelope)
+		restored := new(mucpv1.Message)
 		if err := proto.Unmarshal(wire, restored); err != nil {
 			t.Fatal(err)
 		}
