@@ -4,12 +4,17 @@ Mu for Windows, macOS and Linux packages the React app with Electron. No Node.js
 local server setup or Mu installation is required by users. Models and tools run
 on the chosen Mu server. The default is micro.mu; Settings selects another server.
 
+Native menus provide New chat (Ctrl/Cmd+N), Settings (Ctrl/Cmd+,), and navigation
+to Home, Inbox, Agents, Services and All chats (Ctrl/Cmd+1–5). Window size and
+position are remembered and adjusted when a monitor is disconnected. Help links
+to the latest downloads; updates are installed manually.
+
 The app uses a sandboxed renderer with no Node integration. A per-launch loopback
 server serves bundled assets under an unpredictable path. OAuth opens the system
 browser and returns through a state-checked, single-use loopback callback. PKCE
 is still checked by the runtime. Tokens are retained only with OS-backed encryption;
 Linux's plaintext `basic_text` backend is not used. Otherwise sign-in lasts for
-the app session. Playback and microphone features depend on Electron/platform support;
+the app session, with a notice on sign-in and Account. Playback and microphone features depend on Electron/platform support;
 there is no desktop background wake-word promise.
 
 ## Development

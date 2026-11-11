@@ -48,7 +48,7 @@ jobs:
           sudo apparmor_parser -r /etc/apparmor.d/mu-electron
           sudo chown root:root client/desktop/node_modules/electron/dist/chrome-sandbox
           sudo chmod 4755 client/desktop/node_modules/electron/dist/chrome-sandbox
-      - name: Test desktop sign-in and chat
+      - name: Test desktop sign-in, navigation, window restore and chat
         shell: bash
         working-directory: client/desktop
         run: |

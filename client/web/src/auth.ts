@@ -130,7 +130,10 @@ export async function signIn(value: string) {
       : location.origin + location.pathname;
   const registered = await request(
     server + "/oauth/register",
-    JSON.stringify({ client_name: "Mu Web", redirect_uris: [redirect] }),
+    JSON.stringify({
+      client_name: window.muDesktop ? "Mu Desktop" : "Mu Web",
+      redirect_uris: [redirect],
+    }),
     "application/json",
   );
   if (typeof registered.client_id !== "string")

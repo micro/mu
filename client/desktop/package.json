@@ -29,6 +29,7 @@
     "files": [
       "main.mjs",
       "server.mjs",
+      "window.mjs",
       "preload.cjs",
       "web/**/*",
       "LICENSE"
