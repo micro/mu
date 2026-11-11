@@ -79,6 +79,21 @@ jobs:
           done
           ls -lh dist
 
+      - name: Build standalone CLI
+        working-directory: client/cli
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          go test ./...
+          go vet ./...
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            target_os="${target%/*}"; target_arch="${target#*/}"
+            out="../../dist/mu-cli-${target_os}-${target_arch}"
+            if [ "$target_os" = windows ]; then out="${out}.exe"; fi
+            CGO_ENABLED=0 GOOS="$target_os" GOARCH="$target_arch" \
+              go build -trimpath -ldflags "-s -w -X main.version=${TAG}" -o "$out" .
+          done
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

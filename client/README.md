@@ -18,7 +18,8 @@ Sign in to an existing account, choose an agent, and talk to it.
 | Interface | Client / adapter | Runtime owner |
 | --- | --- | --- |
 | Android | `client/android` | `agent/mucp.go` via MUCP |
-| CLI | `internal/cli`, including `ask.go` | `agent/api.go` via HTTPS |
+| Standalone CLI | `client/cli` (`mu-cli`) | `agent/mucp.go` via MUCP |
+| Runtime/operator CLI | `internal/cli` (`mu`) | Local runtime; legacy remote commands via HTTPS |
 | Desktop | `client/desktop`, bundled React app and Electron | `agent/mucp.go` via MUCP |
 | Standalone web | `client/web` | `agent/mucp.go` via MUCP |
 | Full web / PWA | `internal/app/html`, product page renderers | `agent`, `home`, `inbox` |
@@ -29,14 +30,14 @@ Sign in to an existing account, choose an agent, and talk to it.
 
 New separately built clients belong here. Existing server protocol handlers stay
 with their service; receiving an XMPP or SMTP connection does not make that
-server a mobile client. The CLI is still part of the Mu binary and remains under
-`internal/cli` until it is deliberately separated.
+server a mobile client. Runtime/operator commands remain under `internal/cli`;
+the standalone client is independently built under `client/cli`.
 
-## Planned CLI separation
+## CLI separation
 
-The standalone terminal client will live in `client/cli` and ship as `mu-cli`.
-It will use MUCP for sign-in, agent discovery, conversations and supported runtime
-capabilities, without importing the server implementation. `mu` will retain
+The [standalone terminal client](cli/README.md) lives in `client/cli` and builds as `mu-cli`.
+It uses browser OAuth for sign-in and MUCP for agent discovery, conversations and supported runtime
+capabilities, without importing the server implementation. `mu` retains
 runtime startup, configuration and local operator commands. Move remote-use
 commands to `mu-cli` only after it provides equivalent behaviour and documented
 migration instructions; the existing commands remain available until then.
