@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -240,5 +241,52 @@ func TestTokenInputAndOutput(t *testing.T) {
 	}
 	if strings.ContainsAny(safeText("\x1b]52;clipboard\aHello\r\u009b"), "\x1b\a\r\u009b") {
 		t.Fatal("terminal control escaped filtering")
+	}
+}
+
+func TestChatContinuesServerThread(t *testing.T) {
+	t.Setenv("MU_TOKEN", "secret")
+	var threads []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var q struct {
+			Request struct {
+				Thread string `json:"thread"`
+			} `json:"request"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
+			t.Error(err)
+		}
+		threads = append(threads, q.Request.Thread)
+		w.Header().Set("Micro-Protocol", "mucp/1")
+		w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
+		fmt.Fprint(w, `{"id":"operation","thread":"server-thread","state":"OPERATION_STATE_SUCCEEDED","result":{"text":"Answer"}}`)
+	}))
+	defer server.Close()
+	err := runWithConfig(context.Background(), []string{"--server", server.URL, "chat"}, strings.NewReader("first\nsecond\n/new\nthird\n/quit\n"), io.Discard, io.Discard, filepath.Join(t.TempDir(), "session.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(threads, ",") != ",server-thread," {
+		t.Fatalf("wrong thread continuity: %v", threads)
+	}
+}
+
+func TestCancelIdleChat(t *testing.T) {
+	reader, writer := io.Pipe()
+	defer reader.Close()
+	defer writer.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- runWithConfig(ctx, []string{"chat"}, reader, io.Discard, io.Discard, filepath.Join(t.TempDir(), "session.json"))
+	}()
+	select {
+	case err := <-done:
+		if err != context.Canceled {
+			t.Fatalf("cancel: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("idle chat ignored cancellation")
 	}
 }
