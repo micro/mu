@@ -49,7 +49,7 @@ func TestFocusedClientBrowser(t *testing.T) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Micro-Protocol, Micro-Service, Micro-Endpoint, Micro-Id")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Expose-Headers", "Micro-Protocol, Micro-Id, Micro-Thread")
+		w.Header().Set("Access-Control-Expose-Headers", "Micro-Protocol, Micro-Service, Micro-Endpoint, Micro-Id, Micro-Thread")
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(204)
 			return
@@ -99,6 +99,8 @@ func TestFocusedClientBrowser(t *testing.T) {
 		}
 		w.Header().Set("Micro-Protocol", "mucp/1")
 		w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
+		w.Header().Set("Micro-Service", r.Header.Get("Micro-Service"))
+		w.Header().Set("Micro-Endpoint", r.Header.Get("Micro-Endpoint"))
 		switch r.Header.Get("Micro-Endpoint") {
 		case "Assistant.ListAgents":
 			if !catalogStarted.Swap(true) {
@@ -224,6 +226,8 @@ func TestHostedClientBrowser(t *testing.T) {
 		}
 		w.Header().Set("Micro-Protocol", "mucp/1")
 		w.Header().Set("Micro-Id", r.Header.Get("Micro-Id"))
+		w.Header().Set("Micro-Service", r.Header.Get("Micro-Service"))
+		w.Header().Set("Micro-Endpoint", r.Header.Get("Micro-Endpoint"))
 		w.Header().Set("Content-Type", "application/json")
 		switch r.Header.Get("Micro-Endpoint") {
 		case "Inbox.Read":

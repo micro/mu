@@ -9,12 +9,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from typing import Any, Callable, TypedDict
-
-
-class Submission(TypedDict):
-    messageId: str
-    request: dict[str, Any]
+from typing import Any, Callable, cast
+from .types import Agents, Answer, History, Operation, Submission, Threads
 
 
 class ProtocolError(Exception):
@@ -23,7 +19,7 @@ class ProtocolError(Exception):
         self.status = status
         self.thread = thread
         self.submission: Submission | None = None
-        self.operation: dict[str, Any] | None = None
+        self.operation: Operation | None = None
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -86,8 +82,8 @@ class Client:
         except (ValueError, UnicodeError):
             raise ProtocolError('Invalid JSON response.', status) from None
         if not 200 <= status < 300:
-            error = data.get('error') if isinstance(data, dict) else None
-            message = error if isinstance(error, str) else error.get('message') if isinstance(error, dict) else None
+            detail = data.get('error') if isinstance(data, dict) else None
+            message = detail if isinstance(detail, str) else detail.get('message') if isinstance(detail, dict) else None
             raise ProtocolError(message or 'Request failed.', status, rh.get('Micro-Thread', ''))
         if (rh.get('Micro-Protocol') != 'mucp/1'
                 or (method == 'POST' and any(rh.get(key) != headers[key] for key in ('Micro-Id', 'Micro-Service', 'Micro-Endpoint')))
@@ -101,14 +97,14 @@ class Mu:
     def __init__(self, server: str | Client, token: str | Callable[[], str] = '', *, timeout: float = 20):
         self.protocol = server if isinstance(server, Client) else Client(server, token, timeout=timeout)
 
-    async def agents(self) -> dict[str, Any]:
-        return await self.protocol.call('assistant', 'Assistant.ListAgents')
+    async def agents(self) -> Agents:
+        return cast(Agents, await self.protocol.call('assistant', 'Assistant.ListAgents'))
 
-    async def threads(self, *, agent_id: str = '', page_token: str = '', page_size: int = 25) -> dict[str, Any]:
-        return await self.protocol.call('assistant', 'Assistant.ListThreads', {'agentId': agent_id, 'pageToken': page_token, 'pageSize': page_size})
+    async def threads(self, *, agent_id: str = '', page_token: str = '', page_size: int = 25) -> Threads:
+        return cast(Threads, await self.protocol.call('assistant', 'Assistant.ListThreads', {'agentId': agent_id, 'pageToken': page_token, 'pageSize': page_size}))
 
-    async def read(self, thread: str, *, page_token: str = '') -> dict[str, Any]:
-        return await self.protocol.call('assistant', 'Assistant.ReadThread', {'thread': thread, 'pageToken': page_token})
+    async def read(self, thread: str, *, page_token: str = '') -> History:
+        return cast(History, await self.protocol.call('assistant', 'Assistant.ReadThread', {'thread': thread, 'pageToken': page_token}))
 
     async def home(self) -> dict[str, Any]:
         return await self.protocol.call('assistant', 'Home.Overview')
@@ -124,17 +120,17 @@ class Mu:
             raise ProtocolError('Prompt must contain 1–8000 UTF-8 bytes.')
         return {'messageId': str(uuid.uuid4()), 'request': {'agentId': agent_id, 'thread': thread, 'prompt': prompt, 'voice': voice, 'mode': 'ACCESS_MODE_PERSONAL'}}
 
-    async def submit(self, submission: Submission) -> dict[str, Any]:
+    async def submit(self, submission: Submission) -> Operation:
         try:
-            return await self.protocol.call('assistant', 'Assistant.Submit', submission)
+            return cast(Operation, await self.protocol.call('assistant', 'Assistant.Submit', submission))
         except ProtocolError as error:
             error.submission = submission
             raise
 
-    async def status(self, operation_id: str) -> dict[str, Any]:
-        return await self.protocol.call('assistant', 'Assistant.ReadOperation', {'id': operation_id})
+    async def status(self, operation_id: str) -> Operation:
+        return cast(Operation, await self.protocol.call('assistant', 'Assistant.ReadOperation', {'id': operation_id}))
 
-    async def wait(self, operation: dict[str, Any], *, timeout: float = 120) -> dict[str, Any]:
+    async def wait(self, operation: Operation, *, timeout: float = 120) -> Answer:
         if not 0 < timeout < float('inf'):
             raise ProtocolError('Timeout must be positive.')
         deadline, delay = time.monotonic() + timeout, 1.0
@@ -163,7 +159,7 @@ class Mu:
             error.thread, error.operation = thread, operation
             raise
 
-    async def ask(self, prompt: str, *, agent_id: str = '', thread: str = '', voice: bool = False) -> dict[str, Any]:
+    async def ask(self, prompt: str, *, agent_id: str = '', thread: str = '', voice: bool = False) -> Answer:
         submission = self.prepare(prompt, agent_id=agent_id, thread=thread, voice=voice)
         try:
             return await self.wait(await self.submit(submission))

@@ -1,7 +1,7 @@
 name: Desktop apps
 on:
   pull_request:
-    paths: ['client/web/**', 'client/desktop/**', 'VERSION', '.github/workflows/desktop.yml', '.github/workflows/release.yml']
+    paths: ['client/typescript/**', 'client/web/**', 'client/desktop/**', 'VERSION', '.github/workflows/desktop.yml', '.github/workflows/release.yml']
   workflow_call:
     inputs:
       release_tag:

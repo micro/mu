@@ -20,7 +20,7 @@ asyncio.run(main())
 A configured runtime and account credential are required. Agent requests need
 `read write api:agent`, use the selected agent's tools and may cost credits.
 `agents()`, `threads()`, `read(thread)`, `home()`, `inbox()` and `services()` return
-JSON dictionaries; paging tokens and unknown content are retained. Home, Inbox and
+JSON dictionaries with TypedDict annotations for assistant contracts; paging tokens and unknown content are retained. Home, Inbox and
 Services require their own `api:` capabilities. The SDK has no runtime dependencies.
 
 For durable recovery, save `submission = mu.prepare(prompt)` privately **before**
