@@ -6,7 +6,8 @@ import { tmpdir } from "node:os";
 import assert from "node:assert/strict";
 let redirect,
   state,
-  requests = 0;
+  requests = 0,
+  renewals = 0;
 const runtime = createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader(
@@ -35,10 +36,16 @@ const runtime = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === "/oauth/token") {
-    assert.equal(new URLSearchParams(raw).get("redirect_uri"), redirect);
-    res.end(
-      '{"access_token":"desktop-token","token_type":"Bearer","expires_in":3600}',
-    );
+    const form = new URLSearchParams(raw);
+    if (form.get("grant_type") === "refresh_token") {
+      assert.equal(form.get("client_id"), "desktop-test");
+      assert.equal(form.get("refresh_token"), "desktop-refresh");
+      renewals++;
+      res.end('{"access_token":"desktop-token","refresh_token":"rotated","token_type":"Bearer","expires_in":86400}');
+    } else {
+      assert.equal(form.get("redirect_uri"), redirect);
+      res.end('{"access_token":"initial-token","refresh_token":"desktop-refresh","token_type":"Bearer","expires_in":1}');
+    }
     return;
   }
   assert.equal(req.headers.authorization, "Bearer desktop-token");
@@ -102,6 +109,7 @@ try {
   await page.locator(".answer").waitFor();
   assert.match(await page.locator(".answer").innerText(), /Desktop reply/);
   assert.equal(requests, 1);
+  assert.equal(renewals, 1);
   await mkdir("screenshots", { recursive: true });
   await page.screenshot({ path: "screenshots/desktop.png" });
 } finally {
