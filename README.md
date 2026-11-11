@@ -96,6 +96,9 @@ mu inbox list
 mu help
 ```
 
+The standalone [Mu CLI](client/cli/README.md) connects to a remote runtime with
+`mu-cli login`, `mu-cli ask` and `mu-cli chat`, without installing the server.
+
 ### Web
 
 Open **http://localhost:8080** to create your account and choose an AI provider.
