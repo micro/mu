@@ -328,7 +328,7 @@ func finish(ctx context.Context, c *client, op operation, asJSON bool, out, diag
 		return fmt.Errorf("%w\nCheck the thread or resume with mu-cli --server %s operation %s", err, c.server, safeText(op.ID))
 	}
 	if asJSON {
-		return printJSON(out, result)
+		return printJSON(out, result.raw)
 	}
 	if _, err = fmt.Fprintln(out, safeText(result.Result.Text)); err != nil {
 		return err

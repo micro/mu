@@ -103,11 +103,24 @@ type answer struct {
 	} `json:"content"`
 }
 type operation struct {
+	raw    json.RawMessage
 	ID     string  `json:"id"`
 	Thread string  `json:"thread"`
 	State  string  `json:"state"`
 	Error  string  `json:"error"`
 	Result *answer `json:"result"`
+}
+
+// Keep unknown fields and typed content intact for scripts using --json.
+func (op *operation) UnmarshalJSON(data []byte) error {
+	type view operation
+	var decoded view
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*op = operation(decoded)
+	op.raw = append(json.RawMessage(nil), data...)
+	return nil
 }
 
 func (c *client) wait(ctx context.Context, op operation) (operation, error) {

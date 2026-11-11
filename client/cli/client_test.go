@@ -290,3 +290,23 @@ func TestCancelIdleChat(t *testing.T) {
 		t.Fatal("idle chat ignored cancellation")
 	}
 }
+
+func TestJSONPreservesStructuredContent(t *testing.T) {
+	raw := `{"id":"operation","thread":"thread","state":"OPERATION_STATE_SUCCEEDED","futureField":{"value":1},"result":{"agentId":"micro","text":"Picture","content":[{"fallback":"An image","image":{"url":"https://example.com/image.png"}},{"fallback":"Citation","source":{"url":"https://example.com/source"}}]}}`
+	var op operation
+	if err := json.Unmarshal([]byte(raw), &op); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := finish(context.Background(), &client{}, op, true, &out, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	var got, want any
+	json.Unmarshal(out.Bytes(), &got)
+	json.Unmarshal([]byte(raw), &want)
+	gotJSON, _ := json.Marshal(got)
+	wantJSON, _ := json.Marshal(want)
+	if !bytes.Equal(gotJSON, wantJSON) {
+		t.Fatalf("lost response fields: %s", out.String())
+	}
+}
