@@ -10,6 +10,7 @@ import (
 	"mu/internal/service"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -299,6 +300,22 @@ func generateRandomString(n int) string {
 
 func getIssuer(r *http.Request) string { return origin.URL(r) }
 
+// oauthCapabilities is shared by discovery and consent. These permissions grant
+// product access, independently of the registered service scopes.
+var oauthCapabilities = []string{"agent", "inbox", "work", "home", "services"}
+
+func oauthScopes() []string {
+	scopes := []string{"read", "write"}
+	for _, capability := range oauthCapabilities {
+		scopes = append(scopes, "api:"+capability)
+	}
+	for _, spec := range service.Specs() {
+		scopes = append(scopes, ScopePrefix+spec.Name)
+	}
+	sort.Strings(scopes)
+	return scopes
+}
+
 // OAuthMetadataHandler serves /.well-known/oauth-authorization-server
 func OAuthMetadataHandler(w http.ResponseWriter, r *http.Request) {
 	issuer := getIssuer(r)
@@ -309,7 +326,7 @@ func OAuthMetadataHandler(w http.ResponseWriter, r *http.Request) {
 		"authorization_endpoint":                issuer + "/oauth/authorize",
 		"token_endpoint":                        issuer + "/oauth/token",
 		"registration_endpoint":                 issuer + "/oauth/register",
-		"scopes_supported":                      []string{"read", "write"},
+		"scopes_supported":                      oauthScopes(),
 		"response_types_supported":              []string{"code"},
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
 		"code_challenge_methods_supported":      []string{"S256", "plain"},
@@ -325,7 +342,7 @@ func OAuthResourceHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"resource":              issuer,
 		"authorization_servers": []string{issuer},
-		"scopes_supported":      []string{"read", "write"},
+		"scopes_supported":      oauthScopes(),
 	})
 }
 
@@ -426,7 +443,7 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 		}
 	}
 	if len(selected) == 0 {
-		for _, cap := range []string{"agent", "inbox", "work", "home", "services"} {
+		for _, cap := range oauthCapabilities {
 			if requested["api:"+cap] {
 				access = "api"
 				selected = append(selected, cap)
@@ -476,7 +493,7 @@ func oauthConsent(w http.ResponseWriter, r *http.Request, clientID, redirectURI 
 		b.WriteString(`<label class="choice"><input type="checkbox" name="service" value="` + e(sp.Name) + `"` + checked(requested[ScopePrefix+sp.Name]) + `>` + e(sp.Name) + `</label>`)
 	}
 	b.WriteString(`</div><p id="oauth-no-results" hidden>No matching services.</p></fieldset><fieldset data-oauth-access="api"><legend>Assistant API</legend><p class="text-muted">Agents can use their configured tools across your account.</p><div class="choices">`)
-	for _, cap := range []string{"agent", "inbox", "work", "home", "services"} {
+	for _, cap := range oauthCapabilities {
 		b.WriteString(`<label class="choice"><input type="checkbox" name="capability" value="` + cap + `"` + checked(requested["api:"+cap]) + `>` + cap + `</label>`)
 	}
 	b.WriteString(`</div></fieldset></div></details><label class="choice"><input type="checkbox" name="write" value="yes"` + checked(requested["write"]) + `>Allow changes and actions</label><p class="text-muted text-sm">Stays connected with automatic renewal. Access tokens last 24 hours; the connection expires after 90 days without renewal. Revoke anytime in <a href="/account/tokens">Tokens</a>.</p><div class="form-actions"><button type="submit">Allow</button><a href="/">Cancel</a></div></form></main></body></html>`)
@@ -585,7 +602,7 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case "api":
 		for _, name := range r.PostForm["capability"] {
-			if name != "agent" && name != "inbox" && name != "work" && name != "home" && name != "services" {
+			if !slices.Contains(oauthCapabilities, name) {
 				http.Error(w, "Unknown capability", 400)
 				return
 			}

@@ -144,17 +144,22 @@ install arbitrary executable code or start a separate operating-system process.
 
 ### Programs using Mu
 
-Programs call Agent, Work and Inbox through JSON POST operations at `/api/v1`
-or the same operations as MCP tools at `/mcp`. `/developers` documents the current
-contract and `/api/v1` lists its operations. Mu owns agent execution and tool
-use; clients submit goals and read results.
+Programs reach the assistant through the MUCP contracts at `/`, or use the
+product JSON interfaces at `/agent`, `/inbox` and `/work` documented in
+`/developers`. Agent owns execution; clients send prompts and recover responses.
+Home and Inbox compose existing records. Chats, groups and contacts remain
+services beneath that composition, with their own contracts and permissions.
 
-Create an API token at `/account/tokens`. Select the needed API capabilities; these apply
-across the token owner's account. They do not isolate an application's
-conversations or disable memory. Service-scoped tokens are refused at the
-outcome API. The first-party service playground and sandboxed app SDK continue
-to use internal service capabilities. Services tokens also select the service API on the same host through `/api/v1`
-and `/mcp`. A separately configured x402 host retains its existing contract.
+Create a token at `/account/tokens`, or use OAuth with the scopes advertised by
+`/.well-known/oauth-authorization-server`. Assistant capabilities apply across
+the token owner's account; they do not isolate an application's conversations
+or disable memory. Service scopes do not grant agent execution, and assistant
+capabilities do not grant direct service calls.
+
+The service interfaces at `/api/v1/<service>/<method>` and `/mcp` expose service
+tools, not the assistant composition. Direct MUCP service bindings use the same
+service permission boundary. A separately configured x402 host retains its
+existing payment contract.
 
 ### Services running outside Mu
 

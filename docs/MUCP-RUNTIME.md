@@ -13,6 +13,20 @@ as this document. Use a pinned revision of the specification and schemas togethe
 Generated types do not define authorization or operation semantics by themselves.
 The sections below define those semantics and identify Mu-specific integration.
 
+## Layers
+
+MUCP carries requests and responses without prescribing a runtime's architecture.
+Mu's service contracts describe domain capabilities, including Chat, Groups and
+Contacts. Home, Inbox, Agent and Services compose those capabilities into the
+assistant experience. Inbox provides the local view of messages and notifications;
+the underlying services retain their records. Agent owns prompt execution and
+responses through its existing runtime loop.
+
+A protobuf `service` declaration names an RPC interface; it does not move Agent
+into the domain-service layer. Protocol adapters MUST preserve the authorization
+and ownership boundaries of the operations they expose. They MUST NOT create a
+second execution path or allow domain services to invoke assistant execution.
+
 ## Agent callers
 
 An external agent is a protocol client. It authenticates with a credential granted
@@ -51,6 +65,12 @@ Native apps use the system browser. The desktop callback uses a loopback listene
 a fresh state and a ten-minute validity window. Authorization codes are consumed
 once; the PKCE verifier is not sent in the authorization URL. Client tokens MUST
 only be sent to the selected runtime. Switching servers clears the app's session.
+
+OAuth metadata at `/.well-known/oauth-authorization-server` and
+`/.well-known/oauth-protected-resource` advertises the scopes available for
+consent: read/write, assistant capabilities and registered `service:<name>`
+scopes. Clients request only the capabilities they need. Advertised scopes are
+not grants; consent and runtime authorization remain required.
 
 The token response includes a 24-hour access token and a rotating refresh token.
 Clients renew before expiry with a form POST to `/oauth/token` containing
