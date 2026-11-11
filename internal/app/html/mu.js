@@ -414,7 +414,7 @@ async function waitForAnswer(answer,messageID,version=viewVersion,targetThread=t
     answer.textContent='Working…';
    }else {failures++;answer.textContent='Reconnecting…';}
   }
-  await new Promise(resolve=>setTimeout(resolve,failures?Math.min(60000*2**(failures-1),300000):muPollDelay(started,3000)));
+  await muPollWait(failures?Math.min(60000*2**(failures-1),300000):muPollDelay(started,3000));
  }
 }
 async function assistant(command,answer,version){
@@ -1589,6 +1589,20 @@ if(typeof document!=='undefined'){
 // timers running in hidden/offline pages. Returning to a view refreshes it once.
 function muPollDelay(started, base) {
   return Math.min(30000, base * 2 ** Math.min(4, Math.floor(Math.max(0, Date.now() - started) / 60000)));
+}
+function muPollWait(delay) {
+  return new Promise(resolve => {
+    function done() {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
+      resolve();
+    }
+    function resume() { if (!document.hidden && navigator.onLine) done(); }
+    const timer = setTimeout(done, delay);
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
+  });
 }
 function muPoll(refresh, initial = 60000) {
   let timer, busy = false, stopped = false, again = false, failures = 0, activeSince = null;

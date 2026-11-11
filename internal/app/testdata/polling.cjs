@@ -7,10 +7,11 @@ function harness() {
   let now = 0, serial = 0;
   const timers = new Map(), events = {};
   const on = (name, fn) => (events[name] ||= []).push(fn);
+  const off = (name, fn) => { events[name] = (events[name] || []).filter(listener => listener !== fn); };
   const emit = (name, extra = {}) => (events[name] || []).forEach(fn => fn(extra));
   const context = {
-    document: {hidden: false, addEventListener: on, dispatchEvent: e => emit(e.type)},
-    window: {addEventListener: on}, navigator: {onLine: true},
+    document: {hidden: false, addEventListener: on, removeEventListener: off, dispatchEvent: e => emit(e.type)},
+    window: {addEventListener: on, removeEventListener: off}, navigator: {onLine: true},
     setTimeout(fn, delay) { const id = ++serial; timers.set(id, {fn, at: now + delay}); return id; },
     clearTimeout: id => timers.delete(id), Event: class { constructor(type) { this.type = type; } },
     AbortSignal, console, Date: {now: () => now},
@@ -92,6 +93,20 @@ function harness() {
     await waiting.settle(); await waiting.advance(3600000);
     assert(requests < (failedResponse ? 20 : 160), `prompt loop made ${requests} hourly requests`);
     wc.viewVersion = 1; await waiting.advance(300000);
+  }
+
+  // Returning online or visible interrupts even the longest reconnect delay.
+  for (const event of ['online', 'visibilitychange']) {
+    const wake = harness(), wc = wake.context; let requests = 0;
+    wc.viewVersion = 0; wc.thread = 'test'; wc.answer = {};
+    wc.fetch = async () => { requests++; throw Error('network'); };
+    vm.runInContext(waitingSource + "\nwaitForAnswer(answer, 'message');", wc);
+    await wake.settle(); await wake.advance(180000);
+    assert.equal(requests, 3);
+    wc.fetch = async () => { requests++; return {ok: true, json: async () => ({waiting: false, answer_html: 'Done'})}; };
+    wake.emit(event); await wake.settle();
+    assert.equal(requests, 4); assert.equal(wc.answer.innerHTML, 'Done');
+    await wake.advance(300000); assert.equal(requests, 4, 'waking left a retry timer behind');
   }
 
   // A request taking longer than its interval cannot overlap or lose a resume.
