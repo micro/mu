@@ -28,7 +28,7 @@ jobs:
           go-version-file: go.mod
       - name: Check service schema drift
         run: |
-          go test ./proto/generate
+          go test ./proto ./proto/generate
           go run ./proto/generate -check
       - name: Check generated Go types
         run: |

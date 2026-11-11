@@ -57,7 +57,18 @@ android.sourceSets.test.resources.srcDir('../../../proto/testdata')
 protobuf {
     protoc { artifact = 'com.google.protobuf:protoc:4.31.1' }
     generateProtoTasks {
-        all().configureEach { task -> task.builtins { java { } } }
+        all().configureEach { task ->
+            task.builtins { java { } }
+            // protoc's Java generator does not retain file-level licence comments.
+            task.doLast {
+                fileTree(task.outputBaseDir).matching { include '**/*.java' }.each { source ->
+                    def notice = '// SPDX-License-Identifier: Apache-2.0\n'
+                    if (!source.getText('UTF-8').startsWith(notice)) {
+                        source.setText(notice + source.getText('UTF-8'), 'UTF-8')
+                    }
+                }
+            }
+        }
     }
 }
 dependencies {
@@ -97,3 +108,13 @@ tasks.register('prepareVoiceModel') {
     }
 }
 tasks.named('preBuild').configure { dependsOn 'prepareVoiceModel' }
+
+// Include the contract licence with the generated types shipped in the APK.
+def protocolLicenseAssets = layout.buildDirectory.dir('generated/protocol-license')
+android.sourceSets.main.assets.srcDir(protocolLicenseAssets)
+tasks.register('prepareProtocolLicense', Copy) {
+    from('../../../proto/LICENSE')
+    into(protocolLicenseAssets.map { it.dir('licenses') })
+    rename { 'MU-PROTOCOL-APACHE-2.0.txt' }
+}
+tasks.named('preBuild').configure { dependsOn 'prepareProtocolLicense' }

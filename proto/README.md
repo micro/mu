@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Protocol contracts
 
 `mucp/v1` defines the transport-independent envelope: canonical metadata headers
@@ -18,6 +20,19 @@ explicit adapters from home, inbox, agent and services. `/` detects MUCP headers
 ordinary browser traffic continues to use the runtime web experience.
 Android generates Java types; web/desktop and the independent Python example use
 readable JSON. See [MUCP](../docs/MUCP.md) for wire and authorization semantics.
+
+## Licence
+
+The contracts, generated types, examples and fixtures in this directory are
+licensed under [Apache-2.0](LICENSE). They may be used in open-source or proprietary
+clients and runtimes under those terms. Include the licence when redistributing
+them and retain applicable notices. Protobuf libraries and other dependencies
+retain their own licences.
+
+**Exception:** `generate/` remains [AGPL-3.0](generate/LICENSE). Its schema output
+is Apache-2.0; running the generator does not change the output's licence.
+The Mu runtime and existing client implementations retain the repository's AGPL
+licence. See the [licensing map](../LICENSING.md) for the full boundary.
 
 ## Contract and wire format
 

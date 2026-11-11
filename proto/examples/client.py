@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Independent MUCP client: Python standard library, no Mu or protobuf dependency.
 
 MU_TOKEN=... python3 proto/examples/client.py https://micro.mu assistant Home.Overview '{}'

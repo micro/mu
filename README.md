@@ -115,4 +115,29 @@ Find available apps on the [downloads page](https://micro.mu/download).
 
 ## Commercial
 
-If you want to run your own for commercial use please reach out for licensing terms and conditions. Fees are applicable.
+Mu’s runtime and client implementations are available under the [GNU AGPL v3](LICENSE),
+which permits personal and commercial use, including charging for a hosted service. No commercial licence
+is required when you comply with the AGPL.
+
+The AGPL includes source-sharing obligations:
+
+- When distributing Mu or a covered derivative, provide the corresponding source
+  to recipients as required by the licence.
+- When running a modified version over a network, prominently offer its
+  corresponding source to the users interacting with it.
+
+For a proprietary product based on Mu, a paid commercial licence can provide
+alternative terms for keeping covered modifications closed—for example, a
+customised assistant runtime or a branded client. Contact
+[Micro](mailto:admin@micro.mu?subject=Mu%20commercial%20licensing) to discuss your
+product, deployment and distribution requirements. Scope and fees are agreed
+separately; third-party components retain their own licences.
+
+An independently written client connecting through MUCP or the API does not need
+a commercial licence merely to connect. The
+[protocol contracts and generated types](proto/README.md#licence), and the
+[MUCP specification](docs/MUCP.md), are Apache-2.0 licensed so independent clients
+and runtimes can reuse them, including in proprietary products. `proto/generate`
+remains AGPL. See [LICENSING.md](LICENSING.md) for the directory-level terms.
+This section summarises
+the options; the [licence](LICENSE) or your commercial agreement governs use.

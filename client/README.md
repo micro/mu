@@ -32,6 +32,15 @@ with their service; receiving an XMPP or SMTP connection does not make that
 server a mobile client. The CLI is still part of the Mu binary and remains under
 `internal/cli` until it is deliberately separated.
 
+## Planned CLI separation
+
+The standalone terminal client will live in `client/cli` and ship as `mu-cli`.
+It will use MUCP for sign-in, agent discovery, conversations and supported runtime
+capabilities, without importing the server implementation. `mu` will retain
+runtime startup, configuration and local operator commands. Move remote-use
+commands to `mu-cli` only after it provides equivalent behaviour and documented
+migration instructions; the existing commands remain available until then.
+
 ## Shared contract
 
 Android, desktop and [Mu Web](web/README.md) use MUCP: JSON over HTTPS at `/`, with
