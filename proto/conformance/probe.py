@@ -30,6 +30,8 @@ def origin_parts(origin):
 
 def exchange(origin, method='POST', body='{}', token='', changes=None,
              duplicates=(), discard=False, timeout=20):
+    if token and any(ord(c) < 33 or ord(c) > 126 for c in token):
+        raise ValueError('MU_TOKEN contains invalid characters')
     u = origin_parts(origin)
     headers = {'Micro-Protocol': 'mucp/1'}
     if method != 'GET':

@@ -20,6 +20,10 @@ class ProbeTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 origin_parts(origin)
 
+    def test_malformed_token_is_not_in_diagnostic(self):
+        with self.assertRaisesRegex(ValueError, '^MU_TOKEN contains invalid characters$'):
+            exchange('https://example.org', token='secret-value\n')
+
     def test_receipt_created_before_network_and_never_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / 'receipt.json')
