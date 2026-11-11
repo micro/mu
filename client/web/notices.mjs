@@ -21,6 +21,10 @@ for (const [path, pkg] of Object.entries(lock.packages).sort(([a], [b]) =>
     );
 }
 blocks.push(
+  "Mu TypeScript SDK\n" +
+    (await readFile(new URL("../typescript/LICENSE", import.meta.url), "utf8")),
+);
+blocks.push(
   "DM Sans font\n" +
     (await readFile(
       new URL("../../internal/app/html/dm-sans-LICENSE.txt", import.meta.url),

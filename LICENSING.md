@@ -5,7 +5,8 @@ following explicit exceptions apply:
 
 | Material | Licence |
 | --- | --- |
-| Mu runtime and existing clients, including `internal/`, `service/` and `client/` | AGPL-3.0 |
+| Mu runtime and existing clients, including `internal/`, `service/` and existing applications in `client/` | AGPL-3.0 |
+| `client/typescript/` and `client/python/` reusable SDKs | [Apache-2.0](client/typescript/LICENSE) |
 | `proto/`, including schemas, generated contract types, examples, fixtures and contract tests | [Apache-2.0](proto/LICENSE), except `proto/generate/` |
 | `proto/generate/` schema-generation implementation | [AGPL-3.0](proto/generate/LICENSE) |
 | `docs/MUCP.md`, `docs/MUCP-HTTP.md`, `docs/MUCP-RUNTIME.md`, `docs/MUCP-CONFORMANCE.md` specifications and conformance guide | [Apache-2.0](proto/LICENSE) |
@@ -17,8 +18,8 @@ the explicit Apache licence on its output. Third-party generators, libraries and
 other dependencies retain their own terms.
 
 Independent implementations may reuse the protocol specification and contracts
-in open-source or proprietary software under Apache-2.0. This does not relicense
-Mu's runtime or client implementations. Preserve licence and attribution notices,
+in open-source or proprietary software under Apache-2.0. The SDK exception does not relicense
+Mu's runtime or existing client applications. Preserve licence and attribution notices,
 include the applicable licence when redistributing, and identify modifications
 as required by that licence. Neither licence grants rights to Micro or Mu branding.
 

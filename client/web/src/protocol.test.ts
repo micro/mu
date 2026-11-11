@@ -73,6 +73,9 @@ test("MUCP uses only explicit credentials and accepts the shared wire fixture", 
         headers: {
           "Micro-Protocol": "mucp/1",
           "Micro-Id": headers.get("Micro-Id")!,
+          "Micro-Service": headers.get("Micro-Service")!,
+          "Micro-Endpoint": headers.get("Micro-Endpoint")!,
+          "Content-Type": "application/json",
         },
       },
     );
@@ -111,6 +114,9 @@ test("session transport keeps cookies and CSRF on the same origin only", async (
       headers: {
         "Micro-Protocol": "mucp/1",
         "Micro-Id": headers.get("Micro-Id")!,
+        "Micro-Service": headers.get("Micro-Service")!,
+        "Micro-Endpoint": headers.get("Micro-Endpoint")!,
+        "Content-Type": "application/json",
       },
     });
   };
@@ -152,6 +158,9 @@ test("all assistant exchanges follow the shared JSON contract", async () => {
           headers: {
             "Micro-Protocol": "mucp/1",
             "Micro-Id": headers.get("Micro-Id")!,
+            "Micro-Service": headers.get("Micro-Service")!,
+            "Micro-Endpoint": headers.get("Micro-Endpoint")!,
+            "Content-Type": "application/json",
           },
         });
       };

@@ -96,6 +96,9 @@ mu inbox list
 mu help
 ```
 
+Use the [TypeScript SDK](client/typescript) or [Python SDK](client/python) to call
+Mu from your own applications and agents.
+
 The standalone [Mu CLI](client/cli/README.md) connects to a remote runtime with
 `mu-cli login`, `mu-cli ask` and `mu-cli chat`, without installing the server.
 
@@ -118,7 +121,7 @@ Find available apps on the [downloads page](https://micro.mu/download).
 
 ## Commercial
 
-Mu’s runtime and client implementations are available under the [GNU AGPL v3](LICENSE),
+Mu’s runtime and client applications are available under the [GNU AGPL v3](LICENSE),
 which permits personal and commercial use, including charging for a hosted service. No commercial licence
 is required when you comply with the AGPL.
 
@@ -141,6 +144,6 @@ a commercial licence merely to connect. The
 [protocol contracts and generated types](proto/README.md#licence), and the
 [MUCP specification](docs/MUCP.md), are Apache-2.0 licensed so independent clients
 and runtimes can reuse them, including in proprietary products. `proto/generate`
-remains AGPL. See [LICENSING.md](LICENSING.md) for the directory-level terms.
+remains AGPL. The reusable [TypeScript](client/typescript) and [Python](client/python) SDKs are also Apache-2.0. See [LICENSING.md](LICENSING.md) for the directory-level terms.
 This section summarises
 the options; the [licence](LICENSE) or your commercial agreement governs use.

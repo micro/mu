@@ -29,6 +29,15 @@ it. A separate unit peer tests that the probe rejects wrong correlation, does no
 follow redirects, and preserves its saved submission identity across invocations.
 It is not substituted for the Mu interoperability tests.
 
+## SDK implementations
+
+The reusable [TypeScript](../client/typescript) and [Python](../client/python)
+SDKs are tested separately from the independent probe. The real assistant test
+runs each SDK against the HTTP handler and durable queue, submits the same receipt
+twice, recovers the result and checks that each request executed once. Shared JSON
+fixtures also exercise the client transports. Only the model answer is replaced
+in this test; it does not establish production or release-binary restart behaviour.
+
 ## Public and read-only checks
 
 Run public discovery, including against the existing instance:
