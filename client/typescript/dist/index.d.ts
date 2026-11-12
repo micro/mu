@@ -27,8 +27,10 @@ export declare class Client {
     private exchange;
 }
 export declare class Mu {
-    readonly protocol: Client;
+    private readonly client;
     constructor(options: Options | Client);
+    call<T = Record<string, unknown>>(service: string, endpoint: string, body?: unknown): Promise<T>;
+    discover(): Promise<Record<string, unknown>>;
     agents(): Promise<{
         agents: import("./types.js").Agent[];
     }>;
@@ -45,8 +47,8 @@ export declare class Mu {
     home(): Promise<Record<string, unknown>>;
     inbox(pageToken?: string): Promise<Record<string, unknown>>;
     services(pageToken?: string): Promise<Record<string, unknown>>;
-    prepare(prompt: string, options?: Partial<Omit<Request, "prompt" | "mode">>): Submission;
-    submit(submission: Submission): Promise<Operation>;
+    private prepare;
+    private submit;
     status(id: string): Promise<Operation>;
     wait(operation: Operation, timeout?: number): Promise<Answer>;
     ask(prompt: string, options?: Partial<Omit<Request, "prompt" | "mode">>): Promise<Answer>;

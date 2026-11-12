@@ -12,7 +12,7 @@ test('reject insecure origins and cross-origin cookie credentials', () => {
 });
 test('transport rejects wrong routing, correlation, media type', async () => {
   for (const overrides of [{'Micro-Id': 'wrong'}, {'Micro-Service': 'wrong'}, {'Micro-Endpoint': 'wrong'}, {'Micro-Protocol': 'wrong'}, {'Content-Type': 'text/html'}]) {
-    const client = new Client({server, fetch: async (_, init) => reply(init, {}, overrides)});
+    const client = new Mu({server, fetch: async (_, init) => reply(init, {}, overrides)});
     await assert.rejects(client.call('contacts', 'Contacts.List'), /Invalid MUCP/);
   }
 });
@@ -21,8 +21,7 @@ test('an ambiguous submission retains its receipt and is never retried', async (
   const mu = new Mu({server, token: 'test-token', fetch: async (_, init) => {
     calls++; assert.equal(init.redirect, 'error'); assert.equal(init.credentials, 'omit'); throw Error('lost');
   }});
-  const submission = mu.prepare('hello');
-  await assert.rejects(mu.submit(submission), e => e instanceof ProtocolError && e.submission === submission);
+  await assert.rejects(mu.ask('hello'), e => e instanceof ProtocolError && e.submission.request.prompt === 'hello');
   assert.equal(calls, 1);
 });
 test('recovery rejects a changed operation identity and retains the last receipt', async () => {

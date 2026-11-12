@@ -11,12 +11,11 @@ class Tests(unittest.IsolatedAsyncioTestCase):
 
     async def test_uncertain_submission(self):
         mu = Mu('https://runtime.example')
-        mu.protocol.call = AsyncMock(side_effect=ProtocolError('lost'))
-        submission = mu.prepare('hello')
+        mu.call = AsyncMock(side_effect=ProtocolError('lost'))
         with self.assertRaises(ProtocolError) as error:
-            await mu.submit(submission)
-        self.assertIs(error.exception.submission, submission)
-        self.assertEqual(mu.protocol.call.await_count, 1)
+            await mu.ask('hello')
+        self.assertEqual(error.exception.submission['request']['prompt'], 'hello')
+        self.assertEqual(mu.call.await_count, 1)
 
     async def test_recovery_identity(self):
         mu = Mu('https://runtime.example')
@@ -62,7 +61,7 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:
-            client = Client(f'http://127.0.0.1:{server.server_port}', 'test-token')
+            client = Mu(f'http://127.0.0.1:{server.server_port}', 'test-token')
             self.assertEqual(await client.call('contacts', 'Contacts.List'), {'ok': True})
             for bad in ('Micro-Protocol', 'Micro-Id', 'Micro-Service', 'Micro-Endpoint', 'json', 'redirect'):
                 mode[0] = bad

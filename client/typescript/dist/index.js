@@ -128,27 +128,33 @@ export class Client {
     }
 }
 export class Mu {
-    protocol;
+    client;
     constructor(options) {
-        this.protocol = options instanceof Client ? options : new Client(options);
+        this.client = options instanceof Client ? options : new Client(options);
+    }
+    call(service, endpoint, body = {}) {
+        return this.client.call(service, endpoint, body);
+    }
+    discover() {
+        return this.client.discover();
     }
     agents() {
-        return this.protocol.call("assistant", "Assistant.ListAgents");
+        return this.call("assistant", "Assistant.ListAgents");
     }
     threads(request = {}) {
-        return this.protocol.call("assistant", "Assistant.ListThreads", request);
+        return this.call("assistant", "Assistant.ListThreads", request);
     }
     read(thread, pageToken = "") {
-        return this.protocol.call("assistant", "Assistant.ReadThread", { thread, pageToken });
+        return this.call("assistant", "Assistant.ReadThread", { thread, pageToken });
     }
     home() {
-        return this.protocol.call("assistant", "Home.Overview");
+        return this.call("assistant", "Home.Overview");
     }
     inbox(pageToken = "") {
-        return this.protocol.call("assistant", "Inbox.List", { pageToken });
+        return this.call("assistant", "Inbox.List", { pageToken });
     }
     services(pageToken = "") {
-        return this.protocol.call("assistant", "Services.List", { pageToken });
+        return this.call("assistant", "Services.List", { pageToken });
     }
     prepare(prompt, options = {}) {
         if (!prompt.trim() || new TextEncoder().encode(prompt).length > 8000)
@@ -166,7 +172,7 @@ export class Mu {
     }
     async submit(submission) {
         try {
-            return await this.protocol.call("assistant", "Assistant.Submit", submission);
+            return await this.call("assistant", "Assistant.Submit", submission);
         }
         catch (error) {
             const e = error instanceof ProtocolError
@@ -177,7 +183,7 @@ export class Mu {
         }
     }
     status(id) {
-        return this.protocol.call("assistant", "Assistant.ReadOperation", { id });
+        return this.call("assistant", "Assistant.ReadOperation", { id });
     }
     async wait(operation, timeout = 120000) {
         if (!Number.isFinite(timeout) || timeout <= 0)
