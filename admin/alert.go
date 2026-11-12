@@ -135,7 +135,9 @@ func instanceRate() {
 	}
 	n := usage.TotalOver(usage.Minute, 60)
 	if n < limit {
-		recoverCondition("rate:instance")
+		if rateRecovered(n, limit) {
+			recoverCondition("rate:instance")
+		}
 		return
 	}
 	raise(alert{
@@ -161,7 +163,9 @@ func accountRates() {
 	for _, acc := range auth.AllAccounts() {
 		n := usage.TotalForOver(acc.ID, usage.Minute, 60)
 		if n < limit {
-			recoverCondition("rate:" + acc.ID)
+			if rateRecovered(n, limit) {
+				recoverCondition("rate:" + acc.ID)
+			}
 			continue
 		}
 		raise(alert{
@@ -169,7 +173,7 @@ func accountRates() {
 			What: fmt.Sprintf("%s made %s calls in the last hour", acc.ID, usage.HumanCount(n)),
 			Why: fmt.Sprintf("The threshold is %s an hour per account "+
 				"(ALERT_ACCOUNT_CALLS_PER_HOUR). This includes page refreshes and status checks, "+
-				"not just paid model calls. Check the endpoint breakdown for excessive polling or retries.", usage.HumanCount(limit)),
+				"not just paid model calls. Check the endpoint breakdown for excessive polling or retries.", usage.HumanCount(limit)) + accountRateDetail(acc.ID),
 			Where: "/admin/traffic?window=day",
 		})
 	}
@@ -347,4 +351,23 @@ func number(value string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+// Require a meaningful recovery before a new episode can notify. Brief dips
+// around the trigger threshold otherwise reopen the same sustained condition.
+func rateRecovered(n, limit int) bool { return n < limit-limit/5 }
+
+func accountRateDetail(account string) string {
+	rows, missing := usage.TopFor(usage.Minute, 60, account, 5)
+	var parts []string
+	for _, row := range rows {
+		parts = append(parts, fmt.Sprintf("%s: %d", row.Key, row.Count))
+	}
+	if missing > 0 {
+		parts = append(parts, fmt.Sprintf("unattributed: %d", missing))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return " Top endpoints in that hour: " + strings.Join(parts, "; ") + "."
 }
