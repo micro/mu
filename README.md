@@ -22,7 +22,7 @@ binary, using Go Micro as its underlying framework.
 ```text
       mobile / web / clients
                 |
-        assistant contract
+          assistant proto
                 |
      MUCP over HTTPS + JSON (*)
                 |
