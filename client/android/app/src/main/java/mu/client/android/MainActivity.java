@@ -26,6 +26,20 @@ public class MainActivity extends Activity {
     private String thread = "", agent = "micro";
     private final java.util.Set<String> displayedMessages = new java.util.HashSet<>();
     private boolean busy, foreground, listening, ttsReady, destroyed, speaking;
+    private final ReadPoll readPoll = new ReadPoll();
+    private Runnable pendingRead;
+    private void cancelRead() {
+        if (scroll != null && pendingRead != null) scroll.removeCallbacks(pendingRead);
+        pendingRead = null; readPoll.reset();
+    }
+    private void scheduleRead(String page, String target) {
+        if (pendingRead != null) scroll.removeCallbacks(pendingRead);
+        pendingRead = () -> {
+            pendingRead = null;
+            if (!destroyed && foreground && !busy && thread.equals(target)) restoreChat(page, false);
+        };
+        if (foreground) scroll.postDelayed(pendingRead, readPoll.next());
+    }
     private LinearLayout messages;
     private ScrollView scroll;
     private EditText prompt;
@@ -431,7 +445,7 @@ public class MainActivity extends Activity {
     }
     void selectAgent(String slug, String name, String about) {
         if (busy) return;
-        persistSelection(); stopAudio(); video.close(); wake.setChecked(false);
+        cancelRead(); persistSelection(); stopAudio(); video.close(); wake.setChecked(false);
         agent = AgentApi.agent(slug); agentAvailable = true; agentName = name; agentDescription = about;
         JSONObject threads = account.optJSONObject("threads");
         thread = threads == null ? "" : threads.optString(agent);
@@ -441,6 +455,7 @@ public class MainActivity extends Activity {
         if (signedIn() && !thread.isEmpty()) restoreChat("", true);
     }
     private void startChat() {
+        cancelRead();
         stopAudio(); video.close(); results = new JSONArray(); lastReply = ""; pages.clear();
         thread = ""; persistSelection(); messages.removeAllViews(); prompt.setText("");
         status.setText("New conversation with " + agentName); update();
@@ -471,6 +486,7 @@ public class MainActivity extends Activity {
     }
     private void restoreChat(String page, boolean clear) {
         if (busy || thread.isEmpty()) return;
+        if (clear) cancelRead();
         stopAudio(); busy=true; update();status.setText("Loading chat…");
         final String server=account.optString("server"),token=account.optString("client", account.optString("token")),target=thread,selected=agent;
         worker.execute(()->{
@@ -499,9 +515,8 @@ public class MainActivity extends Activity {
                     }
                     boolean pending=response.optBoolean("pending");
                     status.setText(pending?"Working… Your reply will appear here.":"");update();
-                    if(pending && next.isEmpty()) scroll.postDelayed(()->{
-                        if(!destroyed && foreground && !busy && thread.equals(target)) restoreChat(page,false);
-                    },3000);
+                    if(pending && next.isEmpty()) scheduleRead(page, target);
+                    else if (!pending) cancelRead();
                 });
             }catch(Exception e){runOnUiThread(()->{if(!destroyed){busy=false;update();status.setText(e.getMessage()+" Open Chats to try again.");}});}
         });
@@ -781,9 +796,9 @@ public class MainActivity extends Activity {
             }
         });
     }
-    @Override protected void onResume() { super.onResume(); foreground = true; if (video != null) video.resumeView(); update(); }
+    @Override protected void onResume() { super.onResume(); foreground = true; if (pendingRead != null && scroll != null) scroll.post(pendingRead); if (video != null) video.resumeView(); update(); }
     @Override protected void onPause() {
-        foreground = false; stopAudio(); if (video != null) video.pause();
+        foreground = false; if (pendingRead != null && scroll != null) scroll.removeCallbacks(pendingRead); stopAudio(); if (video != null) video.pause();
         if (wake != null) wake.setChecked(false); // Never silently resume ambient listening.
         super.onPause();
     }
@@ -792,7 +807,7 @@ public class MainActivity extends Activity {
         out.putString("thread", thread); out.putString("agent", agent); super.onSaveInstanceState(out);
     }
     @Override protected void onDestroy() {
-        destroyed = true; if (video != null) video.close(); if (voice != null) voice.close();
+        destroyed = true; cancelRead(); if (video != null) video.close(); if (voice != null) voice.close();
         if (tts != null) { tts.stop(); tts.shutdown(); }
         worker.shutdown(); super.onDestroy();
     }

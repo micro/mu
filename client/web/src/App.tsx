@@ -15,6 +15,7 @@ import {
   accountURL,
   saveRuntime,
 } from "./auth";
+import { ReadPoll } from "./poll";
 import { Turn } from "./content";
 import { Overview } from "./overview";
 import { Voice } from "./voice";
@@ -198,7 +199,7 @@ function Client({
     [busy, setBusy] = useState(true),
     [failedAuth, setFailedAuth] = useState(false);
   const epoch = useRef(0),
-    timer = useRef<ReturnType<typeof setTimeout> | null>(null),
+    poll = useRef<ReadPoll | null>(null),
     responsePanel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     document.body.classList.add(
@@ -224,11 +225,28 @@ function Client({
     history.replaceState(null, "", "?" + q);
   }
   async function read(id: string, version: number) {
+    if (version !== epoch.current) return;
+    const reader = poll.current;
+    if (!reader) return;
+    if (document.hidden || !navigator.onLine) {
+      reader.schedule(() => void read(id, version), 0);
+      return;
+    }
+    let pages = 0;
     try {
       let token = "",
         all: Message[] = [],
         pending = false;
       do {
+        if (version !== epoch.current) return;
+        if (document.hidden || !navigator.onLine) {
+          reader.schedule(
+            () => void read(id, version),
+            reader.next(false, pages),
+          );
+          return;
+        }
+        pages++;
         const result = await call(session, "ReadThread", {
           thread: id,
           pageSize: 100,
@@ -250,7 +268,12 @@ function Client({
       setMessages(all);
       setStatus(pending ? "Working…" : "");
       setBusy(pending);
-      if (pending) timer.current = setTimeout(() => read(id, version), 3000);
+      if (pending)
+        reader.schedule(
+          () => void read(id, version),
+          reader.next(false, pages),
+        );
+      else reader.cancel();
     } catch (error) {
       if (version !== epoch.current) return;
       if (
@@ -261,7 +284,7 @@ function Client({
         return;
       }
       setStatus("Reconnecting…");
-      timer.current = setTimeout(() => read(id, version), 5000);
+      reader.schedule(() => void read(id, version), reader.next(true, pages));
     }
   }
   async function list(token = "") {
@@ -283,6 +306,12 @@ function Client({
     }
   }
   useEffect(() => {
+    const reader = new ReadPoll(() => !document.hidden && navigator.onLine);
+    poll.current = reader;
+    const resume = () => reader.resume();
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("online", resume);
+    window.addEventListener("offline", resume);
     const version = epoch.current;
     (async () => {
       const result = await call(session, "ListAgents", {});
@@ -308,14 +337,18 @@ function Client({
     })().catch(fail);
     return () => {
       epoch.current++;
-      if (timer.current) clearTimeout(timer.current);
+      reader.cancel();
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("online", resume);
+      window.removeEventListener("offline", resume);
+      if (poll.current === reader) poll.current = null;
       window.speechSynthesis?.cancel();
     };
   }, [session]);
   function newChat() {
     if (!agent) return;
     epoch.current++;
-    if (timer.current) clearTimeout(timer.current);
+    poll.current?.cancel();
     setBusy(false);
     setMessages([]);
     setSubject("");
