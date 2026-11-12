@@ -14,6 +14,7 @@ import (
 	chatpb "mu/proto/service/chat/v1"
 	grouppb "mu/proto/service/groups/v1"
 	notespb "mu/proto/service/notes/v1"
+	notifypb "mu/proto/service/notify/v1"
 	taskspb "mu/proto/service/tasks/v1"
 	"mu/service/alerts"
 	"mu/service/bookmarks"
@@ -21,6 +22,7 @@ import (
 	"mu/service/contacts"
 	"mu/service/groups"
 	"mu/service/notes"
+	"mu/service/notify"
 	"mu/service/tasks"
 	"net/http"
 	"sort"
@@ -36,6 +38,7 @@ func mucpOperations() []mucp.Operation {
 	ops = append(ops, contractOperations(notes.Spec, notespb.File_service_notes_v1_notes_proto.Services().ByName("Notes"))...)
 	ops = append(ops, contractOperations(bookmarks.Spec, bookmarkspb.File_service_bookmarks_v1_bookmarks_proto.Services().ByName("Bookmarks"))...)
 	ops = append(ops, contractOperations(alerts.Spec, alertspb.File_service_alerts_v1_alerts_proto.Services().ByName("Alerts"))...)
+	ops = append(ops, contractOperations(notify.Spec, notifypb.File_service_notify_v1_notify_proto.Services().ByName("Notify"))...)
 	ops = append(ops, contractOperations(tasks.Spec, taskspb.File_service_tasks_v1_tasks_proto.Services().ByName("Tasks"))...)
 	return append(ops,
 		mucp.Operation{Service: "assistant", Endpoint: "Services.List", Capability: "services", Request: func() proto.Message { return &pb.ListServicesRequest{} }, Handle: servicesCall},
@@ -54,6 +57,8 @@ func serviceDescriptors() []*pb.ServiceDescriptor {
 			direct = contractOperations(bookmarks.Spec, bookmarkspb.File_service_bookmarks_v1_bookmarks_proto.Services().ByName("Bookmarks"))
 		case "alerts":
 			direct = contractOperations(alerts.Spec, alertspb.File_service_alerts_v1_alerts_proto.Services().ByName("Alerts"))
+		case "notify":
+			direct = contractOperations(notify.Spec, notifypb.File_service_notify_v1_notify_proto.Services().ByName("Notify"))
 		case "tasks":
 			direct = contractOperations(tasks.Spec, taskspb.File_service_tasks_v1_tasks_proto.Services().ByName("Tasks"))
 		case "notes":
