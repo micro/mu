@@ -10,7 +10,7 @@ public class ClientTest {
         try (java.io.InputStream in=getClass().getResourceAsStream("/ask-response.json")) {
             assertNotNull(in); raw=new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         }
-        mu.client.proto.assistant.v1.AskResponse.Builder response=mu.client.proto.assistant.v1.AskResponse.newBuilder();
+        mu.micro.client.proto.assistant.v1.AskResponse.Builder response=mu.micro.client.proto.assistant.v1.AskResponse.newBuilder();
         com.google.protobuf.util.JsonFormat.parser().ignoringUnknownFields().merge(raw,response);
         assertEquals("thread-example",response.getThread());
         JSONObject mapped=new JSONObject(com.google.protobuf.util.JsonFormat.printer().print(response.build()));
@@ -29,10 +29,10 @@ public class ClientTest {
             JSONObject item=cases.getJSONObject(i);
             com.google.protobuf.Message.Builder request,response;
             switch(item.getString("operation")) {
-            case "ListAgents":request=mu.client.proto.assistant.v1.ListAgentsRequest.newBuilder();response=mu.client.proto.assistant.v1.ListAgentsResponse.newBuilder();break;
-            case "ListThreads":request=mu.client.proto.assistant.v1.ListThreadsRequest.newBuilder();response=mu.client.proto.assistant.v1.ListThreadsResponse.newBuilder();break;
-            case "ReadThread":request=mu.client.proto.assistant.v1.ReadThreadRequest.newBuilder();response=mu.client.proto.assistant.v1.ReadThreadResponse.newBuilder();break;
-            case "Ask":request=mu.client.proto.assistant.v1.AskRequest.newBuilder();response=mu.client.proto.assistant.v1.AskResponse.newBuilder();break;
+            case "ListAgents":request=mu.micro.client.proto.assistant.v1.ListAgentsRequest.newBuilder();response=mu.micro.client.proto.assistant.v1.ListAgentsResponse.newBuilder();break;
+            case "ListThreads":request=mu.micro.client.proto.assistant.v1.ListThreadsRequest.newBuilder();response=mu.micro.client.proto.assistant.v1.ListThreadsResponse.newBuilder();break;
+            case "ReadThread":request=mu.micro.client.proto.assistant.v1.ReadThreadRequest.newBuilder();response=mu.micro.client.proto.assistant.v1.ReadThreadResponse.newBuilder();break;
+            case "Ask":request=mu.micro.client.proto.assistant.v1.AskRequest.newBuilder();response=mu.micro.client.proto.assistant.v1.AskResponse.newBuilder();break;
             default:throw new AssertionError("Unknown operation");
             }
             com.google.protobuf.util.JsonFormat.parser().merge(item.getJSONObject("request").toString(),request);
@@ -43,7 +43,7 @@ public class ClientTest {
 
     @Test public void compositionFixturesMatchGeneratedTypes() throws Exception {
         String[] names={"home","inbox","services","contacts","operation"};
-        com.google.protobuf.Message.Builder[] builders={mu.client.proto.assistant.v1.HomeResponse.newBuilder(),mu.client.proto.assistant.v1.ListInboxResponse.newBuilder(),mu.client.proto.assistant.v1.ListServicesResponse.newBuilder(),mu.client.proto.service.contacts.v1.ListResponse.newBuilder(),mu.client.proto.assistant.v1.Operation.newBuilder()};
+        com.google.protobuf.Message.Builder[] builders={mu.micro.client.proto.assistant.v1.HomeResponse.newBuilder(),mu.micro.client.proto.assistant.v1.ListInboxResponse.newBuilder(),mu.micro.client.proto.assistant.v1.ListServicesResponse.newBuilder(),mu.micro.client.proto.service.contacts.v1.ListResponse.newBuilder(),mu.micro.client.proto.assistant.v1.Operation.newBuilder()};
         for(int i=0;i<names.length;i++)try(java.io.InputStream in=getClass().getResourceAsStream("/"+names[i]+"-response.json")){
             assertNotNull(in);com.google.protobuf.util.JsonFormat.parser().merge(new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8),builders[i]);assertNotNull(builders[i].build());
         }

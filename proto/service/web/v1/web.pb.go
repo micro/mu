@@ -510,8 +510,8 @@ const file_service_web_v1_web_proto_rawDesc = "" +
 	"\x03Web\x12J\n" +
 	"\x05Fetch\x12\x1f.mu.service.web.v1.FetchRequest\x1a .mu.service.web.v1.FetchResponse\x12M\n" +
 	"\x06Images\x12 .mu.service.web.v1.ImagesRequest\x1a!.mu.service.web.v1.ImagesResponse\x12M\n" +
-	"\x06Search\x12 .mu.service.web.v1.SearchRequest\x1a!.mu.service.web.v1.SearchResponseBA\n" +
-	"\x1emu.client.proto.service.web.v1P\x01Z\x1dmu/proto/service/web/v1;webv1b\x06proto3"
+	"\x06Search\x12 .mu.service.web.v1.SearchRequest\x1a!.mu.service.web.v1.SearchResponseBG\n" +
+	"$mu.micro.client.proto.service.web.v1P\x01Z\x1dmu/proto/service/web/v1;webv1b\x06proto3"
 
 var (
 	file_service_web_v1_web_proto_rawDescOnce sync.Once

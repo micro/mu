@@ -28,6 +28,12 @@ jobs:
       - name: Build standalone web client
         run: |
           npm ci --prefix client/web
+          client/web/node_modules/.bin/tsc -p client/typescript
+          git diff --exit-code -- client/typescript/dist
+          npm test --prefix client/typescript
+          PYTHONPATH=client/python python -m unittest discover -s client/python/tests
+          python -m pip install mypy==2.4.1
+          python -m mypy client/python/mu
           npm test --prefix client/web
           npm run build --prefix client/web
           git diff --exit-code -- client/web/static

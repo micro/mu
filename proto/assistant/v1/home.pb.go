@@ -249,8 +249,8 @@ const file_assistant_v1_home_proto_rawDesc = "" +
 	"\blocation\x18\x04 \x01(\tR\blocation\x12\x16\n" +
 	"\x06source\x18\x05 \x01(\tR\x06source2O\n" +
 	"\x04Home\x12G\n" +
-	"\bOverview\x12\x1c.mu.assistant.v1.HomeRequest\x1a\x1d.mu.assistant.v1.HomeResponseBC\n" +
-	"\x1cmu.client.proto.assistant.v1P\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
+	"\bOverview\x12\x1c.mu.assistant.v1.HomeRequest\x1a\x1d.mu.assistant.v1.HomeResponseBI\n" +
+	"\"mu.micro.client.proto.assistant.v1P\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
 
 var (
 	file_assistant_v1_home_proto_rawDescOnce sync.Once

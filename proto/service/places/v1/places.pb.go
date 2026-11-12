@@ -569,8 +569,8 @@ const file_service_places_v1_places_proto_rawDesc = "" +
 	"\tElevation\x12&.mu.service.places.v1.ElevationRequest\x1a'.mu.service.places.v1.ElevationResponse\x12V\n" +
 	"\aGeocode\x12$.mu.service.places.v1.GeocodeRequest\x1a%.mu.service.places.v1.GeocodeResponse\x12S\n" +
 	"\x06Nearby\x12#.mu.service.places.v1.NearbyRequest\x1a$.mu.service.places.v1.PlacesResponse\x12S\n" +
-	"\x06Search\x12#.mu.service.places.v1.SearchRequest\x1a$.mu.service.places.v1.PlacesResponseBJ\n" +
-	"!mu.client.proto.service.places.v1P\x01Z#mu/proto/service/places/v1;placesv1b\x06proto3"
+	"\x06Search\x12#.mu.service.places.v1.SearchRequest\x1a$.mu.service.places.v1.PlacesResponseBP\n" +
+	"'mu.micro.client.proto.service.places.v1P\x01Z#mu/proto/service/places/v1;placesv1b\x06proto3"
 
 var (
 	file_service_places_v1_places_proto_rawDescOnce sync.Once

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { serve, secureOrigin } from "./server.mjs";
+import { serve, secureOrigin, validSession } from "./server.mjs";
 test("loopback app verifies OAuth state and prevents replay and asset escape", async () => {
   const root = await mkdtemp(join(tmpdir(), "mu-desktop-"));
   await writeFile(join(root, "index.html"), "Mu app");
@@ -63,4 +63,26 @@ test("runtime validation rejects credentials and unsafe origins", () => {
     "https://example.com/path",
   ])
     assert.throws(() => secureOrigin(u));
+});
+
+test("session expiry tolerates IPC clock skew without extending its stored lifetime", () => {
+  const now = 100000,
+    session = {
+      server: "https://runtime.example",
+      token: "token",
+      expires: now + 86400000 + 10,
+    };
+  assert.equal(validSession(session, now).expires, now + 86400000);
+  assert.throws(() =>
+    validSession({ ...session, expires: now + 86400000 + 60001 }, now),
+  );
+  assert.throws(() => validSession({ ...session, expires: now - 1 }, now));
+  assert.equal(
+    validSession(
+      { ...session, expires: now - 1, client: "client", refresh: "refresh" },
+      now,
+    ).expires,
+    now - 1,
+  );
+  assert.throws(() => validSession({ ...session, cookie: true }, now));
 });

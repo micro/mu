@@ -766,8 +766,8 @@ const file_service_markets_v1_markets_proto_rawDesc = "" +
 	"\aConvert\x12%.mu.service.markets.v1.ConvertRequest\x1a&.mu.service.markets.v1.ConvertResponse\x12X\n" +
 	"\aHistory\x12%.mu.service.markets.v1.HistoryRequest\x1a&.mu.service.markets.v1.HistoryResponse\x12O\n" +
 	"\x04List\x12\".mu.service.markets.v1.ListRequest\x1a#.mu.service.markets.v1.ListResponse\x12R\n" +
-	"\x05Quote\x12#.mu.service.markets.v1.QuoteRequest\x1a$.mu.service.markets.v1.QuoteResponseBM\n" +
-	"\"mu.client.proto.service.markets.v1P\x01Z%mu/proto/service/markets/v1;marketsv1b\x06proto3"
+	"\x05Quote\x12#.mu.service.markets.v1.QuoteRequest\x1a$.mu.service.markets.v1.QuoteResponseBS\n" +
+	"(mu.micro.client.proto.service.markets.v1P\x01Z%mu/proto/service/markets/v1;marketsv1b\x06proto3"
 
 var (
 	file_service_markets_v1_markets_proto_rawDescOnce sync.Once

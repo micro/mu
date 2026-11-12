@@ -1155,8 +1155,8 @@ const file_service_tasks_v1_tasks_proto_rawDesc = "" +
 	"\x04List\x12 .mu.service.tasks.v1.ListRequest\x1a!.mu.service.tasks.v1.ListResponse\x12K\n" +
 	"\x04Next\x12 .mu.service.tasks.v1.NextRequest\x1a!.mu.service.tasks.v1.TaskResponse\x12M\n" +
 	"\x04Read\x12\".mu.service.tasks.v1.DeleteRequest\x1a!.mu.service.tasks.v1.TaskResponse\x12O\n" +
-	"\x06Update\x12\".mu.service.tasks.v1.UpdateRequest\x1a!.mu.service.tasks.v1.TaskResponseBG\n" +
-	" mu.client.proto.service.tasks.v1P\x01Z!mu/proto/service/tasks/v1;tasksv1b\x06proto3"
+	"\x06Update\x12\".mu.service.tasks.v1.UpdateRequest\x1a!.mu.service.tasks.v1.TaskResponseBM\n" +
+	"&mu.micro.client.proto.service.tasks.v1P\x01Z!mu/proto/service/tasks/v1;tasksv1b\x06proto3"
 
 var (
 	file_service_tasks_v1_tasks_proto_rawDescOnce sync.Once

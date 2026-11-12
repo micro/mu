@@ -700,8 +700,8 @@ const file_service_flights_v1_flights_proto_rawDesc = "" +
 	"\aAirport\x12%.mu.service.flights.v1.AirportRequest\x1a&.mu.service.flights.v1.AirportResponse\x12[\n" +
 	"\bOverhead\x12&.mu.service.flights.v1.OverheadRequest\x1a'.mu.service.flights.v1.OverheadResponse\x12U\n" +
 	"\x06Status\x12$.mu.service.flights.v1.StatusRequest\x1a%.mu.service.flights.v1.StatusResponse\x12R\n" +
-	"\x05Track\x12#.mu.service.flights.v1.TrackRequest\x1a$.mu.service.flights.v1.TrackResponseBM\n" +
-	"\"mu.client.proto.service.flights.v1P\x01Z%mu/proto/service/flights/v1;flightsv1b\x06proto3"
+	"\x05Track\x12#.mu.service.flights.v1.TrackRequest\x1a$.mu.service.flights.v1.TrackResponseBS\n" +
+	"(mu.micro.client.proto.service.flights.v1P\x01Z%mu/proto/service/flights/v1;flightsv1b\x06proto3"
 
 var (
 	file_service_flights_v1_flights_proto_rawDescOnce sync.Once

@@ -281,8 +281,8 @@ const file_service_browser_v1_browser_proto_rawDesc = "" +
 	"\x05title\x18\x02 \x01(\tR\x05title2\xab\x01\n" +
 	"\aBrowser\x12O\n" +
 	"\x04Read\x12\".mu.service.browser.v1.ReadRequest\x1a#.mu.service.browser.v1.ReadResponse\x12O\n" +
-	"\x04Shot\x12\".mu.service.browser.v1.ShotRequest\x1a#.mu.service.browser.v1.ShotResponseBM\n" +
-	"\"mu.client.proto.service.browser.v1P\x01Z%mu/proto/service/browser/v1;browserv1b\x06proto3"
+	"\x04Shot\x12\".mu.service.browser.v1.ShotRequest\x1a#.mu.service.browser.v1.ShotResponseBS\n" +
+	"(mu.micro.client.proto.service.browser.v1P\x01Z%mu/proto/service/browser/v1;browserv1b\x06proto3"
 
 var (
 	file_service_browser_v1_browser_proto_rawDescOnce sync.Once

@@ -642,8 +642,8 @@ const file_service_prayer_v1_prayer_proto_rawDesc = "" +
 	"\x06Saying\x12,.mu.service.prayer.v1.ScriptureSayingRequest\x1a-.mu.service.prayer.v1.ScriptureSayingResponse\x12e\n" +
 	"\x06Search\x12,.mu.service.prayer.v1.ScriptureSearchRequest\x1a-.mu.service.prayer.v1.ScriptureSearchResponse\x12P\n" +
 	"\x05Times\x12\".mu.service.prayer.v1.TimesRequest\x1a#.mu.service.prayer.v1.TimesResponse\x12b\n" +
-	"\x05Verse\x12+.mu.service.prayer.v1.ScriptureVerseRequest\x1a,.mu.service.prayer.v1.ScriptureVerseResponseBJ\n" +
-	"!mu.client.proto.service.prayer.v1P\x01Z#mu/proto/service/prayer/v1;prayerv1b\x06proto3"
+	"\x05Verse\x12+.mu.service.prayer.v1.ScriptureVerseRequest\x1a,.mu.service.prayer.v1.ScriptureVerseResponseBP\n" +
+	"'mu.micro.client.proto.service.prayer.v1P\x01Z#mu/proto/service/prayer/v1;prayerv1b\x06proto3"
 
 var (
 	file_service_prayer_v1_prayer_proto_rawDescOnce sync.Once

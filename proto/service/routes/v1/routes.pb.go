@@ -609,8 +609,8 @@ const file_service_routes_v1_routes_proto_rawDesc = "" +
 	"\n" +
 	"Directions\x12'.mu.service.routes.v1.DirectionsRequest\x1a(.mu.service.routes.v1.DirectionsResponse\x12J\n" +
 	"\x03ETA\x12 .mu.service.routes.v1.ETARequest\x1a!.mu.service.routes.v1.ETAResponse\x12V\n" +
-	"\aNearest\x12$.mu.service.routes.v1.NearestRequest\x1a%.mu.service.routes.v1.NearestResponseBJ\n" +
-	"!mu.client.proto.service.routes.v1P\x01Z#mu/proto/service/routes/v1;routesv1b\x06proto3"
+	"\aNearest\x12$.mu.service.routes.v1.NearestRequest\x1a%.mu.service.routes.v1.NearestResponseBP\n" +
+	"'mu.micro.client.proto.service.routes.v1P\x01Z#mu/proto/service/routes/v1;routesv1b\x06proto3"
 
 var (
 	file_service_routes_v1_routes_proto_rawDescOnce sync.Once

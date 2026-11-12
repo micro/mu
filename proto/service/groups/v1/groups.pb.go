@@ -840,8 +840,8 @@ const file_service_groups_v1_groups_proto_rawDesc = "" +
 	"\x06Create\x12#.mu.service.groups.v1.CreateRequest\x1a#.mu.service.groups.v1.GroupResponse\x12M\n" +
 	"\x04List\x12!.mu.service.groups.v1.ListRequest\x1a\".mu.service.groups.v1.ListResponse\x12N\n" +
 	"\x04Read\x12!.mu.service.groups.v1.ReadRequest\x1a#.mu.service.groups.v1.GroupResponse\x12S\n" +
-	"\x06Update\x12#.mu.service.groups.v1.UpdateRequest\x1a$.mu.service.groups.v1.UpdateResponseBJ\n" +
-	"!mu.client.proto.service.groups.v1P\x01Z#mu/proto/service/groups/v1;groupsv1b\x06proto3"
+	"\x06Update\x12#.mu.service.groups.v1.UpdateRequest\x1a$.mu.service.groups.v1.UpdateResponseBP\n" +
+	"'mu.micro.client.proto.service.groups.v1P\x01Z#mu/proto/service/groups/v1;groupsv1b\x06proto3"
 
 var (
 	file_service_groups_v1_groups_proto_rawDescOnce sync.Once

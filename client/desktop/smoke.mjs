@@ -14,7 +14,10 @@ const runtime = createServer(async (req, res) => {
     "Access-Control-Allow-Headers",
     "Content-Type, Authorization, Micro-Protocol, Micro-Service, Micro-Endpoint, Micro-Id",
   );
-  res.setHeader("Access-Control-Expose-Headers", "Micro-Protocol, Micro-Id");
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "Micro-Protocol, Micro-Service, Micro-Endpoint, Micro-Id",
+  );
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
@@ -58,6 +61,8 @@ const runtime = createServer(async (req, res) => {
   assert.equal(req.headers.cookie, undefined);
   res.setHeader("Micro-Protocol", "mucp/1");
   res.setHeader("Micro-Id", req.headers["micro-id"]);
+  res.setHeader("Micro-Service", req.headers["micro-service"]);
+  res.setHeader("Micro-Endpoint", req.headers["micro-endpoint"]);
   if (req.headers["micro-endpoint"] === "Assistant.ListAgents")
     res.end('{"agents":[{"id":"micro","slug":"micro","name":"Micro"}]}');
   else if (req.headers["micro-endpoint"] === "Assistant.Submit") {

@@ -492,8 +492,8 @@ const file_service_contacts_v1_contacts_proto_rawDesc = "" +
 	"\x04List\x12#.mu.service.contacts.v1.ListRequest\x1a$.mu.service.contacts.v1.ListResponse\x12Q\n" +
 	"\x04Find\x12#.mu.service.contacts.v1.FindRequest\x1a$.mu.service.contacts.v1.FindResponse\x12J\n" +
 	"\x03Add\x12\".mu.service.contacts.v1.AddRequest\x1a\x1f.mu.service.contacts.v1.Contact\x12W\n" +
-	"\x06Delete\x12%.mu.service.contacts.v1.DeleteRequest\x1a&.mu.service.contacts.v1.DeleteResponseBP\n" +
-	"#mu.client.proto.service.contacts.v1P\x01Z'mu/proto/service/contacts/v1;contactsv1b\x06proto3"
+	"\x06Delete\x12%.mu.service.contacts.v1.DeleteRequest\x1a&.mu.service.contacts.v1.DeleteResponseBV\n" +
+	")mu.micro.client.proto.service.contacts.v1P\x01Z'mu/proto/service/contacts/v1;contactsv1b\x06proto3"
 
 var (
 	file_service_contacts_v1_contacts_proto_rawDescOnce sync.Once

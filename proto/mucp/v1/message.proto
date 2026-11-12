@@ -5,7 +5,7 @@ syntax = "proto3";
 package mu.mucp.v1;
 
 option go_package = "mu/proto/mucp/v1;mucpv1";
-option java_package = "mu.client.proto.mucp.v1";
+option java_package = "mu.micro.client.proto.mucp.v1";
 option java_multiple_files = true;
 option java_outer_classname = "MessageProtocol";
 

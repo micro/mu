@@ -792,8 +792,8 @@ const file_service_forms_v1_forms_proto_rawDesc = "" +
 	"\x04List\x12 .mu.service.forms.v1.ListRequest\x1a!.mu.service.forms.v1.ListResponse\x12K\n" +
 	"\x04Read\x12 .mu.service.forms.v1.ReadRequest\x1a!.mu.service.forms.v1.FormResponse\x12Z\n" +
 	"\tResponses\x12%.mu.service.forms.v1.ResponsesRequest\x1a&.mu.service.forms.v1.ResponsesResponse\x12M\n" +
-	"\x05Write\x12!.mu.service.forms.v1.WriteRequest\x1a!.mu.service.forms.v1.FormResponseBG\n" +
-	" mu.client.proto.service.forms.v1P\x01Z!mu/proto/service/forms/v1;formsv1b\x06proto3"
+	"\x05Write\x12!.mu.service.forms.v1.WriteRequest\x1a!.mu.service.forms.v1.FormResponseBM\n" +
+	"&mu.micro.client.proto.service.forms.v1P\x01Z!mu/proto/service/forms/v1;formsv1b\x06proto3"
 
 var (
 	file_service_forms_v1_forms_proto_rawDescOnce sync.Once

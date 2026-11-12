@@ -3,7 +3,7 @@
 syntax = "proto3";
 package mu.assistant.v1;
 option go_package = "mu/proto/assistant/v1;assistantv1";
-option java_package = "mu.client.proto.assistant.v1";
+option java_package = "mu.micro.client.proto.assistant.v1";
 option java_multiple_files = true;
 import "google/protobuf/timestamp.proto";
 import "assistant/v1/assistant.proto";

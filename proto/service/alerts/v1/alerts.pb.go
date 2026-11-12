@@ -545,8 +545,8 @@ const file_service_alerts_v1_alerts_proto_rawDesc = "" +
 	"\x06Alerts\x12M\n" +
 	"\x04List\x12!.mu.service.alerts.v1.ListRequest\x1a\".mu.service.alerts.v1.ListResponse\x12O\n" +
 	"\x05Raise\x12\".mu.service.alerts.v1.RaiseRequest\x1a\".mu.service.alerts.v1.ItemResponse\x12M\n" +
-	"\x06Update\x12#.mu.service.alerts.v1.UpdateRequest\x1a\x1e.mu.service.alerts.v1.ResponseBJ\n" +
-	"!mu.client.proto.service.alerts.v1P\x01Z#mu/proto/service/alerts/v1;alertsv1b\x06proto3"
+	"\x06Update\x12#.mu.service.alerts.v1.UpdateRequest\x1a\x1e.mu.service.alerts.v1.ResponseBP\n" +
+	"'mu.micro.client.proto.service.alerts.v1P\x01Z#mu/proto/service/alerts/v1;alertsv1b\x06proto3"
 
 var (
 	file_service_alerts_v1_alerts_proto_rawDescOnce sync.Once

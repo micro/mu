@@ -5,7 +5,7 @@
 syntax = "proto3";
 package mu.service.news.v1;
 option go_package = "mu/proto/service/news/v1;newsv1";
-option java_package = "mu.client.proto.service.news.v1";
+option java_package = "mu.micro.client.proto.service.news.v1";
 option java_multiple_files = true;
 
 

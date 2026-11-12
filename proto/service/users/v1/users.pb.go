@@ -569,8 +569,8 @@ const file_service_users_v1_users_proto_rawDesc = "" +
 	"\x05Users\x12K\n" +
 	"\x04Find\x12 .mu.service.users.v1.FindRequest\x1a!.mu.service.users.v1.FindResponse\x12H\n" +
 	"\x03Get\x12\x1f.mu.service.users.v1.GetRequest\x1a .mu.service.users.v1.GetResponse\x12K\n" +
-	"\x04List\x12 .mu.service.users.v1.ListRequest\x1a!.mu.service.users.v1.ListResponseBG\n" +
-	" mu.client.proto.service.users.v1P\x01Z!mu/proto/service/users/v1;usersv1b\x06proto3"
+	"\x04List\x12 .mu.service.users.v1.ListRequest\x1a!.mu.service.users.v1.ListResponseBM\n" +
+	"&mu.micro.client.proto.service.users.v1P\x01Z!mu/proto/service/users/v1;usersv1b\x06proto3"
 
 var (
 	file_service_users_v1_users_proto_rawDescOnce sync.Once

@@ -251,8 +251,8 @@ const file_service_archive_v1_archive_proto_rawDesc = "" +
 	"\x04text\x18\x01 \x01(\tR\x04text2\xb1\x01\n" +
 	"\aArchive\x12O\n" +
 	"\x04List\x12\".mu.service.archive.v1.ListRequest\x1a#.mu.service.archive.v1.ListResponse\x12U\n" +
-	"\x06Search\x12$.mu.service.archive.v1.SearchRequest\x1a%.mu.service.archive.v1.SearchResponseBM\n" +
-	"\"mu.client.proto.service.archive.v1P\x01Z%mu/proto/service/archive/v1;archivev1b\x06proto3"
+	"\x06Search\x12$.mu.service.archive.v1.SearchRequest\x1a%.mu.service.archive.v1.SearchResponseBS\n" +
+	"(mu.micro.client.proto.service.archive.v1P\x01Z%mu/proto/service/archive/v1;archivev1b\x06proto3"
 
 var (
 	file_service_archive_v1_archive_proto_rawDescOnce sync.Once

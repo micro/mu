@@ -66,7 +66,30 @@ func TestMUCPIndependentDelegation(t *testing.T) {
 			t.Log(string(out))
 		}
 	}
+	// SDKs use their own transports, not the independent conformance probe.
 	if calls.Load() != 1 {
+		t.Fatalf("probe executed %d times", calls.Load())
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		if os.Getenv("CI") != "" {
+			t.Fatal("Node is required for SDK interoperability tests")
+		}
+		t.Skip("Node unavailable")
+	}
+	for _, command := range [][]string{
+		{node, "../client/typescript/test/interop.mjs", server.URL},
+		{python, "../client/python/tests/interop.py", server.URL},
+	} {
+		cmd := exec.Command(command[0], command[1:]...)
+		cmd.Env = append(os.Environ(), "MU_TOKEN="+token, "PYTHONPATH=../client/python")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("SDK: %v\n%s", err, out)
+		} else {
+			t.Log(string(out))
+		}
+	}
+	if calls.Load() != 3 {
 		t.Fatalf("executed %d times after recovery and new-client resume", calls.Load())
 	}
 }

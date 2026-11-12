@@ -58,6 +58,9 @@ test("expired session renews once before concurrent protocol reads", async () =>
       headers: {
         "Micro-Protocol": "mucp/1",
         "Micro-Id": headers.get("Micro-Id")!,
+        "Micro-Service": headers.get("Micro-Service")!,
+        "Micro-Endpoint": headers.get("Micro-Endpoint")!,
+        "Content-Type": "application/json",
       },
     });
   };

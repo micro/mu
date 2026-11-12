@@ -231,8 +231,8 @@ const file_service_social_v1_social_proto_rawDesc = "" +
 	"\x04text\x18\x01 \x01(\tR\x04text2\xac\x01\n" +
 	"\x06Social\x12M\n" +
 	"\x04List\x12!.mu.service.social.v1.ListRequest\x1a\".mu.service.social.v1.ListResponse\x12S\n" +
-	"\x06Search\x12#.mu.service.social.v1.SearchRequest\x1a$.mu.service.social.v1.SearchResponseBJ\n" +
-	"!mu.client.proto.service.social.v1P\x01Z#mu/proto/service/social/v1;socialv1b\x06proto3"
+	"\x06Search\x12#.mu.service.social.v1.SearchRequest\x1a$.mu.service.social.v1.SearchResponseBP\n" +
+	"'mu.micro.client.proto.service.social.v1P\x01Z#mu/proto/service/social/v1;socialv1b\x06proto3"
 
 var (
 	file_service_social_v1_social_proto_rawDescOnce sync.Once

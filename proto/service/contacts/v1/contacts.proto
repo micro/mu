@@ -3,7 +3,7 @@
 syntax = "proto3";
 package mu.service.contacts.v1;
 option go_package = "mu/proto/service/contacts/v1;contactsv1";
-option java_package = "mu.client.proto.service.contacts.v1";
+option java_package = "mu.micro.client.proto.service.contacts.v1";
 option java_multiple_files = true;
 service Contacts {
  rpc List(ListRequest) returns (ListResponse);

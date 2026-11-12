@@ -1633,8 +1633,8 @@ const file_service_apps_v1_apps_proto_rawDesc = "" +
 	"\x04Fork\x12\x1f.mu.service.apps.v1.ForkRequest\x1a .mu.service.apps.v1.ForkResponse\x12O\n" +
 	"\x04Read\x12\".mu.service.apps.v1.AppReadRequest\x1a#.mu.service.apps.v1.AppReadResponse\x12U\n" +
 	"\x06Search\x12$.mu.service.apps.v1.AppSearchRequest\x1a%.mu.service.apps.v1.AppSearchResponse\x12I\n" +
-	"\x04Test\x12\x1f.mu.service.apps.v1.TestRequest\x1a .mu.service.apps.v1.TestResponseBD\n" +
-	"\x1fmu.client.proto.service.apps.v1P\x01Z\x1fmu/proto/service/apps/v1;appsv1b\x06proto3"
+	"\x04Test\x12\x1f.mu.service.apps.v1.TestRequest\x1a .mu.service.apps.v1.TestResponseBJ\n" +
+	"%mu.micro.client.proto.service.apps.v1P\x01Z\x1fmu/proto/service/apps/v1;appsv1b\x06proto3"
 
 var (
 	file_service_apps_v1_apps_proto_rawDescOnce sync.Once

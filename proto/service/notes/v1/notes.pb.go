@@ -693,8 +693,8 @@ const file_service_notes_v1_notes_proto_rawDesc = "" +
 	"\x03Add\x12\x1f.mu.service.notes.v1.AddRequest\x1a .mu.service.notes.v1.AddResponse\x12Q\n" +
 	"\x06Delete\x12\".mu.service.notes.v1.DeleteRequest\x1a#.mu.service.notes.v1.DeleteResponse\x12H\n" +
 	"\x03Get\x12\x1f.mu.service.notes.v1.GetRequest\x1a .mu.service.notes.v1.GetResponse\x12K\n" +
-	"\x04List\x12 .mu.service.notes.v1.ListRequest\x1a!.mu.service.notes.v1.ListResponseBG\n" +
-	" mu.client.proto.service.notes.v1P\x01Z!mu/proto/service/notes/v1;notesv1b\x06proto3"
+	"\x04List\x12 .mu.service.notes.v1.ListRequest\x1a!.mu.service.notes.v1.ListResponseBM\n" +
+	"&mu.micro.client.proto.service.notes.v1P\x01Z!mu/proto/service/notes/v1;notesv1b\x06proto3"
 
 var (
 	file_service_notes_v1_notes_proto_rawDescOnce sync.Once

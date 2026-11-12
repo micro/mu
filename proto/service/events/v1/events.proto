@@ -5,7 +5,7 @@
 syntax = "proto3";
 package mu.service.events.v1;
 option go_package = "mu/proto/service/events/v1;eventsv1";
-option java_package = "mu.client.proto.service.events.v1";
+option java_package = "mu.micro.client.proto.service.events.v1";
 option java_multiple_files = true;
 
 import "google/protobuf/timestamp.proto";

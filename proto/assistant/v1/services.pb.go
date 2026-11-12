@@ -336,8 +336,8 @@ const file_assistant_v1_services_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name2\xb8\x01\n" +
 	"\bServices\x12S\n" +
 	"\x04List\x12$.mu.assistant.v1.ListServicesRequest\x1a%.mu.assistant.v1.ListServicesResponse\x12W\n" +
-	"\bDescribe\x12'.mu.assistant.v1.DescribeServiceRequest\x1a\".mu.assistant.v1.ServiceDescriptorBC\n" +
-	"\x1cmu.client.proto.assistant.v1P\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
+	"\bDescribe\x12'.mu.assistant.v1.DescribeServiceRequest\x1a\".mu.assistant.v1.ServiceDescriptorBI\n" +
+	"\"mu.micro.client.proto.assistant.v1P\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
 
 var (
 	file_assistant_v1_services_proto_rawDescOnce sync.Once

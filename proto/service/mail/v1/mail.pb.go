@@ -1591,8 +1591,8 @@ const file_service_mail_v1_mail_proto_rawDesc = "" +
 	"\x06Search\x12!.mu.service.mail.v1.SearchRequest\x1a\".mu.service.mail.v1.SearchResponse\x12I\n" +
 	"\x04Send\x12\x1f.mu.service.mail.v1.SendRequest\x1a .mu.service.mail.v1.SendResponse\x12]\n" +
 	"\x06Source\x12(.mu.service.mail.v1.ServiceSourceRequest\x1a).mu.service.mail.v1.ServiceSourceResponse\x12`\n" +
-	"\aSources\x12).mu.service.mail.v1.ServiceSourcesRequest\x1a*.mu.service.mail.v1.ServiceSourcesResponseBD\n" +
-	"\x1fmu.client.proto.service.mail.v1P\x01Z\x1fmu/proto/service/mail/v1;mailv1b\x06proto3"
+	"\aSources\x12).mu.service.mail.v1.ServiceSourcesRequest\x1a*.mu.service.mail.v1.ServiceSourcesResponseBJ\n" +
+	"%mu.micro.client.proto.service.mail.v1P\x01Z\x1fmu/proto/service/mail/v1;mailv1b\x06proto3"
 
 var (
 	file_service_mail_v1_mail_proto_rawDescOnce sync.Once
