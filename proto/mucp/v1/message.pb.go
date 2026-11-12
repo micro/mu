@@ -101,8 +101,8 @@ const file_mucp_v1_message_proto_rawDesc = "" +
 	"\x04body\x18\x02 \x01(\fR\x04body\x1a:\n" +
 	"\fHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01BE\n" +
-	"\x17mu.client.proto.mucp.v1B\x0fMessageProtocolP\x01Z\x17mu/proto/mucp/v1;mucpv1b\x06proto3"
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01BK\n" +
+	"\x1dmu.micro.client.proto.mucp.v1B\x0fMessageProtocolP\x01Z\x17mu/proto/mucp/v1;mucpv1b\x06proto3"
 
 var (
 	file_mucp_v1_message_proto_rawDescOnce sync.Once

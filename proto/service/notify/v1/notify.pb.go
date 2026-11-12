@@ -308,8 +308,8 @@ const file_service_notify_v1_notify_proto_rawDesc = "" +
 	"\x06result\x18\x01 \x01(\tR\x06result2\xaf\x01\n" +
 	"\x06Notify\x12V\n" +
 	"\aDevices\x12$.mu.service.notify.v1.DevicesRequest\x1a%.mu.service.notify.v1.DevicesResponse\x12M\n" +
-	"\x04Send\x12!.mu.service.notify.v1.SendRequest\x1a\".mu.service.notify.v1.SendResponseBJ\n" +
-	"!mu.client.proto.service.notify.v1P\x01Z#mu/proto/service/notify/v1;notifyv1b\x06proto3"
+	"\x04Send\x12!.mu.service.notify.v1.SendRequest\x1a\".mu.service.notify.v1.SendResponseBP\n" +
+	"'mu.micro.client.proto.service.notify.v1P\x01Z#mu/proto/service/notify/v1;notifyv1b\x06proto3"
 
 var (
 	file_service_notify_v1_notify_proto_rawDescOnce sync.Once

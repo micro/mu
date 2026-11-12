@@ -5,7 +5,7 @@ import org.json.JSONArray;
 import java.util.UUID;
 import com.google.protobuf.Message;
 import com.google.protobuf.util.JsonFormat;
-import mu.client.proto.assistant.v1.*;
+import mu.micro.client.proto.assistant.v1.*;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;

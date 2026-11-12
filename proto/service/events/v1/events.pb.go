@@ -1367,8 +1367,8 @@ const file_service_events_v1_events_proto_rawDesc = "" +
 	"\x04Free\x12!.mu.service.events.v1.FreeRequest\x1a\".mu.service.events.v1.FreeResponse\x12M\n" +
 	"\x04List\x12!.mu.service.events.v1.ListRequest\x1a\".mu.service.events.v1.ListResponse\x12M\n" +
 	"\x04Read\x12!.mu.service.events.v1.ReadRequest\x1a\".mu.service.events.v1.ReadResponse\x12S\n" +
-	"\x06Update\x12#.mu.service.events.v1.UpdateRequest\x1a$.mu.service.events.v1.UpdateResponseBJ\n" +
-	"!mu.client.proto.service.events.v1P\x01Z#mu/proto/service/events/v1;eventsv1b\x06proto3"
+	"\x06Update\x12#.mu.service.events.v1.UpdateRequest\x1a$.mu.service.events.v1.UpdateResponseBP\n" +
+	"'mu.micro.client.proto.service.events.v1P\x01Z#mu/proto/service/events/v1;eventsv1b\x06proto3"
 
 var (
 	file_service_events_v1_events_proto_rawDescOnce sync.Once

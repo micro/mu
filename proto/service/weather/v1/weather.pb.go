@@ -550,8 +550,8 @@ const file_service_weather_v1_weather_proto_rawDesc = "" +
 	"\bForecast\x12&.mu.service.weather.v1.ForecastRequest\x1a'.mu.service.weather.v1.ForecastResponse\x12X\n" +
 	"\aHistory\x12%.mu.service.weather.v1.HistoryRequest\x1a&.mu.service.weather.v1.HistoryResponse\x12W\n" +
 	"\x06Lookup\x12$.mu.service.weather.v1.LookupRequest\x1a'.mu.service.weather.v1.ForecastResponse\x12U\n" +
-	"\x06Marine\x12$.mu.service.weather.v1.MarineRequest\x1a%.mu.service.weather.v1.MarineResponseBM\n" +
-	"\"mu.client.proto.service.weather.v1P\x01Z%mu/proto/service/weather/v1;weatherv1b\x06proto3"
+	"\x06Marine\x12$.mu.service.weather.v1.MarineRequest\x1a%.mu.service.weather.v1.MarineResponseBS\n" +
+	"(mu.micro.client.proto.service.weather.v1P\x01Z%mu/proto/service/weather/v1;weatherv1b\x06proto3"
 
 var (
 	file_service_weather_v1_weather_proto_rawDescOnce sync.Once

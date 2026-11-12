@@ -1038,8 +1038,8 @@ const file_service_sms_v1_sms_proto_rawDesc = "" +
 	"\x04Send\x12\x1e.mu.service.sms.v1.SendRequest\x1a\x1f.mu.service.sms.v1.SendResponse\x12[\n" +
 	"\x06Source\x12'.mu.service.sms.v1.ServiceSourceRequest\x1a(.mu.service.sms.v1.ServiceSourceResponse\x12^\n" +
 	"\aSources\x12(.mu.service.sms.v1.ServiceSourcesRequest\x1a).mu.service.sms.v1.ServiceSourcesResponse\x12M\n" +
-	"\x06Verify\x12 .mu.service.sms.v1.VerifyRequest\x1a!.mu.service.sms.v1.VerifyResponseBA\n" +
-	"\x1emu.client.proto.service.sms.v1P\x01Z\x1dmu/proto/service/sms/v1;smsv1b\x06proto3"
+	"\x06Verify\x12 .mu.service.sms.v1.VerifyRequest\x1a!.mu.service.sms.v1.VerifyResponseBG\n" +
+	"$mu.micro.client.proto.service.sms.v1P\x01Z\x1dmu/proto/service/sms/v1;smsv1b\x06proto3"
 
 var (
 	file_service_sms_v1_sms_proto_rawDescOnce sync.Once

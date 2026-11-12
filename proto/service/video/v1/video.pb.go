@@ -549,8 +549,8 @@ const file_service_video_v1_video_proto_rawDesc = "" +
 	"\x05Video\x12K\n" +
 	"\x04List\x12 .mu.service.video.v1.ListRequest\x1a!.mu.service.video.v1.ListResponse\x12K\n" +
 	"\x04Read\x12 .mu.service.video.v1.ReadRequest\x1a!.mu.service.video.v1.ReadResponse\x12Q\n" +
-	"\x06Search\x12\".mu.service.video.v1.SearchRequest\x1a#.mu.service.video.v1.SearchResponseBG\n" +
-	" mu.client.proto.service.video.v1P\x01Z!mu/proto/service/video/v1;videov1b\x06proto3"
+	"\x06Search\x12\".mu.service.video.v1.SearchRequest\x1a#.mu.service.video.v1.SearchResponseBM\n" +
+	"&mu.micro.client.proto.service.video.v1P\x01Z!mu/proto/service/video/v1;videov1b\x06proto3"
 
 var (
 	file_service_video_v1_video_proto_rawDescOnce sync.Once

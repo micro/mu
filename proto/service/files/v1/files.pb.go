@@ -1015,8 +1015,8 @@ const file_service_files_v1_files_proto_rawDesc = "" +
 	"\x03Get\x12\x1f.mu.service.files.v1.GetRequest\x1a .mu.service.files.v1.GetResponse\x12K\n" +
 	"\x04List\x12 .mu.service.files.v1.ListRequest\x1a!.mu.service.files.v1.ListResponse\x12H\n" +
 	"\x03Put\x12\x1f.mu.service.files.v1.PutRequest\x1a .mu.service.files.v1.PutResponse\x12N\n" +
-	"\x05Share\x12!.mu.service.files.v1.ShareRequest\x1a\".mu.service.files.v1.ShareResponseBG\n" +
-	" mu.client.proto.service.files.v1P\x01Z!mu/proto/service/files/v1;filesv1b\x06proto3"
+	"\x05Share\x12!.mu.service.files.v1.ShareRequest\x1a\".mu.service.files.v1.ShareResponseBM\n" +
+	"&mu.micro.client.proto.service.files.v1P\x01Z!mu/proto/service/files/v1;filesv1b\x06proto3"
 
 var (
 	file_service_files_v1_files_proto_rawDescOnce sync.Once

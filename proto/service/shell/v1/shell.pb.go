@@ -272,8 +272,8 @@ const file_service_shell_v1_shell_proto_rawDesc = "" +
 	"\x05bytes\x18\x02 \x01(\x03R\x05bytes2\xa1\x01\n" +
 	"\x05Shell\x12H\n" +
 	"\x03Run\x12\x1f.mu.service.shell.v1.RunRequest\x1a .mu.service.shell.v1.RunResponse\x12N\n" +
-	"\x05Write\x12!.mu.service.shell.v1.WriteRequest\x1a\".mu.service.shell.v1.WriteResponseBG\n" +
-	" mu.client.proto.service.shell.v1P\x01Z!mu/proto/service/shell/v1;shellv1b\x06proto3"
+	"\x05Write\x12!.mu.service.shell.v1.WriteRequest\x1a\".mu.service.shell.v1.WriteResponseBM\n" +
+	"&mu.micro.client.proto.service.shell.v1P\x01Z!mu/proto/service/shell/v1;shellv1b\x06proto3"
 
 var (
 	file_service_shell_v1_shell_proto_rawDescOnce sync.Once

@@ -366,8 +366,8 @@ const file_service_food_v1_food_proto_rawDesc = "" +
 	"\x04Food\x12R\n" +
 	"\aHygiene\x12\".mu.service.food.v1.HygieneRequest\x1a#.mu.service.food.v1.HygieneResponse\x12R\n" +
 	"\aProduct\x12\".mu.service.food.v1.ProductRequest\x1a#.mu.service.food.v1.ProductResponse\x12O\n" +
-	"\x06Search\x12!.mu.service.food.v1.SearchRequest\x1a\".mu.service.food.v1.SearchResponseBD\n" +
-	"\x1fmu.client.proto.service.food.v1P\x01Z\x1fmu/proto/service/food/v1;foodv1b\x06proto3"
+	"\x06Search\x12!.mu.service.food.v1.SearchRequest\x1a\".mu.service.food.v1.SearchResponseBJ\n" +
+	"%mu.micro.client.proto.service.food.v1P\x01Z\x1fmu/proto/service/food/v1;foodv1b\x06proto3"
 
 var (
 	file_service_food_v1_food_proto_rawDescOnce sync.Once

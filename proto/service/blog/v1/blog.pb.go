@@ -586,8 +586,8 @@ const file_service_blog_v1_blog_proto_rawDesc = "" +
 	"\x06Delete\x12!.mu.service.blog.v1.DeleteRequest\x1a\".mu.service.blog.v1.DeleteResponse\x12I\n" +
 	"\x04List\x12\x1f.mu.service.blog.v1.ListRequest\x1a .mu.service.blog.v1.ListResponse\x12I\n" +
 	"\x04Read\x12\x1f.mu.service.blog.v1.ReadRequest\x1a .mu.service.blog.v1.ReadResponse\x12O\n" +
-	"\x06Update\x12!.mu.service.blog.v1.UpdateRequest\x1a\".mu.service.blog.v1.UpdateResponseBD\n" +
-	"\x1fmu.client.proto.service.blog.v1P\x01Z\x1fmu/proto/service/blog/v1;blogv1b\x06proto3"
+	"\x06Update\x12!.mu.service.blog.v1.UpdateRequest\x1a\".mu.service.blog.v1.UpdateResponseBJ\n" +
+	"%mu.micro.client.proto.service.blog.v1P\x01Z\x1fmu/proto/service/blog/v1;blogv1b\x06proto3"
 
 var (
 	file_service_blog_v1_blog_proto_rawDescOnce sync.Once

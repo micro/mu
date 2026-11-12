@@ -902,8 +902,8 @@ const file_service_images_v1_images_proto_rawDesc = "" +
 	"\x06Search\x12#.mu.service.images.v1.SearchRequest\x1a$.mu.service.images.v1.SearchResponse\x12P\n" +
 	"\x05Share\x12\".mu.service.images.v1.ShareRequest\x1a#.mu.service.images.v1.ImageResponse\x12R\n" +
 	"\x06Update\x12#.mu.service.images.v1.UpdateRequest\x1a#.mu.service.images.v1.ImageResponse\x12R\n" +
-	"\x06Upload\x12#.mu.service.images.v1.UploadRequest\x1a#.mu.service.images.v1.ImageResponseBJ\n" +
-	"!mu.client.proto.service.images.v1P\x01Z#mu/proto/service/images/v1;imagesv1b\x06proto3"
+	"\x06Upload\x12#.mu.service.images.v1.UploadRequest\x1a#.mu.service.images.v1.ImageResponseBP\n" +
+	"'mu.micro.client.proto.service.images.v1P\x01Z#mu/proto/service/images/v1;imagesv1b\x06proto3"
 
 var (
 	file_service_images_v1_images_proto_rawDescOnce sync.Once

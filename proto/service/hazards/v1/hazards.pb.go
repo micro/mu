@@ -416,8 +416,8 @@ const file_service_hazards_v1_hazards_proto_rawDesc = "" +
 	"\aHazards\x12U\n" +
 	"\x06Alerts\x12$.mu.service.hazards.v1.AlertsRequest\x1a%.mu.service.hazards.v1.AlertsResponse\x12U\n" +
 	"\x06Floods\x12$.mu.service.hazards.v1.FloodsRequest\x1a%.mu.service.hazards.v1.FloodsResponse\x12U\n" +
-	"\x06Quakes\x12$.mu.service.hazards.v1.QuakesRequest\x1a%.mu.service.hazards.v1.QuakesResponseBM\n" +
-	"\"mu.client.proto.service.hazards.v1P\x01Z%mu/proto/service/hazards/v1;hazardsv1b\x06proto3"
+	"\x06Quakes\x12$.mu.service.hazards.v1.QuakesRequest\x1a%.mu.service.hazards.v1.QuakesResponseBS\n" +
+	"(mu.micro.client.proto.service.hazards.v1P\x01Z%mu/proto/service/hazards/v1;hazardsv1b\x06proto3"
 
 var (
 	file_service_hazards_v1_hazards_proto_rawDescOnce sync.Once

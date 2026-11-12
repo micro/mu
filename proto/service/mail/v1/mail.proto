@@ -5,7 +5,7 @@
 syntax = "proto3";
 package mu.service.mail.v1;
 option go_package = "mu/proto/service/mail/v1;mailv1";
-option java_package = "mu.client.proto.service.mail.v1";
+option java_package = "mu.micro.client.proto.service.mail.v1";
 option java_multiple_files = true;
 
 import "google/protobuf/struct.proto";

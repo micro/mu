@@ -437,8 +437,8 @@ const file_assistant_v1_inbox_proto_rawDesc = "" +
 	"\x05Inbox\x12M\n" +
 	"\x04List\x12!.mu.assistant.v1.ListInboxRequest\x1a\".mu.assistant.v1.ListInboxResponse\x12M\n" +
 	"\x04Read\x12!.mu.assistant.v1.ReadInboxRequest\x1a\".mu.assistant.v1.ReadInboxResponse\x12M\n" +
-	"\bMarkRead\x12%.mu.assistant.v1.MarkInboxReadRequest\x1a\x1a.mu.assistant.v1.InboxItemBC\n" +
-	"\x1cmu.client.proto.assistant.v1P\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
+	"\bMarkRead\x12%.mu.assistant.v1.MarkInboxReadRequest\x1a\x1a.mu.assistant.v1.InboxItemBI\n" +
+	"\"mu.micro.client.proto.assistant.v1P\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
 
 var (
 	file_assistant_v1_inbox_proto_rawDescOnce sync.Once

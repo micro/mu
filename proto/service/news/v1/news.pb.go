@@ -504,8 +504,8 @@ const file_service_news_v1_news_proto_rawDesc = "" +
 	"\tHeadlines\x12$.mu.service.news.v1.HeadlinesRequest\x1a%.mu.service.news.v1.HeadlinesResponse\x12I\n" +
 	"\x04List\x12\x1f.mu.service.news.v1.ListRequest\x1a .mu.service.news.v1.ListResponse\x12I\n" +
 	"\x04Read\x12\x1f.mu.service.news.v1.ReadRequest\x1a .mu.service.news.v1.ReadResponse\x12O\n" +
-	"\x06Search\x12!.mu.service.news.v1.SearchRequest\x1a\".mu.service.news.v1.SearchResponseBD\n" +
-	"\x1fmu.client.proto.service.news.v1P\x01Z\x1fmu/proto/service/news/v1;newsv1b\x06proto3"
+	"\x06Search\x12!.mu.service.news.v1.SearchRequest\x1a\".mu.service.news.v1.SearchResponseBJ\n" +
+	"%mu.micro.client.proto.service.news.v1P\x01Z\x1fmu/proto/service/news/v1;newsv1b\x06proto3"
 
 var (
 	file_service_news_v1_news_proto_rawDescOnce sync.Once

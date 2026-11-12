@@ -1802,8 +1802,8 @@ const file_assistant_v1_assistant_proto_rawDesc = "" +
 	"ReadThread\x12\".mu.assistant.v1.ReadThreadRequest\x1a#.mu.assistant.v1.ReadThreadResponse\x12@\n" +
 	"\x03Ask\x12\x1b.mu.assistant.v1.AskRequest\x1a\x1c.mu.assistant.v1.AskResponse\x12D\n" +
 	"\x06Submit\x12\x1e.mu.assistant.v1.SubmitRequest\x1a\x1a.mu.assistant.v1.Operation\x12R\n" +
-	"\rReadOperation\x12%.mu.assistant.v1.ReadOperationRequest\x1a\x1a.mu.assistant.v1.OperationBV\n" +
-	"\x1cmu.client.proto.assistant.v1B\x11AssistantProtocolP\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
+	"\rReadOperation\x12%.mu.assistant.v1.ReadOperationRequest\x1a\x1a.mu.assistant.v1.OperationB\\\n" +
+	"\"mu.micro.client.proto.assistant.v1B\x11AssistantProtocolP\x01Z!mu/proto/assistant/v1;assistantv1b\x06proto3"
 
 var (
 	file_assistant_v1_assistant_proto_rawDescOnce sync.Once

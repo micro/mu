@@ -5,7 +5,7 @@
 syntax = "proto3";
 package mu.service.video.v1;
 option go_package = "mu/proto/service/video/v1;videov1";
-option java_package = "mu.client.proto.service.video.v1";
+option java_package = "mu.micro.client.proto.service.video.v1";
 option java_multiple_files = true;
 
 import "google/protobuf/timestamp.proto";

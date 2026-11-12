@@ -210,8 +210,8 @@ const file_service_stream_v1_stream_proto_rawDesc = "" +
 	"\fListResponse\x124\n" +
 	"\aentries\x18\x01 \x03(\v2\x1a.mu.service.stream.v1.ItemR\aentries2W\n" +
 	"\x06Stream\x12M\n" +
-	"\x04List\x12!.mu.service.stream.v1.ListRequest\x1a\".mu.service.stream.v1.ListResponseBJ\n" +
-	"!mu.client.proto.service.stream.v1P\x01Z#mu/proto/service/stream/v1;streamv1b\x06proto3"
+	"\x04List\x12!.mu.service.stream.v1.ListRequest\x1a\".mu.service.stream.v1.ListResponseBP\n" +
+	"'mu.micro.client.proto.service.stream.v1P\x01Z#mu/proto/service/stream/v1;streamv1b\x06proto3"
 
 var (
 	file_service_stream_v1_stream_proto_rawDescOnce sync.Once

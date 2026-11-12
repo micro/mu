@@ -17,6 +17,10 @@ async def main():
 asyncio.run(main())
 ```
 
+Install the SDK in your application and point it at any Mu runtime you have access to,
+including a self-hosted server. Use a separate client and credential for each server;
+server selection does not imply federated identity or cross-server permissions.
+
 A configured runtime and account credential are required. Agent requests need
 `read write api:agent`, use the selected agent's tools and may cost credits.
 `agents()`, `threads()`, `read(thread)`, `home()`, `inbox()` and `services()` return

@@ -738,8 +738,8 @@ const file_service_islam_v1_islam_proto_rawDesc = "" +
 	"References\x12+.mu.service.islam.v1.ScriptureSearchRequest\x1a0.mu.service.islam.v1.ScriptureReferencesResponse\x12c\n" +
 	"\x06Saying\x12+.mu.service.islam.v1.ScriptureSayingRequest\x1a,.mu.service.islam.v1.ScriptureSayingResponse\x12Q\n" +
 	"\x06Search\x12\".mu.service.islam.v1.SearchRequest\x1a#.mu.service.islam.v1.SearchResponse\x12`\n" +
-	"\x05Verse\x12*.mu.service.islam.v1.ScriptureVerseRequest\x1a+.mu.service.islam.v1.ScriptureVerseResponseBG\n" +
-	" mu.client.proto.service.islam.v1P\x01Z!mu/proto/service/islam/v1;islamv1b\x06proto3"
+	"\x05Verse\x12*.mu.service.islam.v1.ScriptureVerseRequest\x1a+.mu.service.islam.v1.ScriptureVerseResponseBM\n" +
+	"&mu.micro.client.proto.service.islam.v1P\x01Z!mu/proto/service/islam/v1;islamv1b\x06proto3"
 
 var (
 	file_service_islam_v1_islam_proto_rawDescOnce sync.Once

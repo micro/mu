@@ -5,7 +5,7 @@ syntax = "proto3";
 import "service/options.proto";
 package mu.service.chat.v1;
 option go_package = "mu/proto/service/chat/v1;chatv1";
-option java_package = "mu.client.proto.service.chat.v1";
+option java_package = "mu.micro.client.proto.service.chat.v1";
 option java_multiple_files = true;
 
 import "google/protobuf/struct.proto";

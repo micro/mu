@@ -584,8 +584,8 @@ const file_service_docs_v1_docs_proto_rawDesc = "" +
 	"\x06Delete\x12!.mu.service.docs.v1.DeleteRequest\x1a\".mu.service.docs.v1.DeleteResponse\x12I\n" +
 	"\x04List\x12\x1f.mu.service.docs.v1.ListRequest\x1a .mu.service.docs.v1.ListResponse\x12I\n" +
 	"\x04Read\x12\x1f.mu.service.docs.v1.ReadRequest\x1a .mu.service.docs.v1.ReadResponse\x12L\n" +
-	"\x05Write\x12 .mu.service.docs.v1.WriteRequest\x1a!.mu.service.docs.v1.WriteResponseBD\n" +
-	"\x1fmu.client.proto.service.docs.v1P\x01Z\x1fmu/proto/service/docs/v1;docsv1b\x06proto3"
+	"\x05Write\x12 .mu.service.docs.v1.WriteRequest\x1a!.mu.service.docs.v1.WriteResponseBJ\n" +
+	"%mu.micro.client.proto.service.docs.v1P\x01Z\x1fmu/proto/service/docs/v1;docsv1b\x06proto3"
 
 var (
 	file_service_docs_v1_docs_proto_rawDescOnce sync.Once

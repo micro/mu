@@ -3,7 +3,7 @@
 syntax = "proto3";
 package mu.service;
 option go_package = "mu/proto/service;servicepb";
-option java_package = "mu.client.proto.service";
+option java_package = "mu.micro.client.proto.service";
 import "google/protobuf/descriptor.proto";
 // Input metadata shared by tool schemas and direct clients. Enforcement remains
 // in the service implementation; this is not proto2 wire-level requiredness.

@@ -5,7 +5,7 @@
 syntax = "proto3";
 package mu.service.recall.v1;
 option go_package = "mu/proto/service/recall/v1;recallv1";
-option java_package = "mu.client.proto.service.recall.v1";
+option java_package = "mu.micro.client.proto.service.recall.v1";
 option java_multiple_files = true;
 
 

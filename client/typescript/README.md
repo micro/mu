@@ -12,6 +12,10 @@ const answer = await mu.ask('What is on my calendar?', {agentId: 'micro'});
 console.log(answer.text);
 ```
 
+Install the SDK in your application and point it at any Mu runtime you have access to,
+including a self-hosted server. Use a separate client and credential for each server;
+server selection does not imply federated identity or cross-server permissions.
+
 A configured runtime and account credential are required. Asking an agent needs
 `read write api:agent`; it uses that agent's configured tools and may cost credits.
 Use `agents()`, `threads()`, `read(thread)`, `home()`, `inbox()` and `services()`

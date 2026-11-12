@@ -671,8 +671,8 @@ const file_service_transit_v1_transit_proto_rawDesc = "" +
 	"\x05Feeds\x12#.mu.service.transit.v1.FeedsRequest\x1a$.mu.service.transit.v1.FeedsResponse\x12U\n" +
 	"\x06Nearby\x12$.mu.service.transit.v1.NearbyRequest\x1a%.mu.service.transit.v1.NearbyResponse\x12U\n" +
 	"\x06Status\x12$.mu.service.transit.v1.StatusRequest\x1a%.mu.service.transit.v1.StatusResponse\x12U\n" +
-	"\x06Trains\x12$.mu.service.transit.v1.TrainsRequest\x1a%.mu.service.transit.v1.TrainsResponseBM\n" +
-	"\"mu.client.proto.service.transit.v1P\x01Z%mu/proto/service/transit/v1;transitv1b\x06proto3"
+	"\x06Trains\x12$.mu.service.transit.v1.TrainsRequest\x1a%.mu.service.transit.v1.TrainsResponseBS\n" +
+	"(mu.micro.client.proto.service.transit.v1P\x01Z%mu/proto/service/transit/v1;transitv1b\x06proto3"
 
 var (
 	file_service_transit_v1_transit_proto_rawDescOnce sync.Once

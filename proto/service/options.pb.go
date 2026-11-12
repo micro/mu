@@ -57,8 +57,8 @@ const file_service_options_proto_rawDesc = "" +
 	"\x15service/options.proto\x12\n" +
 	"mu.service\x1a google/protobuf/descriptor.proto:A\n" +
 	"\vdescription\x12\x1d.google.protobuf.FieldOptions\x18ц\x03 \x01(\tR\vdescription:;\n" +
-	"\brequired\x12\x1d.google.protobuf.FieldOptions\x18҆\x03 \x01(\bR\brequiredB5\n" +
-	"\x17mu.client.proto.serviceZ\x1amu/proto/service;servicepbb\x06proto3"
+	"\brequired\x12\x1d.google.protobuf.FieldOptions\x18҆\x03 \x01(\bR\brequiredB;\n" +
+	"\x1dmu.micro.client.proto.serviceZ\x1amu/proto/service;servicepbb\x06proto3"
 
 var file_service_options_proto_goTypes = []any{
 	(*descriptorpb.FieldOptions)(nil), // 0: google.protobuf.FieldOptions

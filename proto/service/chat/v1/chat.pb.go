@@ -859,8 +859,8 @@ const file_service_chat_v1_chat_proto_rawDesc = "" +
 	"\x05Rooms\x12 .mu.service.chat.v1.RoomsRequest\x1a!.mu.service.chat.v1.RoomsResponse\x12I\n" +
 	"\x04Send\x12\x1f.mu.service.chat.v1.SendRequest\x1a .mu.service.chat.v1.SendResponse\x12]\n" +
 	"\x06Source\x12(.mu.service.chat.v1.ServiceSourceRequest\x1a).mu.service.chat.v1.ServiceSourceResponse\x12`\n" +
-	"\aSources\x12).mu.service.chat.v1.ServiceSourcesRequest\x1a*.mu.service.chat.v1.ServiceSourcesResponseBD\n" +
-	"\x1fmu.client.proto.service.chat.v1P\x01Z\x1fmu/proto/service/chat/v1;chatv1b\x06proto3"
+	"\aSources\x12).mu.service.chat.v1.ServiceSourcesRequest\x1a*.mu.service.chat.v1.ServiceSourcesResponseBJ\n" +
+	"%mu.micro.client.proto.service.chat.v1P\x01Z\x1fmu/proto/service/chat/v1;chatv1b\x06proto3"
 
 var (
 	file_service_chat_v1_chat_proto_rawDescOnce sync.Once

@@ -251,8 +251,8 @@ const file_service_wallet_v1_wallet_proto_rawDesc = "" +
 	"\x04text\x18\x04 \x01(\tR\x04text2\xb8\x01\n" +
 	"\x06Wallet\x12V\n" +
 	"\aAddress\x12$.mu.service.wallet.v1.AddressRequest\x1a%.mu.service.wallet.v1.AddressResponse\x12V\n" +
-	"\aBalance\x12$.mu.service.wallet.v1.BalanceRequest\x1a%.mu.service.wallet.v1.BalanceResponseBJ\n" +
-	"!mu.client.proto.service.wallet.v1P\x01Z#mu/proto/service/wallet/v1;walletv1b\x06proto3"
+	"\aBalance\x12$.mu.service.wallet.v1.BalanceRequest\x1a%.mu.service.wallet.v1.BalanceResponseBP\n" +
+	"'mu.micro.client.proto.service.wallet.v1P\x01Z#mu/proto/service/wallet/v1;walletv1b\x06proto3"
 
 var (
 	file_service_wallet_v1_wallet_proto_rawDescOnce sync.Once

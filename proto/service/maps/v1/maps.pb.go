@@ -361,8 +361,8 @@ const file_service_maps_v1_maps_proto_rawDesc = "" +
 	"\x05style\x18\x03 \x01(\tR\x05style2\x9c\x01\n" +
 	"\x04Maps\x12I\n" +
 	"\x04Area\x12\x1f.mu.service.maps.v1.AreaRequest\x1a .mu.service.maps.v1.AreaResponse\x12I\n" +
-	"\x04Tile\x12\x1f.mu.service.maps.v1.TileRequest\x1a .mu.service.maps.v1.TileResponseBD\n" +
-	"\x1fmu.client.proto.service.maps.v1P\x01Z\x1fmu/proto/service/maps/v1;mapsv1b\x06proto3"
+	"\x04Tile\x12\x1f.mu.service.maps.v1.TileRequest\x1a .mu.service.maps.v1.TileResponseBJ\n" +
+	"%mu.micro.client.proto.service.maps.v1P\x01Z\x1fmu/proto/service/maps/v1;mapsv1b\x06proto3"
 
 var (
 	file_service_maps_v1_maps_proto_rawDescOnce sync.Once

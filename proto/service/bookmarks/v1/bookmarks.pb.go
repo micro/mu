@@ -579,8 +579,8 @@ const file_service_bookmarks_v1_bookmarks_proto_rawDesc = "" +
 	"\bAnnotate\x12(.mu.service.bookmarks.v1.AnnotateRequest\x1a!.mu.service.bookmarks.v1.Response\x12P\n" +
 	"\x06Delete\x12#.mu.service.bookmarks.v1.GetRequest\x1a!.mu.service.bookmarks.v1.Response\x12Q\n" +
 	"\x03Get\x12#.mu.service.bookmarks.v1.GetRequest\x1a%.mu.service.bookmarks.v1.ItemResponse\x12S\n" +
-	"\x04List\x12$.mu.service.bookmarks.v1.ListRequest\x1a%.mu.service.bookmarks.v1.ListResponseBS\n" +
-	"$mu.client.proto.service.bookmarks.v1P\x01Z)mu/proto/service/bookmarks/v1;bookmarksv1b\x06proto3"
+	"\x04List\x12$.mu.service.bookmarks.v1.ListRequest\x1a%.mu.service.bookmarks.v1.ListResponseBY\n" +
+	"*mu.micro.client.proto.service.bookmarks.v1P\x01Z)mu/proto/service/bookmarks/v1;bookmarksv1b\x06proto3"
 
 var (
 	file_service_bookmarks_v1_bookmarks_proto_rawDescOnce sync.Once

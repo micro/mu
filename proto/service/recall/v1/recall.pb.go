@@ -356,8 +356,8 @@ const file_service_recall_v1_recall_proto_rawDesc = "" +
 	"\x06Recall\x12e\n" +
 	"\fConversation\x12).mu.service.recall.v1.ConversationRequest\x1a*.mu.service.recall.v1.ConversationResponse\x12M\n" +
 	"\x04List\x12!.mu.service.recall.v1.ListRequest\x1a\".mu.service.recall.v1.ListResponse\x12S\n" +
-	"\x06Search\x12#.mu.service.recall.v1.SearchRequest\x1a$.mu.service.recall.v1.SearchResponseBJ\n" +
-	"!mu.client.proto.service.recall.v1P\x01Z#mu/proto/service/recall/v1;recallv1b\x06proto3"
+	"\x06Search\x12#.mu.service.recall.v1.SearchRequest\x1a$.mu.service.recall.v1.SearchResponseBP\n" +
+	"'mu.micro.client.proto.service.recall.v1P\x01Z#mu/proto/service/recall/v1;recallv1b\x06proto3"
 
 var (
 	file_service_recall_v1_recall_proto_rawDescOnce sync.Once

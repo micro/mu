@@ -461,8 +461,8 @@ const file_service_text_v1_text_proto_rawDesc = "" +
 	"\bClassify\x12#.mu.service.text.v1.ClassifyRequest\x1a$.mu.service.text.v1.ClassifyResponse\x12R\n" +
 	"\aExtract\x12\".mu.service.text.v1.ExtractRequest\x1a#.mu.service.text.v1.ExtractResponse\x12X\n" +
 	"\tSummarise\x12$.mu.service.text.v1.SummariseRequest\x1a%.mu.service.text.v1.SummariseResponse\x12X\n" +
-	"\tTranslate\x12$.mu.service.text.v1.TranslateRequest\x1a%.mu.service.text.v1.TranslateResponseBD\n" +
-	"\x1fmu.client.proto.service.text.v1P\x01Z\x1fmu/proto/service/text/v1;textv1b\x06proto3"
+	"\tTranslate\x12$.mu.service.text.v1.TranslateRequest\x1a%.mu.service.text.v1.TranslateResponseBJ\n" +
+	"%mu.micro.client.proto.service.text.v1P\x01Z\x1fmu/proto/service/text/v1;textv1b\x06proto3"
 
 var (
 	file_service_text_v1_text_proto_rawDescOnce sync.Once
