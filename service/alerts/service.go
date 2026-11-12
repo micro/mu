@@ -7,42 +7,21 @@ import (
 	"errors"
 	"strings"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	store "mu/internal/alerts"
 	"mu/internal/app"
 	"mu/internal/group"
 	"mu/internal/service"
+	pb "mu/proto/service/alerts/v1"
 )
 
 type Server struct{}
-type ListRequest struct {
-	Group  string `json:"group,omitempty" description:"Group id; omit for your personal alerts"`
-	State  string `json:"state,omitempty" description:"open, acknowledged, resolved, dismissed; empty for all"`
-	Offset int    `json:"offset,omitempty"`
-	Limit  int    `json:"limit,omitempty" description:"Default 20, maximum 100"`
-}
-type ListResponse struct {
-	Items []store.Item `json:"items"`
-	Total int          `json:"total"`
-}
-type RaiseRequest struct {
-	Group  string `json:"group,omitempty"`
-	Key    string `json:"key" required:"true" description:"Stable condition key; repeated calls update one alert"`
-	Title  string `json:"title" required:"true"`
-	Detail string `json:"detail" description:"What changed, why it matters and what to do"`
-	URL    string `json:"url,omitempty" description:"Optional local or https action link"`
-}
-type ItemResponse struct {
-	Item    store.Item `json:"item"`
-	Created bool       `json:"created"`
-}
-type UpdateRequest struct {
-	Group string `json:"group,omitempty"`
-	ID    string `json:"id" required:"true"`
-	State string `json:"state" required:"true" description:"acknowledged, resolved or dismissed"`
-}
-type Response struct {
-	Text string `json:"text"`
-}
+type ListRequest = pb.ListRequest
+type ListResponse = pb.ListResponse
+type RaiseRequest = pb.RaiseRequest
+type ItemResponse = pb.ItemResponse
+type UpdateRequest = pb.UpdateRequest
+type Response = pb.Response
 
 // Personal tools cannot select another account. Shared reads require current
 // membership; changing shared attention state requires a group administrator.
@@ -76,13 +55,15 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 			items = append(items, i)
 		}
 	}
-	rsp.Total = len(items)
-	offset := max(0, min(req.Offset, len(items)))
+	rsp.Total = int64(len(items))
+	offset := max(0, min(req.Offset, int64(len(items))))
 	limit := req.Limit
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	rsp.Items = items[offset:min(len(items), offset+limit)]
+	for _, item := range items[offset:min(int64(len(items)), offset+limit)] {
+		rsp.Items = append(rsp.Items, itemMessage(item))
+	}
 	return nil
 }
 func (Server) Raise(ctx context.Context, req *RaiseRequest, rsp *ItemResponse) error {
@@ -90,7 +71,8 @@ func (Server) Raise(ctx context.Context, req *RaiseRequest, rsp *ItemResponse) e
 	if err != nil {
 		return err
 	}
-	rsp.Item, rsp.Created, err = store.Raise(o, store.Item{Source: "custom", Key: req.Key, Title: req.Title, Detail: req.Detail, URL: req.URL})
+	item, created, err := store.Raise(o, store.Item{Source: "custom", Key: req.Key, Title: req.Title, Detail: req.Detail, URL: req.Url})
+	rsp.Item, rsp.Created = itemMessage(item), created
 	return err
 }
 func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *Response) error {
@@ -98,7 +80,7 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *Response) err
 	if err != nil {
 		return err
 	}
-	if err = store.Update(o, req.ID, req.State); err != nil {
+	if err = store.Update(o, req.Id, req.State); err != nil {
 		return err
 	}
 	rsp.Text = "Alert updated."
@@ -120,3 +102,14 @@ var Spec = service.Spec{Name: "alerts", Description: "Track conditions that need
 	"Raise":  {Writes: true, Doc: "Record or update a condition under a stable key. No notification is sent. Group administrators may raise shared alerts."},
 	"Update": {Writes: true, Destructive: true, Doc: "Acknowledge, resolve or dismiss an alert. Group administrators may update shared alerts. Resolving a custom alert allows the next occurrence to reopen it."},
 }}
+
+func itemMessage(i store.Item) *pb.Item {
+	out := &pb.Item{Id: i.ID, Source: i.Source, Key: i.Key, Title: i.Title, Detail: i.Detail, Url: i.URL, State: i.State, Active: i.Active}
+	if !i.Created.IsZero() {
+		out.Created = timestamppb.New(i.Created)
+	}
+	if !i.Updated.IsZero() {
+		out.Updated = timestamppb.New(i.Updated)
+	}
+	return out
+}

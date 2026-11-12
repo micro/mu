@@ -9,10 +9,14 @@ import (
 	"mu/internal/mucp"
 	"mu/internal/service"
 	pb "mu/proto/assistant/v1"
+	alertspb "mu/proto/service/alerts/v1"
+	bookmarkspb "mu/proto/service/bookmarks/v1"
 	chatpb "mu/proto/service/chat/v1"
 	grouppb "mu/proto/service/groups/v1"
 	notespb "mu/proto/service/notes/v1"
 	taskspb "mu/proto/service/tasks/v1"
+	"mu/service/alerts"
+	"mu/service/bookmarks"
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/groups"
@@ -30,6 +34,8 @@ func mucpOperations() []mucp.Operation {
 	ops = append(ops, contractOperations(chat.Spec, chatpb.File_service_chat_v1_chat_proto.Services().ByName("Chat"))...)
 	ops = append(ops, contractOperations(groups.Spec, grouppb.File_service_groups_v1_groups_proto.Services().ByName("Groups"))...)
 	ops = append(ops, contractOperations(notes.Spec, notespb.File_service_notes_v1_notes_proto.Services().ByName("Notes"))...)
+	ops = append(ops, contractOperations(bookmarks.Spec, bookmarkspb.File_service_bookmarks_v1_bookmarks_proto.Services().ByName("Bookmarks"))...)
+	ops = append(ops, contractOperations(alerts.Spec, alertspb.File_service_alerts_v1_alerts_proto.Services().ByName("Alerts"))...)
 	ops = append(ops, contractOperations(tasks.Spec, taskspb.File_service_tasks_v1_tasks_proto.Services().ByName("Tasks"))...)
 	return append(ops,
 		mucp.Operation{Service: "assistant", Endpoint: "Services.List", Capability: "services", Request: func() proto.Message { return &pb.ListServicesRequest{} }, Handle: servicesCall},
@@ -44,6 +50,10 @@ func serviceDescriptors() []*pb.ServiceDescriptor {
 		switch s.Name {
 		case "contacts":
 			direct = contacts.MUCPOperations()
+		case "bookmarks":
+			direct = contractOperations(bookmarks.Spec, bookmarkspb.File_service_bookmarks_v1_bookmarks_proto.Services().ByName("Bookmarks"))
+		case "alerts":
+			direct = contractOperations(alerts.Spec, alertspb.File_service_alerts_v1_alerts_proto.Services().ByName("Alerts"))
 		case "tasks":
 			direct = contractOperations(tasks.Spec, taskspb.File_service_tasks_v1_tasks_proto.Services().ByName("Tasks"))
 		case "notes":

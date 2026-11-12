@@ -438,7 +438,7 @@ Clients use MUCP through explicit adapters composed by `internal/server`.
 `proto/service/<name>/v1` covers all service schemas; Chat and Groups use generated types directly,
 and have MUCP bindings through the service gateway alongside Contacts.
 Published service schemas are authoritative; edit proto and regenerate Go types.
-Chat, Groups, Notes and Tasks handlers use generated request/response types directly.
+Chat, Groups, Notes, Tasks, Bookmarks and Alerts handlers use generated request/response types directly.
 Do not add a second set of Go RPC structs or derive published contracts from Go.
 Other service schemas are derived with `go run ./proto/generate`; preserve the field
 ledger. A schema declaration does not expose a service or bypass its gateway. Shared binding

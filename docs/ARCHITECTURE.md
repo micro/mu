@@ -174,7 +174,7 @@ need authenticated, account-scoped transport before discovery can be restored.
 describes individual services. Contracts do not import runtime implementation.
 The HTTPS binding (`internal/mucp`) imports no product packages. Explicit server
 composition selects supported adapters, rather than exposing every internal RPC.
-Contacts, Chat, Groups, Notes and Tasks are independently callable typed services.
+Contacts, Chat, Groups, Notes, Tasks, Bookmarks and Alerts are independently callable typed services.
 Public contracts are maintained in proto; Go handlers implement generated types.
 Other services remain discoverable without claiming direct protocol support.
 
