@@ -23,9 +23,12 @@ and reports checks without printing account contents or credentials.
 | CI assistant runtime | Real Submit, persistent queue and result recovery work together; only the model answer is deterministic |
 | Deployed instance | The published origin, TLS, reverse proxy and deployed protocol are reachable and agree with the client |
 
-The same executable runs in all three. Current CI uses Mu's real handlers in a
-disposable test process; it does not yet launch the release binary and kill/restart
-it. A separate unit peer tests that the probe rejects wrong correlation, does not
+The same executable runs in all three. CI uses Mu's real handlers and also launches the built Linux binary in a
+disposable directory with a local model fixture. The binary test creates its account
+through setup, discards an acceptance, concurrently repeats a queued submission,
+kills the process during execution and restarts it. Running work must remain
+interrupted; queued work must complete once. Revoked credentials must be denied.
+Run `python3 proto/conformance/deployment.py /path/to/mu` to repeat it locally. A separate unit peer tests that the probe rejects wrong correlation, does not
 follow redirects, and preserves its saved submission identity across invocations.
 It is not substituted for the Mu interoperability tests.
 
@@ -36,7 +39,7 @@ SDKs are tested separately from the independent probe. The real assistant test
 runs each SDK against the HTTP handler and durable queue, submits the same receipt
 twice, recovers the result and checks that each request executed once. Shared JSON
 fixtures also exercise the client transports. Only the model answer is replaced
-in this test; it does not establish production or release-binary restart behaviour.
+in this test; production behaviour remains a separate deployment check.
 
 ## Public and read-only checks
 
@@ -106,7 +109,7 @@ that particular recovery case; it does not promise exactly-once external effects
 | HTTP-05 responses | Probe checks echoed routing/correlation, media type and object; wrong-correlation peer test | Broader malformed-response corpus needed |
 | HTTP-06 authorization | TestMUCPRootAcceptsScopedToken, TestMUCPBoundary, TestCompositionIsolation, TestMUCPBrowserSessionRequiresCSRFForWrites | Live OAuth/revocation not exercised by token-based probe |
 | HTTP-07 errors | Fixture status/code/body checks; existing authorization tests | Mu authorization gate retains legacy bodies |
-| HTTP-08 uncertain outcome | TestMUCPIndependentDelegation, TestDurableOperationRecovery, TestMUCPDisconnectKeepsAcceptedWork | No release-binary crash or real external-side-effect test |
+| HTTP-08 uncertain outcome | TestMUCPIndependentDelegation, TestDurableOperationRecovery, TestMUCPDisconnectKeepsAcceptedWork | Release-binary SIGKILL covered; real external side effects remain untested |
 | Pagination ownership | TestMUCPPaginationIsolation, TestPagesBindCallerAndOperation | Live pagination under concurrent changes needs more coverage |
 
 Commands used by CI:
