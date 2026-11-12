@@ -6,6 +6,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/service"
+	pb "mu/proto/service/notify/v1"
 )
 
 // Server is the go-micro handler. Its exported methods become the notify_*
@@ -22,17 +23,9 @@ func caller(ctx context.Context) (string, error) {
 
 // ── Send ────────────────────────────────────────────────────────
 
-type SendRequest struct {
-	// No recipient field, deliberately. See the package comment: a tool that
-	// took one would be a way to make a stranger's phone buzz.
-	Title string `json:"title" required:"true" description:"The line on the lock screen. Short — this is the whole message on a watch"`
-	Body  string `json:"body,omitempty" description:"A second line, up to about 300 characters. Optional"`
-	URL   string `json:"url,omitempty" description:"Where tapping it goes, e.g. /inbox. A notification you cannot act on trains someone to ignore the next one"`
-}
+type SendRequest = pb.SendRequest
 
-type SendResponse struct {
-	Result string `json:"result" description:"Confirmation, or why it could not be delivered"`
-}
+type SendResponse = pb.SendResponse
 
 // Send notifies the caller on their own devices.
 //
@@ -53,7 +46,7 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	// Better a true general answer than a guessed specific one — the page says
 	// what interrupted you, and "agent" beside "mail" and "reminder" is already
 	// the distinction somebody needs to decide what to turn off.
-	if err := Send(owner, req.Title, req.Body, req.URL, "agent"); err != nil {
+	if err := Send(owner, req.Title, req.Body, req.Url, "agent"); err != nil {
 		return err
 	}
 	rsp.Result = "Notified."
@@ -62,18 +55,11 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 
 // ── Devices ─────────────────────────────────────────────────────
 
-type DevicesRequest struct{}
+type DevicesRequest = pb.DevicesRequest
 
-type Device struct {
-	Label string `json:"label,omitempty" description:"What the device said it was, as far as the browser will say"`
-	Added string `json:"added" description:"When it was turned on"`
-	Last  string `json:"last,omitempty" description:"What became of the last notification sent here"`
-}
+type Device = pb.Device
 
-type DevicesResponse struct {
-	Devices   []Device `json:"devices" description:"Every device this account can be reached on"`
-	Reachable bool     `json:"reachable" description:"Whether a notification sent right now would have anywhere to go"`
-}
+type DevicesResponse = pb.DevicesResponse
 
 // Devices says whether this account can be reached, and on what.
 //
@@ -87,7 +73,7 @@ func (Server) Devices(ctx context.Context, req *DevicesRequest, rsp *DevicesResp
 		return err
 	}
 	for _, d := range Devices(owner) {
-		one := Device{Label: d.Label, Added: app.TimeAgo(d.Added)}
+		one := &Device{Label: d.Label, Added: app.TimeAgo(d.Added)}
 		switch {
 		case d.Failed.After(d.Sent) && d.Error != "":
 			one.Last = "failed " + app.TimeAgo(d.Failed) + ": " + d.Error

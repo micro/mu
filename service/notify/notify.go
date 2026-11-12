@@ -40,6 +40,7 @@ import (
 	"fmt"
 	"strings"
 
+	microerrors "go-micro.dev/v6/errors"
 	"mu/internal/push"
 )
 
@@ -56,10 +57,10 @@ const bodyLimit = 300
 func Send(account, title, body, url, from string) error {
 	title = strings.TrimSpace(title)
 	if title == "" {
-		return fmt.Errorf("a notification needs a title — it is the line on the lock screen")
+		return microerrors.BadRequest("notify", "a notification needs a title — it is the line on the lock screen")
 	}
 	if len(body) > bodyLimit {
-		return fmt.Errorf("that body is %d characters; a notification shows about %d",
+		return microerrors.BadRequest("notify", "that body is %d characters; a notification shows about %d",
 			len(body), bodyLimit)
 	}
 	if !push.Configured() {
