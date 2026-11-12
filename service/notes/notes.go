@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"strings"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"mu/internal/app"
 	"mu/internal/notes"
-	"mu/internal/result"
 	"mu/internal/service"
 	"mu/internal/thread"
-	"time"
+	pb "mu/proto/service/notes/v1"
 )
 
 // Server is the go-micro handler. Its exported methods become the notes_* tools.
@@ -44,16 +44,9 @@ func caller(ctx context.Context) (string, error) {
 
 // ── Add ─────────────────────────────────────────────────────────
 
-type AddRequest struct {
-	Title string `json:"title" required:"true" description:"What the note is called, e.g. \"location\" or \"project brief\". Writing a title that exists rewrites that note"`
-	Text  string `json:"text" required:"true" description:"What the note says"`
-}
+type AddRequest = pb.AddRequest
 
-type AddResponse struct {
-	Item   *result.Item `json:"item,omitempty"`
-	URL    string       `json:"url" description:"Open the saved note"`
-	Result string       `json:"result" description:"Confirmation"`
-}
+type AddResponse = pb.AddResponse
 
 // Add writes a note.
 // @example {"title": "location", "text": "London"}
@@ -71,31 +64,25 @@ func (Server) Add(ctx context.Context, req *AddRequest, rsp *AddResponse) error 
 		source = ""
 	}
 	notes.AddFrom(owner, title, text, source)
-	rsp.URL = "/notes"
+	rsp.Url = "/notes"
 	for _, e := range notes.All(owner) {
 		if strings.EqualFold(e.Title, title) {
-			rsp.URL = "/notes?id=" + e.ID
-			rsp.Item = &result.Item{Kind: "note", ID: e.ID, Title: e.Title, URL: rsp.URL, Body: e.Text}
+			rsp.Url = "/notes?id=" + e.ID
+			rsp.Item = &pb.ResultEmbed{Kind: "note", Id: e.ID, Title: e.Title, Url: rsp.Url, Body: e.Text}
 			break
 		}
 	}
-	rsp.Result = "Saved. Open: " + rsp.URL
+	rsp.Result = "Saved. Open: " + rsp.Url
 	return nil
 }
 
 // ── Get ─────────────────────────────────────────────────────────
 
 // GetRequest reads one note.
-type GetRequest struct {
-	Title string `json:"title" required:"true" description:"The note's title, as given to notes_add"`
-}
+type GetRequest = pb.GetRequest
 
 // GetResponse is the note.
-type GetResponse struct {
-	Item *result.Item `json:"item,omitempty"`
-	Text string       `json:"text" description:"What the note says, or empty if there is no note by that title"`
-	Note string       `json:"note" description:"The title and its text, or a note that nothing is written under it"`
-}
+type GetResponse = pb.GetResponse
 
 // Get reads one note by title. Use notes_list when you do not know the title.
 // @example {"title": "location"}
@@ -115,7 +102,7 @@ func (Server) Get(ctx context.Context, req *GetRequest, rsp *GetResponse) error 
 	}
 	for _, e := range notes.All(owner) {
 		if strings.EqualFold(e.Title, title) {
-			rsp.Item = &result.Item{Kind: "note", ID: e.ID, Title: e.Title, URL: "/notes?id=" + e.ID, Body: e.Text}
+			rsp.Item = &pb.ResultEmbed{Kind: "note", Id: e.ID, Title: e.Title, Url: "/notes?id=" + e.ID, Body: e.Text}
 			break
 		}
 	}
@@ -125,18 +112,11 @@ func (Server) Get(ctx context.Context, req *GetRequest, rsp *GetResponse) error 
 
 // ── List ────────────────────────────────────────────────────────
 
-type ListRequest struct{}
+type ListRequest = pb.ListRequest
 
-type Note struct {
-	SourceThread string    `json:"source_thread,omitempty"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Title        string    `json:"title" description:"What the note is called"`
-	Text         string    `json:"text" description:"What it says"`
-}
+type Note = pb.Note
 
-type ListResponse struct {
-	Notes []Note `json:"notes" description:"Every note the caller has written"`
-}
+type ListResponse = pb.ListResponse
 
 // List returns every note the caller has.
 // @example {}
@@ -146,20 +126,16 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 		return err
 	}
 	for _, e := range notes.All(owner) {
-		rsp.Notes = append(rsp.Notes, Note{Title: e.Title, Text: e.Text, SourceThread: e.SourceThread, UpdatedAt: e.UpdatedAt})
+		rsp.Notes = append(rsp.Notes, &Note{Title: e.Title, Text: e.Text, SourceThread: e.SourceThread, UpdatedAt: timestamppb.New(e.UpdatedAt)})
 	}
 	return nil
 }
 
 // ── Delete ──────────────────────────────────────────────────────
 
-type DeleteRequest struct {
-	Title string `json:"title" required:"true" description:"The note to delete, as returned by notes_list"`
-}
+type DeleteRequest = pb.DeleteRequest
 
-type DeleteResponse struct {
-	Result string `json:"result" description:"Confirmation"`
-}
+type DeleteResponse = pb.DeleteResponse
 
 // Delete removes one note.
 // @example {"title": "location"}

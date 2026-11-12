@@ -9,7 +9,7 @@ Credentials are binding context, not envelope metadata.
 
 `assistant/v1` defines the client composition surface: Home, Inbox, Assistant
 (agent discovery, personal threads and execution), and Services (catalogue).
-`service/<name>/v1` defines contracts for all 40 existing services. Chat and Groups use their generated request/response types in the service
+`service/<name>/v1` defines contracts for all 40 existing services. Chat, Groups and Notes use their generated request/response types in the service
 implementations and are exposed through MUCP alongside Contacts. The other
 contracts are draft schemas derived from existing service RPC types, not a claim
 that those operations are available over MUCP. Mu adapts these to
@@ -122,12 +122,17 @@ and numbers, and make compatible additions without changing existing meanings.
 
 ## Service schema maintenance
 
-Run `go run ./proto/generate` from the repository root after changing service RPC
+Public service contracts are authored in proto. Implement their generated Go
+request/response types; do not maintain duplicate RPC structs or regenerate the
+public schema from Go. Storage records remain an implementation detail.
+
+For the remaining **unpublished draft schemas only**, run
+`go run ./proto/generate` from the repository root after changing service RPC
 request/response types, then regenerate Go types with protoc. CI runs
 `go run ./proto/generate -check`, compiles every schema, and checks generated Go
 code for drift. The generator reads each existing `Spec.Handler` and endpoint
 description without starting services or exposing new endpoints. A coverage test
-requires every service to be included. Chat and Groups are now proto-first: edit their source `.proto` files and
+requires every service to be included. Chat, Groups and Notes are now proto-first: edit their source `.proto` files and
 regenerate their Go types, rather than deriving schemas from Go. Their handlers
 use generated types directly (local type aliases preserve package call sites).
 Storage records remain separate and are projected into public response messages.

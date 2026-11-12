@@ -48,8 +48,8 @@ Services do not call each other or launch agent reasoning; they publish facts an
 higher-level subscribers decide what work to run. Server composition may reach
 both layers; that does not authorise upward dependencies from services.
 
-`proto/assistant/v1` owns the composition contract. `proto/service/contacts/v1`
-provides the first direct service interface through the existing gateway. Other
+`proto/assistant/v1` owns the composition contract. `proto/service/<name>/v1` owns the public service contracts. Contacts, Chat,
+Groups and Notes have direct bindings through the existing gateway. Other
 services migrate incrementally, with typed adapters and permission tests. The
 existing Specs remain authoritative for current APIs and agent tools.
 
@@ -174,8 +174,9 @@ need authenticated, account-scoped transport before discovery can be restored.
 describes individual services. Contracts do not import runtime implementation.
 The HTTPS binding (`internal/mucp`) imports no product packages. Explicit server
 composition selects supported adapters, rather than exposing every internal RPC.
-Contacts is the first independently callable typed service. Discovery lists the
-remaining services honestly without claiming direct protocol support.
+Contacts, Chat, Groups and Notes are independently callable typed services.
+Public contracts are maintained in proto; Go handlers implement generated types.
+Other services remain discoverable without claiming direct protocol support.
 
 Durable submission reuses the agent reply queue and existing thread store. Home
 and Inbox are projections; they never implement an agent loop. Account identity,
