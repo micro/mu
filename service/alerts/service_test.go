@@ -49,7 +49,7 @@ func TestScopedToolsAndRevokedMembership(t *testing.T) {
 	}
 	var list ListResponse
 	if err = srv.List(memberCtx, &ListRequest{Group: g.ID}, &list); err != nil || len(list.Items) != 1 {
-		t.Fatal(list, err)
+		t.Fatal(&list, err)
 	}
 	if err = srv.Update(memberCtx, &UpdateRequest{Group: g.ID, Id: raised.Item.Id, State: "resolved"}, &Response{}); err == nil {
 		t.Fatal("member changed shared state")
