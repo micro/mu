@@ -26,7 +26,7 @@ binary, using Go Micro as its underlying framework.
                 |
      MUCP over HTTPS + JSON (*)
                 |
-        Mu runtime (server)
+         Mu runtime (server)
       +----------------------+
       | Authenticated entry  |
       |          |           |
