@@ -20,7 +20,7 @@ binary, using Go Micro as its underlying framework.
 ## Architecture 
 
 ```text
-  Android / web / other clients
+  mobile / web / clients
               |
        assistant contract
               |
