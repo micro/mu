@@ -20,13 +20,13 @@ binary, using Go Micro as its underlying framework.
 ## Architecture 
 
 ```text
-  mobile / web / clients
-              |
-       assistant contract
-              |
-   MUCP over HTTPS + JSON (*)
-              |
-      Mu runtime (server)
+      mobile / web / clients
+                |
+        assistant contract
+                |
+     MUCP over HTTPS + JSON (*)
+                |
+        Mu runtime (server)
       +----------------------+
       | Authenticated entry  |
       |          |           |
