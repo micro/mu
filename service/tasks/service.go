@@ -10,62 +10,35 @@ import (
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/internal/userdb"
+	pb "mu/proto/service/tasks/v1"
 )
 
 // Server is the go-micro service handler for tasks.
 type Server struct{}
 
 // CreateRequest adds a task.
-type CreateRequest struct {
-	Title    string `json:"title" required:"true" description:"What is to be done"`
-	Detail   string `json:"detail" description:"Anything the doer needs to know: context, links, constraints"`
-	Assignee string `json:"assignee" description:"me (default) or agent — assign to the agent and it can pick the task up"`
-	Due      string `json:"due" description:"Optional deadline, RFC3339 or 2006-01-02 15:04"`
-}
+type CreateRequest = pb.CreateRequest
 
 // TaskResponse carries one task back.
-type TaskResponse struct {
-	Item *Task  `json:"item,omitempty"`
-	Text string `json:"text" description:"The task"`
-}
+type TaskResponse = pb.TaskResponse
 
 // ListRequest filters the caller's tasks.
-type ListRequest struct {
-	Offset int    `json:"offset" description:"Tasks to skip"`
-	Limit  int    `json:"limit" description:"Maximum tasks, default 20, max 100"`
-	Status string `json:"status" description:"Optional filter: todo, doing, done, failed or blocked"`
-}
+type ListRequest = pb.ListRequest
 
 // ListResponse is a model-ready list.
-type ListResponse struct {
-	Items      []*Task `json:"items"`
-	Total      int     `json:"total"`
-	Offset     int     `json:"offset"`
-	NextOffset *int    `json:"next_offset,omitempty"`
-	Text       string  `json:"text" description:"The caller's tasks, open ones first"`
-}
+type ListResponse = pb.ListResponse
 
 // NextRequest takes nothing: the next task is a property of the list.
-type NextRequest struct{}
+type NextRequest = pb.NextRequest
 
 // UpdateRequest changes a task. Empty fields are left alone.
-type UpdateRequest struct {
-	ID     string `json:"id" description:"The task's id" required:"true"`
-	Title  string `json:"title" description:"New title"`
-	Detail string `json:"detail" description:"New detail"`
-	Status string `json:"status" description:"todo, doing, done, failed or blocked"`
-	Result string `json:"result" description:"What came of it — the answer, the outcome, what was found"`
-}
+type UpdateRequest = pb.UpdateRequest
 
 // DeleteRequest removes a task.
-type DeleteRequest struct {
-	ID string `json:"id" description:"The task's id" required:"true"`
-}
+type DeleteRequest = pb.DeleteRequest
 
 // DeleteResponse confirms the removal.
-type DeleteResponse struct {
-	Text string `json:"text" description:"Confirmation"`
-}
+type DeleteResponse = pb.DeleteResponse
 
 // Create adds a task to the caller's list.
 // @example {"title": "Summarise the week's AI news", "assignee": "agent"}
@@ -110,7 +83,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse)
 		}()
 	}
 
-	rsp.Item = t
+	rsp.Item = taskMessage(t)
 	rsp.Text = Render([]*Task{t})
 	return nil
 }
@@ -119,12 +92,16 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *TaskResponse)
 // @example {"status": "todo"}
 func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) error {
 	items := List(service.AccountFrom(ctx), req.Status)
-	start, end := service.PageRange(len(items), req.Offset, req.Limit)
-	rsp.Items, rsp.Total, rsp.Offset = items[start:end], len(items), start
-	if end < len(items) {
-		rsp.NextOffset = &end
+	start, end := service.PageRange(len(items), int(req.Offset), int(req.Limit))
+	for _, item := range items[start:end] {
+		rsp.Items = append(rsp.Items, taskMessage(item))
 	}
-	rsp.Text = Render(rsp.Items)
+	rsp.Total, rsp.Offset = int64(len(items)), int64(start)
+	if end < len(items) {
+		next := int64(end)
+		rsp.NextOffset = &next
+	}
+	rsp.Text = Render(items[start:end])
 	return nil
 }
 
@@ -136,7 +113,7 @@ func (Server) Next(ctx context.Context, _ *NextRequest, rsp *TaskResponse) error
 		rsp.Text = "No task is ready for the agent."
 		return nil
 	}
-	rsp.Item = t
+	rsp.Item = taskMessage(t)
 	rsp.Text = Render([]*Task{t})
 	return nil
 }
@@ -145,7 +122,7 @@ func (Server) Next(ctx context.Context, _ *NextRequest, rsp *TaskResponse) error
 // @example {"id": "abc123", "status": "done", "result": "Mailed the summary"}
 func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *TaskResponse) error {
 	if service.RestrictedCaller(ctx) {
-		t, err := Get(service.AccountFrom(ctx), req.ID)
+		t, err := Get(service.AccountFrom(ctx), req.Id)
 		if err != nil {
 			return err
 		}
@@ -153,11 +130,11 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *TaskResponse)
 			return fmt.Errorf("a restricted caller cannot change background agent work")
 		}
 	}
-	t, err := Update(service.AccountFrom(ctx), req.ID, req.Title, req.Detail, req.Status, "", req.Result)
+	t, err := Update(service.AccountFrom(ctx), req.Id, req.Title, req.Detail, req.Status, "", req.Result)
 	if err != nil {
 		return err
 	}
-	rsp.Item = t
+	rsp.Item = taskMessage(t)
 	rsp.Text = Render([]*Task{t})
 	return nil
 }
@@ -165,7 +142,7 @@ func (Server) Update(ctx context.Context, req *UpdateRequest, rsp *TaskResponse)
 // Delete removes a task.
 // @example {"id": "abc123"}
 func (Server) Delete(ctx context.Context, req *DeleteRequest, rsp *DeleteResponse) error {
-	if err := Remove(service.AccountFrom(ctx), req.ID); err != nil {
+	if err := Remove(service.AccountFrom(ctx), req.Id); err != nil {
 		return err
 	}
 	rsp.Text = "Task removed."
@@ -240,7 +217,7 @@ func (Server) Read(ctx context.Context, req *DeleteRequest, rsp *TaskResponse) e
 	if owner == "" {
 		return fmt.Errorf("sign in to use tasks")
 	}
-	rec, err := userdb.Get(ns, owner, collection, req.ID)
+	rec, err := userdb.Get(ns, owner, collection, req.Id)
 	if errors.Is(err, userdb.ErrNotFound) {
 		return nil
 	}
@@ -250,6 +227,6 @@ func (Server) Read(ctx context.Context, req *DeleteRequest, rsp *TaskResponse) e
 	if rec.Owner != owner {
 		return nil
 	}
-	rsp.Item = toTask(rec.ID, rec.Owner, rec.Data)
+	rsp.Item = taskMessage(toTask(rec.ID, rec.Owner, rec.Data))
 	return nil
 }

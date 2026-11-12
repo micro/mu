@@ -49,7 +49,7 @@ higher-level subscribers decide what work to run. Server composition may reach
 both layers; that does not authorise upward dependencies from services.
 
 `proto/assistant/v1` owns the composition contract. `proto/service/<name>/v1` owns the public service contracts. Contacts, Chat,
-Groups and Notes have direct bindings through the existing gateway. Other
+Groups, Notes and Tasks have direct bindings through the existing gateway. Other
 services migrate incrementally, with typed adapters and permission tests. The
 existing Specs remain authoritative for current APIs and agent tools.
 
@@ -174,7 +174,7 @@ need authenticated, account-scoped transport before discovery can be restored.
 describes individual services. Contracts do not import runtime implementation.
 The HTTPS binding (`internal/mucp`) imports no product packages. Explicit server
 composition selects supported adapters, rather than exposing every internal RPC.
-Contacts, Chat, Groups and Notes are independently callable typed services.
+Contacts, Chat, Groups, Notes and Tasks are independently callable typed services.
 Public contracts are maintained in proto; Go handlers implement generated types.
 Other services remain discoverable without claiming direct protocol support.
 

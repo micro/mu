@@ -22,11 +22,11 @@ func requestFor(e event.Record) (request, error) {
 	switch e.Type {
 	case event.TaskStarted:
 		var rsp tasks.TaskResponse
-		if err := service.Call(ctx, "tasks", "Server.Read", &tasks.DeleteRequest{ID: e.Resource}, &rsp); err != nil {
+		if err := service.Call(ctx, "tasks", "Server.Read", &tasks.DeleteRequest{Id: e.Resource}, &rsp); err != nil {
 			return r, err
 		}
 		t := rsp.Item
-		if t == nil || t.Status != tasks.StatusDoing || len(t.Attempts) == 0 || t.Attempts[len(t.Attempts)-1].ID != e.Version {
+		if t == nil || t.Status != tasks.StatusDoing || len(t.Attempts) == 0 || t.Attempts[len(t.Attempts)-1].Id != e.Version {
 			return request{}, nil
 		}
 		r.Kind, r.Title, r.Thread, r.Agent = tasks.Kind, t.Title, t.Thread, t.Agent
