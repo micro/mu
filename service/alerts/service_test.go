@@ -24,7 +24,7 @@ func TestScopedToolsAndRevokedMembership(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Clear(actor) })
-	if err := srv.Update(service.WithAccount(context.Background(), member), &UpdateRequest{ID: raised.Item.ID, State: "resolved"}, &Response{}); err == nil {
+	if err := srv.Update(service.WithAccount(context.Background(), member), &UpdateRequest{Id: raised.Item.Id, State: "resolved"}, &Response{}); err == nil {
 		t.Fatal("cross-account mutation")
 	}
 	g, err := group.Create(actor, "Test shared alerts", false)
@@ -51,7 +51,7 @@ func TestScopedToolsAndRevokedMembership(t *testing.T) {
 	if err = srv.List(memberCtx, &ListRequest{Group: g.ID}, &list); err != nil || len(list.Items) != 1 {
 		t.Fatal(list, err)
 	}
-	if err = srv.Update(memberCtx, &UpdateRequest{Group: g.ID, ID: raised.Item.ID, State: "resolved"}, &Response{}); err == nil {
+	if err = srv.Update(memberCtx, &UpdateRequest{Group: g.ID, Id: raised.Item.Id, State: "resolved"}, &Response{}); err == nil {
 		t.Fatal("member changed shared state")
 	}
 	if !strings.Contains(Preview(member), "alerts needing attention") {
