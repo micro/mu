@@ -278,7 +278,7 @@ func main() {
 		}
 	}
 	for _, spec := range specs {
-		if spec.Name == "contacts" || spec.Name == "chat" || spec.Name == "groups" {
+		if spec.Name == "contacts" || spec.Name == "chat" || spec.Name == "groups" || spec.Name == "notes" {
 			continue
 		} // Published pagination contract has an explicit adapter.
 		write("proto/service/"+spec.Name+"/v1/"+spec.Name+".proto", render(spec, fields))

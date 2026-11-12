@@ -11,9 +11,11 @@ import (
 	pb "mu/proto/assistant/v1"
 	chatpb "mu/proto/service/chat/v1"
 	grouppb "mu/proto/service/groups/v1"
+	notespb "mu/proto/service/notes/v1"
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/groups"
+	"mu/service/notes"
 	"net/http"
 	"sort"
 	"strings"
@@ -25,6 +27,7 @@ func mucpOperations() []mucp.Operation {
 	ops = append(ops, contacts.MUCPOperations()...)
 	ops = append(ops, contractOperations(chat.Spec, chatpb.File_service_chat_v1_chat_proto.Services().ByName("Chat"))...)
 	ops = append(ops, contractOperations(groups.Spec, grouppb.File_service_groups_v1_groups_proto.Services().ByName("Groups"))...)
+	ops = append(ops, contractOperations(notes.Spec, notespb.File_service_notes_v1_notes_proto.Services().ByName("Notes"))...)
 	return append(ops,
 		mucp.Operation{Service: "assistant", Endpoint: "Services.List", Capability: "services", Request: func() proto.Message { return &pb.ListServicesRequest{} }, Handle: servicesCall},
 		mucp.Operation{Service: "assistant", Endpoint: "Services.Describe", Capability: "services", Request: func() proto.Message { return &pb.DescribeServiceRequest{} }, Handle: servicesCall})
@@ -38,6 +41,8 @@ func serviceDescriptors() []*pb.ServiceDescriptor {
 		switch s.Name {
 		case "contacts":
 			direct = contacts.MUCPOperations()
+		case "notes":
+			direct = contractOperations(notes.Spec, notespb.File_service_notes_v1_notes_proto.Services().ByName("Notes"))
 		case "chat":
 			direct = contractOperations(chat.Spec, chatpb.File_service_chat_v1_chat_proto.Services().ByName("Chat"))
 		case "groups":
