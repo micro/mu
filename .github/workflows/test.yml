@@ -117,6 +117,9 @@ jobs:
             CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -trimpath -o "$RUNNER_TEMP/mu-build/mu-${os}-${arch}" .
           done
 
+      - name: Test release binary crash recovery
+        run: python3 proto/conformance/deployment.py "$RUNNER_TEMP/mu-build/mu-linux-amd64"
+
       - uses: actions/upload-artifact@v4
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
