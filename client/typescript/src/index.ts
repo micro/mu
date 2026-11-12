@@ -177,40 +177,50 @@ export class Client {
 }
 
 export class Mu {
-  readonly protocol: Client;
+  private readonly client: Client;
   constructor(options: Options | Client) {
-    this.protocol = options instanceof Client ? options : new Client(options);
+    this.client = options instanceof Client ? options : new Client(options);
+  }
+  call<T = Record<string, unknown>>(
+    service: string,
+    endpoint: string,
+    body: unknown = {},
+  ): Promise<T> {
+    return this.client.call<T>(service, endpoint, body);
+  }
+  discover() {
+    return this.client.discover();
   }
   agents() {
-    return this.protocol.call<Operations["ListAgents"]["response"]>(
+    return this.call<Operations["ListAgents"]["response"]>(
       "assistant",
       "Assistant.ListAgents",
     );
   }
   threads(request: Operations["ListThreads"]["request"] = {}) {
-    return this.protocol.call<Operations["ListThreads"]["response"]>(
+    return this.call<Operations["ListThreads"]["response"]>(
       "assistant",
       "Assistant.ListThreads",
       request,
     );
   }
   read(thread: string, pageToken = "") {
-    return this.protocol.call<Operations["ReadThread"]["response"]>(
+    return this.call<Operations["ReadThread"]["response"]>(
       "assistant",
       "Assistant.ReadThread",
       { thread, pageToken },
     );
   }
   home() {
-    return this.protocol.call("assistant", "Home.Overview");
+    return this.call("assistant", "Home.Overview");
   }
   inbox(pageToken = "") {
-    return this.protocol.call("assistant", "Inbox.List", { pageToken });
+    return this.call("assistant", "Inbox.List", { pageToken });
   }
   services(pageToken = "") {
-    return this.protocol.call("assistant", "Services.List", { pageToken });
+    return this.call("assistant", "Services.List", { pageToken });
   }
-  prepare(
+  private prepare(
     prompt: string,
     options: Partial<Omit<Request, "prompt" | "mode">> = {},
   ): Submission {
@@ -227,9 +237,9 @@ export class Mu {
       },
     };
   }
-  async submit(submission: Submission): Promise<Operation> {
+  private async submit(submission: Submission): Promise<Operation> {
     try {
-      return await this.protocol.call<Operation>(
+      return await this.call<Operation>(
         "assistant",
         "Assistant.Submit",
         submission,
@@ -244,11 +254,7 @@ export class Mu {
     }
   }
   status(id: string) {
-    return this.protocol.call<Operation>(
-      "assistant",
-      "Assistant.ReadOperation",
-      { id },
-    );
+    return this.call<Operation>("assistant", "Assistant.ReadOperation", { id });
   }
   async wait(operation: Operation, timeout = 120000): Promise<Answer> {
     if (!Number.isFinite(timeout) || timeout <= 0)

@@ -6,15 +6,22 @@ from mu import Mu
 
 async def main():
     mu = Mu(sys.argv[1], os.environ['MU_TOKEN'])
-    await mu.protocol.discover()
+    await mu.discover()
     await mu.agents()
-    submission = mu.prepare('Acknowledge this interoperability test.')
-    first = await mu.submit(submission)
-    second = await mu.submit(submission)
-    assert first['id'] == second['id'] and first['thread'] == second['thread']
-    result = await mu.wait(second, timeout=10)
+    call = mu.call
+    accepted = None
+    async def duplicate_call(service, endpoint, body=None):
+        nonlocal accepted
+        result = await call(service, endpoint, body)
+        if endpoint == 'Assistant.Submit':
+            duplicate = await call(service, endpoint, body)
+            assert result['id'] == duplicate['id'] and result['thread'] == duplicate['thread']
+            accepted = result
+        return result
+    mu.call = duplicate_call
+    result = await mu.ask('Acknowledge this interoperability test.')
     assert result['text'] == 'Acknowledged'
-    recovered = await mu.status(first['id'])
+    recovered = await mu.status(accepted['id'])
     assert recovered['result']['text'] == result['text']
     print('PASS Python SDK: discovery, delegation, duplicate acceptance and recovery')
 

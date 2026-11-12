@@ -2,15 +2,22 @@
 import assert from 'node:assert/strict';
 import {Mu} from '../dist/index.js';
 const mu = new Mu({server: process.argv[2], token: process.env.MU_TOKEN});
-await mu.protocol.discover();
+await mu.discover();
 await mu.agents();
-const submission = mu.prepare('Acknowledge this interoperability test.');
-const first = await mu.submit(submission);
-const second = await mu.submit(submission);
-assert.equal(first.id, second.id);
-assert.equal(first.thread, second.thread);
-const result = await mu.wait(second, 10000);
+const call = mu.call.bind(mu);
+let accepted;
+mu.call = async (service, endpoint, body) => {
+  const result = await call(service, endpoint, body);
+  if (endpoint === 'Assistant.Submit') {
+    const duplicate = await call(service, endpoint, body);
+    assert.equal(result.id, duplicate.id);
+    assert.equal(result.thread, duplicate.thread);
+    accepted = result;
+  }
+  return result;
+};
+const result = await mu.ask('Acknowledge this interoperability test.');
 assert.equal(result.text, 'Acknowledged');
-const recovered = await mu.status(first.id);
+const recovered = await mu.status(accepted.id);
 assert.equal(recovered.result.text, result.text);
 console.log('PASS TypeScript SDK: discovery, delegation, duplicate acceptance and recovery');

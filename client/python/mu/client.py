@@ -93,42 +93,48 @@ class Client:
 
 
 class Mu:
-    """Mu's composition over the generic client. Service calls use protocol.call."""
+    """Mu's composition over the generic client. Service calls use call."""
     def __init__(self, server: str | Client, token: str | Callable[[], str] = '', *, timeout: float = 20):
-        self.protocol = server if isinstance(server, Client) else Client(server, token, timeout=timeout)
+        self._client = server if isinstance(server, Client) else Client(server, token, timeout=timeout)
+
+    async def call(self, service: str, endpoint: str, body: Any = None) -> dict[str, Any]:
+        return await self._client.call(service, endpoint, body)
+
+    async def discover(self) -> dict[str, Any]:
+        return await self._client.discover()
 
     async def agents(self) -> Agents:
-        return cast(Agents, await self.protocol.call('assistant', 'Assistant.ListAgents'))
+        return cast(Agents, await self.call('assistant', 'Assistant.ListAgents'))
 
     async def threads(self, *, agent_id: str = '', page_token: str = '', page_size: int = 25) -> Threads:
-        return cast(Threads, await self.protocol.call('assistant', 'Assistant.ListThreads', {'agentId': agent_id, 'pageToken': page_token, 'pageSize': page_size}))
+        return cast(Threads, await self.call('assistant', 'Assistant.ListThreads', {'agentId': agent_id, 'pageToken': page_token, 'pageSize': page_size}))
 
     async def read(self, thread: str, *, page_token: str = '') -> History:
-        return cast(History, await self.protocol.call('assistant', 'Assistant.ReadThread', {'thread': thread, 'pageToken': page_token}))
+        return cast(History, await self.call('assistant', 'Assistant.ReadThread', {'thread': thread, 'pageToken': page_token}))
 
     async def home(self) -> dict[str, Any]:
-        return await self.protocol.call('assistant', 'Home.Overview')
+        return await self.call('assistant', 'Home.Overview')
 
     async def inbox(self, *, page_token: str = '') -> dict[str, Any]:
-        return await self.protocol.call('assistant', 'Inbox.List', {'pageToken': page_token})
+        return await self.call('assistant', 'Inbox.List', {'pageToken': page_token})
 
     async def services(self, *, page_token: str = '') -> dict[str, Any]:
-        return await self.protocol.call('assistant', 'Services.List', {'pageToken': page_token})
+        return await self.call('assistant', 'Services.List', {'pageToken': page_token})
 
-    def prepare(self, prompt: str, *, agent_id: str = '', thread: str = '', voice: bool = False) -> Submission:
+    def _prepare(self, prompt: str, *, agent_id: str = '', thread: str = '', voice: bool = False) -> Submission:
         if not prompt.strip() or len(prompt.encode('utf-8')) > 8000:
             raise ProtocolError('Prompt must contain 1–8000 UTF-8 bytes.')
         return {'messageId': str(uuid.uuid4()), 'request': {'agentId': agent_id, 'thread': thread, 'prompt': prompt, 'voice': voice, 'mode': 'ACCESS_MODE_PERSONAL'}}
 
-    async def submit(self, submission: Submission) -> Operation:
+    async def _submit(self, submission: Submission) -> Operation:
         try:
-            return cast(Operation, await self.protocol.call('assistant', 'Assistant.Submit', submission))
+            return cast(Operation, await self.call('assistant', 'Assistant.Submit', submission))
         except ProtocolError as error:
             error.submission = submission
             raise
 
     async def status(self, operation_id: str) -> Operation:
-        return cast(Operation, await self.protocol.call('assistant', 'Assistant.ReadOperation', {'id': operation_id}))
+        return cast(Operation, await self.call('assistant', 'Assistant.ReadOperation', {'id': operation_id}))
 
     async def wait(self, operation: Operation, *, timeout: float = 120) -> Answer:
         if not 0 < timeout < float('inf'):
@@ -160,9 +166,9 @@ class Mu:
             raise
 
     async def ask(self, prompt: str, *, agent_id: str = '', thread: str = '', voice: bool = False) -> Answer:
-        submission = self.prepare(prompt, agent_id=agent_id, thread=thread, voice=voice)
+        submission = self._prepare(prompt, agent_id=agent_id, thread=thread, voice=voice)
         try:
-            return await self.wait(await self.submit(submission))
+            return await self.wait(await self._submit(submission))
         except ProtocolError as error:
             error.submission = submission
             raise

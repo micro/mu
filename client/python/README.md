@@ -27,17 +27,8 @@ A configured runtime and account credential are required. Agent requests need
 JSON dictionaries with TypedDict annotations for assistant contracts; paging tokens and unknown content are retained. Home, Inbox and
 Services require their own `api:` capabilities. The SDK has no runtime dependencies.
 
-For durable recovery, save `submission = mu.prepare(prompt)` privately **before**
-`await mu.submit(submission)`. Save the accepted operation ID; use `status(id)` and
-`wait(operation)` to recover. On an uncertain submission, resend exactly the same
-saved submission to the same runtime with the same account. Record its creation
-time and never replay beyond Mu's seven-day window. Never generate a fresh ID to
-retry an uncertain action. `ProtocolError` exposes `submission`, `operation` and
-`thread` when available. Receipts contain private prompts, not credentials.
-`ask` is a convenience; explicit prepare/submit supports process-crash recovery.
-
 `Client` provides generic MUCP discovery and calls. Use
-`await mu.protocol.call('contacts', 'Contacts.List', {})` for a supported direct
+`await mu.call('contacts', 'Contacts.List', {})` for a supported direct
 service, with a service-scoped token. Assistant scopes do not grant service access.
 Agents, Inbox and service state remain owned by the runtime.
 
