@@ -358,9 +358,9 @@ func formatDKIMDetails(enabled bool, domain, selector string) string {
 	return fmt.Sprintf("%s (selector: %s)", domain, selector)
 }
 
-// LLMStatus is set by main.go to internal/ai's own view of the model: which
+// LLMStatus is set by main.go to internal/model's own view of the model: which
 // provider a question would go to, and whether it is answering. A hook because
-// internal/ai imports this package, so the dependency cannot run the other way.
+// internal/model imports this package, so the dependency cannot run the other way.
 var LLMStatus func() (string, bool)
 
 // AgentStatus is which model the agent runs on, which is a different question

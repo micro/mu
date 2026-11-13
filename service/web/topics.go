@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/internal/model"
 )
 
 // topicCache holds LLM-generated topics from recent content.
@@ -29,7 +29,7 @@ func Topics() []string {
 	stale := time.Since(topicCache.updated) > topicCacheTTL
 	topicCache.RUnlock()
 
-	if stale && ai.BackgroundEnabled() {
+	if stale && model.BackgroundEnabled() {
 		go regenerateTopics()
 	}
 
@@ -46,7 +46,7 @@ func StartTopics() {
 		topicCache.Unlock()
 		app.Log("search", "Loaded %d cached topics from disk", len(cached))
 	}
-	if ai.BackgroundEnabled() {
+	if model.BackgroundEnabled() {
 		go regenerateTopics()
 	}
 }
@@ -87,7 +87,7 @@ func regenerateTopics() {
 		headlines = headlines[:40]
 	}
 
-	prompt := &ai.Prompt{
+	prompt := &model.Prompt{
 		System: `You extract trending search topics from headlines. Return ONLY a newline-separated list of topics. Each topic should be:
 - A specific person, place, event, technology, or concept (e.g. "Iran nuclear talks", "Ramadan 2026", "Bitcoin ETF", "OpenAI Sora")
 - 1-4 words, suitable as a web search query
@@ -95,12 +95,12 @@ func regenerateTopics() {
 - No generic words, no duplicates, no numbering, no punctuation
 Return exactly 10 topics, one per line. Nothing else.`,
 		Question: "Extract 10 trending search topics from these recent headlines:\n\n" + strings.Join(headlines, "\n"),
-		Priority: ai.PriorityLow,
-		Model:    ai.BackgroundModel(),
+		Priority: model.PriorityLow,
+		Model:    model.BackgroundModel(),
 		Caller:   "topic-generation",
 	}
 
-	resp, err := ai.Ask(prompt)
+	resp, err := model.Ask(prompt)
 	if err != nil {
 		app.Log("search", "Failed to generate topics: %v", err)
 		return

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"mu/internal/ai"
+	"mu/internal/model"
 )
 
 // editPrompt asks the model to modify an existing spec rather than invent one.
@@ -52,10 +52,10 @@ func Edit(current *Spec, instruction string) (*Spec, error) {
 
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
-		raw, err := ai.Ask(&ai.Prompt{
+		raw, err := model.Ask(&model.Prompt{
 			System:    editPrompt,
 			Question:  question,
-			Model:     ai.ModelDeepSeekFlash,
+			Model:     model.ModelDeepSeekFlash,
 			Caller:    "micro-app-edit",
 			MaxTokens: 800,
 		})

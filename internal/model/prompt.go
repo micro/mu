@@ -1,6 +1,4 @@
-// Package ai provides LLM integration for the Mu platform — Anthropic,
-// Atlas Cloud, OpenRouter, and local OpenAI-compatible servers.
-package ai
+package model
 
 import (
 	"fmt"
@@ -80,7 +78,7 @@ Keep responses concise but informative. Use markdown for structure when helpful.
 func BuildSystemPrompt(p *Prompt) (string, error) {
 	if p.System != "" {
 		if len(p.Rag) == 0 {
-			return withFoundation(p.System), nil
+			return Default().SystemPrompt(p.System), nil
 		}
 		var sb strings.Builder
 		sb.WriteString(p.System)
@@ -88,7 +86,7 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 		for i, r := range p.Rag {
 			sb.WriteString(fmt.Sprintf("[%d] %s\n", i, r))
 		}
-		return withFoundation(sb.String()), nil
+		return Default().SystemPrompt(sb.String()), nil
 	}
 	sb := &strings.Builder{}
 	data := &systemPromptData{
@@ -98,7 +96,7 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 	if err := systemPrompt.Execute(sb, data); err != nil {
 		return "", err
 	}
-	return withFoundation(sb.String()), nil
+	return Default().SystemPrompt(sb.String()), nil
 }
 
 // Ask sends a prompt to the LLM and returns the response

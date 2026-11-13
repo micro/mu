@@ -3,11 +3,11 @@ package agent
 import (
 	"github.com/google/uuid"
 	"mu/inbox"
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
 	"mu/internal/group"
+	"mu/internal/model"
 	"mu/internal/thread"
 	"mu/internal/usage"
 	"mu/service/mail"
@@ -28,7 +28,7 @@ func DeliverScheduled(r ScheduledResult, answer string, err error) error {
 	body := strings.TrimSpace(answer)
 	if err != nil {
 		app.Log("work", "standing instruction %q failed for %s: %v", r.Title, r.Account, err)
-		body = "This scheduled task failed: " + ai.FailureMessage(err)
+		body = "This scheduled task failed: " + model.FailureMessage(err)
 	}
 	if body == "" {
 		return nil

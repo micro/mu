@@ -1,4 +1,4 @@
-package ai
+package model
 
 // Which models this instance can actually offer.
 //

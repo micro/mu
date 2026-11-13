@@ -55,7 +55,7 @@ const (
 // Classify, when set, is a second opinion from a model for the cases words
 // cannot settle. Nil means the word check is the whole check.
 //
-// A variable rather than an import because internal/ai is a heavier dependency
+// A variable rather than an import because internal/model is a heavier dependency
 // than this needs, and because an instance with no model configured still has
 // to refuse the plain cases.
 var Classify func(prompt string) (Category, bool)

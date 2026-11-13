@@ -1,4 +1,4 @@
-package ai
+package model
 
 // Which provider this instance prefers, when it has keys for more than one.
 //

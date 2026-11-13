@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"mu/internal/ai"
 	"mu/internal/app"
+	"mu/internal/model"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -239,8 +239,8 @@ func runHealthChecks() []app.ServiceHealth {
 
 	// Cross-cutting checks that aren't domain services.
 	checks = append(checks,
-		// Whether it answers, not whether a key is set. See internal/ai/health.go.
-		check{"Agent", "/agent", func() bool { ok, _ := ai.Healthy(); return ok }},
+		// Whether it answers, not whether a key is set. See internal/model/health.go.
+		check{"Agent", "/agent", func() bool { ok, _ := model.Healthy(); return ok }},
 		// Named for what the reader is being told, not for the library behind
 		// it — /status is linked from every page footer.
 		check{"runtime", "/version", func() bool { return len(service.Services()) > 0 }},

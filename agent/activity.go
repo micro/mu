@@ -1,7 +1,7 @@
 package agent
 
 import (
-	"mu/internal/ai"
+	"mu/internal/model"
 	"mu/service/tasks"
 	"strings"
 	"time"
@@ -63,7 +63,7 @@ func activity(accountID, agentID string) string {
 	if len(states) > 0 {
 		return strings.Join(states, " · ")
 	}
-	if !ai.Configured() {
+	if !model.Configured() {
 		return "Not configured"
 	}
 	return "Idle"

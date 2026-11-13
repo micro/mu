@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"mu/agent/digest"
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/model"
 	"mu/internal/settings"
 	"mu/service/chat"
 	"mu/service/markets"
@@ -195,7 +195,7 @@ func checkFederation(test bool) healthCheck {
 }
 
 func checkAI() healthCheck {
-	if !ai.Configured() {
+	if !model.Configured() {
 		return healthCheck{
 			Name:   "AI model",
 			Status: "error",
@@ -217,7 +217,7 @@ func checkAI() healthCheck {
 	// the difference is the thing an operator gets surprised by — summaries and
 	// moderation go to the cheap one, and it is not always the same vendor.
 	provider := providerLabel()
-	detail := provider + " · " + ai.DefaultModel()
+	detail := provider + " · " + model.DefaultModel()
 
 	return healthCheck{
 		Name:   "AI model",
@@ -232,15 +232,15 @@ func checkAI() healthCheck {
 // unset or unreachable does which-key-is-present decide anything, and then in
 // the same order the runtime falls back in.
 func providerLabel() string {
-	if p, _, base, ok := ai.PreferredProvider(); ok {
+	if p, _, base, ok := model.PreferredProvider(); ok {
 		switch p {
-		case ai.ProviderAnthropic:
+		case model.ProviderAnthropic:
 			return "Anthropic"
-		case ai.ProviderAtlasCloud:
+		case model.ProviderAtlasCloud:
 			return "Atlas Cloud"
-		case ai.ProviderOpenRouter:
+		case model.ProviderOpenRouter:
 			return "OpenRouter"
-		case ai.ProviderLocal:
+		case model.ProviderLocal:
 			if base != "" {
 				return "Local model at " + base
 			}
@@ -389,7 +389,7 @@ func checkMarkets() healthCheck {
 // look at, and takes as long as one, is how /admin/status came to be
 // something you avoided loading.
 func checkDigest(test bool) healthCheck {
-	if !ai.BackgroundEnabled() {
+	if !model.BackgroundEnabled() {
 		return healthCheck{Name: "Public digest", Status: "ok", Detail: "Automatic generation disabled; personal daily briefs are separate."}
 	}
 	ok, details := digest.Status()
@@ -453,7 +453,7 @@ func aiDiagnose(checks []healthCheck) string {
 		issues.WriteString("\n")
 	}
 
-	result, err := ai.Ask(&ai.Prompt{
+	result, err := model.Ask(&model.Prompt{
 		System: `You are a system administrator for Mu, a personal AI platform written in Go.
 Analyse the health check results and provide a brief diagnosis:
 1. What's likely causing any failures
@@ -461,8 +461,8 @@ Analyse the health check results and provide a brief diagnosis:
 3. Any connections between issues (e.g. if AI is down, digest will also fail)
 Keep it to 3-5 sentences. Be specific and actionable.`,
 		Question: issues.String(),
-		Model:    ai.BackgroundModel(),
-		Priority: ai.PriorityHigh,
+		Model:    model.BackgroundModel(),
+		Priority: model.PriorityHigh,
 		Caller:   "system-diagnosis",
 	})
 	if err != nil {

@@ -15,11 +15,11 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/internal/model"
 	"mu/internal/quota"
 	"mu/internal/safety"
 	"mu/internal/service"
@@ -173,7 +173,7 @@ func themeFor(day int) struct{ name, prompt string } {
 }
 
 // aiReady reports whether an AI provider (and thus image generation) is usable.
-func aiReady() bool { return ai.Configured() }
+func aiReady() bool { return model.Configured() }
 
 // getDaily returns a copy of the current daily image.
 func getDaily() Daily {
@@ -201,7 +201,7 @@ func Generate(owner, prompt string) (string, error) {
 		return "", fmt.Errorf("%s", reason)
 	}
 
-	url, err := ai.GenerateImage(prompt)
+	url, err := model.GenerateImage(prompt)
 	if err != nil {
 		return "", err
 	}

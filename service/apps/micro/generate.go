@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"mu/internal/ai"
+	"mu/internal/model"
 )
 
 // systemPrompt instructs the model to emit only a micro-app spec as JSON.
@@ -49,10 +49,10 @@ func Generate(description string) (*Spec, error) {
 	question := description
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
-		raw, err := ai.Ask(&ai.Prompt{
+		raw, err := model.Ask(&model.Prompt{
 			System:    systemPrompt,
 			Question:  question,
-			Model:     ai.ModelDeepSeekFlash,
+			Model:     model.ModelDeepSeekFlash,
 			Caller:    "micro-app",
 			MaxTokens: 800,
 		})

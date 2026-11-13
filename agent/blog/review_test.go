@@ -2,7 +2,7 @@ package blog
 
 import (
 	"errors"
-	"mu/internal/ai"
+	"mu/internal/model"
 	"strings"
 	"testing"
 )
@@ -22,7 +22,7 @@ func TestPublicationReviewFailsClosed(t *testing.T) {
 		{"", errors.New("timeout"), false},
 		{"<think>fine</think>" + `{"approved":true,"reason":"fine"}`, nil, false},
 	} {
-		err := review("A valid article title", body, "Source evidence", func(p *ai.Prompt) (string, error) {
+		err := review("A valid article title", body, "Source evidence", func(p *model.Prompt) (string, error) {
 			if p.Caller != "publication-review" || !strings.Contains(p.Question, "Source evidence") {
 				t.Fatal("missing source review")
 			}
@@ -33,7 +33,7 @@ func TestPublicationReviewFailsClosed(t *testing.T) {
 		}
 	}
 	calls := 0
-	err := review("<?xml version=\"1.0\"?>", body, "sources", func(*ai.Prompt) (string, error) { calls++; return "", nil })
+	err := review("<?xml version=\"1.0\"?>", body, "sources", func(*model.Prompt) (string, error) { calls++; return "", nil })
 	if err == nil || calls != 0 {
 		t.Fatal("malformed draft reached reviewer")
 	}

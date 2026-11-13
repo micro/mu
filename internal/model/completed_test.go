@@ -1,4 +1,4 @@
-package ai
+package model
 
 import (
 	model "go-micro.dev/v6/model"
