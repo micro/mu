@@ -15,7 +15,10 @@ func TestCompositionControlsAgent(t *testing.T) {
 	m.Instructions = "Composition instructions"
 	m.Services = []string{"news", "mail"}
 	opts := QueryOpts{Definition: &m, Tools: []string{"news", "weather"}}
-	p, _, id, _, ok := nativeModelForAccount("", opts)
+	p, _, id, base, ok := nativeModelForAccount("", opts)
+	if base != "http://localhost:12345" {
+		t.Fatalf("base URL was not normalized: %q", base)
+	}
 	if !ok || p != "openai" || id != "chosen-model" {
 		t.Fatalf("selection %q %q %v", p, id, ok)
 	}

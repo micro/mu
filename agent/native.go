@@ -880,7 +880,7 @@ func nativeModelForAccount(accountID string, opts QueryOpts) (provider, key, mod
 	composition := composedModel(opts)
 	if composition.LLM.Provider != "" {
 		p, k, id, base, err := model.ResolveLLM(composition.LLM, opts.Public)
-		return p, k, id, base, err == nil
+		return p, k, id, model.ProviderBaseURL(base), err == nil
 	}
 	if opts.interactive && !opts.Public && composition.LLM.ID == "" {
 		if auth.CodexPreviewEnabled(accountID) {
