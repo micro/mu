@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"sort"
 	"strings"
 	"time"
@@ -520,7 +520,7 @@ func DeleteAll(owner string) {
 func (t *Task) Outcome() string {
 	const prefix = "Last run failed: "
 	if strings.HasPrefix(t.Result, prefix) {
-		return prefix + mumodel.FailureMessage(errors.New(strings.TrimPrefix(t.Result, prefix)))
+		return prefix + model.FailureMessage(errors.New(strings.TrimPrefix(t.Result, prefix)))
 	}
 	return t.Result
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"mu/agent"
 	"mu/internal/app"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/service/tasks"
 	"regexp"
 	"strings"
@@ -13,7 +13,7 @@ import (
 var secretValue = regexp.MustCompile(`(?i)((?:password|secret|cookie|private[_-]?key|access[_-]?token|refresh[_-]?token)["']?\s*[:=]\s*["']?)[^\s"'&,}]+`)
 
 func diagnosticText(s string) string {
-	s = mumodel.ProviderErrorDetail(s)
+	s = model.ProviderErrorDetail(s)
 	s = secretValue.ReplaceAllString(s, "${1}[redacted]")
 	if len(s) > 16384 {
 		s = s[:16384] + "\n[truncated]"

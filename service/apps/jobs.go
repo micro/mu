@@ -17,7 +17,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/result"
 	"mu/internal/service"
 )
@@ -197,10 +197,10 @@ func runNextBuild() {
 		if !checkpointBuild(&j) {
 			return
 		}
-		raw, err := mumodel.Ask(&mumodel.Prompt{System: buildSystem, Question: j.Question, Caller: "app-build", MaxTokens: buildTokens})
+		raw, err := model.Ask(&model.Prompt{System: buildSystem, Question: j.Question, Caller: "app-build", MaxTokens: buildTokens})
 		if err != nil {
 			j.State = "failed"
-			j.Error = mumodel.FailureMessage(err)
+			j.Error = model.FailureMessage(err)
 			checkpointBuild(&j)
 			return
 		}

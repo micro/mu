@@ -11,7 +11,7 @@ import (
 	"mu/agent/micro"
 	"mu/internal/app"
 	"mu/internal/auth"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/service/mail"
 )
 
@@ -172,16 +172,16 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 	// page reload.
 	// And what this instance can actually run, so the form offers models
 	// rather than asking somebody to type an id. Derived from which providers
-	// have keys — see mumodel.Choices — so an instance with one key offers one
+	// have keys — see model.Choices — so an instance with one key offers one
 	// choice and an instance with none offers no menu at all, which is the
 	// honest answer rather than a select nobody can satisfy.
-	type model struct {
+	type modelChoice struct {
 		ID    string `json:"id"`
 		Label string `json:"label"`
 	}
-	models := []model{}
-	for _, c := range mumodel.Choices() {
-		models = append(models, model{c.ID, c.Label})
+	models := []modelChoice{}
+	for _, c := range model.Choices() {
+		models = append(models, modelChoice{c.ID, c.Label})
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"agents":   mine,
@@ -288,18 +288,18 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	// question becomes real, which is also the moment somebody self-hosting
 	// wires a second key.
 	//
-	// Options are derived, never listed — see mumodel.Choices. Model ids change
+	// Options are derived, never listed — see model.Choices. Model ids change
 	// often enough that a hand-written menu is wrong within a month, and the
 	// place it is written down is not the place anybody updates.
 	modelHTML := ""
-	if choices := mumodel.Choices(); len(choices) > 1 {
+	if choices := model.Choices(); len(choices) > 1 {
 		var opts strings.Builder
 		cur := ""
 		if a := For(acc.ID, editID); a != nil {
 			cur = a.Model
 		}
 		// Alphabetical, because a menu is scanned rather than read. The order
-		// mumodel.Choices returns is best-of-each-provider-first, which is a
+		// model.Choices returns is best-of-each-provider-first, which is a
 		// judgement about quality and tells somebody looking for Sonnet
 		// nothing about where to find it.
 		sort.Slice(choices, func(i, j int) bool { return choices[i].Label < choices[j].Label })
@@ -307,7 +307,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		// The default, named. It said "Instance default", which is a menu entry
 		// that does not say what it selects — on the one screen whose whole
 		// point is knowing which model is running.
-		opts.WriteString(`<option value="">` + html.EscapeString(mumodel.DefaultLabel()) + `</option>`)
+		opts.WriteString(`<option value="">` + html.EscapeString(model.DefaultLabel()) + `</option>`)
 		for _, c := range choices {
 			sel := ""
 			if strings.EqualFold(c.ID, cur) {

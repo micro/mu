@@ -30,7 +30,7 @@ package agent
 
 import (
 	"errors"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"net/http"
 	"strings"
 
@@ -104,7 +104,7 @@ func PendingHandler(w http.ResponseWriter, r *http.Request) {
 			result["text"] = run.Answer
 		}
 		if run.Status == "error" {
-			result["error"] = mumodel.FailureMessage(errors.New(run.Error))
+			result["error"] = model.FailureMessage(errors.New(run.Error))
 		}
 		app.RespondJSON(w, result)
 		return

@@ -34,7 +34,7 @@ import (
 	"go-micro.dev/v6/model/atlascloud"
 	"go-micro.dev/v6/model/openai"
 
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/settings"
 )
 
@@ -170,28 +170,28 @@ func provider(handler gmai.ToolHandler) (gmai.Model, error) {
 	}
 
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
-		model := settings.Get("ANTHROPIC_MODEL")
-		if model == "" {
-			model = "claude-sonnet-5"
+		modelID := settings.Get("ANTHROPIC_MODEL")
+		if modelID == "" {
+			modelID = "claude-sonnet-5"
 		}
-		return anthropic.NewProvider(opts(key, model)...), nil
+		return anthropic.NewProvider(opts(key, modelID)...), nil
 	}
 	if key := settings.Get("ATLAS_API_KEY"); key != "" {
-		model := settings.Get("ATLAS_MODEL")
-		if model == "" {
-			model = "deepseek-ai/deepseek-v4-pro"
+		modelID := settings.Get("ATLAS_MODEL")
+		if modelID == "" {
+			modelID = "deepseek-ai/deepseek-v4-pro"
 		}
-		return atlascloud.NewProvider(opts(key, model)...), nil
+		return atlascloud.NewProvider(opts(key, modelID)...), nil
 	}
 	if key := settings.Get("OPENROUTER_API_KEY"); key != "" {
-		model := settings.Get("OPENROUTER_MODEL")
-		if model == "" {
-			model = "anthropic/claude-sonnet-4.6"
+		modelID := settings.Get("OPENROUTER_MODEL")
+		if modelID == "" {
+			modelID = "anthropic/claude-sonnet-4.6"
 		}
 		// Without the version segment: the provider appends /v1/chat/completions
 		// itself, so this said /api/v1 and asked for /api/v1/v1/chat/completions.
-		// See mumodel.ProviderBaseURL.
-		o := append(opts(key, model), gmai.WithBaseURL(mumodel.ProviderBaseURL("https://openrouter.ai/api/v1")))
+		// See model.ProviderBaseURL.
+		o := append(opts(key, modelID), gmai.WithBaseURL(model.ProviderBaseURL("https://openrouter.ai/api/v1")))
 		return openai.NewProvider(o...), nil
 	}
 	// A local server: Ollama and friends. The key is usually ignored but some
@@ -200,16 +200,16 @@ func provider(handler gmai.ToolHandler) (gmai.Model, error) {
 		// The model the operator named. It defaulted to "gpt-4o-mini", which is
 		// a model no Ollama or vLLM has ever heard of — so an operator who set
 		// only the endpoint got a 404 naming a model they never mentioned,
-		// instead of being told they had not said which model. See mumodel.LocalModel.
-		model := mumodel.LocalModel()
-		if model == "" {
+		// instead of being told they had not said which model. See model.LocalModel.
+		modelID := model.LocalModel()
+		if modelID == "" {
 			return nil, fmt.Errorf("set OPENAI_MODEL to the model this endpoint serves")
 		}
 		key := settings.Get("OPENAI_API_KEY")
 		if key == "" {
 			key = "local"
 		}
-		o := append(opts(key, model), gmai.WithBaseURL(mumodel.ProviderBaseURL(base)))
+		o := append(opts(key, modelID), gmai.WithBaseURL(model.ProviderBaseURL(base)))
 		return openai.NewProvider(o...), nil
 	}
 

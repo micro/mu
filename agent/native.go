@@ -24,7 +24,7 @@ import (
 	"mu/internal/codex"
 	"mu/internal/flag"
 	"mu/internal/group"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/privacy"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -128,7 +128,7 @@ func filterServices(all, allow []string) []string {
 func injectAccount(accountID string, restricted ...bool) gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
-			ctx = mumodel.WithoutModelTracking(ctx)
+			ctx = model.WithoutModelTracking(ctx)
 			delete(call.Input, "account_id")
 			// And that this is the model reaching for a tool rather than a
 			// person doing something. Stamped here because this wrapper is the
@@ -454,7 +454,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 // Atlas came first with no Anthropic branch at all, so an instance with both
 // keys set ran the agent on DeepSeek while ANTHROPIC_API_KEY sat there serving
 // chat, summaries and moderation. Every other path in the codebase prefers
-// Anthropic when its key is present — see mumodel.resolveProvider — so the agent was
+// Anthropic when its key is present — see model.resolveProvider — so the agent was
 // the one place that silently did the opposite, and the symptom was the agent
 // feeling worse than the rest of the product while looking identically
 // configured.
@@ -470,7 +470,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 //
 // nativeLLM is the instance's own choice, for a caller that has not made one.
 // The thorough end, because this answers for a signed-in account.
-func nativeLLM() (provider, key, model, baseURL string, ok bool) {
+func nativeLLM() (provider, key, modelID, baseURL string, ok bool) {
 	return nativeLLMFor("", false)
 }
 
@@ -498,7 +498,7 @@ func nativeLLM() (provider, key, model, baseURL string, ok bool) {
 //
 // GUEST_MODEL overrides it for an operator who wants their visitors on
 // something specific — a local model, or the same one signed-in accounts get.
-func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL string, ok bool) {
+func nativeLLMFor(prefer string, fast bool) (provider, key, modelID, baseURL string, ok bool) {
 	if fast && prefer == "" {
 		if m := strings.TrimSpace(settings.Get("GUEST_MODEL")); m != "" {
 			prefer = m
@@ -516,7 +516,7 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 	//
 	// One provider per shape, and only the one that serves it. The first
 	// version of this tried each in turn and fell through on a missing key,
-	// which recreates the bug mumodel.modelFor exists to prevent: an Atlas slug and
+	// which recreates the bug model.modelFor exists to prevent: an Atlas slug and
 	// an OpenRouter slug are both provider/model, so a DeepSeek id with no
 	// Atlas key went to OpenRouter, and with neither key it went to Anthropic —
 	// which answers a deepseek-ai/… id with a 400 on every question asked.
@@ -526,26 +526,26 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 	// agent that still answers beats one that fails closed because of a typo,
 	// and the log line is what makes the typo findable.
 	if want != "" {
-		if p, k, base, ok := mumodel.PreferredProvider(); ok {
-			if m := mumodel.GLMModel(p, want); m != "" {
-				return p, k, m, mumodel.ProviderBaseURL(base), true
+		if p, k, base, ok := model.PreferredProvider(); ok {
+			if m := model.GLMModel(p, want); m != "" {
+				return p, k, m, model.ProviderBaseURL(base), true
 			}
 		}
 		switch {
-		case mumodel.AtlasHosted(want):
-			if k := mumodel.AtlasKey(); k != "" {
+		case model.AtlasHosted(want):
+			if k := model.AtlasKey(); k != "" {
 				return "atlascloud", k, want, "", true
 			}
-		case mumodel.GeminiHosted(want):
+		case model.GeminiHosted(want):
 			// Before the bare-id case below. A Gemini id has no slash in it,
 			// which is Anthropic's shape, so left to fall through it is sent to
 			// Anthropic and answered with a 400 on every question.
-			if k := mumodel.GeminiKey(); k != "" {
+			if k := model.GeminiKey(); k != "" {
 				return "gemini", k, want, "", true
 			}
 		case strings.Contains(want, "/"):
 			// provider/model and not one of Atlas's, so OpenRouter's shape.
-			if k := mumodel.OpenRouterKey(); k != "" {
+			if k := model.OpenRouterKey(); k != "" {
 				return "openrouter", k, want, "", true
 			}
 		default:
@@ -565,15 +565,15 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 	// What the instance prefers, before the built-in order — the same question
 	// internal/model now asks, so the agent and the chat cannot disagree about
 	// which provider this box uses. They did for months.
-	if p, k, base, ok := mumodel.PreferredProvider(); ok {
-		if m := mumodel.PreferredModel(p, fast); m != "" {
+	if p, k, base, ok := model.PreferredProvider(); ok {
+		if m := model.PreferredModel(p, fast); m != "" {
 			// ProviderBaseURL, not the configured string. The setting carries the
 			// version segment — detectOllama returns it and INSTALL.md documents
 			// it — and the go-micro provider appends its own, so passing it
-			// through asked for /v1/v1/chat/completions. See mumodel.ProviderBaseURL.
-			return p, k, m, mumodel.ProviderBaseURL(base), true
+			// through asked for /v1/v1/chat/completions. See model.ProviderBaseURL.
+			return p, k, m, model.ProviderBaseURL(base), true
 		}
-		// mumodel.PreferredModel answers for the local provider too, so there is no
+		// model.PreferredModel answers for the local provider too, so there is no
 		// second branch here deciding what an OpenAI-compatible endpoint runs.
 		// There was, and it is exactly the split this function's own comment
 		// above says it exists to prevent: the agent and the chat asking two
@@ -585,10 +585,10 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 	}
 
 	// The built-in order, each provider's model asked for through
-	// mumodel.PreferredModel so that fast is honoured here as well as above.
+	// model.PreferredModel so that fast is honoured here as well as above.
 	//
-	// It used to name a model per branch — mumodel.DefaultModel, mumodel.AtlasModel,
-	// mumodel.GeminiModel — which is the same question PreferredModel answers and a
+	// It used to name a model per branch — model.DefaultModel, model.AtlasModel,
+	// model.GeminiModel — which is the same question PreferredModel answers and a
 	// second place for it to be answered differently. The tell was that a guest
 	// on an instance with no preferred provider got the thorough model anyway:
 	// the fast flag reached the branch above and none of these.
@@ -596,14 +596,14 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 		name, key string
 	}{
 		{"anthropic", settings.Get("ANTHROPIC_API_KEY")},
-		{"atlascloud", mumodel.AtlasKey()},
-		{"gemini", mumodel.GeminiKey()},
-		{"openrouter", mumodel.OpenRouterKey()},
+		{"atlascloud", model.AtlasKey()},
+		{"gemini", model.GeminiKey()},
+		{"openrouter", model.OpenRouterKey()},
 	} {
 		if p.key == "" {
 			continue
 		}
-		if m := mumodel.PreferredModel(p.name, fast); m != "" {
+		if m := model.PreferredModel(p.name, fast); m != "" {
 			return p.name, p.key, m, "", true
 		}
 	}
@@ -611,9 +611,9 @@ func nativeLLMFor(prefer string, fast bool) (provider, key, model, baseURL strin
 	// to run. A base URL with no model is half a configuration, and answering
 	// anyway means asking that server for a model id somebody made up.
 	if base := settings.Get("OPENAI_BASE_URL"); base != "" {
-		if model := mumodel.LocalModel(); model != "" {
-			return mumodel.ProviderLocal, settings.Get("OPENAI_API_KEY"), model,
-				mumodel.ProviderBaseURL(base), true
+		if modelID := model.LocalModel(); modelID != "" {
+			return model.ProviderLocal, settings.Get("OPENAI_API_KEY"), modelID,
+				model.ProviderBaseURL(base), true
 		}
 		unservedLocal.Do(func() {
 			app.Log("agent", "OPENAI_BASE_URL is set and OPENAI_MODEL is not, so "+
@@ -809,7 +809,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 			}
 		}()
 	}
-	ctx, meter := mumodel.MeterCalls(ctx, run.provider, run.baseURL, run.model)
+	ctx, meter := model.MeterCalls(ctx, run.provider, run.baseURL, run.model)
 	// Failed runs still incurred provider costs.
 	defer recordRunCost(run.runs, run.name, costCaller(opts), accountID, run.provider, meter)
 
@@ -827,14 +827,14 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 			}
 			return nativeAnswer(resp.Reply, recorder, opts)
 		}
-		liveCtx, live := mumodel.LiveTokens(ctx, run.provider, run.baseURL, opts.Stream.Start, func(tok string) {
+		liveCtx, live := model.LiveTokens(ctx, run.provider, run.baseURL, opts.Stream.Start, func(tok string) {
 			if !shouldBufferNativeToken(recorder) && opts.Stream.Token != nil {
 				opts.Stream.Token(tok)
 			}
 		})
 		if live {
 			resp, err := a.Ask(liveCtx, question)
-			if streamErr := mumodel.LiveError(liveCtx); streamErr != nil {
+			if streamErr := model.LiveError(liveCtx); streamErr != nil {
 				return "", fmt.Errorf("agent stream: %w", streamErr)
 			}
 			if err != nil {
@@ -858,7 +858,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (answer string, runErr 
 	return nativeAnswer(final, recorder, opts)
 }
 
-func nativeModelForAccount(accountID string, opts QueryOpts) (provider, key, model, baseURL string, ok bool) {
+func nativeModelForAccount(accountID string, opts QueryOpts) (provider, key, modelID, baseURL string, ok bool) {
 	if opts.interactive && !opts.Public {
 		if auth.CodexPreviewEnabled(accountID) {
 			return "codex", "", codex.Model, "", true
@@ -1318,7 +1318,7 @@ func toolResultError(res gmai.ToolResult) string {
 
 func nativeSystem(opts QueryOpts) string {
 	if opts.NoTools && strings.TrimSpace(opts.System) != "" {
-		return mumodel.Default().SystemPrompt(opts.System) + "\n\n" + flag.Values + "\n\n" + opts.OutputInstruction + "\nYou have no tools in this step. Source material was collected before this request. Use the supplied material; never claim you attempted to open a page or call a tool."
+		return model.Default().SystemPrompt(opts.System) + "\n\n" + flag.Values + "\n\n" + opts.OutputInstruction + "\nYou have no tools in this step. Source material was collected before this request. Use the supplied material; never claim you attempted to open a page or call a tool."
 	}
 	sys := "You are Micro, a personal AI agent. " +
 		"Use the available tools for live or personal data (weather, news, market prices, " +
@@ -1345,7 +1345,7 @@ func nativeSystem(opts QueryOpts) string {
 		sys = opts.System + "\n\nWhen scheduling a reminder/event, compute the absolute time from the current time given below and pass it to the events Create tool as an RFC3339 timestamp. Use the available tools for live or personal data and quote exact values. After using tools, always give the final answer; never stop at progress narration."
 	}
 
-	sys = mumodel.Default().SystemPrompt(sys)
+	sys = model.Default().SystemPrompt(sys)
 	sys += "\nUse services to complete the request here instead of sending the user through service pages. For a requested video, search then read the best matching video; the interface can show a player. Save requested items with Bookmarks Add, and retrieve saved items with Bookmarks List/Read. For directions, use Routes Directions with the current device context when available. If current location is missing, ask the user to share it using the location button or name a starting point. Never imply an estimate is navigation. Use focused agents only when useful; keep configuration details out of ordinary answers."
 	sys += "\n" + flag.Values + "\nWrite in plain paragraphs. Use bold sparingly for short, necessary emphasis; never bold whole replies, paragraphs or every list item. For videos, use video Search first, verify the requested channel from the returned channel metadata, then use video Read for only the chosen item (one unless more were requested). Search and list candidates are not recommendations. Screen titles and descriptions against these values before selecting; omit questionable candidates and say when no suitable match was found. Do not assume a religious channel is automatically suitable, and do not claim to have watched a video when only metadata is available."
 	if opts.OutputInstruction != "" {

@@ -26,7 +26,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/service"
 	"mu/internal/settings"
 
@@ -83,7 +83,7 @@ func opinionCategories() []string { return blogsvc.Topics() }
 
 // Start begins the background opinion generation loop.
 func Start() {
-	if !mumodel.BlogEnabled() {
+	if !model.BlogEnabled() {
 		return
 	}
 	memory = loadMemory()
@@ -157,7 +157,7 @@ func opinionsEnabled() bool {
 // publishNextOpinion finds the next category that needs an opinion today
 // and publishes it, respecting the spacing between posts.
 func publishNextOpinion() {
-	if !mumodel.BlogEnabled() || !opinionsEnabled() {
+	if !model.BlogEnabled() || !opinionsEnabled() {
 		return
 	}
 	categories := opinionCategories()
@@ -360,19 +360,19 @@ func generateOpinion(category string) (string, string, error) {
 		fullContext += "\n\n" + memContext
 	}
 
-	prompt := &mumodel.Prompt{
+	prompt := &model.Prompt{
 		System: opinionSystem(category),
 		// The same model the rest of the instance's background writing uses.
 		// This was the one of the four that did not set it — the digest, the
 		// brief and the notes all do — so the piece that does the most work
 		// per run was billed at whatever the default happened to be.
-		Model:    mumodel.BackgroundModel(),
+		Model:    model.BackgroundModel(),
 		Question: fullContext,
-		Priority: mumodel.PriorityLow,
+		Priority: model.PriorityLow,
 		Caller:   "opinion-generate",
 	}
 
-	response, err := mumodel.Ask(prompt)
+	response, err := model.Ask(prompt)
 	if err != nil {
 		return "", "", err
 	}
@@ -387,7 +387,7 @@ func generateOpinion(category string) (string, string, error) {
 	return title, body, nil
 }
 
-// opinionSystem is what the writer is told, split out from the mumodel.Prompt so a
+// opinionSystem is what the writer is told, split out from the model.Prompt so a
 // test can read it.
 //
 // The instance publishes two kinds of piece and they disagreed about sources.

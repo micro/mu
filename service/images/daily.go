@@ -4,7 +4,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/blob"
 	"mu/internal/data"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/settings"
 	"strings"
 	"time"
@@ -26,7 +26,7 @@ func generateDaily(now time.Time) {
 		return
 	}
 	theme := themeFor(now.YearDay())
-	url, err := mumodel.GenerateImage(theme.prompt)
+	url, err := model.GenerateImage(theme.prompt)
 	if err != nil {
 		app.Log("images", "daily generation failed: %v", err)
 		return

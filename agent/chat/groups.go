@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"mu/agent"
 	"mu/internal/group"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/service"
 	"mu/service/chat"
 )
@@ -41,7 +41,7 @@ func answerGroup(id, room, actor, ref, text string) {
 	res, err := agent.Ask(agent.AskRequest{Account: scope, Client: Client, Thread: room, Text: text, MessageRef: ref, From: actor, Agent: c.Agent, History: history, System: fmt.Sprintf("You are the shared assistant for %s. All members can read this conversation. Use only this group's resources. Never claim access to a member's personal data. Address the request from @%s.", g.Name, actor)})
 	reply := res.Text
 	if err != nil {
-		reply = "I couldn't complete that request. " + mumodel.FailureMessage(err)
+		reply = "I couldn't complete that request. " + model.FailureMessage(err)
 	}
 	if !group.Member(id, actor) {
 		return

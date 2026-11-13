@@ -43,7 +43,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/google"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/notes"
 	"mu/internal/origin"
 	"mu/internal/push"
@@ -469,7 +469,7 @@ func wireHooks() {
 	// A model is optional now, so the ask box has to know whether there is one.
 	// internal/model imports internal/app, so the answer comes back through a hook
 	// rather than an import that cannot exist. See app.AgentReady.
-	// mumodel.Configured, not mumodel.PreferredProvider.
+	// model.Configured, not model.PreferredProvider.
 	//
 	// PreferredProvider answers a narrower question than it reads as: whether
 	// AI_PROVIDER names a provider that has a credential. That setting is an
@@ -481,7 +481,7 @@ func wireHooks() {
 	//
 	// Configured is the question actually being asked: is there any credential
 	// or endpoint this instance could reach a model through.
-	app.AgentReady = mumodel.Configured
+	app.AgentReady = model.Configured
 
 	// And whether a wallet is a wallet here. Same shape, same reason.
 	app.TopUpConfigured = billing.TopUpConfigured
@@ -688,7 +688,7 @@ func wireHooks() {
 
 	// The status page asks the AI package what the model is doing rather than
 	// guessing from one env var.
-	app.LLMStatus = mumodel.Status
+	app.LLMStatus = model.Status
 	app.AgentStatus = agent.Status
 
 	// Signup and login are not tools. Creating an account and exchanging

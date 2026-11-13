@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"net/http"
 	"net/url"
 
@@ -626,7 +626,7 @@ func agentErrorMessage(err error) string {
 	if errors.Is(err, ErrNoProvider) {
 		return "The agent has no AI provider configured. Set a provider key in /admin/config."
 	}
-	return "Could not generate response: " + mumodel.FailureMessage(err)
+	return "Could not generate response: " + model.FailureMessage(err)
 }
 
 func handleQuery(w http.ResponseWriter, r *http.Request) {

@@ -12,7 +12,7 @@ import (
 	"go-micro.dev/v6/store"
 
 	"mu/internal/app"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/usage"
 )
 
@@ -35,7 +35,7 @@ func costCaller(opts QueryOpts) string {
 //
 // caller is what the spend log files it under: the name of the agent that ran,
 // so a bill can be read by which agent earned it.
-func recordRunCost(st store.Store, agentName, caller, account, provider string, meter *mumodel.CallMeter) {
+func recordRunCost(st store.Store, agentName, caller, account, provider string, meter *model.CallMeter) {
 	runID := agentName
 	defer func() { meter.Record(caller, account, runID) }()
 	if st == nil || agentName == "" {
@@ -78,7 +78,7 @@ func recordRunCost(st store.Store, agentName, caller, account, provider string, 
 				})
 				continue
 			}
-			mumodel.RecordAgentUsage(caller, m.model, m.input, m.output, m.calls, mumodel.UsageTiming{Account: account, RunID: s.RunID, ModelMS: m.latency})
+			model.RecordAgentUsage(caller, m.model, m.input, m.output, m.calls, model.UsageTiming{Account: account, RunID: s.RunID, ModelMS: m.latency})
 		}
 	}
 }

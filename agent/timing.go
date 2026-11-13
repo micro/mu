@@ -3,7 +3,7 @@ package agent
 import (
 	gmagent "go-micro.dev/v6/agent"
 	"mu/internal/app"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"time"
 )
 
@@ -22,7 +22,7 @@ func logRunTiming(e gmagent.RunEvent) {
 			}
 		}
 	}
-	app.RecordExternalCall(app.APILogEntry{Kind: "model", Time: e.Time, Service: e.Provider, Method: e.Kind, Model: e.Model, RunID: e.RunID, Outcome: outcome, Attempt: e.Attempt, Duration: time.Duration(e.LatencyMS) * time.Millisecond, Error: mumodel.ProviderErrorDetail(e.Error), ErrorKind: e.ErrorKind, InputTokens: e.Tokens.InputTokens, OutputTokens: e.Tokens.OutputTokens})
+	app.RecordExternalCall(app.APILogEntry{Kind: "model", Time: e.Time, Service: e.Provider, Method: e.Kind, Model: e.Model, RunID: e.RunID, Outcome: outcome, Attempt: e.Attempt, Duration: time.Duration(e.LatencyMS) * time.Millisecond, Error: model.ProviderErrorDetail(e.Error), ErrorKind: e.ErrorKind, InputTokens: e.Tokens.InputTokens, OutputTokens: e.Tokens.OutputTokens})
 }
 
 // runTimingFor captures the selected route, rather than the adapter's String()

@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/quota"
 	"mu/internal/service"
 )
@@ -58,11 +58,11 @@ const note = "\n\n(Only the first %d characters were read; the input was %d.)"
 //
 // Every method here is the same shape — a system prompt, some text, one
 // answer — so they share one path rather than four almost-identical ones.
-func ask(system, question, model string) (string, error) {
-	out, err := mumodel.Ask(&mumodel.Prompt{
+func ask(system, question, modelID string) (string, error) {
+	out, err := model.Ask(&model.Prompt{
 		System:   system,
 		Question: question,
-		Model:    model,
+		Model:    modelID,
 		Caller:   "text",
 	})
 	if err != nil {

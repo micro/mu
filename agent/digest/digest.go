@@ -60,7 +60,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/service/blog"
 )
 
@@ -88,7 +88,7 @@ func Load() {
 		lastStatus = "ok"
 	}
 
-	if mumodel.BlogEnabled() {
+	if model.BlogEnabled() {
 		go scheduler()
 	}
 }
@@ -166,7 +166,7 @@ func TestGenerate() (string, error) {
 func scheduler() {
 	time.Sleep(30 * time.Second)
 	for {
-		if mumodel.BlogEnabled() && ready() {
+		if model.BlogEnabled() && ready() {
 			generate()
 		}
 		time.Sleep(time.Hour)
@@ -334,7 +334,7 @@ func opinionContext() string {
 
 // digestSystem is the briefing's instructions, and what it is reading.
 //
-// Split out from the mumodel.Prompt so a test can read it: the whole change here is
+// Split out from the model.Prompt so a test can read it: the whole change here is
 // that the model is told the pieces come first and to build on them, and a
 // prompt that is only ever assembled inside a call to a model is a prompt
 // nothing can check.
@@ -392,16 +392,16 @@ func generateDigestContent(context string, fromPieces bool) (string, error) {
 		return "", nil
 	}
 
-	prompt := &mumodel.Prompt{
+	prompt := &model.Prompt{
 		System:   digestSystem(fromPieces),
 		Question: "Briefing generated at " + time.Now().UTC().Format("Monday 2 January 2006, 15:04 MST") + ".\n\n" + context,
-		Priority: mumodel.PriorityLow,
-		Model:    mumodel.BackgroundModel(),
+		Priority: model.PriorityLow,
+		Model:    model.BackgroundModel(),
 		Caller:   "daily-digest",
 	}
 
 	app.Log("digest", "Calling AI with %d chars of context", len(context))
-	draft, err := mumodel.Ask(prompt)
+	draft, err := model.Ask(prompt)
 	if err != nil {
 		app.Log("digest", "AI call failed: %v", err)
 		return "", err

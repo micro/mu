@@ -12,7 +12,7 @@ import (
 
 	"mu/agent"
 	"mu/internal/app"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/persist"
 	"mu/service/mail"
 	"mu/service/tasks"
@@ -91,7 +91,7 @@ func consumePreparedWith(r request, prepare func(string, string, string, time.Ti
 		}
 		_, result.Answer, err = prepare(r.Account, r.ID, r.Revision, r.Due)
 		if err != nil {
-			result.Failure = mumodel.FailureMessage(err)
+			result.Failure = model.FailureMessage(err)
 		}
 		result.State, result.ReadyAt = "ready", time.Now().UTC()
 		if err := save(); err != nil {
@@ -136,7 +136,7 @@ func consumePreparedWith(r request, prepare func(string, string, string, time.Ti
 	}
 	if err := send(r, result.Answer, failure); err != nil {
 		result.State = "delivery_failed"
-		result.Failure = mumodel.FailureMessage(err)
+		result.Failure = model.FailureMessage(err)
 		return save()
 	}
 	result.State = "done"

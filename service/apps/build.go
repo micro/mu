@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 )
 
 // buildAttempts bounds generation and repair costs.
@@ -68,7 +68,7 @@ func (rf refinement) run() (written, int, error) {
 
 	var last []string
 	for attempt := 1; attempt <= buildAttempts; attempt++ {
-		raw, err := mumodel.Ask(&mumodel.Prompt{
+		raw, err := model.Ask(&model.Prompt{
 			System:    rf.system,
 			Question:  question,
 			Caller:    rf.caller,

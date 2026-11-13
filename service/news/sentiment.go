@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"mu/internal/app"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 )
 
 type Sentiment struct {
@@ -26,7 +26,7 @@ var (
 
 // StartSentimentLoop runs sentiment tagging every 15 minutes.
 func StartSentimentLoop() {
-	if !mumodel.BackgroundEnabled() {
+	if !model.BackgroundEnabled() {
 		return
 	}
 	go func() {
@@ -71,7 +71,7 @@ func tagSentiments() {
 		sb.WriteString(fmt.Sprintf("%d. %s — %s\n", i+1, p.Title, truncate(p.Description, 150)))
 	}
 
-	result, err := mumodel.Ask(&mumodel.Prompt{
+	result, err := model.Ask(&model.Prompt{
 		System: `Tag each article with sentiment and topics. Return ONLY a JSON array with one object per article in order:
 [{"score":0.5,"topics":["crypto","regulation"],"summary":"one line summary"},...]
 
@@ -79,8 +79,8 @@ Score: -1.0 (very negative) to 1.0 (very positive), 0 = neutral.
 Topics: 1-3 lowercase tags.
 Summary: one sentence, max 20 words.`,
 		Question:  sb.String(),
-		Model:     mumodel.BackgroundModel(),
-		Priority:  mumodel.PriorityLow,
+		Model:     model.BackgroundModel(),
+		Priority:  model.PriorityLow,
 		Caller:    "news-sentiment",
 		MaxTokens: 4096,
 	})

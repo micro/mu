@@ -17,7 +17,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/service/apps/micro"
@@ -1705,11 +1705,11 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 	var result string
 	err = quota.Run(acc.ID, quota.OpAgentRun, func() error {
 		started = true
-		result, err = mumodel.Ask(&mumodel.Prompt{
+		result, err = model.Ask(&model.Prompt{
 			System:   system,
 			Question: req.Prompt,
-			Model:    mumodel.BackgroundModel(),
-			Priority: mumodel.PriorityHigh,
+			Model:    model.BackgroundModel(),
+			Priority: model.PriorityHigh,
 			Caller:   "app-sdk-ai-" + slug,
 		})
 		return err

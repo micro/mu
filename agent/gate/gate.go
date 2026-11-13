@@ -39,13 +39,13 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/event"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/thread"
 )
 
 // Load subscribes to arrivals that were held. Called at boot.
 func Load() {
-	if !mumodel.BackgroundEnabled() {
+	if !model.BackgroundEnabled() {
 		return
 	}
 	go func() {
@@ -81,10 +81,10 @@ func judge(account, id, from string) {
 		return
 	}
 
-	verdict, err := mumodel.Ask(&mumodel.Prompt{
+	verdict, err := model.Ask(&model.Prompt{
 		System:   prompt,
 		Question: "From: " + from + "\n\nMessage: " + said,
-		Model:    mumodel.BackgroundModel(),
+		Model:    model.BackgroundModel(),
 		Caller:   "arrival-gate",
 	})
 	if err != nil {
@@ -134,7 +134,7 @@ const readLimit = 1000
 //
 // So a page can say "nothing is being judged, held messages are waiting for
 // you" rather than showing a list that reads as a decision somebody made.
-func Configured() bool { return mumodel.BackgroundEnabled() && mumodel.Configured() }
+func Configured() bool { return model.BackgroundEnabled() && model.Configured() }
 
 // prompt is what the model is asked.
 //

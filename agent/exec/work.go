@@ -15,7 +15,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/event"
 	"mu/internal/group"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/origin"
 	"mu/internal/thread"
 	"mu/internal/version"
@@ -287,7 +287,7 @@ func answered(r request, answer string, err error) {
 	if err != nil {
 		// Said rather than swallowed, for the reason in the package comment:
 		// silence is indistinguishable from work nobody picked up.
-		text = "That did not work: " + mumodel.FailureMessage(err)
+		text = "That did not work: " + model.FailureMessage(err)
 	}
 	from := r.Agent
 	if from == "" {
@@ -309,8 +309,8 @@ func finishTask(r request, answer string, steps []tasks.Step, err error) {
 	if err != nil {
 		app.Log("work", "task %q failed for %s: %v", r.Title, r.Account, err)
 		status = tasks.StatusFailed
-		result = "Last run failed: " + mumodel.FailureMessage(err)
-		reply = "That did not work: " + mumodel.FailureMessage(err)
+		result = "Last run failed: " + model.FailureMessage(err)
+		reply = "That did not work: " + model.FailureMessage(err)
 	}
 	var blocked *blockedOutcome
 	if errors.As(err, &blocked) {

@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	mumodel "mu/internal/model"
+	"mu/internal/model"
 	"mu/internal/settings"
 )
 
@@ -64,7 +64,7 @@ func ready(addr string, activated bool) {
 func missingPieces() []string {
 	var out []string
 
-	if !mumodel.Configured() {
+	if !model.Configured() {
 		out = append(out, "A model. The agent cannot answer anything without one — "+
 			"ANTHROPIC_API_KEY, ATLAS_API_KEY or OPENROUTER_API_KEY, or run `mu setup`.")
 	}
