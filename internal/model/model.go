@@ -1,6 +1,6 @@
 // Package model defines the composition used by agents and generated writing:
-// an LLM, a foundation, instructions, knowledge and services. It performs no
-// inference, retrieval or tool execution and holds no account state.
+// an LLM, a foundation, instructions, knowledge and services. It also owns
+// provider selection, inference, metering and model health for the runtime.
 package model
 
 import "strings"

@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"mu/agent/micro"
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	mumodel "mu/internal/model"
 	"mu/internal/origin"
 	"mu/internal/settings"
 	"mu/internal/thread"
@@ -57,7 +57,7 @@ type state struct {
 
 var mu sync.Mutex
 var running sync.Once
-var ask = ai.Ask
+var ask = mumodel.Ask
 var send = mail.SendIntroductionReply
 
 func init() {
@@ -67,11 +67,11 @@ func model() string {
 	if m := strings.TrimSpace(settings.Get("HELLO_MODEL")); m != "" {
 		return m
 	}
-	p, _, _, ok := ai.PreferredProvider()
-	if p == ai.ProviderOpenRouter || (!ok && ai.OpenRouterKey() != "" && ai.BackgroundModel() == ai.OpenRouterModel()) {
+	p, _, _, ok := mumodel.PreferredProvider()
+	if p == mumodel.ProviderOpenRouter || (!ok && mumodel.OpenRouterKey() != "" && mumodel.BackgroundModel() == mumodel.OpenRouterModel()) {
 		return "z-ai/glm-5.3-flash"
 	}
-	return ai.BackgroundModel()
+	return mumodel.BackgroundModel()
 }
 func read() (*state, error) {
 	s := &state{People: map[string]*introduction{}}
@@ -191,7 +191,7 @@ func process() {
 		var index int
 		var job turn
 		var email string
-		var history ai.History
+		var history mumodel.History
 		for candidate, p := range s.People {
 			if len(p.Messages) > 0 && time.Since(p.Messages[0].At) > 30*24*time.Hour && !p.Expired {
 				p.Expired = true
@@ -232,7 +232,7 @@ func process() {
 				k, index, job, email = candidate, i, m, p.Email
 				for _, prev := range p.Messages[:i] {
 					if prev.Sent {
-						history = append(history, ai.Message{Prompt: prev.Text, Answer: prev.Answer})
+						history = append(history, mumodel.Message{Prompt: prev.Text, Answer: prev.Answer})
 					}
 				}
 				break
@@ -258,7 +258,7 @@ func process() {
 		answer := job.Answer
 		if answer == "" {
 			if call {
-				answer, err = ask(&ai.Prompt{System: instruction, Question: job.Subject + "\n\n" + job.Text, Context: history, Model: model(), MaxTokens: 400, Caller: "hello", Priority: ai.PriorityHigh})
+				answer, err = ask(&mumodel.Prompt{System: instruction, Question: job.Subject + "\n\n" + job.Text, Context: history, Model: model(), MaxTokens: 400, Caller: "hello", Priority: mumodel.PriorityHigh})
 			}
 			if strings.TrimSpace(answer) == "" || err != nil {
 				answer = "I couldn't answer that just now. You can create an account to continue with Micro."

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"mu/internal/ai"
 	"mu/internal/auth"
 	"mu/internal/data"
+	mumodel "mu/internal/model"
 	"mu/internal/thread"
 )
 
@@ -26,7 +26,7 @@ func setup(t *testing.T) {
 func TestBoundedIntroductionAndVerifiedClaim(t *testing.T) {
 	setup(t)
 	calls, sends := 0, 0
-	ask = func(p *ai.Prompt) (string, error) {
+	ask = func(p *mumodel.Prompt) (string, error) {
 		calls++
 		if p.MaxTokens != 400 || p.Model == "" || p.Caller != "hello" {
 			t.Fatal("unbounded model request")
@@ -97,7 +97,7 @@ func TestBoundedIntroductionAndVerifiedClaim(t *testing.T) {
 func TestRetryDoesNotRepeatModelAndDailyCap(t *testing.T) {
 	setup(t)
 	calls := 0
-	ask = func(*ai.Prompt) (string, error) { calls++; return "Answer", nil }
+	ask = func(*mumodel.Prompt) (string, error) { calls++; return "Answer", nil }
 	send = func(string, string, string, string, string) error { return fmt.Errorf("relay unavailable") }
 	if err := Receive("retry@example.net", "<retry>", "Hello", "Question"); err != nil {
 		t.Fatal(err)

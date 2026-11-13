@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
+	mumodel "mu/internal/model"
 	"mu/internal/result"
 	"mu/internal/service"
 )
@@ -197,10 +197,10 @@ func runNextBuild() {
 		if !checkpointBuild(&j) {
 			return
 		}
-		raw, err := ai.Ask(&ai.Prompt{System: buildSystem, Question: j.Question, Caller: "app-build", MaxTokens: buildTokens})
+		raw, err := mumodel.Ask(&mumodel.Prompt{System: buildSystem, Question: j.Question, Caller: "app-build", MaxTokens: buildTokens})
 		if err != nil {
 			j.State = "failed"
-			j.Error = ai.FailureMessage(err)
+			j.Error = mumodel.FailureMessage(err)
 			checkpointBuild(&j)
 			return
 		}

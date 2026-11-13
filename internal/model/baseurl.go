@@ -1,4 +1,4 @@
-package ai
+package model
 
 // One meaning for OPENAI_BASE_URL, and one place that converts it.
 //

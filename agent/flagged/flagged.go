@@ -43,10 +43,10 @@ import (
 	"fmt"
 	"strings"
 
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/event"
 	"mu/internal/flag"
+	mumodel "mu/internal/model"
 )
 
 // Load subscribes to what gets published. Called at boot.
@@ -124,9 +124,9 @@ func classify(title, text string) (string, error) {
 	if !Configured() {
 		return "", fmt.Errorf("no moderation model configured")
 	}
-	return ai.Ask(&ai.Prompt{
+	return mumodel.Ask(&mumodel.Prompt{
 		System: prompt, Question: "Title: " + title + "\n\nContent: " + text,
-		Model: ai.BackgroundModel(), Priority: ai.PriorityLow, Caller: "flagged",
+		Model: mumodel.BackgroundModel(), Priority: mumodel.PriorityLow, Caller: "flagged",
 	})
 }
 
@@ -136,7 +136,7 @@ func classify(title, text string) (string, error) {
 // see the naming rules. It exists so /admin/flagged can say "no model
 // configured, nothing is being classified" instead of showing an empty list
 // that reads as a clean bill of health.
-func Configured() bool { return ai.BackgroundEnabled() && ai.Configured() }
+func Configured() bool { return mumodel.BackgroundEnabled() && mumodel.Configured() }
 
 // prompt is what the model is asked. Moved here from internal/flag with the
 // rest of the judgement: a store does not hold an opinion about prose.

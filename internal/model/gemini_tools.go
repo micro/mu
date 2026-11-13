@@ -1,4 +1,4 @@
-package ai
+package model
 
 // Mu's Gemini tool continuation adapter. Based on go-micro's Gemini provider;
 // keep the signed response parts intact and report failed follow-up calls.

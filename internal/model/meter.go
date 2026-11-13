@@ -1,4 +1,4 @@
-package ai
+package model
 
 // Provider adapters may make several HTTP calls inside one Generate call and
 // return only the first call's usage. Count the responses at the existing HTTP

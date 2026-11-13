@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
+	mumodel "mu/internal/model"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/service/apps/micro"
@@ -1705,11 +1705,11 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 	var result string
 	err = quota.Run(acc.ID, quota.OpAgentRun, func() error {
 		started = true
-		result, err = ai.Ask(&ai.Prompt{
+		result, err = mumodel.Ask(&mumodel.Prompt{
 			System:   system,
 			Question: req.Prompt,
-			Model:    ai.BackgroundModel(),
-			Priority: ai.PriorityHigh,
+			Model:    mumodel.BackgroundModel(),
+			Priority: mumodel.PriorityHigh,
 			Caller:   "app-sdk-ai-" + slug,
 		})
 		return err

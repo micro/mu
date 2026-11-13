@@ -1,4 +1,4 @@
-package ai
+package model
 
 // Whether the model actually answers, as opposed to whether a key is set.
 //

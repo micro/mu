@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 
-	"mu/internal/ai"
 	"mu/internal/app"
+	mumodel "mu/internal/model"
 )
 
 // shortlistMax bounds what the model is asked to read. A dozen posts is a
@@ -39,14 +39,14 @@ const judgeChars = 300
 // them in its order. An empty result means no model, no answer, or nothing it
 // thought was worth it. None of those states authorises publication.
 func judge(short []*candidate) []*candidate {
-	if len(short) == 0 || !ai.Configured() {
+	if len(short) == 0 || !mumodel.Configured() {
 		return nil
 	}
 	if len(short) > shortlistMax {
 		short = short[:shortlistMax]
 	}
 
-	answer, err := ai.Ask(&ai.Prompt{
+	answer, err := mumodel.Ask(&mumodel.Prompt{
 		System:   judgeSystem,
 		Question: numbered(short),
 		// The cheap tier, like every other judgement nobody asked for.
@@ -57,8 +57,8 @@ func judge(short []*candidate) []*candidate {
 		// digest, the brief and the summaries all take BackgroundModel. A
 		// ranking of posts nobody is waiting for does not need the model
 		// somebody talking to their agent is waiting for.
-		Model:     ai.BackgroundModel(),
-		Priority:  ai.PriorityLow,
+		Model:     mumodel.BackgroundModel(),
+		Priority:  mumodel.PriorityLow,
 		MaxTokens: 200,
 		Caller:    "social-judge",
 	})

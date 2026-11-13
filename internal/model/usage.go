@@ -1,4 +1,4 @@
-package ai
+package model
 
 // What a question cost.
 //

@@ -29,9 +29,9 @@ import (
 	"strings"
 	"time"
 
-	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
+	mumodel "mu/internal/model"
 	"mu/internal/settings"
 )
 
@@ -155,7 +155,7 @@ func ApplyProvider(provider, key, baseURL string) error {
 		// then be asked to type an id that /models would have answered.
 		// Nothing stored when it cannot be reached: an instance that says it
 		// needs a model beats one that names a model that is not there.
-		if m := ai.DetectLocalModel(baseURL, "ollama"); m != "" {
+		if m := mumodel.DetectLocalModel(baseURL, "ollama"); m != "" {
 			settings.Set("OPENAI_MODEL", m)
 		}
 	case "", "later", "none":

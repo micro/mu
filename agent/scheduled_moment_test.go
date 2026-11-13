@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"mu/internal/auth"
 	"mu/internal/data"
-	"mu/model"
+	"mu/internal/model"
 	"mu/service/events"
 	"net/http"
 	"net/http/httptest"

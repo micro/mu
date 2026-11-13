@@ -34,7 +34,7 @@ import (
 	"go-micro.dev/v6/model/atlascloud"
 	"go-micro.dev/v6/model/openai"
 
-	"mu/internal/ai"
+	mumodel "mu/internal/model"
 	"mu/internal/settings"
 )
 
@@ -190,8 +190,8 @@ func provider(handler gmai.ToolHandler) (gmai.Model, error) {
 		}
 		// Without the version segment: the provider appends /v1/chat/completions
 		// itself, so this said /api/v1 and asked for /api/v1/v1/chat/completions.
-		// See ai.ProviderBaseURL.
-		o := append(opts(key, model), gmai.WithBaseURL(ai.ProviderBaseURL("https://openrouter.ai/api/v1")))
+		// See mumodel.ProviderBaseURL.
+		o := append(opts(key, model), gmai.WithBaseURL(mumodel.ProviderBaseURL("https://openrouter.ai/api/v1")))
 		return openai.NewProvider(o...), nil
 	}
 	// A local server: Ollama and friends. The key is usually ignored but some
@@ -200,8 +200,8 @@ func provider(handler gmai.ToolHandler) (gmai.Model, error) {
 		// The model the operator named. It defaulted to "gpt-4o-mini", which is
 		// a model no Ollama or vLLM has ever heard of — so an operator who set
 		// only the endpoint got a 404 naming a model they never mentioned,
-		// instead of being told they had not said which model. See ai.LocalModel.
-		model := ai.LocalModel()
+		// instead of being told they had not said which model. See mumodel.LocalModel.
+		model := mumodel.LocalModel()
 		if model == "" {
 			return nil, fmt.Errorf("set OPENAI_MODEL to the model this endpoint serves")
 		}
@@ -209,7 +209,7 @@ func provider(handler gmai.ToolHandler) (gmai.Model, error) {
 		if key == "" {
 			key = "local"
 		}
-		o := append(opts(key, model), gmai.WithBaseURL(ai.ProviderBaseURL(base)))
+		o := append(opts(key, model), gmai.WithBaseURL(mumodel.ProviderBaseURL(base)))
 		return openai.NewProvider(o...), nil
 	}
 

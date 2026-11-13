@@ -34,8 +34,8 @@ import (
 	"strconv"
 
 	"mu/agent/micro"
-	"mu/internal/ai"
 	"mu/internal/auth"
+	mumodel "mu/internal/model"
 	"mu/internal/service"
 	"mu/internal/userdb"
 	"mu/service/mail"
@@ -92,7 +92,7 @@ type Agent struct {
 	// agents ever set it, so "use the cheap one for this job" was a choice
 	// Micro and Code had and nobody's own agent did.
 	//
-	// Validated against ai.Choices when it is set rather than when it is used.
+	// Validated against mumodel.Choices when it is set rather than when it is used.
 	// A model no provider here serves fails at the model call, minutes later,
 	// on a run somebody is waiting for — and the person who could fix it is
 	// the one who typed it, at the moment they typed it.
@@ -647,7 +647,7 @@ func UpdateAgent(owner, id, name, prompt, description string, services []string)
 // Refused here rather than at the model call. A model no provider on this
 // instance serves fails minutes later, on a run somebody is waiting for, and
 // the person who could fix it is the one who chose it — at the moment they
-// chose it. See ai.Offered.
+// chose it. See mumodel.Offered.
 func SetModel(owner, id, model string) error {
 	rosterMutation.Lock()
 	defer rosterMutation.Unlock()
@@ -656,7 +656,7 @@ func SetModel(owner, id, model string) error {
 		return fmt.Errorf("no such agent")
 	}
 	model = strings.TrimSpace(model)
-	if !ai.Offered(model) {
+	if !mumodel.Offered(model) {
 		return fmt.Errorf("this instance cannot run %q — it has no key for a provider that serves it", model)
 	}
 	a.Model = model

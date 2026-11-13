@@ -1,4 +1,4 @@
-package ai
+package model
 
 // The pinned agent's StreamAsk replays a completed Generate response. This
 // request-scoped bridge streams the compatible provider's HTTP response while

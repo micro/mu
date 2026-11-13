@@ -457,11 +457,10 @@ add top-level packages or navigation for implementation infrastructure.
 `main.go` is the front door; `internal/server` assembles the product.
 Internal event delivery and persistence belong under `internal/`.
 
-`model/` is the shared composition definition, not a product destination. It owns
-the foundation and system-prompt composition used by agents and writing. It is a
-dependency-free leaf available to internal packages. Keep provider execution,
-retrieval, credentials and service authorization in their existing runtime paths;
-model knowledge/service references never grant permissions.
+`internal/model` owns model composition, the shared foundation, prompt building,
+provider selection and inference. Agents own execution and service orchestration.
+Knowledge and service references in a model never grant permissions; retrieval
+and service authorization remain in their existing runtime paths.
 
 `x402/` owns the configured developer host, including its router, browser
 account flow and presentation. `x402/billing` owns the shared credit ledger and
@@ -504,7 +503,7 @@ about state, an agent decides which question to ask, and a service calling an
 agent is asking the model what its own answer should be. Enforced by
 `TestNoNewServiceCallsAnAgent`, which asserts zero.
 
-That test reads import paths, and `internal/ai` is not one of them — it is
+That test reads import paths, and `internal/model` is not one of them — it is
 substrate, and a service is entitled to know about the runtime. So the
 forbidden act can be performed through a permitted import, and the rule passes.
 **The line is whether the model is producing the answer the caller asked for,
