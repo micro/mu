@@ -1,5 +1,3 @@
-// Package ai provides LLM integration for the Mu platform — Anthropic,
-// Atlas Cloud, OpenRouter, and local OpenAI-compatible servers.
 package model
 
 import (
