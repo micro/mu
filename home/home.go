@@ -16,7 +16,6 @@ import (
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/group"
 	"mu/internal/quota"
 	"mu/service/blog"
 	"mu/service/events"
@@ -137,7 +136,6 @@ func feedHTML(snapshot overviewSnapshot, owner string) string {
 		}
 		column.WriteString(app.PreviewCard("home-service-"+spec.Name, spec.NavLabel(), spec.Page, `<div class="home-card-content">`+body+`</div>`))
 	}
-	left.WriteString(groupsCard(owner))
 	return `<div class="page-stack"><div class="dashboard-columns feed-columns"><div class="page-stack">` + left.String() + `</div><div class="page-stack">` + right.String() + `</div></div></div>`
 }
 
@@ -162,30 +160,4 @@ func pinnedApps(acc *auth.Account) string {
 	}
 	b.WriteString(`<a href="/services"><span class="service-shortcut-icon" aria-hidden="true">+</span><span>All apps</span></a>`)
 	return `<nav class="service-shortcuts" aria-label="Pinned apps">` + b.String() + `</nav>`
-}
-
-// groupsCard previews account-scoped groups alongside the other Feed services.
-func groupsCard(owner string) string {
-	groups, pending, err := group.List(owner)
-	var b strings.Builder
-	if err != nil {
-		b.WriteString(`<p class="text-muted">Groups are temporarily unavailable.</p>`)
-	} else {
-		if len(pending) > 0 {
-			fmt.Fprintf(&b, `<p class="text-muted">%d pending invitations</p>`, len(pending))
-		}
-		sort.SliceStable(groups, func(i, j int) bool { return strings.ToLower(groups[i].Name) < strings.ToLower(groups[j].Name) })
-		if len(groups) > 5 {
-			groups = groups[:5]
-		}
-		b.WriteString(`<div class="collection-list">`)
-		for _, g := range groups {
-			fmt.Fprintf(&b, `<a class="collection-item" href="/groups?id=%s"><span class="collection-title">%s</span><span class="collection-preview">%d members</span></a>`, html.EscapeString(g.ID), html.EscapeString(g.Name), len(g.Members))
-		}
-		b.WriteString(`</div>`)
-		if len(groups) == 0 {
-			b.WriteString(`<p class="text-muted">A shared place for your family, friends or community. Invite people to chat and get help together.</p>`)
-		}
-	}
-	return app.PreviewCard("home-groups", "Groups", "/groups", b.String())
 }

@@ -3,7 +3,6 @@ package home
 import (
 	"encoding/json"
 	"mu/internal/auth"
-	"mu/internal/group"
 	"mu/internal/notes"
 	"mu/internal/service"
 	"mu/service/apps"
@@ -58,8 +57,8 @@ func TestHomeShowsPinsAndConversationsAndFeedIncludesPrayer(t *testing.T) {
 				}
 				body = data.HTML
 			}
-			if strings.Contains(body, `id="home-groups"`) != feed || strings.Contains(body, `href="/groups?new=1"`) {
-				t.Fatalf("groups must appear only on Feed: feed=%v fragment=%v", feed, fragment)
+			if strings.Contains(body, `id="home-groups"`) || strings.Contains(body, `href="/groups?new=1"`) {
+				t.Fatalf("static groups card must not appear on Home: feed=%v fragment=%v", feed, fragment)
 			}
 			if strings.Contains(body, "private test context") != feed || strings.Contains(body, "public test update") != feed {
 				t.Fatalf("mixed views: feed=%v fragment=%v", feed, fragment)
@@ -104,26 +103,5 @@ func TestLibraryRequiresAccountAndKeepsNotesPrivate(t *testing.T) {
 	LibraryHandler(w, r)
 	if w.Code != 403 {
 		t.Fatal("file preview requires CSRF")
-	}
-}
-
-func TestHomeGroupsAreAccountScoped(t *testing.T) {
-	for _, owner := range []string{"home-group-owner", "home-group-other"} {
-		auth.SetAccountForTest(&auth.Account{ID: owner, Approved: true})
-		defer auth.RemoveAccountForTest(owner)
-	}
-	own, err := group.Create("home-group-owner", "Family <home>", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer group.Change(own.ID, "home-group-owner", "delete", "", "")
-	other, err := group.Create("home-group-other", "Other secret group", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer group.Change(other.ID, "home-group-other", "delete", "", "")
-	body := groupsCard("home-group-owner")
-	if strings.Contains(body, "/groups?new=1") || !strings.Contains(body, "/groups?id="+own.ID) || !strings.Contains(body, "Family &lt;home&gt;") || strings.Contains(body, other.ID) || strings.Contains(body, other.Name) {
-		t.Fatal(body)
 	}
 }
