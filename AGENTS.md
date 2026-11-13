@@ -457,6 +457,12 @@ add top-level packages or navigation for implementation infrastructure.
 `main.go` is the front door; `internal/server` assembles the product.
 Internal event delivery and persistence belong under `internal/`.
 
+`model/` is the shared composition definition, not a product destination. It owns
+the foundation and system-prompt composition used by agents and writing. It is a
+dependency-free leaf available to internal packages. Keep provider execution,
+retrieval, credentials and service authorization in their existing runtime paths;
+model knowledge/service references never grant permissions.
+
 `x402/` owns the configured developer host, including its router, browser
 account flow and presentation. `x402/billing` owns the shared credit ledger and
 payment providers; `x402/payment` owns the wire protocol; `x402/gateway` owns

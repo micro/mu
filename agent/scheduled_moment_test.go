@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/model"
 	"mu/service/events"
 	"net/http"
 	"net/http/httptest"
@@ -106,7 +107,7 @@ func TestMomentSettingsRequireCSRF(t *testing.T) {
 
 func TestPurposeAppliesToEveryPromptPath(t *testing.T) {
 	for _, opts := range []QueryOpts{{}, {System: "You are Malten. For reflection."}, {System: includedBriefInstruction, NoTools: true}, publicVoiceOptions(context.Background())} {
-		if !strings.HasPrefix(nativeSystem(opts), purpose) {
+		if !strings.HasPrefix(nativeSystem(opts), model.Foundation) {
 			t.Fatal("purpose missing from prompt path")
 		}
 	}
