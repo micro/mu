@@ -32,7 +32,14 @@ func TestCompositionControlsAgent(t *testing.T) {
 	if got := selectedServices(opts, []string{"news", "weather"}); len(got) != 0 {
 		t.Fatalf("scope widened: %v", got)
 	}
+	if len(managementTools("owner", opts)) != 0 {
+		t.Fatal("scoped composition exposes management tools")
+	}
 	m.Services = []string{}
+	opts.Tools = nil
+	if len(managementTools("owner", opts)) != 0 {
+		t.Fatal("tool-free composition exposes management tools")
+	}
 	if got := selectedServices(opts, []string{"news"}); len(got) != 0 {
 		t.Fatal("empty selection enabled tools")
 	}

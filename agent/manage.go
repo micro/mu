@@ -12,7 +12,7 @@ import (
 // Management is available only to the account's general agent, never guests or
 // scoped specialists. It cannot issue credentials or grant new external access.
 func managementTools(owner string, opts QueryOpts) []gmagent.Option {
-	if opts.NoTools || owner == "" || opts.Public || len(opts.Tools) > 0 {
+	if opts.NoTools || owner == "" || opts.Public || len(opts.Tools) > 0 || composedModel(opts).Services != nil {
 		return nil
 	}
 	return []gmagent.Option{
