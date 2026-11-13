@@ -68,10 +68,11 @@ type QueryMessage struct {
 }
 
 type QueryOpts struct {
-	anonymousTools    bool   // Public voice: tools must not inherit the payer's account or profile.
-	GroupActor        string // Internal authenticated initiator; never supplied by the model.
-	demo              bool   // Only the capped public demo handler can set this.
-	interactive       bool   // Set by Ask, not scheduled QueryWithOpts callers.
+	Definition        *model.Model // Optional composed model; run restrictions still apply.
+	anonymousTools    bool         // Public voice: tools must not inherit the payer's account or profile.
+	GroupActor        string       // Internal authenticated initiator; never supplied by the model.
+	demo              bool         // Only the capped public demo handler can set this.
+	interactive       bool         // Set by Ask, not scheduled QueryWithOpts callers.
 	RunContext        context.Context
 	OnStepStart       func(Step)
 	Context           ClientContext
@@ -801,6 +802,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
 		nopts.System = namedSystem(ua.Name, ua.SystemPrompt)
 		nopts.Tools = ua.Tools
+		nopts.Model = ua.Model
 	}
 
 	if h := History(accountID, threadID, historyTurns); len(h) > 0 {

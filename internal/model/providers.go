@@ -278,8 +278,9 @@ func generate(prompt *Prompt) (string, error) {
 
 	messages = append(messages, map[string]string{"role": "user", "content": prompt.Question})
 
-	model := prompt.Model
-	if model == "" {
+	selection := prompt.composition().LLM
+	model := selection.ID
+	if model == "" && selection.Provider == "" {
 		model = DefaultModel()
 	}
 
@@ -294,7 +295,7 @@ func generate(prompt *Prompt) (string, error) {
 	}
 
 	// Every non-streaming model call goes through go-micro's ai package.
-	return generateViaMicro(model, systemPromptText, messages, caller, maxTok)
+	return generateViaMicro(model, systemPromptText, messages, caller, maxTok, selection.Provider)
 }
 
 func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
@@ -323,8 +324,9 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 	}
 	msgs = append(msgs, map[string]string{"role": "user", "content": prompt.Question})
 
-	mdl := prompt.Model
-	if mdl == "" {
+	selection := prompt.composition().LLM
+	mdl := selection.ID
+	if mdl == "" && selection.Provider == "" {
 		mdl = DefaultModel()
 	}
 
@@ -340,7 +342,7 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 
 	// Stream through go-micro; it falls back to a single Generate for
 	// providers that don't support streaming.
-	return streamViaMicro(mdl, systemPromptText, msgs, clr, maxTok, onToken)
+	return streamViaMicro(mdl, systemPromptText, msgs, clr, maxTok, onToken, selection.Provider)
 }
 
 // CacheStats returns Anthropic prompt cache statistics

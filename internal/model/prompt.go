@@ -31,16 +31,17 @@ const (
 
 // Prompt represents a request to the LLM
 type Prompt struct {
-	System    string   // System prompt override
-	Topic     string   // User-selected topic/context
-	Rag       []string // RAG context sources
-	Context   History  // Conversation history
-	Question  string   // User's question
-	Priority  int      // Request priority (0=high, 1=medium, 2=low)
-	Provider  string   // Force specific provider (empty = default)
-	Model     string   // Force specific model (empty = provider default)
-	Caller    string   // Identifies the calling feature for usage tracking
-	MaxTokens int      // Max output tokens (0 = default 4096)
+	Definition *Model   // Optional composed model for this request.
+	System     string   // System prompt override
+	Topic      string   // User-selected topic/context
+	Rag        []string // RAG context sources
+	Context    History  // Conversation history
+	Question   string   // User's question
+	Priority   int      // Request priority (0=high, 1=medium, 2=low)
+	Provider   string   // Force specific provider (empty = default)
+	Model      string   // Force specific model (empty = provider default)
+	Caller     string   // Identifies the calling feature for usage tracking
+	MaxTokens  int      // Max output tokens (0 = default 4096)
 }
 
 // systemPromptData is the data passed to the system prompt template
@@ -78,7 +79,7 @@ Keep responses concise but informative. Use markdown for structure when helpful.
 func BuildSystemPrompt(p *Prompt) (string, error) {
 	if p.System != "" {
 		if len(p.Rag) == 0 {
-			return Default().SystemPrompt(p.System), nil
+			return p.composition().SystemPrompt(p.System), nil
 		}
 		var sb strings.Builder
 		sb.WriteString(p.System)
@@ -86,7 +87,7 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 		for i, r := range p.Rag {
 			sb.WriteString(fmt.Sprintf("[%d] %s\n", i, r))
 		}
-		return Default().SystemPrompt(sb.String()), nil
+		return p.composition().SystemPrompt(sb.String()), nil
 	}
 	sb := &strings.Builder{}
 	data := &systemPromptData{
@@ -96,7 +97,7 @@ func BuildSystemPrompt(p *Prompt) (string, error) {
 	if err := systemPrompt.Execute(sb, data); err != nil {
 		return "", err
 	}
-	return Default().SystemPrompt(sb.String()), nil
+	return p.composition().SystemPrompt(sb.String()), nil
 }
 
 // Ask sends a prompt to the LLM and returns the response
@@ -109,4 +110,18 @@ func Ask(prompt *Prompt) (string, error) {
 // response is returned when streaming completes.
 func AskStream(prompt *Prompt, onToken func(token string)) (string, error) {
 	return generateStream(prompt, onToken)
+}
+
+func (p *Prompt) composition() Model {
+	m := Default()
+	if p.Definition != nil {
+		m = *p.Definition
+	}
+	if p.Model != "" {
+		m.LLM.ID = p.Model
+	}
+	if p.Provider != "" {
+		m.LLM.Provider = p.Provider
+	}
+	return m
 }

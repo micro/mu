@@ -13,7 +13,7 @@ type Model struct {
 	Foundation   string
 	Instructions string
 	Knowledge    []Source
-	Services     []string // Service references, not authorization grants.
+	Services     []string // nil inherits available services; empty disables all. Never grants access.
 }
 
 // LLM selects the trained model. Empty fields retain the runtime's configured
@@ -66,4 +66,22 @@ func (m Model) SystemPrompt(instructions string) string {
 		}
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+// SelectServices intersects this composition with the runtime's permitted services.
+func (m Model) SelectServices(available []string) []string {
+	if m.Services == nil {
+		return available
+	}
+	allowed := make(map[string]bool, len(m.Services))
+	for _, name := range m.Services {
+		allowed[strings.ToLower(strings.TrimSpace(name))] = true
+	}
+	var selected []string
+	for _, name := range available {
+		if allowed[name] {
+			selected = append(selected, name)
+		}
+	}
+	return selected
 }

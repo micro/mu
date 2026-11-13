@@ -136,14 +136,20 @@ func modelFor(provider, model string) string {
 //
 // maxTok caps the response length (via go-micro's WithMaxTokens). Cheap
 // background callers get a tighter cap to reduce latency and cost.
-func generateViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int) (reply string, err error) {
+func generateViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int, explicitProvider ...string) (reply string, err error) {
 	if err := checkBackground(caller); err != nil {
 		return "", err
 	}
 	// Every exit from this function is a verdict on whether the model answers.
 	defer func() { recordHealth(err) }()
 
-	provider, apiKey, baseURL, err := resolveProvider(model)
+	var provider, apiKey, baseURL string
+	explicit := len(explicitProvider) > 0 && explicitProvider[0] != ""
+	if explicit {
+		provider, apiKey, model, baseURL, err = ResolveLLM(LLM{Provider: explicitProvider[0], ID: model}, false)
+	} else {
+		provider, apiKey, baseURL, err = resolveProvider(model)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -153,8 +159,11 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 		maxTok = 512
 	}
 
-	useModel := modelFor(provider, model)
-	if provider == "openai" && strings.HasPrefix(model, "claude") {
+	useModel := model
+	if !explicit {
+		useModel = modelFor(provider, model)
+	}
+	if !explicit && provider == "openai" && strings.HasPrefix(model, "claude") {
 		useModel = detectLocalModel(baseURL, apiKey)
 		if useModel == "" {
 			return "", fmt.Errorf("no local model available")
@@ -216,13 +225,19 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 // for each content chunk and returning the full text. If the provider does not
 // support streaming, it falls back to a single Generate call and emits the
 // whole reply at once — so every caller works regardless of provider.
-func streamViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int, onToken func(string)) (reply string, err error) {
+func streamViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int, onToken func(string), explicitProvider ...string) (reply string, err error) {
 	if err := checkBackground(caller); err != nil {
 		return "", err
 	}
 	defer func() { recordHealth(err) }()
 
-	provider, apiKey, baseURL, err := resolveProvider(model)
+	var provider, apiKey, baseURL string
+	explicit := len(explicitProvider) > 0 && explicitProvider[0] != ""
+	if explicit {
+		provider, apiKey, model, baseURL, err = ResolveLLM(LLM{Provider: explicitProvider[0], ID: model}, false)
+	} else {
+		provider, apiKey, baseURL, err = resolveProvider(model)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -231,8 +246,11 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 		maxTok = 512
 	}
 
-	useModel := modelFor(provider, model)
-	if provider == "openai" && strings.HasPrefix(model, "claude") {
+	useModel := model
+	if !explicit {
+		useModel = modelFor(provider, model)
+	}
+	if !explicit && provider == "openai" && strings.HasPrefix(model, "claude") {
 		useModel = detectLocalModel(baseURL, apiKey)
 		if useModel == "" {
 			return "", fmt.Errorf("no local model available")
@@ -282,7 +300,7 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 		// Provider can't stream — fall back to a single Generate.
 		if errors.Is(err, gmai.ErrStreamingUnsupported) {
 			logStream = false
-			out, gerr := generateViaMicro(model, systemPrompt, messages, caller, maxTok)
+			out, gerr := generateViaMicro(model, systemPrompt, messages, caller, maxTok, explicitProvider...)
 			if gerr != nil {
 				return "", gerr
 			}
