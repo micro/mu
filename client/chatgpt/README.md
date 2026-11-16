@@ -30,7 +30,7 @@ is selected when connecting; tools never accept an arbitrary destination URL.
 | `read` | Inbox.Read | Read an inbox item without marking it read |
 | `thread` | Assistant.ReadThread | Continue reading a saved assistant conversation |
 
-`ask` takes `prompt`, a unique `requestId` (16–128 letters, digits, hyphens or
+`ask` takes `prompt`, a unique `requestId` (16–120 letters, digits, hyphens or
 underscores), and optional `agentId` and `thread`. Reuse the same requestId and
 identical arguments only for a retry of the same request. A different user request
 needs a different ID. This maps to Mu's existing durable deduplication; the MCP

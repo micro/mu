@@ -39,7 +39,7 @@ func TestAssistantPlugin(t *testing.T) {
 			return &pb.Operation{Id: "operation", State: pb.OperationState_OPERATION_STATE_QUEUED}, nil
 		}},
 		{Service: "assistant", Endpoint: "Assistant.ReadOperation", Capability: "agent", Request: func() proto.Message { return &pb.ReadOperationRequest{} }, Handle: func(_ http.ResponseWriter, _ *http.Request, account, id string, q proto.Message) (proto.Message, error) {
-			return &pb.Operation{Id: q.(*pb.ReadOperationRequest).Id}, nil
+			return &pb.Operation{Id: q.(*pb.ReadOperationRequest).Id, State: pb.OperationState_OPERATION_STATE_SUCCEEDED, Result: &pb.AskResponse{Text: strings.Repeat("answer", 12000)}}, nil
 		}},
 	})
 	call := func(key, body string) *httptest.ResponseRecorder {
@@ -97,6 +97,11 @@ func TestAssistantPlugin(t *testing.T) {
 	if calls != 1 {
 		t.Fatal("submission count", calls)
 	}
+	longID := strings.Replace(ask, "stable_request_12345", strings.Repeat("a", 121), 1)
+	if got := call(full, longID); !strings.Contains(got.Body.String(), `"isError":true`) || calls != 1 {
+		t.Fatal("oversized request ID dispatched")
+	}
+
 	w = call(full, strings.Replace(ask, `"agentId":"chosen"`, `"account":"other"`, 1))
 	if !strings.Contains(w.Body.String(), `"isError":true`) || calls != 1 {
 		t.Fatal("identity argument accepted", w.Body.String())
@@ -108,6 +113,9 @@ func TestAssistantPlugin(t *testing.T) {
 	w = call(read, `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"status","arguments":{"id":"operation"}}}`)
 	if strings.Contains(w.Body.String(), `"isError":true`) {
 		t.Fatal(w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "SUCCEEDED") || !strings.Contains(w.Body.String(), strings.Repeat("answer", 12000)) {
+		t.Fatal("large result lost its state or content")
 	}
 	session, err := auth.CreateSession(owner)
 	if err != nil {
