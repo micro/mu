@@ -17,6 +17,7 @@ Sign in to an existing account, choose an agent, and talk to it.
 
 | Interface | Client / adapter | Runtime owner |
 | --- | --- | --- |
+| ChatGPT plugin | `client/chatgpt`, `/mcp/assistant` | Assistant and Inbox MUCP operations |
 | TypeScript SDK | `client/typescript` | Generic MUCP transport and Mu composition |
 | Python SDK | `client/python` | Generic MUCP transport and Mu composition |
 | Android | `client/android` | `agent/mucp.go` via MUCP |

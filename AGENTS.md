@@ -19,7 +19,12 @@ identifier rather than introducing a separate conversation ID.
 ## What is in the binary
 
 The runtime service contract is `/api/v1/<service>/<method>` and `/mcp`.
-Both hosts expose the same service tools; x402 adds payment handling. Tokens
+Both hosts expose the same service tools; x402 adds payment handling.
+`/mcp/assistant` is the focused ChatGPT/plugin carrier for the assistant and Inbox
+MUCP contracts. It never exposes raw service tools. The adapter stays under
+`internal/mucp`, assembled by `internal/server`, with the same product scopes,
+account ownership, credits and durable request deduplication as other clients.
+Tokens
 restrict permissions, never select a different catalogue.
 
 Product clients use `/agent`, `/agent/<name>`, `/inbox` and `/work` with content

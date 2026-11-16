@@ -210,6 +210,7 @@ func authRequired() map[string]bool {
 		"/help":                          false,
 		"/mucp":                          false,
 		"/install":                       false, // Public - run your own instance
+		"/mcp/assistant":                 false, // Assistant MCP plugin; per-call OAuth
 		"/mcp":                           false, // Public - MCP tools page
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
@@ -871,6 +872,7 @@ func registerRoutes() {
 	http.HandleFunc("/usage", account.UsageMoved)
 	http.HandleFunc("/billing", account.BillingMoved)
 	http.HandleFunc("/mcp", publicMCPHandler)
+	http.HandleFunc("/mcp/assistant", assistantPluginHandler)
 
 	// serve the app
 	http.Handle("/", app.Serve(billing.Script))

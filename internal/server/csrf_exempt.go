@@ -33,7 +33,7 @@ func csrfExempt(r *http.Request) bool {
 		return true
 
 	// MCP carries its own auth.
-	case r.URL.Path == "/mcp":
+	case r.URL.Path == "/mcp", r.URL.Path == "/mcp/assistant":
 		return true
 
 	// A provider posting to a webhook. Stripe, Twilio, Meta — none of them has
