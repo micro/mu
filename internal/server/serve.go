@@ -95,7 +95,7 @@ func serve(addr string, initialize func()) {
 				r.URL.Path = r.URL.Path[:v-1]
 			}
 
-			if api.ToolDispatch(r.URL.Path) || productClientRequest(r) {
+			if api.ToolDispatch(r.URL.Path) || productClientRequest(r) || r.URL.Path == "/mcp/assistant" {
 				r = api.CredentialRequest(r)
 			}
 

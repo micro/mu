@@ -35,7 +35,7 @@ func startingResponse(w http.ResponseWriter, r *http.Request, ready <-chan struc
 		return true
 	}
 	w.Header().Set("Retry-After", "1")
-	if app.WantsJSON(r) || app.SendsJSON(r) || strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/mcp" ||
+	if app.WantsJSON(r) || app.SendsJSON(r) || strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/mcp" || r.URL.Path == "/mcp/assistant" ||
 		(r.Method != http.MethodGet && r.Method != http.MethodHead) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)

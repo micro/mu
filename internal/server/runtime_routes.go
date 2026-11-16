@@ -1,7 +1,10 @@
 package server
 
 import (
+	"mu/agent"
+	"mu/inbox"
 	"mu/internal/api"
+	"mu/internal/mucp"
 	"net/http"
 )
 
@@ -24,4 +27,9 @@ func publicMCPHandler(w http.ResponseWriter, r *http.Request) {
 }
 func publicReferenceHandler(w http.ResponseWriter, r *http.Request) {
 	api.RESTPageHandler(w, r)
+}
+
+func assistantPluginHandler(w http.ResponseWriter, r *http.Request) {
+	ops := append(agent.MUCPOperations(), inbox.MUCPOperations()...)
+	mucp.PluginHandler(ops)(w, r)
 }
