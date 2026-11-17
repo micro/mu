@@ -87,8 +87,10 @@ class WorkflowTest(unittest.TestCase):
         import tempfile
         from unittest.mock import patch
         from cla import main
-        for race, signed in [(False, True), (False, False), (True, True)]:
-            with self.subTest(race=race, signed=signed), tempfile.TemporaryDirectory() as tmp:
+        for race, signed, peer in [(False, True, None), (False, False, None),
+                                   (True, True, None), (False, True, False),
+                                   (False, True, True), (False, True, 'appeared')]:
+            with self.subTest(race=race, signed=signed, peer=peer), tempfile.TemporaryDirectory() as tmp:
                 event = Path(tmp) / 'event.json'
                 event.write_text(json.dumps({'pull_request': {'number': 10}}))
                 alice = user(1, 'alice')
@@ -98,28 +100,35 @@ class WorkflowTest(unittest.TestCase):
                 statuses = []
 
                 class API:
+                    lists = 0
                     def request(self, path, data=None):
                         if data is not None:
                             statuses.append(data['state'])
                             return {}
                         if statuses and race:
                             return dict(pr, head={'sha': 'new'})
-                        return pr
+                        return dict(pr, number=11) if path.endswith('/11') else pr
 
                     def pages(self, path):
+                        if path.endswith('/pulls'):
+                            self.lists += 1
+                            include = peer is not None and (peer != 'appeared' or self.lists > 1)
+                            return [pr, dict(pr, number=11)] if include else [pr]
                         if path.endswith('/commits'):
                             return [dict(sha='abc', author=alice, commit={'message': 'change'})]
+                        if '/issues/11/' in path:
+                            return [dict(comments[0], body=statement(11, 'abc', digest))] if peer is True else []
                         return comments
 
                 env = {'GITHUB_EVENT_PATH': str(event), 'GITHUB_REPOSITORY': 'micro/mu',
                        'GITHUB_RUN_ID': '1', 'TRUSTED_SHA': 'trusted',
                        'GITHUB_STEP_SUMMARY': str(Path(tmp) / 'summary')}
                 with patch.dict(os.environ, env), patch('cla.GitHub', API):
-                    if race:
+                    if race or peer == 'appeared':
                         with self.assertRaises(RuntimeError):
                             main()
                         self.assertEqual(statuses, ['pending', 'error'])
-                    elif signed:
+                    elif signed and peer is not False:
                         main()
                         self.assertEqual(statuses, ['pending', 'success'])
                     else:

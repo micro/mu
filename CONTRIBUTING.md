@@ -40,7 +40,9 @@ explicit CLA acceptance above. Historical permissions remain separate.
 ## Repository enforcement
 
 The trusted `.github/workflows/cla.yml` workflow publishes the `cla` commit status
-on the actual PR head. It runs on PR updates and comment creation, edits and
+on the actual PR head. Because GitHub shares commit statuses across PRs, every
+open PR at that same head must pass independently. Workflow runs are serialised
+repository-wide, and a changing set of shared PRs fails verification. It runs on PR updates and comment creation, edits and
 deletion, and checks only code from the repository's default branch. It never
 executes PR code with its write-capable token. Acceptance evidence links appear
 in the workflow summary; preserve those records with the PR when merging.

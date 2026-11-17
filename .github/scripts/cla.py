@@ -91,8 +91,6 @@ def main():
     repo = os.environ['GITHUB_REPOSITORY']
     prefix = f'/repos/{repo}'
     pr = api.request(f'{prefix}/pulls/{number}')
-    if pr['state'] != 'open':
-        return
     head = pr['head']['sha']
     target = f'https://github.com/{repo}/actions/runs/{os.environ["GITHUB_RUN_ID"]}'
 
@@ -102,28 +100,42 @@ def main():
 
     status('pending', 'Checking contributor acceptance')
     try:
-        commits = api.pages(f'{prefix}/pulls/{number}/commits')
-        # GitHub caps this endpoint at 250 commits; never silently omit authors.
-        if len(commits) != pr['commits'] or pr['commits'] >= 250:
-            raise RuntimeError('Commit list incomplete or too large; split this PR')
-        comments = api.pages(f'{prefix}/issues/{number}/comments')
+        def shared_heads():
+            # /pulls defaults to open; paginate the entire repository, not one fork.
+            return sorted(p['number'] for p in api.pages(f'{prefix}/pulls')
+                          if p['head']['sha'] == head)
+
+        numbers = shared_heads()
+        if pr['state'] == 'open' and number not in numbers:
+            raise RuntimeError('Triggering PR moved or closed; rerun required')
         digest = hashlib.sha256(Path('CLA.md').read_bytes()).hexdigest()
-        missing, unresolved, evidence, expected = evaluate(
-            pr, commits, comments, digest, lambda login: api.request('/users/' + login))
-        # Never publish success for evidence collected across a changing head.
-        current = api.request(f'{prefix}/pulls/{number}')
-        if current['head']['sha'] != head:
-            raise RuntimeError('PR head changed during verification; rerun required')
         summary = ['## CLA acceptance', '',
-                   f'Agreement: https://github.com/{repo}/blob/{os.environ["TRUSTED_SHA"]}/CLA.md',
-                   '', 'Each contributor must post this exact sentence:', '', expected, '',
-                   'Missing: ' + (', '.join(missing) or 'none'),
-                   'Unresolved: ' + ('; '.join(unresolved) or 'none'), '',
-                   'Acceptance evidence:', json.dumps(evidence, indent=2)]
+                   f'Agreement: https://github.com/{repo}/blob/{os.environ["TRUSTED_SHA"]}/CLA.md']
+        failed = False
+        for shared_number in numbers:
+            shared = api.request(f'{prefix}/pulls/{shared_number}')
+            if shared['state'] != 'open' or shared['head']['sha'] != head:
+                raise RuntimeError('Shared PR changed during verification; rerun required')
+            commits = api.pages(f'{prefix}/pulls/{shared_number}/commits')
+            # GitHub caps this endpoint at 250 commits; never omit authors.
+            if len(commits) != shared['commits'] or shared['commits'] >= 250:
+                raise RuntimeError('Commit list incomplete or too large; split this PR')
+            comments = api.pages(f'{prefix}/issues/{shared_number}/comments')
+            missing, unresolved, evidence, expected = evaluate(
+                shared, commits, comments, digest, lambda login: api.request('/users/' + login))
+            failed = failed or bool(missing or unresolved)
+            summary.extend(['', f'### PR #{shared_number}', '',
+                            'Each contributor must post this exact sentence:', '', expected, '',
+                            'Missing: ' + (', '.join(missing) or 'none'),
+                            'Unresolved: ' + ('; '.join(unresolved) or 'none'), '',
+                            'Acceptance evidence:', json.dumps(evidence, indent=2)])
+        # A status authorizes all PRs at this SHA. Refuse a changing population.
+        if shared_heads() != numbers:
+            raise RuntimeError('PRs sharing this commit changed; rerun required')
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
             out.write('\n'.join(summary) + '\n')
-        if missing or unresolved:
-            status('failure', 'CLA acceptance missing or contributor identity unresolved; see details')
+        if failed:
+            status('failure', 'CLA acceptance missing in a PR sharing this commit; see details')
             raise SystemExit(1)
         status('success', 'All identified human contributors accepted this agreement and head')
     except Exception as exc:

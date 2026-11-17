@@ -1,7 +1,7 @@
 name: Contributor agreement
 on:
   pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review, closed, edited]
   issue_comment:
     types: [created, edited, deleted]
 permissions:
@@ -10,7 +10,7 @@ permissions:
   issues: read
   statuses: write
 concurrency:
-  group: cla-${{ github.event.pull_request.number || github.event.issue.number }}
+  group: cla-repository
   cancel-in-progress: false
 jobs:
   verify:
