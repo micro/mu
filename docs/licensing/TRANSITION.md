@@ -33,6 +33,38 @@ It touches OpenRouter/provider code, agent execution, setup and related tests an
 docs. Some paths have since moved from `internal/ai` to `internal/model`; the
 review must follow the surviving changes, not just today's filenames.
 
+### Repository review findings (17 November 2026)
+
+The repository was already AGPL-licensed when #1455 was contributed. Its public
+PR discussion contains a thank-you from the maintainer, but no separate licence
+grant. `git blame -M -C` follows surviving code into
+`internal/model/openrouter.go`, including provider registration, settings access
+and model selection. Renaming the package did not remove the contribution.
+
+Reviewing co-author trailers, rather than only primary commit authors, also found:
+
+| Contributor record | Change requiring rights review |
+| --- | --- |
+| Oshadha Gunawardena / nooscraft | [#1455](https://github.com/micro/mu/pull/1455), OpenRouter provider; `f0debf02` |
+| RomainZento | [#1477](https://github.com/micro/mu/pull/1477), OpenAI-compatible native agents; `8359bd1b` |
+| Dev9269 | [#1467](https://github.com/micro/mu/pull/1467), outgoing mail size limit; `1373c79e` |
+| mikemikimike | [#1461](https://github.com/micro/mu/pull/1461), store-shrink safety; `a345e79f` |
+| kramlipi | Test teardown from [#1456](https://github.com/micro/mu/pull/1456), incorporated in `8300b247` |
+
+These records identify material to investigate; they do not prove ownership or
+rule out agreements held outside GitHub. Only #1455's public discussion and
+current provider-file attribution have been checked in detail so far. Obtain
+sufficient permission from the actual rights holders for surviving contributions,
+including employer-owned work where applicable. A simple maintainer approval,
+co-author credit or ordinary AGPL contribution is not a separate relicensing grant.
+
+The rights issue also applies to selling an AGPL exception for a combined runtime
+containing those contributions, not only to replacing the default runtime licence.
+A commercial agreement must not promise rights in that material until cleared.
+See the GNU project's [relicensing FAQ](https://www.gnu.org/licenses/gpl-faq.en.html#Consider)
+for the contributor-permission distinction. This review is repository evidence,
+not legal clearance or an exhaustive dependency audit.
+
 Before activation, document ownership or sufficient permissions for all covered
 code, including surviving external contributions, imported code, and work created
 under other entities. Where permissions are absent, obtain them or remove/replace
