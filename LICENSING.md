@@ -30,7 +30,8 @@ rights and material it specifies, not third-party components automatically.
 
 Contributions should use the licence applicable to their destination. Contributing
 does not by itself assign copyright or grant a separate right to relicense a
-contributor's work commercially.
+contributor's work commercially. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+planned contributor agreement and the distinction from DCO commit sign-off.
 
 ## Proposed runtime terms
 
