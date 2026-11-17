@@ -1,7 +1,7 @@
 # Mu Commercial Licence Agreement
 
-Proposed version 1.0 — 17 November 2026. For contributor and customer review;
-not executed, legally reviewed, or effective merely by publication or sponsorship.
+Version 1.0 — 17 November 2026. Published commercial terms for contributor and
+customer review; not executed or effective merely by publication or sponsorship.
 The licensing transition remains subject to the rights review in TRANSITION.md.
 
 ## 1. Parties and order
@@ -118,5 +118,5 @@ The historical permission request also permits separate proprietary commercial
 licences: it is broader than approval of this one customer-agreement version.
 A contributor who wishes to limit permission to specified versions or terms should
 state that explicitly; such a narrower grant needs separate review and recording.
-Do not treat willingness to discuss the proposal as consent. Final reviewed terms
+Do not treat willingness to discuss the proposal as consent. The exact terms proposed for consent
 must be provided to anyone who requests them before formal consent is sought.

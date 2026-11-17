@@ -25,6 +25,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Test contributor agreement gate
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+
       - name: Build standalone web client
         run: |
           npm ci --prefix client/web

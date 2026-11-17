@@ -28,16 +28,17 @@ terms for covered proprietary modifications are available by agreement; see the
 [commercial section](README.md#commercial). Such an agreement covers only the
 rights and material it specifies, not third-party components automatically.
 
-Contributions should use the licence applicable to their destination. Contributing
-does not by itself assign copyright or grant a separate right to relicense a
-contributor's work commercially. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
-planned contributor agreement and the distinction from DCO commit sign-off.
+Contributions use the licence applicable to their destination. Submitting code
+alone does not assign copyright or grant separate commercial relicensing rights.
+Explicit acceptance of [CLA.md](CLA.md) grants the additional rights defined there
+for the identified contribution. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+acceptance process and required GitHub enforcement settings.
 
-## Proposed runtime terms
+## Commercial terms and future runtime licence
 
-[COMMERCIAL.md](COMMERCIAL.md) describes the US$10,000/month commercial licensing
-tier and the separate US$1,000/month support tier. The
-[draft runtime licence](docs/licensing/RUNTIME-LICENSE-DRAFT.md) proposes a future
-commercial-provision restriction. It is not an effective licence and does not
-change the table above. The [transition review](docs/licensing/TRANSITION.md)
-records the rights and release work required before activation.
+[COMMERCIAL.md](COMMERCIAL.md) separates the US$10,000/month commercial licence
+from US$1,000/month support. The [commercial agreement](docs/licensing/COMMERCIAL-AGREEMENT.md)
+defines the customer terms, subject to a signed order and sufficient rights.
+The [proposed runtime licence](docs/licensing/RUNTIME-LICENSE-DRAFT.md) is not
+active; the existing licensing map remains authoritative.
+[Transition status](docs/licensing/TRANSITION.md) records contributor permissions.

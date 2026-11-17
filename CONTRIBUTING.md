@@ -1,50 +1,68 @@
 # Contributing to Mu
 
-Contributions currently use the licence applicable to their destination; see
-[LICENSING.md](LICENSING.md). The proposed runtime licensing change in
-[PR #2180](https://github.com/micro/mu/pull/2180) is not yet in effect.
+Read [Mu CLA v1.0](CLA.md) before submitting contributions. Each human contributor
+must explicitly accept it for the PR head being reviewed. Contributions still
+use the applicable licences in [LICENSING.md](LICENSING.md); accepting the CLA
+does not activate the proposed runtime licence or change earlier releases.
 
-## Commit sign-off and contributor agreements
+## Accepting on GitHub
 
-The [Developer Certificate of Origin (DCO)](https://developercertificate.org/)
-is the common commit sign-off mechanism. `git commit -s` adds a
-`Signed-off-by: Your Name <your-email>` trailer. Under a project adopting the
-DCO, that certifies the contributor has the right to submit the contribution
-under the applicable open-source licence. It is not a cryptographic commit
-signature and does not independently grant permission to relicense AGPL code
-under proprietary terms.
+1. Open your PR and follow the `cla` status's **Details** link.
+2. Read the linked agreement at its recorded repository revision.
+3. Copy the exact acceptance sentence from the workflow summary into a new PR
+   comment using your own account. It includes the agreement's SHA-256 digest,
+   PR number and full head commit SHA.
+4. Each commit author and co-author must do the same. After new commits or a
+   rebase, accept the new head again. Editing or deleting an acceptance causes
+   re-verification; a missing acceptance fails the check.
 
-Mu's proposed runtime licensing model needs an explicit contributor licence
-agreement (CLA), or an equivalent recorded grant, permitting Micro XYZ Ltd to
-license the covered contribution under the proposed runtime terms and separate
-commercial terms. Contributors should retain their copyright and attribution.
-Employer-owned or jointly owned contributions require the relevant authority.
-A PR approval, co-author credit or DCO sign-off is not a substitute for that grant.
+The agreement preserves copyright and attribution and grants Micro XYZ Ltd
+permission to license the contribution under source-available and commercial
+terms. If an employer or another party owns rights, obtain authority first and
+identify the entity and your authority in a separate PR comment. The check
+records acceptance; maintainers must still review authority and third-party code.
 
-## Planned contribution process
+GitHub must associate each commit author with an account. Co-author trailers must
+use that contributor's GitHub noreply address so the check can resolve their
+account and, when present, verify its numeric ID. Unresolved identities fail the
+check. Automated accounts cannot accept for people; bot-only PRs need a human
+contributor to take responsibility through an authored commit and acceptance.
+No maintainer or organisation member is automatically exempt.
 
-Before activating the new runtime licence:
+## DCO is different
 
-- Finalise and publish a versioned contributor agreement defining the covered
-  contributions, copyright and any necessary patent grants, relicensing scope,
-  and authority to contribute. Preserve the separate Apache-2.0 protocol/SDK terms.
-- Provide a lightweight GitHub acceptance flow: an explicit PR comment accepting
-  the linked agreement version, or a CLA integration recording equivalent consent.
-- Record the contributor identity, agreement version, scope, acceptance permalink
-  and any employer authorisation. Acceptance must come from the rights holder or
-  their authorised representative, not be inferred from a maintainer's merge.
-- Add a required check for contributions covered by that agreement. Recheck new
-  contributors and co-authors when commits are added, and preserve the evidence
-  when squashing. A ticked PR-template box alone is not proof of authority.
-- Keep requests for historical contributions separate; a new policy cannot
-  retroactively change their terms. Do not treat silence as acceptance.
+[Developer Certificate of Origin](https://developercertificate.org/) sign-off
+(`git commit -s`) records the right to contribute under an open-source licence.
+It is not a cryptographic signature and does not independently grant proprietary
+relicensing rights. A sign-off, checkbox or review approval does not replace the
+explicit CLA acceptance above. Historical permissions remain separate.
 
-This records the intended process, not an adopted CLA or an active automated gate.
-Mu does not currently require DCO sign-off through this note. If DCO checks are
-added for open-source components, keep them separate from runtime CLA acceptance;
-the standard DCO refers to open-source licensing and should not be silently
-repurposed for the proposed source-available runtime terms.
+## Repository enforcement
 
-See the [licensing transition](docs/licensing/TRANSITION.md) for outstanding rights
-work and the [Apache contributor agreement overview](https://www.apache.org/licenses/contributor-agreements.html)
-for an example of explicit contributor grants.
+The trusted `.github/workflows/cla.yml` workflow publishes the `cla` commit status
+on the actual PR head. Because GitHub shares commit statuses across PRs, every
+open PR at that same head must pass independently. Workflow runs are serialised
+repository-wide, and a changing set of shared PRs fails verification. It runs on PR updates and comment creation, edits and
+deletion, and checks only code from the repository's default branch. It never
+executes PR code with its write-capable token. Acceptance evidence links appear
+in the workflow summary; preserve those records with the PR when merging.
+
+Repository administrators must require `cla` for `main` in a branch rule/ruleset,
+require pull requests, and disallow bypass and direct pushes if enforcement is to
+apply to everyone. Select GitHub Actions as the expected status source. Ensure
+`pull_request_target` is allowed by the repository's Actions event policy. Until
+the workflow is merged and this rule is enabled, the check is not a merge block.
+The workflow intentionally does not accept contributions or change repository
+administration on anyone's behalf.
+
+Keep CLA versions immutable. Any agreement edit changes its digest and requires
+fresh acceptance; update the displayed version when publishing new terms. After
+changing agreement or gate code, rerun the check on all open PRs before merging
+them. Review changes to `.github/workflows/cla.yml`, `.github/scripts/cla.py` and
+`CLA.md` as security-sensitive; repository write administrators remain trusted.
+
+Run gate tests with:
+
+```sh
+python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+```

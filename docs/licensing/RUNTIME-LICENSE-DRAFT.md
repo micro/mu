@@ -1,6 +1,6 @@
 # Mu Runtime Licence — draft 1.0
 
-**Proposal for legal and rights review. Not an effective licence grant or a
+**Proposed future runtime terms; contributor permissions pending. Not an effective licence grant or a
 replacement for the repository's current [LICENSE](../../LICENSE).** Activation
 is subject to the [transition requirements](TRANSITION.md). This draft is a
 source-available licence, not an OSI open-source licence.

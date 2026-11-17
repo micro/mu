@@ -6,7 +6,7 @@ Status: proposal, not activated. Baseline inspected:
 ## Intended release boundary
 
 Apply the proposed source-available terms to future Mu runtime code only after
-rights and legal review. Keep MUCP specifications, `proto/` contracts and generated
+confirmation of the necessary rights. Keep MUCP specifications, `proto/` contracts and generated
 types, and `client/typescript/` and `client/python/` under their existing Apache-2.0
 terms. Keep existing standalone `client/` applications and `proto/generate/`
 AGPL-licensed. Third-party notices remain intact. Go Micro is outside this change.
@@ -21,9 +21,9 @@ which they were received. No retroactive licence fee is proposed.
 
 ## Rights evidence still needed
 
-The current [contribution policy](../../LICENSING.md) explicitly says contributions
-do not assign copyright or separately grant commercial relicensing rights. No
-contributor agreement was located in the inspected repository. Commit authorship
+At the baseline above, the contribution policy did not assign copyright or grant
+separate commercial relicensing rights. The CLA subsequently added in #2181
+applies through explicit acceptance and does not retroactively clear this code. Commit authorship
 is an investigation aid, not proof of copyright ownership or absence of a separate
 agreement.
 
@@ -78,20 +78,21 @@ combined runtime. Do not assume this one contribution is an exhaustive audit.
   the requested additional copyright permission. It is not a grant for unrelated
   or future work and does not separately grant patent rights.
 - RomainZento / zentotech: [requested final terms before consenting](https://github.com/micro/mu/pull/1477#issuecomment-6947036250).
-  No permission granted. Provide the reviewed final documents before seeking consent.
+  No permission granted. Provide the exact published terms before seeking consent.
 - nooscraft, mikemikimike and kramlipi: no licensing response observed in the
   checked request threads as of this review; permission remains pending.
 
 [Proposed commercial terms](COMMERCIAL-AGREEMENT.md) provide a concrete customer
-agreement and explain sublicensing. They have not received legal review and must
-not be described as final approved terms. The prospective CLA merged in #2181
+agreement and explain sublicensing. Publishing them does not execute a customer agreement or activate a runtime
+licence change. No external legal review is planned or required as a project
+merge prerequisite; contributor authority and sufficient permissions still matter. The prospective CLA merged in #2181
 is separate from these historical requests and does not retroactively clear them.
 
 ## Activation work
 
-1. Obtain legal review of the draft grant, paid-product boundary, professional
-   services exception, termination and commercial subscription agreement. Confirm
-   the licensor's identity and authority. This draft has not received legal review.
+1. Confirm the licensor's identity and authority and publish the exact runtime
+   and commercial terms proposed for consent. External legal review is not a
+   project prerequisite. Do not claim that one has occurred.
 2. Complete the rights and dependency review above and establish contribution
    terms that expressly permit the intended licensing of future contributions.
 3. Select and record the first covered release. Replace the root licence only for
