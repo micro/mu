@@ -28,6 +28,8 @@ terms for covered proprietary modifications are available by agreement; see the
 [commercial section](README.md#commercial). Such an agreement covers only the
 rights and material it specifies, not third-party components automatically.
 
-Contributions should use the licence applicable to their destination. Contributing
-does not by itself assign copyright or grant a separate right to relicense a
-contributor's work commercially.
+Contributions use the licence applicable to their destination. Submitting code
+alone does not assign copyright or grant separate commercial relicensing rights.
+Explicit acceptance of [CLA.md](CLA.md) grants the additional rights defined there
+for the identified contribution. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+acceptance process and required GitHub enforcement settings.
