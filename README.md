@@ -132,12 +132,17 @@ The AGPL includes source-sharing obligations:
 - When running a modified version over a network, prominently offer its
   corresponding source to the users interacting with it.
 
-For a proprietary product based on Mu, a paid commercial licence can provide
-alternative terms for keeping covered modifications closed—for example, a
-customised assistant runtime or a branded client. Visit
-[Micro on GitHub Sponsors](https://github.com/sponsors/micro) for sponsorship and
-commercial licensing enquiries. Scope and fees are agreed
-separately; third-party components retain their own licences.
+For a proprietary product based on Mu, a written commercial agreement can provide
+alternative terms for rights Micro is authorised to license. The
+[commercial licence tier](https://github.com/sponsors/micro/sponsorships?tier_id=680807)
+is **US$10,000/month**. The separate
+[support tier](https://github.com/sponsors/micro/sponsorships?tier_id=248798) is
+**US$1,000/month** and grants no additional licensing rights. Payment alone does
+not replace a commercial agreement or promise unlimited support.
+
+See [commercial licensing and support](COMMERCIAL.md) for scope and the proposed
+future runtime licensing boundary. That proposal is not yet in effect; the AGPL
+permissions above continue to apply.
 
 An independently written client connecting through MUCP or the API does not need
 a commercial licence merely to connect. The

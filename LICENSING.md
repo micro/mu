@@ -31,3 +31,12 @@ rights and material it specifies, not third-party components automatically.
 Contributions should use the licence applicable to their destination. Contributing
 does not by itself assign copyright or grant a separate right to relicense a
 contributor's work commercially.
+
+## Proposed runtime terms
+
+[COMMERCIAL.md](COMMERCIAL.md) describes the US$10,000/month commercial licensing
+tier and the separate US$1,000/month support tier. The
+[draft runtime licence](docs/licensing/RUNTIME-LICENSE-DRAFT.md) proposes a future
+commercial-provision restriction. It is not an effective licence and does not
+change the table above. The [transition review](docs/licensing/TRANSITION.md)
+records the rights and release work required before activation.
