@@ -33,3 +33,12 @@ alone does not assign copyright or grant separate commercial relicensing rights.
 Explicit acceptance of [CLA.md](CLA.md) grants the additional rights defined there
 for the identified contribution. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
 acceptance process and required GitHub enforcement settings.
+
+## Commercial terms and future runtime licence
+
+[COMMERCIAL.md](COMMERCIAL.md) separates the US$10,000/month commercial licence
+from US$1,000/month support. The [commercial agreement](docs/licensing/COMMERCIAL-AGREEMENT.md)
+defines the customer terms, subject to a signed order and sufficient rights.
+The [proposed runtime licence](docs/licensing/RUNTIME-LICENSE-DRAFT.md) is not
+active; the existing licensing map remains authoritative.
+[Transition status](docs/licensing/TRANSITION.md) records contributor permissions.
