@@ -71,6 +71,22 @@ under other entities. Where permissions are absent, obtain them or remove/replac
 the affected material lawfully. Check dependency licence compatibility for the
 combined runtime. Do not assume this one contribution is an exhaustive audit.
 
+## Permission responses (17 November 2026)
+
+- Dev9269: [explicit permission received](https://github.com/micro/mu/pull/1467#issuecomment-6948200169)
+  for the identified #1467 contribution. The response confirms authority and grants
+  the requested additional copyright permission. It is not a grant for unrelated
+  or future work and does not separately grant patent rights.
+- RomainZento / zentotech: [requested final terms before consenting](https://github.com/micro/mu/pull/1477#issuecomment-6947036250).
+  No permission granted. Provide the reviewed final documents before seeking consent.
+- nooscraft, mikemikimike and kramlipi: no licensing response observed in the
+  checked request threads as of this review; permission remains pending.
+
+[Proposed commercial terms](COMMERCIAL-AGREEMENT.md) provide a concrete customer
+agreement and explain sublicensing. They have not received legal review and must
+not be described as final approved terms. The prospective CLA merged in #2181
+is separate from these historical requests and does not retroactively clear them.
+
 ## Activation work
 
 1. Obtain legal review of the draft grant, paid-product boundary, professional

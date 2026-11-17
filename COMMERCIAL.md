@@ -16,6 +16,10 @@ The [draft runtime licence](docs/licensing/RUNTIME-LICENSE-DRAFT.md) sets out th
 proposal. **It is not in effect.** Existing AGPL permissions remain valid; see
 the [transition requirements](docs/licensing/TRANSITION.md).
 
+The [proposed commercial agreement](docs/licensing/COMMERCIAL-AGREEMENT.md) now
+sets out the customer grant, downstream rights, monthly term, cancellation and
+contributor implications. It remains a review proposal, not an executed agreement.
+
 ## Commercial licence — US$10,000/month
 
 The [commercial licensing tier on GitHub Sponsors](https://github.com/sponsors/micro/sponsorships?tier_id=680807)
