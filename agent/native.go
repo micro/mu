@@ -327,6 +327,9 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Assembled here and handed over as a message — see the note on sys above,
 	// and briefing() in memory.go, which puts it in front of the question.
 	var facts []string
+	if background := opts.Context.messageContext(); background != "" {
+		facts = append(facts, background)
+	}
 	if client := opts.Context.facts(now); client != "" {
 		facts = append(facts, client)
 	}

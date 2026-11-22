@@ -22,6 +22,7 @@ type page struct {
 }
 
 var pages = []page{
+	{Path: "/help/agent-api", Filename: "AGENT-API.md", Title: "Agent integration"},
 	{Path: "/install", Filename: "INSTALL.md", Title: "Install",
 		Description: "Run your own instance"},
 	{Path: "/help", Filename: "README.md", Title: "Documentation"},

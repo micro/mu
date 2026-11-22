@@ -79,6 +79,8 @@ curl "$MU_URL/agent" \
 
 The response includes `text` and `thread`; send the thread identifier
 back to continue. Requests and credentials belong in request bodies and headers.
+To embed an agent in your app and supply surrounding conversation messages, see
+[Agent integration](docs/AGENT-API.md).
 The [Mu runtime contracts](docs/MUCP-RUNTIME.md) provide Home, Inbox, agent and service discovery
 interfaces, with durable personal requests and typed results. Mu is its first
 runtime implementation. [Service contracts](proto/service) begin with Contacts;

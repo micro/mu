@@ -183,6 +183,9 @@ const historyTurns = historyMessages
 
 // Ask runs one turn of a conversation and remembers it happened.
 func Ask(r AskRequest) (Answer, error) {
+	if err := r.Context.validateMessages(); err != nil {
+		return Answer{}, err
+	}
 	if strings.TrimSpace(r.Account) == "" || strings.TrimSpace(r.Text) == "" {
 		return Answer{}, nil
 	}
