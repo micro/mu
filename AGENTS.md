@@ -750,3 +750,12 @@ with the submit button inside. Standard buttons and single-line inputs use the
 shared compact control tokens on desktop and touch screens. Keep cosmetic styles
 in mu.css; use semantic classes and hidden for state, not inline style attributes. Mobile compacts spacing while coarse-pointer controls retain
 comfortable touch targets. Home shortcuts sort by their displayed labels.
+
+### Agent URL names
+
+Agent URL names are reserved server-wide in agent/names.go, independently of
+display names and owner-scoped mail tags. Keep reservations after deletion.
+Resolve the reserved identity before checking the caller's execution permission;
+never fall back to another account's agent with the same display name.
+Public profiles are opt-in projections of name and description only. Keep the
+underlying userdb agent record private, including its prompt and credentials.

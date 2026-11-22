@@ -669,3 +669,15 @@ func OwnersMatching(ns, collection string, where map[string]interface{}) ([]stri
 	sort.Strings(owners)
 	return owners, nil
 }
+
+// Snapshot returns all records for an internal runtime migration or index.
+// It bypasses owner filtering and must never be exposed through a client API.
+func Snapshot(ns, collection string) ([]Record, error) {
+	k, err := key(ns, collection)
+	if err != nil {
+		return nil, err
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	return loadChecked(k)
+}
