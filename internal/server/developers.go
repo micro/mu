@@ -29,6 +29,11 @@ mu help</pre>
   -H 'Content-Type: application/json' \
   -d '{"prompt":"What needs my attention?"}'</pre>
  <p>The response includes <code>text</code> and <code>thread</code>. Send <code>thread</code> with your next prompt to continue.</p>
+ <h3>Surrounding conversation</h3>
+ <p>When embedding an agent, send surrounding messages in <code>context.messages</code>, oldest first. Keep the current question in <code>prompt</code>. Omit <code>thread</code> on the first request; otherwise use the returned Mu thread ID.</p>
+ <pre>{"prompt":"What would help here?","context":{"messages":[{"author":"Asim","text":"I'm finding it hard to be patient"}]}}</pre>
+ <p>Each message requires non-empty <code>text</code>; <code>author</code> is an optional display label. Send at most 24 messages and 16,000 UTF-8 bytes across text and authors. Invalid messages return HTTP 400. Only share messages the caller is entitled to disclose.</p>
+ <p>Excerpts supplement history for this turn as untrusted background. They grant no permissions and are not automatically imported into conversation history or durable memory. The saved answer may quote them. Your app must supply relevant excerpts again on later requests.</p>
  <pre>curl '` + base + `/work' \
   -H "Authorization: Bearer $MU_TOKEN" \
   -H 'Accept: application/json' \

@@ -135,6 +135,9 @@ func Routed(prompt string, opts QueryOpts) (string, QueryOpts) {
 }
 
 func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
+	if err := opts.Context.validateMessages(); err != nil {
+		return "", err
+	}
 	prompt, opts = Routed(prompt, opts)
 
 	answer, err := queryWithFallback(accountID, prompt, opts)

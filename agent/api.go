@@ -147,6 +147,10 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 		app.BadRequest(w, r, "send JSON: {\"prompt\": \"...\"}")
 		return
 	}
+	if err := req.Context.validateMessages(); err != nil {
+		app.BadRequest(w, r, err.Error())
+		return
+	}
 	req.Text = req.ask()
 	if req.Text == "" {
 		app.BadRequest(w, r, "nothing to ask")
@@ -165,7 +169,9 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusPaymentRequired)
 			return
 		}
-		answer, err := QueryWithOpts(accountID, req.Text, publicVoiceOptions(r.Context()))
+		opts := publicVoiceOptions(r.Context())
+		opts.Context.Messages = req.Context.Messages
+		answer, err := QueryWithOpts(accountID, req.Text, opts)
 		if err != nil {
 			app.ServerError(w, r, "Public answer unavailable. Try again after unlocking.")
 			return
