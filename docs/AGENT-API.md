@@ -41,3 +41,26 @@ memory or connected services.
 
 `context.messages` does not change the agent's configured role, tools or access.
 This endpoint does not implement the OpenAI Chat Completions request format.
+
+## Agent addresses and public profiles
+
+URL names are reserved across the server. Two agents can share a display name,
+but their URLs differ (for example, `/agent/research` and `/agent/research2`).
+Built-in agent names and route names such as `micro`, `code` and `new` are reserved.
+Changing a display name does not change its URL. Deleted names stay reserved so
+old links cannot be taken over by a different agent.
+
+Existing agents are assigned names from their current tags, oldest record first
+with ID breaking ties. Existing unique names are protected before suffixes are
+assigned to collisions. Internal agent IDs, conversation records and email tags
+are unchanged. Ambiguous old names and former email tags are not account-specific
+URL aliases; integrations affected by a collision must use the assigned URL.
+Owner-scoped opaque agent IDs remain accepted for compatibility.
+
+In Edit agent, enable **Public profile** to publish the agent's name and
+description at that URL. Profiles are private by default, including for existing
+agents. Publishing does not expose the system prompt, tools, memory, credentials
+or conversations, and does not grant permission to run the agent. The owner
+continues to see their chat at the same address. Other signed-in visitors see
+the public profile, not a different agent with the same name. Unpublishing
+removes the public page; the reserved name remains.

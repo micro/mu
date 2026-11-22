@@ -23,6 +23,9 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func consoleHandler(w http.ResponseWriter, r *http.Request) {
+	if profile(w, r) {
+		return
+	}
 	chatPath := Path
 	if r.URL.Query().Get("view") == "activity-status" {
 		conversationActivityHandler(w, r)

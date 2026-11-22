@@ -100,6 +100,8 @@ type Agent struct {
 	// Description is the one-line the router reads when deciding which agent
 	// should answer.
 	Description string `json:"description,omitempty"`
+	// ProfilePublic exposes only the safe profile, not the underlying record.
+	ProfilePublic bool `json:"profile_public,omitempty"`
 	// TokenID identifies the credential without holding it. The secret is shown
 	// once and never stored in readable form.
 	//
@@ -136,20 +138,6 @@ type Agent struct {
 	Former   []string  `json:"former,omitempty"`
 	Created  time.Time `json:"created"`
 	LastUsed time.Time `json:"last_used,omitempty"`
-
-	// There were three more: Public, Runs and ForkedOf, for publishing an agent
-	// to everybody on the instance and running somebody else's. It was a
-	// marketplace with no sellers — Fork came off the roster page a while back
-	// for offering to copy an agent to people who had never made one, and
-	// nothing else ever linked to the directory, so PublicAgents, PublicAgent,
-	// Publish and Fork had no callers at all. What is left of a directory
-	// nobody can reach is a public flag on a record and a counter that only
-	// counts.
-	//
-	// Sharing an agent is a real idea and this is not an argument against it.
-	// It is an argument against keeping the half of it that shipped: a recipe
-	// somebody can run on their own account is worth building when there is a
-	// page to find one on.
 }
 
 // Address is the mail address this agent can be written at, or "" if it has no
@@ -267,6 +255,9 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 			max, plural(max), len(existing))
 	}
 
+	if _, err := names(); err != nil {
+		return nil, "", err
+	}
 	requestedScope := len(services) > 0
 	services = validServices(services)
 	if requestedScope && len(services) == 0 {
@@ -311,6 +302,13 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 		return nil, "", err
 	}
 	a.ID = rec.ID
+	if err := reserveName(a); err != nil {
+		_ = userdb.Delete(ns, owner, collection, a.ID)
+		if a.TokenID != "" {
+			_ = auth.DeleteToken(a.TokenID, owner)
+		}
+		return nil, "", fmt.Errorf("could not reserve agent name: %w", err)
+	}
 	return a, secret, nil
 }
 
@@ -340,7 +338,7 @@ func validServices(in []string) []string {
 func fields(a *Agent) map[string]any {
 	return map[string]any{
 		"name": a.Name, "kind": a.Kind, "prompt": a.Prompt,
-		"description": a.Description, "model": a.Model,
+		"description": a.Description, "model": a.Model, "profile_public": a.ProfilePublic,
 		"token_id": a.TokenID, "services": strings.Join(a.Services, ","),
 		"tag":     a.Tag,
 		"former":  strings.Join(a.Former, ","),
@@ -348,9 +346,7 @@ func fields(a *Agent) map[string]any {
 	}
 }
 
-// save writes an agent back, carrying its published state. The store's own
-// public flag is what makes the directory work: every account's agents live in
-// one collection, so a published agent is simply one a stranger's read can see.
+// save keeps the underlying record private, including for published profiles.
 func (a *Agent) save() error {
 	_, err := userdb.Update(ns, a.Owner, collection, a.ID, fields(a), false)
 	return err
@@ -367,6 +363,10 @@ func (a *Agent) save() error {
 func EnsureTags(owner string) {
 	rosterMutation.Lock()
 	defer rosterMutation.Unlock()
+	if _, err := names(); err != nil {
+		return
+	}
+
 	all := Agents(owner)
 	var missing []*Agent
 	for _, a := range all {
@@ -405,12 +405,14 @@ func Agents(owner string) []*Agent {
 
 // Get returns one agent the owner owns, or nil.
 func For(owner, id string) *Agent {
-	for _, a := range Agents(owner) {
-		if a.ID == id {
-			return a
-		}
+	if owner == "" || id == "" {
+		return nil
 	}
-	return nil
+	rec, err := userdb.Get(ns, owner, collection, id)
+	if err != nil || rec.Owner != owner {
+		return nil
+	}
+	return fromRecord(owner, *rec)
 }
 
 // NameOf is what to call an agent when all you have is its id.
@@ -446,6 +448,10 @@ func NameOf(owner, id string) string {
 func RemoveAgent(owner, id string) error {
 	rosterMutation.Lock()
 	defer rosterMutation.Unlock()
+	if _, err := names(); err != nil {
+		return err
+	}
+
 	a := For(owner, id)
 	if a == nil {
 		return fmt.Errorf("no such agent")
@@ -496,6 +502,7 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 		Prompt: str("prompt"), Description: str("description"), TokenID: str("token_id"),
 		Tag: str("tag"), Model: str("model"),
 	}
+	a.ProfilePublic, _ = rec.Data["profile_public"].(bool)
 	// Records written before the distinction went carry kind:"external". They
 	// are ordinary agents: normalised on read, so nothing downstream has to know
 	// the word ever existed.
@@ -591,6 +598,10 @@ func without(list []string, tag string) []string {
 func UpdateAgent(owner, id, name, prompt, description string, services []string) (*Agent, error) {
 	rosterMutation.Lock()
 	defer rosterMutation.Unlock()
+	if _, err := names(); err != nil {
+		return nil, err
+	}
+
 	selected := validServices(services)
 	if len(services) > 0 && len(selected) == 0 {
 		return nil, fmt.Errorf("none of the selected services are available")

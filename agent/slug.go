@@ -22,21 +22,17 @@ import (
 // be addressable at all.
 const DefaultSlug = "micro"
 
-// Slug is an agent's name as it appears in a path.
-//
-// The mail tag where there is one, because an agent that answers at
-// `you+research@` should be at `/agent/research`: one name for the same thing
-// is the whole reason tags exist. Otherwise the display name, lowercased with
-// anything that is not a letter or digit removed — the same shape tagFor
-// produces, so the two agree for every agent that has both.
+// Slug is the server-reserved URL name. It is independent of the display name
+// and owner-scoped email tag, and remains reserved after deletion.
 func Slug(a *Agent) string {
 	if a == nil {
 		return DefaultSlug
 	}
-	if a.Tag != "" {
-		return a.Tag
+	if name, err := reservedSlug(a); err == nil && name != "" {
+		return name
 	}
-	return slugify(a.Name)
+	// Fail closed to the owner's opaque ID if the index is unavailable.
+	return a.ID
 }
 
 func slugify(s string) string {
@@ -49,52 +45,25 @@ func slugify(s string) string {
 	return b.String()
 }
 
-// BySlug resolves a name from a path to an agent id, and reports whether the
-// name named anything at all.
-//
-// The default agent answers to DefaultSlug and has an empty id, which is what
-// the rest of this package already means by "no particular agent". A name that
-// matches nothing is not the default — that would quietly serve the wrong agent
-// for a typo, and a page about a specific thing should 404 rather than show a
-// different thing.
+// BySlug resolves the server-wide name, then checks execution ownership.
+// A different account can never resolve the same name to its own agent.
 func BySlug(owner, slug string) (id string, ok bool) {
 	slug = strings.ToLower(strings.TrimSpace(slug))
 	if slug == "" || slug == DefaultSlug {
 		return "", true
 	}
-	all := Agents(owner)
-	for _, a := range all {
-		if Slug(a) == slug {
-			return a.ID, true
-		}
-		// The id itself, so a link written before names existed still lands.
-		if strings.EqualFold(a.ID, slug) {
-			return a.ID, true
-		}
-	}
-	// A name it used to have. Renaming an agent moves its page and its endpoint
-	// to the new word, and whatever was pointing at the old one — a bookmark, a
-	// cron job, a curl in somebody's notes — keeps working. Checked after every
-	// live name, so an agent that has since taken the word answers to it.
-	for _, a := range all {
-		for _, f := range a.Former {
-			if strings.EqualFold(f, slug) {
-				return a.ID, true
-			}
-		}
-	}
-	// Then this instance's own — news, markets, weather, the rest.
-	//
-	// Eleven of them have existed since the router was written, each with its
-	// own instruction and its own tools, and every one was reachable at
-	// agent+news@ and at nothing else. Not a page, not a link, not the picker.
-	// A specialist you can only reach if you already know the plus-address
-	// convention and the name is one nobody has.
-	//
-	// Your roster wins on a collision, which is the same rule the addresses
-	// use: your namespace is yours, and a built-in agent must never take over a
-	// name you were already using.
 	if a := Platform(slug); a != nil {
+		return a.ID, true
+	}
+	a, err := namedAgent(slug)
+	if err != nil {
+		return "", false
+	}
+	if a != nil {
+		return a.ID, a.Owner == owner
+	}
+	// Legacy opaque IDs remain owner-scoped; ambiguous old names do not.
+	if a := For(owner, slug); a != nil {
 		return a.ID, true
 	}
 	return "", false
@@ -120,12 +89,7 @@ func SlugFor(owner, id string) string {
 // Path is where to find a conversation with this agent.
 func Path(owner, id string) string { return "/agent/" + SlugFor(owner, id) }
 
-// agentSlugTarget resolves a path name for whoever is looking.
-//
-// It took a guest flag: a signed-out visitor had no roster, so the only agent
-// they could be on a page about was the default one. There are no signed-out
-// visitors on these pages now — /agent redirects to the login — so there is one
-// answer.
+// agentSlugTarget resolves a reserved URL name with the caller's permissions.
 func agentSlugTarget(accountID, slug string) (string, bool) {
 	return BySlug(accountID, slug)
 }

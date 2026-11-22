@@ -108,6 +108,12 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 				})
 				return
 			}
+			if r.PostFormValue("profile_public") != "" {
+				if err := SetProfile(acc.ID, saved.ID, r.PostFormValue("profile_public") == "true"); err != nil {
+					app.BadRequest(w, r, err.Error())
+					return
+				}
+			}
 			out := map[string]any{"id": saved.ID, "name": saved.Name, "kind": saved.Kind}
 			// The secret goes back exactly once, and only far enough to reach
 			// the page that shows it. It is stored hashed and cannot be read
@@ -340,6 +346,15 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	// "is this scope right" with a list of prompts, which is the question but
 	// not an answer to it — and what an answer actually called is now beside
 	// the answer in the conversation, where somebody looking at an odd one is.
+	profileHTML := ""
+	checked := ""
+	if a := For(acc.ID, editID); a != nil {
+		if a.ProfilePublic {
+			checked = " checked"
+		}
+		profileHTML = `<p>Address: <a href="` + html.EscapeString(Path(acc.ID, a.ID)) + `">` + html.EscapeString(Path(acc.ID, a.ID)) + `</a></p>`
+	}
+	profileHTML += `<label><input type="checkbox" id="b-profile"` + checked + `> Public profile (name and description only)</label>`
 	b := `<div class="page-col">
  <form id="bform" class="form" onsubmit="return bSave(event)">
  <input type="hidden" id="b-id" value="` + html.EscapeString(editID) + `">
@@ -347,7 +362,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		app.Field{ID: "b-name", Label: "Name", Max: 60, Required: true, Wide: true, Value: name}.HTML() +
 		app.Field{ID: "b-desc", Label: "Description", Max: 140, Wide: true, Value: desc}.HTML() +
 		app.Field{ID: "b-prompt", Label: "System prompt", Rows: 9, Required: true, Wide: true, Value: prompt}.HTML() +
-		app.ServiceSelect("b-scope", "b-service-list", "tool", scopeChoices) + modelHTML + `
+		app.ServiceSelect("b-scope", "b-service-list", "tool", scopeChoices) + modelHTML + profileHTML + `
  <div class="form-actions"><button type="submit" class="btn">Save agent</button><a href="/agents">Cancel</a></div>
  </form></div>
 
@@ -359,6 +374,7 @@ function bSave(e){e.preventDefault();
   b.append('fork',document.getElementById('b-fork').value);
   b.append('name',document.getElementById('b-name').value);
   b.append('description',document.getElementById('b-desc').value);
+  b.append('profile_public',document.getElementById('b-profile').checked?'true':'false');
   b.append('prompt',document.getElementById('b-prompt').value);
   var mode=document.getElementById('b-scope').value;
   var selected=Array.from(document.querySelectorAll('#b-service-list input:checked'));
